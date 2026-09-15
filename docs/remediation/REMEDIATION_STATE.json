@@ -5630,7 +5630,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 142,
+  "round": 157,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
@@ -5844,6 +5844,30 @@
     "no human content approval",
     "the readiness flags are FALSE and enforced false; the five external gates are OPEN or BLOCKED; no closure evidence existeth anywhere"
    ]
+  },
+  "round157_candidate_verification": {
+   "candidate_sha": "95dc75e55d31d4897f00c188616af41fb6aea176",
+   "candidate_tree_sha": "0e58b513032b08370f32dceebd3e161294c8db97",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND157/verification.json",
+   "controls": "auditor probe suite 10 OK; readiness OK; content OK; validate-state rc 0; symbols rc 0; gate checker rc 0; :mesh lane BUILD SUCCESSFUL; T77 selftest+rehearsal rc 0",
+   "ledger_statuses": {
+    "OPEN": 22,
+    "FIX_SUBMITTED": 27,
+    "PARTIAL": 5
+   },
+   "closure_evidence": [],
+   "external_gates": {
+    "A-06-independent-noise-vectors": "OPEN",
+    "production-corpus": "OPEN",
+    "model-native-stack": "OPEN",
+    "device-interoperability": "BLOCKED",
+    "accessibility": "BLOCKED",
+    "battery-thermal": "BLOCKED",
+    "signing-store-approval": "BLOCKED"
+   },
+   "this_round": "a candidate verification at ONE exact SHA after the session's TWO GS-SOS-001 repairs, with every component log hashed",
+   "ALSO_RECORDED_AND_NOT_GLOSSED": "THREE GENUINE ci/check_*.py CONTROLS REMAIN RED at this candidate (check_ble_link_substrate_controls, check_local_identity_controls, check_trusted_runtime_composition_controls), two of them with broken mutation batteries; check_parity is NOT among them (it passes as the lane runs it, --scope repo).",
+   "this_is_not_t78": "no hosted lane existeth here, so T78 has NOT run and no readiness flag moved."
   }
  }
 }
