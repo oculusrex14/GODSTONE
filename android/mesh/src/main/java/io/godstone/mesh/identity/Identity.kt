@@ -40,6 +40,14 @@ class Identity private constructor(
      */
     internal val staticDhPriv: ByteArray get() = _staticDhPriv.copyOf()
 
+    /**
+     * **GS-RUNTIME-001 step 2: THE ED25519 PRIVATE SEED, INTERNAL, FOR THE PINNED IDENTITY'S OWN SIGNER.**
+     * The precedent standeth one line above: `staticDhPriv` is exposed INTERNALLY for the NoiseSession's own
+     * constructor, and never publicly and never by mutable reference. A production ACK signer needeth the same
+     * kind of road -- THE SIGNER SIGNETH WITH THE IDENTITY'S OWN MATERIAL, and nothing leaveth the module.
+     */
+    internal val identityPriv: ByteArray get() = _identityPriv.copyOf()
+
     /** Authoritative node ID derived as BLAKE2s-128(identityPub) (16 bytes). Defensive copy. */
     val nodeId: ByteArray get() = _nodeId.copyOf()
 

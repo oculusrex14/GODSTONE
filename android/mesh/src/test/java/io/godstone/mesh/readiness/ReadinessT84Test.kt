@@ -51,6 +51,7 @@ import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.delivery.InMemoryAckStore
 import io.godstone.mesh.delivery.RecipientKeyResolver
 import io.godstone.mesh.delivery.TransitionResult
+import io.godstone.mesh.delivery.IdentityAckSigner
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.store.ClockContinuityStamp
 import io.godstone.mesh.store.InMemoryMessageStore
@@ -179,6 +180,32 @@ class ReadinessT84Test {
             Ed25519Keys.sign(AckFrame.preimage(msgId, local.id), local.seed).toList(),
             throughDefault!!.toList(),
         )
+    }
+
+    /**
+     * GS-RUNTIME-001 step 2 on THIS isle: **A PRODUCTION SIGNER OVER THE PINNED IDENTITY EXISTETH AND RELEASETH NO
+     * SEED.** MEASURED BEFORE (round 228): the seam asked for a seed and its only conformer stood in the harness.
+     */
+    @Test
+    fun aProductionSignerOverThePinnedIdentityReleasethNoSeed() {
+        val ed = Ed25519Keys.generate(rng)
+        val dh = X25519Keys.generate(rng)
+        val identity = Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv)
+        val signer = IdentityAckSigner(identity)
+        val msgId = ByteArray(16) { (it + 0x55).toByte() }
+
+        Assert.assertEquals("the signer must name the identity's own node id",
+            identity.nodeId.toList(), signer.nodeId!!.toList())
+        Assert.assertEquals("and carry its binding generation",
+            identity.bindingGeneration, signer.generation())
+        Assert.assertNull("a production signer MUST refuse the harness seed road",
+            signer.signingSeed(msgId, identity.nodeId))
+
+        val signature = signer.signAck(msgId, identity.nodeId)
+        Assert.assertNotNull("and it MUST sign the canonical preimage itself", signature)
+        Assert.assertEquals("with the identity's OWN key over the canonical preimage",
+            Ed25519Keys.sign(AckFrame.preimage(msgId, identity.nodeId), ed.priv).toList(),
+            signature!!.toList())
     }
 
     /**

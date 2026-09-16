@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 230 -- the ANDROID production ACK signer lands over the pinned identity (on an existing precedent)
+
+- **The measurement that shaped it**: `Identity` exposes `staticDhPriv` **internally** (*"private key material is never exposed via public mutable reference"*) but not the Ed25519 seed — **so the precedent for an in-module accessor already stood** (the NoiseSession constructor uses it). `internal val identityPriv` is added on that very precedent, and `delivery/IdentityAckSigner.kt` signs the canonical preimage with it: **`signingSeed` answers null by construction**, and nothing leaves the module.
+- **Witness in the canonical T84 court**: the signer names the identity's own node id, carries its generation, **refuses the seed road**, and signs the canonical preimage — verified against an independently computed signature.
+- **Two compile errors of mine, named**: a missing import, and **the second was a cascade** — the compiler reported `overload resolution ambiguity` for `.toList()` because the unresolved type had left the receiver untyped.
+- **Measured**: android `:mesh` **FORCED 1195 / 0 / 0**. Remaining on that isle: the four owners in the Hilt module, the readiness subscription, the wakes, the recheck and the drain order.
+
 ## Round 229 -- the ANDROID half's first repair lands: the ACK seam's shape, ADDITIVE, costing no reconciliation
 
 - **The Swift twin applied to Kotlin**: `AckFrame.buildFromSignature(...)`; the seam gains `signAck(msgId, recipientNodeId)` **with a default body that signs through `signingSeed`** — *which is what makes the change additive: every harness signer and court on that isle keeps working unchanged*; and the driver takes the **signature road**.
