@@ -138,6 +138,46 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// GS-RUNTIME-001 step 4: **THE PERIODIC DEADLINE MUST WAKE THE WORKER** -- and it must DIE WITH ITS OWNER.
+    /// The arm runneth the turn for every TRUSTED relation and nothing else; the deadline is armed by the runtime
+    /// and cancelled by the node's own `stop()`.
+    func testSR00d_ThePeriodicDeadlineWakethTheWorkerAndDiethWithItsOwner() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00d_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00d_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        runtime.meshNode.start()
+
+        // A TRUSTED RELATION FIRST. The readiness serveth ONLY ITS OWN relation (one bounded turn), so it doth
+        // NOT advance the periodic census -- THE CENSUS COUNTETH THE DEADLINE'S TURNS ALONE, which is the
+        // distinction the first draft of this witness got wrong and the failure taught me.
+        runtime.meshNode.transportApplicationLinkReady(peerId: UUID(), receivedFrom: Data(repeating: 0x51, count: 16))
+        XCTAssertEqual(runtime.meshNode.ackTurnsRunForTest(), 0,
+                       "the initial inventory is the readiness's own turn, not the deadline's")
+
+        // **AND THE RUNTIME HATH ALREADY ARMED ITS OWN DEADLINE (30 s), SO A SECOND ARM IS REFUSED BY THE
+        // IDEMPOTENCE GUARD -- WHICH IS WHY THE FIRST DRAFT OF THIS WITNESS SAW NO WAKE AT ALL. The deadline is
+        // therefore cancelled first, and re-armed at a witnessable interval.**
+        runtime.meshNode.cancelAckTurnDeadline()
+        runtime.meshNode.armAckTurnDeadline(intervalSeconds: 0.02)
+        var woke = false
+        for _ in 0..<400 {
+            if runtime.meshNode.ackTurnsRunForTest() > 1 { woke = true; break }
+            Thread.sleep(forTimeInterval: 0.005)
+        }
+        XCTAssertTrue(woke, "GS-RUNTIME-001 step 4: THE PERIODIC DEADLINE MUST WAKE THE WORKER -- it did not")
+
+        // AND IT DIETH WITH ITS OWNER:
+        runtime.meshNode.stop()
+        let afterStop = runtime.meshNode.ackTurnsRunForTest()
+        Thread.sleep(forTimeInterval: 0.1)
+        XCTAssertEqual(runtime.meshNode.ackTurnsRunForTest(), afterStop,
+                       "NO CALLBACK MAY FIRE FOR A RUNTIME THAT IS GONE: the deadline dieth with its owner")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

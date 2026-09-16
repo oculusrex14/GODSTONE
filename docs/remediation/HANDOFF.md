@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 220 -- GS-RUNTIME-001 step 4's PERIODIC DEADLINE lands; its witness caught a leak in my own code
+
+- **Wiring**: `MeshNode` owns a **monotonic periodic deadline** (`armAckTurnDeadline`/`cancelAckTurnDeadline`) running **one bounded turn for every trusted relation** over the relation mapping (*the mapping is the set of live relations*); the runtime arms it (30 s), the node cancels it; **arming is idempotent** so two timers can never retire each other's turns.
+- **The witness caught a real defect in my own code**: `stop()` carried its cancel **after** its `isStarted` guard — and `isStarted` is **false by construction** in this shipping tree, so the guard returned early and **the deadline outlived its owner** (the census climbed 2 → 7 after `stop()`). The cancel now stands **before** the guard, and the mapping is forgotten on both roads.
+- **A second lesson from the same witness's first draft**: the trusted readiness does **not** advance the periodic census — it serves only its own relation; the census counts the deadline's turns alone.
+- **Measured**: **full iOS lane 1217 / 0**. Remaining: step 4's other wakes, step 5's `RecordWriter` recheck, step 6's rebuild/drain — **readiness false throughout**.
+
 ## Round 219 -- GS-RUNTIME-001 step 4's first slice: the relation's mapping, a bounded turn, the initial inventory
 
 - **Measured gap**: `nextBatch`/`onForwardOutcome` were called **only by the harness and courts**; `sweep` **nowhere at all**. Nothing in production drove the worker's turn.

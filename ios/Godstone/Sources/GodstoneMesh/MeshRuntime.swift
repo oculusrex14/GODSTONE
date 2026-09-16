@@ -144,6 +144,9 @@ public final class MeshRuntime {
         // GS-RUNTIME-001 step 3: the node is the transport's delegate, so it receiveth the readiness; it must
         // therefore hold the pump that the readiness schedulleth.
         meshNode.ackPump = ackPump
+        // GS-RUNTIME-001 step 4: THE DEADLINE IS ARMED BY THE RUNTIME THAT OWNETH THE NODE, at a bounded
+        // interval, and the node cancellath it in `stop()` -- so it can never outlive its owner.
+        meshNode.armAckTurnDeadline(intervalSeconds: 30)
         self.ackStore = ackStore
         self.ackDriver = ackDriver
         self.ackPump = ackPump

@@ -75,6 +75,14 @@ public final class MeshNode {
     /// be handed anywhere. It is written at the trusted event and forgotten at the farewell -- the same two
     /// moments the route-eligible view is written and forgotten.
     private var handleForNodeId: [Data: UUID] = [:]
+    /// GS-RUNTIME-001 step 4: **THE MONOTONIC PERIODIC DEADLINE, OWNED.** The worker must be WOKEN for the
+    /// periodic turn; until this landed nothing woke it but the trusted event itself. The deadline is armed
+    /// ONLY from the trusted readiness and CANCELLED with the node, so it can never outlive the runtime that
+    /// owneth it -- the same law IOS-07's deadline sweep followeth on the transport.
+    private var ackTurnSource: DispatchSourceTimer?
+    private let ackTurnQueue = DispatchQueue(label: "io.godstone.mesh.ackturn")
+    private var ackTurnsRun = 0
+    internal func ackTurnsRunForTest() -> Int { ackTurnsRun }
 
     /// T42: the per-TrustedPeer bounded sync pump and the typed dispatcher. Both
     /// are ACTIVE by default (the default pump is built lazily from this node's
@@ -475,6 +483,13 @@ public final class MeshNode {
     }
 
     public func stop() {
+        // GS-RUNTIME-001 step 4: **THE DEADLINE IS CANCELLED *BEFORE* THE `isStarted` GUARD.** A deadline armed
+        // by the runtime must not outlive it EVEN WHEN THE NODE WAS NEVER STARTED -- and in this shipping tree
+        // `isStarted` is FALSE by construction (the link-layer flag is frozen off), so a cancel placed after the
+        // guard would leak a live timer for ever. THE WITNESS TAUGHT THIS: it watched the census climb from 2 to
+        // 7 AFTER `stop()`, which is a callback firing for a runtime that is gone.
+        cancelAckTurnDeadline()
+        handleNodeMappingsForget()
         guard isStarted else { return }
         isStarted = false
         sessions.destroyAll()
@@ -482,6 +497,10 @@ public final class MeshNode {
         peerLock.lock(); peers.removeAll(); peerLock.unlock()
         onPeerCountChanged?(0)
     }
+
+    /// GS-RUNTIME-001 step 4: the relation mapping is forgotten on BOTH roads (the early return and the full
+    /// stop), so no elder relation surviveth a stop in the mapping even when the node was never started.
+    private func handleNodeMappingsForget() { handleForNodeId.removeAll() }
 
     private func currentPeers() -> [UUID] {
         peerLock.lock(); defer { peerLock.unlock() }
@@ -1017,6 +1036,33 @@ extension MeshNode: TransportDelegate {
             if accepted { handed += 1 }
         }
         return handed
+    }
+
+    /// GS-RUNTIME-001 step 4: **ONE BOUNDED TURN FOR EVERY TRUSTED RELATION** -- the mapping IS the set of live
+    /// relations, so nothing is guessed and a departed relation is not served.
+    @discardableResult
+    internal func runAckTurnForEveryTrustedRelation() -> Int {
+        var handed = 0
+        for nodeId in Array(handleForNodeId.keys) { handed += (drainAckWorkOnce(nodeId: nodeId) ?? 0) }
+        ackTurnsRun += 1
+        return handed
+    }
+
+    /// Arm the periodic deadline. Idempotent: a second arm while one standeth is REFUSED rather than doubled,
+    /// so two timers can never retire each other's turns.
+    internal func armAckTurnDeadline(intervalSeconds: TimeInterval) {
+        guard ackTurnSource == nil, intervalSeconds > 0 else { return }
+        let source = DispatchSource.makeTimerSource(queue: ackTurnQueue)
+        source.schedule(deadline: .now() + intervalSeconds, repeating: intervalSeconds)
+        source.setEventHandler { [weak self] in _ = self?.runAckTurnForEveryTrustedRelation() }
+        ackTurnSource = source
+        source.resume()
+    }
+
+    /// The deadline dieth with its owner: no callback may fire for a runtime that is gone.
+    internal func cancelAckTurnDeadline() {
+        ackTurnSource?.cancel()
+        ackTurnSource = nil
     }
 
     public func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data) {
