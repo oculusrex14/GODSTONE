@@ -4,6 +4,11 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 207 -- the T78 convergence statement, GENERATED from the ledger
+
+- **`docs/remediation/CONVERGENCE_T78.md`** is written **by a script from the ledger**, so no figure in it can drift from the record it summarises: the candidate SHA and its per-scope split (**LIGHT Archive 14 / Mesh/Oracle 40**), what was measured at it, what is **not** claimed (android lanes, iOS lab build — *a cached green is not evidence*), the three lists the objective demands (36 FIX_SUBMITTED awaiting independent verification; the five external gates and their blocked tasks; **54 of 54** findings with stale closure evidence), the live counts, and the explicit reason **T78 is NOT claimed** (no hosted lane, run URL, run id or log exists here).
+- **ACQUISITION CLOSES NOTHING**; no artifact received; no external party contacted; readiness flags **false**; **no finding `VERIFIED_FIXED`**.
+
 ## Round 206b -- one of ANDROID-01's three parked failures DIAGNOSED by cross-isle evidence
 
 - The arm reads `writesTo(...).last()` then asserts the third counsel's length is **197**; it failed with **74**.
