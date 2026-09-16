@@ -6222,7 +6222,7 @@
    },
    "impact": "An exhaustive search of canonical Sources finds `beginTrustedHandshake(` only at its declaration (`BleTransport.swift:2177`); likewise `beginKeyConfirmation(` only at its declaration (2353). On notification success, the real adapter's physical-duplex branch (3184–3188) only calls `publishRelation`. That publishes physical/connected delegate callbacks (2516–2524); MeshNode does not implement physical-duplex or handshake-ready callbacks, and their default implementations do nothing (4210–4213). A trusted HS2/HS3 completion calls the default-no-op handshake-ready delegate (2046/2111), not key confirmation. The tests explicitly start these missing stages themselves (`ReadinessT21Tests.swift:560`, `ReadinessT23Tests.swift:754` and other confirmation cases). Drive a valid UUID discovery, GATT discovery, LinkInfo read/write, and notification enable through the real delegate adapters. Stop delivering synthetic actions. No HS1 is emitted. If a test explicitly starts HS1 and completes Noise, no PING challenge is emitted automatically. This is absent wiring, not a device limitation.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
+   "my_fix_commit": "bcdfa1c -- IOS-02 step 1: `BleTransport.reductionProcessPeripheralNotificationStateUpdated` (the `.physicalDuplexReady` branch) now readeth the relation's CAPTURED remote hint from the driver's election context and calleth `beginTrustedHandshake` ONCE, and only from `.roleBound`; plus the reconciliation of all six iOS readiness rigs to that law (T21, T22, T23, T17, T19, T14).",
    "my_logs": [
     {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round281-RED-adapter-never-beginneth.log",
@@ -6321,7 +6321,7 @@
      "outcome": "the six-rig reconciliation: measured from 61 failures to 1208 tests / 0 failures, by named rig variants and four corrected designs."
     }
    ],
-   "my_red_case": null,
+   "my_red_case": "**THE BEHAVIOURAL RED WAS TAKEN BEFORE THE PRODUCTION EDIT** (round 281): two new arms in the canonical T22 suite -- `testTheAdapterItselfBeginnethTheTrustedHandshakeOnTheWitnessedDuplex` and `testADuplicateNotificationReductionBeginnethNoSecondHandshake` -- WHOSE WHOLE FORCE IS THEIR SILENCE: NOTHING IN THEM CALLETH `beginTrustedHandshake`; they drive ONLY the real entries (discovery, the connect leg, the service and characteristic walks, the link-info ack, and the notification-state reduction, which is where the physical duplex is witnessed) and AWAIT THE HS1 THE LAW SHOULD PUT ON THE WIRE. MEASURED BEFORE THE REPAIR: the T22 suite ran 15 tests with EXACTLY 2 FAILURES and AN EMPTY REJECTION RING -- 'THE ADAPTER NEVER BEGAN THE TRUSTED HANDSHAKE upon the witnessed duplex: no HS1 went out' -- WHILE THE OTHER 13 ARMS STOOD GREEN, so the red is a defect of the production path and NOT a rig failure. AFTER THE REPAIR: 16 tests, 0 failures, including a third witness for the card's 'do not repeat beginInitiator' law, whose words come from the ring itself (`hs.begin|begin initiator refused`). The red, and the run that took it, are registered in this finding's evidence.",
    "my_status": "PARTIAL",
    "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-02): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
