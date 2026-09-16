@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 200 -- **IOS-02 step 3 COMPLETE (both clauses)**; its second clause was already witnessed
+
+- **Clause 1** landed at round 199 (the HS1 outcome bound, named, terminal; witness red→green and moved into the canonical lane).
+- **Clause 2 — *resume already-admitted records under backpressure* — is satisfied by production and ALREADY WITNESSED**, measured this round rather than assumed: the pump says so in its own words, and `ReadinessT19Tests.testTheStalledWriteLegHoldsItsValuesAndResumesAsTheyWereStaged` plus `testTheStagingIsFullAndTheSendIsBackpressured` are green in the 1210/0 lane. **A clause already witnessed needs a measurement, not a test** — writing one would have been noise dressed as progress.
+- **IOS-02 remains PARTIAL with exactly ONE item left**: step 2's capture clause (the relation key and immutable GATT-bound hint *carried through* queued records, deferred work, completions, timers and teardown).
+
 ## Round 199 -- **IOS-02 step 3's first-counsel clause LANDS**, and its witness moved into the canonical lane
 
 - **Repair**: `beginTrustedHandshake` now binds `let verdict = writeHandshakeRecord(.hs1, …)` and, **on a refusal, names it in the ring and closes the relation exactly** — a refused first counsel is *terminal* instead of leaving a relation engaged with nothing on the wire.
