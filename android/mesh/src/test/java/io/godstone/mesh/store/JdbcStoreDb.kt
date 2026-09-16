@@ -112,6 +112,24 @@ internal class JdbcStoreDb(file: File) : StoreDb {
             }
         }
 
+        /** TRUE IFF [statement] is an `ALTER TABLE <t> ADD COLUMN <c>` whose column ALREADY standeth -- the same
+         *  token-parsed rule the production executor carrieth, so the two roads agree on one law. */
+        private fun columnIsAlreadyPresent(statement: String): Boolean {
+            val tk = statement.lowercase().trim().split(' ', '\t', '\n').filter { it.isNotEmpty() }
+            if (tk.size < 6 || tk[0] != "alter" || tk[1] != "table" || tk[3] != "add" || tk[4] != "column") return false
+            val table = tk[2]
+            val column = tk[5].trimEnd(';')
+            var found = false
+            synchronized(conn) {
+                conn.createStatement().use { st ->
+                    st.executeQuery("PRAGMA table_info($table)").use { rs ->
+                        while (rs.next()) if (rs.getString(2) == column) { found = true; break }
+                    }
+                }
+            }
+            return found
+        }
+
         override fun observeFingerprint(): SchemaFingerprint = this@JdbcStoreDb.observeFingerprint()
 
         override fun immutableDigest(): String = this@JdbcStoreDb.immutableDigest()
@@ -121,6 +139,13 @@ internal class JdbcStoreDb(file: File) : StoreDb {
             conn.autoCommit = false
             try {
                 for (statement in statements) {
+                    // GS-STORE-004: THE CONTRACT'S IDEMPOTENCE BELONGETH TO **EVERY** EXECUTOR, and this harness
+                    // is one: the courts plant a file whose DDL is CURRENT while its user_version is stamped DOWN,
+                    // so the 7 -> 8 edge's ADD COLUMNs meet columns that already exist. THE PRODUCTION EXECUTOR
+                    // WAS GIVEN THE "ADD THE COLUMN IF ABSENT" RULE AND THIS ONE WAS NOT -- which is why an ALTER
+                    // failed here with `duplicate column name: remaining_ms`, through a road the production guard
+                    // never saw, and why three rounds of reading followed. The harness now carrieth the SAME rule.
+                    if (columnIsAlreadyPresent(statement)) continue
                     conn.createStatement().use { it.execute(statement) }
                 }
                 conn.commit()

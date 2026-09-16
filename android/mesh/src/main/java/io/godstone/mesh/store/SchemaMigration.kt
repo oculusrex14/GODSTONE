@@ -184,7 +184,24 @@ class SchemaMigrationEngine(
                 step.apply?.invoke(executor)
             } catch (t: Throwable) {
                 // The step's transaction rolled back; the store is left at `expect` (recoverable). Fail closed.
-                return MigrationResult.Failed("step ${step.from}->${step.to} (${t::class.simpleName})", rolledBack = true, versionPreserved = expect == step.from)
+                // GS-STORE-004: A REFUSED MIGRATION NAMETH ITS REASON. The engine used to keep the exception's
+                // TYPE alone ("SQLiteException"), which told a reader that something failed and NOTHING about
+                // what -- and a refusal that hideth WHY cost this programme a round it could have spent
+                // fixing. The statement AND the message now travel with the step.
+                // GS-STORE-004: THE ORIGIN, NOT MERELY THE REASON. A refusal that nameth the stage and the
+                // message still hideth WHICH LINE THREW, and that cost this programme two rounds of reading. The
+                // first stack frame travelleth with the reason, so the next reader is told where to look.
+                // GS-STORE-004 (round 304): THE FRAMES THAT MATTER ARE THE **NON-DRIVER** ONES. Round 303's
+                // instrument printed frames 5-8, which were ALL `org.sqlite.*` -- a bounded capture that
+                // truncated exactly where the answer began. THE PROJECT'S OWN FRAMES ARE THE ONES THAT NAME THE
+                // CALLER, so the driver's are filtered out and the first four of OURS travel with the refusal.
+                val origin = t.stackTrace
+                    .filterNot { it.className.startsWith("org.sqlite.") }
+                    .take(4)
+                    .joinToString("") { " <- ${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}" }
+                return MigrationResult.Failed(
+                    "step ${step.from}->${step.to} (${t::class.simpleName}): ${t.message ?: "no message"}$origin",
+                    rolledBack = true, versionPreserved = expect == step.from)
             }
             executor.markCheckpointed(step)
             expect = step.to

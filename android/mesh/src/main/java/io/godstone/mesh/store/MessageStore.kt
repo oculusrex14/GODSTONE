@@ -191,7 +191,13 @@ internal object StoreSchema {
     // (ack_obligations + ack_frames) to the same db file, on the same
     // destructive-recreate doctrine (no installed base, ADR-001 §5). iOS
     // StoreSchema.dbVersion is the same 7 (byte-identical schema contract).
-    const val DB_VERSION = 7
+    // GS-STORE-004: bumped **7 -> 8** to add the RETENTION CHECKPOINT FIELDS beside the held row
+    // (remaining_ms, checkpoint_mono, boot_identity, discontinuity_count). THIS IS THE FIRST REVISION WHOSE
+    // EXISTING-FILE EDGE CARRIETH **DDL** -- the four ALTER TABLE ... ADD COLUMN statements below -- because
+    // section 14's retention contract cannot be honoured across a reopen without them, and the audit's own
+    // remediation step asketh for exactly that ("add the blueprint retention checkpoint fields VIA A REAL
+    // MIGRATION"). iOS StoreSchema.dbVersion is the same 8 (byte-identical schema contract).
+    const val DB_VERSION = 8
     const val TABLE = "held_frames"
     const val COL_MSG_ID = "msg_id"
     const val COL_TYPE = "type"
@@ -203,6 +209,13 @@ internal object StoreSchema {
     const val COL_PAYLOAD = "payload"
     const val COL_RECEIVED_FROM = "received_from"
     const val COL_RECEIVED_AT = "received_at"
+    // GS-STORE-004: the retention checkpoint fields. `remaining_ms` is the LOCAL policy budget left (never the
+    // sender's claim), `checkpoint_mono` the monotonic reading it was last debited to, `boot_identity` the
+    // continuity identifier, and `discontinuity_count` the counter the frozen conservative rule is bounded by.
+    const val COL_REMAINING_MS = "remaining_ms"
+    const val COL_CHECKPOINT_MONO = "checkpoint_mono"
+    const val COL_BOOT_IDENTITY = "boot_identity"
+    const val COL_DISCONTINUITY = "discontinuity_count"
 
     /** Per-row bookkeeping beyond the payload blob (columns + page overhead). */
     const val ROW_OVERHEAD = 64L
@@ -219,6 +232,10 @@ internal object StoreSchema {
             $COL_PAYLOAD BLOB,
             $COL_RECEIVED_FROM BLOB,
             $COL_RECEIVED_AT INTEGER,
+            $COL_REMAINING_MS INTEGER,
+            $COL_CHECKPOINT_MONO INTEGER,
+            $COL_BOOT_IDENTITY TEXT,
+            $COL_DISCONTINUITY INTEGER,
             CHECK (length($COL_MSG_ID) = 16)
         )
     """.trimIndent()
@@ -444,6 +461,13 @@ internal object StoreSchema {
     val HELD_FRAME_COLUMNS: List<String> = listOf(
         COL_MSG_ID, COL_TYPE, COL_TTL, COL_HOP_COUNT, COL_FLAGS,
         COL_PRIORITY, COL_ROUTING_TAG, COL_PAYLOAD, COL_RECEIVED_FROM, COL_RECEIVED_AT,
+        // GS-STORE-004: THE FOUR CHECKPOINT FIELDS ARE PART OF THE FROZEN COLUMN LIST, and the first measured
+        // attempt on this isle proved WHY that is not optional: the DDL was extended while this LIST was not, so
+        // a file THIS BUILD CREATED was fingerprinted against a list that no longer described it -- and the open
+        // path answered `RepairRequired(reason=migrated schema drifts from the frozen fingerprint)` ON 140 TESTS
+        // ACROSS EIGHT COURTS, INCLUDING THE BRAND-NEW-FILE ARM. THE COMMENT ABOVE THIS LIST SAYETH EXACTLY THAT
+        // ('a drift between these lists and the DDL cannot pass unnoticed') -- and the control was doing its job.
+        COL_REMAINING_MS, COL_CHECKPOINT_MONO, COL_BOOT_IDENTITY, COL_DISCONTINUITY,
     )
     val DELIVERY_COLUMNS: List<String> = listOf(COL_D_MSG_ID, COL_D_STATE, COL_D_ACK_MODE, COL_D_EXPECTED)
     val OBLIGATION_COLUMNS: List<String> =
@@ -487,13 +511,27 @@ internal object StoreSchema {
         if (from >= supportedMax) return emptyList()
         val creates = listOf(CREATE_SQL, CREATE_DELIVERY_SQL, CREATE_OBLIGATION_SQL, CREATE_ACK_FRAME_SQL)
         return (from until supportedMax).map { revision ->
-            MigrationStep(
-                from = revision,
-                to = revision + 1,
-                statements = if (revision == from && creatingTables) creates else emptyList(),
-            )
+            val statements: List<String> = when {
+                // THE FIRST DDL-BEARING EDGE -- AND ONLY FOR A FILE THAT ALREADY STOOD: an existing v7 file
+                // GAINETH the retention checkpoint fields by ALTER, while a BRAND-NEW file is CREATED with them
+                // (the first edge carrieth `creates`), so an ALTER there would meet a table that already hath
+                // them. The iOS twin carrieth the same guard (`revision == 7 && !creatingTables`).
+                revision == 7 && !creatingTables -> RETENTION_ALTER_SQL
+                revision == from && creatingTables -> creates
+                else -> emptyList()
+            }
+            MigrationStep(from = revision, to = revision + 1, statements = statements)
         }
     }
+
+    /** GS-STORE-004: the DDL of the 7 -> 8 edge. One statement per field, so a half-applied edge can be resumed,
+     *  and ADD COLUMN never rewriteth an existing row. */
+    val RETENTION_ALTER_SQL: List<String> = listOf(
+        "ALTER TABLE $TABLE ADD COLUMN $COL_REMAINING_MS INTEGER",
+        "ALTER TABLE $TABLE ADD COLUMN $COL_CHECKPOINT_MONO INTEGER",
+        "ALTER TABLE $TABLE ADD COLUMN $COL_BOOT_IDENTITY TEXT",
+        "ALTER TABLE $TABLE ADD COLUMN $COL_DISCONTINUITY INTEGER",
+    )
 
     /** How many of this store's four tables exist in the file. A file with none of them
      *  is a brand-new (or empty) database: creating the schema loses nothing. A file
@@ -772,8 +810,56 @@ internal class DatabaseMigrationExecutor(
      *  would be a no-op marker and would NOT give an independent rollback, so it is
      *  deliberately not used. */
     override fun execute(step: MigrationStep, statements: List<String>) {
-        for (statement in statements) db.execSQL(statement)
+        for (statement in statements) {
+            // GS-STORE-004: THE FIRST DDL-BEARING EDGE IS **IDEMPOTENT** on this isle too. The migration courts
+            // plant a file whose DDL is the CURRENT schema but whose user_version is stamped DOWN, so the 7 -> 8
+            // edge's ALTERs meet columns that already exist -- and a blind `execSQL` would throw, rolling the
+            // edge back and leaving the file un-migrated with its rows unreachable. THE RULE IS "ADD THE COLUMN
+            // IF ABSENT": a token-parsed ADD COLUMN whose column standeth is skipped. The iOS executor carrieth
+            // exactly this rule, so the two engines agree on the same law.
+            if (columnIsAlreadyPresent(statement)) continue
+            // GS-STORE-004: A FAILED STATEMENT NAMETH ITSELF. The engine's own `Failed` result carrieth the STAGE
+            // and the exception's TYPE but not its text, and a refusal that hideth WHICH statement failed cost
+            // this programme a round of reading it could have spent fixing. The statement is wrapped, so the
+            // reason travelleth with it.
+            try {
+                db.execSQL(statement)
+            } catch (e: Throwable) {
+                throw IllegalStateException(
+                    "migration statement failed [${step.from}->${step.to}]: $statement -- ${e.message}" +
+                        " -- THE GUARD SAW: $guardReport", e)
+            }
+        }
     }
+
+    /** TRUE IFF [statement] is an `ALTER TABLE <t> ADD COLUMN <c>` whose column ALREADY standeth in <t>. Tokens
+     *  on a lowercased view, never a regex over identifiers -- the same discipline the model parser useth. */
+    private fun columnIsAlreadyPresent(statement: String): Boolean {
+        val tk = statement.lowercase().trim().split(' ', '\t', '\n').filter { it.isNotEmpty() }
+        if (tk.size < 6 || tk[0] != "alter" || tk[1] != "table" || tk[3] != "add" || tk[4] != "column") return false
+        val table = tk[2]
+        val column = tk[5].trimEnd(';')
+        // GS-STORE-004 (round 300): THE GUARD SAYETH WHAT IT SAW. It was correct on paper and refused on the wire,
+        // and the missing thing was a WITNESS rather than a better guess -- so the table it asked about, the
+        // columns the PRAGMA actually returned, and the column it sought are all RECORDED, and a failure carrieth
+        // them. A guard that hideth why costeth more than the code it protecteth.
+        val seen = mutableListOf<String>()
+        var databaseIsReadable = true
+        try {
+            db.rawQuery("PRAGMA table_info($table)", null).use { rs ->
+                while (rs.moveToNext()) seen.add(rs.getString(1) ?: "?")
+            }
+        } catch (e: Throwable) {
+            databaseIsReadable = false
+        }
+        guardReport = "table=$table column=$column readable=$databaseIsReadable " +
+            "columns=[${seen.joinToString(",")}] " +
+            "verdict=${if (seen.contains(column)) "PRESENT" else "ABSENT"}"
+        return seen.contains(column)
+    }
+
+    /** The guard's own account of its last decision, carried into any refusal. */
+    private var guardReport: String = "(no guard consultation)"
 }
 
 /** A persisted `delivery_state` row before it is typed into a [DeliveryRecord]
