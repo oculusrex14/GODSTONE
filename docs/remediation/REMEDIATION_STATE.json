@@ -1091,7 +1091,7 @@
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_191": {
-   "candidate_sha": "PENDING_COMMIT (filled by the documentation-only follow-up: the tree measured IS the tree committed)",
+   "candidate_sha": "c7ad4ed67a7b843d9498794255d2d64033917e9a",
    "tree_sha": "7566bba4e8b6df9e38ee181baa96c15fc143ce0b",
    "worktree": "clean at this sha apart from this record",
    "logs": {
