@@ -4,6 +4,15 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 243 -- IOS-06 steps 4-5 MEASURED: the terminal laws already hold, so no repair was due
+
+- **The card's words** for these steps are *"the wipe drain"* and *"reactivation"*, implying three laws: a drain reaches the transport **exactly once**; **a terminal authority has no path back**; and whether a *drained* authority differs from a terminal one. The arm **measured** all three rather than asserting what I hoped.
+- **The outcome**: (a) already proven (rounds 238–239: start/stop reach a spy seam exactly once, a second start does not begin twice); (b) **it holds — after `onPowerLoss()` and after `onPermissionRemoved()`, a later `start()` does not re-open the radio**; (c) a backgrounded-then-terminal authority behaves the same.
+- **So this round is a MEASUREMENT, not a repair, and it says so**: no production source changed, *because the instrument already kept its own laws* — claiming a repair where none was due would be as false as claiming a green I did not earn.
+- **An assumed name of mine, named**: my first draft wrote `onPowerRemoved()` — a road I invented — and the compiler refused it in one line; the authority's roads are the three I had already measured.
+- **Measured**: **full iOS lane 1227 / 0** (count read from the log); courts 610 OK.
+- **Remaining**: the node-level behavioural witness of the routing (an injectable transport), and the wipe road's passage through the authority — true by construction since round 240, witnessed at source level for now.
+
 ## Round 242 -- IOS-06 step 3: the platform's power/permission road reaches the one authority
 
 - **Measured defect**: the authority's `onPowerLoss`/`onPermissionRemoved` were called **only by courts** (a grep found `ReadinessT28Tests` and nothing else), so a real power-off never reached the owner.

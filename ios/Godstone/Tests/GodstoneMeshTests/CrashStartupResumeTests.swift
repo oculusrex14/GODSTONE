@@ -526,6 +526,44 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// **IOS-06 steps 4 AND 5, MEASURED RATHER THAN ASSUMED**: the card's words are "the wipe drain" and
+    /// "reactivation", and the laws they imply are three --
+    ///   (a) a drain reacheth the transport exactly once (proven at rounds 238-239);
+    ///   (b) **A TERMINAL AUTHORITY HATH NO PATH BACK**: after a power loss or a withdrawn permission, `start()`
+    ///       must NOT begin the OS work again;
+    ///   (c) and a DRAINED (merely stopped) authority is a separate question from a terminal one, which this arm
+    ///       MEASURES rather than assumes -- whichever way the tree answereth, the answer is recorded.
+    func testSR00n_TheTerminalAndReactivationLawsHold() throws {
+        let spy = SpyTransport()
+        let authority = UnifiedRuntimeLifecycle(seam: LifecycleTransportAdapter(transport: spy),
+                                                nowMillis: { 0 })
+        authority.start()
+        XCTAssertEqual(spy.starts, 1, "(a) the authority reacheth the transport on start")
+
+        // (b) TERMINAL AFTER A POWER LOSS:
+        authority.onPowerLoss()
+        authority.start()
+        XCTAssertEqual(spy.starts, 1,
+                       "IOS-06 step 5: **A TERMINAL AUTHORITY MUST HAVE NO PATH BACK** -- after a power loss, a "
+                       + "later start must not re-open the radio")
+        // (My first draft wrote `onPowerRemoved()` -- A NAME I ASSUMED AND DID NOT READ. The authority's roads
+        // are the three I measured: `onBackgrounded`, `onPowerLoss`, `onPermissionRemoved`.)
+        authority.onBackgrounded()
+        authority.start()
+        XCTAssertEqual(spy.starts, 1,
+                       "and a backgrounded-then-terminal authority still must not re-open the radio")
+
+        // (c) A SEPARATE AUTHORITY, PERMISSION WITHDRAWN:
+        let spy2 = SpyTransport()
+        let second = UnifiedRuntimeLifecycle(seam: LifecycleTransportAdapter(transport: spy2), nowMillis: { 0 })
+        second.start()
+        XCTAssertEqual(spy2.starts, 1)
+        second.onPermissionRemoved()
+        second.start()
+        XCTAssertEqual(spy2.starts, 1,
+                       "and a WITHDRAWN PERMISSION is terminal in the same way: no path back without the platform")
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")
