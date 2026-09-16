@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 201 -- IOS-02 step 2's immutability half WITNESSED (a later advertisement may not rebind the hint)
+
+- **New canonical arm** (`ReadinessT22Tests.testTheBoundHintIsImmutableAgainstLaterAdvertisements`): the binding captures the hint, a **later advertisement for the same handle carrying a different hint** must leave `conn.remoteNodeHint` unchanged — else air traffic could re-open a binding and every record, task, completion and timer would judge against a different relation.
+- **Measured**: T22 **17/0**; **full iOS lane 1211/0**.
+- **Named as owed**: the arm's **negative proof** (a mutation that rebinds on discovery must fail it), and a **dedicated witness** for the carrying-through half (*a deferred task judges against the captured relation, not the current one*) — satisfied by construction, witnessed only indirectly so far.
+- **IOS-02 remains PARTIAL**: steps 1, 3, 5 complete (+ step 2's duplicate-callback clause).
+
 ## Round 200 -- **IOS-02 step 3 COMPLETE (both clauses)**; its second clause was already witnessed
 
 - **Clause 1** landed at round 199 (the HS1 outcome bound, named, terminal; witness red→green and moved into the canonical lane).

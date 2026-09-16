@@ -1139,6 +1139,47 @@ final class ReadinessT22Tests: XCTestCase {
         }
     }
 
+    // MARK: - IOS-02 step 2: THE CAPTURED HINT IS IMMUTABLE, AND THE RELATION CARRIETH IT
+
+    /// IOS-02, the card's second step: **"Capture the relation key and immutable GATT-bound remote hint from
+    /// that connection. Ensure duplicate notification callbacks do not create a second SessionSlot or repeat
+    /// beginInitiator."**
+    ///
+    /// THE HINT THE TRUSTED EXCHANGE BINDETH IS CAPTURED AT THE BINDING AND CARRIETH ON THE RELATION; A LATER
+    /// ADVERTISEMENT -- a re-presented peer, a fresh discovery of the same handle -- MUST NOT REBIND IT, or the
+    /// binding would be RE-OPENABLE BY AIR TRAFFIC, and every queued record, deferred task, write completion
+    /// and timer of this relation would then be judging against a DIFFERENT relation than the one it was
+    /// admitted under. That is exactly what "immutable" meaneth, and it is what this arm asketh of the tree.
+    func testTheBoundHintIsImmutableAgainstLaterAdvertisements() throws {
+        let r = try rigT22()
+        guard let conn = r.alice.connection(for: r.handleB) else {
+            XCTFail("no relation stood to be judged"); return
+        }
+        guard let bound = conn.remoteNodeHint else {
+            XCTFail("the binding captured NO hint, so there is nothing immutable to judge"); return
+        }
+        XCTAssertEqual(bound, r.pair.bobIdentity.nodeHint,
+                       "the binding must have captured the relation's OWN hint")
+
+        // A LATER ADVERTISEMENT FOR THE SAME HANDLE, CARRYING A DIFFERENT HINT
+        var other = r.pair.bobIdentity.nodeHint
+        other[other.startIndex] = other[other.startIndex] ^ 0xFF
+        XCTAssertNotEqual(other, bound, "the second advertisement must really differ")
+        let cm = r.alice.requireContextCentralForTest()
+        let adv: [String: Any] = [CBAdvertisementDataServiceDataKey:
+            [BleTransport.serviceUuid: ReadinessT22Tests.remoteLinkInfoStatic(hint: other)]]
+        _ = r.alice.processCentralDidDiscover(
+            cm,
+            peripheral: unsafeBitCast(r.capturePeer, to: CBPeripheral.self),
+            advertisementData: adv, rssi: NSNumber(value: -60),
+            sourceEpoch: r.alice.currentTransportEpoch)
+
+        XCTAssertEqual(conn.remoteNodeHint, bound,
+                       "IOS-02 step 2: A LATER ADVERTISEMENT MUST NOT REBIND THE RELATION'S HINT -- the "
+                       + "GATT-bound hint is IMMUTABLE once captured, and every record, task and timer of this "
+                       + "relation judgeth against THAT value, never against a freshly read one")
+    }
+
     // MARK: - IOS-02: THE ADAPTER ITSELF MUST BEGIN THE TRUSTED HANDSHAKE
 
     private func records(_ r: T22Rig, ofType type: BleRecordType) -> [Data] {
