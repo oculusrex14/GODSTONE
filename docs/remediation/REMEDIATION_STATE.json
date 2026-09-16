@@ -1007,7 +1007,48 @@
     "Mesh_Oracle": 40
    },
    "why_this_sha": "It is the tree that carrieth BOTH repairs of round 278/279: the court that judgeth T26's binding (with its own positive control and four negative witnesses) and the audit instrument that carrieth no ignored population. Its python lane is green BY MEASUREMENT rather than by a `tail`, which is the difference this round was about.",
-   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- THE REPOSITORY-SIDE HALF IS COMPLETE AND THE MISSING HALF IS STATED RATHER THAN PAPERED OVER. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE**; the **five external gates stay OPEN**; **no fixture, simulated counter or lab target is offered as a device result** (the iOS lab is unsigned, on the simulator SDK). **This candidate changeth NO production source** relative to f054df7: it repaireth a court and the record, so every production finding's status is unchanged by it."
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- THE REPOSITORY-SIDE HALF IS COMPLETE AND THE MISSING HALF IS STATED RATHER THAN PAPERED OVER. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE**; the **five external gates stay OPEN**; **no fixture, simulated counter or lab target is offered as a device result** (the iOS lab is unsigned, on the simulator SDK). **This candidate changeth NO production source** relative to f054df7: it repaireth a court and the record, so every production finding's status is unchanged by it.",
+   "SUPERSEDED_BY": "candidate_verification_at_round_281 (55896b9): the later SHA carrieth the round-281 parked probes and their record; NO PRODUCTION SOURCE DIFFERETH between them, so every lane verdict of round 279 was RE-MEASURED here rather than inherited.",
+   "stands_as_the_convergence_candidate": false
+  },
+  "candidate_verification_at_round_281": {
+   "candidate_sha": "55896b9e4b5500396ff59ce4403dbac4b9748eec",
+   "tree_sha": "77b111e3c3996e234761ba0b434c198878409bf4",
+   "worktree": "clean at this sha; the SINGLE modification recorded with this entry is `docs/remediation/REMEDIATION_STATE.json` itself -- this verification's own record -- so the measured tree and this SHA differ by documentation only",
+   "logs": {
+    "android-lanes.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_55896b9/android-lanes.log",
+     "sha256": "d1dbb046c48f55be1ab79136e866f3cc39490e83ab81436ada2593ff5e8d788e"
+    },
+    "fast-gates.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_55896b9/fast-gates.log",
+     "sha256": "cde19ec3e51a048ef15f41d11b4784b7251bf44d20bca6461f1f4a18eff5d95a"
+    },
+    "ios-lanes.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_55896b9/ios-lanes.log",
+     "sha256": "28c50969414aa02106528de16e59617f9a4cad85a22fd8b8a3a161b7d9e6e3f3"
+    }
+   },
+   "supersedes": [
+    "candidate_verification_at_round_279"
+   ],
+   "measured": {
+    "android_mesh_lane": "1193 tests, 0 failures, 0 errors -- FORCED (`--rerun-tasks --no-daemon`), counted from the run's own 76 XML files; BUILD SUCCESSFUL in 54s, rc 0",
+    "ios_foundation_lane": "mirror re-GENERATED (rc 0) then `Executed 1205 tests, with 0 failures (0 unexpected)` in 158.5s; swift test rc 0",
+    "python_readiness_suite": "579 tests, OK, rc 0",
+    "audit_probes": "12 tests, OK, rc 0 (the top-level adopted audit suite; the round-281 parked probes live in SUBDIRECTORIES, which `discover` doth not collect -- red-by-design arms must not redden a green lane)",
+    "repository_controls": "every `ci/check_*.py` rc 0 -- the SINGLE non-zero is `check_parity` under its DEFAULT scope, WHICH IS THE EXTERNAL A-06 ARM; `--scope repo` rc 0",
+    "evidence_digests": "327 registered | 327 examined | 327 verified | 0 mismatched | 0 unresolved | 0 unnamed",
+    "symbols": "223 Kotlin files scanned, 0 unresolved",
+    "android_lab_apk": "`labmesh-debug.apk` FORCED (`--rerun-tasks`): BUILD SUCCESSFUL in 21s, rc 0; 15,133,266 bytes, sha256 77056d55a6c5ce7a...",
+    "ios_lab_build": "`BUILD SUCCEEDED`, rc 0, 0 `error:` lines (simulator SDK, unsigned: NO device, NO signed artifact, NO T76 input)"
+   },
+   "per_declared_scope": {
+    "LIGHT_Archive": 14,
+    "Mesh_Oracle": 40
+   },
+   "what_moved_since_the_last_candidate": "NOTHING IN PRODUCTION SOURCE. Round 281 measured IOS-02's defect, took its RED (15 tests / 2 failures, empty rejection ring), WROTE AND PROVED THE REPAIR (T22 16 tests / 0 failures), MEASURED ITS BLAST RADIUS (the full iOS lane: 1208 tests / 61 failures across FIVE suites whose rigs still begin the handshake by hand), AND PARKED THE WHOLE OF IT -- because a lane may never be left red and the reconciliation is arm by arm. The park is a PATCH (round281-the-repair-and-the-arms.patch, sha256 4fe85c5e0ad28b0c...) plus two red-by-design probes.",
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- THE REPOSITORY-SIDE HALF IS COMPLETE AND THE MISSING HALF IS STATED RATHER THAN PAPERED OVER. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE**; the **five external gates stay OPEN**; **no fixture, simulated counter or lab target is offered as a device result**. IOS-02 remaineth OPEN with steps 2-5 outstanding."
   }
  },
  "counts": {

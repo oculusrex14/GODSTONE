@@ -3,6 +3,32 @@
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
 control; THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED; NO finding carrieth `closure_evidence`.
 
+## Candidate verification at `55896b9` (ledger round 281) — the CURRENT candidate, re-measured rather than inherited
+
+| Item | Result at this exact SHA (tree `77b111e`), worktree clean |
+|---|---|
+| Android `:mesh` lane | **1193 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`), from the run's own 76 XML files; `BUILD SUCCESSFUL` 54s, rc 0 |
+| iOS lane (mirrored package) | **`Executed 1205 tests, with 0 failures (0 unexpected)`**, 158.5s — mirror **re-generated** first |
+| Python readiness suite | **579 tests, OK, rc 0** |
+| Audit probes | **12 tests, OK, rc 0** (the round-281 probes live in subdirectories, which `discover` does not collect: red-by-design arms must not redden a green lane) |
+| Repository controls | **every `ci/check_*.py` rc 0**; the **single** non-zero is `check_parity` under its **default** scope (= the external **A-06** arm); `--scope repo` rc 0 |
+| Evidence digests | **327 registered / 327 examined / 327 verified** / 0 mismatched / 0 unresolved / 0 unnamed |
+| Symbols | **223 Kotlin files, 0 unresolved** |
+| Android lab target | `labmesh-debug.apk` **forced**: 15,133,266 bytes, sha256 `77056d55a6c5ce7a…`, rc 0 |
+| iOS lab target | `BUILD SUCCEEDED`, rc 0, **0 `error:` lines** (simulator SDK, unsigned: **no device, no signed artifact, no T76 input**) |
+
+**WHAT MOVED: NOTHING IN PRODUCTION SOURCE.** Round 281 measured IOS-02's defect (both entry points appear only as declarations),
+took its **RED** (15 tests, exactly 2 failures, empty rejection ring), **wrote and proved the repair** (T22 **16 tests, 0 failures**,
+including a witness for "do not repeat beginInitiator"), **measured the repair's blast radius** (the full iOS lane: 1208 tests,
+**61 failures** across five suites whose rigs still begin the handshake by hand — T23 30, T21 26, T17 3, T19 1, T14 1), and
+**parked the whole of it**, because a lane may never be left red and that reconciliation is arm by arm. The park is a re-appliable
+patch (`round281-the-repair-and-the-arms.patch`, sha256 `4fe85c5e0ad28b0c…`) plus two red-by-design probes in
+`tools/readiness/audit_probes/{swift,python}/`.
+
+**Not claimed, and why: T78 convergence is NOT claimed** — no hosted lane, run URL, run id or log exists here. **No finding is
+`VERIFIED_FIXED`**; **readiness flags stay false**; the **five external gates stay OPEN**; no fixture, simulated counter or lab
+target is offered as a device result. IOS-02 remains **OPEN**, steps 2–5 outstanding.
+
 ## Candidate verification at `f054df7` (ledger round 278) — **THE NEW CANDIDATE, and the first whose python lane is genuinely green since round 193**
 
 | Item | Result at this exact SHA (tree `c8241a0`), worktree clean |
