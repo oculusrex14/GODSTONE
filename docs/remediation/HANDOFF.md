@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 193 -- IOS-02 step 4 attempted: RED taken, repair written, PLACEMENT REFUTED by measurement
+
+- **RED taken and it ran**: canonical T23 arm whose silence is its force — 17 tests, exactly 1 failure, other 16 green.
+- **Repair written** at the initiator's trusted-ready transition (issue once, only if none stands, refusals NAMED in the ring); T23's six challenge-driving arms reconciled to READ production's challenge.
+- **Measurement refuted the placement**: 17 tests / **43 failures** in **299 s** — the challenge DATA reaches a responder still in handshake (`ingest.write|record type data at stage handshake`). The initiator marks its hour when it *writes* hs3; the responder marks its own only on *receiving* it — so a record sent then is **early**.
+- **Next instrument named**: find the transition where the peer is also known trusted (or queue the challenge behind peer readiness), proven by the same silent arm.
+- **Preserved**: patch `round193-step4-challenge-at-the-transition.patch` (sha256 `d282c1ce49f18b25…`) + parked arm. Tree reverted and re-measured green (T23 16/0; courts OK).
+
 ## Round 192 -- the external-input lane becomes MACHINE-CHECKABLE per request
 
 - **What was prose is now a court**: `tools/readiness/tests/test_external_input_requests.py` (12 tests) checketh the DOCUMENT, not just the lane's JSON — five requests present, every required row non-empty, a **sole approver** named, an **EVENT** trigger (never a date), **closure evidence `None`** everywhere (nothing acquired), the lane's three constants, a **real receipt command** per request, and that every externally-blocked task (T73–T76, T79–T81) is **requested of somebody**.
