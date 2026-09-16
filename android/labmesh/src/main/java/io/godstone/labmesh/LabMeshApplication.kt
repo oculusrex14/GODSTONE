@@ -1,6 +1,7 @@
 package io.godstone.labmesh
 
 import android.app.Application
+import io.godstone.mesh.lab.LabRuntime   // THE CANONICAL RUNTIME -- the missing import that kept this file uncompiled
 
 /**
  * T54 / GS-LAB-001 step 1: THE RETAINED LAB RUNTIME'S OWNER.
