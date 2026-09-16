@@ -164,6 +164,18 @@ class AndroidAckWiringTest(unittest.TestCase):
         self.assertIn("ble.send(nodeId, copy.encodedFrame)", n,
                       "and the transport send taketh that same node id -- no handle, no reuse, no recheck")
 
+    def test_the_adapter_asketh_for_a_measured_teardown(self):
+        """GS-RUNTIME-001 step 2 on this isle: the hard-coded `1` is dead, and the FILE'S OWN PRECEDENT is the law."""
+        a = (MESH / "transport/LifecycleTransportAdapter.kt").read_text(encoding="utf-8")
+        self.assertIn("(transport as? DisconnectingTransport)?.disconnectAll() ?: 0", a,
+                      "the adapter must BELIEVE a reporting transport and otherwise CLAIM NOTHING -- the audit's "
+                      "class of defect (a literal wearing the clothes of a measurement) is thereby closed here too")
+        self.assertNotIn("return 1\n    }\n\n    /**\n     * ANDROID-05 (step 3)", a,
+                          "and the literal must be GONE")
+        self.assertIn("interface DisconnectingTransport : Transport {",
+                      (MESH / "transport/Transport.kt").read_text(encoding="utf-8"),
+                      "with the capability declared where the transport contract liveth")
+
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
         self.assertIn("override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null",

@@ -35,11 +35,19 @@ class LifecycleTransportAdapter(private val transport: Transport) : TransportSea
 
     override fun stopAdvertising() = endOnce()
 
+    /**
+     * **THE REAL TEARDOWN RESULT, NOT A LITERAL -- AND THIS FILE ALREADY CARRIETH THE PATTERN, ONE METHOD BELOW.**
+     * The literal `1` that stood here called itself "one logical disconnect sweep", and **NO TRANSPORT ON THIS ISLE
+     * COULD HAVE PRODUCED IT** -- while `awaitInFlight`, a few lines down, saith the right thing in the same breath:
+     * "A transport that offereth the capability is ASKED, and its MEASURED count is returned; a coarse transport
+     * answereth 0 exactly as before, **so nothing that could not answer is pretended to have been drained**."
+     * THE SAME LAW NOW STANDETH HERE: a reporting transport is believed, and one that cannot report CLAIMETH NOTHING.
+     * (The SWIFT twin was repaired the same way at rounds 239-241, where the same literal stood.)
+     */
     override fun disconnectAll(): Int {
+        val severed = (transport as? DisconnectingTransport)?.disconnectAll() ?: 0
         endOnce()
-        // A coarse Transport.stop() severs every live session; the authority counts the
-        // drain, so report one logical disconnect sweep.
-        return 1
+        return severed
     }
 
     /**

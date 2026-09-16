@@ -62,6 +62,11 @@ import java.security.SecureRandom
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Test
+import io.godstone.mesh.transport.DisconnectingTransport
+import io.godstone.mesh.transport.LifecycleTransportAdapter
+import io.godstone.mesh.transport.PeerEvent
+import io.godstone.mesh.transport.Transport
+import io.godstone.mesh.transport.TransportResult
 
 private fun decodedOf(encoded: ByteArray): FrameV2 =
     FrameV2.decode(encoded) ?: error("a prepared copy must decode")
@@ -206,6 +211,66 @@ class ReadinessT84Test {
         Assert.assertEquals("with the identity's OWN key over the canonical preimage",
             Ed25519Keys.sign(AckFrame.preimage(msgId, identity.nodeId), ed.priv).toList(),
             signature!!.toList())
+    }
+
+    // --------------------------- GS-RUNTIME-001 step 2 on THIS isle: THE REAL TEARDOWN RESULT
+
+    /** A transport that CAN report its teardown, and one that cannot -- the two roads the adapter must tell apart. */
+    private class ReportingTransport(private val severed: Int) : DisconnectingTransport {
+        override val name: String get() = "reporting"
+        override val isBulkCapable: Boolean get() = true
+        var starts = 0
+        var stops = 0
+        override fun start() { starts += 1 }
+        override fun stop() { stops += 1 }
+        override fun peers(): kotlinx.coroutines.flow.Flow<PeerEvent> = kotlinx.coroutines.flow.emptyFlow()
+        override fun received(): kotlinx.coroutines.flow.Flow<Pair<ByteArray, ByteArray>> =
+            kotlinx.coroutines.flow.emptyFlow()
+        override suspend fun send(peerId: ByteArray, bytes: ByteArray): TransportResult =
+            TransportResult.Admitted
+        var stopsWhenAsked: Int? = null
+        override fun disconnectAll(): Int { stopsWhenAsked = stops; return severed }
+    }
+
+    private class SilentTransport : Transport {
+        override val name: String get() = "silent"
+        override val isBulkCapable: Boolean get() = true
+        var stops = 0
+        override fun start() {}
+        override fun stop() { stops += 1 }
+        override fun peers(): kotlinx.coroutines.flow.Flow<PeerEvent> = kotlinx.coroutines.flow.emptyFlow()
+        override fun received(): kotlinx.coroutines.flow.Flow<Pair<ByteArray, ByteArray>> =
+            kotlinx.coroutines.flow.emptyFlow()
+        override suspend fun send(peerId: ByteArray, bytes: ByteArray): TransportResult =
+            TransportResult.Admitted
+    }
+
+    /**
+     * **GS-RUNTIME-001 step 2 ON THIS ISLE: THE TEARDOWN RESULT IS REAL, OR IT IS NOTHING.** The adapter returned a
+     * literal `1` before this -- while `awaitInFlight`, a few lines below it in the SAME FILE, already saith the right
+     * law: "a transport that offereth the capability is ASKED, and its MEASURED count is returned; a coarse transport
+     * answereth 0 exactly as before, **so nothing that could not answer is pretended to have been drained**."
+     */
+    @Test
+    fun theTeardownResultIsMeasuredOrDefaultToNothing() {
+        val reporting = ReportingTransport(severed = 3)
+        val adapter = LifecycleTransportAdapter(reporting)
+        adapter.startScan()
+        Assert.assertEquals("the activation must reach the transport once", 1, reporting.starts)
+        Assert.assertEquals("and a REPORTING transport's real count must be believed, not a literal",
+            3, adapter.disconnectAll())
+        Assert.assertEquals("AND IT MUST BE ASKED *BEFORE* THE COARSE STOP -- a count read after the teardown is zero",
+            0, reporting.stopsWhenAsked)
+
+        val silent = SilentTransport()
+        val second = LifecycleTransportAdapter(silent)
+        // **IT MUST BE ACTIVATED FIRST -- AND MY FIRST DRAFT FORGOT, which is why this arm reddened: the adapter's
+        // law is ONE start and ONE stop per ACTIVATION (`transportStarted`), so a drain on an adapter that was never
+        // activated doth nothing AT ALL, by design. The assertion was wrong, not the code.**
+        second.startScan()
+        Assert.assertEquals("a transport that cannot report must yield NOTHING CLAIMED",
+            0, second.disconnectAll())
+        Assert.assertEquals("while the coarse stop still reacheth it", 1, silent.stops)
     }
 
     /**

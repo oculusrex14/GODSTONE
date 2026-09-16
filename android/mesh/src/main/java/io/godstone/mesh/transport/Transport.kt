@@ -7,6 +7,16 @@ import kotlinx.coroutines.flow.Flow
  * what allows the entire routing layer to be exercised in the simulator with no
  * radio present at all (see tab 12_TESTS_CI).
  */
+/**
+ * **A TRANSPORT THAT CAN REPORT WHAT ITS TEARDOWN ACTUALLY SEVERED** -- the twin of the Swift
+ * `DisconnectingTransport`, landed on that isle at round 241. A coarse `Transport` owneth only start/stop, so an
+ * adapter over one CANNOT know the count -- WHICH IS PRECISELY WHY THE ADAPTER MUST NOT INVENT ONE.
+ */
+interface DisconnectingTransport : Transport {
+    /** How many live links this teardown severed. A REAL number, or none is claimed. */
+    fun disconnectAll(): Int
+}
+
 interface Transport {
 
     val name: String
