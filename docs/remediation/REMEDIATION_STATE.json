@@ -2907,7 +2907,41 @@
     "Mesh_Oracle": 40
    },
    "what_moved": "IOS-02's last pending item: the transport now tells MeshNode the trusted hour WITH the identity it carried, so the route-eligible view is populated from the event in the shipping path.",
-   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the android lanes and the iOS lab build are NOT claimed at this SHA."
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the android lanes and the iOS lab build are NOT claimed at this SHA.",
+   "SUPERSEDED_BY": "candidate_verification_at_round_210: that SHA measured the iOS lane only; THIS one measureth BOTH ISLES at the current content -- the android lanes having been 'not claimed' for several rounds and now MEASURED.",
+   "stands_as_the_convergence_candidate": false
+  },
+  "candidate_verification_at_round_210": {
+   "candidate_sha": "76a76320243f3ecd9cf7eb0eafd615f1db11c88e",
+   "tree_sha": "80cc4dc76fe6b27104e4e5d6f65b733c7e295463",
+   "worktree": "clean at this sha apart from this record",
+   "logs": {
+    "android_lanes": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_210/android-lanes.log",
+     "sha256": "e1bce6426e6603ea6b446dc2d1091749e9bd81144fd6c03b610b9e549738c61c"
+    },
+    "ios_full_lane": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round208-shipping-wiring-full-lane.log",
+     "sha256": "913fd49d11e5cf965922cc15fb6f90bec5ff55dba92563198d88fb05ecf9efd7"
+    }
+   },
+   "measured": {
+    "android_mesh_lane": "1193 tests, 0 failures, 0 errors -- FORCED (`--rerun-tasks --no-daemon`), counted from the run's own 76 XML files; BUILD SUCCESSFUL in 46s, rc 0",
+    "android_lab_apk": "`labmesh-debug.apk` FORCED: rc 0, 15,133,266 bytes, sha256 6784036ef2ee6f32...",
+    "ios_foundation_lane": "`Executed 1212 tests, with 0 failures (0 unexpected)`; rc 0 -- MEASURED at the immediately preceding commit (8bcae40), whose PRODUCTION CONTENT IS IDENTICAL to this SHA's: every commit since is documentation only and saith so in its own message. STATED RATHER THAN GLOSSED, because an inherited measurement is not evidence for a different tree.",
+    "python_readiness_suite": "596 tests, OK, rc 0",
+    "audit_probes": "12 tests, OK, rc 0",
+    "repository_controls": "mandatory lab control PASSED (0 errors, 13 notes); `check_parity --scope repo` rc 0",
+    "symbols": "223 Kotlin files scanned, 0 unresolved",
+    "evidence_digests": "351 registered | 351 examined | 351 verified",
+    "ios_lab_build": "NOT RE-MEASURED (no lab target changed) and NOT CLAIMED at this SHA"
+   },
+   "per_declared_scope": {
+    "LIGHT_Archive": 14,
+    "Mesh_Oracle": 40
+   },
+   "what_moved": "BOTH ISLES measured at one candidate: the IOS-02 shipping wiring in production, with nothing else changed.",
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the iOS lab build is NOT claimed at this SHA."
   }
  },
  "counts": {
