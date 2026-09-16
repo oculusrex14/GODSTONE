@@ -1305,4 +1305,29 @@ class SqliteMessageStoreTest {
         assertEquals(1L, after[3], "the conservative debit must be PERSISTED, or the bound is unreachable")
         assertTrue((after[0] as Long) < 300_000_000L, "and the debit must be reflected in the persisted budget")
     }
+
+    /** GS-STORE-004, the finding's own words: "CONNECT A BOUNDED EXPIRY SWEEP TO STARTUP AND RUNTIME SCHEDULING." A
+     *  sweep that only a hand may invoke is connected to NOTHING. RUN RED BEFORE THE REPAIR. */
+    @Test
+    fun gsstore004TheSweepIsConnectedToStartup() = runBlocking {
+        open(8L * 1024 * 1024)
+        store.receiptTimeProvider = { 5_000_000L to "boot-A" }
+        val f = frame(12, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        store.engine.execRawSql("UPDATE ${StoreSchema.TABLE} SET ${StoreSchema.COL_REMAINING_MS} = 0")
+        assertNotNull(store.retentionCheckpointForTest(msgId(12)), "the spent row stands before the reopen")
+
+        // A REOPEN of the SAME file, and NO ONE calls the sweep.
+        open(8L * 1024 * 1024)
+        store.receiptTimeProvider = { 5_000_000L to "boot-A" }
+        // A REAL READ (not the test hook): the maintenance must be reached THROUGH THE DOOR A CALLER USES,
+        // which is the lesson the iOS isle's round 316 paid for when it hung the connection on a door the arm
+        // never walked through.
+        assertTrue(heldIds().isEmpty(), "the spent row must not be forwarded after the reopen")
+        assertNull(
+            store.retentionCheckpointForTest(msgId(12)),
+            "STARTUP must retire a spent row WITHOUT a hand on the sweep -- a sweep only a hand may call " +
+                "is connected to nothing",
+        )
+    }
 }

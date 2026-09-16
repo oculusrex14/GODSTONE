@@ -220,6 +220,10 @@ internal object StoreSchema {
     /** Per-row bookkeeping beyond the payload blob (columns + page overhead). */
     const val ROW_OVERHEAD = 64L
 
+    /** GS-STORE-004 (round 331): the bound of the STARTUP sweep -- SMALL, because startup must not become a long walk
+     *  over a large store; the runtime cadence (owed on this isle) carrieth the rest. */
+    const val STARTUP_SWEEP_LIMIT = 64
+
     val CREATE_SQL: String = """
         CREATE TABLE $TABLE (
             $COL_MSG_ID BLOB PRIMARY KEY NOT NULL,
@@ -1231,7 +1235,8 @@ class SqliteMessageStore internal constructor(
         // about what "spent" meaneth (the same discipline the iOS sweep carrieth).
         val spent = ArrayList<ByteArray>()
         engine.forEachMsgId { id ->
-            if (spent.size < limit && !isForwardable(id)) spent.add(id)
+            // THE SWEEP ASKETH; IT WRITETH NOTHING (see `isForwardable`'s pure mode).
+            if (spent.size < limit && !isForwardable(id, persistDebit = false)) spent.add(id)
             true
         }
         if (spent.isEmpty()) return 0
@@ -1692,7 +1697,20 @@ class SqliteMessageStore internal constructor(
         return out
     }
 
+    /** GS-STORE-004 (round 331): STARTUP MAINTENANCE, ONCE PER STORE -- the bounded sweep, CONNECTED. It is reached
+     *  at the FIRST READ this store performeth (the door a caller actually walketh through), because THIS isle's
+     *  store hath no single "first use of any kind" entry the way the iOS store hath `withDb`: a connection hung on a
+     *  door nobody walketh through is not a connection (the iOS isle's round 316). */
+    private var startupMaintenanceDone = false
+
+    private fun runStartupMaintenanceIfNeeded() {
+        if (startupMaintenanceDone) return
+        startupMaintenanceDone = true
+        sweepExpired(limit = StoreSchema.STARTUP_SWEEP_LIMIT)
+    }
+
     override suspend fun allHeldMsgIds(): List<ByteArray> {
+        runStartupMaintenanceIfNeeded()
         val out = ArrayList<ByteArray>()
         engine.forEachMsgId { id ->
             // GS-STORE-004 (round 325): THE READ GATE -- a budget WRITTEN and never CONSULTED governeth nothing.
@@ -1715,7 +1733,8 @@ class SqliteMessageStore internal constructor(
      *
      *  AN UNKNOWN ROW (`retentionCheckpointOf` -> null, or NO BUDGET because no clock was ever injected) IS
      *  FORWARDED: a row this store never governed is not retroactively destroyed by a gate. */
-    private fun isForwardable(id: ByteArray, kind: MessageKind = MessageKind.DIRECT): Boolean {
+    private fun isForwardable(id: ByteArray, kind: MessageKind = MessageKind.DIRECT,
+                              persistDebit: Boolean = true): Boolean {
         val clock = receiptTimeProvider ?: return true
         val cp = engine.retentionCheckpointOf(id) ?: return true
         val remaining = cp[0] as? Long ?: return true
@@ -1745,8 +1764,13 @@ class SqliteMessageStore internal constructor(
         // question that cost iOS a hung court -- round 309 there -- DOETH NOT ARISE HERE, and that is a READ fact
         // rather than an assumption: this isle's engine owneth its own monitor and JAVA'S MONITORS ARE REENTRANT,
         // whereas the iOS store useth a NON-RECURSIVE `NSLock`.)
+        // A **PURE** MODE, AND WHY IT EXISTETH (measured, not theorised): the SWEEP scaneth with this same gate, and
+        // if BOTH the sweep and the reader WROTE their verdicts back the SAME ROW, the discontinuity would be counted
+        // TWICE -- an arm caught exactly that ('expected:<1> but was:<2>'). SO THE SWEEP ASKETH A QUESTION AND THE
+        // READER RECORDETH THE ANSWER: ONE WRITER PER ROW PER CYCLE, and the two still agree because they use THE
+        // SAME PREDICATE.
         val discontinuityChanged = next.discontinuityCount != checkpoint.discontinuityCount
-        if (next.remainingMs > 0 &&
+        if (persistDebit && next.remainingMs > 0 &&
             (discontinuityChanged || now.first - mono >= RetentionClock.CHECKPOINT_CADENCE_MS)) {
             engine.setRetentionCheckpoint(
                 id, next.remainingMs.toLong(), next.checkpointMonotonicMs.toLong(),
