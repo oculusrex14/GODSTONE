@@ -4,6 +4,18 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 266 -- ANDROID-01's second half: the key-confirmation RED filed, and the landing costed rather than half-built
+
+**Measured first, exactly as the D2 half was**: `beginKeyConfirmation` occurs **once** in `android/mesh/src/main` — **the definition alone** (line 1875). So the challenge/echo is **never started by the product**, which is the second thing this finding charges.
+
+**And the iOS twin already does it in production** — `ios/.../BleTransport.swift:2348`, whose own comment is the specification: *"Until this repair the transition issued NOTHING … so the challenge/echo was never started by the product. THE INITIATOR ISSUETH IT (the responder is the one that answereth), ONCE, and only if no challenge already standeth"*, with a refusal **named** in the ring (`hs.confirm.transition`).
+
+**The RED, filed before any production edit**: `ReadinessT23Test.testAndroid01_theApplicationIssuethTheKeyConfirmationAtTheTrustedHour` — the four-way exchange driven **by the application** (round 265's landing) and **no court** calling `beginKeyConfirmation`; it asserts a challenge stands at the trusted hour. **16 tests / 1 FAILED**, 15 pre-existing arms passing.
+
+**The landing is costed, not attempted**: two production edits in the twin's own shape, plus **five court sites in ONE court** (T23: 913, 944, 976, 1007, 1079) — each supplies its **own** challenge for the forged/reflected/stale-echo trials, and each must be re-based. *That judgement is the round's real work*, in the very court whose subject **is** the challenge, and the context remaining could not measure more than one iteration. **A half-migrated court is what this programme refuses to leave behind**, so the tree went back to green and the plan was written down (`round266-KEYCONFIRMATION-LANDING-PLAN.txt`).
+
+**Green**: android `:mesh` **1200/0/0** · parity **7/7** · symbols **0 unresolved** · courts **635**. The iOS lane remains blocked by the Xcode licence.
+
 ## Round 265 -- ANDROID-01's D2 half LANDED (1200/0/0), the flake the candidate caught, and PARTIAL said honestly
 
 **The charge, in the audit's own words**: *"The application never starts D2 … the central produces PublishFound; no HS1 is sent. The responder cannot initiate Noise XX. Both remain physically bound without a trusted session."* Measured first: `beginTrustedHandshake` was **defined and never called by production**.
