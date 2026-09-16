@@ -749,6 +749,14 @@ final class ReadinessT23Tests: XCTestCase {
         let r = try standDoor()
         guard let _ = try driveToReady(r) else { return }
         try warmAliceStream(r)                                    // attach the initiators ear for control
+        // IOS-04 (T24) STEP 5's LEASE WITNESS (round 248): TWO ears, ONE withdrawn BEFORE the publication -- so the
+        // withdrawn ear must hear NOTHING and the kept one must hear exactly the one tale. The audited road gave the
+        // application an ear it could never withdraw, and this is the assertion that a lease really withdraweth.
+        var heardWithdrawn = 0
+        var heardKept = 0
+        let leaseWithdrawn = r.alice.addTrustedPeerSink { _ in heardWithdrawn += 1 }
+        _ = r.alice.addTrustedPeerSink { _ in heardKept += 1 }
+        r.alice.removeTrustedPeerSink(leaseWithdrawn)
         let challenge = Data((0..<16).map { UInt8($0 &+ 0x31) })
         r.capturePeer.clearWrites()
         XCTAssertEqual(r.alice.beginKeyConfirmation(peerId: r.handleB, supplied: challenge), .admitted,
@@ -793,6 +801,11 @@ final class ReadinessT23Tests: XCTestCase {
         // IOS-04 (T24) STEP 4 (round 244): THE FALL WITNESS AT LAST -- driven through the ONE seam that carrieth the
         // transport's own epoch and manager, which four attempts measured to be unreachable from a court. The relation
         // here REALLY became link-ready and its peer REALLY was captured; now it falleth, and its fall must be told.
+        // ... AND THE LEASE (round 248): the withdrawn ear heard nothing; the kept one heard the one tale.
+        XCTAssertEqual(0, heardWithdrawn,
+                       "a WITHDRAWN ear may not be told the publication: the lease must really withdraw it")
+        XCTAssertEqual(1, heardKept, "the kept ear must hear exactly the one LinkReady of that relation")
+
         r.alice.forceOutboundDisconnectForTest(peerId: r.handleB)
         XCTAssertTrue(r.alice.lostPeersForTest.contains(r.handleB),
                       "the fall of a link-ready relation must publish LinkLost, with its own captured peer")
