@@ -3459,10 +3459,33 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             let action = snapshotCentral?.onNotificationStateUpdated(peerId: peerId, success: success, isNotifying: characteristic.isNotifying) ?? .noOp
             switch action {
             case .physicalDuplexReady:
+                // IOS-02 (the card's first step): "Keep one relation-owned D2 driver; enter it from
+                // the ACTUAL physical-duplex reducer, after ROLE_BOUND, localHint < remoteHint, and
+                // complete duplex validation." THIS IS THAT REDUCER: the driver emitteth
+                // `.physicalDuplexReady` only once the relation is ROLE_BOUND and its handshake
+                // transport is witnessed, and until this repair the application answered it by
+                // publishing the PHYSICAL relation and beginning NOTHING -- so no HS1 ever went out
+                // and D2 was never entered. `beginTrustedHandshake` enforces the remaining clauses
+                // itself: the ascendant hint order, the malformed-hint refusal and the session
+                // registry are all checked and RECORDED there, so a refusal is NAMED in the
+                // rejection ring rather than silently swallowed.
+                //
+                // THE HINT IS READ BEFORE THE TRANSPORT LOCK (the driver carrieth its own), and the
+                // begin is made OUTSIDE it, because `beginTrustedHandshake` taketh that same lock:
+                // a lock taken twice by the same thread is not a check, it is a standstill.
+                let relationHint = snapshotCentral?.getElectionContext(peerId)?.remoteNodeHint
                 lockTransport()
                 cancelTimerLocked(matching: delegate.relationKey)
+                // IDEMPOTENCE (the card's second step, its no-second-slot clause): a duplicate
+                // notification callback must not re-open the hour. The driver already emitteth this
+                // action but once per connection, and the state test below is the second gate: the
+                // begin is only made from ROLE_BOUND, never from a relation already IN handshake.
+                let mayBegin = outboundCentralConnections[peerId]?.state == .roleBound
                 unlockTransport()
                 publishRelation(delegate.relationKey)
+                if mayBegin, let relationHint = relationHint {
+                    _ = beginTrustedHandshake(peerId: peerId, remoteHint: relationHint)
+                }
             case .disconnectPeripheral:
                 purgeCentralConnection(peerId: peerId, cancelPeripheral: true)
             default: break

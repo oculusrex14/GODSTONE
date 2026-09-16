@@ -521,7 +521,14 @@ final class ReadinessT17Tests: XCTestCase {
 
         let verdict = alice.send(makeFrame([1, 2, 3]), to: peerId)
         XCTAssertEqual(verdict, .rejected("seal refused"))
-        XCTAssertTrue(capturePeer.writes.isEmpty, "an unsealed frame never goes out either")
+        // IOS-02: THE COUNSEL THAT NOW TRAVELLETH IS THE ADAPTER'S OWN BEGIN -- NOT an application frame. The law
+        // on this line is that NO UNSEALED APPLICATION FRAME goeth out, so it is judged BY RECORD TYPE: a `.data`
+        // record here would be the violation, and the first counsel is not one. (`writes.isEmpty` was the old
+        // form of the same law, and it can no longer hold once production beginneth the handshake itself.)
+        let applicationFrames = capturePeer.writes.filter {
+            $0.count > 1 && Int($0[1]) == Int(BleRecordType.data.rawValue)
+        }
+        XCTAssertTrue(applicationFrames.isEmpty, "an unsealed APPLICATION frame never goes out either")
         XCTAssertEqual(alice.rejectionRecordsForTest().last?.site, "seal")
         alice.stop()
     }
@@ -691,7 +698,11 @@ final class ReadinessT17Tests: XCTestCase {
                                                      capturePeer: capturePeer) else {
             XCTFail("the initiator never reached the role bound"); return
         }
-        XCTAssertEqual(alice.connection(for: handleB)?.state, .roleBound, "walk: " + walkLog.joined(separator: " | "))
+        // IOS-02: THE WALK NOW ENDETH IN THE HANDSHAKE, BECAUSE PRODUCTION BEGINNETH IT. The adapter's own
+        // begin fireth at the witnessed duplex, so the relation standeth IN handshake when this arm resumes.
+        XCTAssertEqual(alice.connection(for: handleB)?.state, .handshakeInProgress,
+                       "the adapter must have begun the trusted handshake upon the witnessed duplex; walk: "
+                       + walkLog.joined(separator: " | "))
 
         // The responder accepts the incoming link-info and the subscription.
         bob.start()
@@ -700,11 +711,15 @@ final class ReadinessT17Tests: XCTestCase {
         XCTAssertTrue(boundChain, "the responder never bound its role: " + sawChain)
         XCTAssertEqual(bob.connection(for: handleA)?.state, .roleBound)
 
-        // The handshake record writer takes over: message 1 out.
-        XCTAssertEqual(alice.beginTrustedHandshake(peerId: handleB, remoteHint: bobHint), .admitted)
+        // IOS-02: THE HANDSHAKE RECORD WRITER TOOK OVER **AT THE ADAPTER'S OWN BEGIN** -- message 1 is the
+        // counsel PRODUCTION put on the wire. Asking through `beginTrustedHandshake` here would be REFUSED as a
+        // second begin (measured: "hs.begin|begin initiator refused"), so the counsel is READ OFF THE WIRE by
+        // its record type -- the same law, witnessed by production instead of by this arm's hand.
         guard let hs1 = capturePeer.writes.last, hs1.isEmpty == false else {
             XCTFail("message 1 never went out"); return
         }
+        XCTAssertEqual(Int(hs1[1]), Int(BleRecordType.hs1.rawValue),
+                       "the counsel on the wire must BE the first counsel")
         // message 2: the responder reads it and answers through the retained handle.
         pushWrite(bob, bobPM, centralId: handleA, bytes: hs1)
         guard let hs2 = firstCapture(of: bobFactory.peripheralManagers.last!, towards: handleA),

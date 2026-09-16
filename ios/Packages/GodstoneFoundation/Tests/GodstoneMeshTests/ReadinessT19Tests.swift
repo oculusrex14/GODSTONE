@@ -351,7 +351,8 @@ final class ReadinessT19Tests: XCTestCase {
     /// capture peripheral standing at the connected peripheral's place.
     private func advanceToRoleBound(_ alice: BleTransport, peerId: UUID,
                                     serviceDataHint: Data,
-                                    capturePeer: CapturePeripheral) -> RelationPeripheralDelegate? {
+                                    capturePeer: CapturePeripheral,
+                                    subscribeth: Bool = true) -> RelationPeripheralDelegate? {
         alice.start()
         alice.refreshLocalLinkInfoSnapshotSync()
         let cm = alice.requireContextCentralForTest()
@@ -398,7 +399,9 @@ final class ReadinessT19Tests: XCTestCase {
             properties: [.read, .write, .notify],
             value: nil,
             permissions: [.readable, .writeable])
-        let a5 = alice.processPeripheralNotificationStateUpdated(nil, delegate: delegate, characteristic: inboxChar, error: nil)
+        // IOS-02: `subscribeth: false` leaveth the duplex UNWITNESSED, the one state in which the
+        // adapter's begin cannot fire -- so a guard-law arm can still arrange its precondition.
+        let a5 = subscribeth ? alice.processPeripheralNotificationStateUpdated(nil, delegate: delegate, characteristic: inboxChar, error: nil) : BleCentralAction.noOp
         walkLog.append("notify -> " + String(describing: a5) + " @ " + (alice.connection(for: peerId).map { String(describing: $0.state) } ?? "nil"))
         if alice.connection(for: peerId) == nil { return nil }
         return delegate
@@ -1033,8 +1036,11 @@ final class ReadinessT19Tests: XCTestCase {
         let bobHint = pair.bobIdentity.nodeHint
         let (_, capturePeer) = peripheralPunt(handleB)
         capturePeer.maxWrite = 20                      // the write leg speaks the minimum
+        // IOS-02: `subscribeth: false` -- THE DUPLEX IS NEVER WITNESSED, so the adapter's begin cannot fire and
+        // this arm's hand-driven pairing still owneth the relation's initiator slot. (MEASURED: with the
+        // subscription, production's own begin created the slot and `pairUp` then threw "initiatorRefused".)
         _ = advanceToRoleBound(alice, peerId: handleB, serviceDataHint: bobHint,
-                               capturePeer: capturePeer)
+                               capturePeer: capturePeer, subscribeth: false)
         alice.start()
         guard let aConn = alice.connection(for: handleB) else {
             XCTFail("the initiator never stood a connection: " + walkLog.joined(separator: " | ")); return

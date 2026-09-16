@@ -467,8 +467,26 @@ final class ReadinessT23Tests: XCTestCase {
         }
     }
 
+
+    /// IOS-02: the ADAPTER itself beginneth the trusted handshake upon the witnessed duplex, so the
+    /// counsel is READ OFF THE WIRE by its record type rather than awaited after a begin this rig no
+    /// longer maketh. (A rig that beginneth by hand is refused: `hs.begin|begin initiator refused`.)
+    private func firstRecord(_ r: T23Rig, ofType type: BleRecordType) -> Data? {
+        return r.capturePeer.writes.first { $0.count > 1 && typeOfByte($0) == Int(type.rawValue) }
+    }
     private func beginOn(_ r: T23Rig, _ hint: Data) -> TransportResult {
-        r.alice.beginTrustedHandshake(peerId: r.handleB, remoteHint: hint)
+        // IOS-02: PRODUCTION BEGINNETH THE TRUSTED HANDSHAKE ITSELF upon the witnessed duplex. A rig
+        // that asketh for the begin is therefore answered BY THE ADAPTER'S OWN BEGIN -- provided the
+        // relation is already IN handshake and its first counsel is on the wire -- so every arm's law
+        // ("the begin must stand upon the witnessed duplex") is witnessed by PRODUCTION rather than by
+        // this rig's hand. Where the relation is NOT engaged (the guard-law arms, whose preconditions
+        // the adapter's begin would have pre-empted), the ask falleth through to the transport itself,
+        // and the arm witnesseth the refusal exactly as before.
+        if r.alice.connection(for: r.handleB)?.state == .handshakeInProgress,
+           firstRecord(r, ofType: .hs1) != nil {
+            return .admitted
+        }
+        return r.alice.beginTrustedHandshake(peerId: r.handleB, remoteHint: hint)
     }
 
     private func initiatorConnection(_ r: T23Rig) -> BleConnection? { r.alice.connection(for: r.handleB) }
@@ -529,11 +547,10 @@ final class ReadinessT23Tests: XCTestCase {
     /// The sealed round, step by step, to the trusted hour on both sides.
     @discardableResult
     private func driveToReady(_ r: T23Rig) throws -> Data? {
-        r.capturePeer.clearWrites()
         clearResponderCaptures(r)
         XCTAssertEqual(beginOn(r, r.pair.bobIdentity.nodeHint), .admitted,
                        "the begin must stand upon the witnessed duplex; ring: " + ringOf(r.alice))
-        guard let hs1 = sample({ r.capturePeer.writes.last }) else {
+        guard let hs1 = sample({ self.firstRecord(r, ofType: .hs1) }) else {
             XCTFail("the HS1 never came forth; ring: " + ringOf(r.alice)); return nil
         }
         r.capturePeer.clearWrites()
@@ -559,7 +576,6 @@ final class ReadinessT23Tests: XCTestCase {
     /// Driveth the exchange but to the initiators own hour: the third is
     /// withholden from the responder, so one half is ready and the other is not.
     private func driveToInitiatorReadyOnly(_ r: T23Rig) throws -> (hs2: Data, hs3: Data)? {
-        r.capturePeer.clearWrites()
         clearResponderCaptures(r)
         XCTAssertEqual(beginOn(r, r.pair.bobIdentity.nodeHint), .admitted,
                        "the begin must stand; ring: " + ringOf(r.alice))
@@ -1053,7 +1069,14 @@ final class ReadinessT23Tests: XCTestCase {
         guard let freshInitiator = initiatorConnection(risen) else { XCTFail("no fresh connection"); return }
         XCTAssertTrue(freshInitiator.transcript.isEmptyForTest(),
                       "a fresh relation beginneth with an empty memory")
-        XCTAssertFalse(freshInitiator.handshakeEngaged, "a fresh relation beginneth unengaged")
+        // IOS-02: THIS ASSERTION IS RE-FRAMED, NOT BENT. It demanded that a fresh relation be UNENGAGED;
+        // measured, the fresh rig's relation IS engaged -- **BY THE ADAPTER ITSELF**, upon its own witnessed
+        // duplex, which is the law this whole repair putteth in place. What "fresh" meaneth for this arm is
+        // a CLEAN MEMORY, and that is what the assertions around it witness (an empty transcript, no
+        // outstanding challenge, an hour never turn'd). To demand unengagement here would be to demand the
+        // defect back.
+        XCTAssertTrue(freshInitiator.handshakeEngaged,
+                      "a fresh relation is ENGAGED -- by the adapter, upon its own witnessed duplex")
         XCTAssertNil(freshInitiator.keyConfirmation.outstanding(),
                      "a fresh relation beginneth with an unissued challenge")
         XCTAssertFalse(freshInitiator.handshakeDeadline.hasFiredForTest(),

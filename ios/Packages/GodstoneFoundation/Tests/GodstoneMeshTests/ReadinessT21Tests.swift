@@ -351,7 +351,8 @@ final class ReadinessT21Tests: XCTestCase {
     /// capture peripheral standing at the connected peripheral's place.
     private func advanceToRoleBound(_ alice: BleTransport, peerId: UUID,
                                     serviceDataHint: Data,
-                                    capturePeer: CapturePeripheral) -> RelationPeripheralDelegate? {
+                                    capturePeer: CapturePeripheral,
+                                    subscribeth: Bool = true) -> RelationPeripheralDelegate? {
         alice.start()
         alice.refreshLocalLinkInfoSnapshotSync()
         let cm = alice.requireContextCentralForTest()
@@ -398,7 +399,11 @@ final class ReadinessT21Tests: XCTestCase {
             properties: [.read, .write, .notify],
             value: nil,
             permissions: [.readable, .writeable])
-        let a5 = alice.processPeripheralNotificationStateUpdated(nil, delegate: delegate, characteristic: inboxChar, error: nil)
+        // IOS-02: `subscribeth: false` leaveth the duplex UNWITNESSED -- the one state in which the
+        // adapter's begin cannot fire, so a guard-law arm can still arrange its precondition.
+        let a5 = subscribeth
+            ? alice.processPeripheralNotificationStateUpdated(nil, delegate: delegate, characteristic: inboxChar, error: nil)
+            : BleCentralAction.noOp
         walkLog.append("notify -> " + String(describing: a5) + " @ " + (alice.connection(for: peerId).map { String(describing: $0.state) } ?? "nil"))
         if alice.connection(for: peerId) == nil { return nil }
         return delegate
@@ -516,7 +521,8 @@ final class ReadinessT21Tests: XCTestCase {
         let bobPM: CBPeripheralManager
     }
 
-    private func rigT21() throws -> T21Rig {
+    private func rigT21(subscribeth: Bool = true, advertiseLesserHint: Bool = false,
+                        hintTransform: ((Data) -> Data)? = nil) throws -> T21Rig {
         let pair = try ReadinessTrustedPairing.barePair()
         let handleB = UUID()
         let handleA = UUID()
@@ -530,9 +536,20 @@ final class ReadinessT21Tests: XCTestCase {
         let aliceSpy = T17DelegateSpy(); alice.delegate = aliceSpy
         let bobSpy = T17DelegateSpy(); bob.delegate = bobSpy
         let (_, capturePeer) = peripheralPunt(handleB)
+        // IOS-02: WHICH HINT IS ADVERTISED DECIDETH WHETHER PRODUCTION BEGINNETH, because the adapter
+        // beginneth with the relation's OWN captured hint. The variants below are named for the laws they
+        // serve, not bent for the arms that use them.
+        // MEASURED TWICE, AND BOTH MEASUREMENTS KILLED THE IDEA OF ARRANGING A NON-ASCENDANT PAIR BY THE
+        // ADVERTISEMENT: an EQUAL advertised hint never bindeth at all ("the initiator never bound"), and a
+        // LESSER one bindeth not either -- **THE BINDING IS NOT THE BEGIN**. The rig therefore advertiseth the
+        // relation's own hint, and only the VILLAINY of the hint trial (which must live in the advertisement,
+        // since production beginneth with the captured hint) varieth it.
+        let baseHint = pair.bobIdentity.nodeHint
+        let advertised = hintTransform?(baseHint) ?? baseHint
         guard let aliceDelegate = advanceToRoleBound(alice, peerId: handleB,
-                                                    serviceDataHint: pair.bobIdentity.nodeHint,
-                                                    capturePeer: capturePeer) else {
+                                                    serviceDataHint: advertised,
+                                                    capturePeer: capturePeer,
+                                                    subscribeth: subscribeth) else {
             throw NSError(domain: "t21", code: 1, userInfo: [NSLocalizedDescriptionKey: "the initiator never bound"])
         }
         bob.start()
@@ -556,8 +573,26 @@ final class ReadinessT21Tests: XCTestCase {
         _ = alice.processPeripheralUpdateValue(nil, delegate: delegate, characteristic: ch, error: nil)
     }
 
+
+    /// IOS-02: the ADAPTER itself beginneth the trusted handshake upon the witnessed duplex, so the
+    /// counsel is READ OFF THE WIRE by its record type rather than awaited after a begin this rig no
+    /// longer maketh. (A rig that beginneth by hand is refused: `hs.begin|begin initiator refused`.)
+    private func firstRecord(_ r: T21Rig, ofType type: BleRecordType) -> Data? {
+        return r.capturePeer.writes.first { $0.count > 1 && typeOfByte($0) == Int(type.rawValue) }
+    }
     private func beginWith(_ r: T21Rig, _ hint: Data) -> TransportResult {
-        r.alice.beginTrustedHandshake(peerId: r.handleB, remoteHint: hint)
+        // IOS-02: PRODUCTION BEGINNETH THE TRUSTED HANDSHAKE ITSELF upon the witnessed duplex. A rig
+        // that asketh for the begin is therefore answered BY THE ADAPTER'S OWN BEGIN -- provided the
+        // relation is already IN handshake and its first counsel is on the wire -- so every arm's law
+        // ("the begin must stand upon the witnessed duplex") is witnessed by PRODUCTION rather than by
+        // this rig's hand. Where the relation is NOT engaged (the guard-law arms, whose preconditions
+        // the adapter's begin would have pre-empted), the ask falleth through to the transport itself,
+        // and the arm witnesseth the refusal exactly as before.
+        if r.alice.connection(for: r.handleB)?.state == .handshakeInProgress,
+           firstRecord(r, ofType: .hs1) != nil {
+            return .admitted
+        }
+        return r.alice.beginTrustedHandshake(peerId: r.handleB, remoteHint: hint)
     }
 
     private func capturedHS2(_ r: T21Rig) -> Data? {
@@ -569,10 +604,9 @@ final class ReadinessT21Tests: XCTestCase {
      *  door, and brings the pair to the trusted READY. The HS2 fragments
      *  as they travelled are handed back for the trials that reuse them. */
     private func driveToReady(_ r: T21Rig) throws -> Data? {
-        r.capturePeer.clearWrites()
         XCTAssertEqual(beginWith(r, r.pair.bobIdentity.nodeHint), .admitted,
                        "the begin must stand upon the witnessed duplex; ring: " + ringOf(r.alice))
-        guard let hs1 = waitWhile({ r.capturePeer.writes.last }, nonEmpty: true) else {
+        guard let hs1 = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
             XCTFail("the HS1 never came forth; ring: " + ringOf(r.alice)); return nil
         }
         pushWrite(r.bob, r.bobPM, centralId: r.handleA, bytes: hs1)
@@ -595,6 +629,19 @@ final class ReadinessT21Tests: XCTestCase {
         XCTAssertTrue(waitUntil2 { (r.alice.connection(for: r.handleB)?.state == .ready) &&
                                   (r.bob.connection(for: r.handleA)?.state == .ready) })
         return hs2
+    }
+
+
+    /// The hint trial's taint, in ONE place: the rig advertiseth the tainted hint AND the arm awaiteth it,
+    /// so both halves agree by construction rather than by a copied expression.
+    // (A helper for the lesser hint ALREADY STOOD in this file: my added copy was a REDECLARATION, caught by
+    // the compiler -- A NAME ASSUMED ABSENT IS AS BAD AS A NAME ASSUMED PRESENT. The file's own is used.)
+
+    static func taintLastByte(_ hint: Data) -> Data {
+        var wrong = hint
+        let i = wrong.index(wrong.startIndex, offsetBy: wrong.count - 1)
+        wrong[i] = (wrong[i] == 0xFF) ? 0xFE : 0xFF
+        return wrong
     }
 
     private func ringOf(_ t: BleTransport) -> String {
@@ -621,10 +668,9 @@ final class ReadinessT21Tests: XCTestCase {
     func testTheInitiatorEmittehHS1UponTheDuplexWitnessedInAscendantOrder() throws {
         let r = try rigT21()
         defer { cleanup(r) }
-        r.capturePeer.clearWrites()
         XCTAssertEqual(beginWith(r, r.pair.bobIdentity.nodeHint), .admitted,
                        "the begin must be admitted upon the witnessed duplex")
-        guard let hs1 = waitWhile({ r.capturePeer.writes.last }, nonEmpty: true) else {
+        guard let hs1 = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
             return XCTFail("the HS1 never came forth; ring: " + ringOf(r.alice))
         }
         XCTAssertEqual(typeOfByte(hs1), Int(BleRecordType.hs1.rawValue), "the first record must be HS1")
@@ -635,14 +681,22 @@ final class ReadinessT21Tests: XCTestCase {
         XCTAssertNotNil(r.pair.aliceManager.slotForTest(r.handleB),
                         "the relation must stand admitted with its session slot")
         // no second begin while the exchange liveth: the slot beareth a controller
-        let again = beginWith(r, r.pair.bobIdentity.nodeHint)
+        // IOS-02: THE SECOND ASK GOETH STRAIGHT TO THE TRANSPORT. The rig's `beginWith` reapeth the
+        // ADAPTER'S OWN begin -- that IS the repair -- so it cannot witness a SECOND begin; the law on this
+        // line is `beginTrustedHandshake`'s own refusal, and it must be asked of the transport itself.
+        let again = r.alice.beginTrustedHandshake(peerId: r.handleB,
+                                                  remoteHint: r.pair.bobIdentity.nodeHint)
         XCTAssertTrue(again != .admitted, "a second begin upon the living exchange must be refused")
         XCTAssertTrue(ringOf(r.alice).contains("begin initiator refused"),
                       "the ring must name the second refusal: " + ringOf(r.alice))
     }
 
     func testTheBeginIsRefusedWhileTheDuplexLiesUnwitnessed() throws {
-        let r = try rigT21()
+        // IOS-02: THE DUPLEX IS NEVER WITNESSED IN THIS RIG -- that is the arm's whole precondition, and
+        // the adapter's begin would otherwise have consumed it (the begin can only fire upon a witnessed
+        // duplex). With `subscribeth: false` production never reacheth its begin, the relation standeth
+        // ROLE_BOUND, and the refusal this arm witnesseth is the transport's own.
+        let r = try rigT21(subscribeth: false)
         defer { cleanup(r) }
         guard let conn = r.alice.connection(for: r.handleB) else { return XCTFail("no conn") }
         conn.maxAttValueLength = 10   // below the floor of twenty the witness faileth
@@ -658,18 +712,32 @@ final class ReadinessT21Tests: XCTestCase {
     }
 
     func testTheBeginIsRefusedWhenTheHintsDescendOrMeet() throws {
+        // IOS-02: THREE MEASUREMENTS SHAPED THIS ARM, AND THE FIRST TWO WERE MINE AND WRONG. (a) Asking through
+        // the rig's `beginWith` witnesseth NOTHING here, because that helper reapeth the ADAPTER'S begin -- the
+        // disordered ask must be made OF THE TRANSPORT ITSELF. (b) Arranging a non-ascendant ADVERTISEMENT
+        // instead was DISPROVED TWICE by measurement: an EQUAL hint never bindeth, and a LESSER hint bindeth not
+        // either. **THE BINDING IS NOT THE BEGIN**, and this arm's law belongeth to the begin door alone.
         let r = try rigT21()
         defer { cleanup(r) }
-        let equal = beginWith(r, r.pair.aliceIdentity.nodeHint)
+        // THE ADAPTER HATH ALREADY BEGUN upon the ascendant pair (that IS the repair), so ITS slot and ITS
+        // counsel stand. What this arm judgeth is the DISORDERED ASK: it must be refused, it must ring its own
+        // named reason, and it must birth NOTHING.
+        let slotBefore = r.pair.aliceManager.slotForTest(r.handleB)
+        let writesBefore = r.capturePeer.writes.count
+        let equal = r.alice.beginTrustedHandshake(peerId: r.handleB,
+                                                 remoteHint: r.pair.aliceIdentity.nodeHint)
         XCTAssertTrue(equal != .admitted, "equal hints know no ascendant seat")
-        let descending = beginWith(r, Data([0, 0, 0, 0]))
+        let descending = r.alice.beginTrustedHandshake(peerId: r.handleB, remoteHint: Data([0, 0, 0, 0]))
         XCTAssertTrue(descending != .admitted, "descending hints must refuse the begin")
         let named = r.alice.rejectionRecordsForTest().filter {
             $0.site == "hs.begin" && $0.reason.contains("hint order not ascendant")
         }
-        XCTAssertEqual(named.count, 2, "both refusals must ring at the begin door: " + ringOf(r.alice))
-        XCTAssertTrue(r.capturePeer.writes.isEmpty, "no HS1 may travel a disordered order")
-        XCTAssertNil(r.pair.aliceManager.slotForTest(r.handleB), "no slot may be born of disordered counsel")
+        XCTAssertEqual(named.count, 2, "both disordered refusals must ring at the begin door: " + ringOf(r.alice))
+        XCTAssertEqual(r.capturePeer.writes.count, writesBefore,
+                       "no HS1 may travel a disordered order: a refused begin writeth NOTHING")
+        XCTAssertTrue(slotBefore === r.pair.aliceManager.slotForTest(r.handleB),
+                      "no slot may be born of disordered counsel: the relation's own slot -- the one the ADAPTER'S "
+                      + "lawful begin made -- must stand UNCHANGED, and no second one may appear")
     }
 
     func testTheComparatorOrderedAsTheLawStates() throws {
@@ -691,9 +759,8 @@ final class ReadinessT21Tests: XCTestCase {
     func testTheHS2TraveltToItsOwnRelationAloneAndBoreTheImmutableHint() throws {
         let r = try rigT21()
         defer { cleanup(r) }
-        r.capturePeer.clearWrites()
         XCTAssertEqual(beginWith(r, r.pair.bobIdentity.nodeHint), .admitted)
-        guard let hs1 = waitWhile({ r.capturePeer.writes.last }, nonEmpty: true) else {
+        guard let hs1 = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
             return XCTFail("no HS1; ring: " + ringOf(r.alice))
         }
         r.capturePeer.clearWrites()
@@ -734,9 +801,8 @@ final class ReadinessT21Tests: XCTestCase {
     func testTheTrustRejectionWithheldHS3AndClosedTheRelationExactly() throws {
         let r = try rigT21()
         defer { cleanup(r) }
-        r.capturePeer.clearWrites()
         XCTAssertEqual(beginWith(r, r.pair.bobIdentity.nodeHint), .admitted)
-        guard let hs1 = waitWhile({ r.capturePeer.writes.last }, nonEmpty: true) else {
+        guard let hs1 = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
             return XCTFail("no HS1")
         }
         pushWrite(r.bob, r.bobPM, centralId: r.handleA, bytes: hs1)
@@ -765,20 +831,19 @@ final class ReadinessT21Tests: XCTestCase {
 
     func testTheBadBindingAndBadStaticKeyAndBadHintEachWithheldAllApplicationData() throws {
         for villainy in ["binding", "static", "hint"] {
-            let r = try rigT21()
+            // IOS-02: FOR THE HINT TRIAL THE VILLAINY MOVETH INTO THE ADVERTISEMENT. Production now beginneth
+            // the trusted handshake with the relation's OWN captured hint, so a taint applied only to this
+            // rig's hand would leave the production begin CLEAN and the arm would witness nothing: the tainted
+            // hint must be the one the rig ADVERTISETH. The arm awaiteth the same value, by the same function.
+            let r = try rigT21(hintTransform: villainy == "hint"
+                               ? { ReadinessT21Tests.taintLastByte($0) } : nil)
             defer { cleanup(r) }
-            r.capturePeer.clearWrites()
-            var hintUsed = r.pair.bobIdentity.nodeHint
-            if villainy == "hint" {
-                // the expectation is taintedd at the begin itself
-                var wrong = r.pair.bobIdentity.nodeHint
-                let i = wrong.index(wrong.startIndex, offsetBy: wrong.count - 1)
-                wrong[i] = (wrong[i] == 0xFF) ? 0xFE : 0xFF
-                hintUsed = wrong
-            }
+            let hintUsed = villainy == "hint"
+                ? ReadinessT21Tests.taintLastByte(r.pair.bobIdentity.nodeHint)
+                : r.pair.bobIdentity.nodeHint
             XCTAssertEqual(beginWith(r, hintUsed), .admitted,
                            "the begin must stand for the " + villainy + " trial; ring: " + ringOf(r.alice))
-            guard let hs1 = waitWhile({ r.capturePeer.writes.last }, nonEmpty: true) else {
+            guard let hs1 = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
                 XCTFail("no HS1 for " + villainy); continue
             }
             r.capturePeer.clearWrites()
@@ -860,9 +925,8 @@ final class ReadinessT21Tests: XCTestCase {
     func testNoApplicationDATAProceededBeforeTheTrustedCryptographicReady() throws {
         let r = try rigT21()
         defer { cleanup(r) }
-        r.capturePeer.clearWrites()
         XCTAssertEqual(beginWith(r, r.pair.bobIdentity.nodeHint), .admitted)
-        guard let _ = waitWhile({ r.capturePeer.writes.last }, nonEmpty: true) else {
+        guard let _ = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
             return XCTFail("no HS1")
         }
         XCTAssertEqual(r.alice.connection(for: r.handleB)?.state, .handshakeInProgress,

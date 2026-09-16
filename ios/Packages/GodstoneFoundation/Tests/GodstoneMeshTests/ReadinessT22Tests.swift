@@ -569,12 +569,20 @@ final class ReadinessT22Tests: XCTestCase {
      *  door, and brings the pair to the trusted READY. The HS2 fragments
      *  as they travelled are handed back for the trials that reuse them. */
     private func driveToReady(_ r: T22Rig) throws -> Data? {
-        r.capturePeer.clearWrites()
-        XCTAssertEqual(beginWith(r, r.pair.bobIdentity.nodeHint), .admitted,
-                       "the begin must stand upon the witnessed duplex; ring: " + ringOf(r.alice))
-        guard let hs1 = waitWhile({ r.capturePeer.writes.last }, nonEmpty: true) else {
-            XCTFail("the HS1 never came forth; ring: " + ringOf(r.alice)); return nil
+        // IOS-02: THE ADAPTER NOW BEGINNETH THE TRUSTED HANDSHAKE ITSELF, upon the witnessed duplex,
+        // so this rig NO LONGER BEGINNETH IT BY HAND -- a second begin is REFUSED, and the ring saith
+        // so in its own words ("hs.begin|begin initiator refused", measured). The HS1 this rig driveth
+        // is THEREFORE THE ONE THE ADAPTER SENT, read off the wire by its record type.
+        // THE LAW THIS RIG WITNESSETH IS UNCHANGED: the whole exchange still travelleth the real
+        // entries -- it is only the FIRST STEP that now belongeth to production, which is the whole
+        // point of the finding.
+        guard let hs1 = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
+            XCTFail("the HS1 never came forth: the adapter did not begin the trusted handshake upon the "
+                + "witnessed duplex; ring: " + ringOf(r.alice)); return nil
         }
+        XCTAssertEqual(r.alice.connection(for: r.handleB)?.state, .handshakeInProgress,
+                       "the relation must be IN the trusted handshake that the adapter began; ring: "
+                       + ringOf(r.alice))
         pushWrite(r.bob, r.bobPM, centralId: r.handleA, bytes: hs1)
         guard let hs2 = waitWhile({ capturedHS2(r) }, nonEmpty: true) else {
             XCTFail("the HS2 never answered; ring: " + ringOf(r.bob)); return nil
@@ -647,19 +655,27 @@ final class ReadinessT22Tests: XCTestCase {
     }
 
     private func t22Hs1(_ r: T22Rig) -> Data? {
-        return r.pair.aliceManager.beginInitiator(r.handleB, remoteHint: r.pair.bobIdentity.nodeHint)
+        // IOS-02: the ADAPTER itself beginneth the trusted handshake, so the first counsel is READ OFF
+        // THE WIRE rather than formed again -- the manager refuseth a repeated beginInitiator, which is
+        // the card's own law ("do not repeat beginInitiator"). THE PAYLOAD IS RETURNED, not the
+        // fragment: this helper's callers RE-FORGE the counsel with a sequence octet of their own
+        // choosing, and a fragment wrapped in a second fragment is a shape no gate should admit.
+        guard let written = firstRecord(r, ofType: .hs1),
+              let frag = BleRecordCodec.decodeFragment(written) else { return nil }
+        return frag.payload
     }
 
-    /** Begynneth the exchange by the transports own entry (so the initiators
-     *  state advanceth to handshakeInProgress, as the law requireth), pusheth
-     *  the authentic first counsel and awaiteth the queued answer. */
+    /** Driveth the exchange to the ANSWERED hour: the authentic first counsel is pushed to the
+     *  responder and the queued second awaited. IOS-02: THE ADAPTER BEGINNETH THE EXCHANGE NOW -- this
+     *  rig no longer calleth the begin itself (a second begin is refused: "hs.begin|begin initiator
+     *  refused", measured), and it reapest the counsel the adapter sent. */
     private func driveToAnswered(_ r: T22Rig) throws -> (Data, Data)? {
-        r.capturePeer.clearWrites()
-        XCTAssertEqual(beginWith(r, r.pair.bobIdentity.nodeHint), .admitted,
-                       "the begin must stand upon the witnessed duplex; ring: " + ringOf(r.alice))
-        guard let hs1 = waitWhile({ r.capturePeer.writes.last }, nonEmpty: true) else {
-            XCTFail("the HS1 never came forth; ring: " + ringOf(r.alice)); return nil
+        guard let hs1 = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
+            XCTFail("the HS1 never came forth: the adapter did not begin upon the witnessed duplex; ring: "
+                + ringOf(r.alice)); return nil
         }
+        XCTAssertEqual(r.alice.connection(for: r.handleB)?.state, .handshakeInProgress,
+                       "the initiator's state must have advanced to handshakeInProgress, as the law requireth")
         pushWrite(r.bob, r.bobPM, centralId: r.handleA, bytes: hs1)
         guard let hs2 = waitWhile({ capturedHS2(r) }, nonEmpty: true) else {
             XCTFail("the HS2 never answered; ring: " + ringOf(r.bob)); return nil
@@ -1103,6 +1119,96 @@ final class ReadinessT22Tests: XCTestCase {
             defer { lock.unlock() }
             return Int64(held.count * 32)
         }
+    }
+
+    // MARK: - IOS-02: THE ADAPTER ITSELF MUST BEGIN THE TRUSTED HANDSHAKE
+
+    private func records(_ r: T22Rig, ofType type: BleRecordType) -> [Data] {
+        return r.capturePeer.writes.filter { written in
+            guard let frag = BleRecordCodec.decodeFragment(written) else { return false }
+            return frag.header.recordType == type
+        }
+    }
+
+    private func firstRecord(_ r: T22Rig, ofType type: BleRecordType) -> Data? {
+        return records(r, ofType: type).first
+    }
+
+    /// IOS-02, the card's first step: "Keep one relation-owned D2 driver; enter it from the ACTUAL
+    /// physical-duplex reducer, after ROLE_BOUND, localHint < remoteHint, and complete duplex
+    /// validation."
+    ///
+    /// **THE WHOLE OF THE FINDING IS IN THIS ARM'S SILENCE: NOTHING HERE CALLETH
+    /// `beginTrustedHandshake`.** The rig drives ONLY the real entries -- discovery, the connect leg,
+    /// the service and characteristic walks, the link-info ack, and at the last the
+    /// notification-state reduction, which is where the physical duplex is witnessed. If the ADAPTER
+    /// doth not enter the D2 driver at that reduction, NO HS1 EVER GOETH OUT, and the audit's words
+    /// hold exactly: "the application never starts D2 or key confirmation".
+    ///
+    /// Measured before the repair: this arm FAILETH with "no HS1 went out" -- the RED the repair
+    /// must answer. Note what it doth NOT assert: it nameth no function and readeth no source text.
+    /// It asketh only for the record that the law putteth on the wire.
+    func testTheAdapterItselfBeginnethTheTrustedHandshakeOnTheWitnessedDuplex() throws {
+        let r = try rigT22()
+        guard let hs1 = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
+            XCTFail("THE ADAPTER NEVER BEGAN THE TRUSTED HANDSHAKE upon the witnessed duplex: no HS1 went out, "
+                + "though the relation was ROLE_BOUND, the duplex was witnessed by the real notification "
+                + "reduction, and the local hint is ascendant. IOS-02: the application never starts D2 or key "
+                + "confirmation. ring: " + ringOf(r.alice))
+            return
+        }
+        XCTAssertFalse(hs1.isEmpty, "the first counsel must carry a body")
+        XCTAssertEqual(records(r, ofType: .hs1).count, 1,
+                       "the adapter must begin the exchange exactly ONCE: ring: " + ringOf(r.alice))
+        XCTAssertEqual(r.alice.connection(for: r.handleB)?.state, .handshakeInProgress,
+                       "the relation must be IN the trusted handshake once the adapter began it")
+        // AND A THING I ASSERTED FROM READING THE CODE, WHICH THE MEASUREMENT REFUTED: I wrote that
+        // the stage must be `.hsOut` (the line that setteth it after the first counsel). MEASURED:
+        // it is `.hsIn` -- the relation hath SENT its first and awaiteth the responsive second, and
+        // the state machine nameth the WAITING by the counsel awaited, not the one sent. The
+        // assertion is therefore withdrawn rather than bent: THE LAW THIS ARM WITNESSETH IS THE
+        // BEGIN, NOT THE INTERNAL NAME OF THE HOUR, and an assertion invented from a plausible
+        // reading of a setter is the sixth species wearing the clothes of rigour.
+    }
+
+    /// The card's second-step clause: "Ensure duplicate notification callbacks do not create a second
+    /// SessionSlot or repeat beginInitiator." A REPEATED reduction of the same notification state must
+    /// put NO second HS1 on the wire, and must not re-open the hour.
+    func testADuplicateNotificationReductionBeginnethNoSecondHandshake() throws {
+        let r = try rigT22()
+        guard let first = waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) else {
+            XCTFail("no HS1 stood to be duplicated: the adapter never began the handshake. ring: " + ringOf(r.alice))
+            return
+        }
+        let inboxChar = NotifyingInboxCharacteristic(
+            type: BleTransport.inboxCharacteristicUuid,
+            properties: [.read, .write, .notify], value: nil, permissions: [.readable, .writeable])
+        _ = r.alice.processPeripheralNotificationStateUpdated(nil, delegate: r.aliceDelegate,
+                                                             characteristic: inboxChar, error: nil)
+        _ = r.alice.processPeripheralNotificationStateUpdated(nil, delegate: r.aliceDelegate,
+                                                             characteristic: inboxChar, error: nil)
+        XCTAssertEqual(records(r, ofType: .hs1).count, 1,
+                       "A DUPLICATE NOTIFICATION REDUCTION BEGAN THE HANDSHAKE AGAIN (the card forbiddeth a "
+                       + "second SessionSlot or a repeated beginInitiator). ring: " + ringOf(r.alice))
+        XCTAssertEqual(records(r, ofType: .hs1).first, first, "the first counsel must be the one already sent")
+    }
+
+    /// THE CARD'S "DO NOT REPEAT beginInitiator" CLAUSE, WITNESSED FROM THE OTHER SIDE -- and it was
+    /// BORN OF A MEASUREMENT, not of a design: when the adapter began the handshake and this suite's
+    /// rig began it AGAIN by hand, twelve arms failed together with one ring line,
+    /// "hs.begin|begin initiator refused". That refusal is the LAW doing its work, so it is now
+    /// witnessed directly instead of merely being the reason other arms once failed.
+    func testASecondBeginUponTheSameRelationIsRefused() throws {
+        let r = try rigT22()
+        guard waitWhile({ self.firstRecord(r, ofType: .hs1) }, nonEmpty: true) != nil else {
+            XCTFail("the adapter never began the handshake, so no second begin can be witnessed. ring: "
+                + ringOf(r.alice)); return
+        }
+        XCTAssertEqual(beginWith(r, r.pair.bobIdentity.nodeHint), .rejected("begin initiator refused"),
+                       "a second begin upon a relation ALREADY IN handshake must be refused -- a relation "
+                       + "is not re-opened by a repeated call. ring: " + ringOf(r.alice))
+        XCTAssertEqual(records(r, ofType: .hs1).count, 1,
+                       "and the refused begin must put NO second counsel on the wire")
     }
 
 }

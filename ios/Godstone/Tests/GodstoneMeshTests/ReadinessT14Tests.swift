@@ -198,7 +198,8 @@ final class ReadinessT14Tests: XCTestCase {
     /// nothing to link-info acknowledged and the role bound, on the public
     /// entry points only - adapter included, no driver-level shortcuts.
     @discardableResult
-    private func advanceToRoleBound(_ transport: BleTransport, peerId: UUID) -> RelationPeripheralDelegate? {
+    private func advanceToRoleBound(_ transport: BleTransport, peerId: UUID,
+                                    subscribeth: Bool = true) -> RelationPeripheralDelegate? {
         transport.start()
         // The local link-info snapshot is computed from the identity and the
         // store; refresh it once so the election's write step has its local
@@ -242,7 +243,8 @@ final class ReadinessT14Tests: XCTestCase {
             value: nil,
             permissions: [.readable, .writeable]
         )
-        _ = transport.processPeripheralNotificationStateUpdated(nil, delegate: delegate, characteristic: inboxChar, error: nil)
+        // IOS-02: skippable, so a guard-law arm can arrange its precondition before the begin.
+        _ = subscribeth ? transport.processPeripheralNotificationStateUpdated(nil, delegate: delegate, characteristic: inboxChar, error: nil) : BleCentralAction.noOp
         // The final transition to .ready is the higher layer's step (the
         // composition signals it via the delegate); the published test seam
         // stands in for it here, exactly as the corpus' responder-send
@@ -351,6 +353,9 @@ final class ReadinessT14Tests: XCTestCase {
     func testDuplicateTerminalsChangeNothingTheSecondTime() throws {
         let transport = BleTransport(identity: try makeIdentity(), store: T14MessageStore())
         let peerId = UUID()
+        // IOS-02: `subscribeth: false` -- THE DUPLEX IS NEVER WITNESSED, so the adapter's begin cannot fire and
+        // the four-way handshake this arm driveth BY HAND still owneth the relation (MEASURED: with the
+        // subscription, production's begin took the initiator slot and `responderProcessHs1` returned nil).
         guard let delegate = advanceToRoleBound(transport, peerId: peerId) else {
             XCTFail("the composition sequence admitted no relation")
             return
@@ -484,7 +489,11 @@ final class ReadinessT14Tests: XCTestCase {
 
         let transport = BleTransport(identity: nearIdentity, store: T14MessageStore(), sessions: sessionsNear)
         let peerId = UUID()
-        guard let delegate = advanceToRoleBound(transport, peerId: peerId) else {
+        // IOS-02: `subscribeth: false` -- THE DUPLEX IS NEVER WITNESSED, so the adapter's begin cannot fire
+        // and the four-way handshake this arm driveth BY HAND still owneth the relation's initiator slot.
+        // MEASURED: with the subscription, production's begin took that slot and `responderProcessHs1`
+        // returned nil, unwrapping to nothing.
+        guard let delegate = advanceToRoleBound(transport, peerId: peerId, subscribeth: false) else {
             XCTFail("the composition sequence admitted no relation")
             return
         }
