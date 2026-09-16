@@ -50,16 +50,14 @@ public final class LifecycleTransportAdapter: TransportSeam, @unchecked Sendable
     public func stopAdvertising() { endOnce() }
 
     public func disconnectAll() -> Int {
+        // **IOS-06 step 2, AND A DEFECT OF MY OWN CORRECTED IN THE SAME BREATH: A REPORTING TRANSPORT IS ASKED
+        // FIRST, BECAUSE IT *DOES* THE SEVERING.** My round-239 draft called `endOnce()` BEFORE asking -- so a
+        // production count would have been taken AFTER the teardown and read zero, while the arm passed anyway
+        // (its spy returned a fixed 3 and never exposed the ordering). **A WITNESS THAT CANNOT SEE THE ORDER IS
+        // NOT A WITNESS OF THE ORDER.**
+        let severed = (transport as? DisconnectingTransport)?.disconnectAll()
         endOnce()
-        // **IOS-06 step 2: A REAL TEARDOWN RESULT, NOT A HARD-CODED ONE.** The audit's words, and the measurement
-        // that made them exact: THIS METHOD RETURNED A LITERAL `1` with a comment calling it "one logical
-        // disconnect sweep" -- **and `BleTransport` owneth NO disconnect method at all, so the number could not
-        // have been measured by anybody.** A transport that CAN report answereth for itself; one that cannot
-        // getteth ZERO, because a zero that meaneth "not measured" is honest, while a one that meaneth "one
-        // logical sweep" masquerades as a measurement. **WHAT REMAINETH: teaching the concrete transports to
-        // report (this isle's `BleTransport` carrieth no such method yet), which is named rather than implied.**
-        if let reporting = transport as? DisconnectingTransport { return reporting.disconnectAll() }
-        return 0
+        return severed ?? 0
     }
 
     public func resetResources() {

@@ -566,6 +566,20 @@ public struct SystemMonotonicClock: MonotonicClock {
 /// production source**" -- MEASURED TRUE (the class declared `NSObject, @unchecked Sendable` and nothing else). The
 /// lifecycle authority cannot own a transport it cannot name, so the conformance now standeth: `start()` and
 /// `stop()` already existed, and the two descriptive members are supplied here.
+extension BleTransport: DisconnectingTransport {
+    /// **IOS-06 step 2: THIS TRANSPORT'S REAL TEARDOWN COUNT.** The live physical links are COUNTED and THEN
+    /// severed, on the same road the drain useth -- so the authority receiveth a MEASUREMENT rather than the
+    /// literal `1` the adapter used to fabricate. The count is taken BEFORE `stop()`, because after it there is
+    /// nothing left to count: **the ordering is the whole point, and it is witnessed.**
+    public func disconnectAll() -> Int {
+        lockTransport()
+        let live = Set(activeOutboundLifetimes.keys).union(activeInboundLifetimes.keys).count
+        unlockTransport()
+        stop()
+        return live
+    }
+}
+
 extension BleTransport: Transport {
     // **THE BODY IS EMPTY, AND THAT IS THE FINDING'S OWN SHAPE: `start()` (line 1253), `stop()` (1381), `name`
     // (570) and `isBulkCapable` (571) ALL ALREADY EXISTED -- THE CONFORMANCE ITSELF WAS THE MISSING THING, which

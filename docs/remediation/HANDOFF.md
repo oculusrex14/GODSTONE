@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 241 -- IOS-06 step 2 complete: the concrete transport reports its REAL teardown, and an ordering defect of mine is fixed
+
+- **Wiring**: `extension BleTransport: DisconnectingTransport` counts the **live physical links** (`activeOutboundLifetimes` ∪ `activeInboundLifetimes`) and **then** severs them — so the authority receives a *measurement* rather than the literal `1` it used to fabricate.
+- **A real defect of mine, found by thinking about the order rather than by a failing arm**: my round-239 adapter called `endOnce()` **before** asking the reporting transport — so a production count would have been taken *after* the teardown and read zero, **while the arm passed anyway because its spy returned a fixed 3**. *A witness that cannot see the order is not a witness of the order.* The spy now records `stopsWhenAsked`, and the arm requires it to be **0**.
+- **Arms**: the conformance (compile-time); the real count believed (3 — neither 0 nor 1); the ordering; and an unreporting transport still claiming **nothing**.
+- **Measured**: **full iOS lane 1225 / 0** (count read from the log); courts 610 OK.
+- **Remaining**: the node-level behavioural witness of the routing (an injectable transport), and steps 3–5.
+
 ## Round 240 -- IOS-06 step 1 complete: the node drives the radio THROUGH the runtime's one authority
 
 - **Wiring**: `MeshNode` holds `lifecycleOwner`; `openAdapters()` and `stop()` travel through it **when the runtime has given the node an authority** — and fall back to the direct road **only when none stands**, *which is what makes the change additive: every existing court keeps working while the production graph loses its second, unowned path to the radio*. `MeshRuntime` hands its authority to its node.

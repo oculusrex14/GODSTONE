@@ -427,6 +427,9 @@ final class CrashStartupResumeTests: XCTestCase {
 
         // (1) THE CONFORMANCE -- a compile-time fact now, and the reason the runtime can own the transport at all:
         let seam: any Transport = runtime.meshNode.ble
+        // AND THE CONCRETE TRANSPORT CAN REPORT ITS REAL TEARDOWN (IOS-06 step 2's second half), which the
+        // lifecycle authority needeth if the production number is ever to be a measurement rather than a zero:
+        let _: any DisconnectingTransport = runtime.meshNode.ble
         // **MEASURED, AFTER MY OWN FIRST DRAFT ASSERTED THE WRONG VALUES: `BleTransport` nameth itself "BLE" and
         // reporteth `isBulkCapable == false` -- the `"ble"`/`true` pair I had read belongeth to ANOTHER type, and
         // my grep's window attributed them to the wrong class (the fifth species of this session's control family,
@@ -458,10 +461,14 @@ final class CrashStartupResumeTests: XCTestCase {
         let severed: Int
         private(set) var starts = 0
         private(set) var stops = 0
+        /// **THE ORDERING IS NOW OBSERVABLE**: the spy recordeth how many stops it had already suffered AT THE
+        /// MOMENT it was asked -- and my round-239 arm could not see that, which is why the ordering defect in the
+        /// adapter slipped past it. A witness that cannot see the order is not a witness of the order.
+        private(set) var stopsWhenAsked: Int? = nil
         init(severed: Int) { self.severed = severed }
         func start() { starts += 1 }
         func stop() { stops += 1 }
-        func disconnectAll() -> Int { severed }
+        func disconnectAll() -> Int { stopsWhenAsked = stops; return severed }
     }
 
     /// **IOS-06 step 2, BEHAVIOURAL: THE TEARDOWN RESULT IS REAL OR IT IS NOTHING.** The adapter returned a literal
@@ -475,6 +482,10 @@ final class CrashStartupResumeTests: XCTestCase {
         XCTAssertEqual(reporting.starts, 1)
         XCTAssertEqual(adapter.disconnectAll(), 3,
                        "IOS-06 step 2: a reporting transport's REAL count must be returned, not a literal")
+        XCTAssertEqual(reporting.stopsWhenAsked, 0,
+                       "IOS-06 step 2: **THE REPORTING TRANSPORT MUST BE ASKED *BEFORE* THE COARSE STOP** -- a count "
+                       + "taken after the teardown would read zero in production, and my first draft did exactly "
+                       + "that while the arm passed anyway")
         XCTAssertEqual(reporting.stops, 1, "and the drain still reacheth the transport exactly once")
 
         // (2) AND A TRANSPORT THAT CANNOT REPORT GETTETH ZERO -- NEVER A FABRICATED ONE:
