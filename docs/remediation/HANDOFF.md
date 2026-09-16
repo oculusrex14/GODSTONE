@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 192 -- the external-input lane becomes MACHINE-CHECKABLE per request
+
+- **What was prose is now a court**: `tools/readiness/tests/test_external_input_requests.py` (12 tests) checketh the DOCUMENT, not just the lane's JSON — five requests present, every required row non-empty, a **sole approver** named, an **EVENT** trigger (never a date), **closure evidence `None`** everywhere (nothing acquired), the lane's three constants, a **real receipt command** per request, and that every externally-blocked task (T73–T76, T79–T81) is **requested of somebody**.
+- **And it judgeth**: four negative cases (dropped approver row; dated trigger; fabricated closure evidence; an unrequested task) plus a prose-only verification row — all reported, and each mutation asserted to have taken.
+- One of my own checks was found VACUOUS (`len(approver.split()) < 1` can never fire for a non-empty string) and is marked as such rather than left looking like rigour.
+- **Gates**: python courts **594 OK**; probes OK; mandatory lab control PASSED; digests 347/347; `check_parity --scope repo` rc 0. No production source changed.
+- **Unchanged**: five external gates OPEN, no artifact acquired, readiness flags false, T78 not claimed.
+
 ## Round 191 -- IOS-02 step 5 LANDS: route eligibility from the trusted event, rigs reconciled by construction
 
 - **Repair**: MeshNode now carries two views (route-eligible `peers`, physical `presentPeers`); `handlePeerConnect` admits to presence only; disconnect withdraws both; `trustedPeerDidConnect(nodeId:peerId:)` admits to the route; `ComposedRuntime.link` passes the handle with the trust.

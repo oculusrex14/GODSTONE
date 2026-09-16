@@ -1240,7 +1240,22 @@
   "gates_are_machine_checkable_since": "round 95 (AUDIT-003-R1 remediation ledger)",
   "acquisition_closes_nothing": true,
   "no_self_generated_fixture_may_substitute_for_an_approval": true,
-  "why_this_is_now_structured": "Round 95: the five gates were recorded as a frozen rule plus narrative, so \"the gates stay open\" could only be checked by reading prose. Each gate now carries id, kind, status, closure_evidence and a source pointer, so a court or a script can assert that none of them has moved and that none carries closure evidence."
+  "why_this_is_now_structured": "Round 95: the five gates were recorded as a frozen rule plus narrative, so \"the gates stay open\" could only be checked by reading prose. Each gate now carries id, kind, status, closure_evidence and a source pointer, so a court or a script can assert that none of them has moved and that none carries closure evidence.",
+  "machine_checkable_per_request_since_round_192": {
+   "court": "tools/readiness/tests/test_external_input_requests.py",
+   "why": "THE OBJECTIVE'S REQUIREMENT FOR THIS LANE WAS PROSE UNTIL THIS ROUND: 'exact requests, owners and immutable acceptance requirements', and 'acquisition never closes a gate and no self-generated fixture may substitute for an approval'. A reader could see it, and NOTHING COULD FAIL if a later round thinned it -- by dropping the approver row, by writing a DATE where the document's own law requireth an EVENT, by recording closure evidence no external party ever sent, or by leaving one of the outstanding tasks unrequested. The existing court (test_remediation W09) checketh this LANE's JSON and not the DOCUMENT.",
+   "what_it_asserteth": [
+    "that the document carrieth the FIVE requests, each with every required row non-empty (Blocks, artifact, sole approver, receipt verification, EVENT trigger, closure evidence, internal prerequisites)",
+    "that EVERY externally-blocked task of the objective (T73, T74, T75, T76, T79, T80, T81) is nameth by some request's Blocks row -- so no task is left unrequested of anybody",
+    "that each recheck trigger is an EVENT and never a DATE (four date patterns, including a bare year or quarter)",
+    "that closure evidence is `None` for every request, and that no gate carrieth any: NOTHING HATH BEEN ACQUIRED",
+    "that the lane's three constants hold (no external party contacted; acquisition closes nothing; no self-generated fixture substituteth for an approval)",
+    "that each 'how it is verified on receipt' row carrieth a REAL COMMAND rather than prose",
+    "that the document itself SAYETH it is not acquisition and that no external party hath been contacted"
+   ],
+   "and_it_judgeth": "FOUR NEGATIVE CASES, each mutating the document and each asserting the mutation TOOK (round 278's eighth species is guarded): a dropped approver row, a dated trigger, fabricated closure evidence, a task no request nameth, and a prose-only verification row -- EVERY ONE IS REPORTED.",
+   "the_lane's_own_state_is_unchanged": "the five gates stay OPEN, no artifact hath arrived, readiness flags false, and acquisition still closes nothing."
+  }
  },
  "findings": {
   "ANDROID-01": {
