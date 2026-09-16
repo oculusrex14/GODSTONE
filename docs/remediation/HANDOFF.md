@@ -4,6 +4,16 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 281 -- IOS-02 step 1: measured, RED taken, repair proven, and PARKED (blast radius is atomic)
+
+- **Measured:** `beginTrustedHandshake(` and `beginKeyConfirmation(` each appear ONCE — their declarations. Nothing in production calls them (IOS-02's claim, exact).
+- **RED first:** 3 silent arms in the canonical T22 suite; before the repair, 15 tests / exactly 2 failures with an EMPTY rejection ring ('no HS1 went out').
+- **Repair proven:** the `.physicalDuplexReady` branch calls `beginTrustedHandshake` once, from `.roleBound`, with the captured hint → **T22 16 tests / 0 failures**; `publishRelation` deliberately kept (physical, not trusted, publication).
+- **Blast radius measured (the instrument the Android attempts lacked):** full iOS lane 1208 tests / **61 failures** — T23 30, T21 26, T17 3, T19 1, T14 1 — all rigs that begin by hand after the adapter already did (`hs.begin|begin initiator refused`).
+- **Parked, not landed:** a lane may never be left red. Patch `round281-the-repair-and-the-arms.patch` (sha256 `4fe85c5e0ad28b0c…`), plus `audit_probes/swift/ReadinessIOS02Tests.swift` and `audit_probes/python/test_ios02_transport_starts_d2.py` (the latter RED today and PROVEN GREEN under the patch).
+- **Next round's enabling idea (recorded so it need not be rediscovered):** give T21/T23 rigs a variant that stops BEFORE the notification reduction (`subscribeth: false`); refusal arms need their ring count raised by one, since the adapter's own attempt now rings too.
+- **Green with the work parked:** T22 13/0; probes 12 OK; courts 579 OK; control PASSED; digests 320/320.
+
 ## Round 279 -- the FINAL candidate at `b076e26`, every mandatory lane re-measured at that exact SHA
 
 - **Candidate:** `b076e26` (tree `b4536292`) — android `:mesh` FORCED 1193/0/0; iOS foundation mirror re-generated + `Executed 1205 tests, 0 failures`; python 579 OK; probes 12 OK; every `ci/check_*.py` rc 0 except `check_parity` DEFAULT (= the external A-06 arm), `--scope repo` rc 0; digests 320/320; symbols 223 files 0 unresolved; lab APK FORCED 15,133,266 bytes; iOS lab `BUILD SUCCEEDED` 0 errors.

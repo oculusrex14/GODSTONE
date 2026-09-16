@@ -6144,7 +6144,50 @@
    "impact": "An exhaustive search of canonical Sources finds `beginTrustedHandshake(` only at its declaration (`BleTransport.swift:2177`); likewise `beginKeyConfirmation(` only at its declaration (2353). On notification success, the real adapter's physical-duplex branch (3184–3188) only calls `publishRelation`. That publishes physical/connected delegate callbacks (2516–2524); MeshNode does not implement physical-duplex or handshake-ready callbacks, and their default implementations do nothing (4210–4213). A trusted HS2/HS3 completion calls the default-no-op handshake-ready delegate (2046/2111), not key confirmation. The tests explicitly start these missing stages themselves (`ReadinessT21Tests.swift:560`, `ReadinessT23Tests.swift:754` and other confirmation cases). Drive a valid UUID discovery, GATT discovery, LinkInfo read/write, and notification enable through the real delegate adapters. Stop delivering synthetic actions. No HS1 is emitted. If a test explicitly starts HS1 and completes Noise, no PING challenge is emitted automatically. This is absent wiring, not a device limitation.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
-   "my_logs": [],
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round281-RED-adapter-never-beginneth.log",
+     "sha256": "d00c59861fab2e9b0b040e6642d64c5fe2e3c252db5bf02f413f7e59a43ad23c",
+     "what": "IOS-02 round 281: round281-RED-adapter-never-beginneth.log",
+     "outcome": "the RED taken (15 tests / 2 failures, empty ring), the repair proven (T22 16/16), the blast radius measured (1208 tests / 61 failures across five suites), the repair preserved as a patch, and every lane green with the work parked."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round281b-repair-blast-radius.log",
+     "sha256": "5dd97220c903dbaa05346011d36ff3b98536bbcc4dc6e95ea9d5a535195b7406",
+     "what": "IOS-02 round 281: round281b-repair-blast-radius.log",
+     "outcome": "the RED taken (15 tests / 2 failures, empty ring), the repair proven (T22 16/16), the blast radius measured (1208 tests / 61 failures across five suites), the repair preserved as a patch, and every lane green with the work parked."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round281c-rig-reconciled.log",
+     "sha256": "19f6b6feda127bd299ea3ead2a28e7cf16ed113427e4aa868afdd349f52828cf",
+     "what": "IOS-02 round 281: round281c-rig-reconciled.log",
+     "outcome": "the RED taken (15 tests / 2 failures, empty ring), the repair proven (T22 16/16), the blast radius measured (1208 tests / 61 failures across five suites), the repair preserved as a patch, and every lane green with the work parked."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round281d-rig-reconciled-2.log",
+     "sha256": "402f7298ca1eec77619e4eaa3b12c83b36a0ea0e317a676744e7c96d358328d7",
+     "what": "IOS-02 round 281: round281d-rig-reconciled-2.log",
+     "outcome": "the RED taken (15 tests / 2 failures, empty ring), the repair proven (T22 16/16), the blast radius measured (1208 tests / 61 failures across five suites), the repair preserved as a patch, and every lane green with the work parked."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round281e-full-ios-lane.log",
+     "sha256": "ec7e3039853e0735ef8fea41f8832917f855155c488f1ff8df1e455488daa34c",
+     "what": "IOS-02 round 281: round281e-full-ios-lane.log",
+     "outcome": "the RED taken (15 tests / 2 failures, empty ring), the repair proven (T22 16/16), the blast radius measured (1208 tests / 61 failures across five suites), the repair preserved as a patch, and every lane green with the work parked."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round281f-parked-and-reverted.log",
+     "sha256": "43a8e73bc4876bbcb970fa9c3526c5ca4664488883bfa639554c3dfbcd78b6cd",
+     "what": "IOS-02 round 281: round281f-parked-and-reverted.log",
+     "outcome": "the RED taken (15 tests / 2 failures, empty ring), the repair proven (T22 16/16), the blast radius measured (1208 tests / 61 failures across five suites), the repair preserved as a patch, and every lane green with the work parked."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-02/round281g-lanes-green-with-the-work-parked.log",
+     "sha256": "61d2f9bb845457a982c1c68fb42f9bd7ea9e216a66c05428b3c7c48aff847c3b",
+     "what": "IOS-02 round 281: round281g-lanes-green-with-the-work-parked.log",
+     "outcome": "the RED taken (15 tests / 2 failures, empty ring), the repair proven (T22 16/16), the blast radius measured (1208 tests / 61 failures across five suites), the repair preserved as a patch, and every lane green with the work parked."
+    }
+   ],
    "my_red_case": null,
    "my_status": "OPEN",
    "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-02): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
@@ -6180,7 +6223,10 @@
     "T24"
    ],
    "title": "adapter never starts D2 or key confirmation",
-   "wave": "4e"
+   "wave": "4e",
+   "pending_work": [
+    "ROUND 281 (IOS-02 STEP 1: THE DEFECT IS MEASURED, THE RED IS TAKEN, THE REPAIR IS WRITTEN AND PROVEN, AND **THE WHOLE OF IT IS PARKED** BECAUSE ITS BLAST RADIUS IS ATOMIC AND A LANE MAY NEVER BE LEFT RED). (1) **THE CARD'S CLAIM IS EXACTLY TRUE, MEASURED: `beginTrustedHandshake(` appeareth ONCE in the canonical Sources -- its declaration at `BleTransport.swift:2294` -- and `beginKeyConfirmation(` ONCE at `:2575`. NOTHING IN PRODUCTION CALLETH EITHER**, so a relation reacheth trust only if application or test code invoketh the door by hand. It is the fourth finding of this programme whose whole shape is 'the instrument existeth and no production path reacheth it' -- and the twin of ANDROID-01, whose source-level probe is ALREADY parked in the same directory. (2) **THE RED WAS TAKEN FIRST, as the protocol requireth: three new arms in the canonical T22 suite, whose whole force is their SILENCE -- NOTHING IN THEM CALLETH `beginTrustedHandshake`; they drive only the real entries and await the HS1 that the law should put on the wire.** Measured before the repair: 15 tests, EXACTLY 2 FAILURES (the two beginning arms), each saying 'THE ADAPTER NEVER BEGAN THE TRUSTED HANDSHAKE upon the witnessed duplex: no HS1 went out', WITH AN EMPTY REJECTION RING -- nothing had even attempted the begin. The other 13 arms passed: THE RED IS NOT A RIG FAILURE. (3) **THE REPAIR WAS WRITTEN AND IT WORKETH: at the physical-duplex reduction (`reductionProcessPeripheralNotificationStateUpdated`'s `.physicalDuplexReady` branch) the transport now readeth the relation's captured remote hint from the driver's election context and calleth `beginTrustedHandshake`, ONCE, and only from `.roleBound` (the card's no-second-slot clause).** With it: **T22 16 tests, 0 FAILURES** -- the three arms green, plus a third witness for the card's 'do not repeat beginInitiator' law, whose words come from the ring itself (`hs.begin|begin initiator refused`). `publishRelation` was NOT removed: it publisheth the PHYSICAL relation (`transportPhysicalDuplexReady`) and is a different concern from the authenticated readiness of the card's fifth step -- removing it would be a repair breaking its neighbour. (4) **AND THE BLAST RADIUS WAS MEASURED, NOT GUESSED -- WHICH IS THE INSTRUMENT THE FOUR EARLIER ANDROID ATTEMPTS LACKED: the FULL iOS LANE ran 1208 tests with 61 FAILURES -- ReadinessT23 30, ReadinessT21 26, ReadinessT17 3, ReadinessT19 1, ReadinessT14 1 -- EVERY ONE OF THEM A RIG THAT BEGINNETH THE HANDSHAKE BY HAND AFTER THE ADAPTER ALREADY HAD, and is therefore REFUSED with its own HS1 cleared away by `capturePeer.clearWrites()`. THE PRODUCTION LAW IS NOT BROKEN: THE RIGS ENCODE THE OLD ONE.** (And my own first extraction of that list over-reported, naming two unrelated suites; the corrected count is the one above.) (5) **THE RECONCILIATION IS ARM BY ARM, AND THE HARD PART IS NAMED SO THE NEXT ROUND NEED NOT REDISCOVER IT: T21 AND T23 CARRY GUARD-LAW ARMS WHOSE PRECONDITIONS CAN NO LONGER BE ARRANGED AFTER RIG CONSTRUCTION, because the adapter now beginneth DURING construction** -- e.g. `testTheBeginIsRefusedWhileTheDuplexLiesUnwitnessed` setteth `maxAttValueLength = 10` AFTER `rigT21()` hath already witnessed the duplex and begun. **The enabling idea: give the rigs a variant that stoppeth BEFORE the notification reduction** (`advanceToRoleBound(..., subscribeth: false)`), so a guard-law arm can arrange its precondition and THEN witness the transport's own entry; and arms that witness a refusal need their expected ring count RAISED BY ONE, because THE ADAPTER'S OWN ATTEMPT NOW RINGETH TOO -- a STRONGER witness, not a weaker one. `ReadinessT22Tests` is ALREADY reconciled in the preserved patch (both drive helpers REAP the adapter's HS1; `t22Hs1` readeth the counsel's PAYLOAD off the wire). (6) **WHAT LANDED THIS ROUND AND STANDETH: the work is PRESERVED AS A RE-APPLIABLE PATCH -- `round281-the-repair-and-the-arms.patch`, sha256 4fe85c5e0ad28b0cdd099e53d72d0344f8dc25d760eee2345ae80b15cf8c24f5 -- and TWO PARKED PROBES, per the directory's own rule that a red-by-design arm liveth outside the green lanes: `tools/readiness/audit_probes/swift/ReadinessIOS02Tests.swift` (the three behavioural arms, RUN and MEASURED) and `tools/readiness/audit_probes/python/test_ios02_transport_starts_d2.py` (a source-level probe, RED today and **PROVEN GREEN UNDER THE PATCH** -- applied, run, and reverted in the same breath, so it is a witness and not a stuck check). AND THE PROBE'S OWN FIRST DRAFT WAS WRONG AND WAS CAUGHT BY RUNNING IT: `find(REDUCTION)` matched the CALL in the public wrapper rather than the DECLARATION, so its window judged the wrapper and it could NEVER have gone green however good the repair -- A WINDOW THAT BEGINS AT THE WRONG PLACE IS AS BLIND AS ONE THAT ENDS AT THE WRONG PLACE (round 277's fifth species). The window now beginneth at the declaration and its edge is the next declaration. (7) **EVERY LANE IS GREEN WITH THE WORK PARKED: T22 13 tests / 0 failures; the probes lane 12 OK; the python courts 579 OK; the mandatory lab control PASSED (0 errors, 13 notes); evidence digests 320/320.** STEPS 2-5 OF THE CARD (the captured GATT-bound hint; the reservation-rejection rule; HS3-before-DATA and the trusted-ready key confirmation; readiness published only after matching confirmation) REMAIN OUTSTANDING, and IOS-02 STANDETH OPEN."
+   ]
   },
   "IOS-03": {
    "audit_status_at_snapshot": "OPEN",
