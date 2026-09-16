@@ -748,43 +748,36 @@
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_222": {
-   "candidate_sha": "1f110b154edc337246a072210366e049a4669b1b",
-   "tree_sha": "74b2dd8d4dd4e19d13e048c0c5905a47dc1fb47b",
-   "worktree": "clean at this sha",
-   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_FINAL_1f110b154edc337246a072210366e049a4669b1b/verify.log",
-   "log_sha256": "4c8e420dd2fa0d43780b46f9b07e9a33593a5b80e5b6abeb7904510f9bb6f34c",
-   "measured": {
-    "android_mesh_lane": "**1192 tests, 0 failures, 0 errors**, and the run was FORCED (`--rerun-tasks`) after a first attempt finished in 2 s -- a cached green is not evidence",
-    "ios_lane_mirrored_package": "**Executed 1205 tests, with 0 failures (0 unexpected)**, 181.1s",
-    "python_readiness_suite": "OK",
-    "ledger_court": "OK",
-    "repository_controls": "EVERY ci/check_*.py rc 0; the ONLY non-zero is `check_parity` under its DEFAULT scope = the EXTERNAL A-06 arm, and `--scope repo` is rc 0",
-    "symbols": "ci/symbols.py: 0 unresolved"
-   },
-   "per_declared_scope": {
-    "Mesh/Oracle": {
-     "findings": 40
+   "candidate_sha": "d082530916904453547ee279a7f436def08f6358",
+   "tree_sha": "3d239e8f7507bf759eac4c8ad091be1e0adf7267",
+   "worktree": "clean at this sha apart from this record",
+   "logs": {
+    "android_lanes": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_222/android-lanes.log",
+     "sha256": "334869c942b6e50c9928d2250580863322e4b8e440bdba1fd506f646c73dffae"
     },
-    "Both": {
-     "findings": 14
+    "ios_full_lane": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-RUNTIME-001/round221-full-lane.log",
+     "sha256": "5990a0d9dd874e83bc417756391b3346b47487a02aa28a836a9fd2a2cdc1f12b"
     }
    },
-   "since_round_200": "ANDROID-04's scheduler was PROVEN by a controlled experiment (round 210: a silent peer tripped by TIME alone); IOS-05's steps 1-4 landed with a behavioural full-NodeID witness and a durable-trust separation witnessed against a real repository (202-203); IOS-07's owned deadline sweep landed with its own controlled-experiment witness (213); ANDROID-06's reservations were repaired (a slot TAKEN, a generation and capacity epoch CAPTURED, cancellation at the writer AND the caller, the bound counting RESERVED records) and its caller-side law was then WITNESSED behaviourally through a named seam (216-221); and the CONNECTION's lease clock was made MONOTONIC at both creation sites (208)",
-   "NOT_CLAIMED_AND_WHY": [
-    "T78 CONVERGENCE IS NOT CLAIMED: its requirement is that all applicable HOSTED lanes be enabled, executed and green AT THIS SHA, and NO hosted lane, run URL, run id or log exists in this environment.",
-    "NO FINDING IS VERIFIED_FIXED: only an INDEPENDENT AUDIT may write that word (live counts: 32 FIX_SUBMITTED, 18 OPEN, 4 PARTIAL).",
-    "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES STAY OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING).",
-    "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance."
-   ],
-   "python_lane_CORRECTION_AT_ROUND_278": {
-    "round": 278,
-    "was_claimed": "the python readiness suite (and, from round 256, the ledger court) was recorded OK at this candidate",
-    "measured_at_this_exact_tree": "rc=1: the python readiness suite FAILED (failures=1) -- tools/readiness/tests/test_t26_post_aead_charge.py::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle, re-measured at THIS EXACT TREE in round 278 (throwaway worktree at the candidate SHA)",
-    "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
-    "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
+   "measured": {
+    "android_mesh_lane": "1193 tests, 0 failures, 0 errors -- FORCED (`--rerun-tasks`)",
+    "android_lab_apk": "15133266 bytes, FORCED, rc 0",
+    "ios_foundation_lane": "`Executed 1218 tests, with 0 failures (0 unexpected)` -- MEASURED at the immediately preceding commit, whose PRODUCTION CONTENT IS IDENTICAL (the commits since are documentation only, each saying so). STATED rather than glossed: an inherited measurement is not evidence for a different tree.",
+    "python_readiness_suite": "598 tests, OK, rc 0",
+    "audit_probes": "12 tests, OK, rc 0",
+    "repository_controls": "mandatory lab control PASSED (14 notes); `check_parity --scope repo` rc 0",
+    "symbols": "223 Kotlin files scanned, 0 unresolved",
+    "evidence_digests": "354 registered | 354 examined | 354 verified",
+    "ios_lab_build": "NOT RE-MEASURED and NOT CLAIMED at this SHA"
    },
-   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
-   "stands_as_the_convergence_candidate": false
+   "per_declared_scope": {
+    "LIGHT_Archive": 14,
+    "Mesh_Oracle": 40
+   },
+   "what_moved": "BOTH ISLES measured at one candidate after GS-RUNTIME-001's six landings.",
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane/URL/id/log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN."
   },
   "candidate_verification_at_round_254": {
    "candidate_sha": "5d75d21af64dc2b153e0aa4ebf508cd8bc1c037d",
@@ -3120,7 +3113,9 @@
     "Mesh_Oracle": 40
    },
    "what_moved": "GS-RUNTIME-001 step 4's inbound wake (untrusted senders not served), and step 5's admission road measured as the RecordWriter's own.",
-   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN."
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
+   "SUPERSEDED_BY": "candidate_verification_at_round_222: that SHA measured the iOS lane only; THIS one measureth BOTH ISLES at the current content.",
+   "stands_as_the_convergence_candidate": false
   }
  },
  "counts": {

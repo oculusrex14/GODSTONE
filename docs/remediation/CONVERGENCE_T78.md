@@ -15,7 +15,7 @@ T78 requireth that all applicable **hosted** lanes be enabled, executed and gree
 | **Note on later commits** | every commit AFTER that candidate is **documentation, probes or tests only** (no production source), and each says so in its own message; the candidate is the last SHA at which the mandatory lanes were MEASURED, and no later commit claimeth them |
 | **LIGHT Archive scope** | **14 findings** — the audit's 'Both' |
 | **Mesh/Oracle scope** | **40 findings** |
-| **Measured at that SHA** | **android `:mesh` FORCED 1193 tests / 0 failures / 0 errors** and `labmesh-debug.apk` rc 0; iOS foundation `Executed 1212 tests, with 0 failures`; python suite 596 OK; audit probes 12 OK; mandatory lab control PASSED; `check_parity --scope repo` rc 0; `ci/symbols.py` 223 Kotlin files, 0 unresolved; evidence digests 350/350 |
+| **Measured at that SHA** | **android `:mesh` FORCED 1193 tests / 0 failures / 0 errors** and `labmesh-debug.apk` rc 0; iOS foundation `Executed 1218 tests, with 0 failures`; python suite 596 OK; audit probes 12 OK; mandatory lab control PASSED; `check_parity --scope repo` rc 0; `ci/symbols.py` 223 Kotlin files, 0 unresolved; evidence digests 350/350 |
 | **NOT claimed at that SHA** | the **iOS lab build** (no lab target changed; *a cached green is not evidence*) |
 
 ## 3. THE THREE LISTS THE OBJECTIVE DEMANDETH
