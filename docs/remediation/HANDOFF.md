@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 198 -- IOS-02 step 3's first-counsel clause measured; its witness parked (the behavioural road is unreachable here)
+
+- **Defect measured in the production text**: `beginTrustedHandshake` ends `return writeHandshakeRecord(.hs1, …)` — the outcome is **never bound or inspected**, and the connection is already marked engaged (`markHandshakeEngaged()`, `advanceStage(to: .hsOut)`). A refused first counsel leaves a relation **in handshake with nothing on the wire**.
+- **Why a source-level witness**: the repository's *own* arm for the same law at the third counsel says the reservation flood is "beyond the tests reach by any public handle … proven on the other island by the flooder and here by inspection". So the probe is parked, red by design: positive control passes, law-arm fails *printing the whole function as its evidence*.
+- **Remaining for IOS-02**: step 2's capture clause; step 3 (bounded repair: bind the write's outcome, close the relation exactly on refusal). Steps 1, 4, 5 landed.
+
 ## Round 197 -- **IOS-02 STEP 4 LANDS**: the trusted-ready transition issues the challenge; full iOS lane GREEN
 
 - **Repair**: at the initiator's trusted-ready transition, the transport issues the challenge **once**, only if none stands, and **names** any refusal in the ring. The wire witnesses it: `state=ready | writes=2 kinds=[20, 24]` = **[HS3, challenge]**.
