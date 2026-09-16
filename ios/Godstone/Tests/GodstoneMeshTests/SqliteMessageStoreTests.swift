@@ -1418,4 +1418,36 @@ final class SqliteMessageStoreTests: XCTestCase {
                        "an unreadable measurement is a FAILURE, and a failure is never a fabricated zero")
         XCTAssertTrue(heldIds().isEmpty)
     }
+
+    // ------------------------------------------------------------- GS-STORE-004
+    //
+    // The audit's charge: "Receipt-relative retention is not stored or executed by the real store ... The
+    // existing store still records wall-clock receipt times without wiring the new checkpoint/debit policy into
+    // transactions or startup." THE FIRST LAW OF THAT WIRING: THE RECEIPT ANCHOR COMETH FROM THE INJECTED
+    // CLOCK, NEVER FROM WALL TIME READ INSIDE A TRANSACTION METHOD. Run RED against the tree as it stood.
+
+    func testGSSTORE004_theReceiptAnchorComethFromTheInjectedClock() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        var consulted = 0
+        s.receiptTimeProvider = { consulted += 1; return (monoMs: 7_777_000, bootIdentity: "boot-A") }
+        let f = frame(3, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertGreaterThan(consulted, 0,
+                             "the store must ASK the injected clock, not read wall time inside its transaction")
+        XCTAssertEqual(s.receiptAnchorForTest(f.msgId), 7_777_000,
+                       "the persisted anchor must be the INJECTED monotonic reading, never Date()")
+    }
+
+    func testGSSTORE004_aDuplicateReceiptNeverReplenishesTheBudget() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        var now: Int64 = 1_000_000
+        s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(4, .direct, 48)
+        _ = s.persist(f, receivedFrom: Data([7]))
+        let firstAnchor = s.receiptAnchorForTest(f.msgId)
+        now += 3_600_000                     // an hour later, the SAME message arriveth again
+        _ = s.persist(f, receivedFrom: Data([7]))
+        XCTAssertEqual(s.receiptAnchorForTest(f.msgId), firstAnchor,
+                       "a DUPLICATE receipt must RETAIN the original budget, never replenish it")
+    }
 }

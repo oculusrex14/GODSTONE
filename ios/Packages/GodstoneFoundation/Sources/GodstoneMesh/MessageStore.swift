@@ -788,9 +788,41 @@ public final class SqliteMessageStore: MessageStore {
 
     // MARK: - MessageStore
 
+    /// GS-STORE-004 (STEP ONE -- THE SEAM WITHOUT ITS SEMANTICS): THE RECEIPT CLOCK, INJECTED.
+    ///
+    /// The finding's own words: "Provide one platform monotonic-clock/continuity adapter per runtime. Pass it into
+    /// the real store INSTEAD OF FETCHING WALL TIME INSIDE TRANSACTION METHODS." This is that seam: it answereth
+    /// the MONOTONIC anchor and the BOOT IDENTITY the retention policy needeth (`RetentionPolicy.admit(...)`),
+    /// and PRODUCTION PASSETH THE PLATFORM ADAPTER while a court may pass a deterministic fake.
+    ///
+    /// AT THIS STEP **NOTHING CONSULTETH IT**: the wall-clock stamp below standeth unchanged, so the arm that
+    /// injects a clock and demandeth the store's anchor to come from it FAILETH -- ON ITS ASSERTION, which is
+    /// what maketh it a behavioural RED rather than a compile failure.
+    public var receiptTimeProvider: (() -> (monoMs: Int64, bootIdentity: String))?
+
     public func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {
         persistAt(frame, receivedFrom: receivedFrom,
                   receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
+    }
+
+    /// GS-STORE-004 evidence hook: the receipt anchor the store PERSISTED for a message (the retention budget's
+    /// own anchor, never the sender's timestamp). Nil when the message is not held.
+    internal func receiptAnchorForTest(_ msgId: Data) -> Int64? {
+        var found: Int64? = nil
+        _ = withDb { db in
+            let sql = "SELECT \(StoreSchema.colReceivedAt) FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ? LIMIT 1"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return false
+            }
+            defer { sqlite3_finalize(stmt) }
+            let blob = msgId as NSData
+            guard sqlite3_bind_blob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK else { return false }
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return false }
+            found = Int64(sqlite3_column_int64(stmt, 0))
+            return true
+        }
+        return found
     }
 
     public var heldBytes: Int64 {
