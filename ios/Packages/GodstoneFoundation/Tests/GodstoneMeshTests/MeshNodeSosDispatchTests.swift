@@ -220,6 +220,10 @@ final class MeshNodeSosDispatchTests: XCTestCase {
 /// A `MessageStore` whose `persist` always fails (`.failedStorage`) -- exercises
 /// the B4 "persist fails -> notPersisted, zero sends" gate without sqlite3.
 private final class AlwaysFailingStore: MessageStore {
+        /// GS-STORE-005 (round 281): DECLARED, NOT INHERITED (this double relied on the extension default too).
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
     func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
     func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult { .storageFailure }
     func allHeldOrderedByPriority() -> [FrameV2] { [] }

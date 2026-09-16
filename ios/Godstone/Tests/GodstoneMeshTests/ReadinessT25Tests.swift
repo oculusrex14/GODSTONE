@@ -237,9 +237,16 @@ final class ReadinessT25Tests: XCTestCase {
         /// Models a transaction that rolled back: no durable change survives, and the store fire'th NO observer.
         func simulateRolledBackCommit(_ ids: [Data]) { /* deliberately inert: no mutation, no notify */ }
         func emitObservers() { slock.lock(); let obs = observers; slock.unlock(); obs.forEach { $0() } }
-        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
+        /// GS-STORE-005 (round 281): DECLARED, NOT INHERITED. The compiler named this conformance the moment the
+        /// extension default was deleted -- a double that answereth no lease must SAY so, because a
+        /// silently-defaulted method is a wire that can go unplugged unremarked.
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
+
             slock.lock(); observers.append(observer); registrations += 1; slock.unlock()
+            return nil
         }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
         func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .heldNew }
         func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
             .canonicalFrameMismatch

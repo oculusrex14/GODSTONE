@@ -117,12 +117,25 @@ public protocol MessageStore: AnyObject {
 
     /// Register a callback invoked whenever the held message set changes
     /// (e.g. on accepted insert/persist, direct enqueue, deletion, eviction, or clear).
-    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void)
+    ///
+    /// GS-STORE-005 (round 276, STEP ONE -- THE API WITHOUT ITS SEMANTICS): the registration answereth a
+    /// RELEASABLE LEASE, and `nil` for a store that observeth nothing. The lease is the store's own
+    /// `ObservationLease.LeaseToken` (`StoreQuota.swift`), so the contract the T33 courts already exercise is
+    /// the contract the real store now speaketh. AT THIS STEP the token is minted and NOTHING ELSE CHANGETH:
+    /// releasing it is still a no-op and the census still counteth the append-only array, so the arms below
+    /// FAIL -- which is what maketh them a behavioural RED rather than a compile failure.
+    @discardableResult
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken?
+
+    /// Release a registration. Idempotent; releasing twice is safe.
+    func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken)
 }
 
-public extension MessageStore {
-    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {}
-}
+// GS-STORE-005 (round 281): THE EXTENSION'S DEFAULT IS GONE ENTIRELY -- and deliberately. A default for a
+// method whose absence SILENTLY DISABLETH OBSERVATION is a licence for a wire to go unplugged with the
+// compiler's blessing: an unchanged OLD signature satisfied the requirement through it while the class's own
+// method became an overload nothing called, and nine arms read a census of zero. With no default, EVERY
+// conformance must declare the surface, and THE COMPILER enumerateth them.
 
 /// Schema + SQL shared in spirit with the Android `StoreSchema`. Keeping the
 /// SQL byte-identical means the bounded-capacity eviction, the INSERT OR IGNORE
@@ -672,25 +685,45 @@ public final class SqliteMessageStore: MessageStore {
     private var handle: OpaquePointer?
     private let lock = NSLock()
     private let maxBytes: Int64
-    private var heldSetObservers: [@Sendable () -> Void] = []
+    /// GS-STORE-005 STEP TWO: THE REGISTRATIONS ARE THE CONTRACT'S OWN LEASE, not an append-only array. Every
+    /// property the T33 courts already exercise cometh with it: a registration is released by ITS handle, a
+    /// dispatch runneth ONCE per commit, IN ORDER, NOT REENTRANTLY (a registration made during dispatch is
+    /// carried to the NEXT round), and an aborted transaction DISCARDETH what was registered within it.
+    private let observations = ObservationLease()
     /// The data-protection class the DB file is created with. Pinned to
     /// `.complete` (production default) so a regression to a weaker class is a
     /// test failure, not a silent weakening of at-rest encryption.
     public let fileProtection: FileProtectionType
 
-    public func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
-        lock.lock()
-        heldSetObservers.append(observer)
-        lock.unlock()
+    /// GS-STORE-005 STEP ONE: the lease is minted and the registration is still APPEND-ONLY, so the arm that
+    /// counteth lifetimes and the arm that releaseth both FAIL here. STEP TWO giveth the lease its meaning.
+    private var nextLeaseId = 0
+
+    @discardableResult
+    public func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
+        // The lease owneth its own synchronisation; the store's lock is NOT taken here (registering must not
+        // contend with a write in flight).
+        return observations.register(observer)
     }
 
+    public func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {
+        observations.unregisterBy(lease)
+    }
+
+    /// GS-STORE-005 evidence hook: the registrations the store holdeth. A disposed registration must leave
+    /// this at its baseline, and `close()` must return it to zero.
+    internal func observerCensusForTest() -> Int { observations.registrationCount }
+
+    /// GS-STORE-005 STEP ONE: the seam existeth and is STORED, and NOTHING CONSULTETH IT YET -- so the arm
+    /// that injecteth an over-quota snapshot and expecteth a refusal FAILS here. STEP TWO consulteth it in the
+    /// admission path with typed measurement-failure handling.
+    public var quotaSnapshotSource: (@Sendable () -> QuotaSnapshot)?
+
     internal func notifyHeldSetChanged() {
-        lock.lock()
-        let observers = heldSetObservers
-        lock.unlock()
-        for observer in observers {
-            observer()
-        }
+        // GS-STORE-005 STEP TWO: dispatching AFTER THE COMMIT, off the store's lock, ONCE per registration, in
+        // order, and never reentrantly -- the lease's own law. (The store calleth this only once its write
+        // transaction hath committed, so "after commit" is a property of the call site as well as the lease.)
+        observations.afterCommit()
     }
 
     /// Open (or create) the store at `url` with a `maxBytes` hard cap.
@@ -742,6 +775,9 @@ public final class SqliteMessageStore: MessageStore {
     deinit { if let db = handle { sqlite3_close_v2(db) } }
 
     public func close() {
+        // GS-STORE-005: closing releaseth EVERY registration -- a store that no longer standeth must hold no
+        // callback, and a reader of the census must SEE that rather than infer it.
+        observations.releaseAll()
         lock.lock()
         defer { lock.unlock() }
         if let db = handle {
@@ -853,6 +889,30 @@ public final class SqliteMessageStore: MessageStore {
         _ frame: FrameV2, receivedFrom: Data, receivedAt: Int64,
         fault: ((String, OpaquePointer?) throws -> Void)?
     ) -> PersistResult {
+        // GS-STORE-005 STEP THREE: THE QUOTA GATE, CONSULTED BEFORE THE TRANSACTION BEGINS AND THEREFORE BEFORE
+        // ANY ROW (HELD OR PROTECTED) CAN BE TOUCHED. The snapshot cometh from the INJECTED source -- the
+        // composition root's real measurements of the database, its WAL and the logical row categories -- and
+        // the verdict is `StoreQuota.admit`'s own:
+        //   .accepted          -> the write proceedeth as it always did;
+        //   .queryError        -> `.failedStorage`: AN UNREADABLE MEASUREMENT IS A FAILURE, NEVER A FABRICATED 0,
+        //                         and refusing is the only honest answer when the store cannot measure itself;
+        //   any pressure refusal -> `.rejectedCapacity`, the store's EXISTING refusal: NO EVICTION RUNNETH, so a
+        //                         protected row (an unexpired tombstone, a verified or revoked trust pin, a
+        //                         delivery row) is NOT slain to make room -- which is what the arm asserteth.
+        // With no source injected nothing changeth: the ceiling remains the held cap enforced below.
+        if let source = quotaSnapshotSource {
+            switch StoreQuota.admit(snapshot: source(),
+                                    candidateSize: Int64(frame.payload.count),
+                                    isDuplicate: false,
+                                    isTerminal: false) {
+            case .accepted:
+                break
+            case .queryError:
+                return .failedStorage
+            default:
+                return .rejectedCapacity
+            }
+        }
         do {
             let result = try withTransaction { db in
                 // A duplicate (INSERT OR IGNORE no-op) is NOT an error: returns
@@ -2061,11 +2121,22 @@ internal final class InMemoryMessageStore: MessageStore {
 
     internal init(maxBytes: Int64 = .max) { self.maxBytes = maxBytes }
 
-    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
+    /// GS-STORE-005 STEP TWO: THIS TWIN MUST DECLARE THE PROTOCOL'S OWN SIGNATURE -- and that is a LESSON
+    /// rather than a formality. An unchanged declaration becometh an OVERLOAD while the protocol's extension
+    /// default satisfieth the requirement INSTEAD, so every registration made through the protocol SILENTLY
+    /// VANISHETH (the nine failures the whole-lane run found were exactly that: a census of zero where one was
+    /// due, and a refresh that never came). It answereth `nil`: its registrations are the courts' own
+    /// convenience; the RELEASABLE contract belongeth to the store that owneth durable state.
+    @discardableResult
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
         lock.lock()
         heldSetObservers.append(observer)
         lock.unlock()
+        return nil
     }
+
+    /// The protocol's other half, so this twin is not silently served by the default either.
+    func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
 
     private func notifyHeldSetChanged() {
         lock.lock()

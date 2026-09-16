@@ -214,6 +214,9 @@ final class ReadinessT23Tests: XCTestCase {
     }
 
     private final class T23MessageStore: MessageStore {
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
         var held: [Data] = []
         private var observers: [@Sendable () -> Void] = []
         private let lock = NSLock()

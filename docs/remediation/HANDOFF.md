@@ -1,3 +1,17 @@
+## Rounds 272-286 -- the iOS lane unblocked, a latent witness defect repaired, and GS-STORE-005 LANDED after a five-round walk
+
+**The licence was accepted, and the iOS lane's first measurement was RED** — `ReadinessT72Tests.testW10AFailedSeedIsRecordedAndReproducible` failed *in the full suite* while passing *in isolation*. **Measured to its root**: the probe showed every quantity identical (`inboxRows 4096`, `deliveryAdvances 2701`, `refusals 6`, `census 2001`, `leases 0`) and only the **named** duplicate differing — because `run()` chose it by **dictionary iteration order**. So it was a **witness defect, not a behavioural one**: the campaign's trajectory *is* reproducible, and its replay hint was not. The repair (canonical: the smallest offending key) turned the lane green.
+
+**And then GS-STORE-005 — landed, with a five-round lesson about method.** The repair itself: the store's registrations **became the contract's own `ObservationLease`** (released by its handle, dispatched **after the commit**, once each, in order, **never reentrantly**, mid-dispatch registrations carried to the next round, with a **census the courts measure**); `close()` releases every registration; the **quota gate is consulted *before* the transaction** — `.accepted` proceeds, `.queryError` → `.failedStorage` (*an unreadable measurement is a failure, never a fabricated zero*), any pressure refusal → the store's existing `.rejectedCapacity` with **no eviction**, so no protected row is slain; and **the extension default was deleted** so the compiler enumerates every conformance.
+
+**The walk that took five rounds was bound by ONE METHOD lesson, learned the hard way**: *insert at the class's **opening line** — never by scanning for its closing brace.* Fourteen edits by the opening line, **zero mangling**; three mangled edits by the scan. And where a double **delegates**, the honest shape is to **forward** (a delegation that observed nothing while its inner store observed would be a *silent lie*) — which is exactly what the deleted default had been doing to eleven conformances.
+
+**Measured**: the whole iOS lane **rc=0, ZERO failing assertions, 1238 tests** (1233 + the five arms), with the store court's **55 arms** among them.
+
+**GS-STORE-005 is FIX_SUBMITTED, with two owed proofs named rather than implied**: **no device measurement**, and **the composition root does not yet inject the real quota measurements** — the gate is built and witnessed; the wiring that feeds it real numbers is *not* landed.
+
+**Ledger now: OPEN 9 · FIX_SUBMITTED 40 · PARTIAL 5**, five external gates **OPEN**, readiness flags **false**, and **not one `VERIFIED_FIXED` anywhere**.
+
 # Remediation handoff — AUDIT-003-R1
 
 Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external requests

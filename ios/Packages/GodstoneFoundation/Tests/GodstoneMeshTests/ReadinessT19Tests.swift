@@ -257,6 +257,11 @@ final class ReadinessT19Tests: XCTestCase {
         return service
     }
     private final class T17MessageStore: MessageStore {
+        /// GS-STORE-005 (round 284): DECLARED, NOT INHERITED. With the extension default deleted, every
+        /// conformance must SAY what it doeth -- and this double observeth nothing and answereth no lease.
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
         var held: [Data] = []
         private var observers: [@Sendable () -> Void] = []
         private let lock = NSLock()

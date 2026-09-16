@@ -257,6 +257,9 @@ final class ReadinessT22Tests: XCTestCase {
         return service
     }
     private final class T17MessageStore: MessageStore {
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
         var held: [Data] = []
         private var observers: [@Sendable () -> Void] = []
         private let lock = NSLock()
@@ -1070,6 +1073,9 @@ final class ReadinessT22Tests: XCTestCase {
     }
 
     private final class T22MessageStore: MessageStore {
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
         var held: [Data] = []
         var failNextPersist = false
         var persistCount = 0

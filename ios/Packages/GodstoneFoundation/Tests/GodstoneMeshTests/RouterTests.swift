@@ -855,6 +855,9 @@ final class RouterTests: XCTestCase {
 /// A `MessageStore` whose `persist` always fails -- exercises the persist-result
 /// gate in `Router.ingest` without touching sqlite3.
 private final class FailingStore: MessageStore {
+    @discardableResult
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+    func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
     func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
     func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult { .storageFailure }
     func allHeldOrderedByPriority() -> [FrameV2] { [] }
@@ -870,6 +873,9 @@ private final class FailingStore: MessageStore {
 /// the same msg_id must be re-acceptable, proving the failed first attempt did
 /// not poison the dedup window.
 private final class FailThenSucceedStore: MessageStore {
+    @discardableResult
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+    func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
     private let backing = InMemoryMessageStore()
     private let lock = NSLock()
     private var attempts: [Data: Int] = [:]

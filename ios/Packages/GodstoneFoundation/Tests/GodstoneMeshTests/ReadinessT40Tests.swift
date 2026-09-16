@@ -288,6 +288,13 @@ final class ReadinessT40Tests: XCTestCase {
 
     /// A counting delegate: records every persist and every id ever seen.
     private final class CountingStore: MessageStore, @unchecked Sendable {
+        /// GS-STORE-005 (round 286): FORWARDED, not answered nil -- this double DELEGATES, and a
+        /// delegation that observed nothing while its inner store observed would be a silent lie.
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
+            return delegate.registerHeldSetObserver(observer)
+        }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) { delegate.removeHeldSetObserver(lease) }
         let delegate: InMemoryMessageStore
         var persistCount = 0
         var seenAll = [Data]()
@@ -310,6 +317,13 @@ final class ReadinessT40Tests: XCTestCase {
 
     /// A store whose walk advances an injected clock: the read-budget trap.
     private final class BudgetTrapStore: MessageStore, @unchecked Sendable {
+        /// GS-STORE-005 (round 286): FORWARDED, not answered nil -- this double DELEGATES, and a
+        /// delegation that observed nothing while its inner store observed would be a silent lie.
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
+            return delegate.registerHeldSetObserver(observer)
+        }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) { delegate.removeHeldSetObserver(lease) }
         let delegate: InMemoryMessageStore
         let advancePerVisit: Int64
         let sink: (Int64) -> Void

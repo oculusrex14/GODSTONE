@@ -79,6 +79,13 @@ final class ReadinessT36Tests: XCTestCase {
 
     /// MessageStore delegate with one injected fault at the durable enqueue boundary.
     private final class FaultStore: MessageStore, @unchecked Sendable {
+        /// GS-STORE-005 (round 286): FORWARDED, not answered nil -- this double DELEGATES, and a
+        /// delegation that observed nothing while its inner store observed would be a silent lie.
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
+            return base.registerHeldSetObserver(observer)
+        }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) { base.removeHeldSetObserver(lease) }
         let base: InMemoryMessageStore
         var failNextEnqueue: Bool = false
         init(base: InMemoryMessageStore) { self.base = base }

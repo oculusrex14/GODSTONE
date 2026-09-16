@@ -64,6 +64,9 @@ final class ReadinessT42Tests: XCTestCase {
     /// A delegating store whose persist can be REFUSED, so "send before persist"
     /// is witnessable at the real seam.
     private final class RefusingStore: MessageStore, @unchecked Sendable {
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
         let raw: InMemoryMessageStore
         var refusePersist = false
         init(_ raw: InMemoryMessageStore) { self.raw = raw }
@@ -308,6 +311,9 @@ final class ReadinessT42Tests: XCTestCase {
     }
 
     private final class FailingStore: MessageStore, @unchecked Sendable {
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
         func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
         func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data,
                                    localOriginNodeId: Data) -> OutboundEnqueueResult { .storageFailure }

@@ -49,11 +49,17 @@ final class ReadinessT14Tests: XCTestCase {
         private var observers: [@Sendable () -> Void] = []
         private let lock = NSLock()
 
-        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
+        /// GS-STORE-005 (round 284): THE PROTOCOL'S OWN SIGNATURE, and its release half beside it -- the two
+        /// edits the reading at round 283 identified, made here by EXACT TEXT and READ BACK afterwards.
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
             lock.lock()
             defer { lock.unlock() }
             observers.append(observer)
+            return nil
         }
+
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
 
         func notifyObservers() {
             lock.lock()

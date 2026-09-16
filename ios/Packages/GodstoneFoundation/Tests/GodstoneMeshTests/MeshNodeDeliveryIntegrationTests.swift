@@ -199,6 +199,12 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     /// A `MessageStore` whose `persist` always fails (`.failedStorage`) -- the C6
     /// persist-failure gate.
     private final class AlwaysFailingStore: MessageStore {
+        /// GS-STORE-005 (round 281): DECLARED, NOT INHERITED -- this double had relied ENTIRELY on the extension
+        /// default, which is exactly the wire that went unplugged unremarked. It observes nothing and answereth
+        /// no lease, and now SAYETH so.
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
         func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
         func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult { .storageFailure }
         func allHeldOrderedByPriority() -> [FrameV2] { [] }
@@ -508,6 +514,12 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         )
 
         final class CanonicalMockStore: MessageStore {
+        /// GS-STORE-005 (round 281): DECLARED, NOT INHERITED -- this double had relied ENTIRELY on the extension
+        /// default, which is exactly the wire that went unplugged unremarked. It observes nothing and answereth
+        /// no lease, and now SAYETH so.
+        @discardableResult
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
+        func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
             let canonical: FrameV2
             init(canonical: FrameV2) { self.canonical = canonical }
             func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .heldNew }

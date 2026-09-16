@@ -200,6 +200,12 @@ public final class ObservationLease: @unchecked Sendable {
     public func unregisterBy(_ token: LeaseToken) {
         registrations.removeAll { $0.0 === token }; deferred.removeAll { $0.0 === token }
     }
+    /// GS-STORE-005: THE CENSUS OF THE LIVING REGISTRATIONS. A disposed registration must leave this at its
+    /// baseline, and a store that closeth must return it to zero -- a count the courts can MEASURE rather than
+    /// infer from what did or did not fire.
+    public var registrationCount: Int { registrations.count + deferred.count }
+    /// Release EVERY registration (a store closing, or a wipe).
+    public func releaseAll() { registrations.removeAll(); deferred.removeAll() }
     public func afterCommit() {
         if inTx { return }
         registrations.append(contentsOf: deferred); deferred.removeAll()
