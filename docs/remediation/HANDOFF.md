@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 211 -- GS-RUNTIME-001 step 2's dependency chain measured: ONE HARD BLOCKER, named
+
+- **The harness composes**: `InMemoryAckStore` (not the durable store), `AckObligationDriver` with **`TestAckSigner`**, `DurableAckPump`, `AckDispatcher` over the tracker, and `node.recipientInbox = inbox` (`ComposedRuntime.swift:321–376`).
+- **Production already has** the opened SQLite store, the identity repository, the key resolver, the ACK authenticator, the delivery tracker and its SQLite repo — so the store/pump/dispatcher/inbox are constructible, and `AckObligationStore(engine:)` exists.
+- **The blocker, measured**: the only concrete `AckSignerSeam` implementations are `ComposedRuntime.TestAckSigner` (its own comment: *"HARNESS SUPPORT AND NOT A DEVICE RESULT"*) and a test-local `TestSigner`; `RecipientInbox(` has no construction outside the harness. **There is no production signer over the pinned local identity** — and building the driver on a harness signer would be the substitution this programme forbids.
+- **Next instrument**: check whether a production signer already exists under another name (the search looked for `AckSignerSeam` conformances only — plausibly GS-ACK-001/002's iOS half); if it exists, construct the four owners and subscribe; if not, the signer is a **prerequisite of this finding** and must be named, not stubbed.
+
 ## Round 209 -- GS-RUNTIME-001's ownership chain READ AND DRAWN: the chain breaks in one exact place
 
 - **The signal exists on both isles**: iOS `applicationLinkReadyFlow` with leases + the delegate call at the single publication site (`publishApplicationLinkReadyOnce`, called only from the key-confirmation echo mating); Android `applicationLinkReady(): Flow<ByteArray>` fed at `BleTransport.kt:1646`.
