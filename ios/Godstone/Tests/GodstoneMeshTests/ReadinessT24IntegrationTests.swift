@@ -105,7 +105,7 @@ final class ReadinessT24IntegrationTests: XCTestCase {
         let nodeId = Data(repeating: 0x7C, count: 16)
         XCTAssertTrue(node.knownPeersForTest().isEmpty, "no route standeth at the outset")
 
-        node.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId)
+        node.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
 
         XCTAssertEqual(node.knownPeersForTest(), [handle],
                        "IOS-02 step 5: THE TRANSPORT'S OWN READINESS CALLBACK MUST POPULATE THE ROUTE-ELIGIBLE "

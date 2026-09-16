@@ -2585,7 +2585,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         for watcher in watchers { watcher.ear(peerId) }
         delegate?.transportApplicationLinkReady(peerId: peerId)
         if let capturedNodeId {
-            delegate?.transportApplicationLinkReady(peerId: peerId, receivedFrom: capturedNodeId)
+            // GS-RUNTIME-001 step 5: the RELATION'S OWN GENERATION travelleth with the identity, from the very
+            // capture IOS-04 took at the sealed round -- so the consumer need not ask, and cannot be told a
+            // different hour than the one it was admitted under.
+            delegate?.transportApplicationLinkReady(peerId: peerId, receivedFrom: capturedNodeId,
+                                                   generation: UInt64(capturedPeers[peerId]?.trustVersion ?? 0))
         }
         return true
     }
@@ -4591,7 +4595,10 @@ public protocol TransportDelegate: AnyObject {
     /// form above telleth of the hour; THIS one carrieth the authenticated node id captured at the sealed round,
     /// so a consumer populateth its route-eligible view FROM THE EVENT rather than asking the transport later --
     /// the twin of `transportDidReceive(data:peerId:receivedFrom:)`, whose node-id-carrying form IOS-04 landed.
-    func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data)
+    /// GS-RUNTIME-001 step 5: AND WITH THE RELATION'S **GENERATION**, so that a consumer can RECHECK the exact
+    /// relation it captured before it handeth anything onward -- a replacement relation occupieth the same
+    /// handle and the same node id, and only the generation telleth them apart.
+    func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data, generation: UInt64)
 }
 
 public extension TransportDelegate {
@@ -4604,7 +4611,7 @@ public extension TransportDelegate {
 
     func transportDidHandshakeReady(peerId: UUID) {}
     func transportApplicationLinkReady(peerId: UUID) {}
-    func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data) {}
+    func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data, generation: UInt64) {}
     func transportPhysicalDuplexReady(peerId: UUID) {}
     func transportReady(peerId: UUID) {}
 }

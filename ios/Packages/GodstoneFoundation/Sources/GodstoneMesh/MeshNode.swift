@@ -74,6 +74,11 @@ public final class MeshNode {
     /// identity) and the transport is keyed by the HANDLE; nothing in production held both, so a batch could not
     /// be handed anywhere. It is written at the trusted event and forgotten at the farewell -- the same two
     /// moments the route-eligible view is written and forgotten.
+    /// **THE RELATION, AS THE NODE CAPTURED IT: its handle AND ITS GENERATION.** The handle alone cannot tell a
+    /// replacement relation from the one the work was admitted under -- and a frame handed to the wrong hour is
+    /// exactly the misrouting this programme hunteth.
+    private struct AckRelationBinding { let handle: UUID; let generation: UInt64 }
+    private var relationForNodeId: [Data: AckRelationBinding] = [:]
     private var handleForNodeId: [Data: UUID] = [:]
     /// GS-RUNTIME-001 step 4: **THE MONOTONIC PERIODIC DEADLINE, OWNED.** The worker must be WOKEN for the
     /// periodic turn; until this landed nothing woke it but the trusted event itself. The deadline is armed
@@ -140,7 +145,8 @@ public final class MeshNode {
     /// the transport's UUID and never the 4-byte hint). The sync pump is
     /// scheduled here, and the DIGEST becomes due at once.
     @discardableResult
-    internal func trustedPeerDidConnect(nodeId: Data, peerId: UUID? = nil) -> Bool {
+    internal func trustedPeerDidConnect(nodeId: Data, peerId: UUID? = nil, generation: UInt64? = nil) -> Bool {
+        if let peerId, let generation { relationForNodeId[nodeId] = AckRelationBinding(handle: peerId, generation: generation) }
         if let peerId { handleForNodeId[nodeId] = peerId }
         // IOS-02 step 5: THE TRUSTED EVENT IS WHAT ADMITTETH A PEER TO THE ROUTE. The handle is optional
         // so that every existing caller (whose business is the SYNC PUMP alone) keepeth its meaning: a
@@ -157,6 +163,7 @@ public final class MeshNode {
     @discardableResult
     internal func trustedPeerDidDisconnect(nodeId: Data, peerId: UUID? = nil) -> Bool {
         handleForNodeId.removeValue(forKey: nodeId)
+        relationForNodeId.removeValue(forKey: nodeId)
         if let peerId {
             peerLock.lock(); peers.remove(peerId); peerLock.unlock()
         }
@@ -504,7 +511,7 @@ public final class MeshNode {
 
     /// GS-RUNTIME-001 step 4: the relation mapping is forgotten on BOTH roads (the early return and the full
     /// stop), so no elder relation surviveth a stop in the mapping even when the node was never started.
-    private func handleNodeMappingsForget() { handleForNodeId.removeAll() }
+    private func handleNodeMappingsForget() { handleForNodeId.removeAll(); relationForNodeId.removeAll() }
 
     private func currentPeers() -> [UUID] {
         peerLock.lock(); defer { peerLock.unlock() }
@@ -1032,8 +1039,12 @@ extension MeshNode: TransportDelegate {
     /// An UNKNOWN relation is REFUSED (nil) rather than guessed at, because a frame sent to a guessed handle
     /// would be exactly the misrouting this programme hunteth.
     @discardableResult
-    internal func drainAckWorkOnce(nodeId: Data) -> Int? {
+    internal func drainAckWorkOnce(nodeId: Data, generation: UInt64? = nil) -> Int? {
         guard let pump = ackPump, let handle = handleForNodeId[nodeId] else { return nil }
+        // GS-RUNTIME-001 step 5: **RECHECK THE CAPTURED RELATION.** A caller that nameth the generation it was
+        // admitted under is REFUSED when the relation hath moved since -- the handle and the node id are the
+        // SAME across a replacement, and only the generation telleth them apart.
+        if let generation, relationForNodeId[nodeId]?.generation != generation { return nil }
         let batch = pump.nextBatch(nodeId)
         var handed = 0
         for copy in batch.copies {
@@ -1077,8 +1088,8 @@ extension MeshNode: TransportDelegate {
         ackTurnSource = nil
     }
 
-    public func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data) {
-        _ = trustedPeerDidConnect(nodeId: nodeId16, peerId: peerId)
+    public func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data, generation: UInt64) {
+        _ = trustedPeerDidConnect(nodeId: nodeId16, peerId: peerId, generation: generation)
         // GS-RUNTIME-001 step 3: **ON LinkReady THE PEER BECOMETH ELIGIBLE, FOR THAT EXACT NODE ID.** The pump
         // schedu1eth ONE bounded worker per relation; nothing else in production ever told it.
         ackPump?.onLinkReady(nodeId16)

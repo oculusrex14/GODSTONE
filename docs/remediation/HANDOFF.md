@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 223 -- GS-RUNTIME-001 step 5's RELATION RECHECK lands: the generation travels and a stale hour is refused
+
+- **Wiring**: the trusted event now carries the relation's **generation** (`transportApplicationLinkReady(peerId:receivedFrom:generation:)`, fed from IOS-04's capture — `trustVersion` *is* `Int(relation.generation)`); `MeshNode` records handle **and** generation as one binding; `drainAckWorkOnce(nodeId:generation:)` **rechecks it** — *the handle and the node id are the same across a replacement, and only the generation tells them apart*.
+- **Witness**: `testSR00f_…` — generation 4 served; **3 refused**; after a replacement (new handle, generation 5) the **elder hour (4) is refused** while the replacement is served.
+- **A mechanical failure of mine, named**: my blanket regex put the argument **inside `Data(...)`** on one line — *a blanket edit across call sites whose arguments differ in shape is the error this session has recorded before*; repaired by reading the mangled line and moving the argument to the call.
+- **Measured**: **full iOS lane 1219 / 0**. Remaining: step 4's last wake, step 5's cancellation/wipe recheck, step 6's rebuild/drain — **readiness false throughout**.
+
 ## Round 221 -- GS-RUNTIME-001 step 4's INBOUND WAKE lands; step 5's admission road measured as already satisfied
 
 - **Inbound wake**: a frame reaching the generic durable road in `ingestInbound` wakes the worker **for its own relation**, **gated on the trusted mapping — an untrusted sender is not served and nothing is guessed**; event wakes are counted apart from the deadline's turns.

@@ -100,7 +100,7 @@ final class CrashStartupResumeTests: XCTestCase {
         XCTAssertNil(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId),
                      "and a relation that hath not come up carrieth no handle either")
 
-        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId)
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
         XCTAssertEqual(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId), 0,
                        "once the trusted event hath written the relation's own mapping, the turn SERVETH IT -- and "
                        + "a fresh relation carrieth nothing to hand on")
@@ -124,7 +124,7 @@ final class CrashStartupResumeTests: XCTestCase {
 
         XCTAssertFalse(runtime.ackPump.isScheduled(nodeId), "nothing standeth scheduled at the outset")
 
-        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId)
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
         XCTAssertTrue(runtime.ackPump.isScheduled(nodeId),
                       "GS-RUNTIME-001 step 3: THE TRUSTED READINESS MUST SCHEDULE THE ACK WORKER for the relation's "
                       + "EXACT node id -- nothing else in production ever did")
@@ -151,7 +151,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // A TRUSTED RELATION FIRST. The readiness serveth ONLY ITS OWN relation (one bounded turn), so it doth
         // NOT advance the periodic census -- THE CENSUS COUNTETH THE DEADLINE'S TURNS ALONE, which is the
         // distinction the first draft of this witness got wrong and the failure taught me.
-        runtime.meshNode.transportApplicationLinkReady(peerId: UUID(), receivedFrom: Data(repeating: 0x51, count: 16))
+        runtime.meshNode.transportApplicationLinkReady(peerId: UUID(), receivedFrom: Data(repeating: 0x51, count: 16), generation: 1)
         XCTAssertEqual(runtime.meshNode.ackTurnsRunForTest(), 0,
                        "the initial inventory is the readiness's own turn, not the deadline's")
 
@@ -197,10 +197,39 @@ final class CrashStartupResumeTests: XCTestCase {
                        "A SENDER WITH NO TRUSTED RELATION MUST NOT BE SERVED: the wake is gated on the relation "
                        + "mapping, and nothing is guessed")
 
-        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId)
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
         _ = runtime.meshNode.ingestInbound(frame, receivedFrom: nodeId)
         XCTAssertEqual(runtime.meshNode.ackEventWakesForTest(), 1,
                        "GS-RUNTIME-001 step 4: AN INBOUND REQUEST MUST WAKE THE WORKER FOR ITS OWN RELATION")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
+    /// GS-RUNTIME-001 step 5: **RECHECK THE CAPTURED RELATION.** The handle and the node id are THE SAME across a
+    /// replacement relation, so only the GENERATION telleth the hour the work was admitted under from the hour
+    /// that standeth now -- and a turn that nameth a stale generation must be REFUSED.
+    func testSR00f_AStaleRelationGenerationIsRefusedAtTheHandOff() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00f_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00f_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        let handle = UUID()
+        let nodeId = Data(repeating: 0x71, count: 16)
+
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 4)
+        XCTAssertEqual(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId, generation: 4), 0,
+                       "the turn serveth the relation IT WAS ADMITTED UNDER")
+        XCTAssertNil(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId, generation: 3),
+                     "GS-RUNTIME-001 step 5: A STALE GENERATION MUST BE REFUSED -- the handle and the node id are "
+                     + "the same across a replacement, and only the generation telleth them apart")
+
+        // A REPLACEMENT RELATION for the same node id (a new handle and a new generation):
+        runtime.meshNode.transportApplicationLinkReady(peerId: UUID(), receivedFrom: nodeId, generation: 5)
+        XCTAssertNil(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId, generation: 4),
+                     "and the ELDER hour is refused once the replacement standeth")
+        XCTAssertEqual(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId, generation: 5), 0,
+                       "while the replacement is served")
 
         try? FileManager.default.removeItem(at: msgUrl)
         try? FileManager.default.removeItem(at: peerUrl)
