@@ -22,6 +22,8 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 IOS_MESH = ROOT / "ios/Godstone/Sources/GodstoneMesh"
+ANDROID_CRYPTO = ROOT / "android/mesh/src/main/java/io/godstone/mesh/crypto"
+ANDROID_TRANSPORT = ROOT / "android/mesh/src/main/java/io/godstone/mesh/transport"
 
 
 def read(path: pathlib.Path) -> str:
@@ -133,6 +135,54 @@ class Crypto001RelationKeyAuthority(unittest.TestCase):
         # absence of admission is an absence of relation, never a licence to guess.
         self.assertRegex(self.transport, r"guard let admission = connection\.relationAdmission else \{ return nil \}")
 
+
+
+class Crypto001RelationKeyAuthorityAndroid(unittest.TestCase):
+    """The ANDROID half, as far as it is landed. THE HONEST SCOPE OF THIS CLASS: the crypto LAYER is
+    mirrored, and the TRANSPORT still speaks the pre-T08 host vocabulary -- so the arm which refuseth
+    the handle-only vocabulary in PRODUCTION SOURCES is SKIPPED here, visibly and unclaimed, until the
+    transport presenteth the relation's own admission (the next step of this finding). A skipped arm is
+    a law this file may not yet assert; it is not a law which holdeth.
+    """
+
+    def setUp(self):
+        self.sm = strip_comments(read(ANDROID_CRYPTO / "SessionManager.kt"))
+        self.slot = strip_comments(read(ANDROID_CRYPTO / "SessionSlot.kt"))
+
+    def test_the_android_key_carrieth_the_whole_relation(self):
+        self.assertIn("enum class RelationDirection", self.slot)
+        self.assertRegex(self.slot, r"data class RelationKey\(\s*val direction: RelationDirection,",
+                         "the key must carry the DIRECTION")
+        for field in ("val handle: String", "val generation: Long", "val transportEpoch: Long"):
+            self.assertIn(field, self.slot, f"the key must carry {field}")
+
+    def test_the_android_registry_is_keyed_by_the_relation_place(self):
+        self.assertIn("private val controllers = HashMap<RelationPlace, SessionSlot>()", self.sm)
+        self.assertRegex(self.sm, r"standing\.admission != admission",
+                         "the lookup must compare the WHOLE admission, not the handle")
+
+    def test_the_android_teardown_is_typed_and_can_refuse_a_replaced_relation(self):
+        self.assertIn("enum class RelationRetirement { RETIRED, STALE }", self.slot)
+        self.assertRegex(self.sm, r"fun drop\(admission: RelationKey\): RelationRetirement")
+        self.assertIn("return RelationRetirement.STALE", self.sm)
+        self.assertRegex(self.sm, r"fun retireIncarnations\(ofHandle: String\): Int")
+
+    def test_the_android_crypto_registry_mints_no_generation_of_its_own(self):
+        self.assertNotIn("rememberedGenerations", self.sm)
+        self.assertNotIn("SlotLease", self.sm)
+        self.assertNotIn("SlotLease", self.slot)
+        self.assertRegex(self.slot, r"val generation: Long get\(\) = admission\.generation",
+                         "the slot's generation must be READ from the admission")
+
+    @unittest.skip("CRYPTO-001 (Android): the TRANSPORT still presents the pre-T08 host vocabulary; "
+                   "this arm turneth green when every production crypto call presenteth the relation's "
+                   "own admission (see the ledger's pending_proof for this finding)")
+    def test_android_production_never_addresses_the_authority_with_a_bare_handle(self):
+        transport = strip_comments(read(ANDROID_TRANSPORT / "BleTransport.kt"))
+        for pattern in (r"sessions\??\.destroyFor\(peer", r"sessions\??\.authenticatedNodeIdOf\(peer",
+                        r"registry\??\.openWithResult\(peer", r"registry\.isReady\(conn\.peerId\)"):
+            self.assertEqual(re.findall(pattern, transport), [],
+                             f"production speaks the handle-only vocabulary: /{pattern}/")
 
 if __name__ == "__main__":
     unittest.main()

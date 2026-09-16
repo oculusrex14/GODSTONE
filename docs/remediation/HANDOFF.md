@@ -4,6 +4,18 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 258 -- CRYPTO-001 on the Android isle: the crypto layer mirrored (the transport still owes its half)
+
+**Why this was the next step**: the finding's own two `source_refs` are **Android** files, so the iOS half alone could not answer it.
+
+**Mirrored, by the same law**: the Android `crypto.RelationKey` is no longer a wrapper of the lookup handle — it carries the **direction**, the **orchestration-owned generation** and the **radio epoch** (`RelationDirection` lives in the crypto package because the transport already depends on it; the transport maps `BleDirection` onto it at the composition boundary, which is where a mapping belongs); the registry is `HashMap<RelationPlace, SessionSlot>` with **one live incarnation per place** and a newer incarnation **superseding** the standing one; the lookup answers only on **equal admission**; `drop(admission) -> RelationRetirement` compare-and-removes on the whole admission and answers the typed **`STALE`**; `retireIncarnations(ofHandle)` is the handle-scoped verb the app-level departure speaks; and the T08 remembered-generation history and the independent `SlotLease` are **reclaimed**, exactly as on iOS.
+
+**RED first, kept separate**: two behavioural arms in the canonical Android subsystem suite failed against the untouched tree — *"a teardown that belongs to the REPLACED relation slew its replacement"* and the second **direction** of one handle refused because both relations shared a slot (11 tests / 2 failed). `round258-android-RED.log` stands apart from `round258-android-FIXED-crypto-layer.log`.
+
+**Measured**: Android `:mesh` **1198 / 0 / 0** (counted from the JUnit XML of a forced `--rerun-tasks` run); iOS **1233 / 0** re-measured at the same SHA; parity **224 Kotlin files, 0 unresolved, all invariants hold**; symbols **0 unresolved**; composition rc 0; courts **633** (one of the new Android arms **skipped and visible**); probes 12; digests PASSED; lab isolation PASSED.
+
+**The half that is NOT landed, and is not claimed**: the **Android transport** still speaks the pre-T08 host vocabulary at its crypto sites (`destroyFor` ×2, `authenticatedNodeIdOf`, `seal`, `openWithResult`, `isReady` ×3) and `transport/BleHandshakeAuthority.kt` still addresses the registry by handle. The wiring is named in the ledger: `GattClientConnection.relationKeyProvider` already carries the transport's own `RelationKey(BleDirection, peerAddress, generation)`, bound at admission. Until it lands, the source-level arm `test_android_production_never_addresses_the_authority_with_a_bare_handle` is **SKIPPED rather than asserted** — *a skipped arm is a law this file may not yet claim; it is not a law which holds.* **CRYPTO-001 stays PARTIAL.**
+
 ## Round 257 -- CRYPTO-001: the crypto authority is addressed by RELATION, not by handle (iOS half)
 
 **The finding, in the audit's own words**: *"Session lookup and destruction still use only a peer handle, so an old operation can destroy a replacement session."* The registry was keyed by the platform handle alone and stamped **every** relation outbound, so a delayed teardown, a queued ciphertext or a handshake half spoken against incarnation A resolved incarnation B — and slew it, or routed A's work into B's lifetime.
