@@ -4089,6 +4089,24 @@
     "the readiness flags are FALSE and the five external gates are OPEN",
     "no finding is VERIFIED_FIXED (CRYPTO-001 is FIX_SUBMITTED with four owed proofs named)"
    ]
+  },
+  "ENVIRONMENT_BLOCK_AT_ROUND_260": {
+   "what": "THE iOS LANE IS UNMEASURABLE FROM THIS SESSION.",
+   "measured": {
+    "/usr/bin/swift --version": "refused: 'You have not agreed to the Xcode license agreements. Please run sudo xcodebuild -license ...'",
+    "installed_xcode": "27.0",
+    "accepted_licence_version_on_record": "26.3 (IDEXcodeVersionForAgreedToGMLicense)",
+    "command_line_tools_toolchain": "runeth (Swift 6.3.3) but carrieth no XCTest: `error: no such module 'XCTest'`"
+   },
+   "why_not_worked_around": [
+    "accepting the licence needs root, and THIS SESSION'S APPROVAL PROMPTS ARE DISABLED",
+    "and it would not be this agent's act: a licence agreement is the human's to accept"
+   ],
+   "consequence": "every iOS-side RED and every iOS lane re-measurement is blocked from this session; the Android lane, the python courts and probes and the repository controls still run, and this round's work was moved to a lane that CAN be measured",
+   "unblock_action_for_the_human": "sudo xcodebuild -license accept",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-005/round260-ENVIRONMENT-BLOCK.txt",
+   "log_sha256": "59888e542f5a7ed59ffe48ef1272330cef3c8fe129efcaac3f4bf83832fbca40",
+   "last_green_ios_measurement": "1233 tests / 0 failures at 065a217 (CANDIDATE_259/verify.log), earlier the same day"
   }
  },
  "counts": {
@@ -4340,10 +4358,13 @@
      "outcome": "`awaitNonEmpty<T>(what, observe: () -> List<T>): List<T>` AND `isType` IS DEFINED IN T22'S COURT, SO a lambda returning `notificationsTo(alice).filter { isType(it, HS2) }` SHOULD TYPECHECK -- WHICH MEANS THE ROUND-273b COMPILE FAILURE WAS NOT THE FILTER'S SHAPE, AND THE INSTRUMENT THAT WOULD HAVE SAID SO WAS **THE COMPILE ERROR ITSELF, WHICH I NEVER READ** (my grep printed nothing and I proceeded). **A FAILED RUN WHOSE ERROR WAS NEVER READ IS WORSE THAN A FAILED RUN: IT TEACHETH NOTHING AND COSTETH A ROUND ANYWAY.** AND THE APPLY-SCRIPT DIED MIDWAY ON A REGEX THAT DID NOT COMPILE (a negative lookahead), leaving HALF a reconciliation and NO lane run -- reverted at once, lane re-run green: **A MULTI-PART SCRIPT MUST VALIDATE ITS OWN PATTERNS BEFORE IT PATCHES ANYTHING**"
     }
    ],
-   "my_red_case": null,
+   "my_red_case": "A BEHAVIOURAL RED WAS FILED THIS ROUND (round 260) AND THE REPAIR PARKED WITH IT, DELIBERATELY. MEASURED FIRST, THEN WRITTEN: a grep of `android/mesh/src/main` returneth `beginTrustedHandshake`'s DEFINITION and no production caller -- production reached a physical duplex and stopped there, exactly as the audit chargeth. The arm `ReadinessT21Test.testAndroid01_theApplicationBeginnethD2ItselfUponThePhysicallyReadyRelation` was run against the untouched tree and FAILED with the law's own words (\"the application must begin D2 itself upon the physically-ready relation; ring: <empty>\"), while its NEGATIVE CONTROL passed (the responder never openeth a first counsel) and the 14 pre-existing arms of that court passed: 16 tests / 1 failed, kept in `round260-RED.log` (sha256 b6d879acee6cd121fdcc77edde07a4d400b1f0c71c154c9cbbdafee15912e4ac).",
    "my_status": "OPEN",
-   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-01): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
-   "pending_proof": [],
+   "notes": "ROUND 260: the RED is filed and the repair is parked. NOTHING here is claimed as repaired -- the finding standeth OPEN, and what this round addeth is a failing witness, a measured diagnosis and a re-appliable patch.",
+   "pending_proof": [
+    "THE REPAIR IS PARKED, NOT LANDED, AND THE REASON IS MEASURED RATHER THAN GUESSED: the D2 entrance written this round (the application beginneth the trusted exchange itself from the physically-ready relation, once, from the elected initiator alone) turned the filed RED green AND BROKE FIVE PRE-EXISTING ARMS of the same court -- because those arms drive the four-way exchange STEP BY STEP and call `beginTrustedHandshake` themselves, so the application's own begin taketh the relation into the handshake before the court's begin, which is then refused as `cannot begin from HANDSHAKE_IN_PROGRESS`. That is the SAME migration the iOS twin demanded at rounds 190-208 when IOS-02 gave the application its own entrance; on this isle SIX courts drive it by hand (T17, T18, T20, T21, T22, T23). A half-migrated suite is what this programme refuseth to leave behind, so the repair and its courts were parked together in one re-appliable patch: `round260-D2-trigger-and-courts-PARKED.patch` (sha256 08227c3ac8b343c2e910875620a5f08ae1dcd8c65a4a7c5892fd04da2e8e1389), with the reasoning written into `round260-WHY-NOT-LANDED.txt`.",
+    "THE KEY CONFIRMATION HALF OF THIS FINDING (key confirmation never begun by the application either) is untouched and unmigrated on this isle."
+   ],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
    "remediation_steps": [
@@ -8770,8 +8791,11 @@
    ],
    "my_red_case": "the canonical arm `tools/readiness/tests/test_store_observer_lease.py`, run RED FIRST in the probes directory (W00 control passing: the observer API and its one production registrant still stand; three defect arms failing): `registerHeldSetObserver` returned NOTHING, no disposal existed, and the sole registrant retained no handle",
    "my_status": "OPEN",
-   "notes": null,
-   "pending_proof": [],
+   "notes": "ROUND 260: the RED arms for the observer-lease and measured-quota laws were WRITTEN, then PARKED when the iOS lane became unmeasurable (Xcode licence). The finding standeth OPEN; no production line was touched, because a RED that cannot be run is not a RED and a repair that cannot be measured is not a repair.",
+   "pending_proof": [
+    "THE iOS LANE BECAME UNMEASURABLE MID-SESSION (round 260). Xcode was UPGRADED to 27.0 while the recorded licence agreement standeth at 26.3, so every `/usr/bin/swift` invocation is refused before it reacheth the package: 'You have not agreed to the Xcode license agreements.' The Command Line Tools toolchain runneth but its SDK carrieth no XCTest (`error: no such module 'XCTest'`), and accepting the licence needs root -- which THIS SESSION MAY NOT REQUEST (approval prompts are disabled) and which would not be this agent's act in any case. Recorded in `round260-ENVIRONMENT-BLOCK.txt` (sha256 59888e542f5a7ed59ffe48ef1272330cef3c8fe129efcaac3f4bf83832fbca40). THE ONE ACTION THAT UNBLOCKETH IT IS THE HUMAN'S: `sudo xcodebuild -license accept`.",
+    "THE RED ARMS FOR THIS FINDING WERE PARKED RATHER THAN LEFT IN AN UNBUILDABLE TREE: four arms (the 100-lifetime retention witness, the release/census law, the whole-census release on close, the measured-total-quota refusal and the failed-measurement refusal) stand in `round260-RED-arms-PARKED.patch` (sha256 4dfdf1ae1d9b3242c6fe1048fdd8f48674e7ddb05712eaa3f73b88407cf866a9), re-appliable with `git apply` the moment the iOS lane can be measured again."
+   ],
    "proof": "StoreQuota says it intentionally does not rewrite the incomplete store path. The existing registerHeldSetObserver returns Void/Unit and appends to a collection. Production code outside the quota file does not instantiate ObservationLease or consult the quota measurements.",
    "remediation_report": "reports/STORAGE_REMEDIATION.md",
    "remediation_steps": [
