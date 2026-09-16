@@ -28,6 +28,12 @@ import io.godstone.mesh.identity.SqlcipherPeerIdentityStore
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.SqliteMessageStore
 import javax.inject.Singleton
+import io.godstone.mesh.delivery.AckDispatcher
+import io.godstone.mesh.delivery.AckObligationDriver
+import io.godstone.mesh.delivery.DurableAckPump
+import io.godstone.mesh.delivery.IdentityAckSigner
+import io.godstone.mesh.delivery.SqliteAckStore
+import io.godstone.mesh.delivery.RecipientKeyResolver
 
 /**
  * Startup barrier execution primitive ensuring [PanicWipe.resumeIfPending] executes before
@@ -198,12 +204,59 @@ internal object MeshModule {
     ): MeshPanicWipe =
         MeshPanicWipe(ctx, invalidator)
 
+    // ============================ GS-RUNTIME-001 step 2 on THIS isle: THE FOUR OWNERS ============================
+    //
+    // MEASURED BEFORE THIS (rounds 228-231): the Kotlin twins of all four owners STOOD in `delivery/`, the Kotlin
+    // `MeshNode` already had `recipientInbox` and `ackDispatcher` attachment points and a `router`, and
+    // **THE COMPOSITION PROVIDED NONE OF THEM** -- the live path could not send a scheduled, authenticated,
+    // durable ACK at all. These providers bind them to THE SAME OPENED STORE AND THE SAME PINNED IDENTITY as
+    // everything else in this module, and the signer is the PRODUCTION signer (round 230), whose seed road
+    // refuseth by construction.
+
+    @Provides @Singleton
+    fun provideEd25519AckAuthenticator(resolver: RecipientKeyResolver): Ed25519AckAuthenticator =
+        Ed25519AckAuthenticator(resolver)
+
+    @Provides @Singleton
+    fun provideAckStore(store: SqliteMessageStore): SqliteAckStore = SqliteAckStore(store.engine)
+
+    @Provides @Singleton
+    fun provideAckDriver(
+        ackStore: SqliteAckStore,
+        identity: Identity,
+        authenticator: Ed25519AckAuthenticator,
+        resolver: RecipientKeyResolver,
+    ): AckObligationDriver =
+        AckObligationDriver(ackStore, IdentityAckSigner(identity), authenticator, resolver)
+
+    @Provides @Singleton
+    fun provideAckPump(
+        ackStore: SqliteAckStore,
+        driver: AckObligationDriver,
+    ): DurableAckPump =
+        DurableAckPump(
+            ackStore,
+            { encoded, from -> driver.admitForeignCandidate(encoded, from) },
+        )
+
     @Provides @Singleton
     fun provideMeshNode(
         @ApplicationContext ctx: Context,
         identity: Identity,
         store: MessageStore,
         deliveryTracker: DeliveryTracker,
-        sessions: SessionManager
-    ): MeshNode = MeshNode(ctx, identity, store, deliveryTracker, sessions)
+        sessions: SessionManager,
+        pump: DurableAckPump
+    ): MeshNode {
+        val node = MeshNode(ctx, identity, store, deliveryTracker, sessions)
+        // GS-RUNTIME-001 step 2: **THE DISPATCHER IS BOUND TO THE NODE**, answering the delivery tracker exactly
+        // as the harness's twin doth. (The recipient inbox's own wiring followeth the T83 commit road and is the
+        // NEXT slice; it is NOT claimed here.)
+        node.ackDispatcher = AckDispatcher(
+            lookupDeliveryRow = { deliveryTracker.lookup(it) },
+            verifyOrigin = { deliveryTracker.acknowledge(it.msgId, it) },
+            admitCandidate = { encoded, from -> pump.admit(encoded, from) },
+        )
+        return node
+    }
 }

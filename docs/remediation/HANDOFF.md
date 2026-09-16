@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 231 -- the four ACK owners enter the ANDROID composition (over the same engine); dispatcher bound to the node
+
+- **Measured first**: the Kotlin node **already had** `recipientInbox`/`ackDispatcher` and a `router`; the twins stood in `delivery/`; and the store carries **`internal val engine: StoreDb` — exposed internally *for exactly this purpose* by its own comment** (*"one process-wide `StoreDb` feeds both the message store and the delivery repository"*).
+- **Wiring in `MeshModule`**: providers for the authenticator, `SqliteAckStore(store.engine)`, the driver (over the **production** signer, whose seed road refuses by construction) and the pump; `provideMeshNode` now **binds the dispatcher** to the node.
+- **Two compile errors of mine, named** — and the fix is the lesson: the provider passed the message store where a `StoreDb` was wanted, and the accessor's name was then **read out of the source by the script itself** (`store.engine`) rather than guessed, which is why the second attempt compiled.
+- **A witness is owed and named**: the providers need a `Context`/engine a plain unit court cannot build — so this slice's witness must be a Hilt/instrumentation road or a source-level check. **Not claimed.**
+- **Measured**: android `:mesh` **FORCED 1195 / 0 / 0**. Remaining: the inbox's wiring over the T83 commit road, the readiness subscription with its wakes/recheck/drain, and that witness.
+
 ## Round 230 -- the ANDROID production ACK signer lands over the pinned identity (on an existing precedent)
 
 - **The measurement that shaped it**: `Identity` exposes `staticDhPriv` **internally** (*"private key material is never exposed via public mutable reference"*) but not the Ed25519 seed — **so the precedent for an in-module accessor already stood** (the NoiseSession constructor uses it). `internal val identityPriv` is added on that very precedent, and `delivery/IdentityAckSigner.kt` signs the canonical preimage with it: **`signingSeed` answers null by construction**, and nothing leaves the module.
