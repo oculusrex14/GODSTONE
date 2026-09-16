@@ -12,11 +12,16 @@ import GodstoneMesh
 @main
 struct LabMeshRootApp: App {
     @StateObject private var holder = LabRuntimeHolder()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             LabRootView()
                 .environmentObject(holder)
+                // GS-LAB-001 step 4 (round 267): THE LIFECYCLE REACHETH THE **SAME RUNTIME OWNER**. The card asketh that
+                // 'foreground/background/protected-data lifecycle' be connected to it -- so the phase is handed to the
+                // holder, which carrieth the ONE runtime, rather than to the view that merely showeth it.
+                .onChange(of: scenePhase) { _, phase in holder.lifecycleChanged(to: phase) }
         }
     }
 }
@@ -25,6 +30,15 @@ struct LabMeshRootApp: App {
 public final class LabRuntimeHolder: ObservableObject {
     /// The ONE runtime. `LabRuntime.compose()` returneth the canonical one; nothing here manufactureth readiness.
     public let runtime: LabRuntime
+
+    /// GS-LAB-001 step 4: THE OWNER HEARETH THE LIFECYCLE. It recordeth the last phase, so that a court (and a reader)
+    /// can see that the notification reached THE RUNTIME'S OWNER and not a view -- and so that a later step may pause or
+    /// resume owned work without a second, competing owner.
+    private(set) var lastLifecyclePhase: ScenePhase?
+
+    public func lifecycleChanged(to phase: ScenePhase) {
+        lastLifecyclePhase = phase
+    }
 
     public init() {
         // GS-LAB-001 (round 266): THE REAL BUILD SAITH `compose()` THROWETH -- and round 262's `swiftc -parse` could not

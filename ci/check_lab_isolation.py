@@ -254,6 +254,10 @@ def run(root: Path) -> Findings:
     # GS-LAB-001 step 2: THE iOS TWIN -- @main, WindowGroup, one retained owner.
     iosOk, iosWhy = check_the_ios_lab_is_launchable()
     (f.notes if iosOk else f.errors).append(iosWhy)
+
+    # GS-LAB-001 step 4: THE LIFECYCLE REACHETH THE SAME RUNTIME OWNER (the iOS isle, where it was named).
+    lifeOk, lifeWhy = check_the_lab_lifecycle_reacheth_the_owner()
+    (f.notes if lifeOk else f.errors).append(lifeWhy)
     return f
 
 
@@ -414,6 +418,29 @@ def strip_kotlin_comments(text: str) -> str:
 
 
 
+
+def check_the_lab_lifecycle_reacheth_the_owner():
+    """T54 / GS-LAB-001 step 4: THE LIFECYCLE MUST REACH THE **SAME RUNTIME OWNER**.
+
+    The card: "Connect foreground/background/protected-data lifecycle to the same runtime owner." A lifecycle told to a
+    VIEW would be a second owner in all but name -- and a protected-data transition could pause one and not the other. So
+    this invariant asketh BOTH halves, on the iOS isle where the owner was named: the App observeth its scene phase AND
+    passeth it to the holder; and the HOLDER carrieth the state, not the view.
+    """
+    root = Path(__file__).resolve().parent.parent
+    sources = root / "ios/Godstone/Sources/LabMesh"
+    text = ""
+    for f in sorted(sources.glob("*.swift")):
+        text += strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//")) + "\n"
+    if not re.search(r"@Environment\(\\\.scenePhase\)", text):
+        return False, "the iOS lab's @main observeth no scene phase: its lifecycle reacheth nothing"
+    if not re.search(r"holder\.lifecycleChanged\(to:", text):
+        return False, "the scene phase is not passed to the RETAINED OWNER -- a view told instead would be a second owner"
+    if not re.search(r"var lastLifecyclePhase", text):
+        return False, "the runtime owner carrieth no lifecycle state of its own"
+    return True, "the iOS lab's lifecycle reacheth the SAME retained runtime owner"
+
+
 def check_the_ios_lab_is_launchable():
     """T54 / GS-LAB-001 step 2: THE iOS LAB MUST HAVE ITS OWN @main APP WITH A RETAINED RUNTIME OWNER.
 
@@ -433,7 +460,9 @@ def check_the_ios_lab_is_launchable():
         return False, "the iOS lab carrieth NO @main entry: the target cannot be launched"
     if "WindowGroup" not in text:
         return False, "the iOS lab's @main carrieth no WindowGroup for the lab root"
-    if not re.search(r"runtime\s*=\s*LabRuntime\.compose\(\)", text):
+    # THE CALL MAY BE THROWING -- round 266's own fix added `try!`, WHICH BROKE THIS REGEX, AND THE CONTROL WENT RED FOR A
+    # REASON THAT HAD NOTHING TO DO WITH THE LAB. A CONTROL MUST SURVIVE THE REPAIRS MADE BESIDE IT, so the `try` is optional.
+    if not re.search(r"runtime\s*=\s*(?:try!?\s*)?LabRuntime\.compose\(\)", text):
         return False, "the iOS lab owns no runtime composed by an OWNER (LabRuntime.compose() must appear in a holder)"
     shipping = root / "ios/Godstone/Sources/App/GodstoneApp.swift"
     if not shipping.exists():
