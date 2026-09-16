@@ -2396,16 +2396,32 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// 'stale UUID readiness'. The relation cometh from the very capture the trusted peer is built from; a relation
     /// without one (no authenticated binding yet) carrieth `nil`, which is the audited handle-only behaviour, no worse.
     private var linkReadyRelations: [(peerId: UUID, relation: RelationKey?)] = []
-    private var applicationLinkReadyFlow: [(UUID) -> Void] = []
+    /// The ears upon the application LinkReady, EACH WITH ITS LEASE: the audited array kept bare closures, so a
+    /// subscriber that stopped could never be withdrawn -- and a replaced subscriber would keep hearing tales meant
+    /// for its predecessor.
+    private var applicationLinkReadyLeaseCounter: Int = 0
+
+    /// IOS-04 (T24) step 5: WITHDRAW AN APPLICATION EAR BY ITS LEASE. A subscription the application can stop is a
+    /// subscription that cannot outlive its owner.
+    internal func removeApplicationLinkReady(_ lease: Int) {
+        lockTransport()
+        applicationLinkReadyFlow.removeAll { $0.lease == lease }
+        unlockTransport()
+    }
+
+    private var applicationLinkReadyFlow: [(lease: Int, ear: (UUID) -> Void)] = []
 
     /// The court heareth the drivers own publication of the application LinkReady,
     /// which is made upon the sealed key-confirmation and never at the
     /// cryptographic hour alone. A consumer that attacheth AFTER the round is
     /// replayed the present ready state (T24), as upon the Android twin, so it
     /// needeth not await a fresh publication to learn what already is ready.
-    internal func applicationLinkReady(_ subscriber: @escaping (UUID) -> Void) {
+    @discardableResult
+    internal func applicationLinkReady(_ subscriber: @escaping (UUID) -> Void) -> Int {
         lockTransport()
-        applicationLinkReadyFlow.append(subscriber)
+        applicationLinkReadyLeaseCounter += 1
+        let lease = applicationLinkReadyLeaseCounter
+        applicationLinkReadyFlow.append((lease, subscriber))
         // The present ready state is snapshotted under the selfsame lock that
         // guardeth the register; the telling itself is done beyond the critical
         // section, as every other tale, that no ear be heard while the lock is held.
@@ -2414,6 +2430,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // Onely THIS new joiner is told the present state; the elder ears keep
         // their one tale unmultipled.
         for peer in replay { subscriber(peer) }
+        return lease
     }
 
     internal func linkReadyPeersForTest() -> [UUID] {
@@ -2475,8 +2492,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// The last verdict the bounded conduit gave -- the card's 'do not silently drop', made observable.
     internal private(set) var lastTrustedPublicationVerdictForTest: OfferVerdict?
 
-    /// A consumer's ear upon the trusted publication -- the seam a real consumer useth.
-    func addTrustedPeerSink(_ sink: @escaping (LinkEvent) -> Void) { peerEvents.addSink(sink) }
+    /// IOS-04 (T24) step 5: A consumer's ear upon the trusted publication -- AS A REMOVABLE LEASE. The publisher
+    /// ALREADY handeth back a token (`addSink -> Int`), so the transport need only STOP DISCARDING IT: the token IS
+    /// the lease, and `removeTrustedPeerSink` returneth it. The audited road gave the application an ear it could never
+    /// withdraw.
+    @discardableResult
+    func addTrustedPeerSink(_ sink: @escaping (LinkEvent) -> Void) -> Int { peerEvents.addSink(sink) }
+
+    /// Withdraw a consumer's ear by its lease. Harmless after a withdrawal: the publisher's own removal is idempotent.
+    func removeTrustedPeerSink(_ lease: Int) { peerEvents.removeSink(lease) }
 
     /// Capture the authenticated peer for this relation, WHILE THE RELATION OWNER IS HELD. Null when either half is not
     /// yet answerable -- an honest null rather than a fabricated peer, since `TrustedPeer`'s initialiser REFUSETH bytes
@@ -2524,7 +2548,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         unlockTransport()
         // The tale is told beyond the critical section: a subscriber is the
         // application own ear, and no ear may be heard while the lock is held.
-        for watcher in watchers { watcher(peerId) }
+        for watcher in watchers { watcher.ear(peerId) }
         delegate?.transportApplicationLinkReady(peerId: peerId)
         return true
     }
