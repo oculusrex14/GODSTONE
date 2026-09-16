@@ -250,6 +250,10 @@ def run(root: Path) -> Findings:
     # GS-LAB-001 step 1: ONE RETAINED RUNTIME, OWNED BY THE APPLICATION AND NOT BY A VIEW.
     retained, why = check_the_lab_runtime_is_retained()
     (f.notes if retained else f.errors).append(why)
+
+    # GS-LAB-001 step 2: THE iOS TWIN -- @main, WindowGroup, one retained owner.
+    iosOk, iosWhy = check_the_ios_lab_is_launchable()
+    (f.notes if iosOk else f.errors).append(iosWhy)
     return f
 
 
@@ -407,6 +411,34 @@ def check_the_lab_is_launchable():
 def strip_kotlin_comments(text: str) -> str:
     """Kotlin line comments removed, so a COMMENT quoting a composition is not mistaken for one."""
     return "\n".join(re.sub(r"//.*$", "", line) for line in text.split("\n"))
+
+
+
+def check_the_ios_lab_is_launchable():
+    """T54 / GS-LAB-001 step 2: THE iOS LAB MUST HAVE ITS OWN @main APP WITH A RETAINED RUNTIME OWNER.
+
+    The card: "Add an iOS @main App inside Sources/LabMesh, with a WindowGroup for the lab root and ONE RETAINED RUNTIME
+    OWNER. Keep the existing shipping App entry excluded from the lab target." So three things are asked: the @main
+    existeth in the LAB'S OWN sources; it carrieth a WindowGroup; and it OWNETH a runtime outside any view -- with the
+    SHIPPING entry left where it is (this control neither moves nor copies it).
+    """
+    root = Path(__file__).resolve().parent.parent
+    sources = root / "ios/Godstone/Sources/LabMesh"
+    if not sources.exists():
+        return False, "the iOS lab source directory is missing"
+    text = ""
+    for f in sorted(sources.glob("*.swift")):
+        text += strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//")) + "\n"
+    if "@main" not in text:
+        return False, "the iOS lab carrieth NO @main entry: the target cannot be launched"
+    if "WindowGroup" not in text:
+        return False, "the iOS lab's @main carrieth no WindowGroup for the lab root"
+    if not re.search(r"runtime\s*=\s*LabRuntime\.compose\(\)", text):
+        return False, "the iOS lab owns no runtime composed by an OWNER (LabRuntime.compose() must appear in a holder)"
+    shipping = root / "ios/Godstone/Sources/App/GodstoneApp.swift"
+    if not shipping.exists():
+        return False, "the shipping App entry is MISSING: the lab's @main must stand BESIDE it, never replace it"
+    return True, "the iOS lab is launchable: @main + WindowGroup + one retained runtime owner, beside the shipping entry"
 
 
 def check_the_lab_runtime_is_retained():
