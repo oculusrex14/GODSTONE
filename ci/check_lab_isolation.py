@@ -612,9 +612,6 @@ def check_the_lab_runtime_is_retained():
     return True, "one retained lab runtime, owned by " + m.group(1) + " and composed nowhere else"
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
-
 def check_the_lab_buildeth_no_owner_of_its_own():
     """GS-UX-001 step 2: "the TrustPort/MeshPort adapters to the ONE runtime's REAL OWNERS."
 
@@ -634,3 +631,6 @@ def check_the_lab_buildeth_no_owner_of_its_own():
         return False, ("the lab MANUFACTURETH owners of its own rather than reaching the real ones "
                        "(GS-UX-001 step 2): " + ", ".join(offenders))
     return True, "the lab manufactureth NO owner of its own: it reacheth the runtime through LabRuntime alone"
+
+if __name__ == "__main__":
+    raise SystemExit(main())

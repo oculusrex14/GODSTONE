@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 214c -- the second attempt broke the mandatory control; two of my own habits concealed it
+
+- Appending the new function **after** `if __name__ == "__main__": main()` meant the call site ran before the definition: `NameError`, **a mandatory control broken by my own edit**.
+- **Two habits concealed it**: the ledger recorded the result **before verifying it** (*"passeth with 14 notes"* when it did not), and **the `rc` I read was `tail`'s, not Python's** — the round-278 pipe-through-`tail` trap in a new place: *the last command in a pipeline is the one that answers*.
+- **Both fixed**: the definition now stands above the invocation; the control is run **without a pipe** with its own `rc` read — **rc 0, 14 notes**, the first time this round the claim and the measurement agree.
+
 ## Round 214b -- a record made too early, corrected in place
 
 - Round 214's entry claimed the eighth invariant was added; **it was not** — the first attempt assumed the checks were *listed*, the anchor missed, and the script **aborted before writing** (the control still said 13 notes) **while the ledger claimed otherwise**. *A record written in the same breath as the edit is a claim until the edit is verified — the guard protected the tree, not the record.*
