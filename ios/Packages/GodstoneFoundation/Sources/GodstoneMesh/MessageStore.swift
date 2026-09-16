@@ -1120,6 +1120,11 @@ public final class SqliteMessageStore: MessageStore {
                 }
             }
             lastSweepReport = "scanned=\(scanned) spent=\(spent.count) limit=\(limit) boot=\(boot)"
+            // GS-STORE-004 (round 341): THE TOMBSTONE'S THIRD ACT -- THE REAP. It is bounded by the SAME limit the
+            // sweep carrieth, and it reapeth ONLY tombstones that have outlived their OWN window IN THE BOOT THAT
+            // WROTE THEM: a different boot cannot judge monotonic time, and THE CONSERVATIVE ANSWER IS TO **KEEP**
+            // (reaping too little costeth space; reaping too much would re-open a dedup window that is still owed).
+            reapExpiredTombstonesNoLock(db: db, limit: limit, nowMono: now, boot: boot)
             guard !spent.isEmpty else { return 0 }
             // (2) ONE TRANSACTION: THE HELD ROW AND ITS DELIVERY STATE MOVE TOGETHER, or neither doth. `expired`
             // is code 4 -- READ from `DeliveryState.code`, never guessed -- and no row is DELETED from
@@ -1219,6 +1224,24 @@ public final class SqliteMessageStore: MessageStore {
     /// THAT WROTE IT; if the running boot is a DIFFERENT one, monotonic time cannot speak, AND THE CONSERVATIVE
     /// ANSWER IS **LIVE** -- refusing a replay is RECOVERABLE (the window passeth), whereas ACCEPTING one would
     /// RE-OPEN THE DOOR THE RETIREMENT CLOSED.
+    /// GS-STORE-004 (round 341): reap tombstones that have outlived their window -- BOUNDED, ON THE SAME HANDLE
+    /// (round 309's law), and JUDGED BY THE SAME RULE AS THE DEDUP READ rather than by a second opinion: a tombstone
+    /// written in ANOTHER boot cannot be judged, and is KEPT.
+    private func reapExpiredTombstonesNoLock(db: OpaquePointer, limit: Int, nowMono: Int64, boot: String) {
+        let sql = "DELETE FROM \(StoreSchema.tombstoneTable) WHERE \(StoreSchema.colTMsgId) IN (" +
+            "SELECT \(StoreSchema.colTMsgId) FROM \(StoreSchema.tombstoneTable) " +
+            "WHERE \(StoreSchema.colTBootIdentity) = ? AND \(StoreSchema.colTExpiresAtMono) <= ? LIMIT ?)"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return
+        }
+        defer { sqlite3_finalize(stmt) }
+        boot.withCString { sqlite3_bind_text(stmt, 1, $0, -1, storeSqliteTransient) }
+        sqlite3_bind_int64(stmt, 2, nowMono)
+        sqlite3_bind_int(stmt, 3, Int32(max(1, limit)))
+        _ = sqlite3_step(stmt)
+    }
+
     private func liveTombstoneNoLock(_ db: OpaquePointer, _ msgId: Data) -> Bool {
         let sql = "SELECT \(StoreSchema.colTExpiresAtMono), \(StoreSchema.colTBootIdentity) " +
             "FROM \(StoreSchema.tombstoneTable) WHERE \(StoreSchema.colTMsgId) = ? LIMIT 1"

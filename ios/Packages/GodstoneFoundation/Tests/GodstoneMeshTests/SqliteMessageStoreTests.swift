@@ -1697,4 +1697,27 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(s.tombstoneRowCount(), 1,
                        "the store must MEASURE what it holdeth -- an unmeasured quota kind cannot be enforced")
     }
+
+    /// GS-STORE-004: THE TOMBSTONE'S THIRD ACT. It is WRITTEN at retirement and CONSULTED by the dedup window --
+    /// and NOTHING REAPETH IT once its own lifetime hath passed, so the store's growth is unbounded in a category
+    /// whose whole purpose is to be TEMPORARY (the policy calleth it `tombstoneMs` for a reason). The sweep, which
+    /// already owneth bounded retirement, must also reap the tombstones that have outlived their window. RUN RED
+    /// BEFORE THE REPAIR.
+    func testGSSTORE004_expiredTombstonesAreReaped() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        var now: Int64 = 9_000_000
+        s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(16, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
+        XCTAssertEqual(s.sweepExpired(limit: 8), 1, "the row is retired and a tombstone is left")
+        XCTAssertEqual(s.tombstoneRowCount(), 1)
+
+        // PAST the policy's own tombstone lifetime: the tombstone is no longer a dedup window, it is litter.
+        now += Int64(RetentionPolicy.tombstoneMs) + 1
+        _ = s.sweepExpired(limit: 8)
+        XCTAssertEqual(s.tombstoneRowCount(), 0,
+                       "a tombstone past its OWN lifetime must be reaped -- `tombstoneMs` is a lifetime, not a motto")
+        XCTAssertNil(s.tombstoneForTest(f.msgId), "and it must be gone from storage, not merely uncounted")
+    }
 }
