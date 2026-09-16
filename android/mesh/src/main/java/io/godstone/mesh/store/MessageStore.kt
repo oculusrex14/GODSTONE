@@ -1703,10 +1703,36 @@ class SqliteMessageStore internal constructor(
      *  door nobody walketh through is not a connection (the iOS isle's round 316). */
     private var startupMaintenanceDone = false
 
+    /** GS-STORE-004 (round 332): the monotonic reading of the LAST maintenance sweep, so the RUNTIME cadence is
+     *  measured against the policy's own constant rather than inferred. */
+    private var lastSweepMonoMs: Long? = null
+
     private fun runStartupMaintenanceIfNeeded() {
-        if (startupMaintenanceDone) return
-        startupMaintenanceDone = true
-        sweepExpired(limit = StoreSchema.STARTUP_SWEEP_LIMIT)
+        // MAINTENANCE ON **STARTUP AND THE POLICY'S OWN CADENCE** -- the finding asketh for BOTH, and the number is
+        // `RetentionClock.CHECKPOINT_CADENCE_MS` rather than one invented here, so the store and the policy cannot
+        // drift apart about how often maintenance is due. NO TIMER LIVES HERE: a store layer that owned one would own
+        // a run loop; the cadence gateth the store's own uses, and `runScheduledMaintenance` existeth for a caller
+        // that owneth a run loop of its own.
+        if (!startupMaintenanceDone) {
+            startupMaintenanceDone = true
+            sweepExpired(limit = StoreSchema.STARTUP_SWEEP_LIMIT)
+            lastSweepMonoMs = receiptTimeProvider?.invoke()?.first
+            return
+        }
+        val now = receiptTimeProvider?.invoke()?.first ?: return
+        val last = lastSweepMonoMs ?: return
+        if (now - last >= RetentionClock.CHECKPOINT_CADENCE_MS) {
+            sweepExpired(limit = StoreSchema.STARTUP_SWEEP_LIMIT)
+            lastSweepMonoMs = now
+        }
+    }
+
+    /** GS-STORE-004 (round 332): the RUNTIME maintenance entry point, for a caller that owneth a run loop (the
+     *  composition root's timer, or a test's hand). It runneth the same bounded sweep the automatic path runneth. */
+    internal fun runScheduledMaintenance(limit: Int = StoreSchema.STARTUP_SWEEP_LIMIT): Int {
+        val retired = sweepExpired(limit = limit)
+        lastSweepMonoMs = receiptTimeProvider?.invoke()?.first
+        return retired
     }
 
     override suspend fun allHeldMsgIds(): List<ByteArray> {

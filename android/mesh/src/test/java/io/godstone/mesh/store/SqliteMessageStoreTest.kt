@@ -1330,4 +1330,28 @@ class SqliteMessageStoreTest {
                 "is connected to nothing",
         )
     }
+
+    /** GS-STORE-004, the finding's own words: the sweep must be connected to "STARTUP **AND RUNTIME SCHEDULING**". A
+     *  startup sweep alone is HALF that sentence: a store that runneth for days must maintain itself AS IT RUNS, and
+     *  the policy carrieth its own cadence (`RetentionClock.CHECKPOINT_CADENCE_MS`) for exactly that. RUN RED BEFORE
+     *  THE REPAIR. */
+    @Test
+    fun gsstore004TheSweepAlsoRunsOnThePolicyCadence() = runBlocking {
+        open(8L * 1024 * 1024)
+        var now = 1_000_000L
+        store.receiptTimeProvider = { now to "boot-A" }
+        val f = frame(13, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        // The STARTUP sweep runneth at this read -- and NOTHING is spent yet, so it retires nothing.
+        assertEquals(1, heldIds().size, "the row stands after the startup maintenance")
+        store.engine.execRawSql("UPDATE ${StoreSchema.TABLE} SET ${StoreSchema.COL_REMAINING_MS} = 0")
+
+        // ADVANCE THE CLOCK PAST THE POLICY'S OWN CADENCE, then use the store again.
+        now += RetentionClock.CHECKPOINT_CADENCE_MS + 1
+        heldIds()
+        assertNull(
+            store.retentionCheckpointForTest(msgId(13)),
+            "the RUNTIME cadence must retire rows spent since the last sweep, not only at startup",
+        )
+    }
 }
