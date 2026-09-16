@@ -116,27 +116,73 @@ enum ReadinessTrustedPairing {
                     viaBob: UUID(), viaAlice: UUID(), urls: [urlA, urlB])
     }
 
+    /// CRYPTO-001: THE ADMISSION A FRESHLY STARTED TRANSPORT MINTETH for the FIRST relation
+    /// of a handle. The link owner's generation counter for a handle beginneth at zero and is
+    /// incremented when the relation is admitted, and the transport's radio epoch beginneth at
+    /// zero and is incremented when it starteth -- so the first relation of a handle standeth
+    /// at generation 1 in epoch 1.
+    ///
+    /// A court which pre-paireth a registry before wiring a transport must present THIS
+    /// admission, because the transport presenteth it: the crypto slot and the transport's
+    /// registration must be ONE identity rather than two which happen to look alike. The court
+    /// is not asked to believe the numbers: `assertMintedAdmission` MEASURES them against the
+    /// transport's own registration, and a divergence fails loudly instead of sealing nothing.
+    static func firstRelationAdmission(_ handle: UUID, direction: BleDirection) -> RelationAdmission {
+        RelationAdmission(direction: direction, peerId: handle, generation: 1, transportEpoch: 1)
+    }
+
+    /// CRYPTO-001: the SUCCESSOR of an incarnation already measured -- the next generation in
+    /// the next radio epoch. A court which must handshake a relation anew (because the radio
+    /// underneath it was replaced) deriveth the counterpart's fresh incarnation from the one
+    /// that standeth, so no number is written before the run.
+    static func successor(of admission: RelationAdmission) -> RelationAdmission {
+        RelationAdmission(direction: admission.direction, peerId: admission.peerId,
+                          generation: admission.relation.generation + 1,
+                          transportEpoch: admission.transportEpoch + 1)
+    }
+
+    /// The measurement which replaceth the assumption: the admission the TRANSPORT minted for
+    /// that relation must be the very admission the registry holdeth for it.
+    static func assertMintedAdmission(_ transport: BleTransport, manager: SessionManager,
+                                      handle: UUID, direction: BleDirection,
+                                      file: StaticString = #filePath, line: UInt = #line) {
+        let minted = transport.admissionForTest(handle, direction: direction)
+        XCTAssertNotNil(minted, "the transport minted no admission for this relation",
+                        file: file, line: line)
+        XCTAssertTrue(minted.map { manager.slotAdmissionForTest($0) != nil } ?? false,
+                      "the registry holdeth no incarnation for the admission this transport minted"
+                        + " -- the court's pre-pairing and the transport disagree",
+                      file: file, line: line)
+    }
+
     /// Runs the four real manager entries over the given handles until both
     /// registries report the slots ready. The bytes travel the same shape
     /// the transport's own handshake driver will carry them.
+    ///
+    /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+    /// freshly started transport minteth for the first relation of that handle.
     @discardableResult
     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-                       aliceHint: Data, bobHint: Data) throws {
-        guard let hs1 = pair.aliceManager.beginInitiator(viaBob, remoteHint: bobHint) else {
+                       aliceHint: Data, bobHint: Data,
+                       aliceAdmission: RelationAdmission? = nil,
+                       bobAdmission: RelationAdmission? = nil) throws {
+        let aliceRelation = aliceAdmission ?? firstRelationAdmission(viaBob, direction: .outboundCentral)
+        let bobRelation = bobAdmission ?? firstRelationAdmission(viaAlice, direction: .inboundPeripheral)
+        guard let hs1 = pair.aliceManager.beginInitiator(aliceRelation, remoteHint: bobHint) else {
             throw PairingError.initiatorRefused
         }
-        guard let hs2 = pair.bobManager.responderProcessHs1(viaAlice, remoteHint: aliceHint, hs1: hs1) else {
+        guard let hs2 = pair.bobManager.responderProcessHs1(bobRelation, remoteHint: aliceHint, hs1: hs1) else {
             throw PairingError.responderRefused
         }
-        guard let hs3 = pair.aliceManager.initiatorProcessHs2(viaBob, hs2: hs2,
+        guard let hs3 = pair.aliceManager.initiatorProcessHs2(aliceRelation, hs2: hs2,
                                                               advertisedRemoteHint: bobHint) else {
             throw PairingError.secondRefused
         }
-        guard pair.bobManager.responderProcessHs3(viaAlice, hs3: hs3,
+        guard pair.bobManager.responderProcessHs3(bobRelation, hs3: hs3,
                                                  advertisedRemoteHint: aliceHint) else {
             throw PairingError.thirdRefused
         }
-        guard pair.aliceManager.isReady(viaBob), pair.bobManager.isReady(viaAlice) else {
+        guard pair.aliceManager.isReady(aliceRelation), pair.bobManager.isReady(bobRelation) else {
             throw PairingError.notEstablished
         }
     }

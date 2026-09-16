@@ -594,7 +594,11 @@ public final class MeshNode {
         peers.remove(peerId)
         let count = presentPeers.count
         peerLock.unlock()
-        sessions.drop(peerId)
+        // CRYPTO-001: A NODE WHICH LEARNS OF A PEER'S DEPARTURE KNOWETH THE PEER, NOT THE
+        // RELATION. It therefore speaketh the handle-scoped verb -- every incarnation of that
+        // handle retires -- rather than guessing an admission, and it can no longer retire a
+        // relation of a peer which merely shareth a reused handle.
+        sessions.retireIncarnations(ofPeerId: peerId)
         return count
     }
 

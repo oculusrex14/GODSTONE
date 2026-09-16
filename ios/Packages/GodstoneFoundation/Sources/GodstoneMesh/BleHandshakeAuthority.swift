@@ -19,17 +19,23 @@
 import Foundation
 
 internal protocol BleHandshakeAuthority: AnyObject {
-    /// Open the OUTBOUND (initiator) handshake, yielding HS1 -- or nil when trust refuseth.
-    func startOutboundHandshake(peerId: UUID, remoteHint: Data) -> Data?
+    /// Open the OUTBOUND (initiator) handshake for ONE RELATION, yielding HS1 -- or nil when trust refuseth.
+    ///
+    /// CRYPTO-001: the seam speaketh the relation's ADMISSION, not a platform handle. The
+    /// admission is minted by the link owner when the relation is admitted and carrieth the
+    /// direction, the orchestration-owned generation and the radio epoch, so a handshake half
+    /// spoken against a relation that hath been replaced can be REFUSED at the registry rather
+    /// than resolved into its replacement.
+    func startOutboundHandshake(relation: RelationAdmission, remoteHint: Data) -> Data?
 
     /// Continue the OUTBOUND handshake with the peer's HS2, yielding HS3 -- or nil when refused.
-    func continueOutboundHandshake(peerId: UUID, hs2: Data, advertisedRemoteHint: Data) -> Data?
+    func continueOutboundHandshake(relation: RelationAdmission, hs2: Data, advertisedRemoteHint: Data) -> Data?
 
     /// Accept an INBOUND (responder) handshake from the peer's HS1, yielding HS2 -- or nil.
-    func acceptInboundHandshake(peerId: UUID, remoteHint: Data, hs1: Data) -> Data?
+    func acceptInboundHandshake(relation: RelationAdmission, remoteHint: Data, hs1: Data) -> Data?
 
     /// Complete the INBOUND handshake with the peer's HS3: true only when trust standeth.
-    func completeInboundHandshake(peerId: UUID, hs3: Data, advertisedRemoteHint: Data) -> Bool
+    func completeInboundHandshake(relation: RelationAdmission, hs3: Data, advertisedRemoteHint: Data) -> Bool
 }
 
 /// The production adapter: the session registry IS the authority behind the substrate seam. This is
@@ -41,23 +47,23 @@ internal final class SessionHandshakeAuthority: BleHandshakeAuthority {
         self.sessions = sessions
     }
 
-    internal func startOutboundHandshake(peerId: UUID, remoteHint: Data) -> Data? {
-        return sessions.beginInitiator(peerId, remoteHint: remoteHint)
+    internal func startOutboundHandshake(relation: RelationAdmission, remoteHint: Data) -> Data? {
+        return sessions.beginInitiator(relation, remoteHint: remoteHint)
     }
 
-    internal func continueOutboundHandshake(peerId: UUID, hs2: Data,
+    internal func continueOutboundHandshake(relation: RelationAdmission, hs2: Data,
                                             advertisedRemoteHint: Data) -> Data? {
-        return sessions.initiatorProcessHs2(peerId, hs2: hs2,
+        return sessions.initiatorProcessHs2(relation, hs2: hs2,
                                             advertisedRemoteHint: advertisedRemoteHint)
     }
 
-    internal func acceptInboundHandshake(peerId: UUID, remoteHint: Data, hs1: Data) -> Data? {
-        return sessions.responderProcessHs1(peerId, remoteHint: remoteHint, hs1: hs1)
+    internal func acceptInboundHandshake(relation: RelationAdmission, remoteHint: Data, hs1: Data) -> Data? {
+        return sessions.responderProcessHs1(relation, remoteHint: remoteHint, hs1: hs1)
     }
 
-    internal func completeInboundHandshake(peerId: UUID, hs3: Data,
+    internal func completeInboundHandshake(relation: RelationAdmission, hs3: Data,
                                            advertisedRemoteHint: Data) -> Bool {
-        return sessions.responderProcessHs3(peerId, hs3: hs3,
+        return sessions.responderProcessHs3(relation, hs3: hs3,
                                             advertisedRemoteHint: advertisedRemoteHint)
     }
 }

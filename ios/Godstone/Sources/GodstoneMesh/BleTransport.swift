@@ -1578,6 +1578,51 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         mutableInboxCharacteristic = char
     }
 
+    /// CRYPTO-001: THE ADMISSION OF A RELATION -- the identity the RELATION'S OWN
+    /// REGISTRATION carrieth. The link owner minteth it when the relation is admitted
+    /// and it is immutable for that relation's whole life; the crypto authority is
+    /// NEVER addressed with the bare platform handle, because a handle is reused
+    /// across incarnations and an admission is not.
+    private static func admissionOf(_ lifetime: OutboundPhysicalLifetime) -> RelationAdmission {
+        RelationAdmission(relation: lifetime.relationKey, transportEpoch: lifetime.transportEpoch)
+    }
+
+    private static func admissionOf(_ lifetime: InboundSubscriptionLifetime) -> RelationAdmission {
+        RelationAdmission(relation: lifetime.relationKey, transportEpoch: lifetime.transportEpoch)
+    }
+
+    /// CRYPTO-001 evidence hook: the admission THIS TRANSPORT minted for a live relation --
+    /// the identity a court must present when it handshaketh the crypto authority directly,
+    /// so that a court's pre-pairing and the transport's own admission are ONE identity
+    /// rather than two which happen to look alike.
+    internal func admissionForTest(_ peerId: UUID, direction: BleDirection) -> RelationAdmission? {
+        lockTransport()
+        defer { unlockTransport() }
+        switch direction {
+        case .outboundCentral: return outboundAdmissionLocked(peerId)
+        case .inboundPeripheral: return inboundAdmissionLocked(peerId)
+        }
+    }
+
+    /// The admission of the outbound relation now standing for [peerId], read from the
+    /// relation's registration UNDER THE LOCK. Nil when no relation standeth -- and then
+    /// the crypto authority is not addressed at all.
+    private func outboundAdmissionLocked(_ peerId: UUID) -> RelationAdmission? {
+        activeOutboundLifetimes[peerId].map(Self.admissionOf)
+    }
+
+    private func inboundAdmissionLocked(_ peerId: UUID) -> RelationAdmission? {
+        activeInboundLifetimes[peerId].map(Self.admissionOf)
+    }
+
+    /// The admission of the inbound relation a DEFERRED teardown was scheduled for: the
+    /// identity captured when the work was queued, never a fresh lookup on arrival.
+    private static func admissionOfPendingInbound(centralId: UUID, generation: UInt64,
+                                                  transportEpoch: UInt64) -> RelationAdmission {
+        RelationAdmission(direction: .inboundPeripheral, peerId: centralId,
+                          generation: generation, transportEpoch: transportEpoch)
+    }
+
     private func purgeCentralConnection(peerId: UUID, cancelPeripheral: Bool) {
         let gen = centralDriver?.getConnectionGeneration(peerId) ?? 0
         lockTransport()
@@ -1595,7 +1640,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let periph = connectedPeripherals.removeValue(forKey: peerId)
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
-        sessions?.drop(peerId)
+        // CRYPTO-001: the purged CENTRAL relation is retired BY ITS OWN ADMISSION. A
+        // handle which carrieth no outbound relation is not touched, and an inbound
+        // relation of the same handle is a DIFFERENT relation and surviveth.
+        if let admission = outboundAdmissionLocked(peerId) {
+            sessions?.drop(admission)
+        }
         _ = centralDriver?.onProvisionalTimeout(peerId: peerId, expectedGen: gen)
         unlockTransport()
 
@@ -1729,7 +1779,10 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // The seal runs off the critical section, as the T14 law of trust
         // work bids: one call upon the registry, one nonce, one envelope.
         let seal = reservation.sealAndQueue(clear) { payload in
-            registry.seal(peerId, payload)
+            // CRYPTO-001: sealed FOR THE RELATION this connection was admitted as --
+            // its own immutable admission, never a fresh lookup of the handle.
+            guard let admission = connection.relationAdmission else { return nil }
+            return registry.seal(admission, payload)
         }
         if case .refused(let why) = seal {
             lockTransport()
@@ -2141,7 +2194,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             // T23: the exchange is ENGAGED - the first counsel of it is heard at
             // the door and answerd; the hour-glass may now fell a stalled half.
             conn.markHandshakeEngaged()
-            guard let hs2 = handshake?.acceptInboundHandshake(peerId: centralId, remoteHint: hint, hs1: record.payload) else {
+            guard let admission = conn.relationAdmission,
+                  let hs2 = handshake?.acceptInboundHandshake(relation: admission, remoteHint: hint, hs1: record.payload) else {
                 // trust refused: the counsel is not true; the relation
                 // becometh nothing, and the slot perisheth with it
                 recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs1 rejected")
@@ -2180,7 +2234,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 closeResponderRelation(centralId)
                 return
             }
-            guard handshake?.completeInboundHandshake(peerId: centralId, hs3: record.payload, advertisedRemoteHint: hint) == true else {
+            guard let admission = conn.relationAdmission,
+                  handshake?.completeInboundHandshake(relation: admission, hs3: record.payload, advertisedRemoteHint: hint) == true else {
                 recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs3 rejected")
                 closeResponderRelation(centralId)
                 return
@@ -2252,7 +2307,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             reason: "hs2 duplicate hearkened not")
             return
         }
-        guard let hs3 = handshake?.continueOutboundHandshake(peerId: peerId, hs2: record.payload, advertisedRemoteHint: boundRemoteHint) else {
+        guard let admission = conn.relationAdmission,
+              let hs3 = handshake?.continueOutboundHandshake(relation: admission, hs2: record.payload, advertisedRemoteHint: boundRemoteHint) else {
             // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "hs2 rejected")
             closeInitiatorRelation(peerId)
@@ -2351,7 +2407,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                                from: manager)
         // T21 (section 13, D2): the owners mandate of the fall consumeth the
         // session slot; the platforms moment of a subscription doth not.
-        sessions?.drop(centralId)
+        // CRYPTO-001: retired by the admission the registration carrieth -- never by the handle.
+        sessions?.drop(Self.admissionOf(lifetime))
     }
 
     /// The initiator's entrance: begin the trusted handshake with the remote
@@ -2394,7 +2451,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return .rejected("hint order not ascendant")
         }
         recordTrustWorkForTest("seal")
-        guard let hs1 = handshake?.startOutboundHandshake(peerId: peerId, remoteHint: remoteHint) else {
+        guard let admission = conn.relationAdmission,
+              let hs1 = handshake?.startOutboundHandshake(relation: admission, remoteHint: remoteHint) else {
             recordRejection(peerId: peerId, site: "hs.begin", reason: "begin initiator refused")
             return .rejected("begin initiator refused")
         }
@@ -2592,10 +2650,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// yet answerable -- an honest null rather than a fabricated peer, since `TrustedPeer`'s initialiser REFUSETH bytes
     /// that are not a sixteen-octet node id derived from a thirty-two-octet identity key.
     private func captureTrustedPeerLocked(_ peerId: UUID) {
-        guard let pub = sessions?.authenticatedIdentityPubOf(peerId), let nodeId = sessions?.authenticatedNodeIdOf(peerId)
+        // CRYPTO-001: the authenticated halves are asked FOR THE INCARNATION the
+        // registration carrieth. A superseded incarnation answereth nil -- as an
+        // unmarked relation doth -- instead of reporting its replacement's trust.
+        guard let admission = outboundAdmissionLocked(peerId) ?? inboundAdmissionLocked(peerId)
         else { return }
-        guard let relation = (activeOutboundLifetimes[peerId]?.relationKey ?? activeInboundLifetimes[peerId]?.relationKey)
+        guard let pub = sessions?.authenticatedIdentityPubOf(admission),
+              let nodeId = sessions?.authenticatedNodeIdOf(admission)
         else { return }
+        let relation = admission.relation
         let captured = TrustedPeer(relation: relation, nodeId16: nodeId,
                                    identityPub32: pub, trustVersion: Int(relation.generation))
         if let captured { capturedPeers[peerId] = captured }
@@ -2922,6 +2985,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             }
             let conn = driver.getActiveConnection(pid)
                 ?? BleConnection(peerId: pid, clock: clock)
+            // CRYPTO-001: the relation's admission is stamped on the very connection the
+            // guards token-check, at the instant of admission. Every crypto operation of
+            // this relation presenteth THIS identity for the connection's whole life.
+            conn.relationAdmission = RelationAdmission(relation: key,
+                                                       transportEpoch: currentTransportEpoch)
             outboundCentralConnections[pid] = conn
 
             // T15: the arm goes through the reducer; the lease captures the
@@ -3040,7 +3108,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         cancelTimerLocked(matching: key)
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
-        sessions?.drop(peerId)
+        sessions?.drop(Self.admissionOf(lifetime))
         connectedPeripherals.removeValue(forKey: peerId)
         inboxCharacteristics.removeValue(forKey: peerId)
         digestCharacteristics.removeValue(forKey: peerId)
@@ -3102,7 +3170,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             _ = reductionProcessInboundUnsubscribe(centralId: e.centralId, expectedGen: e.gen,
                                                   characteristic: nil,
                                                   sourceEpoch: e.epoch, from: e.manager)
-            sessions?.drop(e.centralId)
+            sessions?.drop(BleTransport.admissionOfPendingInbound(centralId: e.centralId,
+                                                                  generation: e.gen,
+                                                                  transportEpoch: e.epoch))
         }
     }
 
@@ -3146,7 +3216,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         relationDelegates.removeValue(forKey: peerId)
         cancelTimerLocked(matching: key)
         outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
-        sessions?.drop(peerId)
+        sessions?.drop(Self.admissionOf(lifetime))
         connectedPeripherals.removeValue(forKey: peerId)
         inboxCharacteristics.removeValue(forKey: peerId)
         digestCharacteristics.removeValue(forKey: peerId)
@@ -3404,7 +3474,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 // delegate ever hears of it. An unauthenticated payload
                 // (nil) is a failure, distinct from an empty success.
                 recordTrustWorkForTest("open")
-                let outcome = registry?.openWithResult(peerId, record.payload) ?? .rejected
+                let outcome: CryptoOpenResult = conn.relationAdmission.map {
+                    registry?.openWithResult($0, record.payload) ?? .rejected
+                } ?? .rejected
                 switch outcome {
                 case .authenticated(let clear):
                     self.onExecutor {
@@ -3425,7 +3497,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                         // IOS-05 / T27 (step 3): THE POST-AEAD CHARGE, BEFORE THE PAYLOAD LEAVETH. The identity charged is
                         // the IMMUTABLE FULL NODE ID the trusted handshake validated (the crypto layer retaineth it); the
                         // relation's id is only the fallback for a relation whose trust was never marked.
-                        let chargedIdentity = self.sessions?.authenticatedNodeIdOf(peerId) ?? Data()
+                        // CRYPTO-001: charged to the INCARNATION this connection was
+                        // admitted as; a superseded connection chargeth no identity.
+                        let chargedIdentity = conn.relationAdmission.flatMap { admission in
+                            self.sessions?.authenticatedNodeIdOf(admission)
+                        } ?? Data()
                         // IOS-05 / T27 (step 3): the AUTHENTICATED IDENTITY's TRUST question, charged before the
                         // payload leaveth -- an identity under a refuse window is refused here, and the RATE remains
                         // the router's own budget (the governor's buckets are per-second FRAME buckets, and charging
@@ -3643,11 +3719,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let action = driver.onProvisionalTimeout(peerId: peerId, expectedGen: effectiveGen)
         lockTransport()
         publishTrustedLoss(peerId)
-        activeOutboundLifetimes.removeValue(forKey: peerId)
+        let timedOutLifetime = activeOutboundLifetimes.removeValue(forKey: peerId)
         relationDelegates.removeValue(forKey: peerId)
         let p = connectedPeripherals.removeValue(forKey: peerId)
         outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
-        sessions?.drop(peerId)
+        if let timedOutLifetime = timedOutLifetime {
+            sessions?.drop(Self.admissionOf(timedOutLifetime))
+        }
         inboxCharacteristics.removeValue(forKey: peerId)
         digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
@@ -3723,6 +3801,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             activeInboundLifetimes[cid] = InboundSubscriptionLifetime(relationKey: key, transportEpoch: currentTransportEpoch,
                                                                       retainedCentral: priorLease?.retainedCentral,
                                                                       inboxSubscription: priorLease?.inboxSubscription)
+            // CRYPTO-001: the standing connection of this handle is RE-STAMPED with the
+            // admission of the relation now admitted, so a delayed callback which holdeth
+            // the superseded connection presenteth the superseded admission.
+            inboundPeripheralConnections[cid]?.relationAdmission =
+                RelationAdmission(relation: key, transportEpoch: currentTransportEpoch)
             if let context = activeManagerContext, context.noteAdmission(cid) {
                 context.markRotationDue()
             }
@@ -3836,6 +3919,10 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 relationKey: key, transportEpoch: currentTransportEpoch,
                 retainedCentral: central ?? existingLease?.retainedCentral,
                 inboxSubscription: InboxSubscription(characteristicUuid: characteristic, maxUpdateLength: maxUpdateLength))
+            // CRYPTO-001: as at the accept-write arm -- the standing connection carrieth the
+            // admission of the relation now admitted.
+            inboundPeripheralConnections[cid]?.relationAdmission =
+                RelationAdmission(relation: key, transportEpoch: currentTransportEpoch)
             if let context = activeManagerContext, context.noteAdmission(cid) {
                 context.markRotationDue()
             }
@@ -4427,7 +4514,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                                               characteristic: nil,
                                                               sourceEpoch: lifetime.transportEpoch,
                                                               from: pm)
-                        sessions?.drop(centralId)
+                        sessions?.drop(Self.admissionOf(lifetime))
                     }
                     continue
                 }
@@ -4458,7 +4545,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     // T14: as above - trust work outside, completion revalidated
                     // on the executor against the very connection that earned it.
                     recordTrustWorkForTest("open")
-                    let outcome = registry?.openWithResult(centralId, rec.payload) ?? .rejected
+                    let outcome: CryptoOpenResult = conn.relationAdmission.map {
+                        registry?.openWithResult($0, rec.payload) ?? .rejected
+                    } ?? .rejected
                     switch outcome {
                     case .authenticated(let clear):
                         self.onExecutor {
@@ -4477,7 +4566,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             // IOS-05 / T27 (step 3): THE POST-AEAD CHARGE, BEFORE THE PAYLOAD LEAVETH. The identity charged is
                             // the IMMUTABLE FULL NODE ID the trusted handshake validated (the crypto layer retaineth it); the
                             // relation's id is only the fallback for a relation whose trust was never marked.
-                            let chargedIdentity = self.sessions?.authenticatedNodeIdOf(centralId) ?? Data()
+                            let chargedIdentity = conn.relationAdmission.flatMap { admission in
+                                self.sessions?.authenticatedNodeIdOf(admission)
+                            } ?? Data()
                             // IOS-05 / T27 (step 3): the AUTHENTICATED IDENTITY's TRUST question, charged before the
                             // payload leaveth -- an identity under a refuse window is refused here, and the RATE remains
                             // the router's own budget (the governor's buckets are per-second FRAME buckets, and charging

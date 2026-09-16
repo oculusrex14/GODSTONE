@@ -505,10 +505,24 @@ final class ReadinessT14Tests: XCTestCase {
 
         // The four-way handshake of the session, keys agreeing with the
         // relation the transport registered.
-        let hs1 = try XCTUnwrap(sessionsFar.initiatorStart(peerId, remoteHint: nearIdentity.nodeHint))
-        let hs2 = try XCTUnwrap(sessionsNear.responderProcessHs1(peerId, remoteHint: farIdentity.nodeHint, hs1: hs1))
-        let hs3 = try XCTUnwrap(sessionsFar.initiatorProcessHs2(peerId, hs2: hs2, advertisedRemoteHint: nearIdentity.nodeHint))
-        let ready = sessionsNear.responderProcessHs3(peerId, hs3: hs3, advertisedRemoteHint: farIdentity.nodeHint)
+        //
+        // CRYPTO-001: addressed by the ADMISSION the transport itself minted for the relation it
+        // admitted -- the near side's own identity -- so the session the handshake establisheth
+        // and the relation the transport presenteth are ONE identity. The far side is a fixture
+        // with no transport; its incarnation is DERIVED from the minted one rather than invented.
+        // The transport's relation in this arm is the CENTRAL's (the ladder above admitted it
+        // outbound, and the notification below arrives on the central's own callback), so the
+        // near side is the INITIATOR of it -- which is also what production doth from this role.
+        let nearRelation = try XCTUnwrap(
+            transport.admissionForTest(peerId, direction: .outboundCentral),
+            "the transport minted no admission for the relation it admitted")
+        let farRelation = RelationAdmission(direction: .inboundPeripheral, peerId: peerId,
+                                            generation: nearRelation.relation.generation,
+                                            transportEpoch: nearRelation.transportEpoch)
+        let hs1 = try XCTUnwrap(sessionsNear.initiatorStart(nearRelation, remoteHint: farIdentity.nodeHint))
+        let hs2 = try XCTUnwrap(sessionsFar.responderProcessHs1(farRelation, remoteHint: nearIdentity.nodeHint, hs1: hs1))
+        let hs3 = try XCTUnwrap(sessionsNear.initiatorProcessHs2(nearRelation, hs2: hs2, advertisedRemoteHint: farIdentity.nodeHint))
+        let ready = sessionsFar.responderProcessHs3(farRelation, hs3: hs3, advertisedRemoteHint: nearIdentity.nodeHint)
         XCTAssertTrue(ready, "the session stands established")
 
         let recorder = RecordingTransportDelegate()

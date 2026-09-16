@@ -119,6 +119,17 @@ public final class BleConnection: @unchecked Sendable {
     /// live relation and raise no fall.
     internal var relationKeyProvider: (() -> RelationKey)?
 
+    /// CRYPTO-001: THE IMMUTABLE ADMISSION OF THE RELATION THIS CONNECTION SERVES.
+    ///
+    /// Stamped by the link owner at the moment of admission and never rewritten for
+    /// that admission. It is the ONLY thing a crypto operation of this connection
+    /// presenteth -- the handshake, the seal, the open, the authenticated accessors --
+    /// so that a callback carrying an OLD connection presenteth the OLD admission and
+    /// is REFUSED at the registry, instead of resolving whatever relation now occupieth
+    /// the platform handle. Nil for a connection no relation was admitted for: an
+    /// absence of admission is an absence of relation, never a licence to guess one.
+    internal var relationAdmission: RelationAdmission?
+
     // T23: the shadow projections of the handshake law, each a servant of this
     // relation alone. They mutate no authoritative state.
     internal let transcript = TranscriptCache()

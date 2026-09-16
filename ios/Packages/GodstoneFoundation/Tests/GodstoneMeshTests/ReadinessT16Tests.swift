@@ -289,8 +289,27 @@ final class ReadinessT16Tests: XCTestCase {
                        "the rotation retires the context that held the quarantine")
         XCTAssertTrue(establishInbound(transport, centralId: centralId, central: handle),
                       "after rotation the identity may subscribe anew")
+        // CRYPTO-001: A ROTATED RADIO IS A NEW RELATION. The re-admitted relation carrieth the
+        // fresh epoch, so the trust of the relation the old context served is a DIFFERENT
+        // relation's trust: it serveth this one not, and the path admitteth only after the
+        // fresh relation hath been handshaken. (The arm used to assert admission straight
+        // away, which was the aliasing the finding names.)
+        let rotated = try XCTUnwrap(
+            transport.admissionForTest(centralId, direction: .inboundPeripheral))
+        XCTAssertNil(pairing.bobManager.slotAdmissionForTest(rotated),
+                     "the old relation's trust must not answer for the rotated one")
+        XCTAssertEqual(transport.send(makeFrame([8]), to: centralId), .rejected("seal refused"),
+                       "a relation of a new radio epoch is not served by the old relation's trust")
+        let standingAlice = try XCTUnwrap(
+            pairing.aliceManager.slotForTest(pairing.viaBob)?.admission)
+        try ReadinessTrustedPairing.pairUp(pairing,
+                                           viaBob: pairing.viaBob, viaAlice: centralId,
+                                           aliceHint: pairing.aliceIdentity.nodeHint,
+                                           bobHint: pairing.bobIdentity.nodeHint,
+                                           aliceAdmission: ReadinessTrustedPairing.successor(of: standingAlice),
+                                           bobAdmission: rotated)
         XCTAssertEqual(transport.send(makeFrame([8]), to: centralId), .admitted,
-                       "after the rotation the trusted path admits again")
+                       "after the fresh handshake of the rotated relation the trusted path admits again")
         transport.stop()
     }
 
@@ -422,6 +441,22 @@ final class ReadinessT16Tests: XCTestCase {
         let second = centralPresent(centralId)
         XCTAssertTrue(establishInbound(transport, centralId: centralId, central: second),
                       "after rotation the identity may be subscribed anew")
+        // CRYPTO-001: as in the arm above -- the rotated relation is a NEW relation and the old
+        // trust serveth it not until it hath been handshaken.
+        let rotatedSecond = try XCTUnwrap(
+            transport.admissionForTest(centralId, direction: .inboundPeripheral))
+        XCTAssertNil(pairing.bobManager.slotAdmissionForTest(rotatedSecond),
+                     "the old relation's trust must not answer for the rotated one")
+        XCTAssertEqual(transport.send(makeFrame([6, 6]), to: centralId), .rejected("seal refused"),
+                       "a relation of a new radio epoch is not served by the old relation's trust")
+        let standingAliceSecond = try XCTUnwrap(
+            pairing.aliceManager.slotForTest(pairing.viaBob)?.admission)
+        try ReadinessTrustedPairing.pairUp(pairing,
+                                           viaBob: pairing.viaBob, viaAlice: centralId,
+                                           aliceHint: pairing.aliceIdentity.nodeHint,
+                                           bobHint: pairing.bobIdentity.nodeHint,
+                                           aliceAdmission: ReadinessTrustedPairing.successor(of: standingAliceSecond),
+                                           bobAdmission: rotatedSecond)
         XCTAssertEqual(transport.send(makeFrame([6, 6]), to: centralId), .admitted,
                        "the notification goes out over the trusted path")
         XCTAssertEqual(transport.responderSendRecordsForTest().last?.via, ObjectIdentifier(second),

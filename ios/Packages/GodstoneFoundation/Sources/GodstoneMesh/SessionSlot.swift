@@ -6,19 +6,76 @@ public enum SlotState: Equatable {
     case invalidated
 }
 
-/// T08: monotonic lease token. Reclaim compares generations: a retired slot
-/// returns its lease to the registry and a replacement carries the next
-/// generation.
-public struct SlotLease: Equatable {
-    public let generation: Int
+/// CRYPTO-001 (T08 completion): the COMPLETE immutable relation identity, and
+/// the only key the crypto registry accepteth.
+///
+/// What the audit refuseth: a registry that resolveth a relation by the platform
+/// HANDLE alone. A handle is reused -- a station is replaced while the handle
+/// standeth -- so a delayed teardown, a queued ciphertext, a timer or a
+/// handshake half spoken against incarnation A would resolve incarnation B and
+/// slay it, or route A's work into B's lifetime.
+///
+/// What this type carrieth, and why each field is load-bearing:
+/// - `relation.direction`: an inbound and an outbound relation of ONE platform
+///   peer id are TWO relations, not one; a registry which stampeth every
+///   relation outbound cannot hold them apart.
+/// - `relation.peerId`: the transport's lookup handle -- the only name the
+///   platform giveth, and never a node id.
+/// - `relation.generation`: THE ORCHESTRATION-OWNED generation of the relation,
+///   minted by the link owner when the relation is admitted. The crypto registry
+///   mints NONE of its own: an independent counter could alias, and the T08
+///   "remembered generation" history existed only to paper over that absence.
+/// - `transportEpoch`: the radio epoch the admission belongeth to. A handle and
+///   generation can recur across a radio restart; the epoch cannot.
+///
+/// The pair IS the tree's existing complete identity: the transport minteth both
+/// halves at admission and carrieth them through every queued record, timer,
+/// delegate and teardown.
+public struct RelationAdmission: Hashable, Sendable {
+    public let relation: RelationKey
+    public let transportEpoch: UInt64
 
-    public init(generation: Int) {
-        self.generation = generation
+    public init(relation: RelationKey, transportEpoch: UInt64) {
+        self.relation = relation
+        self.transportEpoch = transportEpoch
     }
 
-    public func next() -> SlotLease {
-        return SlotLease(generation: generation + 1)
+    public init(direction: BleDirection, peerId: UUID, generation: UInt64, transportEpoch: UInt64) {
+        self.relation = RelationKey(direction: direction, peerId: peerId, generation: generation)
+        self.transportEpoch = transportEpoch
     }
+
+    public var direction: BleDirection { relation.direction }
+    public var peerId: UUID { relation.peerId }
+    public var generation: UInt64 { relation.generation }
+}
+
+/// The relation's place in the registry: ONE live incarnation per direction and
+/// handle. The admission (generation and epoch) distinguisheth the incarnation.
+struct RelationHandle: Hashable, Sendable {
+    let direction: BleDirection
+    let peerId: UUID
+
+    init(direction: BleDirection, peerId: UUID) {
+        self.direction = direction
+        self.peerId = peerId
+    }
+}
+
+extension RelationAdmission {
+    var handle: RelationHandle {
+        RelationHandle(direction: relation.direction, peerId: relation.peerId)
+    }
+}
+
+/// CRYPTO-001: the typed answer of a relation's teardown. A teardown addressed
+/// to an incarnation which no longer standeth is `.stale` -- the authority
+/// REFUSETH it, and the standing replacement is untouched. The distinction is
+/// the finding: a drop which cannot be told from a drop of the replacement is
+/// not an authority over relations.
+public enum RelationRetirement: Equatable, Sendable {
+    case retired
+    case stale
 }
 
 /// T08: the single serialization authority for one relation. The handshake
@@ -31,6 +88,9 @@ public struct SlotLease: Equatable {
 public final class SessionSlot {
 
     public let key: RelationKey
+    /// CRYPTO-001: the incarnation this slot standeth for. Immutable for the
+    /// slot's whole life: a slot never serveth two incarnations.
+    internal let admission: RelationAdmission
     private let lock = NSRecursiveLock()
 
     /// T08 witness: the serialisation authority proves itself. While
@@ -47,11 +107,14 @@ public final class SessionSlot {
 
     internal var controller: TrustedHandshakeController?
     internal var state: SlotState = .active
-    internal var lease: SlotLease
 
-    public init(key: RelationKey, lease: SlotLease = SlotLease(generation: 0)) {
-        self.key = key
-        self.lease = lease
+    /// The relation's orchestration-owned generation: READ from the admission,
+    /// never minted here.
+    internal var generation: UInt64 { admission.relation.generation }
+
+    public init(admission: RelationAdmission) {
+        self.admission = admission
+        self.key = admission.relation
     }
 
     /// Every slot operation runs under this single serialization.

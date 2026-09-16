@@ -952,6 +952,22 @@ final class ReadinessT19Tests: XCTestCase {
         XCTAssertFalse(fresh === pm, "another manager stands in its place")
         var acceptsAgain = false
         fresh.updateAnswer = { _ in acceptsAgain }
+        // CRYPTO-001: the fresh context re-admitted the relation in a NEW radio epoch, so the
+        // relation the old context served is a DIFFERENT relation: its trust serveth this one
+        // not, and the path admitteth only after the fresh relation hath been handshaken.
+        let rotated = try XCTUnwrap(
+            bob.admissionForTest(centralId, direction: .inboundPeripheral))
+        XCTAssertNil(pair.bobManager.slotAdmissionForTest(rotated),
+                     "the old relation's trust must not answer for the rotated one")
+        XCTAssertEqual(bob.send(f, to: centralId), .rejected("seal refused"),
+                       "a relation of a new radio epoch is not served by the old relation's trust")
+        let standingAlice = try XCTUnwrap(pair.aliceManager.slotForTest(pair.viaBob)?.admission)
+        try ReadinessTrustedPairing.pairUp(pair,
+                                           viaBob: pair.viaBob, viaAlice: centralId,
+                                           aliceHint: pair.aliceIdentity.nodeHint,
+                                           bobHint: pair.bobIdentity.nodeHint,
+                                           aliceAdmission: ReadinessTrustedPairing.successor(of: standingAlice),
+                                           bobAdmission: rotated)
         XCTAssertEqual(bob.send(f, to: centralId), .backpressured, "the fresh window takes the value")
         let freshAttempts = fresh.updateAttempts.count
         XCTAssertGreaterThan(freshAttempts, 0, "the send itself attempted through the fresh handle")
@@ -1073,4 +1089,5 @@ final class ReadinessT19Tests: XCTestCase {
         XCTAssertEqual(total, sealed, "one record, whole, by the other direction's law")
         alice.stop(); bob.stop()
     }
+
 }

@@ -239,6 +239,14 @@ final class ReadinessT08Tests: XCTestCase {
         // retired entry together with its lock, and must advance the
         // remembered generation so a replacement never aliases the incarnation
         // it replaces.
+        //
+        // CRYPTO-001 (T08 completion): the generation is now MINTED BY THE CALLER --
+        // the orchestration owner mints it when it admits the relation -- and the
+        // crypto registry keeps NO history of its own. This court therefore speaks
+        // the admission exactly as the link owner doth, and the arm which used to
+        // read the registry's private history now asserts the law that replaced it:
+        // a superseded incarnation is REFUSED by name, and the registry remembers
+        // nothing which could be replayed.
         let identityI = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
         let identityR = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
         let initiator = SessionManager(
@@ -248,37 +256,56 @@ final class ReadinessT08Tests: XCTestCase {
         let handleCount = 16
         var handles = [UUID]()
         for _ in 0..<handleCount { handles.append(UUID()) }
-        var previousGeneration = [Int](repeating: -1, count: handleCount)
+        var previousGeneration = [UInt64](repeating: 0, count: handleCount)
         for round in 0..<10000 {
             let lane = round % handleCount
             let peer = handles[lane]
+            // The admission the orchestration owner would mint: the next
+            // generation for this handle, and the epoch the radio is in.
+            let generation = previousGeneration[lane] + 1
+            let epoch = UInt64(round / handleCount) + 1
+            let outbound = RelationAdmission(direction: .outboundCentral, peerId: peer,
+                                             generation: generation, transportEpoch: epoch)
+            let inbound = RelationAdmission(direction: .inboundPeripheral, peerId: peer,
+                                            generation: generation, transportEpoch: epoch)
             let hs1 = try XCTUnwrap(
-                initiator.initiatorStart(peer, remoteHint: identityR.nodeHint))
+                initiator.initiatorStart(outbound, remoteHint: identityR.nodeHint))
             let hs2 = try XCTUnwrap(responder.responderProcessHs1(
-                peer, remoteHint: identityI.nodeHint, hs1: hs1))
+                inbound, remoteHint: identityI.nodeHint, hs1: hs1))
             let hs3 = try XCTUnwrap(initiator.initiatorProcessHs2(
-                peer, hs2: hs2, advertisedRemoteHint: identityR.nodeHint))
+                outbound, hs2: hs2, advertisedRemoteHint: identityR.nodeHint))
             XCTAssertTrue(responder.responderProcessHs3(
-                peer, hs3: hs3, advertisedRemoteHint: identityI.nodeHint))
-            let generation = try XCTUnwrap(initiator.slotLeaseGenerationForTest(peer))
-            XCTAssertGreaterThan(generation, previousGeneration[lane])
+                inbound, hs3: hs3, advertisedRemoteHint: identityI.nodeHint))
+            let live = try XCTUnwrap(initiator.slotLeaseGenerationForTest(peer))
+            XCTAssertEqual(UInt64(live), generation)
             previousGeneration[lane] = generation
-            initiator.drop(peer)
-            responder.drop(peer)
+            // The SUPERSEDED incarnation is refused by name before the reconnect
+            // retires the live one: a teardown addressed to generation N-1 leaves
+            // the incarnation of generation N standing.
+            if generation > 1 {
+                let stale = RelationAdmission(direction: .outboundCentral, peerId: peer,
+                                              generation: generation - 1, transportEpoch: epoch)
+                XCTAssertEqual(initiator.drop(stale), .stale,
+                               "a teardown of the superseded incarnation was accepted")
+                XCTAssertTrue(initiator.isReady(outbound),
+                              "the superseded teardown slew the live incarnation")
+            }
+            XCTAssertEqual(initiator.drop(outbound), .retired)
+            XCTAssertEqual(responder.drop(inbound), .retired)
             XCTAssertFalse(initiator.slotCountForTest() > handleCount,
                            "slot map grew past the live bound")
             XCTAssertFalse(responder.slotCountForTest() > handleCount,
                            "responder map grew past the live bound")
-            XCTAssertFalse(initiator.rememberedCountForTest() > 256,
-                           "the remembered-generation registry is unbounded")
         }
-        // Every entry was reclaimed with its lock entry: nothing leaks.
+        // Every entry was reclaimed with its lock entry: nothing leaks, and the
+        // registry remembers NOTHING -- the generation history is reclaimed with
+        // the history-free design the orchestration-owned generation made possible.
         XCTAssertEqual(initiator.slotCountForTest(), 0)
         XCTAssertEqual(responder.slotCountForTest(), 0)
-        // Ten thousand reconnects over sixteen handles remember sixteen
-        // generations - one per handle, not one per reconnect.
-        XCTAssertEqual(initiator.rememberedCountForTest(), handleCount)
-        XCTAssertEqual(responder.rememberedCountForTest(), handleCount)
+        for peer in handles {
+            XCTAssertEqual(initiator.incarnationCountForTest(peer), 0)
+            XCTAssertNil(initiator.slotLeaseGenerationForTest(peer))
+        }
     }
 
     func testDestroyedReferencesRemainTerminal() throws {
@@ -300,29 +327,46 @@ final class ReadinessT08Tests: XCTestCase {
         XCTAssertEqual(session.initiator.slotCountForTest(), 0)
         XCTAssertEqual(session.responder.slotCountForTest(), 0)
         XCTAssertNil(session.initiator.slotLeaseGenerationForTest(session.peer))
-        // The replacement advances the lease instead of aliasing the old one.
+        // The replacement carrieth the NEXT generation the orchestration owner
+        // minteth -- not one the crypto registry invented -- so it cannot alias the
+        // incarnation it replaces.
+        let replacement = RelationAdmission(direction: .outboundCentral,
+                                            peerId: session.peer, generation: 1,
+                                            transportEpoch: 1)
+        let responderReplacement = RelationAdmission(direction: .inboundPeripheral,
+                                                     peerId: session.peer, generation: 1,
+                                                     transportEpoch: 1)
         let hs1 = try XCTUnwrap(session.initiator.initiatorStart(
-            session.peer, remoteHint: session.responderHint))
+            replacement, remoteHint: session.responderHint))
         let hs2 = try XCTUnwrap(session.responder.responderProcessHs1(
-            session.peer, remoteHint: session.initiatorHint, hs1: hs1))
+            responderReplacement, remoteHint: session.initiatorHint, hs1: hs1))
         let hs3 = try XCTUnwrap(session.initiator.initiatorProcessHs2(
-            session.peer, hs2: hs2, advertisedRemoteHint: session.responderHint))
+            replacement, hs2: hs2, advertisedRemoteHint: session.responderHint))
         XCTAssertTrue(session.responder.responderProcessHs3(
-            session.peer, hs3: hs3, advertisedRemoteHint: session.initiatorHint))
+            responderReplacement, hs3: hs3, advertisedRemoteHint: session.initiatorHint))
         let generation = try XCTUnwrap(
             session.initiator.slotLeaseGenerationForTest(session.peer))
-        XCTAssertGreaterThan(generation, 0)
+        XCTAssertEqual(generation, 1)
+        // The teardown of the incarnation that was replaced is REFUSED, and the
+        // replacement standeth untouched: the finding's law, at the boundary.
+        let superseded = RelationAdmission(direction: .outboundCentral,
+                                           peerId: session.peer, generation: 0,
+                                           transportEpoch: 0)
+        XCTAssertEqual(session.initiator.drop(superseded), .stale)
+        XCTAssertTrue(session.initiator.isReady(replacement))
+        XCTAssertTrue(session.responder.isReady(responderReplacement))
         // Cross-incarnation replay: the destroyed incarnation's frame cannot
         // be replayed into the replacement. The legacy wrapper reports the
         // typed failure documented for this boundary, and the replacement keeps
         // its authoritative state.
-        XCTAssertNil(session.responder.open(session.peer, stale))
+        XCTAssertNil(session.responder.open(responderReplacement, stale))
         // A typed failure, not a state loss: the live replacement still serves
-        // legitimately sequenced frames.
-        XCTAssertTrue(session.responder.isReady(session.peer))
-        XCTAssertTrue(session.initiator.isReady(session.peer))
-        let live = try XCTUnwrap(session.initiator.seal(session.peer, Data("live".utf8)))
-        let openedLive = try XCTUnwrap(session.responder.open(session.peer, live))
+        // legitimately sequenced frames -- read and written BY ITS OWN ADMISSION,
+        // since the handle alone no longer nameth a live relation.
+        XCTAssertTrue(session.responder.isReady(responderReplacement))
+        XCTAssertTrue(session.initiator.isReady(replacement))
+        let live = try XCTUnwrap(session.initiator.seal(replacement, Data("live".utf8)))
+        let openedLive = try XCTUnwrap(session.responder.open(responderReplacement, live))
         XCTAssertEqual(openedLive, Data("live".utf8))
     }
 

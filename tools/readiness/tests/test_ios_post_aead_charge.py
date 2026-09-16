@@ -66,25 +66,38 @@ class IosPostAeadChargeTest(unittest.TestCase):
         s = SESSIONS.read_text(encoding="utf-8")
         self.assertRegex(
             s, r"func\s+authenticatedNodeIdOf\s*\(",
-            "the SessionManager must expose the RETAINED authenticated identity under the relation's peer "
-            "id, answering nil while trust was never marked")
+            "the SessionManager must expose the RETAINED authenticated identity for the RELATION "
+            "whose admission is presented, answering nil while trust was never marked -- and nil "
+            "for an incarnation that no longer standeth (CRYPTO-001)")
 
     def test_the_collectors_charge_before_the_payload_leaves(self):
         """The charge must sit BETWEEN authentication and the application hand-off, for BOTH gates.
-        Assertions are kept SHORT-MESSAGED and positional: an assertion that prints a whole source file
-        on failure cost this programme a large amount of context twice, and a check is not worth that."""
+
+        RE-MEASURED AT THE CRYPTO-001 REPAIR (round 257). The arm used to assert the literal
+        `authenticatedNodeIdOf(peerId)` and to take the FIRST occurrence of the charge for BOTH
+        gates -- a positional check that named the wrong occurrence, one of the species this
+        programme keeps meeting. The law is unchanged and the instrument is now stronger: each
+        gate's OWN delivery is located, and the authenticated-identity read and the charge must
+        both fall BETWEEN that gate's open (the authentication) and its delivery. The identity is
+        read FOR THE INCARNATION the connection was admitted as, which is the CRYPTO-001 law."""
         t = TRANSPORT.read_text(encoding="utf-8")
-        for who in ("peerId", "centralId"):
-            charge = "authenticatedAdmissionBudget.charge("
-            identity = "authenticatedNodeIdOf(" + who + ")"
-            delivery = "delegate?.transportDidReceive(data: clear, peerId: " + who + ")"
-            self.assertIn(identity, t, "the collector for " + who + " must charge the AUTHENTICATED identity")
-            first_charge = t.index(charge)
-            first_delivery = t.index(delivery)
-            self.assertLess(
-                first_charge, first_delivery,
-                "the charge must precede the delivery for " + who + " (charge at "
-                + str(first_charge) + ", delivery at " + str(first_delivery) + ")")
+        deliveries = [m.start() for m in re.finditer(
+            r"delegate\?\.transportDidReceive\(data: clear, peerId: (peerId|centralId)\)", t)]
+        self.assertEqual(len(deliveries), 2, "both gates must hand off to the application")
+        self.assertIn("conn.relationAdmission.flatMap { admission in", t,
+                      "the authenticated identity must be read FOR THE INCARNATION the connection "
+                      "was admitted as, never for a bare handle")
+        for at in deliveries:
+            before = t[:at]
+            open_at = before.rfind("openWithResult(")
+            identity_at = before.rfind("authenticatedNodeIdOf(admission)")
+            charge_at = before.rfind("authenticatedAdmissionBudget.charge(")
+            self.assertGreater(open_at, 0, "the gate must authenticate before it delivers")
+            self.assertGreater(identity_at, open_at,
+                               "the authenticated identity must be read after the open")
+            self.assertGreater(charge_at, open_at, "the charge must follow the open")
+            self.assertLess(identity_at, at, "the identity must be read before the delivery")
+            self.assertLess(charge_at, at, "the charge must precede the delivery")
 
 
 if __name__ == "__main__":  # pragma: no cover
