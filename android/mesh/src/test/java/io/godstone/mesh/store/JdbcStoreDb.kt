@@ -50,6 +50,27 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
+    override fun deleteHeldRow(msgId: ByteArray): Boolean {
+        synchronized(conn) {
+            conn.prepareStatement("DELETE FROM ${StoreSchema.TABLE} WHERE ${StoreSchema.COL_MSG_ID} = ?").use { st ->
+                st.setBytes(1, msgId)
+                return st.executeUpdate() > 0
+            }
+        }
+    }
+
+    override fun setDeliveryStateCode(msgId: ByteArray, code: Int): Boolean {
+        synchronized(conn) {
+            conn.prepareStatement(
+                "UPDATE ${StoreSchema.DELIVERY_TABLE} SET ${StoreSchema.COL_D_STATE} = ? " +
+                    "WHERE ${StoreSchema.COL_D_MSG_ID} = ?",
+            ).use { st ->
+                st.setInt(1, code); st.setBytes(2, msgId)
+                return st.executeUpdate() > 0
+            }
+        }
+    }
+
     override fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
                                         bootIdentity: String, discontinuity: Long): Boolean {
         synchronized(conn) {

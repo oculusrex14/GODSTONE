@@ -661,6 +661,13 @@ class SqliteDeliveryRepositoryTest {
     override fun retentionCheckpointOf(msgId: ByteArray): Array<Any?>? = null
     override fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
                                         bootIdentity: String, discontinuity: Long): Boolean = false
+    // GS-STORE-004 (round 327): WHERE A DOUBLE **DELEGATES**, IT MUST **FORWARD** -- a double that observed
+    // nothing while the object it wraps observed everything would be a SILENT LIE (the lesson this programme paid
+    // for at CRYPTO-001). Only the RETENTION answers stay stubbed above, because THIS double existeth to inject
+    // faults, not to hold rows.
+    override fun deleteHeldRow(msgId: ByteArray): Boolean = inner.deleteHeldRow(msgId)
+    override fun setDeliveryStateCode(msgId: ByteArray, code: Int): Boolean =
+        inner.setDeliveryStateCode(msgId, code)
 
         private val lock = Any()
         @Volatile var faultReadDelivery = false
@@ -2648,6 +2655,9 @@ class SqliteDeliveryRepositoryTest {
     override fun retentionCheckpointOf(msgId: ByteArray): Array<Any?>? = null
     override fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
                                         bootIdentity: String, discontinuity: Long): Boolean = false
+    override fun deleteHeldRow(msgId: ByteArray): Boolean = underlyingDb.deleteHeldRow(msgId)
+    override fun setDeliveryStateCode(msgId: ByteArray, code: Int): Boolean =
+        underlyingDb.setDeliveryStateCode(msgId, code)
 
         private val armBlock = AtomicBoolean(false)
         @Volatile var reachedTransactionEntry: CountDownLatch? = null

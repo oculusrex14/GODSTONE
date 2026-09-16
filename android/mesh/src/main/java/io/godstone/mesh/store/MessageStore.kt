@@ -961,6 +961,15 @@ internal interface StoreDb {
     fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
                                bootIdentity: String, discontinuity: Long): Boolean
 
+    /** GS-STORE-004 (round 327): RETIRE the held row itself -- the sweep's first half. The caller owneth the
+     *  transaction, so this taketh NO lock of its own. */
+    fun deleteHeldRow(msgId: ByteArray): Boolean
+
+    /** GS-STORE-004 (round 327): move a `delivery_state` row to a terminal code -- the sweep's second half, IN THE
+     *  SAME TRANSACTION as the deletion, because a held row retired without its delivery state (or the reverse) would
+     *  be a half-retirement. */
+    fun setDeliveryStateCode(msgId: ByteArray, code: Int): Boolean
+
     /** True iff a row with [msgId] is present. Used for the final-presence check (B2/B3). */
     fun contains(msgId: ByteArray): Boolean
 
@@ -1211,6 +1220,35 @@ class SqliteMessageStore internal constructor(
      *  continuity identifier of the boot it was taken in. NULL means "no runtime clock": the historical behaviour,
      *  and the four checkpoint columns then stay NULL rather than carrying a fabricated budget. */
     internal var receiptTimeProvider: (() -> Pair<Long, String>)? = null
+
+    /** GS-STORE-004 (round 326, THE SEAM -- THE API WITHOUT ITS SEMANTICS): THE BOUNDED EXPIRY SWEEP. It retireth
+     *  AT MOST [limit] rows whose persisted budget is spent and answereth HOW MANY it retired. AT THIS STEP IT IS A
+     *  STUB RETURNING ZERO, so the arm that demandeth a retired row FAILETH ON ITS OWN SUBJECT rather than at
+     *  COMPILE TIME -- which is what maketh it a behavioural RED. */
+    internal fun sweepExpired(limit: Int = 64): Int {
+        if (receiptTimeProvider == null) return 0
+        // (1) A BOUNDED SCAN THAT REUSETH **THE GATE ITSELF** -- so the sweep and the readers can NEVER disagree
+        // about what "spent" meaneth (the same discipline the iOS sweep carrieth).
+        val spent = ArrayList<ByteArray>()
+        engine.forEachMsgId { id ->
+            if (spent.size < limit && !isForwardable(id)) spent.add(id)
+            true
+        }
+        if (spent.isEmpty()) return 0
+        // (2) ONE TRANSACTION: THE HELD ROW AND ITS DELIVERY STATE MOVE TOGETHER, or neither doth. The terminal code
+        // is READ FROM THE ENUM'S OWN PROPERTY (`DeliveryState.EXPIRED.code` == 4) AND NEVER INFERRED FROM ITS
+        // ORDER -- the two-space law, applied at the boundary where the value's meaning is known.
+        return engine.inTransaction { db ->
+            var retired = 0
+            for (id in spent) {
+                val moved = db.setDeliveryStateCode(id, DeliveryState.EXPIRED.code)
+                val deleted = db.deleteHeldRow(id)
+                if (deleted) retired++
+                if (!moved && !deleted) continue
+            }
+            retired
+        }
+    }
 
     /** GS-STORE-004 evidence hook: what the store ACTUALLY PERSISTED beside the row -- delegated to the engine,
      *  WHICH OWNS THE HANDLE. */
@@ -1777,6 +1815,20 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         }
         return helper.writableDatabase.update(
             StoreSchema.TABLE, cv, "${StoreSchema.COL_MSG_ID} = ?",
+            arrayOf(String(msgId, Charsets.ISO_8859_1)),
+        ) > 0
+    }
+
+    override fun deleteHeldRow(msgId: ByteArray): Boolean =
+        helper.writableDatabase.delete(
+            StoreSchema.TABLE, "${StoreSchema.COL_MSG_ID} = ?",
+            arrayOf(String(msgId, Charsets.ISO_8859_1)),
+        ) > 0
+
+    override fun setDeliveryStateCode(msgId: ByteArray, code: Int): Boolean {
+        val cv = ContentValues().apply { put(StoreSchema.COL_D_STATE, code) }
+        return helper.writableDatabase.update(
+            StoreSchema.DELIVERY_TABLE, cv, "${StoreSchema.COL_D_MSG_ID} = ?",
             arrayOf(String(msgId, Charsets.ISO_8859_1)),
         ) > 0
     }

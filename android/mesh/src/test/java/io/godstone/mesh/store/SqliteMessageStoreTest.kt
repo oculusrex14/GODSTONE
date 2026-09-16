@@ -1262,4 +1262,23 @@ class SqliteMessageStoreTest {
             "a row whose budget is merely LOW must still be forwarded -- the gate must not withhold everything",
         )
     }
+
+    /** GS-STORE-004 (round 326), the finding's own words: "Expiration must ATOMICALLY retire held rows ...". THE
+     *  DISCRIMINATING LAW, MIRRORED FROM iOS ROUND 311: a spent row must be GONE FROM STORAGE, not merely hidden
+     *  from readers -- and the sweep must SAY how many it retired. RUN RED BEFORE THE REPAIR. */
+    @Test
+    fun gsstore004TheSweepRetirethTheSpentRowFromStorage() = runBlocking {
+        open(8L * 1024 * 1024)
+        store.receiptTimeProvider = { 5_000_000L to "boot-A" }
+        val f = frame(9, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        store.engine.execRawSql("UPDATE ${StoreSchema.TABLE} SET ${StoreSchema.COL_REMAINING_MS} = 0")
+        assertNotNull(store.retentionCheckpointForTest(msgId(9)), "the row stands before the sweep")
+
+        assertEquals(1, store.sweepExpired(limit = 8), "the sweep must retire the spent row and SAY how many")
+        assertNull(
+            store.retentionCheckpointForTest(msgId(9)),
+            "the row must be GONE FROM STORAGE -- a hidden row is not a retired one",
+        )
+    }
 }
