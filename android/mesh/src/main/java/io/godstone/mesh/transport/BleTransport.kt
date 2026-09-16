@@ -1884,9 +1884,8 @@ class BleTransport(
             recordRejection(peerId, "hs.confirm", "key confirmation before the trusted hour")
             return TransportResult.Rejected("key confirmation before the trusted hour")
         }
-        val confirmAddress = conn.relationKeyProvider().peerAddress
         val confirmAdmission = ensureAdmission(
-            conn, if (centralConn != null) BleDirection.OUTBOUND else BleDirection.INBOUND, confirmAddress)
+            conn, if (centralConn != null) BleDirection.OUTBOUND else BleDirection.INBOUND, address)
         if (confirmAdmission == null || !registry.isReady(confirmAdmission)) {
             recordRejection(peerId, "hs.confirm", "the slot is not ready")
             return TransportResult.Rejected("the slot is not ready")
@@ -2057,7 +2056,7 @@ class BleTransport(
                     return
                 }
                 conn.markHandshakeEngaged()
-                val responderAdmission = ensureAdmission(conn, BleDirection.INBOUND, conn.relationKeyProvider().peerAddress)
+                val responderAdmission = ensureAdmission(conn, BleDirection.INBOUND, peerAddress)
                 val hs2 = responderAdmission
                     ?.let { handshake?.acceptInboundHandshake(it, hint, record.payload) } ?: run {
                     // trust refused: the counsel is not true; the relation
@@ -2095,7 +2094,7 @@ class BleTransport(
                     closeResponderRelation(peerAddress)
                     return
                 }
-                if (ensureAdmission(conn, BleDirection.INBOUND, conn.relationKeyProvider().peerAddress)
+                if (ensureAdmission(conn, BleDirection.INBOUND, peerAddress)
                         ?.let { handshake?.completeInboundHandshake(it, record.payload, hint) } != true) {
                     recordRejection(conn.peerId, "hs.read.responder", "hs3 rejected")
                     closeResponderRelation(peerAddress)
@@ -2151,7 +2150,7 @@ class BleTransport(
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 duplicate hearkened not")
             return
         }
-        val initiatorAdmission = ensureAdmission(conn, BleDirection.OUTBOUND, conn.relationKeyProvider().peerAddress)
+        val initiatorAdmission = ensureAdmission(conn, BleDirection.OUTBOUND, peerAddress)
         val hs3 = initiatorAdmission
             ?.let { handshake?.continueOutboundHandshake(it, record.payload, boundRemoteHint) } ?: run {
             // trust rejected: HS3 is withheld and the exact relation closes

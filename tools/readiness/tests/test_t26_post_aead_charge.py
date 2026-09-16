@@ -76,7 +76,8 @@ def charge_binding_problems(source: str) -> list[str]:
                             "hint and claimed-SOS keys, and the authenticated scope must be keyed on the "
                             "RELATION'S AUTHENTICATED identity")
             return problems
-        binding = re.search(r"\bval\s+" + re.escape(charged) + r"\s*=\s*(?P<rhs>[^\n]*)", source)
+        binding = re.search(r"\bval\s+" + re.escape(charged) + r"\s*=\s*(?P<rhs>[^\n]*(?:\n\s*[.?:][^\n]*)*)",
+                            source)
         if binding is None:
             problems.append("the charged identity %r must be BOUND in the source, so that this court can "
                             "judge WHERE it cometh from rather than merely that it hath a name" % charged)
@@ -105,8 +106,8 @@ class T26PostAeadChargeTest(unittest.TestCase):
         t = TRANSPORT.read_text(encoding="utf-8")
         self.assertIn("CryptoOpenResult.Authenticated", t,
                       "the collector must still have an Authenticated arm to judge")
-        self.assertIn("openWithResult(peerId, record.payload)", t,
-                      "the collector must still decrypt through the registry")
+        self.assertRegex(t, r"openWithResult\(\s*[A-Za-z_][\w.?]*\(?[^,)]*\)?,?\s*record\.payload\)",
+                         "the collector must still decrypt through the registry")
         self.assertTrue(BUDGET.exists(), "the admission budget must exist to be extended")
 
     def test_the_authenticated_traffic_is_charged_before_the_plaintext_leaves(self):
@@ -139,7 +140,8 @@ class T26BindingNegativeCasesTest(unittest.TestCase):
     def _source(self) -> str:
         return TRANSPORT.read_text(encoding="utf-8")
 
-    BINDING = "val chargedIdentity = sessions?.authenticatedNodeIdOf(peerId) ?: peerId"
+    BINDING = ("val chargedIdentity = element.admission\n"
+               "                                ?.let { sessions?.authenticatedNodeIdOf(it) } ?: peerId")
     CALL = "chargedIdentity, outcome.plaintext.size"
 
     def _patched(self, old: str, new: str) -> str:
@@ -168,13 +170,13 @@ class T26BindingNegativeCasesTest(unittest.TestCase):
 
     def test_a_fallback_that_is_not_the_connections_own_peer_id_is_refused(self):
         problems = charge_binding_problems(self._patched(
-            self.BINDING, "val chargedIdentity = sessions?.authenticatedNodeIdOf(peerId) ?: otherPeer"))
+            self.BINDING, "val chargedIdentity = sessions?.authenticatedNodeIdOf(admissionKey) ?: otherPeer"))
         self.assertTrue(problems, "a fallback to anything but the connection's own peerId MUST be refused")
         self.assertIn("admissible fallback", " | ".join(problems))
 
     def test_a_fallback_to_a_claimed_sos_handle_is_refused(self):
         problems = charge_binding_problems(self._patched(
-            self.BINDING, "val chargedIdentity = sessions?.authenticatedNodeIdOf(peerId) ?: claimedSosHandle"))
+            self.BINDING, "val chargedIdentity = sessions?.authenticatedNodeIdOf(admissionKey) ?: claimedSosHandle"))
         self.assertTrue(problems, "a claimed SOS handle may not choose the key")
 
 
