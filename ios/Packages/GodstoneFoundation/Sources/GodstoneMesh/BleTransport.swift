@@ -3347,7 +3347,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                                  reason: "authenticated admission budget exhausted")
                             return
                         }
-                        self.delegate?.transportDidReceive(data: clear, peerId: peerId)
+                        if let captured = self.capturedPeers[peerId] {
+                            self.delegate?.transportDidReceive(data: clear, peerId: peerId,
+                                                              receivedFrom: captured.nodeId16)
+                        } else {
+                            self.delegate?.transportDidReceive(data: clear, peerId: peerId)
+                        }
                     }
                 case .rejected:
                     recordRejection(peerId: peerId, site: "open.notify", reason: "unauthenticated payload")
@@ -4359,7 +4364,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                                      reason: "authenticated admission budget exhausted")
                                 return
                             }
+                            if let captured = self.capturedPeers[centralId] {
+                            self.delegate?.transportDidReceive(data: clear, peerId: centralId,
+                                                              receivedFrom: captured.nodeId16)
+                        } else {
                             self.delegate?.transportDidReceive(data: clear, peerId: centralId)
+                        }
                         }
                     case .rejected:
                         recordRejection(peerId: centralId, site: "open.write", reason: "unauthenticated payload")
@@ -4506,6 +4516,11 @@ public protocol TransportDelegate: AnyObject {
     func transportReady(peerId: UUID)
     func transportDidDisconnect(peerId: UUID)
     func transportDidReceive(data: Data, peerId: UUID)
+
+    /// IOS-04 (T24) step 3: THE DELIVERY, TOLD WHOSE IDENTITY SENT IT -- the authenticated node id the handshake
+    /// validated, which the transport captured at the sealed round. A HANDLE IS NOT AN IDENTITY: the audited road told
+    /// the application which transport handle carried a frame and never who sent it.
+    func transportDidReceive(data: Data, peerId: UUID, receivedFrom nodeId16: Data)
     func transportDidHandshakeReady(peerId: UUID)
     /// T23 (section 13): the drivers own publication of the APPLICATION
     /// LinkReady, which is made upon the sealed key-confirmation round and
@@ -4515,6 +4530,13 @@ public protocol TransportDelegate: AnyObject {
 }
 
 public extension TransportDelegate {
+    /// IOS-04 (T24) step 3: THE FORWARDING DEFAULT -- an existing consumer that knoweth only the handle standeth
+    /// UNCHANGED, and one that wanteth the identity overrideth this. (Without it, adding the requirement broke
+    /// `MeshNode`'s conformance in one compile error, which is exactly what a default is for.)
+    func transportDidReceive(data: Data, peerId: UUID, receivedFrom nodeId16: Data) {
+        transportDidReceive(data: data, peerId: peerId)
+    }
+
     func transportDidHandshakeReady(peerId: UUID) {}
     func transportApplicationLinkReady(peerId: UUID) {}
     func transportPhysicalDuplexReady(peerId: UUID) {}
