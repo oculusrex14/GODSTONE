@@ -336,6 +336,41 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// GS-RUNTIME-001 step 6: **STOP/DRAIN WORKERS BEFORE DELETING KEYS.** MEASURED BEFORE THE REPAIR:
+    /// `MeshRuntimeInvalidator.invalidateForWipe()` closed the peer store and the message store **while the node's
+    /// ACK worker may still have been running**, because the invalidator did not hold the NODE at all -- and
+    /// **NOBODY IN PRODUCTION CALLED `meshNode.stop()`** (the search over `ios/Godstone/Sources` found no call
+    /// site). So a deadline armed by the runtime could fire AFTER the stores were closed.
+    func testSR00i_TheWipeDrainethTheWorkersBeforeTheStoresAreClosed() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00i_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00i_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        let handle = UUID()
+        let nodeId = Data(repeating: 0xA1, count: 16)
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
+        runtime.meshNode.cancelAckTurnDeadline()
+        runtime.meshNode.armAckTurnDeadline(intervalSeconds: 0.02)
+        var woke = false
+        for _ in 0..<400 {
+            if runtime.meshNode.ackTurnsRunForTest() > 0 { woke = true; break }
+            Thread.sleep(forTimeInterval: 0.005)
+        }
+        XCTAssertTrue(woke, "the deadline must be running before the drain is judged")
+
+        runtime.invalidator.invalidateForWipe()
+        let drained = runtime.meshNode.ackTurnsRunForTest()
+        Thread.sleep(forTimeInterval: 0.1)
+        XCTAssertEqual(runtime.meshNode.ackTurnsRunForTest(), drained,
+                       "GS-RUNTIME-001 step 6: THE WIPE MUST DRAIN THE WORKERS *BEFORE* THE STORES ARE CLOSED -- "
+                       + "a turn that fireth after the keys are gone is a worker outliving its authority")
+        XCTAssertNil(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId, generation: 1),
+                     "and the relation mapping must be forgotten with the drain")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

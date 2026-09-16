@@ -70,21 +70,32 @@ public final class MeshRuntimeInvalidator: RuntimeInvalidator {
     private let sessions: SessionManager?
     private let peerStore: SqlitePeerIdentityStore?
     private let messageStore: SqliteMessageStore?
+    /// GS-RUNTIME-001 step 6: **THE NODE IS HELD SO THAT IT CAN BE DRAINED.** Until this landed, the invalidator
+    /// closed the stores WITHOUT holding the node at all -- and no production call to `meshNode.stop()` existed
+    /// anywhere -- so an ACK deadline armed by the runtime could fire AFTER the keys were gone.
+    private let node: MeshNode?
 
     internal init(
         lifecycleGate: DefaultRuntimeLifecycleGate,
         sessions: SessionManager? = nil,
         peerStore: SqlitePeerIdentityStore? = nil,
-        messageStore: SqliteMessageStore? = nil
+        messageStore: SqliteMessageStore? = nil,
+        node: MeshNode? = nil
     ) {
         self.lifecycleGate = lifecycleGate
         self.sessions = sessions
         self.peerStore = peerStore
         self.messageStore = messageStore
+        self.node = node
     }
 
+    /// **THE ORDER IS THE LAW: STOP/DRAIN WORKERS *BEFORE* DELETING KEYS.** The node is drained FIRST -- which
+    /// cancellath its ACK deadline and forgetteth its relation mappings -- and only THEN are the stores closed.
+    /// MEASURED BEFORE THIS REPAIR: the turn census climbed from 1 to 6 AFTER `invalidateForWipe()`, which is a
+    /// worker firing for keys that are already gone.
     public func invalidateForWipe() {
         lifecycleGate.invalidateForWipe()
+        node?.stop()
         sessions?.invalidateForWipe()
         peerStore?.close()
         messageStore?.close()

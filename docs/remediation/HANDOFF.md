@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 226 -- GS-RUNTIME-001 step 6's DRAIN-BEFORE-KEY-ERASURE: the RED was real, and the repair is green
+
+- **The defect, measured in the production text**: `invalidateForWipe()` closed both stores **while the node's ACK worker may still have been running** — the invalidator **did not hold the node**, and a search found **no production call to `meshNode.stop()` anywhere**.
+- **The RED, kept separate in its own log**: after the wipe the turn census climbed **1 → 6** — *a worker outliving its authority, firing for keys already gone* — and the mapping was not forgotten.
+- **The repair**: the invalidator holds the node; `invalidateForWipe()` calls `node?.stop()` **before** invalidating sessions and closing the stores — **the order is the law**; the runtime passes its node in.
+- **Witness run in both directions in this round**: `testSR00i_…` — RED before (1 → 6), **GREEN after** (census stands still, mapping gone).
+- **Measured**: **full iOS lane 1222 / 0**. Remaining: step 4's last wake.
+
 ## Round 225 -- GS-RUNTIME-001 step 6's REBUILD AFTER A REOPEN witnessed; its first draft's "red" was my own clock arithmetic
 
 - **The arm** opens the same private database twice: the first runtime admits an opaque relay candidate and proves it offerable; **the second — a fresh runtime over the same files — requires the frame namespace to survive AND the worker to rebuild its pending work by re-reading the tables**. Both hold.

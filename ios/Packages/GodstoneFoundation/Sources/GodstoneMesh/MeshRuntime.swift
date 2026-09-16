@@ -155,8 +155,7 @@ public final class MeshRuntime {
             lifecycleGate: lifecycleGate,
             sessions: sessions,
             peerStore: peerIdentityStore,
-            messageStore: messageStore
-        )
+            messageStore: messageStore, node: meshNode)
     }
 
     /// Create a standard non-shipping `MeshRuntime` after resuming any pending panic wipe.
