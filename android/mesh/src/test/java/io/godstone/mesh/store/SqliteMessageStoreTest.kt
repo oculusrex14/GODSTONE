@@ -1281,4 +1281,28 @@ class SqliteMessageStoreTest {
             "the row must be GONE FROM STORAGE -- a hidden row is not a retired one",
         )
     }
+
+    /** GS-STORE-004, the finding's own words: "Persist a DIRECT, close/reopen on same boot, advance injected monotonic
+     *  time, and verify remaining lifetime only DECREASES." The iOS isle learned this the hard way (its round 308):
+     *  A CONSERVATIVE DEBIT COMPUTED AND DROPPED CAN NEVER REACH `discontinuityLimit`, so the bounded rule would be a
+     *  DECORATION. An arm that demandeth it be RECORDED is therefore the law. RUN RED BEFORE THE REPAIR. */
+    @Test
+    fun gsstore004AConservativeDebitIsPersistedBack() = runBlocking {
+        open(8L * 1024 * 1024)
+        var boot = "boot-A"
+        store.receiptTimeProvider = { 5_000_000L to boot }
+        val f = frame(11, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        // A budget that SURVIVES the conservative hour, so the row is not retired -- only debited.
+        store.engine.execRawSql("UPDATE ${StoreSchema.TABLE} SET ${StoreSchema.COL_REMAINING_MS} = 300000000")
+        assertEquals(0L, store.retentionCheckpointForTest(msgId(11))!![3], "no discontinuity yet")
+
+        // THE BOOT CHANGETH (the same monotonic reading): continuity is NOT provable.
+        boot = "boot-B"
+        heldIds()   // a read -- and the gate must judge conservatively AND RECORD the judgement
+
+        val after = store.retentionCheckpointForTest(msgId(11))!!
+        assertEquals(1L, after[3], "the conservative debit must be PERSISTED, or the bound is unreachable")
+        assertTrue((after[0] as Long) < 300_000_000L, "and the debit must be reflected in the persisted budget")
+    }
 }

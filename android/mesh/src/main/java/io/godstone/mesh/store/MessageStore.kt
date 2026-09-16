@@ -1738,6 +1738,21 @@ class SqliteMessageStore internal constructor(
         }
         val (next, reason) = RetentionClock.checkpoint(checkpoint, nowMono = now.first,
                                                        wallEstimateMs = 0L, adapter = adapter)
+        // GS-STORE-004 (round 330): THE DEBIT IS WRITTEN BACK -- and the gate is TWO-FOLD, exactly as the iOS
+        // isle's round 308 measured it must be: the policy's own CADENCE (`CHECKPOINT_CADENCE_MS`) **OR A CHANGE IN
+        // THE DISCONTINUITY COUNT**, WHICH IS A STATE TRANSITION AND NOT A CADENCE EVENT. A counter that is never
+        // persisted can never reach `DISCONTINUITY_LIMIT`, and the bounded rule would be a DECORATION. (The lock
+        // question that cost iOS a hung court -- round 309 there -- DOETH NOT ARISE HERE, and that is a READ fact
+        // rather than an assumption: this isle's engine owneth its own monitor and JAVA'S MONITORS ARE REENTRANT,
+        // whereas the iOS store useth a NON-RECURSIVE `NSLock`.)
+        val discontinuityChanged = next.discontinuityCount != checkpoint.discontinuityCount
+        if (next.remainingMs > 0 &&
+            (discontinuityChanged || now.first - mono >= RetentionClock.CHECKPOINT_CADENCE_MS)) {
+            engine.setRetentionCheckpoint(
+                id, next.remainingMs.toLong(), next.checkpointMonotonicMs.toLong(),
+                storedBoot ?: now.second, next.discontinuityCount.toLong(),
+            )
+        }
         return next.remainingMs > 0 && reason == ExpiryReason.NotExpired
     }
 
