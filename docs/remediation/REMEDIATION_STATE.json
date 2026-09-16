@@ -4209,7 +4209,7 @@
   "candidate_verification_at_round_265b": {
    "candidate_sha": "14ecc00148c03ce09f70d2f0196bda8082c68102",
    "why": "the flake repair changed a test, so the lane was re-measured TWICE at the post-fix SHA.",
-   "stands_as_the_convergence_candidate": true,
+   "stands_as_the_convergence_candidate": false,
    "logs": {
     "all_runnable_lanes": {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_265/verify.log",
@@ -4233,11 +4233,40 @@
     "IT IS NOT A FULL CANDIDATE for a scope that includeth the iOS isle: the iOS lane could not be measured",
     "no hosted lane, no URL, no run id, no log -- T78 is NOT claimed",
     "no VERIFIED_FIXED; ANDROID-01 is PARTIAL (D2 built, key confirmation owed)"
-   ]
+   ],
+   "SUPERSEDED_AT_ROUND_269": "PRODUCTION MOVED: round 269 landed ANDROID-01's key-confirmation half (be3799e)."
   },
   "round266_note": "ROUND 266: the iOS lane remaineth blocked (Xcode licence, re-measured). ANDROID-01's KEY-CONFIRMATION half got its RED filed and its landing costed in the iOS twin's own shape -- measured first (beginKeyConfirmation has NO production caller; the twin already issues it at the trusted hour) -- and the landing was NOT attempted, because five arm-by-arm judgements in the very court whose subject IS the challenge cannot be measured in the context remaining. Tree green: android :mesh 1200/0/0, parity 7/7, symbols 0 unresolved, courts 635.",
   "round267_note": "ROUND 267: the key-confirmation landing was WRITTEN and MEASURED (the round-266 RED now passes), and it surfaced TWO pre-existing-arm failures -- one of them an HS3 TIMEOUT that may be a REAL ordering defect rather than a court premise. It was PARKED rather than rushed: telling those two apart is reading work, and the context remaining held no room for it. Tree green: android :mesh 1200/0/0, parity 7/7, symbols 0 unresolved, courts 635. The iOS lane remaineth blocked by the Xcode licence.",
-  "round268_note": "ROUND 268: ANDROID-01's key-confirmation question was ANSWERED BY MEASUREMENT -- the inline issuance nested runBlocking inside the HS3 write and contended for the same egress; deferring it onto the transport's scope made T23 wholly green (16/0), including the arm that had timed out. The whole-lane cost was then measured TWICE (1201/17 both times, stable): T20 11, T18 4, T21 1, T22 1. Seventeen arm-by-arm judgements could not be written AND measured in the context remaining, so the tree was returned to GREEN and both stages parked. A MEASURED ANSWER TO A FRAMED QUESTION IS PROGRESS EVEN WHEN THE LANDING WAITS."
+  "round268_note": "ROUND 268: ANDROID-01's key-confirmation question was ANSWERED BY MEASUREMENT -- the inline issuance nested runBlocking inside the HS3 write and contended for the same egress; deferring it onto the transport's scope made T23 wholly green (16/0), including the arm that had timed out. The whole-lane cost was then measured TWICE (1201/17 both times, stable): T20 11, T18 4, T21 1, T22 1. Seventeen arm-by-arm judgements could not be written AND measured in the context remaining, so the tree was returned to GREEN and both stages parked. A MEASURED ANSWER TO A FRAMED QUESTION IS PROGRESS EVEN WHEN THE LANDING WAITS.",
+  "candidate_verification_at_round_269": {
+   "candidate_sha": "be3799e92be7962090da323eaeeea28bf8f290ad",
+   "why": "ANDROID-01's key-confirmation landing changed production and four courts, so every RUNNABLE lane was re-measured at one SHA.",
+   "stands_as_the_convergence_candidate": true,
+   "worktree": "clean at the SHA except this record's own documentation files.",
+   "logs": {
+    "android_01_fixed": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round269-keyconfirmation-FIXED.log",
+     "sha256": "18c3904eaa7ab1b2bf38128e5d69fb7be89eb464e6ba979715c851a9d5195c48",
+     "note": "carrieth BOTH forced runs and the lab APK"
+    }
+   },
+   "measured": {
+    "android_mesh_unit": "1201 tests, 0 failed -- TWO consecutive forced runs",
+    "android_lab_apk": "rc 0 (15,149,650 bytes)",
+    "parity_repo_scope": "all invariants hold (rc 0)",
+    "symbols_selftest": "restored tree: 0 unresolved (OK) (rc 0)",
+    "composition_control": "rc 0",
+    "courts": "635 tests OK",
+    "probes": "12 tests OK",
+    "iOS_lane": "NOT MEASURED -- the Xcode licence (the human's act)"
+   },
+   "what_this_candidate_is_NOT": [
+    "IT IS NOT A FULL CANDIDATE for a scope that includeth the iOS isle: the iOS lane could not be measured",
+    "no hosted lane, no URL, no run id, no log -- T78 is NOT claimed",
+    "no VERIFIED_FIXED: ANDROID-01 is FIX_SUBMITTED with two owed proofs named"
+   ]
+  }
  },
  "counts": {
   "by_candidate_scope": {
@@ -4397,9 +4426,11 @@
    "invalidated_dependents": [
     "THE SIX COURTS THAT DRIVE THE EXCHANGE BY HAND were re-based on the APPLICATION's begin, MEASURED AT EVERY STAGE (whole-lane runs): 23 FAILED (repair alone) -> 7 (seven helper re-basings: T20/T21/T22/T23's drive-to-ready helpers now WAIT for the first counsel the application sent) -> 4 (the named seam plus the T21 arms) -> 4 (EIGHT T22 arms repaired while FOUR new failures surfaced -- A COUNT THAT DID NOT MOVE IS NOT EVIDENCE THAT NOTHING MOVED, and only the names told the two apart) -> 0. T17 and T18 were clean from the start because their ladders never dispatch the platform's PublishFound action.",
     "A LATENT RACE WAS REPAIRED WITH THEM: eight T22 arms 'passed' by winning a race against the application's ASYNCHRONOUS begin rather than by measuring anything; they now wait for its counsel.",
-    "THE TWO CLOCK-DRIVEN T23 ARMS now move the injected hour only AFTER the application's counsel hath travelled, so what they fell is an ENGAGED exchange and not a race."
+    "THE TWO CLOCK-DRIVEN T23 ARMS now move the injected hour only AFTER the application's counsel hath travelled, so what they fell is an ENGAGED exchange and not a race.",
+    "THE FOUR-COURT MIGRATION FOR THE KEY-CONFIRMATION LANDING (T18 4, T20 11, T21 1, T22 1 = 17 arms): all of them drive the trusted hour BY HAND and then do ARITHMETIC upon the relation's writer -- the sequence wrap at two hundred and fifty-six, the staging census, the writer's order (HS3 must precede every DATA), the nonce's burn, the alien-counsel length. The application now issueth a LEGITIMATE sealed challenge over that same writer, so their premises change. They turn off a NAMED, DEFAULT-ON seam (`applicationIssuesKeyConfirmationForTest`; production never setteth it) IN THEIR OWN RIGS and say so in their own name; the ANDROID-01 arm witnesseth the DEFAULT state. 17 failures -> 0, measured TWICE (1201/0/0 both runs).",
+    "THE iOS TWIN WAS THE SPECIFICATION THROUGHOUT (`BleTransport.swift:2348`), and this landing brought the Android door to the same shape -- so the two isles now issue the challenge by the same law, and the closure evidence the twin's own round-193 patch carrieth remaineth the model for this isle's."
    ],
-   "my_fix_commit": "184c6b9 | ROUND 265 (the D2 half, landed): `BleTransport.maybeBeginTrustedHandshake(address)`, entered from the `PublishFound` arm -- the relation is physically ready and its CRYPTO-001 admission is stamped there -- beginneth the trusted exchange ITSELF. It keepeth every counsel `beginTrustedHandshake` enforceth: only the ELECTED INITIATOR (a responder returneth), only from ROLE_BOUND with a witnessed duplex, only with the ascendant hint order of ADR-002 section 13. THE STATE IS THE IDEMPOTENCE: the begin moveth the relation into the handshake, so a duplicate publication callback cannot re-open the hour, and a replacement relation arriveth here as ROLE_BOUND with a FRESH incarnation, which is what a fresh handshake is FOR. The task is OWNED in `inboundJobs[HANDSHAKE_JOB_PREFIX + address]` so the bounded drain seeth it, and a refusal is NAMED in the rejection ring. An absent admission and a refused handshake now answer with DIFFERENT ring reasons. A NAMED, DEFAULT-ON TEST SEAM (`applicationBeginsD2ForTest`) serveth the arms which must DRIVE the entrance themselves; PRODUCTION NEVER SETTETH IT. THE KEY-CONFIRMATION HALF IS NOT LANDED.",
+   "my_fix_commit": "184c6b9 | ROUND 265 (the D2 half, landed): `BleTransport.maybeBeginTrustedHandshake(address)`, entered from the `PublishFound` arm -- the relation is physically ready and its CRYPTO-001 admission is stamped there -- beginneth the trusted exchange ITSELF. It keepeth every counsel `beginTrustedHandshake` enforceth: only the ELECTED INITIATOR (a responder returneth), only from ROLE_BOUND with a witnessed duplex, only with the ascendant hint order of ADR-002 section 13. THE STATE IS THE IDEMPOTENCE: the begin moveth the relation into the handshake, so a duplicate publication callback cannot re-open the hour, and a replacement relation arriveth here as ROLE_BOUND with a FRESH incarnation, which is what a fresh handshake is FOR. The task is OWNED in `inboundJobs[HANDSHAKE_JOB_PREFIX + address]` so the bounded drain seeth it, and a refusal is NAMED in the rejection ring. An absent admission and a refused handshake now answer with DIFFERENT ring reasons. A NAMED, DEFAULT-ON TEST SEAM (`applicationBeginsD2ForTest`) serveth the arms which must DRIVE the entrance themselves; PRODUCTION NEVER SETTETH IT. THE KEY-CONFIRMATION HALF IS NOT LANDED. || be3799e | ROUND 269 (the KEY-CONFIRMATION half): at the trusted hour the INITIATOR issueth the encrypted challenge itself -- ONCE, guarded by `outstanding() == null`, with a refusal NAMED at `hs.confirm.transition` -- and the RESPONDER issueth nothing, because it is the one that ANSWERETH. The issuance runneth on the transport's own scope, NOT inline: the first form nested `runBlocking` inside the initiator's HS3-write handler and both contended for the same egress (round 268's answer, measured). The four courts which drive the trusted hour by hand turn off a NAMED, DEFAULT-ON seam (`applicationIssuesKeyConfirmationForTest`; production never setteth it) in their own rigs and say so.",
    "my_logs": [
     {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/red-round229.log",
@@ -4521,12 +4552,32 @@
      "sha256": "1e820c1047917340b15c1082706f4562a9be96772d15968940fcc8ec9c5a1bb1",
      "what": "ANDROID-01 round 266: the KEY-CONFIRMATION RED, run against the untouched tree",
      "outcome": "16 tests / 1 failed -- the new arm; 15 pre-existing T23 arms passing."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round269-keyconfirmation-FIXED.log",
+     "sha256": "18c3904eaa7ab1b2bf38128e5d69fb7be89eb464e6ba979715c851a9d5195c48",
+     "what": "ANDROID-01 round 269: the whole Android lane TWICE and the lab APK after the key-confirmation landing",
+     "outcome": "android :mesh 1201 tests / 0 failed on BOTH forced runs; lab APK rc 0."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round268-ANSWER-AND-PARK-v6.txt",
+     "sha256": "9ff3b4303f5eb61d50cdd940462c2eccf739011ab929ea4dd8bbf675764b6fd3",
+     "what": "ANDROID-01 round 268: the framed question ANSWERED by measurement (the ordering defect), with the landing's cost measured twice",
+     "outcome": "T23 wholly green after the deferral; whole lane 1201/17 twice (T20 11, T18 4, T21 1, T22 1) -- the stable figure that defined the migration."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round267-PROGRESS-v5.txt",
+     "sha256": "fadb2833e08abbcfd35e97d7f2fe336c41650e5ec2d4c07483704fea4b56de13",
+     "what": "ANDROID-01 round 267: the first landing form, and the reasoning for parking it rather than rushing the two failing arms",
+     "outcome": "the RED passed; two pre-existing arms failed, one of them an HS3 timeout that proved to be a REAL ordering defect."
     }
    ],
    "my_red_case": "A BEHAVIOURAL RED WAS FILED THIS ROUND (round 260) AND THE REPAIR PARKED WITH IT, DELIBERATELY. MEASURED FIRST, THEN WRITTEN: a grep of `android/mesh/src/main` returneth `beginTrustedHandshake`'s DEFINITION and no production caller -- production reached a physical duplex and stopped there, exactly as the audit chargeth. The arm `ReadinessT21Test.testAndroid01_theApplicationBeginnethD2ItselfUponThePhysicallyReadyRelation` was run against the untouched tree and FAILED with the law's own words (\"the application must begin D2 itself upon the physically-ready relation; ring: <empty>\"), while its NEGATIVE CONTROL passed (the responder never openeth a first counsel) and the 14 pre-existing arms of that court passed: 16 tests / 1 failed, kept in `round260-RED.log` (sha256 b6d879acee6cd121fdcc77edde07a4d400b1f0c71c154c9cbbdafee15912e4ac).",
-   "my_status": "PARTIAL",
-   "notes": "ROUND 265: THE D2 HALF IS LANDED AND THE MIGRATION IS WHOLE (android :mesh 1200/0/0). PARTIAL, NOT FIX_SUBMITTED, because the finding's own title carrieth TWO things and only one of them is built: key confirmation still hath no production caller, and that is measured rather than assumed. THE LESSON OF THE MIGRATION, kept here because it cost a round: the failure COUNT did not move between two stages while EIGHT arms were repaired and FOUR new ones surfaced.",
+   "my_status": "FIX_SUBMITTED",
+   "notes": "ROUND 269: BOTH HALVES OF THIS FINDING ARE NOW BUILT -- the application beginneth D2 and issueth the key confirmation at the trusted hour -- and the finding therefore moveth PARTIAL -> FIX_SUBMITTED. SUBMITTED, NOT VERIFIED: no independent audit hath seen any of it, and the two owed proofs above (no device/radio reproduction; the responder's answering road still without a production caller) are named rather than implied. The round-268 answer standeth as this landing's foundation: THE ISSUANCE WAS CONTENDING WITH THE HS3 WRITE FOR THE SAME EGRESS, and that was found by treating a timed-out arm as a question rather than as bookkeeping.",
    "pending_proof": [
+    "NO DEVICE OR RADIO REPRODUCTION ON EITHER ISLE. The D2 entrance and the challenge/echo are witnessed on the host through the transport's own entries; the physical callback schedule of a radio is not exercised, so the debug APK is the artefact and no device run is claimed. The KEY-CONFIRMATION arms prove the issuance, the ordering and the guards; they do NOT prove a real peer's echo over the air.",
+    "THE RESPONDER'S ANSWERING ROAD (the echo of a standing challenge) HATH NO PRODUCTION CALLER EITHER: `answerKeyConfirmation` is defined and the courts call it. The twin's shape giveth the responder the answer in its own door, and that is NOT yet measured on this isle -- named here rather than implied.",
     "THE FINDING'S OTHER HALF IS NOT LANDED: the application still never starteth KEY CONFIRMATION. MEASURED, not assumed: `beginKeyConfirmation` is defined at `transport/BleTransport.kt:1875` and a grep of `android/mesh/src/main` returneth its definition alone -- no production caller. The finding therefore standeth PARTIAL: D2 is built and witnessed, key confirmation is owed.",
     "THE REPAIR IS PARKED, NOT LANDED, AND THE REASON IS MEASURED RATHER THAN GUESSED: the D2 entrance written this round (the application beginneth the trusted exchange itself from the physically-ready relation, once, from the elected initiator alone) turned the filed RED green AND BROKE FIVE PRE-EXISTING ARMS of the same court -- because those arms drive the four-way exchange STEP BY STEP and call `beginTrustedHandshake` themselves, so the application's own begin taketh the relation into the handshake before the court's begin, which is then refused as `cannot begin from HANDSHAKE_IN_PROGRESS`. That is the SAME migration the iOS twin demanded at rounds 190-208 when IOS-02 gave the application its own entrance; on this isle SIX courts drive it by hand (T17, T18, T20, T21, T22, T23). A half-migrated suite is what this programme refuseth to leave behind, so the repair and its courts were parked together in one re-appliable patch: `round260-D2-trigger-and-courts-PARKED.patch` (sha256 08227c3ac8b343c2e910875620a5f08ae1dcd8c65a4a7c5892fd04da2e8e1389), with the reasoning written into `round260-WHY-NOT-LANDED.txt`.",
     "THE KEY CONFIRMATION HALF OF THIS FINDING (key confirmation never begun by the application either) is untouched and unmigrated on this isle.",

@@ -4,6 +4,20 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Rounds 267-269 -- ANDROID-01: BOTH HALVES BUILT, and an ordering defect found by refusing to call a timed-out arm "bookkeeping"
+
+**The question I framed at round 267 — and did not answer by editing the test**: *why did HS3 cease to travel once the application began issuing the challenge?* The answer, measured: the first landing issued the challenge **inline**, nesting a `runBlocking` **inside the initiator's HS3-write handler**, and both **contended for the same egress**. Deferring the issuance onto the transport's own scope — which preserves the ordering that matters (the trusted hour is reached, the challenge follows) — made **T23 wholly green: 16 arms, 0 failures**, *including* the arm that had timed out. **It was a real defect, not a court premise.** Had I called it bookkeeping and edited the arm, I would have erased a defect in my own landing — *the exact species this programme exists to eliminate.*
+
+**The landing's cost was measured twice before touching anything**: whole lane **1201 / 17 failed both times** (a *stable* figure, not a flake) — T20 11, T18 4, T21 1, T22 1. All four drive the trusted hour **by hand** and then do **arithmetic** on the relation's writer (the 256-record wrap, the staging census, HS3-before-every-DATA, the nonce's burn, the alien-counsel length). The application now issues a **legitimate** sealed challenge over that same writer, so their premises change.
+
+**The migration**: a **named, default-on seam** — `applicationIssuesKeyConfirmationForTest`; **production never sets it**, the ANDROID-01 arm witnesses the **default** state — turned off **in those courts' own rigs, in their own words**. **17 failures → 0.**
+
+**Measured at `be3799e`**: android `:mesh` **1201 tests / 0 failed on BOTH forced runs** · lab APK rc 0 (15,149,650 B) · parity **all invariants hold** · symbols **0 unresolved** · composition rc 0 · courts **635** · probes 12. The iOS lane is **excluded and the log says why**.
+
+**ANDROID-01 is now FIX_SUBMITTED — with two owed proofs named rather than implied**: no device or radio reproduction on either isle (the debug APK is the artefact; no device run is claimed), and **the responder's answering road** (`answerKeyConfirmation`) still has **no production caller** — the twin gives the responder its answer in its own door, and that is *not yet measured here*. **Not one `VERIFIED_FIXED` is written anywhere.**
+
+**One round-limit note, recorded because it is a defect of MY record rather than of the code**: rounds 267-269 each ended by parking a stage that the next round then carried — the work was sound, but the *rhythm* squandered context on re-application and re-measurement rather than on the judgements themselves. The lesson kept: **measure the cost BEFORE writing the migration, not after the second failed attempt.**
+
 ## Round 267 -- the key-confirmation landing WORKS, and one failing arm smells of a REAL interaction (parked, not rushed)
 
 **The landing was written** in the iOS twin's own shape: the **initiator's** door issues the challenge at the trusted hour, **once** and only if none stands, with a refusal **named** at `hs.confirm.transition`; the **responder's** door untouched, because it is the one that **answers**.
