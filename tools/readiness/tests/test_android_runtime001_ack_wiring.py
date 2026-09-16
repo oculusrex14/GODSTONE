@@ -79,6 +79,41 @@ class AndroidAckWiringTest(unittest.TestCase):
         ]:
             self.assertIn(needle, m, "GS-RUNTIME-001 step 2: " + why)
 
+    def test_the_drain_precedeth_the_store_closures(self):
+        """GS-RUNTIME-001 step 6 on this isle: **STOP/DRAIN WORKERS BEFORE DELETING KEYS** -- the Swift twin's law."""
+        g = (MESH / "identity/RuntimeLifecycleGate.kt").read_text(encoding="utf-8")
+        self.assertIn("private val node: MeshNode?", g,
+                      "the invalidator must HOLD THE NODE, or it cannot drain what the keys are about to strand")
+        # **THE FIRST `override fun invalidateForWipe()` IN THIS FILE IS NOT THE ONE I MEANT**: the
+        # `DefaultRuntimeLifecycleGate` carrieth its own above the invalidator, and my first draft judged THAT one
+        # (its slice read `invalidated.set(true)`, which is how the mistake announced itself). The arm therefore
+        # beginneth at the INVALIDATOR'S class and taketh the override THAT followeth it -- the fourth species of
+        # this session's control family, met again in the instrument rather than in the code.
+        start = g.index("class MeshRuntimeInvalidator")
+        invalidate = g[g.index("override fun invalidateForWipe() {", start):]
+        invalidate = invalidate[:invalidate.index("\n    }")]
+        order = [invalidate.index(s) for s in ("node?.stop()", "peerStore?.close()", "messageStore?.close()")
+                 if s in invalidate]
+        self.assertEqual(3, len(order),
+                         "the drain AND both closures must stand in this method: " + " ".join(invalidate.split()))
+        self.assertEqual(sorted(order), order,
+                         "GS-RUNTIME-001 step 6: `node?.stop()` MUST PRECEDE the store closures -- a worker firing "
+                         "for keys already gone is what the Swift witness caught (census 1 -> 6)")
+        m = MODULE.read_text(encoding="utf-8")
+        self.assertIn("node = node", m, "and the runtime must PASS its node into the invalidator")
+
+    def test_the_nodes_stop_cancelleth_its_workers_before_the_early_return(self):
+        """The Swift twin's own leak (round 220), twinned here: an early return that skippeth the cancel leaveth
+        workers alive for ever when the node was never started (which is the shipping case on both isles)."""
+        n = NODE.read_text(encoding="utf-8")
+        stop = n[n.index("fun stop() {"):]
+        stop = stop[:stop.index("\n    }")]
+        cancel_at = stop.index("scope.coroutineContext.cancelChildren()")
+        guard_at = stop.index("if (!isStarted) return")
+        self.assertLess(cancel_at, guard_at,
+                        "GS-RUNTIME-001 step 6: THE CANCEL MUST PRECEDE THE `isStarted` GUARD -- the Swift witness "
+                        "watched the turn census climb 2 -> 7 AFTER stop() because its guard returned early")
+
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
         self.assertIn("override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null",

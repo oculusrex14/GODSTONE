@@ -581,6 +581,13 @@ class MeshNode(
     internal fun knownPeersForTest(): Set<String> = synchronized(peerLock) { peers.keys.toSet() }
 
     fun stop() {
+        // GS-RUNTIME-001 step 6 on THIS isle: **THE WORKERS ARE CANCELLED *BEFORE* THE `isStarted` GUARD.** A
+        // worker armed by the runtime must not outlive it EVEN WHEN THE NODE WAS NEVER STARTED -- and in this
+        // shipping tree `isStarted` is FALSE by construction (the link-layer flag is frozen off), so a cancel
+        // placed after the guard would leave the readiness collectors alive for ever. THE SWIFT TWIN LEARNED THIS
+        // FROM ITS OWN WITNESS (round 220: the turn census climbed from 2 to 7 AFTER `stop()`), and this isle
+        // carrieth the same early return.
+        scope.coroutineContext.cancelChildren()
         synchronized(peerLock) {
             if (!isStarted) return
             isStarted = false
@@ -588,7 +595,6 @@ class MeshNode(
         sessions.destroyAll()
         ble.stop()
         wifi.stop()
-        scope.coroutineContext.cancelChildren()
         synchronized(peerLock) { peers.clear() }
         publishStatus()
     }

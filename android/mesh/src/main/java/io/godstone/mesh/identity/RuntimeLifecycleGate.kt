@@ -5,6 +5,7 @@ import io.godstone.mesh.crypto.SessionManager
 import io.godstone.mesh.delivery.PeerIdentityLookupSource
 import io.godstone.mesh.store.SqliteMessageStore
 import java.util.concurrent.atomic.AtomicBoolean
+import io.godstone.mesh.MeshNode
 
 /**
  * Interface for invalidating runtime handles upon panic wipe (ADR-003 / Stage 4B / C8.4B / C8.4B.1).
@@ -68,10 +69,16 @@ class MeshRuntimeInvalidator internal constructor(
     private val lifecycleGate: DefaultRuntimeLifecycleGate,
     private val sessions: SessionManager? = null,
     private val peerStore: PeerIdentityStore? = null,
-    private val messageStore: SqliteMessageStore? = null
+    private val messageStore: SqliteMessageStore? = null,
+    /** GS-RUNTIME-001 step 6: **THE NODE IS HELD SO THAT IT CAN BE DRAINED**, the twin of the Swift repair at
+     *  round 226 -- where the invalidator closed the stores without holding the node, and NO PRODUCTION CALL to
+     *  `meshNode.stop()` existed anywhere. */
+    private val node: MeshNode? = null,
 ) : RuntimeInvalidator {
+    /** **THE ORDER IS THE LAW: STOP/DRAIN WORKERS *BEFORE* DELETING KEYS.** */
     override fun invalidateForWipe() {
         lifecycleGate.invalidateForWipe()
+        node?.stop()
         sessions?.invalidateForWipe()
         peerStore?.close()
         messageStore?.close()

@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 235 -- the ANDROID drain order repaired: TWO twinned defects found, not one
+
+- **Defect (a), the invalidator**: `MeshRuntimeInvalidator` held no node — it closed both stores while the ACK workers could still run, and round 233's collectors made that live. It now **holds the node** and calls `node?.stop()` **before** the invalidations and closures — *the order is the law*.
+- **Defect (b), found by mirroring rather than assuming**: the Kotlin node's `stop()` had its early return **before** `cancelChildren()` — so on this isle too a node that was never started (**the shipping case: readiness false by construction**) would leave its readiness collectors alive for ever. **The cancel now precedes the guard — the very law the Swift witness taught at round 220** (census 2 → 7 after `stop()`).
+- **Witnesses (source-level, labelled as such)**: two new arms — the drain precedes both closures AND the runtime passes its node in; and the cancel precedes the early return. **My first draft of the first arm judged the wrong method, and its own slice confessed it** (`invalidated.set(true)`): `g.index("override fun invalidateForWipe() {")` matched **the gate's implementation above the invalidator** — *the fourth species of this session's control family, met again in the instrument*.
+- **Measured**: android `:mesh` **FORCED 1195 / 0 / 0**; the seven-arm Android wiring witness green; courts 603 OK.
+
 ## Round 234 -- the owed ANDROID wiring witness is discharged (at source level, said so in the arm)
 
 - **Why not behavioural, measured**: the pure-JVM courts build a test-local `Node` fixture, **not a `MeshNode`** — and a `MeshNode` builds its transport `by lazy { BleTransport(context = ctx!!, …) }`, so a unit court cannot drive that path. **The behavioural witness stays owed**; this arm is what can run today.

@@ -189,13 +189,15 @@ internal object MeshModule {
         gate: DefaultRuntimeLifecycleGate,
         sessions: SessionManager,
         peerStore: SqlcipherPeerIdentityStore,
-        messageStore: SqliteMessageStore
+        messageStore: SqliteMessageStore,
+        node: MeshNode,
     ): MeshRuntimeInvalidator =
         MeshRuntimeInvalidator(
             lifecycleGate = gate,
             sessions = sessions,
             peerStore = peerStore,
-            messageStore = messageStore
+            messageStore = messageStore,
+            node = node,
         )
 
     @Provides @Singleton
