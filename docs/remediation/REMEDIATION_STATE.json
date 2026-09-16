@@ -911,6 +911,50 @@
    "the_repair": "the court now JUDGETH THE BINDING in three clauses: (1) the charged identity, or the binding it carrieth its name from, must come from an AUTHENTICATED-identity lookup; (2) no claimed MAC, hint or SOS priority may choose the key, and the ONLY admissible fallback is the CONNECTION'S OWN `peerId`; (3) the charge must still be the AUTHENTICATED scope, named as such. PROVEN TO JUDGE: the positive case is green and FOUR NEGATIVE CASES each land on their own clause -- keyed directly on the claimed handle; bound from a claimed hint; fallback to a non-connection source; fallback to a claimed SOS handle -- with the production file restored BYTE-IDENTICAL (sha256 unchanged).",
    "the_python_lane_now": "573 tests, 0 failures, rc=0; probes 12 tests, rc=0 (round 278, log registered under ANDROID-07).",
    "consequence_for_convergence": "A CANDIDATE TREE WITH A RED MANDATORY LANE IS NOT A CANDIDATE. The round-275 entry (e47e779) therefore CANNOT stand as the convergence candidate, and neither can rounds 200/222/254/256: a NEW CANDIDATE must be measured at the repair's own SHA, which this round proceedeth to do."
+  },
+  "candidate_verification_at_round_278": {
+   "candidate_sha": "f054df7d36160adc75a725b6adbb3cca42b98458",
+   "tree_sha": "c8241a09954edf862897c8db51814ffdefd57500",
+   "worktree": "clean at this sha",
+   "logs": {
+    "android-lab-apk.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_f054df7/android-lab-apk.log",
+     "sha256": "0c0f8e356ca4ec378028da6f6257127ce72598c7c44459ca595e49fd54d28a6b"
+    },
+    "android-mesh-lane.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_f054df7/android-mesh-lane.log",
+     "sha256": "d50958a3afafa47a081d81de0555337f4573d372fab93d7347534e950f8c6d9a"
+    },
+    "fast-gates.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_f054df7/fast-gates.log",
+     "sha256": "0e6d797d13b81006086b2822953a769fb261ad66598d730526aebb21775e8458"
+    },
+    "ios-foundation-lane.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_f054df7/ios-foundation-lane.log",
+     "sha256": "1c1627e710978c98de6f1ced5276e6ce5655f7f9f47426c7eec63a7ba5b073f5"
+    },
+    "ios-lab-build.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_f054df7/ios-lab-build.log",
+     "sha256": "4a2dd05d43676b91f18239ab661d230091bc52b0ac6e21e9a060a9c479920b77"
+    }
+   },
+   "measured": {
+    "android_mesh_lane": "1193 tests, 0 failures, 0 errors -- FORCED (`--rerun-tasks --no-daemon`), counted from the run's own 76 XML result files; BUILD SUCCESSFUL in 1m 1s, rc 0",
+    "ios_foundation_lane": "`Executed 1205 tests, with 0 failures (0 unexpected) in 91.574s`; the mirror was re-GENERATED first (`sync_ios_foundation_package.py` rc 0), so the lane ran against a regenerated mirror, and `swift test` rc 0",
+    "python_readiness_suite": "578 tests, OK, rc 0 -- AND THIS IS THE FIRST CANDIDATE SINCE ROUND 193 WHOSE PYTHON LANE IS GENUINELY GREEN",
+    "audit_probes": "12 tests, OK, rc 0",
+    "repository_controls": "every `ci/check_*.py` rc 0 -- INCLUDING the new `check_evidence_digests.py` -- with the SINGLE non-zero being `check_parity` under its DEFAULT scope (= the external A-06 arm); `--scope repo` rc 0",
+    "evidence_digests": "306 registered | 306 examined | 306 verified | 0 mismatched | 0 unresolved | 0 unnamed",
+    "symbols": "`ci/symbols.py` -- 223 Kotlin files scanned, 0 unresolved",
+    "android_lab_apk": "`labmesh-debug.apk` 15,185,636 bytes, sha256 16ada895f761e628... (BUILD SUCCESSFUL, rc 0)",
+    "ios_lab_build": "`BUILD SUCCEEDED`, rc 0, 0 `error:` lines (simulator SDK, unsigned)"
+   },
+   "per_declared_scope": {
+    "LIGHT_Archive": 14,
+    "Mesh_Oracle": 40
+   },
+   "why_a_new_candidate_was_required": "ROUNDS 200/222/254/256/275 CANNOT STAND: their python lane was RED at every one (re-measured at each exact tree), a fact hidden for eighty-five rounds behind a `| tail -2` that kept the suite's trailing green and threw away its judgment. A CANDIDATE TREE WITH A RED MANDATORY LANE IS NOT A CANDIDATE. This entry replaceth them, and is measured at the SHA that REPAIRED the court and the audit instrument.",
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- the repository-side half is complete and the missing half is stated rather than papered over. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE** and the **five external gates stay OPEN**. **Closure evidence is stale for the findings whose cards changed after the audited SHA** -- a FLOOR on any later closure, not a clearance. **This candidate changeth NO production source**: it repaireth a COURT and an AUDIT INSTRUMENT and correcteth the record, so every production finding's status is unchanged by it."
   }
  },
  "counts": {

@@ -3,6 +3,27 @@
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
 control; THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED; NO finding carrieth `closure_evidence`.
 
+## Candidate verification at `f054df7` (ledger round 278) — **THE NEW CANDIDATE, and the first whose python lane is genuinely green since round 193**
+
+| Item | Result at this exact SHA (tree `c8241a0`), worktree clean |
+|---|---|
+| Android `:mesh` lane | **1193 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks --no-daemon`), counted from the run's own 76 XML result files; `BUILD SUCCESSFUL` in 1m 1s, rc 0 |
+| iOS lane (mirrored package) | **`Executed 1205 tests, with 0 failures (0 unexpected)`**, 91.6s — and the mirror was **re-generated** first (`sync_ios_foundation_package.py` rc 0) |
+| Python readiness suite | **578 tests, OK, rc 0** — the first candidate since round 193 whose python lane is **genuinely** green |
+| Audit probes | **12 tests, OK, rc 0** |
+| Repository controls | **every `ci/check_*.py` rc 0** — including the new `check_evidence_digests.py` — with the **single** non-zero being `check_parity` under its **default** scope (= the external **A-06** arm); `--scope repo` rc 0 |
+| Evidence digests | **317 registered / 317 examined / 317 verified / 0 mismatched / 0 unresolved / 0 unnamed** (findings 306, convergence 11) |
+| Symbols | `ci/symbols.py` — **223 Kotlin files, 0 unresolved** |
+| Android lab target | `labmesh-debug.apk` — **15,185,636 bytes**, sha256 `16ada895f761e628…`, `BUILD SUCCESSFUL` rc 0 |
+| iOS lab target | `BUILD SUCCEEDED`, rc 0, **0 `error:` lines** (simulator SDK, unsigned: **no device, no signed artifact, no T76 input**) |
+
+**WHY A NEW CANDIDATE WAS REQUIRED.** Rounds **200 / 222 / 254 / 256 / 275 CANNOT STAND**: their python lane was **RED at every one** — re-measured at each candidate's exact tree — a fact hidden for **eighty-five rounds** behind a `| tail -2`
+that kept the suite's trailing green and threw away its judgment. **A candidate tree with a red mandatory lane is not a candidate.** This entry replaceth them, and is measured at the SHA that repaired the court and the audit instrument.
+
+**WHAT THIS CANDIDATE CHANGETH.** No production source. It repaireth a **court** (`test_t26_post_aead_charge.py` now judgeth the *binding* in three clauses, carrying a valid positive control and four negatives each landing on its own clause), repaireth the **audit instrument** (`ci/check_evidence_digests.py`, whose denominator now includeth the **convergence population** — 11 registered logs that **had never been digest-checked at all**), and correcteth the record.
+
+**Not claimed, and why: T78 convergence is NOT claimed** — its requirement is that all applicable **hosted** lanes be enabled, executed and green at this SHA, and **no hosted lane, run URL, run id or log exists here**; the repository-side half is complete and the missing half is stated rather than papered over. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay false** and the **five external gates stay OPEN**. **Closure evidence is stale** for the findings whose cards changed after the audited SHA — a *floor* on any later closure, not a clearance.
+
 ## ROUND-278 CORRECTION — the python lane was RED from round 193 to round 278 (85 rounds)
 
 **THE TABLES BELOW WERE WRONG, AND THIS SECTION STANDETH FIRST SO THAT NOBODY READETH THEM WITHOUT IT.**

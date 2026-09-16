@@ -23,6 +23,8 @@ So the court judgeth the INSTRUMENT, not only the data:
   W05 NEGATIVE: an entry that carrieth no path at all is a NAMED ERROR
   W06 the canonical evidence root is RECORDED IN THE LEDGER and existeth, because a relative path
       whose root is unrecorded meaneth whatever the reader's shell happeneth to mean by it
+  W07 the CONVERGENCE population is examined too: candidate verifications register their logs outside
+      `my_logs`, and AN INSTRUMENT WITH AN IGNORED POPULATION IS THE NINTH SPECIES OVER AGAIN
 """
 from __future__ import annotations
 
@@ -96,11 +98,28 @@ class EvidenceDigestTest(unittest.TestCase):
         mine = sum(len(e.get("my_logs") or []) for e in ledger()["findings"].values())
         rc, out, parsed = run_instrument(LEDGER)
         self.assertIsNotNone(parsed, out)
-        self.assertEqual(mine, parsed["registered"],
+        self.assertEqual(mine, parsed["findings"]["registered"],
                          "the instrument examined a different population than the ledger carrieth:\n" + out)
         self.assertEqual(parsed["registered"],
                          parsed["examined"] + len(parsed["unresolved"]) + len(parsed["unnamed"]),
                          "the denominator must account for every registered entry")
+
+    def test_w07_the_convergence_population_is_examined_too(self):
+        """AN INSTRUMENT WITH AN IGNORED POPULATION IS THE NINTH SPECIES OVER AGAIN.
+
+        The first version of the instrument read `findings[*].my_logs` ONLY -- while candidate
+        verifications register their logs under `convergence`. It would have been blind to five freshly
+        registered candidate logs the moment they were written."""
+        rc, out, parsed = run_instrument(LEDGER)
+        self.assertIsNotNone(parsed, out)
+        conv = parsed["convergence"]
+        self.assertGreater(conv["registered"], 0,
+                           "candidate verifications register logs under `convergence`; an instrument that "
+                           "readeth only `my_logs` never seeth them")
+        self.assertEqual(conv["registered"], conv["examined"],
+                         "every convergence-registered log must be EXAMINED:\n" + out)
+        self.assertEqual(conv["registered"], conv["verified"],
+                         "every convergence-registered log must VERIFY:\n" + out)
 
     def test_w03_an_entry_that_resolveth_nowhere_is_a_named_error_not_a_skip(self):
         fid, path = break_first_entry(log="NO-SUCH-FINDING/green/nowhere.log")
