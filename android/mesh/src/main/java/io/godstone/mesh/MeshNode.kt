@@ -44,6 +44,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import io.godstone.mesh.identity.UnifiedRuntimeLifecycle
 import io.godstone.mesh.transport.LifecycleTransportAdapter
+import io.godstone.mesh.transport.AdapterPowerState
 
 data class MeshStatus(
     val started: Boolean = false,
@@ -519,6 +520,8 @@ class MeshNode(
         )
     }
     internal var adaptersOpenedThroughTheOwner = 0
+    /** GS-RUNTIME-001 step 3's census: how many platform LOSSES reached the one authority. */
+    internal var lifecyclePowerLossesForwarded = 0
     internal var adaptersClosedThroughTheOwner = 0
     private var adaptersClosed = false
 
@@ -527,6 +530,14 @@ class MeshNode(
         // IOS-06's twin: THE RADIO IS OPENED *THROUGH* THE ONE AUTHORITY, and the census telleth a witness which road
         // was taken. (The Wi-Fi plane is a second transport and is NOT yet under the authority -- NAMED, NOT IMPLIED.)
         adaptersOpenedThroughTheOwner += 1
+        // IOS-06's step 3, THE ANDROID TWIN: **A POWER LOSS REACHETH THE ONE AUTHORITY**, and a healthy state
+        // never doth (the transport forwardeth only a LOSS, and this handler forwardeth only what it heareth).
+        ble.onAdapterStateChanged = { state ->
+            if (state == AdapterPowerState.POWERED_OFF) {
+                lifecyclePowerLossesForwarded += 1
+                lifecycle.onPowerLoss()
+            }
+        }
         lifecycle.start()
         if (wifi.isSupported) wifi.start()
     }

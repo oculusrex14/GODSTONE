@@ -58,6 +58,15 @@ interface BleOutletHooks {
 }
 
 @SuppressLint("MissingPermission")
+/**
+ * **GS-RUNTIME-001's Android half, step 3: THE PLATFORM'S POWER WORD, IN THE GRAPH'S OWN LANGUAGE** -- the twin of
+ * the Swift `TransportPowerState`, so that the node needeth no Android vocabulary to hear that the radio went away.
+ * MEASURED BEFORE THIS (round 249): **THIS TRANSPORT HAD *NO* ADAPTER-STATE SIGNAL AT ALL** -- no
+ * `BluetoothAdapter`, no `ACTION_STATE_CHANGED`, no receiver -- so the authority's `onPowerLoss` had nothing to be
+ * called from, and **THE ROAD HAD TO BE BUILT RATHER THAN CONNECTED.**
+ */
+enum class AdapterPowerState { READY, POWERED_OFF, PERMISSION_REVOKED, OTHER }
+
 class BleTransport(
     private val context: Context? = null,
     val identity: Identity,
@@ -253,6 +262,23 @@ class BleTransport(
         }
     }
 
+    /** The graph heareth the platform through THIS, and in its own words. */
+    var onAdapterStateChanged: ((AdapterPowerState) -> Unit)? = null
+
+    private val adapterStateReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context?, intent: android.content.Intent?) {
+            val state = intent?.getIntExtra(android.bluetooth.BluetoothAdapter.EXTRA_STATE, -1) ?: -1
+            val word = when (state) {
+                android.bluetooth.BluetoothAdapter.STATE_ON -> AdapterPowerState.READY
+                android.bluetooth.BluetoothAdapter.STATE_OFF -> AdapterPowerState.POWERED_OFF
+                else -> AdapterPowerState.OTHER
+            }
+            // A HEALTHY STATE IS NOT AN EVENT: only a LOSS is forwarded, exactly as the Swift twin requireth.
+            if (word == AdapterPowerState.POWERED_OFF) onAdapterStateChanged?.invoke(word)
+        }
+    }
+    private var adapterReceiverRegistered = false
+
     override fun start() {
         if (isStarted) return
         // ANDROID-05-A (the R1 supplement): RUNNING IS COMMITTED ONLY AFTER SUCCESSFUL SETUP. The
@@ -266,6 +292,18 @@ class BleTransport(
             return
         }
         isStarted = true
+        // AND THE PLATFORM'S POWER WORD IS SUBSCRIBED ALONGSIDE THE OS START, and released with it -- a receiver
+        // that outlived its transport would be a listener for a radio that belongeth to nobody.
+        // (A LOCAL CAPTURE, NOT A MEMBER READ: Kotlin doth not smart-cast a MEMBER property, and the compiler said
+        // so in one line -- a small language lesson, recorded where it was learned.)
+        val ctx = context
+        if (!adapterReceiverRegistered && ctx != null) {
+            runCatching {
+                ctx.registerReceiver(adapterStateReceiver,
+                    android.content.IntentFilter(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED))
+                adapterReceiverRegistered = true
+            }
+        }
         startAdvertising()
         // ANDROID-04: ARM the owned lease sweep, so a SILENT peer's lapsed relation is swept without waiting
         // for unrelated traffic. The interval is generous, so a frozen-clock court is never swept mid-witness.
@@ -324,6 +362,10 @@ class BleTransport(
     }
 
     override fun stop() {
+        if (adapterReceiverRegistered) {
+            adapterReceiverRegistered = false
+            runCatching { context?.unregisterReceiver(adapterStateReceiver) }
+        }
         val wasStarted = isStarted
         isStarted = false
         // ANDROID-04: CANCEL the owned sweep with the transport; an orphan job would outlive it.

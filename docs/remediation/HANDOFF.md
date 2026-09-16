@@ -4,6 +4,15 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 250 -- GS-RUNTIME-001's Android step 3: the power road is BUILT (it did not exist to be connected)
+
+- **The defect, measured at round 249**: that isle had **no adapter-state signal at all** — no `BluetoothAdapter`, no `ACTION_STATE_CHANGED`, no receiver — so the authority's `onPowerLoss` had nothing to call it; **the authority's three events have no caller anywhere on that isle, not even a court's**.
+- **The build**: an `AdapterPowerState` word so the graph hears the platform **in its own language** (the Swift twin, and the same layering lesson); a `BroadcastReceiver` for `ACTION_STATE_CHANGED` **subscribed with the OS start and released with the OS stop**; and one hook that **forwards only a LOSS** — `STATE_ON` is mapped and discarded. The node carries it to the one authority `with a census`.
+- **Witness**: a source-level arm asserting the word, the subscription, the hook, the loss-only filter, the release, the authority call and the census — **sixteen arms green**.
+- **A language lesson recorded where it was learned**: Kotlin does not smart-cast a **member** property, so the registration captures a local (`val ctx = context`) — *the compiler said so in one line*.
+- **Measured**: android `:mesh` **FORCED 1196 / 0 / 0**; courts 613 OK.
+- **Remaining**: the **permission** half of the word (a revocation is not observable from a broadcast alone), the Wi-Fi plane under the authority, and the node-level behavioural witness.
+
 ## Round 249 -- step 2 complete on BOTH isles; and the Android isle's power/permission road measured to be ABSENT
 
 - **Wiring**: the Android `BleTransport` declares `DisconnectingTransport` and counts **`activeClientConnections.size`** — the registry that type already keeps — **then** severs; so the adapter's `?: 0` becomes a measurement and **the literal `1` is dead on both isles**. **The count precedes the teardown** (the ordering lesson from round 241).

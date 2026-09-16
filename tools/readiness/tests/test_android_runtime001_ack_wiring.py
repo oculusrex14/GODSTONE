@@ -210,6 +210,28 @@ class AndroidAckWiringTest(unittest.TestCase):
         self.assertLess(body.index("activeClientConnections.size"), body.index("stop()"),
                         "**THE COUNT MUST PRECEDE THE TEARDOWN** -- the lesson the Swift arm taught at round 241")
 
+    def test_the_power_road_is_built_and_only_a_loss_is_forwarded(self):
+        """GS-RUNTIME-001's Android half, step 3. MEASURED BEFORE IT (round 249): that isle had **no adapter-state
+        signal at all** -- no `BluetoothAdapter`, no broadcast receiver -- so the authority's `onPowerLoss` had
+        nothing to be called from. THE ROAD HAD TO BE BUILT, and this arm checketh that it was."""
+        b = (MESH / "transport/BleTransport.kt").read_text(encoding="utf-8")
+        self.assertIn("enum class AdapterPowerState", b,
+                      "the graph must hear the platform in ITS OWN WORDS, not CoreBluetooth's nor Android's")
+        self.assertIn("ACTION_STATE_CHANGED", b, "the platform's own broadcast must be subscribed")
+        self.assertIn("var onAdapterStateChanged", b, "and one hook must carry the word to the graph")
+        recv = b[b.index("adapterStateReceiver = object"):]
+        recv = recv[:recv.index("private var adapterReceiverRegistered")]
+        self.assertIn("if (word == AdapterPowerState.POWERED_OFF)", recv,
+                      "**A HEALTHY STATE IS NOT AN EVENT**: only a LOSS is forwarded, exactly as the Swift twin requires")
+        self.assertIn("registerReceiver", b)
+        self.assertIn("unregisterReceiver", b,
+                      "and the receiver must be RELEASED with the transport, or it outlives the radio it watches")
+        n = (REPO / "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt").read_text(encoding="utf-8")
+        self.assertIn("lifecycle.onPowerLoss()", n,
+                      "and the node must carry that loss to the ONE authority")
+        self.assertIn("lifecyclePowerLossesForwarded += 1", n,
+                      "with a census, so a witness can measure that it happened")
+
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
         self.assertIn("override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null",
