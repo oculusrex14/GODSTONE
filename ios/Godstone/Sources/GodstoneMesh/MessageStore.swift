@@ -862,8 +862,23 @@ public final class SqliteMessageStore: MessageStore {
     /// tombstone (the bounded sweep), the continuity identifier and discontinuity counter are NOT yet persisted
     /// (they need the schema revision measured at round 290), and a `nil` provider keepeth the historical
     /// behaviour so no existing path changeth.
+    /// GS-STORE-004 STEP SEVEN: THE CONTINUITY ORACLE. Monotonic time is comparable ONLY within one boot, so the
+    /// adapter answereth `.proven` IFF the boot the budget was anchored in IS the boot now running -- and the
+    /// POLICY, not this store, decideth what a broken continuity meaneth (its own frozen conservative rule: count
+    /// the discontinuity, debit AT LEAST ONE HOUR, and expire at `discontinuityLimit`). The store's whole duty is to
+    /// hand it truthful inputs.
+    private final class BootIdentityContinuity: MonotonicClockAdapter {
+        private let persisted: String?
+        private let current: String
+        init(persisted: String?, current: String) { self.persisted = persisted; self.current = current }
+        func proveContinuity(previous: RetentionCheckpoint, nowMono: Int) -> ClockContinuityStamp {
+            (persisted != nil && persisted == current) ? .proven : .unknown
+        }
+    }
+
     internal func isForwardable(receivedAt: Int64, typeCode: Int, storedBudget: Int64? = nil,
-                                storedCheckpoint: Int64? = nil) -> Bool {
+                                storedCheckpoint: Int64? = nil, storedBoot: String? = nil,
+                                storedDiscontinuity: Int64? = nil) -> Bool {
         guard let provider = receiptTimeProvider else { return true }
         guard let kind = MessageKind(rawValue: typeCode),
               let lifetime = RetentionPolicy.lifetimeMs[kind] else { return true }
@@ -875,9 +890,27 @@ public final class SqliteMessageStore: MessageStore {
         // once the debit is exhausted; the anchor-derived lifetime remaineth the fallback for a row persisted
         // before this revision, which carrieth no budget at all.
         if let budget = storedBudget {
-            let from = storedCheckpoint ?? receivedAt
-            let elapsed = now >= from ? now - from : 0
-            return budget - elapsed > 0
+            // THE POLICY JUDGETH, NOT THIS STORE: `RetentionPolicy.checkpoint` debiteth the elapsed MONOTONIC time
+            // when continuity is PROVED, and otherwise applifieth the frozen conservative rule (at least one hour,
+            // and expiry once the discontinuity counter reacheth its limit). A row persisted before this revision
+            // carrieth no boot identity, which is NOT continuity -- the conservative road is the honest one.
+            let cp = RetentionCheckpoint(msgId: "", kind: kind, remainingMs: Int(budget),
+                                         checkpointMonotonicMs: Int(storedCheckpoint ?? receivedAt),
+                                         lastWallCheckpointMs: Int(storedCheckpoint ?? receivedAt),
+                                         discontinuityCount: Int(storedDiscontinuity ?? 0),
+                                         priority: 0, firstReceiptId: "")
+            let adapter = BootIdentityContinuity(persisted: storedBoot,
+                                                 current: provider().bootIdentity)
+            let (next, reason) = RetentionPolicy.checkpoint(cp, nowMono: Int(now),
+                                                            wallEstimateMs: 0, adapter: adapter)
+            // READ FROM THE ENUM ITSELF: a reason other than the live one MEANETH the row is spent or its
+            // continuity is broken, and `remainingMs` is authoritative either way (the policy never goeth below 0
+            // and never replenishes).
+            if next.remainingMs <= 0 { return false }
+            switch reason {
+            case .notExpired: return true
+            case .lifetimeElapsed, .maxHold, .clockContinuityLost: return false
+            }
         }
         let elapsed = now >= receivedAt ? now - receivedAt : 0
         return elapsed < Int64(lifetime)
@@ -953,7 +986,8 @@ public final class SqliteMessageStore: MessageStore {
                 "\(StoreSchema.colRoutingTag), \(StoreSchema.colTtl), " +
                 "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), " +
                 "\(StoreSchema.colPayload), \(StoreSchema.colReceivedAt), " +
-                "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono) FROM \(StoreSchema.table) " +
+                "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), " +
+                "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity) FROM \(StoreSchema.table) " +
                 "ORDER BY \(StoreSchema.priorityOrder)"
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
@@ -977,7 +1011,11 @@ public final class SqliteMessageStore: MessageStore {
                 if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 7),
                                   typeCode: Int(row.typeCode),
                                   storedBudget: storedBudget,
-                                  storedCheckpoint: storedCheckpoint) { continue }
+                                  storedCheckpoint: storedCheckpoint,
+                                  storedBoot: sqlite3_column_type(stmt, 10) == SQLITE_NULL
+                                      ? nil : sqlite3_column_text(stmt, 10).map { String(cString: $0) },
+                                  storedDiscontinuity: sqlite3_column_type(stmt, 11) == SQLITE_NULL
+                                      ? nil : Int64(sqlite3_column_int64(stmt, 11))) { continue }
                 if !visit(frame) { return }
             }
         }
@@ -988,7 +1026,8 @@ public final class SqliteMessageStore: MessageStore {
             // GS-STORE-004: the gate readeth the anchor, SO THE ANCHOR MUST BE SELECTED -- reading index 1 of a
             // one-column statement was the fatal `Index out of range` of the first measured attempt.
             let sql = "SELECT \(StoreSchema.colMsgId), \(StoreSchema.colReceivedAt), " +
-                "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono) FROM \(StoreSchema.table)"
+                "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), " +
+                "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity) FROM \(StoreSchema.table)"
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
                 sqlite3_finalize(stmt); return
@@ -1003,7 +1042,11 @@ public final class SqliteMessageStore: MessageStore {
                 if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 1),
                                   typeCode: MessageKind.direct.rawValue,
                                   storedBudget: idBudget,
-                                  storedCheckpoint: idCheckpoint) {
+                                  storedCheckpoint: idCheckpoint,
+                                  storedBoot: sqlite3_column_type(stmt, 4) == SQLITE_NULL
+                                      ? nil : sqlite3_column_text(stmt, 4).map { String(cString: $0) },
+                                  storedDiscontinuity: sqlite3_column_type(stmt, 5) == SQLITE_NULL
+                                      ? nil : Int64(sqlite3_column_int64(stmt, 5))) {
                     // the kind is unknown here (this reader selecteth ids alone); a DIRECT row past its
                     // budget is the conservative case, and the schema revision will carry the real kind.
                     continue

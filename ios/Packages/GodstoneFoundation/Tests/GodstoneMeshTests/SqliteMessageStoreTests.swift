@@ -1527,4 +1527,28 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertTrue(s.allHeldMsgIds().isEmpty,
                       "a row whose PERSISTED budget is spent must not be forwarded, however fresh its anchor")
     }
+
+    /// GS-STORE-004: "on reopen, debit elapsed monotonic time WHEN CONTINUITY IS PROVED; otherwise use the FROZEN
+    /// CONSERVATIVE DISCONTINUITY RULE." The persisted boot identity was written and never compared, so an arm
+    /// that changes the boot under a SHORT budget must be withheld by the conservative debit (at least one hour)
+    /// and is not, today. RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_aChangedBootDebitethConservatively() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-boot-\(UUID().uuidString).db")
+        tmpURL = url
+        let first = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        first.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: "boot-A") }
+        let f = frame(8, .direct, 48)
+        XCTAssertEqual(first.persist(f, receivedFrom: Data([7])), .heldNew)
+        // A SHORT budget: thirty minutes, so a conservative debit of at least one hour MUST exhaust it.
+        XCTAssertEqual(first.execRawUpdate("UPDATE held_frames SET remaining_ms = 1800000", []), 1)
+        first.close()
+
+        // THE SAME MONOTONIC READING, BUT A DIFFERENT BOOT: continuity is NOT proved.
+        let second = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        second.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: "boot-B") }
+        defer { second.close() }
+        XCTAssertTrue(second.allHeldMsgIds().isEmpty,
+                      "a changed boot under a short budget must be debited conservatively, not left untouched")
+    }
 }
