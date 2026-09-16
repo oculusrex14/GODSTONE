@@ -453,13 +453,18 @@ def check_the_lab_journeys_carry_accessibility_semantics():
     if "TabView" not in text:
         return False, "the iOS lab carrieth no navigation at all (no TabView)"
     tabs = text
+    # ON THE TAB'S OWN TEXT LINE -- NOT WITHIN A WINDOW THAT CAN REACH THE NEXT TAB. The second draft used a 400-character
+    # window and ITS NEGATIVE CASE FAILED TO FAIL, because removing one tab's label left the NEIGHBOUR's within reach: A WINDOW
+    # THAT REACHES PAST THE THING IT JUDGES IS NOT A CHECK, and this is the FIFTH species of this session's control family
+    # (a comment for code, a declaration for a use, a repair breaking its neighbour, a bounded capture that truncateth, and
+    # now a window that spans). The assertion is therefore made ON THE LINE: `Text("<name>").accessibilityLabel(`.
     missing = []
     for name in ("Identity", "Contacts", "Conversation", "Sos", "Diagnostics"):
-        if not re.search(r"Lab" + name + r"View\(\)\s*\.tabItem\s*\{[\s\S]{0,400}?accessibilityLabel", tabs):
+        if not re.search(r'Text\("' + name + r'"\)\s*\.accessibilityLabel\("', tabs):
             missing.append(name)
     if missing:
         return False, "no ACCESSIBILITY LABEL on the tab(s): " + ", ".join(missing)
-    if not re.search(r"LabSosView\(\)\s*\.tabItem\s*\{[\s\S]{0,400}?accessibilityIdentifier", tabs):
+    if not re.search(r'\.accessibilityIdentifier\("lab\.tab\.', tabs):
         return False, "the tabs carrieth labels but no ACCESSIBILITY IDENTIFIER (a test cannot address them)"
     return True, "all five journeys carrieth accessibility labels and an identifier on the tab itself"
 
