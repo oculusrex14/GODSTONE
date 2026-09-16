@@ -50,6 +50,12 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
+    override fun tombstoneRowCount(): Int = synchronized(conn) {
+        conn.prepareStatement("SELECT COUNT(*) FROM ${StoreSchema.TOMBSTONE_TABLE}").use { st ->
+            st.executeQuery().use { rs -> if (rs.next()) rs.getInt(1) else 0 }
+        }
+    }
+
     override fun deleteHeldRow(msgId: ByteArray): Boolean {
         synchronized(conn) {
             conn.prepareStatement("DELETE FROM ${StoreSchema.TABLE} WHERE ${StoreSchema.COL_MSG_ID} = ?").use { st ->

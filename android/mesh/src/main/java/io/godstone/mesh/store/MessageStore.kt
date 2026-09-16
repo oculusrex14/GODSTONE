@@ -1024,6 +1024,11 @@ internal interface StoreDb {
      *  transaction, so this taketh NO lock of its own. */
     fun deleteHeldRow(msgId: ByteArray): Boolean
 
+    /** GS-STORE-004 (round 342): HOW MANY DURABLE TOMBSTONES THE STORE HOLDETH -- A REAL COUNT of the table, never a
+     *  counter kept beside it, because A SHADOW COUNT CAN DRIFT FROM THE ROWS IT CLAIMETH TO DESCRIBE (the iOS isle's
+     *  round-340 law, mirrored here). Read ON THIS INTERFACE because this is the object that owneth the handle. */
+    fun tombstoneRowCount(): Int
+
     /** GS-STORE-004 (round 327): move a `delivery_state` row to a terminal code -- the sweep's second half, IN THE
      *  SAME TRANSACTION as the deletion, because a held row retired without its delivery state (or the reverse) would
      *  be a half-retirement. */
@@ -1937,6 +1942,12 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             StoreSchema.TABLE, cv, "${StoreSchema.COL_MSG_ID} = ?",
             arrayOf(String(msgId, Charsets.ISO_8859_1)),
         ) > 0
+    }
+
+    override fun tombstoneRowCount(): Int {
+        helper.writableDatabase.rawQuery("SELECT COUNT(*) FROM ${StoreSchema.TOMBSTONE_TABLE}", null).use { rs ->
+            return if (rs.moveToNext()) rs.getInt(1) else 0
+        }
     }
 
     override fun deleteHeldRow(msgId: ByteArray): Boolean =

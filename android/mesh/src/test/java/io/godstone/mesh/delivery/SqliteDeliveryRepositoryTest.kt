@@ -665,6 +665,9 @@ class SqliteDeliveryRepositoryTest {
     // nothing while the object it wraps observed everything would be a SILENT LIE (the lesson this programme paid
     // for at CRYPTO-001). Only the RETENTION answers stay stubbed above, because THIS double existeth to inject
     // faults, not to hold rows.
+    // GS-STORE-004 (round 342): THE COUNT IS FORWARDED TOO -- these doubles DELEGATE to a real engine, and a
+    // double that reported zero tombstones while the engine it wrapped held thousands would be A SILENT LIE.
+    override fun tombstoneRowCount(): Int = inner.tombstoneRowCount()
     override fun deleteHeldRow(msgId: ByteArray): Boolean = inner.deleteHeldRow(msgId)
     override fun setDeliveryStateCode(msgId: ByteArray, code: Int): Boolean =
         inner.setDeliveryStateCode(msgId, code)
@@ -2655,6 +2658,9 @@ class SqliteDeliveryRepositoryTest {
     override fun retentionCheckpointOf(msgId: ByteArray): Array<Any?>? = null
     override fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
                                         bootIdentity: String, discontinuity: Long): Boolean = false
+    // GS-STORE-004 (round 342): THE COUNT IS FORWARDED TOO -- these doubles DELEGATE to a real engine, and a
+    // double that reported zero tombstones while the engine it wrapped held thousands would be A SILENT LIE.
+    override fun tombstoneRowCount(): Int = underlyingDb.tombstoneRowCount()
     override fun deleteHeldRow(msgId: ByteArray): Boolean = underlyingDb.deleteHeldRow(msgId)
     override fun setDeliveryStateCode(msgId: ByteArray, code: Int): Boolean =
         underlyingDb.setDeliveryStateCode(msgId, code)

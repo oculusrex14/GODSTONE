@@ -1354,4 +1354,5 @@ class SqliteMessageStoreTest {
             "the RUNTIME cadence must retire rows spent since the last sweep, not only at startup",
         )
     }
+
 }
