@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 202 -- the immutability arm's negative proof discharged: the law is enforced by the TYPE
+
+- **Attempted the mutation first**: rebinding the hint on a later discovery **does not compile** — `remoteNodeHint` is a **get-only property**. The immutability of the GATT-bound hint is **structural**, not conventional. Mutation reverted in the same breath.
+- **Liveness shown instead**: bending the arm's expectation to the other hint produced **exactly one failure — that arm** — then the file was restored (T22 17/0). *An assertion that cannot fail is not a check; this one can, and did.*
+- **One thing remains for IOS-02**: a dedicated witness for step 2's **carrying-through** half (*a deferred task judges against the captured relation, not the current one*) — satisfied by construction, witnessed only indirectly so far.
+
 ## Round 201 -- IOS-02 step 2's immutability half WITNESSED (a later advertisement may not rebind the hint)
 
 - **New canonical arm** (`ReadinessT22Tests.testTheBoundHintIsImmutableAgainstLaterAdvertisements`): the binding captures the hint, a **later advertisement for the same handle carrying a different hint** must leave `conn.remoteNodeHint` unchanged — else air traffic could re-open a binding and every record, task, completion and timer would judge against a different relation.
