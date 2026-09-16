@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 195 -- step 4's repair PROVEN on the wire; 14 positional arm expectations remain
+
+- **Measured in four moves**: patch + type-based HS3 search everywhere → failures **43 → 25 → 23 → 22 → 14**; the wire itself witnesses the law: `state=ready | writes=2 kinds=[20, 24]` = **[HS3, challenge], in order**.
+- **Two of my own fixes were wrong and the runs said so**: testing only `w.last` for the HS3 type (hs3 is no longer last), and a regex that missed the `last != hs1` variant in T21/T22.
+- **The 14 that remain are positional expectations**, named in their own words: writer-order arm reads 'the last writing' (should compare by INDEX); T22's denied-binding arm reads the ring's last entry — where **production is right**: a responder whose binding was denied must refuse the challenge's DATA.
+- **Preserved**: `round195-step4-type-based-everywhere.patch`. Tree reverted and green.
+- **Next**: re-frame those 14 arms' positional expectations, then run the whole lane.
+
 ## Round 194 -- the round-193 diagnosis WITHDRAWN: the cause was the rig's POSITIONAL rule, not the placement
 
 - **Withdrawn**: round 193 blamed the placement of the challenge at the initiator's transition. **Refuted by reading the rig**: T23 selected HS3 by position (`writes.last(where: { $0 != hs1 })`), T21/T22 likewise — so production's new challenge was pushed to the responder as if it were HS3 (`ingest.write|record type data at stage handshake`).

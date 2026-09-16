@@ -65,3 +65,36 @@
 // PLACE THE FAILURE APPEARETH IS NOT IN THAT PLACE** -- and a diagnosis built from reading the production
 // code, without reading the RIG that driveth it, is a story. The ring message was the evidence, and it
 // pointed at the responder's gate; the rig's rule was what fed it.
+
+// ============================================================================================================
+// ROUND 195: THE REPAIR IS PROVEN ON THE WIRE; WHAT REMAINETH IS THE ARMS' POSITIONAL EXPECTATIONS.
+//
+// With the round-194 patch applied AND every HS3 detection converted to search the NEW WRITES BY TYPE, the
+// measured failures fell 43 -> 25 -> 23 -> 22 -> **14**, and the wire itself now beareth witness to the law:
+//
+//       "the HS3 never answered; ring: | state=ready | writes=2 kinds=[20, 24] | slot=true"
+//
+// -- 20 is HS3 (0x14), 24 is the challenge's DATA (0x18), IN THAT ORDER, UPON A READY RELATION. THE
+// PRODUCTION LAW IS IMPLEMENTED AND CORRECT. (Two of my own fixes were wrong on the way and are recorded in
+// the code: I first tested only `w.last` for the HS3 type, forgetting that hs3 is no longer last; and my
+// first regex missed the `last != hs1` variant of the same idiom in T21 and T22.)
+//
+// THE FOURTEEN THAT REMAIN SAY WHAT THEY WANT IN THEIR OWN WORDS, AND EVERY ONE IS POSITIONAL:
+//   * T21 `testTheHS3PrecededEveryDATAInTheWriterOrder` -- "the last writing of the exchange must be..."
+//     got 24 where it expecteth 20. THE LAW IT NAMETH STILL HOLDETH ([hs3, DATA] is the order); what falleth
+//     is its positional reading. It should assert that the FIRST hs3 precedeth EVERY DATA by INDEX.
+//   * T22 `testTheRejectedAndRevokedBindingsPerishTheRelationAtTheThirdCounsel` -- "the denied binding must
+//     refuse the seal; ring: ingest.write|record type data at stage handshake": **THE PRODUCTION BEHAVIOUR
+//     HERE IS RIGHT, NOT WRONG** -- a responder whose binding was DENIED never reacheth its trusted hour, so
+//     it MUST refuse the challenge's DATA. The arm readeth the ring's LAST entry and now findeth that
+//     refusal where it expected another.
+//   * T22 `testTheThirdSpokenAgainAfterTheTrustIsAConflictingSequence` and its kin: the pair's trust is
+//     asserted through a path that now also carrieth the challenge.
+//
+// SO THE NEXT ROUND'S WORK IS EXACTLY THIS: RE-FRAME THOSE FOURTEEN ARMS' POSITIONAL EXPECTATIONS (the
+// writer-order arm to index comparison; the ring-reading arms to search for their named reason rather than
+// the last entry), and RUN THE WHOLE LANE -- the repair itself is already written and proven.
+//
+// THE WHOLE STATE IS PRESERVED: `round195-step4-type-based-everywhere.patch` (sha256 <SEE THE LEDGER>),
+// carrying the production repair, the silent RED arm, the reconciled challenge reads, and every type-based
+// record selection. The tree was REVERTED and re-measured green.
