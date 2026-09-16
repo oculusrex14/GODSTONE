@@ -3751,7 +3751,7 @@
    "candidate_sha": "0759963d25b0d2adfc22954a5fd74c45029f3edd",
    "tree_sha": "3275cabf91980564e42cfd68c9125ea580dc0e56",
    "worktree": "clean at this sha apart from this record",
-   "stands_as_the_convergence_candidate": true,
+   "stands_as_the_convergence_candidate": false,
    "logs": {
     "android_lane": {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_247/android-lane.log",
@@ -3773,7 +3773,60 @@
     "Mesh_Oracle": 40
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: one lifecycle authority over the adapter over the node's transport, opened through it and closed BEFORE the guard (the iOS lesson pre-applied); the Wi-Fi gap is named.",
-   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN."
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
+   "SUPERSEDED_BY": "candidate_verification_at_round_248: BOTH ISLES measured at one SHA."
+  },
+  "candidate_verification_at_round_248": {
+   "candidate_sha": "e72f2b96bbac1b29e20be10856c8c6f3452ed0c7",
+   "tree_sha": "08a3462ab19e8bc3993a014854bb65df02d87ce9",
+   "worktree": "clean at this sha apart from this record",
+   "stands_as_the_convergence_candidate": true,
+   "logs": {
+    "both_isles": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_248/both-isles.log",
+     "sha256": "094e744ea19f239a78547634e8b1ae309f479de9bee1414a2edcc91c04804562"
+    }
+   },
+   "measured": {
+    "ios_foundation_lane": "`Executed 1228 tests, with 0 failures (0 unexpected)`; rc 0",
+    "android_mesh_lane": "1196 tests, 0 failures, 0 errors -- FORCED (`--rerun-tasks`)",
+    "android_lab_apk": "15133266 bytes -- FORCED, rc 0",
+    "python_readiness_suite": "611 tests, OK, rc 0",
+    "audit_probes": "12 tests, OK, rc 0",
+    "repository_controls": "mandatory lab control PASSED (14 notes); `check_parity --scope repo` rc 0",
+    "symbols": "223 Kotlin files scanned, 0 unresolved",
+    "evidence_digests": "384 registered | 384 examined | 384 verified"
+   },
+   "per_declared_scope": {
+    "LIGHT_Archive": 14,
+    "Mesh_Oracle": 40
+   },
+   "the_three_honest_lists_RECOMPUTED_AT_THIS_SHA": {
+    "awaiting_independent_verification_FIX_SUBMITTED": 37,
+    "dependent_on_an_external_artifact": [
+     "ANDROID-05",
+     "GS-ACK-001",
+     "GS-ARCHIVE-005",
+     "GS-CTRL-002",
+     "GS-LAB-001",
+     "GS-MODEL-001",
+     "GS-RUNTIME-001",
+     "GS-SOS-001",
+     "GS-SOS-002",
+     "GS-STORE-001",
+     "GS-STORE-002",
+     "GS-UX-001",
+     "IOS-02",
+     "IOS-04",
+     "IOS-05",
+     "IOS-06"
+    ],
+    "whose_closure_evidence_is_questioned_because_a_production_owner_changed": 11,
+    "NOT_ONE_IS_VERIFIED_FIXED": true,
+    "the_five_external_gates_are_OPEN": true
+   },
+   "what_moved": "BOTH ISLES measured at one SHA after the Android half's two landings (rounds 246-247).",
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane/URL/id/log existeth). **No finding is `VERIFIED_FIXED`.**"
   }
  },
  "counts": {
