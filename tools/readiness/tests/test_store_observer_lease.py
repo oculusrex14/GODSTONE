@@ -54,8 +54,14 @@ class StoreObserverLeaseTest(unittest.TestCase):
 
     def test_the_registrant_retaineth_and_disposeth(self):
         a = AUTH.read_text(encoding="utf-8")
-        self.assertRegex(a, r"val \w*[Ll]ease\w* = store\.registerHeldSetObserver",
+        # THE LANDED SHAPE, WHICH THIS ARM MEASURED RATHER THAN ASSUMED: the registrant RETAINETH the lease in
+        # `registeredLease` -- and DISPOSES it both in `stopObserving()` and when the store is REPLACED. A first draft
+        # demanded a local `val lease = ...` and failed on ITS OWN expectation, not the code's.
+        self.assertRegex(a, r"registeredLease\.set\(store\.registerHeldSetObserver",
                          "the production registrant must RETAIN the lease, or its own teardown cannot free the ear")
+        self.assertRegex(a, r"registeredLease\.getAndSet\(null\)",
+                         "and it must be able to GIVE IT BACK -- in stopObserving() and on a store replacement")
+        self.assertIn("disposeHeldSetObserver", a, "the disposal must reach the store")
 
 
 if __name__ == "__main__":  # pragma: no cover
