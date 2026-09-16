@@ -135,6 +135,35 @@ class AndroidAckWiringTest(unittest.TestCase):
         self.assertIn("scope.launch { drainAckWorkOnce(fromPeer) }", road,
                       "and the INBOUND wake belongeth on the generic durable road")
 
+    def test_the_farewell_unschedulleth_the_exact_relation(self):
+        """GS-RUNTIME-001 step 3 on this isle: a relation that went away must STOP being eligible -- measured
+        absent before this (`onLinkGone` was called NOWHERE in the production tree)."""
+        n = NODE.read_text(encoding="utf-8")
+        self.assertIn("ackPump?.onLinkGone(event.peerId)", n,
+                      "the Farewell must unschedule THAT EXACT relation, or the worker offers to a departed peer")
+        # **AND IT MUST STAND OUTSIDE THE `peerLock` BLOCK** -- a second lock taken inside the first is a nesting
+        # nobody asked for. (My first draft put it INSIDE, which the compiler accepted and a reviewer should not.)
+        handler = n[n.index("internal fun handlePeerEvent"):]
+        handler = handler[:handler.index("\n    }")]
+        lock_at = handler.index("synchronized(peerLock)")
+        unlock_at = handler.index("publishStatus()")
+        call_at = handler.index("ackPump?.onLinkGone(event.peerId)")
+        self.assertGreater(call_at, unlock_at,
+                           "the unscheduling must stand AFTER the lock's block, not inside it")
+        self.assertGreater(call_at, lock_at, "sanity: the call is in the handler at all")
+
+    def test_the_generation_recheck_is_not_needed_here_and_the_reason_is_recorded(self):
+        """**A MEASURED DIFFERENCE FROM THE SWIFT TWIN, RECORDED SO IT IS NOT MISTAKEN FOR AN OMISSION:**
+        this isle's pump is keyed by THE AUTHENTICATED NODE ID (and its transport send taketh a node id), so
+        there is NO HANDLE THAT A REPLACEMENT RELATION COULD REUSE -- which is why the Swift isle needed a
+        generation recheck and this one doth not. What this isle needed was the FAREWELL, above."""
+        p = PUMP.read_text(encoding="utf-8")
+        self.assertIn("fun onLinkReady(peer: ByteArray, now: Long = clock())", p,
+                      "the schedule is keyed by the node id, which IS the authenticated identity on this isle")
+        n = NODE.read_text(encoding="utf-8")
+        self.assertIn("ble.send(nodeId, copy.encodedFrame)", n,
+                      "and the transport send taketh that same node id -- no handle, no reuse, no recheck")
+
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
         self.assertIn("override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null",

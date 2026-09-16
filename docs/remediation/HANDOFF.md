@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 237 -- the ANDROID farewell unschedules the relation; and the missing recheck there is measured CORRECT
+
+- **The defect, measured before the edit**: **nothing on that isle called `ackPump.onLinkGone`** — the twin of the Swift gap closed at round 218 — so a departed relation stayed scheduled and the worker would keep offering to it. The node already observed `ble.peers()`/`PeerEvent.Lost`; the unscheduling now stands there.
+- **A measured difference from the Swift twin, recorded so it is not mistaken for an omission**: that isle's pump is **keyed by the authenticated node id**, and its transport send takes the same node id — **so there is no handle a replacement relation could reuse**, which is exactly why the Swift isle needed the generation recheck (round 223) and this one does not.
+- **And my first draft put the call *inside* the `peerLock` block** — which the compiler accepted and a reviewer should not: *a second lock taken inside the first is a nesting nobody asked for*. It now stands outside, and the arm **requires** that placement rather than merely tolerating the other.
+- **Measured**: android `:mesh` **FORCED 1195 / 0 / 0**; the ten-arm source witness green; courts 603 OK.
+- **The Android half now carries**: the seam's shape, the production signer, the four owners, the worker machinery, the readiness collector, the three wakes, the farewell unscheduling and the drain order — **with the instrumentation witness still owed** (the source-level arms are labelled as such).
+
 ## Round 236 -- the two remaining ANDROID event wakes land, gated on the pump's own schedule
 
 - **Wiring** (the twin of rounds 221/227): the **forward-work** wake sits in `ingestInbound`'s `DispatchVerdict.Ack` case on an **accepted** candidate; the **inbound** wake sits on the generic durable road. **Both are gated on `ackPump?.isScheduled(fromPeer) == true` — the pump's own schedule**, so an unready relation is not served; *the Swift twin used a hand-kept mapping for the same purpose, and this gate is the pump's own state rather than a copy of it*. Each wake launches one bounded turn on the node's scope, so the ingest road never awaits a radio send.

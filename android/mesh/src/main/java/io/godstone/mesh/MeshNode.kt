@@ -523,6 +523,13 @@ class MeshNode(
             }
             publishStatus()
         }
+        // GS-RUNTIME-001 step 3, THE ANDROID TWIN: **THE FAREWELL UNSCHEDULETH THAT EXACT RELATION.** MEASURED
+        // BEFORE THIS: NOTHING CALLED `ackPump.onLinkGone` ON THIS ISLE, so a relation that went away STAYED
+        // SCHEDULED and the worker would keep offering to a departed peer -- the same defect class the Swift twin
+        // closed at round 218. **AND THE CALL STANDETH *OUTSIDE* THE `peerLock` BLOCK, WHERE MY FIRST DRAFT PUT IT:
+        // a second lock taken inside the first is a nesting nobody asked for, and the pump's own lock needeth no
+        // company.**
+        if (event is PeerEvent.Lost) ackPump?.onLinkGone(event.peerId)
         // T41: a peer that became present must have a REGISTERED sync relation, or
         // no DIGEST is ever scheduled and its held set never reconciles; a peer
         // that went away must have its relation cancelled (the run state and the
