@@ -28,6 +28,15 @@ public final class MeshRuntime {
     public let deliveryTracker: DeliveryTracker
     public let sessionManager: SessionManager
     public let meshNode: MeshNode
+    // GS-RUNTIME-001 step 2: **THE ACK ROAD'S OWNERS, IN THE PRODUCTION RUNTIME.** Until these landed, the durable
+    // ACK store, its driver, its pump and the recipient inbox were constructed ONLY by the composition harness --
+    // and nothing in production ever collected the transport's readiness, so "registering a queue does not send
+    // it". They are built over the SAME opened private store and the SAME pinned identity as everything else here.
+    // (INTERNAL, NOT PUBLIC: these types are internal, and `public let` on an internal type doth not compile --
+    // the compiler said so, which is how I learned that the runtime's OWN shape needeth no wider surface.)
+    internal let ackStore: SqliteAckStore
+    internal let ackDriver: AckObligationDriver
+    internal let ackPump: DurableAckPump
     public let lifecycleGate: DefaultRuntimeLifecycleGate
     public let invalidator: MeshRuntimeInvalidator
     public let messageStoreUrl: URL
@@ -88,6 +97,53 @@ public final class MeshRuntime {
             deliveryTracker: tracker,
             sessions: sessions
         )
+
+        // GS-RUNTIME-001 step 2: THE FOUR OWNERS, OVER THE SAME STORE AND THE SAME PINNED IDENTITY.
+        // (a) the durable paired store IS the message store's transaction engine (SqliteMessageStore conformeth
+        //     to AckObligationEngine), so the ACK namespaces commit inside the SAME database;
+        let ackStore = SqliteAckStore(engine: messageStore)
+        // (b) the driver signeth through the PRODUCTION signer over the pinned identity -- the seam's seed road
+        //     is refused BY CONSTRUCTION there, which is the repair of rounds 215/216;
+        let ackDriver = AckObligationDriver(store: ackStore,
+                                            signer: IdentityAckSigner(identity: identity),
+                                            authenticator: ackAuth,
+                                            resolver: resolver)
+        // (c) the pump admitteth foreign candidates through that driver;
+        let ackPump = DurableAckPump(store: ackStore,
+                                     admitForeign: { encoded, from in
+                                         ackDriver.admitForeignCandidate(encoded, receivedFrom: from)
+                                     },
+                                     clock: { Int(Date().timeIntervalSince1970 * 1000) })
+        // (d) and the dispatcher answers the delivery tracker, exactly as the harness's twin doth.
+        let dispatcher = AckDispatcher(
+            lookupDeliveryRow: { tracker.lookup($0) },
+            verifyOrigin: { tracker.acknowledge($0.msgId, $0) },
+            admitCandidate: { encoded, from in ackPump.admit(encoded, receivedFrom: from) })
+        meshNode.ackDispatcher = dispatcher
+        // (e) AND THE RECIPIENT INBOX. Its DH road is THE ONE SEAM PRODUCTION CAN SATISFY: `MeshIdentity`'s
+        //     `agreementKey` is INTERNAL, so the seed never leaveth the module -- whereas the SIGNER seam could
+        //     not be satisfied at all until rounds 215/216 changed its SHAPE. THAT ASYMMETRY IS MEASURED, not
+        //     assumed, and it is why one seam needed a design change and the other an in-module accessor.
+        meshNode.recipientInbox = RecipientInboxRepository(
+            router: meshNode.router,
+            ourNodeId: identity.nodeId,
+            localDhPrivate: { identity.agreementKey.rawRepresentation },
+            signer: IdentityAckSigner(identity: identity),
+            resolver: resolver,
+            authenticator: ackAuth,
+            pairedStore: ackStore,
+            commitInbound: { frame, receivedFrom, localRecipient, generation, lifetime, receivedAt, fault in
+                try messageStore.commitInboundWithObligationAtWithFault(
+                    frame, receivedFrom: receivedFrom, localRecipientNodeId: localRecipient,
+                    identityGeneration: generation, obligationLifetimeMs: lifetime,
+                    // THE FAULT ROAD IS ADAPTED, NOT DROPPED: the repository carrieth a `(String)` fault and the
+                    // store's variant carrieth `(String, OpaquePointer?)` (the raw handle), so the handle is
+                    // DROPPED INSIDE the store (which receiveth it anyway) and the site name is FORWARDED.
+                    receivedAt: receivedAt, fault: { label, _ in try fault?(label) })
+            })
+        self.ackStore = ackStore
+        self.ackDriver = ackDriver
+        self.ackPump = ackPump
 
         self.invalidator = MeshRuntimeInvalidator(
             lifecycleGate: lifecycleGate,

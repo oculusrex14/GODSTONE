@@ -44,6 +44,42 @@ final class CrashStartupResumeTests: XCTestCase {
         }
     }
 
+    // MARK: - GS-RUNTIME-001 step 2: THE ACK OWNERS ARE IN THE PRODUCTION RUNTIME
+
+    /// **MEASURED BEFORE THE REPAIR (round 209): NO PRODUCTION CODE COLLECTED the transport's readiness, and
+    /// `MeshRuntime` held NEITHER an ACK pump NOR a recipient inbox -- those lived only in the composition harness,
+    /// whose own signer confesseth "IT IS HARNESS SUPPORT AND NOT A DEVICE RESULT".** This arm requireth that the
+    /// production runtime CARRY them, bound to the same opened private store and the same pinned identity.
+    func testSR00_TheProductionRuntimeCarriethTheAckOwnersAndTheInbox() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00_peer_\(UUID().uuidString).db")
+
+        // (MY FIRST DRAFT INVENTED THE FACTORY'S PARAMETERS AND THE COMPILER SAID SO: the real signature is
+        // `(messageStoreUrl:peerStoreUrl:journal:keychain:)`, and the identity is derived from the keychain --
+        // THE SIXTH SPECIES AGAIN, A NAME ASSUMED INSTEAD OF READ, caught by compiling before claiming.)
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: InMemoryJournal(),
+            keychain: InMemoryKeychain()
+        )
+
+        // THE WIRING, WHICH WAS ABSENT UNTIL THIS ROUND:
+        XCTAssertNotNil(runtime.meshNode.recipientInbox,
+                        "GS-RUNTIME-001 step 2: the recipient inbox must be BOUND in the production runtime")
+        XCTAssertNotNil(runtime.meshNode.ackDispatcher,
+                        "and the ACK dispatcher with it")
+
+        // AND THE DRIVER RUNNETH OVER THE RUNTIME'S OWN STORE: a fresh runtime carrieth no obligation, and
+        // reading its own durable store is not a storage failure -- the two claims a stand-in could not make.
+        let report = try runtime.ackDriver.runPendingOnce(8)
+        XCTAssertEqual(report.scanned, 0, "a fresh runtime carrieth no ACK obligation")
+        XCTAssertEqual(report.storageFailures, 0, "and reading its own durable store is not a failure")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

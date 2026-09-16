@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 217 -- GS-RUNTIME-001 step 2's CONSTRUCTION HALF lands: the four ACK owners in the PRODUCTION runtime
+
+- **In `MeshRuntime`**: `ackStore` (over the **same opened private store**), `ackDriver` (signed by the **pinned** identity through `IdentityAckSigner`), `ackPump`, and `meshNode.ackDispatcher` + `meshNode.recipientInbox` **bound**.
+- **The asymmetry, measured**: the inbox's DH road is one production **can** satisfy (`MeshIdentity.agreementKey` is `internal`, so the seed never leaves the module); the signer seam could not be satisfied at all until its **shape** changed. *One seam needed a design change; the other an in-module accessor.*
+- **Witness**: `CrashStartupResumeTests.testSR00_…` — inbox and dispatcher bound, and `runPendingOnce(8)` over the runtime's own store reports 0 scanned / 0 storage failures.
+- **Three compile errors of mine, all answered**: `public let` on internal types; the fault-closure type direction; and **a witness that invented the factory's parameters** (the real signature is `(messageStoreUrl:peerStoreUrl:journal:keychain:)`) — the sixth species again.
+- **Measured**: **full iOS lane 1214 / 0**. Remaining: step 3 (subscribe the readiness; one bounded worker per relation; cancel that exact relation on LinkLost) and steps 4–6.
+
 ## Rounds 215/216 -- the ACK seam's SHAPE repaired: the precondition of GS-RUNTIME-001 step 2 is REMOVED
 
 - **Additive by design**: `AckFrame.build(msgId:signature:…)`; the seam gains `signAck(msgId:recipientNodeId:)` **with a default that signs through `signingSeed`** — so **every harness signer and court kept working unchanged**; the driver takes the signature road; and **`IdentityAckSigner`** signs over the **pinned** identity, refusing the seed road **by construction**.
