@@ -4,6 +4,18 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 262 -- ANDROID-01's migration MEASURED end to end (23 failures -> 7), then parked rather than half-landed
+
+**The block standeth** (re-measured): the iOS lane is still refused by the Xcode licence (`sudo xcodebuild -license accept` is the human's one command). So the round went to the lane that runs.
+
+**The migration was MEASURED, not guessed.** With the parked repair applied, the whole Android lane ran: **1200 tests / 23 failed** (T21 11, T23 7, T20 3, T22 2). Then **seven helper re-basings** — T20/T21/T22/T23's drive-to-ready helpers now **wait for the HS1 the APPLICATION sent**, the wait itself being the witness that it began — took it to **1200 tests / 7 failed**. *A court that waits for a counsel the application sent is a stronger witness than a court that sends it itself.*
+
+**And T17/T18 were clean from the start**, for a reason worth writing down: their ladders never dispatch the platform's `PublishFound` action, so the application's begin cannot fire on their rigs — exactly as the iOS twin's `subscribeth: false` kept the hand-driven iOS arm valid. *The migration's shape was discovered by measurement, not assumed from the iOS precedent.*
+
+**The seven that remain are arm-by-arm judgements, and they are named** in `round262-MEASURED-MIGRATION-PROGRESS.txt` — three of them assert **refusals** (the idempotence law, the hint-order guard), and *an arm that tests a guard must still test THAT guard*; a blanket replacement would silently weaken the trial. One (T22's alien arm) needs the alien HS1 the alien **application** sent, because the court's own `beginInitiator` now answers nil — **which is the law working**.
+
+**So both stages are parked and re-appliable, and the tree returned to GREEN**: android `:mesh` **1198/0/0**, parity **7/7**, symbols **0 unresolved**, courts **635**. Landing the repair without those seven judgements would have been the very species of defect this programme exists to eliminate.
+
 ## Round 261 -- the block re-measured, BOTH PARKS VERIFIED REAPPLIABLE, and no code landed (said plainly)
 
 **The block still standeth**: `/usr/bin/swift --version` still answereth *"You have not agreed to the Xcode license agreements"* — re-measured rather than assumed. **No iOS RED and no iOS lane re-measurement is possible from this session** until the human runs `sudo xcodebuild -license accept`.

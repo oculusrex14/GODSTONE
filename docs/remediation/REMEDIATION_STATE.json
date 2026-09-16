@@ -4123,9 +4123,24 @@
     "sha256": "4dfdf1ae1d9b3242c6fe1048fdd8f48674e7ddb05712eaa3f73b88407cf866a9",
     "git_apply_check": "APPLIES CLEANLY",
     "what_it_oweth_before_it_may_land": "a measurable iOS lane -- the arms were written and cannot be RUN, and an unrunnable arm is not a RED"
+   },
+   "RE_MEASURED_AT_ROUND_262": {
+    "android_01_park_v2": {
+     "patch": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round262-D2-trigger-with-court-rebasing-PARKED-v2.patch",
+     "sha256": "c67ca09a62dbe2c5ab77219d6af7cc0c49f7a3157869b66158ce59ee59e34bd6",
+     "git_apply_check": "APPLIES CLEANLY",
+     "carrieth": "the D2 entrance AND the seven court-helper re-basings (23 -> 7 failures, measured)",
+     "remaining": "seven named arms, three of which assert refusals and need per-arm judgement"
+    },
+    "progress_log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round262-MEASURED-MIGRATION-PROGRESS.txt",
+     "sha256": "51f55d3384f39ba2ac97bf62eb0e38f41c35807ef496a6d30a4287f84a7d2db5"
+    },
+    "environment": "the iOS lane remaineth blocked by the Xcode licence (re-measured this round)"
    }
   },
-  "round261_note": "ROUND 261 DID NOT LAND CODE, AND SAYETH SO PLAINLY. The iOS lane is blocked by the Xcode licence (the human's act), and the two Android/landing candidates left in the dependency order need either a six-court migration or new node-level plumbing -- neither of which fiteth in the context remaining, and a half-migrated suite is what this programme refuseth to leave behind. What the round DID: re-measured the block, VERIFIED BOTH PARKS REAPPLIABLE, and wrote the two landing shapes into the ledger so the next round's first decision is already costed."
+  "round261_note": "ROUND 261 DID NOT LAND CODE, AND SAYETH SO PLAINLY. The iOS lane is blocked by the Xcode licence (the human's act), and the two Android/landing candidates left in the dependency order need either a six-court migration or new node-level plumbing -- neither of which fiteth in the context remaining, and a half-migrated suite is what this programme refuseth to leave behind. What the round DID: re-measured the block, VERIFIED BOTH PARKS REAPPLIABLE, and wrote the two landing shapes into the ledger so the next round's first decision is already costed.",
+  "round262_note": "ROUND 262: the ANDROID-01 migration was MEASURED end to end (23 failures -> 7 with seven helper re-basings) and then PARKED with its progress written down, because the seven that remain are arm-by-arm judgements -- three of them asserting REFUSALS, where a blanket replacement would silently change what the arm testeth. The tree was returned to green: android :mesh 1198/0/0, parity 7/7, symbols 0 unresolved, courts 635. The iOS lane remaineth blocked by the Xcode licence."
  },
  "counts": {
   "by_candidate_scope": {
@@ -4382,7 +4397,8 @@
    "pending_proof": [
     "THE REPAIR IS PARKED, NOT LANDED, AND THE REASON IS MEASURED RATHER THAN GUESSED: the D2 entrance written this round (the application beginneth the trusted exchange itself from the physically-ready relation, once, from the elected initiator alone) turned the filed RED green AND BROKE FIVE PRE-EXISTING ARMS of the same court -- because those arms drive the four-way exchange STEP BY STEP and call `beginTrustedHandshake` themselves, so the application's own begin taketh the relation into the handshake before the court's begin, which is then refused as `cannot begin from HANDSHAKE_IN_PROGRESS`. That is the SAME migration the iOS twin demanded at rounds 190-208 when IOS-02 gave the application its own entrance; on this isle SIX courts drive it by hand (T17, T18, T20, T21, T22, T23). A half-migrated suite is what this programme refuseth to leave behind, so the repair and its courts were parked together in one re-appliable patch: `round260-D2-trigger-and-courts-PARKED.patch` (sha256 08227c3ac8b343c2e910875620a5f08ae1dcd8c65a4a7c5892fd04da2e8e1389), with the reasoning written into `round260-WHY-NOT-LANDED.txt`.",
     "THE KEY CONFIRMATION HALF OF THIS FINDING (key confirmation never begun by the application either) is untouched and unmigrated on this isle.",
-    "ROUND 261: the park was VERIFIED REAPPLIABLE (`git apply --check` -> APPLIES CLEANLY) and the TWO SHAPES for the landing are written down in the ledger (re-base the six courts, or give the auto-begin a node-level signal). Nothing was landed, and nothing is claimed."
+    "ROUND 261: the park was VERIFIED REAPPLIABLE (`git apply --check` -> APPLIES CLEANLY) and the TWO SHAPES for the landing are written down in the ledger (re-base the six courts, or give the auto-begin a node-level signal). Nothing was landed, and nothing is claimed.",
+    "ROUND 262: THE COURT MIGRATION WAS MEASURED, NOT GUESSED -- android :mesh run twice with the repair applied: FIRST 1200 tests / 23 FAILED (T21 11, T23 7, T20 3, T22 2); AFTER SEVEN HELPER RE-BASINGS 1200 tests / 7 FAILED. T17 AND T18 WERE CLEAN FROM THE START because their ladders never dispatch the platform's PublishFound action, so the application's begin cannot fire on their rigs and their hand-driven arms stay valid -- exactly as the iOS twin's `subscribeth: false` kept the hand-driven iOS arm valid. The seven remaining sites are NAMED in `round262-MEASURED-MIGRATION-PROGRESS.txt` (three of them need per-arm judgement because they assert REFUSALS -- the idempotence law and the hint-order guard -- and an arm that testeth a guard must still test THAT guard). Both stages are parked and re-appliable: `round260-D2-trigger-and-courts-PARKED.patch` and `round262-D2-trigger-with-court-rebasing-PARKED-v2.patch` (sha256 c67ca09a62dbe2c5ab77219d6af7cc0c49f7a3157869b66158ce59ee59e34bd6). The tree was returned to GREEN rather than left mid-migration."
    ],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
