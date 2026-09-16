@@ -95,6 +95,6 @@
 // writer-order arm to index comparison; the ring-reading arms to search for their named reason rather than
 // the last entry), and RUN THE WHOLE LANE -- the repair itself is already written and proven.
 //
-// THE WHOLE STATE IS PRESERVED: `round195-step4-type-based-everywhere.patch` (sha256 <SEE THE LEDGER>),
+// THE WHOLE STATE IS PRESERVED: `round195-step4-type-based-everywhere.patch` (sha256 1bd3a01ddd49e29d...),
 // carrying the production repair, the silent RED arm, the reconciled challenge reads, and every type-based
 // record selection. The tree was REVERTED and re-measured green.
