@@ -23,25 +23,25 @@ import io.godstone.mesh.crypto.SessionManager
  */
 internal interface BleHandshakeAuthority {
     /** Open the OUTBOUND (initiator) handshake, yielding HS1 -- or null when trust refuseth. */
-    fun startOutboundHandshake(peerId: ByteArray, remoteHint: ByteArray): ByteArray?
+    fun startOutboundHandshake(admission: io.godstone.mesh.crypto.RelationKey, remoteHint: ByteArray): ByteArray?
 
     /** Continue the OUTBOUND handshake with the peer's HS2, yielding HS3 -- or null when refused. */
     fun continueOutboundHandshake(
-        peerId: ByteArray,
+        admission: io.godstone.mesh.crypto.RelationKey,
         hs2: ByteArray,
         advertisedRemoteHint: ByteArray,
     ): ByteArray?
 
     /** Accept an INBOUND (responder) handshake from the peer's HS1, yielding HS2 -- or null. */
     fun acceptInboundHandshake(
-        peerId: ByteArray,
+        admission: io.godstone.mesh.crypto.RelationKey,
         remoteHint: ByteArray,
         hs1: ByteArray,
     ): ByteArray?
 
     /** Complete the INBOUND handshake with the peer's HS3: true only when trust standeth. */
     fun completeInboundHandshake(
-        peerId: ByteArray,
+        admission: io.godstone.mesh.crypto.RelationKey,
         hs3: ByteArray,
         advertisedRemoteHint: ByteArray,
     ): Boolean
@@ -54,24 +54,24 @@ internal interface BleHandshakeAuthority {
 internal class SessionHandshakeAuthority(
     private val sessions: SessionManager,
 ) : BleHandshakeAuthority {
-    override fun startOutboundHandshake(peerId: ByteArray, remoteHint: ByteArray): ByteArray? =
-        sessions.beginInitiator(peerId, remoteHint)
+    override fun startOutboundHandshake(admission: io.godstone.mesh.crypto.RelationKey, remoteHint: ByteArray): ByteArray? =
+        sessions.beginInitiator(admission, remoteHint)
 
     override fun continueOutboundHandshake(
-        peerId: ByteArray,
+        admission: io.godstone.mesh.crypto.RelationKey,
         hs2: ByteArray,
         advertisedRemoteHint: ByteArray,
-    ): ByteArray? = sessions.initiatorProcessHs2(peerId, hs2, advertisedRemoteHint)
+    ): ByteArray? = sessions.initiatorProcessHs2(admission, hs2, advertisedRemoteHint)
 
     override fun acceptInboundHandshake(
-        peerId: ByteArray,
+        admission: io.godstone.mesh.crypto.RelationKey,
         remoteHint: ByteArray,
         hs1: ByteArray,
-    ): ByteArray? = sessions.responderProcessHs1(peerId, remoteHint, hs1)
+    ): ByteArray? = sessions.responderProcessHs1(admission, remoteHint, hs1)
 
     override fun completeInboundHandshake(
-        peerId: ByteArray,
+        admission: io.godstone.mesh.crypto.RelationKey,
         hs3: ByteArray,
         advertisedRemoteHint: ByteArray,
-    ): Boolean = sessions.responderProcessHs3(peerId, hs3, advertisedRemoteHint)
+    ): Boolean = sessions.responderProcessHs3(admission, hs3, advertisedRemoteHint)
 }

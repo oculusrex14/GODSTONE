@@ -174,15 +174,36 @@ class Crypto001RelationKeyAuthorityAndroid(unittest.TestCase):
         self.assertRegex(self.slot, r"val generation: Long get\(\) = admission\.generation",
                          "the slot's generation must be READ from the admission")
 
-    @unittest.skip("CRYPTO-001 (Android): the TRANSPORT still presents the pre-T08 host vocabulary; "
-                   "this arm turneth green when every production crypto call presenteth the relation's "
-                   "own admission (see the ledger's pending_proof for this finding)")
     def test_android_production_never_addresses_the_authority_with_a_bare_handle(self):
         transport = strip_comments(read(ANDROID_TRANSPORT / "BleTransport.kt"))
-        for pattern in (r"sessions\??\.destroyFor\(peer", r"sessions\??\.authenticatedNodeIdOf\(peer",
-                        r"registry\??\.openWithResult\(peer", r"registry\.isReady\(conn\.peerId\)"):
+        # The HANDLE-SHAPED arguments that stood at these sites before the migration. The arm nameth
+        # them rather than "any identifier", because a pattern that flappeth at every honest rename is
+        # the species this programme keeps meeting: an instrument is not improved by being broad.
+        handle_arguments = r"(?:peerForRuin|peerId|peer|conn\.peerId|key)"
+        for pattern in (rf"sessions\??\.destroyFor\({handle_arguments}\)",
+                        rf"sessions\??\.authenticatedNodeIdOf\({handle_arguments}\)",
+                        rf"registry\??\.openWithResult\({handle_arguments},",
+                        rf"registry\.seal\({handle_arguments},",
+                        rf"registry\.isReady\({handle_arguments}\)"):
             self.assertEqual(re.findall(pattern, transport), [],
                              f"production speaks the handle-only vocabulary: /{pattern}/")
+
+    def test_the_android_transport_stamps_the_admission_it_was_admitted_as(self):
+        transport = strip_comments(read(ANDROID_TRANSPORT / "BleTransport.kt"))
+        connection = strip_comments(read(ANDROID_TRANSPORT / "BleConnection.kt"))
+        self.assertIn("internal var relationAdmission: io.godstone.mesh.crypto.RelationKey?", connection)
+        stamps = re.findall(r"relationAdmission\s*=\s*admissionOf\(", transport)
+        self.assertGreaterEqual(len(stamps), 3,
+                                "the admission must be stamped at every admission point")
+        # ... and the two roads for a relation whose admission point the driver never announceth
+        self.assertIn("private fun ensureAdmission(", transport)
+
+    def test_the_android_handshake_seam_speaks_the_admission(self):
+        seam = strip_comments(read(ANDROID_TRANSPORT / "BleHandshakeAuthority.kt"))
+        for name in ("startOutboundHandshake", "continueOutboundHandshake",
+                     "acceptInboundHandshake", "completeInboundHandshake"):
+            self.assertRegex(seam, rf"fun {name}\(\s*admission: io\.godstone\.mesh\.crypto\.RelationKey",
+                             f"{name} must take the relation's admission")
 
 if __name__ == "__main__":
     unittest.main()

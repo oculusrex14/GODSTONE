@@ -216,6 +216,71 @@ class BleTransport(
     @Volatile
     private var scanEpoch: Long = 0L
 
+    /**
+     * CRYPTO-001: THE TRANSPORT'S RADIO EPOCH -- the counterpart of the iOS `currentTransportEpoch`, and
+     * the term the crypto authority's admission carrieth so that a handle-and-generation pair which
+     * recurreth across a radio restart is still told apart. It advanceth when the transport starteth
+     * (a fresh radio context, whose relations are new relations) and when the scan registration is
+     * rotated. Nothing else readeth it: the admission is where it is load-bearing.
+     */
+    private var transportEpoch: Long = 0L
+
+    /**
+     * CRYPTO-001: THE ADMISSION OF A RELATION -- the relation's own captured identity, minted where the
+     * link owner bindeth it (`relationKeyProvider`) and stamped upon the connection. The crypto
+     * authority is NEVER addressed with the bare handle: a handle is reused across incarnations.
+     */
+    /**
+     * CRYPTO-001: THE ADMISSION OF A LIVE RELATION, taken from the link owner's OWN registration for that
+     * address when no admission point stamped it, and FROZEN on the connection the first time it is
+     * needed. The stamping at admission is preferred and happeneth on every path that announceth one; this
+     * is the road for the paths that do not (a court-driven ladder, or a platform callback this driver
+     * never sees), and it is safe FOR THE SAME REASON the stamped road is: the connection object belongeth
+     * to ONE incarnation -- a re-admitted relation carrieth a NEW connection -- so an identity once frozen
+     * here can never be re-read for the relation that replaceth it.
+     */
+    /**
+     * CRYPTO-001 evidence hook: THE ADMISSION THIS TRANSPORT FROZE FOR A LIVE RELATION -- the identity a
+     * court must present when it drives the crypto authority by hand, so that a court's pairing and the
+     * transport's own relation are ONE identity rather than two which happen to look alike.
+     */
+    internal fun admissionForTest(peerId: ByteArray, direction: BleDirection): io.godstone.mesh.crypto.RelationKey? {
+        val address = resolvePeerAddress(peerId) ?: return null
+        val conn = when (direction) {
+            BleDirection.OUTBOUND -> centralDriver.getActiveConnection(address)
+            BleDirection.INBOUND -> serverDriver.getInboundConnection(address)
+        } ?: return null
+        return ensureAdmission(conn, direction, address)
+    }
+
+    private fun ensureAdmission(conn: BleConnection, direction: BleDirection,
+                                address: String): io.godstone.mesh.crypto.RelationKey? {
+        conn.relationAdmission?.let { return it }
+        val generation = when (direction) {
+            BleDirection.OUTBOUND -> centralDriver.getConnectionGeneration(address)
+            BleDirection.INBOUND -> serverDriver.getClientGeneration(address)
+        } ?: return null
+        val admission = admissionOf(conn, direction, generation)
+        conn.relationAdmission = admission
+        return admission
+    }
+
+    private fun admissionOf(conn: BleConnection, direction: BleDirection,
+                            generation: Long, epoch: Long = transportEpoch): io.godstone.mesh.crypto.RelationKey =
+        io.godstone.mesh.crypto.RelationKey(
+            direction = when (direction) {
+                BleDirection.OUTBOUND -> io.godstone.mesh.crypto.RelationDirection.OUTBOUND_CENTRAL
+                BleDirection.INBOUND -> io.godstone.mesh.crypto.RelationDirection.INBOUND_PERIPHERAL
+            },
+            // THE CRYPTO HANDLE IS THE PLATFORM PEER HANDLE -- the connection's own peer id, exactly as
+            // the iOS twin presenteth the relation's peer UUID. The transport's publication vocabulary
+            // (the MAC ADDRESS) is a DIFFERENT name for a different purpose, and a registry which
+            // silently conflated the two would be the very ambiguity this finding is about.
+            handle = conn.peerId.joinToString("") { "%02x".format(it) },
+            generation = generation,
+            transportEpoch = epoch,
+        )
+
     @Volatile
     private var scanIdentity: Long = 0L
 
@@ -262,7 +327,17 @@ class BleTransport(
      */
     private val inboundJobGenerations = ConcurrentHashMap<String, Long>()
 
-    private val inboundRecordFlow = MutableSharedFlow<Pair<ByteArray, BleReassembledRecord>>(extraBufferCapacity = 64)
+    /**
+     * CRYPTO-001: the ingress element carrieth the relation's IMMUTABLE ADMISSION, captured on the very
+     * connection the record arrived upon -- never re-derived from the handle when the work arriveth.
+     */
+    private data class InboundRecord(
+        val peerId: ByteArray,
+        val admission: io.godstone.mesh.crypto.RelationKey?,
+        val record: BleReassembledRecord,
+    )
+
+    private val inboundRecordFlow = MutableSharedFlow<InboundRecord>(extraBufferCapacity = 64)
     private val peerEventsFlow = MutableSharedFlow<PeerEvent>(extraBufferCapacity = 64)
 
     @Volatile
@@ -316,6 +391,10 @@ class BleTransport(
             return
         }
         isStarted = true
+        // CRYPTO-001: A FRESH RADIO CONTEXT IS A NEW EPOCH. Every relation admitted hereafter is a NEW
+        // relation, and the admission carrieth the epoch, so the trust of the relations the previous
+        // context served cannot be resolved for one of these (the crypto authority refuseth it).
+        transportEpoch += 1L
         // AND THE PLATFORM'S POWER WORD IS SUBSCRIBED ALONGSIDE THE OS START, and released with it -- a receiver
         // that outlived its transport would be a listener for a radio that belongeth to nobody.
         // (A LOCAL CAPTURE, NOT A MEMBER READ: Kotlin doth not smart-cast a MEMBER property, and the compiler said
@@ -497,7 +576,18 @@ class BleTransport(
                 provisionalJobs.remove(address)?.cancel()
                 val meta = centralRemoteLinkInfo[address] ?: discoveryIndex.valueOf(address)?.metadata
                 val gen = centralDriver.getConnectionGeneration(address)
-                publishRelation(RelationKey(BleDirection.OUTBOUND, address, gen), meta)
+                val relation = RelationKey(BleDirection.OUTBOUND, address, gen)
+                // CRYPTO-001: THE RELATION IS ADMITTED HERE -- physically ready, its generation
+                // minted by the orchestration owner -- so THIS is where its admission (epoch
+                // included) is stamped upon the connection the guards token-check. Stamping it at
+                // the platform's own notification callback alone left every relation that reached
+                // readiness through this door UNSTAMPED, and an unstamped relation can name no
+                // incarnation to the crypto authority.
+                centralDriver.getActiveConnection(address)?.let { conn ->
+                    conn.relationKeyProvider = { relation }
+                    conn.relationAdmission = admissionOf(conn, BleDirection.OUTBOUND, gen)
+                }
+                publishRelation(relation, meta)
             }
             is BleCentralAction.PublishLost -> {
                 // T12: the effect carries its exact token; the publication of
@@ -920,7 +1010,11 @@ class BleTransport(
         if (!conn.isRoleBound) return
         activeClientConnections[peerAddress]?.let { client ->
             val boundGen = client.relationGeneration
-            conn.relationKeyProvider = { RelationKey(BleDirection.OUTBOUND, peerAddress, boundGen) }
+            val relation = RelationKey(BleDirection.OUTBOUND, peerAddress, boundGen)
+            conn.relationKeyProvider = { relation }
+            // CRYPTO-001: the relation's admission -- epoch included -- is stamped on the very
+            // connection the guards token-check, at the instant of admission.
+            conn.relationAdmission = admissionOf(conn, BleDirection.OUTBOUND, boundGen)
         }
         // T23 (section 13): a half-spoken exchange that hath stalled past the
         // ten-second monotonic hour, with no counsel in flight, is felled by the
@@ -985,7 +1079,8 @@ class BleTransport(
             return
         }
         when (record.recordType) {
-            BleRecordType.DATA -> inboundRecordFlow.tryEmit(conn.peerId to record)
+            BleRecordType.DATA -> inboundRecordFlow.tryEmit(
+                InboundRecord(conn.peerId, conn.relationAdmission, record))
             BleRecordType.HS2 -> handleInitiatorHandshakeRecord(peerAddress, conn, record)
             else -> {
                 // T23 (section 13): an unexpected record at the initiators gate.
@@ -1018,7 +1113,10 @@ class BleTransport(
         val conn = serverDriver.getInboundConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
         serverDriver.getClientGeneration(peerAddress)?.let { gen ->
-            conn.relationKeyProvider = { RelationKey(BleDirection.INBOUND, peerAddress, gen) }
+            val relation = RelationKey(BleDirection.INBOUND, peerAddress, gen)
+            conn.relationKeyProvider = { relation }
+            // CRYPTO-001: as at the central's arm -- the admission is stamped at admission.
+            conn.relationAdmission = admissionOf(conn, BleDirection.INBOUND, gen)
         }
         // T23 (section 13): the half-spoken stall is felled by the owners hand,
         // never a seat that heareth yet, and never one whose counsel are yet
@@ -1080,7 +1178,8 @@ class BleTransport(
             return
         }
         when (record.recordType) {
-            BleRecordType.DATA -> inboundRecordFlow.tryEmit(conn.peerId to record)
+            BleRecordType.DATA -> inboundRecordFlow.tryEmit(
+                InboundRecord(conn.peerId, conn.relationAdmission, record))
             BleRecordType.HS1, BleRecordType.HS3 -> handleResponderHandshakeRecord(peerAddress, conn, record)
             else -> {
                 // T23 (section 13): the responders own voice come again is a
@@ -1164,7 +1263,12 @@ class BleTransport(
         val relationGen = activeClient.relationGeneration
         // T21 (section 13, D2): the validated terminal ruins the session
         // slot with the relation - once, on this path, whatever follows.
-        val peerForRuin = centralDriver.getActiveConnection(peerAddress)?.peerId?.copyOf()
+        val ruinedConn = centralDriver.getActiveConnection(peerAddress)
+        // CRYPTO-001: THE RELATION'S SLOT PERISHETH WITH THE RELATION WHOSE TOKENS THIS EVENT CARRIETH --
+        // by the admission that relation was admitted as, never by the bare handle (which a replacement
+        // may already occupieth). Where a connection carrieth no admission at all, there was no admitted
+        // relation on this path: the app-level departure verb retireth whatever incarnations stand.
+        val ruinedAdmission = ruinedConn?.let { ensureAdmission(it, BleDirection.OUTBOUND, peerAddress) }
         provisionalJobs.remove(peerAddress)?.cancel()
         val act = centralDriver.onDisconnected(peerAddress, relationGen)
         processCentralAction(peerAddress, act)
@@ -1173,7 +1277,11 @@ class BleTransport(
             centralRemoteLinkInfo.remove(peerAddress)
         }
         unpublishRelation(RelationKey(BleDirection.OUTBOUND, peerAddress, relationGen))
-        if (peerForRuin != null) sessions?.destroyFor(peerForRuin)
+        if (ruinedAdmission != null) {
+            sessions?.destroyFor(ruinedAdmission)
+        } else if (ruinedConn != null) {
+            sessions?.retireIncarnations(ruinedConn.peerId.joinToString("") { "%02x".format(it) })
+        }
     }
 
     fun handleServerDisconnected(peerAddress: String, generation: Long) {
@@ -1189,12 +1297,16 @@ class BleTransport(
         val conn = serverDriver.getInboundConnection(peerAddress)
         // T21 (section 13, D2): the exact session slot perishes with the
         // exact relation, once the generation has matched the event.
-        val peerForRuin = conn?.peerId?.copyOf()
+        val inboundAdmission = conn?.let { ensureAdmission(it, BleDirection.INBOUND, peerAddress) }
         conn?.markDisconnected()
         serverDriver.onClientDisconnected(peerAddress, generation)
         responderRemoteLinkInfo.remove(peerAddress)
         unpublishRelation(RelationKey(BleDirection.INBOUND, peerAddress, generation))
-        if (peerForRuin != null) sessions?.destroyFor(peerForRuin)
+        if (inboundAdmission != null) {
+            sessions?.destroyFor(inboundAdmission)
+        } else if (conn != null) {
+            sessions?.retireIncarnations(conn.peerId.joinToString("") { "%02x".format(it) })
+        }
     }
 
     /**
@@ -1240,7 +1352,7 @@ class BleTransport(
                 return TransportResult.Rejected("no outlet: client absent or disconnected")
             }
             val writer = centralWriterFor(address, centralConn)
-            return sendThrough(writer, peerId, bytes, registry, centralConn.peerId,
+            return sendThrough(writer, peerId, bytes, registry, centralConn.relationAdmission,
                 address, initiator = true)
         }
         if (centralConn != null && centralConn.state in terminal) {
@@ -1254,7 +1366,7 @@ class BleTransport(
                 return TransportResult.Rejected("no subscription towards the peer")
             }
             val writer = serverWriterFor(address, serverConn)
-            return sendThrough(writer, peerId, bytes, registry, serverConn.peerId,
+            return sendThrough(writer, peerId, bytes, registry, serverConn.relationAdmission,
                 address, initiator = false)
         }
         if (serverConn != null && serverConn.state in terminal) {
@@ -1275,7 +1387,7 @@ class BleTransport(
 
     private suspend fun sendThrough(writer: RecordWriter, peerId: ByteArray, bytes: ByteArray,
                                     registry: io.godstone.mesh.crypto.SessionManager,
-                                    key: ByteArray, address: String,
+                                    admission: io.godstone.mesh.crypto.RelationKey?, address: String,
                                     initiator: Boolean): TransportResult {
         val site = if (initiator) "send.initiator" else "send.responder"
         when (val answer = writer.reserve(BleRecordType.DATA, bytes.size)) {
@@ -1292,8 +1404,15 @@ class BleTransport(
                 }
             }
             is ReservationAnswer.Admitted -> {
+                // CRYPTO-001: sealed FOR THE RELATION this connection was admitted as -- its own
+                // immutable admission, never a fresh lookup of the handle. A connection no relation
+                // was admitted for is REFUSED rather than guessed at.
+                val admitted = admission ?: run {
+                    recordRejection(peerId, site, "no admitted relation")
+                    return TransportResult.Rejected("no admitted relation")
+                }
                 when (val seal = answer.reservation.sealAndQueue(bytes) { clear ->
-                        registry.seal(key, clear)
+                        registry.seal(admitted, clear)
                     }) {
                     is SealAnswer.Refused -> {
                         // ANDROID-06 step 2 AT THE CALLER: A REFUSED SEAL RETURNETH ITS SLOT. Without this, the
@@ -1370,7 +1489,9 @@ class BleTransport(
 
     override fun received(): Flow<Pair<ByteArray, ByteArray>> = callbackFlow {
         val job = coroutineScope.launch {
-            inboundRecordFlow.collect { (peerId, record) ->
+            inboundRecordFlow.collect { element ->
+                val peerId = element.peerId
+                val record = element.record
                 if (record.recordType == BleRecordType.DATA) {
                     // T17: the open answers by result now, and an
                     // unauthenticated frame is a bounded event - the
@@ -1380,7 +1501,11 @@ class BleTransport(
                     // answer - by result or by exception - becomes a bounded
                     // event, and the collect loop runs on regardless.
                     val outcome = try {
-                        registry?.openWithResult(peerId, record.payload) ?: io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Rejected
+                        // CRYPTO-001: opened FOR THE INCARNATION the record arrived upon. A record
+                        // whose connection carrieth no admission belongeth to no relation the crypto
+                        // authority was told of, and is refused as such.
+                        element.admission?.let { registry?.openWithResult(it, record.payload) }
+                            ?: io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Rejected
                     } catch (_: Throwable) {
                         io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Rejected
                     }
@@ -1396,7 +1521,8 @@ class BleTransport(
                             // the trusted handshake validated and the controller retained; the six-octet
                             // relation handle is only the fallback for a relation whose trust was never
                             // marked, and that fallback is stated here rather than relied upon.
-                            val chargedIdentity = sessions?.authenticatedNodeIdOf(peerId) ?: peerId
+                            val chargedIdentity = element.admission
+                                ?.let { sessions?.authenticatedNodeIdOf(it) } ?: peerId
                             if (authenticatedAdmissionBudget.chargeAuthenticated(
                                     chargedIdentity, outcome.plaintext.size)
                                 == AdmissionBudget.Verdict.REFUSED) {
@@ -1758,7 +1884,10 @@ class BleTransport(
             recordRejection(peerId, "hs.confirm", "key confirmation before the trusted hour")
             return TransportResult.Rejected("key confirmation before the trusted hour")
         }
-        if (!registry.isReady(conn.peerId)) {
+        val confirmAddress = conn.relationKeyProvider().peerAddress
+        val confirmAdmission = ensureAdmission(
+            conn, if (centralConn != null) BleDirection.OUTBOUND else BleDirection.INBOUND, confirmAddress)
+        if (confirmAdmission == null || !registry.isReady(confirmAdmission)) {
             recordRejection(peerId, "hs.confirm", "the slot is not ready")
             return TransportResult.Rejected("the slot is not ready")
         }
@@ -1768,7 +1897,7 @@ class BleTransport(
         val initiator = centralConn != null
         val writer = if (initiator) centralWriterFor(address, conn) else serverWriterFor(address, conn)
         return runBlocking(kotlinx.coroutines.Dispatchers.IO) {
-            sendThrough(writer, conn.peerId, plain, registry, conn.peerId, address, initiator)
+            sendThrough(writer, conn.peerId, plain, registry, conn.relationAdmission, address, initiator)
         }
     }
 
@@ -1780,12 +1909,15 @@ class BleTransport(
         val serverConn = serverDriver.getInboundConnection(address)
         val conn = centralConn ?: serverConn ?: return TransportResult.Rejected("no such connection")
         if (conn.state != BleConnectionState.READY) return TransportResult.Rejected("not ready")
-        if (!registry.isReady(conn.peerId)) return TransportResult.Rejected("slot not ready")
+        if (ensureAdmission(conn, if (centralConn != null) BleDirection.OUTBOUND else BleDirection.INBOUND, address)
+                ?.let { registry.isReady(it) } != true) {
+            return TransportResult.Rejected("slot not ready")
+        }
         val plain = KeyConfirmationControl.encodeResponse(challenge)
         val initiator = centralConn != null
         val writer = if (initiator) centralWriterFor(address, conn) else serverWriterFor(address, conn)
         return runBlocking(kotlinx.coroutines.Dispatchers.IO) {
-            sendThrough(writer, conn.peerId, plain, registry, conn.peerId, address, initiator)
+            sendThrough(writer, conn.peerId, plain, registry, conn.relationAdmission, address, initiator)
         }
     }
 
@@ -1854,11 +1986,14 @@ class BleTransport(
         val serverConn = serverDriver.getInboundConnection(address)
         val conn = centralConn ?: serverConn ?: return TransportResult.Rejected("no such connection")
         if (conn.state != BleConnectionState.READY) return TransportResult.Rejected("not ready")
-        if (!registry.isReady(conn.peerId)) return TransportResult.Rejected("slot not ready")
+        if (ensureAdmission(conn, if (centralConn != null) BleDirection.OUTBOUND else BleDirection.INBOUND, address)
+                ?.let { registry.isReady(it) } != true) {
+            return TransportResult.Rejected("slot not ready")
+        }
         val initiator = centralConn != null
         val writer = if (initiator) centralWriterFor(address, conn) else serverWriterFor(address, conn)
         return runBlocking(kotlinx.coroutines.Dispatchers.IO) {
-            sendThrough(writer, conn.peerId, frame, registry, conn.peerId, address, initiator)
+            sendThrough(writer, conn.peerId, frame, registry, conn.relationAdmission, address, initiator)
         }
     }
 
@@ -1922,7 +2057,9 @@ class BleTransport(
                     return
                 }
                 conn.markHandshakeEngaged()
-                val hs2 = handshake?.acceptInboundHandshake(conn.peerId, hint, record.payload) ?: run {
+                val responderAdmission = ensureAdmission(conn, BleDirection.INBOUND, conn.relationKeyProvider().peerAddress)
+                val hs2 = responderAdmission
+                    ?.let { handshake?.acceptInboundHandshake(it, hint, record.payload) } ?: run {
                     // trust refused: the counsel is not true; the relation
                     // becometh nothing, and the slot perisheth with it
                     recordRejection(conn.peerId, "hs.read.responder", "hs1 rejected")
@@ -1958,7 +2095,8 @@ class BleTransport(
                     closeResponderRelation(peerAddress)
                     return
                 }
-                if (handshake?.completeInboundHandshake(conn.peerId, record.payload, hint) != true) {
+                if (ensureAdmission(conn, BleDirection.INBOUND, conn.relationKeyProvider().peerAddress)
+                        ?.let { handshake?.completeInboundHandshake(it, record.payload, hint) } != true) {
                     recordRejection(conn.peerId, "hs.read.responder", "hs3 rejected")
                     closeResponderRelation(peerAddress)
                     return
@@ -2013,7 +2151,9 @@ class BleTransport(
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 duplicate hearkened not")
             return
         }
-        val hs3 = handshake?.continueOutboundHandshake(conn.peerId, record.payload, boundRemoteHint) ?: run {
+        val initiatorAdmission = ensureAdmission(conn, BleDirection.OUTBOUND, conn.relationKeyProvider().peerAddress)
+        val hs3 = initiatorAdmission
+            ?.let { handshake?.continueOutboundHandshake(it, record.payload, boundRemoteHint) } ?: run {
             // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 rejected")
             closeInitiatorRelation(peerAddress)
@@ -2195,7 +2335,14 @@ class BleTransport(
             recordRejection(peerId, "hs.begin", "hint order not ascendant")
             return TransportResult.Rejected("hint order not ascendant")
         }
-        val hs1 = handshake?.startOutboundHandshake(conn.peerId, remoteHint) ?: run {
+        // CRYPTO-001: A RELATION WHICH WAS NEVER ADMITTED IS NOT A REFUSED HANDSHAKE. The two are told
+        // apart in the ring, because a silent conflation of them is how a wiring gap surviveth a suite.
+        val beginAdmission = ensureAdmission(conn, BleDirection.OUTBOUND, address)
+        if (beginAdmission == null) {
+            recordRejection(peerId, "hs.begin", "no admitted relation")
+            return TransportResult.Rejected("no admitted relation")
+        }
+        val hs1 = handshake?.startOutboundHandshake(beginAdmission, remoteHint) ?: run {
             recordRejection(peerId, "hs.begin", "begin initiator refused")
             return TransportResult.Rejected("begin initiator refused")
         }

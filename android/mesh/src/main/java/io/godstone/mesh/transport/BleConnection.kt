@@ -119,6 +119,19 @@ class BleConnection(
     @Volatile
     internal var relationKeyProvider: () -> RelationKey = { UNCLAIMED_RELATION }
 
+    /**
+     * CRYPTO-001: THE IMMUTABLE ADMISSION OF THE RELATION THIS CONNECTION SERVES.
+     *
+     * Stamped by the link owner at the moment of admission and never rewritten for that admission --
+     * including the RADIO EPOCH, which the transport's own counter carrieth and which no later read of
+     * the handle can reconstruct. It is the ONLY thing a crypto operation of this connection presenteth,
+     * so that a callback carrying an OLD connection presenteth the OLD admission and is REFUSED at the
+     * registry, instead of resolving whatever relation now occupieth the platform address. Null for a
+     * connection no relation was admitted for: an absence of admission is an absence of relation, never
+     * a licence to guess one.
+     */
+    internal var relationAdmission: io.godstone.mesh.crypto.RelationKey? = null
+
     // T23 (section 13): the three projections of the handshake policy, each
     // of them a servant of this relation, hung here so the doors and the
     // owners hand may consult them without a second mutable ready flag. The

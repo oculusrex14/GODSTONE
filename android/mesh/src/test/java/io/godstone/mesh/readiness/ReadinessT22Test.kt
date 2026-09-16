@@ -255,6 +255,17 @@ class ReadinessT22Test {
         /** B's station keys its inbound relation by the address it heard. */
         fun keyAtResponder(): ByteArray = aliceAddress.toByteArray()
 
+        /**
+         * CRYPTO-001: THE ADMISSION THE TRANSPORT ITSELF FROZE for the initiator's relation. A court which
+         * drives the crypto authority by hand must present the SAME identity the transport presenteth: a
+         * court that pair'eth by a private handle pair'eth a relation the transport knoweth not, and the
+         * transport's own records would then be refused at the registry (which is exactly what the ring
+         * said before this migration: `hs.read.initiator|hs2 rejected`).
+         */
+        fun admissionTowardsBob(): io.godstone.mesh.crypto.RelationKey =
+            alice.admissionForTest(peerIdTowardsBob(), BleDirection.OUTBOUND)
+                ?: error("the transport froze no admission for the initiator's relation")
+
         fun initiatorConnection(): BleConnection =
             alice.centralDriver.getActiveConnection(bobAddress) ?: error("the initiator has no connection")
         fun responderConnection(): BleConnection =
@@ -679,7 +690,7 @@ class ReadinessT22Test {
     fun testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.initiatorConnection().peerId, rig.pair.bob.nodeHint)
+        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
         assertNotNull("the controllers first counsel must be formable", hs1)
         rig.bobOutlet.clear()
         rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
@@ -702,7 +713,7 @@ class ReadinessT22Test {
     fun testTheResponderIsNotTrustedByTheFirstNorTheSecondAloneAndNoDATARidesTheStream() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.initiatorConnection().peerId, rig.pair.bob.nodeHint)
+        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
         assertNotNull("the controllers first counsel must be formable", hs1)
         rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
@@ -730,7 +741,7 @@ class ReadinessT22Test {
         // static key are proved when the third is opened
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.initiatorConnection().peerId, rig.pair.bob.nodeHint)
+        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
         assertNotNull("the controllers first counsel must be formable", hs1)
         rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         val answer = awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
@@ -795,7 +806,7 @@ class ReadinessT22Test {
     fun testTheDuplicateFirstMessageInHandPerishethTheRelation() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.initiatorConnection().peerId, rig.pair.bob.nodeHint)
+        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
         assertNotNull("the controllers first counsel must be formable", hs1)
         val trueHs1 = hs1!!.copyOf()
         rig.pushToResponder(forge(BleRecordType.HS1, 0, trueHs1))
@@ -850,7 +861,7 @@ class ReadinessT22Test {
     fun testTheResponderHearkentheVerdictOfTheQueuedSecond() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.initiatorConnection().peerId, rig.pair.bob.nodeHint)
+        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
         assertNotNull("the controllers first counsel must be formable", hs1)
         // the leg is flooded: the answer can not be staged, the writers verdict
         // must reach the door and the relation must fall upon it
@@ -918,7 +929,7 @@ class ReadinessT22Test {
         val stranger = ByteArray(4) { i -> ((i * 37) + 11).toByte() }
         rig2.bob.serverDriver.onLinkInfoWriteRequest(rig2.aliceAddress,
             BleLinkInfoCodec.encode(flags = 0.toByte(), nodeHint = stranger, shortDigest = ByteArray(6), queueDepth = 0))
-        val hs1b = rig2.pair.smA.beginInitiator(rig2.initiatorConnection().peerId, rig2.pair.bob.nodeHint)
+        val hs1b = rig2.pair.smA.beginInitiator(rig2.admissionTowardsBob(), rig2.pair.bob.nodeHint)
         assertNotNull("the counsel must be formable", hs1b)
         rig2.bobOutlet.clear()
         rig2.pushToResponder(forge(BleRecordType.HS1, 0, hs1b!!))
@@ -946,7 +957,7 @@ class ReadinessT22Test {
         rigA.stop()
         val rigB = standDoor()
         val peerB = rigB.responderConnection().peerId.copyOf()
-        val hs1 = rigB.pair.smA.beginInitiator(rigB.initiatorConnection().peerId, rigB.pair.bob.nodeHint)
+        val hs1 = rigB.pair.smA.beginInitiator(rigB.admissionTowardsBob(), rigB.pair.bob.nodeHint)
         assertNotNull("the controllers first counsel must be formable", hs1)
         rigB.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         awaitNonEmpty("the answer must be queued; ring: " + ringDump(rigB.bob)) {
@@ -974,7 +985,7 @@ class ReadinessT22Test {
             val bPeer = rig.responderConnection().peerId.copyOf()
             // the ladders rose and the subscriptions came, yet the trust is
             // not inferred therefrom: the authority denieth the binding
-            val hs1 = rig.pair.smA.beginInitiator(rig.initiatorConnection().peerId, rig.pair.bob.nodeHint)
+            val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
             assertNotNull("the controllers first counsel must be formable", hs1)
             rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
             val answer = awaitNonEmpty("the shape must be answered ere the seal is weighed; ring: " + ringDump(rig.bob)) {
@@ -1027,7 +1038,7 @@ class ReadinessT22Test {
     fun testTheThirdSpokenAgainAfterTheTrustIsAConflictingSequence() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.initiatorConnection().peerId, rig.pair.bob.nodeHint)
+        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
         assertNotNull("the controllers first counsel must be formable", hs1)
         rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         val answer = awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
