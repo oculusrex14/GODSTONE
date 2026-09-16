@@ -76,7 +76,9 @@ struct LabRootView: View {
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Conversation").accessibilityLabel("Conversation screen").accessibilityIdentifier("lab.tab.conversation")
             }
-            LabSosView().tabItem { Text("SOS") }
+            LabSosView().tabItem {
+                            Text("SOS").accessibilityLabel("SOS screen").accessibilityIdentifier("lab.tab.sos")
+                        }
             LabDiagnosticsView().tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
