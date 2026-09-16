@@ -15,6 +15,23 @@ import org.junit.Test
 class ReadinessT72Test {
     private val healthy = StressCampaign(seed = 20_260_915L)
 
+    // ------------------------------------------------------------ W00
+
+    /**
+     * GS-STRESS-001 step 1: THE CAMPAIGN BELONGETH TO A **NAMED** CATEGORY, AND SAYETH WHAT IT IS NOT.
+     *
+     * The card: "Keep the current class under an explicitly named resource-model test category." A campaign whose counters
+     * describe its own model must never be read as a production stress result -- and the honest way to keep that so is to
+     * NAME the category in the class and ASSERT it here, where the results are read.
+     */
+    @Test
+    fun test_w00_the_campaign_is_a_named_resource_model() {
+        Assert.assertEquals("the campaign must declare its CATEGORY by name, so no reader mistaketh a model for a runtime",
+            "resource-model", io.godstone.mesh.stress.RESOURCE_MODEL_CATEGORY)
+        Assert.assertNotEquals("and it must NOT be named for the production runtime it doth not measure",
+            "production", io.godstone.mesh.stress.RESOURCE_MODEL_CATEGORY)
+    }
+
     // ------------------------------------------------------------ W01
 
     /** W01 -- ten thousand lifecycle cycles over multiple peers, deterministically. */

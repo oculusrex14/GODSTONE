@@ -1,5 +1,18 @@
 package io.godstone.mesh.stress
 
+/**
+ * GS-STRESS-001 step 1: THE CATEGORY THIS CAMPAIGN BELONGETH TO, NAMED WHERE IT LIVETH.
+ *
+ * `StressCampaign` MEASURES A **RESOURCE MODEL**, NOT THE PRODUCTION RUNTIME: its counters describe ITS OWN local
+ * bookkeeping -- the card's step 6 sayeth so in its own words ('a mutation confined to StressCampaign's local
+ * bookkeeping') -- so a result from here is evidence about THE MODEL'S INVARIANTS and never about a real device, radio or
+ * store. THE AUDIT'S DISCIPLINE IS THAT SUCH A RESULT MUST NOT BE RELABELLED, AND ITS FIRST LINE IS TO NAME THE CATEGORY.
+ *
+ * (A TOP-LEVEL CONSTANT RATHER THAN A COMPANION MEMBER: the file carrieth SEVERAL classes, and a first attempt put this
+ * in the WRONG `companion object` -- the compiler named the unresolved reference, and the placement was corrected.)
+ */
+const val RESOURCE_MODEL_CATEGORY: String = "resource-model"
+
 // ---------------------------------------------------------------------------
 // T72 -- bounded production-path stress and deterministic fault campaigns
 // (Android isle).
@@ -63,6 +76,7 @@ class FaultSchedule(val faults: List<Fault> = emptyList()) {
     fun kinds(): Set<String> = faults.map { it.kind }.toSortedSet()
 
     companion object {
+
         const val DENSITY: Int = 512
 
         fun fromSeed(seed: Long, cycles: Int, density: Int = DENSITY): FaultSchedule {

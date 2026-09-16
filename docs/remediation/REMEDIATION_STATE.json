@@ -5502,9 +5502,16 @@
    "final_review": null,
    "impact": "Ten thousand iterations and mutation kills in this campaign do not measure actual transport leases, timers, session memory, SQLite behavior or parser failures. Leaks and crashes in those owners can remain invisible.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
+   "my_fix_commit": "(ledger round 276, STEP 1 of six) THE RESOURCE-MODEL CATEGORY IS NAMED WHERE THE CLASS LIVETH: a TOP-LEVEL `RESOURCE_MODEL_CATEGORY = \"resource-model\"` in `io.godstone.mesh.stress`, with a docstring stating IN THE CARD'S OWN TERMS that the campaign measures ITS OWN local bookkeeping and never a device, radio or store -- and an arm in the T72 court asserteth the name and asserteth it is NOT called 'production'",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STRESS-001/green-round276-lane.log",
+     "sha256": "fb40b54b0318750617dc5a6b033c88d8056e07e9587666becef7d115a4031724",
+     "what": "GS-STRESS-001 step 1 LANDS: the named resource-model category, with an arm that asserts it (ledger round 276)",
+     "outcome": "**android :mesh 1193 tests, 0 failures (FORCED)** -- the top-level `RESOURCE_MODEL_CATEGORY` in `io.godstone.mesh.stress` carrieth the card's own distinction in its docstring (the campaign measures ITS OWN local bookkeeping, never a device, radio or store), and `ReadinessT72Test.test_w00_the_campaign_is_a_named_resource_model` asserteth the name AND asserteth it is NOT 'production'. ONE PLACEMENT ERROR EN ROUTE, NAMED BY THE COMPILER: the constant was first put in the WRONG `companion object` (the file carrieth SEVERAL classes, and the first `companion object` belongeth to `FaultSchedule`), so `StressCampaign.CATEGORY` was unresolved -- corrected to a TOP-LEVEL constant in the same package, with the reason written where it liveth"
+    }
+   ],
+   "my_red_case": "the canonical arm `ReadinessT72Test.test_w00_the_campaign_is_a_named_resource_model`, which ASSERTETH a name the class did not carry before this round: `StressCampaign` (and its file) declared NO category at all, so its counters could be -- and in the audit's finding WERE -- read as production stress results. The arm FAILETH on the old tree by construction (an unresolved/absent name), and its NEGATIVE clause asserteth the category is NOT named for the production runtime the campaign doth not measure",
    "my_status": "OPEN",
    "notes": null,
    "pending_proof": [],
@@ -5531,7 +5538,10 @@
     "T72"
    ],
    "title": "The production stress campaign measures a separate resource model",
-   "wave": "8"
+   "wave": "8",
+   "pending_work": [
+    "ROUND 276 (GS-STRESS-001 STEP 1 LANDS: THE CAMPAIGN CARRIETH A **NAMED RESOURCE-MODEL CATEGORY** -- AND THE PLACEMENT ERROR IS RECORDED). (1) THE CARD'S OWN WORDS FOR STEP 1: 'Keep the current class under an explicitly named resource-model test category. Correct T72 evidence to distinguish model invariants from production fault/stress.' AND ITS STEP 6 SAYETH WHY: 'a mutation confined to StressCampaign's LOCAL bookkeeping' -- i.e. THE CLASS MEASURES ITS OWN MODEL, NOT THE RUNTIME. (2) WHAT LANDED: a TOP-LEVEL `RESOURCE_MODEL_CATEGORY = \"resource-model\"` IN `io.godstone.mesh.stress`, with a docstring that stateth the distinction IN THE CARD'S OWN TERMS (the counters describe ITS OWN local bookkeeping, so a result from here is evidence about THE MODEL'S INVARIANTS and never about a real device, radio or store); AND AN ARM IN THE T72 COURT -- `test_w00_the_campaign_is_a_named_resource_model` -- WHICH ASSERTETH THE NAME **AND** ASSERTETH IT IS NOT CALLED 'production'. A NAME THAT A COURT ASSERTETH CANNOT DRIFT AWAY FROM THE THING IT NAMETH. (3) ACCEPTANCE: **android :mesh 1193 tests, 0 failures, FORCED (`--rerun-tasks`)** -- the force being round 263's own rule, written after a cached build hid a missing import for two rounds. (4) AND ONE PLACEMENT ERROR, NAMED BY THE COMPILER RATHER THAN FOUND BY LUCK: THE CONSTANT WAS FIRST PUT IN THE WRONG `companion object` -- THE FILE CARRIETH SEVERAL CLASSES AND THE FIRST `companion object` BELONGETH TO `FaultSchedule` -- so `StressCampaign.CATEGORY` WAS UNRESOLVED IN TWO ARMS. It was corrected to a TOP-LEVEL CONSTANT IN THE SAME PACKAGE, WITH THE REASON WRITTEN WHERE IT LIVETH. A FILE WITH SEVERAL CLASSES IS A FILE WHERE A `companion object` ANCHOR IS NOT AN ANCHOR. (5) WHAT REMAINETH OF GS-STRESS-001, FIVE STEPS NAMED: the stress driver over GS-INTEGRATION-001's repaired runtime with SEEDS CHOOSING ACTUAL OS-FACADE EVENTS (2); the resource census READ FROM THE OWNERS THAT ALLOCATE (3); fault injection AT THE ACTUAL STORE CALLS, THE REAL DECODE INGRESS AND THE OS SEND FACADE (4); AT LEAST 10,000 LIFE-CYCLE CYCLES WITH A POST-QUIESCE CENSUS (5); and THE MUTATION PROOF -- mutate a real guard, compile the mutant, and show this lane detecteth it (6). STEPS 2-6 ALL DEPEND ON GS-INTEGRATION-001, WHICH IS OPEN -- so THE FINDING'S REMAINING WORK IS BLOCKED BY IT, exactly as GS-LAB-001's step 3 is blocked by GS-RUNTIME-001, and that blocker is now recorded. (6) GS-STRESS-001 STAYETH **OPEN** with step 1 landed and steps 2-6 named with their blocker."
+   ]
   },
   "GS-SUPPLY-001": {
    "audit_status_at_snapshot": "OPEN",
