@@ -4,6 +4,15 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 247 -- GS-RUNTIME-001's Android half: one authority, the routing, and the close BEFORE the guard
+
+- **Wiring**: `MeshNode` owns `lifecycle` — a `UnifiedRuntimeLifecycle` **over the adapter over this node's own transport**; `openAdapters()` calls `lifecycle.start()`; and **the close moved before the `isStarted` guard, once per lifetime, with a census beside it** — *the lesson the Swift census arm taught at round 244 applied here before a witness had to rediscover it*.
+- **An honest boundary, named not implied**: **the Wi-Fi plane is a second transport and is not yet under the authority** — the authority owns one seam at a time.
+- **My own error, named**: my first draft called `lifecycle.startedForTest()` — **a name I invented** — inside a block that also incremented the census twice for one open; the compiler refused the name and I read the block again. *The assumed-name species again, and the compiler was again the only voice that said so.*
+- **Witness**: a new source-level arm — the authority owned and built over the adapter over the node's transport, the open road through it, **and the order: close precedes guard**; fourteen arms green. **A behavioural witness is owed here and named**: this node's transport needs a `Context`.
+- **Measured**: android `:mesh` **FORCED 1196 / 0 / 0**; courts 611 OK.
+- **Remaining**: the Wi-Fi plane under the authority (or why not), the concrete transport's real link count, and the power/permission road.
+
 ## Round 244 -- the routing witnessed BEHAVIOURALLY, and the witness found the radio was NEVER closed through the owner
 
 - **The instrument**: two censuses on the node (`adaptersOpenedThroughTheOwner`/`adaptersClosedThroughTheOwner`), so *which road the graph took* is a measured fact rather than a reading of the source.

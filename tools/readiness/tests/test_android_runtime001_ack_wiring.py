@@ -176,6 +176,27 @@ class AndroidAckWiringTest(unittest.TestCase):
                       (MESH / "transport/Transport.kt").read_text(encoding="utf-8"),
                       "with the capability declared where the transport contract liveth")
 
+    def test_the_node_driveth_the_radio_through_one_authority_and_closeth_before_its_guard(self):
+        """IOS-06's twin on this isle, and the SWIFT WITNESS'S OWN LESSON applied here BEFORE a witness had to find
+        it: the close road sat after an early return that ALWAYS fires in this shipping tree."""
+        n = (REPO / "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt").read_text(encoding="utf-8")
+        self.assertIn("internal val lifecycle: UnifiedRuntimeLifecycle by lazy {", n,
+                      "the node must OWN ONE authority over its own transport (nothing constructed it before)")
+        self.assertIn("seam = LifecycleTransportAdapter(ble)", n,
+                      "and it must be built OVER THE ADAPTER over THIS node's transport")
+        self.assertIn("lifecycle.start()", n, "the open road must travel through the authority")
+        stop = n[n.index("fun stop() {"):]
+        stop = stop[:stop.index("\n    }")]
+        close_at = stop.index("lifecycle.stop()")
+        guard_at = stop.index("if (!isStarted) return")
+        self.assertLess(close_at, guard_at,
+                        "**THE CLOSE MUST PRECEDE THE GUARD**: the Swift census arm found (round 244) that the "
+                        "counter stood at ZERO -- the radio was never closed through the owner, ever, because "
+                        "`isStarted` is false by construction in this tree")
+        self.assertIn("adaptersClosedThroughTheOwner += 1", n,
+                      "and a census must stand, so a witness can MEASURE which road was taken")
+        self.assertIn("// IOS-06's twin", n)
+
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
         self.assertIn("override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null",

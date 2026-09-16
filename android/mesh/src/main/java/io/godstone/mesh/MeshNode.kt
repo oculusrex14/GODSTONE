@@ -42,6 +42,8 @@ import kotlinx.coroutines.withContext
 import io.godstone.mesh.delivery.DurableAckPump
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import io.godstone.mesh.identity.UnifiedRuntimeLifecycle
+import io.godstone.mesh.transport.LifecycleTransportAdapter
 
 data class MeshStatus(
     val started: Boolean = false,
@@ -503,9 +505,29 @@ class MeshNode(
         ble.received().onEach { (peer, clear) -> handleInboundFrame(peer, clear) }.launchIn(scope)
     }
 
+    // ============ IOS-06's ISLE'S TWIN (GS-RUNTIME-001's Android half): ONE LIFECYCLE AUTHORITY ============
+    //
+    // MEASURED BEFORE THIS (round 246): `UnifiedRuntimeLifecycle` and `LifecycleTransportAdapter` stood on this isle
+    // -- the authority ALREADY carrying ANDROID-05/T09's laws -- and **NOTHING CONSTRUCTED THEM**, while the node
+    // called `ble.start()`/`ble.stop()` directly. The authority is built HERE, over the adapter, over this node's
+    // OWN transport, so the graph and the instrument meet as they do on the Swift isle.
+
+    internal val lifecycle: UnifiedRuntimeLifecycle by lazy {
+        UnifiedRuntimeLifecycle(
+            seam = LifecycleTransportAdapter(ble),
+            nowMillis = { System.currentTimeMillis() },
+        )
+    }
+    internal var adaptersOpenedThroughTheOwner = 0
+    internal var adaptersClosedThroughTheOwner = 0
+    private var adaptersClosed = false
+
     /** Open the radio adapters, once their consumers are already attached. */
     private fun openAdapters() {
-        ble.start()
+        // IOS-06's twin: THE RADIO IS OPENED *THROUGH* THE ONE AUTHORITY, and the census telleth a witness which road
+        // was taken. (The Wi-Fi plane is a second transport and is NOT yet under the authority -- NAMED, NOT IMPLIED.)
+        adaptersOpenedThroughTheOwner += 1
+        lifecycle.start()
         if (wifi.isSupported) wifi.start()
     }
 
@@ -595,13 +617,21 @@ class MeshNode(
         // FROM ITS OWN WITNESS (round 220: the turn census climbed from 2 to 7 AFTER `stop()`), and this isle
         // carrieth the same early return.
         scope.coroutineContext.cancelChildren()
+        // **AND THE CLOSE STANDETH *BEFORE* THE GUARD, ONCE PER LIFETIME -- THE LESSON THE SWIFT WITNESS TAUGHT AT
+        // ROUND 244, APPLIED HERE *BEFORE* A WITNESS HAD TO FIND IT: this node carrieth the same early return, and
+        // in this shipping tree `isStarted` is FALSE by construction (readiness is frozen off), SO THE RADIO WAS
+        // NEVER CLOSED -- the guard returned first and `ble.stop()`/`wifi.stop()` were never reached.**
+        if (!adaptersClosed) {
+            adaptersClosed = true
+            adaptersClosedThroughTheOwner += 1
+            lifecycle.stop()
+            wifi.stop()
+        }
         synchronized(peerLock) {
             if (!isStarted) return
             isStarted = false
         }
         sessions.destroyAll()
-        ble.stop()
-        wifi.stop()
         synchronized(peerLock) { peers.clear() }
         publishStatus()
     }
