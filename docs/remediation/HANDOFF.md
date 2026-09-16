@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 206 -- ANDROID-01 re-examined against the completed iOS twin: the correspondence is REAL BUT PARTIAL
+
+- **Transfers**: the iOS cost was the rig reconciliation — **positional selection/assertions → type-based** (43 → 25 → 1 → 0). **The Android rigs carry the same fragility**, measured: `ReadinessT22Test.kt:903` takes the alien third counsel as `writesTo(...).last()`, and T21's writer-order arm reads `beforeData.last()`.
+- **Does NOT transfer**: the parking log says the challenge-pollution hypothesis was **refuted by measurement** on that isle, and `'.take(1)'` on the H1/H3 awaits did **not** resolve the odd arm's `hs3` timeout. **The unexplained failure remains unexplained** and must not be inherited as "the same as iOS".
+- **Next instrument**: apply the two laws in Kotlin, reconcile the rigs by type, **measure the delta at each step**, and if the `hs3` timeout survives, **dump the collection the arm awaits** — which is exactly what proved the iOS repair.
+
 ## Round 205 -- staleness re-derived FROM THE CARDS: **54 of 54** findings carry changed owners
 
 - **Method**: read each finding's cards from the read-only bundle, extract **every** file-like token, match by file name against `git diff --name-only <audited>..HEAD` (273 files), and **union** that with the ledger-reference rule of round 204 — so an under-count cannot survive either road.
