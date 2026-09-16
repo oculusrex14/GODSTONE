@@ -4,6 +4,16 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 263 -- ANDROID-01's migration carried to T21-GREEN (23 -> 7 -> 4), four named arms left
+
+**The measured series**, each a whole-lane run counted from the JUnit XML: park v1 (repair alone) **1200 / 23 FAILED**; v2 (seven helper re-basings) **1200 / 7**; v3 (the named seam + the T21 arms) **1200 / 4 — T21 IS FULLY GREEN**.
+
+**What turned T21 green, and why it is not a weakening**: a **NAMED, DEFAULT-ON test seam** for the arms that must **drive the entrance themselves** — its *own* guards (the unwitnessed duplex, the ascendant hint order) and the villainous-hint injection. **Production never sets it**, the ANDROID-01 arms witness the application's begin in the **default** state, and a court that turns it off **says so in its own name**. And the happy-path arms no longer assert their *own* begin: they **wait for the first counsel the application sent** — *a stronger witness than a court sending it itself*.
+
+**Four arms remain, and they are named**: three in T23 (each a direct begin assertion) and one in T22 (`testTheResponderIsNotTrustedByTheFirstNorTheSecondAloneAndNoDATARidesTheStream`) — a court that forms a counsel by hand at the **crypto** level, where the application now owns the controller, *which is the law working*.
+
+**Parked and verified re-appliable** (`round263-D2-trigger-migration-PARKED-v3.patch`, `git apply --check` → APPLIES CLEANLY), with the progress written into `round263-MIGRATION-PROGRESS-v3.txt` — and **the tree returned to GREEN** rather than left four arms short: android `:mesh` **1198/0/0**, parity **7/7**, symbols **0 unresolved**, courts **635**. The iOS lane remains blocked by the Xcode licence.
+
 ## Round 262 -- ANDROID-01's migration MEASURED end to end (23 failures -> 7), then parked rather than half-landed
 
 **The block standeth** (re-measured): the iOS lane is still refused by the Xcode licence (`sudo xcodebuild -license accept` is the human's one command). So the round went to the lane that runs.
