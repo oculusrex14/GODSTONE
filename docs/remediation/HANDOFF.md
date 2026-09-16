@@ -4,6 +4,16 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 190 -- IOS-02 step 5 attempted: measured, RED taken, repair proven, and PARKED
+
+- **Defect, measured**: `MeshNode.currentPeers()` (what `ble.send` iterates) returned `peers`, populated by the radio's own `transportDidConnect` — so a peer that authenticated nothing was handed frames.
+- **RED taken** (canonical T24 integration suite): 4 tests, 1 failure, "The route-eligible view still carrieth it: [CCCC…]".
+- **Repair proven**: two views (route-eligible vs presence), trusted event admits, disconnect withdraws both, composition passes the handle → **40 tests, 0 failures** on the affected suites.
+- **Blast radius measured**: full lane **1209 tests / 43 failures** across T39 16, MeshNodeDelivery 13, T43 11, SosDispatch 3 — rigs that model presence as routable.
+- **Reconciliation failed 3×** (named in the parked file): line-anchored regex (0 matches, calls inline in a loop); assumed brace anchor (aborted before writing); balanced-paren scan that inserted inside an argument list and broke the compile. Reverted; lane re-measured green.
+- **Preserved**: patch `round190-step-5-route-eligibility.patch` (sha256 `92a5f898c78f4830…`) + parked arm `audit_probes/swift/ReadinessIOS02Step5Tests.swift`.
+- **Measured as ALREADY satisfied**: readiness is published only after the matching confirmation (one caller, inside the echo mating; witnessed by three T23 arms). The outstanding clause is the MeshNode population alone.
+
 ## Round 282 -- IOS-02 step 1 LANDS: the adapter begins the trusted handshake; all six rigs reconciled
 
 - **Repair** (`BleTransport.reductionProcessPeripheralNotificationStateUpdated`, `.physicalDuplexReady`): reads the relation's captured hint from the election context and calls `beginTrustedHandshake` once, only from `.roleBound`. `publishRelation` deliberately kept (physical, not trusted, publication).
