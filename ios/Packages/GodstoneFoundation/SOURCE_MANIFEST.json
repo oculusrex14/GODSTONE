@@ -57,7 +57,7 @@
     "Sources/GodstoneMesh/LocalIdentityStateV1.swift": "a6f34b6431efae415b069c1b03fd9168a99bc66ca87f6d5c5bed6f86cc4d4765",
     "Sources/GodstoneMesh/MeshCoordinator.swift": "e6f99eaa75de3b4d758bf9d5bbe0f8b6237f0d2e9b0878a7837eaa08d0d8d5cb",
     "Sources/GodstoneMesh/MeshIdentity.swift": "5a8656c4ed1f5b5050ea0aea4bde27c97d3fed15250aa54e709b87e4d9cecdfb",
-    "Sources/GodstoneMesh/MeshNode.swift": "c646492162562753eab2c9a48b3b7729c806b2374d63dca7a8940d6268abcffe",
+    "Sources/GodstoneMesh/MeshNode.swift": "e0ac0773dc4ceb2213e06f8c1515cb3f1a0d1366f321800c69cfa60192ae1497",
     "Sources/GodstoneMesh/MeshRuntime.swift": "20b56b2cabfb43b3da963e13cfbfab8953dfb4470a377dcf4c008e1ab160b8f2",
     "Sources/GodstoneMesh/MeshUXModel.swift": "2f37d7606a62208579c8161fdb1b85dfa0581d938378f0d2b816cba469a4b3ab",
     "Sources/GodstoneMesh/MessageStore.swift": "00574b5f434be4f0e39c59c3302202b2d7b6baaf94adf3c0750a4fe324a9409e",

@@ -960,19 +960,26 @@ extension MeshNode: TransportDelegate {
         onPeerCountChanged?(count)
     }
 
+    /// IOS-04 (T24) step 3's consumer half (round 250): THE APPLICATION IS TOLD WHOSE IDENTITY SENT THE FRAME.
+    /// The audited body passed an EMPTY `receivedFrom` and recorded 'sender not yet identified'; the transport now
+    /// delivereth the authenticated node id it captured at the sealed round, and this override passeth it ONWARD to the
+    /// dispatcher -- so the router, the ACK tracker and every durable road downstream learn the SENDER, not a handle.
+    public func transportDidReceive(data: Data, peerId: UUID, receivedFrom nodeId16: Data) {
+        guard Self.linkLayerReady, let frame = decodeInbound(data) else { return }
+        handleInboundFrame(frame, receivedFrom: nodeId16)
+    }
+
     public func transportDidReceive(data: Data, peerId: UUID) {
         guard Self.linkLayerReady, let frame = decodeInbound(data) else { return }
         // Stage 4C / C7: route ACK frames to the delivery tracker, all other
         // frames to the epidemic router, via the ungated `ingestInbound` seam.
-        // T24 (the `receivedFrom` carriage is the INTEGRATION slice, its own child
-        // commit): the authenticated sender node_id is not in the v2 header (the
-        // sealed sender liveth inside the encrypted payload) and the iOS BLE
-        // transport exposeth onely a local peer UUID, not the remote node_id; the
-        // real `receivedFrom` (the immutable TrustedPeer's node id) is wired when
-        // the M2-link layer (ADR-002, Stage 4H) exposeth the authenticated peer
-        // node_id. Until then an empty `receivedFrom` recordeth "sender not yet
-        // identified" -- honest, and this path is unreachability while
-        // linkLayerReady=false in any case.
+        // T24 (CORRECTED at round 250): THE TRANSPORT NOW DELIVERETH THE AUTHENTICATED NODE ID, so this path's
+        // empty `receivedFrom` is NO LONGER the whole truth. The comment that stood here said the iOS transport
+        // 'exposeth onely a local peer UUID, not the remote node_id' -- TRUE WHEN IT WAS WRITTEN, AND MADE FALSE BY
+        // THE ROUND-249 REPAIR, which giveth `transportDidReceive(data:peerId:receivedFrom:)` with the captured peer's
+        // sixteen-octet node id. THE OVERRIDE BELOW TAKETH IT; this handle-only entry point remaineth for a relation
+        // whose peer was never captured, and it carrieth an EMPTY `receivedFrom` -- 'sender not yet identified' --
+        // which is honest rather than convenient.
         handleInboundFrame(frame, receivedFrom: Data())
     }
 
