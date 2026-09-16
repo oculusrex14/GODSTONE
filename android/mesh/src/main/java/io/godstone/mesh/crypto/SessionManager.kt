@@ -58,10 +58,6 @@ class SessionManager internal constructor(
     internal var testInvalidationAttemptHook: (() -> Unit)? = null
 
     /**
-     * T08: one SessionSlot per relation keyed by the immutable RelationKey
-     * (the transport lookup handle). The slot owns its lock, so removing a
-     * retired slot reclaims its lock entry with it.
-     *
      * GS-CTRL-002 (R01): this registry carrieth the name the composition contract
      * useth -- `controllers` -- because THAT IS WHAT IT IS: every entry owns exactly
      * one [TrustedHandshakeController] (`SessionSlot.controller`), and never a raw
@@ -70,26 +66,22 @@ class SessionManager internal constructor(
      * readeth CODE TEXT with comments stripped -- then reported a registry that doth
      * not exist. The vocabulary is aligned here rather than the rule being loosened:
      * the instrument keepeth its authority and the code keepeth its design.
+     *
+     * CRYPTO-001 (T08 completion): the map is keyed by the RELATION'S PLACE --
+     * direction and handle -- and every entry carrieth its full [RelationKey], the
+     * complete admission. ONE live incarnation per place: a newer incarnation
+     * SUPERSEDES the standing one, so the registry can never hold two lives of one
+     * relation, and an operation addressed to the superseded incarnation is refused as
+     * [RelationRetirement.STALE] without touching its replacement.
+     *
+     * The T08 "remembered generation" registry is RECLAIMED here, and deliberately: the
+     * generation now cometh from the orchestration owner through the admission, so a
+     * crypto-side history had nothing left to remember. A history whose only duty was to
+     * paper over an absent key is a liability, not a defence.
      */
-    private val controllers = HashMap<String, SessionSlot>()
-
-    /**
-     * T08: bounded last-generation registry. When a slot is reclaimed the
-     * generation its lease carried is remembered here, so a replacement for
-     * the SAME transport handle starts at the NEXT generation and a stale
-     * event captured against the previous incarnation can never be mistaken
-     * for one captured against the replacement. Bounded: the eldest
-     * remembered handle is evicted first, and a lost generation only weakens
-     * the stale-event guard - the terminal slot state and the replay window
-     * remain the authoritative defences.
-     */
-    private val rememberedGenerations = LinkedHashMap<String, Long>()
-    private val rememberedOrder = ArrayList<String>()
-    private val reclaimMaxRemembered = 256
+    private val controllers = HashMap<RelationPlace, SessionSlot>()
 
     private fun key(peerId: ByteArray): String = peerId.joinToString("") { "%02x".format(it) }
-
-    private fun relationKey(peerId: ByteArray): RelationKey = RelationKey(key(peerId))
 
     /**
      * GS-CTRL-002 (R05): the PER-PEER (per-relation) serialisation point, under the name the
@@ -100,64 +92,117 @@ class SessionManager internal constructor(
      */
     private fun getPeerLock(rk: RelationKey): ReentrantLock? = slotFor(rk)?.getPeerLock()
 
-    private fun slotFor(rk: RelationKey): SessionSlot? =
-        mapLock.withLock { controllers[rk.handle] }
-
-    private fun getOrCreateSlot(rk: RelationKey): SessionSlot =
+    /**
+     * CRYPTO-001: THE LOOKUP ITSELF IS THE LAW. An incarnation standeth IFF the entry's
+     * whole admission equalleth the one presented -- direction, handle, orchestration
+     * generation AND transport epoch. Anything else is no slot at all, so no operation of a
+     * replaced relation can reach its replacement.
+     */
+    private fun slotFor(admission: RelationKey): SessionSlot? =
         mapLock.withLock {
-            val existing = controllers[rk.handle]
-            if (existing != null) {
-                return@withLock existing
-            }
-            val generation = (rememberedGenerations[rk.handle] ?: -1L) + 1L
-            val fresh = SessionSlot(rk, SlotLease(generation))
-            controllers[rk.handle] = fresh
-            return@withLock fresh
+            val standing = controllers[admission.place] ?: return@withLock null
+            if (standing.admission != admission) return@withLock null
+            standing
         }
 
-    private fun removeSlot(slot: SessionSlot) {
-        mapLock.withLock {
-            // Only the CURRENT incarnation is reclaimed: a stale caller that
-            // still holds an already-replaced slot must not evict the
-            // replacement, and the reclaimed lock entry leaves with its slot.
-            if (controllers[slot.key.handle] === slot) {
-                controllers.remove(slot.key.handle)
-                rememberGeneration(slot)
+    /**
+     * CRYPTO-001: admit an incarnation, SUPERSEDING the standing one for the same place. The map
+     * lock is never held while the incumbent's slot lock is entered: the destructive retirement of
+     * the superseded incarnation runneth after the map lock is releas'd, so the documented order
+     * (gate, slot, map) is kept whole.
+     */
+    private fun getOrCreateSlot(admission: RelationKey): SessionSlot {
+        var superseded: SessionSlot? = null
+        val fresh = mapLock.withLock {
+            val standing = controllers[admission.place]
+            if (standing != null && standing.admission == admission) {
+                return@withLock standing
             }
+            superseded = standing
+            val created = SessionSlot(admission)
+            controllers[admission.place] = created
+            created
         }
+        superseded?.retire()?.destroy()
+        return fresh
     }
 
-    private fun rememberGeneration(slot: SessionSlot) {
-        val handle = slot.key.handle
-        if (rememberedGenerations.containsKey(handle)) {
-            rememberedOrder.remove(handle)
-        } else if (rememberedGenerations.size >= reclaimMaxRemembered) {
-            val eldest = rememberedOrder.iterator()
-            if (eldest.hasNext()) {
-                val victim = eldest.next()
-                eldest.remove()
-                rememberedGenerations.remove(victim)
-            }
+    /**
+     * CRYPTO-001: compare-and-remove on the WHOLE admission. A teardown addressed to an incarnation
+     * which no longer standeth taketh nothing away.
+     */
+    private fun removeSlot(admission: RelationKey): SessionSlot? =
+        mapLock.withLock {
+            val standing = controllers[admission.place] ?: return@withLock null
+            if (standing.admission != admission) return@withLock null
+            controllers.remove(admission.place)
+            standing
         }
-        rememberedGenerations[handle] = slot.lease.generation
-        rememberedOrder.add(handle)
+
+    /**
+     * THE PRE-T08 HOST VOCABULARY (CRYPTO-001). A host court which driveth ONE relation per platform
+     * handle, and never mixeth directions, nameth that relation here. PRODUCTION NEVER SPEAKETH THIS:
+     * the transport holdeth the relation's own admission -- its `GattClientConnection.relationKeyProvider`
+     * is bound at admission and carrieth direction, generation and epoch -- and presenteth THAT. A
+     * source-level arm of the canonical suite refuseth this vocabulary in production sources by name,
+     * so the refusal is a control rather than an intention.
+     */
+    private fun hostPlaceholders(handle: String): List<RelationKey> =
+        listOf(
+            RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 0L, 0L),
+            RelationKey(RelationDirection.INBOUND_PERIPHERAL, handle, 0L, 0L),
+        )
+
+    /**
+     * The host vocabulary nameth a HANDLE, not an incarnation. A handle-scoped READ is therefore
+     * answered from whatever incarnation standeth -- the outbound one first -- and from the
+     * placeholder when none standeth. A court which witnesseth STALENESS speaketh the keyed surface.
+     */
+    private fun hostAdmissions(peerId: ByteArray): List<RelationKey> {
+        val handle = key(peerId)
+        val standing = mapLock.withLock {
+            listOf(
+                RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 0L, 0L),
+                RelationKey(RelationDirection.INBOUND_PERIPHERAL, handle, 0L, 0L),
+            ).mapNotNull { controllers[it.place]?.admission }
+        }
+        return if (standing.isEmpty()) hostPlaceholders(handle) else standing
     }
 
-    /** T08 evidence hook: the slot handle for [peerId], live or held over. */
-    internal fun slotForTest(peerId: ByteArray): SessionSlot? =
-        slotFor(relationKey(peerId))
+    /**
+     * The host vocabulary's HANDSHAKE step: the standing incarnation of that direction when one
+     * standeth -- so a court which pre-paired through the link owner's admission continueth on the
+     * SAME incarnation -- and the documented placeholder when the court is the one which beginneth
+     * the relation.
+     */
+    private fun hostHandshakeAdmission(peerId: ByteArray, direction: RelationDirection): RelationKey {
+        val handle = key(peerId)
+        val placeholder = RelationKey(direction, handle, 0L, 0L)
+        return mapLock.withLock { controllers[placeholder.place]?.admission } ?: placeholder
+    }
+
+    /** T08 evidence hook: the live incarnation standing for [peerId], outbound first. */
+    internal fun slotForTest(peerId: ByteArray): SessionSlot? {
+        val handle = key(peerId)
+        return mapLock.withLock {
+            controllers[RelationPlace(RelationDirection.OUTBOUND_CENTRAL, handle)]
+                ?: controllers[RelationPlace(RelationDirection.INBOUND_PERIPHERAL, handle)]
+        }
+    }
 
     /** T08 evidence hook: live entries in the relation-slot registry. */
     internal fun slotCountForTest(): Int = mapLock.withLock { controllers.size }
 
-    /** T08 evidence hook: remembered generations currently retained. */
-    internal fun rememberedCountForTest(): Int =
-        mapLock.withLock { rememberedGenerations.size }
+    /** CRYPTO-001 evidence hook: the live incarnations of one platform handle (one per direction). */
+    internal fun incarnationCountForTest(peerId: ByteArray): Int {
+        val handle = key(peerId)
+        return mapLock.withLock { controllers.keys.count { it.handle == handle } }
+    }
 
-    /** T08 evidence hook: lease generation of the live slot, if any. */
+    /** T08 evidence hook: the ORCHESTRATION-OWNED generation of the live incarnation. */
     internal fun slotLeaseGenerationForTest(peerId: ByteArray): Long? {
-        val slot = slotFor(relationKey(peerId)) ?: return null
-        return slot.serialize { slot.lease.generation }
+        val slot = slotForTest(peerId) ?: return null
+        return slot.serialize { slot.generation }
     }
 
     val isInvalidated: Boolean
@@ -178,10 +223,9 @@ class SessionManager internal constructor(
      * that arriveth earlier; and because the IDENTITY is charged rather than the handle, a peer cannot
      * evade a budget by arriving under another handle.
      */
-    fun authenticatedNodeIdOf(peerId: ByteArray): ByteArray? {
-        val rk = relationKey(peerId)
-        val slot = slotFor(rk) ?: return null
-        val lock = getPeerLock(rk) ?: return null
+    fun authenticatedNodeIdOf(admission: RelationKey): ByteArray? {
+        val slot = slotFor(admission) ?: return null
+        val lock = getPeerLock(admission) ?: return null
         return lock.withLock { slot.controller?.authenticatedNodeId }
     }
 
@@ -191,22 +235,20 @@ class SessionManager internal constructor(
      * answereth. It is the source `TrustedPeer.capture` needeth, and the node id IS its canonical derivation, so the
      * two accessors can never disagree.
      */
-    fun authenticatedIdentityPubOf(peerId: ByteArray): ByteArray? {
-        val rk = relationKey(peerId)
-        val slot = slotFor(rk) ?: return null
-        val lock = getPeerLock(rk) ?: return null
+    fun authenticatedIdentityPubOf(admission: RelationKey): ByteArray? {
+        val slot = slotFor(admission) ?: return null
+        val lock = getPeerLock(admission) ?: return null
         return lock.withLock { slot.controller?.authenticatedIdentityPub }
     }
 
-    fun isReady(peerId: ByteArray): Boolean {
+    fun isReady(admission: RelationKey): Boolean {
         lifecycleRwLock.read {
             if (!isActive) return false
-            val rk = relationKey(peerId)
-            val slot = slotFor(rk) ?: return false
+            val slot = slotFor(admission) ?: return false
             // GS-CTRL-002 (R05): the readiness query taketh the PER-PEER lock EXPLICITLY, under the
             // name the composition contract useth -- the same lock `SessionSlot.serialize` acquireth,
             // so the behaviour is unchanged and the name is load-bearing rather than decorative.
-            val peerLock = getPeerLock(rk) ?: return false
+            val peerLock = getPeerLock(admission) ?: return false
             return peerLock.withLock {
                 val ctrl = slot.controller ?: return@withLock false
                 ctrl.isReady && ctrl.state == HandshakeTrustState.READY
@@ -218,13 +260,14 @@ class SessionManager internal constructor(
      * Start initiator handshake for [peerId] and emit HS1 (32 bytes).
      * Serialized per peer. Returns null if already exists, collision, or invalidated.
      */
-    fun beginInitiator(peerId: ByteArray, remoteHint: ByteArray): ByteArray? =
-        initiatorStart(peerId, remoteHint)
+    fun beginInitiator(admission: RelationKey, remoteHint: ByteArray): ByteArray? =
+        initiatorStart(admission, remoteHint)
 
-    fun initiatorStart(peerId: ByteArray, remoteHint: ByteArray): ByteArray? {
+    fun initiatorStart(admission: RelationKey, remoteHint: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
-            val slot = getOrCreateSlot(relationKey(peerId))
+            val slot = getOrCreateSlot(admission)
+            if (slot.admission != admission) return null
             return slot.serialize {
                 if (!isActive) return@serialize null
                 if (slot.state != SlotState.ACTIVE) return@serialize null
@@ -243,7 +286,7 @@ class SessionManager internal constructor(
                 }
                 if (!isActive) {
                     slot.retire()
-                    removeSlot(slot)
+                    removeSlot(admission)
                     ctrl.destroy()
                     return@serialize null
                 }
@@ -257,11 +300,11 @@ class SessionManager internal constructor(
      * Process HS2 from responder and emit HS3 (197 bytes).
      * On success, transitions controller to READY. On failure or non-READY, drops entry and returns null.
      */
-    fun initiatorProcessHs2(peerId: ByteArray, hs2: ByteArray, advertisedRemoteHint: ByteArray): ByteArray? {
+    fun initiatorProcessHs2(admission: RelationKey, hs2: ByteArray, advertisedRemoteHint: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("initiatorProcessHs2")
-            val slot = slotFor(relationKey(peerId)) ?: return null
+            val slot = slotFor(admission) ?: return null
             var doomed: TrustedHandshakeController? = null
             val result = slot.serialize {
                 if (!isActive || slot.state != SlotState.ACTIVE) {
@@ -278,7 +321,7 @@ class SessionManager internal constructor(
                 hs3
             }
             doomed?.let { ctrl ->
-                removeSlot(slot)
+                removeSlot(admission)
                 ctrl.destroy()
             }
             return result
@@ -286,16 +329,17 @@ class SessionManager internal constructor(
     }
 
     /**
-     * Start responder handshake for [peerId], process inbound HS1, and emit HS2 (229 bytes).
+     * Start responder handshake for a relation, process inbound HS1, and emit HS2 (229 bytes).
      */
-    fun beginResponder(peerId: ByteArray, remoteHint: ByteArray, hs1: ByteArray): ByteArray? =
-        responderProcessHs1(peerId, remoteHint, hs1)
+    fun beginResponder(admission: RelationKey, remoteHint: ByteArray, hs1: ByteArray): ByteArray? =
+        responderProcessHs1(admission, remoteHint, hs1)
 
-    fun responderProcessHs1(peerId: ByteArray, remoteHint: ByteArray, hs1: ByteArray): ByteArray? {
+    fun responderProcessHs1(admission: RelationKey, remoteHint: ByteArray, hs1: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("responderProcessHs1")
-            val slot = getOrCreateSlot(relationKey(peerId))
+            val slot = getOrCreateSlot(admission)
+            if (slot.admission != admission) return null
             return slot.serialize {
                 if (!isActive) return@serialize null
                 if (slot.state != SlotState.ACTIVE) return@serialize null
@@ -317,7 +361,7 @@ class SessionManager internal constructor(
                 }
                 if (!isActive) {
                     slot.retire()
-                    removeSlot(slot)
+                    removeSlot(admission)
                     ctrl.destroy()
                     return@serialize null
                 }
@@ -331,11 +375,11 @@ class SessionManager internal constructor(
      * Process inbound HS3 from initiator.
      * Returns true IFF handshake reaches HandshakeTrustState.READY.
      */
-    fun responderProcessHs3(peerId: ByteArray, hs3: ByteArray, advertisedRemoteHint: ByteArray): Boolean {
+    fun responderProcessHs3(admission: RelationKey, hs3: ByteArray, advertisedRemoteHint: ByteArray): Boolean {
         lifecycleRwLock.read {
             if (!isActive) return false
             testOperationHook?.invoke("responderProcessHs3")
-            val slot = slotFor(relationKey(peerId)) ?: return false
+            val slot = slotFor(admission) ?: return false
             var doomed: TrustedHandshakeController? = null
             val result = slot.serialize {
                 if (!isActive || slot.state != SlotState.ACTIVE) {
@@ -350,7 +394,7 @@ class SessionManager internal constructor(
                 true
             }
             doomed?.let { ctrl ->
-                removeSlot(slot)
+                removeSlot(admission)
                 ctrl.destroy()
             }
             return result
@@ -358,10 +402,10 @@ class SessionManager internal constructor(
     }
 
     /**
-     * Encrypt cleartext frame bytes for [peerId].
+     * Encrypt cleartext frame bytes for a relation.
      * Returns ciphertext IFF session is READY and manager is active.
      */
-    fun seal(peerId: ByteArray, frameBytes: ByteArray): ByteArray? {
+    fun seal(admission: RelationKey, frameBytes: ByteArray): ByteArray? {
         // ANDROID-06 (round 221): the named seam, consumed by this very call.
         if (refuseNextSealForTest) {
             refuseNextSealForTest = false
@@ -370,7 +414,7 @@ class SessionManager internal constructor(
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("seal")
-            val slot = slotFor(relationKey(peerId)) ?: return null
+            val slot = slotFor(admission) ?: return null
             return slot.serialize {
                 if (slot.state != SlotState.ACTIVE) return@serialize null
                 val ctrl = slot.controller ?: return@serialize null
@@ -386,11 +430,11 @@ class SessionManager internal constructor(
      * Decrypt ciphertext bytes received from [peerId].
      * Returns cleartext IFF session is READY and manager is active.
      */
-    fun open(peerId: ByteArray, ciphertext: ByteArray): ByteArray? {
+    fun open(admission: RelationKey, ciphertext: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("open")
-            val slot = slotFor(relationKey(peerId)) ?: return null
+            val slot = slotFor(admission) ?: return null
             return slot.serialize {
                 if (slot.state != SlotState.ACTIVE) return@serialize null
                 val ctrl = slot.controller ?: return@serialize null
@@ -409,34 +453,53 @@ class SessionManager internal constructor(
      * cleartext of a verified frame is recorded as Authenticated, in the
      * vocabulary of the Noise layer's own CryptoOpenResult.
      */
-    fun openWithResult(peerId: ByteArray, ciphertext: ByteArray): NoiseSession.CryptoOpenResult {
+    fun openWithResult(admission: RelationKey, ciphertext: ByteArray): NoiseSession.CryptoOpenResult {
         // T17: total by contract. A frame the cipher refuses is told by the
         // rejected answer, whatever the underlying layer throws: a malformed
         // packet must never travel further than the caller's when-clause.
         val clear = try {
-            open(peerId, ciphertext)
+            open(admission, ciphertext)
         } catch (_: Throwable) {
             null
         } ?: return NoiseSession.CryptoOpenResult.Rejected
         return NoiseSession.CryptoOpenResult.Authenticated(clear)
     }
 
-    fun drop(peerId: ByteArray) {
+    /**
+     * CRYPTO-001: THE RELATION'S TEARDOWN, ADDRESSED TO AN INCARNATION. [RelationRetirement.STALE]
+     * when no such incarnation standeth -- the replacement is untouched.
+     */
+    fun drop(admission: RelationKey): RelationRetirement {
         lifecycleRwLock.read {
-            val slot = removeSlotFor(relationKey(peerId)) ?: return
             // T08: the terminal transition is serialized; the destructive
             // destroy is routed OUTSIDE the slot lock.
+            val slot = removeSlot(admission) ?: return RelationRetirement.STALE
             slot.retire()?.destroy()
+            return RelationRetirement.RETIRED
         }
     }
 
-    private fun removeSlotFor(rk: RelationKey): SessionSlot? =
-        mapLock.withLock {
-            val slot = controllers[rk.handle] ?: return@withLock null
-            controllers.remove(rk.handle)
-            rememberGeneration(slot)
-            return@withLock slot
+    /**
+     * THE APP-LEVEL DEPARTURE: every incarnation of the platform handle is retired, whatever
+     * generation standeth. A node which learneth that a peer hath departed knoweth the PEER, not the
+     * relation -- and it must not pretend otherwise, so it speaketh this verb rather than guessing an
+     * admission. The answer counteth the incarnations retired.
+     */
+    fun retireIncarnations(ofHandle: String): Int {
+        lifecycleRwLock.read {
+            val doomed = ArrayList<SessionSlot>()
+            mapLock.withLock {
+                val places = controllers.keys.filter { it.handle == ofHandle }
+                for (place in places) {
+                    controllers.remove(place)?.let { doomed.add(it) }
+                }
+            }
+            for (slot in doomed) {
+                slot.retire()?.destroy()
+            }
+            return doomed.size
         }
+    }
 
     fun destroyAll() {
         lifecycleRwLock.write {
@@ -453,10 +516,10 @@ class SessionManager internal constructor(
      *  slot closes with it - removed from the map, the generation remembered
      *  for the conflict law, retired and destroyed once outside every slot
      *  lock. The call is idempotent: an absent slot answers false. */
-    fun destroyFor(peerId: ByteArray): Boolean {
+    fun destroyFor(admission: RelationKey): Boolean {
         lifecycleRwLock.read {
             if (!isActive) return false
-            val slot = removeSlotFor(relationKey(peerId)) ?: return false
+            val slot = removeSlot(admission) ?: return false
             slot.retire()?.destroy()
             return true
         }
@@ -476,4 +539,77 @@ class SessionManager internal constructor(
             }
         }
     }
+
+    // ---------------------------------------------------------------- the pre-T08 host vocabulary
+    //
+    // These overloads exist for the HOST COURTS which drive one relation per platform handle and never
+    // mix directions. They mint the documented placeholder admission (generation 0, epoch 0). PRODUCTION
+    // SPEAKETH THE KEYED SURFACE ABOVE ONLY. They are `internal` on purpose: a consumer outside this
+    // module cannot reach them at all, and inside the module they are named for what they are.
+
+    private fun hostHandle(peerId: ByteArray): String = key(peerId)
+
+    internal fun isReady(peerId: ByteArray): Boolean =
+        hostAdmissions(peerId).any { isReady(it) }
+
+    internal fun beginInitiator(peerId: ByteArray, remoteHint: ByteArray): ByteArray? =
+        initiatorStart(hostHandshakeAdmission(peerId, RelationDirection.OUTBOUND_CENTRAL), remoteHint)
+
+    internal fun initiatorStart(peerId: ByteArray, remoteHint: ByteArray): ByteArray? =
+        initiatorStart(hostHandshakeAdmission(peerId, RelationDirection.OUTBOUND_CENTRAL), remoteHint)
+
+    internal fun initiatorProcessHs2(peerId: ByteArray, hs2: ByteArray, advertisedRemoteHint: ByteArray): ByteArray? =
+        initiatorProcessHs2(hostHandshakeAdmission(peerId, RelationDirection.OUTBOUND_CENTRAL), hs2, advertisedRemoteHint)
+
+    internal fun beginResponder(peerId: ByteArray, remoteHint: ByteArray, hs1: ByteArray): ByteArray? =
+        responderProcessHs1(hostHandshakeAdmission(peerId, RelationDirection.INBOUND_PERIPHERAL), remoteHint, hs1)
+
+    internal fun responderProcessHs1(peerId: ByteArray, remoteHint: ByteArray, hs1: ByteArray): ByteArray? =
+        responderProcessHs1(hostHandshakeAdmission(peerId, RelationDirection.INBOUND_PERIPHERAL), remoteHint, hs1)
+
+    internal fun responderProcessHs3(peerId: ByteArray, hs3: ByteArray, advertisedRemoteHint: ByteArray): Boolean =
+        responderProcessHs3(hostHandshakeAdmission(peerId, RelationDirection.INBOUND_PERIPHERAL), hs3, advertisedRemoteHint)
+
+    internal fun seal(peerId: ByteArray, frameBytes: ByteArray): ByteArray? {
+        for (admission in hostAdmissions(peerId)) {
+            seal(admission, frameBytes)?.let { return it }
+        }
+        return null
+    }
+
+    internal fun open(peerId: ByteArray, ciphertext: ByteArray): ByteArray? {
+        for (admission in hostAdmissions(peerId)) {
+            open(admission, ciphertext)?.let { return it }
+        }
+        return null
+    }
+
+    internal fun openWithResult(peerId: ByteArray, ciphertext: ByteArray): NoiseSession.CryptoOpenResult {
+        for (admission in hostAdmissions(peerId)) {
+            val outcome = openWithResult(admission, ciphertext)
+            if (outcome is NoiseSession.CryptoOpenResult.Authenticated) return outcome
+        }
+        return NoiseSession.CryptoOpenResult.Rejected
+    }
+
+    internal fun authenticatedNodeIdOf(peerId: ByteArray): ByteArray? {
+        for (admission in hostAdmissions(peerId)) {
+            authenticatedNodeIdOf(admission)?.let { return it }
+        }
+        return null
+    }
+
+    internal fun authenticatedIdentityPubOf(peerId: ByteArray): ByteArray? {
+        for (admission in hostAdmissions(peerId)) {
+            authenticatedIdentityPubOf(admission)?.let { return it }
+        }
+        return null
+    }
+
+    /** The host courts' teardown: EVERY incarnation of that handle, as the app-level departure doth. */
+    internal fun drop(peerId: ByteArray) {
+        retireIncarnations(hostHandle(peerId))
+    }
+
+    internal fun destroyFor(peerId: ByteArray): Boolean = retireIncarnations(hostHandle(peerId)) > 0
 }

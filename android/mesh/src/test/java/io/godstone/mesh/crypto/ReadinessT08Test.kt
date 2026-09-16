@@ -225,23 +225,38 @@ class ReadinessT08Test {
     }
 
     @Test
-    fun testRelationKeyIsImmutableWrapperOfTheLookupHandle() {
+    fun testRelationKeyCarriethTheWholeRelation() {
+        // CRYPTO-001 (T08 completion): the key is no longer a wrapper of the lookup handle
+        // alone. It carrieth the direction, the ORCHESTRATION-OWNED generation and the radio
+        // epoch, because a handle is reused across incarnations and only the whole identity
+        // telleth two of them apart.
         val handle = "aabbccdd"
-        val key = RelationKey(handle)
-        assertEquals(key, RelationKey(handle))
-        assertEquals(key.hashCode(), RelationKey(handle).hashCode())
-        assertNotEquals(key, RelationKey("eedd"))
+        val key = RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 1L, 1L)
+        assertEquals(key, RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 1L, 1L))
+        assertEquals(key.hashCode(), RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 1L, 1L).hashCode())
         // The handle is the existing transport lookup handle, not a node id.
         assertEquals(handle, key.handle)
+        // ... and every other component distinguisheth an incarnation:
+        assertNotEquals(key, RelationKey(RelationDirection.INBOUND_PERIPHERAL, handle, 1L, 1L))
+        assertNotEquals(key, RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 2L, 1L))
+        assertNotEquals(key, RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 1L, 2L))
+        assertNotEquals(key, RelationKey(RelationDirection.OUTBOUND_CENTRAL, "eedd", 1L, 1L))
+        // (the retired vocabulary of the pre-T08 host courts is gone with the history: there is
+        // no SlotLease on this isle any more, because the generation cometh from the link owner)
     }
 
     @Test
     fun testBoundedSlotMapOverTenThousandReconnects() {
-        // The registry is bounded by LIVE relations: 10,000 reconnects over a
-        // rotating handle set must not grow the slot map, must reclaim each
-        // retired entry together with its lock, and must advance the
-        // remembered generation so a replacement never aliases the incarnation
-        // it replaces.
+        // The registry is bounded by LIVE relations: 10,000 reconnects over a rotating handle set
+        // must not grow the slot map, must reclaim each retired entry together with its lock, and
+        // must refuse a teardown addressed to the incarnation it replaced.
+        //
+        // CRYPTO-001 (T08 completion): the generation is now MINTED BY THE CALLER -- the orchestration
+        // owner mints it when it admits the relation -- and the crypto registry keeps NO history of its
+        // own. This court therefore speaks the admission exactly as the link owner doth, and the arm
+        // which used to read the registry's private history now asserts the law that replaced it: a
+        // superseded incarnation is REFUSED by name, and the registry remembers nothing which could be
+        // replayed.
         val identityI = MeshIdentity.generate()
         val identityR = MeshIdentity.generate()
         val initiator = SessionManager(identityI, authority)
@@ -255,43 +270,53 @@ class ReadinessT08Test {
             byteArrayOf(0x52, 12), byteArrayOf(0x52, 13), byteArrayOf(0x52, 14),
             byteArrayOf(0x52, 15)
         )
-        val previousGeneration = LongArray(handleCount) { -1L }
+        val previousGeneration = LongArray(handleCount) { 0L }
         for (round in 0 until 10000) {
             val lane = round % handleCount
             val peer = handles[lane]
-            val hs1 = initiator.initiatorStart(peer, identityR.nodeHint)
+            val handle = peer.joinToString("") { "%02x".format(it) }
+            val generation = previousGeneration[lane] + 1L
+            val epoch = (round / handleCount).toLong() + 1L
+            val outbound = RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, generation, epoch)
+            val inbound = RelationKey(RelationDirection.INBOUND_PERIPHERAL, handle, generation, epoch)
+            val hs1 = initiator.initiatorStart(outbound, identityR.nodeHint)
                 ?: throw AssertionError("HS1 must be emitted on reconnect $round")
-            val hs2 = responder.responderProcessHs1(peer, identityI.nodeHint, hs1)
+            val hs2 = responder.responderProcessHs1(inbound, identityI.nodeHint, hs1)
                 ?: throw AssertionError("HS2 must be emitted on reconnect $round")
-            val hs3 = initiator.initiatorProcessHs2(peer, hs2, identityR.nodeHint)
+            val hs3 = initiator.initiatorProcessHs2(outbound, hs2, identityR.nodeHint)
                 ?: throw AssertionError("HS3 must be emitted on reconnect $round")
-            assertTrue(responder.responderProcessHs3(peer, hs3, identityI.nodeHint))
-            val generation = initiator.slotLeaseGenerationForTest(peer)
-                ?: throw AssertionError("a live slot must carry a lease")
-            assertTrue(
-                "generation must advance for lane $lane",
-                generation > previousGeneration[lane]
-            )
+            assertTrue(responder.responderProcessHs3(inbound, hs3, identityI.nodeHint))
+            assertEquals(
+                "the live incarnation carrieth the orchestration generation",
+                generation, initiator.slotLeaseGenerationForTest(peer))
             previousGeneration[lane] = generation
-            initiator.drop(peer)
-            responder.drop(peer)
+            if (generation > 1L) {
+                val superseded = RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, generation - 1L, epoch)
+                assertEquals(
+                    "a teardown of the superseded incarnation must be REFUSED",
+                    RelationRetirement.STALE, initiator.drop(superseded))
+                assertTrue(
+                    "the superseded teardown slew the live incarnation",
+                    initiator.isReady(outbound))
+            }
+            assertEquals(RelationRetirement.RETIRED, initiator.drop(outbound))
+            assertEquals(RelationRetirement.RETIRED, responder.drop(inbound))
             if (initiator.slotCountForTest() > handleCount) {
                 throw AssertionError("slot map grew past the live bound at round $round")
             }
             if (responder.slotCountForTest() > handleCount) {
                 throw AssertionError("responder map grew past the live bound at round $round")
             }
-            if (initiator.rememberedCountForTest() > 256) {
-                throw AssertionError("the remembered-generation registry is unbounded")
-            }
         }
-        // Every entry was reclaimed with its lock entry: nothing leaks.
+        // Every entry was reclaimed with its lock entry: nothing leaks, and the registry remembers
+        // NOTHING -- the generation history is reclaimed with the history-free design the
+        // orchestration-owned generation made possible.
         assertEquals(0, initiator.slotCountForTest())
         assertEquals(0, responder.slotCountForTest())
-        // Ten thousand reconnects over sixteen handles remember sixteen
-        // generations - one per handle, not one per reconnect.
-        assertEquals(handleCount, initiator.rememberedCountForTest())
-        assertEquals(handleCount, responder.rememberedCountForTest())
+        for (peer in handles) {
+            assertEquals(0, initiator.incarnationCountForTest(peer))
+            assertNull(initiator.slotLeaseGenerationForTest(peer))
+        }
     }
 
     @Test
@@ -313,22 +338,32 @@ class ReadinessT08Test {
         assertNull(session.initiator.seal(session.peer, "post".toByteArray()))
         assertEquals(0, session.initiator.slotCountForTest())
         assertEquals(0, session.responder.slotCountForTest())
-        // The replacement advances the lease instead of aliasing the old one.
+        // The replacement carrieth the NEXT generation the orchestration owner minteth -- not one
+        // the crypto registry invented -- so it cannot alias the incarnation it replaces.
         assertNull(session.initiator.slotLeaseGenerationForTest(session.peer))
+        val handle = session.peer.joinToString("") { "%02x".format(it) }
+        val replacement = RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 1L, 1L)
+        val responderReplacement = RelationKey(RelationDirection.INBOUND_PERIPHERAL, handle, 1L, 1L)
         val hs1 = session.initiator.initiatorStart(
-            session.peer, session.responderHint
+            replacement, session.responderHint
         ) ?: throw AssertionError("re-established HS1 must be emitted")
         val hs2 = session.responder.responderProcessHs1(
-            session.peer, session.initiatorHint, hs1
+            responderReplacement, session.initiatorHint, hs1
         ) ?: throw AssertionError("re-established HS2 must be emitted")
         val hs3 = session.initiator.initiatorProcessHs2(
-            session.peer, hs2, session.responderHint
+            replacement, hs2, session.responderHint
         ) ?: throw AssertionError("re-established HS3 must be emitted")
         assertTrue(session.responder.responderProcessHs3(
-            session.peer, hs3, session.initiatorHint))
-        val generation = session.initiator.slotLeaseGenerationForTest(session.peer)
-            ?: throw AssertionError("the replacement must carry a lease")
-        assertTrue("the replacement must advance the generation", generation > 0L)
+            responderReplacement, hs3, session.initiatorHint))
+        assertEquals(
+            "the replacement carrieth the orchestration generation",
+            1L, session.initiator.slotLeaseGenerationForTest(session.peer))
+        // The teardown of the incarnation that was replaced is REFUSED BY NAME, and the replacement
+        // standeth untouched: the finding's law, at the boundary.
+        val superseded = RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 0L, 0L)
+        assertEquals(RelationRetirement.STALE, session.initiator.drop(superseded))
+        assertTrue(session.initiator.isReady(replacement))
+        assertTrue(session.responder.isReady(responderReplacement))
         // Cross-incarnation replay: the destroyed incarnation's frame cannot
         // be replayed into the replacement. The legacy wrapper fails hard with
         // its typed authentication exception - the documented channel of this
@@ -408,5 +443,92 @@ class ReadinessT08Test {
                     live.noiseSession.isEstablished)
         live.destroy()
         assertFalse("the controller destroy is idempotent too", live.isReady)
+    }
+
+    // ------------------------------------------------------------- CRYPTO-001
+    //
+    // The law these two arms assert is the audit's own: THE SESSION AUTHORITY ITSELF must refuse an
+    // operation that belongeth to a relation which hath been replaced, and a relation's crypto slot
+    // must be keyed by the WHOLE relation -- direction included -- and not by the platform handle
+    // alone. (The iOS twin carrieth the same two arms; this isle's RED is its own.)
+    //
+    // Both were run RED against the tree BEFORE any production line was touched, and the failing run
+    // is kept in the finding's evidence log, separate from the repaired run.
+
+    @Test
+    fun testCrypto001_aTeardownAddressedToAReplacedRelationMustNotSlayItsReplacement() {
+        val session = readyManagers()
+        val handle = session.peer.joinToString("") { "%02x".format(it) }
+        // ONE platform handle, TWO incarnations: the station is replaced while the handle stands.
+        // Each side presenteth its own direction's incarnation -- the identity the link owner
+        // minteth -- and the RED form of this arm could only name the HANDLE, which IS the finding.
+        val first = RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 0L, 0L)
+        val firstIn = RelationKey(RelationDirection.INBOUND_PERIPHERAL, handle, 0L, 0L)
+        val second = RelationKey(RelationDirection.OUTBOUND_CENTRAL, handle, 1L, 1L)
+        val secondIn = RelationKey(RelationDirection.INBOUND_PERIPHERAL, handle, 1L, 1L)
+
+        val firstFrame = session.initiator.seal(first, "incarnation A".toByteArray())
+        assertTrue(firstFrame != null)
+        assertEquals(
+            "incarnation A",
+            String(session.responder.open(firstIn, firstFrame!!)!!))
+        assertEquals(RelationRetirement.RETIRED, session.initiator.drop(first))
+        assertEquals(RelationRetirement.RETIRED, session.responder.drop(firstIn))
+
+        // Incarnation B: the replacement, handshaken afresh on the very same handle.
+        val hs1 = session.initiator.initiatorStart(second, session.responderHint)
+            ?: throw AssertionError("the replacement's HS1 must be emitted")
+        val hs2 = session.responder.responderProcessHs1(secondIn, session.initiatorHint, hs1)
+            ?: throw AssertionError("the replacement's HS2 must be emitted")
+        val hs3 = session.initiator.initiatorProcessHs2(second, hs2, session.responderHint)
+            ?: throw AssertionError("the replacement's HS3 must be emitted")
+        assertTrue(session.responder.responderProcessHs3(secondIn, hs3, session.initiatorHint))
+        assertTrue(session.initiator.isReady(second))
+
+        // Now A's DELAYED teardown arrives -- the teardown queued against the incarnation the
+        // station already replaced. It must be REFUSED BY NAME.
+        assertEquals(
+            "a teardown of the replaced incarnation must be refused",
+            RelationRetirement.STALE, session.initiator.drop(first))
+        assertEquals(
+            "the responder must refuse the replaced incarnation's teardown too",
+            RelationRetirement.STALE, session.responder.drop(firstIn))
+
+        assertTrue(
+            "a teardown that belongs to the REPLACED relation slew its replacement",
+            session.initiator.isReady(second))
+        assertTrue(session.responder.isReady(secondIn))
+        val live = session.initiator.seal(second, "replacement lives".toByteArray())
+        assertTrue(live != null)
+        assertEquals(
+            "replacement lives",
+            String(session.responder.open(secondIn, live!!)!!))
+        // The replacement's own teardown still worketh, and only it.
+        assertEquals(RelationRetirement.RETIRED, session.initiator.drop(second))
+        assertFalse(session.initiator.isReady(second))
+        assertNull(session.initiator.seal(second, "gone".toByteArray()))
+    }
+
+    @Test
+    fun testCrypto001_theSecondDirectionOfOneHandleIsADifferentRelation() {
+        val identityI = MeshIdentity.generate()
+        val identityR = MeshIdentity.generate()
+        val initiatorSide = SessionManager(identityI, authority)
+        val responderSide = SessionManager(identityR, authority)
+        val handle = identityR.nodeId
+
+        // The SAME manager playeth the initiator of one relation and the responder of another, and both
+        // relations live on the SAME platform handle. One slot per handle cannot hold them apart: the
+        // second counsels are two DIFFERENT relations.
+        val outboundHs1 = initiatorSide.initiatorStart(handle, identityR.nodeHint)
+        assertTrue("the outbound relation's HS1 must be emitted", outboundHs1 != null)
+        val inboundHs1 = initiatorSide.initiatorStart(handle, identityR.nodeHint)
+        // (a second initiator counsels the selfsame relation and is refused -- that is the slot's own law)
+        val foreignHs1 = responderSide.initiatorStart(handle, identityI.nodeHint)
+            ?: throw AssertionError("the counterpart's HS1 must be emitted")
+        val inboundHs2 = initiatorSide.responderProcessHs1(handle, identityI.nodeHint, foreignHs1)
+        assertTrue(
+            "an inbound and an outbound relation of ONE handle must not share a crypto slot",
+            inboundHs2 != null)
     }
 }
