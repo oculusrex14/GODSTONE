@@ -3496,6 +3496,35 @@
     "Mesh_Oracle": 40
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: the farewell unschedules the exact relation; the generation recheck is measured to be unnecessary there (node-id keying).",
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
+   "SUPERSEDED_BY": "candidate_verification_at_round_238: IOS-06 step 1's first slice landed.",
+   "stands_as_the_convergence_candidate": false
+  },
+  "candidate_verification_at_round_238": {
+   "candidate_sha": "b7ef0280d51f90bb399a60058ea4375ac27953d8",
+   "tree_sha": "8f0ac69052fa812571b135b9cd56eae14ffae9fb",
+   "worktree": "clean at this sha apart from this record",
+   "logs": {
+    "ios_full_lane": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-06/round238-full-lane.log",
+     "sha256": "0661ac52a8abb11777ea31fb68820faf105219e8dbac88c388b01552571c8f45"
+    }
+   },
+   "measured": {
+    "ios_foundation_lane": "`Executed 1226 tests, with 0 failures (0 unexpected)`; rc 0 -- the IOS-06 arms INCLUDED",
+    "python_readiness_suite": "603 tests, OK, rc 0",
+    "audit_probes": "12 tests, OK, rc 0",
+    "repository_controls": "mandatory lab control PASSED (14 notes); `check_parity --scope repo` rc 0",
+    "symbols": "223 Kotlin files scanned, 0 unresolved",
+    "evidence_digests": "373 registered | 373 examined | 373 verified",
+    "android_lanes": "NOT RE-MEASURED (no android source changed) and NOT CLAIMED at this SHA",
+    "ios_lab_build": "NOT RE-MEASURED and NOT CLAIMED at this SHA"
+   },
+   "per_declared_scope": {
+    "LIGHT_Archive": 14,
+    "Mesh_Oracle": 40
+   },
+   "what_moved": "IOS-06 step 1's first slice: the Transport conformance and one runtime lifecycle authority over the real transport, witnessed behaviourally. IOS-06 moves OPEN -> PARTIAL.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN."
   }
  },
@@ -9364,8 +9393,8 @@
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
+   "my_red_case": "**THE RED, TAKEN AS A MEASUREMENT BEFORE THE REPAIR (round 238): `BleTransport` declared `NSObject, @unchecked Sendable` AND NOTHING ELSE, so NO `Transport` CONFORMANCE EXISTED -- the audit's own words, and the reason no lifecycle authority could own it; and `UnifiedRuntimeLifecycle`/`LifecycleTransportAdapter` were constructed NOWHERE, while the node called `ble.start()`/`ble.stop()` directly. The arms that now PASS would not have COMPILED before the conformance (a compile-time red is a red), and the instruments' contract had no caller at all.**",
+   "my_status": "PARTIAL",
    "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-06): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
@@ -9396,7 +9425,10 @@
     "T28"
    ],
    "title": "unified lifecycle unwired; power loss does not invalidate real state",
-   "wave": "4c.3"
+   "wave": "4c.3",
+   "pending_work": [
+    "ROUND 238 (**IOS-06 STEP 1'S FIRST SLICE LANDETH: THE CONFORMANCE THE ADAPTER'S OWN COMMENT PROMISED, AND ONE RUNTIME OWNER FOR LIFECYCLE OVER THE REAL TRANSPORT**). (1) THE DEFECT, MEASURED: `UnifiedRuntimeLifecycle` and `LifecycleTransportAdapter` existed and **NOTHING CONSTRUCTED THEM ANYWHERE IN PRODUCTION** -- while `MeshNode` called `ble.start()` (line 493) and `ble.stop()` (507) DIRECTLY, bypassing both. And the adapter's own comment promiseth that concrete transports conform to its `Transport` protocol: **NO SUCH CONFORMANCE EXISTED -- `BleTransport` declared `NSObject, @unchecked Sendable` AND NOTHING ELSE, exactly as the audit saith.** (2) THE REPAIR, TWO MOVES: **`extension BleTransport: Transport`** -- AND ITS BODY IS EMPTY, WHICH IS THE FINDING'S OWN SHAPE: `start()` (1253), `stop()` (1381), `name` and `isBulkCapable` ALL ALREADY EXISTED, so THE CONFORMANCE ITSELF WAS THE MISSING THING (my first draft's `name`/`isBulkCapable` were an INVALID REDECLARATION, which the compiler caught); and **`MeshRuntime` now OWNETH ONE LIFECYCLE AUTHORITY over the node's OWN transport through the adapter** -- `UnifiedRuntimeLifecycle(seam: LifecycleTransportAdapter(transport: meshNode.ble), nowMillis: ...)` -- SO THE GRAPH AND THE INSTRUMENT MEET AT LAST. (3) THE WITNESSES, BEHAVIOURAL: `CrashStartupResumeTests.testSR00k_TheLifecycleAuthorityOwnethTheRealTransportAndDrivethASeam` -- the conformance a compile-time fact (`let seam: any Transport = runtime.meshNode.ble`), the runtime owning an authority, and **THE INSTRUMENTS DRIVING A TRANSPORT: `authority.start()` reacheth the seam EXACTLY ONCE (a second start doth not begin the OS work twice), and `stop()` reacheth it exactly once** -- judged by a SPY TRANSPORT, because the contract is what REACHETH a seam, not a name. **(4) AND MY OWN FIRST DRAFT READ THE WRONG TYPE'S MEMBERS: it asserted `name == \"ble\"` and `isBulkCapable == true`, and the measurement said `\"BLE\"` and `false` -- the pair I had read belongeth to ANOTHER class in the same file, which my grep's window attributed to `BleTransport` (the fifth species, met while READING). The arms now assert what the tree saith.** (5) MEASURED: **THE FULL iOS LANE 1226 TESTS / 0 FAILURES**. (6) **IOS-06 MOVETH FROM OPEN TO `PARTIAL`: step 1's FIRST half (the owner and the conformance) is landed and witnessed; WHAT REMAINETH IS STEP 1'S SECOND HALF (route the node's start/stop THROUGH the owner rather than beside it), step 2 (real teardown results instead of hard-coded `disconnectAll() == 1`), and steps 3-5 (the manager delegates' power/permission events, the wipe drain, and reactivation).**"
+   ]
   },
   "IOS-07": {
    "audit_status_at_snapshot": "OPEN",

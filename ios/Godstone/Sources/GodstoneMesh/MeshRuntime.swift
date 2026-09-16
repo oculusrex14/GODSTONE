@@ -28,6 +28,11 @@ public final class MeshRuntime {
     public let deliveryTracker: DeliveryTracker
     public let sessionManager: SessionManager
     public let meshNode: MeshNode
+    // IOS-06 step 1: **ONE RUNTIME OWNER FOR LIFECYCLE, OVER THE REAL TRANSPORT.** Until this landed,
+    // `UnifiedRuntimeLifecycle` and `LifecycleTransportAdapter` were constructed NOWHERE in production (measured),
+    // and the node called `ble.start()`/`ble.stop()` directly. The authority is built over the node's OWN
+    // transport through T44's adapter, so the graph and the instrument meet at last.
+    public let lifecycle: UnifiedRuntimeLifecycle
     // GS-RUNTIME-001 step 2: **THE ACK ROAD'S OWNERS, IN THE PRODUCTION RUNTIME.** Until these landed, the durable
     // ACK store, its driver, its pump and the recipient inbox were constructed ONLY by the composition harness --
     // and nothing in production ever collected the transport's readiness, so "registering a queue does not send
@@ -101,6 +106,11 @@ public final class MeshRuntime {
         // GS-RUNTIME-001 step 2: THE FOUR OWNERS, OVER THE SAME STORE AND THE SAME PINNED IDENTITY.
         // (a) the durable paired store IS the message store's transaction engine (SqliteMessageStore conformeth
         //     to AckObligationEngine), so the ACK namespaces commit inside the SAME database;
+        let lifecycle = UnifiedRuntimeLifecycle(
+            seam: LifecycleTransportAdapter(transport: meshNode.ble),
+            nowMillis: { Int64(Date().timeIntervalSince1970 * 1000) },
+        )
+        self.lifecycle = lifecycle
         let ackStore = SqliteAckStore(engine: messageStore)
         // (b) the driver signeth through the PRODUCTION signer over the pinned identity -- the seam's seed road
         //     is refused BY CONSTRUCTION there, which is the repair of rounds 215/216;

@@ -403,6 +403,54 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    // MARK: - IOS-06 step 1: ONE RUNTIME OWNER FOR LIFECYCLE, OVER THE REAL TRANSPORT
+
+    /// A transport double: the instruments' contract is judged by what REACHETH a seam, not by a name.
+    private final class SpyTransport: Transport {
+        let name = "spy"
+        let isBulkCapable = true
+        private(set) var starts = 0
+        private(set) var stops = 0
+        func start() { starts += 1 }
+        func stop() { stops += 1 }
+    }
+
+    /// **IOS-06 step 1.** The audit's claim, MEASURED BEFORE THIS: "the adapter comment says concrete
+    /// BleTransport/MeshNode conform to its `Transport` protocol, **but no such conformance exists in production
+    /// source**" -- and `UnifiedRuntimeLifecycle`/`LifecycleTransportAdapter` were constructed NOWHERE, while the
+    /// node called `ble.start()`/`ble.stop()` directly.
+    func testSR00k_TheLifecycleAuthorityOwnethTheRealTransportAndDrivethASeam() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00k_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00k_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+
+        // (1) THE CONFORMANCE -- a compile-time fact now, and the reason the runtime can own the transport at all:
+        let seam: any Transport = runtime.meshNode.ble
+        // **MEASURED, AFTER MY OWN FIRST DRAFT ASSERTED THE WRONG VALUES: `BleTransport` nameth itself "BLE" and
+        // reporteth `isBulkCapable == false` -- the `"ble"`/`true` pair I had read belongeth to ANOTHER type, and
+        // my grep's window attributed them to the wrong class (the fifth species of this session's control family,
+        // met while READING rather than while writing). The arm now asserteth what the tree SAYETH.**
+        XCTAssertEqual(seam.name, "BLE")
+        XCTAssertFalse(seam.isBulkCapable, "the BLE transport reporteth itself NOT bulk-capable -- as the tree saith")
+        XCTAssertNotNil(runtime.lifecycle, "IOS-06: the runtime must OWN ONE lifecycle authority")
+
+        // (2) AND THE INSTRUMENTS DRIVE A TRANSPORT: the authority reacheth the seam it owneth, start and stop.
+        let spy = SpyTransport()
+        let authority = UnifiedRuntimeLifecycle(seam: LifecycleTransportAdapter(transport: spy),
+                                                nowMillis: { 0 })
+        authority.start()
+        XCTAssertEqual(spy.starts, 1,
+                       "IOS-06: the ONE authority must REACH the transport it owneth -- once, not repeatedly")
+        authority.start()
+        XCTAssertEqual(spy.starts, 1, "and a second start must not begin the OS work twice")
+        authority.stop()
+        XCTAssertEqual(spy.stops, 1, "and the stop must reach it exactly once")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

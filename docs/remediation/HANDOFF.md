@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 238 -- IOS-06 step 1's first slice: the `Transport` conformance and ONE runtime lifecycle owner
+
+- **Measured defect**: `UnifiedRuntimeLifecycle`/`LifecycleTransportAdapter` were constructed **nowhere**, while `MeshNode` called `ble.start()`/`ble.stop()` directly; and the adapter's promised `Transport` conformance **did not exist** (`BleTransport` declared `NSObject, @unchecked Sendable` and nothing else — *exactly as the audit says*).
+- **Repair**: `extension BleTransport: Transport` — **its body empty, which is the finding's own shape** (start/stop/name/isBulkCapable all already existed; *the conformance itself was the missing thing* — my first draft's members were an invalid redeclaration the compiler caught) — and `MeshRuntime` now **owns one lifecycle authority** over the node's own transport through the adapter.
+- **Behavioural witness**: the conformance as a compile-time fact; the runtime owning an authority; and **the instruments driving a spy transport — `start()` reaches the seam exactly once (a second start does not begin twice), `stop()` exactly once**.
+- **My own first draft read the wrong type's members** (`"ble"`/`true`; the measurement says `"BLE"`/`false`) — the fifth species, met while *reading*.
+- **Measured**: **full iOS lane 1226 / 0**. **IOS-06 OPEN → PARTIAL**: remaining — step 1's second half (route start/stop *through* the owner), step 2's real teardown results, steps 3–5.
+
 ## Round 237 -- the ANDROID farewell unschedules the relation; and the missing recheck there is measured CORRECT
 
 - **The defect, measured before the edit**: **nothing on that isle called `ackPump.onLinkGone`** — the twin of the Swift gap closed at round 218 — so a departed relation stayed scheduled and the worker would keep offering to it. The node already observed `ble.peers()`/`PeerEvent.Lost`; the unscheduling now stands there.

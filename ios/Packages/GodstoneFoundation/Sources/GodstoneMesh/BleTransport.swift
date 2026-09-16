@@ -561,6 +561,19 @@ public struct SystemMonotonicClock: MonotonicClock {
     }
 }
 
+/// **IOS-06 step 1: THE CONFORMANCE THE ADAPTER'S OWN COMMENT PROMISETH.** The audit's words: "the adapter comment
+/// says concrete BleTransport/MeshNode conform to its `Transport` protocol, **but no such conformance exists in
+/// production source**" -- MEASURED TRUE (the class declared `NSObject, @unchecked Sendable` and nothing else). The
+/// lifecycle authority cannot own a transport it cannot name, so the conformance now standeth: `start()` and
+/// `stop()` already existed, and the two descriptive members are supplied here.
+extension BleTransport: Transport {
+    // **THE BODY IS EMPTY, AND THAT IS THE FINDING'S OWN SHAPE: `start()` (line 1253), `stop()` (1381), `name`
+    // (570) and `isBulkCapable` (571) ALL ALREADY EXISTED -- THE CONFORMANCE ITSELF WAS THE MISSING THING, which
+    // is why my first draft's `name`/`isBulkCapable` were an INVALID REDECLARATION the compiler caught. THE
+    // AUDIT'S WORDS WERE PRECISE: "the adapter comment says concrete BleTransport/MeshNode conform to its
+    // `Transport` protocol, BUT NO SUCH CONFORMANCE EXISTS IN PRODUCTION SOURCE."
+}
+
 public final class BleTransport: NSObject, @unchecked Sendable {
     /// IOS-05 / T27 (steps 1-2): THE PRE-AUTH ADMISSION BUDGET, charged at the ingress doors BEFORE
     /// parsing, reassembly, DH or trust work. The iOS twin of the android isle's `AdmissionBudget`.
