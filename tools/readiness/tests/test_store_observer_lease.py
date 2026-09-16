@@ -63,6 +63,13 @@ class StoreObserverLeaseTest(unittest.TestCase):
                          "and it must be able to GIVE IT BACK -- in stopObserving() and on a store replacement")
         self.assertIn("disposeHeldSetObserver", a, "the disposal must reach the store")
 
+    def test_the_dispatch_snapshotteth_before_calling(self):
+        """GS-STORE-005 step 2: notifications ARE committed outside the lock (measured) AND snapshotted before calling."""
+        s = STORE.read_text(encoding="utf-8")
+        self.assertRegex(s, r"val snapshot = heldSetObservers\.values\.toList\(\)",
+                         "the dispatch must SNAPSHOT: a view that shifteth while an ear disposes itself would deliver "
+                         "to a moving target")
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

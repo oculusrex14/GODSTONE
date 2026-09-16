@@ -1095,7 +1095,12 @@ class SqliteMessageStore internal constructor(
     internal fun heldSetObserverCountForTest(): Int = heldSetObservers.size
 
     internal fun notifyHeldSetChanged() {
-        for (observer in heldSetObservers.values) {
+        // GS-STORE-005 step 2 (round 253): A REAL SNAPSHOT, TAKEN BEFORE ANY EAR IS CALLED. `values` giveth a
+        // weakly-consistent view, so an observer that disposes ITSELF -- or a peer -- while the loop runneth would see
+        // the iteration shift under it. A LIST IS A SNAPSHOT: every ear registered at the committing instant heareth
+        // exactly once, and a disposal during the dispatch affecteth the NEXT notification rather than this one.
+        val snapshot = heldSetObservers.values.toList()
+        for (observer in snapshot) {
             try {
                 observer.invoke()
             } catch (_: Throwable) {}
@@ -2065,7 +2070,12 @@ internal class InMemoryMessageStore(
     internal fun heldSetObserverCountForTest(): Int = heldSetObservers.size
 
     private fun notifyHeldSetChanged() {
-        for (observer in heldSetObservers.values) {
+        // GS-STORE-005 step 2 (round 253): A REAL SNAPSHOT, TAKEN BEFORE ANY EAR IS CALLED. `values` giveth a
+        // weakly-consistent view, so an observer that disposes ITSELF -- or a peer -- while the loop runneth would see
+        // the iteration shift under it. A LIST IS A SNAPSHOT: every ear registered at the committing instant heareth
+        // exactly once, and a disposal during the dispatch affecteth the NEXT notification rather than this one.
+        val snapshot = heldSetObservers.values.toList()
+        for (observer in snapshot) {
             try {
                 observer.invoke()
             } catch (_: Throwable) {}
