@@ -494,6 +494,13 @@ public final class MeshNode {
     /// court keepeth working while the production graph loseth its second, unowned path to the radio.
     internal var lifecycleOwner: UnifiedRuntimeLifecycle?
 
+    /// **IOS-06 step 1's routing, MADE OBSERVABLE**: which road the node took is a fact about the graph, and a
+    /// witness that cannot see it is a witness of the source text only. These two censuses turn the routing into
+    /// something a court can MEASURE -- the same idiom this session useth for every owned worker.
+    internal private(set) var adaptersOpenedThroughTheOwner = 0
+    internal private(set) var adaptersClosedThroughTheOwner = 0
+    private var adaptersClosed = false
+
     /// **IOS-06 step 3: A POWER LOSS OR A WITHDRAWN PERMISSION REACHETH THE ONE AUTHORITY.** The platform speaketh
     /// through the transport; the authority is the only thing that may act on it -- and a HEALTHY STATE IS NOT AN
     /// EVENT, which the arm requireth.
@@ -515,6 +522,7 @@ public final class MeshNode {
             self?.handleTransportPowerState(state)
         }
         if let lifecycleOwner {
+            adaptersOpenedThroughTheOwner += 1
             lifecycleOwner.start()
         } else {
             ble.start()
@@ -529,15 +537,23 @@ public final class MeshNode {
         // 7 AFTER `stop()`, which is a callback firing for a runtime that is gone.
         cancelAckTurnDeadline()
         handleNodeMappingsForget()
+        // **IOS-06's OWN WITNESS FOUND THIS (round 244), AND IT IS THE SAME EARLY-RETURN CLASS AS ROUND 220's TIMER
+        // LEAK: THE CLOSE ROAD SAT *AFTER* THE `isStarted` GUARD -- AND IN THIS SHIPPING TREE `isStarted` IS FALSE BY
+        // CONSTRUCTION, SO THE RADIO WAS NEVER CLOSED THROUGH THE ONE OWNER AT ALL; the guard returned first, and the
+        // census the new arm reads stayed at zero.** The close now standeth BEFORE the guard, ONCE PER LIFETIME (the
+        // transport's own `stop` is idempotent, but a second drain must not be counted as a second close).
+        if !adaptersClosed {
+            adaptersClosed = true
+            if let lifecycleOwner {
+                adaptersClosedThroughTheOwner += 1
+                lifecycleOwner.stop()
+            } else {
+                ble.stop()
+            }
+        }
         guard isStarted else { return }
         isStarted = false
         sessions.destroyAll()
-        // **AND THE CLOSE TRAVELLETH THE SAME ROAD AS THE OPEN** -- one owner, not two.
-        if let lifecycleOwner {
-            lifecycleOwner.stop()
-        } else {
-            ble.stop()
-        }
         peerLock.lock(); peers.removeAll(); peerLock.unlock()
         onPeerCountChanged?(0)
     }

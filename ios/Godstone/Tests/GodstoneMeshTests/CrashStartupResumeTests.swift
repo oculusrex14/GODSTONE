@@ -564,6 +564,34 @@ final class CrashStartupResumeTests: XCTestCase {
                        "and a WITHDRAWN PERMISSION is terminal in the same way: no path back without the platform")
     }
 
+    /// **IOS-06 step 1's routing, WITNESSED BEHAVIOURALLY AT LAST.** The wipe exercises the CLOSE road, and the
+    /// node now counteth which road it took -- so "the graph openeth and closeth the radio through its one owner"
+    /// is a MEASURED fact rather than a reading of the source. (The OPEN road wanteth a radio that a unit court
+    /// must not start; the CLOSE road is reachable through the wipe, which every runtime may do.)
+    func testSR00o_TheWipeClosethTheRadioThroughTheOneOwner() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00o_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00o_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+
+        XCTAssertEqual(runtime.meshNode.adaptersClosedThroughTheOwner, 0, "nothing hath closed yet")
+        runtime.invalidator.invalidateForWipe()
+        XCTAssertEqual(runtime.meshNode.adaptersClosedThroughTheOwner, 1,
+                       "IOS-06: **THE WIPE MUST CLOSE THE RADIO THROUGH THE ONE OWNER** -- not beside it")
+        XCTAssertEqual(runtime.meshNode.adaptersOpenedThroughTheOwner, 0,
+                       "and nothing OPENED: this court never started a radio")
+
+        // THE NEGATIVE CASE OF A SORT: a SECOND wipe closeth nothing further, because an invalidated runtime is not
+        // a live one -- the drain happeneth once per lifetime.
+        runtime.invalidator.invalidateForWipe()
+        XCTAssertEqual(runtime.meshNode.adaptersClosedThroughTheOwner, 1,
+                       "and a SECOND wipe closeth nothing further: the close happeneth ONCE PER LIFETIME, or a drain "
+                       + "that is merely repeated would be counted as a second teardown")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

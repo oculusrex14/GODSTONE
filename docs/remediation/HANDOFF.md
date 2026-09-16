@@ -4,6 +4,15 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 244 -- the routing witnessed BEHAVIOURALLY, and the witness found the radio was NEVER closed through the owner
+
+- **The instrument**: two censuses on the node (`adaptersOpenedThroughTheOwner`/`adaptersClosedThroughTheOwner`), so *which road the graph took* is a measured fact rather than a reading of the source.
+- **And the arm's first run was RED, which is the whole point**: after the wipe the counter stood at **zero** — the wipe never reached the close road. **The cause is round 220's early-return class again**: `MeshNode.stop()` carried the `lifecycleOwner.stop()` road **after** `guard isStarted else { return }` — and in this shipping tree `isStarted` is **false by construction**, so **the radio was never closed through the one owner, ever, in production**.
+- **The repair**: the close now stands **before** the guard, **once per lifetime** (an `adaptersClosed` latch), with the started-node work left behind the guard where it belongs.
+- **The arm**: the wipe closes the radio **through the owner** (1); nothing opened (this court starts no radio); and a **second** wipe closes nothing further.
+- **Measured**: **full iOS lane 1228 / 0** (count read from the log); courts 610 OK.
+- **Remaining**: the OPEN road's behavioural witness (it wants a radio a unit court must not start) and teaching the Android isle the same lifecycle routing.
+
 ## Round 243 -- IOS-06 steps 4-5 MEASURED: the terminal laws already hold, so no repair was due
 
 - **The card's words** for these steps are *"the wipe drain"* and *"reactivation"*, implying three laws: a drain reaches the transport **exactly once**; **a terminal authority has no path back**; and whether a *drained* authority differs from a terminal one. The arm **measured** all three rather than asserting what I hoped.
