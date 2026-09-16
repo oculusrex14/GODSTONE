@@ -2391,7 +2391,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     // gate is the sealed key-confirmation alone, and it is opened once and but
     // once for a relation.
 
-    private var linkReadyPublished: [UUID] = []
+    /// IOS-04 (T24) step 4: READINESS KEYED BY THE FULL RELATION TOKEN -- THE HANDLE **AND** THE RELATION -- so that a
+    /// UUID returning with a NEW generation cannot alias a previous relation's readiness, which is the last piece of
+    /// 'stale UUID readiness'. The relation cometh from the very capture the trusted peer is built from; a relation
+    /// without one (no authenticated binding yet) carrieth `nil`, which is the audited handle-only behaviour, no worse.
+    private var linkReadyRelations: [(peerId: UUID, relation: RelationKey?)] = []
     private var applicationLinkReadyFlow: [(UUID) -> Void] = []
 
     /// The court heareth the drivers own publication of the application LinkReady,
@@ -2405,7 +2409,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // The present ready state is snapshotted under the selfsame lock that
         // guardeth the register; the telling itself is done beyond the critical
         // section, as every other tale, that no ear be heard while the lock is held.
-        let replay = linkReadyPublished
+        let replay = linkReadyRelations.map { $0.peerId }
         unlockTransport()
         // Onely THIS new joiner is told the present state; the elder ears keep
         // their one tale unmultipled.
@@ -2414,7 +2418,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     internal func linkReadyPeersForTest() -> [UUID] {
         lockTransport()
-        let value = linkReadyPublished
+        let value = linkReadyRelations.map { $0.peerId }
         unlockTransport()
         return value
     }
@@ -2424,7 +2428,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // A SNAPSHOT OF THE KEYS, because `publishTrustedLoss` REMOVETH from the very dictionary being walked -- the
         // same lesson the IOS-01 closing-peripherals capture taught: iterate a copy, never the live collection.
         for peerId in Array(capturedPeers.keys) { publishTrustedLoss(peerId) }
-        linkReadyPublished.removeAll()
+        linkReadyRelations.removeAll()
         unlockTransport()
     }
 
@@ -2451,7 +2455,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // only when the ring overflowed (`removeFirst()`) or when the whole transport stopped, so a UUID that came back
         // with a NEW generation would have looked READY -- the finding's own 'stale UUID readiness'. Removing it HERE,
         // where every fall passeth, is the point the card nameth: 'Remove that relation on disconnect'.
-        linkReadyPublished.removeAll { $0 == peerId }
+        linkReadyRelations.removeAll { $0.peerId == peerId }
         _ = peerEvents.publishLinkLost(captured)
         if !lostPeersForTest.contains(peerId) { lostPeersForTest.append(peerId) }
     }
@@ -2489,7 +2493,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     private func publishApplicationLinkReadyOnce(_ peerId: UUID) -> Bool {
         lockTransport()
-        if linkReadyPublished.contains(peerId) {
+        // THE DUPLICATE GUARD ASKETH THE RELATION, NOT MERELY THE HANDLE: the same UUID with a NEW generation is a
+        // DIFFERENT relation, and its readiness is its own.
+        if linkReadyRelations.contains(where: { entry in
+            entry.peerId == peerId && (entry.relation == nil || entry.relation == capturedPeers[peerId]?.relation)
+        }) {
             unlockTransport()
             return false
         }
@@ -2508,10 +2516,10 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                 reason: "the bounded conduit refused the offer: " + String(describing: verdict))
             }
         }
-        if linkReadyPublished.count >= BleTransport.maxActiveConnections {
-            linkReadyPublished.removeFirst()
+        if linkReadyRelations.count >= BleTransport.maxActiveConnections {
+            linkReadyRelations.removeFirst()
         }
-        linkReadyPublished.append(peerId)
+        linkReadyRelations.append((peerId, capturedPeers[peerId]?.relation))
         let watchers = applicationLinkReadyFlow
         unlockTransport()
         // The tale is told beyond the critical section: a subscriber is the
