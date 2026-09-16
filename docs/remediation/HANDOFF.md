@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 239 -- IOS-06 step 2: the teardown result is real or it is NOTHING (the hard-coded `1` is dead)
+
+- **The defect, measured**: `LifecycleTransportAdapter.disconnectAll()` returned a **literal `1`** with a comment calling it *"one logical disconnect sweep"* — **and `BleTransport` owns no disconnect method at all, so no measurement could ever have produced that number**. A stand-in wearing the clothes of a measurement.
+- **The repair**: a new `DisconnectingTransport` protocol (*"a transport that can report what its teardown actually severed, or none is claimed"*); the adapter **believes a reporting transport** and **otherwise claims nothing (`0`)** — *a zero that means "not measured" is honest, while a one that means "one logical sweep" masquerades*. The drain still reaches the transport exactly once.
+- **Witnesses in both directions**: a `ReportingTransport(severed: 3)` yields **3** (a truth that is neither 0 nor 1, so a literal could never pass); a transport that cannot report yields **0**, with the stop still reaching it.
+- **Measured**: **full iOS lane 1225 / 0** — and the count was **extracted from the log by the recording script**, the round-238 lesson applied in the very next round.
+- **Remaining**: step 1's second half (route start/stop *through* the owner), teaching the concrete transports to report (so the production 0 becomes a measurement), and steps 3–5.
+
 ## Round 238 -- IOS-06 step 1's first slice: the `Transport` conformance and ONE runtime lifecycle owner
 
 - **Measured defect**: `UnifiedRuntimeLifecycle`/`LifecycleTransportAdapter` were constructed **nowhere**, while `MeshNode` called `ble.start()`/`ble.stop()` directly; and the adapter's promised `Transport` conformance **did not exist** (`BleTransport` declared `NSObject, @unchecked Sendable` and nothing else — *exactly as the audit says*).

@@ -451,6 +451,42 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// A transport that CAN report its teardown -- the road IOS-06 step 2 addeth.
+    private final class ReportingTransport: DisconnectingTransport {
+        let name = "reporting"
+        let isBulkCapable = true
+        let severed: Int
+        private(set) var starts = 0
+        private(set) var stops = 0
+        init(severed: Int) { self.severed = severed }
+        func start() { starts += 1 }
+        func stop() { stops += 1 }
+        func disconnectAll() -> Int { severed }
+    }
+
+    /// **IOS-06 step 2, BEHAVIOURAL: THE TEARDOWN RESULT IS REAL OR IT IS NOTHING.** The adapter returned a literal
+    /// `1` before this -- and `BleTransport` owneth no disconnect method, so no measurement could ever have
+    /// produced it.
+    func testSR00l_TheTeardownResultIsMeasuredOrDefaultToNothing() throws {
+        // (1) A TRANSPORT THAT CAN REPORT IS BELIEVED, even when its truth is neither 0 nor 1:
+        let reporting = ReportingTransport(severed: 3)
+        let adapter = LifecycleTransportAdapter(transport: reporting)
+        adapter.startScan()
+        XCTAssertEqual(reporting.starts, 1)
+        XCTAssertEqual(adapter.disconnectAll(), 3,
+                       "IOS-06 step 2: a reporting transport's REAL count must be returned, not a literal")
+        XCTAssertEqual(reporting.stops, 1, "and the drain still reacheth the transport exactly once")
+
+        // (2) AND A TRANSPORT THAT CANNOT REPORT GETTETH ZERO -- NEVER A FABRICATED ONE:
+        let plain = SpyTransport()
+        let silent = LifecycleTransportAdapter(transport: plain)
+        silent.startAdvertising()
+        XCTAssertEqual(silent.disconnectAll(), 0,
+                       "a transport that cannot report must yield NOTHING CLAIMED: the old literal `1` was a "
+                       + "stand-in wearing the clothes of a measurement")
+        XCTAssertEqual(plain.stops, 1, "while the stop itself still reacheth it")
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

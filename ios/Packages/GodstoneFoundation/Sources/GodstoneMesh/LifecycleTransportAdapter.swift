@@ -27,6 +27,14 @@ public protocol Transport: AnyObject {
 ///  - the FIRST of {stopScan, stopAdvertising, disconnectAll} in a drain issues one [Transport.stop];
 /// so a power-off / permission-removal / wipe uniformly stops the transport once, and
 /// a stopped or terminal authority has no path to re-start it. Pure glue, no radio logic.
+/// **IOS-06 step 2: A TRANSPORT THAT CAN REPORT WHAT ITS TEARDOWN ACTUALLY SEVERED.** The coarse `Transport`
+/// protocol owneth only start/stop, so an adapter over a plain transport CANNOT know the count -- and that is
+/// precisely why the adapter must not invent one.
+public protocol DisconnectingTransport: Transport {
+    /// How many live links this teardown severed. A REAL number, or none is claimed.
+    func disconnectAll() -> Int
+}
+
 public final class LifecycleTransportAdapter: TransportSeam, @unchecked Sendable {
     private let transport: any Transport
     private let lock = NSLock()
@@ -43,9 +51,15 @@ public final class LifecycleTransportAdapter: TransportSeam, @unchecked Sendable
 
     public func disconnectAll() -> Int {
         endOnce()
-        // A coarse Transport.stop() severs every live session; the authority counts the
-        // drain, so report one logical disconnect sweep.
-        return 1
+        // **IOS-06 step 2: A REAL TEARDOWN RESULT, NOT A HARD-CODED ONE.** The audit's words, and the measurement
+        // that made them exact: THIS METHOD RETURNED A LITERAL `1` with a comment calling it "one logical
+        // disconnect sweep" -- **and `BleTransport` owneth NO disconnect method at all, so the number could not
+        // have been measured by anybody.** A transport that CAN report answereth for itself; one that cannot
+        // getteth ZERO, because a zero that meaneth "not measured" is honest, while a one that meaneth "one
+        // logical sweep" masquerades as a measurement. **WHAT REMAINETH: teaching the concrete transports to
+        // report (this isle's `BleTransport` carrieth no such method yet), which is named rather than implied.**
+        if let reporting = transport as? DisconnectingTransport { return reporting.disconnectAll() }
+        return 0
     }
 
     public func resetResources() {
