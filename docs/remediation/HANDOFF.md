@@ -4,6 +4,18 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 261 -- the block re-measured, BOTH PARKS VERIFIED REAPPLIABLE, and no code landed (said plainly)
+
+**The block still standeth**: `/usr/bin/swift --version` still answereth *"You have not agreed to the Xcode license agreements"* — re-measured rather than assumed. **No iOS RED and no iOS lane re-measurement is possible from this session** until the human runs `sudo xcodebuild -license accept`.
+
+**A park is worth nothing unless it can be taken up again**, so both were **checked rather than assumed**: `git apply --check` on `round260-D2-trigger-and-courts-PARKED.patch` and on `round260-RED-arms-PARKED.patch` answers **APPLIES CLEANLY** for both.
+
+**The two landing shapes are now costed in the ledger**, so the next round's first decision is already made cheaply: (a) **re-base the six courts** (T17, T18, T20, T21, T22, T23) on the application's own D2 begin, exactly as the iOS courts were at rounds 190–208, each arm re-measured; or (b) give the auto-begin a **node-level signal** — the composition owns the policy, as the node already owns the ACK wakes — which leaves the six transport courts untouched, at the cost of new plumbing, since the only physical-readiness channel on this isle is the T24 publication flow that **ANDROID-03** calls lossy.
+
+**No code was landed this round, and this file says so plainly** rather than dressing a reconnaissance up as progress: the remaining candidates in the dependency order need either that six-court migration or new plumbing, neither of which fits in the context remaining — and *a half-migrated suite is what this programme refuses to leave behind*.
+
+**Every runnable lane green**: android `:mesh` **1198/0/0**; parity **7/7**; symbols **0 unresolved**; courts **635**; probes **12**; evidence digests PASSED; lab isolation PASSED. Ledger unchanged: **OPEN 11 · FIX_SUBMITTED 38 · PARTIAL 5**.
+
 ## Round 260 -- THE iOS LANE BECAME UNMEASURABLE, so the round moved to a lane that CAN be measured
 
 **The block, measured rather than assumed**: `/usr/bin/swift --version` now answers *"You have not agreed to the Xcode license agreements"*. **Xcode was upgraded to 27.0 during this session** while the recorded agreement stands at **26.3** — so every iOS invocation is refused before it reaches the package. The iOS lane ran **green earlier the same day** (1233/0 at `065a217`). The Command Line Tools toolchain runs but **carries no XCTest** (`error: no such module 'XCTest'`), and accepting the licence needs **root** — which this session may not request, *and which would not be this agent's act in any case: a licence agreement is the human's to accept*. **One action unblocks it: `sudo xcodebuild -license accept`.** Recorded in `round260-ENVIRONMENT-BLOCK.txt`.

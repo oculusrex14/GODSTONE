@@ -4106,8 +4106,26 @@
    "unblock_action_for_the_human": "sudo xcodebuild -license accept",
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-005/round260-ENVIRONMENT-BLOCK.txt",
    "log_sha256": "59888e542f5a7ed59ffe48ef1272330cef3c8fe129efcaac3f4bf83832fbca40",
-   "last_green_ios_measurement": "1233 tests / 0 failures at 065a217 (CANDIDATE_259/verify.log), earlier the same day"
-  }
+   "last_green_ios_measurement": "1233 tests / 0 failures at 065a217 (CANDIDATE_259/verify.log), earlier the same day",
+   "RE_MEASURED_AT_ROUND_261": "STILL BLOCKED, re-measured rather than assumed: `/usr/bin/swift --version` still answereth 'You have not agreed to the Xcode license agreements'. No iOS RED and no iOS lane re-measurement is possible from this session until the human runneth `sudo xcodebuild -license accept`."
+  },
+  "PARKED_WORK_VERIFIED_REAPPLIABLE_AT_ROUND_261": {
+   "why": "A park is only worth anything if it can be taken up again, so both patches were CHECKED rather than assumed at round 261.",
+   "android_01": {
+    "patch": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round260-D2-trigger-and-courts-PARKED.patch",
+    "sha256": "08227c3ac8b343c2e910875620a5f08ae1dcd8c65a4a7c5892fd04da2e8e1389",
+    "git_apply_check": "APPLIES CLEANLY",
+    "what_it_landeth": "the application's own D2 entrance (the physically-ready relation beginneth the trusted exchange, once, from the elected initiator alone, with the ascendant hint order and the state itself as the idempotence) AND the T21 arms",
+    "what_it_oweth_before_it_may_land": "the SIX-court migration: T17, T18, T20, T21, T22 and T23 drive the four-way exchange step by step and call `beginTrustedHandshake` themselves, so the application's own begin would take the relation into the handshake before their own. The iOS twin's courts were re-based on the application's begin at rounds 190-208, one court at a time, each arm re-measured. TWO SHAPES ARE OPEN, and the choice is the next round's first decision: (a) re-base the six courts on the application's begin, exactly as the iOS courts were; or (b) give the auto-begin its signal through a NODE-level collector (the composition owns the policy, as the node already owneth the ACK wakes), which leaveth the six transport courts untouched -- at the cost of new plumbing, since the only physical-readiness channel on this isle is the T24 publication flow that ANDROID-03 calls lossy."
+   },
+   "gs_store_005": {
+    "patch": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-005/round260-RED-arms-PARKED.patch",
+    "sha256": "4dfdf1ae1d9b3242c6fe1048fdd8f48674e7ddb05712eaa3f73b88407cf866a9",
+    "git_apply_check": "APPLIES CLEANLY",
+    "what_it_oweth_before_it_may_land": "a measurable iOS lane -- the arms were written and cannot be RUN, and an unrunnable arm is not a RED"
+   }
+  },
+  "round261_note": "ROUND 261 DID NOT LAND CODE, AND SAYETH SO PLAINLY. The iOS lane is blocked by the Xcode licence (the human's act), and the two Android/landing candidates left in the dependency order need either a six-court migration or new node-level plumbing -- neither of which fiteth in the context remaining, and a half-migrated suite is what this programme refuseth to leave behind. What the round DID: re-measured the block, VERIFIED BOTH PARKS REAPPLIABLE, and wrote the two landing shapes into the ledger so the next round's first decision is already costed."
  },
  "counts": {
   "by_candidate_scope": {
@@ -4363,7 +4381,8 @@
    "notes": "ROUND 260: the RED is filed and the repair is parked. NOTHING here is claimed as repaired -- the finding standeth OPEN, and what this round addeth is a failing witness, a measured diagnosis and a re-appliable patch.",
    "pending_proof": [
     "THE REPAIR IS PARKED, NOT LANDED, AND THE REASON IS MEASURED RATHER THAN GUESSED: the D2 entrance written this round (the application beginneth the trusted exchange itself from the physically-ready relation, once, from the elected initiator alone) turned the filed RED green AND BROKE FIVE PRE-EXISTING ARMS of the same court -- because those arms drive the four-way exchange STEP BY STEP and call `beginTrustedHandshake` themselves, so the application's own begin taketh the relation into the handshake before the court's begin, which is then refused as `cannot begin from HANDSHAKE_IN_PROGRESS`. That is the SAME migration the iOS twin demanded at rounds 190-208 when IOS-02 gave the application its own entrance; on this isle SIX courts drive it by hand (T17, T18, T20, T21, T22, T23). A half-migrated suite is what this programme refuseth to leave behind, so the repair and its courts were parked together in one re-appliable patch: `round260-D2-trigger-and-courts-PARKED.patch` (sha256 08227c3ac8b343c2e910875620a5f08ae1dcd8c65a4a7c5892fd04da2e8e1389), with the reasoning written into `round260-WHY-NOT-LANDED.txt`.",
-    "THE KEY CONFIRMATION HALF OF THIS FINDING (key confirmation never begun by the application either) is untouched and unmigrated on this isle."
+    "THE KEY CONFIRMATION HALF OF THIS FINDING (key confirmation never begun by the application either) is untouched and unmigrated on this isle.",
+    "ROUND 261: the park was VERIFIED REAPPLIABLE (`git apply --check` -> APPLIES CLEANLY) and the TWO SHAPES for the landing are written down in the ledger (re-base the six courts, or give the auto-begin a node-level signal). Nothing was landed, and nothing is claimed."
    ],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
@@ -8794,7 +8813,8 @@
    "notes": "ROUND 260: the RED arms for the observer-lease and measured-quota laws were WRITTEN, then PARKED when the iOS lane became unmeasurable (Xcode licence). The finding standeth OPEN; no production line was touched, because a RED that cannot be run is not a RED and a repair that cannot be measured is not a repair.",
    "pending_proof": [
     "THE iOS LANE BECAME UNMEASURABLE MID-SESSION (round 260). Xcode was UPGRADED to 27.0 while the recorded licence agreement standeth at 26.3, so every `/usr/bin/swift` invocation is refused before it reacheth the package: 'You have not agreed to the Xcode license agreements.' The Command Line Tools toolchain runneth but its SDK carrieth no XCTest (`error: no such module 'XCTest'`), and accepting the licence needs root -- which THIS SESSION MAY NOT REQUEST (approval prompts are disabled) and which would not be this agent's act in any case. Recorded in `round260-ENVIRONMENT-BLOCK.txt` (sha256 59888e542f5a7ed59ffe48ef1272330cef3c8fe129efcaac3f4bf83832fbca40). THE ONE ACTION THAT UNBLOCKETH IT IS THE HUMAN'S: `sudo xcodebuild -license accept`.",
-    "THE RED ARMS FOR THIS FINDING WERE PARKED RATHER THAN LEFT IN AN UNBUILDABLE TREE: four arms (the 100-lifetime retention witness, the release/census law, the whole-census release on close, the measured-total-quota refusal and the failed-measurement refusal) stand in `round260-RED-arms-PARKED.patch` (sha256 4dfdf1ae1d9b3242c6fe1048fdd8f48674e7ddb05712eaa3f73b88407cf866a9), re-appliable with `git apply` the moment the iOS lane can be measured again."
+    "THE RED ARMS FOR THIS FINDING WERE PARKED RATHER THAN LEFT IN AN UNBUILDABLE TREE: four arms (the 100-lifetime retention witness, the release/census law, the whole-census release on close, the measured-total-quota refusal and the failed-measurement refusal) stand in `round260-RED-arms-PARKED.patch` (sha256 4dfdf1ae1d9b3242c6fe1048fdd8f48674e7ddb05712eaa3f73b88407cf866a9), re-appliable with `git apply` the moment the iOS lane can be measured again.",
+    "ROUND 261: the parked arms were VERIFIED REAPPLIABLE (`git apply --check` -> APPLIES CLEANLY); the iOS lane remaineth unmeasurable until the human accepteth the Xcode licence."
    ],
    "proof": "StoreQuota says it intentionally does not rewrite the incomplete store path. The existing registerHeldSetObserver returns Void/Unit and appends to a collection. Production code outside the quota file does not instantiate ObservationLease or consult the quota measurements.",
    "remediation_report": "reports/STORAGE_REMEDIATION.md",
