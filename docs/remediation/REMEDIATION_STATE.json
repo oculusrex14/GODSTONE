@@ -1824,6 +1824,1047 @@
     }
    },
    "what_this_means": "STALENESS IS A FLOOR ON WHAT A LATER CLOSURE COULD CLAIM, NOT A CLEARANCE: every finding below carrieth closure evidence bound to a revision a production owner hath changed, so NO closure claim for those files can stand until it is re-derived at the converged candidate SHA. NO gate is closed, NO finding is VERIFIED_FIXED, and the readiness flags remain false."
+  },
+  "closure_evidence_staleness_COMPUTED_AT_ROUND_205": {
+   "audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
+   "computed_from": "THE CARDS THEMSELVES (read from the read-only audit bundle) UNIONED with the ledger's references",
+   "method": "for each finding: its cards (source_refs[].card + remediation_report) are read from the bundle (with `evidence/`, `reports/`, `evidence/AUDIT-002/` prefixes tried), EVERY file-like token in the card is extracted, and any token whose FILE NAME differeth from the audited revision marketh the finding STALE -- UNIONED with the ledger-reference rule of round 204, so an under-count cannot survive either road. **THE CARD'S WHOLE FILE LIST IS USED, NOT A PER-SECTION SLICE: attributing one reference to one finding inside a shared card would be a heuristic, and the effect of the union is to OVER-count staleness -- WHICH IS THE SAFE DIRECTION.**",
+   "resolves_the_round_204_open_question": {
+    "ten_that_left_the_set": [
+     "ANDROID-02",
+     "ANDROID-06",
+     "GS-SOS-002",
+     "GS-SYNC-001",
+     "GS-SYNC-002",
+     "IOS-01",
+     "IOS-03",
+     "IOS-04",
+     "IOS-06",
+     "IOS-07"
+    ],
+    "recovered_by_reading_the_cards": [
+     "ANDROID-02",
+     "ANDROID-06",
+     "GS-SOS-002",
+     "GS-SYNC-001",
+     "GS-SYNC-002",
+     "IOS-01",
+     "IOS-03",
+     "IOS-04",
+     "IOS-06",
+     "IOS-07"
+    ],
+    "still_counted_unchanged": [],
+    "verdict": "the round-204 open question is ANSWERED BY MEASUREMENT: every finding the older computation called stale but the ledger-reference rule missed is CAUGHT by reading its card."
+   },
+   "findings_with_changed_owners": [
+    "ANDROID-01",
+    "ANDROID-02",
+    "ANDROID-03",
+    "ANDROID-04",
+    "ANDROID-05",
+    "ANDROID-06",
+    "ANDROID-07",
+    "CRYPTO-001",
+    "CRYPTO-002",
+    "CRYPTO-003",
+    "CRYPTO-004",
+    "CRYPTO-005",
+    "CRYPTO-006",
+    "GS-ACK-001",
+    "GS-ACK-002",
+    "GS-ARCHIVE-001",
+    "GS-ARCHIVE-002",
+    "GS-ARCHIVE-003",
+    "GS-ARCHIVE-004",
+    "GS-ARCHIVE-005",
+    "GS-CONTENT-001",
+    "GS-CONTENT-002",
+    "GS-CONTENT-003",
+    "GS-CTRL-001",
+    "GS-CTRL-002",
+    "GS-DIAG-001",
+    "GS-GATE-001",
+    "GS-INBOX-001",
+    "GS-INTEGRATION-001",
+    "GS-LAB-001",
+    "GS-MODEL-001",
+    "GS-PACKAGE-001",
+    "GS-PACKAGE-002",
+    "GS-RUNTIME-001",
+    "GS-SOS-001",
+    "GS-SOS-002",
+    "GS-STORE-001",
+    "GS-STORE-002",
+    "GS-STORE-003",
+    "GS-STORE-004",
+    "GS-STORE-005",
+    "GS-STORE-006",
+    "GS-STRESS-001",
+    "GS-SUPPLY-001",
+    "GS-SYNC-001",
+    "GS-SYNC-002",
+    "GS-UX-001",
+    "IOS-01",
+    "IOS-02",
+    "IOS-03",
+    "IOS-04",
+    "IOS-05",
+    "IOS-06",
+    "IOS-07"
+   ],
+   "findings_whose_named_paths_are_unchanged": [],
+   "delta": {
+    "round_120": 31,
+    "round_204": 43,
+    "round_205": 54,
+    "joined_since_204": [
+     "ANDROID-02",
+     "ANDROID-06",
+     "GS-SOS-002",
+     "GS-SYNC-001",
+     "GS-SYNC-002",
+     "GS-UX-001",
+     "IOS-01",
+     "IOS-03",
+     "IOS-04",
+     "IOS-06",
+     "IOS-07"
+    ],
+    "left_since_204": []
+   },
+   "per_finding": {
+    "ANDROID-01": {
+     "cards": [
+      "evidence/android/findings.md",
+      "evidence/android/findings.md"
+     ],
+     "card_file_tokens": 26,
+     "card_refs_naming_a_changed_file": 16,
+     "example": [
+      [
+       "ReadinessT26Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt"
+      ],
+      [
+       "RecordWriter.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt"
+      ]
+     ]
+    },
+    "ANDROID-02": {
+     "cards": [
+      "evidence/android/findings.md"
+     ],
+     "card_file_tokens": 13,
+     "card_refs_naming_a_changed_file": 8,
+     "example": [
+      [
+       "ReadinessT26Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt"
+      ],
+      [
+       "RecordWriter.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt"
+      ]
+     ]
+    },
+    "ANDROID-03": {
+     "cards": [
+      "evidence/android/findings.md",
+      "evidence/android/findings.md"
+     ],
+     "card_file_tokens": 26,
+     "card_refs_naming_a_changed_file": 16,
+     "example": [
+      [
+       "ReadinessT26Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt"
+      ],
+      [
+       "RecordWriter.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt"
+      ]
+     ]
+    },
+    "ANDROID-04": {
+     "cards": [
+      "evidence/android/findings.md",
+      "evidence/android/findings.md"
+     ],
+     "card_file_tokens": 26,
+     "card_refs_naming_a_changed_file": 16,
+     "example": [
+      [
+       "ReadinessT26Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt"
+      ],
+      [
+       "RecordWriter.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt"
+      ]
+     ]
+    },
+    "ANDROID-05": {
+     "cards": [
+      "evidence/android/findings.md",
+      "evidence/android/findings.md"
+     ],
+     "card_file_tokens": 26,
+     "card_refs_naming_a_changed_file": 16,
+     "example": [
+      [
+       "ReadinessT26Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt"
+      ],
+      [
+       "RecordWriter.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt"
+      ]
+     ]
+    },
+    "ANDROID-06": {
+     "cards": [
+      "evidence/android/findings.md"
+     ],
+     "card_file_tokens": 13,
+     "card_refs_naming_a_changed_file": 8,
+     "example": [
+      [
+       "ReadinessT26Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt"
+      ],
+      [
+       "RecordWriter.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt"
+      ]
+     ]
+    },
+    "ANDROID-07": {
+     "cards": [
+      "evidence/android/findings.md",
+      "evidence/android/findings.md"
+     ],
+     "card_file_tokens": 26,
+     "card_refs_naming_a_changed_file": 16,
+     "example": [
+      [
+       "ReadinessT26Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt"
+      ],
+      [
+       "RecordWriter.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt"
+      ]
+     ]
+    },
+    "CRYPTO-001": {
+     "cards": [
+      "evidence/crypto/findings.md"
+     ],
+     "card_file_tokens": 39,
+     "card_refs_naming_a_changed_file": 34,
+     "example": [
+      [
+       "ReadinessT36Tests.swift",
+       "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift"
+      ],
+      [
+       "NoiseSession.swift",
+       "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift"
+      ]
+     ]
+    },
+    "CRYPTO-002": {
+     "cards": [
+      "evidence/crypto/findings.md"
+     ],
+     "card_file_tokens": 39,
+     "card_refs_naming_a_changed_file": 34,
+     "example": [
+      [
+       "ReadinessT36Tests.swift",
+       "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift"
+      ],
+      [
+       "NoiseSession.swift",
+       "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift"
+      ]
+     ]
+    },
+    "CRYPTO-003": {
+     "cards": [
+      "evidence/crypto/findings.md"
+     ],
+     "card_file_tokens": 39,
+     "card_refs_naming_a_changed_file": 34,
+     "example": [
+      [
+       "ReadinessT36Tests.swift",
+       "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift"
+      ],
+      [
+       "NoiseSession.swift",
+       "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift"
+      ]
+     ]
+    },
+    "CRYPTO-004": {
+     "cards": [
+      "evidence/crypto/findings.md"
+     ],
+     "card_file_tokens": 39,
+     "card_refs_naming_a_changed_file": 34,
+     "example": [
+      [
+       "ReadinessT36Tests.swift",
+       "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift"
+      ],
+      [
+       "NoiseSession.swift",
+       "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift"
+      ]
+     ]
+    },
+    "CRYPTO-005": {
+     "cards": [
+      "evidence/crypto/findings.md"
+     ],
+     "card_file_tokens": 39,
+     "card_refs_naming_a_changed_file": 34,
+     "example": [
+      [
+       "ReadinessT36Tests.swift",
+       "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift"
+      ],
+      [
+       "NoiseSession.swift",
+       "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift"
+      ]
+     ]
+    },
+    "CRYPTO-006": {
+     "cards": [
+      "evidence/crypto/findings.md"
+     ],
+     "card_file_tokens": 39,
+     "card_refs_naming_a_changed_file": 34,
+     "example": [
+      [
+       "ReadinessT36Tests.swift",
+       "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift"
+      ],
+      [
+       "NoiseSession.swift",
+       "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift"
+      ]
+     ]
+    },
+    "GS-ACK-001": {
+     "cards": [
+      "evidence/AUDIT-002/mesh_receive/findings.md"
+     ],
+     "card_file_tokens": 24,
+     "card_refs_naming_a_changed_file": 16,
+     "example": [
+      [
+       "AckAuthenticator.swift",
+       "ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift"
+      ],
+      [
+       "MessageStore.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt"
+      ]
+     ]
+    },
+    "GS-ACK-002": {
+     "cards": [
+      "evidence/AUDIT-002/mesh_receive/findings.md"
+     ],
+     "card_file_tokens": 24,
+     "card_refs_naming_a_changed_file": 16,
+     "example": [
+      [
+       "AckAuthenticator.swift",
+       "ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift"
+      ],
+      [
+       "MessageStore.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt"
+      ]
+     ]
+    },
+    "GS-ARCHIVE-001": {
+     "cards": [
+      "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 7,
+     "example": [
+      [
+       "ArchiveView.swift",
+       "ios/Godstone/Sources/App/ArchiveView.swift"
+      ],
+      [
+       "ArchiveDatabase.kt",
+       "android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt"
+      ]
+     ]
+    },
+    "GS-ARCHIVE-002": {
+     "cards": [
+      "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 7,
+     "example": [
+      [
+       "ArchiveView.swift",
+       "ios/Godstone/Sources/App/ArchiveView.swift"
+      ],
+      [
+       "ArchiveDatabase.kt",
+       "android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt"
+      ]
+     ]
+    },
+    "GS-ARCHIVE-003": {
+     "cards": [
+      "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 7,
+     "example": [
+      [
+       "ArchiveView.swift",
+       "ios/Godstone/Sources/App/ArchiveView.swift"
+      ],
+      [
+       "ArchiveDatabase.kt",
+       "android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt"
+      ]
+     ]
+    },
+    "GS-ARCHIVE-004": {
+     "cards": [
+      "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 7,
+     "example": [
+      [
+       "ArchiveView.swift",
+       "ios/Godstone/Sources/App/ArchiveView.swift"
+      ],
+      [
+       "ArchiveDatabase.kt",
+       "android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt"
+      ]
+     ]
+    },
+    "GS-ARCHIVE-005": {
+     "cards": [
+      "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 7,
+     "example": [
+      [
+       "ArchiveView.swift",
+       "ios/Godstone/Sources/App/ArchiveView.swift"
+      ],
+      [
+       "ArchiveDatabase.kt",
+       "android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt"
+      ]
+     ]
+    },
+    "GS-CONTENT-001": {
+     "cards": [
+      "evidence/AUDIT-002/content/FINDINGS.md"
+     ],
+     "card_file_tokens": 21,
+     "card_refs_naming_a_changed_file": 17,
+     "example": [
+      [
+       "test_t52.py",
+       "tools/readiness/tests/test_t52.py"
+      ],
+      [
+       "build_archive.py",
+       "content/ingest/build_archive.py"
+      ]
+     ]
+    },
+    "GS-CONTENT-002": {
+     "cards": [
+      "evidence/AUDIT-002/content/FINDINGS.md"
+     ],
+     "card_file_tokens": 21,
+     "card_refs_naming_a_changed_file": 17,
+     "example": [
+      [
+       "test_t52.py",
+       "tools/readiness/tests/test_t52.py"
+      ],
+      [
+       "build_archive.py",
+       "content/ingest/build_archive.py"
+      ]
+     ]
+    },
+    "GS-CONTENT-003": {
+     "cards": [
+      "evidence/AUDIT-002/content/FINDINGS.md"
+     ],
+     "card_file_tokens": 21,
+     "card_refs_naming_a_changed_file": 17,
+     "example": [
+      [
+       "test_t52.py",
+       "tools/readiness/tests/test_t52.py"
+      ],
+      [
+       "build_archive.py",
+       "content/ingest/build_archive.py"
+      ]
+     ]
+    },
+    "GS-CTRL-001": {
+     "cards": [
+      "reports/CONTROL_REMEDIATION.md"
+     ],
+     "card_file_tokens": 6,
+     "card_refs_naming_a_changed_file": 5,
+     "example": [
+      [
+       "test_audit_evidence.py",
+       "tools/readiness/tests/test_audit_evidence.py"
+      ],
+      [
+       "run.py",
+       "tools/readiness/run.py"
+      ]
+     ]
+    },
+    "GS-CTRL-002": {
+     "cards": [
+      "reports/CONTROL_REMEDIATION.md"
+     ],
+     "card_file_tokens": 6,
+     "card_refs_naming_a_changed_file": 5,
+     "example": [
+      [
+       "test_audit_evidence.py",
+       "tools/readiness/tests/test_audit_evidence.py"
+      ],
+      [
+       "run.py",
+       "tools/readiness/run.py"
+      ]
+     ]
+    },
+    "GS-DIAG-001": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-GATE-001": {
+     "cards": [
+      "evidence/AUDIT-002/content/FINDINGS.md"
+     ],
+     "card_file_tokens": 21,
+     "card_refs_naming_a_changed_file": 17,
+     "example": [
+      [
+       "test_t52.py",
+       "tools/readiness/tests/test_t52.py"
+      ],
+      [
+       "build_archive.py",
+       "content/ingest/build_archive.py"
+      ]
+     ]
+    },
+    "GS-INBOX-001": {
+     "cards": [
+      "evidence/AUDIT-002/mesh_receive/findings.md"
+     ],
+     "card_file_tokens": 24,
+     "card_refs_naming_a_changed_file": 16,
+     "example": [
+      [
+       "AckAuthenticator.swift",
+       "ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift"
+      ],
+      [
+       "MessageStore.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt"
+      ]
+     ]
+    },
+    "GS-INTEGRATION-001": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-LAB-001": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-MODEL-001": {
+     "cards": [
+      "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "SyncControlOwner.swift",
+       "ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift"
+      ],
+      [
+       "SyncControlOwner.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt"
+      ]
+     ]
+    },
+    "GS-PACKAGE-001": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-PACKAGE-002": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-RUNTIME-001": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-SOS-001": {
+     "cards": [
+      "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "SyncControlOwner.swift",
+       "ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift"
+      ],
+      [
+       "SyncControlOwner.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt"
+      ]
+     ]
+    },
+    "GS-SOS-002": {
+     "cards": [
+      "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "SyncControlOwner.swift",
+       "ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift"
+      ],
+      [
+       "SyncControlOwner.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt"
+      ]
+     ]
+    },
+    "GS-STORE-001": {
+     "cards": [
+      "reports/STORAGE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 30,
+     "card_refs_naming_a_changed_file": 10,
+     "example": [
+      [
+       "SchemaMigration.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt"
+      ],
+      [
+       "ReadinessT29Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt"
+      ]
+     ]
+    },
+    "GS-STORE-002": {
+     "cards": [
+      "reports/STORAGE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 30,
+     "card_refs_naming_a_changed_file": 10,
+     "example": [
+      [
+       "SchemaMigration.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt"
+      ],
+      [
+       "ReadinessT29Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt"
+      ]
+     ]
+    },
+    "GS-STORE-003": {
+     "cards": [
+      "reports/STORAGE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 30,
+     "card_refs_naming_a_changed_file": 10,
+     "example": [
+      [
+       "SchemaMigration.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt"
+      ],
+      [
+       "ReadinessT29Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt"
+      ]
+     ]
+    },
+    "GS-STORE-004": {
+     "cards": [
+      "reports/STORAGE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 30,
+     "card_refs_naming_a_changed_file": 10,
+     "example": [
+      [
+       "SchemaMigration.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt"
+      ],
+      [
+       "ReadinessT29Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt"
+      ]
+     ]
+    },
+    "GS-STORE-005": {
+     "cards": [
+      "reports/STORAGE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 30,
+     "card_refs_naming_a_changed_file": 10,
+     "example": [
+      [
+       "SchemaMigration.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt"
+      ],
+      [
+       "ReadinessT29Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt"
+      ]
+     ]
+    },
+    "GS-STORE-006": {
+     "cards": [
+      "reports/STORAGE_REMEDIATION.md"
+     ],
+     "card_file_tokens": 30,
+     "card_refs_naming_a_changed_file": 10,
+     "example": [
+      [
+       "SchemaMigration.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt"
+      ],
+      [
+       "ReadinessT29Test.kt",
+       "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt"
+      ]
+     ]
+    },
+    "GS-STRESS-001": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-SUPPLY-001": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-SYNC-001": {
+     "cards": [
+      "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md"
+     ],
+     "card_file_tokens": 18,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "SyncControlOwner.swift",
+       "ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift"
+      ],
+      [
+       "SyncControlOwner.kt",
+       "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt"
+      ]
+     ]
+    },
+    "GS-SYNC-002": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "GS-UX-001": {
+     "cards": [
+      "FINAL_REMEDIATION_DETAILS.md"
+     ],
+     "card_file_tokens": 48,
+     "card_refs_naming_a_changed_file": 24,
+     "example": [
+      [
+       "supply_chain.py",
+       "tools/supplychain/supply_chain.py"
+      ],
+      [
+       "ComposedRuntime.swift",
+       "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift"
+      ]
+     ]
+    },
+    "IOS-01": {
+     "cards": [
+      "evidence/ios/findings.md",
+      "evidence/ios/findings.md"
+     ],
+     "card_file_tokens": 22,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "TrustedHandshakeController.swift",
+       "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift"
+      ],
+      [
+       "MeshNode.swift",
+       "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+      ]
+     ]
+    },
+    "IOS-02": {
+     "cards": [
+      "evidence/ios/findings.md",
+      "evidence/ios/findings.md"
+     ],
+     "card_file_tokens": 22,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "TrustedHandshakeController.swift",
+       "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift"
+      ],
+      [
+       "MeshNode.swift",
+       "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+      ]
+     ]
+    },
+    "IOS-03": {
+     "cards": [
+      "evidence/ios/findings.md"
+     ],
+     "card_file_tokens": 11,
+     "card_refs_naming_a_changed_file": 6,
+     "example": [
+      [
+       "TrustedHandshakeController.swift",
+       "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift"
+      ],
+      [
+       "MeshNode.swift",
+       "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+      ]
+     ]
+    },
+    "IOS-04": {
+     "cards": [
+      "evidence/ios/findings.md",
+      "evidence/ios/findings.md"
+     ],
+     "card_file_tokens": 22,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "TrustedHandshakeController.swift",
+       "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift"
+      ],
+      [
+       "MeshNode.swift",
+       "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+      ]
+     ]
+    },
+    "IOS-05": {
+     "cards": [
+      "evidence/ios/findings.md",
+      "evidence/ios/findings.md"
+     ],
+     "card_file_tokens": 22,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "TrustedHandshakeController.swift",
+       "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift"
+      ],
+      [
+       "MeshNode.swift",
+       "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+      ]
+     ]
+    },
+    "IOS-06": {
+     "cards": [
+      "evidence/ios/findings.md",
+      "evidence/ios/findings.md"
+     ],
+     "card_file_tokens": 22,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "TrustedHandshakeController.swift",
+       "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift"
+      ],
+      [
+       "MeshNode.swift",
+       "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+      ]
+     ]
+    },
+    "IOS-07": {
+     "cards": [
+      "evidence/ios/findings.md",
+      "evidence/ios/findings.md"
+     ],
+     "card_file_tokens": 22,
+     "card_refs_naming_a_changed_file": 12,
+     "example": [
+      [
+       "TrustedHandshakeController.swift",
+       "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift"
+      ],
+      [
+       "MeshNode.swift",
+       "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+      ]
+     ]
+    }
+   },
+   "what_this_means": "STALENESS IS A FLOOR ON WHAT A LATER CLOSURE COULD CLAIM, NOT A CLEARANCE. NO gate is closed, NO finding is VERIFIED_FIXED, and the readiness flags remain false."
   }
  },
  "counts": {

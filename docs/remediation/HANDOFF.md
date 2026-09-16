@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 205 -- staleness re-derived FROM THE CARDS: **54 of 54** findings carry changed owners
+
+- **Method**: read each finding's cards from the read-only bundle, extract **every** file-like token, match by file name against `git diff --name-only <audited>..HEAD` (273 files), and **union** that with the ledger-reference rule of round 204 — so an under-count cannot survive either road.
+- **Result: 54 of 54 findings are STALE** — every finding's card names at least one file that differs from the audited revision. **The whole audited surface has been touched, so NO closure claim anywhere can stand until it is re-derived at the converged candidate SHA.** Staleness is a floor, not a clearance.
+- **The round-204 open question is ANSWERED, by measurement**: the ten findings that appeared to *leave* the stale set are **exactly** the ten recovered by reading the cards — the ledger's copied references simply missed what the cards name. The under-count was real (43 → 54) and in the dangerous direction; **reading the primary documents caught it.**
+- Unchanged: no gate closed, no `VERIFIED_FIXED`, readiness flags false, T78 not claimed.
+
 ## Round 204 -- closure-evidence staleness recomputed at HEAD: **43 stale** (round 120 said 31)
 
 - **Method**: `git diff --name-only <audited>..HEAD` (273 files, 75 Kotlin) over every file each finding's card names; a reference is `path` or `path:line` (or a dict with `ref`/`path`), its `:line` stripped, matched **by file name**, since card paths are relative to the audited snapshot.
