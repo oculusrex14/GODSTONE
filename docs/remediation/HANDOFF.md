@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 234 -- the owed ANDROID wiring witness is discharged (at source level, said so in the arm)
+
+- **Why not behavioural, measured**: the pure-JVM courts build a test-local `Node` fixture, **not a `MeshNode`** — and a `MeshNode` builds its transport `by lazy { BleTransport(context = ctx!!, …) }`, so a unit court cannot drive that path. **The behavioural witness stays owed**; this arm is what can run today.
+- **Five arms with a positive control** (`tools/readiness/tests/test_android_runtime001_ack_wiring.py`): the readiness flow and attachment points stand; **`ble.applicationLinkReady().collect` — the collector measured absent from the whole tree** — schedules that exact relation and takes its first inventory; the bounded turn hands **the canonical bytes** and returns the outcome; the composition provides the owners **over `store.engine`** and binds dispatcher and inbox (the inbox over the store's own commit road); and the production signer **refuses the seed road by construction**.
+- **Five green**, inside the canonical readiness suite. **A source-level arm witnesses the WIRING, not the RUNTIME** — and it is labelled as such.
+
 ## Round 233 -- the ANDROID node carries the bounded ACK worker and the readiness subscription
 
 - **Wiring**: `ackPump`, `drainAckWorkOnce(nodeId)` (one bounded turn for one named relation), a turn for every scheduled relation, and **`subscribeToReadiness(scope, intervalMillis)` — the collector of `applicationLinkReady()` that round 209 measured to be absent from the whole tree** — with an optional periodic deadline over the pump's own census (now exposed, while the hex-keyed schedule stays private).
