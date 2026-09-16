@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
 
     <application
+        android:name="io.godstone.labmesh.LabMeshApplication"
         android:allowBackup="false"
         android:label="Godstone LabMesh (experimental)"
         android:supportsRtl="true"

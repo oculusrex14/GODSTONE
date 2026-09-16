@@ -246,6 +246,10 @@ def run(root: Path) -> Findings:
     # asked, so that a lab nobody can start falleth the SAME gate as a lab that reacheth a shipping surface.
     launchable, why = check_the_lab_is_launchable()
     (f.notes if launchable else f.errors).append(why)
+
+    # GS-LAB-001 step 1: ONE RETAINED RUNTIME, OWNED BY THE APPLICATION AND NOT BY A VIEW.
+    retained, why = check_the_lab_runtime_is_retained()
+    (f.notes if retained else f.errors).append(why)
     return f
 
 
@@ -396,6 +400,33 @@ def check_the_lab_is_launchable():
         if (root / (base + rel + ".kt")).exists() or (root / (base + rel + ".java")).exists():
             return True, "the lab is launchable: " + name + " (MAIN/LAUNCHER, exported, class present)"
     return False, "the lab activity " + name + " is declared but its class existeth nowhere in the lab source set"
+
+
+
+def check_the_lab_runtime_is_retained():
+    """T54 / GS-LAB-001 step 1: ONE RETAINED RUNTIME, OWNED BY THE APPLICATION -- NOT BY A VIEW.
+
+    The card's own words. So this invariant asserteth three things: the lab manifest declares its OWN Application class;
+    that class carrieth a `runtime`; and THE COMPOSITION SITE (`LabMeshApp.compose()`) appeareth in the APPLICATION and NOT
+    in the activity -- because a runtime composed by a view is composed again on every recomposition, and the lab declareth
+    ONE.
+    """
+    root = Path(__file__).resolve().parent.parent
+    man = (root / "android/labmesh/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+    m = re.search(r'<application[^>]*android:name="([^"]+)"', man)
+    if not m:
+        return False, "the lab declares no Application owner: the retained runtime hath nowhere to live"
+    owner_rel = m.group(1).replace(".", "/") + ".kt"
+    owner = root / "android/labmesh/src/main/java" / owner_rel
+    if not owner.exists():
+        return False, "the lab's Application owner " + m.group(1) + " hath no source file"
+    text = owner.read_text(encoding="utf-8")
+    if "LabMeshApp.compose()" not in text:
+        return False, "the Application owner " + m.group(1) + " never composeth the runtime"
+    activity = root / "android/labmesh/src/main/java/io/godstone/labmesh/LabMainActivity.kt"
+    if activity.exists() and "LabMeshApp.compose()" in activity.read_text(encoding="utf-8"):
+        return False, "the ACTIVITY composeth the runtime: it must be the Application owner's, not a view's"
+    return True, "one retained lab runtime, owned by " + m.group(1) + " and composed nowhere else"
 
 
 if __name__ == "__main__":
