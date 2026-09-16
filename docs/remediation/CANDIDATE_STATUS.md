@@ -3,6 +3,23 @@
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
 control; THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED; NO finding carrieth `closure_evidence`.
 
+## Candidate verification at `bcdfa1c` (ledger round 282) — **THE IOS-02 REPAIR LANDED**, and every lane re-measured
+
+| Item | Result at this exact SHA (tree `06f163f`), worktree clean — the tree measured IS the tree committed |
+|---|---|
+| iOS lane (mirrored package) | **`Executed 1208 tests, with 0 failures (0 unexpected)`**, 83.6s — the three IOS-02 witnesses included |
+| Android `:mesh` lane | **1193 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`), from the run's own 76 XML files |
+| Android lab target | `labmesh-debug.apk` **forced**: 15,133,266 bytes, sha256 `0ca013caf6b5f45b…`, rc 0 |
+| Python readiness suite | **582 tests, OK, rc 0** (the landed IOS-02 probe included) |
+| Audit probes | **12 tests, OK, rc 0** |
+| Repository controls | `check_parity --scope repo` rc 0; mandatory lab control **PASSED** (0 errors, 13 notes) |
+| Symbols / digests | 223 Kotlin files, **0 unresolved**; **330/330** evidence digests verified |
+| iOS lab target | **NOT claimed at this SHA**: no lab target changed, and **a cached green is not evidence** |
+
+**WHAT MOVED.** IOS-02 step 1: production now begins the trusted handshake at the physical-duplex reduction, with the relation's captured hint, once, from `.roleBound` — and all six iOS readiness rigs are reconciled to that law (the full lane went from **61 failures to 0** by NAMED rig variants, never by bending an assertion). IOS-02 moves **OPEN → PARTIAL**; the round-281 entry's note that "IOS-02 remains OPEN" is thereby superseded.
+
+**Not claimed:** T78 convergence (no hosted lane/URL/id/log exists here); no finding is `VERIFIED_FIXED`; readiness flags stay **false**; the **five external gates stay OPEN**; the iOS lab build is not claimed at this SHA.
+
 ## Candidate verification at `55896b9` (ledger round 281) — the CURRENT candidate, re-measured rather than inherited
 
 | Item | Result at this exact SHA (tree `77b111e`), worktree clean |

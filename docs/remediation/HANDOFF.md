@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 282 -- IOS-02 step 1 LANDS: the adapter begins the trusted handshake; all six rigs reconciled
+
+- **Repair** (`BleTransport.reductionProcessPeripheralNotificationStateUpdated`, `.physicalDuplexReady`): reads the relation's captured hint from the election context and calls `beginTrustedHandshake` once, only from `.roleBound`. `publishRelation` deliberately kept (physical, not trusted, publication).
+- **Blast radius, measured**: the full iOS lane went 1208 tests / **61 failures** across five suites; all six rigs now reconciled by NAMED variants (`firstRecord`, reaping `beginWith`/`beginOn`, `subscribeth: false`, villainy moved into the advertisement).
+- **Four of my own designs were corrected by measurement**: an equal advertised hint never binds; a greater hint is ascendant; a lesser hint does not bind either (so that arm asks the transport directly); and `lesserHint(than:)` already existed — my copy was a redeclaration.
+- **Green at `bcdfa1c`**: iOS **1208 / 0**; android `:mesh` FORCED 1193/0/0; apk 15,133,266 bytes; courts 582 OK; probes 12 OK; control PASSED; parity repo rc 0; symbols 0 unresolved; digests 330/330.
+- **IOS-02 is PARTIAL**, not closed: steps 2 (full captured-hint use), 3, 4 (trusted-ready key confirmation) and 5 (readiness only after matching confirmation) remain.
+
 ## Round 281 -- IOS-02 step 1: measured, RED taken, repair proven, and PARKED (blast radius is atomic)
 
 - **Measured:** `beginTrustedHandshake(` and `beginKeyConfirmation(` each appear ONCE — their declarations. Nothing in production calls them (IOS-02's claim, exact).
