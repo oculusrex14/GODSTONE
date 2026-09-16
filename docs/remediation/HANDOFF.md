@@ -4,6 +4,16 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 278 -- T26's court was red for 85 rounds behind a `tail`; the digest audit was blind to 28%
+
+- **Withdrawn:** five candidate verifications (rounds 200/222/254/256/275) recorded the python lane OK; it was RED at every one, re-measured at each exact tree.
+- **Cause:** the court asserted the *name* `peerId`; round 193 bound `chargedIdentity = sessions?.authenticatedNodeIdOf(peerId) ?: peerId`, which satisfies the card more strongly.
+- **Tenth species:** `| tail -2` on a suite whose custom runner prints green AFTER the failure — the tail was kept and the judgment thrown away.
+- **Repair:** `charge_binding_problems()` + 8 court tests (positive control + 4 negatives, one per clause); `BleTransport.kt` byte-identical.
+- **Ninth species repaired:** `ci/check_evidence_digests.py` + `test_evidence_digests.py`; ledger records `evidence_root`; 306/306/306; stray in-checkout root folded in and removed.
+- **Green:** courts 578 OK rc 0; probes OK; control PASSED (0 errors, 13 notes).
+- **Next:** measure every mandatory lane at the new SHA -- a candidate tree with a red lane is not a candidate.
+
 ## Round 277f -- GS-UX-001 step 7: the mandatory control green again, and a false green withdrawn
 
 - **Withdrawn:** ledger item (9) claimed both cases behaved as they must; the control in fact stood RED at `ef35720`. The claim is withdrawn in place.

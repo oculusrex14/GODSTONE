@@ -3,6 +3,43 @@
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
 control; THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED; NO finding carrieth `closure_evidence`.
 
+## ROUND-278 CORRECTION — the python lane was RED from round 193 to round 278 (85 rounds)
+
+**THE TABLES BELOW WERE WRONG, AND THIS SECTION STANDETH FIRST SO THAT NOBODY READETH THEM WITHOUT IT.**
+
+The python readiness suite was **RED for eighty-five rounds** — from `cf1bd15` (round 193) to round 278 — while **five candidate
+verifications inside that span (rounds 200, 222, 254, 256, 275) recorded it `OK`**. Re-measured, not inferred:
+
+| Tree | Verdict |
+|---|---|
+| `a1a7475` (round 192, the commit before the red) | `3 tests, OK` |
+| `cf1bd15` (round 193) | **`FAILED (failures=1)`** — the first red |
+| `03fd92b` (round 178 candidate) | the court did not yet exist there (**module error**), so that candidate's claim was TRUE and is **not** corrected |
+| `4497542`, `1f110b1`, `5d75d21`, `38406d0`, `e47e779` | **`rc=1`, `FAILED (failures=1)`** — the same court, at each candidate's exact tree |
+
+**THE CAUSE WAS A COURT ASSERTING A NAME, NOT THE LAW.** `test_t26_post_aead_charge.py` required the literal token `peerId` among the
+arguments of `AdmissionBudget.chargeAuthenticated(...)`. Round 193's repair (`cf1bd15`) bound the identity first —
+`val chargedIdentity = sessions?.authenticatedNodeIdOf(peerId) ?: peerId` — **which satisfieth the card more strongly, by naming the
+authenticated lookup itself**, and the court reddened **on the rename**. The production law was never broken; the court was blind to it.
+*A court that testeth a spelling reddeneth when the code improveth and stayeth green when the spelling is kept and the law is broken.*
+
+**WHY I DID NOT SEE IT — the tenth species, and it is a reporting habit: `| tail -2` on a suite's output.** The suite printeth its custom
+runner's `Ran 10 checks in selftest` / `OK` **after** the unittest summary, so its last two lines are always green while `rc` is 1 and a
+`FAIL:` line sitteth above — measured identically at all five trees. *I piped the verdict through `tail`, which kept the tail and threw away
+the head, and the head was the judgment.* Same disease as the ninth species (a denominator quietly shrunk): the report covered less than it
+claimed to examine, and the omission was invisible because what remained looked clean. **The habit is now: read the verdict lines and the
+failure lines, never a `tail` — and trust the check's `rc`, not its prose.**
+
+**THE REPAIR.** The court now judgeth the **binding**, in three clauses: (1) the charged identity, or the binding it carrieth its name from,
+must come from an **authenticated-identity lookup**; (2) no claimed MAC, hint or SOS priority may choose the key, and the only admissible
+fallback is the **connection's own `peerId`**; (3) the charge must still be the **authenticated scope**, named as such. **Proven to judge:**
+the positive case is green and **four negative cases each land on their own clause** (keyed directly on the claimed handle; bound from a
+claimed hint; fallback to a non-connection source; fallback to a claimed SOS handle), with the production file restored **byte-identical**.
+
+**THE PYTHON LANE NOW:** **573 tests, 0 failures, rc 0**; probes **12 tests, rc 0**. **A candidate tree with a red mandatory lane is not a
+candidate**, so the round-275 entry (`e47e779`) cannot stand as the convergence candidate and neither can rounds 200/222/254/256: a **new
+candidate measured at the repair's own SHA** is required, and round 278 produceth one.
+
 ## LIGHT Archive — the shared scope (the audit's 'Both')
 
 **14 findings** — FIX_SUBMITTED 13, PARTIAL 1
@@ -59,7 +96,7 @@ changed after the audited SHA — a *floor* on any later closure, not a clearanc
 |---|---|
 | Android `:mesh` lane | **1187 tests, 0 failures, 0 errors** (forced re-run: `cleanTest`) |
 | iOS lane (mirrored package) | **1203 tests, 0 failures (0 unexpected)**, 211.1s |
-| Python readiness suite | **OK** |
+| `Python readiness suite | **OK** |` | **CLAIM WITHDRAWN at round 278 — THIS LANE WAS RED AT THIS TREE.** Re-measured at the candidate's exact tree (throwaway worktree at this SHA): `rc=1`, the python readiness suite FAILED with 1 failure — `test_t26_post_aead_charge::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle`. The original claim (was: | Python readiness suite | **OK** |) is withdrawn, not deleted. The failure was a COURT asserting a NAME while the production law held: see the round-278 correction section below. |
 | Repository controls | **every `ci/check_*.py` rc 0**; only `check_parity` under its **default** scope is non-zero = the **external A-06 arm**; `--scope repo` rc 0 |
 | Ledger court | **OK** |
 | Symbols | `ci/symbols.py` — 0 unresolved |
@@ -85,7 +122,7 @@ wiring the governor, and that divergence is stated rather than hidden.
 |---|---|
 | Android `:mesh` lane | **1192 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`) after a first attempt finished in 2 s |
 | iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 181.1s |
-| Python readiness suite / ledger court | **OK / OK** |
+| `... / ledger court | **OK / OK** |` | **CLAIM WITHDRAWN at round 278 — THIS LANE WAS RED AT THIS TREE.** Re-measured at the candidate's exact tree (throwaway worktree at this SHA): `rc=1`, the python readiness suite FAILED with 1 failure — `test_t26_post_aead_charge::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle`. The original claim (was: | Python readiness suite / ledger court | **OK / OK** |) is withdrawn, not deleted. The failure was a COURT asserting a NAME while the production law held: see the round-278 correction section below. |
 | Repository controls | every `ci/check_*.py` **rc 0**; only `check_parity` under its **default** scope non-zero = the external **A-06** arm; `--scope repo` rc 0 |
 | Symbols | `ci/symbols.py` — 0 unresolved |
 
@@ -111,7 +148,7 @@ sites (208).
 |---|---|
 | Android `:mesh` lane | **1192 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`, 45s) |
 | iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 182.0s |
-| Python readiness suite / ledger court | **OK / OK** |
+| `... / ledger court | **OK / OK** |` | **CLAIM WITHDRAWN at round 278 — THIS LANE WAS RED AT THIS TREE.** Re-measured at the candidate's exact tree (throwaway worktree at this SHA): `rc=1`, the python readiness suite FAILED with 1 failure — `test_t26_post_aead_charge::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle`. The original claim (was: | Python readiness suite / ledger court | **OK / OK** |) is withdrawn, not deleted. The failure was a COURT asserting a NAME while the production law held: see the round-278 correction section below. |
 | Repository controls | every `ci/check_*.py` **rc 0 EXCEPT `check_parity`, which is rc 1 IN BOTH SCOPES** |
 | Symbols | `ci/symbols.py` — **1 unresolved** (221 Kotlin files) |
 
@@ -130,13 +167,13 @@ writing** if (a) proves impossible. **The first is preferred, because a mandator
 **Not claimed:** T78 (no hosted lane); no finding `VERIFIED_FIXED` (34/16/4); readiness flags **false**; five gates **OPEN**;
 **and one mandatory control is non-zero at this SHA, which the next round must either fix or declare.**
 
-## Candidate verification at `38406d0` (ledger round 256) — FULLY GREEN, with the round-254 regression CLOSED
+## Candidate verification at `38406d0` (ledger round 256) — FULLY GREEN, with the round-254 regression CLOSED — **NOT FULLY GREEN: THE PYTHON LANE WAS RED AT THIS TREE (CORRECTED AT ROUND 278)**
 
 | Item | Result at this exact SHA (tree `96fe578`) |
 |---|---|
 | Android `:mesh` lane | **1192 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`, 47s) |
 | iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 135.1s |
-| Python readiness + ledger courts | **OK** |
+| `Python readiness + ledger courts | **OK** |` | **CLAIM WITHDRAWN at round 278 — THIS LANE WAS RED AT THIS TREE.** Re-measured at the candidate's exact tree (throwaway worktree at this SHA): `rc=1`, the python readiness suite FAILED with 1 failure — `test_t26_post_aead_charge::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle`. The original claim (was: | Python readiness + ledger courts | **OK** |) is withdrawn, not deleted. The failure was a COURT asserting a NAME while the production law held: see the round-278 correction section below. |
 | Repository controls | **every `ci/check_*.py` rc 0, AND `check_parity --scope repo` rc 0 AGAIN**; the only non-zero is `check_parity` under its **default** scope = the **external A-06** arm |
 | Symbols | `ci/symbols.py` — **0 unresolved** (221 Kotlin files) |
 
@@ -149,7 +186,7 @@ gates **OPEN**; closure evidence **stale for 31 findings**; and the programme's 
 corrections recorded across this session's rounds**, each kept beside the repair it accompanied, *because a record that
 carries only successes teaches nothing*.
 
-## Candidate verification at `e47e779` (ledger round 275) — FULLY GREEN, INCLUDING BOTH LAB APPLICATION TARGETS
+## Candidate verification at `e47e779` (ledger round 275) — FULLY GREEN, INCLUDING BOTH LAB APPLICATION TARGETS — **NOT FULLY GREEN: THE PYTHON LANE WAS RED AT THIS TREE (CORRECTED AT ROUND 278)**
 
 | Item | Result at this exact SHA (tree `a3824ea`) |
 |---|---|
@@ -157,7 +194,7 @@ carries only successes teaches nothing*.
 | **Android lab application target** | **0 compile errors (forced)**, `labmesh-debug.apk` **15,133,266 bytes** |
 | **iOS lab application target** | **`BUILD SUCCEEDED`** (simulator SDK, unsigned, `CODE_SIGNING_ALLOWED=NO`) |
 | iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 211.8s |
-| Python readiness + ledger courts | **OK** |
+| `Python readiness + ledger courts | **OK** |` | **CLAIM WITHDRAWN at round 278 — THIS LANE WAS RED AT THIS TREE.** Re-measured at the candidate's exact tree (throwaway worktree at this SHA): `rc=1`, the python readiness suite FAILED with 1 failure — `test_t26_post_aead_charge::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle`. The original claim (was: | Python readiness + ledger courts | **OK** |) is withdrawn, not deleted. The failure was a COURT asserting a NAME while the production law held: see the round-278 correction section below. |
 | Repository controls | every `ci/check_*.py` **rc 0 EXCEPT `check_parity` under its default scope (rc 1 = the EXTERNAL A-06 arm, designed fail-closed)**; `--scope repo` rc 0 |
 | Symbols | `ci/symbols.py` — **0 unresolved** (223 Kotlin files, two more than round 256: GS-LAB-001's own lab sources) |
 
