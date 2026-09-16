@@ -403,6 +403,12 @@ def check_the_lab_is_launchable():
 
 
 
+
+def strip_kotlin_comments(text: str) -> str:
+    """Kotlin line comments removed, so a COMMENT quoting a composition is not mistaken for one."""
+    return "\n".join(re.sub(r"//.*$", "", line) for line in text.split("\n"))
+
+
 def check_the_lab_runtime_is_retained():
     """T54 / GS-LAB-001 step 1: ONE RETAINED RUNTIME, OWNED BY THE APPLICATION -- NOT BY A VIEW.
 
@@ -420,11 +426,15 @@ def check_the_lab_runtime_is_retained():
     owner = root / "android/labmesh/src/main/java" / owner_rel
     if not owner.exists():
         return False, "the lab's Application owner " + m.group(1) + " hath no source file"
-    text = owner.read_text(encoding="utf-8")
-    if "LabMeshApp.compose()" not in text:
-        return False, "the Application owner " + m.group(1) + " never composeth the runtime"
+    # COMMENTS ARE STRIPPED AND THE COMPOSITION'S OWN FORM IS MATCHED, because a first draft searched the raw text for
+    # `LabMeshApp.compose()` -- AND THE FILE'S OWN DOC COMMENT QUOTES IT -- so the invariant was satisfied by a COMMENT.
+    # THE NEGATIVE CASE CAUGHT IT (the composition was replaced and the control still passed), which is the whole reason
+    # this file insisteth on negative cases. The same trap was recorded at rounds 163 and 208 for other controls.
+    text = strip_kotlin_comments(owner.read_text(encoding="utf-8"))
+    if not re.search(r"by lazy \{ *LabMeshApp\.compose\(\)", text):
+        return False, "the Application owner " + m.group(1) + " never COMPOSES the runtime (a comment mentioning it is not a composition)"
     activity = root / "android/labmesh/src/main/java/io/godstone/labmesh/LabMainActivity.kt"
-    if activity.exists() and "LabMeshApp.compose()" in activity.read_text(encoding="utf-8"):
+    if activity.exists() and re.search(r"LabMeshApp\.compose\(\)", strip_kotlin_comments(activity.read_text(encoding="utf-8"))):
         return False, "the ACTIVITY composeth the runtime: it must be the Application owner's, not a view's"
     return True, "one retained lab runtime, owned by " + m.group(1) + " and composed nowhere else"
 
