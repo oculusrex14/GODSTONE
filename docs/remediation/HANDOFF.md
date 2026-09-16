@@ -4,6 +4,22 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 257 -- CRYPTO-001: the crypto authority is addressed by RELATION, not by handle (iOS half)
+
+**The finding, in the audit's own words**: *"Session lookup and destruction still use only a peer handle, so an old operation can destroy a replacement session."* The registry was keyed by the platform handle alone and stamped **every** relation outbound, so a delayed teardown, a queued ciphertext or a handshake half spoken against incarnation A resolved incarnation B — and slew it, or routed A's work into B's lifetime.
+
+**The law now**: a crypto slot is keyed by the relation's **place** (direction + handle), every entry carrieth its whole **`RelationAdmission`** (direction, handle, **orchestration-owned** generation, radio epoch), and an operation is served **IFF** the standing incarnation's admission equalleth the one presented. A teardown of a replaced relation answereth the typed **`.stale`** and taketh nothing; a newer incarnation **supersedes** the standing one, so the registry can never hold two lives of one relation. The T08 `rememberedGenerations` history and the independent `SlotLease` are **reclaimed** — the generation cometh from the link owner through the admission, so a crypto-side history had nothing left to remember.
+
+**Where the identity is captured**: the transport mints it at admission (discovery, accept-write, accept-subscription), stamps it on the very connection the guards already token-check, and **presents it at every crypto site** — seal, open, the four handshake steps, the authenticated accessors, the post-AEAD charge — while all seven teardown sites present what their registration (or their queued `pendingIn` tokens) captured. `MeshNode`, which learneth of a **peer's** departure and not of a relation's, speaketh the handle-scoped verb `retireIncarnations(ofPeerId:)`.
+
+**RED first, and kept separate**: two behavioural arms failed against the untouched tree — *"a teardown that belongs to the REPLACED relation slew its replacement"*, and the responder's slot stamped `outboundCentral` where the relation was inbound. `round257-RED.log` standeth apart from the repaired run.
+
+**Courts corrected out loud, not quietly**: T08's reconnect and terminal arms read the reclaimed history — they now drive the admissions the orchestration owner mints; T14's open-completion arm addresses the transport's **own minted admission** (and its handshake is now direction-faithful); **T16 ×2 and T19's rotation arm now assert the law they had been assuming away — a rotated radio is a NEW RELATION, the old trust serveth it not, and the path refuseth (`seal refused`) until the fresh relation is handshaken**; and the post-AEAD charge arm was re-measured, having taken the **first** occurrence of the charge for **both** gates (*a positional check naming the wrong occurrence* — a species this programme keeps meeting).
+
+**Measured at the committed SHA `fc79d68`**: iOS **1233 / 0 failures**; parity **all invariants hold** rc 0; symbols **0 unresolved (OK)** rc 0; composition control rc 0; courts **628 OK**; probes **12 OK**; evidence digests **394/394**; lab isolation **PASSED**. The FIRST post-repair control run carried `courts rc=1` and is kept as a prior failure, deliberately not as the evidence of the fix.
+
+**What is NOT claimed**: the **Android half is not mirrored** — `crypto/SessionManager.kt` still stampeth every relation outbound over a `RelationKey(val handle: String)` that carrieth no direction, generation or epoch, and both of the finding's own source references are Android files. No device or radio evidence. The pre-T08 host vocabulary surviveth as internal, handle-scoped overloads for the host courts, refused in production sources only by a source-level arm. **CRYPTO-001 is PARTIAL.**
+
 ## Round 256 -- CLOSING ASSESSMENT for the independent auditor (the goal left ACTIVE)
 
 **The candidate**: one SHA carrieth both declared scopes, because every finding of both lives in this one tree — *LIGHT Archive 14 + Mesh/Oracle 40 = 54; **a second SHA would be a fiction***. Every claim in its record was **re-measured at it** (round 254).

@@ -795,7 +795,7 @@
    "candidate_sha": "59be099bde0160f80ec58cbf87c0b9ef2942316b",
    "tree_sha": "0bf270e997cda800679ed8354487eb8259bb9109",
    "worktree": "clean at this sha apart from this record",
-   "stands_as_the_convergence_candidate": true,
+   "stands_as_the_convergence_candidate": false,
    "logs": {
     "every_claim": {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_254/every-claim.log",
@@ -819,7 +819,8 @@
     "Mesh_Oracle": 40
    },
    "what_moved": "NOTHING MOVED IN PRODUCTION THIS ROUND: every claim in the remedy's records was RE-MEASURED at one SHA, because round 253 found that four of them had been carried unmeasured. **A CLAIM INHERITED IS A CLAIM UNPROVEN.**",
-   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane/URL/id/log existeth). **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN."
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane/URL/id/log existeth). **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
+   "SUPERSEDED_AT_ROUND_257": "PRODUCTION MOVED AFTER THIS VERIFICATION. Round 257 changed the crypto authority and the transport (CRYPTO-001, the iOS half; commit fc79d68), so `59be099` no longer describeth the tree and NOTHING in its record may stand as the convergence candidate. Every claim in it was true AT ITS OWN SHA; the candidate duty passeth to the record below."
   },
   "candidate_verification_at_round_256": {
    "candidate_sha": "38406d02d2dcd88ecca6fa8d4a2b9546e8d48d7e",
@@ -3975,6 +3976,41 @@
    "what_moved": "A real defect of mine (an anonymous-object override that broke invariant F) repaired; and FOUR candidate records corrected for carrying unmeasured control claims.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
    "SUPERSEDED_BY": "candidate_verification_at_round_254: EVERY claim re-measured at one SHA (round 253's lesson applied to the whole record)."
+  },
+  "candidate_verification_at_round_257": {
+   "candidate_sha": "fc79d68",
+   "candidate_sha_full_at_scan": "fc79d684247219c5d163a42f34a8a7ec312b78c6",
+   "why": "CRYPTO-001's repair CHANGED PRODUCTION (the crypto authority, the transport's admission capture, the handshake seam and MeshNode's departure verb), so the standing candidate had to be re-measured on BOTH isles rather than inherited.",
+   "worktree": "clean at this sha; the lanes below were run on this exact content",
+   "stands_as_the_convergence_candidate": true,
+   "logs": {
+    "ios_full_lane": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-001/round257-FIXED-at-fc79d68.log",
+     "sha256": "3d3fc67789f835b2882cd43f6fea65503eed1018f331d279fefc0ba7a6a33718"
+    },
+    "android_lanes": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_257/android-lanes.log",
+     "sha256": "5528e54a9befc4c60f8459641f94c76204ab114d8f92dd564dad1f9e1ecf291d",
+     "counted_from_xml": "android/mesh/build/test-results/testDebugUnitTest/*.xml"
+    }
+   },
+   "measured": {
+    "ios_suite": "1233 tests, 0 failures (re-measured, not carried)",
+    "android_mesh_unit": "1196 tests, 0 failed, 0 errors, 0 skipped (counted from the JUnit XML of a forced --rerun-tasks run)",
+    "android_lab_apk": "rc 0, labmesh-debug.apk 15,133,266 bytes",
+    "parity_repo_scope": "passed=7 failed=0, all invariants hold (rc 0)",
+    "symbols_selftest": "restored tree: 0 unresolved (OK) (rc 0)",
+    "composition_control": "rc 0",
+    "courts": "628 tests OK (616 before this round + 12 CRYPTO-001 relation-key arms)",
+    "probes": "12 tests OK",
+    "evidence_digests": "394 registered | 394 examined | 394 verified",
+    "lab_isolation": "PASSED (0 errors, 14 notes)"
+   },
+   "what_this_candidate_is_NOT": [
+    "no hosted lane, no URL, no run id and no log -- so T78 is NOT claimed by this record",
+    "the readiness flags are FALSE and the five external gates are OPEN",
+    "no finding is VERIFIED_FIXED; eleven stand OPEN and six PARTIAL (CRYPTO-001 among them, its Android half unmirrored)"
+   ]
   }
  },
  "counts": {
@@ -5259,13 +5295,43 @@
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
    "impact": "The session authority cannot reject an old relation operation itself. Delayed close, HS processing, seal or open resolves whatever session currently occupies the same handle. This violates the one-relation authority required by T08 and can terminate a valid replacement or route work into the wrong lifetime. The reproduced probe exercises the real SessionManager boundary; it is not a physical CoreBluetooth callback reproduction.",
-   "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": null,
-   "pending_proof": [],
+   "invalidated_dependents": [
+    "`ReadinessT08Tests.testBoundedSlotMapOverTenThousandReconnects` and `testDestroyedReferencesRemainTerminal` -- they read the reclaimed crypto-side generation history (`rememberedCountForTest`, the advancing `slotLeaseGenerationForTest`). REWRITTEN in the same repair to drive the admissions the orchestration owner mints and to assert the law that replaced the history: a superseded incarnation is refused BY NAME and the registry remembers nothing.",
+    "`ReadinessT14Tests.testOpenCompletionDistinguishesFailureFromEmptySuccess`, the two rotation arms of `ReadinessT16Tests` and `ReadinessT19Tests.testAStaleManagersReadinessMovesNothing` -- each handshook the crypto authority BY HANDLE while the transport minted its own admission, which the old one-slot-per-handle registry silently tolerated. REWRITTEN: T14 addresses the transport's own minted admission (and its handshake is now direction-faithful -- the transport's relation in that arm is the CENTRAL's); the three rotation arms now ASSERT the law they had been assuming away (a rotated radio is a NEW relation, the old trust serveth it not, and the path admitteth only after the fresh relation hath been handshaked), and they derive the counterpart's fresh incarnation from the standing one rather than writing a number.",
+    "`ReadinessTrustedPairing.pairUp`/`establish` -- the shared pairing ran the four entries by handle; it now minteth the admission a freshly started transport minteth for the first relation of a handle (generation 1, epoch 1), accepteth explicit admissions, and carrieth `assertMintedAdmission` so a court's pre-pairing is MEASURED against the transport's own registration instead of assumed.",
+    "`tools/readiness/tests/test_ios_post_aead_charge.py` -- re-measured: it used to assert the literal `authenticatedNodeIdOf(peerId)` shape and to take the FIRST occurrence of the charge for BOTH gates (the species this programme keeps meeting: a positional check naming the wrong occurrence). It now locates each gate's own delivery and requires the authenticated-identity read and the charge to fall between that gate's open and its delivery, with the identity read for the INCARNATION.",
+    "All 40 evidence references of this finding remain SOURCE-ANCHORED at the audited SHA; nothing here claims a device or runtime result."
+   ],
+   "my_fix_commit": "fc79d68 | ROUND 257 (the iOS half): the crypto authority is addressed by RELATION, not by the platform handle. `SessionSlot` carrieth the whole `RelationAdmission` (the new type: direction, handle, ORCHESTRATION-owned generation, radio epoch) and its generation is READ from it; the registry is `[RelationHandle: SessionSlot]` -- one live incarnation per direction+handle, a newer incarnation SUPERSEDING the standing one -- and `slotFor(_ admission:)` answereth only when the standing incarnation's admission equalleth the one presented. `drop(_ admission:) -> RelationRetirement` compare-and-removeth on the whole admission and answereth the typed `.stale` for a replaced relation; `retireIncarnations(ofPeerId:)` is the handle-scoped verb the app-level departure speaketh. The T08 `rememberedGenerations` history and the independent `SlotLease` are RECLAIMED (the orchestration owner minteth the generation; a crypto-side history had nothing left to remember). `BleConnection.relationAdmission` carrieth the identity the link owner stamped at admission; all seven teardown sites present the identity their registration (or their queued `pendingIn` tokens) captured; seal, open, the four handshake steps, the authenticated accessors and the post-AEAD charge present the connection's own admission; the `BleHandshakeAuthority` seam speaketh the admission; `MeshNode` speaks `retireIncarnations`. The pre-T08 host vocabulary surviveth as INTERNAL, handle-scoped overloads for the host courts alone, and a source-level arm refuseth it in production sources by name. THE ANDROID HALF IS NOT YET MIRRORED.",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-001/round257-RED.log",
+     "sha256": "d9bb1b0ffa7aea419e451a1b943a85de243dbdcf666070fcfc2a5ee874531828",
+     "what": "CRYPTO-001 round 257: the behavioural RED in the canonical subsystem suite, before any production edit",
+     "outcome": "14 tests / 3 assertion failures -- both CRYPTO-001 arms failed and the 12 pre-existing arms passed."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-001/round257-FIXED-at-fc79d68.log",
+     "sha256": "3d3fc67789f835b2882cd43f6fea65503eed1018f331d279fefc0ba7a6a33718",
+     "what": "CRYPTO-001 round 257: EVERY lane re-measured at the committed SHA fc79d68",
+     "outcome": "iOS 1233 tests / 0 failures; parity `all invariants hold` rc 0; symbols `restored tree: 0 unresolved (OK)` rc 0; composition rc 0; courts 628 OK; probes 12 OK; evidence digests 394/394; lab isolation PASSED (0 errors, 14 notes)."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-001/round257-FIXED-controls-precommit-PRIOR-FAILURE.log",
+     "sha256": "893e3ab16b6d9e8c1b17181ee91aab5a7b2706b79710b44e35c3d9454e5fb81c",
+     "what": "CRYPTO-001 round 257: the FIRST post-repair control run, KEPT AS A PRIOR FAILURE -- it carried `courts rc=1` (one source-level arm still asserted the pre-repair charge shape) and it is deliberately not the evidence of the fix",
+     "outcome": "parity rc 0, symbols rc 0, composition rc 0, courts rc=1 (1 failure) -- corrected in the same round, and the corrected run is the log above."
+    }
+   ],
+   "my_red_case": "TWO behavioural arms in the canonical subsystem suite (`SessionManagerTests.swift`), run RED against the untouched tree BEFORE any production line was edited: (1) `testCRYPTO001_aTeardownAddressedToAReplacedRelationMustNotSlayItsReplacement` -- incarnation A READY, replaced by B on the same handle, then A's DELAYED teardown delivered: the arm failed with \"a teardown that belongs to the REPLACED relation slew its replacement\" and the replacement's seal then unwrapped to nothing; (2) `testCRYPTO001_theCryptoSlotKeyCarriesTheRelationDirection` -- the responder's slot was stamped `outboundCentral` where the relation was inbound. The failing run standeth SEPARATE from the repaired run (`round257-RED.log`; the repaired run at the committed SHA is `round257-FIXED-at-fc79d68.log`). In their RED form the teardown could be addressed only to the HANDLE, which IS the finding; the law asserted is unchanged and only the vocabulary is now the production one.",
+   "my_status": "PARTIAL",
+   "notes": "NEW LAW WITNESSED, AND IT BELONGETH TO CRYPTO-002's CARD: a transport that stop-starteth (a rotated radio) re-admitteth its relations in a NEW epoch, and a relation of a new epoch is a DIFFERENT relation -- the crypto trust of the old one serveth it not, and the trusted path refuseth (`seal refused`) until the fresh relation is handshaken. Three canonical courts (T16 x2, T19) had been asserting admission straight after such a rotation, which was the aliasing this finding names; they now witness the refusal AND the recovery. Whether PRODUCTION re-handshaketh after a rotation by itself is a separate question (CRYPTO-002: 'session retirement never reaches the transport authority') and is NOT claimed here.",
+   "pending_proof": [
+    "THE ANDROID HALF IS NOT MIRRORED. `android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt` still stampeth every relation outbound (`private fun relationKey(peerId: ByteArray) = RelationKey(key(peerId))`) with a `RelationKey(val handle: String)` that carrieth neither direction, generation nor epoch, and its `SessionSlot.kt` still carrieth an independent `SlotLease`. Until that mirror lands, the finding's own source references (both of which are ANDROID files) are only half answered, and the iOS arms above prove the iOS boundary alone.",
+    "NO DEVICE OR RUNTIME REPRODUCTION: the arms run a real `SessionManager` on the host. The physical CoreBluetooth callback schedule (the finding's third closure test) is not exercised; the transport-side witnesses are the existing host-driven transport courts, not a radio.",
+    "THE PRE-T08 HOST VOCABULARY SURVIVETH as internal, handle-scoped overloads for the host courts, so a production call would still compile and only a source-level arm refuseth it. An auditor should decide whether that arm is sufficient, or whether the overloads must be deleted outright and every host court migrated to named incarnations.",
+    "THE GENERATION-HISTORY RECLAMATION (remediation step 5) is complete on iOS, and the ABA question it leaves open -- whether the orchestration owner's generation counter can exhaust or wrap -- is NOT answered here: `BleCentralOrchestrationDriver.connectionGenerations` is a `UInt64` incremented on admission, and the transport epoch is likewise a `UInt64`."
+   ],
    "proof": null,
    "remediation_report": "evidence/crypto/findings.md",
    "remediation_steps": [
