@@ -36,7 +36,15 @@ internal class JdbcStoreDb(file: File) : StoreDb {
                 st.setBytes(1, msgId)
                 st.executeQuery().use { rs ->
                     if (!rs.next()) return null
-                    return arrayOf(rs.getObject(1), rs.getObject(2), rs.getObject(3), rs.getObject(4))
+                    // TYPED READS, MIRRORING THE PRODUCTION HOOK EXACTLY -- round 323's arm caught `getObject`
+                    // returning a boxed Integer where production returneth a Long, which would have made every
+                    // retention comparison on this isle a TYPE accident rather than a value comparison.
+                    return arrayOf(
+                        if (rs.getObject(1) == null) null else rs.getLong(1),
+                        if (rs.getObject(2) == null) null else rs.getLong(2),
+                        rs.getString(3),
+                        if (rs.getObject(4) == null) null else rs.getLong(4),
+                    )
                 }
             }
         }

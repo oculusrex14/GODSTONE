@@ -1201,4 +1201,32 @@ class SqliteMessageStoreTest {
         assertTrue(heldIds().isEmpty())
         assertNull(readDelivery(validFrame.msgId))
     }
+
+    /** GS-STORE-004, the finding's own words, MIRRORED FROM THE iOS ISLE: "On first durable receipt, initialize the
+     *  local policy budget in the SAME TRANSACTION as the held row. On duplicate receipt, retain/debit the existing
+     *  budget; do not replenish it from the sender timestamp." EVERY HELPER HERE IS THE COURT'S OWN -- read, not
+     *  invented (rounds 319-322 were three consecutive rounds in which an INVENTED NAME was what measurement
+     *  refused). */
+    @Test
+    fun gsstore004TheBudgetIsPersistedWithTheRowAndNeverReplenished() = runBlocking {
+        open(8L * 1024 * 1024)
+        var now = 5_000_000L
+        store.receiptTimeProvider = { now to "boot-A" }
+        val f = frame(6, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        val first = store.retentionCheckpointForTest(msgId(6))
+        assertNotNull(first, "the row must be readable at all")
+        assertNotNull(first!![0], "the LOCAL policy budget must be PERSISTED with the row, not left empty")
+        assertEquals(
+            RetentionClock.lifetimeMs.getValue(MessageKind.DIRECT), first[0],
+            "a FIRST receipt is granted the local lifetime exactly once",
+        )
+        assertEquals(5_000_000L, first[1], "anchored at the INJECTED monotonic reading")
+        assertEquals("boot-A", first[2], "the continuity identifier is recorded with it")
+        now += 3_600_000L
+        assertEquals(PersistResult.HELD_DUPLICATE, store.persist(f, receivedFrom = ByteArray(0)))
+        val after = store.retentionCheckpointForTest(msgId(6))!!
+        assertEquals(first[0], after[0], "a DUPLICATE receipt must never replenish the budget")
+        assertEquals(first[1], after[1], "nor move its anchor")
+    }
 }
