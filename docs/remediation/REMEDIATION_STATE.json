@@ -4268,7 +4268,24 @@
    ]
   },
   "round270_note": "ROUND 270: the whole key-confirmation round was witnessed end to end as production runneth it (the application issueth, the peer answereth, the issuer consumeth the echo, readiness published) -- android :mesh 1202/0/0 TWICE -- AND A FALSE CLAIM OF MINE WAS CORRECTED IN THE OPEN: the round-269 'the answering road hath no production caller' was never measured (a grep for a NAME is not a measurement of CALLERS), and the road is called at line 1948. The owed proof is withdrawn; the finding is stronger for it. The iOS lane remaineth blocked by the Xcode licence.",
-  "round271_note": "ROUND 271: ANDROID-03's state was MEASURED LINE BY LINE and its audit charge is now known to be HALF ANSWERED already (the trusted publication IS constructed and used; `TrustedPeer.capture` IS called; the bounded conduit IS offered). Three gaps remain, each with its line: the lossy MAC events still emitted (BleTransport.kt:890/:915), the node's route-eligible view still keyed by the MAC handle (MeshNode.kt:575/:576/:1186), and consumer registration still `launchIn`-scheduled rather than awaited (MeshNode.kt:505-506). Nothing was landed: the context remaining could not measure the certain court migration, and a half-keyed node would be worse than the finding. The iOS lane remaineth blocked (Xcode licence); android :mesh is green at 1202/0/0."
+  "round271_note": "ROUND 271: ANDROID-03's state was MEASURED LINE BY LINE and its audit charge is now known to be HALF ANSWERED already (the trusted publication IS constructed and used; `TrustedPeer.capture` IS called; the bounded conduit IS offered). Three gaps remain, each with its line: the lossy MAC events still emitted (BleTransport.kt:890/:915), the node's route-eligible view still keyed by the MAC handle (MeshNode.kt:575/:576/:1186), and consumer registration still `launchIn`-scheduled rather than awaited (MeshNode.kt:505-506). Nothing was landed: the context remaining could not measure the certain court migration, and a half-keyed node would be worse than the finding. The iOS lane remaineth blocked (Xcode licence); android :mesh is green at 1202/0/0.",
+  "NEXT_WORK_IN_ORDER_AT_ROUND_271": {
+   "why": "recorded so the next round starteth from an ORDER rather than from a choice, and so that the claim 'there is no work left' can never be made about this ledger",
+   "workable_now_on_a_MEASURABLE_lane": [
+    "ANDROID-03 gap 2 (the substantive one): key MeshNode's route-eligible view by the AUTHENTICATED NODE ID (the transport carrieth it and the node already collecteth transportApplicationLinkReady(peerId, receivedFrom, generation) for its ACK pump), keeping the MAC only for transport routing -- MeshNode.kt:575/:576/:1186; then gap 1 (BleTransport.kt:890/:915, the lossy MAC events) and gap 3 (MeshNode.kt:505-506, awaited consumer registration).",
+    "ANDROID-01's remaining owed proof: NO DEVICE/RADIO REPRODUCTION on either isle (nothing here can close it; it is named).",
+    "the ANDROID halves of findings whose iOS halves are blocked: ANDROID-05, GS-STORE-002, GS-SOS-001 (already PARTIAL on this isle) -- a PARTIAL can be advanced without the iOS isle.",
+    "the external-input lane: the five requests stand with owners and immutable acceptance (EXTERNAL_INPUT_REQUESTS.md); acquisition can be prepared and can NEVER close a gate."
+   ],
+   "blocked_by_the_XCODE_LICENCE_human_action": [
+    "every iOS-side RED, every iOS lane re-measurement, and the GS-STORE-005 arms parked in round260-RED-arms-PARKED.patch (the observer-lease and measured-quota laws)",
+    "the iOS halves of CRYPTO-002, CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001, GS-STORE-004/006, GS-STRESS-001, GS-UX-001, GS-RUNTIME-001 and IOS-06's open-road witness"
+   ],
+   "gated_by_EXTERNAL_ARTIFACTS_and_never_closeable_by_repository_work": [
+    "A06 external fixtures (T79), approved content (T80), native/model artifacts (T81), signing inputs (T76), hardware scheduling (T73-75) -- the five gates stay OPEN, the readiness flags stay FALSE, and no self-generated fixture may stand in for an approval"
+   ],
+   "what_is_NOT_left": "nothing -- and the ledger is the instrument that maketh that checkable rather than a matter of my word"
+  }
  },
  "counts": {
   "by_candidate_scope": {
