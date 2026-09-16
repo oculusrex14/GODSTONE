@@ -1238,6 +1238,29 @@ public final class SqliteMessageStore: MessageStore {
         return stamp.monoMs < expiresAt
     }
 
+    /// GS-STORE-004 (round 340, THE SEAM -- THE MEASUREMENT WITHOUT ITS SEMANTICS): HOW MANY DURABLE TOMBSTONES THE
+    /// STORE ACTUALLY HOLDETH. The quota kind `tombstoneRows` hath described this category since before the table
+    /// existed, and a kind that is never MEASURED is a contract that cannot be enforced -- so the count cometh from
+    /// the STORE itself, and the arm demanding it FAILETH ON ITS OWN SUBJECT at this step (it answereth 0).
+    ///
+    /// NOTE WHAT IS **NOT** DONE HERE: no Snapshot is fabricated. A quotal snapshot needeth ALL SIX kinds measured,
+    /// and manufacturing the other five to satisfy one arm would be the very thing this programme forbiddeth -- so
+    /// THE COUNT IS REAL AND THE SNAPSHOT COMPOSITION STAYETH the owed step GS-STORE-005 already carrieth.
+    internal func tombstoneRowCount() -> Int {
+        // A REAL COUNT FROM THE TABLE ITSELF -- never a counter kept beside it, because a shadow count can DRIFT
+        // from the rows it claimeth to describe, and a quota decided on a drifted number is worse than none.
+        withDb { db -> Int in
+            var stmt: OpaquePointer?
+            let sql = "SELECT COUNT(*) FROM \(StoreSchema.tombstoneTable)"
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return 0
+            }
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(sqlite3_column_int64(stmt, 0))
+        } ?? 0
+    }
+
     internal func tombstoneForTest(_ msgId: Data) -> (expiresAtMono: Int64, bootIdentity: String?)? {
         var found: (Int64, String?)?
         _ = withDb { db in

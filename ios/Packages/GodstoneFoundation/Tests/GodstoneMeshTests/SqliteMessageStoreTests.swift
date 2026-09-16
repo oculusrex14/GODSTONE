@@ -1682,4 +1682,19 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew,
                        "past the policy's tombstone lifetime, the message may be accepted again")
     }
+
+    /// GS-STORE-004: the quota kind `tombstoneRows` hath described this category since before the table existed, and
+    /// A KIND THAT IS NEVER MEASURED IS A CONTRACT THAT CANNOT BE ENFORCED. RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_theTombstoneRowCountIsMeasured() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        let now: Int64 = 8_000_000
+        s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        XCTAssertEqual(s.tombstoneRowCount(), 0, "a fresh store holdeth no tombstone")
+        let f = frame(15, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
+        XCTAssertEqual(s.sweepExpired(limit: 8), 1, "the row is retired and a tombstone is left")
+        XCTAssertEqual(s.tombstoneRowCount(), 1,
+                       "the store must MEASURE what it holdeth -- an unmeasured quota kind cannot be enforced")
+    }
 }
