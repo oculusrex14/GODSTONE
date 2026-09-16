@@ -224,7 +224,14 @@ internal enum StoreSchema {
     /// that once served this bump was correct ONLY for the never-shipped pre-ship
     /// case and is gone (GS-STORE-003). Android
     /// `StoreSchema.DB_VERSION` is the same 7 (byte-identical schema contract).
-    static let dbVersion: Int32 = 7
+    /// GS-STORE-004: bumped **7 -> 8** to add the RETENTION CHECKPOINT FIELDS beside the held row
+    /// (`remaining_ms`, `checkpoint_mono`, `boot_identity`, `discontinuity_count`). THIS IS THE FIRST REVISION
+    /// WHOSE EXISTING-FILE EDGE CARRIETH **DDL** -- the four `ALTER TABLE ... ADD COLUMN` statements below --
+    /// because the retention contract of section 14 cannot be honoured across a reopen without them, and the
+    /// audit's own remediation step asketh for exactly that ("add the blueprint retention checkpoint fields VIA A
+    /// REAL MIGRATION"). The destructive drop-and-recreate that once served such bumps stayeth gone (GS-STORE-003):
+    /// an existing file is ALTERED, never discarded, and a FUTURE file is still refused fail-closed untouched.
+    static let dbVersion: Int32 = 8
     static let table = "held_frames"
     static let colMsgId = "msg_id"
     static let colType = "type"
@@ -236,6 +243,14 @@ internal enum StoreSchema {
     static let colPayload = "payload"
     static let colReceivedFrom = "received_from"
     static let colReceivedAt = "received_at"
+    /// GS-STORE-004: the RETENTION CHECKPOINT FIELDS, beside the held row. `remaining_ms` is the LOCAL policy
+    /// budget left (never the sender's claim), `checkpoint_mono` the monotonic reading the budget was last debited
+    /// to, `boot_identity` the continuity identifier, and `discontinuity_count` the counter the frozen
+    /// conservative rule is bounded by.
+    static let colRemainingMs = "remaining_ms"
+    static let colCheckpointMono = "checkpoint_mono"
+    static let colBootIdentity = "boot_identity"
+    static let colDiscontinuity = "discontinuity_count"
 
     /// Per-row bookkeeping beyond the payload blob (columns + page overhead).
     static let rowOverhead: Int64 = 64
@@ -258,6 +273,10 @@ internal enum StoreSchema {
             \(colPayload) BLOB,
             \(colReceivedFrom) BLOB,
             \(colReceivedAt) INTEGER,
+            \(colRemainingMs) INTEGER,
+            \(colCheckpointMono) INTEGER,
+            \(colBootIdentity) TEXT,
+            \(colDiscontinuity) INTEGER,
             CHECK (length(\(colMsgId)) = 16)
         )
         """
@@ -485,7 +504,8 @@ internal enum StoreSchema {
     /// FROM the DDL and then fingerprinted, so the brand-new-file control fails if
     /// either side is wrong.
     static let heldFrameColumns = [colMsgId, colType, colTtl, colHopCount, colFlags,
-                                   colPriority, colRoutingTag, colPayload, colReceivedFrom, colReceivedAt]
+                                   colPriority, colRoutingTag, colPayload, colReceivedFrom, colReceivedAt,
+                                   colRemainingMs, colCheckpointMono, colBootIdentity, colDiscontinuity]
     static let deliveryColumns = [colDMsgId, colDState, colDAckMode, colDExpected]
     static let obligationColumns = [colOMsgId, colORecipient, colOGeneration, colORemaining, colOState]
     static let ackFrameColumns = [colKAckKey, colKMsgId, colKRecipient, colKSignature,
@@ -524,14 +544,41 @@ internal enum StoreSchema {
     /// one schema, so an existing file either already satisfies the frozen
     /// fingerprint (and needs only its revision advanced) or drifts from it and is
     /// refused before any write.
+    ///
+    /// GS-STORE-004 (7 -> 8) AMENDETH THAT, DELIBERATELY AND IN THE OPEN: the blueprint's retention contract
+    /// cannot be honoured across a reopen without its checkpoint FIELDS, so THIS ONE EDGE carrieth real DDL --
+    /// four `ALTER TABLE held_frames ADD COLUMN` statements -- for an EXISTING file. The guarantee that mattereth
+    /// is unchanged and is what the control still readeth: no row is ever DISCARDED to serve a revision (the
+    /// destructive recreate remaineth gone), and a file that drifts from the frozen fingerprint is refused before
+    /// any write.
     static func migrationPlan(from: Int, creatingTables: Bool, supportedMax: Int) -> [MigrationStep] {
         guard from < supportedMax else { return [] }
         let creates = [createSql, createDeliverySql, createObligationSql, createAckFrameSql]
         return (from..<supportedMax).map { revision in
-            MigrationStep(from: revision, to: revision + 1,
-                          statements: (revision == from && creatingTables) ? creates : [])
+            let statements: [String]
+            if revision == 7 && !creatingTables {
+                // THE FIRST DDL-BEARING EDGE -- AND ONLY FOR A FILE THAT ALREADY STOOD. READ, after the first
+                // measured attempt failed with `failedStorage` on every write: a BRAND-NEW file is CREATED with
+                // the four checkpoint fields by the first edge, so an ALTER here would be handed a table that
+                // already carrieth them and refuse it. A fresh file CREATETH; an existing v7 file ALTERETH in.
+                statements = StoreSchema.retentionAlterSql
+            } else if revision == from && creatingTables {
+                statements = creates
+            } else {
+                statements = []
+            }
+            return MigrationStep(from: revision, to: revision + 1, statements: statements)
         }
     }
+
+    /// GS-STORE-004: the DDL of the 7 -> 8 edge. One statement per field, so an engine that halveth an edge
+    /// canst still resume it, and `ADD COLUMN` never rewriteth an existing row.
+    static let retentionAlterSql = [
+        "ALTER TABLE \(table) ADD COLUMN \(colRemainingMs) INTEGER",
+        "ALTER TABLE \(table) ADD COLUMN \(colCheckpointMono) INTEGER",
+        "ALTER TABLE \(table) ADD COLUMN \(colBootIdentity) TEXT",
+        "ALTER TABLE \(table) ADD COLUMN \(colDiscontinuity) INTEGER",
+    ]
 
     /// Insert a fresh obligation; ON CONFLICT of the pair key DO NOTHING (the
     /// inbox re-delivery is idempotent -- the EXISTING row, its generation pin and
@@ -891,7 +938,9 @@ public final class SqliteMessageStore: MessageStore {
 
     public func forEachHeldMsgId(_ visit: (Data) -> Bool) {
         withDb { db in
-            let sql = "SELECT \(StoreSchema.colMsgId) FROM \(StoreSchema.table)"
+            // GS-STORE-004: the gate readeth the anchor, SO THE ANCHOR MUST BE SELECTED -- reading index 1 of a
+            // one-column statement was the fatal `Index out of range` of the first measured attempt.
+            let sql = "SELECT \(StoreSchema.colMsgId), \(StoreSchema.colReceivedAt) FROM \(StoreSchema.table)"
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
                 sqlite3_finalize(stmt); return
@@ -1693,16 +1742,54 @@ public final class SqliteMessageStore: MessageStore {
         /// ONE transaction per step on the store's own connection: a fault at any
         /// statement rolls the WHOLE step back (the engine's transactional promise),
         /// so a crash mid-migration leaves the file on its previous revision.
+        /// GS-STORE-004: THE FIRST DDL-BEARING EDGE MUST BE **IDEMPOTENT**, and this is where that is settled.
+        ///
+        /// WHY IT MUST: the migration courts plant a file whose DDL is the CURRENT schema but whose
+        /// `PRAGMA user_version` is stamped DOWN (`testW04`'s own comment: "boot 1: current schema, stamp
+        /// user_version=6, insert a row"). The migration then walketh the edges and reacheth `7 -> 8`, whose
+        /// `ALTER TABLE ... ADD COLUMN` statements meet a table that ALREADY carrieth the four checkpoint fields --
+        /// and a real executor that ran them blindly would fail, roll the edge back, and leave the file
+        /// UN-MIGRATED with its rows unreachable, which is precisely what the measured run showed.
+        ///
+        /// THE RULE, therefore, is "ADD THE COLUMN IF ABSENT": a statement of the form
+        /// `ALTER TABLE <t> ADD COLUMN <c>` whose column already standeth is SKIPPED, and every other statement is
+        /// executed as written. The Kotlin twin already tolerateth this shape at the MODEL level (its DDL parser
+        /// filtereth the words `if` and `exists`), so the two engines now agree on the same law.
         func execute(step: MigrationStep, statements: [String]) throws {
             try store.execStrict(db, "BEGIN")
             do {
-                for statement in statements { try store.execStrict(db, statement) }
+                for statement in statements {
+                    if try store.columnIsAlreadyPresent(db, in: statement) { continue }
+                    try store.execStrict(db, statement)
+                }
                 try store.execStrict(db, "COMMIT")
             } catch {
                 sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
                 throw error
             }
         }
+    }
+
+    /// GS-STORE-004: TRUE IFF [statement] is an `ALTER TABLE <t> ADD COLUMN <c>` whose column ALREADY standeth in
+    /// <t>. It answereth `false` for every other statement, so nothing else changeth. The parsing is by TOKENS on
+    /// a lowercased view (never a regex over identifiers), the same discipline the Kotlin twin useth.
+    internal func columnIsAlreadyPresent(_ db: OpaquePointer, in statement: String) throws -> Bool {
+        let tokens = statement.lowercased()
+            .split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "\n" })
+            .map(String.init)
+        guard tokens.count >= 6, tokens[0] == "alter", tokens[1] == "table",
+              tokens[3] == "add", tokens[4] == "column" else { return false }
+        let table = tokens[2]
+        let column = tokens[5].trimmingCharacters(in: CharacterSet(charactersIn: ";"))
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(\(table))", -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return false
+        }
+        defer { sqlite3_finalize(stmt) }
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let name = sqlite3_column_text(stmt, 1), String(cString: name) == column { return true }
+        }
+        return false
     }
 
     /// How many of this store's four tables exist in the file. A file with none of
