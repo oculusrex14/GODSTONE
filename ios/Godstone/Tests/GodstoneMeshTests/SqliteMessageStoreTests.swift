@@ -1450,4 +1450,33 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(s.receiptAnchorForTest(f.msgId), firstAnchor,
                        "a DUPLICATE receipt must RETAIN the original budget, never replenish it")
     }
+
+    /// GS-STORE-004, the finding's own closure test: "Persist a DIRECT, close/reopen on same boot, advance
+    /// injected monotonic time, and verify remaining lifetime only decreases" -- and "Expired rows must not be
+    /// forwarded". RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_expiredAcrossAReopenAndIsNotForwarded() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-retention-\(UUID().uuidString).db")
+        tmpURL = url
+        var now: Int64 = 1_000_000
+        let first = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        first.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(5, .direct, 48)
+        XCTAssertEqual(first.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertNotNil(first.receiptAnchorForTest(f.msgId))
+        first.close()
+
+        // REOPEN on the SAME BOOT, an hour short of the DIRECT lifetime (seven days).
+        now += 7 * 24 * 3_600_000 - 3_600_000
+        let second = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        second.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        defer { second.close() }
+        XCTAssertEqual(second.allHeldMsgIds(), [f.msgId],
+                       "an hour short of the lifetime, the message is still offered")
+
+        // AND PAST IT: the row must be DEBITED and NOT FORWARDED.
+        now += 2 * 3_600_000
+        XCTAssertTrue(second.allHeldMsgIds().isEmpty,
+                      "an EXPIRED row must not be forwarded to a reader")
+    }
 }
