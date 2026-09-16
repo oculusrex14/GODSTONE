@@ -284,6 +284,58 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// GS-RUNTIME-001 step 6: **THE ACK WORK MUST BE REBUILT FROM THE DATABASE AFTER A REOPEN** -- the worker is
+    /// stateless between runs, and a restart resumeth by RE-READING the tables. This arm reopeneth the SAME private
+    /// database with a NEW runtime, bringeth the relation up again, and requireth the pending candidate to stand.
+    func testSR00h_TheAckWorkIsRebuiltAfterAReopen() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00h_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00h_peer_\(UUID().uuidString).db")
+        let handle = UUID()
+        let nodeId = Data(repeating: 0x91, count: 16)
+        let relayFrom = Data(repeating: 0x92, count: 16)
+        let frame = try AckFrame.build(msgId: Data(repeating: 0x22, count: 16),
+                                       signature: Data(repeating: 0x7B, count: 64),
+                                       recipientNodeId: Data(repeating: 0x93, count: 16),
+                                       routingTag: Data(repeating: 0, count: 4), ttl: ackInitialTtl)
+
+        do {
+            let first = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                               journal: InMemoryJournal(), keychain: InMemoryKeychain())
+            first.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
+            _ = first.ackPump.admit(frame.encode(), receivedFrom: relayFrom, now: 1_000)
+            XCTAssertEqual(first.ackPump.nextBatch(nodeId, now: 1_000).copies.count, 1,
+                           "the admitted candidate must stand offerable before the reopen")
+            XCTAssertEqual(first.ackStore.countFrames(), 1, "and the namespace carrieth it")
+            first.meshNode.stop()
+        }
+
+        // **THE REOPEN: A NEW RUNTIME OVER THE SAME PRIVATE DATABASE.**
+        let second = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                           journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        XCTAssertEqual(second.ackStore.countFrames(), 1,
+                       "GS-RUNTIME-001 step 6: THE FRAME NAMESPACE MUST SURVIVE THE REOPEN -- a fresh runtime that "
+                       + "found nought would have lost durable custody silently")
+        // **A WITNESS THAT INVENTETH A CLOCK MUST THREAD ITS OWN TIME THROUGH *EVERY* CALL THAT STAMPETH.** The
+        // readiness's own turn passeth no `now`, so the pump stampeth `lastOffer` with the REAL clock (milliseconds
+        // since 1970) -- and a later `nextBatch(now: 2_000)` would then compute a hugely NEGATIVE interval and be
+        // refused by the RETRY WINDOW, which is EXACTLY what the first draft of this witness saw and reported
+        // ("the pump refuseth the restored candidate: [retryWindow: 1]"). So the pump is scheduled and turned
+        // DIRECTLY, with the witness's own instant, and the law under judgment (the REBUILD) is left alone.
+        second.ackPump.onLinkReady(nodeId, now: 2_000)
+        let rebuilt = second.ackPump.nextBatch(nodeId, now: 2_000)
+        // THE PUMP'S OWN REASON, SURFACED RATHER THAN GUESSED: this assertion is a DIAGNOSTIC and it is kept in
+        // place because the refusal reason IS the evidence for whatever repair followeth.
+        XCTAssertTrue(rebuilt.refusals.isEmpty,
+                      "the pump refuseth the restored candidate: \(rebuilt.refusals) (scanned \(rebuilt.scanned))")
+        XCTAssertEqual(rebuilt.copies.count, 1,
+                       "AND THE WORKER MUST REBUILD ITS PENDING WORK BY RE-READING THE TABLES: the candidate that "
+                       + "was admitted before the restart standeth offerable after it")
+        second.meshNode.stop()
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

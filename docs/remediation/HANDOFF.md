@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 225 -- GS-RUNTIME-001 step 6's REBUILD AFTER A REOPEN witnessed; its first draft's "red" was my own clock arithmetic
+
+- **The arm** opens the same private database twice: the first runtime admits an opaque relay candidate and proves it offerable; **the second — a fresh runtime over the same files — requires the frame namespace to survive AND the worker to rebuild its pending work by re-reading the tables**. Both hold.
+- **Its first draft failed with `[retryWindow: 1]`, which looked like a defect in the rebuild and was not**: the readiness's own turn passes no `now`, so the pump stamped `lastOffer` with the **real clock** while my next call passed `now: 2000` — a hugely **negative** interval, refused by the retry window. *A witness that invents a clock must thread its own time through **every** call that stamps.*
+- **Measured**: **full iOS lane 1221 / 0**; **no production source changed, because the measurement said none was due**. Remaining: step 4's last wake; step 6's drain-before-key-erasure.
+
 ## Round 224 -- GS-RUNTIME-001 step 5's wipe half WITNESSED (with a control); no production change was due
 
 - **Measured before writing code**: `nextBatch` enumerates **the store's rows** and consults its memory cache only for a row that still exists — **a wiped candidate cannot be resurrected from memory**: the law holds by construction; what was missing was the witness.
