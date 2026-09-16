@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 254 -- EVERY claim re-measured at one SHA (round 253's lesson applied to the whole record)
+
+- **Why it was due**: round 253 found that **four** candidate records had carried control claims without re-measuring them — and two of those claims were **false**. *A claim inherited is a claim unproven.*
+- **The sweep, all at this SHA**: iOS **1228 / 0 failures** (re-measured — it had been carried since round 248 while iOS source changed at rounds 238–244); android `:mesh` **1196/0/0** FORCED; lab APK rc 0 (15,133,266 B); `check_parity --scope repo` **all invariants hold (7/7)**; `ci/symbols.py --selftest` **0 unresolved (OK)**; lab isolation control **PASSED (14 notes)**; courts **616 OK**; probes **12 OK**; evidence digests **394/394/394**.
+- **Nothing in production moved this round, which is the point**: the round's whole value is that **no claim in it is inherited**.
+- **The three honest lists stand**: 12 OPEN, **37 FIX_SUBMITTED (none `VERIFIED_FIXED`)**, 5 PARTIAL; the five external gates **OPEN**; **T78 not claimed** for want of a hosted lane, URL, id or log.
+
 ## Round 253 -- a real defect of mine, a FALSE CLAIM in my own record, and both controls re-measured
 
 - **The defect**: my round-250 receiver was an **anonymous object inside the `BleTransport` class body**, and the mandatory parity control named it exactly: *"`BleTransport.onReceive()` is marked `override` but no supertype […] declares it"* — an `override` inside a class body is attributed to **that** class's supertypes. **Invariant F was RED and the symbols selftest reported 1 unresolved — both because of my edit.**

@@ -10,12 +10,12 @@ T78 requireth that all applicable **hosted** lanes be enabled, executed and gree
 
 | | |
 |---|---|
-| **Candidate SHA** (chosen BY COMMIT TIME) | `e72f2b96bbac` (tree `08a3462ab19e`; worktree clean apart from this record) |
+| **Candidate SHA** (chosen BY COMMIT TIME; **every claim re-measured at it**, round 254) | `556b7725da0a` (tree `0bf270e997cd`; worktree clean apart from this record) |
 | **Audited SHA** | `c683a2bf0b5b` |
 | **Note on later commits** | every commit AFTER that candidate is **documentation, probes or tests only** (no production source), and each says so in its own message; the candidate is the last SHA at which the mandatory lanes were MEASURED, and no later commit claimeth them |
 | **LIGHT Archive scope** | **14 findings** — the audit's 'Both' |
 | **Mesh/Oracle scope** | **40 findings** |
-| **Measured at that SHA** | **android `:mesh` FORCED 1193 tests / 0 failures / 0 errors** and `labmesh-debug.apk` rc 0; iOS foundation `Executed 1228 tests, with 0 failures`; android `:mesh` FORCED `1196 / 0 / 0`; lab APK `15133266 bytes`; python suite 596 OK; audit probes 12 OK; mandatory lab control PASSED; `check_parity --scope repo` rc 0; `ci/symbols.py` 223 Kotlin files, 0 unresolved; evidence digests 350/350 |
+| **Measured at that SHA** | **android `:mesh` FORCED 1193 tests / 0 failures / 0 errors** and `labmesh-debug.apk` rc 0; iOS foundation `Executed 1228 tests, with 0 failures` (re-measured at this SHA); android `:mesh` FORCED 1196/0/0; lab APK rc 0; parity `all invariants hold`; symbols `0 unresolved`; digests 394/394/394;
 | **NOT claimed at that SHA** | the **iOS lab build** (no lab target changed; *a cached green is not evidence*) |
 
 ## 3. THE THREE LISTS THE OBJECTIVE DEMANDETH
