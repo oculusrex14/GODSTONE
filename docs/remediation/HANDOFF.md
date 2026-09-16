@@ -4,6 +4,16 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 267 -- the key-confirmation landing WORKS, and one failing arm smells of a REAL interaction (parked, not rushed)
+
+**The landing was written** in the iOS twin's own shape: the **initiator's** door issues the challenge at the trusted hour, **once** and only if none stands, with a refusal **named** at `hs.confirm.transition`; the **responder's** door untouched, because it is the one that **answers**.
+
+**Measured result** (T23, 16 arms): the round-266 RED — `testAndroid01_theApplicationIssuethTheKeyConfirmationAtTheTrustedHour` — **now passes**, while **two pre-existing arms fail**: `testTheSealedRoundCarriethToApplicationReadinessOnce` (*"the sentinel found no responders outlet"*) and `testOneSidedReadinessPublishethNoMatter` (*an **HS3 timeout***).
+
+**Why that second one was not treated as bookkeeping**: that arm drives the four-way exchange **by hand** while the **application** now owns the same relation's writer and transcript — so the timeout can mean **(a)** a court premise to re-state, or **(b)** a **real ordering defect** in the landing. **The two are told apart by reading, not by guessing** — and that is exactly the class of question this programme exists to answer slowly: an interaction between two legitimate owners of one relation's egress. With the context remaining there was no room to read *and* measure, so **the tree went back to green and the landing was parked** (`round267-keyconfirmation-landing-PARKED-v5.patch`, `git apply --check` → APPLIES CLEANLY), with the next round's first question **already framed** in `round267-PROGRESS-v5.txt`.
+
+**No claim is made about this half.** Green: android `:mesh` **1200/0/0** · parity **7/7** · symbols **0 unresolved** · courts **635**. The iOS lane remains blocked by the Xcode licence.
+
 ## Round 266 -- ANDROID-01's second half: the key-confirmation RED filed, and the landing costed rather than half-built
 
 **Measured first, exactly as the D2 half was**: `beginKeyConfirmation` occurs **once** in `android/mesh/src/main` — **the definition alone** (line 1875). So the challenge/echo is **never started by the product**, which is the second thing this finding charges.
