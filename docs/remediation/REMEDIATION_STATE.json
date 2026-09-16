@@ -10556,5 +10556,110 @@
    "prior_round_claim_kept_visible": "the round-158 record above ('verified: 96') STANDETH UNCHANGED: it measured what it measured at the population it examined."
   }
  },
- "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE"
+ "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
+ "CLOSING_ASSESSMENT_AT_ROUND_256": {
+  "written_by": "the remediation engineer, for the INDEPENDENT AUDITOR -- because no self-written word closeth a gate",
+  "the_candidate": {
+   "sha": "dcc34d116c6061c9fc61d46ebf175d0a02a82580",
+   "tree": "662fc7222c55661b68ce5081ad3f27d7d5e1f868",
+   "per_declared_scope": {
+    "Mesh_Oracle": "dcc34d116c6061c9fc61d46ebf175d0a02a82580",
+    "LIGHT_Archive": "dcc34d116c6061c9fc61d46ebf175d0a02a82580",
+    "why_one_sha_for_both": "**The declared scopes are separated by FINDING SET, not by commit: every finding of both scopes liveth in THIS ONE TREE, so ONE candidate SHA carrieth both (LIGHT Archive 14 + Mesh/Oracle 40 = 54). A second SHA would be a fiction."
+   },
+   "worktree": "clean apart from the record that nameth it",
+   "every_claim_re_measured_at_it": true
+  },
+  "the_three_lists": {
+   "OPEN": [
+    "ANDROID-01",
+    "ANDROID-03",
+    "CRYPTO-001",
+    "CRYPTO-002",
+    "CRYPTO-005",
+    "GS-INBOX-001",
+    "GS-INTEGRATION-001",
+    "GS-STORE-004",
+    "GS-STORE-005",
+    "GS-STORE-006",
+    "GS-STRESS-001",
+    "GS-UX-001"
+   ],
+   "FIX_SUBMITTED_awaiting_independent_verification_not_one_is_VERIFIED_FIXED": [
+    "ANDROID-02",
+    "ANDROID-04",
+    "ANDROID-06",
+    "ANDROID-07",
+    "CRYPTO-003",
+    "CRYPTO-004",
+    "CRYPTO-006",
+    "GS-ACK-001",
+    "GS-ACK-002",
+    "GS-ARCHIVE-001",
+    "GS-ARCHIVE-002",
+    "GS-ARCHIVE-003",
+    "GS-ARCHIVE-004",
+    "GS-CONTENT-001",
+    "GS-CONTENT-002",
+    "GS-CONTENT-003",
+    "GS-CTRL-001",
+    "GS-CTRL-002",
+    "GS-DIAG-001",
+    "GS-GATE-001",
+    "GS-LAB-001",
+    "GS-MODEL-001",
+    "GS-PACKAGE-001",
+    "GS-PACKAGE-002",
+    "GS-SOS-002",
+    "GS-STORE-001",
+    "GS-STORE-003",
+    "GS-SUPPLY-001",
+    "GS-SYNC-001",
+    "GS-SYNC-002",
+    "IOS-01",
+    "IOS-02",
+    "IOS-03",
+    "IOS-04",
+    "IOS-05",
+    "IOS-06",
+    "IOS-07"
+   ],
+   "PARTIAL": [
+    "ANDROID-05",
+    "GS-ARCHIVE-005",
+    "GS-RUNTIME-001",
+    "GS-SOS-001",
+    "GS-STORE-002"
+   ],
+   "dependent_on_an_external_artifact": [
+    "ANDROID-05",
+    "GS-ACK-001",
+    "GS-ARCHIVE-005",
+    "GS-CTRL-002",
+    "GS-LAB-001",
+    "GS-MODEL-001"
+   ],
+   "the_five_external_gates_stay_OPEN": [
+    "A06_INDPENDENT_FIXTURES (T79)",
+    "APPROVED_CONTENT (T80)",
+    "NATIVE_MODELS (T81)",
+    "HARDWARE_SCHEDULING (T73-T75)",
+    "SIGNING_INPUTS (T76)"
+   ],
+   "closure_evidence_stale_because_a_production_owner_changed": 11
+  },
+  "what_an_auditor_should_verify_FIRST": [
+   "**Re-run the lanes rather than trusting them**: `swift test --package-path ios/Packages/GodstoneFoundation` (1228/0 at this SHA) and `./gradlew :mesh:testDebugUnitTest --rerun-tasks` (1196/0/0 at this SHA). **A CONTROL THAT IS NOT RE-RUN IS NOT A CONTROL**, and this span's own records were found (round 253) to have CARRIED two control claims that were false.",
+   "**Distinguish the witness species**: the iOS arms are BEHAVIOURAL; the Android wiring arms are SOURCE-LEVEL and say so in the file they live in; and the two OWED witnesses (the iOS open road, the Android node-level routing) are named as owed rather than presented.",
+   "**Check the REDs kept separate**: `GS-RUNTIME-001`'s drain RED (`round226-RED-drain-before-erasure.log`) standeth apart from the repaired run, and `IOS-06`'s census RED (0 where 1 was due) is recorded in its own narrative rather than folded into the green.",
+   "**Refuse every word this file may not write**: there is no `VERIFIED_FIXED` anywhere, `T78` is NOT claimed (no hosted lane, run URL, run id or log existeth in this environment), the readiness flags stand FALSE, and no device or signed-artifact result is claimed."
+  ],
+  "what_remaineth_unbuilt_and_is_NOT_claimed": [
+   "GS-RUNTIME-001's Android node-level behavioural witness (an instrumentation road: that node's transport needeth a `Context`).",
+   "IOS-06's open-road behavioural witness (a radio a unit court must not start).",
+   "The twelve OPEN findings, each with a named plan or a measured blocker, none of them closed here.",
+   "The five external gates, which NO amount of repository work can close."
+  ],
+  "the_goal": "**LEFT ACTIVE AND INCOMPLETE.** Twelve findings stand OPEN, five external gates stand OPEN, and no independent audit hath yet written a single `VERIFIED_FIXED`. Calling this achieved would be the one claim this whole programme was built to make impossible."
+ }
 }

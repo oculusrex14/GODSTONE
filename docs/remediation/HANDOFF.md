@@ -4,6 +4,22 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 256 -- CLOSING ASSESSMENT for the independent auditor (the goal left ACTIVE)
+
+**The candidate**: one SHA carrieth both declared scopes, because every finding of both lives in this one tree — *LIGHT Archive 14 + Mesh/Oracle 40 = 54; **a second SHA would be a fiction***. Every claim in its record was **re-measured at it** (round 254).
+
+**The three lists**: **12 OPEN** (ANDROID-01, ANDROID-03, CRYPTO-001, CRYPTO-002, CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001, GS-STORE-004, GS-STORE-005, GS-STORE-006, GS-STRESS-001, GS-UX-001); **37 FIX_SUBMITTED, not one `VERIFIED_FIXED`**; **5 PARTIAL**; **16 findings dependent on an external artifact**; **11 whose closure evidence is stale because a production owner changed**.
+
+**What an auditor should verify first**:
+1. **Re-run the lanes rather than trusting them** (iOS 1228/0, android 1196/0/0 at this SHA) — *a control that is not re-run is not a control*, and this span's own records were found to have **carried** two false control claims.
+2. **Distinguish the witness species**: the iOS arms are **behavioural**; the Android wiring arms are **source-level** and say so; the two **owed** witnesses are named as owed.
+3. **Check the REDs kept separate**: GS-RUNTIME-001's drain RED stands apart from the repaired run, and IOS-06's census RED (0 where 1 was due) is in its own narrative.
+4. **Refuse every word this file may not write**: no `VERIFIED_FIXED`; `T78` **not claimed** (no hosted lane/URL/id/log); readiness flags **FALSE**; no device or signed-artifact result claimed.
+
+**What remains unbuilt and is NOT claimed**: the Android node-level behavioural witness (instrumentation road), IOS-06's open-road witness, the twelve OPEN findings, and the **five external gates** — which no amount of repository work can close.
+
+**The goal is left ACTIVE and INCOMPLETE.** Twelve findings stand OPEN, five gates stand OPEN, and no independent audit has yet written a single `VERIFIED_FIXED`. *Calling this achieved would be the one claim this whole programme was built to make impossible.*
+
 ## Round 254 -- EVERY claim re-measured at one SHA (round 253's lesson applied to the whole record)
 
 - **Why it was due**: round 253 found that **four** candidate records had carried control claims without re-measuring them — and two of those claims were **false**. *A claim inherited is a claim unproven.*
