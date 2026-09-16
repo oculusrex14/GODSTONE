@@ -34,6 +34,7 @@ import io.godstone.mesh.delivery.DurableAckPump
 import io.godstone.mesh.delivery.IdentityAckSigner
 import io.godstone.mesh.delivery.SqliteAckStore
 import io.godstone.mesh.delivery.RecipientKeyResolver
+import io.godstone.mesh.delivery.RecipientInboxRepository
 
 /**
  * Startup barrier execution primitive ensuring [PanicWipe.resumeIfPending] executes before
@@ -246,9 +247,13 @@ internal object MeshModule {
         store: MessageStore,
         deliveryTracker: DeliveryTracker,
         sessions: SessionManager,
-        pump: DurableAckPump
+        pump: DurableAckPump,
+        sqliteStore: SqliteMessageStore,
+        ackStore: SqliteAckStore,
+        authenticator: Ed25519AckAuthenticator,
+        resolver: RecipientKeyResolver,
     ): MeshNode {
-        val node = MeshNode(ctx, identity, store, deliveryTracker, sessions)
+        val node = MeshNode(ctx, identity, sqliteStore, deliveryTracker, sessions)
         // GS-RUNTIME-001 step 2: **THE DISPATCHER IS BOUND TO THE NODE**, answering the delivery tracker exactly
         // as the harness's twin doth. (The recipient inbox's own wiring followeth the T83 commit road and is the
         // NEXT slice; it is NOT claimed here.)
@@ -256,6 +261,27 @@ internal object MeshModule {
             lookupDeliveryRow = { deliveryTracker.lookup(it) },
             verifyOrigin = { deliveryTracker.acknowledge(it.msgId, it) },
             admitCandidate = { encoded, from -> pump.admit(encoded, from) },
+        )
+        // GS-RUNTIME-001 step 2: **THE RECIPIENT INBOX -- THE LAST OF THE FOUR OWNERS -- OVER THE T83 COMMIT ROAD.**
+        // Its DH road is the one production CAN satisfy on this isle: `Identity.staticDhPriv` is exposed INTERNALLY
+        // on the very precedent `staticDhPub`/`staticDhPriv` already stood upon, so the seed never leaveth the module.
+        // The commit closure IS the composing store's own method, so an accepted delivery and its ACK obligation
+        // commit in ONE transaction; and the identityGeneration closure is passed EXPLICITLY, because the inbox's
+        // default is `0L` and a production obligation must pin the identity's REAL generation.
+        node.recipientInbox = RecipientInboxRepository(
+            router = node.router,
+            ourNodeId = identity.nodeId,
+            localDhPrivate = { identity.staticDhPriv },
+            signer = IdentityAckSigner(identity),
+            resolver = resolver,
+            authenticator = authenticator,
+            pairedStore = ackStore,
+            commitInbound = { frame, receivedFrom, localRecipient, generation, lifetime, receivedAt, fault ->
+                sqliteStore.commitInboundWithObligationAtWithFault(
+                    frame, receivedFrom, localRecipient, generation, lifetime, receivedAt, fault,
+                )
+            },
+            identityGeneration = { identity.bindingGeneration },
         )
         return node
     }

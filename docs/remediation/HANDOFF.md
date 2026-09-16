@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 232 -- the recipient INBOX enters the ANDROID composition: all four owners wired
+
+- **Wiring**: the inbox is built over **the node's own router**, the identity's DH material via the **internal** `staticDhPriv`, the **production** signer, the ACK store over **`store.engine`** (the same process-wide engine), and **`commitInbound` is the store's own `commitInboundWithObligationAtWithFault`** — delivery and obligation commit in one transaction.
+- **Two measured differences from the Swift twin**: the **fault closure types already match** there (no adapter needed); and the inbox's **`identityGeneration` defaults to `0L`**, so production must pass the identity's real generation — *the default would have pinned a zero into every obligation row*.
+- **Two compile errors of mine, named**: `Conflicting declarations` — I added an `identity` parameter to a function that already had one, **the same collision species as the `signature` local on both isles**.
+- **Measured**: android `:mesh` **FORCED 1195 / 0 / 0**. Remaining: the readiness subscription (no readiness surface on the node; nothing collects `applicationLinkReady()`), the wakes, the recheck and the drain — **and the composition witness, still owed and named**.
+
 ## Round 231 -- the four ACK owners enter the ANDROID composition (over the same engine); dispatcher bound to the node
 
 - **Measured first**: the Kotlin node **already had** `recipientInbox`/`ackDispatcher` and a `router`; the twins stood in `delivery/`; and the store carries **`internal val engine: StoreDb` — exposed internally *for exactly this purpose* by its own comment** (*"one process-wide `StoreDb` feeds both the message store and the delivery repository"*).
