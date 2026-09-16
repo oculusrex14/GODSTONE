@@ -827,6 +827,38 @@
     "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance.",
     "AND THE PROGRAMME'S OWN DEBT IS NAMED: 31 self-inflicted corrections are recorded across this session's rounds (compile errors, mis-anchored patches, two committed suite-reds, one per-suite summary mistaken for a lane total, three truncation-bug recurrences) -- each kept in the ledger beside the repair it accompanied, because a record that carrieth only successes teacheth nothing."
    ]
+  },
+  "candidate_verification_at_round_275": {
+   "candidate_sha": "e47e7797b153906566d1b373307dfcb51f85cc94",
+   "tree_sha": "a3824eadc280e676cf82b6a2ebac72a2ee301840",
+   "worktree": "clean at this sha",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_FINAL_e47e7797b153906566d1b373307dfcb51f85cc94/verify.log",
+   "log_sha256": "a11a0b65426c5938f611a39a06c2c6f6af34e59cc9f25106359f8ede696e1f13",
+   "measured": {
+    "android_mesh_lane": "**1192 tests, 0 failures, 0 errors**, FORCED (`--rerun-tasks`, 45s)",
+    "android_lab_target": "**0 compile errors (forced)** and `labmesh-debug.apk` **15,133,266 bytes** present",
+    "ios_lab_target": "**`BUILD SUCCEEDED`** (simulator SDK, unsigned, `CODE_SIGNING_ALLOWED=NO`)",
+    "ios_lane_mirrored_package": "**Executed 1205 tests, with 0 failures (0 unexpected)**, 211.8s",
+    "python_readiness_and_ledger_courts": "OK",
+    "repository_controls": "EVERY `ci/check_*.py` rc 0, **including `check_parity` under its DEFAULT scope** -- so the external A-06 arm is now the ONLY thing the release-gates workflow's `--scope all` would add; `--scope repo` rc 0",
+    "symbols": "ci/symbols.py: **0 unresolved** (223 Kotlin files -- two more than round 256, being GS-LAB-001's own lab sources)"
+   },
+   "since_round_256": "GS-LAB-001 carried FOUR of its six steps ON REAL ARTIFACTS (the Android APK whose merged manifest carrieth the launcher activity, the retained runtime owner, INTERNET removed and BLUETOOTH_SCAN present; and the iOS `GodstoneLabMesh.app` with its OWN bundle identity `io.godstone.labmesh`), plus FIVE lab invariants each proven to judge by a negative case; GS-UX-001's step 5 landed the SOS as a REAL cancellable hold on a MONOTONIC threshold with an accessible alternative; the round-254 mandatory-control regression was CLOSED; and ANDROID-01's reconciliation was measured to THREE of six arms reconciled with three failures each described BY KIND",
+   "per_declared_scope": {
+    "Mesh/Oracle": {
+     "findings": 40
+    },
+    "Both": {
+     "findings": 14
+    }
+   },
+   "NOT_CLAIMED_AND_WHY": [
+    "T78 CONVERGENCE IS NOT CLAIMED: its requirement is that all applicable HOSTED lanes be enabled, executed and green AT THIS SHA, and NO hosted lane, run URL, run id or log exists in this environment.",
+    "NO FINDING IS VERIFIED_FIXED (only an INDEPENDENT AUDIT may write that): 35 FIX_SUBMITTED, 15 OPEN, 4 PARTIAL.",
+    "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES STAY OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING).",
+    "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance.",
+    "AND THE HARDWARE-DEPENDENT WORK IS EXPLICITLY OUTSTANDING: GS-LAB-001's step 6 awaiteth T73-T75, and IOS-01's behavioural half awaiteth a real CoreBluetooth manager -- NO SIMULATOR OR FIXTURE RESULT IS OFFERED AS A DEVICE RESULT ANYWHERE IN THIS RECORD."
+   ]
   }
  },
  "counts": {

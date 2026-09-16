@@ -148,3 +148,27 @@ limitation declared.
 gates **OPEN**; closure evidence **stale for 31 findings**; and the programme's own debt is named — **31 self-inflicted
 corrections recorded across this session's rounds**, each kept beside the repair it accompanied, *because a record that
 carries only successes teaches nothing*.
+
+## Candidate verification at `e47e779` (ledger round 275) — FULLY GREEN, INCLUDING BOTH LAB APPLICATION TARGETS
+
+| Item | Result at this exact SHA (tree `a3824ea`) |
+|---|---|
+| Android `:mesh` lane | **1192 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`, 45s) |
+| **Android lab application target** | **0 compile errors (forced)**, `labmesh-debug.apk` **15,133,266 bytes** |
+| **iOS lab application target** | **`BUILD SUCCEEDED`** (simulator SDK, unsigned, `CODE_SIGNING_ALLOWED=NO`) |
+| iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 211.8s |
+| Python readiness + ledger courts | **OK** |
+| Repository controls | every `ci/check_*.py` **rc 0 — including `check_parity` under its default scope**; `--scope repo` rc 0 |
+| Symbols | `ci/symbols.py` — **0 unresolved** (223 Kotlin files, two more than round 256: GS-LAB-001's own lab sources) |
+
+**Since round 256:** GS-LAB-001 carried **four of six steps on real artifacts** — the Android APK whose **merged manifest** carries the
+launcher activity, the retained runtime owner, **INTERNET removed** and `BLUETOOTH_SCAN` present; and the iOS `GodstoneLabMesh.app`
+with its **own** bundle identity `io.godstone.labmesh` — plus **five lab invariants each proven to judge by a negative case**;
+GS-UX-001's step 5 landed the SOS as a **real cancellable hold on a monotonic threshold** with an accessible alternative; the
+round-254 mandatory-control regression was **closed**; and ANDROID-01's reconciliation was measured to **three of six arms
+reconciled**, with three failures **each described by kind**.
+
+**Not claimed:** **T78** (no hosted lane, run URL, run id or log exists here); **no finding is `VERIFIED_FIXED`** (35 FIX_SUBMITTED /
+15 OPEN / 4 PARTIAL); readiness flags **false**; five gates **OPEN**; closure evidence **stale for 31 findings**; and the
+hardware-dependent work is explicitly outstanding — **GS-LAB-001's step 6 awaits T73–T75 and IOS-01's behavioural half awaits a real
+CoreBluetooth manager. No simulator or fixture result is offered as a device result anywhere in this record.**
