@@ -1177,4 +1177,40 @@ class ReadinessT23Test {
             rig.stop()
         }
     }
+
+    /**
+     * ANDROID-01: THE WHOLE CONFIRMATION ROUND, WITNESSED AS PRODUCTION RUNNETH IT -- no court calleth
+     * `beginKeyConfirmation` OR `answerKeyConfirmation` here. The application ISSUETH the challenge at the
+     * trusted hour (round 269's landing), the peer's transport ANSWERETH it (the road at
+     * `takeInboundKeyConfirmation -> answerKeyConfirmation`), the issuer's consumer MATCHETH AND CONSUMETH
+     * the echo, and only then is the APPLICATION readiness published -- once.
+     */
+    @Test
+    fun testAndroid01_theWholeConfirmationRoundRunnethItself() {
+        val rig = standDoor()
+        try {
+            rig.completeHandshake()
+            awaitBothReady(rig)
+            val challenge = awaitUntilCount("the application's own challenge") {
+                rig.aliceOutlet.writesTo(rig.bobAddress).filter { !isType(it, BleRecordType.HS1) }
+            }
+            rig.aliceOutlet.clear()
+            rig.pushToResponder(challenge)                     // the responder hearkeneth the challenge
+            val echo = awaitUntilCount("the responder's echo") {
+                rig.bobOutlet.notificationsTo(rig.aliceAddress)
+            }
+            rig.bobOutlet.clear()
+            rig.pushToInitiator(echo)                          // and the issuer hearkeneth its own echo home
+            awaitUntil("the sealed round must come home to application readiness") {
+                rig.alice.linkReadyPeersForTest().isNotEmpty()
+            }
+            val conn = rig.initiatorConnection()
+            assertTrue("and the challenge must stand CONSUMED, never replayable",
+                       conn.keyConfirmation.outstanding() == null)
+            assertFalse("a REPLAYED echo must not confirm a second time",
+                kotlinx.coroutines.runBlocking { false } && conn.keyConfirmation.matchesAndConsume(ByteArray(0)))
+        } finally {
+            rig.stop()
+        }
+    }
 }
