@@ -4,6 +4,16 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 264 -- park v4: eight arms repaired, four new ones surfaced, and the COUNT that hid it
+
+**The measured series**: 23 (v1) → 7 (v2) → 4 (v3) → **4 (v4)** — each a whole-lane run counted from the JUnit XML. **And that last figure teaches the round's best lesson**: *the count did not move while **eight** T22 arms were repaired and **four new ones surfaced**.* **A count that does not move is not evidence that nothing moved** — only reading the **names** told the two apart, and this programme has now met that species twice.
+
+**What park v4 carries**: T22's hand-formed counsels — **eight** of them, all of the shape `smA.beginInitiator(…admissionTowardsBob()…)` — now **wait for the APPLICATION's first counsel** from the outlet, deterministically rather than racing the application's asynchronous begin. That is *and* a fix to a latent race: the eight arms that "passed" did so by winning a race against the application's begin, not by measuring anything.
+
+**The four that remain, each a different shape**: T23's `testTheHalfSpokenExchangeFallethAtTheTenSecondHour` and `testAFreshCourseWithFreshKeysReestablishethTrust` turn on a **clock-driven premise** that must be re-stated once the application itself opens the exchange; T22's `testThePublicShapeAdmittethTheAlienSealDenieth` needs the **alien application's** own counsel (the replacement did not match its call shape); T21's `testTheInitiatorEmitsHS1UponTheDuplexWitnessedInAscendantOrder` carries its own assertion wording. **Each turns on its own subject** — and the context remaining would not have allowed writing four judgements *and* measuring them, so the tree was returned to **green** and the work parked (`round264-D2-trigger-migration-PARKED-v4.patch`, `git apply --check` → APPLIES CLEANLY).
+
+**Green**: android `:mesh` **1198/0/0** · parity **7/7** · symbols **0 unresolved** · courts **635**. The iOS lane remains blocked by the Xcode licence.
+
 ## Round 263 -- ANDROID-01's migration carried to T21-GREEN (23 -> 7 -> 4), four named arms left
 
 **The measured series**, each a whole-lane run counted from the JUnit XML: park v1 (repair alone) **1200 / 23 FAILED**; v2 (seven helper re-basings) **1200 / 7**; v3 (the named seam + the T21 arms) **1200 / 4 — T21 IS FULLY GREEN**.
