@@ -250,6 +250,9 @@ internal enum StoreSchema {
     static let colRemainingMs = "remaining_ms"
     static let colCheckpointMono = "checkpoint_mono"
     static let colBootIdentity = "boot_identity"
+    /// GS-STORE-004: the bound of the STARTUP sweep -- small, because startup must not become a long walk over a
+    /// large store; the runtime cadence (owed) carrieth the rest.
+    static let startupSweepLimit = 64
     static let colDiscontinuity = "discontinuity_count"
 
     /// Per-row bookkeeping beyond the payload blob (columns + page overhead).
@@ -1010,13 +1013,21 @@ public final class SqliteMessageStore: MessageStore {
 
     @discardableResult
     public func sweepExpired(limit: Int = 64) -> Int {
+        withDb { db in sweepExpiredNoLock(db: db, limit: limit) } ?? 0
+    }
+
+    /// THE SWEEP'S BODY, ON A HANDLE ALREADY HELD -- so it may be reached from the STARTUP path (which holdeth the
+    /// lock) as well as from the public wrapper, WITHOUT taking a second lock. Round 309 measured what happeneth
+    /// otherwise: `withDb` inside `withDb` hung the court.
+    @discardableResult
+    internal func sweepExpiredNoLock(db: OpaquePointer, limit: Int = 64) -> Int {
         guard let provider = receiptTimeProvider else {
             lastSweepReport = "REFUSED: no receipt clock was injected (a store with no runtime clock governeth no retention)"
             return 0
         }
         let now = provider().monoMs
         let boot = provider().bootIdentity
-        return withDb { db -> Int in
+        do {
             // (1) A BOUNDED SCAN: at most `limit` candidate rows, judged by THE SAME PREDICATE THE READERS USE
             // (so the sweep and the read paths can never disagree about what "spent" meaneth).
             let scan = "SELECT \(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colReceivedAt), " +
@@ -1075,8 +1086,29 @@ public final class SqliteMessageStore: MessageStore {
             if retired > 0 { notifyHeldSetChanged() }
             lastSweepReport += " retired=\(retired)"
             return retired
-        } ?? 0
+        }
     }
+
+    /// GS-STORE-004 (round 316): STARTUP MAINTENANCE -- the bounded sweep, CONNECTED. The finding asketh that the
+    /// sweep be "connected to startup and runtime scheduling", and A SWEEP THAT ONLY A HAND MAY CALL IS CONNECTED TO
+    /// NOTHING. It runneth ONCE per store instance, on the first public read after the store opens.
+    ///
+    /// WHY FIRST USE RATHER THAN THE OPEN ITSELF, stated because it is a MEASURED constraint and not a preference:
+    /// the open path holdeth this store's NON-RECURSIVE `NSLock` while it migrateth and validateth (round 309 paid
+    /// for that lesson with a hung court), and `sweepExpired` taketh the lock in its turn -- so a sweep INSIDE the
+    /// open would deadlock. Running it at the first use that needeth the store is the nearest point to startup that
+    /// the lock order permitteth, and it is honest to say so rather than to pretend the open carrieth it.
+    internal func runStartupMaintenanceIfNeeded() {
+        let alreadyDone = withDb { _ -> Bool in
+            if startupMaintenanceDone { return true }
+            startupMaintenanceDone = true
+            return false
+        } ?? true
+        if !alreadyDone { _ = sweepExpired(limit: StoreSchema.startupSweepLimit) }
+    }
+
+    /// GS-STORE-004 (round 316): whether this instance's STARTUP sweep hath run.
+    private var startupMaintenanceDone = false
 
     /// GS-STORE-004 evidence hook: the receipt anchor the store PERSISTED for a message (the retention budget's
     /// own anchor, never the sender's timestamp). Nil when the message is not held.
@@ -1157,6 +1189,7 @@ public final class SqliteMessageStore: MessageStore {
     }
 
     public func forEachHeldMsgId(_ visit: (Data) -> Bool) {
+        runStartupMaintenanceIfNeeded()
         withDb { db in
             // GS-STORE-004: the gate readeth the anchor, SO THE ANCHOR MUST BE SELECTED -- reading index 1 of a
             // one-column statement was the fatal `Index out of range` of the first measured attempt.
@@ -2503,6 +2536,13 @@ public final class SqliteMessageStore: MessageStore {
     private func withDb<T>(_ body: (OpaquePointer) -> T) -> T? {
         lock.lock(); defer { lock.unlock() }
         guard let db = handle else { return nil }
+        // GS-STORE-004 (round 316): STARTUP MAINTENANCE, AT THE FIRST USE OF ANY KIND. The flag is set BEFORE the
+        // sweep runneth, so a sweep that re-entered this entry point could not recurse; the sweep then runneth ON
+        // THIS HANDLE (`sweepExpiredNoLock`), so it taketh NO second lock.
+        if !startupMaintenanceDone {
+            startupMaintenanceDone = true
+            _ = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
+        }
         return body(db)
     }
 

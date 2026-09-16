@@ -1593,4 +1593,26 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET ttl = 0", []), 0,
                        "the row must be GONE FROM STORAGE -- a hidden row is not a retired one")
     }
+
+    /// GS-STORE-004, the finding's own words: "CONNECT A BOUNDED EXPIRY SWEEP TO STARTUP AND RUNTIME SCHEDULING."
+    /// A sweep that only a caller may invoke by hand is NOT connected to anything. RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_theSweepIsConnectedToStartup() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-startup-\(UUID().uuidString).db")
+        tmpURL = url
+        let first = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        first.receiptTimeProvider = { (monoMs: 2_000_000, bootIdentity: "boot-A") }
+        let f = frame(11, .direct, 48)
+        XCTAssertEqual(first.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertEqual(first.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
+        first.close()
+
+        // A REOPEN: the spent row must be retired BY THE STORE AT STARTUP -- no caller asked.
+        let second = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        second.receiptTimeProvider = { (monoMs: 2_000_000, bootIdentity: "boot-A") }
+        defer { second.close() }
+        XCTAssertEqual(second.execRawUpdate("UPDATE held_frames SET ttl = 0", []), 0,
+                       "STARTUP must retire a spent row WITHOUT the caller invoking the sweep -- " +
+                       "a sweep that only a hand may call is connected to nothing")
+    }
 }
