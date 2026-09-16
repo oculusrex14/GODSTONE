@@ -3719,7 +3719,7 @@
   },
   "candidate_numbering_eras_NOTE_AT_ROUND_245": "**A MEASURED INCONSISTENCY IN THIS LEDGER, RECORDED RATHER THAN SMOOTHED OVER: the candidate keys run up to `candidate_verification_at_round_282` while the CURRENT goal round is 245 -- SO THE LEDGER CARRIETH TWO NUMBERING ERAS (an earlier, longer-running bookkeeping pass and this one), and **MY FIRST CORRECTION PICKED THE HIGHEST NUMBER AND THEREBY MADE AN *ELDER* CANDIDATE STAND.** The standing candidate is now chosen BY GIT COMMIT TIME, which is the only ordering that cannot be confused by a number. A reader of this ledger should trust the `stands_as_the_convergence_candidate` flag AND the commit dates, never the round numbers alone.",
   "candidate_verification_at_round_246": {
-   "candidate_sha": "13e5f7daacf2690fce05de1e05d6a03d528d66eb",
+   "candidate_sha": "6278f09f25ce54f66a864de8faab33d03f0dfc5e",
    "tree_sha": "2e35745b020dddabd72a6a9e8acda76320e5674d",
    "worktree": "clean at this sha apart from this record",
    "stands_as_the_convergence_candidate": true,
