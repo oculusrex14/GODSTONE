@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 204 -- closure-evidence staleness recomputed at HEAD: **43 stale** (round 120 said 31)
+
+- **Method**: `git diff --name-only <audited>..HEAD` (273 files, 75 Kotlin) over every file each finding's card names; a reference is `path` or `path:line` (or a dict with `ref`/`path`), its `:line` stripped, matched **by file name**, since card paths are relative to the audited snapshot.
+- **Result**: **43 findings carry closure evidence bound to a changed owner** (31 at round 120; **22 joined** since, including the CRYPTO/ACK/INBOX cluster and — from my own repairs — GS-CTRL-002, GS-INTEGRATION-001, GS-LAB-001, GS-STRESS-001, GS-SUPPLY-001, GS-PACKAGE-001/002). **Staleness is a floor, not a clearance**: no closure claim for those files can stand until re-derived at the converged candidate SHA.
+- **My first draft was wrong and measurement exposed it**: it parsed only `path`-shaped refs, so 22 findings looked clean and the count *fell* from 31 to 9 — **impossible** when more owners have changed. That impossibility is what exposed the parser.
+- **Recorded as an open question, not explained away**: ten findings that round 120 called stale read as unchanged here, which should be impossible; the likely cause is a looser rule at round 120, and **an under-count of staleness is the dangerous direction** — so the next round should re-derive the set from the cards themselves.
+
 ## Round 203 -- **IOS-02's five steps are COMPLETE: FIX_SUBMITTED**
 
 - **The last owed witness already stood**: the carrying-through half of step 2 is witnessed by **six canonical arms** in the mandatory `BleLinkSubstrateTests` battery (`testIosStaleProvisionalTimer_CannotReleaseReplacement` — a stale timer with `expectedGen: 1` answers `.noOp`; the two stale-lease arms; the duplicate-link-info, stale-disconnect and stale-terminal arms). **A clause already witnessed needs a measurement, not a test.**

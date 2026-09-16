@@ -1208,6 +1208,622 @@
    },
    "what_moved": "IOS-02 step 2's immutability half is witnessed (a later advertisement may not rebind the relation's hint).",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the android lanes and the iOS lab build are NOT claimed at this SHA."
+  },
+  "closure_evidence_staleness_COMPUTED_AT_ROUND_204": {
+   "audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
+   "computed_from": "git diff --name-only <audited>..HEAD (273 files: 75 Kotlin) over every file each finding's CARD names, AT HEAD (round 204)",
+   "method": "as at round 120, WITH THE MATCHING RULE STATED PLAINLY: a card reference is `path` or `path:line` (or a dict with `ref`/`path`/`absolute_path`), its `:line` is stripped, and it is matched against the changed set BY THE FILE'S OWN NAME, since the card paths are relative to the audited snapshot. A finding with NO reference at all is counted in NEITHER set, and is named as such. **THIS RECORD SUPERSEDETH THE ROUND-120 COMPUTATION, WHICH HAD ITSELF GROWN STALE: a staleness computation is evidence TOO, and this programme's own repairs have changed many production owners since.** And its FIRST DRAFT WAS WRONG AND WAS CORRECTED BY MEASUREMENT: it parsed only `path`-shaped references, so 22 findings whose refs are `ref: 'file:line'` or plain strings appeared CLEAN -- whereupon the count FELL from 31 to 9, which is impossible when more owners have changed. THAT IMPOSSIBILITY IS WHAT EXPOSED THE PARSER, not a re-reading of it.",
+   "findings_with_changed_owners": [
+    "ANDROID-01",
+    "ANDROID-03",
+    "ANDROID-04",
+    "ANDROID-05",
+    "ANDROID-07",
+    "CRYPTO-001",
+    "CRYPTO-002",
+    "CRYPTO-003",
+    "CRYPTO-004",
+    "CRYPTO-005",
+    "CRYPTO-006",
+    "GS-ACK-001",
+    "GS-ACK-002",
+    "GS-ARCHIVE-001",
+    "GS-ARCHIVE-002",
+    "GS-ARCHIVE-003",
+    "GS-ARCHIVE-004",
+    "GS-ARCHIVE-005",
+    "GS-CONTENT-001",
+    "GS-CONTENT-002",
+    "GS-CONTENT-003",
+    "GS-CTRL-001",
+    "GS-CTRL-002",
+    "GS-DIAG-001",
+    "GS-GATE-001",
+    "GS-INBOX-001",
+    "GS-INTEGRATION-001",
+    "GS-LAB-001",
+    "GS-MODEL-001",
+    "GS-PACKAGE-001",
+    "GS-PACKAGE-002",
+    "GS-RUNTIME-001",
+    "GS-SOS-001",
+    "GS-STORE-001",
+    "GS-STORE-002",
+    "GS-STORE-003",
+    "GS-STORE-004",
+    "GS-STORE-005",
+    "GS-STORE-006",
+    "GS-STRESS-001",
+    "GS-SUPPLY-001",
+    "IOS-02",
+    "IOS-05"
+   ],
+   "findings_whose_named_paths_are_unchanged": [
+    "ANDROID-02",
+    "ANDROID-06",
+    "GS-SOS-002",
+    "GS-SYNC-001",
+    "GS-SYNC-002",
+    "GS-UX-001",
+    "IOS-01",
+    "IOS-03",
+    "IOS-04",
+    "IOS-06",
+    "IOS-07"
+   ],
+   "findings_carrying_no_reference_at_all": [],
+   "delta_since_round_120": {
+    "joined_the_stale_set": [
+     "ANDROID-05",
+     "CRYPTO-001",
+     "CRYPTO-002",
+     "CRYPTO-003",
+     "CRYPTO-004",
+     "CRYPTO-005",
+     "CRYPTO-006",
+     "GS-ACK-001",
+     "GS-ACK-002",
+     "GS-CONTENT-001",
+     "GS-CONTENT-002",
+     "GS-CONTENT-003",
+     "GS-CTRL-001",
+     "GS-CTRL-002",
+     "GS-GATE-001",
+     "GS-INBOX-001",
+     "GS-INTEGRATION-001",
+     "GS-LAB-001",
+     "GS-PACKAGE-001",
+     "GS-PACKAGE-002",
+     "GS-STRESS-001",
+     "GS-SUPPLY-001"
+    ],
+    "left_it": [
+     "ANDROID-02",
+     "ANDROID-06",
+     "GS-SOS-002",
+     "GS-SYNC-001",
+     "GS-SYNC-002",
+     "IOS-01",
+     "IOS-03",
+     "IOS-04",
+     "IOS-06",
+     "IOS-07"
+    ],
+    "counts": {
+     "round_120": 31,
+     "round_204": 43
+    },
+    "ten_that_left_the_set_ARE_AN_OPEN_QUESTION": "TEN findings that round 120 counted STALE are counted UNCHANGED here: ANDROID-02, ANDROID-06, GS-SOS-002, GS-SYNC-001, GS-SYNC-002, IOS-01, IOS-03, IOS-04, IOS-06, IOS-07. **THAT SHOULD BE IMPOSSIBLE -- a file that differeth from the audited revision cannot cease to differ -- so it is NAMED AS AN OPEN QUESTION RATHER THAN EXPLAINED AWAY.** The likely cause is that round 120 matched by a LOOSER RULE than this record stateth (its own note said the card paths are relative to the audited snapshot), so this record UNDER-COUNTS those ten at worst: **AND THE DIRECTION MATTERS -- an UNDER-COUNT OF STALENESS IS THE DANGEROUS DIRECTION, WHICH IS WHY THE NEXT ROUND SHOULD RE-DERIVE THIS SET FROM THE CARDS THEMSELVES (reading each card's file list) rather than from the ledger's copied references.** The forty-three ARE stale on either rule, so the FLOOR stands."
+   },
+   "per_finding": {
+    "ANDROID-01": {
+     "card_refs_checked": 5,
+     "changed_refs": 4,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt) -- closure evidence bound to the old revision is STALE",
+      "BleTransport.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt) -- closure evidence bound to the old revision is STALE",
+      "ReadinessT21Test.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT21Test.kt) -- closure evidence bound to the old revision is STALE",
+      "MeshNode.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "ANDROID-02": {
+     "card_refs_checked": 5,
+     "changed_refs": 0,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:1583 (handleInitiatorHandshakeRecord obtained the HS2 hint from discoveryIndexMetadataHint)": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:1667 (that helper read ONLY discoveredMetadataForTest(...).nodeHint -- no GATT/connection fallback)": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:266,361 (UUID-only advertising is documented as the canonical shape; scan metadata is extracted SOLELY from 13-byte service data, null for canonical advertisements)": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:518 and BleConnection.kt:49 (the GATT callback stores the decoded remote LinkInfo in centralRemoteLinkInfo; the role owner has the bound remoteNodeHint)": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT21Test.kt:266 (the court supplied BleLinkInfoV1(nodeHint=...) directly in the ScanEvent -- metadata canonical T09 advertisements do not contain -- which is why the defect stayed green in the court)": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "ANDROID-03": {
+     "card_refs_checked": 7,
+     "changed_refs": 3,
+     "verdicts": {
+      "PeerEventPublisher.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "TrustedPeerChannel.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "BleTransport.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt) -- closure evidence bound to the old revision is STALE",
+      "MeshNode.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt) -- closure evidence bound to the old revision is STALE",
+      "Transport.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "ReadinessT21Test.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT21Test.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "ANDROID-04": {
+     "card_refs_checked": 2,
+     "changed_refs": 2,
+     "verdicts": {
+      "BleTransport.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt) -- closure evidence bound to the old revision is STALE",
+      "BleConnection.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "ANDROID-05": {
+     "card_refs_checked": 3,
+     "changed_refs": 2,
+     "verdicts": {
+      "MeshNode.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt) -- closure evidence bound to the old revision is STALE",
+      "RecordWriter.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "ANDROID-06": {
+     "card_refs_checked": 3,
+     "changed_refs": 0,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt:174-210 -- `reserve` checks only already-sealed `admitted.size` and records no outstanding reservation.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt:217-267 -- `sealAndQueueOf` has no consumed/cancelled ticket check and invokes the sealer at :226 BEFORE rechecking the full queue at :246.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:1220,1232 -- operation tokens bound to `RelationKey(..., 0L)` rather than the real generation.": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "ANDROID-07": {
+     "card_refs_checked": 5,
+     "changed_refs": 3,
+     "verdicts": {
+      "BleTransport.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt) -- closure evidence bound to the old revision is STALE",
+      "MeshNode.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt) -- closure evidence bound to the old revision is STALE",
+      "Router.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "PeerGovernor.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt) -- closure evidence bound to the old revision is STALE",
+      "ReadinessT26Test.kt:72–89": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "CRYPTO-001": {
+     "card_refs_checked": 7,
+     "changed_refs": 4,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionSlot.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/crypto/SessionSlot.kt) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/SessionManager.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/BleTransport.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "CRYPTO-002": {
+     "card_refs_checked": 11,
+     "changed_refs": 7,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/SessionManager.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/BleTransport.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "CRYPTO-003": {
+     "card_refs_checked": 7,
+     "changed_refs": 4,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/crypto/TrustedHandshakeController.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/crypto/TrustedHandshakeController.kt) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "CRYPTO-004": {
+     "card_refs_checked": 6,
+     "changed_refs": 5,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/seal/SealedSender.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/seal/SealedSender.kt) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT35Test.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT35Test.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT35Tests.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Tests/GodstoneMeshTests/ReadinessT35Tests.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "CRYPTO-005": {
+     "card_refs_checked": 6,
+     "changed_refs": 3,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/delivery/SendDirectAuthority.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/delivery/SendDirectAuthority.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/SendDirectAuthority.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/SendDirectAuthority.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "CRYPTO-006": {
+     "card_refs_checked": 7,
+     "changed_refs": 3,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/delivery/SendDirectAuthority.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/delivery/SendDirectAuthority.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/SendDirectAuthority.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/SendDirectAuthority.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-ACK-001": {
+     "card_refs_checked": 5,
+     "changed_refs": 2,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/delivery/AckObligationStore.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/delivery/AckObligationStore.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/RecipientInboxRepository.swift": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-ACK-002": {
+     "card_refs_checked": 5,
+     "changed_refs": 4,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/delivery/AckObligationStore.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/delivery/AckObligationStore.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/delivery/AckAuthenticator.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/delivery/AckAuthenticator.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-ARCHIVE-001": {
+     "card_refs_checked": 6,
+     "changed_refs": 1,
+     "verdicts": {
+      "android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt": "# CHANGED since the audited SHA (this tree: android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt) -- closure evidence bound to the old revision is STALE",
+      "android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "android/core/src/main/java/io/godstone/core/archive/ArchiveManifest.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneCore/ArchiveRepository.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/App/AppContainer.swift": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-ARCHIVE-002": {
+     "card_refs_checked": 6,
+     "changed_refs": 3,
+     "verdicts": {
+      "android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt": "# CHANGED since the audited SHA (this tree: android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt) -- closure evidence bound to the old revision is STALE",
+      "android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt": "# CHANGED since the audited SHA (this tree: android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt) -- closure evidence bound to the old revision is STALE",
+      "android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt": "# CHANGED since the audited SHA (this tree: android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-ARCHIVE-003": {
+     "card_refs_checked": 4,
+     "changed_refs": 2,
+     "verdicts": {
+      "android/app/src/main/java/io/godstone/app/ui/browse/BrowseScreen.kt": "# CHANGED since the audited SHA (this tree: android/app/src/main/java/io/godstone/app/ui/browse/BrowseScreen.kt) -- closure evidence bound to the old revision is STALE",
+      "android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt": "# CHANGED since the audited SHA (this tree: android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-ARCHIVE-004": {
+     "card_refs_checked": 3,
+     "changed_refs": 1,
+     "verdicts": {
+      "ios/Godstone/Sources/App/ArchiveView.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/App/ArchiveView.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-ARCHIVE-005": {
+     "card_refs_checked": 9,
+     "changed_refs": 3,
+     "verdicts": {
+      "ios/Godstone/Sources/App/ArchiveView.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/App/ArchiveView.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift) -- closure evidence bound to the old revision is STALE",
+      "android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt": "# CHANGED since the audited SHA (this tree: android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-CONTENT-001": {
+     "card_refs_checked": 6,
+     "changed_refs": 3,
+     "verdicts": {
+      "content/ingest/build_archive.py": "# CHANGED since the audited SHA (this tree: content/ingest/build_archive.py) -- closure evidence bound to the old revision is STALE",
+      "scripts/prepare_release_assets.py": "# CHANGED since the audited SHA (this tree: scripts/prepare_release_assets.py) -- closure evidence bound to the old revision is STALE",
+      ".github/workflows/release-gates.yml": "# CHANGED since the audited SHA (this tree: .github/workflows/release-gates.yml) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-CONTENT-002": {
+     "card_refs_checked": 6,
+     "changed_refs": 2,
+     "verdicts": {
+      "content/ingest/build_archive.py": "# CHANGED since the audited SHA (this tree: content/ingest/build_archive.py) -- closure evidence bound to the old revision is STALE",
+      "scripts/prepare_release_assets.py": "# CHANGED since the audited SHA (this tree: scripts/prepare_release_assets.py) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-CONTENT-003": {
+     "card_refs_checked": 6,
+     "changed_refs": 3,
+     "verdicts": {
+      "scripts/prepare_release_assets.py": "# CHANGED since the audited SHA (this tree: scripts/prepare_release_assets.py) -- closure evidence bound to the old revision is STALE",
+      "tools/readiness/tests/test_t52.py": "# CHANGED since the audited SHA (this tree: tools/readiness/tests/test_t52.py) -- closure evidence bound to the old revision is STALE",
+      "ci/mutations.py": "# CHANGED since the audited SHA (this tree: ci/mutations.py) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-CTRL-001": {
+     "card_refs_checked": 2,
+     "changed_refs": 1,
+     "verdicts": {
+      "tools/readiness/run.py": "# CHANGED since the audited SHA (this tree: tools/readiness/run.py) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-CTRL-002": {
+     "card_refs_checked": 4,
+     "changed_refs": 4,
+     "verdicts": {
+      "tools/readiness/tests/test_t03.py": "# CHANGED since the audited SHA (this tree: tools/readiness/tests/test_t03.py) -- closure evidence bound to the old revision is STALE",
+      "tools/readiness/run.py": "# CHANGED since the audited SHA (this tree: tools/readiness/run.py) -- closure evidence bound to the old revision is STALE",
+      "ci/symbols.py": "# CHANGED since the audited SHA (this tree: ci/symbols.py) -- closure evidence bound to the old revision is STALE",
+      ".github/workflows/repository-verification.yml": "# CHANGED since the audited SHA (this tree: .github/workflows/repository-verification.yml) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-DIAG-001": {
+     "card_refs_checked": 4,
+     "changed_refs": 3,
+     "verdicts": {
+      "tools/readiness/diagnostics.py": "# CHANGED since the audited SHA (this tree: tools/readiness/diagnostics.py) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/diag/Diagnostics.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/diag/Diagnostics.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/Diagnostics.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/Diagnostics.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-GATE-001": {
+     "card_refs_checked": 6,
+     "changed_refs": 2,
+     "verdicts": {
+      "ci/check_release_gates_status.py": "# CHANGED since the audited SHA (this tree: ci/check_release_gates_status.py) -- closure evidence bound to the old revision is STALE",
+      "tools/readiness/tests/test_t53.py": "# CHANGED since the audited SHA (this tree: tools/readiness/tests/test_t53.py) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-INBOX-001": {
+     "card_refs_checked": 6,
+     "changed_refs": 4,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MessageStore.swift) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/RecipientInboxRepository.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MeshNode.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-INTEGRATION-001": {
+     "card_refs_checked": 6,
+     "changed_refs": 2,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/runtime/ComposedRuntime.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/runtime/ComposedRuntime.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT44Tests.swift": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-LAB-001": {
+     "card_refs_checked": 5,
+     "changed_refs": 1,
+     "verdicts": {
+      "android/labmesh/src/main/AndroidManifest.xml": "# CHANGED since the audited SHA (this tree: android/labmesh/src/main/AndroidManifest.xml) -- closure evidence bound to the old revision is STALE",
+      "android/labmesh/src/main/java/io/godstone/labmesh/LabMeshApp.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/project.yml": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/LabMesh/LabMeshApp.swift": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-MODEL-001": {
+     "card_refs_checked": 5,
+     "changed_refs": 2,
+     "verdicts": {
+      "android/llm/src/main/java/io/godstone/llm/ModelManager.kt": "# CHANGED since the audited SHA (this tree: android/llm/src/main/java/io/godstone/llm/ModelManager.kt) -- closure evidence bound to the old revision is STALE",
+      "android/llm/src/main/java/io/godstone/llm/provenance/ModelStaging.kt": "# CHANGED since the audited SHA (this tree: android/llm/src/main/java/io/godstone/llm/provenance/ModelStaging.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneLLM/LlamaRunner.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneLLM/ModelManager.swift": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-PACKAGE-001": {
+     "card_refs_checked": 5,
+     "changed_refs": 1,
+     "verdicts": {
+      "scripts/inspect_ios_artifacts.py": "# CHANGED since the audited SHA (this tree: scripts/inspect_ios_artifacts.py) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-PACKAGE-002": {
+     "card_refs_checked": 4,
+     "changed_refs": 1,
+     "verdicts": {
+      "scripts/inspect_android_release.py": "# CHANGED since the audited SHA (this tree: scripts/inspect_android_release.py) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-RUNTIME-001": {
+     "card_refs_checked": 6,
+     "changed_refs": 2,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MeshNode.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-SOS-001": {
+     "card_refs_checked": 4,
+     "changed_refs": 2,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MeshNode.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-SOS-002": {
+     "card_refs_checked": 5,
+     "changed_refs": 0,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:490-497 -- the SOS dispatch offer loop: `for (peerId in knownPeers()) { val admitted = send(peerId, bytes); ... }` with NO check between iterations.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:667-671 -- the RETRY offer loop, the same shape and the same absence of a check.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:734-738 -- the DIRECT offer loop, likewise.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:541-547 -- `handleSosCommand`: Author/Retry/Cancel route through ONE door, and `Cancel` commits the durable terminal CAS -- which is why a cancel committed DURING a send callback is not seen by the loop that is already iterating.": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:466 -- the twin's site as the audit names it.": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-STORE-001": {
+     "card_refs_checked": 4,
+     "changed_refs": 1,
+     "verdicts": {
+      "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/store/StoreOpenResult.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/store/SqlcipherStoreOpener.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-STORE-002": {
+     "card_refs_checked": 5,
+     "changed_refs": 2,
+     "verdicts": {
+      "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MessageStore.swift) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-STORE-003": {
+     "card_refs_checked": 3,
+     "changed_refs": 3,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MessageStore.swift) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-STORE-004": {
+     "card_refs_checked": 4,
+     "changed_refs": 2,
+     "verdicts": {
+      "ios/Godstone/Sources/GodstoneMesh/RetentionClock.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MessageStore.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-STORE-005": {
+     "card_refs_checked": 4,
+     "changed_refs": 2,
+     "verdicts": {
+      "ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MessageStore.swift) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-STORE-006": {
+     "card_refs_checked": 5,
+     "changed_refs": 1,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/identity/RuntimeLifecycleGate.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/RuntimeLifecycleGate.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift) -- closure evidence bound to the old revision is STALE",
+      "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-STRESS-001": {
+     "card_refs_checked": 6,
+     "changed_refs": 1,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt": "# CHANGED since the audited SHA (this tree: android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt) -- closure evidence bound to the old revision is STALE",
+      "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "tools/readiness/stress.py": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-SUPPLY-001": {
+     "card_refs_checked": 3,
+     "changed_refs": 1,
+     "verdicts": {
+      "tools/supplychain/supply_chain.py": "# CHANGED since the audited SHA (this tree: tools/supplychain/supply_chain.py) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "GS-SYNC-001": {
+     "card_refs_checked": 5,
+     "changed_refs": 0,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt:304 -- `rel.pagesReceived++` runs with NO budget check: the receiver retains the page and advances its counter for every verified page.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt:455 -- `const val MAX_PAGES_PER_RUN: Int = 64` exists.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt:271 -- the constant is consulted on the PRODUCER side (`producerPagesSent`).": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt:385,400 -- and on the PUMP/requester side (`pagesRequested`), which is what the audit means by 'do not call pump helpers to enforce limits on behalf of the remote peer'.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt:283-310 -- `onInventoryPage`: the admission path that mutates `rel.delivered` / `runCursor` / `pagesReceived` without consulting the bound.": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-SYNC-002": {
+     "card_refs_checked": 4,
+     "changed_refs": 0,
+     "verdicts": {
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:209 (pre-repair) -- `controlOutbox` was ONE list of BARE FrameV2, with no destination.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:213 -- `offerControlFrames(frames)` carried no destination, and BOTH producers called it that way (:233 handleControlFrame, :751 ingestInbound), although `fromPeer` was in scope at each.": "unchanged (no file of that name differeth from the audited revision)",
+      "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:371 -- `drainSyncFramesForPeer(peer)` began with `drainControlOutbox()`, which drained the WHOLE outbox regardless of which peer asked -- so an answer raised for one relation was handed to another.": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:138,182,205 -- the twin's sites, named by the audit.": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "GS-UX-001": {
+     "card_refs_checked": 6,
+     "changed_refs": 0,
+     "verdicts": {
+      "android/app/src/main/java/io/godstone/app/trust/IdentityTrustViewModel.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "android/app/src/main/java/io/godstone/app/mesh/MeshViewModel.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreens.kt": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "IOS-01": {
+     "card_refs_checked": 1,
+     "changed_refs": 0,
+     "verdicts": {
+      "BleTransport.swift:634–640": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "IOS-02": {
+     "card_refs_checked": 3,
+     "changed_refs": 3,
+     "verdicts": {
+      "BleTransport.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/BleTransport.swift) -- closure evidence bound to the old revision is STALE",
+      "ReadinessT21Tests.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Tests/GodstoneMeshTests/ReadinessT21Tests.swift) -- closure evidence bound to the old revision is STALE",
+      "ReadinessT23Tests.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Tests/GodstoneMeshTests/ReadinessT23Tests.swift) -- closure evidence bound to the old revision is STALE"
+     }
+    },
+    "IOS-03": {
+     "card_refs_checked": 8,
+     "changed_refs": 0,
+     "verdicts": {
+      "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:2057 (handleInboundHandshakeRecordInitiatorSide reads discoveryMetadata(for: peerId)?.nodeHint ?? Data())": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:2084 (that value is supplied to initiatorProcessHs2)": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:2938-2943 (the MANDATORY GATT LinkInfo hint is read into pendingInitiatorRemoteHints)": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:3134 (consumed by the LinkInfo-write completion)": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift:74-77, 334-338 (the hint is bound into the connection)": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:3734-3756 (discovery metadata is populated ONLY from OPTIONAL service data)": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/IdentityBindingV1.swift:172-177 (a hint that is not exactly four bytes is rejected)": "unchanged (no file of that name differeth from the audited revision)",
+      "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift:115-123 (the handshake is then rejected)": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "IOS-04": {
+     "card_refs_checked": 3,
+     "changed_refs": 0,
+     "verdicts": {
+      "PeerEventPublisher.swift:44–46": "unchanged (no file of that name differeth from the audited revision)",
+      "BleTransport.swift:4195–4206": "unchanged (no file of that name differeth from the audited revision)",
+      "MeshNode.swift:344–357": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "IOS-05": {
+     "card_refs_checked": 2,
+     "changed_refs": 1,
+     "verdicts": {
+      "PeerGovernor.swift": "# CHANGED since the audited SHA (this tree: ios/Godstone/Sources/GodstoneMesh/PeerGovernor.swift) -- closure evidence bound to the old revision is STALE",
+      "BleTransport.swift:1990–2000": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "IOS-06": {
+     "card_refs_checked": 3,
+     "changed_refs": 0,
+     "verdicts": {
+      "LifecycleTransportAdapter.swift:5–18": "unchanged (no file of that name differeth from the audited revision)",
+      "MeshNode.swift:124–135": "unchanged (no file of that name differeth from the audited revision)",
+      "BleTransport.swift:3676–3691": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    },
+    "IOS-07": {
+     "card_refs_checked": 1,
+     "changed_refs": 0,
+     "verdicts": {
+      "BleTransport.swift:2963–3001": "unchanged (no file of that name differeth from the audited revision)"
+     }
+    }
+   },
+   "what_this_means": "STALENESS IS A FLOOR ON WHAT A LATER CLOSURE COULD CLAIM, NOT A CLEARANCE: every finding below carrieth closure evidence bound to a revision a production owner hath changed, so NO closure claim for those files can stand until it is re-derived at the converged candidate SHA. NO gate is closed, NO finding is VERIFIED_FIXED, and the readiness flags remain false."
   }
  },
  "counts": {
