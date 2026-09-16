@@ -4,6 +4,20 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 259 -- CRYPTO-001: the Android transport now presents the admission, and the mirror is COMPLETE
+
+**The last piece the remediation steps demand** — *"remove peer-handle-only overloads from production call paths"* and *"capture the key when the transport relation is admitted"*. The Android transport: the connection carries the relation's **immutable admission**, stamped at admission (the **PublishFound** arm, the accept-write arm, the subscription arm); where a path reaches a relation whose admission point this driver never announces, `ensureAdmission()` takes the identity from the link owner's **own registration** and **freezes it on the connection** — safe for the same reason the stamped road is, because the connection belongs to **one** incarnation. The transport carries its **own radio epoch**. Seal, open, the post-AEAD charge, the three readiness gates, all four handshake steps and **both teardown sites** present the admission; the ingress flow carries the admission captured on the connection the record arrived upon; the handshake seam speaks it. **The crypto handle is the platform peer handle**, while the transport's MAC-address publication vocabulary stays its own — *a registry which conflated the two names would be the very ambiguity this finding is about*.
+
+**A wiring gap found by making two refusals say different things**: the round's first run recorded *"begin initiator refused"* for relations that had **never been admitted at all**. An absent admission and a refused handshake now answer separately — *a silent conflation of the two is how a wiring gap survives a suite*, and this one had survived one.
+
+**Both mandatory controls went RED and both reds were mine** — recorded, not smoothed: invariant F named it exactly (`UNRESOLVED … conn.relationKeyProvider() -- 'conn' is typed BleConnection, which declares no such member`), and **two things were true at once**: the invariant was real, and my call was also unnecessary (every one of those sites carries the address in scope). And a prior round's mutation witness patched a binding the migration **moved**; it was **re-measured rather than satisfied** (its binding reader now reads a *statement*, not the first line of one). Both repaired in the same round.
+
+**Courts corrected honestly**: 56 arms across T17/T18/T20/T21/T22/T23 fell for one diagnosed reason — their ladders reached readiness through a door that never stamped an admission — and T22's rig now pairs the crypto authority at the admission the **transport** froze, whose ring had said it plainly: `hs.read.initiator|hs2 rejected`.
+
+**Measured at `065a217`**: android `:mesh` **1198/0/0** + lab APK rc 0 · iOS **1233/0** · parity **7/7** · symbols **0 unresolved** · composition rc 0 · courts **635** · probes 12 · digests **404/404** · lab isolation PASSED.
+
+**CRYPTO-001 is now FIX_SUBMITTED — with four owed proofs named rather than implied**: no device or radio reproduction on either isle (the finding's third closure test stays owed); the pre-T08 host vocabulary survives as internal overlays refused only by source-level arms; the ABA question (can the generation counters or epochs exhaust or wrap?) is unanswered; and the frozen-first-use road is **argued, not measured** — *an independent audit should attack that argument*. **Not one `VERIFIED_FIXED` is written anywhere.**
+
 ## Round 258 -- CRYPTO-001 on the Android isle: the crypto layer mirrored (the transport still owes its half)
 
 **Why this was the next step**: the finding's own two `source_refs` are **Android** files, so the iOS half alone could not answer it.
