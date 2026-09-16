@@ -21,7 +21,10 @@ struct LabMeshRootApp: App {
                 // GS-LAB-001 step 4 (round 267): THE LIFECYCLE REACHETH THE **SAME RUNTIME OWNER**. The card asketh that
                 // 'foreground/background/protected-data lifecycle' be connected to it -- so the phase is handed to the
                 // holder, which carrieth the ONE runtime, rather than to the view that merely showeth it.
-                .onChange(of: scenePhase) { _, phase in holder.lifecycleChanged(to: phase) }
+                // GS-LAB-001 step 4: THE ONE-PARAMETER FORM, because the two-parameter `onChange(of:initial:_:)` is
+                // iOS 17+ AND THE LAB TARGETS A LOWER DEPLOYMENT TARGET -- the compiler named the line and the reason,
+                // which is the instrument working as intended rather than a setback.
+                .onChange(of: scenePhase) { phase in holder.lifecycleChanged(to: phase) }
         }
     }
 }
