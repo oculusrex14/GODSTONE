@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 228 -- the ANDROID half's step 1: the twin defects are CONFIRMED, measured
+
+- **The signal exists there too**: `BleTransport.applicationLinkReady(): Flow<ByteArray>` fed by `publishApplicationLinkReadyOnce`. **The consumers exist**: the Kotlin twins of the four owners all stand in `delivery/`, with signatures that mirror the Swift ones almost to the letter — and **`DurableAckPump`'s default clock is already MONOTONIC**, which the iOS twin's is not.
+- **The composition holds none of them**: `MeshModule.provideMeshNode(...)` returns `MeshNode(ctx, identity, store, deliveryTracker, sessions)` — no ACK store, pump, dispatcher or inbox.
+- **Two blockers, both measured, both the exact twins of what the iOS half repaired**: (a) **the signer seam is SEED-SHAPED** (`interface AckSignerSeam` at `delivery/AckObligationStore.kt:359` asks for *"the 32-byte Ed25519 seed of the still-valid local identity"*) and **its only conformer stands in the harness** (`runtime/ComposedRuntime.kt:603`); (b) **nothing collects the readiness** (round 209: the declaration and not one collector).
+- **The plan is the iOS one applied to Kotlin, in the same order**: repair the seam's shape first with an **additive default** (the iOS change cost no reconciliation and should cost none here), add a production signer over the pinned identity, construct the four owners in the Hilt module, subscribe the readiness, then the four wakes, the relation recheck and the drain order — each with a Kotlin witness, the android lane as judge.
+
 ## Round 227 -- GS-RUNTIME-001's iOS half COMPLETE (step 4's last wake); the finding stands PARTIAL because the ANDROID half is measured unwired
 
 - **Last wake**: an accepted ACK candidate is new forward work, so `ingestInbound`'s `.ack` case wakes the worker for that relation — **gated on the trusted mapping, so an untrusted sender is not served**. Witness: a well-formed ACK from a **stranger** wakes nothing; from a mapped peer it wakes the worker.
