@@ -241,6 +241,11 @@ def run(root: Path) -> Findings:
     check_lab(f, "ios", profiles["LAB_IOS"]["profile"], root, SHIPPING_IOS_BUNDLE)
     check_lab_test_capability(f, root)
     check_release_manifest(f, root)
+
+    # GS-LAB-001 (T54): THE LAB MUST BE LAUNCHABLE -- asked here, where every other lab invariant is
+    # asked, so that a lab nobody can start falleth the SAME gate as a lab that reacheth a shipping surface.
+    launchable, why = check_the_lab_is_launchable()
+    (findings.notes if launchable else findings.errors).append(why)
     return f
 
 
@@ -358,6 +363,39 @@ def main() -> int:
     print(f"lab isolation: {'FAILED' if findings.errors else 'PASSED'} "
           f"({len(findings.errors)} error(s), {len(findings.notes)} note(s))")
     return 1 if findings.errors else 0
+
+
+
+def check_the_lab_is_launchable():
+    """T54 / GS-LAB-001: THE LAB TARGET MUST BE LAUNCHABLE.
+
+    A lab nobody can start is not a lab. The audit found the LabMesh application targets WITHOUT launchable
+    entry points -- no activity at all in the lab manifest -- so this control asserteth BOTH halves: that the
+    manifest declares one activity with the MAIN/LAUNCHER intent filter and an EXPLICIT exported status, and that
+    the class it nameth really existeth in the lab's own source set.
+    """
+    # THE ROOT IS DERIVED FROM THIS FILE'S OWN LOCATION (ci/ sits beside android/), so the check needeth no
+    # convention from its caller -- a first draft used a REPO name this control doth not carry, and A NAMEERROR IN A
+    # MANDATORY CONTROL is exactly the kind of self-inflicted red this programme keepeth having to repair.
+    root = Path(__file__).resolve().parent.parent
+    manifest = root / "android/labmesh/src/main/AndroidManifest.xml"
+    if not manifest.exists():
+        return False, "the lab manifest is missing"
+    text = manifest.read_text(encoding="utf-8")
+    m = re.search(r"<activity[^>]*android:name=\"([^\"]+)\"([\s\S]*?)</activity>", text)
+    if not m:
+        return False, "the lab manifest declares NO activity: the target cannot be launched at all (T54)"
+    name, body = m.group(1), m.group(2)
+    if "android.intent.action.MAIN" not in body or "android.intent.category.LAUNCHER" not in body:
+        return False, "the lab activity " + name + " carries no MAIN/LAUNCHER intent filter"
+    head = m.group(0)
+    if "android:exported" not in head:
+        return False, "the lab activity " + name + " must declare its exported status EXPLICITLY"
+    rel = name.replace(".", "/")
+    for base in ("android/labmesh/src/main/java/", "android/labmesh/src/main/kotlin/"):
+        if (root / (base + rel + ".kt")).exists() or (root / (base + rel + ".java")).exists():
+            return True, "the lab is launchable: " + name + " (MAIN/LAUNCHER, exported, class present)"
+    return False, "the lab activity " + name + " is declared but its class existeth nowhere in the lab source set"
 
 
 if __name__ == "__main__":

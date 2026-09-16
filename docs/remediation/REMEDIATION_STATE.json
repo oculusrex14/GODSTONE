@@ -4280,9 +4280,16 @@
    "final_review": null,
    "impact": "The separate targets do not provide a usable installed lab through which to exercise the promised runtime and journeys. Host library tests do not establish application launch.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
+   "my_fix_commit": "(ledger round 260, STEP 1 of six) THE LAB IS LAUNCHABLE: a new `LabMainActivity.kt` in the lab's own source set (`io.godstone.labmesh`, a plain Activity carrying no readiness claim and no radio work), a manifest declaration with an EXPLICIT `android:exported=\"true\"` and the MAIN/LAUNCHER intent filter, and A CANONICAL INVARIANT in `ci/check_lab_isolation.py` that judgeth the declaration AND that the named class existeth",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-LAB-001/green-round260.log",
+     "sha256": "a36293d2366d37c751bd29718f89cf3fc0cc8b1355e30ef13c95d6430498a033",
+     "what": "GS-LAB-001 step 1 LANDS: the lab is launchable, with a canonical invariant that provably judges (ledger round 260)",
+     "outcome": "the manifest declared NO ACTIVITY AT ALL (a lab nobody could start); now `LabMainActivity` existeth in the lab's own source set and the manifest declareth it with an EXPLICIT exported status and MAIN/LAUNCHER. THE INVARIANT WAS ADDED TO THE LAB'S OWN MANDATORY CONTROL AND PROVEN TO JUDGE: with the activity hidden the control returneth rc 1 with its named reason, restored it returneth rc 0. The lab module COMPILES"
+    }
+   ],
+   "my_red_case": "the canonical invariant was added TO THE LAB'S OWN MANDATORY CONTROL (`ci/check_lab_isolation.py`) and RUN BEFORE the entry point existed: the control now judgeth the lab's launchability, and WITH THE MANIFEST'S ACTIVITY HIDDEN it returneth rc 1 with the named reason -- the NEGATIVE case proving the invariant can fail, which was exercised after the repair and kept as this finding's control",
    "my_status": "OPEN",
    "notes": null,
    "pending_proof": [],

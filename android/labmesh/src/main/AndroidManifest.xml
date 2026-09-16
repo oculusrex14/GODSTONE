@@ -19,5 +19,19 @@
         android:allowBackup="false"
         android:label="Godstone LabMesh (experimental)"
         android:supportsRtl="true"
-        tools:ignore="MissingApplicationIcon" />
+        tools:ignore="MissingApplicationIcon">
+
+        <!-- T54 / GS-LAB-001: THE LAUNCHABLE DOOR. The audit found the lab targets WITHOUT entry points; the
+             exported status is EXPLICIT (true, because a MAIN/LAUNCHER activity must be reachable from the
+             launcher on API 31+), and the lab remaineth nonshipping: no INTERNET, allowBackup false. -->
+        <activity
+            android:name="io.godstone.labmesh.LabMainActivity"
+            android:exported="true"
+            android:label="Godstone LabMesh (experimental)">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
 </manifest>
