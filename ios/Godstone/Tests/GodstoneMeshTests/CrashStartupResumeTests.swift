@@ -235,6 +235,55 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// GS-RUNTIME-001 step 5's WIPE HALF: **A WIPED CANDIDATE IS NEVER HANDED ON** -- and the control is built so
+    /// that THE WIPE IS THE ONLY DIFFERENCE: the same candidate is offered, the retry window is PASSED (so the
+    /// retry rule cannot be the reason), and only then is the namespace wiped.
+    ///
+    /// MEASURED FIRST, RATHER THAN ASSUMED: `DurableAckPump.nextBatch` enumerateth **THE STORE'S ROWS**
+    /// (`store.listCandidates`) and consulteth its memory cache ONLY for a record that still standeth in the
+    /// store -- so the law holdeth by construction, and what this arm addeth is the WITNESS.
+    func testSR00g_AWipedCandidateIsNeverHandedOn() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00g_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00g_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        let handle = UUID()
+        let nodeId = Data(repeating: 0x81, count: 16)
+        let relayFrom = Data(repeating: 0x82, count: 16)
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
+
+        // A CANDIDATE admitted from a THIRD PARTY (an opaque relay copy: no key standeth for its claimed
+        // recipient here, so it entereth as a bounded candidate rather than as a verified one).
+        let frame = try AckFrame.build(msgId: Data(repeating: 0x11, count: 16),
+                                       signature: Data(repeating: 0x7A, count: 64),
+                                       recipientNodeId: Data(repeating: 0x83, count: 16),
+                                       routingTag: Data(repeating: 0, count: 4), ttl: ackInitialTtl)
+        _ = runtime.ackPump.admit(frame.encode(), receivedFrom: relayFrom, now: 1_000)
+
+        let first = runtime.ackPump.nextBatch(nodeId, now: 1_000)
+        XCTAssertEqual(first.copies.count, 1, "the admitted candidate must be offerable to the trusted relation")
+
+        // THE CONTROL: the SAME candidate, with the RETRY WINDOW PASSED -- so the retry rule cannot explain a zero.
+        let afterWindow = runtime.ackPump.nextBatch(nodeId, now: 1_000 + ackRelayRetryIntervalMs + 1)
+        XCTAssertEqual(afterWindow.copies.count, 1,
+                       "with the retry window passed, the candidate standeth offerable AGAIN -- this is the control "
+                       + "that maketh the next assertion mean something")
+
+        // AND NOW THE WIPE, AS THE ONLY DIFFERENCE:
+        _ = runtime.ackStore.deleteAllFrames()
+        let wiped = runtime.ackPump.nextBatch(nodeId, now: 1_000 + 2 * (ackRelayRetryIntervalMs + 1))
+        XCTAssertEqual(wiped.copies.count, 0,
+                       "GS-RUNTIME-001 step 5: A WIPED CANDIDATE MUST NEVER BE HANDED ON -- its row is gone, and "
+                       + "the memory cache may not resurrect it")
+
+        // and the production turn agreeth with the pump:
+        XCTAssertEqual(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId, generation: 1), 0,
+                       "the worker's turn handeth nothing after the wipe")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

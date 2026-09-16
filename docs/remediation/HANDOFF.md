@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 224 -- GS-RUNTIME-001 step 5's wipe half WITNESSED (with a control); no production change was due
+
+- **Measured before writing code**: `nextBatch` enumerates **the store's rows** and consults its memory cache only for a row that still exists — **a wiped candidate cannot be resurrected from memory**: the law holds by construction; what was missing was the witness.
+- **The witness, with its control**: a third-party candidate admitted (opaque relay copy) → offered once (1 copy) → **retry window passed and offered AGAIN (1 copy — the control)** → *then* the wipe → **0 copies**, and the production turn hands nothing. *A negative case can only refute a check that is right about everything else*, so the control proves the candidate was offerable at the very moment before the wipe.
+- **No production source changed, because the measurement said none was needed** — claiming a repair where none is due would be as false as claiming a green one did not earn.
+- **Measured**: **full iOS lane 1220 / 0**. Remaining: step 4's last wake; step 6's rebuild-after-reopen and drain-before-key-erasure.
+
 ## Round 223 -- GS-RUNTIME-001 step 5's RELATION RECHECK lands: the generation travels and a stale hour is refused
 
 - **Wiring**: the trusted event now carries the relation's **generation** (`transportApplicationLinkReady(peerId:receivedFrom:generation:)`, fed from IOS-04's capture — `trustVersion` *is* `Int(relation.generation)`); `MeshNode` records handle **and** generation as one binding; `drainAckWorkOnce(nodeId:generation:)` **rechecks it** — *the handle and the node id are the same across a replacement, and only the generation tells them apart*.
