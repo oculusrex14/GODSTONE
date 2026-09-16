@@ -588,6 +588,13 @@ class BleTransport(
                     conn.relationAdmission = admissionOf(conn, BleDirection.OUTBOUND, gen)
                 }
                 publishRelation(relation, meta)
+                // ANDROID-01: AND HERE THE APPLICATION BEGINS D2 ITSELF.
+                //
+                // The audit's charge, in its own words: "The central produces PublishFound; no HS1 is
+                // sent. The responder cannot initiate Noise XX. Both remain physically bound without a
+                // trusted session." The transport HELD the entrance -- `beginTrustedHandshake` -- and only
+                // the COURTS ever called it, so production reached a physical duplex and stopped there.
+                maybeBeginTrustedHandshake(address)
             }
             is BleCentralAction.PublishLost -> {
                 // T12: the effect carries its exact token; the publication of
@@ -2232,6 +2239,15 @@ class BleTransport(
      */
     internal var handshakeAuthorityOverride: BleHandshakeAuthority? = null
 
+    /**
+     * ANDROID-01: a NAMED TEST SEAM for the courts that must DRIVE the entrance THEMSELVES -- the ones which
+     * inject a villainous hint, or judge the entrance's OWN guards (the idempotence law, the ascendant hint
+     * order, the unwitnessed duplex). PRODUCTION NEVER SETTETH IT, and it is `true` by default, so the
+     * application's own begin IS the measured behaviour and the ANDROID-01 arms witness it in the DEFAULT
+     * state; a court that turneth it off sayeth so in its own name and in its own arm.
+     */
+    internal var applicationBeginsD2ForTest: Boolean = true
+
     /** BL22: every handshake step travelleth through this seam, never through the registry's surface. */
     private val handshake: BleHandshakeAuthority?
         get() = handshakeAuthorityOverride
@@ -2304,6 +2320,46 @@ class BleTransport(
      *  ADR-002 predicate witnessed upon the connection, and the hints in
      *  their ascendant order - local less than remote. No SessionSlot is
      *  created, and no HS1 reserved, before both counsels are kept. */
+    /**
+     * ANDROID-01: THE APPLICATION'S OWN ENTRANCE INTO D2 -- the twin of the iOS `physicalDuplexReady`
+     * reducer's answer, and the ONE place production beginneth the trusted exchange.
+     *
+     * It speaketh from the PHYSICALLY READY relation and from nowhere else, and it keepeth every counsel
+     * `beginTrustedHandshake` itself enforceth, so a refusal is NAMED in the rejection ring rather than
+     * silently swallowed:
+     *   - only the ELECTED INITIATOR beginneth: the responder answereth a first counsel and never
+     *     openeth one (a relation whose local role is RESPONDER returneth here);
+     *   - only from a relation that standeth ROLE_BOUND whose physical duplex is witnessed -- and the
+     *     state itself is the IDEMPOTENCE: the begin moveth the relation into the handshake, so a
+     *     duplicate publication callback cannot re-open the hour, and a relation replaced afterwards
+     *     arriveth here again as ROLE_BOUND with a FRESH incarnation, which is what a fresh handshake
+     *     is FOR;
+     *   - the hint order of ADR-002 section 13 is checked here as well, so a relation whose local hint is
+     *     NOT the ascendant one stays silent even if a driver were to elect it initiator by mistake.
+     */
+    private fun maybeBeginTrustedHandshake(address: String) {
+        if (!applicationBeginsD2ForTest) return
+        if (sessions == null) return
+        val conn = centralDriver.getActiveConnection(address) ?: return
+        if (conn.localRole != BleRole.INITIATOR) return
+        if (conn.state != BleConnectionState.ROLE_BOUND) return
+        if (!conn.isHandshakeTransportReady) return
+        val remoteHint = conn.remoteNodeHint ?: return
+        if (hintOrder(identity.nodeHint, remoteHint) >= 0) return
+        val peerId = conn.peerId.copyOf()
+        val job = coroutineScope.launch {
+            val verdict = beginTrustedHandshake(peerId, remoteHint)
+            if (verdict !is TransportResult.Admitted) {
+                recordRejection(peerId, "hs.begin",
+                    "the application's own begin was refused: " + verdict.toString())
+            }
+        }
+        // T14/ANDROID-05: the task is OWNED and traceable, so the bounded drain seeth it and a
+        // shutdown waiteth for it rather than leaving a handshake half spoken.
+        inboundJobs.remove(HANDSHAKE_JOB_PREFIX + address)?.cancel()
+        inboundJobs[HANDSHAKE_JOB_PREFIX + address] = job
+    }
+
     suspend fun beginTrustedHandshake(peerId: ByteArray, remoteHint: ByteArray): TransportResult {
         if (!BleConnection.canBindRemoteHint(remoteHint)) {
             recordRejection(peerId, "hs.begin", "malformed remote hint")
@@ -2362,6 +2418,9 @@ class BleTransport(
         val WRITE_CHAR_UUID: UUID = FrameV2.INBOX_UUID
         val DIGEST_CHAR_UUID: UUID = FrameV2.DIGEST_UUID
         val LINK_INFO_CHAR_UUID: UUID = FrameV2.LINK_INFO_UUID
+
+        /** ANDROID-01: the key under which the application's OWN handshake begin is owned and drained. */
+        internal const val HANDSHAKE_JOB_PREFIX = "hs.begin:"
 
         const val MAX_DISCOVERED_PEERS = 64
         const val MAX_ACTIVE_CONNECTIONS = 7

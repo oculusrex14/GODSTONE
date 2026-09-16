@@ -328,10 +328,11 @@ class ReadinessT23Test {
 
         /** The handshake proper, once both ladders stand. */
         fun completeHandshake() {
-            val begin = kotlinx.coroutines.runBlocking { alice.beginTrustedHandshake(peerIdTowardsBob(), pair.bob.nodeHint) }
-            assertEquals("the begin must stand; the ring says: " + ringDump(alice),
-                         TransportResult.Admitted, begin)
-            val hs1 = awaitNonEmpty("hs1 at the initiator outlet; ring: " + ringDump(alice)) { aliceOutlet.writesTo(bobAddress) }
+            // ANDROID-01: as in the court helpers above -- the APPLICATION beginneth, and this court
+            // WAITETH for the first counsel it sent.
+            val hs1 = awaitNonEmpty("the application's own hs1 at the initiator outlet; ring: " + ringDump(alice)) {
+                aliceOutlet.writesTo(bobAddress)
+            }
             aliceOutlet.clear()
             pushToResponder(hs1)
             val hs2 = awaitNonEmpty("hs2 at the responder outlet; ring: " + ringDump(bob)) { bobOutlet.notificationsTo(aliceAddress) }
@@ -651,9 +652,10 @@ class ReadinessT23Test {
     private fun driveToReady(rig: Rig): List<ByteArray> {
         rig.aliceOutlet.clear()
         rig.bobOutlet.clear()
-        assertEquals("the begin must stand upon the witnessed duplex; ring: " + ringDump(rig.alice),
-                     TransportResult.Admitted, beginOn(rig, rig.pair.bob.nodeHint))
-        val hs1 = awaitNonEmpty("the HS1 must reach the initiator outlet; ring: " + ringDump(rig.alice)) {
+        // ANDROID-01: THE APPLICATION BEGINS D2 ITSELF now, from the physically-ready relation, so this
+        // court no longer BEGINNETH -- it WAITETH for the first counsel the APPLICATION sent, and the WAIT
+        // itself is the witness (before this repair nothing ever arrived, and the arm above asserteth it).
+        val hs1 = awaitNonEmpty("the application's own HS1 at the initiator outlet; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
         rig.aliceOutlet.clear()
@@ -749,8 +751,12 @@ class ReadinessT23Test {
     @Test
     fun testTheHalfSpokenExchangeFallethAtTheTenSecondHour() {
         val rig = standDoor()
-        assertEquals("the begin must stand", TransportResult.Admitted,
-                     beginOn(rig, rig.pair.bob.nodeHint))
+        // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
+        // ANDROID-01: the APPLICATION beginneth ASYNCHRONOUSLY, so the arm WAITETH for its first counsel
+        // before it moveth the clock: what it felleth must be an ENGAGED exchange, not a race.
+        awaitUntilCount("the application's first counsel before the hour") {
+            rig.aliceOutlet.writesTo(rig.bobAddress)
+        }
         val base = rigNow
         rigNow = base + 11
         rig.pushToInitiator(listOf(ByteArray(8) { 0 }))       // an idle breath at the gate
@@ -790,8 +796,7 @@ class ReadinessT23Test {
     @Test
     fun testATravellingReassemblyIsLeftUntoTheLeaseNotReapedByTheHour() {
         val rig = standDoor()
-        assertEquals("the begin must stand", TransportResult.Admitted,
-                     beginOn(rig, rig.pair.bob.nodeHint))
+        // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
         val hs1 = awaitUntilCount("hs1 must reach the outlet") {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
@@ -846,8 +851,7 @@ class ReadinessT23Test {
     @Test
     fun testTheExactDuplicateIsSparedTheFreshSequencePerisheth() {
         val rig = standDoor()
-        assertEquals("the begin must stand", TransportResult.Admitted,
-                     beginOn(rig, rig.pair.bob.nodeHint))
+        // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
         val hs1 = awaitUntilCount("hs1 must reach the outlet") {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
@@ -1094,8 +1098,7 @@ class ReadinessT23Test {
     fun testOneSidedReadinessPublishethNoMatter() {
         val rig = standDoor()
         rig.aliceOutlet.clear(); rig.bobOutlet.clear()
-        assertEquals("the begin must stand", TransportResult.Admitted,
-                     beginOn(rig, rig.pair.bob.nodeHint))
+        // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
         val hs1 = awaitUntilCount("hs1") { rig.aliceOutlet.writesTo(rig.bobAddress) }
         rig.aliceOutlet.clear()
         rig.pushToResponder(hs1)
@@ -1125,8 +1128,12 @@ class ReadinessT23Test {
     @Test
     fun testAFreshCourseWithFreshKeysReestablishethTrust() {
         val fallen = standDoor()
-        assertEquals("the begin must stand", TransportResult.Admitted,
-                     beginOn(fallen, fallen.pair.bob.nodeHint))
+        // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
+        // ANDROID-01: as in the arm above -- the hour is moved only AFTER the application's own counsel
+        // hath travelled, so the fall is of an engaged exchange.
+        awaitUntilCount("the application's first counsel before the hour") {
+            fallen.aliceOutlet.writesTo(fallen.bobAddress)
+        }
         val base = rigNow
         rigNow = base + 11
         fallen.pushToInitiator(listOf(ByteArray(8) { 0 }))    // the half-spoken perisheth at the hour

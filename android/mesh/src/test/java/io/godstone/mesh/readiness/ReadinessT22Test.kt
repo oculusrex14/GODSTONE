@@ -330,10 +330,11 @@ class ReadinessT22Test {
 
         /** The handshake proper, once both ladders stand. */
         fun completeHandshake() {
-            val begin = kotlinx.coroutines.runBlocking { alice.beginTrustedHandshake(peerIdTowardsBob(), pair.bob.nodeHint) }
-            assertEquals("the begin must stand; the ring says: " + ringDump(alice),
-                         TransportResult.Admitted, begin)
-            val hs1 = awaitNonEmpty("hs1 at the initiator outlet; ring: " + ringDump(alice)) { aliceOutlet.writesTo(bobAddress) }
+            // ANDROID-01: as in the court helpers above -- the APPLICATION beginneth, and this court
+            // WAITETH for the first counsel it sent.
+            val hs1 = awaitNonEmpty("the application's own hs1 at the initiator outlet; ring: " + ringDump(alice)) {
+                aliceOutlet.writesTo(bobAddress)
+            }
             aliceOutlet.clear()
             pushToResponder(hs1)
             val hs2 = awaitNonEmpty("hs2 at the responder outlet; ring: " + ringDump(bob)) { bobOutlet.notificationsTo(aliceAddress) }
@@ -653,9 +654,10 @@ class ReadinessT22Test {
     private fun driveToReady(rig: Rig): List<ByteArray> {
         rig.aliceOutlet.clear()
         rig.bobOutlet.clear()
-        assertEquals("the begin must stand upon the witnessed duplex; ring: " + ringDump(rig.alice),
-                     TransportResult.Admitted, beginOn(rig, rig.pair.bob.nodeHint))
-        val hs1 = awaitNonEmpty("the HS1 must reach the initiator outlet; ring: " + ringDump(rig.alice)) {
+        // ANDROID-01: THE APPLICATION BEGINS D2 ITSELF now, from the physically-ready relation, so this
+        // court no longer BEGINNETH -- it WAITETH for the first counsel the APPLICATION sent, and the WAIT
+        // itself is the witness (before this repair nothing ever arrived, and the arm above asserteth it).
+        val hs1 = awaitNonEmpty("the application's own HS1 at the initiator outlet; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
         rig.aliceOutlet.clear()
@@ -690,8 +692,23 @@ class ReadinessT22Test {
     fun testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
-        assertNotNull("the controllers first counsel must be formable", hs1)
+        // ANDROID-01: the first counsel is the APPLICATION\'S OWN -- the court no longer formeth it by hand,
+
+        // because the application now owneth that relation\'s controller (a court\'s own begin answereth nil
+
+        // there, WHICH IS THE LAW WORKING), and taking it from the outlet is deterministic where racing the
+
+        // application\'s begin is not.
+
+        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
+
+
+            rig.aliceOutlet.writesTo(rig.bobAddress)
+
+
+        }.firstOrNull()?.let { payloadOfFragment(it) }
+
+        assertNotNull("the application\'s first counsel must have travelled", hs1)
         rig.bobOutlet.clear()
         rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         val answer = awaitNonEmpty("the second must be queued upon the writers hand; ring: " + ringDump(rig.bob)) {
@@ -713,8 +730,23 @@ class ReadinessT22Test {
     fun testTheResponderIsNotTrustedByTheFirstNorTheSecondAloneAndNoDATARidesTheStream() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
-        assertNotNull("the controllers first counsel must be formable", hs1)
+        // ANDROID-01: the first counsel is the APPLICATION\'S OWN -- the court no longer formeth it by hand,
+
+        // because the application now owneth that relation\'s controller (a court\'s own begin answereth nil
+
+        // there, WHICH IS THE LAW WORKING), and taking it from the outlet is deterministic where racing the
+
+        // application\'s begin is not.
+
+        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
+
+
+            rig.aliceOutlet.writesTo(rig.bobAddress)
+
+
+        }.firstOrNull()?.let { payloadOfFragment(it) }
+
+        assertNotNull("the application\'s first counsel must have travelled", hs1)
         rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
@@ -741,8 +773,23 @@ class ReadinessT22Test {
         // static key are proved when the third is opened
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
-        assertNotNull("the controllers first counsel must be formable", hs1)
+        // ANDROID-01: the first counsel is the APPLICATION\'S OWN -- the court no longer formeth it by hand,
+
+        // because the application now owneth that relation\'s controller (a court\'s own begin answereth nil
+
+        // there, WHICH IS THE LAW WORKING), and taking it from the outlet is deterministic where racing the
+
+        // application\'s begin is not.
+
+        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
+
+
+            rig.aliceOutlet.writesTo(rig.bobAddress)
+
+
+        }.firstOrNull()?.let { payloadOfFragment(it) }
+
+        assertNotNull("the application\'s first counsel must have travelled", hs1)
         rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         val answer = awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
@@ -806,8 +853,23 @@ class ReadinessT22Test {
     fun testTheDuplicateFirstMessageInHandPerishethTheRelation() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
-        assertNotNull("the controllers first counsel must be formable", hs1)
+        // ANDROID-01: the first counsel is the APPLICATION\'S OWN -- the court no longer formeth it by hand,
+
+        // because the application now owneth that relation\'s controller (a court\'s own begin answereth nil
+
+        // there, WHICH IS THE LAW WORKING), and taking it from the outlet is deterministic where racing the
+
+        // application\'s begin is not.
+
+        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
+
+
+            rig.aliceOutlet.writesTo(rig.bobAddress)
+
+
+        }.firstOrNull()?.let { payloadOfFragment(it) }
+
+        assertNotNull("the application\'s first counsel must have travelled", hs1)
         val trueHs1 = hs1!!.copyOf()
         rig.pushToResponder(forge(BleRecordType.HS1, 0, trueHs1))
         awaitNonEmpty("the first answer must be queued; ring: " + ringDump(rig.bob)) {
@@ -861,8 +923,23 @@ class ReadinessT22Test {
     fun testTheResponderHearkentheVerdictOfTheQueuedSecond() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
-        assertNotNull("the controllers first counsel must be formable", hs1)
+        // ANDROID-01: the first counsel is the APPLICATION\'S OWN -- the court no longer formeth it by hand,
+
+        // because the application now owneth that relation\'s controller (a court\'s own begin answereth nil
+
+        // there, WHICH IS THE LAW WORKING), and taking it from the outlet is deterministic where racing the
+
+        // application\'s begin is not.
+
+        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
+
+
+            rig.aliceOutlet.writesTo(rig.bobAddress)
+
+
+        }.firstOrNull()?.let { payloadOfFragment(it) }
+
+        assertNotNull("the application\'s first counsel must have travelled", hs1)
         // the leg is flooded: the answer can not be staged, the writers verdict
         // must reach the door and the relation must fall upon it
         rig.bobOutlet.floodingAddress = rig.aliceAddress
@@ -898,8 +975,13 @@ class ReadinessT22Test {
         val bPeer = rig.responderConnection().peerId.copyOf()
         // an alien first counsel, of the public shape alone, from a fresh pairing
         val alienA = standDoor()
-        val alienHs1 = alienA.pair.smA.beginInitiator(alienA.initiatorConnection().peerId, alienA.pair.bob.nodeHint)
-        assertNotNull("the alien first counsel must be formable", alienHs1)
+        // ANDROID-01: the alien first counsel is the ALIEN APPLICATION'S OWN -- the court no longer
+        // formeth it by hand (the application now owneth that relation's controller, so a court's own begin
+        // answereth nil there, WHICH IS THE LAW WORKING).
+        val alienHs1 = awaitNonEmpty("the alien application's first counsel; ring: " + ringDump(alienA.alice)) {
+            alienA.aliceOutlet.writesTo(alienA.bobAddress)
+        }.firstOrNull()?.let { payloadOfFragment(it) }
+        assertNotNull("the alien application's first counsel must have travelled", alienHs1)
         rig.pushToResponder(forge(BleRecordType.HS1, 0, alienHs1!!))
         val answered = awaitNonEmpty("the alien shape must be answered; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
@@ -957,8 +1039,23 @@ class ReadinessT22Test {
         rigA.stop()
         val rigB = standDoor()
         val peerB = rigB.responderConnection().peerId.copyOf()
-        val hs1 = rigB.pair.smA.beginInitiator(rigB.admissionTowardsBob(), rigB.pair.bob.nodeHint)
-        assertNotNull("the controllers first counsel must be formable", hs1)
+        // ANDROID-01: the first counsel is the APPLICATION\'S OWN -- the court no longer formeth it by hand,
+
+        // because the application now owneth that relation\'s controller (a court\'s own begin answereth nil
+
+        // there, WHICH IS THE LAW WORKING), and taking it from the outlet is deterministic where racing the
+
+        // application\'s begin is not.
+
+        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rigB.alice)) {
+
+
+            rigB.aliceOutlet.writesTo(rigB.bobAddress)
+
+
+        }.firstOrNull()?.let { payloadOfFragment(it) }
+
+        assertNotNull("the application\'s first counsel must have travelled", hs1)
         rigB.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         awaitNonEmpty("the answer must be queued; ring: " + ringDump(rigB.bob)) {
             rigB.bobOutlet.notificationsTo(rigB.aliceAddress)
@@ -985,8 +1082,23 @@ class ReadinessT22Test {
             val bPeer = rig.responderConnection().peerId.copyOf()
             // the ladders rose and the subscriptions came, yet the trust is
             // not inferred therefrom: the authority denieth the binding
-            val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
-            assertNotNull("the controllers first counsel must be formable", hs1)
+            // ANDROID-01: the first counsel is the APPLICATION\'S OWN -- the court no longer formeth it by hand,
+
+            // because the application now owneth that relation\'s controller (a court\'s own begin answereth nil
+
+            // there, WHICH IS THE LAW WORKING), and taking it from the outlet is deterministic where racing the
+
+            // application\'s begin is not.
+
+            val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
+
+
+                rig.aliceOutlet.writesTo(rig.bobAddress)
+
+
+            }.firstOrNull()?.let { payloadOfFragment(it) }
+
+            assertNotNull("the application\'s first counsel must have travelled", hs1)
             rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
             val answer = awaitNonEmpty("the shape must be answered ere the seal is weighed; ring: " + ringDump(rig.bob)) {
                 rig.bobOutlet.notificationsTo(rig.aliceAddress)
@@ -1038,8 +1150,23 @@ class ReadinessT22Test {
     fun testTheThirdSpokenAgainAfterTheTrustIsAConflictingSequence() {
         val rig = standDoor()
         val bPeer = rig.responderConnection().peerId.copyOf()
-        val hs1 = rig.pair.smA.beginInitiator(rig.admissionTowardsBob(), rig.pair.bob.nodeHint)
-        assertNotNull("the controllers first counsel must be formable", hs1)
+        // ANDROID-01: the first counsel is the APPLICATION\'S OWN -- the court no longer formeth it by hand,
+
+        // because the application now owneth that relation\'s controller (a court\'s own begin answereth nil
+
+        // there, WHICH IS THE LAW WORKING), and taking it from the outlet is deterministic where racing the
+
+        // application\'s begin is not.
+
+        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
+
+
+            rig.aliceOutlet.writesTo(rig.bobAddress)
+
+
+        }.firstOrNull()?.let { payloadOfFragment(it) }
+
+        assertNotNull("the application\'s first counsel must have travelled", hs1)
         rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
         val answer = awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)

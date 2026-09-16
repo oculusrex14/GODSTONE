@@ -334,10 +334,11 @@ class ReadinessT20Test {
 
         /** The handshake proper, once both ladders stand. */
         fun completeHandshake() {
-            val begin = kotlinx.coroutines.runBlocking { alice.beginTrustedHandshake(peerIdTowardsBob(), pair.bob.nodeHint) }
-            assertEquals("the begin must stand; the ring says: " + ringDump(alice),
-                         TransportResult.Admitted, begin)
-            val hs1 = awaitNonEmpty("hs1 at the initiator outlet; ring: " + ringDump(alice)) { aliceOutlet.writesTo(bobAddress) }
+            // ANDROID-01: as in the court helpers above -- the APPLICATION beginneth, and this court
+            // WAITETH for the first counsel it sent.
+            val hs1 = awaitNonEmpty("the application's own hs1 at the initiator outlet; ring: " + ringDump(alice)) {
+                aliceOutlet.writesTo(bobAddress)
+            }
             aliceOutlet.clear()
             pushToResponder(hs1)
             val hs2 = awaitNonEmpty("hs2 at the responder outlet; ring: " + ringDump(bob)) { bobOutlet.notificationsTo(aliceAddress) }

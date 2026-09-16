@@ -327,10 +327,11 @@ class ReadinessT21Test {
 
         /** The handshake proper, once both ladders stand. */
         fun completeHandshake() {
-            val begin = kotlinx.coroutines.runBlocking { alice.beginTrustedHandshake(peerIdTowardsBob(), pair.bob.nodeHint) }
-            assertEquals("the begin must stand; the ring says: " + ringDump(alice),
-                         TransportResult.Admitted, begin)
-            val hs1 = awaitNonEmpty("hs1 at the initiator outlet; ring: " + ringDump(alice)) { aliceOutlet.writesTo(bobAddress) }
+            // ANDROID-01: as in the court helpers above -- the APPLICATION beginneth, and this court
+            // WAITETH for the first counsel it sent.
+            val hs1 = awaitNonEmpty("the application's own hs1 at the initiator outlet; ring: " + ringDump(alice)) {
+                aliceOutlet.writesTo(bobAddress)
+            }
             aliceOutlet.clear()
             pushToResponder(hs1)
             val hs2 = awaitNonEmpty("hs2 at the responder outlet; ring: " + ringDump(bob)) { bobOutlet.notificationsTo(aliceAddress) }
@@ -625,8 +626,14 @@ class ReadinessT21Test {
         try { block().toString() } catch (e: Throwable) { "gone(" + e.javaClass.simpleName + ")" }
 
     /** Stands the rig upon both ladders, short of the exchange itself. */
-    private fun standDoor(): Rig {
+    /**
+     * ANDROID-01: `drivesD2 = false` for the arms which must DRIVE the entrance themselves -- the ones
+     * which judge its own guards or inject a villainous hint. The seam is DEFAULT-ON, so every other arm in
+     * this court (and the ANDROID-01 arms) drive the APPLICATION's begin, which is production's road.
+     */
+    private fun standDoor(drivesD2: Boolean = true): Rig {
         val rig = rig()
+        rig.alice.applicationBeginsD2ForTest = drivesD2
         rig.bringUpInitiatorLadder()
         rig.bringUpResponderLadder()
         return rig
@@ -650,9 +657,10 @@ class ReadinessT21Test {
     private fun driveToReady(rig: Rig): List<ByteArray> {
         rig.aliceOutlet.clear()
         rig.bobOutlet.clear()
-        assertEquals("the begin must stand upon the witnessed duplex; ring: " + ringDump(rig.alice),
-                     TransportResult.Admitted, beginOn(rig, rig.pair.bob.nodeHint))
-        val hs1 = awaitNonEmpty("the HS1 must reach the initiator outlet; ring: " + ringDump(rig.alice)) {
+        // ANDROID-01: THE APPLICATION BEGINS D2 ITSELF now, from the physically-ready relation, so this
+        // court no longer BEGINNETH -- it WAITETH for the first counsel the APPLICATION sent, and the WAIT
+        // itself is the witness (before this repair nothing ever arrived, and the arm above asserteth it).
+        val hs1 = awaitNonEmpty("the application's own HS1 at the initiator outlet; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
         rig.aliceOutlet.clear()
@@ -674,10 +682,9 @@ class ReadinessT21Test {
     fun testTheInitiatorEmitsHS1UponTheDuplexWitnessedInAscendantOrder() {
         val rig = standDoor()
         try {
-            rig.aliceOutlet.clear()
-            val verdict = beginOn(rig, rig.pair.bob.nodeHint)
-            assertEquals("the begin must be admitted upon the witnessed duplex; ring: " + ringDump(rig.alice),
-                         TransportResult.Admitted, verdict)
+            // ANDROID-01: the APPLICATION beginneth upon the witnessed duplex, in the ascendant order --
+            // so this arm no longer beginneth itself and does NOT clear the outlet (a first counsel already
+            // sent is exactly what it is here to witness).
             val captured = awaitNonEmpty("the HS1 must reach the outlet; ring: " + ringDump(rig.alice)) {
                 rig.aliceOutlet.writesTo(rig.bobAddress)
             }
@@ -706,7 +713,9 @@ class ReadinessT21Test {
 
     @Test
     fun testTheBeginIsRefusedWhileTheDuplexLiesUnwitnessed() {
-        val rig = standDoor()
+        // ANDROID-01: this arm judgeth the ENTRANCE'S OWN guard, so it driveth the entrance itself and
+        // sayeth so -- the application's begin is suppressed here and nowhere else.
+        val rig = standDoor(drivesD2 = false)
         try {
             rig.initiatorConnection().maxAttValueLength = 10  // below the floor of twenty the witness fails
             rig.aliceOutlet.clear()
@@ -729,7 +738,8 @@ class ReadinessT21Test {
 
     @Test
     fun testTheBeginIsRefusedWhenTheHintsDescendOrMeet() {
-        val rig = standDoor()
+        // ANDROID-01: the ascendant-hint guard is the ENTRANCE'S OWN, so this arm driveth it itself.
+        val rig = standDoor(drivesD2 = false)
         try {
             val equal = beginOn(rig, rig.pair.alice.nodeHint)
             assertTrue("equal hints know no ascendant seat", equal is TransportResult.Rejected)
@@ -775,8 +785,7 @@ class ReadinessT21Test {
         try {
             rig.aliceOutlet.clear()
             rig.bobOutlet.clear()
-            assertEquals("the begin must stand; ring: " + ringDump(rig.alice),
-                         TransportResult.Admitted, beginOn(rig, rig.pair.bob.nodeHint))
+            // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
             val hs1 = awaitNonEmpty("the HS1 must be taken; ring: " + ringDump(rig.alice)) {
                 rig.aliceOutlet.writesTo(rig.bobAddress)
             }
@@ -821,8 +830,7 @@ class ReadinessT21Test {
         try {
             rig.aliceOutlet.clear()
             rig.bobOutlet.clear()
-            assertEquals("the begin must stand; ring: " + ringDump(rig.alice),
-                         TransportResult.Admitted, beginOn(rig, rig.pair.bob.nodeHint))
+            // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
             val hs1 = awaitNonEmpty("the HS1 must be taken") { rig.aliceOutlet.writesTo(rig.bobAddress) }
             rig.aliceOutlet.clear()
             rig.pushToResponder(hs1.toList())
@@ -854,7 +862,9 @@ class ReadinessT21Test {
     @Test
     fun testTheBadBindingAndBadStaticKeyAndBadHintEachWithholdAllApplicationData() {
         for (villainy in listOf("binding", "static", "hint")) {
-            val rig = standDoor()
+            // ANDROID-01: the `hint` villainy IS an injection into the entrance, so this arm
+        // driveth the entrance itself (the application would have used the TRUE bound hint).
+        val rig = standDoor(drivesD2 = false)
             try {
                 rig.aliceOutlet.clear()
                 rig.bobOutlet.clear()
@@ -981,8 +991,7 @@ class ReadinessT21Test {
     fun testNoApplicationDATAProceedsBeforeTheTrustedCryptographicReady() {
         val rig = standDoor()
         try {
-            assertEquals("the begin must stand", TransportResult.Admitted,
-                         beginOn(rig, rig.pair.bob.nodeHint))
+            // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
             awaitNonEmpty("the HS1 must be taken") { rig.aliceOutlet.writesTo(rig.bobAddress) }
             // the exchange stands in progress: the trust is not yet made
             assertEquals("the relation must stand in the handshake",
@@ -1033,8 +1042,7 @@ class ReadinessT21Test {
         try {
             rig.aliceOutlet.clear()
             rig.bobOutlet.clear()
-            assertEquals("the begin must stand; ring: " + ringDump(rig.alice),
-                         TransportResult.Admitted, beginOn(rig, rig.pair.bob.nodeHint))
+            // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
             val hs1 = awaitNonEmpty("the HS1 must be taken") { rig.aliceOutlet.writesTo(rig.bobAddress) }
             rig.aliceOutlet.clear()
             rig.pushToResponder(hs1.toList())
@@ -1074,8 +1082,7 @@ class ReadinessT21Test {
         try {
             rig.aliceOutlet.clear()
             rig.bobOutlet.clear()
-            assertEquals("the begin must stand; ring: " + ringDump(rig.alice),
-                         TransportResult.Admitted, beginOn(rig, rig.pair.bob.nodeHint))
+            // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
             val hs1 = awaitNonEmpty("the HS1 must be taken") { rig.aliceOutlet.writesTo(rig.bobAddress) }
             rig.aliceOutlet.clear()
             rig.pushToResponder(hs1.toList())
@@ -1139,4 +1146,56 @@ class ReadinessT21Test {
             rig.stop()
         }
     }
+
+    // ------------------------------------------------------------------ ANDROID-01
+    //
+    // The audit's charge, in its own words: "The application never starts D2 or key confirmation ...
+    // the central produces PublishFound; no HS1 is sent. The responder cannot initiate Noise XX. Both
+    // remain physically bound without a trusted session."
+    //
+    // THE LAW THESE ARMS ASSERT: the APPLICATION -- not a court -- beginneth D2, exactly once, from
+    // the elected initiator's physically-ready relation and only from it. ARM 1 IS THE BEHAVIOURAL RED,
+    // expressible against the tree as it stood: the ladder reached ROLE_BOUND and NOTHING went out.
+
+    @Test
+    fun testAndroid01_theApplicationBeginnethD2ItselfUponThePhysicallyReadyRelation() {
+        val rig = standDoor()
+        try {
+            // `standDoor()` bringeth both ladders up THROUGH THE TRANSPORT'S OWN ENTRIES, as production
+            // doth, and dispatches the platform's own action. No court calleth beginTrustedHandshake here.
+
+            val writes = kotlinx.coroutines.runBlocking {
+                kotlinx.coroutines.withTimeoutOrNull(2_000) {
+                    var seen: List<ByteArray> = emptyList()
+                    while (seen.isEmpty()) {
+                        seen = rig.aliceOutlet.writesTo(rig.bobAddress)
+                        if (seen.isEmpty()) kotlinx.coroutines.delay(10)
+                    }
+                    seen
+                }
+            } ?: emptyList()
+            assertTrue(
+                "the application must begin D2 itself upon the physically-ready relation; ring: " +
+                    ringDump(rig.alice),
+                writes.any { isType(it, BleRecordType.HS1) })
+        } finally {
+            rig.stop()
+        }
+    }
+
+    @Test
+    fun testAndroid01_theResponderNeverBeginnethOnItsOwn() {
+        val rig = standDoor()
+        try {
+            // `standDoor()` hath brought both ladders up; what is judged here is that the RESPONDER's
+            // outlet never carrieth a FIRST counsel of its own.
+            kotlinx.coroutines.runBlocking { kotlinx.coroutines.delay(200) }
+            assertTrue(
+                "only the ELECTED INITIATOR beginneth; the responder answereth and never openeth",
+                rig.bobOutlet.notificationsTo(rig.aliceAddress).none { isType(it, BleRecordType.HS1) })
+        } finally {
+            rig.stop()
+        }
+    }
+
 }
