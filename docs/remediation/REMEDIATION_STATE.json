@@ -2883,7 +2883,7 @@
    "any_finding_VERIFIED_FIXED": false
   },
   "candidate_verification_at_round_208": {
-   "candidate_sha": "74a779ed7b7bf86d144524bf5aa35e0e43aebfab",
+   "candidate_sha": "8bcae4040d37b51ccaa3f934beba88f1459a81fb",
    "tree_sha": "02f599b63e3c3f53ddfb9cc29c9d020b9e15da37",
    "worktree": "clean at this sha apart from this record",
    "logs": {
