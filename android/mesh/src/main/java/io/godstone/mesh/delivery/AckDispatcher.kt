@@ -311,6 +311,10 @@ class DurableAckPump(
     /** Peers whose link became ready (the scheduling truth), and when. */
     private val readyAt = HashMap<String, Long>()
 
+    /** GS-RUNTIME-001 step 4: **THE RELATIONS THE RUNTIME HATH DECLARED READY** -- the periodic deadline itERATETH
+     *  these and nothing else, so a departed relation is never served and the hex-keyed schedule above stayeth private. */
+    private val scheduledPeers = LinkedHashMap<List<Byte>, ByteArray>()
+
     /** Last offer of one candidate to one peer: the 30 s retry gate. */
     private val lastOffer = HashMap<String, Long>()
 
@@ -332,6 +336,7 @@ class DurableAckPump(
 
     /** Schedule on LinkReady: the peer becometh eligible, with a full bucket. */
     fun onLinkReady(peer: ByteArray, now: Long = clock()) {
+        scheduledPeers[peer.toList()] = peer.copyOf()
         synchronized(lock) {
             readyAt[peer.hex()] = now
             buckets[peer.hex()] = Bucket(ACK_RELAY_BURST_PER_PEER, now)
@@ -341,11 +346,15 @@ class DurableAckPump(
     /** A link went away: the peer stoppeth being eligible. Nothing is retired:
      *  the candidate waiteth, durably, for the next LinkReady. */
     fun onLinkGone(peer: ByteArray) {
+        scheduledPeers.remove(peer.toList())
         synchronized(lock) {
             readyAt.remove(peer.hex())
             buckets.remove(peer.hex())
         }
     }
+
+    /** GS-RUNTIME-001 step 4: the census the periodic deadline itERATETH -- a witness may read it too. */
+    internal fun scheduledPeersForTest(): List<ByteArray> = synchronized(lock) { scheduledPeers.values.map { it.copyOf() } }
 
     fun isScheduled(peer: ByteArray): Boolean = synchronized(lock) { readyAt.containsKey(peer.hex()) }
 

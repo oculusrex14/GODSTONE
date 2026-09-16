@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 233 -- the ANDROID node carries the bounded ACK worker and the readiness subscription
+
+- **Wiring**: `ackPump`, `drainAckWorkOnce(nodeId)` (one bounded turn for one named relation), a turn for every scheduled relation, and **`subscribeToReadiness(scope, intervalMillis)` — the collector of `applicationLinkReady()` that round 209 measured to be absent from the whole tree** — with an optional periodic deadline over the pump's own census (now exposed, while the hex-keyed schedule stays private).
+- **Two measured simplifications beside the Swift twin**: this isle's transport is **keyed by node id and takes bytes**, so a relay copy needs **no handle mapping and no decode** — the canonical bytes travel as they stand.
+- **Two of my own errors, named** — and the second nearly cost the round: my `onLinkReady` anchor was a **guess** (`now: Long? = null` where the tree says `now: Long = clock()`), so the script **aborted before writing**, and **the node's imports sat after that assert in the same script**, so one wrong anchor withheld both halves.
+- **Behavioural witness OWED and named**: the node's transport is `by lazy { BleTransport(context = ctx!!, …) }`, so a pure-JVM court cannot drive this path — the witness must come from the platform's own **fake-outlet** idiom or an instrumentation road. **The machinery compiles; it is not claimed as witnessed.**
+- **Measured**: android `:mesh` **FORCED 1195 / 0 / 0**.
+
 ## Round 232 -- the recipient INBOX enters the ANDROID composition: all four owners wired
 
 - **Wiring**: the inbox is built over **the node's own router**, the identity's DH material via the **internal** `staticDhPriv`, the **production** signer, the ACK store over **`store.engine`** (the same process-wide engine), and **`commitInbound` is the store's own `commitInboundWithObligationAtWithFault`** — delivery and obligation commit in one transaction.

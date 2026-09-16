@@ -39,6 +39,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import io.godstone.mesh.delivery.DurableAckPump
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 data class MeshStatus(
     val started: Boolean = false,
@@ -134,6 +137,65 @@ class MeshNode(
      * discard that loseth every multihop receipt.
      */
     internal var ackDispatcher: AckDispatcher? = null
+
+    // ================== GS-RUNTIME-001 steps 3-4 on THIS isle: THE BOUNDED ACK WORKER ==================
+    //
+    // MEASURED BEFORE THIS: nothing on this isle collected `BleTransport.applicationLinkReady()` (round 209: the
+    // declaration and NOT ONE COLLECTOR), and the node held no pump. **AND TWO MEASURED SIMPLIFICATIONS STAND HERE
+    // BESIDE THE SWIFT TWIN: this isle's transport is keyed by NODE ID and TAKES BYTES
+    // (`send(peerId: ByteArray, bytes: ByteArray)`), so a relay copy needeth NO handle mapping and NO decode --
+    // the canonical bytes travel as they stand.**
+
+    internal var ackPump: DurableAckPump? = null
+    private var ackTurnsRun = 0
+    private var ackEventWakes = 0
+    internal fun ackTurnsRunForTest(): Int = ackTurnsRun
+    internal fun ackEventWakesForTest(): Int = ackEventWakes
+
+    /** ONE BOUNDED TURN FOR ONE NAMED RELATION, handed through the SAME authenticated transport. */
+    internal suspend fun drainAckWorkOnce(nodeId: ByteArray): Int? {
+        val pump = ackPump ?: return null
+        val batch = pump.nextBatch(nodeId)
+        var handed = 0
+        for (copy in batch.copies) {
+            val verdict = ble.send(nodeId, copy.encodedFrame)
+            val accepted = verdict is TransportResult.Admitted
+            pump.onForwardOutcome(copy, nodeId, accepted)
+            if (accepted) handed++
+        }
+        return handed
+    }
+
+    /** ONE BOUNDED TURN FOR EVERY RELATION THE PUMP HATH SCHEDULED -- the deadline's own work. */
+    internal suspend fun runAckTurnForEveryTrustedRelation(scheduled: List<ByteArray>): Int {
+        var handed = 0
+        for (nodeId in scheduled) handed += (drainAckWorkOnce(nodeId) ?: 0)
+        ackTurnsRun++
+        return handed
+    }
+
+    /**
+     * **THE READINESS SUBSCRIPTION.** A collector on the transport's own readiness flow schedu1eth the bounded
+     * worker for THE EXACT RELATION it nameth -- and an untrusted or unknown relation is NOT served, because the
+     * pump schedulleth only what it is told and nothing is guessed.
+     */
+    internal fun subscribeToReadiness(scope: CoroutineScope, intervalMillis: Long? = null) {
+        scope.launch {
+            ble.applicationLinkReady().collect { nodeId ->
+                ackPump?.onLinkReady(nodeId)
+                ackEventWakes++
+                drainAckWorkOnce(nodeId)
+            }
+        }
+        if (intervalMillis != null) {
+            scope.launch {
+                while (true) {
+                    delay(intervalMillis)
+                    ackPump?.let { pump -> runAckTurnForEveryTrustedRelation(pump.scheduledPeersForTest()) }
+                }
+            }
+        }
+    }
 
     /**
      * T43: the EPHEMERAL ledger of local link admissions. A Boolean `send`
