@@ -26,6 +26,28 @@ import Foundation
 /// The kind of held row: selects the canonical local lifetime. NOT a sender field.
 public enum MessageKind: Int, CaseIterable, Sendable {
     case direct, sos, group, broadcast, bulk
+
+    /// GS-STORE-004 (round 313): THE RETENTION KIND OF A STORED TYPE OCTET -- the mapping that was MISSING, and
+    /// whose absence round 312 measured: `MessageKind(rawValue: typeCode)` looked up the wire octet in a DIFFERENT
+    /// `rawValue` space, missed, and the caller's `guard ... else { return true }` then answered "this row is fine"
+    /// FOR A ROW IT NEVER JUDGED. THE MAPPING IS DECIDED AND DOCUMENTED, with its two judgements STATED:
+    ///  - `message` is DIRECT, `sos` is SOS, and the two bulk types are BULK -- the only three kinds this build's
+    ///    wire vocabulary can express. `.group` and `.broadcast` have NO wire type here, so no held row can
+    ///    carrieth them: NAMED rather than silently mapped onto something else.
+    ///  - the CONTROL types (hello, digest, want, ack, ping, goodbye) are held briefly and are governed as DIRECT,
+    ///    the longest-lived applicable kind -- the NON-DESTRUCTIVE choice, since a control row is not retired early
+    ///    by a mapping decision.
+    ///  - AN UNKNOWN OCTET answereth `nil` and the caller then JUDGETH NOT (the row stayeth forwardable):
+    ///    DESTROYING A ROW WHOSE TYPE IS UNKNOWN WOULD BE A GUESS WITH A DELETION BEHIND IT.
+    public static func ofStoredTypeCode(_ code: Int) -> MessageKind? {
+        switch TypeV2(rawValue: UInt8(truncatingIfNeeded: code)) {
+        case .message: return .direct
+        case .sos: return .sos
+        case .bulk_offer, .bulk_chunk: return .bulk
+        case .hello, .digest, .want, .ack, .ping, .goodbye: return .direct
+        case nil: return nil
+        }
+    }
 }
 
 /// The clock-continuity verdict a platform adapter returns for one reopen.

@@ -876,13 +876,23 @@ public final class SqliteMessageStore: MessageStore {
         }
     }
 
-    internal func isForwardable(receivedAt: Int64, typeCode: Int, storedBudget: Int64? = nil,
+    internal func isForwardable(receivedAt: Int64, kind: MessageKind?, storedBudget: Int64? = nil,
                                 storedCheckpoint: Int64? = nil, storedBoot: String? = nil,
                                 storedDiscontinuity: Int64? = nil, persistDebitFor msgId: Data? = nil,
                                 onHandle db: OpaquePointer? = nil) -> Bool {
         guard let provider = receiptTimeProvider else { return true }
-        guard let kind = MessageKind(rawValue: typeCode),
-              let lifetime = RetentionPolicy.lifetimeMs[kind] else { return true }
+        // GS-STORE-004 (round 313): THE KIND IS MAPPED FROM THE STORED TYPE OCTET, and the mapping is DECIDED
+        // AND DOCUMENTED rather than inferred from two unrelated `rawValue` spaces. ROUND 312 MEASURED THE DEFECT
+        // THIS REPLACETH: `MessageKind(rawValue: typeCode)` missed for an ordinary DIRECT frame, the `guard`
+        // failed, and the predicate answered TRUE -- 'this row is fine' -- FOR A ROW IT NEVER JUDGED. AN ABSENT
+        // KIND READ AS A HEALTHY ONE.
+        // ROUND 315: THE KIND ARRIVETH AS A KIND. Round 314's probe proved that TWO RAW-VALUE SPACES used to travel
+        // through one `typeCode: Int` -- the frames reader's `TypeV2` OCTET and the id reader's
+        // `MessageKind.direct.rawValue` (= 0) -- which made the old lookup work by accident on one road and fail on
+        // the other. THE CONVERSION NOW HAPPENETH AT EACH CALLER, WHERE ITS SPACE IS KNOWN, and a caller that
+        // CANNOT tell (an unknown octet) passeth `nil` and the row is NOT judged: destroying a row whose type is
+        // unknown would be a guess with a deletion behind it.
+        guard let kind = kind, let lifetime = RetentionPolicy.lifetimeMs[kind] else { return true }
         let now = provider().monoMs
         // GS-STORE-004 STEP SIX: THE PERSISTED BUDGET IS READ, AND IT DECIDETH. The anchor alone cannot tell a row
         // whose budget was ALREADY SPENT (by a sweep, a debit, or a longer life governed elsewhere) from one whose
@@ -980,6 +990,94 @@ public final class SqliteMessageStore: MessageStore {
         return sqlite3_step(stmt) == SQLITE_DONE
     }
 
+    /// GS-STORE-004 (STEP NINE -- THE API WITHOUT ITS SEMANTICS): THE BOUNDED EXPIRY SWEEP. It retireth AT MOST
+    /// `limit` rows whose persisted budget is spent, and it answereth how many it retired. AT THIS STEP IT IS A
+    /// STUB RETURNING ZERO: the arm that demandeth a retired row therefore FAILETH ON ITS OWN SUBJECT, which is
+    /// what maketh it a behavioural RED rather than a compile failure.
+    ///
+    /// THE FINDING'S OWN WORDS, FOR THE REPAIR THAT FOLLOWETH: "Connect a bounded expiry sweep to startup and
+    /// runtime scheduling. Expiration must ATOMICALLY retire held rows, UPDATE RELATED DELIVERY STATE and create
+    /// any required durable replay/ACK tombstones." READ IN THE TREE, TWO OF THOSE THREE ARE REACHABLE TODAY (the
+    /// held row and the `delivery_state` row share this file, so one transaction can move both) AND THE THIRD IS
+    /// NOT: **THERE IS NO TOMBSTONE STORAGE FOR A MESSAGE** -- `RetentionPolicy.tombstoneMs` is a DURATION and
+    /// `QuotaKind.tombstoneRows` a CONTRACT CATEGORY, and no table carrieth one. A durable message tombstone would
+    /// therefore be ANOTHER SCHEMA REVISION, and it is NAMED here rather than simulated.
+    /// GS-STORE-004 (round 312): THE SWEEP SAYETH WHAT IT SAW. A refusal (or a zero) that hideth its reason cost
+    /// this programme rounds -- so the count of rows scanned, the count judged spent, whether a clock was injected
+    /// at all, and whether the database handle answered, are all RECORDED and a court may carry them into its own
+    /// message.
+    internal private(set) var lastSweepReport: String = "(no sweep yet)"
+
+    @discardableResult
+    public func sweepExpired(limit: Int = 64) -> Int {
+        guard let provider = receiptTimeProvider else {
+            lastSweepReport = "REFUSED: no receipt clock was injected (a store with no runtime clock governeth no retention)"
+            return 0
+        }
+        let now = provider().monoMs
+        let boot = provider().bootIdentity
+        return withDb { db -> Int in
+            // (1) A BOUNDED SCAN: at most `limit` candidate rows, judged by THE SAME PREDICATE THE READERS USE
+            // (so the sweep and the read paths can never disagree about what "spent" meaneth).
+            let scan = "SELECT \(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colReceivedAt), " +
+                "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), \(StoreSchema.colBootIdentity), " +
+                "\(StoreSchema.colDiscontinuity) FROM \(StoreSchema.table) LIMIT ?"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, scan, -1, &stmt, nil) == SQLITE_OK else { sqlite3_finalize(stmt); return 0 }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_int(stmt, 1, Int32(max(1, limit)))
+            var spent: [Data] = []
+            var scanned = 0
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                scanned += 1
+                let budget = sqlite3_column_type(stmt, 3) == SQLITE_NULL
+                    ? nil : Int64(sqlite3_column_int64(stmt, 3))
+                let cp = sqlite3_column_type(stmt, 4) == SQLITE_NULL
+                    ? nil : Int64(sqlite3_column_int64(stmt, 4))
+                let storedBoot = sqlite3_column_text(stmt, 5).map { String(cString: $0) }
+                let disco = sqlite3_column_type(stmt, 6) == SQLITE_NULL
+                    ? nil : Int64(sqlite3_column_int64(stmt, 6))
+                _ = boot
+                if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 2),
+                                  kind: MessageKind.ofStoredTypeCode(Int(sqlite3_column_int(stmt, 1))),
+                                  storedBudget: budget, storedCheckpoint: cp,
+                                  storedBoot: storedBoot, storedDiscontinuity: disco) {
+                    spent.append(readBlob(stmt, 0))
+                }
+            }
+            lastSweepReport = "scanned=\(scanned) spent=\(spent.count) limit=\(limit) boot=\(boot)"
+            guard !spent.isEmpty else { return 0 }
+            // (2) ONE TRANSACTION: THE HELD ROW AND ITS DELIVERY STATE MOVE TOGETHER, or neither doth. `expired`
+            // is code 4 -- READ from `DeliveryState.code`, never guessed -- and no row is DELETED from
+            // delivery_state: the delivery record is what a later reader consulteth.
+            _ = try? execStrict(db, "BEGIN")
+            var retired = 0
+            for id in spent {
+                let del = "DELETE FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
+                var d: OpaquePointer?
+                guard sqlite3_prepare_v2(db, del, -1, &d, nil) == SQLITE_OK else { sqlite3_finalize(d); continue }
+                let blob = id as NSData
+                sqlite3_bind_blob(d, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
+                let deleted = sqlite3_step(d) == SQLITE_DONE
+                sqlite3_finalize(d)
+                let upd = "UPDATE \(StoreSchema.deliveryTable) SET \(StoreSchema.colDState) = ? " +
+                    "WHERE \(StoreSchema.colDMsgId) = ?"
+                var u: OpaquePointer?
+                if sqlite3_prepare_v2(db, upd, -1, &u, nil) == SQLITE_OK {
+                    sqlite3_bind_int(u, 1, DeliveryState.expired.code)
+                    sqlite3_bind_blob(u, 2, blob.bytes, Int32(blob.length), storeSqliteTransient)
+                    _ = sqlite3_step(u)
+                }
+                sqlite3_finalize(u)
+                if deleted { retired += 1 }
+            }
+            _ = try? execStrict(db, "COMMIT")
+            if retired > 0 { notifyHeldSetChanged() }
+            lastSweepReport += " retired=\(retired)"
+            return retired
+        } ?? 0
+    }
+
     /// GS-STORE-004 evidence hook: the receipt anchor the store PERSISTED for a message (the retention budget's
     /// own anchor, never the sender's timestamp). Nil when the message is not held.
     internal func receiptAnchorForTest(_ msgId: Data) -> Int64? {
@@ -1045,7 +1143,7 @@ public final class SqliteMessageStore: MessageStore {
                 let storedCheckpoint = sqlite3_column_type(stmt, 9) == SQLITE_NULL
                     ? nil : Int64(sqlite3_column_int64(stmt, 9))
                 if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 7),
-                                  typeCode: Int(row.typeCode),
+                                  kind: MessageKind.ofStoredTypeCode(Int(row.typeCode)),
                                   storedBudget: storedBudget,
                                   storedCheckpoint: storedCheckpoint,
                                   storedBoot: sqlite3_column_type(stmt, 10) == SQLITE_NULL
@@ -1081,7 +1179,7 @@ public final class SqliteMessageStore: MessageStore {
                 let idCheckpoint = sqlite3_column_type(stmt, 3) == SQLITE_NULL
                     ? nil : Int64(sqlite3_column_int64(stmt, 3))
                 if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 1),
-                                  typeCode: MessageKind.direct.rawValue,
+                                  kind: .direct,
                                   storedBudget: idBudget,
                                   storedCheckpoint: idCheckpoint,
                                   storedBoot: sqlite3_column_type(stmt, 4) == SQLITE_NULL

@@ -1578,4 +1578,19 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertLessThan(after.remainingMs ?? .max, 300_000_000,
                           "and the debit must be reflected in the persisted budget")
     }
+
+    /// GS-STORE-004, the finding's own words: "Expiration must ATOMICALLY retire held rows, update related
+    /// delivery state ...". THE DISCRIMINATING LAW: a spent row must be GONE FROM STORAGE, not merely hidden from
+    /// readers -- and the sweep must say how many it retired. RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_aSweepRetirethTheSpentRowFromStorage() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        s.receiptTimeProvider = { (monoMs: 4_000_000, bootIdentity: "boot-A") }
+        let f = frame(10, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
+        XCTAssertEqual(s.sweepExpired(limit: 8), 1,
+                       "the sweep must retire the spent row and SAY how many it retired -- IT SAW: " + s.lastSweepReport)
+        XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET ttl = 0", []), 0,
+                       "the row must be GONE FROM STORAGE -- a hidden row is not a retired one")
+    }
 }
