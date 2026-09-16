@@ -27,7 +27,10 @@ public final class LabRuntimeHolder: ObservableObject {
     public let runtime: LabRuntime
 
     public init() {
-        self.runtime = LabRuntime.compose()
+        // GS-LAB-001 (round 266): THE REAL BUILD SAITH `compose()` THROWETH -- and round 262's `swiftc -parse` could not
+        // say so, because PARSING IS NOT TYPE-CHECKING. The error is carried rather than swallowed; a lab that cannot
+        // compose its runtime must NOT pretend it did.
+        self.runtime = try! LabRuntime.compose()
     }
 }
 
@@ -39,7 +42,9 @@ struct LabRootView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Godstone LabMesh").font(.title)
             Text("EXPERIMENTAL, NONSHIPPING. This build exercises the real adapters on a real device; it is never a store candidate.")
-            Text("one retained runtime: \(holder.runtime.profile)")
+            // GS-LAB-001 (round 266): THE iOS SPELLING, READ FROM `LabRuntime.swift` RATHER THAN ASSUMED FROM THE OTHER ISLE --
+            // the android twin carrieth `LabMeshApp.PROFILE`, this isle carrieth `LabProfile.name`, and the compiler said so.
+            Text("one retained runtime: " + LabProfile.name)
         }
         .padding()
     }
