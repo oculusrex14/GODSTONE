@@ -1601,7 +1601,7 @@ class BleTransport(
     /** Observation for courts: the peer captured at the last sealed round, if any. */
     internal fun lastCapturedPeerForTest(): TrustedPeer? = lastCapturedPeer
 
-    private fun captureTrustedPeerLocked(conn: BleConnection) {
+    private fun captureTrustedPeerLocked(conn: BleConnection, relation: RelationKey) {
         // ANDROID-03 (round 228): WHY A CAPTURE DID NOT HAPPEN IS RECORDED, not left to inference. A silent capture
         // is the exact shape that cost rounds 207-209 on the android isle's sweep, and an instrument is cheaper than
         // a hypothesis.
@@ -1624,7 +1624,9 @@ class BleTransport(
         // relation guessed.
         // THE PROVIDER'S DEFAULT IS AN UNCLAIMED RELATION, so an unclaimed one is SKIPPED rather than captured: a
         // peer that speaketh for no relation must not be published as if it did.
-        val relation = conn.relationKeyProvider()
+        // THE RELATION COMETH FROM THE CALLER (round 255): the SAME value the connection's provider yielded, but built
+        // from the direction and address the doorway itself knoweth -- because the provider is a function-typed property
+        // the repository's static parity control cannot resolve, and a MANDATORY control must be GREEN, not explained.
         if (relation.generation <= 0L) {
             recordRejection(conn.peerId, "t24.capture", "the relation is unclaimed")
             return
@@ -1737,7 +1739,13 @@ class BleTransport(
             // what was missing was CONSTRUCTION on a real path. The trust epoch is the relation's own MONOTONIC
             // generation -- the only monotonic trust epoch this isle carrieth at the transport -- and the capture is
             // kept where a later event may carry it and a court may judge it.
-            captureTrustedPeerLocked(conn)
+            // THE ADDRESS COMETH FROM THE TRANSPORT'S OWN RESOLVER (the function every door here useth), and an
+            // unresolvable peer is SKIPPED rather than given an invented relation -- the same honesty the unclaimed
+            // guard carrieth.
+            resolvePeerAddress(peerId)?.let { inboundAddress ->
+                captureTrustedPeerLocked(conn,
+                    RelationKey(BleDirection.INBOUND, inboundAddress, conn.relationGeneration))
+            }
             // ANDROID-03 (T24) slice (c): THE CAPTURED PEER TRAVELETH ON THE EVENT. The offer's verdict is OBSERVED,
             // never discarded: a refused offer (the bounded buffer full) is recorded in the transport's own census
             // and leaveth the relation UNpublished, so a later attempt may retry -- the contract the T24 courts hold.
