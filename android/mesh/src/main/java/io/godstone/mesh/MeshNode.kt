@@ -550,6 +550,16 @@ class MeshNode(
             }
         }
         lifecycle.start()
+        // ================= THE WI-FI PLANE: A RECORDED DECISION, NOT AN OMISSION =================
+        //
+        // MEASURED (round 252): `WifiAwareTransport` IS a `Transport` (start/stop, `isSupported`), and the
+        // authority owneth EXACTLY ONE SEAM. **PUTTING BOTH RADIOS UNDER ONE AUTHORITY WOULD EITHER BLUR TWO
+        // RADIOS' CAPABILITIES INTO ONE LEASE OR CREATE A SECOND OWNER -- and "one owner" is the whole point of the
+        // instrument.** SO THE DECISION IS: **BLE IS THE LIFECYCLE-OWNING PLANE ON THIS ISLE, AND WI-FI REMAINETH A
+        // DIRECTLY-DRIVEN AUXILIARY** -- subject to the SAME ORDERING DISCIPLINE the BLE road keepeth (its close
+        // travelleth BEFORE the `isStarted` guard, once per lifetime, which round 247's repair gave to BOTH roads at
+        // once). A later change that giveth Wi-Fi its own authority must also give it its own REASONS -- and this
+        // comment is where that argument would begin.
         if (wifi.isSupported) wifi.start()
     }
 

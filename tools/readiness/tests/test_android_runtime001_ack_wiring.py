@@ -257,6 +257,25 @@ class AndroidAckWiringTest(unittest.TestCase):
         self.assertIn("lifecyclePowerLossesForwarded += 1", n,
                       "and the power loss keepeth ITS census: TWO losses, TWO roads, TWO censuses")
 
+    def test_the_wifi_plane_stands_outside_the_authority_for_a_STATED_reason(self):
+        """GS-RUNTIME-001's Android half: the Wi-Fi plane is a SECOND transport and the authority owns ONE seam.
+        Leaving it outside is a DECISION -- and a decision that is not recorded is indistinguishable from an
+        omission, so this arm requireth the reasoning to stand in the code."""
+        n = (REPO / "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt").read_text(encoding="utf-8")
+        self.assertIn("A RECORDED DECISION, NOT AN OMISSION", n,
+                      "the Wi-Fi question must be ANSWERED in the code, not left to a reader's guess")
+        self.assertIn("BLE IS THE LIFECYCLE-OWNING PLANE ON THIS ISLE", n)
+        # **AND A COMMENT THAT WRAPPETH IS NOT A STRING AN ARM CAN QUOTE**: my first draft asked for "the authority
+        # owneth EXACTLY ONE SEAM" and the sentence standeth across a line break -- SO THE ARM REDDENED ON A
+        # FORMATTING FACT. It now quoteth a phrase that liveth on ONE line.
+        self.assertIn("authority owneth EXACTLY ONE SEAM", n, "and the MEASUREMENT behind the decision")
+        # AND THE ORDERING DISCIPLINE REACHES BOTH ROADS, not merely the owned one:
+        stop = n[n.index("fun stop() {"):]
+        stop = stop[:stop.index("\n    }")]
+        self.assertIn("wifi.stop()", stop, "the auxiliary's close must travel with the owned road's")
+        self.assertLess(stop.index("wifi.stop()"), stop.index("if (!isStarted) return"),
+                        "**BEFORE THE GUARD** -- the same early-return lesson, applied to BOTH roads at once")
+
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
         self.assertIn("override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null",

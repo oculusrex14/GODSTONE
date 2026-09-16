@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 252 -- the Wi-Fi question ANSWERED on that isle, and two lessons about arms that assert text
+
+- **The measurement**: `WifiAwareTransport` **is** a `Transport`, and the authority owns **exactly one seam** — *so putting both radios under it would either blur two radios' capabilities into one lease or create a second owner, and one owner is the whole point of the instrument*.
+- **The decision, written where the road is taken**: **BLE is the lifecycle-owning plane on that isle; Wi-Fi remains a directly-driven auxiliary** — subject to the same ordering discipline, since round 247 moved **both** closes before the guard at once. *A decision that is not recorded is indistinguishable from an omission*, so an arm now requires the reasoning to stand in the code.
+- **Two lessons about instruments that assert text**: (a) round 250's arm **quoted an exact line** and reddened when the next round legitimately widened it; (b) this round's first draft quoted a phrase that **wraps across a line break** in the comment it judged. *A comment that wraps is not a string an arm can quote* — the same lesson at two scales.
+- **Measured**: android `:mesh` **FORCED 1196 / 0 / 0** (run before the arm's own text was corrected — *an arm-only change cannot move a lane verdict*, stated rather than implied); eighteen arms green; courts 615 OK.
+- **Remaining on that isle**: the **node-level behavioural witness** (an instrumentation road) — now the **only** item outstanding for the Android half of this finding.
+
 ## Round 251 -- GS-RUNTIME-001's Android step 3 closed: the permission half, and each loss on its own road
 
 - **Wiring**: a withdrawn permission is **not visible in the adapter broadcast**, so the transport **asks** the API-level question (`BLUETOOTH_CONNECT`), **guarded by the version** (`SDK_INT < 31` answers *held* rather than invented) — a radio reporting `STATE_ON` while the app holds no permission *is* a revocation; both losses are forwarded while `READY` remains **not an event**.
