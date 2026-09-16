@@ -4,6 +4,11 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 214b -- a record made too early, corrected in place
+
+- Round 214's entry claimed the eighth invariant was added; **it was not** — the first attempt assumed the checks were *listed*, the anchor missed, and the script **aborted before writing** (the control still said 13 notes) **while the ledger claimed otherwise**. *A record written in the same breath as the edit is a claim until the edit is verified — the guard protected the tree, not the record.*
+- **It is now really added**, by mirroring the neighbouring block's own shape (checks are **called**, not listed): `check_the_lab_buildeth_no_owner_of_its_own` requires the lab's own sources to construct **no** `Test*`/`Simulated*`/`InMemory*`/`Fake*` owner. **Measured: the control passes with 14 notes** — which is the proof it was added this time.
+
 ## Round 214 -- GS-UX-001 step 2's entanglement measured, and the lab control now guards PROVENANCE
 
 - **Measured**: `LabRuntime` composes **through T44's harness** (`private let harness: ComposedRuntimeHarness`) — the owners are *real* (`SqliteMessageStore`, `DeliveryTracker`, inbox, ACK authority), but the composition carries harness support (`TestAckSigner`, `InMemoryAckStore`, `SimulatedSosAuthority`).

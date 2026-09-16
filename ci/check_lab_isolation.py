@@ -259,6 +259,11 @@ def run(root: Path) -> Findings:
     lifeOk, lifeWhy = check_the_lab_lifecycle_reacheth_the_owner()
     (f.notes if lifeOk else f.errors).append(lifeWhy)
 
+    # GS-UX-001 step 2: the lab must REACH its owners, never MANUFACTURE them -- and the control
+    # that guarded only OWNERSHIP now guardeth PROVENANCE.
+    provOk, provWhy = check_the_lab_buildeth_no_owner_of_its_own()
+    (f.notes if provOk else f.errors).append(provWhy)
+
     # GS-LAB-001 step 4's navigation half: the five journeys the card nameth.
     navOk, navWhy = check_the_lab_navigateth_the_five_journeys()
     (f.notes if navOk else f.errors).append(navWhy)
@@ -609,3 +614,23 @@ def check_the_lab_runtime_is_retained():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+def check_the_lab_buildeth_no_owner_of_its_own():
+    """GS-UX-001 step 2: "the TrustPort/MeshPort adapters to the ONE runtime's REAL OWNERS."
+
+    The lab may REACH owners and must never MANUFACTURE them. A lab that built its own store, tracker, signer or
+    authority would look real while measuring itself -- and GS-RUNTIME-001's own measurement (round 211) showeth
+    what that costeth on THIS repository: the harness's signer carrieth its own confession, "IT IS HARNESS
+    SUPPORT AND NOT A DEVICE RESULT". The audited lab satisfieth this today (its own sources construct no owner),
+    and this invariant keepeth it so.
+    """
+    root = Path(__file__).resolve().parent.parent
+    offenders = []
+    for f in sorted((root / "ios/Godstone/Sources/LabMesh").glob("*.swift")):
+        body = strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//"))
+        for m in re.finditer(r"\b(Test[A-Z]\w*|Simulated[A-Z]\w*|InMemory[A-Z]\w*|Fake[A-Z]\w*)\s*\(", body):
+            offenders.append(f.name + ": " + m.group(1))
+    if offenders:
+        return False, ("the lab MANUFACTURETH owners of its own rather than reaching the real ones "
+                       "(GS-UX-001 step 2): " + ", ".join(offenders))
+    return True, "the lab manufactureth NO owner of its own: it reacheth the runtime through LabRuntime alone"
