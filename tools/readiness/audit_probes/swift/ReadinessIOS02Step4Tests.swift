@@ -33,3 +33,35 @@
 //
 // NOTHING WAS LEFT BROKEN: the tree was REVERTED and re-measured green (T23 16 tests / 0 failures; python
 // courts OK).
+
+// ============================================================================================================
+// ROUND 194: **MY ROUND-193 DIAGNOSIS IS WITHDRAWN, AND THE MEASUREMENT IS THE REASON.**
+//
+// I wrote that the placement was wrong -- that the initiator marketh its hour when it WRITETH hs3 while the
+// responder marketh its own only upon RECEIVING it, so a record sent then is EARLY. THAT WAS A PLAUSIBLE
+// STORY, NOT A MEASUREMENT, and it is refuted by looking again at the RIG rather than at the prose:
+//
+//   THE RIG SELECTED THE THIRD COUNSEL BY POSITION --
+//       `sample({ r.capturePeer.writes.last(where: { $0 != hs1 }) })`  in T23,
+//       `if w.count > priorCount, let last = w.last, last != hs1 { hs3 = last; break }`  in T21 and T22 --
+//   so with production now writing the CHALLENGE immediately after hs3, the positional rule picked THE
+//   CHALLENGE and pushed it to the responder, which refused a DATA record at a handshake stage:
+//       "ingest.write|record type data at stage handshake"
+//   THE PLACEMENT WAS NOT THE CAUSE. THE RIG'S RULE WAS.
+//
+// AND THE SECOND MEASUREMENT SAITH THE SAME OF THE ARMS THEMSELVES: with the rigs corrected to select HS3 BY
+// TYPE, the failures fell from 43 to 25 and their OWN WORDS name the remaining cause --
+//       "the third record must be HS3"   ... got 24  (0x18 = DATA, the challenge)
+//       "the HS3 message is one hundred ninety-seven octets" ... got 74 (the challenge's record)
+// so THE ARMS ASSERT ON RECORD POSITIONS TOO, and an extra record shifts every one of them.
+//
+// THE RECONCILIATION IS THEREFORE: CONVERT POSITIONAL RECORD SELECTION **AND POSITIONAL ASSERTIONS** TO
+// TYPE-BASED ONES, ARM BY ARM -- a rig helper is not enough, because the arms look at `writes[N]` directly.
+// BOTH HALVES ARE PRESERVED: the rig fixes in
+//   `round194-step4-with-type-based-selection.patch` (sha256 ddfe20b2bb649ba3...), which carrieth the repair,
+// the RED arm, the reconciled challenge reads AND the type-based HS3 selection (T21, T22, T23).
+//
+// THE LESSON, AND IT IS THE ONE THIS PROGRAMME KEEPS RE-LEARNING: **A CAUSE THAT SURVIVES EVERY REPAIR TO THE
+// PLACE THE FAILURE APPEARETH IS NOT IN THAT PLACE** -- and a diagnosis built from reading the production
+// code, without reading the RIG that driveth it, is a story. The ring message was the evidence, and it
+// pointed at the responder's gate; the rig's rule was what fed it.

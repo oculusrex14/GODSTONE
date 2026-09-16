@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 194 -- the round-193 diagnosis WITHDRAWN: the cause was the rig's POSITIONAL rule, not the placement
+
+- **Withdrawn**: round 193 blamed the placement of the challenge at the initiator's transition. **Refuted by reading the rig**: T23 selected HS3 by position (`writes.last(where: { $0 != hs1 })`), T21/T22 likewise — so production's new challenge was pushed to the responder as if it were HS3 (`ingest.write|record type data at stage handshake`).
+- **Measured**: with the rigs corrected to select HS3 **by type**, failures fell **43 → 25**, and the rest name their own cause: `the third record must be HS3` got **24** (DATA), `the HS3 message is one hundred ninety-seven octets` got **74** — the arms assert on positions too.
+- **Next**: convert positional selection *and positional assertions* to type-based, arm by arm (a rig helper alone cannot fix what the arms read directly).
+- **Preserved**: `round194-step4-with-type-based-selection.patch` (sha256 `ddfe20b2bb649ba3…`) — repair + silent RED arm + reconciled challenge reads + type-based HS3 selection.
+- Lesson recorded: *a cause that survives every repair to the place the failure appears is not in that place*; a diagnosis from the production code without the rig is a story.
+
 ## Round 193 -- IOS-02 step 4 attempted: RED taken, repair written, PLACEMENT REFUTED by measurement
 
 - **RED taken and it ran**: canonical T23 arm whose silence is its force — 17 tests, exactly 1 failure, other 16 green.
