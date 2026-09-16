@@ -1098,6 +1098,16 @@ public final class SqliteMessageStore: MessageStore {
     /// for that lesson with a hung court), and `sweepExpired` taketh the lock in its turn -- so a sweep INSIDE the
     /// open would deadlock. Running it at the first use that needeth the store is the nearest point to startup that
     /// the lock order permitteth, and it is honest to say so rather than to pretend the open carrieth it.
+    /// GS-STORE-004 (round 317): the RUNTIME maintenance entry point, for a caller that owneth a run loop and
+    /// wanteth to drive the cadence itself (the composition root's own timer, or a test's hand). It taketh the lock
+    /// in its turn and runneth the same bounded sweep the automatic path runneth.
+    @discardableResult
+    public func runScheduledMaintenance(limit: Int = 64) -> Int {
+        let retired = sweepExpired(limit: limit)
+        if let now = receiptTimeProvider?().monoMs { lastSweepMonoMs = now }
+        return retired
+    }
+
     internal func runStartupMaintenanceIfNeeded() {
         let alreadyDone = withDb { _ -> Bool in
             if startupMaintenanceDone { return true }
@@ -1109,6 +1119,9 @@ public final class SqliteMessageStore: MessageStore {
 
     /// GS-STORE-004 (round 316): whether this instance's STARTUP sweep hath run.
     private var startupMaintenanceDone = false
+    /// GS-STORE-004 (round 317): the monotonic reading of the LAST maintenance sweep, so the RUNTIME cadence is
+    /// measured against the policy's own constant rather than inferred.
+    private var lastSweepMonoMs: Int64?
 
     /// GS-STORE-004 evidence hook: the receipt anchor the store PERSISTED for a message (the retention budget's
     /// own anchor, never the sender's timestamp). Nil when the message is not held.
@@ -2536,12 +2549,23 @@ public final class SqliteMessageStore: MessageStore {
     private func withDb<T>(_ body: (OpaquePointer) -> T) -> T? {
         lock.lock(); defer { lock.unlock() }
         guard let db = handle else { return nil }
-        // GS-STORE-004 (round 316): STARTUP MAINTENANCE, AT THE FIRST USE OF ANY KIND. The flag is set BEFORE the
-        // sweep runneth, so a sweep that re-entered this entry point could not recurse; the sweep then runneth ON
-        // THIS HANDLE (`sweepExpiredNoLock`), so it taketh NO second lock.
+        // GS-STORE-004 (rounds 316-317): MAINTENANCE AT THE FIRST USE OF ANY KIND -- the STARTUP sweep once, and
+        // thereafter ON THE POLICY'S OWN CADENCE (`RetentionPolicy.checkpointCadenceMs`). The flag is set BEFORE the
+        // sweep runneth, so a sweep that re-entered this entry point could not recurse; the sweep runneth ON THIS
+        // HANDLE (`sweepExpiredNoLock`), so it taketh NO second lock.
+        //
+        // WHY THE CADENCE LIVETH HERE AND NOT IN A TIMER: a store layer that owned a timer would be a store layer
+        // that owned a run loop -- and the finding asketh the sweep be connected to RUNTIME SCHEDULING, which this
+        // store's every use IS. The gate is the POLICY'S cadence constant, not a number invented here, so the store
+        // and the retention policy cannot drift apart about how often maintenance is due.
         if !startupMaintenanceDone {
             startupMaintenanceDone = true
             _ = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
+            lastSweepMonoMs = receiptTimeProvider?().monoMs
+        } else if let now = receiptTimeProvider?().monoMs, let last = lastSweepMonoMs,
+                  now - last >= Int64(RetentionPolicy.checkpointCadenceMs) {
+            _ = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
+            lastSweepMonoMs = now
         }
         return body(db)
     }

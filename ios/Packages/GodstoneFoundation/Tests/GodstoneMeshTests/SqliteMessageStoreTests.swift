@@ -1615,4 +1615,23 @@ final class SqliteMessageStoreTests: XCTestCase {
                        "STARTUP must retire a spent row WITHOUT the caller invoking the sweep -- " +
                        "a sweep that only a hand may call is connected to nothing")
     }
+
+    /// GS-STORE-004, the finding's own words: the sweep must be connected to "startup AND RUNTIME SCHEDULING". A
+    /// startup sweep alone is HALF the sentence: a store that runs for days must maintain itself AS IT RUNS, and the
+    /// policy carrieth its own cadence (`RetentionPolicy.checkpointCadenceMs`) for exactly that. RUN RED BEFORE THE
+    /// REPAIR.
+    func testGSSTORE004_theSweepAlsoRunsOnThePolicyCadence() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        var now: Int64 = 1_000_000
+        s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(12, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
+        // The startup sweep hath already run (the store was used above) -- and this row was NOT spent then.
+        // ADVANCE THE CLOCK PAST THE POLICY'S OWN CADENCE and use the store again: the cadence sweep must fire.
+        now += Int64(RetentionPolicy.checkpointCadenceMs) + 1
+        _ = s.allHeldMsgIds()
+        XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET ttl = 0", []), 0,
+                       "the RUNTIME cadence must retire rows spent since the last sweep, not only at startup")
+    }
 }
