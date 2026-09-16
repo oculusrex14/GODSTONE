@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 209 -- GS-RUNTIME-001's ownership chain READ AND DRAWN: the chain breaks in one exact place
+
+- **The signal exists on both isles**: iOS `applicationLinkReadyFlow` with leases + the delegate call at the single publication site (`publishApplicationLinkReadyOnce`, called only from the key-confirmation echo mating); Android `applicationLinkReady(): Flow<ByteArray>` fed at `BleTransport.kt:1646`.
+- **The consumers exist**: iOS `AckDispatcher.onLinkReady`, the section-14 bounded worker in `AckObligationStore`, `SyncPump.turn(peer:now:)`; Android the ACK store/driver/pump.
+- **Measured break**: **no production code collects Android's `applicationLinkReady()`** (declaration only, no collector in the whole tree); **no code outside the harness subscribes iOS's readiness**; and `MeshRuntime.swift` holds **neither an ACK pump nor a recipient inbox** — they exist only in `ComposedRuntime`, the harness. *"Registering a queue does not send it"* — precisely.
+- **Next**: the card's steps 2–3, whose precondition is now satisfied — build the inbox/ACK store/driver/pump over the **same opened private database and pinned identity** in the nonshipping composition, subscribe to the reliable authenticated peer channel, start **one bounded worker per relation** on LinkReady and cancel **that exact relation** on LinkLost; **readiness stays false**.
+
 ## Round 208 -- IOS-02's last pending item CLOSED: the SHIPPING WIRING (the transport tells the node the trusted hour *with the identity it carried*)
 
 - **Repair**: the delegate gains the node-id-carrying form `transportApplicationLinkReady(peerId:receivedFrom:)` (with a default, so no conformer breaks — the twin of IOS-04's `transportDidReceive(…receivedFrom:)`); the publication site captures the identity **under the lock** and tells it **after** it; and **MeshNode implements it**, admitting the peer to the route-eligible view — so the law holds in the **shipping delegate path**, not only where the composition hand-wires it.
