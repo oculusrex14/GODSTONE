@@ -604,7 +604,7 @@
    "what_it_covers": "the LIGHT candidate's EXCLUSION requirement, which the audit requireth be PROVED and not asserted",
    "what_it_does_not": "it readeth the SHIPPING SOURCE GRAPH, not a built artifact; LIGHT's remaining boundary items (approved lexical content, trust/signing, applicable device/accessibility/security evidence, actual release artifacts) are untouched by it, and no gate moved.",
    "stands_as_the_convergence_candidate": false,
-   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time')."
   },
   "repository_control_sweep_AT_ROUND_129": {
    "candidate_sha": "2002d21278830858ff5d76b6deda369495bd3b71",
@@ -646,7 +646,7 @@
     "evidence": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND129/broken-instruments.json"
    },
    "stands_as_the_convergence_candidate": false,
-   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time')."
   },
   "repository_control_sweep_AT_ROUND_142": {
    "candidate_sha": "3d91ddd549de3e3947429ec4b20715c2b969be30",
@@ -665,7 +665,7 @@
     "NOT a repair: nothing was fixed this round"
    ],
    "stands_as_the_convergence_candidate": false,
-   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time')."
   },
   "repository_control_sweep_AT_ROUND_158": {
    "candidate_sha": "93aaede40fef6219b75becdcce0d6f4021948538",
@@ -684,7 +684,7 @@
     "NOT a repair: nothing was fixed this round"
    ],
    "stands_as_the_convergence_candidate": false,
-   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time')."
   },
   "candidate_verification_at_round_178": {
    "candidate_sha": "03fd92b714c0111b56761e559aa8bf16d5e7af8f",
@@ -715,7 +715,7 @@
     "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA (computed, not asserted, at round 120 and still standing): staleness is a FLOOR on what a later closure could claim, not a clearance."
    ],
    "stands_as_the_convergence_candidate": false,
-   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time')."
   },
   "candidate_verification_at_round_200": {
    "candidate_sha": "44975422840fb4c52f3218953bf58bb6bc254866",
@@ -754,7 +754,7 @@
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
    },
-   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_222": {
@@ -788,7 +788,7 @@
    },
    "what_moved": "BOTH ISLES measured at one candidate after GS-RUNTIME-001's six landings.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane/URL/id/log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_223: that SHA carried the inbound wake; THIS one carrieth step 5's RELATION RECHECK as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_254": {
@@ -827,7 +827,7 @@
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
    },
-   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_256": {
@@ -866,7 +866,7 @@
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
    },
-   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_275": {
@@ -908,7 +908,7 @@
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
    },
-   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "round278_python_lane_red_span": {
@@ -971,7 +971,7 @@
    "why_a_new_candidate_was_required": "ROUNDS 200/222/254/256/275 CANNOT STAND: their python lane was RED at every one (re-measured at each exact tree), a fact hidden for eighty-five rounds behind a `| tail -2` that kept the suite's trailing green and threw away its judgment. A CANDIDATE TREE WITH A RED MANDATORY LANE IS NOT A CANDIDATE. This entry replaceth them, and is measured at the SHA that REPAIRED the court and the audit instrument.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- the repository-side half is complete and the missing half is stated rather than papered over. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE** and the **five external gates stay OPEN**. **Closure evidence is stale for the findings whose cards changed after the audited SHA** -- a FLOOR on any later closure, not a clearance. **This candidate changeth NO production source**: it repaireth a COURT and an AUDIT INSTRUMENT and correcteth the record, so every production finding's status is unchanged by it.",
    "stands_as_the_convergence_candidate": false,
-   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time')."
   },
   "candidate_verification_at_round_279": {
    "candidate_sha": "b076e26c90a00ef9d1929cda7091e25e249ab2a4",
@@ -1015,7 +1015,7 @@
    },
    "why_this_sha": "It is the tree that carrieth BOTH repairs of round 278/279: the court that judgeth T26's binding (with its own positive control and four negative witnesses) and the audit instrument that carrieth no ignored population. Its python lane is green BY MEASUREMENT rather than by a `tail`, which is the difference this round was about.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- THE REPOSITORY-SIDE HALF IS COMPLETE AND THE MISSING HALF IS STATED RATHER THAN PAPERED OVER. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE**; the **five external gates stay OPEN**; **no fixture, simulated counter or lab target is offered as a device result** (the iOS lab is unsigned, on the simulator SDK). **This candidate changeth NO production source** relative to f054df7: it repaireth a court and the record, so every production finding's status is unchanged by it.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_281 (55896b9): the later SHA carrieth the round-281 parked probes and their record; NO PRODUCTION SOURCE DIFFERETH between them, so every lane verdict of round 279 was RE-MEASURED here rather than inherited.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_281": {
@@ -1056,7 +1056,7 @@
    },
    "what_moved_since_the_last_candidate": "NOTHING IN PRODUCTION SOURCE. Round 281 measured IOS-02's defect, took its RED (15 tests / 2 failures, empty rejection ring), WROTE AND PROVED THE REPAIR (T22 16 tests / 0 failures), MEASURED ITS BLAST RADIUS (the full iOS lane: 1208 tests / 61 failures across FIVE suites whose rigs still begin the handshake by hand), AND PARKED THE WHOLE OF IT -- because a lane may never be left red and the reconciliation is arm by arm. The park is a PATCH (round281-the-repair-and-the-arms.patch, sha256 4fe85c5e0ad28b0c...) plus two red-by-design probes.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- THE REPOSITORY-SIDE HALF IS COMPLETE AND THE MISSING HALF IS STATED RATHER THAN PAPERED OVER. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE**; the **five external gates stay OPEN**; **no fixture, simulated counter or lab target is offered as a device result**. IOS-02 remaineth OPEN with steps 2-5 outstanding.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_282 (bcdfa1c): that SHA carryeth the parked PROBES only; THIS one carryeth the LANDED REPAIR.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_282": {
@@ -1094,8 +1094,8 @@
    },
    "what_moved": "IOS-02 step 1: production now beginneth the trusted handshake at the physical-duplex reduction, with the relation's captured hint, once, from `.roleBound`; and all six iOS readiness rigs are reconciled to that law. IOS-02 moveth OPEN -> PARTIAL. Every other finding's status is unchanged by this candidate.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here; the repository-side half is complete and the missing half is stated rather than papered over). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; **the iOS lab build is NOT claimed at this SHA** (no lab target changed, and an inherited measurement is not evidence for a new SHA -- A CACHED GREEN IS NOT EVIDENCE).",
-   "SUPERSEDED_BY": "candidate_verification_at_round_191: that SHA carrieth step 1 alone; THIS one carrieth step 1 AND both clauses of step 5.",
-   "stands_as_the_convergence_candidate": true
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
+   "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_191": {
    "candidate_sha": "c7ad4ed67a7b843d9498794255d2d64033917e9a",
@@ -1128,7 +1128,7 @@
    },
    "what_moved": "IOS-02 step 5 LANDED: MeshNode's route-eligible view is populated from the trusted event; the relay rigs of four suites bring their peers up the real way. Every other finding's status is unchanged.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the iOS lab build is not claimed at this SHA.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_197: that SHA carrieth steps 1 and 5; THIS one carrieth step 4 as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_197": {
@@ -1157,7 +1157,7 @@
    },
    "what_moved": "IOS-02 step 4 LANDED: production itself initiates the encrypted challenge/echo at the trusted-ready transition; the whole iOS lane is green. Every other finding's status is unchanged.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the android lanes and the iOS lab build are NOT claimed at this SHA.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_199: that SHA carrieth steps 1, 4 and 5; THIS one carrieth step 3's first-counsel clause as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_199": {
@@ -1186,7 +1186,7 @@
    },
    "what_moved": "IOS-02 step 3's first-counsel clause landed: a refused first counsel is bound, named and terminal; its witness went red->green and moved into the canonical lane.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the android lanes and the iOS lab build are NOT claimed at this SHA.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_201: that SHA carrieth steps 1, 3 and 5; THIS one carrieth step 2's immutability witness as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_201": {
@@ -1215,7 +1215,7 @@
    },
    "what_moved": "IOS-02 step 2's immutability half is witnessed (a later advertisement may not rebind the relation's hint).",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the android lanes and the iOS lab build are NOT claimed at this SHA.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_208: that SHA carrieth steps 1,3,4,5 and step 2's clauses; THIS one carrieth the SHIPPING WIRING as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "closure_evidence_staleness_COMPUTED_AT_ROUND_204": {
@@ -2889,7 +2889,7 @@
    "five_gates": "OPEN or BLOCKED",
    "any_finding_VERIFIED_FIXED": false,
    "stands_as_the_convergence_candidate": false,
-   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time')."
   },
   "candidate_verification_at_round_208": {
    "candidate_sha": "8bcae4040d37b51ccaa3f934beba88f1459a81fb",
@@ -2917,7 +2917,7 @@
    },
    "what_moved": "IOS-02's last pending item: the transport now tells MeshNode the trusted hour WITH the identity it carried, so the route-eligible view is populated from the event in the shipping path.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the android lanes and the iOS lab build are NOT claimed at this SHA.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_210: that SHA measured the iOS lane only; THIS one measureth BOTH ISLES at the current content -- the android lanes having been 'not claimed' for several rounds and now MEASURED.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_210": {
@@ -2951,7 +2951,7 @@
    },
    "what_moved": "BOTH ISLES measured at one candidate: the IOS-02 shipping wiring in production, with nothing else changed.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the iOS lab build is NOT claimed at this SHA.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_216: that SHA carried the IOS-02 shipping wiring; THIS one carrieth the SIGNATURE-SHAPED ACK SEAM and its production signer.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_216": {
@@ -2985,7 +2985,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 2's PRECONDITION REMOVED: the ACK seam now carries a signature-shaped production road and a production signer over the pinned identity; the change is additive and cost no reconciliation.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the iOS lab build is NOT claimed at this SHA.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_217: that SHA carried the seam's shape change; THIS one carrieth the FOUR ACK OWNERS IN THE PRODUCTION RUNTIME as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_217": {
@@ -3014,7 +3014,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 2's construction half: the durable ACK store, driver, pump, dispatcher and recipient inbox now live in the PRODUCTION runtime over the same store and pinned identity.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; the android lanes and the iOS lab build are NOT claimed at this SHA -- A CACHED GREEN IS NOT EVIDENCE.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_218: that SHA carried the owners' construction; THIS one carrieth the READINESS SUBSCRIPTION (step 3) as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_218": {
@@ -3043,7 +3043,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 3: the trusted readiness schedules the bounded ACK worker for the exact relation, and the farewell unschedules that node.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_219: that SHA carried the readiness subscription (step 3); THIS one carrieth step 4's first slice as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_219": {
@@ -3072,7 +3072,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 4's first slice: the relation's own node-id-to-handle mapping, one bounded turn for the named relation, and the initial inventory at the trusted event.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_220: that SHA carried step 4's first slice; THIS one carrieth the PERIODIC DEADLINE as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_220": {
@@ -3101,7 +3101,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 4: the owned periodic deadline wakes the worker for every trusted relation and dies with its owner -- a leak the witness caught in my own first cut.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_221: that SHA carried the periodic deadline; THIS one carrieth the INBOUND WAKE and the measured admission road.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_221": {
@@ -3130,7 +3130,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 4's inbound wake (untrusted senders not served), and step 5's admission road measured as the RecordWriter's own.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_222: that SHA measured the iOS lane only; THIS one measureth BOTH ISLES at the current content.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_223": {
@@ -3159,7 +3159,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 5's relation recheck: the generation travels with the identity and a stale hour is refused at the hand-off.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_224: that SHA carried the relation recheck; THIS one carrieth step 5's WIPE WITNESS with its control.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_224": {
@@ -3188,7 +3188,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 5's wipe half is WITNESSED (with a control proving the candidate was offerable immediately before the wipe); the law was measured to hold by construction, so NO production code changed.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_225: that SHA carried step 5's wipe witness; THIS one carrieth step 6's REBUILD witness as well.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_225": {
@@ -3217,7 +3217,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 6's rebuild-after-reopen is WITNESSED; no production change was due.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_226: that SHA carried the rebuild witness; THIS one carrieth the DRAIN-BEFORE-KEY-ERASURE repair.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_226": {
@@ -3250,7 +3250,7 @@
    },
    "what_moved": "GS-RUNTIME-001 step 6's drain-before-key-erasure: the invalidator holds the node and drains it BEFORE closing the stores -- RED 1->6 before, GREEN after.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_227: that SHA carried the drain repair; THIS one carrieth step 4's last wake, completing the iOS half.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_227": {
@@ -3279,7 +3279,7 @@
    },
    "what_moved": "GS-RUNTIME-001's iOS half is COMPLETE (all six steps landed or measured); its Android half is measured to be unwired, so the finding stands PARTIAL rather than submitted.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_229: the ANDROID seam-shape repair landed (that entry measured the iOS half's completion).",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_229": {
@@ -3308,7 +3308,7 @@
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: the ACK seam's shape is additive on that isle too, witnessed in the canonical T84 court; no reconciliation was needed.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_230: the ANDROID production signer landed over the pinned identity.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_230": {
@@ -3337,7 +3337,7 @@
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: the production ACK signer over the pinned identity, on an existing in-module precedent for private material.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_231: the four ACK owners entered the ANDROID composition.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_231": {
@@ -3366,7 +3366,7 @@
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: the ACK store, driver, pump and authenticator are provided by the composition over the same engine, and the dispatcher is bound to the node; the composition witness is owed and named.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_232: all four ACK owners are now wired into the ANDROID composition.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_232": {
@@ -3395,7 +3395,7 @@
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: all four ACK owners are wired into the composition (inbox over the T83 commit road, same engine); the composition witness remains owed and named.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_233: the ANDROID node's ACK worker machinery and readiness subscription landed.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_233": {
@@ -3424,7 +3424,7 @@
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: the node's bounded ACK worker, the readiness collector (absent from the whole tree before) and the periodic census; the behavioural witness is owed and named.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_235: the ANDROID drain order (step 6) is repaired, with two twinned defects found.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_235": {
@@ -3453,7 +3453,7 @@
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: the drain order repaired (the invalidator holds and drains the node) AND the node's stop cancels its workers before its early return -- two twinned defects.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_236: the two remaining ANDROID event wakes landed.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_236": {
@@ -3482,7 +3482,7 @@
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: the inbound and forward-work wakes landed, gated on the pump's own schedule; the relation recheck's blocker is measured and named.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_237: the ANDROID farewell unscheduling landed.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_237": {
@@ -3511,7 +3511,7 @@
    },
    "what_moved": "GS-RUNTIME-001's ANDROID half: the farewell unschedules the exact relation; the generation recheck is measured to be unnecessary there (node-id keying).",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_238: IOS-06 step 1's first slice landed.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_238": {
@@ -3540,7 +3540,7 @@
    },
    "what_moved": "IOS-06 step 1's first slice: the Transport conformance and one runtime lifecycle authority over the real transport, witnessed behaviourally. IOS-06 moves OPEN -> PARTIAL.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_239: IOS-06 step 2's real teardown result landed.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_239": {
@@ -3569,7 +3569,7 @@
    },
    "what_moved": "IOS-06 step 2: the hard-coded disconnectAll() == 1 replaced by a real teardown result or nothing claimed, witnessed in both directions.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_240: IOS-06 step 1's second half (the routing through the owner) landed.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_240": {
@@ -3598,7 +3598,7 @@
    },
    "what_moved": "IOS-06 step 1 complete: the node drives the radio through the runtime's one lifecycle authority, additively.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_241: IOS-06 step 2's second half (the concrete transport's real teardown count) landed, and the ordering defect in round 239 fixed.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_241": {
@@ -3627,7 +3627,7 @@
    },
    "what_moved": "IOS-06 step 2 complete: the adapter believes a reporting transport (asked BEFORE the coarse stop) and BleTransport reports its real live-link count; an ordering defect of my own was caught and witnessed.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_242: IOS-06 step 3 (the platform's power/permission road) landed.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_242": {
@@ -3656,7 +3656,7 @@
    },
    "what_moved": "IOS-06 step 3: the platform's power/permission road reaches the one authority, in the graph's own vocabulary, with a negative case for healthy states.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_243: IOS-06 steps 4-5 measured (the terminal laws hold).",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_243": {
@@ -3685,7 +3685,7 @@
    },
    "what_moved": "IOS-06 steps 4-5 MEASURED: the terminal laws already hold (no path back after a power loss or withdrawn permission); no production source changed.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "SUPERSEDED_BY": "candidate_verification_at_round_244: the routing is behaviourally witnessed and its early-return defect repaired.",
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set (see the standing entry; ORDERED BY GIT TIME, because the LEDGER CARRIETH TWO ROUND-NUMBERING ERAS and 'latest by number' is not 'latest by time').",
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_244": {
@@ -3714,9 +3714,10 @@
    },
    "what_moved": "IOS-06: the routing is behaviourally witnessed, and the witness found that the radio was NEVER closed through the owner in production (the close road sat after a guard that always returns in this tree); repaired once-per-lifetime before the guard.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
-   "stands_as_the_convergence_candidate": false,
+   "stands_as_the_convergence_candidate": true,
    "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
-  }
+  },
+  "candidate_numbering_eras_NOTE_AT_ROUND_245": "**A MEASURED INCONSISTENCY IN THIS LEDGER, RECORDED RATHER THAN SMOOTHED OVER: the candidate keys run up to `candidate_verification_at_round_282` while the CURRENT goal round is 245 -- SO THE LEDGER CARRIETH TWO NUMBERING ERAS (an earlier, longer-running bookkeeping pass and this one), and **MY FIRST CORRECTION PICKED THE HIGHEST NUMBER AND THEREBY MADE AN *ELDER* CANDIDATE STAND.** The standing candidate is now chosen BY GIT COMMIT TIME, which is the only ordering that cannot be confused by a number. A reader of this ledger should trust the `stands_as_the_convergence_candidate` flag AND the commit dates, never the round numbers alone."
  },
  "counts": {
   "by_candidate_scope": {

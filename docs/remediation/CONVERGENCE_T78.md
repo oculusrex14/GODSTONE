@@ -10,7 +10,7 @@ T78 requireth that all applicable **hosted** lanes be enabled, executed and gree
 
 | | |
 |---|---|
-| **Candidate SHA** | `bcdfa1c95a05` (tree `06f163fc8628`; worktree clean apart from this record) |
+| **Candidate SHA** (chosen BY COMMIT TIME, see the ledger's numbering-eras note) | `ba033d0555f0` (tree `1b2c0a6c8da3`; worktree clean apart from this record) |
 | **Audited SHA** | `c683a2bf0b5b` |
 | **Note on later commits** | every commit AFTER that candidate is **documentation, probes or tests only** (no production source), and each says so in its own message; the candidate is the last SHA at which the mandatory lanes were MEASURED, and no later commit claimeth them |
 | **LIGHT Archive scope** | **14 findings** — the audit's 'Both' |
