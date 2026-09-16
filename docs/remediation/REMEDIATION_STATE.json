@@ -3888,7 +3888,7 @@
    "SUPERSEDED_BY": "candidate_verification_at_round_251: the ANDROID permission half landed (step 3 closed on that isle)."
   },
   "candidate_verification_at_round_251": {
-   "candidate_sha": "484ea07350a39fcb13fc4ba3c8f9e5e869a9f979",
+   "candidate_sha": "c8e06e9660cbf335cc220f2a5ce2e780291b2148",
    "tree_sha": "1e3933fa3ea8957d13ce678bb141d3fd94c8414d",
    "worktree": "clean at this sha apart from this record",
    "stands_as_the_convergence_candidate": true,
