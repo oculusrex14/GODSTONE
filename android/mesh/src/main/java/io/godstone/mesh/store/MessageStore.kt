@@ -1656,8 +1656,51 @@ class SqliteMessageStore internal constructor(
 
     override suspend fun allHeldMsgIds(): List<ByteArray> {
         val out = ArrayList<ByteArray>()
-        engine.forEachMsgId { out.add(it); true }
+        engine.forEachMsgId { id ->
+            // GS-STORE-004 (round 325): THE READ GATE -- a budget WRITTEN and never CONSULTED governeth nothing.
+            if (isForwardable(id)) out.add(id)
+            true
+        }
         return out
+    }
+
+    /** GS-STORE-004 (round 325): THE GATE, AND IT TAKETH **A KIND, NOT A CODE** -- ROUND 314'S LAW, APPLIED HERE
+     *  BEFORE IT COULD BE RE-LEARNED ON THIS ISLE. On iOS a single `typeCode: Int` parameter carried a `TypeV2`
+     *  OCTET from one reader and `MessageKind.direct.rawValue` (= 0) from another: the lookup missed for one road,
+     *  worked BY ACCIDENT for the other, and the chase cost five rounds and one hung court. THE CONVERSION HAPPENETH
+     *  AT THE CALLER, WHERE ITS SPACE IS KNOWN; the `kind` parameter below is a KIND and cannot be confused again.
+     *
+     *  AND THE POLICY OWNETH THE LAW: `RetentionClock.checkpoint` debiteth the elapsed MONOTONIC time when continuity
+     *  is PROVED and otherwise applifieth the frozen conservative rule. The store's whole duty is to hand it truthful
+     *  inputs -- including WHICH BOOT the budget was anchored in, because monotonic time is comparable only within
+     *  one boot.
+     *
+     *  AN UNKNOWN ROW (`retentionCheckpointOf` -> null, or NO BUDGET because no clock was ever injected) IS
+     *  FORWARDED: a row this store never governed is not retroactively destroyed by a gate. */
+    private fun isForwardable(id: ByteArray, kind: MessageKind = MessageKind.DIRECT): Boolean {
+        val clock = receiptTimeProvider ?: return true
+        val cp = engine.retentionCheckpointOf(id) ?: return true
+        val remaining = cp[0] as? Long ?: return true
+        val mono = cp[1] as? Long ?: return true
+        val storedBoot = cp[2] as? String
+        val disco = (cp[3] as? Long) ?: 0L
+        val now = clock()
+        val checkpoint = RetentionCheckpoint(
+            msgId = String(id, Charsets.ISO_8859_1), kind = kind, remainingMs = remaining,
+            checkpointMonotonicMs = mono, lastWallCheckpointMs = mono,
+            discontinuityCount = disco.toInt(), priority = 0, firstReceiptId = "",
+        )
+        val adapter = object : MonotonicClockAdapter {
+            override fun proveContinuity(previous: RetentionCheckpoint, nowMono: Long): ClockContinuityStamp =
+                // READ FROM THE TREE, NOT GUESSED: the stamp is a SEALED CLASS with `Proven`/`Unknown`/`Reset`
+                // (the iOS twin carrieth the same three under a Swift enum), and the expiry reason's members are
+                // `NotExpired`/`LifetimeElapsed`/`MaxHold`/`ClockContinuityLost`.
+                if (storedBoot != null && storedBoot == now.second) ClockContinuityStamp.Proven
+                else ClockContinuityStamp.Unknown
+        }
+        val (next, reason) = RetentionClock.checkpoint(checkpoint, nowMono = now.first,
+                                                       wallEstimateMs = 0L, adapter = adapter)
+        return next.remainingMs > 0 && reason == ExpiryReason.NotExpired
     }
 
     /**

@@ -1229,4 +1229,37 @@ class SqliteMessageStoreTest {
         assertEquals(first[0], after[0], "a DUPLICATE receipt must never replenish the budget")
         assertEquals(first[1], after[1], "nor move its anchor")
     }
+
+    /** GS-STORE-004 (round 325): THE READ GATE. A budget WRITTEN and never CONSULTED governeth nothing, so the law
+     *  is: a row whose PERSISTED budget is spent must not be forwarded, while a row with budget LEFT must be -- the
+     *  second clause is the NEGATIVE CASE that keepeth the gate honest (a gate that withheld everything would pass
+     *  the first clause alone). RUN RED BEFORE THE REPAIR. */
+    @Test
+    fun gsstore004ASpentBudgetIsNotForwardedButALowOneIs() = runBlocking {
+        open(8L * 1024 * 1024)
+        store.receiptTimeProvider = { 5_000_000L to "boot-A" }
+        val spent = frame(7, Priority.DIRECT, payloadSize = 48)
+        val kept = frame(8, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(spent, receivedFrom = ByteArray(0)))
+        assertEquals(PersistResult.HELD_NEW, store.persist(kept, receivedFrom = ByteArray(0)))
+        assertTrue(heldIds().containsId(msgId(7)), "the control: a freshly persisted row IS visible")
+
+        // SPEND the FIRST row's budget entirely, and leave the SECOND merely LOW (one millisecond).
+        store.engine.execRawSql("UPDATE ${StoreSchema.TABLE} SET ${StoreSchema.COL_REMAINING_MS} = 0")
+        val hex = msgId(8).joinToString("") { "%02x".format(it) }
+        store.engine.execRawSql(
+            "UPDATE ${StoreSchema.TABLE} SET ${StoreSchema.COL_REMAINING_MS} = 1 " +
+                "WHERE ${StoreSchema.COL_MSG_ID} = x'$hex'",
+        )
+        assertEquals(1L, store.retentionCheckpointForTest(msgId(8))!![0], "the control row is merely LOW")
+
+        assertFalse(
+            heldIds().containsId(msgId(7)),
+            "a row whose PERSISTED budget is spent must NOT be forwarded to a reader",
+        )
+        assertTrue(
+            heldIds().containsId(msgId(8)),
+            "a row whose budget is merely LOW must still be forwarded -- the gate must not withhold everything",
+        )
+    }
 }
