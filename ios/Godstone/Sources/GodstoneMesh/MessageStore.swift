@@ -932,6 +932,14 @@ public final class SqliteMessageStore: MessageStore {
         //                         protected row (an unexpired tombstone, a verified or revoked trust pin, a
         //                         delivery row) is NOT slain to make room -- which is what the arm asserteth.
         // With no source injected nothing changeth: the ceiling remains the held cap enforced below.
+        // GS-STORE-004 STEP TWO (the anchor's semantics, and NOT yet the whole checkpoint): THE RECEIPT ANCHOR
+        // COMETH FROM THE INJECTED CLOCK, INSIDE THIS TRANSACTION'S OWN PATH, and a DUPLICATE RETAINETH the
+        // anchor it already carrieth -- the insert below is `INSERT OR IGNORE`, so the original row keepeth its
+        // `received_at` and the budget can never be replenished by a re-receipt. The remaining budget, the
+        // continuity identifier and the discontinuity counter are STILL OWED (they need the schema columns);
+        // what this step establisheth is the LAW THE FINDING NAMETH FIRST: no wall time is read inside a
+        // transaction method when a runtime hath supplied the platform's own clock.
+        let receiptAnchor = receiptTimeProvider?().monoMs ?? receivedAt
         if let source = quotaSnapshotSource {
             switch StoreQuota.admit(snapshot: source(),
                                     candidateSize: Int64(frame.payload.count),
@@ -949,7 +957,7 @@ public final class SqliteMessageStore: MessageStore {
             let result = try withTransaction { db in
                 // A duplicate (INSERT OR IGNORE no-op) is NOT an error: returns
                 // isNew=false without throwing. A real SQL/IO failure throws.
-                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom, receivedAt: receiptAnchor)
                 try fault?("after_insert", db)
                 if isNew {
                     let held = try heldBytesNoLockStrict(db)
