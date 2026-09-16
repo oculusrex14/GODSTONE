@@ -40,6 +40,7 @@ import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.TypeV2
 import java.security.MessageDigest
 import kotlin.text.Charsets
+import io.godstone.core.crypto.Ed25519Keys
 
 const val ACK_MSG_LEN: Int = 16
 const val ACK_RECIPIENT_LEN: Int = 16
@@ -366,6 +367,20 @@ interface AckSignerSeam {
     /** The 32-byte Ed25519 seed of the still-valid local identity, or null when the
      *  key is unavailable (the obligation then REMAINS pending; nothing is claimed). */
     fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray?
+
+    /**
+     * **GS-RUNTIME-001 step 2 -- THE PRODUCTION ROAD: SIGN THE CANONICAL PREIMAGE.** A signer bound to the PINNED
+     * identity implementeth THIS and refuseth the seed road (`signingSeed` -> null), so the ACK road becometh
+     * constructible in production WITHOUT exporting private material.
+     *
+     * THE DEFAULT KEEPETH EVERY EXISTING SIGNER WORKING, AND THAT IS WHAT MAKETH THIS CHANGE ADDITIVE: a signer
+     * that can only release a seed signeth THROUGH it, deriving the key locally. No harness signer and no court
+     * needeth a line of change -- THE SAME DESIGN THAT COST THE SWIFT ISLE NO RECONCILIATION AT ALL.
+     */
+    fun signAck(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? {
+        val seed = signingSeed(msgId, recipientNodeId) ?: return null
+        return Ed25519Keys.sign(AckFrame.preimage(msgId, recipientNodeId), seed)
+    }
 }
 
 /** The two namespaces as ONE paired store: the frame insert and the obligation
@@ -876,12 +891,19 @@ internal class AckObligationDriver(
                 keyUnavailable++
                 continue
             }
-            val seed = try {
-                signer.signingSeed(ob.msgId, ob.recipientNodeId)
+            // (NAMED `signatureForFrame`, NOT `signature`: the loop ALREADY declareth a `signature` when it
+            // extracteth the signed bytes from the payload below -- THE SAME COLLISION THE SWIFT TWIN HAD, and
+            // the compiler caught it there too.)
+            val signatureForFrame = try {
+                // GS-RUNTIME-001 step 2: THE SIGNATURE ROAD, NOT THE SEED ROAD -- the driver asketh the signer to
+                // SIGN the canonical preimage; a seed-shaped signer answereth through the default above, so the
+                // harness and the courts keep working, while a signer bound to the PINNED identity answereth
+                // itself and never releases anything.
+                signer.signAck(ob.msgId, ob.recipientNodeId)
             } catch (_e: Throwable) {
                 null
             }
-            if (seed == null) {
+            if (signatureForFrame == null) {
                 keyUnavailable++
                 continue
             }
@@ -892,7 +914,7 @@ internal class AckObligationDriver(
                 // to the frozen builder default (4) and the reply's hop budget depended on
                 // nothing but WHEN it happened to be signed -- a crash or a key outage
                 // silently halved the return path's reach.
-                AckFrame.build(ob.msgId, seed, ob.recipientNodeId,
+                AckFrame.buildFromSignature(ob.msgId, signatureForFrame, ob.recipientNodeId,
                     ob.recipientNodeId.copyOfRange(0, ACK_HINT_LEN),
                     ttl = ACK_INITIAL_TTL)
             } catch (_e: Throwable) {

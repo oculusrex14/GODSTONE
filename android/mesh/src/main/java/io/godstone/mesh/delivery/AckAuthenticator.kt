@@ -88,6 +88,38 @@ object AckFrame {
         )
     }
 
+    /**
+     * GS-RUNTIME-001 step 2, THE PRODUCTION ROAD -- THE SAME FRAME, FROM AN ALREADY-COMPUTED SIGNATURE.
+     *
+     * The seed-taking builder above can only be satisfied by a signer willing to RELEASE ITS PRIVATE SEED, which a
+     * production identity must never do (it keepeth its key private). This overload carrieth the identical frame --
+     * the payload is `signature || recipientNodeId`, the same canonical preimage is signed, the same metadata is
+     * frozen -- so a signer that SIGNETH INTERNALLY can produce it. THE TWIN OF THE SWIFT `AckFrame.build(msgId:
+     * signature: ...)`, landed on that isle at round 215 for the same measured reason.
+     */
+    fun buildFromSignature(
+        msgId: ByteArray,
+        signature: ByteArray,
+        recipientNodeId: ByteArray,
+        routingTag: ByteArray,
+        ttl: Int = 4,
+    ): FrameV2 {
+        require(msgId.size == 16) { "msgId must be 16 bytes" }
+        require(signature.size == 64) { "an Ed25519 signature is 64 bytes" }
+        require(recipientNodeId.size == 16) { "recipientNodeId must be 16 bytes" }
+        require(routingTag.size == 4) { "routingTag must be 4 bytes" }
+        val payload = signature + recipientNodeId
+        return FrameV2(
+            type = TypeV2.ACK,
+            msgId = msgId,
+            routingTag = routingTag,
+            ttl = ttl,
+            hopCount = 0,
+            flags = 0,
+            payload = payload,
+        )
+    }
+
     /** The canonical signed preimage for an ACK of `msgId` by `recipientNodeId`. */
     fun preimage(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray =
         ACK_MAGIC.toByteArray(Charsets.US_ASCII) + msgId + recipientNodeId

@@ -116,6 +116,71 @@ class ReadinessT84Test {
             local.seed.copyOf()
     }
 
+    // ------------------------------------------------------------ GS-RUNTIME-001 step 2: THE SEAM'S SHAPE
+
+    /**
+     * **A SIGNER THAT REFUSETH THE SEED ROAD AND SIGNETH THE CANONICAL PREIMAGE ITSELF** -- the shape a signer
+     * bound to the PINNED identity must have, because a production identity must never hand out its seed.
+     */
+    private class SignatureOnlySigner(private val node: ByteArray, private val seed: ByteArray) : AckSignerSeam {
+        override val nodeId: ByteArray get() = node.copyOf()
+        override fun generation(): Long = 1L
+        override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null
+        override fun signAck(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? =
+            Ed25519Keys.sign(AckFrame.preimage(msgId, recipientNodeId), seed)
+    }
+
+    /**
+     * GS-RUNTIME-001 step 2 on THIS isle: **THE ACK ROAD MUST BE TRAVERSABLE WITHOUT RELEASING A SEED.** MEASURED
+     * BEFORE THE REPAIR (round 228): the seam asked for 'THE 32-BYTE ED25519 SEED OF THE STILL-VALID LOCAL
+     * IDENTITY', and its only concrete conformer stood IN THE HARNESS -- the exact twin of the Swift defect.
+     *
+     * THE SCOPE OF THIS ARM IS THE SEAM'S LAW AND NOT A WHOLE DRIVER RUN, and it saith so: it proveth the
+     * SIGNATURE ROAD is taken and that a seed-refusing signer satisfieth the seam; the driver's own run over this
+     * signer is a court matter for a later round.
+     */
+    @Test
+    fun theSignatureRoadIsTakenWithoutReleasingASeed() {
+        val node = ByteArray(16) { (it + 1).toByte() }
+        val seed = ByteArray(32) { (it + 7).toByte() }
+        val msgId = ByteArray(16) { (it + 0x40).toByte() }
+
+        val signer = SignatureOnlySigner(node, seed)
+        // (JUNIT 4 PUTTETH THE MESSAGE FIRST -- `Assert.assertNull(message, value)` and
+        // `Assert.assertEquals(message, expected, actual)` -- and my first draft used the kotlin.test order,
+        // WHICH THE COMPILER REFUSED BY ARGUING THAT A ByteArray IS NOT A String. The court's own idiom is read,
+        // not assumed.)
+        Assert.assertNull("a production-shaped signer MUST refuse the seed road", signer.signingSeed(msgId, node))
+
+        val signature = signer.signAck(msgId, node)
+        Assert.assertNotNull("and it MUST sign the canonical preimage itself", signature)
+        Assert.assertEquals("an Ed25519 signature is sixty-four octets", 64, signature!!.size)
+        Assert.assertEquals(
+            "and the signature must BE the canonical one over the canonical preimage",
+            Ed25519Keys.sign(AckFrame.preimage(msgId, node), seed).toList(),
+            signature.toList(),
+        )
+
+        // THE FRAME BUILT FROM THAT SIGNATURE CARRIETH IT EXACTLY -- no seed was involved anywhere:
+        val frame = AckFrame.buildFromSignature(msgId, signature, node, ByteArray(4), ttl = 4)
+        Assert.assertEquals("the payload is signature || recipientNodeId", 64 + 16, frame.payload.size)
+        Assert.assertEquals("the payload beginneth with the signature",
+            signature.toList(), frame.payload.copyOfRange(0, 64).toList())
+        Assert.assertEquals("and telleth the recipient it was signed for",
+            node.toList(), frame.payload.copyOfRange(64, 80).toList())
+
+        // AND THE **DEFAULT** KEEPETH A SEED-SHAPED SIGNER WORKING -- which is what made this change ADDITIVE.
+        val local = newLocal()
+        val seedOnly = TestSigner(local)
+        val throughDefault = seedOnly.signAck(msgId, local.id)
+        Assert.assertNotNull("a seed-only signer must still be able to serve the ACK road", throughDefault)
+        Assert.assertEquals(
+            "and the default must produce the SAME canonical signature an internal signer produceth",
+            Ed25519Keys.sign(AckFrame.preimage(msgId, local.id), local.seed).toList(),
+            throughDefault!!.toList(),
+        )
+    }
+
     /**
      * The minimal in-memory delivery repository: one row per msg_id holding
      * state + ack mode + the EXPECTED recipient (the C6.1 binding). The

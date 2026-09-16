@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 229 -- the ANDROID half's first repair lands: the ACK seam's shape, ADDITIVE, costing no reconciliation
+
+- **The Swift twin applied to Kotlin**: `AckFrame.buildFromSignature(...)`; the seam gains `signAck(msgId, recipientNodeId)` **with a default body that signs through `signingSeed`** — *which is what makes the change additive: every harness signer and court on that isle keeps working unchanged*; and the driver takes the **signature road**.
+- **Witness in the canonical T84 court**: a `SignatureOnlySigner` whose `signingSeed` is **null** can serve the ACK road; the frame carries `signature || recipientNodeId` exactly; and **the default proves itself by producing the same canonical signature a seed-only signer does**. Its scope (the seam's law, not a whole driver run) is stated in the arm.
+- **Three compile errors of mine, named**: the `signature` collision (the *same* one the Swift twin had); a missing `Ed25519Keys` import; and **a witness that invented its assertion idiom twice** — the court imports `org.junit.Assert` (not statically) and **JUnit 4 puts the message first**, refused by the compiler arguing a ByteArray is not a String.
+- **Measured**: android `:mesh` **FORCED 1194 tests / 0 failures / 0 errors**. Remaining on that isle: the production signer, the four owners in the Hilt module, the readiness subscription, the wakes, the recheck and the drain order.
+
 ## Round 228 -- the ANDROID half's step 1: the twin defects are CONFIRMED, measured
 
 - **The signal exists there too**: `BleTransport.applicationLinkReady(): Flow<ByteArray>` fed by `publishApplicationLinkReadyOnce`. **The consumers exist**: the Kotlin twins of the four owners all stand in `delivery/`, with signatures that mirror the Swift ones almost to the letter — and **`DurableAckPump`'s default clock is already MONOTONIC**, which the iOS twin's is not.
