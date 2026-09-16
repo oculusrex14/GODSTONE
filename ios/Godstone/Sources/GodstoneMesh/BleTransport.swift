@@ -2575,12 +2575,18 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             linkReadyRelations.removeFirst()
         }
         linkReadyRelations.append((peerId, capturedPeers[peerId]?.relation))
+        // IOS-02 step 5 (the shipping wiring): the captured identity is read UNDER THE LOCK, with the rest of
+        // the captured peer, and told AFTER it -- a delegate callback is not made while the transport lock is held.
+        let capturedNodeId = capturedPeers[peerId]?.nodeId16
         let watchers = applicationLinkReadyFlow
         unlockTransport()
         // The tale is told beyond the critical section: a subscriber is the
         // application own ear, and no ear may be heard while the lock is held.
         for watcher in watchers { watcher.ear(peerId) }
         delegate?.transportApplicationLinkReady(peerId: peerId)
+        if let capturedNodeId {
+            delegate?.transportApplicationLinkReady(peerId: peerId, receivedFrom: capturedNodeId)
+        }
         return true
     }
 
@@ -4581,6 +4587,11 @@ public protocol TransportDelegate: AnyObject {
     /// never at the cryptographic hour alone. It is an ear, not a state: the
     /// transport keepeth the register, and this tellth of it.
     func transportApplicationLinkReady(peerId: UUID)
+    /// IOS-02 step 5, THE SHIPPING WIRING: THE TRUSTED READINESS WITH THE IDENTITY IT CARRIED. The handle-only
+    /// form above telleth of the hour; THIS one carrieth the authenticated node id captured at the sealed round,
+    /// so a consumer populateth its route-eligible view FROM THE EVENT rather than asking the transport later --
+    /// the twin of `transportDidReceive(data:peerId:receivedFrom:)`, whose node-id-carrying form IOS-04 landed.
+    func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data)
 }
 
 public extension TransportDelegate {
@@ -4593,6 +4604,7 @@ public extension TransportDelegate {
 
     func transportDidHandshakeReady(peerId: UUID) {}
     func transportApplicationLinkReady(peerId: UUID) {}
+    func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data) {}
     func transportPhysicalDuplexReady(peerId: UUID) {}
     func transportReady(peerId: UUID) {}
 }

@@ -978,6 +978,13 @@ extension MeshNode: TransportDelegate {
         let count = handlePeerConnect(peerId)
         onPeerCountChanged?(count)
     }
+    /// IOS-02 step 5, THE SHIPPING WIRING: the transport telleth the node of the trusted hour WITH THE IDENTITY IT
+    /// CARRIED, and the node admitteth that peer to the ROUTE-ELIGIBLE view. Until this landed the event reacheth the
+    /// node only through the composition's hand-wiring (`ComposedRuntime.link`), so the law held in the harness and
+    /// not in the shipping delegate path.
+    public func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data) {
+        _ = trustedPeerDidConnect(nodeId: nodeId16, peerId: peerId)
+    }
 
     public func transportReady(peerId: UUID) {
         // Deliberately no half-handshake. M2-link owns role election, real remote

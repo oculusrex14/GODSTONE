@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 208 -- IOS-02's last pending item CLOSED: the SHIPPING WIRING (the transport tells the node the trusted hour *with the identity it carried*)
+
+- **Repair**: the delegate gains the node-id-carrying form `transportApplicationLinkReady(peerId:receivedFrom:)` (with a default, so no conformer breaks — the twin of IOS-04's `transportDidReceive(…receivedFrom:)`); the publication site captures the identity **under the lock** and tells it **after** it; and **MeshNode implements it**, admitting the peer to the route-eligible view — so the law holds in the **shipping delegate path**, not only where the composition hand-wires it.
+- **Witness** (canonical T24 integration): `testTheTransportsOwnReadinessCallbackAdmittethTheRoute` — the route view is empty, then `[handle]` after the transport's own callback.
+- **Measured**: T24 5/0; **full iOS lane 1212/0**; courts 596 OK; probes 12 OK; control PASSED; parity repo rc 0; symbols 0 unresolved; digests 350/350. Android lanes and iOS lab build **not claimed**.
+- **IOS-02 = FIX_SUBMITTED with NO pending work item left**; the two honest caveats (source-level step-3 witness; liveness by expectation-bending) stand recorded.
+
 ## Round 207 -- the T78 convergence statement, GENERATED from the ledger
 
 - **`docs/remediation/CONVERGENCE_T78.md`** is written **by a script from the ledger**, so no figure in it can drift from the record it summarises: the candidate SHA and its per-scope split (**LIGHT Archive 14 / Mesh/Oracle 40**), what was measured at it, what is **not** claimed (android lanes, iOS lab build — *a cached green is not evidence*), the three lists the objective demands (36 FIX_SUBMITTED awaiting independent verification; the five external gates and their blocked tasks; **54 of 54** findings with stale closure evidence), the live counts, and the explicit reason **T78 is NOT claimed** (no hosted lane, run URL, run id or log exists here).

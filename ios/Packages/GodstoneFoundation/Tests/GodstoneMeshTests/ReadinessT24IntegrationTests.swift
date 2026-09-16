@@ -96,6 +96,22 @@ final class ReadinessT24IntegrationTests: XCTestCase {
 
     // MARK: - IOS-02 step 5: the ROUTE-ELIGIBLE view cometh from the TRUSTED event, not from the radio
 
+    /// IOS-02 step 5, THE SHIPPING WIRING: the transport's OWN callback -- not the composition's hand-wiring --
+    /// must populate the route-eligible view. This arm calleth the delegate method the transport maketh when it
+    /// publisheth application readiness, and requireth that the node admit the peer it nameth.
+    func testTheTransportsOwnReadinessCallbackAdmittethTheRoute() throws {
+        let node = makeNode()
+        let handle = UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD")!
+        let nodeId = Data(repeating: 0x7C, count: 16)
+        XCTAssertTrue(node.knownPeersForTest().isEmpty, "no route standeth at the outset")
+
+        node.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId)
+
+        XCTAssertEqual(node.knownPeersForTest(), [handle],
+                       "IOS-02 step 5: THE TRANSPORT'S OWN READINESS CALLBACK MUST POPULATE THE ROUTE-ELIGIBLE "
+                       + "VIEW -- the law held in the harness only while this wiring was absent")
+    }
+
     /// IOS-02, the card's fifth step: **"MeshNode's route-eligible peers must be populated from that event
     /// [the matching confirmation], not physical duplex."**
     ///
