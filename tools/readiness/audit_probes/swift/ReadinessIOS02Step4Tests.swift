@@ -98,3 +98,39 @@
 // THE WHOLE STATE IS PRESERVED: `round195-step4-type-based-everywhere.patch` (sha256 1bd3a01ddd49e29d...),
 // carrying the production repair, the silent RED arm, the reconciled challenge reads, and every type-based
 // record selection. The tree was REVERTED and re-measured green.
+
+// ============================================================================================================
+// ROUND 196: **43 FAILURES -> 1**, AND THE ONE THAT REMAINETH IS A COUNT THAT NEEDETH A BASELINE.
+//
+// Base: `round195-step4-type-based-everywhere.patch` (sha256 1bd3a01ddd49e29d...). Applied to it, SIX edits
+// took the three readiness suites from 43 failures to ONE, each of them a POSITIONAL expectation that
+// production's new challenge record (written straight after hs3) had invalidated. THE EXACT EDIT LIST, so
+// that the next round REPLAYETH rather than re-deriveth:
+//
+//   (1) T23 `driveToReady`: REMOVE the `r.capturePeer.clearWrites()` that stood immediately after the HS3 was
+//       found -- IT ERASED PRODUCTION'S CHALLENGE, which is written just after hs3. (This alone accounted for
+//       five arms' "the challenge never reach'd the wire".)
+//   (2) T22 `harvestThird`: SEEK THE THIRD COUNSEL BY TYPE among the writes added since the baseline, instead
+//       of `w.last` with `!= hs1` -- the old rule returned THE CHALLENGE, which the arms then pushed to the
+//       responder as if it were the third counsel.
+//   (3) T21 `testTheHS3PrecededEveryDATAInTheWriterOrder`: RE-FRAME BY INDEX. Its old form demanded that the
+//       LAST writing be the HS3; the law it nameth ("the HS3 precedeth every DATA") still holdeth and is now
+//       asserted with `firstIndex(of:)` and `XCTAssertLessThan`.
+//   (4) T23, FOUR arms: REMOVE the `r.capturePeer.clearWrites()` standing between the reconciled challenge
+//       READ and the `guard let ping = sample({ r.capturePeer.writes.last })` -- the clear baseline'd the
+//       challenge the ARM used to issue, and production issueth it BEFORE that point.
+//   (5) T23, a FIFTH arm: the same clear, four lines from its guard and therefore beyond the window of the
+//       first pass -- found by anchoring on the reconciled challenge read instead of on the ping.
+//   (6) T23 `testAReflectedChallengeIsNotEchoedAgain`: its last assertion counteth `capturePeer.writes.count`
+//       and expecteth NOUGHT; production's own challenge standeth in that capture, so it read 2. THE LAW IS
+//       "no answer goeth forth IN RESPONSE TO THE REFLECTION", and the faithful form taketh a BASELINE
+//       immediately before the reflection is pushed and compareth AFTER IT.
+//
+// **EDIT (6) IS NOT YET LANDED, AND BOTH OF MY ATTEMPTS AT IT ARE RECORDED BECAUSE EACH FAILED DIFFERENTLY:
+// the first used a multi-line anchor that was NOT UNIQUE and ABORTED BEFORE WRITING (nothing was changed --
+// which is why no half-edit survived); the second inserted the baseline LINE-BASED and BROKE THE COMPILE
+// (the replacement of the assertion line mangled its message argument). The next round should make that edit
+// with the `edit` tool, by hand, in the two places it toucheth.**
+//
+// THE STATE AT THE LAST GREEN MEASUREMENT: the three readiness suites ran **47 tests with ONE failure** (that
+// count), and every other positional expectation is reconciled. The tree was REVERTED and re-measured green.

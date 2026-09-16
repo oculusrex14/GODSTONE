@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 196 -- step 4's arms reconciled: 43 failures to 1, the last being a count that needs a baseline
+
+- **Six edits, each a positional expectation invalidated by production's new challenge record**: the T23 drive helper's `clearWrites()` that **erased production's challenge** (five arms); T22's `harvestThird` seeking the third counsel by type; T21's writer-order arm re-framed **by index**; four T23 arms' clears between the challenge read and the ping guard; a fifth found by anchoring on the read; and the reflection arm's count.
+- **Measured**: the three readiness suites ran **47 tests / 1 failure** — the reflection arm's count, whose law is "no answer goes forth *in response to the reflection*", needing a baseline before the push.
+- **Both attempts at that last edit failed differently and are recorded**: a multi-line anchor that was not unique (aborted *before writing*), then a line-based insertion that broke the compile.
+- **Preserved**: `round196-step4-43-to-1-with-a-broken-last-edit.patch` + the round-195 base; tree reverted and green.
+
 ## Round 195 -- step 4's repair PROVEN on the wire; 14 positional arm expectations remain
 
 - **Measured in four moves**: patch + type-based HS3 search everywhere → failures **43 → 25 → 23 → 22 → 14**; the wire itself witnesses the law: `state=ready | writes=2 kinds=[20, 24]` = **[HS3, challenge], in order**.
