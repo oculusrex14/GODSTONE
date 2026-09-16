@@ -4,6 +4,20 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 265 -- ANDROID-01's D2 half LANDED (1200/0/0), the flake the candidate caught, and PARTIAL said honestly
+
+**The charge, in the audit's own words**: *"The application never starts D2 … the central produces PublishFound; no HS1 is sent. The responder cannot initiate Noise XX. Both remain physically bound without a trusted session."* Measured first: `beginTrustedHandshake` was **defined and never called by production**.
+
+**The landing**: `maybeBeginTrustedHandshake(address)`, entered from the **`PublishFound`** arm — where the relation is physically ready and its CRYPTO-001 admission is stamped — begins the trusted exchange itself, keeping every counsel the entrance enforces: **only the elected initiator**, only from ROLE_BOUND with a **witnessed duplex**, only with the **ascendant hint order**. **The state is the idempotence** (the begin moves the relation into the handshake, so a duplicate callback cannot re-open the hour; a replaced relation arrives as ROLE_BOUND with a **fresh** incarnation, which is what a fresh handshake is *for*). The task is **owned** under `HANDSHAKE_JOB_PREFIX` so the bounded drain sees it, and a refusal is **named** in the ring. A **named, default-on test seam** serves the arms that must drive the entrance themselves — **production never sets it**, and a court that turns it off says so in its own name.
+
+**The migration, measured at every stage** (whole-lane runs): **23 → 7 → 4 → 4 → 0**. The middle *unmoved* count is the lesson kept from round 264: **eight arms were repaired while four new ones surfaced**. The courts now **wait for the counsel the application sent** — deterministic instead of racing it.
+
+**AND THE RE-MEASUREMENT AT THE COMMITTED SHA EARNED ITS KEEP**: the pre-commit run showed **1200/0**; at `184c6b9` it showed **1200 / 1 FAILED** — `testThePublicShapeAdmittethTheAlienSealDenieth :: "the counsel must be formable"`. The cause was **one last hand-formed counsel** (`hs1b`, which the sweep had missed) **racing the application's asynchronous begin**. It now waits. **Two consecutive forced runs** then showed 1200/0 each, and the candidate was re-measured twice at the post-fix SHA. *A control not re-run at the SHA that is claimed is not a control — and a witness that must win a race is not a witness.*
+
+**ANDROID-01 IS PARTIAL, NOT SUBMITTED**: the finding's title carries **two** things and only one is built. **Key confirmation still has no production caller** (`beginKeyConfirmation` at `BleTransport.kt:1875`, definition alone in `src/main`) — measured, not assumed.
+
+**Green (runnable lanes)**: android `:mesh` **1200/0/0** (twice) · lab APK rc 0 · parity **7/7** · symbols **0 unresolved** · composition rc 0 · courts **635** · probes **12** · digests **414/414** · lab isolation PASSED. The **iOS lane is excluded and the log says why** (Xcode licence) — so the round-265 candidate is recorded **with that exclusion stated**, and cannot stand as a full T78 candidate for scope that includes iOS.
+
 ## Round 264 -- park v4: eight arms repaired, four new ones surfaced, and the COUNT that hid it
 
 **The measured series**: 23 (v1) → 7 (v2) → 4 (v3) → **4 (v4)** — each a whole-lane run counted from the JUnit XML. **And that last figure teaches the round's best lesson**: *the count did not move while **eight** T22 arms were repaired and **four new ones surfaced**.* **A count that does not move is not evidence that nothing moved** — only reading the **names** told the two apart, and this programme has now met that species twice.
