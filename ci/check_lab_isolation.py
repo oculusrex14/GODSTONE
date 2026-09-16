@@ -459,7 +459,7 @@ def check_the_lab_journeys_carry_accessibility_semantics():
     # (a comment for code, a declaration for a use, a repair breaking its neighbour, a bounded capture that truncateth, and
     # now a window that spans). The assertion is therefore made ON THE LINE: `Text("<name>").accessibilityLabel(`.
     missing = []
-    for name in ("Identity", "Contacts", "Conversation", "Sos", "Diagnostics"):
+    for name in ("Identity", "Contacts", "Conversation", "SOS", "Diagnostics"):
         if not re.search(r'Text\("' + name + r'"\)\s*\.accessibilityLabel\("', tabs):
             missing.append(name)
     if missing:
@@ -515,7 +515,7 @@ def check_the_lab_navigateth_the_five_journeys():
     if "TabView" not in text:
         return False, "the iOS lab carrieth no navigation at all (no TabView)"
     tabs = text
-    missing = [name for name in ("Identity", "Contacts", "Conversation", "Sos", "Diagnostics")
+    missing = [name for name in ("Identity", "Contacts", "Conversation", "SOS", "Diagnostics")
                if not re.search(r"Lab" + name + r"View\(\)\s*\.tabItem", tabs)]
     if missing:
         return False, "no TAB reacheth: " + ", ".join(missing) + " (a declaration is not a journey)"
