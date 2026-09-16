@@ -871,6 +871,34 @@ public final class SqliteMessageStore: MessageStore {
         return elapsed < Int64(lifetime)
     }
 
+    /// GS-STORE-004 (STEP FOUR -- THE API WITHOUT ITS SEMANTICS): the persisted RETENTION CHECKPOINT of a row --
+    /// what the store actually stored beside it. At this step the columns exist (revision 8) and NOTHING FILLETH
+    /// them, so an arm that demandeth a budget findeth NONE: the RED, on its own subject.
+    internal func retentionCheckpointForTest(_ msgId: Data)
+        -> (remainingMs: Int64?, checkpointMono: Int64?, bootIdentity: String?, discontinuity: Int64?) {
+        var found: (Int64?, Int64?, String?, Int64?) = (nil, nil, nil, nil)
+        _ = withDb { db in
+            let sql = "SELECT \(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), " +
+                "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity) " +
+                "FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ? LIMIT 1"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return false
+            }
+            defer { sqlite3_finalize(stmt) }
+            let blob = msgId as NSData
+            guard sqlite3_bind_blob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK else { return false }
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return false }
+            let remaining = sqlite3_column_type(stmt, 0) == SQLITE_NULL ? nil : Int64(sqlite3_column_int64(stmt, 0))
+            let mono = sqlite3_column_type(stmt, 1) == SQLITE_NULL ? nil : Int64(sqlite3_column_int64(stmt, 1))
+            let boot = sqlite3_column_text(stmt, 2).map { String(cString: $0) }
+            let disco = sqlite3_column_type(stmt, 3) == SQLITE_NULL ? nil : Int64(sqlite3_column_int64(stmt, 3))
+            found = (remaining, mono, boot, disco)
+            return true
+        }
+        return (found.0, found.1, found.2, found.3)
+    }
+
     /// GS-STORE-004 evidence hook: the receipt anchor the store PERSISTED for a message (the retention budget's
     /// own anchor, never the sender's timestamp). Nil when the message is not held.
     internal func receiptAnchorForTest(_ msgId: Data) -> Int64? {
@@ -1017,6 +1045,17 @@ public final class SqliteMessageStore: MessageStore {
         // what this step establisheth is the LAW THE FINDING NAMETH FIRST: no wall time is read inside a
         // transaction method when a runtime hath supplied the platform's own clock.
         let receiptAnchor = receiptTimeProvider?().monoMs ?? receivedAt
+        // GS-STORE-004 STEP FIVE: THE BUDGET COMETH FROM THE POLICY, not from arithmetic here --
+        // `RetentionPolicy.admit` granteth the local lifetime EXACTLY ONCE, anchored at the INJECTED monotonic
+        // reading, and NAMETH the continuity identity the reopen path will judge against.
+        let retention = receiptTimeProvider.map { provider in
+            let stamp = provider()
+            return RetentionPolicy.admit(msgId: frame.msgId.map { String(format: "%02x", $0) }.joined(),
+                                         kind: MessageKind.direct, priority: 0,
+                                         firstReceiptId: String(format: "%02x", 0),
+                                         nowMono: Int(stamp.monoMs),
+                                         bootIdentity: stamp.bootIdentity)
+        }
         if let source = quotaSnapshotSource {
             switch StoreQuota.admit(snapshot: source(),
                                     candidateSize: Int64(frame.payload.count),
@@ -1034,7 +1073,9 @@ public final class SqliteMessageStore: MessageStore {
             let result = try withTransaction { db in
                 // A duplicate (INSERT OR IGNORE no-op) is NOT an error: returns
                 // isNew=false without throwing. A real SQL/IO failure throws.
-                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom, receivedAt: receiptAnchor)
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom,
+                                                      receivedAt: receiptAnchor, retention: retention,
+                                                      bootIdentity: receiptTimeProvider.map { $0().bootIdentity })
                 try fault?("after_insert", db)
                 if isNew {
                     let held = try heldBytesNoLockStrict(db)
@@ -1399,14 +1440,17 @@ public final class SqliteMessageStore: MessageStore {
     /// unwinds to ROLLBACK -> `.failedStorage`.
     @inline(__always)
     private func insertRowNoLockStrict(
-        _ db: OpaquePointer, _ frame: FrameV2, receivedFrom: Data, receivedAt: Int64
+        _ db: OpaquePointer, _ frame: FrameV2, receivedFrom: Data, receivedAt: Int64,
+        retention: RetentionCheckpoint? = nil, bootIdentity: String? = nil
     ) throws -> Bool {
         let sql = "INSERT OR IGNORE INTO \(StoreSchema.table) (" +
             "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
             "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +
             "\(StoreSchema.colRoutingTag), \(StoreSchema.colPayload), " +
-            "\(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt)) " +
-            "VALUES (?,?,?,?,?,?,?,?,?,?)"
+            "\(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt), " +
+            "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), " +
+            "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity)) " +
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
             sqlite3_finalize(stmt); throw StoreError.prepareFailed
@@ -1422,6 +1466,31 @@ public final class SqliteMessageStore: MessageStore {
         bindBlob(stmt, 8, frame.payload)
         bindBlob(stmt, 9, receivedFrom)
         sqlite3_bind_int64(stmt, 10, receivedAt)
+        // GS-STORE-004 STEP FIVE: THE LOCAL POLICY BUDGET, PERSISTED WITH THE ROW IN THE SAME STATEMENT. NULL
+        // when no clock was injected: the historical behaviour is preserved for every path that owneth no
+        // runtime clock, and the four fields then mean "not yet governed by retention" rather than a fabricated
+        // zero. A DUPLICATE never reacheth here (INSERT OR IGNORE), which is what maketh the budget un-replenishable.
+        if let retention = retention {
+            sqlite3_bind_int64(stmt, 11, Int64(retention.remainingMs))
+            sqlite3_bind_int64(stmt, 12, Int64(retention.checkpointMonotonicMs))
+            // THE CONTINUITY IDENTIFIER COMETH FROM THE INJECTED CLOCK, NOT FROM THE CHECKPOINT TYPE: read in
+            // the tree, `RetentionCheckpoint` carrieth `remainingMs`, `checkpointMonotonicMs`,
+            // `lastWallCheckpointMs`, `discontinuityCount`, `priority` and `firstReceiptId` -- AND NO BOOT
+            // IDENTITY. The column existeth because the REOPEN path needeth to know which boot the anchor was
+            // taken in; the value cometh from the runtime's own clock adapter.
+            // BOUND TRANSIENTLY, like every other text/blob bind in this file: passing SQLITE_STATIC (`nil`) for a
+            // TEMPORARY Swift string is the classic way to persist an EMPTY value -- and the measured arm caught
+            // exactly that ("" where "boot-A" was due).
+            if let boot = bootIdentity {
+                boot.withCString { sqlite3_bind_text(stmt, 13, $0, -1, storeSqliteTransient) }
+            } else {
+                sqlite3_bind_null(stmt, 13)
+            }
+            sqlite3_bind_int64(stmt, 14, Int64(retention.discontinuityCount))
+        } else {
+            sqlite3_bind_null(stmt, 11); sqlite3_bind_null(stmt, 12)
+            sqlite3_bind_null(stmt, 13); sqlite3_bind_null(stmt, 14)
+        }
         guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
         return sqlite3_changes(db) == 1
     }

@@ -1479,4 +1479,30 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertTrue(second.allHeldMsgIds().isEmpty,
                       "an EXPIRED row must not be forwarded to a reader")
     }
+
+    /// GS-STORE-004, the finding's own words: "On first durable receipt, initialize the local policy budget in the
+    /// SAME TRANSACTION as the held row. On duplicate receipt, retain/debit the existing budget; do not replenish
+    /// it from the sender's timestamp." RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_theBudgetIsPersistedWithTheRowAndNeverReplenished() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        var now: Int64 = 5_000_000
+        s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(6, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        let first = s.retentionCheckpointForTest(f.msgId)
+        XCTAssertNotNil(first.remainingMs,
+                        "the LOCAL policy budget must be PERSISTED with the row, not left empty")
+        XCTAssertEqual(first.remainingMs, Int64(RetentionPolicy.lifetimeMs[.direct]!),
+                       "a FIRST receipt is granted the local lifetime exactly once")
+        XCTAssertEqual(first.checkpointMono, 5_000_000, "anchored at the INJECTED monotonic reading")
+        XCTAssertEqual(first.bootIdentity, "boot-A", "the continuity identifier is recorded with it")
+
+        now += 3_600_000
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldDuplicate)
+        let after = s.retentionCheckpointForTest(f.msgId)
+        XCTAssertEqual(after.remainingMs, first.remainingMs,
+                       "a DUPLICATE receipt must never replenish the budget")
+        XCTAssertEqual(after.checkpointMono, first.checkpointMono,
+                       "nor move its anchor")
+    }
 }
