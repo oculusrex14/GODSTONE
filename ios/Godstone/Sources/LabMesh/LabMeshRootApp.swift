@@ -56,13 +56,58 @@ struct LabRootView: View {
     @EnvironmentObject private var holder: LabRuntimeHolder
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Godstone LabMesh").font(.title)
-            Text("EXPERIMENTAL, NONSHIPPING. This build exercises the real adapters on a real device; it is never a store candidate.")
-            // GS-LAB-001 (round 266): THE iOS SPELLING, READ FROM `LabRuntime.swift` RATHER THAN ASSUMED FROM THE OTHER ISLE --
-            // the android twin carrieth `LabMeshApp.PROFILE`, this isle carrieth `LabProfile.name`, and the compiler said so.
-            Text("one retained runtime: " + LabProfile.name)
+        // GS-LAB-001 step 4's NAVIGATION HALF (round 268): MINIMAL VIEWS FOR THE FIVE JOURNEYS THE CARD NAMETH --
+        // identity, contacts, conversation, SOS and diagnostics. They are MINIMAL ON PURPOSE: the card asketh for
+        // navigation to them, not for finished screens, and `GS-UX-001` (which dependeth on this finding) carrieth the
+        // deeper journeys. Each screen SAYETH what it is and carrieth NO readiness claim.
+        TabView {
+            LabIdentityView().tabItem { Text("Identity") }
+            LabContactsView().tabItem { Text("Contacts") }
+            LabConversationView().tabItem { Text("Conversation") }
+            LabSosView().tabItem { Text("SOS") }
+            LabDiagnosticsView().tabItem { Text("Diagnostics") }
         }
-        .padding()
+        .environmentObject(holder)
+    }
+}
+
+/// THE LAB'S OWN MARKER, repeated on every screen: who this build is, and that it maketh no readiness claim.
+private struct LabBanner: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Godstone LabMesh").font(.headline)
+            Text("EXPERIMENTAL, NONSHIPPING -- one retained runtime: " + LabProfile.name)
+                .font(.footnote)
+        }
+    }
+}
+
+struct LabIdentityView: View {
+    var body: some View { VStack { LabBanner(); Text("Identity").font(.title) } }
+}
+
+struct LabContactsView: View {
+    var body: some View { VStack { LabBanner(); Text("Contacts").font(.title) } }
+}
+
+struct LabConversationView: View {
+    var body: some View { VStack { LabBanner(); Text("Conversation").font(.title) } }
+}
+
+struct LabSosView: View {
+    var body: some View { VStack { LabBanner(); Text("SOS").font(.title) } }
+}
+
+struct LabDiagnosticsView: View {
+    @EnvironmentObject private var holder: LabRuntimeHolder
+    var body: some View {
+        VStack {
+            LabBanner()
+            Text("Diagnostics").font(.title)
+            // THE ONE PLACE THE LAB SHOWETH THE LIFECYCLE IT HEARETH -- so that 'the lifecycle reacheth the same owner'
+            // is VISIBLE to a human and to a reader, not merely assertable in a control.
+            Text("last lifecycle phase: " + String(describing: holder.lastLifecyclePhase))
+                .font(.footnote)
+        }
     }
 }

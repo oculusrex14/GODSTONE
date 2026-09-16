@@ -258,6 +258,10 @@ def run(root: Path) -> Findings:
     # GS-LAB-001 step 4: THE LIFECYCLE REACHETH THE SAME RUNTIME OWNER (the iOS isle, where it was named).
     lifeOk, lifeWhy = check_the_lab_lifecycle_reacheth_the_owner()
     (f.notes if lifeOk else f.errors).append(lifeWhy)
+
+    # GS-LAB-001 step 4's navigation half: the five journeys the card nameth.
+    navOk, navWhy = check_the_lab_navigateth_the_five_journeys()
+    (f.notes if navOk else f.errors).append(navWhy)
     return f
 
 
@@ -417,6 +421,34 @@ def strip_kotlin_comments(text: str) -> str:
     return "\n".join(re.sub(r"//.*$", "", line) for line in text.split("\n"))
 
 
+
+
+
+def check_the_lab_navigateth_the_five_journeys():
+    """T54 / GS-LAB-001 step 4: MINIMAL NAVIGATION TO THE FIVE JOURNEYS THE CARD NAMETH.
+
+    The card: "Add minimal navigation to identity, contacts, conversation, SOS and diagnostics views." So this invariant
+    asketh that EACH of the five is reachable by name from the lab's own iOS sources -- a TabView without them, or a
+    screen renamed away, would leave a journey unreachable while every other control stayed green.
+    """
+    root = Path(__file__).resolve().parent.parent
+    text = ""
+    for f in sorted((root / "ios/Godstone/Sources/LabMesh").glob("*.swift")):
+        text += strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//")) + "\n"
+    if "TabView" not in text:
+        return False, "the iOS lab carrieth no navigation at all (no TabView): four of the five journeys are unreachable"
+    # REACHABILITY, NOT MERELY DECLARATION -- and the negative case TAUGHT ME THE DIFFERENCE: with one tab's view
+    # renamed, the control still PASSED, because a `struct LabSosView` DECLARATION remained in the file while the TAB no
+    # longer reached it. A declaration is not a journey. So each view must appear AS AN INSTANTIATED TAB.
+    tab = re.search(r"TabView\s*\{([\s\S]*?)\n\s*\}", text)
+    if not tab:
+        return False, "the iOS lab's TabView carrieth no tabs"
+    tabs = tab.group(1)
+    missing = [name for name in ("Identity", "Contacts", "Conversation", "Sos", "Diagnostics")
+               if not re.search(r"Lab" + name + r"View\(\)\s*\.tabItem", tabs)]
+    if missing:
+        return False, "no TAB reacheth: " + ", ".join(missing) + " (a declaration is not a journey)"
+    return True, "the lab navigateth all five journeys (identity, contacts, conversation, SOS, diagnostics)"
 
 
 def check_the_lab_lifecycle_reacheth_the_owner():
