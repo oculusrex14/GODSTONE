@@ -245,7 +245,7 @@ def run(root: Path) -> Findings:
     # GS-LAB-001 (T54): THE LAB MUST BE LAUNCHABLE -- asked here, where every other lab invariant is
     # asked, so that a lab nobody can start falleth the SAME gate as a lab that reacheth a shipping surface.
     launchable, why = check_the_lab_is_launchable()
-    (findings.notes if launchable else findings.errors).append(why)
+    (f.notes if launchable else f.errors).append(why)
     return f
 
 
