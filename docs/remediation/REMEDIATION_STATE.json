@@ -3530,7 +3530,7 @@
    "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_239": {
-   "candidate_sha": "d676b7dc1e260edace45b36873c9c835427b64e1",
+   "candidate_sha": "256374399aba188b7bfedc291b3f5d7129bf2245",
    "tree_sha": "fd165dff91a344e102f5d483dd0186bdf9e91e87",
    "worktree": "clean at this sha apart from this record",
    "logs": {
