@@ -117,24 +117,11 @@ public protocol MessageStore: AnyObject {
 
     /// Register a callback invoked whenever the held message set changes
     /// (e.g. on accepted insert/persist, direct enqueue, deletion, eviction, or clear).
-    ///
-    /// GS-STORE-005 (round 276, STEP ONE -- THE API WITHOUT ITS SEMANTICS): the registration answereth a
-    /// RELEASABLE LEASE, and `nil` for a store that observeth nothing. The lease is the store's own
-    /// `ObservationLease.LeaseToken` (`StoreQuota.swift`), so the contract the T33 courts already exercise is
-    /// the contract the real store now speaketh. AT THIS STEP the token is minted and NOTHING ELSE CHANGETH:
-    /// releasing it is still a no-op and the census still counteth the append-only array, so the arms below
-    /// FAIL -- which is what maketh them a behavioural RED rather than a compile failure.
-    @discardableResult
-    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken?
-
-    /// Release a registration. Idempotent; releasing twice is safe.
-    func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken)
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void)
 }
 
 public extension MessageStore {
-    @discardableResult
-    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? { nil }
-    func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {}
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {}
 }
 
 /// Schema + SQL shared in spirit with the Android `StoreSchema`. Keeping the
@@ -691,37 +678,11 @@ public final class SqliteMessageStore: MessageStore {
     /// test failure, not a silent weakening of at-rest encryption.
     public let fileProtection: FileProtectionType
 
-    /// GS-STORE-005 STEP ONE: the lease is minted and the registration is still APPEND-ONLY, so the arm that
-    /// counteth lifetimes and the arm that releaseth both FAIL here. STEP TWO giveth the lease its meaning.
-    private var nextLeaseId = 0
-
-    @discardableResult
-    public func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
+    public func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
         lock.lock()
-        defer { lock.unlock() }
         heldSetObservers.append(observer)
-        let token = ObservationLease.LeaseToken(nextLeaseId)
-        nextLeaseId += 1
-        return token
+        lock.unlock()
     }
-
-    /// STEP ONE: a documented NO-OP. The released registration still fireth, which is the RED the arms record.
-    public func removeHeldSetObserver(_ lease: ObservationLease.LeaseToken) {
-        // STEP TWO: the lease becometh the registration's own handle, and releasing it withdraweth the callback.
-    }
-
-    /// GS-STORE-005 evidence hook: the registrations the store holdeth. A disposed registration must leave
-    /// this at its baseline, and `close()` must return it to zero.
-    internal func observerCensusForTest() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return heldSetObservers.count
-    }
-
-    /// GS-STORE-005 STEP ONE: the seam existeth and is STORED, and NOTHING CONSULTETH IT YET -- so the arm
-    /// that injecteth an over-quota snapshot and expecteth a refusal FAILS here. STEP TWO consulteth it in the
-    /// admission path with typed measurement-failure handling.
-    public var quotaSnapshotSource: (@Sendable () -> QuotaSnapshot)?
 
     internal func notifyHeldSetChanged() {
         lock.lock()
