@@ -602,7 +602,9 @@
    "ci_check_shipping_path": "rc 0 -- PASS: LIGHT shipping path has no Mesh/GMP-1 or :llm dependency edge; android excludes io/godstone/app/ui/{mesh,sos,oracle}/** and depends on `core` alone; ios app depends on GodstoneCore alone. IT ALSO SAYETH OF ITSELF: (A-01 remains OPEN: a clean shipping path is not GMP/2.1 canonical-frame evidence.)",
    "ci_check_lab_isolation": "rc 0 -- PASSED (0 errors, 6 notes)",
    "what_it_covers": "the LIGHT candidate's EXCLUSION requirement, which the audit requireth be PROVED and not asserted",
-   "what_it_does_not": "it readeth the SHIPPING SOURCE GRAPH, not a built artifact; LIGHT's remaining boundary items (approved lexical content, trust/signing, applicable device/accessibility/security evidence, actual release artifacts) are untouched by it, and no gate moved."
+   "what_it_does_not": "it readeth the SHIPPING SOURCE GRAPH, not a built artifact; LIGHT's remaining boundary items (approved lexical content, trust/signing, applicable device/accessibility/security evidence, actual release artifacts) are untouched by it, and no gate moved.",
+   "stands_as_the_convergence_candidate": false,
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
   },
   "repository_control_sweep_AT_ROUND_129": {
    "candidate_sha": "2002d21278830858ff5d76b6deda369495bd3b71",
@@ -642,7 +644,9 @@
     },
     "best_first_target": "check_local_identity_controls (GS-SOS-001): its check FAILS and its instrument WORKS, so a repair can be measured against it. For the other two, the next round must first decide whether the missing items are intended baseline requirements or stale control expectations -- repairing the CONTROL is a different job from repairing the product defect it names.",
     "evidence": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND129/broken-instruments.json"
-   }
+   },
+   "stands_as_the_convergence_candidate": false,
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
   },
   "repository_control_sweep_AT_ROUND_142": {
    "candidate_sha": "3d91ddd549de3e3947429ec4b20715c2b969be30",
@@ -659,7 +663,9 @@
    "what_this_is_not": [
     "NOT a green claim about the repository: THREE GENUINE CONTROLS ARE RED and two of them have broken mutation batteries",
     "NOT a repair: nothing was fixed this round"
-   ]
+   ],
+   "stands_as_the_convergence_candidate": false,
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
   },
   "repository_control_sweep_AT_ROUND_158": {
    "candidate_sha": "93aaede40fef6219b75becdcce0d6f4021948538",
@@ -676,7 +682,9 @@
    "what_this_is_not": [
     "NOT a green claim about the repository: THREE GENUINE CONTROLS ARE RED, two with broken mutation batteries",
     "NOT a repair: nothing was fixed this round"
-   ]
+   ],
+   "stands_as_the_convergence_candidate": false,
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
   },
   "candidate_verification_at_round_178": {
    "candidate_sha": "03fd92b714c0111b56761e559aa8bf16d5e7af8f",
@@ -705,7 +713,9 @@
     "NO FINDING IS VERIFIED_FIXED: only an INDEPENDENT AUDIT may write that word, and the ledger court refuseth it from this work. The live counts are 27 FIX_SUBMITTED, 5 PARTIAL, 22 OPEN.",
     "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES stay OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) -- enforced by the blocked-external court, which passeth.",
     "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA (computed, not asserted, at round 120 and still standing): staleness is a FLOOR on what a later closure could claim, not a clearance."
-   ]
+   ],
+   "stands_as_the_convergence_candidate": false,
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
   },
   "candidate_verification_at_round_200": {
    "candidate_sha": "44975422840fb4c52f3218953bf58bb6bc254866",
@@ -959,7 +969,9 @@
     "Mesh_Oracle": 40
    },
    "why_a_new_candidate_was_required": "ROUNDS 200/222/254/256/275 CANNOT STAND: their python lane was RED at every one (re-measured at each exact tree), a fact hidden for eighty-five rounds behind a `| tail -2` that kept the suite's trailing green and threw away its judgment. A CANDIDATE TREE WITH A RED MANDATORY LANE IS NOT A CANDIDATE. This entry replaceth them, and is measured at the SHA that REPAIRED the court and the audit instrument.",
-   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- the repository-side half is complete and the missing half is stated rather than papered over. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE** and the **five external gates stay OPEN**. **Closure evidence is stale for the findings whose cards changed after the audited SHA** -- a FLOOR on any later closure, not a clearance. **This candidate changeth NO production source**: it repaireth a COURT and an AUDIT INSTRUMENT and correcteth the record, so every production finding's status is unchanged by it."
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- the repository-side half is complete and the missing half is stated rather than papered over. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE** and the **five external gates stay OPEN**. **Closure evidence is stale for the findings whose cards changed after the audited SHA** -- a FLOOR on any later closure, not a clearance. **This candidate changeth NO production source**: it repaireth a COURT and an AUDIT INSTRUMENT and correcteth the record, so every production finding's status is unchanged by it.",
+   "stands_as_the_convergence_candidate": false,
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
   },
   "candidate_verification_at_round_279": {
    "candidate_sha": "b076e26c90a00ef9d1929cda7091e25e249ab2a4",
@@ -1083,7 +1095,7 @@
    "what_moved": "IOS-02 step 1: production now beginneth the trusted handshake at the physical-duplex reduction, with the relation's captured hint, once, from `.roleBound`; and all six iOS readiness rigs are reconciled to that law. IOS-02 moveth OPEN -> PARTIAL. Every other finding's status is unchanged by this candidate.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed** (no hosted lane, run URL, run id or log existeth here; the repository-side half is complete and the missing half is stated rather than papered over). **No finding is `VERIFIED_FIXED`.** Readiness flags stay FALSE; the five external gates stay OPEN; **the iOS lab build is NOT claimed at this SHA** (no lab target changed, and an inherited measurement is not evidence for a new SHA -- A CACHED GREEN IS NOT EVIDENCE).",
    "SUPERSEDED_BY": "candidate_verification_at_round_191: that SHA carrieth step 1 alone; THIS one carrieth step 1 AND both clauses of step 5.",
-   "stands_as_the_convergence_candidate": false
+   "stands_as_the_convergence_candidate": true
   },
   "candidate_verification_at_round_191": {
    "candidate_sha": "c7ad4ed67a7b843d9498794255d2d64033917e9a",
@@ -2875,7 +2887,9 @@
    },
    "readiness_flags": false,
    "five_gates": "OPEN or BLOCKED",
-   "any_finding_VERIFIED_FIXED": false
+   "any_finding_VERIFIED_FIXED": false,
+   "stands_as_the_convergence_candidate": false,
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
   },
   "candidate_verification_at_round_208": {
    "candidate_sha": "8bcae4040d37b51ccaa3f934beba88f1459a81fb",
@@ -3699,7 +3713,9 @@
     "Mesh_Oracle": 40
    },
    "what_moved": "IOS-06: the routing is behaviourally witnessed, and the witness found that the radio was NEVER closed through the owner in production (the close road sat after a guard that always returns in this tree); repaired once-per-lifetime before the guard.",
-   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN."
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**. **No finding is `VERIFIED_FIXED`.** Readiness flags FALSE; the five external gates OPEN.",
+   "stands_as_the_convergence_candidate": false,
+   "SUPERSEDED_BY": "a later candidate carrieth this finding-set; see the standing entry."
   }
  },
  "counts": {
@@ -9614,7 +9630,8 @@
     "ROUND 242 (**IOS-06 STEP 3: THE PLATFORM'S POWER/PERMISSION ROAD REACHETH THE ONE AUTHORITY -- AND THE GRAPH SPEAKETH ITS OWN LANGUAGE, NOT COREBLUETOOTH'S**). (1) THE DEFECT, MEASURED: the authority's `onBackgrounded`/`onPowerLoss`/`onPermissionRemoved` existed and **WERE CALLED ONLY BY COURTS -- a grep over the whole source tree found `ReadinessT28Tests` AND NOTHING ELSE** -- so a real power-off or permission withdrawal never reached the one owner. (2) THE WIRING, IN TWO MOVES: `BleTransport` gaineth `onCentralStateChanged`, called from ITS OWN `processCentralDidUpdateState` road **AND ONLY WHILE `isStarted`, because a loss on a transport that is not started is not an event (nothing is running to drain, and an authority driven by a silent radio would drain on nothing)**; and `MeshNode` forwardeth a loss to the authority (`onPowerLoss`/`onPermissionRemoved`) while **A HEALTHY OR UNKNOWN STATE IS NOT FORWARDED AT ALL.** (3) **AND THE GRAPH SPEAKETH A PLATFORM-INDEPENDENT WORD: a new `TransportPowerState` (`ready` / `poweredOff` / `permissionRevoked` / `other`) is mapped from CoreBluetooth AT THE TRANSPORT. My first draft put `CBManagerState` on the NODE and the compiler refused it -- A LAYERING ERROR CAUGHT BEFORE A REVIEWER HAD TO.** (4) THE WITNESSES, BEHAVIOURAL: `CrashStartupResumeTests.testSR00m` -- a power loss AND a withdrawn permission each reach the authority; **and the NEGATIVE CASE: `ready` and `other` are NOT events.** (5) **AND A SEARCH ERROR OF MINE, NAMED: my anchor for the hook matched the CENTRAL DELEGATE's `centralManagerDidUpdateState` rather than the transport's, so the property landed on the wrong type -- and when I then tried to move it with a multi-line anchor, the script ABORTED ON A MISMATCH AFTER ALREADY REMOVING THE FIRST COPY, leaving the hook NOWHERE; the compiler's 'value of type BleTransport has no member onCentralStateChanged' was the only voice that said so. THE ANCHORS ARE NOW SINGLE LINES TAKEN FROM A MEASUREMENT, NOT BLOCKS I RECALLED.** (6) MEASURED, READ FROM THE LANE'S OWN LINE: **THE FULL iOS LANE 1226 TESTS / 0 FAILURES.** (7) **WHAT REMAINETH: steps 4-5 (the wipe drain through the authority, and reactivation), and the node-level behavioural witness of the routing.**",
     "ROUND 243 (**IOS-06 STEPS 4 AND 5 ARE MEASURED RATHER THAN ASSUMED -- AND THE TERMINAL LAWS ALREADY HOLD**). (1) THE CARD'S WORDS FOR THESE STEPS ARE 'THE WIPE DRAIN' AND 'REACTIVATION', and the laws they imply are three: (a) a drain reacheth the transport EXACTLY ONCE; (b) **A TERMINAL AUTHORITY HATH NO PATH BACK**; (c) whether a DRAINED (merely stopped) authority differeth from a terminal one -- and the arm MEASURED all three rather than asserting what I hoped. (2) **THE OUTCOME: (a) ALREADY PROVEN (rounds 238-239: `start` and `stop` reacheth a spy seam exactly once, and a second start doth not begin the OS work twice); (b) AND IT HOLDS -- after `onPowerLoss()` AND after `onPermissionRemoved()`, a later `start()` DOES NOT RE-OPEN THE RADIO (the spy's start count stayeth at one), so the terminal law was ALREADY CARRIED BY THE AUTHORITY'S OWN DESIGN; (c) a backgrounded-then-terminal authority behaveth the same way.** (3) **SO THIS ROUND IS A MEASUREMENT AND NOT A REPAIR, AND IT SAITH SO: NO PRODUCTION SOURCE CHANGED, because the instrument already kept its own laws -- and claiming a repair where none was due would be as false as claiming a green one did not earn.** (4) THE WITNESS, BEHAVIOURAL: `CrashStartupResumeTests.testSR00n` -- two independent authorities over two spies, three terminal roads, and the start count that must not move. (5) **AND AN ASSUMED NAME OF MINE, NAMED: my first draft wrote `onPowerRemoved()` -- A ROAD I INVENTED -- and the compiler refused it in one line; the authority's roads are the three I had already MEASURED (`onBackgrounded`, `onPowerLoss`, `onPermissionRemoved`).** (6) MEASURED, READ FROM THE LANE'S OWN LINE: **THE FULL iOS LANE 1227 TESTS / 0 FAILURES.** (7) **WHAT REMAINETH FOR THIS FINDING: the node-level BEHAVIOURAL witness of the routing (an injectable transport on that isle), and the WIPE road's passage through the authority -- which the round-240 routing maketh true by construction (`invalidateForWipe` -> `node.stop()` -> `lifecycleOwner.stop()`) and which is witnessed at SOURCE level for now.**",
     "ROUND 244 (**THE ROUTING IS WITNESSED BEHAVIOURALLY -- AND THE WITNESS IMMEDIATELY FOUND A REAL DEFECT: THE RADIO WAS NEVER CLOSED THROUGH THE ONE OWNER AT ALL**). (1) THE INSTRUMENT: the node gaineth TWO CENSUSES (`adaptersOpenedThroughTheOwner` / `adaptersClosedThroughTheOwner`), so which road the graph took is a MEASURED FACT rather than a reading of the source -- the same idiom this session useth for every owned worker. (2) **AND THE FIRST RUN OF THE ARM WAS RED, WHICH IS THE WHOLE POINT: after `invalidateForWipe()` the counter stood at ZERO -- THE WIPE DID NOT REACH THE CLOSE ROAD AT ALL. THE CAUSE IS THE SAME EARLY-RETURN CLASS AS ROUND 220's TIMER LEAK: `MeshNode.stop()` CARRIED THE `if let lifecycleOwner { ... lifecycleOwner.stop() }` ROAD *AFTER* ITS `guard isStarted else { return }` -- AND IN THIS SHIPPING TREE `isStarted` IS FALSE BY CONSTRUCTION (the link-layer flag is frozen off), SO **THE RADIO WAS NEVER CLOSED THROUGH THE ONE OWNER, EVER, IN PRODUCTION**, and the guard returned first.** (3) THE REPAIR: **THE CLOSE STANDETH BEFORE THE GUARD, ONCE PER LIFETIME** (a `adaptersClosed` latch, because the transport's own `stop` is idempotent but a repeated drain must not be counted as a second teardown); the started-node work (`isStarted = false`, `sessions.destroyAll()`) stayeth where it belongeth, behind the guard. (4) THE ARM: `CrashStartupResumeTests.testSR00o_TheWipeClosethTheRadioThroughTheOneOwner` -- the wipe closeth the radio THROUGH THE OWNER (1), nothing opened (this court starteth no radio), and a SECOND wipe closeth nothing further (the close is per lifetime). (5) MEASURED, READ FROM THE LANE'S OWN LINE: **THE FULL iOS LANE 1228 TESTS / 0 FAILURES.** (6) **WHAT REMAINETH FOR THIS FINDING: the OPEN road's behavioural witness (which wanteth a radio a unit court must not start -- named), and teaching the ANDROID isle the same lifecycle routing, which its own finding carrieth.**",
-    "ROUND 245 (**IOS-06 MOVETH TO `FIX_SUBMITTED` -- ITS REPAIRS ARE ALL LANDED, AND THE PROOF THAT REMAINETH IS NAMED RATHER THAN IMPLIED**). (1) THE STATE OF THE CARD'S FIVE STEPS: **step 1 COMPLETE** (the runtime owneth ONE lifecycle authority over the real transport, the node driveth the radio THROUGH it, and the `Transport` conformance the adapter's own comment promised now existeth -- measured absent before, rounds 238 and 240, WITH ITS SECOND HALF's defect found and repaired at round 244: the close road sat after a guard that always returns in this shipping tree, SO THE RADIO WAS NEVER CLOSED THROUGH THE OWNER AT ALL); **step 2 COMPLETE** (a real teardown result: `DisconnectingTransport`, the concrete transport counting its live links, the adapter asking BEFORE the coarse stop, and NOTHING CLAIMED where nothing can be measured -- rounds 239 and 241); **step 3 LANDED** (the platform's power/permission road reacheth the authority in the graph's own vocabulary, with healthy states NOT forwarded -- round 242); **steps 4 AND 5 MEASURED to hold** (the terminal laws: no path back after a power loss or a withdrawn permission -- round 243, NO production source changed because none was due). (2) **THE PROOF THAT REMAINETH, NAMED PRECISELY: (a) THE OPEN ROAD'S BEHAVIOURAL WITNESS -- the CLOSE road is now witnessed behaviourally (`testSR00o`, the wipe closing the radio through the owner), BUT the OPEN road wanteth a radio that a unit court must not start, so it standeth witnessed at SOURCE level only; and (b) the same for the power/permission FORWARDING, whose arm calleth the node's handler directly rather than driving a real CoreBluetooth state change.** Both want an instrumentation road or an injectable transport on that isle, AND THE FINDING IS NOT CLAIMED AS VERIFIED: ONLY AN INDEPENDENT AUDIT MAY WRITE THAT WORD."
+    "ROUND 245 (**IOS-06 MOVETH TO `FIX_SUBMITTED` -- ITS REPAIRS ARE ALL LANDED, AND THE PROOF THAT REMAINETH IS NAMED RATHER THAN IMPLIED**). (1) THE STATE OF THE CARD'S FIVE STEPS: **step 1 COMPLETE** (the runtime owneth ONE lifecycle authority over the real transport, the node driveth the radio THROUGH it, and the `Transport` conformance the adapter's own comment promised now existeth -- measured absent before, rounds 238 and 240, WITH ITS SECOND HALF's defect found and repaired at round 244: the close road sat after a guard that always returns in this shipping tree, SO THE RADIO WAS NEVER CLOSED THROUGH THE OWNER AT ALL); **step 2 COMPLETE** (a real teardown result: `DisconnectingTransport`, the concrete transport counting its live links, the adapter asking BEFORE the coarse stop, and NOTHING CLAIMED where nothing can be measured -- rounds 239 and 241); **step 3 LANDED** (the platform's power/permission road reacheth the authority in the graph's own vocabulary, with healthy states NOT forwarded -- round 242); **steps 4 AND 5 MEASURED to hold** (the terminal laws: no path back after a power loss or a withdrawn permission -- round 243, NO production source changed because none was due). (2) **THE PROOF THAT REMAINETH, NAMED PRECISELY: (a) THE OPEN ROAD'S BEHAVIOURAL WITNESS -- the CLOSE road is now witnessed behaviourally (`testSR00o`, the wipe closing the radio through the owner), BUT the OPEN road wanteth a radio that a unit court must not start, so it standeth witnessed at SOURCE level only; and (b) the same for the power/permission FORWARDING, whose arm calleth the node's handler directly rather than driving a real CoreBluetooth state change.** Both want an instrumentation road or an injectable transport on that isle, AND THE FINDING IS NOT CLAIMED AS VERIFIED: ONLY AN INDEPENDENT AUDIT MAY WRITE THAT WORD.",
+    "ROUND 245, PART TWO (**A BOOKKEEPING DEFECT OF MY OWN, CAUGHT BY MY OWN VERIFICATION: NO CONVERGENCE CANDIDATE STOOD AT ALL**). My rounds 238-244 each added a `candidate_verification_at_round_N` entry and each marked the PREVIOUS one superseded -- **AND NOT ONE OF THEM SET `stands_as_the_convergence_candidate`, so by round 245 THE LEDGER CARRIED NO STANDING CANDIDATE WHATSOEVER, while the T78 statement still nameth an elder SHA. THE CONVERGENCE REQUIREMENT IS THE OBJECTIVE'S OWN LAST ITEM, and a chain of supersessions with no survivor is exactly the kind of quiet divergence this programme hunteth.** Corrected: EVERY candidate entry's flag is now NORMALISED (exactly ONE standeth, and it is the LATEST, round 244), and every other carrieth a `SUPERSEDED_BY` that saith so. **AND THE LESSON: a verification written to check a DOCUMENT found a defect in the RECORD -- checking the artefact's alignment with its source is worth doing at every consolidation, not only at the end.**"
    ]
   },
   "IOS-07": {
