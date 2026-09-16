@@ -1160,4 +1160,21 @@ class ReadinessT23Test {
                    risen.initiatorConnection().transcript.heardCountForTest(kindOf(BleRecordType.HS2)) >= 1)
         risen.stop()
     }
+
+    // ------------------------------------------------- ANDROID-01, the KEY-CONFIRMATION half
+
+    @Test
+    fun testAndroid01_theApplicationIssuethTheKeyConfirmationAtTheTrustedHour() {
+        val rig = standDoor()
+        try {
+            rig.completeHandshake()
+            awaitBothReady(rig)
+            val conn = rig.initiatorConnection()
+            assertTrue(
+                "the trusted hour must ISSUE the challenge itself; ring: " + ringDump(rig.alice),
+                conn.keyConfirmation.outstanding() != null)
+        } finally {
+            rig.stop()
+        }
+    }
 }

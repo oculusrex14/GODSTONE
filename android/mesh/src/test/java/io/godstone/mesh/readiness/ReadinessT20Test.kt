@@ -420,6 +420,11 @@ class ReadinessT20Test {
         val alice = BleTransport(serverStartAttempt = { true }, identity = pair.alice, store = pair.aliceStore,
             sessions = pair.smA, outletHooks = aliceOutlet,
             leaseSweepIntervalMillis = leaseSweepIntervalMillis)
+        // ANDROID-01: this court DRIVETH the trusted hour BY HAND and then doeth ARITHMETIC upon the
+        // relation's writer (order, census, the nonce's burn), so it issueth the key confirmation
+        // ITSELF and sayeth so here. The seam is DEFAULT-ON in production, and the ANDROID-01 arms
+        // witness that default.
+        alice.applicationIssuesKeyConfirmationForTest = false
         val bob = BleTransport(serverStartAttempt = { true }, identity = pair.bob, store = pair.bobStore,
             sessions = pair.smB, outletHooks = bobOutlet,
             leaseSweepIntervalMillis = leaseSweepIntervalMillis)

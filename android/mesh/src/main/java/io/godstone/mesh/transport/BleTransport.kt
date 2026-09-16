@@ -2186,6 +2186,37 @@ class BleTransport(
             closeInitiatorRelation(peerAddress)
             return
         }
+        // ANDROID-01 (the KEY-CONFIRMATION half): AT THE TRUSTED HOUR THE INITIATOR ISSUETH THE ENCRYPTED
+        // CHALLENGE ITSELF -- ONCE, and only if no challenge already standeth for this relation -- exactly as
+        // the iOS twin doth (`BleTransport.swift:2348`: "Until this repair the transition issued NOTHING and
+        // a relation reached trust only if application or test code invoked the door by hand -- so the
+        // challenge/echo was never started by the product. THE INITIATOR ISSUETH IT (the responder is the one
+        // that answereth)"). THE RESPONDER ISSUETH NOTHING: it is the one that ANSWERETH, and its door below
+        // is left untouched. A refusal here is NOT swallowed -- the relation keeps its trusted hour, but the
+        // refusal is NAMED in the ring, because an unrecorded refusal would be indistinguishable from a path
+        // never taken.
+        //
+        // AND IT IS ISSUED OFF THIS HANDLER, ON THE TRANSPORT'S OWN SCOPE. `beginKeyConfirmation` WRITETH the
+        // sealed control through the relation's DATA writer with its own `runBlocking`, and this handler is
+        // itself already inside one (the HS3 write): nesting them contendeth for the same egress, and the
+        // measurement said so -- with the issuance inline, HS3 ceased to reach the outlet at all and the
+        // one-sided arm timed out waiting for it. Scheduling it on the scope keepeth the ordering that
+        // mattereth (the trusted hour IS reached, the challenge followeth it) and taketh it out of the
+        // write's way.
+        if (!applicationIssuesKeyConfirmationForTest) {
+            handshakeReadyFlow.tryEmit(conn.peerId.copyOf())
+            return
+        }
+        val confirmAddress = peerAddress
+        coroutineScope.launch {
+            val fresh = centralDriver.getActiveConnection(confirmAddress) ?: return@launch
+            if (fresh.keyConfirmation.outstanding() != null) return@launch
+            val issued = beginKeyConfirmation(fresh.peerId.copyOf())
+            if (issued !is TransportResult.Admitted) {
+                recordRejection(fresh.peerId, "hs.confirm.transition",
+                    "the trusted hour issued no challenge: " + issued.toString())
+            }
+        }
         handshakeReadyFlow.tryEmit(conn.peerId.copyOf())
     }
 
@@ -2247,6 +2278,15 @@ class BleTransport(
      * state; a court that turneth it off sayeth so in its own name and in its own arm.
      */
     internal var applicationBeginsD2ForTest: Boolean = true
+
+    /**
+     * ANDROID-01 (the KEY-CONFIRMATION half): the twin seam, for the courts which DRIVE the trusted hour by
+     * hand and then do ARITHMETIC upon the relation's writer (the sequence wrap, the staging census, the
+     * writer's order, the nonce's burn). The application now ISSUETH a sealed challenge over that same writer
+     * -- legitimate traffic -- so those courts' premises change; they turn this off and say so in their own
+     * name, while the DEFAULT state (on) is what the ANDROID-01 arms witness.
+     */
+    internal var applicationIssuesKeyConfirmationForTest: Boolean = true
 
     /** BL22: every handshake step travelleth through this seam, never through the registry's surface. */
     private val handshake: BleHandshakeAuthority?
