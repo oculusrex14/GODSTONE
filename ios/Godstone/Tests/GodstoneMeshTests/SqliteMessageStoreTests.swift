@@ -1551,4 +1551,31 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertTrue(second.allHeldMsgIds().isEmpty,
                       "a changed boot under a short budget must be debited conservatively, not left untouched")
     }
+
+    /// GS-STORE-004: the conservative rule is BOUNDED by `discontinuityLimit`, and a bound that is never
+    /// PERSISTED can never be reached -- the policy returneth the next checkpoint and the store droppeth it. This
+    /// arm demandeth that a conservative debit be WRITTEN BACK. RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_aConservativeDebitIsPersistedBack() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-disco-\(UUID().uuidString).db")
+        tmpURL = url
+        let first = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        first.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: "boot-A") }
+        let f = frame(9, .direct, 48)
+        XCTAssertEqual(first.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertEqual(first.execRawUpdate("UPDATE held_frames SET remaining_ms = 300000000", []), 1)
+        XCTAssertEqual(first.retentionCheckpointForTest(f.msgId).discontinuity, 0)
+        first.close()
+
+        // A DIFFERENT BOOT with a budget that SURVIVETH the conservative hour: the debit must be recorded.
+        let second = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        second.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: "boot-B") }
+        defer { second.close() }
+        _ = second.allHeldMsgIds()
+        let after = second.retentionCheckpointForTest(f.msgId)
+        XCTAssertEqual(after.discontinuity, 1,
+                       "the conservative debit must be PERSISTED, or the bounded rule can never be reached")
+        XCTAssertLessThan(after.remainingMs ?? .max, 300_000_000,
+                          "and the debit must be reflected in the persisted budget")
+    }
 }

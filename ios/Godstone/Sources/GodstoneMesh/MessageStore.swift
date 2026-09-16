@@ -878,7 +878,8 @@ public final class SqliteMessageStore: MessageStore {
 
     internal func isForwardable(receivedAt: Int64, typeCode: Int, storedBudget: Int64? = nil,
                                 storedCheckpoint: Int64? = nil, storedBoot: String? = nil,
-                                storedDiscontinuity: Int64? = nil) -> Bool {
+                                storedDiscontinuity: Int64? = nil, persistDebitFor msgId: Data? = nil,
+                                onHandle db: OpaquePointer? = nil) -> Bool {
         guard let provider = receiptTimeProvider else { return true }
         guard let kind = MessageKind(rawValue: typeCode),
               let lifetime = RetentionPolicy.lifetimeMs[kind] else { return true }
@@ -903,6 +904,18 @@ public final class SqliteMessageStore: MessageStore {
                                                  current: provider().bootIdentity)
             let (next, reason) = RetentionPolicy.checkpoint(cp, nowMono: Int(now),
                                                             wallEstimateMs: 0, adapter: adapter)
+            // GS-STORE-004 STEP EIGHT: THE DEBIT IS WRITTEN BACK, BUT ONLY WHEN THE POLICY SAYETH IT IS DUE
+            // (`dueCheckpoint`, its own cadence gate, so a read path doth not become a write storm). THIS IS WHAT
+            // MAKETH THE BOUNDED RULE REACHABLE: a counter never persisted can never reach `discontinuityLimit`.
+            // THE GATE IS TWO-FOLD, AND THE SECOND CLAUSE IS THE ONE THAT MATTERETH: `dueCheckpoint` is a CADENCE
+            // gate (so an ordinary read doth not become a write), while A CHANGE IN THE DISCONTINUITY COUNT IS A
+            // STATE TRANSITION and must be recorded whatever the cadence sayeth -- ELSE THE BOUNDED RULE IS
+            // UNREACHABLE, which is exactly what the arm measured before this clause existed.
+            let discontinuityChanged = next.discontinuityCount != cp.discontinuityCount
+            if let rowId = msgId, let handle = db, next.remainingMs > 0,
+               discontinuityChanged || RetentionPolicy.dueCheckpoint(cp, nowMono: Int(now)) {
+                _ = persistCheckpoint(db: handle, msgId: rowId, next: next)
+            }
             // READ FROM THE ENUM ITSELF: a reason other than the live one MEANETH the row is spent or its
             // continuity is broken, and `remainingMs` is authoritative either way (the policy never goeth below 0
             // and never replenishes).
@@ -942,6 +955,29 @@ public final class SqliteMessageStore: MessageStore {
             return true
         }
         return (found.0, found.1, found.2, found.3)
+    }
+
+    /// GS-STORE-004 STEP EIGHT: the debit, written back to the row it belongeth to. One statement, one row, and
+    /// the policy's `next` checkpoint is the ONLY source of the values.
+    private func persistCheckpoint(db: OpaquePointer, msgId: Data, next: RetentionCheckpoint) -> Bool {
+        // GS-STORE-004 (round 310): THE WRITE RUNNETH ON THE HANDLE THE READER ALREADY HOLDS. Round 309's attempt
+        // called `withDb` FROM INSIDE `withDb` -- taking the store's NON-RECURSIVE lock a second time -- and the
+        // court HUNG. THE LAW, NOW MEASURED: a write performed DURING a read uses the reader's own handle and the
+        // `...NoLock` discipline, the same rule every other internal mutation in this file followeth.
+        let sql = "UPDATE \(StoreSchema.table) SET \(StoreSchema.colRemainingMs) = ?, " +
+            "\(StoreSchema.colCheckpointMono) = ?, \(StoreSchema.colDiscontinuity) = ? " +
+            "WHERE \(StoreSchema.colMsgId) = ?"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return false
+        }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int64(stmt, 1, Int64(next.remainingMs))
+        sqlite3_bind_int64(stmt, 2, Int64(next.checkpointMonotonicMs))
+        sqlite3_bind_int64(stmt, 3, Int64(next.discontinuityCount))
+        let blob = msgId as NSData
+        sqlite3_bind_blob(stmt, 4, blob.bytes, Int32(blob.length), storeSqliteTransient)
+        return sqlite3_step(stmt) == SQLITE_DONE
     }
 
     /// GS-STORE-004 evidence hook: the receipt anchor the store PERSISTED for a message (the retention budget's
@@ -1015,7 +1051,8 @@ public final class SqliteMessageStore: MessageStore {
                                   storedBoot: sqlite3_column_type(stmt, 10) == SQLITE_NULL
                                       ? nil : sqlite3_column_text(stmt, 10).map { String(cString: $0) },
                                   storedDiscontinuity: sqlite3_column_type(stmt, 11) == SQLITE_NULL
-                                      ? nil : Int64(sqlite3_column_int64(stmt, 11))) { continue }
+                                      ? nil : Int64(sqlite3_column_int64(stmt, 11)),
+                                  persistDebitFor: row.msgId, onHandle: db) { continue }
                 if !visit(frame) { return }
             }
         }
@@ -1034,7 +1071,11 @@ public final class SqliteMessageStore: MessageStore {
             }
             defer { sqlite3_finalize(stmt) }
             while sqlite3_step(stmt) == SQLITE_ROW {
-                // GS-STORE-004: the id reader is a FORWARDING surface too, so it carrieth the same gate.
+                // GS-STORE-004: the id reader is a FORWARDING surface too, so it carrieth the same gate -- AND
+                // the id is bound ONCE, because the gate must be able to WRITE THE DEBIT BACK to the row it
+                // judged (round 308's park stopped exactly here: a bound computed and dropped can never reach
+                // its limit).
+                let idValue = readBlob(stmt, 0)
                 let idBudget = sqlite3_column_type(stmt, 2) == SQLITE_NULL
                     ? nil : Int64(sqlite3_column_int64(stmt, 2))
                 let idCheckpoint = sqlite3_column_type(stmt, 3) == SQLITE_NULL
@@ -1046,12 +1087,13 @@ public final class SqliteMessageStore: MessageStore {
                                   storedBoot: sqlite3_column_type(stmt, 4) == SQLITE_NULL
                                       ? nil : sqlite3_column_text(stmt, 4).map { String(cString: $0) },
                                   storedDiscontinuity: sqlite3_column_type(stmt, 5) == SQLITE_NULL
-                                      ? nil : Int64(sqlite3_column_int64(stmt, 5))) {
+                                      ? nil : Int64(sqlite3_column_int64(stmt, 5)),
+                                  persistDebitFor: idValue, onHandle: db) {
                     // the kind is unknown here (this reader selecteth ids alone); a DIRECT row past its
                     // budget is the conservative case, and the schema revision will carry the real kind.
                     continue
                 }
-                if !visit(readBlob(stmt, 0)) { return }
+                if !visit(idValue) { return }
             }
         }
     }
