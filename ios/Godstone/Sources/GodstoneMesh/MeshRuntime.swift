@@ -111,6 +111,9 @@ public final class MeshRuntime {
             nowMillis: { Int64(Date().timeIntervalSince1970 * 1000) },
         )
         self.lifecycle = lifecycle
+        // IOS-06 step 1's second half: **THE NODE IS TOLD WHOSE RADIO IT OPENS.** One owner standeth; the graph
+        // holdeth no second, unowned path to the transport any more.
+        meshNode.lifecycleOwner = lifecycle
         let ackStore = SqliteAckStore(engine: messageStore)
         // (b) the driver signeth through the PRODUCTION signer over the pinned identity -- the seam's seed road
         //     is refused BY CONSTRUCTION there, which is the repair of rounds 215/216;

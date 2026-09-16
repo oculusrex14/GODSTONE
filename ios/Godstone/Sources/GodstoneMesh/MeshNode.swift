@@ -488,9 +488,19 @@ public final class MeshNode {
         }
     }
 
+    /// IOS-06 step 1's second half: **ONE RUNTIME OWNER FOR LIFECYCLE.** When the runtime hath given this node an
+    /// authority (it doth, over this node's own transport), THE RADIO IS OPENED *THROUGH* IT; the direct road
+    /// standeth ONLY for rigs that own no authority, WHICH IS WHAT MAKETH THIS CHANGE ADDITIVE -- every existing
+    /// court keepeth working while the production graph loseth its second, unowned path to the radio.
+    internal var lifecycleOwner: UnifiedRuntimeLifecycle?
+
     /// Open the radio adapter, once its consumers are already install'd.
     private func openAdapters() {
-        ble.start()
+        if let lifecycleOwner {
+            lifecycleOwner.start()
+        } else {
+            ble.start()
+        }
     }
 
     public func stop() {
@@ -504,7 +514,12 @@ public final class MeshNode {
         guard isStarted else { return }
         isStarted = false
         sessions.destroyAll()
-        ble.stop()
+        // **AND THE CLOSE TRAVELLETH THE SAME ROAD AS THE OPEN** -- one owner, not two.
+        if let lifecycleOwner {
+            lifecycleOwner.stop()
+        } else {
+            ble.stop()
+        }
         peerLock.lock(); peers.removeAll(); peerLock.unlock()
         onPeerCountChanged?(0)
     }

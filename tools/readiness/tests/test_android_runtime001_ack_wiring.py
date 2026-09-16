@@ -173,5 +173,36 @@ class AndroidAckWiringTest(unittest.TestCase):
                       "and sign with the pinned identity's own material, which never leaveth the module")
 
 
+class IOS06LifecycleRoutingTest(unittest.TestCase):
+    """IOS-06 step 1's second half, on the SWIFT isle -- **A SOURCE-LEVEL ARM, AND IT SAITH SO**: the node's
+    transport path is `by lazy`/private over a real `BleTransport`, so a unit court cannot observe WHICH road the
+    node took. What can be judged today is that the routing EXISTS and that the direct road is the fallback only."""
+
+    IOS = REPO / "ios/Godstone/Sources/GodstoneMesh"
+
+    def test_w00_the_authority_and_the_transport_still_stand(self):
+        node = (self.IOS / "MeshNode.swift").read_text(encoding="utf-8")
+        self.assertIn("lazy var ble = BleTransport()", node)
+        auth = (self.IOS / "UnifiedRuntimeLifecycle.swift").read_text(encoding="utf-8")
+        self.assertIn("public func start()", auth)
+        self.assertIn("public func stop()", auth)
+
+    def test_the_node_openeth_and_closeth_the_radio_through_the_owner(self):
+        node = (self.IOS / "MeshNode.swift").read_text(encoding="utf-8")
+        self.assertIn("internal var lifecycleOwner: UnifiedRuntimeLifecycle?", node,
+                      "the node must HOLD the owner the runtime giveth it")
+        for road, which in (("lifecycleOwner.start()", "open"), ("lifecycleOwner.stop()", "close")):
+            self.assertIn(road, node, "IOS-06: the node must drive the radio through the authority on " + which)
+        # THE DIRECT ROAD SURVIVETH ONLY AS A FALLBACK -- that is what maketh the change additive for every rig.
+        # (A REGEX, NOT A LITERAL NEWLINE: my first draft put real line breaks inside the pattern string, because
+        # the heredoc that wrote this file had ALREADY interpreted its escapes -- THE SAME DOUBLE-INTERPRETATION
+        # THAT ONCE TRUNCATED A SOURCE FILE IN THIS SESSION, met here in a test instead.)
+        self.assertRegex(node, r"\} else \{\s+ble\.start\(\)")
+        self.assertRegex(node, r"\} else \{\s+ble\.stop\(\)")
+        runtime = (self.IOS / "MeshRuntime.swift").read_text(encoding="utf-8")
+        self.assertIn("meshNode.lifecycleOwner = lifecycle", runtime,
+                      "and the runtime must HAND the authority to its node, or the routing never happeneth")
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

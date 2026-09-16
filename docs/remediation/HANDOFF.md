@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 240 -- IOS-06 step 1 complete: the node drives the radio THROUGH the runtime's one authority
+
+- **Wiring**: `MeshNode` holds `lifecycleOwner`; `openAdapters()` and `stop()` travel through it **when the runtime has given the node an authority** — and fall back to the direct road **only when none stands**, *which is what makes the change additive: every existing court keeps working while the production graph loses its second, unowned path to the radio*. `MeshRuntime` hands its authority to its node.
+- **Witnesses, scope said plainly**: two new arms witness the routing at **source level** (the node holding the owner, both roads through it, the direct road only as fallback, and the runtime handing it over). **A node-level behavioural witness is owed** — the node's transport is private and `by lazy` over a real `BleTransport`, so a unit court cannot see *which road the node took*; an injectable transport would give it. The **authority's** behaviour is already witnessed (rounds 238–239).
+- **My own error, named**: the heredoc that wrote this arm **had already interpreted its escapes**, so the file received real line breaks inside a pattern string and the module would not import — *the same double-interpretation that once truncated a source file in this session, met this time in a test, where a parser caught it at once*.
+- **Measured**: **full iOS lane 1225 / 0** (count read from the log); courts 610 OK.
+- **Remaining**: teaching the concrete transports to report their real teardown; the node-level behavioural witness; steps 3–5.
+
 ## Round 239 -- IOS-06 step 2: the teardown result is real or it is NOTHING (the hard-coded `1` is dead)
 
 - **The defect, measured**: `LifecycleTransportAdapter.disconnectAll()` returned a **literal `1`** with a comment calling it *"one logical disconnect sweep"* — **and `BleTransport` owns no disconnect method at all, so no measurement could ever have produced that number**. A stand-in wearing the clothes of a measurement.
