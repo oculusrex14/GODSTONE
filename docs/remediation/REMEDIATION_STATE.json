@@ -767,6 +767,36 @@
     "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES STAY OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING).",
     "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance."
    ]
+  },
+  "candidate_verification_at_round_254": {
+   "candidate_sha": "5d75d21af64dc2b153e0aa4ebf508cd8bc1c037d",
+   "tree_sha": "1dde121887d3b6aee4968f03b0f7ab124b0c20cd",
+   "worktree": "clean at this sha",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_FINAL_5d75d21af64dc2b153e0aa4ebf508cd8bc1c037d/verify.log",
+   "log_sha256": "48743338b0f2a769ebdf9171a431650398d9de604c9c5d73ae84300c4f66bd53",
+   "measured": {
+    "android_mesh_lane": "**1192 tests, 0 failures, 0 errors**, FORCED (`--rerun-tasks`, 45s) per round 222's rule",
+    "ios_lane_mirrored_package": "**Executed 1205 tests, with 0 failures (0 unexpected)**, 182.0s",
+    "python_readiness_suite": "OK",
+    "ledger_court": "OK",
+    "repository_controls": "every ci/check_*.py rc 0 EXCEPT `check_parity`, which is now rc 1 IN **BOTH** SCOPES -- see the regression below",
+    "symbols": "ci/symbols.py: **1 unresolved** (221 Kotlin files scanned)"
+   },
+   "REGRESSION_FOUND_AT_THIS_SHA": "`check_parity --scope repo` WAS rc 0 at round 222 AND IS rc 1 NOW, so a landing between rounds 223 and 253 caused it. INVARIANT F NAMES `android/.../transport/BleTransport.kt: conn.relationKeyProvider()` -- THE ROUND-226 EDIT OF ANDROID-03 SLICE (b) -- AND `ci/symbols.py` AGREES (1 unresolved). **BUT THE COMPILER DISAGREES, AND THE TOOL ITSELF SAYETH THE COMPILER IS THE AUTHORITY**: `BleConnection` carrieth `internal var relationKeyProvider: () -> RelationKey` (BleConnection.kt:120), and the WHOLE ANDROID `:mesh` LANE (1192 tests, FORCED) COMPILETH THE CALL CLEANLY. The tool's own report noteth '175 type(s) whose inheritance leaveth the project, 8 whose declaration was not read in full -- a visible limitation, and the compiler is the authority'. SO THIS IS EITHER A TOOL LIMITATION OR A CONSTRUCT THE TOOL CANNOT SEE -- AND EITHER WAY THE CONTROL IS NON-ZERO ON A MANDATORY LANE, WHICH IS RECORDED RATHER THAN EXPLAINED AWAY. TWO RESOLUTIONS, NAMED FOR THE NEXT ROUND: (a) AVOID THE CONSTRUCT (carry the relation from a source the tool resolveth -- e.g. the same `relationGeneration` the writer already useth) so the mandatory control returneth to rc 0; or (b) DECLARE THE LIMITATION IN WRITING if (a) proveth impossible. THE FIRST IS PREFERRED BECAUSE A MANDATORY LANE MUST BE GREEN, NOT EXPLAINED.",
+   "per_declared_scope": {
+    "Mesh/Oracle": {
+     "findings": 40
+    },
+    "Both": {
+     "findings": 14
+    }
+   },
+   "NOT_CLAIMED_AND_WHY": [
+    "T78 CONVERGENCE IS NOT CLAIMED: no hosted lane, run URL, run id or log exists in this environment.",
+    "NO FINDING IS VERIFIED_FIXED (only an independent audit may write that): 34 FIX_SUBMITTED, 16 OPEN, 4 PARTIAL.",
+    "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES STAY OPEN.",
+    "AND ONE MANDATORY CONTROL IS NON-ZERO AT THIS SHA (`check_parity`), WHICH THE NEXT ROUND MUST EITHER FIX OR DECLARE."
+   ]
   }
  },
  "counts": {

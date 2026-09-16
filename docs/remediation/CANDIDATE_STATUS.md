@@ -104,3 +104,28 @@ sites (208).
 **Not claimed, and why:** **T78 is NOT claimed** (no hosted lane/run URL/id/log exists here); **no finding is
 `VERIFIED_FIXED`** (32 FIX_SUBMITTED / 18 OPEN / 4 PARTIAL); readiness flags **false** and the five external gates
 **OPEN**; **closure evidence stale for 31 findings**.
+
+## Candidate verification at `5d75d21` (ledger round 254) — measured, with one REGRESSION recorded
+
+| Item | Result at this exact SHA (tree `1dde121`) |
+|---|---|
+| Android `:mesh` lane | **1192 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`, 45s) |
+| iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 182.0s |
+| Python readiness suite / ledger court | **OK / OK** |
+| Repository controls | every `ci/check_*.py` **rc 0 EXCEPT `check_parity`, which is rc 1 IN BOTH SCOPES** |
+| Symbols | `ci/symbols.py` — **1 unresolved** (221 Kotlin files) |
+
+**A REGRESSION, FOUND AND RECORDED RATHER THAN EXPLAINED AWAY:** `check_parity --scope repo` **was rc 0 at round 222 and is rc 1
+now**, so a landing between rounds 223 and 253 caused it. **Invariant F names `BleTransport.kt: conn.relationKeyProvider()`** — the
+round-226 edit of ANDROID-03 slice (b) — and `ci/symbols.py` agrees (1 unresolved). **But the compiler disagrees, and the tool
+itself says the compiler is the authority:** `BleConnection` carries `internal var relationKeyProvider: () -> RelationKey`
+(`BleConnection.kt:120`), and the **whole Android `:mesh` lane (1192 tests, forced) compiles the call cleanly**. The tool's own
+report notes *"175 type(s) whose inheritance leaves the project, 8 whose declaration was not read in full — a visible limitation,
+and the compiler is the authority."*
+
+**Two resolutions, named:** (a) **avoid the construct** — carry the relation from a source the tool resolves (e.g. the same
+`relationGeneration` the writer already uses) so the mandatory control returns to rc 0; or (b) **declare the limitation in
+writing** if (a) proves impossible. **The first is preferred, because a mandatory lane must be green, not explained.**
+
+**Not claimed:** T78 (no hosted lane); no finding `VERIFIED_FIXED` (34/16/4); readiness flags **false**; five gates **OPEN**;
+**and one mandatory control is non-zero at this SHA, which the next round must either fix or declare.**
