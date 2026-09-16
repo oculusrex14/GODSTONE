@@ -796,6 +796,11 @@ final class ReadinessT23Tests: XCTestCase {
         r.alice.forceOutboundDisconnectForTest(peerId: r.handleB)
         XCTAssertTrue(r.alice.lostPeersForTest.contains(r.handleB),
                       "the fall of a link-ready relation must publish LinkLost, with its own captured peer")
+        // IOS-04 (T24) step 4's other half (round 245): AND ITS READINESS ENTRY DIETH WITH IT. The audited road removed
+        // a readiness entry only when the ring overflowed or the transport stopped, so a UUID returning with a NEW
+        // generation would have looked READY -- 'stale UUID readiness', in the finding's own words.
+        XCTAssertFalse(r.alice.linkReadyPeersForTest().contains(r.handleB),
+                       "a fallen relation may not stand READY: its entry must die with it")
 
 
     }

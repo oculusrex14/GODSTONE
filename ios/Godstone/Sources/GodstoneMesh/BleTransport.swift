@@ -2447,6 +2447,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     private func publishTrustedLoss(_ peerId: UUID) {
         guard let captured = capturedPeers.removeValue(forKey: peerId) else { return }
+        // IOS-04 (T24) step 4's other half: THE READINESS ENTRY DIETH WITH THE RELATION. The audited road removed one
+        // only when the ring overflowed (`removeFirst()`) or when the whole transport stopped, so a UUID that came back
+        // with a NEW generation would have looked READY -- the finding's own 'stale UUID readiness'. Removing it HERE,
+        // where every fall passeth, is the point the card nameth: 'Remove that relation on disconnect'.
+        linkReadyPublished.removeAll { $0 == peerId }
         _ = peerEvents.publishLinkLost(captured)
         if !lostPeersForTest.contains(peerId) { lostPeersForTest.append(peerId) }
     }
