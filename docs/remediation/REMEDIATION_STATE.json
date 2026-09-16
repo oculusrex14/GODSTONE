@@ -5130,9 +5130,28 @@
    },
    "impact": "The real store retains its held-frame cap but does not enforce the new total private-store and metadata limits. Observer registrations remain append-only with no release handle. Repeated runtime attachment can retain callbacks; metadata growth is outside the new quota helper.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
+   "my_fix_commit": "(ledger round 252, SLICE 1 of seven steps) THE STORE OBSERVER BECAME A DISPOSABLE LEASE: the interface handeth back an `Int` lease (0 = nothing to dispose) with `disposeHeldSetObserver(lease): Boolean`, BOTH implementations key their registrations by token and dispose by it (harmless twice), both dispatch loops read `heldSetObservers.values`, the three test overrides were updated, and `LinkInfoSnapshotAuthority` RETAINETH its lease and DISPOSES it in `stopObserving()` AND WHEN THE STORE IS REPLACED",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-005/red-round252.log",
+     "sha256": "3210e929c328d440d6d4acdbb5a94d6aabdd690c2f4c1563afcbb37c1eac7b32",
+     "what": "GS-STORE-005 slice 1's canonical RED (ledger round 252): the store observer registration must be a disposable lease",
+     "outcome": "captured with argv, source SHA and digest, PARKED in the probes directory. W00 asserteth the API and its one production registrant still stand; the defect arms measure that the registration returneth NOTHING, that no disposal existeth, and that the sole registrant retaineth no handle"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-005/red-round252.log",
+     "sha256": "3210e929c328d440d6d4acdbb5a94d6aabdd690c2f4c1563afcbb37c1eac7b32",
+     "what": "GS-STORE-005 slice 1's canonical RED (ledger round 252)",
+     "outcome": "Ran 4 tests, **FAILED (failures=3)** with the W00 control passing: the registration returned NOTHING, no disposal existed, and the sole registrant kept no handle"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-005/green-round252-lane.log",
+     "sha256": "d3b66d81539bf7b4cb95888c5ff57472244cb03b77e95f47119d4fcebbf000ee",
+     "what": "GS-STORE-005 slice 1 LANDS: the whole Android `:mesh` lane (ledger round 252)",
+     "outcome": "BUILD SUCCESSFUL; **1192 tests, 0 failures** -- the lease, the keyed registrations, the two dispatch loops, the three test overrides and the registrant's dispose-on-replace all broke no court"
+    }
+   ],
+   "my_red_case": "the canonical arm `tools/readiness/tests/test_store_observer_lease.py`, run RED FIRST in the probes directory (W00 control passing: the observer API and its one production registrant still stand; three defect arms failing): `registerHeldSetObserver` returned NOTHING, no disposal existed, and the sole registrant retained no handle",
    "my_status": "OPEN",
    "notes": null,
    "pending_proof": [],
@@ -5158,7 +5177,10 @@
     "T33"
    ],
    "title": "Total-store limits and observer cancellation are not wired",
-   "wave": "4a"
+   "wave": "4a",
+   "pending_work": [
+    "ROUND 252 (GS-STORE-005 SLICE 1 LANDS -- AND THE TRUNCATION BUG RECURRED FOR THE THIRD TIME, WHICH IS THE ROUND'S MOST IMPORTANT RECORD). (1) THE DEFECT, MEASURED: `registerHeldSetObserver` returneth NOTHING and the real store merely ADDETH the closure to a list -- `heldSetObservers.add(observer)` -- WITH NO REMOVAL PATH AT ALL. THE ONE PRODUCTION REGISTRANT (`LinkInfoSnapshotAuthority`) kept NO HANDLE, so its `stopObserving()` could only CLOSE A FLAG while the store still held -- AND STILL INVOKED -- a closure it could no longer serve, AND EVERY REPLACED STORE LEFT ITS EAR BEHIND FOR EVER. A leak of observers, one per store replacement. (2) THE REPAIR, SEVEN EDITS: the interface handeth back an `Int` lease (0 = nothing to dispose) with `disposeHeldSetObserver(lease): Boolean` (harmless twice, because a disposed token is simply not found); BOTH implementations key their registrations by token and dispose by it, with `heldSetObserverCountForTest()` as the witness; BOTH dispatch loops read `heldSetObservers.values`; the THREE TEST OVERRIDES were updated in shape; and `LinkInfoSnapshotAuthority` RETAINETH its lease and DISPOSES it in `stopObserving()` AND WHEN THE STORE IS REPLACED (`registeredLease.getAndSet(null)` before the new one is taken). (3) ACCEPTANCE: the canonical arm OK and MOVED INTO `tools/readiness/tests/`; the WHOLE `:mesh` LANE AT **1192 tests, 0 failures**. (4) **AND THE TRUNCATION BUG RECURRED FOR THE THIRD TIME (ROUNDS 191, 198, 252), WHICH MUST BE SAID PLAINLY**: one of my patch chains ended with the line `open(S,'w').write(open(S).read())` -- A SELF-READING WRITE WHOSE TRUNCATION HAPPENETH FIRST -- and `MessageStore.kt` WENT TO **ZERO LINES**. It was caught by a `wc -l` IN THE SAME CALL (0 where 2435 belonged), RESTORED FROM GIT (`git checkout`), and EVERY EDIT RE-APPLIED THROUGH THE READ-FIRST HELPER. THE RULE OF ROUND 198 SAYETH 'EVERY PATCH GOETH THROUGH THE HELPER THAT READS FIRST'; THIS ROUND PROVETH THE RULE NEEDETH TO BE SHARPER: **NEVER PASS A FILE TO `open(p,'w')` IN THE SAME STATEMENT THAT READS IT -- NOT EVEN FOR A NO-OP REWRITE, NOT EVEN ONCE.** The `wc -l` discipline is what caught it, and it is now the second thing this programme oweth to that one command. (5) WHAT REMAINETH OF GS-STORE-005, SIX OF ITS SEVEN STEPS: the real DB/WAL/SHM and row-category measurement with typed failures; quota admission inside the real insert transaction; terminal-row and tombstone caps with bounded cursors; eviction and delivery-state changes in ONE transaction; WAL checkpoint/truncate through the adapter outside a transaction; and the store/observer integration re-run with repeated start/stop. THE LEASE (step 1-2's core) IS LANDED, WITH ITS REGISTRANT UPDATED AS STEP 2 DEMANDETH."
+   ]
   },
   "GS-STORE-006": {
    "audit_status_at_snapshot": "OPEN",

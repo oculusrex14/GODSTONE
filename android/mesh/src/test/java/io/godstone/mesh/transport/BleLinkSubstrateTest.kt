@@ -38,7 +38,10 @@ class BleLinkSubstrateTest {
         val held = mutableListOf<ByteArray>()
         private val observers = mutableListOf<() -> Unit>()
 
-        override fun registerHeldSetObserver(observer: () -> Unit) {
+        override fun registerHeldSetObserver(observer: () -> Unit): Int {
+            registerHeldSetObserverBody(observer); return 0
+        }
+        private fun registerHeldSetObserverBody(observer: () -> Unit) {
             observers.add(observer)
         }
 
@@ -1171,7 +1174,10 @@ class BleLinkSubstrateTest {
     fun testAttRead_CacheAbsent_FailsClosed_NoStoreTraversal() {
         var traversalCount = 0
         val store = object : MessageStore {
-            override fun registerHeldSetObserver(observer: () -> Unit) {}
+            override fun registerHeldSetObserver(observer: () -> Unit): Int {
+            registerHeldSetObserverBody(observer); return 0
+        }
+        private fun registerHeldSetObserverBody(observer: () -> Unit) {}
             override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) = PersistResult.HELD_NEW
             override suspend fun enqueueDirectOutbound(frame: FrameV2, expectedRecipient: ByteArray, localOriginNodeId: ByteArray) =
                 io.godstone.mesh.store.OutboundEnqueueResult.CanonicalFrameMismatch

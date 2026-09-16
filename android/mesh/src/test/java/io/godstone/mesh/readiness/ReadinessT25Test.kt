@@ -279,7 +279,10 @@ class ReadinessT25Test {
         /** Models a transaction that rolled back: no durable change survives, and the store fire'th NO observer. */
         fun simulateRolledBackCommit(ids: List<ByteArray>) { /* deliberately inert: no mutation, no notify */ }
         fun emitObservers() { observers.toList().forEach { it.invoke() } }
-        override fun registerHeldSetObserver(observer: () -> Unit) { registrations++; observers.add(observer) }
+        override fun registerHeldSetObserver(observer: () -> Unit): Int {
+            registerHeldSetObserverBody(observer); return 0
+        }
+        private fun registerHeldSetObserverBody(observer: () -> Unit) { registrations++; observers.add(observer) }
         override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult = PersistResult.HELD_NEW
         override suspend fun enqueueDirectOutbound(
             frame: FrameV2, expectedRecipient: ByteArray, localOriginNodeId: ByteArray,

@@ -52,6 +52,11 @@ class LinkInfoSnapshotAuthority(
     // The single owned observation lease (born active) + the grow-only store registration it gates.
     private val observing = AtomicReference<SnapshotObservationLease>(SnapshotObservationLease())
     private val registeredStoreRef = AtomicReference<MessageStore?>(null)
+
+    /// GS-STORE-005 (T33): THE LEASE OF THE STANDING REGISTRATION. The audited road registered a closure and kept NO
+    /// handle, so `stopObserving()` could only CLOSE A FLAG -- the store still held the closure and still invoked it,
+    /// and every REPLACED store left its ear behind for ever. The lease is what maketh a registration withdrawable.
+    private val registeredLease = AtomicReference<Int?>(null)
     private val registrations = AtomicInteger(0)
     // A traversal failure is surfaced, never fabricated as an empty store.
     private val lastFailure = AtomicReference<Throwable?>(null)
@@ -66,8 +71,12 @@ class LinkInfoSnapshotAuthority(
         val current = registeredStoreRef.get()
         if (current === store) return
         if (registeredStoreRef.compareAndSet(current, store)) {
+            // THE PREVIOUS STORE'S EAR IS RETURNED BEFORE A NEW ONE IS TAKEN: a replaced store must not keep an ear it
+            // can no longer serve, and the store's own observer count is the witness of that.
+            val previousLease = registeredLease.getAndSet(null)
+            if (previousLease != null) current?.disposeHeldSetObserver(previousLease)
             registrations.incrementAndGet()
-            store.registerHeldSetObserver { onHeldSetChanged() }
+            registeredLease.set(store.registerHeldSetObserver { onHeldSetChanged() })
         }
     }
 
@@ -87,6 +96,10 @@ class LinkInfoSnapshotAuthority(
     /** Close the owned lease: the single registration becomes inert (no recompute) until re-opened. */
     fun stopObserving() {
         observing.get().close()
+        // GS-STORE-005: AND THE REGISTRATION LEAVETH THE STORE, not merely the flag: a closed flag stoppeth the
+        // recompute while the store keepeth -- and invoketh -- a closure it can no longer serve.
+        val lease = registeredLease.getAndSet(null)
+        if (lease != null) registeredStoreRef.get()?.disposeHeldSetObserver(lease)
     }
 
     fun isObserving(): Boolean = observing.get().isActive

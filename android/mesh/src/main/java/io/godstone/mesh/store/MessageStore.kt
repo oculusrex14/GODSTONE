@@ -159,7 +159,15 @@ interface MessageStore {
      * Register a callback invoked whenever the held message set changes
      * (e.g. on accepted insert/persist, direct enqueue, deletion, eviction, or clear).
      */
-    fun registerHeldSetObserver(observer: () -> Unit) {}
+    /**
+     * GS-STORE-005 (T33): THE REGISTRATION HANDS BACK A LEASE. An implementation that cannot withdraw an observer
+     * returneth 0 ("nothing to dispose"); one that can returneth a token for [disposeHeldSetObserver]. Before this a
+     * registration was PERMANENT: a consumer that stopped kept hearing, and the store kept the closure for ever.
+     */
+    fun registerHeldSetObserver(observer: () -> Unit): Int = 0
+
+    /** Dispose a registration by its lease. HARMLESS TWICE: a disposed token is simply not found (false). */
+    fun disposeHeldSetObserver(lease: Int): Boolean = false
 }
 
 /**
@@ -1072,14 +1080,22 @@ class SqliteMessageStore internal constructor(
      */
     private val faultInjector: ((String) -> Unit)? = null,
 ) : MessageStore {
-    private val heldSetObservers = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val heldSetObservers = java.util.concurrent.ConcurrentHashMap<Int, () -> Unit>()
+    private val heldSetObserverTokens = java.util.concurrent.atomic.AtomicInteger(0)
 
-    override fun registerHeldSetObserver(observer: () -> Unit) {
-        heldSetObservers.add(observer)
+    override fun registerHeldSetObserver(observer: () -> Unit): Int {
+        val lease = heldSetObserverTokens.incrementAndGet()
+        heldSetObservers[lease] = observer
+        return lease
     }
 
+    override fun disposeHeldSetObserver(lease: Int): Boolean = heldSetObservers.remove(lease) != null
+
+    /** Observation for courts: how many ears the store still holdeth. */
+    internal fun heldSetObserverCountForTest(): Int = heldSetObservers.size
+
     internal fun notifyHeldSetChanged() {
-        for (observer in heldSetObservers) {
+        for (observer in heldSetObservers.values) {
             try {
                 observer.invoke()
             } catch (_: Throwable) {}
@@ -2034,14 +2050,22 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
 internal class InMemoryMessageStore(
     private val maxBytes: Long = Long.MAX_VALUE,
 ) : MessageStore {
-    private val heldSetObservers = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val heldSetObservers = java.util.concurrent.ConcurrentHashMap<Int, () -> Unit>()
+    private val heldSetObserverTokens = java.util.concurrent.atomic.AtomicInteger(0)
 
-    override fun registerHeldSetObserver(observer: () -> Unit) {
-        heldSetObservers.add(observer)
+    override fun registerHeldSetObserver(observer: () -> Unit): Int {
+        val lease = heldSetObserverTokens.incrementAndGet()
+        heldSetObservers[lease] = observer
+        return lease
     }
 
+    override fun disposeHeldSetObserver(lease: Int): Boolean = heldSetObservers.remove(lease) != null
+
+    /** Observation for courts: how many ears the store still holdeth. */
+    internal fun heldSetObserverCountForTest(): Int = heldSetObservers.size
+
     private fun notifyHeldSetChanged() {
-        for (observer in heldSetObservers) {
+        for (observer in heldSetObservers.values) {
             try {
                 observer.invoke()
             } catch (_: Throwable) {}
