@@ -70,6 +70,11 @@ public final class MeshNode {
     /// readiness arriveth HERE; it must therefore be the node that telleth the pump -- otherwise "registering a
     /// queue does not send it", which is this finding's own sentence. Set by the owning runtime.
     internal var ackPump: DurableAckPump?
+    /// GS-RUNTIME-001 step 4: **THE RELATION'S OWN MAPPING.** The pump is keyed by NODE ID (the authenticated
+    /// identity) and the transport is keyed by the HANDLE; nothing in production held both, so a batch could not
+    /// be handed anywhere. It is written at the trusted event and forgotten at the farewell -- the same two
+    /// moments the route-eligible view is written and forgotten.
+    private var handleForNodeId: [Data: UUID] = [:]
 
     /// T42: the per-TrustedPeer bounded sync pump and the typed dispatcher. Both
     /// are ACTIVE by default (the default pump is built lazily from this node's
@@ -124,6 +129,7 @@ public final class MeshNode {
     /// scheduled here, and the DIGEST becomes due at once.
     @discardableResult
     internal func trustedPeerDidConnect(nodeId: Data, peerId: UUID? = nil) -> Bool {
+        if let peerId { handleForNodeId[nodeId] = peerId }
         // IOS-02 step 5: THE TRUSTED EVENT IS WHAT ADMITTETH A PEER TO THE ROUTE. The handle is optional
         // so that every existing caller (whose business is the SYNC PUMP alone) keepeth its meaning: a
         // caller with a handle to hand getteth route eligibility WITH the trust that just came up.
@@ -138,6 +144,7 @@ public final class MeshNode {
     /// resumes.
     @discardableResult
     internal func trustedPeerDidDisconnect(nodeId: Data, peerId: UUID? = nil) -> Bool {
+        handleForNodeId.removeValue(forKey: nodeId)
         if let peerId {
             peerLock.lock(); peers.remove(peerId); peerLock.unlock()
         }
@@ -988,11 +995,39 @@ extension MeshNode: TransportDelegate {
     /// CARRIED, and the node admitteth that peer to the ROUTE-ELIGIBLE view. Until this landed the event reacheth the
     /// node only through the composition's hand-wiring (`ComposedRuntime.link`), so the law held in the harness and
     /// not in the shipping delegate path.
+    /// GS-RUNTIME-001 steps 4 and 5, FIRST SLICE: **ONE BOUNDED TURN FOR ONE NAMED RELATION, HANDED THROUGH THE
+    /// SAME AUTHENTICATED TRANSPORT.** The batch cometh from the pump keyed by the NODE ID; the frames leave by
+    /// `ble.send` keyed by the HANDLE; and the outcome returneth to the pump so its retry interval is honoured.
+    /// An UNKNOWN relation is REFUSED (nil) rather than guessed at, because a frame sent to a guessed handle
+    /// would be exactly the misrouting this programme hunteth.
+    @discardableResult
+    internal func drainAckWorkOnce(nodeId: Data) -> Int? {
+        guard let pump = ackPump, let handle = handleForNodeId[nodeId] else { return nil }
+        let batch = pump.nextBatch(nodeId)
+        var handed = 0
+        for copy in batch.copies {
+            // (MY FIRST DRAFT REACHED FOR `copy.frame` AND THERE IS NO SUCH MEMBER: the copy carrieth
+            // `encodedFrame`, ALREADY THE CANONICAL SIGNED BYTES -- the harness handeth exactly those bytes on,
+            // and the transport's own road for bytes that are already canonical is `send(clear:)`, THE SAME ROAD
+            // THE KEY-CONFIRMATION CHALLENGE TRAVELLETH. Sealing them again would corrupt the very signature
+            // the recipient verifieth.)
+            let verdict = ble.send(clear: copy.encodedFrame, to: handle)
+            let accepted = (verdict == .admitted)
+            pump.onForwardOutcome(copy, peer: nodeId, accepted: accepted)
+            if accepted { handed += 1 }
+        }
+        return handed
+    }
+
     public func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data) {
         _ = trustedPeerDidConnect(nodeId: nodeId16, peerId: peerId)
         // GS-RUNTIME-001 step 3: **ON LinkReady THE PEER BECOMETH ELIGIBLE, FOR THAT EXACT NODE ID.** The pump
         // schedu1eth ONE bounded worker per relation; nothing else in production ever told it.
         ackPump?.onLinkReady(nodeId16)
+        // AND THE FIRST INVENTORY IS TAKEN AT ONCE, for THAT relation alone: the card's step 4 asketh the worker
+        // to be woken for the initial inventory. (The periodic deadline, inbound requests and newly committed
+        // forward work are the remaining wakes of that step, and are NOT claimed here.)
+        _ = drainAckWorkOnce(nodeId: nodeId16)
     }
 
     public func transportReady(peerId: UUID) {

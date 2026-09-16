@@ -83,6 +83,36 @@ final class CrashStartupResumeTests: XCTestCase {
     /// GS-RUNTIME-001 step 3: **THE READINESS MUST SCHEDULE THE BOUNDED ACK WORKER FOR THE EXACT RELATION, AND THE
     /// FAREWELL MUST UNSCHEDULE *THAT* NODE.** MEASURED BEFORE (round 209): nothing in production collected the
     /// readiness at all, so no worker was ever scheduled -- "registering a queue does not send it".
+    /// GS-RUNTIME-001 steps 4-5, FIRST SLICE: **ONE BOUNDED TURN FOR ONE NAMED RELATION** -- and an UNKNOWN
+    /// relation is REFUSED rather than guessed at, because a frame sent to a guessed handle would be the very
+    /// misrouting this programme hunteth.
+    func testSR00c_TheBoundedTurnServethTheNamedRelationAndRefusethAnUnknownOne() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        let handle = UUID()
+        let nodeId = Data(repeating: 0x41, count: 16)
+        let unknown = Data(repeating: 0x42, count: 16)
+
+        XCTAssertNil(runtime.meshNode.drainAckWorkOnce(nodeId: unknown),
+                     "AN UNKNOWN RELATION MUST BE REFUSED: no handle standeth for it, and a guessed one would misroute")
+        XCTAssertNil(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId),
+                     "and a relation that hath not come up carrieth no handle either")
+
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId)
+        XCTAssertEqual(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId), 0,
+                       "once the trusted event hath written the relation's own mapping, the turn SERVETH IT -- and "
+                       + "a fresh relation carrieth nothing to hand on")
+
+        runtime.meshNode.trustedPeerDidDisconnect(nodeId: nodeId, peerId: handle)
+        XCTAssertNil(runtime.meshNode.drainAckWorkOnce(nodeId: nodeId),
+                     "and the farewell forgetteth the mapping with the relation")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR00b_TheReadinessSchedullethTheAckWorkerAndTheFarewellCancellethIt() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00b_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00b_peer_\(UUID().uuidString).db")

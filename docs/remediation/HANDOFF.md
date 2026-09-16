@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 219 -- GS-RUNTIME-001 step 4's first slice: the relation's mapping, a bounded turn, the initial inventory
+
+- **Measured gap**: `nextBatch`/`onForwardOutcome` were called **only by the harness and courts**; `sweep` **nowhere at all**. Nothing in production drove the worker's turn.
+- **Wiring**: `handleForNodeId` (written at the trusted event, forgotten at the farewell — the pump is keyed by **node id**, the transport by **handle**, and nothing held both); **`drainAckWorkOnce(nodeId:)`** — one bounded turn for one named relation, frames leaving through the same authenticated transport, the outcome returning to the pump; **an unknown relation is refused (nil), never guessed at**; and the trusted readiness wakes it at once for the initial inventory.
+- **A name the compiler refuted**: `copy.frame` does not exist — the copy carries `encodedFrame`, **already the canonical signed bytes**, so the turn hands those through `send(clear:)`, the same road the challenge travels (*sealing them again would corrupt the very signature the recipient verifies*).
+- **Witness**: `testSR00c_…` — unknown refused; unrisen relation carries no handle; trusted event writes the mapping and the turn serves it; farewell forgets it.
+- **Measured**: **full iOS lane 1216 / 0**. Remaining: the rest of step 4 (periodic deadline, inbound requests, newly committed forward work as wakes), step 5's admission recheck, step 6's rebuild/drain — **readiness false throughout**.
+
 ## Round 218 -- GS-RUNTIME-001 step 3 LANDS: the readiness schedules the bounded ACK worker for the EXACT relation
 
 - **Wiring**: `MeshNode` carries the pump (the node *is* the transport's delegate, so the readiness arrives there); `transportApplicationLinkReady(peerId:receivedFrom:)` calls `ackPump.onLinkReady(nodeId16)`; `trustedPeerDidDisconnect(nodeId:peerId:)` calls `ackPump.onLinkGone(nodeId)` — the pump's own words: *"Schedule on LinkReady: the peer becometh eligible"* / *"A link went away: the peer stoppeth being eligible."*
