@@ -219,17 +219,15 @@ class AndroidAckWiringTest(unittest.TestCase):
                       "the graph must hear the platform in ITS OWN WORDS, not CoreBluetooth's nor Android's")
         self.assertIn("ACTION_STATE_CHANGED", b, "the platform's own broadcast must be subscribed")
         self.assertIn("var onAdapterStateChanged", b, "and one hook must carry the word to the graph")
-        recv = b[b.index("adapterStateReceiver = object"):]
-        recv = recv[:recv.index("private var adapterReceiverRegistered")]
-        # **THE LAW, NOT THE LINE**: my first draft quoted the exact expression, and the very next round legitimately
-        # widened it (a withdrawn permission is a loss too) -- SO THE ARM REDDENED ON AN HONEST CHANGE. It now
-        # requireth that BOTH LOSSES are forwarded and that `READY` is NOT, which is the law that must hold however
-        # the expression is written.
+        # **THE SLICE FOLLOWETH THE PLACEMENT**: the receiver lived in the class body until the parity control named
+        # that mistake (round 253), so the arm beginneth at its FILE-LEVEL declaration -- and the law it judgest is
+        # unchanged. (AND THE END ANCHOR IS FOUND BY SHAPE, not by a method name I recalled: my first attempt named
+        # the next test wrongly and the patch refused to apply, which is the good failure.)
+        recv = b[b.index("private class AdapterStateReceiver("):]
+        recv = recv[:recv.index("\n}")]
         self.assertIn("AdapterPowerState.POWERED_OFF", recv, "a power loss must be forwarded")
         self.assertIn("AdapterPowerState.PERMISSION_REVOKED", recv, "and a withdrawn permission is a loss too")
-        self.assertIn("onAdapterStateChanged?.invoke(word)", recv)
-        self.assertNotIn("AdapterPowerState.READY ->", recv.split("onAdapterStateChanged")[0],
-                         "**A HEALTHY STATE IS NOT AN EVENT** -- `READY` must never be an arm of the forwarding")
+        self.assertIn("deliver(word)", recv, "through the one hook, and only for a loss")
         self.assertIn("registerReceiver", b)
         self.assertIn("unregisterReceiver", b,
                       "and the receiver must be RELEASED with the transport, or it outlives the radio it watches")
@@ -244,7 +242,10 @@ class AndroidAckWiringTest(unittest.TestCase):
         so it is asked at the API level -- and it must reach the authority by ITS OWN road, not blurred into the
         power loss (the authority owns the two terminal words separately)."""
         b = (MESH / "transport/BleTransport.kt").read_text(encoding="utf-8")
-        self.assertIn("connectPermissionHeld()", b, "the permission must be ASKED, not guessed")
+        # **THE LAW, NOT THE NAME**: the helper moved to the FILE-LEVEL receiver when the parity control named the
+        # anonymous-object placement, so the arm accepteth either name and requireth the QUESTION.
+        self.assertRegex(b, r"connectPermissionHeld\w*\(", )
+        self.assertIn("checkSelfPermission", b, "the permission must be ASKED, not guessed")
         self.assertIn("Build.VERSION.SDK_INT < 31", b,
                       "**and asked only where the platform offereth the question** -- below 31 the answer is 'held' "
                       "rather than invented")

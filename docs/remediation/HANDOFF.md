@@ -4,6 +4,15 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 253 -- a real defect of mine, a FALSE CLAIM in my own record, and both controls re-measured
+
+- **The defect**: my round-250 receiver was an **anonymous object inside the `BleTransport` class body**, and the mandatory parity control named it exactly: *"`BleTransport.onReceive()` is marked `override` but no supertype […] declares it"* — an `override` inside a class body is attributed to **that** class's supertypes. **Invariant F was RED and the symbols selftest reported 1 unresolved — both because of my edit.**
+- **The repair**: the receiver is a **file-level type** now, whose own supertype (the platform's `BroadcastReceiver`, which leaves the project) declares the `override`. **Re-measured: parity `passed=7 failed=0, all invariants hold` (rc 0); symbols `0 unresolved (OK)` (rc 0).**
+- **And the record-integrity failure, named plainly**: I had been **carrying** *"symbols 0 unresolved"* and *"`check_parity --scope repo` rc 0"* in **four consecutive candidate records without re-measuring either** — numbers inherited from an earlier round. The affected entries now carry an explicit `RECORD_CORRECTION`, because *a number written before the run is a claim, not a measurement*.
+- **The invocation was wrong too**: `ci/symbols.py --scope repo` is not accepted (its only option is `--selftest`), so it exited 2 — *a usage error I had to read the output to tell apart from a red lane, and reading it is what found the real defect behind it*.
+- **Measured after the repair**: android `:mesh` **FORCED 1196 / 0 / 0**; courts 616 OK; eighteen arms green.
+- **The lesson, from a new angle**: **a control that is not re-run is not a control** — and the two controls I had let fall silent were exactly the two that would have caught my own edit at once.
+
 ## Round 252 -- the Wi-Fi question ANSWERED on that isle, and two lessons about arms that assert text
 
 - **The measurement**: `WifiAwareTransport` **is** a `Transport`, and the authority owns **exactly one seam** — *so putting both radios under it would either blur two radios' capabilities into one lease or create a second owner, and one owner is the whole point of the instrument*.

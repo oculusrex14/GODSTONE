@@ -67,6 +67,39 @@ interface BleOutletHooks {
  */
 enum class AdapterPowerState { READY, POWERED_OFF, PERMISSION_REVOKED, OTHER }
 
+/**
+ * **THE PLATFORM'S POWER/PERMISSION WORD, HEARD BY A TYPE THAT DECLARES IT.** My round-250 draft put this receiver
+ * INSIDE the `BleTransport` class body as an ANONYMOUS object -- and **THE MANDATORY PARITY CONTROL NAMED THE
+ * CONSEQUENCE EXACTLY: "BleTransport.onReceive() is marked `override` but no supertype
+ * ['DisconnectingTransport', 'Transport', 'InFlightAwareTransport'] declares it"** -- because an `override` written
+ * inside a class body is attributed to THAT class's supertypes. A FILE-LEVEL type whose own supertype (the platform's
+ * `BroadcastReceiver`, which leaveth the project) declareth it is the honest placement, and the resolver accepteth it.
+ */
+private class AdapterStateReceiver(
+    private val deliver: (AdapterPowerState) -> Unit,
+) : android.content.BroadcastReceiver() {
+    override fun onReceive(c: Context?, intent: android.content.Intent?) {
+        val state = intent?.getIntExtra(android.bluetooth.BluetoothAdapter.EXTRA_STATE, -1) ?: -1
+        val word = when (state) {
+            // **THE PERMISSION HALF, NAMED AS SUCH: A WITHDRAWN PERMISSION IS *NOT* VISIBLE IN THIS BROADCAST.**
+            android.bluetooth.BluetoothAdapter.STATE_ON ->
+                if (connectPermissionHeldHere(c)) AdapterPowerState.READY else AdapterPowerState.PERMISSION_REVOKED
+            android.bluetooth.BluetoothAdapter.STATE_OFF -> AdapterPowerState.POWERED_OFF
+            else -> AdapterPowerState.OTHER
+        }
+        // A HEALTHY STATE IS NOT AN EVENT: only a LOSS is forwarded, exactly as the Swift twin requireth.
+        if (word == AdapterPowerState.POWERED_OFF || word == AdapterPowerState.PERMISSION_REVOKED) deliver(word)
+    }
+
+    /** The API-level permission question, asked only where the platform offereth it (31+). */
+    private fun connectPermissionHeldHere(ctx: Context?): Boolean {
+        if (ctx == null) return true
+        if (android.os.Build.VERSION.SDK_INT < 31) return true
+        return ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+}
+
 class BleTransport(
     private val context: Context? = null,
     val identity: Identity,
@@ -265,36 +298,10 @@ class BleTransport(
     /** The graph heareth the platform through THIS, and in its own words. */
     var onAdapterStateChanged: ((AdapterPowerState) -> Unit)? = null
 
-    private val adapterStateReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(c: Context?, intent: android.content.Intent?) {
-            val state = intent?.getIntExtra(android.bluetooth.BluetoothAdapter.EXTRA_STATE, -1) ?: -1
-            val word = when (state) {
-                // **THE PERMISSION HALF, NAMED AS SUCH: A WITHDRAWN PERMISSION IS *NOT* VISIBLE IN THIS BROADCAST.**
-                // A radio that reporteth STATE_ON while the app no longer holdeth the connect permission is the
-                // observable signature of a revocation, so the permission is ASKED HERE -- at the API level the
-                // platform offereth (31+), guarded by the version, and ABSENT BELOW IT rather than guessed.
-                android.bluetooth.BluetoothAdapter.STATE_ON ->
-                    if (connectPermissionHeld()) AdapterPowerState.READY else AdapterPowerState.PERMISSION_REVOKED
-                android.bluetooth.BluetoothAdapter.STATE_OFF -> AdapterPowerState.POWERED_OFF
-                else -> AdapterPowerState.OTHER
-            }
-            // A HEALTHY STATE IS NOT AN EVENT: only a LOSS is forwarded, exactly as the Swift twin requireth --
-            // and a WITHDRAWN PERMISSION is a loss just as a power-off is.
-            if (word == AdapterPowerState.POWERED_OFF || word == AdapterPowerState.PERMISSION_REVOKED) {
-                onAdapterStateChanged?.invoke(word)
-            }
-        }
-    }
+    private val adapterStateReceiver = AdapterStateReceiver { word -> onAdapterStateChanged?.invoke(word) }
     private var adapterReceiverRegistered = false
 
-    /** The API-level permission question, asked only where the platform offereth it (31+), and answered
-     *  "held" below that rather than invented. */
-    private fun connectPermissionHeld(): Boolean {
-        val ctx = context ?: return true
-        if (android.os.Build.VERSION.SDK_INT < 31) return true
-        return ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
+
 
     override fun start() {
         if (isStarted) return
