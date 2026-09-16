@@ -618,7 +618,19 @@ final class ReadinessT21Tests: XCTestCase {
         var hs3: Data? = nil
         for _ in 0..<800 {
             let w = r.capturePeer.writes
-            if w.count > priorCount, let last = w.last, last != hs1 { hs3 = last; break }
+            // IOS-02 step 4: SELECTED BY TYPE, NOT BY POSITION -- production writeth the challenge after hs3, and the
+            // old 'any write that is not hs1' rule would take the CHALLENGE for the third counsel.
+            // IOS-02 step 4: THE NEW WRITES ARE SEARCHED BY TYPE (production writeth the CHALLENGE straight after
+
+            // hs3, so 'the last write' is no longer the third counsel).
+
+            if w.count > priorCount,
+
+               let found = w.dropFirst(priorCount).first(where: {
+
+                   $0.count > 1 && Int($0[1]) == Int(BleRecordType.hs3.rawValue)
+
+               }) { hs3 = found; break }
             Thread.sleep(forTimeInterval: 0.005)
         }
         guard let hs3 = hs3 else {
@@ -777,7 +789,24 @@ final class ReadinessT21Tests: XCTestCase {
         var hs3: Data? = nil
         for _ in 0..<800 {
             let w = r.capturePeer.writes
-            if w.count > priorCount, let last = w.last { hs3 = last; break }
+            // IOS-02 step 4: SELECTED BY TYPE. This is the SECOND positional site in this file, and my first
+            // pass missed it because it carrieth no `!= hs1` guard: production now writeth the CHALLENGE after
+            // hs3, so 'the next write' is the challenge.
+            // IOS-02 step 4: THE NEW WRITES ARE SEARCHED BY TYPE. Production now writeth the CHALLENGE
+
+            // immediately after hs3, so 'the last write' is no longer the third counsel -- MY OWN FIRST FIX
+
+            // tested `w.last` alone and therefore still saw the challenge. The counsel is sought among the
+
+            // writes added since the baseline, by its record type.
+
+            if w.count > priorCount,
+
+               let found = w.dropFirst(priorCount).first(where: {
+
+                   $0.count > 1 && Int($0[1]) == Int(BleRecordType.hs3.rawValue)
+
+               }) { hs3 = found; break }
             Thread.sleep(forTimeInterval: 0.005)
         }
         guard let hs3 = hs3 else {
@@ -904,8 +933,19 @@ final class ReadinessT21Tests: XCTestCase {
         guard let _chain = try driveToReady(r) else { return }
         let beforeData = r.capturePeer.writes
         let kindsBefore = beforeData.map { typeOfByte($0) }
-        XCTAssertEqual(kindsBefore.last, Int(BleRecordType.hs3.rawValue),
-                       "the last writing of the exchange must be the HS3")
+        // IOS-02 step 4: **RE-FRAMED TO THE LAW BY INDEX, NOT BY POSITION.** The old assertion demanded that
+        // the LAST writing of the exchange be the HS3 -- and production's own challenge, a DATA record issued
+        // at the trusted-ready transition, now followeth it. THE LAW THIS ARM NAMETH IS UNCHANGED AND STILL
+        // HOLDETH: THE HS3 PRECEDETH EVERY DATA. So it is now asserted BY INDEX, which is what "preceded"
+        // meaneth.
+        XCTAssertEqual(kindsBefore.filter { $0 == Int(BleRecordType.hs3.rawValue) }.count, 1,
+                       "exactly one third counsel travellerh")
+        let firstHS3 = kindsBefore.firstIndex(of: Int(BleRecordType.hs3.rawValue))
+        let firstDATA = kindsBefore.firstIndex(of: Int(BleRecordType.data.rawValue))
+        XCTAssertNotNil(firstHS3, "the third counsel must have gone out")
+        if let h = firstHS3, let d = firstDATA {
+            XCTAssertLessThan(h, d, "the HS3 must precede every DATA in the writer order")
+        }
         let plain = makeFrame(clearOf(771, 120))
         XCTAssertEqual(r.alice.send(plain, to: r.handleB), .admitted,
                        "the application must be admitted after the trust")

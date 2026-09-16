@@ -592,7 +592,19 @@ final class ReadinessT22Tests: XCTestCase {
         var hs3: Data? = nil
         for _ in 0..<800 {
             let w = r.capturePeer.writes
-            if w.count > priorCount, let last = w.last, last != hs1 { hs3 = last; break }
+            // IOS-02 step 4: SELECTED BY TYPE, NOT BY POSITION -- production writeth the challenge after hs3, and the
+            // old 'any write that is not hs1' rule would take the CHALLENGE for the third counsel.
+            // IOS-02 step 4: THE NEW WRITES ARE SEARCHED BY TYPE (production writeth the CHALLENGE straight after
+
+            // hs3, so 'the last write' is no longer the third counsel).
+
+            if w.count > priorCount,
+
+               let found = w.dropFirst(priorCount).first(where: {
+
+                   $0.count > 1 && Int($0[1]) == Int(BleRecordType.hs3.rawValue)
+
+               }) { hs3 = found; break }
             Thread.sleep(forTimeInterval: 0.005)
         }
         guard let hs3 = hs3 else {
@@ -691,8 +703,14 @@ final class ReadinessT22Tests: XCTestCase {
         pushToInitiator(r.alice, r.aliceDelegate, hs2)
         for _ in 0..<800 {
             let w = r.capturePeer.writes
-            if w.count > prior, let last = w.last, last != hs1 {
-                return last
+            // IOS-02 step 4: **THE THIRD COUNSEL IS SOUGHT BY TYPE, NOT BY POSITION.** This harvest returned
+            // 'the last write that is not hs1' -- and with production now writing the CHALLENGE straight after
+            // hs3, it returned THE CHALLENGE, which the arms then pushed to the responder as if it were the
+            // third counsel (whereupon the responder rightly refused a DATA record at a handshake stage, and
+            // every downstream assertion fell).
+            if w.count > prior,
+               let third = w.dropFirst(prior).first(where: { $0.count > 1 && Int($0[1]) == Int(BleRecordType.hs3.rawValue) }) {
+                return third
             }
             Thread.sleep(forTimeInterval: 0.005)
         }

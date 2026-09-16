@@ -715,7 +715,11 @@ final class ReadinessT17Tests: XCTestCase {
         // counsel PRODUCTION put on the wire. Asking through `beginTrustedHandshake` here would be REFUSED as a
         // second begin (measured: "hs.begin|begin initiator refused"), so the counsel is READ OFF THE WIRE by
         // its record type -- the same law, witnessed by production instead of by this arm's hand.
-        guard let hs1 = capturePeer.writes.last, hs1.isEmpty == false else {
+        // IOS-02 step 4: THE COUNSEL IS SOUGHT BY TYPE, NOT BY POSITION -- production now writeth the
+        // CHALLENGE (a DATA record) at the trusted-ready transition, so 'the last write' is no longer the
+        // counsel being sought.
+        guard let hs1 = capturePeer.writes.first(where: { $0.count > 1 && Int($0[1]) == Int(BleRecordType.hs1.rawValue) }),
+              hs1.isEmpty == false else {
             XCTFail("message 1 never went out"); return
         }
         XCTAssertEqual(Int(hs1[1]), Int(BleRecordType.hs1.rawValue),
@@ -733,7 +737,10 @@ final class ReadinessT17Tests: XCTestCase {
                                              properties: [.read, .write, .notify],
                                              value: hs2, permissions: [.readable, .writeable])
         _ = alice.processPeripheralUpdateValue(nil, delegate: aliceDelegate, characteristic: hs2Char, error: nil)
-        guard let hs3 = capturePeer.writes.last, hs3.isEmpty == false, hs3 != hs1 else {
+        // IOS-02 step 4: BY TYPE -- the positional rule returned THE CHALLENGE, which this arm then pushed
+        // to the responder as if it were the third counsel, so the responder never reached its hour.
+        guard let hs3 = capturePeer.writes.first(where: { $0.count > 1 && Int($0[1]) == Int(BleRecordType.hs3.rawValue) }),
+              hs3.isEmpty == false, hs3 != hs1 else {
             XCTFail("message 3 never went out"); return
         }
         capturePeer.clearWrites()

@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 197 -- **IOS-02 STEP 4 LANDS**: the trusted-ready transition issues the challenge; full iOS lane GREEN
+
+- **Repair**: at the initiator's trusted-ready transition, the transport issues the challenge **once**, only if none stands, and **names** any refusal in the ring. The wire witnesses it: `state=ready | writes=2 kinds=[20, 24]` = **[HS3, challenge]**.
+- **Reconciliation**: six edits + T17's two reads, every one a positional expectation production's new record had invalidated (the T23 `clearWrites()` that erased the challenge accounted for five arms; **T17's chain arm handed the challenge to the responder as if it were HS3**, and all 7 of its assertions rose again once those reads were made by type).
+- **Round 196's last edit landed**, with both of its failed attempts recorded in place (non-unique anchor → aborted before writing; line-based insertion → compile error).
+- **Measured**: three suites 47/0; T17 10/0; **full iOS lane 1210 / 0** (43 → 1 → 0); courts 594 OK; probes 12 OK; control PASSED; parity repo rc 0; symbols 0 unresolved; digests 347/347. Android lanes **not re-measured and not claimed**.
+- **IOS-02 remains PARTIAL**: steps 1, 4, 5 landed (+ step 2's duplicate-callback clause); **step 2's capture clause and step 3 remain**.
+
 ## Round 196 -- step 4's arms reconciled: 43 failures to 1, the last being a count that needs a baseline
 
 - **Six edits, each a positional expectation invalidated by production's new challenge record**: the T23 drive helper's `clearWrites()` that **erased production's challenge** (five arms); T22's `harvestThird` seeking the third counsel by type; T21's writer-order arm re-framed **by index**; four T23 arms' clears between the challenge read and the ping guard; a fifth found by anchoring on the read; and the reflection arm's count.

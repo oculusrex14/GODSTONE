@@ -2225,6 +2225,24 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             closeInitiatorRelation(peerId)
             return
         }
+        // IOS-02 step 4: **THE TRUSTED HOUR ITSELF ISSUETH THE CHALLENGE.** The card: "At the proper
+        // trusted-ready transition, automatically initiate the specified encrypted challenge/echo
+        // procedure using the existing DATA writer." Until this repair the transition issued NOTHING and
+        // a relation reached trust only if application or test code invoked the door by hand -- so the
+        // challenge/echo was never started by the product. THE INITIATOR ISSUETH IT (the responder is the
+        // one that answereth), ONCE, and only if no challenge already standeth for this relation: the
+        // transition itself is guarded by the transcript, and this second gate maketh the issuance
+        // idempotent even if the path were reached twice.
+        if conn.keyConfirmation.outstanding() == nil {
+            let issued = beginKeyConfirmation(peerId: peerId)
+            if issued != .admitted {
+                // A refusal here is NOT swallowed: the relation keeps its trusted hour, but the refusal is
+                // NAMED in the ring so that a witness (and a field engineer) can see why no challenge went
+                // out -- an unrecorded refusal would be indistinguishable from a path never taken.
+                recordRejection(peerId: peerId, site: "hs.confirm.transition",
+                                reason: "the trusted hour issued no challenge: " + String(describing: issued))
+            }
+        }
         delegate?.transportDidHandshakeReady(peerId: peerId)
     }
 

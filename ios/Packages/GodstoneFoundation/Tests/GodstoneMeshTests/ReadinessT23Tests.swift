@@ -560,10 +560,17 @@ final class ReadinessT23Tests: XCTestCase {
         }
         clearResponderCaptures(r)
         pushToInitiator(r, [hs2])
-        guard let hs3 = sample({ r.capturePeer.writes.last(where: { $0 != hs1 }) }) else {
+        // IOS-02 step 4 RE-FRAMED THIS RULE: HS3 WAS SELECTED BY POSITION ('the last write that is not hs1'),
+        // and production now writeth the CHALLENGE immediately after hs3 -- so the positional rule picked the
+        // CHALLENGE and pushed it to the responder, which refused a DATA record at a handshake stage
+        // ('ingest.write|record type data at stage handshake'). THE RECORD IS NOW SELECTED BY ITS TYPE.
+        guard let hs3 = sample({ self.firstRecord(r, ofType: .hs3) }) else {
             XCTFail("the HS3 never went out; ring: " + ringOf(r.alice)); return nil
         }
-        r.capturePeer.clearWrites()
+        // IOS-02 step 4: **THIS CLEAR IS REMOVED, AND IT WAS THE CAUSE OF FIVE ARMS' "the challenge never
+        // reach'd the wire".** Production now writeth the CHALLENGE immediately after hs3 -- and this line
+        // ERASED IT, so the arms that then read the challenge record off the wire found nothing. The capture
+        // is NOT the baseline of this drive; the arm's own reads are.
         pushToResponder(r, [hs3])
         XCTAssertTrue(waitUntil2 { r.pair.aliceManager.isReady(r.handleB) && r.pair.bobManager.isReady(r.handleA) },
                       "both registries must report the peer ready; ring: " + ringOf(r.alice) + " / " + ringOf(r.bob))
@@ -585,7 +592,11 @@ final class ReadinessT23Tests: XCTestCase {
         guard let hs2 = sample({ lastResponderCapture(r) }) else { return nil }
         clearResponderCaptures(r)
         pushToInitiator(r, [hs2])
-        guard let hs3 = sample({ r.capturePeer.writes.last(where: { $0 != hs1 }) }) else { return nil }
+        // IOS-02 step 4 RE-FRAMED THIS RULE: HS3 WAS SELECTED BY POSITION ('the last write that is not hs1'),
+        // and production now writeth the CHALLENGE immediately after hs3 -- so the positional rule picked the
+        // CHALLENGE and pushed it to the responder, which refused a DATA record at a handshake stage
+        // ('ingest.write|record type data at stage handshake'). THE RECORD IS NOW SELECTED BY ITS TYPE.
+        guard let hs3 = sample({ self.firstRecord(r, ofType: .hs3) }) else { return nil }
         XCTAssertTrue(waitUntil2 { self.initiatorConnection(r)?.state == .ready },
                       "the initiator must stand ready upon its own third; ring: " + ringOf(r.alice))
         return (hs2, hs3)
@@ -619,6 +630,33 @@ final class ReadinessT23Tests: XCTestCase {
     // ================================================================ T23 ====
 
     // MARK: - case the first: the half-spoken exchange falleth at the hour
+
+    // MARK: - IOS-02 step 4: the TRUSTED-READY TRANSITION issueth the challenge ITSELF
+
+    /// IOS-02, the card's fourth step: **"At the proper trusted-ready transition, automatically initiate the
+    /// specified encrypted challenge/echo procedure using the existing DATA writer."**
+    ///
+    /// **THE WHOLE OF THE FINDING IS IN THIS ARM'S SILENCE: NOTHING HERE CALLETH `beginKeyConfirmation`.**
+    /// The rig driveth the sealed round through the REAL entries only; when the trusted hour cometh, the
+    /// PRODUCTION PATH must put the challenge on the wire by itself. Measured before the repair, the
+    /// transition issueth NOTHING, and a relation reacheth trust only if application or test code invoketh
+    /// the door by hand -- which is the audit's own sentence for this finding: "the adapter never starts D2
+    /// or key confirmation".
+    func testTheTrustedReadyTransitionIssuethTheChallengeItself() throws {
+        let r = try standDoor()
+        guard let _ = try driveToReady(r) else { return }
+
+        guard let connection = initiatorConnection(r) else {
+            XCTFail("no initiator relation stood to be judged"); return
+        }
+        XCTAssertTrue(connection.keyConfirmation.isAwaitingEcho(),
+                      "IOS-02 step 4: THE TRUSTED-READY TRANSITION MUST ITSELF INITIATE THE ENCRYPTED CHALLENGE "
+                      + "-- nothing else did, and the hour is trusted. ring: " + ringOf(r.alice))
+        guard let challenge = connection.keyConfirmation.outstanding() else {
+            XCTFail("the challenge must be ANSWERABLE, so that its echo can be judged"); return
+        }
+        XCTAssertEqual(challenge.count, 16, "the challenge is sixteen octets")
+    }
 
     func testTheHalfSpokenExchangeFallethAtTheTenSecondHour() throws {
         let r = try standDoor()
@@ -773,14 +811,21 @@ final class ReadinessT23Tests: XCTestCase {
         let leaseWithdrawn = r.alice.addTrustedPeerSink { _ in heardWithdrawn += 1 }
         _ = r.alice.addTrustedPeerSink { _ in heardKept += 1 }
         r.alice.removeTrustedPeerSink(leaseWithdrawn)
-        let challenge = Data((0..<16).map { UInt8($0 &+ 0x31) })
-        r.capturePeer.clearWrites()
-        XCTAssertEqual(r.alice.beginKeyConfirmation(peerId: r.handleB, supplied: challenge), .admitted,
-                       "the challenge must go forth; ring: " + ringOf(r.alice))
+        // IOS-02 step 4: PRODUCTION ISSUETH THE CHALLENGE ITSELF at the trusted-ready transition, so
+        // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+        // every echo it thereafter crafteth is an answer to THAT challenge.
+        guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+            XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+        }
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- it baseline'd the challenge the ARM was about
+        // to issue; PRODUCTION issueth it at the trusted-ready transition, so the clear ERASED the
+        // very record the arm then sought ("the challenge never reach'd the wire").
         guard let ping = sample({ r.capturePeer.writes.last }) else {
             XCTFail("the challenge never reach'd the wire; ring: " + ringOf(r.alice)); return
         }
-        r.capturePeer.clearWrites()
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- a challenge READ from production must not be
+        // erased straight after reading it. (This one stood four lines from the guard, beyond the
+        // window of the first pass, which is why it survived.)
         pushToResponder(r, [ping])                                // the responder heareth, and answereth
         guard let echo = sample({ lastResponderCapture(r) }) else {
             XCTFail("the answer never reach'd the wire; ring: " + ringOf(r.bob)); return
@@ -843,14 +888,21 @@ final class ReadinessT23Tests: XCTestCase {
         let r = try standDoor()
         guard let _ = try driveToReady(r) else { return }
         try warmAliceStream(r)                                     // the control ear, attach'd early (replay is empty for it)
-        let challenge = Data((0..<16).map { UInt8($0 &+ 0x71) })
-        r.capturePeer.clearWrites()
-        XCTAssertEqual(r.alice.beginKeyConfirmation(peerId: r.handleB, supplied: challenge), .admitted,
-                       "the challenge must go forth; ring: " + ringOf(r.alice))
+        // IOS-02 step 4: PRODUCTION ISSUETH THE CHALLENGE ITSELF at the trusted-ready transition, so
+        // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+        // every echo it thereafter crafteth is an answer to THAT challenge.
+        guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+            XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+        }
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- it baseline'd the challenge the ARM was about
+        // to issue; PRODUCTION issueth it at the trusted-ready transition, so the clear ERASED the
+        // very record the arm then sought ("the challenge never reach'd the wire").
         guard let ping = sample({ r.capturePeer.writes.last }) else {
             XCTFail("the challenge never reach'd the wire; ring: " + ringOf(r.alice)); return
         }
-        r.capturePeer.clearWrites()
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- a challenge READ from production must not be
+        // erased straight after reading it. (This one stood four lines from the guard, beyond the
+        // window of the first pass, which is why it survived.)
         pushToResponder(r, [ping])
         guard let echo = sample({ lastResponderCapture(r) }) else {
             XCTFail("the answer never reach'd the wire; ring: " + ringOf(r.bob)); return
@@ -881,14 +933,21 @@ final class ReadinessT23Tests: XCTestCase {
         let r = try standDoor()
         guard let _ = try driveToReady(r) else { return }
         try warmAliceStream(r)
-        let challenge = Data((0..<16).map { UInt8($0 &+ 0x11) })
-        r.capturePeer.clearWrites()
-        XCTAssertEqual(r.alice.beginKeyConfirmation(peerId: r.handleB, supplied: challenge), .admitted,
-                       "the challenge must go forth; ring: " + ringOf(r.alice))
+        // IOS-02 step 4: PRODUCTION ISSUETH THE CHALLENGE ITSELF at the trusted-ready transition, so
+        // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+        // every echo it thereafter crafteth is an answer to THAT challenge.
+        guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+            XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+        }
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- it baseline'd the challenge the ARM was about
+        // to issue; PRODUCTION issueth it at the trusted-ready transition, so the clear ERASED the
+        // very record the arm then sought ("the challenge never reach'd the wire").
         guard let ping = sample({ r.capturePeer.writes.last }) else {
             XCTFail("the challenge never reach'd the wire"); return
         }
-        r.capturePeer.clearWrites()
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- a challenge READ from production must not be
+        // erased straight after reading it. (This one stood four lines from the guard, beyond the
+        // window of the first pass, which is why it survived.)
         pushToResponder(r, [ping])
         guard let echo = sample({ lastResponderCapture(r) }) else {
             XCTFail("the answer never reach'd the wire"); return
@@ -913,9 +972,13 @@ final class ReadinessT23Tests: XCTestCase {
         let r = try standDoor()
         guard let _ = try driveToReady(r) else { return }
         try warmAliceStream(r)
-        let challenge = Data((0..<16).map { UInt8($0 &+ 0x51) })
-        XCTAssertEqual(r.alice.beginKeyConfirmation(peerId: r.handleB, supplied: challenge), .admitted,
-                       "the challenge must go forth; ring: " + ringOf(r.alice))
+        // IOS-02 step 4: PRODUCTION ISSUETH THE CHALLENGE ITSELF at the trusted-ready transition, so
+        // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+        // every echo it thereafter crafteth is an answer to THAT challenge.
+        guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+            XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+        }
+
         // a forged answer, bearing a tale that was never the challenge
         let forged = Data((0..<16).map { UInt8($0 &+ 0x51 &+ 7) })
         let frame = KeyConfirmationControl.encodeResponse(forged)
@@ -941,14 +1004,21 @@ final class ReadinessT23Tests: XCTestCase {
         let r = try standDoor()
         guard let _ = try driveToReady(r) else { return }
         try warmAliceStream(r)
-        let challenge = Data((0..<16).map { UInt8($0 &+ 0x21) })
-        r.capturePeer.clearWrites()
-        XCTAssertEqual(r.alice.beginKeyConfirmation(peerId: r.handleB, supplied: challenge), .admitted,
-                       "the challenge must go forth; ring: " + ringOf(r.alice))
+        // IOS-02 step 4: PRODUCTION ISSUETH THE CHALLENGE ITSELF at the trusted-ready transition, so
+        // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+        // every echo it thereafter crafteth is an answer to THAT challenge.
+        guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+            XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+        }
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- it baseline'd the challenge the ARM was about
+        // to issue; PRODUCTION issueth it at the trusted-ready transition, so the clear ERASED the
+        // very record the arm then sought ("the challenge never reach'd the wire").
         guard let _ = sample({ r.capturePeer.writes.last }) else {
             XCTFail("the challenge never reach'd the wire"); return
         }
-        r.capturePeer.clearWrites()
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- a challenge READ from production must not be
+        // erased straight after reading it. (This one stood four lines from the guard, beyond the
+        // window of the first pass, which is why it survived.)
         // the network reflecteth the very challenge back as a challenge
         let reflected = KeyConfirmationControl.encodeChallenge(challenge)
         XCTAssertEqual(r.bob.transmitKeyConfirmationControlForTest(peerId: r.handleA, frame: reflected), .admitted,
@@ -957,13 +1027,23 @@ final class ReadinessT23Tests: XCTestCase {
             XCTFail("the reflection never reach'd the wire"); return
         }
         clearResponderCaptures(r)
+        // IOS-02 step 4: THE BASELINE IS TAKEN HERE, because the law below concerneth what goeth
+        // forth IN ANSWER TO THE REFLECTION -- and production's own challenge (issued at the
+        // trusted-ready transition) already standeth in this capture, so a bare count of the
+        // capture could never be nought.
+        let writesBeforeReflection = r.capturePeer.writes.count
         pushToInitiator(r, [inbound])
         Thread.sleep(forTimeInterval: 0.05)
         XCTAssertFalse(initiatorConnection(r)?.isKeyConfirmed ?? true, "a reflection confirmeth nothing")
         XCTAssertTrue(violationSeen(r.alice, .reflectedChallenge),
                       "a reflection must be observed as a wayward record; ring: " + ringOf(r.alice))
         XCTAssertTrue(r.alice.linkReadyPeersForTest().isEmpty, "no readiness may follow a reflection")
-        XCTAssertEqual(r.capturePeer.writes.count, 0,
+        // IOS-02 step 4 (THE ONE EDIT THE LAST ROUND COULD NOT LAND): the old form counted the WHOLE capture
+        // and expected nought -- and production's own challenge standeth in it. The law is that no answer
+        // goeth forth IN RESPONSE TO THE REFLECTION, so the comparison is against the count taken BEFORE the
+        // reflection was pushed. (The last round's line-based insertion left BOTH assertion lines, the elder
+        // with a dangling message argument: THAT was the compile error, and it is repaired here.)
+        XCTAssertEqual(r.capturePeer.writes.count, writesBeforeReflection,
                        "the reflection is not echo'd again: no answer goeth forth for a token of the own")
     }
 
@@ -1011,10 +1091,16 @@ final class ReadinessT23Tests: XCTestCase {
     func testTheConfirmingHourUnansweredFellethTheRelation() throws {
         let r = try standDoor()
         guard let _ = try driveToReady(r) else { return }
-        let challenge = Data((0..<16).map { UInt8($0 &+ 0x61) })
-        r.capturePeer.clearWrites()
-        XCTAssertEqual(r.alice.beginKeyConfirmation(peerId: r.handleB, supplied: challenge), .admitted,
-                       "the challenge must go forth; ring: " + ringOf(r.alice))
+        // IOS-02 step 4: PRODUCTION ISSUETH THE CHALLENGE ITSELF at the trusted-ready transition, so
+        // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+        // every echo it thereafter crafteth is an answer to THAT challenge.
+        guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+            XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+        }
+        // IOS-02 step 4: THIS CLEAR IS REMOVED -- a challenge READ from production must not be
+        // erased straight after reading it. (This one stood four lines from the guard, beyond the
+        // window of the first pass, which is why it survived.)
+
         XCTAssertTrue(initiatorConnection(r)?.keyConfirmation.isAwaitingEcho() ?? false,
                       "the round must await its echo")
         guard let _ = sample({ r.capturePeer.writes.last }) else {
