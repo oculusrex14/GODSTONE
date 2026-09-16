@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 279 -- the FINAL candidate at `b076e26`, every mandatory lane re-measured at that exact SHA
+
+- **Candidate:** `b076e26` (tree `b4536292`) — android `:mesh` FORCED 1193/0/0; iOS foundation mirror re-generated + `Executed 1205 tests, 0 failures`; python 579 OK; probes 12 OK; every `ci/check_*.py` rc 0 except `check_parity` DEFAULT (= the external A-06 arm), `--scope repo` rc 0; digests 320/320; symbols 223 files 0 unresolved; lab APK FORCED 15,133,266 bytes; iOS lab `BUILD SUCCEEDED` 0 errors.
+- **Superseded:** rounds 200/222/254/256/275 marked `SUPERSEDED_BY` + `stands_as_the_convergence_candidate: false` — their python lane was RED.
+- **Instrument extension:** the digest walker is now generic over the whole record, so the 11 convergence-registered logs (including the candidate verifications' own logs) are examined for the first time.
+- **Still not claimed:** T78 convergence (no hosted lane/URL/id/log), no `VERIFIED_FIXED`, readiness flags false, five gates OPEN; the iOS lab is unsigned simulator-only — no device, no signed artifact, no T76 input.
+
 ## Round 278 -- T26's court was red for 85 rounds behind a `tail`; the digest audit was blind to 28%
 
 - **Withdrawn:** five candidate verifications (rounds 200/222/254/256/275) recorded the python lane OK; it was RED at every one, re-measured at each exact tree.
