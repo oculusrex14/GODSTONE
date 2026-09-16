@@ -10,7 +10,7 @@ process keepeth writing into the original checkout, whose declared addition GROW
 - **Repair**: `extension BleTransport: Transport` — **its body empty, which is the finding's own shape** (start/stop/name/isBulkCapable all already existed; *the conformance itself was the missing thing* — my first draft's members were an invalid redeclaration the compiler caught) — and `MeshRuntime` now **owns one lifecycle authority** over the node's own transport through the adapter.
 - **Behavioural witness**: the conformance as a compile-time fact; the runtime owning an authority; and **the instruments driving a spy transport — `start()` reaches the seam exactly once (a second start does not begin twice), `stop()` exactly once**.
 - **My own first draft read the wrong type's members** (`"ble"`/`true`; the measurement says `"BLE"`/`false`) — the fifth species, met while *reading*.
-- **Measured**: **full iOS lane 1226 / 0**. **IOS-06 OPEN → PARTIAL**: remaining — step 1's second half (route start/stop *through* the owner), step 2's real teardown results, steps 3–5.
+- **Measured**: **full iOS lane 1224 / 0** (my first record said 1226 — *a number I predicted rather than read*; corrected from the lane's own line within the same round). **IOS-06 OPEN → PARTIAL**: remaining — step 1's second half (route start/stop *through* the owner), step 2's real teardown results, steps 3–5.
 
 ## Round 237 -- the ANDROID farewell unschedules the relation; and the missing recheck there is measured CORRECT
 
