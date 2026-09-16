@@ -862,11 +862,23 @@ public final class SqliteMessageStore: MessageStore {
     /// tombstone (the bounded sweep), the continuity identifier and discontinuity counter are NOT yet persisted
     /// (they need the schema revision measured at round 290), and a `nil` provider keepeth the historical
     /// behaviour so no existing path changeth.
-    internal func isForwardable(receivedAt: Int64, typeCode: Int) -> Bool {
+    internal func isForwardable(receivedAt: Int64, typeCode: Int, storedBudget: Int64? = nil,
+                                storedCheckpoint: Int64? = nil) -> Bool {
         guard let provider = receiptTimeProvider else { return true }
         guard let kind = MessageKind(rawValue: typeCode),
               let lifetime = RetentionPolicy.lifetimeMs[kind] else { return true }
         let now = provider().monoMs
+        // GS-STORE-004 STEP SIX: THE PERSISTED BUDGET IS READ, AND IT DECIDETH. The anchor alone cannot tell a row
+        // whose budget was ALREADY SPENT (by a sweep, a debit, or a longer life governed elsewhere) from one whose
+        // anchor is merely recent -- and the finding demandeth that "remaining lifetime only DECREASES". So when a
+        // budget standeth, the elapsed MONOTONIC time is debited FROM ITS OWN CHECKPOINT and the row is withheld
+        // once the debit is exhausted; the anchor-derived lifetime remaineth the fallback for a row persisted
+        // before this revision, which carrieth no budget at all.
+        if let budget = storedBudget {
+            let from = storedCheckpoint ?? receivedAt
+            let elapsed = now >= from ? now - from : 0
+            return budget - elapsed > 0
+        }
         let elapsed = now >= receivedAt ? now - receivedAt : 0
         return elapsed < Int64(lifetime)
     }
@@ -940,7 +952,8 @@ public final class SqliteMessageStore: MessageStore {
             let sql = "SELECT \(StoreSchema.colType), \(StoreSchema.colMsgId), " +
                 "\(StoreSchema.colRoutingTag), \(StoreSchema.colTtl), " +
                 "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), " +
-                "\(StoreSchema.colPayload), \(StoreSchema.colReceivedAt) FROM \(StoreSchema.table) " +
+                "\(StoreSchema.colPayload), \(StoreSchema.colReceivedAt), " +
+                "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono) FROM \(StoreSchema.table) " +
                 "ORDER BY \(StoreSchema.priorityOrder)"
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
@@ -957,8 +970,14 @@ public final class SqliteMessageStore: MessageStore {
                     flags: sqlite3_column_int(stmt, 5),
                     payload: readBlob(stmt, 6))
                 guard let frame = row.toFrame() else { continue }   // skip unknown-type
+                let storedBudget = sqlite3_column_type(stmt, 8) == SQLITE_NULL
+                    ? nil : Int64(sqlite3_column_int64(stmt, 8))
+                let storedCheckpoint = sqlite3_column_type(stmt, 9) == SQLITE_NULL
+                    ? nil : Int64(sqlite3_column_int64(stmt, 9))
                 if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 7),
-                                  typeCode: Int(row.typeCode)) { continue }
+                                  typeCode: Int(row.typeCode),
+                                  storedBudget: storedBudget,
+                                  storedCheckpoint: storedCheckpoint) { continue }
                 if !visit(frame) { return }
             }
         }
@@ -968,7 +987,8 @@ public final class SqliteMessageStore: MessageStore {
         withDb { db in
             // GS-STORE-004: the gate readeth the anchor, SO THE ANCHOR MUST BE SELECTED -- reading index 1 of a
             // one-column statement was the fatal `Index out of range` of the first measured attempt.
-            let sql = "SELECT \(StoreSchema.colMsgId), \(StoreSchema.colReceivedAt) FROM \(StoreSchema.table)"
+            let sql = "SELECT \(StoreSchema.colMsgId), \(StoreSchema.colReceivedAt), " +
+                "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono) FROM \(StoreSchema.table)"
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
                 sqlite3_finalize(stmt); return
@@ -976,8 +996,14 @@ public final class SqliteMessageStore: MessageStore {
             defer { sqlite3_finalize(stmt) }
             while sqlite3_step(stmt) == SQLITE_ROW {
                 // GS-STORE-004: the id reader is a FORWARDING surface too, so it carrieth the same gate.
+                let idBudget = sqlite3_column_type(stmt, 2) == SQLITE_NULL
+                    ? nil : Int64(sqlite3_column_int64(stmt, 2))
+                let idCheckpoint = sqlite3_column_type(stmt, 3) == SQLITE_NULL
+                    ? nil : Int64(sqlite3_column_int64(stmt, 3))
                 if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 1),
-                                  typeCode: MessageKind.direct.rawValue) {
+                                  typeCode: MessageKind.direct.rawValue,
+                                  storedBudget: idBudget,
+                                  storedCheckpoint: idCheckpoint) {
                     // the kind is unknown here (this reader selecteth ids alone); a DIRECT row past its
                     // budget is the conservative case, and the schema revision will carry the real kind.
                     continue

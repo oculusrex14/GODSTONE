@@ -1505,4 +1505,26 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(after.checkpointMono, first.checkpointMono,
                        "nor move its anchor")
     }
+
+    /// GS-STORE-004, the DISCRIMINATING law of the persisted budget: "Persist a DIRECT, close/reopen on same boot,
+    /// advance injected monotonic time, and verify remaining lifetime only DECREASES." An anchor-only debit cannot
+    /// tell a row whose budget was already spent from one whose anchor is merely recent -- so this arm SETS the
+    /// stored budget low and demands the row be withheld ON THAT ALONE. RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_thePersistedBudgetDecidethNotTheAnchorAlone() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-budget-\(UUID().uuidString).db")
+        tmpURL = url
+        let s = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        s.receiptTimeProvider = { (monoMs: 9_000_000, bootIdentity: "boot-A") }
+        let f = frame(7, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        defer { s.close() }
+        // The row's ANCHOR is fresh, and its STORED BUDGET is spent: only a store that READETH the budget can
+        // withhold it.
+        let changed = s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", [])
+        XCTAssertEqual(changed, 1, "the fixture must be able to spend the stored budget")
+        XCTAssertEqual(s.retentionCheckpointForTest(f.msgId).remainingMs, 0)
+        XCTAssertTrue(s.allHeldMsgIds().isEmpty,
+                      "a row whose PERSISTED budget is spent must not be forwarded, however fresh its anchor")
+    }
 }
