@@ -3859,7 +3859,7 @@
    "SUPERSEDED_BY": "candidate_verification_at_round_250: the ANDROID power road built and connected to the authority."
   },
   "candidate_verification_at_round_250": {
-   "candidate_sha": "7765370c670b896747055b0c7a6dd5f714239312",
+   "candidate_sha": "7a7a654375bb390d67a9df503c4588afbb2d185b",
    "tree_sha": "cbdea320fedfe5da2651fa010aaf5fb42ca209ca",
    "worktree": "clean at this sha apart from this record",
    "stands_as_the_convergence_candidate": true,
