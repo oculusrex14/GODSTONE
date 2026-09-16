@@ -177,6 +177,22 @@ internal class JdbcStoreDb(file: File) : StoreDb {
 
         /** TRUE IFF [statement] is an `ALTER TABLE <t> ADD COLUMN <c>` whose column ALREADY standeth -- the same
          *  token-parsed rule the production executor carrieth, so the two roads agree on one law. */
+        /** GS-STORE-004 (round 339): TRUE IFF [statement] is a `CREATE TABLE <t>` whose table ALREADY standeth. */
+        private fun tableIsAlreadyPresent(statement: String): Boolean {
+            val tk = statement.lowercase().trim().split(' ', '\t', '\n').filter { it.isNotEmpty() }
+            if (tk.size < 3 || tk[0] != "create" || tk[1] != "table") return false
+            var i = 2
+            if (tk[i] == "if") i += 2
+            if (i >= tk.size) return false
+            val name = tk[i].trimEnd(';', '(', '"')
+            return synchronized(conn) {
+                conn.prepareStatement("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").use { st ->
+                    st.setString(1, name)
+                    st.executeQuery().use { rs -> rs.next() }
+                }
+            }
+        }
+
         private fun columnIsAlreadyPresent(statement: String): Boolean {
             val tk = statement.lowercase().trim().split(' ', '\t', '\n').filter { it.isNotEmpty() }
             if (tk.size < 6 || tk[0] != "alter" || tk[1] != "table" || tk[3] != "add" || tk[4] != "column") return false
@@ -209,6 +225,11 @@ internal class JdbcStoreDb(file: File) : StoreDb {
                     // failed here with `duplicate column name: remaining_ms`, through a road the production guard
                     // never saw, and why three rounds of reading followed. The harness now carrieth the SAME rule.
                     if (columnIsAlreadyPresent(statement)) continue
+                    // GS-STORE-004 (round 339): THE HARNESS CARRIETH THE **CREATE** RULE TOO. The reason-carrying refusal
+                    // NAMED THIS ROAD IN ONE LINE -- `JdbcStoreDb$JdbcMigrationExecutor.execute:212` -- after the 8 -> 9 edge
+                    // met a table that already stood; it is the SAME 'two executors' law that cost nine rounds on the other
+                    // isle, found here in one instrument reading.
+                    if (tableIsAlreadyPresent(statement)) continue
                     conn.createStatement().use { it.execute(statement) }
                 }
                 conn.commit()

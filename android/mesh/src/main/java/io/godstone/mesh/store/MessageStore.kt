@@ -197,7 +197,12 @@ internal object StoreSchema {
     // section 14's retention contract cannot be honoured across a reopen without them, and the audit's own
     // remediation step asketh for exactly that ("add the blueprint retention checkpoint fields VIA A REAL
     // MIGRATION"). iOS StoreSchema.dbVersion is the same 8 (byte-identical schema contract).
-    const val DB_VERSION = 8
+    // GS-STORE-004: bumped **8 -> 9** to add the DURABLE MESSAGE TOMBSTONE, the iOS isle's revision 9 mirrored. THE
+    // REASON IS THE DEDUP LAW: a retired row that leaveth NOTHING behind can be REPLAYED AND RE-ACCEPTED, so
+    // retirement would silently RE-OPEN THE DOOR IT CLOSED -- and the finding asketh that expiration "create any
+    // required durable replay/ACK tombstones". The store's own quota kind (`tombstoneRows`) hath always DESCRIBED a
+    // table that did not exist; THIS revision maketh that description true.
+    const val DB_VERSION = 9
     const val TABLE = "held_frames"
     const val COL_MSG_ID = "msg_id"
     const val COL_TYPE = "type"
@@ -216,6 +221,12 @@ internal object StoreSchema {
     const val COL_CHECKPOINT_MONO = "checkpoint_mono"
     const val COL_BOOT_IDENTITY = "boot_identity"
     const val COL_DISCONTINUITY = "discontinuity_count"
+
+    /** GS-STORE-004: the durable message tombstone -- the table the quota kind `tombstoneRows` hath always described. */
+    const val TOMBSTONE_TABLE = "tombstones"
+    const val COL_T_MSG_ID = "msg_id"
+    const val COL_T_EXPIRES_AT_MONO = "expires_at_mono"
+    const val COL_T_BOOT_IDENTITY = "boot_identity"
 
     /** Per-row bookkeeping beyond the payload blob (columns + page overhead). */
     const val ROW_OVERHEAD = 64L
@@ -245,6 +256,16 @@ internal object StoreSchema {
     """.trimIndent()
 
     /** Idempotent create for test engines that reopen an existing file. */
+    /** GS-STORE-004: the tombstone's DDL, with the store's own CHECK on the id's length. */
+    val CREATE_TOMBSTONE_SQL: String = """
+        CREATE TABLE $TOMBSTONE_TABLE (
+            $COL_T_MSG_ID BLOB PRIMARY KEY NOT NULL,
+            $COL_T_EXPIRES_AT_MONO INTEGER,
+            $COL_T_BOOT_IDENTITY TEXT,
+            CHECK (length($COL_T_MSG_ID) = 16)
+        )
+        """
+
     val CREATE_SQL_IF_NOT_EXISTS: String =
         CREATE_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
 
@@ -456,7 +477,8 @@ internal object StoreSchema {
     // ------------------------------------------------------------------
 
     /** Every table this file owns. */
-    val ALL_TABLES: List<String> = listOf(TABLE, DELIVERY_TABLE, ACK_OBLIGATION_TABLE, ACK_FRAME_TABLE)
+    val ALL_TABLES: List<String> = listOf(TABLE, DELIVERY_TABLE, ACK_OBLIGATION_TABLE, ACK_FRAME_TABLE,
+                                           TOMBSTONE_TABLE)
 
     /** The frozen columns, named by the SAME constants the DDL interpolates. A drift
      *  between these lists and the DDL cannot pass unnoticed: a fresh file is created
@@ -480,6 +502,9 @@ internal object StoreSchema {
         COL_K_ACK_KEY, COL_K_MSG_ID, COL_K_RECIPIENT, COL_K_SIGNATURE,
         COL_K_ENCODED, COL_K_RECEIVED_FROM, COL_K_REMAINING, COL_K_CLASS,
     )
+    /** GS-STORE-004: the tombstone's columns -- the message it standeth for, WHEN it expireth (monotonic, like every
+     *  other retention figure here), and the continuity identity of the boot that retired it. */
+    val TOMBSTONE_COLUMNS: List<String> = listOf(COL_T_MSG_ID, COL_T_EXPIRES_AT_MONO, COL_T_BOOT_IDENTITY)
 
     /** The immutable-column domain per table: the cells a migration may NEVER rewrite
      *  (message ids, signed bytes, the recipient binding, ACK signatures). The digest
@@ -489,6 +514,8 @@ internal object StoreSchema {
         DELIVERY_TABLE to setOf(COL_D_MSG_ID, COL_D_EXPECTED),
         ACK_OBLIGATION_TABLE to setOf(COL_O_MSG_ID, COL_O_RECIPIENT),
         ACK_FRAME_TABLE to setOf(COL_K_ACK_KEY, COL_K_MSG_ID, COL_K_RECIPIENT, COL_K_SIGNATURE),
+        // A tombstone's only immutable cell is the id it standeth for: it is a KEY, not a payload.
+        TOMBSTONE_TABLE to setOf(COL_T_MSG_ID),
     )
 
     fun immutableColumnsOf(name: String): Set<String> = IMMUTABLE_COLUMNS[name] ?: emptySet()
@@ -501,6 +528,11 @@ internal object StoreSchema {
             TableFingerprint(DELIVERY_TABLE, DELIVERY_COLUMNS, immutableColumnsOf(DELIVERY_TABLE), CREATE_DELIVERY_SQL),
             TableFingerprint(ACK_OBLIGATION_TABLE, OBLIGATION_COLUMNS, immutableColumnsOf(ACK_OBLIGATION_TABLE), CREATE_OBLIGATION_SQL),
             TableFingerprint(ACK_FRAME_TABLE, ACK_FRAME_COLUMNS, immutableColumnsOf(ACK_FRAME_TABLE), CREATE_ACK_FRAME_SQL),
+            // GS-STORE-004 (the iOS isle's LAW ONE, APPLIED HERE IN ADVANCE): THE SCHEMA IS DESCRIBED IN MORE PLACES
+            // THAN ONE, and adding a table to ALL_TABLES is NOT adding it to the schema -- on the other isle the
+            // FROZEN FINGERPRINT'S OWN LIST was the fourth place and the one that mattered, and it cost four rounds
+            // to find. THIS LIST IS THAT PLACE HERE.
+            TableFingerprint(TOMBSTONE_TABLE, TOMBSTONE_COLUMNS, immutableColumnsOf(TOMBSTONE_TABLE), CREATE_TOMBSTONE_SQL),
         ),
     )
 
@@ -513,7 +545,8 @@ internal object StoreSchema {
      *  only its revision advanced) or drifts from it and is refused before any write. */
     fun migrationPlan(from: Int, creatingTables: Boolean, supportedMax: Int): List<MigrationStep> {
         if (from >= supportedMax) return emptyList()
-        val creates = listOf(CREATE_SQL, CREATE_DELIVERY_SQL, CREATE_OBLIGATION_SQL, CREATE_ACK_FRAME_SQL)
+        val creates = listOf(CREATE_SQL, CREATE_DELIVERY_SQL, CREATE_OBLIGATION_SQL, CREATE_ACK_FRAME_SQL,
+                             CREATE_TOMBSTONE_SQL)
         return (from until supportedMax).map { revision ->
             val statements: List<String> = when {
                 // THE FIRST DDL-BEARING EDGE -- AND ONLY FOR A FILE THAT ALREADY STOOD: an existing v7 file
@@ -521,6 +554,8 @@ internal object StoreSchema {
                 // (the first edge carrieth `creates`), so an ALTER there would meet a table that already hath
                 // them. The iOS twin carrieth the same guard (`revision == 7 && !creatingTables`).
                 revision == 7 && !creatingTables -> RETENTION_ALTER_SQL
+                // THE SECOND DDL-BEARING EDGE, guarded exactly as the first learned it must be.
+                revision == 8 && !creatingTables -> listOf(CREATE_TOMBSTONE_SQL)
                 revision == from && creatingTables -> creates
                 else -> emptyList()
             }
@@ -822,6 +857,10 @@ internal class DatabaseMigrationExecutor(
             // IF ABSENT": a token-parsed ADD COLUMN whose column standeth is skipped. The iOS executor carrieth
             // exactly this rule, so the two engines agree on the same law.
             if (columnIsAlreadyPresent(statement)) continue
+            // GS-STORE-004 (the iOS LAW TWO, APPLIED HERE IN ADVANCE): a `CREATE TABLE` whose table ALREADY
+            // STANDETH is SKIPPED -- the migration courts plant a current-DDL file stamped DOWN, and a blind CREATE
+            // would fail and roll the whole edge back (NINE ASSERTIONS ACROSS TWO COURTS on the other isle).
+            if (tableIsAlreadyPresent(statement)) continue
             // GS-STORE-004: A FAILED STATEMENT NAMETH ITSELF. The engine's own `Failed` result carrieth the STAGE
             // and the exception's TYPE but not its text, and a refusal that hideth WHICH statement failed cost
             // this programme a round of reading it could have spent fixing. The statement is wrapped, so the
@@ -834,6 +873,22 @@ internal class DatabaseMigrationExecutor(
                         " -- THE GUARD SAW: $guardReport", e)
             }
         }
+    }
+
+    /** GS-STORE-004: TRUE IFF [statement] is a `CREATE TABLE <t>` whose table ALREADY standeth -- the iOS twin of
+     *  this rule. Tokens on a lowercased view, never a regex over identifiers. */
+    private fun tableIsAlreadyPresent(statement: String): Boolean {
+        val tk = statement.lowercase().trim().split(' ', '\t', '\n').filter { it.isNotEmpty() }
+        if (tk.size < 3 || tk[0] != "create" || tk[1] != "table") return false
+        var i = 2
+        if (tk[i] == "if") i += 2
+        if (i >= tk.size) return false
+        val name = tk[i].trimEnd(';', '(', '"')
+        return runCatching {
+            db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name = ?", arrayOf(name)).use { rs ->
+                rs.moveToNext()
+            }
+        }.getOrDefault(false)
     }
 
     /** TRUE IFF [statement] is an `ALTER TABLE <t> ADD COLUMN <c>` whose column ALREADY standeth in <t>. Tokens
