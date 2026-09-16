@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 270 -- the WHOLE confirmation round witnessed, and a FALSE CLAIM of mine corrected in the open
+
+**Witnessed end to end, with no court calling either door**: the application **issues** the challenge at the trusted hour (round 269), the peer's transport **answers** it (the road at `takeInboundKeyConfirmation → answerKeyConfirmation`, **line 1948**), the issuer's consumer **matches and consumes** the echo, and only then is application readiness published. `testAndroid01_theWholeConfirmationRoundRunnethItself` **passes**, and the whole Android lane runs **1202 tests / 0 failed twice**.
+
+**And the correction matters more than the arm.** The round-269 entry claimed *"the responder's answering road hath no production caller"*. **That was never measured.** What I actually ran was a grep for the **name** in `src/main` — which found the **definition** — and from a count of **names** I wrote a conclusion about **callers**. The road is called at **line 1948**; the owed proof is **withdrawn**, and the finding is **stronger** for the correction: with the issuer's landing *and* this answering road, the round runs itself.
+
+**The lesson, recorded because this span has now met it twice**: *a grep for a name is not a measurement of callers.* (The first time, four candidate records carried control claims without re-measuring them.) A claim inherited is a claim unproven; **a claim invented is worse.**
+
 ## Rounds 267-269 -- ANDROID-01: BOTH HALVES BUILT, and an ordering defect found by refusing to call a timed-out arm "bookkeeping"
 
 **The question I framed at round 267 — and did not answer by editing the test**: *why did HS3 cease to travel once the application began issuing the challenge?* The answer, measured: the first landing issued the challenge **inline**, nesting a `runBlocking` **inside the initiator's HS3-write handler**, and both **contended for the same egress**. Deferring the issuance onto the transport's own scope — which preserves the ordering that matters (the trusted hour is reached, the challenge follows) — made **T23 wholly green: 16 arms, 0 failures**, *including* the arm that had timed out. **It was a real defect, not a court premise.** Had I called it bookkeeping and edited the arm, I would have erased a defect in my own landing — *the exact species this programme exists to eliminate.*
