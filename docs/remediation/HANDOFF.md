@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 221 -- GS-RUNTIME-001 step 4's INBOUND WAKE lands; step 5's admission road measured as already satisfied
+
+- **Inbound wake**: a frame reaching the generic durable road in `ingestInbound` wakes the worker **for its own relation**, **gated on the trusted mapping — an untrusted sender is not served and nothing is guessed**; event wakes are counted apart from the deadline's turns.
+- **Witness**: `testSR00e_…` — a stranger's frame wakes nothing (0); the same frame from a peer whose trusted event wrote the mapping wakes the worker (1).
+- **Step 5 measured, not assumed**: `send(clear:)` → `reductionSendClear`, and `reductionSend` calls the **same** function — the code's own words: the sealed control travels *"over the selfsame reservation, the selfsame seal and the selfsame pump"*. **So the ACK batches ride the `RecordWriter`'s own admission, not a bypass.**
+- **Measured**: **full iOS lane 1218 / 0**. Remaining: the *newly committed forward work* wake, step 5's relation/cancellation recheck before hand-off, step 6's rebuild/drain — **readiness false throughout**.
+
 ## Round 220 -- GS-RUNTIME-001 step 4's PERIODIC DEADLINE lands; its witness caught a leak in my own code
 
 - **Wiring**: `MeshNode` owns a **monotonic periodic deadline** (`armAckTurnDeadline`/`cancelAckTurnDeadline`) running **one bounded turn for every trusted relation** over the relation mapping (*the mapping is the set of live relations*); the runtime arms it (30 s), the node cancels it; **arming is idempotent** so two timers can never retire each other's turns.

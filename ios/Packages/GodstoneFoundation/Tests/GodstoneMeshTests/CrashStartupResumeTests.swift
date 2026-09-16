@@ -178,6 +178,34 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// GS-RUNTIME-001 step 4's **INBOUND WAKE** -- and the law that A SENDER WITH NO TRUSTED RELATION IS NOT
+    /// SERVED, because the wake is gated on the relation mapping and nothing is guessed.
+    func testSR00e_AnInboundRequestWakethTheWorkerForItsOwnRelationOnly() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00e_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00e_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        let handle = UUID()
+        let nodeId = Data(repeating: 0x61, count: 16)
+        let stranger = Data(repeating: 0x62, count: 16)
+        let frame = FrameV2(type: .message, msgId: Data(repeating: 7, count: 16),
+                            routingTag: Data(repeating: 0, count: 4), ttl: 4,
+                            hopCount: 0, flags: 0, payload: Data(repeating: 9, count: 32))
+
+        _ = runtime.meshNode.ingestInbound(frame, receivedFrom: stranger)
+        XCTAssertEqual(runtime.meshNode.ackEventWakesForTest(), 0,
+                       "A SENDER WITH NO TRUSTED RELATION MUST NOT BE SERVED: the wake is gated on the relation "
+                       + "mapping, and nothing is guessed")
+
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId)
+        _ = runtime.meshNode.ingestInbound(frame, receivedFrom: nodeId)
+        XCTAssertEqual(runtime.meshNode.ackEventWakesForTest(), 1,
+                       "GS-RUNTIME-001 step 4: AN INBOUND REQUEST MUST WAKE THE WORKER FOR ITS OWN RELATION")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

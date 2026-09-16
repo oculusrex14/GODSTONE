@@ -83,6 +83,10 @@ public final class MeshNode {
     private let ackTurnQueue = DispatchQueue(label: "io.godstone.mesh.ackturn")
     private var ackTurnsRun = 0
     internal func ackTurnsRunForTest() -> Int { ackTurnsRun }
+    /// GS-RUNTIME-001 step 4: the EVENT wakes (readiness, inbound request), counted apart from the DEADLINE's
+    /// turns so that a witness can tell which wake it is judging.
+    private var ackEventWakes = 0
+    internal func ackEventWakesForTest() -> Int { ackEventWakes }
 
     /// T42: the per-TrustedPeer bounded sync pump and the typed dispatcher. Both
     /// are ACTIVE by default (the default pump is built lazily from this node's
@@ -957,6 +961,14 @@ public final class MeshNode {
             return false
         case .message, .sos:
             break   // the generic durable road below
+        }
+        // GS-RUNTIME-001 step 4: **AN INBOUND REQUEST WAKETH THE WORKER FOR ITS OWN RELATION.** A frame that
+        // reacheth the generic durable road is a message from a peer; a peer that requesteth or awaiteth an ACK
+        // must have the worker woken FOR THAT EXACT NODE ID -- and the wake is gated on the TRUSTED RELATION
+        // MAPPING, so A SENDER WITH NO TRUSTED RELATION IS NOT SERVED AND NOTHING IS GUESSED.
+        if handleForNodeId[receivedFrom] != nil {
+            ackEventWakes += 1
+            _ = drainAckWorkOnce(nodeId: receivedFrom)
         }
         let relay = router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
                                   receivedFrom: receivedFrom)
