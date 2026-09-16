@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 236 -- the two remaining ANDROID event wakes land, gated on the pump's own schedule
+
+- **Wiring** (the twin of rounds 221/227): the **forward-work** wake sits in `ingestInbound`'s `DispatchVerdict.Ack` case on an **accepted** candidate; the **inbound** wake sits on the generic durable road. **Both are gated on `ackPump?.isScheduled(fromPeer) == true` — the pump's own schedule**, so an unready relation is not served; *the Swift twin used a hand-kept mapping for the same purpose, and this gate is the pump's own state rather than a copy of it*. Each wake launches one bounded turn on the node's scope, so the ingest road never awaits a radio send.
+- **My witness arm was wrong by one, and the probe said so plainly**: it asserted **two** event wakes where the isle carries **three** — round 233's readiness wake counts too. *A court that asserts a number it did not count will redden on the next honest change*; the arm now names all three.
+- **Measured**: android `:mesh` **FORCED 1195 / 0 / 0**; the eight-arm source witness green; courts 603 OK.
+- **Remaining on that isle**: the **relation recheck** — whose blocker is now measured and named: the readiness flow carries only the **node id**, so the generation must come from the session manager's per-peer binding, and **no such accessor has been measured yet** — plus the instrumentation road.
+
 ## Round 235 -- the ANDROID drain order repaired: TWO twinned defects found, not one
 
 - **Defect (a), the invalidator**: `MeshRuntimeInvalidator` held no node — it closed both stores while the ACK workers could still run, and round 233's collectors made that live. It now **holds the node** and calls `node?.stop()` **before** the invalidations and closures — *the order is the law*.

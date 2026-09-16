@@ -114,6 +114,27 @@ class AndroidAckWiringTest(unittest.TestCase):
                         "GS-RUNTIME-001 step 6: THE CANCEL MUST PRECEDE THE `isStarted` GUARD -- the Swift witness "
                         "watched the turn census climb 2 -> 7 AFTER stop() because its guard returned early")
 
+    def test_the_two_event_wakes_are_placed_and_gated_on_the_pumps_own_schedule(self):
+        """GS-RUNTIME-001 step 4's last two wakes on this isle: an inbound request and newly committed forward work."""
+        n = NODE.read_text(encoding="utf-8")
+        self.assertIn("ackPump?.isScheduled(fromPeer) == true", n,
+                      "BOTH wakes must be gated on THE PUMP'S OWN SCHEDULE: an unready relation is not served, and "
+                      "nothing is guessed")
+        # **THREE, NOT TWO -- AND THE MEASUREMENT CORRECTED MY OWN ARM: the READINESS wake (round 233's collector)
+        # counteth here as well, beside the inbound request and the newly committed forward work.** A court that
+        # asserteth a number it did not count is a court that will redden on the NEXT honest change.
+        self.assertEqual(3, n.count("ackEventWakes++"),
+                         "THREE event wakes stand on this isle: the readiness, the inbound request, and the newly "
+                         "committed forward work")
+        self.assertIn("ble.applicationLinkReady().collect", n, "the readiness wake (round 233's collector)")
+        ack = n[n.index("is DispatchVerdict.Ack ->"):]
+        ack = ack[:ack.index("return verdict.accepted")]
+        self.assertIn("verdict.accepted && ackPump?.isScheduled(fromPeer) == true", ack,
+                      "the FORWARD-WORK wake belongeth in the Ack case, on an ACCEPTED candidate")
+        road = n[n.index("// GS-RUNTIME-001 step 4's INBOUND WAKE"):]
+        self.assertIn("scope.launch { drainAckWorkOnce(fromPeer) }", road,
+                      "and the INBOUND wake belongeth on the generic durable road")
+
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
         self.assertIn("override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null",

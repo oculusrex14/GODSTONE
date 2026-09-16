@@ -994,9 +994,25 @@ class MeshNode(
                 if (replies.isNotEmpty()) offerControlFrames(replies, destination = fromPeer)
                 return verdict.accepted
             }
-            is DispatchVerdict.Ack -> return verdict.accepted
+            is DispatchVerdict.Ack -> {
+                // GS-RUNTIME-001 step 4's LAST WAKE, THE ANDROID TWIN: **NEWLY COMMITTED FORWARD WORK WAKETH THE
+                // WORKER.** An accepted ACK candidate IS new forward work -- it may have to travel onward -- and
+                // the wake is gated on THE PUMP'S OWN SCHEDULE: a relation the runtime hath not declared ready is
+                // NOT served, and nothing is guessed.
+                if (verdict.accepted && ackPump?.isScheduled(fromPeer) == true) {
+                    ackEventWakes++
+                    scope.launch { drainAckWorkOnce(fromPeer) }
+                }
+                return verdict.accepted
+            }
             is DispatchVerdict.Refused -> return false
             DispatchVerdict.Message, DispatchVerdict.Sos -> Unit   // the generic road below
+        }
+        // GS-RUNTIME-001 step 4's INBOUND WAKE, THE ANDROID TWIN: AN INBOUND REQUEST WAKETH THE WORKER FOR ITS OWN
+        // RELATION -- gated on the pump's own schedule, so an unready relation is not served.
+        if (ackPump?.isScheduled(fromPeer) == true) {
+            ackEventWakes++
+            scope.launch { drainAckWorkOnce(fromPeer) }
         }
         return run {
             val relay = router.onFrameReceived(frame, fromPeer)
