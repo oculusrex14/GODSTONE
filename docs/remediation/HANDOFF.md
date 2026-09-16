@@ -1,3 +1,40 @@
+## Rounds 311-318: GS-STORE-004 lands eight steps, and a five-round chase that ends in ONE named law
+
+**Landed on the iOS isle (each with a measured RED before the repair and a measured lane after):**
+the persisted budget (round 305), the budget READ (306), the continuity judgement (307), the debit written back (310),
+the bounded sweep with atomic retirement (315), the sweep connected to STARTUP (316) and to a RUNTIME CADENCE (317).
+The store court stands at **65/0**; the whole lane at **1248/0**; parity 7/7; symbols 0 unresolved; courts 635.
+
+**The five-round chase (311-315), kept because the METHOD is the deliverable:**
+  311 the sweep was written and SAW NOTHING.
+  312 the instrument answered `scanned=1 spent=0 limit=8 boot=boot-A` -- the row was seen, the clock was injected, and
+      THE PREDICATE JUDGED A ZERO-BUDGET ROW FORWARDABLE.
+  313 the kind mapping was written and documented -- AND IT REGRESSED FOUR GREEN ARMS, so measurement refused it.
+  314 the probe printed `typeCode=0 storedBudget=Optional(604800000) kind=nil`: THE BUDGET WAS ALWAYS CORRECT (seven
+      days exactly) and **TWO RAW-VALUE SPACES WERE TRAVELLING THROUGH ONE PARAMETER**.
+  315 THE PARAMETER BECAME A KIND (`kind: MessageKind?`), converted AT EACH CALLER -- and everything went green.
+
+**THE LAWS PAID FOR IN THIS STRETCH (each with a measurement behind it, now in the ledger):**
+  * A WRITE PERFORMED DURING A READ RUNS ON THE HANDLE ALREADY HELD (round 309: `withDb` inside `withDb` HUNG the court).
+  * A CHANGE IN THE DISCONTINUITY COUNT IS A STATE TRANSITION, NOT A CADENCE EVENT (round 308, found by measurement).
+  * A MAPPING "DECIDED AND DOCUMENTED" IS STILL AN UNMEASURED CLAIM until the arms that already passed are re-run
+    against it (round 313 -- four arms refused it in one run).
+  * TWO RAW-VALUE SPACES MUST NOT TRAVEL THROUGH ONE PARAMETER; convert AT THE BOUNDARY where the space is known
+    (round 314).
+  * A CONNECTION HUNG ON THE WRONG DOOR IS NOT A CONNECTION (round 316: the arm's path never read).
+  * A REFUSAL (OR A GUARD) THAT HIDES ITS REASON COSTS MORE THAN THE CODE IT PROTECTS -- the instrument is worth the
+    round it costs (rounds 300, 312, 314).
+
+**STILL OWED, NAMED (not folded into any claim):** the DURABLE MESSAGE TOMBSTONE (a further schema revision --
+`tombstoneMs` is a DURATION and `tombstoneRows` a CONTRACT CATEGORY with no table behind it); and THE ANDROID MIRROR of
+all eight retention steps, which round 318 MEASURED to be TRANSLATION rather than design: that isle already carries a
+faithful twin of the contract (`store/RetentionClock.kt`) and the revision-8 schema, and its store references the
+contract ZERO times -- the five-step plan is written into
+`GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-004/round318-ANDROID-MIRROR-PLAN.txt`, WITH the round-314 law to be
+applied BEFORE it is re-learned there.
+
+---
+
 ## Rounds 272-286 -- the iOS lane unblocked, a latent witness defect repaired, and GS-STORE-005 LANDED after a five-round walk
 
 **The licence was accepted, and the iOS lane's first measurement was RED** — `ReadinessT72Tests.testW10AFailedSeedIsRecordedAndReproducible` failed *in the full suite* while passing *in isolation*. **Measured to its root**: the probe showed every quantity identical (`inboxRows 4096`, `deliveryAdvances 2701`, `refusals 6`, `census 2001`, `leases 0`) and only the **named** duplicate differing — because `run()` chose it by **dictionary iteration order**. So it was a **witness defect, not a behavioural one**: the campaign's trajectory *is* reproducible, and its replay hint was not. The repair (canonical: the smallest offending key) turned the lane green.
