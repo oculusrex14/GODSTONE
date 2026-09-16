@@ -522,6 +522,8 @@ class MeshNode(
     internal var adaptersOpenedThroughTheOwner = 0
     /** GS-RUNTIME-001 step 3's census: how many platform LOSSES reached the one authority. */
     internal var lifecyclePowerLossesForwarded = 0
+    /** GS-RUNTIME-001 step 3's second census: how many WITHDRAWN PERMISSIONS reached the authority. */
+    internal var lifecyclePermissionRevocationsForwarded = 0
     internal var adaptersClosedThroughTheOwner = 0
     private var adaptersClosed = false
 
@@ -533,9 +535,18 @@ class MeshNode(
         // IOS-06's step 3, THE ANDROID TWIN: **A POWER LOSS REACHETH THE ONE AUTHORITY**, and a healthy state
         // never doth (the transport forwardeth only a LOSS, and this handler forwardeth only what it heareth).
         ble.onAdapterStateChanged = { state ->
-            if (state == AdapterPowerState.POWERED_OFF) {
-                lifecyclePowerLossesForwarded += 1
-                lifecycle.onPowerLoss()
+            // **A POWER LOSS AND A WITHDRAWN PERMISSION ARE BOTH LOSSES, AND EACH TRAVELLETH ITS OWN ROAD TO THE
+            // AUTHORITY** -- which owneth the two terminal words separately, so the graph must not blur them.
+            when (state) {
+                AdapterPowerState.POWERED_OFF -> {
+                    lifecyclePowerLossesForwarded += 1
+                    lifecycle.onPowerLoss()
+                }
+                AdapterPowerState.PERMISSION_REVOKED -> {
+                    lifecyclePermissionRevocationsForwarded += 1
+                    lifecycle.onPermissionRemoved()
+                }
+                else -> Unit
             }
         }
         lifecycle.start()

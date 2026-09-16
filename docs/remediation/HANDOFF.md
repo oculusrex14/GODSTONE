@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 251 -- GS-RUNTIME-001's Android step 3 closed: the permission half, and each loss on its own road
+
+- **Wiring**: a withdrawn permission is **not visible in the adapter broadcast**, so the transport **asks** the API-level question (`BLUETOOTH_CONNECT`), **guarded by the version** (`SDK_INT < 31` answers *held* rather than invented) — a radio reporting `STATE_ON` while the app holds no permission *is* a revocation; both losses are forwarded while `READY` remains **not an event**.
+- **The node**: **each loss travels its own road to the authority** (`onPowerLoss()` / `onPermissionRemoved()`) **with its own census** — two losses, two roads, two censuses, because the authority owns the two terminal words separately.
+- **A lesson about my own instruments, caught by the next honest change**: my round-250 arm **quoted the exact line**, and the next round legitimately widened it, so the arm reddened. *An arm that asserts a line instead of the law will punish every honest edit*; it now requires that both losses are forwarded and that `READY` is not.
+- **Measured**: android `:mesh` **FORCED 1196 / 0 / 0**; the seventeen-arm witness and courts (614) green.
+- **Remaining**: the Wi-Fi plane under the authority (or a recorded reason), and the node-level behavioural witness. **That isle's authority is now constructed and driven, which it was not at round 246.**
+
 ## Round 250 -- GS-RUNTIME-001's Android step 3: the power road is BUILT (it did not exist to be connected)
 
 - **The defect, measured at round 249**: that isle had **no adapter-state signal at all** — no `BluetoothAdapter`, no `ACTION_STATE_CHANGED`, no receiver — so the authority's `onPowerLoss` had nothing to call it; **the authority's three events have no caller anywhere on that isle, not even a court's**.

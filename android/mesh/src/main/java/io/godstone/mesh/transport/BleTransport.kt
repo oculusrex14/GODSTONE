@@ -269,15 +269,32 @@ class BleTransport(
         override fun onReceive(c: Context?, intent: android.content.Intent?) {
             val state = intent?.getIntExtra(android.bluetooth.BluetoothAdapter.EXTRA_STATE, -1) ?: -1
             val word = when (state) {
-                android.bluetooth.BluetoothAdapter.STATE_ON -> AdapterPowerState.READY
+                // **THE PERMISSION HALF, NAMED AS SUCH: A WITHDRAWN PERMISSION IS *NOT* VISIBLE IN THIS BROADCAST.**
+                // A radio that reporteth STATE_ON while the app no longer holdeth the connect permission is the
+                // observable signature of a revocation, so the permission is ASKED HERE -- at the API level the
+                // platform offereth (31+), guarded by the version, and ABSENT BELOW IT rather than guessed.
+                android.bluetooth.BluetoothAdapter.STATE_ON ->
+                    if (connectPermissionHeld()) AdapterPowerState.READY else AdapterPowerState.PERMISSION_REVOKED
                 android.bluetooth.BluetoothAdapter.STATE_OFF -> AdapterPowerState.POWERED_OFF
                 else -> AdapterPowerState.OTHER
             }
-            // A HEALTHY STATE IS NOT AN EVENT: only a LOSS is forwarded, exactly as the Swift twin requireth.
-            if (word == AdapterPowerState.POWERED_OFF) onAdapterStateChanged?.invoke(word)
+            // A HEALTHY STATE IS NOT AN EVENT: only a LOSS is forwarded, exactly as the Swift twin requireth --
+            // and a WITHDRAWN PERMISSION is a loss just as a power-off is.
+            if (word == AdapterPowerState.POWERED_OFF || word == AdapterPowerState.PERMISSION_REVOKED) {
+                onAdapterStateChanged?.invoke(word)
+            }
         }
     }
     private var adapterReceiverRegistered = false
+
+    /** The API-level permission question, asked only where the platform offereth it (31+), and answered
+     *  "held" below that rather than invented. */
+    private fun connectPermissionHeld(): Boolean {
+        val ctx = context ?: return true
+        if (android.os.Build.VERSION.SDK_INT < 31) return true
+        return ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
 
     override fun start() {
         if (isStarted) return

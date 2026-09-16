@@ -221,8 +221,15 @@ class AndroidAckWiringTest(unittest.TestCase):
         self.assertIn("var onAdapterStateChanged", b, "and one hook must carry the word to the graph")
         recv = b[b.index("adapterStateReceiver = object"):]
         recv = recv[:recv.index("private var adapterReceiverRegistered")]
-        self.assertIn("if (word == AdapterPowerState.POWERED_OFF)", recv,
-                      "**A HEALTHY STATE IS NOT AN EVENT**: only a LOSS is forwarded, exactly as the Swift twin requires")
+        # **THE LAW, NOT THE LINE**: my first draft quoted the exact expression, and the very next round legitimately
+        # widened it (a withdrawn permission is a loss too) -- SO THE ARM REDDENED ON AN HONEST CHANGE. It now
+        # requireth that BOTH LOSSES are forwarded and that `READY` is NOT, which is the law that must hold however
+        # the expression is written.
+        self.assertIn("AdapterPowerState.POWERED_OFF", recv, "a power loss must be forwarded")
+        self.assertIn("AdapterPowerState.PERMISSION_REVOKED", recv, "and a withdrawn permission is a loss too")
+        self.assertIn("onAdapterStateChanged?.invoke(word)", recv)
+        self.assertNotIn("AdapterPowerState.READY ->", recv.split("onAdapterStateChanged")[0],
+                         "**A HEALTHY STATE IS NOT AN EVENT** -- `READY` must never be an arm of the forwarding")
         self.assertIn("registerReceiver", b)
         self.assertIn("unregisterReceiver", b,
                       "and the receiver must be RELEASED with the transport, or it outlives the radio it watches")
@@ -231,6 +238,24 @@ class AndroidAckWiringTest(unittest.TestCase):
                       "and the node must carry that loss to the ONE authority")
         self.assertIn("lifecyclePowerLossesForwarded += 1", n,
                       "with a census, so a witness can measure that it happened")
+
+    def test_a_withdrawn_permission_travelleth_its_own_road(self):
+        """GS-RUNTIME-001 step 3's permission half on this isle: a revocation is NOT visible in the adapter broadcast,
+        so it is asked at the API level -- and it must reach the authority by ITS OWN road, not blurred into the
+        power loss (the authority owns the two terminal words separately)."""
+        b = (MESH / "transport/BleTransport.kt").read_text(encoding="utf-8")
+        self.assertIn("connectPermissionHeld()", b, "the permission must be ASKED, not guessed")
+        self.assertIn("Build.VERSION.SDK_INT < 31", b,
+                      "**and asked only where the platform offereth the question** -- below 31 the answer is 'held' "
+                      "rather than invented")
+        self.assertIn("BLUETOOTH_CONNECT", b)
+        self.assertIn("word == AdapterPowerState.PERMISSION_REVOKED", b,
+                      "a withdrawal is a LOSS and must be forwarded like one")
+        n = (REPO / "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt").read_text(encoding="utf-8")
+        self.assertIn("lifecycle.onPermissionRemoved()", n, "the authority's OWN permission road")
+        self.assertIn("lifecyclePermissionRevocationsForwarded += 1", n, "with its own census")
+        self.assertIn("lifecyclePowerLossesForwarded += 1", n,
+                      "and the power loss keepeth ITS census: TWO losses, TWO roads, TWO censuses")
 
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
