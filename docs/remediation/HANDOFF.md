@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 203 -- **IOS-02's five steps are COMPLETE: FIX_SUBMITTED**
+
+- **The last owed witness already stood**: the carrying-through half of step 2 is witnessed by **six canonical arms** in the mandatory `BleLinkSubstrateTests` battery (`testIosStaleProvisionalTimer_CannotReleaseReplacement` — a stale timer with `expectedGen: 1` answers `.noOp`; the two stale-lease arms; the duplicate-link-info, stale-disconnect and stale-terminal arms). **A clause already witnessed needs a measurement, not a test.**
+- **All five steps**: (1) D2 entered from the physical-duplex reducer (r282); (2) duplicate-callback + immutability (r201, enforced by the type) + carrying-through (r203); (3) whole-record writer, TERMINAL refusal (r199) + resume-under-backpressure (measured r200); (4) trusted-ready challenge initiation (r197); (5) readiness only after matching confirmation + MeshNode route eligibility from the trusted event (r191).
+- **Pending, explicit**: the step-3 witness is **source-level** (the reservation branch is unreachable by any public handle here); the immutability arm's liveness by expectation-bending (the defect cannot compile); and the **shipping wiring sub-task** — `MeshNode` does not itself implement `transportApplicationLinkReady`.
+- **Only an independent audit may write `VERIFIED_FIXED`.**
+
 ## Round 202 -- the immutability arm's negative proof discharged: the law is enforced by the TYPE
 
 - **Attempted the mutation first**: rebinding the hint on a later discovery **does not compile** — `remoteNodeHint` is a **get-only property**. The immutability of the GATT-bound hint is **structural**, not conventional. Mutation reverted in the same breath.
