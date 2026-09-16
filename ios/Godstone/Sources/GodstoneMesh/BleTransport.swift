@@ -2349,7 +2349,20 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // turn'd at the binding of the seat gaineth its reaper.
         conn.markHandshakeEngaged()
         conn.advanceStage(to: .hsOut)
-        return writeHandshakeRecord(.hs1, payload: hs1, toPeripheral: peerId)
+        // IOS-02 step 3: **A RESERVATION REFUSAL ON THE FIRST COUNSEL IS TERMINAL FOR THE RELATION.** The card:
+        // "Queue HS1 via the existing whole-record writer. Treat actual reservation rejection as terminal for
+        // that relation; retain and resume already-admitted records under backpressure instead of inventing
+        // success." The audited body RETURNED this outcome WITHOUT BINDING IT, so a refused first counsel left
+        // a relation ENGAGED WITH NOTHING ON THE WIRE -- an exchange that could never proceed and was never
+        // retired. The outcome is now BOUND, NAMED in the ring, and TERMINAL: the relation closeth exactly as
+        // it doth for every other failure at this door.
+        let verdict = writeHandshakeRecord(.hs1, payload: hs1, toPeripheral: peerId)
+        if verdict != .admitted {
+            recordRejection(peerId: peerId, site: "hs.begin",
+                            reason: "the first counsel was refused by the writer: " + String(describing: verdict))
+            closeInitiatorRelation(peerId)
+        }
+        return verdict
     }
 
     // MARK: - T23 the handshake failure, duplicate and key-confirmation policy

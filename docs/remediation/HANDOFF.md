@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 199 -- **IOS-02 step 3's first-counsel clause LANDS**, and its witness moved into the canonical lane
+
+- **Repair**: `beginTrustedHandshake` now binds `let verdict = writeHandshakeRecord(.hs1, …)` and, **on a refusal, names it in the ring and closes the relation exactly** — a refused first counsel is *terminal* instead of leaving a relation engaged with nothing on the wire.
+- **The witness went RED → GREEN and MOVED** from `audit_probes/python/` into `tools/readiness/tests/`, per the probes' own rule.
+- **Measured**: **full iOS lane 1210 / 0**; python suite **596 OK**; probes 12 OK; control PASSED; parity repo rc 0; symbols 0 unresolved; digests 348/348. Android lanes **not re-measured, not claimed**.
+- **IOS-02 remains PARTIAL**, with exactly two things left: (a) step 2's capture clause (the relation key and immutable hint carried through queued work, completions and teardown); (b) step 3's second clause — *resume already-admitted records under backpressure* — which wants a witness of its own.
+
 ## Round 198 -- IOS-02 step 3's first-counsel clause measured; its witness parked (the behavioural road is unreachable here)
 
 - **Defect measured in the production text**: `beginTrustedHandshake` ends `return writeHandshakeRecord(.hs1, …)` — the outcome is **never bound or inspected**, and the connection is already marked engaged (`markHandshakeEngaged()`, `advanceStage(to: .hsOut)`). A refused first counsel leaves a relation **in handshake with nothing on the wire**.
