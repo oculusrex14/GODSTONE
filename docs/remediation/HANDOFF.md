@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 212 -- the ACK signer's seam is HARNESS-SHAPED: step 2's precondition is a DESIGN change, not a new file
+
+- **Measured**: `AckSignerSeam.signingSeed(msgId:recipientNodeId:)` returns a **seed, not a signature**, and the driver's loop **takes that seed and builds the signed frame itself** (`AckObligationStore.swift:879-887`).
+- **Production cannot and must not satisfy it**: `MeshIdentity` keeps `signingKey` **private** and offers `sign(message:)` but **no seed accessor** — handing out the pinned seed is what a production identity must not do. The harness can, because it generates its own material (**`TestAckSigner`: "HARNESS SUPPORT AND NOT A DEVICE RESULT"**).
+- **The precondition, named**: make the seam **signature-shaped** (`sign(preimage:)`, store no longer deriving the signature from exported material) or let the driver accept a signer that signs internally — on **both isles** (Android carries the twin) — proven by a witness that signs over the **pinned** identity and verifies through the existing authenticator. **Writing a seed-exporting "production signer" would be a key-material breach dressed as compliance**, and this record exists so no later round takes that road.
+
 ## Round 211 -- GS-RUNTIME-001 step 2's dependency chain measured: ONE HARD BLOCKER, named
 
 - **The harness composes**: `InMemoryAckStore` (not the durable store), `AckObligationDriver` with **`TestAckSigner`**, `DurableAckPump`, `AckDispatcher` over the tracker, and `node.recipientInbox = inbox` (`ComposedRuntime.swift:321–376`).
