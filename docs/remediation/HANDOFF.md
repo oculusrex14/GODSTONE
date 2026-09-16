@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 227 -- GS-RUNTIME-001's iOS half COMPLETE (step 4's last wake); the finding stands PARTIAL because the ANDROID half is measured unwired
+
+- **Last wake**: an accepted ACK candidate is new forward work, so `ingestInbound`'s `.ack` case wakes the worker for that relation — **gated on the trusted mapping, so an untrusted sender is not served**. Witness: a well-formed ACK from a **stranger** wakes nothing; from a mapped peer it wakes the worker.
+- **The iOS half, step by step**: the ownership chain (r209); the four owners in the production runtime + the seam's shape repaired (r215–217); the readiness subscription (r218); **all four wakes** — initial inventory, monotonic periodic deadline (whose witness caught a leak in my code), inbound request, newly committed forward work (r219–221, 227); the relation **recheck** + `RecordWriter` admission measured + the **wipe** witness (r223–224); the **rebuild** after reopen and the **drain before key erasure** (r225–226, RED kept separate).
+- **PARTIAL, not FIX_SUBMITTED**: no production Android code collects `applicationLinkReady()` (measured r209 — declaration only, not one collector), and `MeshRuntime.kt`/`MeshModule.kt` hold no ACK pump or inbox in the live path. **One isle is wired and the other is measured to be wired nowhere**; calling it submitted would be the over-claim this programme refuses elsewhere.
+- **Measured**: **full iOS lane 1223 / 0**. Live counts move to 35 FIX_SUBMITTED / 14 OPEN / 5 PARTIAL.
+
 ## Round 226 -- GS-RUNTIME-001 step 6's DRAIN-BEFORE-KEY-ERASURE: the RED was real, and the repair is green
 
 - **The defect, measured in the production text**: `invalidateForWipe()` closed both stores **while the node's ACK worker may still have been running** — the invalidator **did not hold the node**, and a search found **no production call to `meshNode.stop()` anywhere**.

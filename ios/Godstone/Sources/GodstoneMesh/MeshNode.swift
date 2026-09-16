@@ -963,6 +963,14 @@ public final class MeshNode {
             if !replies.isEmpty { offerControlFrames(replies, destination: receivedFrom) }
             return accepted
         case .ack(let dispatch):
+            // GS-RUNTIME-001 step 4's LAST WAKE: **NEWLY COMMITTED FORWARD WORK WAKETH THE WORKER FOR THAT
+            // RELATION.** An accepted ACK candidate IS new forward work -- it may have to travel onward -- and
+            // the wake is gated on the TRUSTED RELATION MAPPING, so an untrusted sender is not served and
+            // nothing is guessed.
+            if dispatch.accepted, handleForNodeId[receivedFrom] != nil {
+                ackEventWakes += 1
+                _ = drainAckWorkOnce(nodeId: receivedFrom)
+            }
             return dispatch.accepted
         case .refused:
             return false

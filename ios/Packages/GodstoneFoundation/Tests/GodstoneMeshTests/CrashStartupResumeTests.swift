@@ -371,6 +371,38 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// GS-RUNTIME-001 step 4's LAST WAKE: **NEWLY COMMITTED FORWARD WORK WAKETH THE WORKER FOR THAT RELATION** --
+    /// an accepted ACK candidate is new forward work, and it may have to travel onward.
+    func testSR00j_NewlyCommittedForwardWorkWakethTheWorkerForItsOwnRelation() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00j_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00j_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        let handle = UUID()
+        let nodeId = Data(repeating: 0xB1, count: 16)
+        let stranger = Data(repeating: 0xB2, count: 16)
+        // A WELL-FORMED ACK FRAME, admitted from its sender as a candidate (no key standeth for its claimed
+        // recipient here, so it entereth as a bounded opaque copy rather than as a verified one):
+        let ack = try AckFrame.build(msgId: Data(repeating: 0x33, count: 16),
+                                     signature: Data(repeating: 0x7C, count: 64),
+                                     recipientNodeId: Data(repeating: 0xB3, count: 16),
+                                     routingTag: Data(repeating: 0, count: 4), ttl: ackInitialTtl).encode()
+
+        _ = runtime.meshNode.ingestInbound(try XCTUnwrap(FrameV2.decode(ack)), receivedFrom: stranger)
+        XCTAssertEqual(runtime.meshNode.ackEventWakesForTest(), 0,
+                       "A SENDER WITH NO TRUSTED RELATION MUST NOT BE SERVED")
+
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
+        let before = runtime.meshNode.ackEventWakesForTest()
+        _ = runtime.meshNode.ingestInbound(try XCTUnwrap(FrameV2.decode(ack)), receivedFrom: nodeId)
+        XCTAssertGreaterThan(runtime.meshNode.ackEventWakesForTest(), before,
+                             "GS-RUNTIME-001 step 4: NEWLY COMMITTED FORWARD WORK MUST WAKE THE WORKER FOR ITS OWN "
+                             + "RELATION -- and nothing else in production ever did")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")
