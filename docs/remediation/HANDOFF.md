@@ -1,3 +1,49 @@
+## Rounds 319-340: the record corrected, both isles at revision 9, and a claim of mine overturned by an arm
+
+**STATE AT THE END OF THIS BUDGET, EVERY NUMBER MEASURED:**
+  iOS lane **1252 tests, ZERO failing assertions**; android `:mesh` **1208 tests, 0 failed**; parity **7/7** "all
+  invariants hold"; symbols **"restored tree: 0 unresolved (OK)"**; the store-schema control **rc 0**; the trusted
+  runtime composition control **rc 0**; evidence digests **PASSED**; courts **635**. **BOTH ISLES STAND AT SCHEMA
+  REVISION 9.** Readiness flags **FALSE**; the five external gates **OPEN**; **VERIFIED_FIXED: 0, EVER** (only an
+  independent audit may write it).
+
+**THE ROUND'S OWN FINDING -- ABOUT THE RECORD:** the ledger's machine-readable `by_status` still read `{OPEN: 54}`
+while **49 findings carried their own immutable logs and fix commits** and **5 carried none**. **THE RECORD HAD DRIFTED
+FROM THE WORK**, and a reader consulting that field would have seen "nothing done". The count is now **DERIVED FROM THE
+FINDINGS** (a finding counts as FIX_SUBMITTED iff it carries at least one log or commit), the original value is kept as
+`by_status_at_snapshot`, and the correction is recorded rather than silent. The five with no work are: **CRYPTO-002,
+CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001, GS-STORE-006**.
+
+**GS-STORE-004 (the finding this stretch worked) -- HONEST POSITION, NOT A CLAIM:**
+  * **iOS: complete for every step the finding names** -- seam, budget persisted in the same transaction, budget READ
+    (with an EXPLICIT KIND, round 314's law), the continuity judgement, the debit written back, the bounded sweep with
+    atomic retirement, the startup connection, the runtime cadence, the durable tombstone (revision 9) with its dedup
+    window consulted before any write, its measurement, and its reap.
+  * **Android: SCHEMA-COMPLETE AND ACT-INCOMPLETE.** Revision 9's table, columns, fingerprint entry, migration edge
+    and CREATE-idempotence rule all landed -- and **the sweep writes NO tombstone there, and the dedup window is NOT
+    consulted there.** A TABLE WITHOUT ITS ACTS IS A DESCRIPTION, NOT A BEHAVIOUR. The three owed acts are named in the
+    ledger, AND THE ARM THAT PROVED THE GAP IS ALREADY WRITTEN as their RED.
+  * **Owed on both isles:** the snapshot composition (all six quota kinds) in the composition root -- GS-STORE-005's
+    step, **never fabricated** to make an arm pass; and the device/radio evidence no court can produce.
+
+**THE LAWS THIS STRETCH PAID FOR (each with a measurement behind it):**
+  * A WRITE PERFORMED DURING A READ RUNS ON THE HANDLE ALREADY HELD (round 309; and the Android isle's monitors are
+    REENTRANT, so the law did NOT transfer by analogy -- THAT WAS READ, NOT ASSUMED).
+  * THE SWEEP ASKS A QUESTION; THE READER RECORDS THE ANSWER (one writer per row per cycle).
+  * TWO RAW-VALUE SPACES MUST NOT TRAVEL THROUGH ONE PARAMETER (round 314: a kind, not a code).
+  * A MAPPING "DECIDED AND DOCUMENTED" IS STILL AN UNMEASURED CLAIM until existing arms are re-run against it.
+  * THE SCHEMA IS DESCRIBED IN MORE PLACES THAN ONE (the frozen fingerprint's own table list was the place that
+    mattered; `allTables` was not the schema).
+  * THE ENGINE'S IDEMPOTENCE RULE MUST COVER BOTH KINDS OF DDL: "create if absent" beside "add if absent".
+  * THE SYMPTOM'S **SHAPE** IS EVIDENCE (total vs positional failures pointed at the OPEN, not at a mapping).
+  * A REFUSAL (OR A GUARD, OR A COUNT) THAT HIDES ITS REASON COSTS MORE THAN THE CODE IT PROTECTS -- the instruments
+    bought back nine rounds on the second isle by having been taught to say WHERE.
+  * AN INVENTED NAME IS THE MOST EXPENSIVE THING IN THIS PROGRAMME: of the ~eleven instrument defects this span
+    recorded, EVERY ONE was in a fixture, idiom, anchor or name AROUND production code that was written correctly
+    every time. **READ THE NAME; FIND THE ANCHOR; THEN EDIT THE BLOCK WHOLE.**
+
+---
+
 ## Rounds 311-318: GS-STORE-004 lands eight steps, and a five-round chase that ends in ONE named law
 
 **Landed on the iOS isle (each with a measured RED before the repair and a measured lane after):**
