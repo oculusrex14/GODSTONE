@@ -1634,4 +1634,25 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET ttl = 0", []), 0,
                        "the RUNTIME cadence must retire rows spent since the last sweep, not only at startup")
     }
+
+    /// GS-STORE-004, the finding's own words: expiration must "create any required durable replay/ACK tombstones".
+    /// THE DISCRIMINATING LAW: a retired row must leave A DURABLE TOMBSTONE whose lifetime is the POLICY'S OWN
+    /// `tombstoneMs` (eight days) -- because a row retired with NOTHING behind it can be REPLAYED and RE-ACCEPTED,
+    /// and retirement would then silently re-open the door it closed. RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_retirementLeavethADurableTombstone() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        var now: Int64 = 6_000_000
+        s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(13, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
+        XCTAssertEqual(s.sweepExpired(limit: 8), 1, "the sweep retires the spent row")
+        XCTAssertNil(s.retentionCheckpointForTest(f.msgId).remainingMs, "and the row is gone from storage")
+
+        let tomb = s.tombstoneForTest(f.msgId)
+        XCTAssertNotNil(tomb, "RETIREMENT MUST LEAVE A DURABLE TOMBSTONE -- else a replay is re-accepted")
+        XCTAssertEqual(tomb?.expiresAtMono, now + Int64(RetentionPolicy.tombstoneMs),
+                       "and its lifetime is the POLICY'S OWN tombstone lifetime, not a number chosen here")
+        XCTAssertEqual(tomb?.bootIdentity, "boot-A", "carrying the continuity identity of the boot that retired it")
+    }
 }

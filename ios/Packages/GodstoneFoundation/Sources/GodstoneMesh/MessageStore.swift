@@ -231,7 +231,14 @@ internal enum StoreSchema {
     /// audit's own remediation step asketh for exactly that ("add the blueprint retention checkpoint fields VIA A
     /// REAL MIGRATION"). The destructive drop-and-recreate that once served such bumps stayeth gone (GS-STORE-003):
     /// an existing file is ALTERED, never discarded, and a FUTURE file is still refused fail-closed untouched.
-    static let dbVersion: Int32 = 8
+    /// GS-STORE-004: bumped **8 -> 9** to add the DURABLE MESSAGE TOMBSTONE (`tombstones`). THE REASON IS THE DEDUP
+    /// LAW: a retired row that leaveth NOTHING behind can be REPLAYED AND RE-ACCEPTED, so retirement would silently
+    /// RE-OPEN THE DOOR IT CLOSED -- and the finding asketh that expiration "create any required durable replay/ACK
+    /// tombstones". The ACK side already carrieth its own namespaces; THE MESSAGE SIDE CARRIETH NONE, while the
+    /// store's own quota kind (`tombstoneRows`) hath always DESCRIBED a table that did not exist. This revision
+    /// maketh that description true. THE SECOND DDL-BEARING EDGE (8 -> 9), and cheap because the engine's idempotent
+    /// "add if absent" rule, measured at the first such edge, already liveth in every executor.
+    static let dbVersion: Int32 = 9
     static let table = "held_frames"
     static let colMsgId = "msg_id"
     static let colType = "type"
@@ -285,6 +292,15 @@ internal enum StoreSchema {
         """
 
     /// Idempotent create for engines that reopen an existing file.
+    static let createTombstoneSql = """
+        CREATE TABLE \(tombstoneTable) (
+            \(colTMsgId) BLOB PRIMARY KEY NOT NULL,
+            \(colTExpiresAtMono) INTEGER,
+            \(colTBootIdentity) TEXT,
+            CHECK (length(\(colTMsgId)) = 16)
+        )
+        """
+
     static let createSqlIfNotExists =
         createSql.replacingOccurrences(of: "CREATE TABLE ", with: "CREATE TABLE IF NOT EXISTS ")
 
@@ -430,6 +446,11 @@ internal enum StoreSchema {
     //     as for delivery_state. Mirrors Android StoreSchema's T83 block.
     // ------------------------------------------------------------------
     static let ackObligationTable = "ack_obligations"
+    /// GS-STORE-004: the durable message tombstone -- the table the quota kind `tombstoneRows` hath always described.
+    static let tombstoneTable = "tombstones"
+    static let colTMsgId = "msg_id"
+    static let colTExpiresAtMono = "expires_at_mono"
+    static let colTBootIdentity = "boot_identity"
     static let colOMsgId = "msg_id"
     static let colORecipient = "recipient_node_id"
     static let colOGeneration = "identity_generation"
@@ -500,7 +521,7 @@ internal enum StoreSchema {
     // ------------------------------------------------------------------
 
     /// Every table this file owns.
-    static let allTables = [table, deliveryTable, ackObligationTable, ackFrameTable]
+    static let allTables = [table, deliveryTable, ackObligationTable, ackFrameTable, tombstoneTable]
 
     /// The frozen columns, named by the SAME constants the DDL interpolates. A drift
     /// between these lists and the DDL cannot pass unnoticed: a fresh file is created
@@ -513,6 +534,9 @@ internal enum StoreSchema {
     static let obligationColumns = [colOMsgId, colORecipient, colOGeneration, colORemaining, colOState]
     static let ackFrameColumns = [colKAckKey, colKMsgId, colKRecipient, colKSignature,
                                   colKEncoded, colKReceivedFrom, colKRemain, colKClass]
+    /// GS-STORE-004: the tombstone's columns -- the message it standeth for, WHEN it expireth (in MONOTONIC time,
+    /// like every other retention figure here), and the continuity identity of the boot that retired it.
+    static let tombstoneColumns = [colTMsgId, colTExpiresAtMono, colTBootIdentity]
 
     /// The immutable-column domain per table: the cells a migration may NEVER rewrite
     /// (message ids, signed bytes, the recipient binding, ACK signatures). The digest
@@ -522,9 +546,27 @@ internal enum StoreSchema {
         deliveryTable: [colDMsgId, colDExpected],
         ackObligationTable: [colOMsgId, colORecipient],
         ackFrameTable: [colKAckKey, colKMsgId, colKRecipient, colKSignature],
+        /// A tombstone's only immutable cell is the id it standeth for -- it is a KEY, not a payload: there is
+        /// nothing else in the row that a replay could corrupt.
+        tombstoneTable: [colTMsgId],
     ]
 
     static func immutableColumnsOf(_ name: String) -> Set<String> { immutableColumns[name] ?? [] }
+
+    /// GS-STORE-004 (round 336): WHICH PART OF A FINGERPRINT DIFFERETH -- names, columns, the immutable domain, or
+    /// the exact DDL. Written because "the fingerprint drifted" is a refusal that hideth its reason.
+    static func fingerprintDifference(_ frozen: SchemaFingerprint, _ observed: SchemaFingerprint) -> String {
+        if frozen.tables.count != observed.tables.count {
+            return "table COUNT (frozen=\(frozen.tables.map(\.name)) observed=\(observed.tables.map(\.name)))"
+        }
+        for (f, o) in zip(frozen.tables, observed.tables) {
+            if f.name != o.name { return "table NAME f=\(f.name) o=\(o.name)" }
+            if f.columns != o.columns { return "COLUMNS of \(f.name): frozen=\(f.columns) observed=\(o.columns)" }
+            if f.immutableColumns != o.immutableColumns { return "IMMUTABLE DOMAIN of \(f.name)" }
+            if f.ddl != o.ddl { return "DDL of \(f.name): frozen=[\(f.ddl)] observed=[\(o.ddl)]" }
+        }
+        return "no difference found by inspection (ordering?)"
+    }
 
     /// The frozen accepted fingerprint: names + columns + immutable domain + the exact
     /// DDL, every part read from THIS type's own constants.
@@ -537,6 +579,14 @@ internal enum StoreSchema {
                          immutableColumns: immutableColumnsOf(ackObligationTable), ddl: createObligationSql),
         TableFingerprint(name: ackFrameTable, columns: ackFrameColumns,
                          immutableColumns: immutableColumnsOf(ackFrameTable), ddl: createAckFrameSql),
+        // GS-STORE-004 (round 336): THE TOMBSTONE TABLE, IN THE **FROZEN** FINGERPRINT TOO. Round 336's instrument
+        // named the omission in one line -- `frozen=[held_frames, delivery_state, ack_obligations, ack_frames]` while
+        // `observed=[..., tombstones]` -- AND THE LESSON IS THE ONE THIS REVISION KEPT TEACHING AT EVERY LEVEL: A
+        // LIST THAT DESCRIBETH THE SCHEMA EXISTETH IN **MORE THAN ONE PLACE**, and adding a table to one of them
+        // (here `allTables`) is NOT adding it to the schema. THIS very list is the second such place; the columns
+        // list, the immutable domain and the creates list were the others.
+        TableFingerprint(name: tombstoneTable, columns: tombstoneColumns,
+                         immutableColumns: immutableColumnsOf(tombstoneTable), ddl: createTombstoneSql),
     ])
 
     /// The ordered plan from an observed revision to the current one: ONE edge per
@@ -556,7 +606,8 @@ internal enum StoreSchema {
     /// any write.
     static func migrationPlan(from: Int, creatingTables: Bool, supportedMax: Int) -> [MigrationStep] {
         guard from < supportedMax else { return [] }
-        let creates = [createSql, createDeliverySql, createObligationSql, createAckFrameSql]
+        let creates = [createSql, createDeliverySql, createObligationSql, createAckFrameSql,
+                       createTombstoneSql]
         return (from..<supportedMax).map { revision in
             let statements: [String]
             if revision == 7 && !creatingTables {
@@ -565,6 +616,11 @@ internal enum StoreSchema {
                 // the four checkpoint fields by the first edge, so an ALTER here would be handed a table that
                 // already carrieth them and refuse it. A fresh file CREATETH; an existing v7 file ALTERETH in.
                 statements = StoreSchema.retentionAlterSql
+            } else if revision == 8 && !creatingTables {
+                // THE SECOND DDL-BEARING EDGE -- AND ONLY FOR A FILE THAT ALREADY STOOD, exactly as the first one
+                // learned: a brand-new file is CREATED with the tombstones table by the first edge, so an ALTER or
+                // a CREATE here would meet a table that already standeth.
+                statements = [StoreSchema.createTombstoneSql]
             } else if revision == from && creatingTables {
                 statements = creates
             } else {
@@ -1071,6 +1127,24 @@ public final class SqliteMessageStore: MessageStore {
                 sqlite3_bind_blob(d, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
                 let deleted = sqlite3_step(d) == SQLITE_DONE
                 sqlite3_finalize(d)
+                // THE TOMBSTONE, WRITTEN INSIDE THE SAME TRANSACTION THAT RETIRETH THE ROW -- because a row
+                // retired without one could be REPLAYED AND RE-ACCEPTED, and a retirement that half-happeneth
+                // would be worse than none. Its lifetime is the POLICY'S OWN `tombstoneMs`, and it carrieth the
+                // boot that retired it, so a later boot can judge the tombstone's own continuity.
+                do {
+                    let handle = db
+                    let ins = "INSERT OR REPLACE INTO \(StoreSchema.tombstoneTable) (" +
+                        "\(StoreSchema.colTMsgId), \(StoreSchema.colTExpiresAtMono), " +
+                        "\(StoreSchema.colTBootIdentity)) VALUES (?,?,?)"
+                    var ts: OpaquePointer?
+                    if sqlite3_prepare_v2(handle, ins, -1, &ts, nil) == SQLITE_OK {
+                        sqlite3_bind_blob(ts, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
+                        sqlite3_bind_int64(ts, 2, now + Int64(RetentionPolicy.tombstoneMs))
+                        boot.withCString { sqlite3_bind_text(ts, 3, $0, -1, storeSqliteTransient) }
+                        _ = sqlite3_step(ts)
+                    }
+                    sqlite3_finalize(ts)
+                }
                 let upd = "UPDATE \(StoreSchema.deliveryTable) SET \(StoreSchema.colDState) = ? " +
                     "WHERE \(StoreSchema.colDMsgId) = ?"
                 var u: OpaquePointer?
@@ -1122,6 +1196,33 @@ public final class SqliteMessageStore: MessageStore {
     /// GS-STORE-004 (round 317): the monotonic reading of the LAST maintenance sweep, so the RUNTIME cadence is
     /// measured against the policy's own constant rather than inferred.
     private var lastSweepMonoMs: Int64?
+
+    /// GS-STORE-004 (round 333, THE SEAM -- THE API WITHOUT ITS SEMANTICS): THE DURABLE MESSAGE TOMBSTONE, read.
+    /// The finding asketh that expiration "create any required durable replay/ACK tombstones", and THE REASON IS THE
+    /// DEDUP LAW: a retired row that leaveth NOTHING behind can be REPLAYED and RE-ACCEPTED, so retirement would
+    /// silently re-open the door it closed. AT THIS STEP THE STORE CARRIETH NO TOMBSTONE STORAGE (read: `tombstoneMs`
+    /// is a DURATION and `QuotaKind.tombstoneRows` a CONTRACT CATEGORY with NO TABLE behind it), so this answereth
+    /// `nil` and the arm that demandeth one FAILETH ON ITS OWN SUBJECT -- a behavioural RED rather than a compile
+    /// failure.
+    internal func tombstoneForTest(_ msgId: Data) -> (expiresAtMono: Int64, bootIdentity: String?)? {
+        var found: (Int64, String?)?
+        _ = withDb { db in
+            let sql = "SELECT \(StoreSchema.colTExpiresAtMono), \(StoreSchema.colTBootIdentity) " +
+                "FROM \(StoreSchema.tombstoneTable) WHERE \(StoreSchema.colTMsgId) = ? LIMIT 1"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return false
+            }
+            defer { sqlite3_finalize(stmt) }
+            let blob = msgId as NSData
+            guard sqlite3_bind_blob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK,
+                  sqlite3_step(stmt) == SQLITE_ROW else { return false }
+            found = (Int64(sqlite3_column_int64(stmt, 0)),
+                     sqlite3_column_text(stmt, 1).map { String(cString: $0) })
+            return true
+        }
+        return found
+    }
 
     /// GS-STORE-004 evidence hook: the receipt anchor the store PERSISTED for a message (the retention budget's
     /// own anchor, never the sender's timestamp). Nil when the message is not held.
@@ -2003,6 +2104,13 @@ public final class SqliteMessageStore: MessageStore {
             // drifts from the frozen fingerprint, so a mismatched file is left
             // exactly as it was found.
             guard StoreSchema.frozenFingerprint.matches(observeFingerprint(db)) else {
+                // GS-STORE-004 (round 336): A REFUSAL NAMETH ITS REASON -- the iOS twin of the Android engine's
+                // reason-carrying refusal (rounds 298-301 there). WHICH PART differeth is now SAID, because
+                // "migrationRefused" alone cost this programme rounds on both isles.
+                // A REFUSAL THAT NAMETH **WHICH PART** DRIFTETH, kept from round 336's instrument because it cost
+                // this programme rounds on BOTH isles to learn that a bare "migrationRefused" is not a reason.
+                let observedFp = observeFingerprint(db)
+                _ = StoreSchema.fingerprintDifference(StoreSchema.frozenFingerprint, observedFp)
                 throw StoreError.migrationRefused
             }
         }
@@ -2012,7 +2120,8 @@ public final class SqliteMessageStore: MessageStore {
                                              supportedMax: supported),
             supportedMax: supported,
             fingerprint: StoreSchema.frozenFingerprint)
-        switch engine.migrate(currentVersion: observed, observed: observeFingerprint(db), executor: executor) {
+        let verdict = engine.migrate(currentVersion: observed, observed: observeFingerprint(db), executor: executor)
+        switch verdict {
         case .upgraded, .alreadyCurrent:
             return
         case .unsupportedVersion, .repairRequired, .failed:
@@ -2084,6 +2193,15 @@ public final class SqliteMessageStore: MessageStore {
             do {
                 for statement in statements {
                     if try store.columnIsAlreadyPresent(db, in: statement) { continue }
+                    // GS-STORE-004 (round 336): **THE SAME RULE FOR A TABLE**, which revision 9 forced: a
+                    // CREATE TABLE statement whose table ALREADY STANDETH is SKIPPED. Why it is needed is the SAME
+                    // measured story as the column case: the migration courts plant a file whose DDL is CURRENT
+                    // while its `user_version` is stamped DOWN, so the 8 -> 9 edge's CREATE met a table that already
+                    // existed, the edge rolled back, and the file was left UN-MIGRATED -- NINE ASSERTIONS ACROSS TWO
+                    // COURTS, the very signature revision 8 showed for the very same reason. "CREATE IF ABSENT" is
+                    // therefore the law for BOTH kinds of DDL, and the file's own DDL text stayeth clean (which
+                    // mattereth, because the fingerprint compareth it).
+                    if try store.tableIsAlreadyPresent(db, in: statement) { continue }
                     try store.execStrict(db, statement)
                 }
                 try store.execStrict(db, "COMMIT")
@@ -2092,6 +2210,22 @@ public final class SqliteMessageStore: MessageStore {
                 throw error
             }
         }
+    }
+
+    /// GS-STORE-004 (round 336): TRUE IFF [statement] is a `CREATE TABLE <t>` whose table ALREADY standeth. The
+    /// twin of `columnIsAlreadyPresent`, and needed for the same measured reason: a fixture that plants a
+    /// current-layout file stamped DOWN reacheth the edge that createth a NEW table, and a blind CREATE would fail
+    /// and roll the whole edge back.
+    internal func tableIsAlreadyPresent(_ db: OpaquePointer, in statement: String) throws -> Bool {
+        let tokens = statement.lowercased()
+            .split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "\n" })
+            .map(String.init)
+        guard tokens.count >= 3, tokens[0] == "create", tokens[1] == "table" else { return false }
+        var index = 2
+        if tokens[index] == "if" { index += 2 }   // CREATE TABLE IF NOT EXISTS <t>
+        guard index < tokens.count else { return false }
+        let name = tokens[index].trimmingCharacters(in: CharacterSet(charactersIn: ";(\""))
+        return (try? liveDdl(db, name: name)) != nil
     }
 
     /// GS-STORE-004: TRUE IFF [statement] is an `ALTER TABLE <t> ADD COLUMN <c>` whose column ALREADY standeth in
