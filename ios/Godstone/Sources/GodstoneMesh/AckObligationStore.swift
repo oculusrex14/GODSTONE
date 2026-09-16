@@ -292,7 +292,23 @@ enum FrameLookup: Equatable {
 protocol AckSignerSeam: AnyObject {
     var nodeId: Data? { get }
     func generation() -> Int64
+    /// THE HARNESS ROAD: release the seed itself. A production identity CANNOT satisfy this and must not.
     func signingSeed(msgId: Data, recipientNodeId: Data) throws -> Data?
+    /// **GS-RUNTIME-001 step 2 -- THE PRODUCTION ROAD: SIGN THE CANONICAL PREIMAGE.** A signer bound to the
+    /// PINNED identity implementeth THIS and refuseth the seed road (`signingSeed` -> nil), so the ACK road
+    /// becometh constructible in production WITHOUT exporting private material.
+    func signAck(msgId: Data, recipientNodeId: Data) throws -> Data?
+}
+
+extension AckSignerSeam {
+    /// The default keepeth EVERY EXISTING SIGNER WORKING, and that is what maketh this change ADDITIVE: a
+    /// signer that can only release a seed signeth THROUGH it, deriving the key locally. No harness signer and
+    /// no court needeth a line of change.
+    func signAck(msgId: Data, recipientNodeId: Data) throws -> Data? {
+        guard let seed = try signingSeed(msgId: msgId, recipientNodeId: recipientNodeId) else { return nil }
+        let priv = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)
+        return try priv.signature(for: AckFrame.preimage(msgId: msgId, recipientNodeId: recipientNodeId))
+    }
 }
 
 /// The two namespaces as ONE paired store: the frame insert and the obligation
@@ -876,13 +892,22 @@ final class AckObligationDriver: @unchecked Sendable {
                 // local identity; the obligation remains pending and nothing is claimed
                 keyUnavailable += 1; continue
             }
-            var seed: Data? = nil
+            // GS-RUNTIME-001 step 2: THE SIGNATURE ROAD, NOT THE SEED ROAD. The driver asketh the signer to
+            // SIGN the canonical preimage; a seed-shaped signer answereth through the default above, so the
+            // harness and the courts keep working, while a signer bound to the PINNED identity answereth
+            // itself and never releases anything.
+            // (NAMED `signatureForFrame`, NOT `signature`: the loop ALREADY declareth a `signature` when it
+            // extracteth the signed bytes from the payload below, and my first name collided with it -- THE
+            // COMPILER CAUGHT IT, which is the point of compiling before claiming.)
+            var signatureForFrame: Data? = nil
             do {
-                seed = try signer.signingSeed(msgId: ob.msgId, recipientNodeId: ob.recipientNodeId)
+                signatureForFrame = try signer.signAck(msgId: ob.msgId, recipientNodeId: ob.recipientNodeId)
             } catch {
-                seed = nil
+                // (AND THE `catch` KEPT THE OLD NAME WHEN THE `do` WAS RENAMED -- a one-line miss that the
+                // compiler found immediately, because the later `let signature` made it a use-before-declaration.)
+                signatureForFrame = nil
             }
-            guard let seed else { keyUnavailable += 1; continue }
+            guard let signatureForFrame else { keyUnavailable += 1; continue }
             try fault?("signing")
             var frame: FrameV2
             do {
@@ -892,7 +917,7 @@ final class AckObligationDriver: @unchecked Sendable {
                 // nothing but WHEN it happened to be signed -- a crash or a key outage
                 // silently cut the return path's reach.
                 frame = try AckFrame.build(
-                    msgId: ob.msgId, recipientSigningPrivKey: seed,
+                    msgId: ob.msgId, signature: signatureForFrame,
                     recipientNodeId: ob.recipientNodeId,
                     routingTag: Data(ob.recipientNodeId.prefix(4)),
                     ttl: ackInitialTtl

@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Rounds 215/216 -- the ACK seam's SHAPE repaired: the precondition of GS-RUNTIME-001 step 2 is REMOVED
+
+- **Additive by design**: `AckFrame.build(msgId:signature:…)`; the seam gains `signAck(msgId:recipientNodeId:)` **with a default that signs through `signingSeed`** — so **every harness signer and court kept working unchanged**; the driver takes the signature road; and **`IdentityAckSigner`** signs over the **pinned** identity, refusing the seed road **by construction**.
+- **Behavioural witness**: `testThePinnedIdentitySignethAnAckWithoutReleasingItsSeed` — the seed road refused, the production road signs, and the frame verifies **under the identity's public key over the same preimage**.
+- **Measured**: T83/T84 28/0; **iOS lane 1213/0**; android `:mesh` FORCED 1193/0/0; apk 15133266 bytes; courts 598 OK; probes 12 OK; control PASSED (14 notes); parity repo rc 0; symbols 0 unresolved; digests 354/354.
+- **The probe moved into the canonical lane**, and **its first form is withdrawn in place**: it asserted a *design guess* of mine (`sign(preimage:)` and removing `signingSeed` entirely) whereas the implemented shape carries both roads and cost no reconciliation. **The probe now asserts the law, not the guess.**
+- **Next for this finding**: step 2 proper — construct the four owners over the same opened database and subscribe the readiness (one bounded worker per relation; cancel that exact relation on LinkLost; readiness stays false).
+
 ## Round 214c -- the second attempt broke the mandatory control; two of my own habits concealed it
 
 - Appending the new function **after** `if __name__ == "__main__": main()` meant the call site ran before the definition: `NameError`, **a mandatory control broken by my own edit**.

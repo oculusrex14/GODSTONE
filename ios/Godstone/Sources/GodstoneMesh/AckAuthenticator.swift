@@ -80,6 +80,32 @@ public enum AckFrame {
                        payload: payload)
     }
 
+    /// GS-RUNTIME-001 step 2: **THE PRODUCTION ROAD -- THE SAME FRAME, FROM AN ALREADY-COMPUTED SIGNATURE.**
+    /// The seed-taking form above can only be satisfied by a signer willing to RELEASE ITS PRIVATE SEED, which
+    /// a production identity must never do (it keepeth its key private and offereth `sign(message:)`). This
+    /// overload carrieth the identical frame -- the payload is `signature || recipientNodeId`, the same
+    /// preimage is signed, the same metadata is frozen -- so a signer that SIGNETH INTERNALLY can produce it.
+    public static func build(
+        msgId: Data,
+        signature: Data,
+        recipientNodeId: Data,
+        routingTag: Data,
+        ttl: UInt8 = 4
+    ) throws -> FrameV2 {
+        precondition(msgId.count == 16, "msgId must be 16 bytes")
+        precondition(signature.count == 64, "an Ed25519 signature is 64 bytes")
+        precondition(recipientNodeId.count == 16, "recipientNodeId must be 16 bytes")
+        precondition(routingTag.count == 4, "routingTag must be 4 bytes")
+        let payload = signature + recipientNodeId
+        return FrameV2(type: .ack,
+                       msgId: msgId,
+                       routingTag: routingTag,
+                       ttl: ttl,
+                       hopCount: 0,
+                       flags: 0,
+                       payload: payload)
+    }
+
     /// The canonical signed preimage for an ACK of `msgId` by `recipientNodeId`.
     public static func preimage(msgId: Data, recipientNodeId: Data) -> Data {
         Data(ackMagic.utf8) + msgId + recipientNodeId

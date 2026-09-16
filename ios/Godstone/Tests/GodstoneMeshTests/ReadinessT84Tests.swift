@@ -64,6 +64,44 @@ final class ReadinessT84Tests: XCTestCase {
         }
     }
 
+    // MARK: - GS-RUNTIME-001 step 2: THE PRODUCTION ACK SIGNER, OVER THE PINNED IDENTITY
+
+    /// **THE LAW THE HARNESS-SHAPED SEAM MADE UNREACHABLE, NOW REACHED:** an ACK obligation may be signed by the
+    /// PINNED identity WITHOUT the identity releasing anything. MEASURED AT ROUND 212: the seam asked for a
+    /// private SEED, which `MeshIdentity` keepeth private and must keep private -- so no production signer could
+    /// exist at all, and the durable ACK road could not be constructed over the pinned identity.
+    func testThePinnedIdentitySignethAnAckWithoutReleasingItsSeed() throws {
+        let identity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
+        let signer = IdentityAckSigner(identity: identity)
+        let msgId = Data(repeating: 0x2A, count: 16)
+
+        // THE HARNESS ROAD IS REFUSED BY CONSTRUCTION:
+        XCTAssertNil(try signer.signingSeed(msgId: msgId, recipientNodeId: identity.nodeId),
+                     "a production signer must NOT release the identity's signing seed")
+
+        // THE PRODUCTION ROAD SIGNETH:
+        let signature = try XCTUnwrap(try signer.signAck(msgId: msgId, recipientNodeId: identity.nodeId),
+                                     "the pinned identity must be able to sign the canonical preimage")
+        XCTAssertEqual(signature.count, 64, "an Ed25519 signature is sixty-four octets")
+
+        // AND THE FRAME BUILT FROM THAT SIGNATURE VERIFIETH UNDER THE IDENTITY'S PUBLIC KEY, over the SAME
+        // canonical preimage -- so the road is the existing one, not a new one beside it:
+        let preimage = AckFrame.preimage(msgId: msgId, recipientNodeId: identity.nodeId)
+        let pub = try Curve25519.Signing.PublicKey(rawRepresentation: identity.signingPublicKey)
+        XCTAssertTrue(pub.isValidSignature(signature, for: preimage),
+                      "THE PINNED IDENTITY SIGNED IT, and nothing left the identity to make that true")
+        let frame = try AckFrame.build(msgId: msgId, signature: signature,
+                                       recipientNodeId: identity.nodeId,
+                                       routingTag: Data(identity.nodeId.prefix(4)), ttl: 4)
+        XCTAssertEqual(Data(frame.payload.prefix(64)), signature, "the payload carrieth the signature")
+        XCTAssertEqual(Data(frame.payload.suffix(16)), identity.nodeId, "and the recipient it was signed for")
+
+        // THE DRIVER ACCEPTETH IT: the obligation road runneth over this signer (its own node id answereth, and
+        // its generation standeth at the pin), which is what "constructible in production" meaneth.
+        XCTAssertEqual(signer.nodeId, identity.nodeId)
+        XCTAssertEqual(signer.generation(), Int64(identity.bindingGeneration))
+    }
+
     private final class TestSigner: AckSignerSeam, @unchecked Sendable {
         private let local: Local
         init(_ local: Local) { self.local = local }
