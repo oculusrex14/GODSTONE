@@ -522,6 +522,12 @@ internal func compatibleSosOutboundTwoStep(
         }
     case .rejectedCapacity:
         return .rejectedCapacity
+    case .rejectedTombstone:
+        // GS-STORE-004 (round 337): a RETIRED message is not re-queued for delivery either -- the store let the id
+        // go deliberately, and the OUTBOUND path must honour the same dedup window the INBOUND path does, or a
+        // retirement would be undone by a re-send. It answereth with the SAME typed refusal the capacity gate useth,
+        // because from a caller's point of view both say "the store did not take this".
+        return .rejectedCapacity
     case .failedStorage:
         return .storageFailure
     }

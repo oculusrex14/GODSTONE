@@ -48,6 +48,13 @@ public enum PersistResult: Sendable, Equatable {
     case rejectedCapacity
     /// A storage exception occurred inside the transaction; it was rolled back.
     case failedStorage
+    /// GS-STORE-004 (round 337, THE SEAM -- A NAMED OUTCOME WITHOUT ITS SEMANTICS): the frame's message id
+    /// carrieth a **LIVE DURABLE TOMBSTONE**, i.e. IT WAS RETIRED and may not be RE-ACCEPTED while that tombstone
+    /// standeth. It is a DISTINCT outcome rather than `heldDuplicate`, because the two say DIFFERENT things: a
+    /// duplicate is a row the store STILL HOLDETH, while this is a row the store DELIBERATELY LET GO -- and folding
+    /// them together would hide the retirement from every caller that swears by the result. AT THIS STEP NOTHING
+    /// CONSULTETH THE TOMBSTONE, so an arm demanding this outcome FAILETH ON ITS OWN SUBJECT.
+    case rejectedTombstone
 }
 
 /// Outcome of an atomic DIRECT outbound enqueue operation (C6.6 / C6.6.1).
@@ -1204,6 +1211,33 @@ public final class SqliteMessageStore: MessageStore {
     /// is a DURATION and `QuotaKind.tombstoneRows` a CONTRACT CATEGORY with NO TABLE behind it), so this answereth
     /// `nil` and the arm that demandeth one FAILETH ON ITS OWN SUBJECT -- a behavioural RED rather than a compile
     /// failure.
+    /// GS-STORE-004 (round 338): IS THERE A **LIVE** TOMBSTONE FOR THIS ID -- read ON THE HANDLE ALREADY HELD,
+    /// because the persistence path calleth it INSIDE its own transaction and a second lock would DEADLOCK (round
+    /// 309's law, paid for with a hung court on this very file).
+    ///
+    /// THE JUDGEMENT, STATED BEFORE THE CODE THAT APPLIETH IT: a tombstone expireth at `expires_at_mono` IN THE BOOT
+    /// THAT WROTE IT; if the running boot is a DIFFERENT one, monotonic time cannot speak, AND THE CONSERVATIVE
+    /// ANSWER IS **LIVE** -- refusing a replay is RECOVERABLE (the window passeth), whereas ACCEPTING one would
+    /// RE-OPEN THE DOOR THE RETIREMENT CLOSED.
+    private func liveTombstoneNoLock(_ db: OpaquePointer, _ msgId: Data) -> Bool {
+        let sql = "SELECT \(StoreSchema.colTExpiresAtMono), \(StoreSchema.colTBootIdentity) " +
+            "FROM \(StoreSchema.tombstoneTable) WHERE \(StoreSchema.colTMsgId) = ? LIMIT 1"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return false
+        }
+        defer { sqlite3_finalize(stmt) }
+        let blob = msgId as NSData
+        guard sqlite3_bind_blob(stmt, 1, blob.bytes, Int32(blob.length), storeSqliteTransient) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW else { return false }
+        let expiresAt = Int64(sqlite3_column_int64(stmt, 0))
+        let boot = sqlite3_column_text(stmt, 1).map { String(cString: $0) }
+        guard let clock = receiptTimeProvider else { return true }
+        let stamp = clock()
+        guard let writtenBy = boot, writtenBy == stamp.bootIdentity else { return true }
+        return stamp.monoMs < expiresAt
+    }
+
     internal func tombstoneForTest(_ msgId: Data) -> (expiresAtMono: Int64, bootIdentity: String?)? {
         var found: (Int64, String?)?
         _ = withDb { db in
@@ -1427,6 +1461,11 @@ public final class SqliteMessageStore: MessageStore {
         }
         do {
             let result = try withTransaction { db in
+                // GS-STORE-004 (round 338): THE DEDUP WINDOW, CONSULTED -- BEFORE ANY WRITE, because a refusal
+                // that had already inserted a row would be A RETIREMENT UNDONE. The read useth THIS transaction's
+                // own handle (`liveTombstoneNoLock`), never a second lock: round 309's law, paid for on this very
+                // file.
+                if liveTombstoneNoLock(db, frame.msgId) { return PersistResult.rejectedTombstone }
                 // A duplicate (INSERT OR IGNORE no-op) is NOT an error: returns
                 // isNew=false without throwing. A real SQL/IO failure throws.
                 let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom,

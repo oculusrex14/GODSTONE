@@ -1655,4 +1655,31 @@ final class SqliteMessageStoreTests: XCTestCase {
                        "and its lifetime is the POLICY'S OWN tombstone lifetime, not a number chosen here")
         XCTAssertEqual(tomb?.bootIdentity, "boot-A", "carrying the continuity identity of the boot that retired it")
     }
+
+    /// GS-STORE-004: THE TOMBSTONE'S **PURPOSE**, which is the dedup law -- a retired message must not be
+    /// RE-ACCEPTED while its tombstone standeth, or retirement would silently RE-OPEN THE DOOR IT CLOSED. The
+    /// tombstone was WRITTEN at round 336 and NOTHING CONSULTED IT (the same "written and never read" state the
+    /// budget was in before round 306). RUN RED BEFORE THE REPAIR.
+    func testGSSTORE004_aReplayOfARetiredMessageIsRefused() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        var now: Int64 = 7_000_000
+        s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(14, .direct, 48)
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
+        XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
+        XCTAssertEqual(s.sweepExpired(limit: 8), 1, "the row is retired and a tombstone is left")
+        XCTAssertNotNil(s.tombstoneForTest(f.msgId), "the tombstone stands")
+
+        // THE REPLAY: the same frame, while the tombstone liveth.
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .rejectedTombstone,
+                       "a retired message may not be RE-ACCEPTED while its tombstone standeth")
+        XCTAssertNil(s.retentionCheckpointForTest(f.msgId).remainingMs,
+                     "and the replay must NOT have put the row back")
+
+        // THE NEGATIVE CASE: PAST the tombstone's lifetime, the same message IS accepted again -- a tombstone is a
+        // DEDUP WINDOW, not a permanent ban.
+        now += Int64(RetentionPolicy.tombstoneMs) + 1
+        XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew,
+                       "past the policy's tombstone lifetime, the message may be accepted again")
+    }
 }

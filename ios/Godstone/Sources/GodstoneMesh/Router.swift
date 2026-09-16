@@ -84,6 +84,13 @@ public final class Router {
             return none
         case .rejectedCapacity, .failedStorage:
             return none
+        case .rejectedTombstone:
+            // GS-STORE-004 (round 337): A RETIRED MESSAGE IS NOT RE-ACCEPTED, and the router treateth it exactly as
+            // a refusal -- because it IS one: the store deliberately let this id go, and re-accepting it would
+            // RE-OPEN THE DOOR THE RETIREMENT CLOSED. It is NOT inserted into `seen` either, because the store's own
+            // tombstone is the durable authority on that decision, and a memory-only echo of it would be a second
+            // authority that could drift.
+            return none
         }
 
         // The hint's ONLY power is to suppress a needless relay (section 14:
