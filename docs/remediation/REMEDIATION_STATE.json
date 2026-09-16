@@ -3978,10 +3978,9 @@
    "SUPERSEDED_BY": "candidate_verification_at_round_254: EVERY claim re-measured at one SHA (round 253's lesson applied to the whole record)."
   },
   "candidate_verification_at_round_257": {
-   "candidate_sha": "fc79d68",
-   "candidate_sha_full_at_scan": "fc79d684247219c5d163a42f34a8a7ec312b78c6",
+   "candidate_sha": "fc79d684247219c5d163a42f34a8a7ec312b78c6",
    "why": "CRYPTO-001's repair CHANGED PRODUCTION (the crypto authority, the transport's admission capture, the handshake seam and MeshNode's departure verb), so the standing candidate had to be re-measured on BOTH isles rather than inherited.",
-   "worktree": "clean at this sha; the lanes below were run on this exact content",
+   "worktree": "clean at this SHA apart from the DOCUMENTATION-ONLY gap this record carrieth: the lanes below were run on the exact content of fc79d68, and the SINGLE modification made afterwards is `docs/remediation/REMEDIATION_STATE.json` and `docs/remediation/HANDOFF.md` -- this verification's own record. No production, test, control or evidence file differeth between the measured tree and this SHA.",
    "stands_as_the_convergence_candidate": true,
    "logs": {
     "ios_full_lane": {
@@ -4010,7 +4009,8 @@
     "no hosted lane, no URL, no run id and no log -- so T78 is NOT claimed by this record",
     "the readiness flags are FALSE and the five external gates are OPEN",
     "no finding is VERIFIED_FIXED; eleven stand OPEN and six PARTIAL (CRYPTO-001 among them, its Android half unmirrored)"
-   ]
+   ],
+   "recorded_from_commit": "834fde8 (documentation only; the measured tree is fc79d68)"
   }
  },
  "counts": {
