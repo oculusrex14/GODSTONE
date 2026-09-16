@@ -797,6 +797,36 @@
     "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES STAY OPEN.",
     "AND ONE MANDATORY CONTROL IS NON-ZERO AT THIS SHA (`check_parity`), WHICH THE NEXT ROUND MUST EITHER FIX OR DECLARE."
    ]
+  },
+  "candidate_verification_at_round_256": {
+   "candidate_sha": "38406d02d2dcd88ecca6fa8d4a2b9546e8d48d7e",
+   "tree_sha": "96fe57805bc5637df6d1d2c9f528df12e92ea741",
+   "worktree": "clean at this sha",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_FINAL_38406d02d2dcd88ecca6fa8d4a2b9546e8d48d7e/verify.log",
+   "log_sha256": "b420dcbb7ef96f3ecf728f13f8d6d083b8019c414cab399c24eb4d972fa4a4d7",
+   "measured": {
+    "android_mesh_lane": "**1192 tests, 0 failures, 0 errors**, FORCED (`--rerun-tasks`, 47s)",
+    "ios_lane_mirrored_package": "**Executed 1205 tests, with 0 failures (0 unexpected)**, 135.1s",
+    "python_readiness_and_ledger_courts": "OK",
+    "repository_controls": "EVERY ci/check_*.py rc 0, AND **`check_parity --scope repo` IS rc 0 AGAIN** (the round-254 regression, found at THAT candidate and closed at round 255 by avoiding the construct); the ONLY non-zero is `check_parity` under its DEFAULT scope = the EXTERNAL A-06 arm, which is designed fail-closed",
+    "symbols": "ci/symbols.py: **0 unresolved** (221 Kotlin files) -- restored from the round-254 candidate's 1"
+   },
+   "REGRESSION_STATUS": "CLOSED: the round-254 candidate carrieth the red (check_parity --scope repo rc 1, invariant F, conn.relationKeyProvider); THIS candidate carrieth the green, with the construct avoided rather than the tool's limitation declared",
+   "per_declared_scope": {
+    "Mesh/Oracle": {
+     "findings": 40
+    },
+    "Both": {
+     "findings": 14
+    }
+   },
+   "NOT_CLAIMED_AND_WHY": [
+    "T78 CONVERGENCE IS NOT CLAIMED: no hosted lane, run URL, run id or log exists in this environment.",
+    "NO FINDING IS VERIFIED_FIXED (only an independent audit may write that): 34 FIX_SUBMITTED, 16 OPEN, 4 PARTIAL.",
+    "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES STAY OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING).",
+    "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance.",
+    "AND THE PROGRAMME'S OWN DEBT IS NAMED: 31 self-inflicted corrections are recorded across this session's rounds (compile errors, mis-anchored patches, two committed suite-reds, one per-suite summary mistaken for a lane total, three truncation-bug recurrences) -- each kept in the ledger beside the repair it accompanied, because a record that carrieth only successes teacheth nothing."
+   ]
   }
  },
  "counts": {

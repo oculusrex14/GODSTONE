@@ -129,3 +129,22 @@ writing** if (a) proves impossible. **The first is preferred, because a mandator
 
 **Not claimed:** T78 (no hosted lane); no finding `VERIFIED_FIXED` (34/16/4); readiness flags **false**; five gates **OPEN**;
 **and one mandatory control is non-zero at this SHA, which the next round must either fix or declare.**
+
+## Candidate verification at `38406d0` (ledger round 256) — FULLY GREEN, with the round-254 regression CLOSED
+
+| Item | Result at this exact SHA (tree `96fe578`) |
+|---|---|
+| Android `:mesh` lane | **1192 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`, 47s) |
+| iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 135.1s |
+| Python readiness + ledger courts | **OK** |
+| Repository controls | **every `ci/check_*.py` rc 0, AND `check_parity --scope repo` rc 0 AGAIN**; the only non-zero is `check_parity` under its **default** scope = the **external A-06** arm |
+| Symbols | `ci/symbols.py` — **0 unresolved** (221 Kotlin files) |
+
+**The regression is closed:** the round-254 candidate carried the red (`check_parity --scope repo` rc 1, Invariant F,
+`conn.relationKeyProvider`); **this candidate carries the green**, with the construct **avoided** rather than the tool's
+limitation declared.
+
+**Not claimed:** T78 (no hosted lane/run URL/id/log); no finding `VERIFIED_FIXED` (34/16/4); readiness flags **false**; five
+gates **OPEN**; closure evidence **stale for 31 findings**; and the programme's own debt is named — **31 self-inflicted
+corrections recorded across this session's rounds**, each kept beside the repair it accompanied, *because a record that
+carries only successes teaches nothing*.
