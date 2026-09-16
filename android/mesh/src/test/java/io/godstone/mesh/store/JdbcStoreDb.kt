@@ -24,6 +24,40 @@ import java.sql.Types
  * is non-shipping regardless; this is belt-and-braces).
  */
 internal class JdbcStoreDb(file: File) : StoreDb {
+    // GS-STORE-004 (round 322): THE HOST HARNESS CARRIETH THE SAME CONTRACT, FOR REAL -- a harness that could not
+    // report the persisted checkpoint would make every retention arm on this isle VACUOUS.
+    override fun retentionCheckpointOf(msgId: ByteArray): Array<Any?>? {
+        synchronized(conn) {
+            conn.prepareStatement(
+                "SELECT ${StoreSchema.COL_REMAINING_MS}, ${StoreSchema.COL_CHECKPOINT_MONO}, " +
+                    "${StoreSchema.COL_BOOT_IDENTITY}, ${StoreSchema.COL_DISCONTINUITY} " +
+                    "FROM ${StoreSchema.TABLE} WHERE ${StoreSchema.COL_MSG_ID} = ? LIMIT 1",
+            ).use { st ->
+                st.setBytes(1, msgId)
+                st.executeQuery().use { rs ->
+                    if (!rs.next()) return null
+                    return arrayOf(rs.getObject(1), rs.getObject(2), rs.getObject(3), rs.getObject(4))
+                }
+            }
+        }
+    }
+
+    override fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
+                                        bootIdentity: String, discontinuity: Long): Boolean {
+        synchronized(conn) {
+            conn.prepareStatement(
+                "UPDATE ${StoreSchema.TABLE} SET ${StoreSchema.COL_REMAINING_MS} = ?, " +
+                    "${StoreSchema.COL_CHECKPOINT_MONO} = ?, ${StoreSchema.COL_BOOT_IDENTITY} = ?, " +
+                    "${StoreSchema.COL_DISCONTINUITY} = ? WHERE ${StoreSchema.COL_MSG_ID} = ?",
+            ).use { st ->
+                st.setLong(1, remainingMs); st.setLong(2, checkpointMono)
+                st.setString(3, bootIdentity); st.setLong(4, discontinuity)
+                st.setBytes(5, msgId)
+                return st.executeUpdate() > 0
+            }
+        }
+    }
+
     private val conn: Connection
 
     init {

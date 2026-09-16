@@ -654,6 +654,14 @@ class SqliteDeliveryRepositoryTest {
      * `internal` to `:mesh`; this test class lives in the same module.
      */
     private class FaultingStoreDb(private val inner: StoreDb) : StoreDb {
+    // GS-STORE-004 (round 322): the two new `StoreDb` members, carried HERE because EVERY implementor of the
+    // contract MUST carry it (round 304's law, which on the other isle cost nine rounds). THIS DOUBLE OBSERVES NO
+    // RETENTION, and that is its honest answer: it holdeth nothing, so it reporteth nothing, and it NEVER CLAIMETH TO
+    // HAVE WRITTEN WHAT IT DID NOT.
+    override fun retentionCheckpointOf(msgId: ByteArray): Array<Any?>? = null
+    override fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
+                                        bootIdentity: String, discontinuity: Long): Boolean = false
+
         private val lock = Any()
         @Volatile var faultReadDelivery = false
         @Volatile var faultInsertDelivery = false
@@ -2633,6 +2641,14 @@ class SqliteDeliveryRepositoryTest {
     }
 
     private class BlockingBeforeTransactionStoreDb(private val underlyingDb: StoreDb) : StoreDb {
+    // GS-STORE-004 (round 322): the two new `StoreDb` members, carried HERE because EVERY implementor of the
+    // contract MUST carry it (round 304's law, which on the other isle cost nine rounds). THIS DOUBLE OBSERVES NO
+    // RETENTION, and that is its honest answer: it holdeth nothing, so it reporteth nothing, and it NEVER CLAIMETH TO
+    // HAVE WRITTEN WHAT IT DID NOT.
+    override fun retentionCheckpointOf(msgId: ByteArray): Array<Any?>? = null
+    override fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
+                                        bootIdentity: String, discontinuity: Long): Boolean = false
+
         private val armBlock = AtomicBoolean(false)
         @Volatile var reachedTransactionEntry: CountDownLatch? = null
         @Volatile var releaseTransaction: CountDownLatch? = null

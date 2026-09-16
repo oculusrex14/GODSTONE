@@ -953,6 +953,14 @@ internal interface StoreDb {
     /** Insert [frame] (or ignore on a duplicate msg_id). Returns the rowid, or -1 if ignored. */
     fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long
 
+    /** GS-STORE-004 (round 320): the RETENTION CHECKPOINT of a row, as PERSISTED, or null when the row is absent.
+     *  READ ON THIS INTERFACE BECAUSE THIS IS THE OBJECT THAT OWNS THE HANDLE (round 319's compiler said so). */
+    fun retentionCheckpointOf(msgId: ByteArray): Array<Any?>?
+
+    /** GS-STORE-004 (round 320): write the checkpoint INTO the row, inside whatever transaction the caller owneth. */
+    fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
+                               bootIdentity: String, discontinuity: Long): Boolean
+
     /** True iff a row with [msgId] is present. Used for the final-presence check (B2/B3). */
     fun contains(msgId: ByteArray): Boolean
 
@@ -1199,6 +1207,16 @@ class SqliteMessageStore internal constructor(
     /** Internal test constructor without a fault seam (kept for existing callers). */
     internal constructor(engine: StoreDb, maxBytes: Long) : this(engine, maxBytes, null)
 
+    /** GS-STORE-004 (round 320), MIRRORED FROM iOS: the RUNTIME clock, injected -- the monotonic reading AND the
+     *  continuity identifier of the boot it was taken in. NULL means "no runtime clock": the historical behaviour,
+     *  and the four checkpoint columns then stay NULL rather than carrying a fabricated budget. */
+    internal var receiptTimeProvider: (() -> Pair<Long, String>)? = null
+
+    /** GS-STORE-004 evidence hook: what the store ACTUALLY PERSISTED beside the row -- delegated to the engine,
+     *  WHICH OWNS THE HANDLE. */
+    internal fun retentionCheckpointForTest(msgId: ByteArray): Array<Any?>? =
+        engine.retentionCheckpointOf(msgId)
+
     override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult =
         persistAt(frame, receivedFrom, System.currentTimeMillis())
 
@@ -1237,6 +1255,25 @@ class SqliteMessageStore internal constructor(
             engine.inTransaction { db ->
                 val rowId = db.insert(frame, receivedFrom, receivedAt)
                 val isNew = rowId != -1L   // -1 == CONFLICT_IGNORE duplicate
+                // GS-STORE-004 (round 320): THE LOCAL POLICY BUDGET, IN THE SAME TRANSACTION AS THE ROW -- and
+                // ONLY for a NEW row, because `INSERT OR IGNORE` never reacheth a duplicate, WHICH IS WHAT MAKETH
+                // THE BUDGET UN-REPLENISHABLE. The value cometh from `RetentionClock.admit` (the Kotlin policy object;
+                // on iOS the same contract liveth under the name `RetentionPolicy`), which granteth the local
+                // lifetime EXACTLY ONCE, anchored at the INJECTED monotonic reading.
+                val clock = receiptTimeProvider
+                if (isNew && clock != null) {
+                    val stamp = clock()
+                    val cp = RetentionClock.admit(
+                        msgId = String(frame.msgId, Charsets.ISO_8859_1),
+                        kind = MessageKind.DIRECT,
+                        priority = 0,
+                        firstReceiptId = String(frame.msgId, Charsets.ISO_8859_1),
+                        nowMono = stamp.first,
+                        bootIdentity = stamp.second,
+                    )
+                    db.setRetentionCheckpoint(frame.msgId, cp.remainingMs, cp.checkpointMonotonicMs,
+                                              stamp.second, cp.discontinuityCount.toLong())
+                }
                 if (isNew) {
                     fault?.invoke("after_insert")
                     val held = db.heldBytes()
@@ -1304,6 +1341,25 @@ class SqliteMessageStore internal constructor(
             engine.inTransaction { db ->
                 val rowId = db.insert(frame, receivedFrom, receivedAt)
                 val isNew = rowId != -1L   // -1 == CONFLICT_IGNORE duplicate
+                // GS-STORE-004 (round 320): THE LOCAL POLICY BUDGET, IN THE SAME TRANSACTION AS THE ROW -- and
+                // ONLY for a NEW row, because `INSERT OR IGNORE` never reacheth a duplicate, WHICH IS WHAT MAKETH
+                // THE BUDGET UN-REPLENISHABLE. The value cometh from `RetentionClock.admit` (the Kotlin policy object;
+                // on iOS the same contract liveth under the name `RetentionPolicy`), which granteth the local
+                // lifetime EXACTLY ONCE, anchored at the INJECTED monotonic reading.
+                val clock = receiptTimeProvider
+                if (isNew && clock != null) {
+                    val stamp = clock()
+                    val cp = RetentionClock.admit(
+                        msgId = String(frame.msgId, Charsets.ISO_8859_1),
+                        kind = MessageKind.DIRECT,
+                        priority = 0,
+                        firstReceiptId = String(frame.msgId, Charsets.ISO_8859_1),
+                        nowMono = stamp.first,
+                        bootIdentity = stamp.second,
+                    )
+                    db.setRetentionCheckpoint(frame.msgId, cp.remainingMs, cp.checkpointMonotonicMs,
+                                              stamp.second, cp.discontinuityCount.toLong())
+                }
                 if (isNew) {
                     val held = db.heldBytes()
                     if (held > maxBytes) db.evictOldestPrefix(held - maxBytes)
@@ -1648,6 +1704,38 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         // helper can attempt to open a database.
         System.loadLibrary("sqlcipher")
         helper = Helper(ctx, passphrase(ctx))
+    }
+
+    override fun retentionCheckpointOf(msgId: ByteArray): Array<Any?>? {
+        val d = helper.writableDatabase
+        d.rawQuery(
+            "SELECT ${StoreSchema.COL_REMAINING_MS}, ${StoreSchema.COL_CHECKPOINT_MONO}, " +
+                "${StoreSchema.COL_BOOT_IDENTITY}, ${StoreSchema.COL_DISCONTINUITY} " +
+                "FROM ${StoreSchema.TABLE} WHERE ${StoreSchema.COL_MSG_ID} = ? LIMIT 1",
+            arrayOf(String(msgId, Charsets.ISO_8859_1)),
+        ).use { rs ->
+            if (!rs.moveToNext()) return null
+            return arrayOf(
+                if (rs.isNull(0)) null else rs.getLong(0),
+                if (rs.isNull(1)) null else rs.getLong(1),
+                if (rs.isNull(2)) null else rs.getString(2),
+                if (rs.isNull(3)) null else rs.getLong(3),
+            )
+        }
+    }
+
+    override fun setRetentionCheckpoint(msgId: ByteArray, remainingMs: Long, checkpointMono: Long,
+                                        bootIdentity: String, discontinuity: Long): Boolean {
+        val cv = ContentValues().apply {
+            put(StoreSchema.COL_REMAINING_MS, remainingMs)
+            put(StoreSchema.COL_CHECKPOINT_MONO, checkpointMono)
+            put(StoreSchema.COL_BOOT_IDENTITY, bootIdentity)
+            put(StoreSchema.COL_DISCONTINUITY, discontinuity)
+        }
+        return helper.writableDatabase.update(
+            StoreSchema.TABLE, cv, "${StoreSchema.COL_MSG_ID} = ?",
+            arrayOf(String(msgId, Charsets.ISO_8859_1)),
+        ) > 0
     }
 
     override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long {
