@@ -87,7 +87,7 @@ class BleTransport(
      * proveth that the scheduler itself trippeth a silent peer.
      */
     private val leaseSweepIntervalMillis: Long = LEASE_SWEEP_INTERVAL_MS,
-) : Transport, InFlightAwareTransport {
+) : DisconnectingTransport, Transport, InFlightAwareTransport {
 
     override val name = "BLE"
     override val isBulkCapable = false
@@ -307,6 +307,20 @@ class BleTransport(
             // a platform that cannot even be stopped must not suppress the RETRY either
         }
         isStarted = false
+    }
+
+    /**
+     * **GS-RUNTIME-001 step 2's second half, THE ANDROID TWIN: THIS TRANSPORT'S *REAL* TEARDOWN COUNT.** The live
+     * client connections are COUNTED and THEN severed, on the same road the drain useth -- so the adapter's
+     * `DisconnectingTransport` branch receiveth a MEASUREMENT instead of the literal `1` that stood beside it until
+     * round 246. **THE COUNT IS TAKEN BEFORE `stop()`, because after it there is nothing left to count -- THE
+     * ORDERING IS THE WHOLE POINT, AND IT IS THE LESSON MY SWIFT ARM TAUGHT AT ROUND 241 (a spy that returned a
+     * fixed number never exposed the order; its replacement recordeth WHEN it was asked).**
+     */
+    override fun disconnectAll(): Int {
+        val live = activeClientConnections.size
+        stop()
+        return live
     }
 
     override fun stop() {

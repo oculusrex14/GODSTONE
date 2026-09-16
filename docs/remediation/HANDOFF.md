@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 249 -- step 2 complete on BOTH isles; and the Android isle's power/permission road measured to be ABSENT
+
+- **Wiring**: the Android `BleTransport` declares `DisconnectingTransport` and counts **`activeClientConnections.size`** — the registry that type already keeps — **then** severs; so the adapter's `?: 0` becomes a measurement and **the literal `1` is dead on both isles**. **The count precedes the teardown** (the ordering lesson from round 241).
+- **Witness**: a source-level arm (the transport needs a `Context`) asserting the capability, the registry, and **the order** — fifteen arms green.
+- **A gap measured and named, not left**: that isle has **no adapter-state signal at all** — no `BluetoothAdapter`, no `ACTION_STATE_CHANGED`, no broadcast receiver — and the authority's three events **have no caller anywhere on that isle**, *not even a court's* (one better than the Swift measurement). **So the power/permission road must be *built* there, not merely connected.**
+- **Measured**: android `:mesh` **FORCED 1196 / 0 / 0**; courts 612 OK.
+- **Remaining**: building that road; the Wi-Fi plane under the authority (or why not); the node-level behavioural witness.
+
 ## Round 247 -- GS-RUNTIME-001's Android half: one authority, the routing, and the close BEFORE the guard
 
 - **Wiring**: `MeshNode` owns `lifecycle` — a `UnifiedRuntimeLifecycle` **over the adapter over this node's own transport**; `openAdapters()` calls `lifecycle.start()`; and **the close moved before the `isStarted` guard, once per lifetime, with a census beside it** — *the lesson the Swift census arm taught at round 244 applied here before a witness had to rediscover it*.

@@ -197,6 +197,19 @@ class AndroidAckWiringTest(unittest.TestCase):
                       "and a census must stand, so a witness can MEASURE which road was taken")
         self.assertIn("// IOS-06's twin", n)
 
+    def test_the_concrete_transport_reporteth_a_real_link_count(self):
+        """GS-RUNTIME-001 step 2's second half on this isle: the adapter's `?: 0` becometh a MEASUREMENT, because
+        the concrete transport now counteth the live connections it actually severeth. (A SOURCE-LEVEL arm: the
+        transport needeth a `Context`, so a pure-JVM court cannot build one to ask.)"""
+        b = (MESH / "transport/BleTransport.kt").read_text(encoding="utf-8")
+        self.assertIn("DisconnectingTransport,", b, "the concrete transport must DECLARE the capability")
+        self.assertIn("activeClientConnections.size", b,
+                      "and count the connections it really keepeth -- the registry measured in that type")
+        body = b[b.index("override fun disconnectAll(): Int {"):]
+        body = body[:body.index("\n    }")]
+        self.assertLess(body.index("activeClientConnections.size"), body.index("stop()"),
+                        "**THE COUNT MUST PRECEDE THE TEARDOWN** -- the lesson the Swift arm taught at round 241")
+
     def test_the_signer_refuseth_the_seed_road_by_construction(self):
         signer = (MESH / "delivery/IdentityAckSigner.kt").read_text(encoding="utf-8")
         self.assertIn("override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray? = null",
