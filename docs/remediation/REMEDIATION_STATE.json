@@ -3949,7 +3949,7 @@
    "SUPERSEDED_BY": "candidate_verification_at_round_253: the receiver placement repaired (invariant F and the symbols selftest were RED) and both controls RE-MEASURED."
   },
   "candidate_verification_at_round_253": {
-   "candidate_sha": "5c0a5754bbcbf8965c8ed244d088ca3038c77d6a",
+   "candidate_sha": "e7013edbb184332396db43f16baa90903dbf3900",
    "tree_sha": "aa670379d65bb2d9da42284543baefd06ad6f8c2",
    "worktree": "clean at this sha apart from this record",
    "stands_as_the_convergence_candidate": true,
