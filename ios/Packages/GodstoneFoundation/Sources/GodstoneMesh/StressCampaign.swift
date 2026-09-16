@@ -227,11 +227,19 @@ public final class StressCampaign {
         if sessions != 0 {
             failures.append("\(Invariants.noLeakedSessions): \(sessions) session(s) leaked after shutdown")
         }
-        if let dup = inbox.first(where: { $0.value != 1 }) {
+        // GS-STRESS-001 (round 274): THE REPORTED INSTANCE IS CANONICAL, AND THIS IS A WITNESS REPAIR RATHER
+        // THAN A BEHAVIOURAL ONE. `first(where:)` over a Dictionary chooseth WHICHEVER offending entry the
+        // table's ITERATION ORDER presenteth first, so two runs of the SAME seed could name DIFFERENT msg_ids
+        // while agreeing in every measured quantity -- which is exactly what the probe measured (inboxRows
+        // 4096, deliveryAdvances 2701, refusals 6, census 2001, leases 0 in BOTH runs, and only the NAMED id
+        // differing). The replay hint is the campaign's own promise, and a hint that nameth an arbitrary
+        // instance is not that promise kept. The SMALLEST offending key is chosen instead, so the message is
+        // a function of the CAMPAIGN and not of a hash table's order.
+        if let dup = inbox.filter({ $0.value != 1 }).min(by: { $0.key < $1.key }) {
             failures.append("\(Invariants.noDuplicateInbox): msg_id \(dup.key) entered the "
                             + "inbox \(dup.value) times")
         }
-        if let over = retries.first(where: { $0.value > StressCampaign.retryCap }) {
+        if let over = retries.filter({ $0.value > StressCampaign.retryCap }).min(by: { $0.key < $1.key }) {
             failures.append("\(Invariants.noDuplicateDelivery): msg_id \(over.key) was retried "
                             + "\(over.value) times, over the cap \(StressCampaign.retryCap)")
         }
