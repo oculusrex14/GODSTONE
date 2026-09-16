@@ -66,6 +66,10 @@ public final class MeshNode {
     /// outbox for the trusted link's writer (the physical pump is T54/T73-T75
     /// territory; the production wiring point is the lab composition root).
     internal var recipientInbox: RecipientInboxRepository?
+    /// GS-RUNTIME-001 step 3: **THE BOUNDED ACK WORKER'S SCHEDULE.** The node is the transport's delegate, so the
+    /// readiness arriveth HERE; it must therefore be the node that telleth the pump -- otherwise "registering a
+    /// queue does not send it", which is this finding's own sentence. Set by the owning runtime.
+    internal var ackPump: DurableAckPump?
 
     /// T42: the per-TrustedPeer bounded sync pump and the typed dispatcher. Both
     /// are ACTIVE by default (the default pump is built lazily from this node's
@@ -147,6 +151,8 @@ public final class MeshNode {
         // (The explicit `return` is required now that this body has two statements: the single-expression
         // implicit return the original relied on is gone.)
         retireRelationEpoch(nodeId)
+        // GS-RUNTIME-001 step 3: **ON LinkLost THE PEER STOPPETH BEING ELIGIBLE -- THAT EXACT NODE, not another.**
+        ackPump?.onLinkGone(nodeId)
         return pumpFor().cancel(nodeId)
     }
 
@@ -984,6 +990,9 @@ extension MeshNode: TransportDelegate {
     /// not in the shipping delegate path.
     public func transportApplicationLinkReady(peerId: UUID, receivedFrom nodeId16: Data) {
         _ = trustedPeerDidConnect(nodeId: nodeId16, peerId: peerId)
+        // GS-RUNTIME-001 step 3: **ON LinkReady THE PEER BECOMETH ELIGIBLE, FOR THAT EXACT NODE ID.** The pump
+        // schedu1eth ONE bounded worker per relation; nothing else in production ever told it.
+        ackPump?.onLinkReady(nodeId16)
     }
 
     public func transportReady(peerId: UUID) {

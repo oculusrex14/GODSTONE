@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 218 -- GS-RUNTIME-001 step 3 LANDS: the readiness schedules the bounded ACK worker for the EXACT relation
+
+- **Wiring**: `MeshNode` carries the pump (the node *is* the transport's delegate, so the readiness arrives there); `transportApplicationLinkReady(peerId:receivedFrom:)` calls `ackPump.onLinkReady(nodeId16)`; `trustedPeerDidDisconnect(nodeId:peerId:)` calls `ackPump.onLinkGone(nodeId)` — the pump's own words: *"Schedule on LinkReady: the peer becometh eligible"* / *"A link went away: the peer stoppeth being eligible."*
+- **Witness**: `testSR00b_…` — nothing scheduled at the outset; the readiness schedules **that exact node id and no other**; the farewell unschedules **that** node, so a replacement relation is never shadowed by an elder's schedule.
+- **Measured**: **full iOS lane 1215 / 0**. Remaining: steps 4–6 (wake the worker for inventory/deadline/inbound/pending ACKs; drain only the named relation through `nextBatch`; hand batches through RecordWriter admission and the same transport; rebuild after reopen; **keep readiness false**).
+
 ## Round 217 -- GS-RUNTIME-001 step 2's CONSTRUCTION HALF lands: the four ACK owners in the PRODUCTION runtime
 
 - **In `MeshRuntime`**: `ackStore` (over the **same opened private store**), `ackDriver` (signed by the **pinned** identity through `IdentityAckSigner`), `ackPump`, and `meshNode.ackDispatcher` + `meshNode.recipientInbox` **bound**.

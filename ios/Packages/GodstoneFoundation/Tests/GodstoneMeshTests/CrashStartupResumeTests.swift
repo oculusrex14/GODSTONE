@@ -80,6 +80,34 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: peerUrl)
     }
 
+    /// GS-RUNTIME-001 step 3: **THE READINESS MUST SCHEDULE THE BOUNDED ACK WORKER FOR THE EXACT RELATION, AND THE
+    /// FAREWELL MUST UNSCHEDULE *THAT* NODE.** MEASURED BEFORE (round 209): nothing in production collected the
+    /// readiness at all, so no worker was ever scheduled -- "registering a queue does not send it".
+    func testSR00b_TheReadinessSchedullethTheAckWorkerAndTheFarewellCancellethIt() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00b_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00b_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        let handle = UUID()
+        let nodeId = Data(repeating: 0x31, count: 16)
+        let other = Data(repeating: 0x32, count: 16)
+
+        XCTAssertFalse(runtime.ackPump.isScheduled(nodeId), "nothing standeth scheduled at the outset")
+
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId)
+        XCTAssertTrue(runtime.ackPump.isScheduled(nodeId),
+                      "GS-RUNTIME-001 step 3: THE TRUSTED READINESS MUST SCHEDULE THE ACK WORKER for the relation's "
+                      + "EXACT node id -- nothing else in production ever did")
+        XCTAssertFalse(runtime.ackPump.isScheduled(other), "and for NO OTHER node")
+
+        runtime.meshNode.trustedPeerDidDisconnect(nodeId: nodeId, peerId: handle)
+        XCTAssertFalse(runtime.ackPump.isScheduled(nodeId),
+                       "and the farewell must unschedule THAT exact node, so a replacement relation is not shadowed")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

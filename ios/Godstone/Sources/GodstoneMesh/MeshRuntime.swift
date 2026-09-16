@@ -141,6 +141,9 @@ public final class MeshRuntime {
                     // DROPPED INSIDE the store (which receiveth it anyway) and the site name is FORWARDED.
                     receivedAt: receivedAt, fault: { label, _ in try fault?(label) })
             })
+        // GS-RUNTIME-001 step 3: the node is the transport's delegate, so it receiveth the readiness; it must
+        // therefore hold the pump that the readiness schedulleth.
+        meshNode.ackPump = ackPump
         self.ackStore = ackStore
         self.ackDriver = ackDriver
         self.ackPump = ackPump
