@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 277f -- GS-UX-001 step 7: the mandatory control green again, and a false green withdrawn
+
+- **Withdrawn:** ledger item (9) claimed both cases behaved as they must; the control in fact stood RED at `ef35720`. The claim is withdrawn in place.
+- **Eighth species:** the 277e edit script sliced `c[i_nav:i_sos]` with `i_sos < i_nav` -> EMPTY slice -> guard vacuously true -> it printed "already carrieth" and changed nothing.
+- **Ninth species:** the digest audit silently skipped 86 of 304 relative evidence paths and reported "218 ok, 0 mismatched". All 86 exist under `<evidence-root>/REMEDIATION/` with matching hashes.
+- **Green:** control PASSED 0/13; NEG-1 and NEG-2 fail on their own noun; lab `BUILD SUCCEEDED` rc 0 re-measured on this tree.
+- **Carried:** repair the digest instrument (resolve + refuse to skip) and fold the stray in-checkout evidence root into the canonical one.
+
 ## Status — 32 submitted (27 FIX_SUBMITTED, 5 PARTIAL), 22 OPEN
 
 (Recomputed from the ledger at round 161: `{'OPEN': 22, 'FIX_SUBMITTED': 27, 'PARTIAL': 5}`, total 54. The

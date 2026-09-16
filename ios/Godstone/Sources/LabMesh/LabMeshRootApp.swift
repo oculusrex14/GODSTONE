@@ -77,8 +77,10 @@ struct LabRootView: View {
                 Text("Conversation").accessibilityLabel("Conversation screen").accessibilityIdentifier("lab.tab.conversation")
             }
             LabSosView().tabItem {
-                            Text("SOS").accessibilityLabel("SOS screen").accessibilityIdentifier("lab.tab.sos")
-                        }
+                // GS-UX-001 step 7 (round 277): the CLASS is LabSosView while the LABEL is "SOS" -- two spellings for
+                // one journey, and the navigation invariant asketh for the class while this label is what is HEARD.
+                Text("SOS").accessibilityLabel("SOS screen").accessibilityIdentifier("lab.tab.sos")
+            }
             LabDiagnosticsView().tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.

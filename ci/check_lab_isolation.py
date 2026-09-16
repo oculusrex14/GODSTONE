@@ -507,16 +507,20 @@ def check_the_lab_navigateth_the_five_journeys():
         return False, "the iOS lab carrieth no navigation at all (no TabView): four of the five journeys are unreachable"
     # REACHABILITY, NOT MERELY DECLARATION -- and the negative case TAUGHT ME THE DIFFERENCE: with one tab's view
     # renamed, the control still PASSED, because a `struct LabSosView` DECLARATION remained in the file while the TAB no
-    # longer reached it. A declaration is not a journey. So each view must appear AS AN INSTANTIATED TAB.
-    # PER TAB, OVER THE WHOLE SOURCE -- NOT OVER A SINGLE `{}`-BOUNDED CAPTURE. A `[\s\S]*?\n\s*\}` capture STOPPETH at the
-    # FIRST TAB'S OWN CLOSING BRACE once a tab is written across lines, so tabs looked label-less while carrying labels -- and
-    # ITS NEGATIVE CASE AGREED WITH THE FALSE RESULT, because A NEGATIVE CASE CAN ONLY REFUTE A CHECK THAT IS RIGHT ABOUT
-    # EVERYTHING ELSE. When a POSITIVE case faileth, THE POSITIVE CASE IS THE EVIDENCE.
-    if "TabView" not in text:
-        return False, "the iOS lab carrieth no navigation at all (no TabView)"
-    tabs = text
-    missing = [name for name in ("Identity", "Contacts", "Conversation", "SOS", "Diagnostics")
-               if not re.search(r"Lab" + name + r"View\(\)\s*\.tabItem", tabs)]
+    # longer reached it. A declaration is not a journey. So each view must appear AS AN INSTANTIATED TAB, searched over the
+    # WHOLE SOURCE and not inside a `{}`-bounded capture -- A CAPTURE THAT STOPS AT THE FIRST TAB'S CLOSING BRACE JUDGETH
+    # ONLY THE FIRST TAB (the fifth species of this session's control family).
+    # AND THE CLASS SPELLING IS NOT THE LABEL SPELLING. This check asketh for the CLASS INSTANTIATED AS A TAB; the
+    # accessibility invariant asketh for the LABEL THE USER HEARETH. The fourth journey's class is `LabSosView` while its
+    # label readeth `Text("SOS")`, so round 277d's BLANKET rename of this tuple to "SOS" -- RIGHT FOR THE LABEL CHECK, WRONG
+    # HERE -- made this check REFUSE A JOURNEY IT HAD JUST FOUND: the SEVENTH species, a repair that broke its neighbour, and
+    # found only BY RUNNING THE CONTROL rather than by re-reading it. The pairs are therefore WRITTEN OUT, not derived:
+    # A NAME DERIVED FROM ANOTHER NAME IS A NAME ASSUMED.
+    reachable = (("Identity", "LabIdentityView"), ("Contacts", "LabContactsView"),
+                 ("Conversation", "LabConversationView"), ("SOS", "LabSosView"),
+                 ("Diagnostics", "LabDiagnosticsView"))
+    missing = [journey for journey, cls in reachable
+               if not re.search(re.escape(cls) + r"\(\)\s*\.tabItem\s*\{", text)]
     if missing:
         return False, "no TAB reacheth: " + ", ".join(missing) + " (a declaration is not a journey)"
     return True, "the lab navigateth all five journeys (identity, contacts, conversation, SOS, diagnostics)"
