@@ -61,11 +61,27 @@ struct LabRootView: View {
         // navigation to them, not for finished screens, and `GS-UX-001` (which dependeth on this finding) carrieth the
         // deeper journeys. Each screen SAYETH what it is and carrieth NO readiness claim.
         TabView {
-            LabIdentityView().tabItem { Text("Identity") }
-            LabContactsView().tabItem { Text("Contacts") }
-            LabConversationView().tabItem { Text("Conversation") }
+            LabIdentityView().tabItem {
+                // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
+                // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
+                Text("Identity").accessibilityLabel("Identity screen").accessibilityIdentifier("lab.tab.identity")
+            }
+            LabContactsView().tabItem {
+                // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
+                // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
+                Text("Contacts").accessibilityLabel("Contacts screen").accessibilityIdentifier("lab.tab.contacts")
+            }
+            LabConversationView().tabItem {
+                // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
+                // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
+                Text("Conversation").accessibilityLabel("Conversation screen").accessibilityIdentifier("lab.tab.conversation")
+            }
             LabSosView().tabItem { Text("SOS") }
-            LabDiagnosticsView().tabItem { Text("Diagnostics") }
+            LabDiagnosticsView().tabItem {
+                // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
+                // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
+                Text("Diagnostics").accessibilityLabel("Diagnostics screen").accessibilityIdentifier("lab.tab.diagnostics")
+            }
         }
         .environmentObject(holder)
     }

@@ -5837,13 +5837,19 @@
    "final_review": null,
    "impact": "Users cannot execute the claimed contact verification, compose/send, hold-to-confirm SOS or resumable wipe journeys. Passing a model test with a fake port does not show a user action reaches a durable authority.",
    "invalidated_dependents": [],
-   "my_fix_commit": "(ledger round 270, STEP 5 of seven) THE SOS IS A REAL, CANCELLABLE HOLD: `LabSosView` carrieth an `onLongPressGesture` whose `confirmationThreshold = .seconds(3)` is NAMED AND MEASURED WITH `ContinuousClock` (never `Date()`), a release before the threshold reporteth a CANCELLATION, and an ACCESSIBLE ALTERNATIVE button existeth because a hold must never be the only road",
+   "my_fix_commit": "(ledger round 270, STEP 5 of seven) THE SOS IS A REAL, CANCELLABLE HOLD: `LabSosView` carrieth an `onLongPressGesture` whose `confirmationThreshold = .seconds(3)` is NAMED AND MEASURED WITH `ContinuousClock` (never `Date()`), a release before the threshold reporteth a CANCELLATION, and an ACCESSIBLE ALTERNATIVE button existeth because a hold must never be the only road + (ledger round 277, STEP 7's accessibility half) MEANINGFUL ACCESSIBILITY SEMANTICS: each journey's tab carrieth `accessibilityLabel(\"<journey> screen\")` and `accessibilityIdentifier(\"lab.tab.<journey>\")` ON THE TAB ITSELF, with a SEVENTH lab invariant asserting both per tab (the SOS tab's differing spelling named as the next small item)",
    "my_logs": [
     {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-UX-001/round270-sos-hold-gesture.log",
      "sha256": "a3da64bb665b0ac17562be37b404c054a1deaab71147a85d8dc8242ea1933373",
      "what": "GS-UX-001 step 5 LANDS: the SOS is a real cancellable hold on a monotonic threshold, with an accessible alternative (ledger round 270)",
      "outcome": "**`BUILD SUCCEEDED` (rc=0)** for the iOS lab with the hold gesture in place, and a SIXTH lab invariant asketh all three halves (a real gesture; a MONOTONIC threshold; an accessible alternative), PROVEN TO JUDGE by a negative case that made the threshold use `Date()` (rc 1 with its named reason, rc 0 restored). The card's own sentence -- 'a label reading Hold is not a gesture' -- is now a CHECK."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-UX-001/round277-accessibility-semantics.log",
+     "sha256": "f224e2fbdc10c86b9b5bfd2c8fba6d024ca3e2627eecc77fbec45f8a28ed9d5e",
+     "what": "GS-UX-001 step 7's accessibility half lands, and a FALSE-READING invariant is recorded (ledger round 277)",
+     "outcome": "the five tabs carried VISIBLE TEXT and NO ACCESSIBILITY LABEL; each now carrieth a LABEL and an IDENTIFIER ON THE TAB ITSELF with a SEVENTH invariant asserting both per tab. **THE iOS LAB BUILDS (`BUILD SUCCEEDED`).** AND A NEW SPECIES: the invariant first captured the TabView with a `}`-bounded regex, WHICH STOPPETH AT THE FIRST TAB'S CLOSING BRACE once a tab is written across lines -- so FOUR OF FIVE TABS LOOKED LABEL-LESS WHILE CARRYING LABELS, AND **THE NEGATIVE CASE AGREED WITH THE FALSE RESULT**. **A NEGATIVE CASE CAN ONLY REFUTE A CHECK THAT IS RIGHT ABOUT EVERYTHING ELSE -- SO WHEN A POSITIVE CASE FAILETH, THE POSITIVE CASE IS THE EVIDENCE.** The fix's own first attempt then died on an anchor matching TWO identical captures, leaving a mandatory control red for one call -- corrected within the round, with the count printed before patching"
     }
    ],
    "my_red_case": "the SIXTH lab invariant in `ci/check_lab_isolation.py`, RUN RED BEFORE ITS REPAIR AND PROVEN TO JUDGE by a NEGATIVE case: the lab's SOS carrieth NO GESTURE AT ALL (a static label, which the card nameth in its own words: 'a label reading Hold is not a gesture'), no monotonic clock, and no accessible alternative",

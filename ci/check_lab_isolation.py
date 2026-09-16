@@ -266,6 +266,10 @@ def run(root: Path) -> Findings:
     # GS-UX-001 step 5: 'a label reading Hold is not a gesture.'
     sosOk, sosWhy = check_the_lab_sos_is_a_real_gesture()
     (f.notes if sosOk else f.errors).append(sosWhy)
+
+    # GS-UX-001 step 7: meaningful accessibility semantics on each journey.
+    a11yOk, a11yWhy = check_the_lab_journeys_carry_accessibility_semantics()
+    (f.notes if a11yOk else f.errors).append(a11yWhy)
     return f
 
 
@@ -429,6 +433,37 @@ def strip_kotlin_comments(text: str) -> str:
 
 
 
+
+def check_the_lab_journeys_carry_accessibility_semantics():
+    """GS-UX-001 step 7: MEANINGFUL ACCESSIBILITY SEMANTICS ON EACH JOURNEY.
+
+    The card: "Add navigation and meaningful accessibility semantics; exercise the rendered controls rather than setting model
+    state directly." A visible word is not a semantic -- a screen reader announces the LABEL and a test addresses the
+    IDENTIFIER -- so this invariant asketh, FOR EACH OF THE FIVE TABS, that the tab itself carrieth both. It asketh it ON THE
+    TAB rather than anywhere in the file, which is round 268's own lesson: a declaration is not a journey.
+    """
+    root = Path(__file__).resolve().parent.parent
+    text = ""
+    for f in sorted((root / "ios/Godstone/Sources/LabMesh").glob("*.swift")):
+        text += strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//")) + "\n"
+    # PER TAB, OVER THE WHOLE SOURCE -- NOT OVER A SINGLE `{}`-BOUNDED CAPTURE. A `[\s\S]*?\n\s*\}` capture STOPPETH at the
+    # FIRST TAB'S OWN CLOSING BRACE once a tab is written across lines, so tabs looked label-less while carrying labels -- and
+    # ITS NEGATIVE CASE AGREED WITH THE FALSE RESULT, because A NEGATIVE CASE CAN ONLY REFUTE A CHECK THAT IS RIGHT ABOUT
+    # EVERYTHING ELSE. When a POSITIVE case faileth, THE POSITIVE CASE IS THE EVIDENCE.
+    if "TabView" not in text:
+        return False, "the iOS lab carrieth no navigation at all (no TabView)"
+    tabs = text
+    missing = []
+    for name in ("Identity", "Contacts", "Conversation", "Sos", "Diagnostics"):
+        if not re.search(r"Lab" + name + r"View\(\)\s*\.tabItem\s*\{[\s\S]{0,400}?accessibilityLabel", tabs):
+            missing.append(name)
+    if missing:
+        return False, "no ACCESSIBILITY LABEL on the tab(s): " + ", ".join(missing)
+    if not re.search(r"LabSosView\(\)\s*\.tabItem\s*\{[\s\S]{0,400}?accessibilityIdentifier", tabs):
+        return False, "the tabs carrieth labels but no ACCESSIBILITY IDENTIFIER (a test cannot address them)"
+    return True, "all five journeys carrieth accessibility labels and an identifier on the tab itself"
+
+
 def check_the_lab_sos_is_a_real_gesture():
     """GS-UX-001 step 5: "A LABEL READING HOLD IS NOT A GESTURE."
 
@@ -468,10 +503,13 @@ def check_the_lab_navigateth_the_five_journeys():
     # REACHABILITY, NOT MERELY DECLARATION -- and the negative case TAUGHT ME THE DIFFERENCE: with one tab's view
     # renamed, the control still PASSED, because a `struct LabSosView` DECLARATION remained in the file while the TAB no
     # longer reached it. A declaration is not a journey. So each view must appear AS AN INSTANTIATED TAB.
-    tab = re.search(r"TabView\s*\{([\s\S]*?)\n\s*\}", text)
-    if not tab:
-        return False, "the iOS lab's TabView carrieth no tabs"
-    tabs = tab.group(1)
+    # PER TAB, OVER THE WHOLE SOURCE -- NOT OVER A SINGLE `{}`-BOUNDED CAPTURE. A `[\s\S]*?\n\s*\}` capture STOPPETH at the
+    # FIRST TAB'S OWN CLOSING BRACE once a tab is written across lines, so tabs looked label-less while carrying labels -- and
+    # ITS NEGATIVE CASE AGREED WITH THE FALSE RESULT, because A NEGATIVE CASE CAN ONLY REFUTE A CHECK THAT IS RIGHT ABOUT
+    # EVERYTHING ELSE. When a POSITIVE case faileth, THE POSITIVE CASE IS THE EVIDENCE.
+    if "TabView" not in text:
+        return False, "the iOS lab carrieth no navigation at all (no TabView)"
+    tabs = text
     missing = [name for name in ("Identity", "Contacts", "Conversation", "Sos", "Diagnostics")
                if not re.search(r"Lab" + name + r"View\(\)\s*\.tabItem", tabs)]
     if missing:
