@@ -4,6 +4,13 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 213 -- the seam-shape RED taken, run and parked (source-level for a measured reason)
+
+- **Probe** `audit_probes/python/test_ios_ack_signer_shape.py`: positive control passes (the driver and its frame-building loop stand), **law-arm fails** — it requires the identity keep its material private **and** the seam therefore offer `sign(preimage:)` rather than `signingSeed(...)`.
+- **Why source-level**: no production `AckSignerSeam` conformance exists anywhere (harness + test only), so a behavioural arm would be a **compile error, not a red** — and the RED must run.
+- **Moves into the canonical suite when the seam changes**, as IOS-02's step-3 probe did (red → green → moved).
+- **Repair shape unchanged**: signature-shaped seam on **both isles**, proven by a witness that signs over the **pinned** identity and verifies through the existing authenticator; only then construct the four owners and subscribe.
+
 ## Round 212 -- the ACK signer's seam is HARNESS-SHAPED: step 2's precondition is a DESIGN change, not a new file
 
 - **Measured**: `AckSignerSeam.signingSeed(msgId:recipientNodeId:)` returns a **seed, not a signature**, and the driver's loop **takes that seed and builds the signed frame itself** (`AckObligationStore.swift:879-887`).
