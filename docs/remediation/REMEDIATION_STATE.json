@@ -3777,7 +3777,7 @@
    "SUPERSEDED_BY": "candidate_verification_at_round_248: BOTH ISLES measured at one SHA."
   },
   "candidate_verification_at_round_248": {
-   "candidate_sha": "e72f2b96bbac1b29e20be10856c8c6f3452ed0c7",
+   "candidate_sha": "f67ba17d53e83131495569019c823bf7191eed54",
    "tree_sha": "08a3462ab19e8bc3993a014854bb65df02d87ce9",
    "worktree": "clean at this sha apart from this record",
    "stands_as_the_convergence_candidate": true,
