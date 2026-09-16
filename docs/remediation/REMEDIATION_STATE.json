@@ -4361,8 +4361,8 @@
      "outcome": "the iOS lab's `LabRootView` carrieth a TabView whose five tabs instantiate the five named views, each reaching the SAME retained runtime owner (and Diagnostics SHOWING the lifecycle phase the owner heard); **`BUILD SUCCEEDED`** on the simulator SDK, unsigned. AND A WEAK INVARIANT OF MINE WAS CAUGHT BY ITS NEGATIVE CASE -- the FOURTH of this session's species: it first checked DECLARATIONS, and with a tab's view renamed it STILL PASSED, because a `struct LabSosView` declaration remained while no tab reached it. **A DECLARATION IS NOT A JOURNEY**; it now taketh the TabView's own body and asketh for an INSTANTIATED TAB per journey, and the negative case FAILETH as it must"
     }
    ],
-   "my_red_case": "the canonical invariant was added TO THE LAB'S OWN MANDATORY CONTROL (`ci/check_lab_isolation.py`) and RUN BEFORE the entry point existed: the control now judgeth the lab's launchability, and WITH THE MANIFEST'S ACTIVITY HIDDEN it returneth rc 1 with the named reason -- the NEGATIVE case proving the invariant can fail, which was exercised after the repair and kept as this finding's control",
-   "my_status": "OPEN",
+   "my_red_case": "the five canonical lab invariants in `ci/check_lab_isolation.py`, EACH RUN RED BEFORE ITS REPAIR AND EACH PROVEN TO JUDGE BY A NEGATIVE CASE: the manifest declared NO ACTIVITY AT ALL (round 260), a hidden `@main` and a composition replaced by an error (262/266), a lifecycle told to nobody (267), and an unreachable tab (268). THE FIRST WAS RUN BEFORE THE ENTRY POINT EXISTED, and every later one was exercised by breaking the thing it judged -- because a control that cannot fail proveth nothing",
+   "my_status": "FIX_SUBMITTED",
    "notes": null,
    "pending_proof": [],
    "proof": "Android LabMesh manifest has an empty application with no activity/launcher; LabMeshApp is a Kotlin object, not an Activity or Application entry. The iOS application target includes only Sources/LabMesh, whose file defines an enum and a View but no @main App/main. Its root view renders static profile/readiness labels and never composes the runtime.",
