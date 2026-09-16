@@ -381,10 +381,20 @@ public final class CentralManagerEpochDelegate: NSObject, CBCentralManagerDelega
         super.init()
     }
 
+    /// **IOS-06 step 3: THE PLATFORM'S POWER/PERMISSION ROAD, EXPOSED TO THE GRAPH.** Until this landed the
+    /// authority's `onPowerLoss`/`onPermissionRemoved` were called ONLY BY COURTS (measured: `ReadinessT28Tests`
+    /// and nothing else), so a real power-off or permission withdrawal never reached the one owner.
+    /// THE HOOK IS CALLED OUTSIDE THE SERIAL BLOCK, so a consumer cannot re-enter the transport's own serial.
+    /// **AND IT SPEAKETH A PLATFORM-INDEPENDENT WORD**: the graph must not learn CoreBluetooth's vocabulary to hear
+    /// that the radio went away (my first draft put `CBManagerState` on the NODE and the compiler refused it -- a
+    /// layering error the compiler caught before a reviewer had to).
+    public var onCentralStateChanged: ((TransportPowerState) -> Void)?
+
     public func centralManagerDidUpdateState(_ c: CBCentralManager) {
         ownerContext?.withSerial {
         transport?.processCentralDidUpdateState(c, sourceEpoch: transportEpoch)
         }
+        onCentralStateChanged?(TransportPowerState(c.state))
     }
 
 
@@ -566,6 +576,24 @@ public struct SystemMonotonicClock: MonotonicClock {
 /// production source**" -- MEASURED TRUE (the class declared `NSObject, @unchecked Sendable` and nothing else). The
 /// lifecycle authority cannot own a transport it cannot name, so the conformance now standeth: `start()` and
 /// `stop()` already existed, and the two descriptive members are supplied here.
+/// **IOS-06 step 3: THE PLATFORM'S POWER/PERMISSION WORD, IN THE GRAPH'S OWN LANGUAGE.** The one authority careth
+/// about three things -- the radio is ready, the radio is off, or permission was withdrawn -- and nothing else.
+public enum TransportPowerState: Sendable, Equatable {
+    case ready
+    case poweredOff
+    case permissionRevoked
+    case other
+
+    public init(_ state: CBManagerState) {
+        switch state {
+        case .poweredOn: self = .ready
+        case .poweredOff: self = .poweredOff
+        case .unauthorized: self = .permissionRevoked
+        default: self = .other
+        }
+    }
+}
+
 extension BleTransport: DisconnectingTransport {
     /// **IOS-06 step 2: THIS TRANSPORT'S REAL TEARDOWN COUNT.** The live physical links are COUNTED and THEN
     /// severed, on the same road the drain useth -- so the authority receiveth a MEASUREMENT rather than the
@@ -4048,11 +4076,23 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return publishedRelations.contains(where: { $0.direction == direction && $0.peerId == peerId })
     }
 
+    /// **IOS-06 step 3: THE PLATFORM'S POWER/PERMISSION ROAD, EXPOSED TO THE GRAPH.** Until this landed the
+    /// authority's `onPowerLoss`/`onPermissionRemoved` were called ONLY BY COURTS (measured: `ReadinessT28Tests`
+    /// and nothing else). It standeth HERE, ON THE TRANSPORT -- my first draft put it on the central DELEGATE,
+    /// because my anchor matched that class's `centralManagerDidUpdateState`; the compiler said so plainly
+    /// ("value of type 'BleTransport' has no member 'onCentralStateChanged'").
+    public var onCentralStateChanged: ((TransportPowerState) -> Void)?
+
     public func processCentralDidUpdateState(_ c: CBCentralManager, sourceEpoch: UInt64) -> Void {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
             self.reductionProcessCentralDidUpdateState(c, sourceEpoch: sourceEpoch)
+            // **A LOSS ON A TRANSPORT THAT IS NOT STARTED IS NOT AN EVENT**: nothing is running to drain, and an
+            // authority driven by a silent radio would drain on nothing.
+            if self.isStarted {
+                self.onCentralStateChanged?(TransportPowerState(c.state))
+            }
         }
     }
 

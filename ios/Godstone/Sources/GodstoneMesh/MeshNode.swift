@@ -494,8 +494,26 @@ public final class MeshNode {
     /// court keepeth working while the production graph loseth its second, unowned path to the radio.
     internal var lifecycleOwner: UnifiedRuntimeLifecycle?
 
+    /// **IOS-06 step 3: A POWER LOSS OR A WITHDRAWN PERMISSION REACHETH THE ONE AUTHORITY.** The platform speaketh
+    /// through the transport; the authority is the only thing that may act on it -- and a HEALTHY STATE IS NOT AN
+    /// EVENT, which the arm requireth.
+    internal private(set) var lifecycleEventsForwarded = 0
+
+    internal func handleTransportPowerState(_ state: TransportPowerState) {
+        guard let lifecycleOwner else { return }
+        switch state {
+        case .poweredOff: lifecycleOwner.onPowerLoss()
+        case .permissionRevoked: lifecycleOwner.onPermissionRemoved()
+        case .ready, .other: return
+        }
+        lifecycleEventsForwarded += 1
+    }
+
     /// Open the radio adapter, once its consumers are already install'd.
     private func openAdapters() {
+        ble.onCentralStateChanged = { [weak self] state in
+            self?.handleTransportPowerState(state)
+        }
         if let lifecycleOwner {
             lifecycleOwner.start()
         } else {

@@ -498,6 +498,34 @@ final class CrashStartupResumeTests: XCTestCase {
         XCTAssertEqual(plain.stops, 1, "while the stop itself still reacheth it")
     }
 
+    /// **IOS-06 step 3, BEHAVIOURAL: A POWER LOSS OR A WITHDRAWN PERMISSION REACHETH THE ONE AUTHORITY.** The
+    /// authority's events were called ONLY BY COURTS before this (a measured grep over the whole source tree found
+    /// `ReadinessT28Tests` and nothing else), so a real power-off never reached the owner.
+    func testSR00m_APowerOrPermissionLossReachethTheOneAuthority() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00m_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00m_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+
+        let before = runtime.meshNode.lifecycleEventsForwarded
+        runtime.meshNode.handleTransportPowerState(.poweredOff)
+        XCTAssertEqual(runtime.meshNode.lifecycleEventsForwarded, before + 1,
+                       "IOS-06 step 3: a POWER LOSS must reach the one authority")
+        runtime.meshNode.handleTransportPowerState(.permissionRevoked)
+        XCTAssertEqual(runtime.meshNode.lifecycleEventsForwarded, before + 2,
+                       "and a WITHDRAWN PERMISSION must too")
+
+        // THE NEGATIVE CASE: A HEALTHY STATE IS NOT AN EVENT -- the platform speaketh constantly, and an authority
+        // driven by every word would drain on a powered-on radio.
+        runtime.meshNode.handleTransportPowerState(.ready)
+        runtime.meshNode.handleTransportPowerState(.other)
+        XCTAssertEqual(runtime.meshNode.lifecycleEventsForwarded, before + 2,
+                       "a healthy or unknown state must NOT be forwarded as a loss")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
     func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")

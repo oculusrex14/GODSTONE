@@ -4,6 +4,16 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 242 -- IOS-06 step 3: the platform's power/permission road reaches the one authority
+
+- **Measured defect**: the authority's `onPowerLoss`/`onPermissionRemoved` were called **only by courts** (a grep found `ReadinessT28Tests` and nothing else), so a real power-off never reached the owner.
+- **Wiring**: `BleTransport` gains `onCentralStateChanged`, called from **its own** `processCentralDidUpdateState` road and **only while `isStarted`** (*a loss on a transport that is not started is not an event*); `MeshNode` forwards `poweredOff`/`permissionRevoked` to the authority, and **a healthy or unknown state is not forwarded at all**.
+- **The graph speaks a platform-independent word**: a new `TransportPowerState` mapped from CoreBluetooth **at the transport** — my first draft put `CBManagerState` on the *node* and the compiler refused it: *a layering error caught before a reviewer had to*.
+- **Witness, with its negative case**: a power loss and a withdrawn permission each reach the authority; `ready` and `other` are **not** events.
+- **A search error of mine, named**: my anchor matched the **central delegate's** callback rather than the transport's, so the property landed on the wrong type; then a multi-line anchor aborted **after** removing the first copy, leaving the hook nowhere — *the compiler was the only voice that said so*. Anchors are now single measured lines, not blocks I recalled.
+- **Measured**: **full iOS lane 1226 / 0** (count read from the log); courts 610 OK.
+- **Remaining**: steps 4–5 (the wipe drain through the authority, reactivation) and the node-level behavioural witness.
+
 ## Round 241 -- IOS-06 step 2 complete: the concrete transport reports its REAL teardown, and an ordering defect of mine is fixed
 
 - **Wiring**: `extension BleTransport: DisconnectingTransport` counts the **live physical links** (`activeOutboundLifetimes` ∪ `activeInboundLifetimes`) and **then** severs them — so the authority receives a *measurement* rather than the literal `1` it used to fabricate.
