@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 206b -- one of ANDROID-01's three parked failures DIAGNOSED by cross-isle evidence
+
+- The arm reads `writesTo(...).last()` then asserts the third counsel's length is **197**; it failed with **74**.
+- **The iOS work produced the identical pair** — `the HS3 message is one hundred ninety-seven octets … got 74` — because production's challenge record (a DATA record, 74 octets) is appended after the 197-octet counsel. **The same positional read picks the same record on both isles.**
+- So **that** failure is the positional defect, with the remedy already proven (seek the counsel **by type**). The other two (the idempotent arm's awaited collection; the odd arm's `hs3` timeout, whose hypothesis was refuted there) remain undiagnosed — **recorded as such rather than rounded up**.
+
 ## Round 206 -- ANDROID-01 re-examined against the completed iOS twin: the correspondence is REAL BUT PARTIAL
 
 - **Transfers**: the iOS cost was the rig reconciliation — **positional selection/assertions → type-based** (43 → 25 → 1 → 0). **The Android rigs carry the same fragility**, measured: `ReadinessT22Test.kt:903` takes the alien third counsel as `writesTo(...).last()`, and T21's writer-order arm reads `beforeData.last()`.
