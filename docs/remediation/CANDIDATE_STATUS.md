@@ -158,7 +158,7 @@ carries only successes teaches nothing*.
 | **iOS lab application target** | **`BUILD SUCCEEDED`** (simulator SDK, unsigned, `CODE_SIGNING_ALLOWED=NO`) |
 | iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 211.8s |
 | Python readiness + ledger courts | **OK** |
-| Repository controls | every `ci/check_*.py` **rc 0 — including `check_parity` under its default scope**; `--scope repo` rc 0 |
+| Repository controls | every `ci/check_*.py` **rc 0 EXCEPT `check_parity` under its default scope (rc 1 = the EXTERNAL A-06 arm, designed fail-closed)**; `--scope repo` rc 0 |
 | Symbols | `ci/symbols.py` — **0 unresolved** (223 Kotlin files, two more than round 256: GS-LAB-001's own lab sources) |
 
 **Since round 256:** GS-LAB-001 carried **four of six steps on real artifacts** — the Android APK whose **merged manifest** carries the
@@ -172,3 +172,10 @@ reconciled**, with three failures **each described by kind**.
 15 OPEN / 4 PARTIAL); readiness flags **false**; five gates **OPEN**; closure evidence **stale for 31 findings**; and the
 hardware-dependent work is explicitly outstanding — **GS-LAB-001's step 6 awaits T73–T75 and IOS-01's behavioural half awaits a real
 CoreBluetooth manager. No simulator or fixture result is offered as a device result anywhere in this record.**
+
+
+**A CORRECTION IN THIS VERY ENTRY, LEFT VISIBLE (round 265's pattern, committed again and caught again):** the first version of this
+verification claimed *every* control was rc 0 "including `check_parity` under its default scope" — **and the same call's own log printed
+`ci/check_parity.py rc=1` beside the claim.** The honest statement is the one in the table: every **repository-owned** control is rc 0,
+and the **only** non-zero is the **external A-06** arm, whose gate stays **OPEN**. *A claim written before its evidence was read is the
+mistake this ledger exists to catch, and it was caught in the round that made it.*

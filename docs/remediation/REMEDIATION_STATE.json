@@ -840,7 +840,7 @@
     "ios_lab_target": "**`BUILD SUCCEEDED`** (simulator SDK, unsigned, `CODE_SIGNING_ALLOWED=NO`)",
     "ios_lane_mirrored_package": "**Executed 1205 tests, with 0 failures (0 unexpected)**, 211.8s",
     "python_readiness_and_ledger_courts": "OK",
-    "repository_controls": "EVERY `ci/check_*.py` rc 0, **including `check_parity` under its DEFAULT scope** -- so the external A-06 arm is now the ONLY thing the release-gates workflow's `--scope all` would add; `--scope repo` rc 0",
+    "repository_controls": "EVERY `ci/check_*.py` rc 0 **EXCEPT `check_parity` UNDER ITS DEFAULT SCOPE, WHICH IS rc 1** -- and that non-zero IS the EXTERNAL A-06 arm (\"independent vectors unavailable or unapproved ... A-06 stays OPEN\"), exactly as at every candidate before it; `--scope repo` is rc 0. **AND MY FIRST RECORD OF THIS FIELD CLAIMED 'including `check_parity` under its DEFAULT scope' -- WHICH THE SAME CALL'S OWN LOG REFUTED (`ci/check_parity.py rc=1`, printed beside the claim). A CLAIM WRITTEN BEFORE ITS EVIDENCE WAS READ, CORRECTED WITHIN THE ROUND AND LEFT VISIBLE: the pattern round 265 named, committed again and caught again.**",
     "symbols": "ci/symbols.py: **0 unresolved** (223 Kotlin files -- two more than round 256, being GS-LAB-001's own lab sources)"
    },
    "since_round_256": "GS-LAB-001 carried FOUR of its six steps ON REAL ARTIFACTS (the Android APK whose merged manifest carrieth the launcher activity, the retained runtime owner, INTERNET removed and BLUETOOTH_SCAN present; and the iOS `GodstoneLabMesh.app` with its OWN bundle identity `io.godstone.labmesh`), plus FIVE lab invariants each proven to judge by a negative case; GS-UX-001's step 5 landed the SOS as a REAL cancellable hold on a MONOTONIC threshold with an accessible alternative; the round-254 mandatory-control regression was CLOSED; and ANDROID-01's reconciliation was measured to THREE of six arms reconciled with three failures each described BY KIND",
@@ -858,7 +858,8 @@
     "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES STAY OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING).",
     "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance.",
     "AND THE HARDWARE-DEPENDENT WORK IS EXPLICITLY OUTSTANDING: GS-LAB-001's step 6 awaiteth T73-T75, and IOS-01's behavioural half awaiteth a real CoreBluetooth manager -- NO SIMULATOR OR FIXTURE RESULT IS OFFERED AS A DEVICE RESULT ANYWHERE IN THIS RECORD."
-   ]
+   ],
+   "CORRECTION": "The first version of this entry said every control was rc 0 including `check_parity`'s default scope. THAT WAS WRONG: the log printed `ci/check_parity.py rc=1` in the same call. The non-zero is the EXTERNAL A-06 arm, which is DESIGNED fail-closed -- so the honest statement is: every repository-owned control is rc 0; the ONLY non-zero is the external arm, whose gate stays OPEN. AND THE METHOD NOTE: I wrote the claim in the same breath as the grep that refuted it, which is precisely the round-265 lesson -- CITE THE EVIDENCE BESIDE THE CLAIM, AND READ WHAT THE SAME CALL PRINTED BEFORE WRITING ANYTHING."
   }
  },
  "counts": {
