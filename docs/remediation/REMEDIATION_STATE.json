@@ -743,7 +743,9 @@
     "measured_at_this_exact_tree": "rc=1: the python readiness suite FAILED (failures=1) -- tools/readiness/tests/test_t26_post_aead_charge.py::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle, re-measured at THIS EXACT TREE in round 278 (throwaway worktree at the candidate SHA)",
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
-   }
+   },
+   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_222": {
    "candidate_sha": "1f110b154edc337246a072210366e049a4669b1b",
@@ -780,7 +782,9 @@
     "measured_at_this_exact_tree": "rc=1: the python readiness suite FAILED (failures=1) -- tools/readiness/tests/test_t26_post_aead_charge.py::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle, re-measured at THIS EXACT TREE in round 278 (throwaway worktree at the candidate SHA)",
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
-   }
+   },
+   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_254": {
    "candidate_sha": "5d75d21af64dc2b153e0aa4ebf508cd8bc1c037d",
@@ -817,7 +821,9 @@
     "measured_at_this_exact_tree": "rc=1: the python readiness suite FAILED (failures=1) -- tools/readiness/tests/test_t26_post_aead_charge.py::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle, re-measured at THIS EXACT TREE in round 278 (throwaway worktree at the candidate SHA)",
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
-   }
+   },
+   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_256": {
    "candidate_sha": "38406d02d2dcd88ecca6fa8d4a2b9546e8d48d7e",
@@ -854,7 +860,9 @@
     "measured_at_this_exact_tree": "rc=1: the python readiness suite FAILED (failures=1) -- tools/readiness/tests/test_t26_post_aead_charge.py::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle, re-measured at THIS EXACT TREE in round 278 (throwaway worktree at the candidate SHA)",
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
-   }
+   },
+   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "stands_as_the_convergence_candidate": false
   },
   "candidate_verification_at_round_275": {
    "candidate_sha": "e47e7797b153906566d1b373307dfcb51f85cc94",
@@ -894,7 +902,9 @@
     "measured_at_this_exact_tree": "rc=1: the python readiness suite FAILED (failures=1) -- tools/readiness/tests/test_t26_post_aead_charge.py::test_the_charge_is_keyed_on_the_authenticated_identity_not_a_claimed_handle, re-measured at THIS EXACT TREE in round 278 (throwaway worktree at the candidate SHA)",
     "why_i_was_blind": "the suite's LAST lines at every one of these trees were 'Ran 10 checks in selftest' / 'OK' -- its custom runner printeth AFTER the unittest summary -- and I read the suite through `| tail -2`, WHICH KEPT THE TAIL AND THREW AWAY THE JUDGMENT. The failure line was there at every tree, and so was rc=1.",
     "what_is_unchanged": "every OTHER lane claim in this entry standeth as it was measured; ONLY the python lane claim is withdrawn. The court that failed was asserting a NAME, not the law (see convergence.round278_python_lane_red_span): the PRODUCTION LAW of T26 was satisfied at this tree, so no production repair is implied by this correction -- the CANDIDATE'S GREENNESS is."
-   }
+   },
+   "SUPERSEDED_BY": "candidate_verification_at_round_279 (b076e26): this entry's python lane was RED at its tree (see python_lane_CORRECTION_AT_ROUND_278), so this tree was never the one clean exact SHA the convergence requirement asketh for.",
+   "stands_as_the_convergence_candidate": false
   },
   "round278_python_lane_red_span": {
    "round": 278,
@@ -955,6 +965,49 @@
    },
    "why_a_new_candidate_was_required": "ROUNDS 200/222/254/256/275 CANNOT STAND: their python lane was RED at every one (re-measured at each exact tree), a fact hidden for eighty-five rounds behind a `| tail -2` that kept the suite's trailing green and threw away its judgment. A CANDIDATE TREE WITH A RED MANDATORY LANE IS NOT A CANDIDATE. This entry replaceth them, and is measured at the SHA that REPAIRED the court and the audit instrument.",
    "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- the repository-side half is complete and the missing half is stated rather than papered over. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE** and the **five external gates stay OPEN**. **Closure evidence is stale for the findings whose cards changed after the audited SHA** -- a FLOOR on any later closure, not a clearance. **This candidate changeth NO production source**: it repaireth a COURT and an AUDIT INSTRUMENT and correcteth the record, so every production finding's status is unchanged by it."
+  },
+  "candidate_verification_at_round_279": {
+   "candidate_sha": "b076e26c90a00ef9d1929cda7091e25e249ab2a4",
+   "tree_sha": "b4536292b96ffd7e32ae15120adcb0180000c26b",
+   "worktree": "clean at this sha; the SINGLE modification recorded with this entry is `docs/remediation/REMEDIATION_STATE.json` itself -- this verification's own record -- so the measured tree and this SHA differ by documentation only",
+   "logs": {
+    "android-lanes.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_b076e26/android-lanes.log",
+     "sha256": "1a6127d46f4b016cf8bdb8d12e0f5969d2cf53f931b80cef2e6d864dbe0e81ce"
+    },
+    "fast-gates.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_b076e26/fast-gates.log",
+     "sha256": "a643d74a88434c947f0bd8b11611da9060bde1ef692f80c832d32eb109b28ac3"
+    },
+    "ios-lanes.log": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_b076e26/ios-lanes.log",
+     "sha256": "c70f3f6af2e94d83e6eed35c4c9f5d3e063c9f0dae713c1cc4f564fd41d98f9a"
+    }
+   },
+   "supersedes": [
+    "candidate_verification_at_round_200",
+    "candidate_verification_at_round_222",
+    "candidate_verification_at_round_254",
+    "candidate_verification_at_round_256",
+    "candidate_verification_at_round_275"
+   ],
+   "measured": {
+    "android_mesh_lane": "1193 tests, 0 failures, 0 errors -- FORCED (`--rerun-tasks --no-daemon`), counted from the run's own 76 XML files; BUILD SUCCESSFUL in 57s, rc 0",
+    "ios_foundation_lane": "mirror re-GENERATED (rc 0) then `Executed 1205 tests, with 0 failures (0 unexpected)` in 222.998s; swift test rc 0",
+    "python_readiness_suite": "579 tests, OK, rc 0",
+    "audit_probes": "12 tests, OK, rc 0",
+    "repository_controls": "every `ci/check_*.py` rc 0 -- the SINGLE non-zero is `check_parity` under its DEFAULT scope, WHICH IS THE EXTERNAL A-06 ARM; `--scope repo` rc 0",
+    "evidence_digests": "317 registered | 317 examined | 317 verified | 0 mismatched | 0 unresolved | 0 unnamed (findings 306, convergence 11)",
+    "symbols": "223 Kotlin files scanned, 0 unresolved",
+    "android_lab_apk": "`labmesh-debug.apk` FORCED (`--rerun-tasks`): BUILD SUCCESSFUL in 19s, 0 `error:` lines, rc 0; 15,133,266 bytes, sha256 0ec859294dad89e496fc7a435dbd5ee20233b7428869a5834ae9c5a62f708dc7. The FIRST apk attempt returned in 3s because the task was up-to-date -- AND A CACHED GREEN IS NOT EVIDENCE (round 222's law), so it was re-run FORCED.",
+    "ios_lab_build": "`BUILD SUCCEEDED`, rc 0, 0 `error:` lines (simulator SDK, unsigned: NO device, NO signed artifact, NO T76 input)"
+   },
+   "per_declared_scope": {
+    "LIGHT_Archive": 14,
+    "Mesh_Oracle": 40
+   },
+   "why_this_sha": "It is the tree that carrieth BOTH repairs of round 278/279: the court that judgeth T26's binding (with its own positive control and four negative witnesses) and the audit instrument that carrieth no ignored population. Its python lane is green BY MEASUREMENT rather than by a `tail`, which is the difference this round was about.",
+   "NOT_CLAIMED_AND_WHY": "**T78 convergence is NOT claimed**: its requirement is that all applicable HOSTED lanes be enabled, executed and green at this SHA, and NO hosted lane, run URL, run id or log existeth here -- THE REPOSITORY-SIDE HALF IS COMPLETE AND THE MISSING HALF IS STATED RATHER THAN PAPERED OVER. **No finding is `VERIFIED_FIXED`** (only an independent audit may write that). **Readiness flags stay FALSE**; the **five external gates stay OPEN**; **no fixture, simulated counter or lab target is offered as a device result** (the iOS lab is unsigned, on the simulator SDK). **This candidate changeth NO production source** relative to f054df7: it repaireth a court and the record, so every production finding's status is unchanged by it."
   }
  },
  "counts": {
@@ -7302,12 +7355,24 @@
     "A STRAY IN-CHECKOUT EVIDENCE ROOT FOLDED IN: /Users/oculus/Projects/GODSTONE_BUILDER/GODSTONE_BUILDER_EVIDENCE held EXACTLY ONE FILE -- the very log the ledger registered for round 270. It was copied into the canonical root, its sha256 verified UNCHANGED against the registered digest, the registered path corrected, AND THE STRAY ROOT REMOVED LAST. It sat inside a GIT WORKTREE and was gitignored, so a single `git clean -xdf` would have destroyed the only copy of a registered digest: THE RECORD DEPENDED ON A DIRECTORY GIT DID NOT TRACK."
    ],
    "verified_now": {
-    "registered": null,
-    "examined": null,
-    "verified": null,
+    "measured_by": "ci/check_evidence_digests.py --json, run by the round that recordeth this",
+    "registered": 317,
+    "examined": 317,
+    "verified": 317,
+    "findings_population": {
+     "registered": 306,
+     "examined": 306,
+     "verified": 306
+    },
+    "convergence_population": {
+     "registered": 11,
+     "examined": 11,
+     "verified": 11
+    },
     "mismatched": 0,
     "unresolved": 0,
-    "note": "filled by the instrument itself in this same round; see my_logs of this round's entry"
+    "unnamed": 0,
+    "note": "THE POPULATION GREW BY ELEVEN WHEN THE WALKER WAS MADE GENERIC (round 279): the instrument first read `findings[*].my_logs` only, while candidate verifications register their logs under `convergence` -- ELEVEN LOGS THAT HAD NEVER BEEN DIGEST-CHECKED AT ALL, INCLUDING THE LOGS OF THE CANDIDATE VERIFICATIONS THEMSELVES. All eleven verified on first examination. AN INSTRUMENT WITH AN IGNORED POPULATION IS THE NINTH SPECIES OVER AGAIN, and this one was committed in the same round that condemned it -- caught by asking what else the record registereth."
    },
    "prior_round_claim_kept_visible": "the round-158 record above ('verified: 96') STANDETH UNCHANGED: it measured what it measured at the population it examined."
   }
