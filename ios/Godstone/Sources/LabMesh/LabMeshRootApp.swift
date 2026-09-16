@@ -94,8 +94,53 @@ struct LabConversationView: View {
     var body: some View { VStack { LabBanner(); Text("Conversation").font(.title) } }
 }
 
+/// GS-UX-001 step 5 (round 270), THE CARD'S OWN SENTENCE: **"A label reading Hold is not a gesture."**
+///
+/// So the lab's SOS is a REAL, CANCELLABLE HOLD with a MONOTONIC CONFIRMATION THRESHOLD -- measured with
+/// `ContinuousClock`, which cannot go backwards, never with `Date()` -- AND AN ACCESSIBLE ALTERNATIVE, because a gesture
+/// that must be held is unreachable for some users and must never be the only road. The threshold is NAMED, and the
+/// gesture is CANCELLABLE: lifting the finger before the threshold cancels it, and the screen SAYETH so.
 struct LabSosView: View {
-    var body: some View { VStack { LabBanner(); Text("SOS").font(.title) } }
+    /// The monotonic confirmation threshold. Named, because a bare number in a gesture is a magic constant.
+    static let confirmationThreshold: Duration = .seconds(3)
+
+    @State private var heldSince: ContinuousClock.Instant?
+    @State private var armed = false
+    @State private var outcome: String?
+
+    private let clock = ContinuousClock()
+
+    /// Has the hold lasted the threshold? Measured on the MONOTONIC clock, so a wall-clock step cannot arm it early.
+    private func thresholdReached() -> Bool {
+        guard let start = heldSince else { return false }
+        return clock.now - start >= Self.confirmationThreshold
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            LabBanner()
+            Text("SOS").font(.title)
+            Text(armed ? "ARMED -- release to send" : "hold to arm")
+            // THE GESTURE: a real hold, cancellable, with the monotonic threshold above.
+            Text("HOLD TO ARM")
+                .padding()
+                .background(armed ? Color.red.opacity(0.3) : Color.gray.opacity(0.2))
+                .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+                    if pressing {
+                        heldSince = clock.now
+                        outcome = nil
+                    } else {
+                        // RELEASED: armed only if the MONOTONIC threshold was reached; otherwise CANCELLED, and said so.
+                        if thresholdReached() { outcome = "sos armed by hold" } else { outcome = "hold cancelled -- threshold not reached" }
+                        heldSince = nil
+                    }
+                }, perform: { armed = thresholdReached() })
+            // THE ACCESSIBLE ALTERNATIVE: the same outcome without a hold, because a hold must never be the only road.
+            Button("Send SOS (accessible alternative)") { outcome = "sos armed by accessible alternative" }
+                .accessibilityLabel("Send SOS")
+            if let outcome { Text(outcome).font(.footnote) }
+        }
+    }
 }
 
 struct LabDiagnosticsView: View {

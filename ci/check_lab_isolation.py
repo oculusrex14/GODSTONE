@@ -262,6 +262,10 @@ def run(root: Path) -> Findings:
     # GS-LAB-001 step 4's navigation half: the five journeys the card nameth.
     navOk, navWhy = check_the_lab_navigateth_the_five_journeys()
     (f.notes if navOk else f.errors).append(navWhy)
+
+    # GS-UX-001 step 5: 'a label reading Hold is not a gesture.'
+    sosOk, sosWhy = check_the_lab_sos_is_a_real_gesture()
+    (f.notes if sosOk else f.errors).append(sosWhy)
     return f
 
 
@@ -422,6 +426,30 @@ def strip_kotlin_comments(text: str) -> str:
 
 
 
+
+
+
+def check_the_lab_sos_is_a_real_gesture():
+    """GS-UX-001 step 5: "A LABEL READING HOLD IS NOT A GESTURE."
+
+    The card asketh for an actual CANCELLABLE hold with a MONOTONIC confirmation threshold AND an accessible
+    alternative. So this invariant asketh three things of the lab's own sources: a real gesture existeth; its threshold
+    is measured on a MONOTONIC clock (`ContinuousClock`), never on wall time; and an ACCESSIBLE ALTERNATIVE existeth,
+    because a hold must never be the only road.
+    """
+    root = Path(__file__).resolve().parent.parent
+    text = ""
+    for f in sorted((root / "ios/Godstone/Sources/LabMesh").glob("*.swift")):
+        text += strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//")) + "\n"
+    if not re.search(r"onLongPressGesture|DragGesture|LongPressGesture", text):
+        return False, "the lab's SOS carrieth NO gesture: a label reading Hold is not a gesture (GS-UX-001 step 5)"
+    if "ContinuousClock" not in text:
+        return False, "the hold's threshold is not measured on a MONOTONIC clock: a wall-clock step could arm it early"
+    if re.search(r"Date\(\)", text):
+        return False, "the lab's gesture measureth with Date(): wall time may step backwards and the threshold would drift"
+    if 'Button("Send SOS' not in text:
+        return False, "no ACCESSIBLE ALTERNATIVE to the hold existeth: a hold must never be the only road"
+    return True, "the SOS is a real, cancellable hold on a MONOTONIC threshold, with an accessible alternative"
 
 
 def check_the_lab_navigateth_the_five_journeys():

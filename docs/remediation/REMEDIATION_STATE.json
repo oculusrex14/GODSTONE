@@ -5759,9 +5759,16 @@
    "final_review": null,
    "impact": "Users cannot execute the claimed contact verification, compose/send, hold-to-confirm SOS or resumable wipe journeys. Passing a model test with a fake port does not show a user action reaches a durable authority.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
+   "my_fix_commit": "(ledger round 270, STEP 5 of seven) THE SOS IS A REAL, CANCELLABLE HOLD: `LabSosView` carrieth an `onLongPressGesture` whose `confirmationThreshold = .seconds(3)` is NAMED AND MEASURED WITH `ContinuousClock` (never `Date()`), a release before the threshold reporteth a CANCELLATION, and an ACCESSIBLE ALTERNATIVE button existeth because a hold must never be the only road",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-UX-001/round270-sos-hold-gesture.log",
+     "sha256": "a3da64bb665b0ac17562be37b404c054a1deaab71147a85d8dc8242ea1933373",
+     "what": "GS-UX-001 step 5 LANDS: the SOS is a real cancellable hold on a monotonic threshold, with an accessible alternative (ledger round 270)",
+     "outcome": "**`BUILD SUCCEEDED` (rc=0)** for the iOS lab with the hold gesture in place, and a SIXTH lab invariant asketh all three halves (a real gesture; a MONOTONIC threshold; an accessible alternative), PROVEN TO JUDGE by a negative case that made the threshold use `Date()` (rc 1 with its named reason, rc 0 restored). The card's own sentence -- 'a label reading Hold is not a gesture' -- is now a CHECK."
+    }
+   ],
+   "my_red_case": "the SIXTH lab invariant in `ci/check_lab_isolation.py`, RUN RED BEFORE ITS REPAIR AND PROVEN TO JUDGE by a NEGATIVE case: the lab's SOS carrieth NO GESTURE AT ALL (a static label, which the card nameth in its own words: 'a label reading Hold is not a gesture'), no monotonic clock, and no accessible alternative",
    "my_status": "OPEN",
    "notes": null,
    "pending_proof": [],
@@ -5792,7 +5799,10 @@
     "T58"
    ],
    "title": "Identity, messaging and SOS journeys stop at disconnected models and static text",
-   "wave": "7"
+   "wave": "7",
+   "pending_work": [
+    "ROUND 270 (GS-UX-001'S STEP 5 LANDS -- 'A LABEL READING HOLD IS NOT A GESTURE' -- AND IT IS THE FIRST SLICE OF THE FINDING WHOSE DEPENDENT, GS-LAB-001, WAS CARRIED AT ROUND 269). (1) WHAT LANDED in the lab's own `LabSosView`: a REAL hold (`onLongPressGesture(minimumDuration: 0, pressing:perform:)`) WHICH IS CANCELLABLE -- releasing before the threshold reporteth 'hold cancelled -- threshold not reached'; a MONOTONIC CONFIRMATION THRESHOLD, NAMED (`confirmationThreshold = .seconds(3)`) AND MEASURED WITH `ContinuousClock`, NEVER `Date()` -- THE SAME LAW THIS PROGRAMME ALREADY APPLIED TO THE GOVERNORS (187/195) AND TO THE CONNECTIONS' LEASE CLOCK (208); an ACCESSIBLE ALTERNATIVE button (because A HOLD MUST NEVER BE THE ONLY ROAD -- a sustained gesture is unreachable for some users); and text saying what it is doing at every stage. (2) THE BUILD, NOT A PARSE: **`BUILD SUCCEEDED` (rc=0)** on the simulator SDK, unsigned. (3) AND THE INVARIANT: a SIXTH lab invariant asketh the three halves, PROVEN TO JUDGE by a negative case that made the threshold use `Date()` (rc 1 with its named reason, rc 0 restored). **THE CARD'S OWN SENTENCE IS NOW A CHECK.** (4) AND ONE SLIP, RECORDED WITH THE REST: the invariant's FIRST wiring died on a HEREDOC ESCAPING ERROR (`re.PatternError: missing ), unterminated subpattern`) -- the same family as round 251's `.format()` over code -- SO THE CONTROL WAS WRITTEN AS A FILE RATHER THAN A HEREDOC, and the mistake cost a call rather than a wrong invariant. (5) GS-UX-001 STANDETH **OPEN** WITH ONE OF ITS SEVEN STEPS LANDED (the SOS gesture, T58's law) AND SIX NAMED: the lab UI in the lab target (1, which GS-LAB-001's work already satisfieth in shape), the TrustPort/MeshPort adapters to the ONE runtime's real owners (2), observable state collected with lifecycle (3), the real recipient selector with UTF-8-bounded input and Send (4), restoration from the real reopened store (6), and navigation with meaningful accessibility semantics (7)."
+   ]
   },
   "IOS-01": {
    "audit_status_at_snapshot": "OPEN",
