@@ -4056,7 +4056,7 @@
    "candidate_sha": "065a217ce7cb0040842246d3a93f6056efad4793",
    "why": "CRYPTO-001's ANDROID TRANSPORT migration changed production on the other isle, so EVERY lane was re-measured at one SHA rather than inherited.",
    "worktree": "clean at the SHA except THIS RECORD's own documentation files (`docs/remediation/REMEDIATION_STATE.json`, `HANDOFF.md`); no production, test, control or evidence file differeth between the measured tree and the SHA.",
-   "stands_as_the_convergence_candidate": true,
+   "stands_as_the_convergence_candidate": false,
    "logs": {
     "all_lanes": {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_259/verify.log",
@@ -4088,7 +4088,8 @@
     "no hosted lane, no URL, no run id and no log -- T78 is NOT claimed",
     "the readiness flags are FALSE and the five external gates are OPEN",
     "no finding is VERIFIED_FIXED (CRYPTO-001 is FIX_SUBMITTED with four owed proofs named)"
-   ]
+   ],
+   "SUPERSEDED_AT_ROUND_265": "PRODUCTION MOVED: round 265 landed ANDROID-01's D2 entrance and the whole court migration (184c6b9), so the round-259 record no longer describeth the tree. Every claim in it was true at its own SHA."
   },
   "ENVIRONMENT_BLOCK_AT_ROUND_260": {
    "what": "THE iOS LANE IS UNMEASURABLE FROM THIS SESSION.",
@@ -4169,7 +4170,40 @@
   "round261_note": "ROUND 261 DID NOT LAND CODE, AND SAYETH SO PLAINLY. The iOS lane is blocked by the Xcode licence (the human's act), and the two Android/landing candidates left in the dependency order need either a six-court migration or new node-level plumbing -- neither of which fiteth in the context remaining, and a half-migrated suite is what this programme refuseth to leave behind. What the round DID: re-measured the block, VERIFIED BOTH PARKS REAPPLIABLE, and wrote the two landing shapes into the ledger so the next round's first decision is already costed.",
   "round262_note": "ROUND 262: the ANDROID-01 migration was MEASURED end to end (23 failures -> 7 with seven helper re-basings) and then PARKED with its progress written down, because the seven that remain are arm-by-arm judgements -- three of them asserting REFUSALS, where a blanket replacement would silently change what the arm testeth. The tree was returned to green: android :mesh 1198/0/0, parity 7/7, symbols 0 unresolved, courts 635. The iOS lane remaineth blocked by the Xcode licence.",
   "round263_note": "ROUND 263: ANDROID-01's migration advanced to T21-GREEN (23 -> 7 -> 4 failures, measured), with a NAMED DEFAULT-ON seam for the arms that must drive the entrance themselves and the happy-path arms re-based on THE APPLICATION'S OWN first counsel. FOUR ARMS REMAIN and are named; the tree was returned to green (android :mesh 1198/0/0, parity 7/7, symbols 0 unresolved, courts 635). The iOS lane remaineth blocked.",
-  "round264_note": "ROUND 264: park v4 -- eight T22 arms repaired (their counsels now WAIT for the APPLICATION's begin), the lane at 1200/4, and the four that remain each named with its own reason. The round's most useful artifact may be the LESSON: the failure count did not move between v3 and v4 while eight arms were repaired and four new ones surfaced -- A COUNT THAT DOTH NOT MOVE IS NOT EVIDENCE THAT NOTHING MOVED. Tree green: android :mesh 1198/0/0, parity 7/7, symbols 0 unresolved, courts 635."
+  "round264_note": "ROUND 264: park v4 -- eight T22 arms repaired (their counsels now WAIT for the APPLICATION's begin), the lane at 1200/4, and the four that remain each named with its own reason. The round's most useful artifact may be the LESSON: the failure count did not move between v3 and v4 while eight arms were repaired and four new ones surfaced -- A COUNT THAT DOTH NOT MOVE IS NOT EVIDENCE THAT NOTHING MOVED. Tree green: android :mesh 1198/0/0, parity 7/7, symbols 0 unresolved, courts 635.",
+  "candidate_verification_at_round_265": {
+   "candidate_sha": "184c6b994aa3fcc3e602bf272a5ef2abf058106a",
+   "why": "ANDROID-01's D2 landing changed production, so every RUNNABLE lane was re-measured at one SHA.",
+   "worktree": "clean at the SHA except this record's own documentation files; no production, test, control or evidence file differeth between the measured tree and the SHA.",
+   "stands_as_the_convergence_candidate": true,
+   "logs": {
+    "all_runnable_lanes": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_265/verify.log",
+     "sha256": "aede692dd50eae8dab59e8c695aa96555e84328f60254b724a114f14b8aa28da"
+    },
+    "android_01_fixed": {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round265-FIXED-D2-landed.log",
+     "sha256": "fea8dfdafe6166154abc6b2c22c4bb398c841a53a01da32e746af7db3aca214e"
+    }
+   },
+   "measured": {
+    "android_mesh_unit": "1200 tests, 0 failed (whole lane forced; counted from the JUnit XML)",
+    "android_lab_apk": "rc 0",
+    "parity_repo_scope": "all invariants hold (rc 0)",
+    "symbols_selftest": "restored tree: 0 unresolved (OK) (rc 0)",
+    "composition_control": "rc 0",
+    "courts": "635 tests OK",
+    "probes": "12 tests OK",
+    "evidence_digests": "414 registered, 414 examined, 414 verified",
+    "lab_isolation": "PASSED (0 errors, 14 notes)",
+    "iOS_lane": "NOT MEASURED -- excluded, and the log sayeth why: the Xcode licence (human's act)"
+   },
+   "what_this_candidate_is_NOT": [
+    "IT IS NOT A FULL CANDIDATE: the iOS lane could not be measured (Xcode licence), so it cannot stand as the T78 candidate for a scope that includeth the iOS isle",
+    "no hosted lane, no URL, no run id and no log -- T78 is NOT claimed",
+    "no finding is VERIFIED_FIXED; ANDROID-01 is PARTIAL (D2 built, key confirmation owed)"
+   ]
+  }
  },
  "counts": {
   "by_candidate_scope": {
@@ -4326,8 +4360,12 @@
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
    "impact": "- `android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:312` handles the successful central CCCD action by publishing `Found`, then stops. It does not call `beginTrustedHandshake`. - `BleTransport.kt:1739` defines `beginTrustedHandshake`. Searching both `android/mesh/src/main` and `android/app/src/main` finds its definition and no invocation (`production_entrypoints.txt`). Existing tests call it explicitly, e.g. `ReadinessT21Test.kt:321`. - `BleTransport.kt:1353` defines `beginKeyConfirmation`; every invocation found outside its definition is a test invocation (`keyconfirmation_callers.txt`). Completing HS3 at lines 1566/1623 only emits `handshakeReadyFlow`. - `MeshNode.kt:179` subscribes only to `peers()` and `received()`. It subscribes to neither handshake-ready nor application-link-ready events and does not perform D2/key confirmation itself. Failure schedule: two genuine devices finish discovery, LinkInfo exchange, and CCCD setup. The central produces `PublishFound`; no HS1 is sent. The responder cannot initiate Noise XX. Both remain physically bound without a trusted session. If a test or later caller manually starts D2, nothing automatically begins the mandatory encrypted confirmation round afterward.",
-   "invalidated_dependents": [],
-   "my_fix_commit": null,
+   "invalidated_dependents": [
+    "THE SIX COURTS THAT DRIVE THE EXCHANGE BY HAND were re-based on the APPLICATION's begin, MEASURED AT EVERY STAGE (whole-lane runs): 23 FAILED (repair alone) -> 7 (seven helper re-basings: T20/T21/T22/T23's drive-to-ready helpers now WAIT for the first counsel the application sent) -> 4 (the named seam plus the T21 arms) -> 4 (EIGHT T22 arms repaired while FOUR new failures surfaced -- A COUNT THAT DID NOT MOVE IS NOT EVIDENCE THAT NOTHING MOVED, and only the names told the two apart) -> 0. T17 and T18 were clean from the start because their ladders never dispatch the platform's PublishFound action.",
+    "A LATENT RACE WAS REPAIRED WITH THEM: eight T22 arms 'passed' by winning a race against the application's ASYNCHRONOUS begin rather than by measuring anything; they now wait for its counsel.",
+    "THE TWO CLOCK-DRIVEN T23 ARMS now move the injected hour only AFTER the application's counsel hath travelled, so what they fell is an ENGAGED exchange and not a race."
+   ],
+   "my_fix_commit": "184c6b9 | ROUND 265 (the D2 half, landed): `BleTransport.maybeBeginTrustedHandshake(address)`, entered from the `PublishFound` arm -- the relation is physically ready and its CRYPTO-001 admission is stamped there -- beginneth the trusted exchange ITSELF. It keepeth every counsel `beginTrustedHandshake` enforceth: only the ELECTED INITIATOR (a responder returneth), only from ROLE_BOUND with a witnessed duplex, only with the ascendant hint order of ADR-002 section 13. THE STATE IS THE IDEMPOTENCE: the begin moveth the relation into the handshake, so a duplicate publication callback cannot re-open the hour, and a replacement relation arriveth here as ROLE_BOUND with a FRESH incarnation, which is what a fresh handshake is FOR. The task is OWNED in `inboundJobs[HANDSHAKE_JOB_PREFIX + address]` so the bounded drain seeth it, and a refusal is NAMED in the rejection ring. An absent admission and a refused handshake now answer with DIFFERENT ring reasons. A NAMED, DEFAULT-ON TEST SEAM (`applicationBeginsD2ForTest`) serveth the arms which must DRIVE the entrance themselves; PRODUCTION NEVER SETTETH IT. THE KEY-CONFIRMATION HALF IS NOT LANDED.",
    "my_logs": [
     {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/red-round229.log",
@@ -4418,12 +4456,31 @@
      "sha256": "dfe581a0ba409c6b46061abf35dd995051d612ed421cea5089acaf6f14eb7afc",
      "what": "ANDROID-01 round 274: the helper's signature read, and the 273b compile failure is NOT the filter's shape (ledger round 274)",
      "outcome": "`awaitNonEmpty<T>(what, observe: () -> List<T>): List<T>` AND `isType` IS DEFINED IN T22'S COURT, SO a lambda returning `notificationsTo(alice).filter { isType(it, HS2) }` SHOULD TYPECHECK -- WHICH MEANS THE ROUND-273b COMPILE FAILURE WAS NOT THE FILTER'S SHAPE, AND THE INSTRUMENT THAT WOULD HAVE SAID SO WAS **THE COMPILE ERROR ITSELF, WHICH I NEVER READ** (my grep printed nothing and I proceeded). **A FAILED RUN WHOSE ERROR WAS NEVER READ IS WORSE THAN A FAILED RUN: IT TEACHETH NOTHING AND COSTETH A ROUND ANYWAY.** AND THE APPLY-SCRIPT DIED MIDWAY ON A REGEX THAT DID NOT COMPILE (a negative lookahead), leaving HALF a reconciliation and NO lane run -- reverted at once, lane re-run green: **A MULTI-PART SCRIPT MUST VALIDATE ITS OWN PATTERNS BEFORE IT PATCHES ANYTHING**"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round260-RED.log",
+     "sha256": "b6d879acee6cd121fdcc77edde07a4d400b1f0c71c154c9cbbdafee15912e4ac",
+     "what": "ANDROID-01 round 260: the behavioural RED against the untouched tree",
+     "outcome": "16 tests / 1 failed with the law's own words; the negative control (the responder never openeth) passed; 14 pre-existing arms passed."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round265-FIXED-D2-landed.log",
+     "sha256": "fea8dfdafe6166154abc6b2c22c4bb398c841a53a01da32e746af7db3aca214e",
+     "what": "ANDROID-01 round 265: the whole Android lane and the lab APK after the D2 landing and the whole court migration",
+     "outcome": "android :mesh 1200 tests / 0 failed (rc 0, counted from the JUnit XML); lab APK rc 0."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_265/verify.log",
+     "sha256": "aede692dd50eae8dab59e8c695aa96555e84328f60254b724a114f14b8aa28da",
+     "what": "Round 265: every RUNNABLE lane re-measured at the committed SHA (the iOS lane is EXCLUDED and the log sayeth why)",
+     "outcome": "android :mesh 1200/0 + lab APK rc 0; parity 7/7; symbols 0 unresolved; composition rc 0; courts 635; probes 12; digests 414/414; lab isolation PASSED."
     }
    ],
    "my_red_case": "A BEHAVIOURAL RED WAS FILED THIS ROUND (round 260) AND THE REPAIR PARKED WITH IT, DELIBERATELY. MEASURED FIRST, THEN WRITTEN: a grep of `android/mesh/src/main` returneth `beginTrustedHandshake`'s DEFINITION and no production caller -- production reached a physical duplex and stopped there, exactly as the audit chargeth. The arm `ReadinessT21Test.testAndroid01_theApplicationBeginnethD2ItselfUponThePhysicallyReadyRelation` was run against the untouched tree and FAILED with the law's own words (\"the application must begin D2 itself upon the physically-ready relation; ring: <empty>\"), while its NEGATIVE CONTROL passed (the responder never openeth a first counsel) and the 14 pre-existing arms of that court passed: 16 tests / 1 failed, kept in `round260-RED.log` (sha256 b6d879acee6cd121fdcc77edde07a4d400b1f0c71c154c9cbbdafee15912e4ac).",
-   "my_status": "OPEN",
-   "notes": "ROUND 260: the RED is filed and the repair is parked. NOTHING here is claimed as repaired -- the finding standeth OPEN, and what this round addeth is a failing witness, a measured diagnosis and a re-appliable patch.",
+   "my_status": "PARTIAL",
+   "notes": "ROUND 265: THE D2 HALF IS LANDED AND THE MIGRATION IS WHOLE (android :mesh 1200/0/0). PARTIAL, NOT FIX_SUBMITTED, because the finding's own title carrieth TWO things and only one of them is built: key confirmation still hath no production caller, and that is measured rather than assumed. THE LESSON OF THE MIGRATION, kept here because it cost a round: the failure COUNT did not move between two stages while EIGHT arms were repaired and FOUR new ones surfaced.",
    "pending_proof": [
+    "THE FINDING'S OTHER HALF IS NOT LANDED: the application still never starteth KEY CONFIRMATION. MEASURED, not assumed: `beginKeyConfirmation` is defined at `transport/BleTransport.kt:1875` and a grep of `android/mesh/src/main` returneth its definition alone -- no production caller. The finding therefore standeth PARTIAL: D2 is built and witnessed, key confirmation is owed.",
     "THE REPAIR IS PARKED, NOT LANDED, AND THE REASON IS MEASURED RATHER THAN GUESSED: the D2 entrance written this round (the application beginneth the trusted exchange itself from the physically-ready relation, once, from the elected initiator alone) turned the filed RED green AND BROKE FIVE PRE-EXISTING ARMS of the same court -- because those arms drive the four-way exchange STEP BY STEP and call `beginTrustedHandshake` themselves, so the application's own begin taketh the relation into the handshake before the court's begin, which is then refused as `cannot begin from HANDSHAKE_IN_PROGRESS`. That is the SAME migration the iOS twin demanded at rounds 190-208 when IOS-02 gave the application its own entrance; on this isle SIX courts drive it by hand (T17, T18, T20, T21, T22, T23). A half-migrated suite is what this programme refuseth to leave behind, so the repair and its courts were parked together in one re-appliable patch: `round260-D2-trigger-and-courts-PARKED.patch` (sha256 08227c3ac8b343c2e910875620a5f08ae1dcd8c65a4a7c5892fd04da2e8e1389), with the reasoning written into `round260-WHY-NOT-LANDED.txt`.",
     "THE KEY CONFIRMATION HALF OF THIS FINDING (key confirmation never begun by the application either) is untouched and unmigrated on this isle.",
     "ROUND 261: the park was VERIFIED REAPPLIABLE (`git apply --check` -> APPLIES CLEANLY) and the TWO SHAPES for the landing are written down in the ledger (re-base the six courts, or give the auto-begin a node-level signal). Nothing was landed, and nothing is claimed.",

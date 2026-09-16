@@ -1011,7 +1011,14 @@ class ReadinessT22Test {
         val stranger = ByteArray(4) { i -> ((i * 37) + 11).toByte() }
         rig2.bob.serverDriver.onLinkInfoWriteRequest(rig2.aliceAddress,
             BleLinkInfoCodec.encode(flags = 0.toByte(), nodeHint = stranger, shortDigest = ByteArray(6), queueDepth = 0))
-        val hs1b = rig2.pair.smA.beginInitiator(rig2.admissionTowardsBob(), rig2.pair.bob.nodeHint)
+        // ANDROID-01: as everywhere else in this court -- the counsel is the APPLICATION'S OWN, TAKEN BY
+        // WAITING for it. This site was the LAST of the hand-formed counsels, and it was FLAKY in exactly
+        // the way the others were: it won or lost a race against the application's asynchronous begin, and
+        // the re-measurement at the committed SHA caught it (1200 tests / 1 failed) where the pre-commit
+        // run had not. A witness that must win a race is not a witness.
+        val hs1b = awaitNonEmpty("the counsel must be formable; ring: " + ringDump(rig2.alice)) {
+            rig2.aliceOutlet.writesTo(rig2.bobAddress)
+        }.firstOrNull()?.let { payloadOfFragment(it) }
         assertNotNull("the counsel must be formable", hs1b)
         rig2.bobOutlet.clear()
         rig2.pushToResponder(forge(BleRecordType.HS1, 0, hs1b!!))
