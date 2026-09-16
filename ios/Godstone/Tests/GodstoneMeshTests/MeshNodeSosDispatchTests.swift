@@ -20,6 +20,19 @@ import GodstoneCore
 /// hold" gate as the failure path and is covered at the store level by the B2
 /// tests in `SqliteMessageStoreTests`.
 final class MeshNodeSosDispatchTests: XCTestCase {
+    /// IOS-02 step 5: A RELAY MUST BE TRUSTED TO BE ROUTE-ELIGIBLE. This witness bringeth a rig peer up the
+    /// REAL way -- the radio's handle first, then the trust the matching confirmation establisheth -- so an
+    /// arm that useth it modelleth the production sequence, not the audited shortcut (presence = routable).
+    private func bringPeerUp(_ node: MeshNode, _ handle: UUID) {
+        node.transportDidConnect(peerId: handle)
+        node.trustedPeerDidConnect(nodeId: Self.trustedNodeId(for: handle), peerId: handle)
+    }
+
+    static func trustedNodeId(for handle: UUID) -> Data {
+        withUnsafeBytes(of: handle.uuid) { Data($0) }
+    }
+
+
 
     /// In-memory `DeliveryRepository` for tests that construct a `MeshNode` but
     /// do not exercise the ACK path (the SOS dispatch tests). The tracker is
@@ -180,7 +193,7 @@ final class MeshNodeSosDispatchTests: XCTestCase {
     func testDispatchSosPersistSucceedsWithNPeersReportsHandedToRelays() {
         let node = makeNode(store: InMemoryMessageStore())
         let peers = (0..<3).map { _ in UUID() }
-        for p in peers { node.transportDidConnect(peerId: p) }
+        for p in peers { bringPeerUp(node, p) }
         var sentTo: [UUID] = []
         let result = node.dispatchSos(payload: Data("SOS".utf8)) { _, peer in
             sentTo.append(peer); return true
@@ -195,7 +208,7 @@ final class MeshNodeSosDispatchTests: XCTestCase {
     func testDispatchSosPartialSendsReportActualCount() {
         let node = makeNode(store: InMemoryMessageStore())
         let p1 = UUID(), p2 = UUID()
-        node.transportDidConnect(peerId: p1)
+        bringPeerUp(node, p1)
         node.transportDidConnect(peerId: p2)
         let result = node.dispatchSos(payload: Data("SOS".utf8)) { _, peer in
             peer == p1   // only p1 accepts the record

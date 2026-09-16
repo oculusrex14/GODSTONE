@@ -119,15 +119,28 @@ public final class MeshNode {
     /// the transport's UUID and never the 4-byte hint). The sync pump is
     /// scheduled here, and the DIGEST becomes due at once.
     @discardableResult
-    internal func trustedPeerDidConnect(nodeId: Data) -> Bool {
-        pumpFor().register(nodeId)
+    internal func trustedPeerDidConnect(nodeId: Data, peerId: UUID? = nil) -> Bool {
+        // IOS-02 step 5: THE TRUSTED EVENT IS WHAT ADMITTETH A PEER TO THE ROUTE. The handle is optional
+        // so that every existing caller (whose business is the SYNC PUMP alone) keepeth its meaning: a
+        // caller with a handle to hand getteth route eligibility WITH the trust that just came up.
+        if let peerId {
+            peerLock.lock(); peers.insert(peerId); peerLock.unlock()
+        }
+        return pumpFor().register(nodeId)
     }
 
     /// T42: the trusted relation went away. The run state, the leases and the
     /// peer's queue release; the DURABLE estate is untouched, so a reconnect
     /// resumes.
     @discardableResult
-    internal func trustedPeerDidDisconnect(nodeId: Data) -> Bool {
+    internal func trustedPeerDidDisconnect(nodeId: Data, peerId: UUID? = nil) -> Bool {
+        if let peerId {
+            peerLock.lock(); peers.remove(peerId); peerLock.unlock()
+        }
+        return trustedFarewell(nodeId)
+    }
+
+    private func trustedFarewell(_ nodeId: Data) -> Bool {
         // GS-SYNC-002 step 3: the RELATION is gone, so its epoch is retired with it and every answer it
         // queued becomes stale by construction rather than inheritable by the next relation. One law with
         // the Android isle's `retireRelationEpoch` on `PeerEvent.Lost`.
@@ -367,7 +380,13 @@ public final class MeshNode {
         return d
     }
 
+    /// **THE ROUTE-ELIGIBLE VIEW.** This set is what `currentPeers()` giveth the send paths
+    /// (`ble.send(frame, to:)`), so a peer entereth it ONLY upon the TRUSTED event -- the matching key
+    /// confirmation -- and never upon the radio's mere presence (IOS-02 step 5).
     private var peers: Set<UUID> = []
+    /// THE PHYSICAL PRESENCE VIEW: the handles the radio carrieth. Presence is NOT eligibility, and this
+    /// set feedeth the count alone.
+    private var presentPeers: Set<UUID> = []
     private let peerLock = NSLock()
     public var onPeerCountChanged: ((Int) -> Void)?
     private var isStarted = false
@@ -456,15 +475,16 @@ public final class MeshNode {
         return Array(peers)
     }
 
-    /// Apply one peer-connect event to the durable view, under the peer lock, and
-    /// report the resulting peer count. Extracted verbatim from the former
-    /// `transportDidConnect` body (behaviour preserved) so the consumer's
-    /// substance is witness'd without a live radio.
+    /// Apply one peer-connect event to the PRESENCE view, under the peer lock, and report the resulting
+    /// count. **IOS-02 step 5: A MERELY PHYSICAL RELATION IS NOT ROUTE-ELIGIBLE.** The audited body
+    /// inserted the handle into the very set the send paths iterate, so a peer that had authenticated
+    /// NOTHING was handed frames; the radio carrieth a handle, and only the matching confirmation proveth
+    /// whose identity standeth behind it. The route-eligible view is admitted by `trustedPeerDidConnect`.
     @discardableResult
     internal func handlePeerConnect(_ peerId: UUID) -> Int {
         peerLock.lock()
-        peers.insert(peerId)
-        let count = peers.count
+        presentPeers.insert(peerId)
+        let count = presentPeers.count
         peerLock.unlock()
         return count
     }
@@ -476,17 +496,26 @@ public final class MeshNode {
     @discardableResult
     internal func handlePeerDisconnect(_ peerId: UUID) -> Int {
         peerLock.lock()
+        presentPeers.remove(peerId)
+        // A DEPARTED RADIO CANNOT ROUTE: the handle leaveth BOTH views, so a peer whose link fell is
+        // never handed a frame while its trust lingereth in the registry.
         peers.remove(peerId)
-        let count = peers.count
+        let count = presentPeers.count
         peerLock.unlock()
         sessions.drop(peerId)
         return count
     }
 
-    /// The peers currently held in the durable view (witnesses only).
+    /// THE ROUTE-ELIGIBLE peers (witnesses only): those admitted by the trusted event.
     internal func knownPeersForTest() -> Set<UUID> {
         peerLock.lock(); defer { peerLock.unlock() }
         return peers
+    }
+
+    /// THE PRESENT peers (witnesses only): the handles the radio carrieth, trusted or not.
+    internal func presentPeersForTest() -> Set<UUID> {
+        peerLock.lock(); defer { peerLock.unlock() }
+        return presentPeers
     }
 
     /// V4 does not fabricate a successful SOS while ADR-004 and M2-link remain open.

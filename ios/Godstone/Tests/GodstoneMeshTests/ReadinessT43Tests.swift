@@ -14,6 +14,18 @@ import CryptoKit
 import GodstoneCore
 
 final class ReadinessT43Tests: XCTestCase {
+    /// IOS-02 step 5: A RELAY MUST BE TRUSTED TO BE ROUTE-ELIGIBLE. This witness bringeth a rig peer up the
+    /// REAL way -- the radio's handle first, then the trust the matching confirmation establisheth -- so an
+    /// arm that useth it modelleth the production sequence, not the audited shortcut (presence = routable).
+    private func bringPeerUp(_ node: MeshNode, _ handle: UUID) {
+        node.transportDidConnect(peerId: handle)
+        node.trustedPeerDidConnect(nodeId: Self.trustedNodeId(for: handle), peerId: handle)
+    }
+
+    static func trustedNodeId(for handle: UUID) -> Data {
+        withUnsafeBytes(of: handle.uuid) { Data($0) }
+    }
+
     private let rng = SystemRandomNumberGenerator()
 
     // ------------------------------------------------------------ fixtures
@@ -118,7 +130,7 @@ final class ReadinessT43Tests: XCTestCase {
     /// Author one DIRECT message and hand it to `peers` links.
     private func authorAndOffer(_ r: Rig, _ recipient: Local, peers: Int = 1,
                                 admitted: Bool = true) throws -> Data {
-        for i in 0..<peers { r.node.transportDidConnect(peerId: UUID()) }
+        for i in 0..<peers { bringPeerUp(r.node, UUID()) }
         let frame = directedFrame(r.nextSeed())
         _ = r.node.dispatchDirect(frame, expectedRecipient: recipient.id.nodeId) { _, _ in admitted }
         return frame.msgId
@@ -394,8 +406,8 @@ final class ReadinessT43Tests: XCTestCase {
     /// cannot re-acquire the custody advance unobserved on either isle.
     func testW13ABroadcastSendLeavethTheSosLabelQueued() throws {
         let r = try rig(0x51)
-        r.node.transportDidConnect(peerId: UUID())
-        r.node.transportDidConnect(peerId: UUID())
+        bringPeerUp(r.node, UUID())
+        bringPeerUp(r.node, UUID())
 
         let result = r.node.dispatchSos(payload: Data("medic".utf8)) { _, _ in true }
         XCTAssertEqual(result, .handedToRelays(2), "two links took the bytes")
@@ -482,4 +494,6 @@ internal final class InMemoryDeliveryRepositoryForT43: DeliveryRepository, @unch
                                         expectedRecipientNodeId: rec.expectedRecipientNodeId)
         return .applied
     }
+
+
 }

@@ -35,6 +35,18 @@ import GodstoneCore
 /// tests pin the MeshNode CALL-SITE wiring (the C6/C7 seams) on top of that
 /// machine.
 final class MeshNodeDeliveryIntegrationTests: XCTestCase {
+    /// IOS-02 step 5: A RELAY MUST BE TRUSTED TO BE ROUTE-ELIGIBLE. This witness bringeth a rig peer up the
+    /// REAL way -- the radio's handle first, then the trust the matching confirmation establisheth -- so an
+    /// arm that useth it modelleth the production sequence, not the audited shortcut (presence = routable).
+    private func bringPeerUp(_ node: MeshNode, _ handle: UUID) {
+        node.transportDidConnect(peerId: handle)
+        node.trustedPeerDidConnect(nodeId: Self.trustedNodeId(for: handle), peerId: handle)
+    }
+
+    static func trustedNodeId(for handle: UUID) -> Data {
+        withUnsafeBytes(of: handle.uuid) { Data($0) }
+    }
+
 
     private func msgId(_ seed: UInt8) -> Data {
         Data((0..<16).map { UInt8(truncatingIfNeeded: $0 &+ seed) })
@@ -234,7 +246,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     func testC6DispatchSosWithASuccessfulSendStaysQueuedDurablyWithALinkOffer() {
         let store = InMemoryMessageStore()
         let (node, journal) = makeNode(store: store, resolver: UnresolvedRecipientKeyResolver())
-        node.transportDidConnect(peerId: UUID())
+        bringPeerUp(node, UUID())
         var sentFrame: FrameV2?
         let result = node.dispatchSos(payload: Data("SOS".utf8)) { frame, _ in
             sentFrame = frame
@@ -283,7 +295,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     func testC6DispatchSosPersistFailureLeavesTheTrackerUntouched() {
         let store = AlwaysFailingStore()
         let (node, journal) = makeNode(store: store, resolver: UnresolvedRecipientKeyResolver())
-        node.transportDidConnect(peerId: UUID())
+        bringPeerUp(node, UUID())
         var sendCalls = 0
         let result = node.dispatchSos(payload: Data("SOS".utf8)) { _, _ in
             sendCalls += 1
@@ -413,8 +425,8 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let (pubA, _) = realDhKeypair()
         let a = nodeA()
         let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
-        node.transportDidConnect(peerId: UUID())
-        node.transportDidConnect(peerId: UUID())
+        bringPeerUp(node, UUID())
+        bringPeerUp(node, UUID())
 
         let frame = try await node.router.authorSealedMessage(
             plaintext: Data("test payload".utf8),
@@ -440,7 +452,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
 
     func testC66DispatchDirectOnAtomicEnqueueFailureAttempts0SendsAndYieldsRejected() {
         let (node, _) = makeNode(store: AlwaysFailingStore(), resolver: UnresolvedRecipientKeyResolver())
-        node.transportDidConnect(peerId: UUID())
+        bringPeerUp(node, UUID())
 
         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
         let frame = FrameV2(
@@ -467,7 +479,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let (pubA, _) = realDhKeypair()
         let a = nodeA()
         let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
-        node.transportDidConnect(peerId: UUID())
+        bringPeerUp(node, UUID())
 
         let frame = try await node.router.authorSealedMessage(
             plaintext: Data("test payload".utf8),
@@ -510,7 +522,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         }
 
         let (node, _) = makeNode(store: CanonicalMockStore(canonical: canonicalFrame), resolver: UnresolvedRecipientKeyResolver())
-        node.transportDidConnect(peerId: UUID())
+        bringPeerUp(node, UUID())
 
         let callerFrame = FrameV2(
             type: .message,
@@ -539,7 +551,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let (pubA, _) = realDhKeypair()
         let a = nodeA()
         let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
-        node.transportDidConnect(peerId: UUID())
+        bringPeerUp(node, UUID())
 
         let frame1 = try await node.router.authorSealedMessage(
             plaintext: Data("canonical payload".utf8),
@@ -576,7 +588,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let (pubA, _) = realDhKeypair()
         let a = nodeA()
         let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
-        node.transportDidConnect(peerId: UUID())
+        bringPeerUp(node, UUID())
 
         let frame1 = try await node.router.authorSealedMessage(
             plaintext: Data("test payload".utf8),
@@ -606,4 +618,6 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         XCTAssertEqual(res2, DirectDispatchResult.handedToRelays(1))
         XCTAssertEqual(sentFrame, frame1)
     }
+
+
 }

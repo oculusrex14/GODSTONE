@@ -63,27 +63,70 @@ final class ReadinessT24IntegrationTests: XCTestCase {
 
     // MARK: - the peer view followeth connect / disconnect / re-present by content
 
-    func testThePeerStatusFollowethPresenceTransitionsByContent() throws {
+    /// IOS-02 step 5 RE-FRAMED THIS ARM, AND IT SAYETH SO: the transitions it witnesseth are those of the
+    /// **PRESENCE** view. Its audited form asserted them against `knownPeersForTest()` -- THE ROUTE-ELIGIBLE
+    /// VIEW -- which is what made a merely physical relation routable. Presence is still watched, count for
+    /// count, and the law it must NOT violate is stated beside it.
+    func testThePresenceViewFollowethPresenceTransitionsByContent() throws {
         let node = makeNode()
         let a = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
         let b = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
 
-        XCTAssertEqual(node.knownPeersForTest().count, 0, "no peer is known at the outset")
+        XCTAssertEqual(node.presentPeersForTest().count, 0, "no peer is present at the outset")
 
         _ = node.handlePeerConnect(a)
-        XCTAssertEqual(node.knownPeersForTest().count, 1, "a connect'd peer entereth the view")
+        XCTAssertEqual(node.presentPeersForTest().count, 1, "a connect'd peer entereth the presence view")
+        XCTAssertTrue(node.knownPeersForTest().isEmpty,
+                      "AND PRESENCE CONFERRETH NO ROUTE: the route-eligible view stayeth empty until the "
+                      + "matching confirmation (IOS-02 step 5)")
 
         _ = node.handlePeerConnect(a)
-        XCTAssertEqual(node.knownPeersForTest().count, 1, "a re-presented peer by the selfsame id addeth no whit")
+        XCTAssertEqual(node.presentPeersForTest().count, 1, "a re-presented peer by the selfsame id addeth no whit")
 
         _ = node.handlePeerConnect(b)
-        XCTAssertEqual(node.knownPeersForTest().count, 2, "a second, distinct peer entereth the view")
+        XCTAssertEqual(node.presentPeersForTest().count, 2, "a second, distinct peer entereth the presence view")
 
         _ = node.handlePeerDisconnect(a)
-        XCTAssertEqual(node.knownPeersForTest().count, 1, "the disconnect'd peer departeth the view")
+        XCTAssertEqual(node.presentPeersForTest().count, 1, "the disconnect'd peer departeth the presence view")
 
         _ = node.handlePeerDisconnect(b)
-        XCTAssertEqual(node.knownPeersForTest().count, 0, "the view is empted when all depart")
+        XCTAssertEqual(node.presentPeersForTest().count, 0, "the presence view is empted when all depart")
+        XCTAssertTrue(node.knownPeersForTest().isEmpty, "and the route-eligible view never saw any of them")
+    }
+
+    // MARK: - IOS-02 step 5: the ROUTE-ELIGIBLE view cometh from the TRUSTED event, not from the radio
+
+    /// IOS-02, the card's fifth step: **"MeshNode's route-eligible peers must be populated from that event
+    /// [the matching confirmation], not physical duplex."**
+    ///
+    /// MEASURED BEFORE THE REPAIR: `MeshNode.transportDidConnect` calleth `handlePeerConnect`, and that
+    /// INSERTETH INTO THE VERY SET THAT FEEDETH THE SEND PATHS -- `currentPeers()` is what
+    /// `ble.send(frame, to:)` iterateth -- SO A PEER THAT IS MERELY PHYSICALLY PRESENT (no authenticated
+    /// relation, no sealed key confirmation) IS ROUTE-ELIGIBLE, and the router would hand it frames whose
+    /// sender it cannot authenticate. This arm asketh for the law instead.
+    ///
+    /// THE RED WAS TAKEN WITH ITS FIRST HALF ALONE (measured before the repair: 'The route-eligible view
+    /// still carrieth it: [CCCCCCCC-...]'), because an arm that calleth an API which doth not yet exist
+    /// cannot run -- AND THIS PROGRAMME'S RED MUST RUN. The second half landeth WITH the repair.
+    func testAPurelyPhysicalRelationIsNotRouteEligible() throws {
+        let node = makeNode()
+        let handle = UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!
+        let nodeId = Data(repeating: 0x5A, count: 16)
+
+        _ = node.handlePeerConnect(handle)
+        XCTAssertTrue(node.knownPeersForTest().isEmpty,
+                      "A MERELY PHYSICAL RELATION MUST NOT BE ROUTE-ELIGIBLE: the radio carrieth a handle, "
+                      + "and only the matching key confirmation proveth whose identity standeth behind it "
+                      + "(IOS-02 step 5). The route-eligible view still carrieth it: "
+                      + String(describing: node.knownPeersForTest()))
+        XCTAssertEqual(node.presentPeersForTest(), [handle], "though it IS present")
+
+        _ = node.trustedPeerDidConnect(nodeId: nodeId, peerId: handle)
+        XCTAssertEqual(node.knownPeersForTest(), [handle],
+                       "THE TRUSTED EVENT IS WHAT ADMITTETH A PEER TO THE ROUTE")
+
+        _ = node.trustedPeerDidDisconnect(nodeId: nodeId, peerId: handle)
+        XCTAssertTrue(node.knownPeersForTest().isEmpty, "and the trusted farewell withdraweth it")
     }
 
     // MARK: - the inbound clear is fail-closed upon undecodable bytes

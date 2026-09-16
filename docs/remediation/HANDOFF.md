@@ -4,6 +4,14 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 191 -- IOS-02 step 5 LANDS: route eligibility from the trusted event, rigs reconciled by construction
+
+- **Repair**: MeshNode now carries two views (route-eligible `peers`, physical `presentPeers`); `handlePeerConnect` admits to presence only; disconnect withdraws both; `trustedPeerDidConnect(nodeId:peerId:)` admits to the route; `ComposedRuntime.link` passes the handle with the trust.
+- **Reconciliation by construction, not by text**: 25 sites across four suites call a per-suite `bringPeerUp` witness (handle **then** trust) — one call expression replaced by another, valid in any context.
+- **Four mechanical failures named**: wrong patch filename (chain stopped; the following green was just the baseline); an off-by-two slice emitting `bringPeerUp(node, ))`; a helper sliced mid-function by a same-line brace; and helper placement into trailing types in two files → now inserted at the test class's own declaration line.
+- **Green**: five affected suites 48/0; **full iOS lane 1209/0** (43 failures before); android `:mesh` FORCED 1193/0/0; apk 15,133,266 B; courts 582 OK; probes 12 OK; control PASSED; parity repo rc 0; symbols 0 unresolved; digests 343/343.
+- **Still owed, stated**: MeshNode does not itself implement the transport's `transportApplicationLinkReady` callback (the event reaches it via the composition); IOS-02 remains PARTIAL with steps 2, 3 and 4.
+
 ## Round 190 -- IOS-02 step 5 attempted: measured, RED taken, repair proven, and PARKED
 
 - **Defect, measured**: `MeshNode.currentPeers()` (what `ble.send` iterates) returned `peers`, populated by the radio's own `transportDidConnect` — so a peer that authenticated nothing was handed frames.

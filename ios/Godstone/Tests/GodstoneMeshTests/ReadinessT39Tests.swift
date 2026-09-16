@@ -26,6 +26,18 @@ import XCTest
 // observables' road, proven by MeshNodeDeliveryIntegrationTests and
 // ReadinessT38Tests standing unchanged.
 final class ReadinessT39Tests: XCTestCase {
+    /// IOS-02 step 5: A RELAY MUST BE TRUSTED TO BE ROUTE-ELIGIBLE. This witness bringeth a rig peer up the
+    /// REAL way -- the radio's handle first, then the trust the matching confirmation establisheth -- so an
+    /// arm that useth it modelleth the production sequence, not the audited shortcut (presence = routable).
+    private func bringPeerUp(_ node: MeshNode, _ handle: UUID) {
+        node.transportDidConnect(peerId: handle)
+        node.trustedPeerDidConnect(nodeId: Self.trustedNodeId(for: handle), peerId: handle)
+    }
+
+    static func trustedNodeId(for handle: UUID) -> Data {
+        withUnsafeBytes(of: handle.uuid) { Data($0) }
+    }
+
 
     // ---------------------------------------------------------------- fixtures
 
@@ -156,7 +168,7 @@ final class ReadinessT39Tests: XCTestCase {
     /// Dispatch once on a fresh rig and return (msg_id, result) -- both read
     /// back FROM the durable tables, the authority as the oracle.
     private func authorOnce(_ rig: Rig, _ payload: Data, peers: Int) throws -> (Data, SosDispatchResult) {
-        for i in 0..<peers { rig.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(i))!) }
+        for i in 0..<peers { bringPeerUp(rig.node, UUID(uuidString: Self.peerUuid(i))!) }
         var result: SosDispatchResult = .failed("the dispatch never ran")
         result = rig.node.dispatchSos(payload: payload) { _, _ in true }
         XCTAssertEqual(heldIds(rig.store).count, 1, "dispatch must commit exactly one held frame")
@@ -264,7 +276,7 @@ final class ReadinessT39Tests: XCTestCase {
             receivedAt: 0, fault: nil
         )
         if case .created = commit {} else { XCTFail("authority commit must succeed: \(commit)") }
-        r.node.transportDidConnect(peerId: UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000F9")!)
+        bringPeerUp(r.node, UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000F9")!)
         var cancelledDuring = false
         let result = r.node.retrySos(msgId: mid) { _, _ in
             // the cancellation lands while this hand is carrying the bytes
@@ -362,8 +374,8 @@ final class ReadinessT39Tests: XCTestCase {
     /// masquerade as empty successes.
     func testRetryResumesTheSameAuthoredBytesAndFailsTyped() throws {
         let r = try newRig()
-        r.node.transportDidConnect(peerId: UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000A1")!)
-        r.node.transportDidConnect(peerId: UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000A2")!)
+        bringPeerUp(r.node, UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000A1")!)
+        bringPeerUp(r.node, UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000A2")!)
         var firstHand: [Data] = []
         _ = r.node.dispatchSos(payload: Data("same bytes please".utf8)) { frame, _ in
             firstHand.append(frame.encode()); return true
@@ -404,7 +416,7 @@ final class ReadinessT39Tests: XCTestCase {
     /// the tables do not show.
     func testCommandSurfaceRoutesEveryArmToTheDurableTruth() throws {
         let r = try newRig()
-        r.node.transportDidConnect(peerId: UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000B1")!)
+        bringPeerUp(r.node, UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000B1")!)
         let authoring = r.node.handleSosCommand(.author(Data("command one".utf8))) { _, _ in true }
         if case .enqueued(let dispatch) = authoring {
             if case .handedToRelays = dispatch {} else { XCTFail("author must enqueue durably: \(dispatch)") }
@@ -419,7 +431,7 @@ final class ReadinessT39Tests: XCTestCase {
         let authoring2 = r2.node.handleSosCommand(.author(Data("command two".utf8))) { _, _ in true }
         if case .enqueued = authoring2 {} else { XCTFail("author again: \(authoring2)") }
         let mid2 = try firstHeldFrame(r2.store).msgId
-        r2.node.transportDidConnect(peerId: UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000B2")!)
+        bringPeerUp(r2.node, UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000B2")!)
         let resuming = r2.node.handleSosCommand(.retry(mid2)) { _, _ in true }
         if case .enqueued(let dispatch) = resuming {
             if case .handedToRelays = dispatch {} else { XCTFail("retry must reach the resume arm: \(dispatch)") }
@@ -503,7 +515,7 @@ final class ReadinessT39Tests: XCTestCase {
         // step: author four calls, two of them relayed
         for i in 0..<4 {
             if i < 2 {
-                r.node.transportDidConnect(peerId: UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000C\(i)")!)
+                bringPeerUp(r.node, UUID(uuidString: "0A0B0C0D-0000-4000-8000-0000000000C\(i)")!)
             }
             let before = Set(heldIds(r.store))
             _ = r.node.dispatchSos(payload: Data("campaign \(i)".utf8)) { _, _ in true }
@@ -567,8 +579,8 @@ extension ReadinessT39Tests {
     /// CANCELLED (retiring the durable row) and that handoff is refused -- the later offer must not happen.
     func testW24CancellationSuppressethTheLaterOffersAlreadyCaptured() throws {
         let r = try newRig()
-        r.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(0))!)
-        r.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(1))!)
+        bringPeerUp(r.node, UUID(uuidString: Self.peerUuid(0))!)
+        bringPeerUp(r.node, UUID(uuidString: Self.peerUuid(1))!)
         var offers = 0
         var cancelIssued = false
         _ = r.node.dispatchSos(payload: Data("cancel me now".utf8)) { frame, _ in
@@ -598,8 +610,8 @@ extension ReadinessT39Tests {
     /// suppress the later offer.
     func testW27CancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer() throws {
         let r = try newRig()
-        r.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(0))!)
-        r.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(1))!)
+        bringPeerUp(r.node, UUID(uuidString: Self.peerUuid(0))!)
+        bringPeerUp(r.node, UUID(uuidString: Self.peerUuid(1))!)
         var offers = 0
         _ = r.node.dispatchSos(payload: Data("durable truth please".utf8)) { frame, _ in
             offers += 1
@@ -614,6 +626,8 @@ extension ReadinessT39Tests {
             "the durable row was retired during the first callback, so the later offer must not happen "
             + "(offers=\(offers))")
     }
+
+
 }
 
 // GS-SOS-002 (the audit's ordered step 6) on this isle: NO arm is added here, and that is a MEASUREMENT,

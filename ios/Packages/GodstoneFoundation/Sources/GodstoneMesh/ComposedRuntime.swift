@@ -402,8 +402,8 @@ public final class ComposedRuntimeHarness {
         handleLabels[bHandle] = to
         handleLabels[aHandle] = from
         // then the TRUSTED relation the sync pump schedulleth against
-        a.node.trustedPeerDidConnect(nodeId: b.nodeId)
-        b.node.trustedPeerDidConnect(nodeId: a.nodeId)
+        a.node.trustedPeerDidConnect(nodeId: b.nodeId, peerId: bHandle)
+        b.node.trustedPeerDidConnect(nodeId: a.nodeId, peerId: aHandle)
         links.insert("\(from)->\(to)"); links.insert("\(to)->\(from)")
         trace.append(TraceEvent(kind: "link_up", atMonoMillis: clock.monoMillis(),
                                 fields: ["from": from, "to": to]))
@@ -416,8 +416,8 @@ public final class ComposedRuntimeHarness {
         guard let b = nodes[to] else { return .refused(reason: .noSuchNode, detail: to) }
         a.node.transportDidDisconnect(peerId: transports[to] ?? UUID())
         b.node.transportDidDisconnect(peerId: transports[from] ?? UUID())
-        a.node.trustedPeerDidDisconnect(nodeId: b.nodeId)
-        b.node.trustedPeerDidDisconnect(nodeId: a.nodeId)
+        a.node.trustedPeerDidDisconnect(nodeId: b.nodeId, peerId: transports[to] ?? UUID())
+        b.node.trustedPeerDidDisconnect(nodeId: a.nodeId, peerId: transports[from] ?? UUID())
         links.remove("\(from)->\(to)"); links.remove("\(to)->\(from)")
         trace.append(TraceEvent(kind: "link_down", atMonoMillis: clock.monoMillis(),
                                 fields: ["from": from, "to": to]))
