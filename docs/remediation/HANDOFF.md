@@ -4,6 +4,12 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
+## Round 214 -- GS-UX-001 step 2's entanglement measured, and the lab control now guards PROVENANCE
+
+- **Measured**: `LabRuntime` composes **through T44's harness** (`private let harness: ComposedRuntimeHarness`) — the owners are *real* (`SqliteMessageStore`, `DeliveryTracker`, inbox, ACK authority), but the composition carries harness support (`TestAckSigner`, `InMemoryAckStore`, `SimulatedSosAuthority`).
+- **Entanglement**: step 2's "REAL OWNERS" cannot bind the inbox/ACK road while **GS-RUNTIME-001 step 2 is blocked on the seed-shaped seam** (round 212) — so a later round must not "satisfy" it by pointing the lab at harness support and calling it real.
+- **Control improved**: the old invariant asserted only that an *owner* holds the runtime, never the owners' **provenance**. An **eighth lab invariant** now requires that the lab's own sources construct **no** `Test*`/`Simulated*`/`InMemory*`/`Fake*` owner — measured to hold today, and the control passes with the new note.
+
 ## Round 213 -- the seam-shape RED taken, run and parked (source-level for a measured reason)
 
 - **Probe** `audit_probes/python/test_ios_ack_signer_shape.py`: positive control passes (the driver and its frame-building loop stand), **law-arm fails** — it requires the identity keep its material private **and** the seam therefore offer `sign(preimage:)` rather than `signingSeed(...)`.
