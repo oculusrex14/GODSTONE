@@ -79,7 +79,7 @@
     "Sources/GodstoneMesh/RetentionClock.swift": "08ceec95350afb505476b3aa2eca83750476ea29e42455a3ee05386b2af3ba53",
     "Sources/GodstoneMesh/Router.swift": "9d87a4792e34004bc8b658ad4ebf60b5e9ca82e390b5b1634581013af5f78049",
     "Sources/GodstoneMesh/RuntimeLifecycleGate.swift": "736d25b16eadd15397eb91fcf29cdea6f5c2a7756590ea956f03b24172b5c8dc",
-    "Sources/GodstoneMesh/SchemaMigration.swift": "22428e0330b4a8437bb8761c7326f8c8eeb252a17ea84b8dcf8bb3482d54783b",
+    "Sources/GodstoneMesh/SchemaMigration.swift": "931a31e19cbdd94df70822f6bd73c1b96620b2c689c37d813c9f79c84c051191",
     "Sources/GodstoneMesh/SealedSender.swift": "2283a5b0726e6aaf2cfc02fcc1b22ff648d5b2e9fbd6bbd434873c6762a9a9f9",
     "Sources/GodstoneMesh/SendDirectAuthority.swift": "575f0cabba09227d2c8a527132f3f3167ed9301367b8ed9ae4b72cdc8cfcbb27",
     "Sources/GodstoneMesh/SessionManager.swift": "5890cd21318694fe6362a75384c5398a2a59ea0985bcbcbed07d3defe1c7bc5c",

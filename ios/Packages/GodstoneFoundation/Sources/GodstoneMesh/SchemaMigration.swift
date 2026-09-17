@@ -110,8 +110,14 @@ public final class SchemaMigrationEngine: @unchecked Sendable {
         let checkpoint = executor.checkpointedThrough()
         let start = max(checkpoint, currentVersion)
         if start >= supportedMax {
-            return fingerprint.matches(observed) ? .alreadyCurrent(at: supportedMax)
-                : .repairRequired(reason: "observed schema drifts from the frozen fingerprint at current revision \(supportedMax)")
+            if fingerprint.matches(observed) { return .alreadyCurrent(at: supportedMax) }
+            // *** CRYPTO-005 (round 458): THE BOOLEAN IS KEPT, AND THE **DIFFERENCE** IS NOW COMPUTED WITH IT. *** This line used
+            // to answer `.repairRequired` with a FIXED SENTENCE naming only the revision, SO THE ENGINE ASKED "do they match?"
+            // AND NEVER "what differs?" -- while `StoreSchema.fingerprintDifference` (which NAMES the part: "table COUNT
+            // (frozen=… observed=…)", "COLUMNS of <t>", "IMMUTABLE DOMAIN of <t>", "DDL of <t>") STOOD READY TO BE ASKED. The
+            // verdict is UNCHANGED; only the reason groweth a diagnosis.
+            let difference = StoreSchema.fingerprintDifference(fingerprint, observed)
+            return .repairRequired(reason: "observed schema drifts from the frozen fingerprint at current revision \(supportedMax) -- \(difference)")
         }
         let ordered = steps.filter { $0.to > start && $0.to <= supportedMax }.sorted { $0.from < $1.from }
         var expect = start
