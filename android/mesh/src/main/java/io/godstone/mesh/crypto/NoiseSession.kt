@@ -127,6 +127,21 @@ class NoiseSession private constructor(
 
     private fun budgetLimit(): Long = recordBudgetForTest ?: RECORD_BUDGET
 
+    /**
+     * CRYPTO-002: EVALUATE THE AGE BUDGET **WITHOUT A PACKET**. The budget checks are reached only from send/open, so
+     * AN IDLE SESSION NEVER LEARNETH THAT IT HATH AGED OUT -- which is exactly what the audit's second probe measured
+     * ("age out the same way and call only isReady; actual answer remains true without a new packet"). This asketh THE
+     * SAME QUESTION THE SEND PATH ASKETH and retireth through THE SAME `retire(_:)`, so the roads cannot drift.
+     */
+    internal fun evaluateTimeBudget(): String? {
+        if (retired != null) return retired
+        if (budgetAgeMs() >= (ageBudgetForTest ?: TIME_BUDGET_MS)) {
+            retire("idle budget: 30 minutes elapsed")
+            return "send budget exceeded (time)"
+        }
+        return null
+    }
+
     /** T07 terminal retirement: clear readiness and key material. */
     private fun retire(reason: String) {
         if (retired == null) retired = reason
@@ -248,7 +263,14 @@ class NoiseSession private constructor(
         synchronized(replayLock) {
             when (val parsed = UnsignedNonce.parse(
                 ByteBuffer.allocate(8).putLong(nonceRaw))) {
-                is UnsignedNonce.Result.Rejected -> return CryptoOpenResult.Expired
+                // CRYPTO-002 STEP 1, THE AUDIT'S OWN WORDS: "Make malformed/authentication/replay/out-of-policy
+                // input Rejected(reason); make actual age or authenticated-record budget exhaustion
+                // Retired/Expired(reason). DO NOT CLOSE A HEALTHY SESSION JUST BECAUSE AN ATTACKER SUPPLIES AN
+                // EXCESSIVE NONCE." This site answered EXPIRED for a REPLAY/MALFORMED/out-of-policy nonce -- and once
+                // the manager PROPAGATETH that terminus (this very finding's repair) A REPLAYED CAPTURED PACKET
+                // BECOMETH A ONE-PACKET DENIAL-OF-SERVICE. THE iOS ISLE PAID FOR THIS EXACT SITE AT ROUND 346; HERE IT
+                // IS CORRECTED **BEFORE** THE PROPAGATION LANDETH, so that isle's regression cannot recur.
+                is UnsignedNonce.Result.Rejected -> return CryptoOpenResult.Rejected
                 is UnsignedNonce.Result.Valid -> {
                     when (val plan = replayWindow.preview(parsed.value)) {
                         is ReplayWindow.Plan.Reject -> return CryptoOpenResult.Expired

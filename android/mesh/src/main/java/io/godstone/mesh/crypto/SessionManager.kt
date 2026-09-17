@@ -242,17 +242,33 @@ class SessionManager internal constructor(
     }
 
     fun isReady(admission: RelationKey): Boolean {
-        lifecycleRwLock.read {
+        var retirable: RelationKey? = null
+        return lifecycleRwLock.read {
             if (!isActive) return false
             val slot = slotFor(admission) ?: return false
             // GS-CTRL-002 (R05): the readiness query taketh the PER-PEER lock EXPLICITLY, under the
             // name the composition contract useth -- the same lock `SessionSlot.serialize` acquireth,
             // so the behaviour is unchanged and the name is load-bearing rather than decorative.
             val peerLock = getPeerLock(admission) ?: return false
-            return peerLock.withLock {
+            // CRYPTO-002: THE IDLE PATH. A session that reached its own terminus while `state` still sayeth READY
+            // must not keep publishing ready -- and THE PRIMITIVE IS THE AUTHORITY on its own terminus, asked WITHOUT
+            // a packet (`evaluateTimeBudget`, the entry this round addeth).
+            val terminallyAged = peerLock.withLock {
+                val ctrl = slot.controller ?: return@withLock false
+                ctrl.noiseSession.evaluateTimeBudget() != null ||
+                    (ctrl.state == HandshakeTrustState.READY && !ctrl.isReady)
+            }
+            if (terminallyAged) {
+                retirable = admission
+                return@read false
+            }
+            peerLock.withLock {
                 val ctrl = slot.controller ?: return@withLock false
                 ctrl.isReady && ctrl.state == HandshakeTrustState.READY
             }
+        }.also { answer ->
+            // THE RETIREMENT, OUTSIDE THE LOCK, through the manager's own verb.
+            if (retirable != null) drop(retirable!!)
         }
     }
 
@@ -454,15 +470,27 @@ class SessionManager internal constructor(
      * vocabulary of the Noise layer's own CryptoOpenResult.
      */
     fun openWithResult(admission: RelationKey, ciphertext: ByteArray): NoiseSession.CryptoOpenResult {
-        // T17: total by contract. A frame the cipher refuses is told by the
-        // rejected answer, whatever the underlying layer throws: a malformed
-        // packet must never travel further than the caller's when-clause.
-        val clear = try {
-            open(admission, ciphertext)
-        } catch (_: Throwable) {
-            null
-        } ?: return NoiseSession.CryptoOpenResult.Rejected
-        return NoiseSession.CryptoOpenResult.Authenticated(clear)
+        // CRYPTO-002: THE PRIMITIVE'S TYPED VERDICT TRAVELS. The old body called `open(...)` (which flatteneth
+        // everything to a nullable ByteArray) inside a `catch (_: Throwable)` and answered `Rejected` FOR EVERY
+        // FAILURE -- so THIS MANAGER NEVER ANSWERED `Expired`, exactly as the audit measured. The primitive is now
+        // asked ONCE, and its own vocabulary is carried outward.
+        var outcome: NoiseSession.CryptoOpenResult = NoiseSession.CryptoOpenResult.Rejected
+        lifecycleRwLock.read {
+            if (!isActive) return@read
+            val slot = slotFor(admission) ?: return@read
+            outcome = slot.serialize {
+                val ctrl = slot.controller ?: return@serialize NoiseSession.CryptoOpenResult.Rejected
+                try {
+                    ctrl.noiseSession.openWithResult(ciphertext)
+                } catch (_: Throwable) {
+                    NoiseSession.CryptoOpenResult.Rejected
+                }
+            }
+        }
+        // THE TERMINUS IS ROUTED **OUTSIDE** THE LOCK, through the manager's OWN teardown verb, so the two lock
+        // orders cannot meet (the same discipline the iOS isle's round 309/344/345 taught).
+        if (outcome is NoiseSession.CryptoOpenResult.Expired) drop(admission)
+        return outcome
     }
 
     /**
@@ -585,11 +613,17 @@ class SessionManager internal constructor(
     }
 
     internal fun openWithResult(peerId: ByteArray, ciphertext: ByteArray): NoiseSession.CryptoOpenResult {
+        var sawExpired = false
         for (admission in hostAdmissions(peerId)) {
             val outcome = openWithResult(admission, ciphertext)
             if (outcome is NoiseSession.CryptoOpenResult.Authenticated) return outcome
+            // CRYPTO-002: THE AGGREGATE MUST NOT SWALLOW A TERMINUS. The old body answered `Rejected` for EVERYTHING
+            // that did not authenticate -- so an exhausted session was indistinguishable from a bad packet AT THE API
+            // THE HOST COURTS USE. A terminus is now reported AS a terminus (it is the more specific and the more
+            // actionable of the two), and a plain rejection still falls through. The iOS isle carrieth the same fix.
+            if (outcome is NoiseSession.CryptoOpenResult.Expired) sawExpired = true
         }
-        return NoiseSession.CryptoOpenResult.Rejected
+        return if (sawExpired) NoiseSession.CryptoOpenResult.Expired else NoiseSession.CryptoOpenResult.Rejected
     }
 
     internal fun authenticatedNodeIdOf(peerId: ByteArray): ByteArray? {

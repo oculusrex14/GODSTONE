@@ -117,10 +117,17 @@ class ReadinessT07Test {
         val forged = TransportCiphertextV1.encode(
             UnsignedNonce.POLICY_CEILING, ByteArray(16))
         assertTrue(receiver.openWithResult(forged)
-            is NoiseSession.CryptoOpenResult.Expired)
+            is NoiseSession.CryptoOpenResult.Rejected)
         // The window mutated nothing: the next legitimate frame works.
         assertTrue(receiver.openWithResult(sender.encrypt("next".toByteArray()))
             is NoiseSession.CryptoOpenResult.Authenticated)
+        // CRYPTO-002: CORRECTED TO THE FINDING'S STATED LAW, WITH ITS SENTENCE QUOTED, because this arm asserted the
+        // OPPOSITE and the difference is load-bearing: "Bad tag, replay and forged high nonce remain BOUNDED
+        // REJECTION; a later genuine in-policy nonce still authenticates. DO NOT CLOSE A HEALTHY SESSION JUST BECAUSE
+        // AN ATTACKER SUPPLIES AN EXCESSIVE NONCE." An out-of-policy nonce that RETIRED the session would be a
+        // ONE-PACKET DENIAL-OF-SERVICE against a healthy relation -- so the bounded rejection is the correct
+        // expectation, and this arm is CORRECTED TO THE FINDING rather than bent to make a repair pass. (The iOS isle
+        // carries the same correction at the same arm.)
     }
 
     @Test

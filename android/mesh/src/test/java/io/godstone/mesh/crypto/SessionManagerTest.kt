@@ -272,4 +272,68 @@ class SessionManagerTest {
         assertNull(smA.initiatorStart(randomPeerId(), ByteArray(4)))
         assertNull(smA.responderProcessHs1(randomPeerId(), ByteArray(4), ByteArray(32)))
     }
+
+    /**
+     * CRYPTO-002, MIRRORED FROM THE iOS ISLE'S CANONICAL SUITE -- the audit's own two probes by name:
+     * `AuditCryptoTests.testExpiredReadMustReachManagerAndClearReadiness` and
+     * `testIdleExpiredSessionMustNotStillPublishReady`. The audit's evidence class sayeth WHY the existing courts
+     * missed it: "ReadinessT07Tests acts directly on raw NoiseSession ... It does not exercise trusted controller,
+     * manager, transport close/publication or idle timer ownership." SO THESE PROBES ACT ON THE MANAGER.
+     *
+     * NOTE ON THIS ISLE'S ASSERTION ORDER, WRITTEN DOWN BECAUSE IT COST A ROUND: **JUNIT TAKES (message, condition) --
+     * THE REVERSE OF XCTEST'S (condition, message).** The compiler refused it in three lines, twice.
+     */
+    @Test
+    fun crypto002AnAgedReadMustRetireThroughTheManagerAndClearReadiness() {
+        val identityA = MeshIdentity.generate()
+        val identityB = MeshIdentity.generate()
+        val smA = SessionManager(identityA, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val smB = SessionManager(identityB, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val peerB = identityB.nodeId
+        val peerA = identityA.nodeId
+        val hs1 = smA.initiatorStart(peerB, identityB.nodeHint)!!
+        val hs2 = smB.responderProcessHs1(peerA, identityA.nodeHint, hs1)!!
+        val hs3 = smA.initiatorProcessHs2(peerB, hs2, identityB.nodeHint)!!
+        assertTrue("the handshake completes", smB.responderProcessHs3(peerA, hs3, identityA.nodeHint))
+        assertTrue("the control: a completed handshake IS ready", smB.isReady(peerA))
+        val before = smB.slotCountForTest()
+
+        // AGE THE RECEIVER'S PRIMITIVE past its own budget: one second of budget, established two seconds ago.
+        val ctrl = smB.slotForTest(peerA)!!.controller!!
+        ctrl.noiseSession.ageBudgetForTest = 1L
+        ctrl.noiseSession.establishedMonoForTest = System.nanoTime() - 2_000_000_000L
+
+        val genuine = smA.seal(peerB, "a genuine in-policy packet".toByteArray(Charsets.UTF_8))!!
+        assertEquals(
+            "AGE IS A TERMINAL RETIREMENT, NOT A PACKET REJECTION -- the vocabulary existeth and is unreachable",
+            NoiseSession.CryptoOpenResult.Expired, smB.openWithResult(peerA, genuine),
+        )
+        assertFalse(
+            "and readiness must STOP: a session past its budget may not stay published as ready",
+            smB.isReady(peerA),
+        )
+        assertEquals("and the EXACT slot must be gone (it was $before) -- else a slot leak", 0, smB.slotCountForTest())
+    }
+
+    @Test
+    fun crypto002AnIdleAgedSessionMustNotStillPublishReady() {
+        val identityA = MeshIdentity.generate()
+        val identityB = MeshIdentity.generate()
+        val smA = SessionManager(identityA, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val smB = SessionManager(identityB, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val peerB = identityB.nodeId
+        val peerA = identityA.nodeId
+        val hs1 = smA.initiatorStart(peerB, identityB.nodeHint)!!
+        val hs2 = smB.responderProcessHs1(peerA, identityA.nodeHint, hs1)!!
+        val hs3 = smA.initiatorProcessHs2(peerB, hs2, identityB.nodeHint)!!
+        assertTrue("the handshake completes", smB.responderProcessHs3(peerA, hs3, identityA.nodeHint))
+
+        val ctrl = smB.slotForTest(peerA)!!.controller!!
+        ctrl.noiseSession.ageBudgetForTest = 1L
+        ctrl.noiseSession.establishedMonoForTest = System.nanoTime() - 2_000_000_000L
+        assertFalse(
+            "an IDLE expired session must not still publish ready -- NO PACKET SHOULD BE REQUIRED",
+            smB.isReady(peerA),
+        )
+    }
 }
