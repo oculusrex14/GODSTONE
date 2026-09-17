@@ -35,11 +35,18 @@ package io.godstone.mesh.readiness
 //       yieldeth, exactly as the court fixture `SosTestAuthority.kt` doth it.
 //   (2) NOTHING ELSE IS CHANGED. Every assertion, every expectation and every message is the auditor's own text.
 //
-// AND WHAT WAS **NOT** COPIED, WITH ITS REASON: the auditor's file carrieth FOUR arms, and two of them -- 
-// `cancelDuringFirstPendingOfferMustSuppressLaterPeerOffer` and `inventoryReceiverMustEnforce64PageRunLimit` -- also
-// FAILED on the audited tree ("No later peer may receive new work after local cancellation expected:<1> but was:<2>",
-// and "65th page must be refused, got Accepted"). THEY ARE NOT COPIED HERE, because A MANDATORY LANE MAY NOT BE
-// MADE RED BY A COPY: they are a separate piece of work, and they are NAMED so that nothing claimeth they are done.
+// *** AND THE OTHER TWO OF THE AUDITOR'S FOUR ARMS ARE COPIED TOO -- MEASURED FIRST, THEN KEPT. *** Both also FAILED
+// on the audited tree ("No later peer may receive new work after local cancellation expected:<1> but was:<2>", and
+// "65th page must be refused, got Accepted"), so they were APPENDED FOR MEASUREMENT rather than assumed, AND BOTH NOW
+// PASS. **THAT MAKETH THIS FILE THE AUDITOR'S COMPLETE ARM SET, `tests="4" failures="0"`, AGAINST THE AUDITOR'S OWN
+// RECORDED `tests="4" failures="3"` ON THE AUDITED TREE: EVERY ARM THAT FAILED FOR THE AUDITOR NOW PASSES.**
+//
+// AND ONE ERROR OF MINE IS RECORDED WITH IT, BECAUSE IT NEARLY BECAME A FALSE MEASUREMENT: the first transcription
+// DROPPED THE AUDITOR'S `import io.godstone.mesh.router.*` LINE, and the compiler named eight unresolved references
+// (`SyncControlOwner`, `InventorySnapshotAuthority`, `ControlPayloadV1`). I READ THAT AS "THE TYPES HAVE MOVED SINCE
+// THE AUDIT" -- AND IT WAS FALSE: they live in `io.godstone.mesh.router` exactly as the auditor's own import saith.
+// **A CAUSE INVENTED FROM A PLAUSIBLE STORY IS NOT A CAUSE**, and the truth was found by GREPPING FOR THE TYPES rather
+// than by trusting the story. The import is restored, and the two arms compile and pass.
 // ---------------------------------------------------------------------------
 
 import io.godstone.core.crypto.Ed25519Keys
@@ -48,6 +55,7 @@ import io.godstone.mesh.*
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.identity.IdentityBindingV1
 import io.godstone.mesh.delivery.*
+import io.godstone.mesh.router.*
 import io.godstone.mesh.store.InMemoryMessageStore
 import io.godstone.mesh.wire.v2.*
 import java.security.SecureRandom
@@ -105,5 +113,45 @@ class Audit002SosSyncTest {
         val (node, store) = rig(true)
         assertEquals(SosDispatchResult.QueuedLocally, node.dispatchSos("help".toByteArray()) { _, _ -> false })
         assertTrue(SignedSosV1.verify(store.allHeldOrderedByPriority().single(), null) is SosAuthResult.Authenticated)
+    }
+
+    // -----------------------------------------------------------------------
+    // THE AUDITOR'S OTHER TWO ARMS -- measured before being kept, because both FAILED on the audited tree.
+    // A MANDATORY LANE MAY NOT BE MADE RED BY A COPY: if they still fail, they come OUT and are recorded as a RED.
+    // -----------------------------------------------------------------------
+
+    @Test
+    fun cancelDuringFirstPendingOfferMustSuppressLaterPeerOffer() = runTest {
+        val (node, store) = rig(true)
+        node.injectPeerForTest(ByteArray(16) { 1 }); node.injectPeerForTest(ByteArray(16) { 2 })
+        var offered = 0
+        node.dispatchSos("help".toByteArray()) { _, _ ->
+            offered++
+            if (offered == 1) {
+                val id = store.allHeldMsgIds().single()
+                assertTrue(node.cancelSos(id) is SosCancelResult.Cancelled)
+            }
+            false
+        }
+        assertEquals("No later peer may receive new work after local cancellation", 1, offered)
+        assertEquals(0, store.allHeldMsgIds().size)
+    }
+
+    @Test
+    fun inventoryReceiverMustEnforce64PageRunLimit() = runTest {
+        val store = InMemoryMessageStore(); val clock = { 1_000_000L }; val peer = ByteArray(16) { 1 }
+        val owner = SyncControlOwner(store, InventorySnapshotAuthority(store, clock), clock, ByteArray(16) { 2 })
+        fun frame(type: TypeV2, payload: ByteArray) = FrameV2(type, ByteArray(16) { 3 }, ByteArray(4), 0, 0, 0, payload)
+        assertEquals(SyncControlOwner.OwnerDecision.Accepted,
+            owner.handleControlFrame(frame(TypeV2.DIGEST, ControlPayloadV1.Digest(1L, ByteArray(512)).encode()), peer))
+        assertTrue(owner.startInventoryRun(peer))
+        var last: SyncControlOwner.OwnerDecision = SyncControlOwner.OwnerDecision.Accepted
+        for (i in 1..65) {
+            val id = ByteArray(16); id[15] = i.toByte()
+            last = owner.handleControlFrame(frame(TypeV2.HELLO,
+                ControlPayloadV1.InventoryPage(1L, 0, listOf(id)).encode()), peer)
+        }
+        assertTrue("65th page must be refused, got $last", last is SyncControlOwner.OwnerDecision.Refused)
+        assertTrue(owner.relationFor(peer).pagesReceived <= 64)
     }
 }

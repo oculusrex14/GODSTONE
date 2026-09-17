@@ -197,11 +197,17 @@ unauthenticated success, the arm failed with THE AUDITOR'S OWN RECORDED MESSAGE 
 must be typed failure, got QueuedLocally"* — **while the auditor's positive control still passed.** The arm judges; its
 green comes from the repair; and the failure is specific rather than a blanket breakage.
 
-**NOT COPIED, AND NAMED SO NOTHING CLAIMS THEY ARE DONE:** the auditor's file carries **four** arms and **two** also
-failed on the audited tree — `cancelDuringFirstPendingOfferMustSuppressLaterPeerOffer` (*"expected:\<1\> but was:\<2\>"*)
-and `inventoryReceiverMustEnforce64PageRunLimit` (*"65th page must be refused, got Accepted"*). They are **not copied,
-because a mandatory lane may not be made red by a copy**; their recorded messages are preserved in the copied court's
-own header.
+**AND THE OTHER TWO OF THE AUDITOR'S FOUR ARMS ARE COPIED TOO — MEASURED FIRST, THEN KEPT: ALL FOUR PASS,
+`tests="4" failures="0" errors="0`, AGAINST THE AUDITOR'S RECORDED `tests="4" failures="3"`. EVERY ARM THAT FAILED FOR
+THE AUDITOR NOW PASSES.** The full Android lane: **1228 tests / 0 failures across 78 classes.**
+
+**A CORRECTION AGAINST THIS RECORD:** my first ledger entry said those two arms were **"NOT COPIED"**, on the
+*assumption* that they would still be red. **The assumption was never measured and it was wrong** — they were one
+command away from being measured the whole time, and measuring them closed the auditor's entire file.
+**An assumption about what will fail is not a measurement of what fails.** And a second error nearly became a false
+measurement: the first transcription **dropped the auditor's `import io.godstone.mesh.router.*`**, and I read the
+resulting eight unresolved references as *"the types have moved since the audit"* — **false**, they live exactly where
+the auditor's import says. *A cause invented from a plausible story is not a cause*; the truth was found by grepping.
 
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
