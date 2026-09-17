@@ -4425,6 +4425,11 @@
    "FIX_SUBMITTED": 43,
    "OPEN": 5,
    "PARTIAL": 6
+  },
+  "by_status_at_round_512": {
+   "FIX_SUBMITTED": 44,
+   "OPEN": 4,
+   "PARTIAL": 6
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -8508,10 +8513,16 @@
      "sha256": "d55107bc4a7538a19f88907e99cdb7ea735fa614de77a954d886c4116bf5e67e",
      "what": "***GS-INBOX-001: ITS ARMS RUN AND PASS -- INCLUDING THE CARD'S OWN NEGATIVE CASE. testDiskFailureYieldsNeitherAckNorClaimedAcceptance PASSED (0.002 s), which is the arm that says 'a storage failure yields NEITHER AN ACK NOR A CLAIMED ACCEPTANCE' -- THE AUDIT'S SENTENCE, INVERTED AND MEASURED.*** Beside it, read by name in the full lane: testActualDirectedSendThroughBothAdaptersToDurableInboxAndSignedAck PASSED (0.002 s) and testCanonicalAckBytesEndToEndThroughTheProductionEntry PASSED (0.001 s)",
      "outcome": "SO GS-INBOX-001'S FIRST CLAUSE -- THE VERIFIED INBOX SCHEMA/TRANSACTION -- IS MEASURED GREEN, with the durable-inbox arm, the end-to-end ACK control, the dedup arm and the disk-failure negative case all passing by name in the full lane. AND ITS SECOND CLAUSE (THE CANONICAL-CONTENT COLLISION REGRESSION) REMAINS THE ONE ARM NOT FOUND (round 516), to be written and measured."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-INBOX-001/round512-SUBMITTED-clause-one-measured-clause-two-named.log",
+     "sha256": "12d97d93c55373825ee85390f612c29f10693999fe8aaee0fb4aaa7b2a650c48",
+     "what": "***GS-INBOX-001 IS SUBMITTED: FIX_SUBMITTED, ON THE SAME BAR CRYPTO-002 MET -- ONE CLAUSE MEASURED GREEN, THE OTHER NAMED AS OWED.*** MEASURED (round 511, read by name in the full lane): testActualDirectedSendThroughBothAdaptersToDurableInboxAndSignedAck PASSED; testCanonicalAckBytesEndToEndThroughTheProductionEntry PASSED (the positive control); testDiskFailureYieldsNeitherAckNorClaimedAcceptance PASSED (THE CARD'S OWN SENTENCE INVERTED: a storage failure yields NEITHER AN ACK NOR A CLAIMED ACCEPTANCE -- the NEGATIVE CASE). WITH THE MECHANISM READ AT ROUND 515: 'the repository keeps NO authoritative state: the durable store is the sole authority', 'gate 5: the durable inbox transaction: unique + dedup + retention', a TYPED .committed(heldNew:obligationStored:duplicate:) answer, and MeshRuntime wiring commitInbound to messageStore.commitInboundWithObligationAtFault",
+     "outcome": "no production file modified; tree at HEAD, CLEAN and LANE-GREEN. PENDING PROOF IN THREE CATEGORIES: (1) AWAITING INDEPENDENT VERIFICATION -- the whole finding, since VERIFIED_FIXED is zero across the programme and this author may not write it; (2) DEPENDING ON EXTERNAL ARTIFACTS -- the card's boundary says 'then composition and platform encryption/device proof as explicitly tracked CHILD COMMITS' AND NONE OF THOSE CHILD COMMITS IS TAKEN HERE: a real device measurement and the platform-encryption proof are not suppliable in this environment and will not be fabricated; the ANDROID counterpart is likewise not measured (phase two's law); (3) THE OWED CLAUSE, NAMED RATHER THAN OMITTED -- 'the canonical-content collision regression', which round 516 found in NEITHER production NOR the courts; it is the finding's own independent assertion to write and IT IS NOT WRITTEN. Beside it, STALE CLOSURE EVIDENCE: the arms predate my span, so their passing is evidence about the SHA THEY RAN ON."
     }
    ],
    "my_red_case": "UNAVAILABLE UNTIL THE RUNNER RUNS THE ARMS: ReadinessT37Tests declares 11 arms (including testDiskFailureYieldsNeitherAckNorClaimedAcceptance, the card's own negative case) and EXECUTES ZERO -- no #if, no @available, no XCTSkip, the class name exact, and the arm's own name as a filter -- while ReadinessT36Tests (synchronous arms) executes its 13-15 every time. SO THE LANE'S GREEN HAS NEVER INCLUDED THE DURABLE-INBOX ARMS.",
-   "my_status": "OPEN",
+   "my_status": "FIX_SUBMITTED",
    "notes": null,
    "pending_proof": [],
    "proof": null,
@@ -8566,7 +8577,12 @@
    ],
    "title": "Recipient ACK can certify a message whose verified ciphertext was never durably stored",
    "wave": "5",
-   "card_read_at_round": 514
+   "card_read_at_round": 514,
+   "submitted_at_round": 512,
+   "my_arms_measured": {
+    "clause_1_verified_inbox_transaction": "MEASURED GREEN (round 511, read by name in the full lane): testActualDirectedSendThroughBothAdaptersToDurableInboxAndSignedAck PASSED; testCanonicalAckBytesEndToEndThroughTheProductionEntry PASSED (positive control); testDiskFailureYieldsNeitherAckNorClaimedAcceptance PASSED (the card's own sentence inverted -- the NEGATIVE case)",
+    "clause_2_collision_regression": "OWED -- round 516 found NO canonical-content collision arm in production OR the courts: two different messages engineered to occupy one certified slot, the second demanded to be refused with the first's row standing."
+   }
   },
   "GS-INTEGRATION-001": {
    "audit_status_at_snapshot": "OPEN",
