@@ -99,6 +99,7 @@
     "Sources/GodstoneMesh/TrustedPeerChannel.swift": "86eabac74cd00b7201f0967ce0afd07b51ea40925b86de7257dd1c3a4ce70333",
     "Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift": "1349bcab58ed7d47657bda51250cb0993a8bbf18c61fb28d9b458091a34a0a8b",
     "Sources/GodstoneMesh/WipeArtifactFileSystemSeam.swift": "eb86d9cc981cb0b8e0528c97aa6dbd39ce1ec6cbce01fc75b24f49159c2b96eb",
+    "Sources/GodstoneMesh/WipeDeferredSeams.swift": "19d1d5472718bb95281ee08472d31064b3a8383b613184241da4f8860b0e5825",
     "Sources/GodstoneMesh/WipeDeferredTransportSeam.swift": "3e65eacf02f681d00ee72330543a974d9d98298b1b40205e91f4744383e66921",
     "Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift": "d921eba233fa6eea2baf465cbed71a1866d6461823ed80818b9722420bb1e1aa",
     "Sources/GodstoneMesh/WipeJournalDurabilityAdapter.swift": "f90aa30cfe0eb411e21e35ce0e24741274ef02671977efadfbcfabaed199d5b4",
