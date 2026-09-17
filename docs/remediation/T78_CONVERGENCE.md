@@ -358,6 +358,46 @@ specific.**
 **Still unclaimed:** step 4's `NavigationStack` clause, and **any rendered-screen witness** — a real Compose screen
 scrolling to `readingTargetPassageId` is **not** measured. The finding stays **`PARTIAL`**.
 
+## ROUND 527, PHASE TWO — GS-STORE-004's CLOSURE BAR, MEASURED CLAUSE BY CLAUSE
+
+**Why this finding was opened:** it carries 55 `pending_proof` entries and an **empty `pending_work`**, so the question
+was whether it could be **submitted on measurement**. **It cannot — and measuring its own closure bar is what showed
+it.** Closure 2 names *"wall-clock rollback, boot continuity loss, **maximum hold**, and the **frozen discontinuity
+bound** on actual persisted rows."* The first two had arms. **The last two had none at all** — `maxHoldMs` appeared in
+`Sources` **alone**, and the discontinuity bound appeared in the court **only as a doc comment** (*the arms that stood
+took the counter to **one***). **A closure test whose clauses are unwitnessed is not met by counting the arms that exist.**
+
+**Two arms were written and BOTH FAILED on the first run — which is the measurement, not the setback.** The bound arm's
+failure *could not be explained by reading*, so **an instrument was added and it answered in 35 lines**: the counter
+incremented on **alternate cycles only.** That localised a **real defect**:
+
+> **The persisted continuity identifier was never advanced.** The `boot_identity` column has stood in the schema since
+> revision 8 and **no model ever carried it** — `RetentionCheckpoint` had no such field, `admit(...)` **discarded** the
+> identity it received, `BootIdentityContinuity` answered `.unknown` for a changed boot (*throwing away the very stamp
+> that carries the new one*), and `persistCheckpoint`'s UPDATE named three columns and not the fourth. **So the counter
+> measured OPENS, not DISCONTINUITIES** — and a store reopened 32 times across a boot change would retire a row that
+> suffered **one**. *False expiry, and data loss.*
+
+**The repair carries NO schema revision, and that is the point:** the column already existed, so the defect was **a
+missing term in an UPDATE** plus a model that could not carry the value. A **discriminator arm** now asserts the law the
+defect broke, and the **negative case reproduced the defect as a rising counter (2, 3, 4, 5)** against the repaired
+`1, 1, 1, 1, 1`.
+
+**AND THE TWO ISLES WERE OUT OF STEP — WITH iOS THE DEFECTIVE ONE:** measured, the **Android twin's write-back already
+persists the live boot** (`MessageStore.kt:1377-1378`, `stamp.second`), so it never counted one discontinuity per open.
+**This repair brings iOS into step with Android.** The mechanism difference is *named* so a future reader is not misled:
+**the same law is now spelled differently** — Kotlin writes the live boot; Swift advances the model's field.
+
+**THE MAXIMUM-HOLD CLAUSE IS A MEASURED RED, PARKED WITH ITS EVIDENCE** (*"THE MAXIMUM HOLD IS AN ABSOLUTE CAP: a row
+whose budget is UNSPENT must still be retired once the hold is reached"*) — its repair needs an origin that survives
+`checkpoint`'s re-basing of `checkpointMonotonicMs` to `nowMono` on proven continuity: **a new persisted column, i.e.
+SCHEMA REVISION 10 on both isles.** *A mandatory lane may not be red*, so the arm is parked rather than committed, and
+the revision is **the next round's work, named**.
+
+**Measured:** iOS lane `SWIFT_RC=0`; `GodstoneMeshTests` **1192/0** (1190 → 1192); `LabMeshTests` 4/0;
+`GodstoneCoreTests` 86/0; `SqliteMessageStoreTests` 71/0; parity `--scope repo` all invariants hold; symbols 0
+unresolved; digests PASSED; store-schema gate PASS. The finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is

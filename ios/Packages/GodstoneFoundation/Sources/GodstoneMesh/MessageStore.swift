@@ -1005,7 +1005,13 @@ public final class SqliteMessageStore: MessageStore {
         private let current: String
         init(persisted: String?, current: String) { self.persisted = persisted; self.current = current }
         func proveContinuity(previous: RetentionCheckpoint, nowMono: Int) -> ClockContinuityStamp {
-            (persisted != nil && persisted == current) ? .proven : .unknown
+            if persisted != nil && persisted == current { return .proven }
+            // *** GS-STORE-004 round 527: A DIFFERENT BOOT IS A **RESET**, AND THE STAMP CARRIETH THE RUNNING BOOT. ***
+            // THIS ADAPTER USED TO ANSWER `.unknown` FOR A CHANGED BOOT -- THROWING AWAY THE ONLY PLACE THE NEW
+            // IDENTITY COULD BE CARRIED -- SO THE POLICY COULD NEVER ADVANCE IT. `.unknown` is now reserved for what
+            // it meaneth: NO IDENTITY WAS PERSISTED AT ALL (a row written before this revision), which is not a
+            // continuity and must stay on the conservative road.
+            return persisted == nil ? .unknown : .reset(bootIdentity: current)
         }
     }
 
@@ -1042,7 +1048,8 @@ public final class SqliteMessageStore: MessageStore {
                                          checkpointMonotonicMs: Int(storedCheckpoint ?? receivedAt),
                                          lastWallCheckpointMs: Int(storedCheckpoint ?? receivedAt),
                                          discontinuityCount: Int(storedDiscontinuity ?? 0),
-                                         priority: 0, firstReceiptId: "")
+                                         priority: 0, firstReceiptId: "",
+                                         bootIdentity: storedBoot ?? "")
             let adapter = BootIdentityContinuity(persisted: storedBoot,
                                                  current: provider().bootIdentity)
             let (next, reason) = RetentionPolicy.checkpoint(cp, nowMono: Int(now),
@@ -1107,8 +1114,12 @@ public final class SqliteMessageStore: MessageStore {
         // called `withDb` FROM INSIDE `withDb` -- taking the store's NON-RECURSIVE lock a second time -- and the
         // court HUNG. THE LAW, NOW MEASURED: a write performed DURING a read uses the reader's own handle and the
         // `...NoLock` discipline, the same rule every other internal mutation in this file followeth.
+        // AND THE CONTINUITY IDENTIFIER IS WRITTEN WITH THE REST: a column the model now carrieth and the schema
+        // hath always held, so NO REVISION IS NEEDED -- the defect was a MISSING TERM IN THIS STATEMENT, not a
+        // missing column.
         let sql = "UPDATE \(StoreSchema.table) SET \(StoreSchema.colRemainingMs) = ?, " +
-            "\(StoreSchema.colCheckpointMono) = ?, \(StoreSchema.colDiscontinuity) = ? " +
+            "\(StoreSchema.colCheckpointMono) = ?, \(StoreSchema.colDiscontinuity) = ?, " +
+            "\(StoreSchema.colBootIdentity) = ? " +
             "WHERE \(StoreSchema.colMsgId) = ?"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
@@ -1118,8 +1129,9 @@ public final class SqliteMessageStore: MessageStore {
         sqlite3_bind_int64(stmt, 1, Int64(next.remainingMs))
         sqlite3_bind_int64(stmt, 2, Int64(next.checkpointMonotonicMs))
         sqlite3_bind_int64(stmt, 3, Int64(next.discontinuityCount))
+        sqlite3_bind_text(stmt, 4, next.bootIdentity, -1, storeSqliteTransient)
         let blob = msgId as NSData
-        sqlite3_bind_blob(stmt, 4, blob.bytes, Int32(blob.length), storeSqliteTransient)
+        sqlite3_bind_blob(stmt, 5, blob.bytes, Int32(blob.length), storeSqliteTransient)
         return sqlite3_step(stmt) == SQLITE_DONE
     }
 

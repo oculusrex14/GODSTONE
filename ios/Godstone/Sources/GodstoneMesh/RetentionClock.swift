@@ -76,11 +76,22 @@ public struct RetentionCheckpoint: Equatable, Sendable {
     public var discontinuityCount: Int
     public let priority: Int
     public let firstReceiptId: String
+    /// *** GS-STORE-004 (round 527): THE CONTINUITY IDENTIFIER, CARRIED BY THE MODEL AT LAST. ***
+    ///
+    /// THE `boot_identity` COLUMN HATH STOOD IN THE SCHEMA SINCE REVISION 8, AND **NO MODEL EVER CARRIED IT**: it was
+    /// written ONCE at admission and **NEVER ADVANCED**, because there was nowhere for a new boot to be put. MEASURED
+    /// AT ROUND 527 BY AN INSTRUMENTED ARM (35 alternating opens): the discontinuity counter stood at **18** -- ONE
+    /// PER OPEN IN THE OTHER BOOT -- because the persisted identity remained the ADMISSION boot for ever, so every
+    /// open in a different boot counted afresh. **THE COUNTER THEREFORE MEASURED OPENS, NOT DISCONTINUITIES**, and a
+    /// store reopened 32 times across a boot change would retire a row that suffered ONE.
+    public var bootIdentity: String
     public init(msgId: String, kind: MessageKind, remainingMs: Int, checkpointMonotonicMs: Int,
-                lastWallCheckpointMs: Int, discontinuityCount: Int, priority: Int, firstReceiptId: String) {
+                lastWallCheckpointMs: Int, discontinuityCount: Int, priority: Int, firstReceiptId: String,
+                bootIdentity: String = "") {
         self.msgId = msgId; self.kind = kind; self.remainingMs = remainingMs
         self.checkpointMonotonicMs = checkpointMonotonicMs; self.lastWallCheckpointMs = lastWallCheckpointMs
         self.discontinuityCount = discontinuityCount; self.priority = priority; self.firstReceiptId = firstReceiptId
+        self.bootIdentity = bootIdentity
     }
 }
 
@@ -113,9 +124,12 @@ public struct RetentionPolicy {
 
     /// A NEW receipt is granted the full local lifetime EXACTLY ONCE, anchored at nowMono.
     public static func admit(msgId: String, kind: MessageKind, priority: Int, firstReceiptId: String, nowMono: Int, bootIdentity: String) -> RetentionCheckpoint {
+        // AND THE IDENTITY IT ALREADY RECEIVETH IS NOW KEPT: `bootIdentity` was a PARAMETER THIS FUNCTION
+        // DISCARDED, which is why no row ever advanced it.
         RetentionCheckpoint(msgId: msgId, kind: kind, remainingMs: lifetimeMs[kind]!,
                             checkpointMonotonicMs: nowMono, lastWallCheckpointMs: nowMono,
-                            discontinuityCount: 0, priority: priority, firstReceiptId: firstReceiptId)
+                            discontinuityCount: 0, priority: priority, firstReceiptId: firstReceiptId,
+                            bootIdentity: bootIdentity)
     }
 
     private static func elapsedSince(_ anchor: Int, _ now: Int) -> Int { now >= anchor ? now - anchor : 0 }
@@ -149,6 +163,13 @@ public struct RetentionPolicy {
         newCp.checkpointMonotonicMs = (stamp == .proven) ? nowMono : cp.checkpointMonotonicMs
         newCp.lastWallCheckpointMs = nowMono
         newCp.discontinuityCount = disc
+        // *** AND THE CONTINUITY IDENTIFIER ADVANCETH WITH THE BOOT, WHICH IS THE WHOLE REPAIR: ***
+        // `ClockContinuityStamp.reset` CARRIETH THE NEW BOOT IDENTITY, and the policy DISCARDED it -- so the persisted
+        // identity remained the admission boot for ever and every later open in another boot counted a FRESH
+        // discontinuity. ADVANCING IT MEANETH THE NEXT OPEN IN THIS BOOT PROVES CONTINUITY, so ONE boot change
+        // counteth ONE discontinuity HOWEVER MANY TIMES the store is opened. `.unknown` (no persisted identity at
+        // all) is NOT a boot we may name, and it is left untouched: an absent identity is not a continuity.
+        if case .reset(let newBoot) = stamp { newCp.bootIdentity = newBoot }
         let reason: ExpiryReason = expiredByContinuity ? .clockContinuityLost : isExpired(newCp, nowMono: nowMono)
         return (newCp, reason)
     }

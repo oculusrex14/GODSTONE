@@ -1579,6 +1579,83 @@ final class SqliteMessageStoreTests: XCTestCase {
                           "and the debit must be reflected in the persisted budget")
     }
 
+    /// *** GS-STORE-004 CLOSURE 2: THE COUNTER MUST MEASURE **DISCONTINUITIES**, NOT **OPENS**. ***
+    ///
+    /// THE DEFECT THIS ARM NAMETH WAS FOUND BY AN INSTRUMENTED ARM AT ROUND 527, AND IT IS WHY THE BOUND ARM BELOW
+    /// NOW REACHETH ITS BOUND AT ALL: the `boot_identity` column was written ONCE at admission AND NEVER ADVANCED --
+    /// `RetentionCheckpoint` carrieth no such field, `admit(...)` DISCARDED the identity it received, and
+    /// `BootIdentityContinuity` answered `.unknown` for a changed boot, throwing away the very stamp that carrieth
+    /// the new one. SO THE persisted identity remained the ADMISSION boot for ever, and EVERY later open in another
+    /// boot counted a FRESH discontinuity: MEASURED, 35 alternating opens yielded a counter of **18**. A store
+    /// reopened thirty-two times across a boot change would therefore retire a row THAT SUFFERED ONE.
+    func testGSSTORE004_opensInTheSameNewBootCountExactlyOneDiscontinuity() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-identity-\(UUID().uuidString).db")
+        tmpURL = url
+        let first = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        first.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: "boot-A") }
+        let f = frame(13, .direct, 48)
+        XCTAssertEqual(first.persist(f, receivedFrom: Data([7])), .heldNew)
+        first.close()
+
+        func opensIn(_ boot: String) -> Int64 {
+            let store = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+            store.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: boot) }
+            defer { store.close() }
+            _ = store.allHeldMsgIds()
+            return store.retentionCheckpointForTest(f.msgId).discontinuity ?? -1
+        }
+
+        XCTAssertEqual(opensIn("boot-B"), 1, "a CHANGED boot counteth ONE discontinuity")
+        for attempt in 2...6 {
+            XCTAssertEqual(opensIn("boot-B"), 1,
+                           "*** THE COUNTER MUST MEASURE DISCONTINUITIES AND NOT OPENS: reopening in the SAME boot "
+                           + "is NOT a new discontinuity. A counter that incremented here would reach its bound by "
+                           + "OPEN COUNT and retire a row that suffered ONE -- false expiry, and data loss "
+                           + "(GS-STORE-004 closure 2; measured at round 527: 35 alternating opens yielded 18)\n"
+                           + "  attempt \(attempt) ***")
+        }
+        // AND A SECOND GENUINE CHANGE IS A SECOND DISCONTINUITY: the counter is not merely frozen.
+        XCTAssertEqual(opensIn("boot-C"), 2, "a SECOND genuine boot change counteth a second discontinuity")
+    }
+
+    /// *** GS-STORE-004 CLOSURE 2: "the FROZEN DISCONTINUITY BOUND on actual persisted rows". ***
+    ///
+    /// The arm that stood took the counter to ONE. A BOUND IS REACHED AT ITS LIMIT OR IT IS NOT A BOUND, so this arm
+    /// DRIVES IT -- reopening across alternating boots until the row is retired -- and requireth that the bound hold
+    /// AT the limit rather than after it. The budget is seven days while each conservative cycle debiteth at least an
+    /// hour, so NOTHING BUT CONTINUITY can retire the row.
+    func testGSSTORE004_theFrozenDiscontinuityBoundRetirethTheRow() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-bound-\(UUID().uuidString).db")
+        tmpURL = url
+        let first = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        first.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: "boot-A") }
+        let f = frame(12, .direct, 48)
+        XCTAssertEqual(first.persist(f, receivedFrom: Data([7])), .heldNew)
+        first.close()
+
+        var retiredAt: Int? = nil
+        var seenDiscontinuity: Int64 = 0
+        // THE MONOTONIC READING NEVER MOVETH and the budget is seven days, so the ONLY thing that can retire this row
+        // is the CONTINUITY BOUND: thirty-two conservative debits of one hour spend thirty-two hours, not seven days.
+        for cycle in 1...(RetentionPolicy.discontinuityLimit + 3) {
+            let boot = (cycle % 2 == 0) ? "boot-A" : "boot-B"      // every reopen is a changed boot
+            let store = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+            store.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: boot) }
+            defer { store.close() }
+            let held = store.allHeldMsgIds()
+            seenDiscontinuity = store.retentionCheckpointForTest(f.msgId).discontinuity ?? 0
+            if held.isEmpty { retiredAt = cycle; break }
+        }
+        XCTAssertNotNil(retiredAt,
+                        "*** THE FROZEN DISCONTINUITY BOUND MUST RETIRE THE ROW: a bound that is never REACHED is not "
+                        + "a bound, and the counter stood at \(seenDiscontinuity) when this arm gave up "
+                        + "(GS-STORE-004 closure 2) ***")
+        XCTAssertLessThanOrEqual(retiredAt ?? .max, RetentionPolicy.discontinuityLimit + 1,
+                                 "and it must be retired AT the bound rather than some cycles after it")
+    }
+
     /// GS-STORE-004, the finding's own words: "Expiration must ATOMICALLY retire held rows, update related
     /// delivery state ...". THE DISCRIMINATING LAW: a spent row must be GONE FROM STORAGE, not merely hidden from
     /// readers -- and the sweep must say how many it retired. RUN RED BEFORE THE REPAIR.
