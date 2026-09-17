@@ -51,8 +51,18 @@ This span's work lies here. Measured this round:
     the arm written this round), `BUILD SUCCESSFUL`;
   * iOS at `9153d40`: **`LabMeshTests` 4 tests 0 failures · `GodstoneMeshTests` 1187 tests 0 failures · `GodstoneCoreTests`
     82 tests 0 failures**, exit code 0, 0 compile errors;
-* **controls: parity `passed=7 failed=0`, all invariants hold · symbols `0 unresolved` · evidence digests `627/627 PASSED`**
-  *(the digest count grew to 630 with round 521b's three logs, all verified)*;
+* **controls: parity `passed=7 failed=0`, all invariants hold · symbols `0 unresolved` · evidence digests `630/630 PASSED`
+  · `ci/check_lab_isolation.py` PASSED (0 errors, 14 notes), selftest rc 0**;
+* **AND TWO DEFECTS IN THAT LAST CONTROL WERE FOUND AND REPAIRED THIS ROUND, BOTH OF THE SPECIES *A CHECK THAT CANNOT
+  JUDGE*:** its accessibility invariant's **identifier half searched the whole source**, so **one tab carrying an
+  identifier satisfied it for all five** — *committed by the very function that names the law twelve lines above it,
+  "a window that reacheth past the thing it judgeth is not a check"*; and **all eight `check_the_lab_*` invariants
+  ignored the `--root` they were handed** (a declared door that was not a door). Both repaired. **The proof is a
+  measurement on one tree, not an argument:** with SOS's identifier removed, the **old** whole-source regex answered
+  `True` — it would have passed — while the **new** per-tab check answered `False`, and the repaired control then
+  failed **naming the tab**: `the tabs carrieth labels but NO ACCESSIBILITY IDENTIFIER on the tab(s): SOS`.
+  **Still owed:** `SELFTEST_FILES` does not carry `LabMeshRootApp.swift`, so the selftest cannot yet exercise those
+  invariants; their proof remains by hand, now that they can honour a root at all.
 * **THE PYTHON LANE, MEASURED HONESTLY BECAUSE THIS SPAN HAD NEVER RUN IT: `python3 -m unittest discover -s
   tools/readiness/tests` → `Ran 637 tests` · `FAILED (failures=2)`.** The two failures are
   `test_t01.InventoryFactsTest.test_inventory_matches_live_git_facts` (480 != 496) and

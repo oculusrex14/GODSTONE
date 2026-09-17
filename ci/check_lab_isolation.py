@@ -244,36 +244,36 @@ def run(root: Path) -> Findings:
 
     # GS-LAB-001 (T54): THE LAB MUST BE LAUNCHABLE -- asked here, where every other lab invariant is
     # asked, so that a lab nobody can start falleth the SAME gate as a lab that reacheth a shipping surface.
-    launchable, why = check_the_lab_is_launchable()
+    launchable, why = check_the_lab_is_launchable(root)
     (f.notes if launchable else f.errors).append(why)
 
     # GS-LAB-001 step 1: ONE RETAINED RUNTIME, OWNED BY THE APPLICATION AND NOT BY A VIEW.
-    retained, why = check_the_lab_runtime_is_retained()
+    retained, why = check_the_lab_runtime_is_retained(root)
     (f.notes if retained else f.errors).append(why)
 
     # GS-LAB-001 step 2: THE iOS TWIN -- @main, WindowGroup, one retained owner.
-    iosOk, iosWhy = check_the_ios_lab_is_launchable()
+    iosOk, iosWhy = check_the_ios_lab_is_launchable(root)
     (f.notes if iosOk else f.errors).append(iosWhy)
 
     # GS-LAB-001 step 4: THE LIFECYCLE REACHETH THE SAME RUNTIME OWNER (the iOS isle, where it was named).
-    lifeOk, lifeWhy = check_the_lab_lifecycle_reacheth_the_owner()
+    lifeOk, lifeWhy = check_the_lab_lifecycle_reacheth_the_owner(root)
     (f.notes if lifeOk else f.errors).append(lifeWhy)
 
     # GS-UX-001 step 2: the lab must REACH its owners, never MANUFACTURE them -- and the control
     # that guarded only OWNERSHIP now guardeth PROVENANCE.
-    provOk, provWhy = check_the_lab_buildeth_no_owner_of_its_own()
+    provOk, provWhy = check_the_lab_buildeth_no_owner_of_its_own(root)
     (f.notes if provOk else f.errors).append(provWhy)
 
     # GS-LAB-001 step 4's navigation half: the five journeys the card nameth.
-    navOk, navWhy = check_the_lab_navigateth_the_five_journeys()
+    navOk, navWhy = check_the_lab_navigateth_the_five_journeys(root)
     (f.notes if navOk else f.errors).append(navWhy)
 
     # GS-UX-001 step 5: 'a label reading Hold is not a gesture.'
-    sosOk, sosWhy = check_the_lab_sos_is_a_real_gesture()
+    sosOk, sosWhy = check_the_lab_sos_is_a_real_gesture(root)
     (f.notes if sosOk else f.errors).append(sosWhy)
 
     # GS-UX-001 step 7: meaningful accessibility semantics on each journey.
-    a11yOk, a11yWhy = check_the_lab_journeys_carry_accessibility_semantics()
+    a11yOk, a11yWhy = check_the_lab_journeys_carry_accessibility_semantics(root)
     (f.notes if a11yOk else f.errors).append(a11yWhy)
     return f
 
@@ -395,7 +395,7 @@ def main() -> int:
 
 
 
-def check_the_lab_is_launchable():
+def check_the_lab_is_launchable(root: Path):
     """T54 / GS-LAB-001: THE LAB TARGET MUST BE LAUNCHABLE.
 
     A lab nobody can start is not a lab. The audit found the LabMesh application targets WITHOUT launchable
@@ -406,7 +406,6 @@ def check_the_lab_is_launchable():
     # THE ROOT IS DERIVED FROM THIS FILE'S OWN LOCATION (ci/ sits beside android/), so the check needeth no
     # convention from its caller -- a first draft used a REPO name this control doth not carry, and A NAMEERROR IN A
     # MANDATORY CONTROL is exactly the kind of self-inflicted red this programme keepeth having to repair.
-    root = Path(__file__).resolve().parent.parent
     manifest = root / "android/labmesh/src/main/AndroidManifest.xml"
     if not manifest.exists():
         return False, "the lab manifest is missing"
@@ -439,7 +438,7 @@ def strip_kotlin_comments(text: str) -> str:
 
 
 
-def check_the_lab_journeys_carry_accessibility_semantics():
+def check_the_lab_journeys_carry_accessibility_semantics(root: Path):
     """GS-UX-001 step 7: MEANINGFUL ACCESSIBILITY SEMANTICS ON EACH JOURNEY.
 
     The card: "Add navigation and meaningful accessibility semantics; exercise the rendered controls rather than setting model
@@ -447,7 +446,6 @@ def check_the_lab_journeys_carry_accessibility_semantics():
     IDENTIFIER -- so this invariant asketh, FOR EACH OF THE FIVE TABS, that the tab itself carrieth both. It asketh it ON THE
     TAB rather than anywhere in the file, which is round 268's own lesson: a declaration is not a journey.
     """
-    root = Path(__file__).resolve().parent.parent
     text = ""
     for f in sorted((root / "ios/Godstone/Sources/LabMesh").glob("*.swift")):
         text += strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//")) + "\n"
@@ -463,18 +461,33 @@ def check_the_lab_journeys_carry_accessibility_semantics():
     # THAT REACHES PAST THE THING IT JUDGES IS NOT A CHECK, and this is the FIFTH species of this session's control family
     # (a comment for code, a declaration for a use, a repair breaking its neighbour, a bounded capture that truncateth, and
     # now a window that spans). The assertion is therefore made ON THE LINE: `Text("<name>").accessibilityLabel(`.
-    missing = []
-    for name in ("Identity", "Contacts", "Conversation", "SOS", "Diagnostics"):
-        if not re.search(r'Text\("' + name + r'"\)\s*\.accessibilityLabel\("', tabs):
-            missing.append(name)
+    # *** ROUND 521b: BOTH HALVES ARE NOW PER TAB, ANCHORED ON THE TAB'S OWN LINE. The LABEL half already was -- but
+    # THE IDENTIFIER HALF SEARCHED `tabs`, THE WHOLE CONCATENATED SOURCE, SO **ONE TAB CARRYING AN IDENTIFIER
+    # SATISFIED IT FOR ALL FIVE**. THAT IS THE VERY SPECIES THIS FUNCTION NAMETH TWELVE LINES ABOVE -- 'A WINDOW THAT
+    # REACHETH PAST THE THING IT JUDGETH IS NOT A CHECK' -- COMMITTED BY THE FUNCTION THAT NAMED THE LAW. A CHECK THAT
+    # A NEIGHBOUR CAN SATISFIE IS A CHECK THAT CANNOT FAIL FOR THE REASON IT CLAIMETH, and its negative case would
+    # have agreed with a false result. THE ASSERTION IS THEREFORE MADE ON THE LINES THAT CARRY THE JOURNEY'S OWN TAB
+    # TEXT, AND ON THOSE LINES ALONE. ***
+    names = ("Identity", "Contacts", "Conversation", "SOS", "Diagnostics")
+    lines = tabs.splitlines()
+
+    def carrier_lines(name: str) -> list:
+        """The lines that CARRY this journey's own tab text -- and no neighbour's."""
+        return [ln for ln in lines if ('Text("%s")' % name) in ln]
+
+    missing = [n for n in names
+               if not any('.accessibilityLabel("' in ln for ln in carrier_lines(n))]
     if missing:
         return False, "no ACCESSIBILITY LABEL on the tab(s): " + ", ".join(missing)
-    if not re.search(r'\.accessibilityIdentifier\("lab\.tab\.', tabs):
-        return False, "the tabs carrieth labels but no ACCESSIBILITY IDENTIFIER (a test cannot address them)"
+    missing_id = [n for n in names
+                  if not any('.accessibilityIdentifier("lab.tab.' in ln for ln in carrier_lines(n))]
+    if missing_id:
+        return False, ("the tabs carrieth labels but NO ACCESSIBILITY IDENTIFIER on the tab(s): "
+                       + ", ".join(missing_id))
     return True, "all five journeys carrieth accessibility labels and an identifier on the tab itself"
 
 
-def check_the_lab_sos_is_a_real_gesture():
+def check_the_lab_sos_is_a_real_gesture(root: Path):
     """GS-UX-001 step 5: "A LABEL READING HOLD IS NOT A GESTURE."
 
     The card asketh for an actual CANCELLABLE hold with a MONOTONIC confirmation threshold AND an accessible
@@ -482,7 +495,6 @@ def check_the_lab_sos_is_a_real_gesture():
     is measured on a MONOTONIC clock (`ContinuousClock`), never on wall time; and an ACCESSIBLE ALTERNATIVE existeth,
     because a hold must never be the only road.
     """
-    root = Path(__file__).resolve().parent.parent
     text = ""
     for f in sorted((root / "ios/Godstone/Sources/LabMesh").glob("*.swift")):
         text += strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//")) + "\n"
@@ -497,14 +509,13 @@ def check_the_lab_sos_is_a_real_gesture():
     return True, "the SOS is a real, cancellable hold on a MONOTONIC threshold, with an accessible alternative"
 
 
-def check_the_lab_navigateth_the_five_journeys():
+def check_the_lab_navigateth_the_five_journeys(root: Path):
     """T54 / GS-LAB-001 step 4: MINIMAL NAVIGATION TO THE FIVE JOURNEYS THE CARD NAMETH.
 
     The card: "Add minimal navigation to identity, contacts, conversation, SOS and diagnostics views." So this invariant
     asketh that EACH of the five is reachable by name from the lab's own iOS sources -- a TabView without them, or a
     screen renamed away, would leave a journey unreachable while every other control stayed green.
     """
-    root = Path(__file__).resolve().parent.parent
     text = ""
     for f in sorted((root / "ios/Godstone/Sources/LabMesh").glob("*.swift")):
         text += strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//")) + "\n"
@@ -531,7 +542,7 @@ def check_the_lab_navigateth_the_five_journeys():
     return True, "the lab navigateth all five journeys (identity, contacts, conversation, SOS, diagnostics)"
 
 
-def check_the_lab_lifecycle_reacheth_the_owner():
+def check_the_lab_lifecycle_reacheth_the_owner(root: Path):
     """T54 / GS-LAB-001 step 4: THE LIFECYCLE MUST REACH THE **SAME RUNTIME OWNER**.
 
     The card: "Connect foreground/background/protected-data lifecycle to the same runtime owner." A lifecycle told to a
@@ -539,7 +550,6 @@ def check_the_lab_lifecycle_reacheth_the_owner():
     this invariant asketh BOTH halves, on the iOS isle where the owner was named: the App observeth its scene phase AND
     passeth it to the holder; and the HOLDER carrieth the state, not the view.
     """
-    root = Path(__file__).resolve().parent.parent
     sources = root / "ios/Godstone/Sources/LabMesh"
     text = ""
     for f in sorted(sources.glob("*.swift")):
@@ -553,7 +563,7 @@ def check_the_lab_lifecycle_reacheth_the_owner():
     return True, "the iOS lab's lifecycle reacheth the SAME retained runtime owner"
 
 
-def check_the_ios_lab_is_launchable():
+def check_the_ios_lab_is_launchable(root: Path):
     """T54 / GS-LAB-001 step 2: THE iOS LAB MUST HAVE ITS OWN @main APP WITH A RETAINED RUNTIME OWNER.
 
     The card: "Add an iOS @main App inside Sources/LabMesh, with a WindowGroup for the lab root and ONE RETAINED RUNTIME
@@ -561,7 +571,6 @@ def check_the_ios_lab_is_launchable():
     existeth in the LAB'S OWN sources; it carrieth a WindowGroup; and it OWNETH a runtime outside any view -- with the
     SHIPPING entry left where it is (this control neither moves nor copies it).
     """
-    root = Path(__file__).resolve().parent.parent
     sources = root / "ios/Godstone/Sources/LabMesh"
     if not sources.exists():
         return False, "the iOS lab source directory is missing"
@@ -582,7 +591,7 @@ def check_the_ios_lab_is_launchable():
     return True, "the iOS lab is launchable: @main + WindowGroup + one retained runtime owner, beside the shipping entry"
 
 
-def check_the_lab_runtime_is_retained():
+def check_the_lab_runtime_is_retained(root: Path):
     """T54 / GS-LAB-001 step 1: ONE RETAINED RUNTIME, OWNED BY THE APPLICATION -- NOT BY A VIEW.
 
     The card's own words. So this invariant asserteth three things: the lab manifest declares its OWN Application class;
@@ -590,7 +599,6 @@ def check_the_lab_runtime_is_retained():
     in the activity -- because a runtime composed by a view is composed again on every recomposition, and the lab declareth
     ONE.
     """
-    root = Path(__file__).resolve().parent.parent
     man = (root / "android/labmesh/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
     m = re.search(r'<application[^>]*android:name="([^"]+)"', man)
     if not m:
@@ -612,7 +620,7 @@ def check_the_lab_runtime_is_retained():
     return True, "one retained lab runtime, owned by " + m.group(1) + " and composed nowhere else"
 
 
-def check_the_lab_buildeth_no_owner_of_its_own():
+def check_the_lab_buildeth_no_owner_of_its_own(root: Path):
     """GS-UX-001 step 2: "the TrustPort/MeshPort adapters to the ONE runtime's REAL OWNERS."
 
     The lab may REACH owners and must never MANUFACTURE them. A lab that built its own store, tracker, signer or
@@ -621,7 +629,6 @@ def check_the_lab_buildeth_no_owner_of_its_own():
     SUPPORT AND NOT A DEVICE RESULT". The audited lab satisfieth this today (its own sources construct no owner),
     and this invariant keepeth it so.
     """
-    root = Path(__file__).resolve().parent.parent
     offenders = []
     for f in sorted((root / "ios/Godstone/Sources/LabMesh").glob("*.swift")):
         body = strip_kotlin_comments(f.read_text(encoding="utf-8").replace("///", "//"))
