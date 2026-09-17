@@ -144,9 +144,32 @@ class BleTransport(
      * recorded where it was minted. No driver accessor, no notice-time conversion, and nothing the repository's symbol
      * detector cannot follow.
      */
+    /// GS-CTRL-002 / CRYPTO-002: "schedule the PERMITTED **BOUNDED** FRESH-HANDSHAKE RETRY" -- the iOS isle carrieth
+    /// this clause and this isle's transport ALREADY owneth the begin (`maybeBeginTrustedHandshake`, landed for
+    /// ANDROID-01), so the retry is a COUNT plus that existing door rather than a second handshake path.
+    internal val maxFreshHandshakeRetries = 1
+    private val freshHandshakeAttempts = ConcurrentHashMap<String, Int>()
+
+    /** Evidence hook: how many fresh-handshake retries this transport hath made for an address. */
+    internal fun freshHandshakeAttemptsForTest(address: String): Int = freshHandshakeAttempts[address] ?: 0
+
     private fun handleTerminalSessionRetirement(admission: CryptoRelationKey, reason: String) {
         if (reason.isEmpty()) return
-        relationByAdmission.remove(admission)?.let { unpublishRelation(it) }
+        relationByAdmission.remove(admission)?.let { relation ->
+            unpublishRelation(relation)
+            // *** AND THE FINDING'S LAST CLAUSE, WHICH IS THE ONE ITS IMPACT NAMETH ("NO FRESH HANDSHAKE FOLLOWS"):
+            // THE PERMITTED **BOUNDED** FRESH-HANDSHAKE RETRY. THE BOUND IS PART OF THE LAW -- an unbounded retry
+            // against a peer whose handshakes keep dying would be a hot loop -- so the count is per ADDRESS, it is
+            // incremented BEFORE the attempt (so a refused attempt still counteth), and the retry goeth through the
+            // door this transport ALREADY OWNETH for the application's own begin (`maybeBeginTrustedHandshake`,
+            // landed for ANDROID-01) RATHER THAN A SECOND HANDSHAKE PATH. ***
+            val address = relation.peerAddress
+            val attempts = freshHandshakeAttempts[address] ?: 0
+            if (attempts < maxFreshHandshakeRetries) {
+                freshHandshakeAttempts[address] = attempts + 1
+                maybeBeginTrustedHandshake(address)
+            }
+        }
     }
 
     override val name = "BLE"

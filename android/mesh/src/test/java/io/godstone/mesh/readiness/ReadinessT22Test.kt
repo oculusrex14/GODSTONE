@@ -1281,4 +1281,30 @@ class ReadinessT22Test {
         )
         rig.stop()
     }
+
+    /**
+     * GS-CTRL-002 / CRYPTO-002, THE LAST CLAUSE OF STEP 5 ON THIS ISLE: "schedule the PERMITTED **BOUNDED**
+     * FRESH-HANDSHAKE RETRY". The finding's impact saith it plainly -- after a session retireth, "NO FRESH HANDSHAKE
+     * FOLLOWS". RUN RED BEFORE THE REPAIR.
+     */
+    @Test
+    fun testATerminalSessionRetirementSchedulesOneBoundedFreshHandshake() {
+        val rig = standDoor()
+        val bPeer = rig.responderConnection().peerId.copyOf()
+        driveToReady(rig)
+        assertEquals("the control: no retry yet", 0, rig.bob.freshHandshakeAttemptsForTest(rig.aliceAddress))
+
+        val slot = rig.pair.smB.slotForTest(bPeer)
+        assertNotNull("the control: the relation carrieth a crypto slot", slot)
+        slot!!.controller!!.noiseSession.ageBudgetForTest = 1L
+        slot.controller!!.noiseSession.establishedMonoForTest = System.nanoTime() - 2_000_000_000L
+        assertFalse("the manager retires it on the idle path", rig.pair.smB.isReady(bPeer))
+
+        assertEquals(
+            "A FRESH HANDSHAKE MUST FOLLOW -- ONE, and the ONE is the point: 'the PERMITTED BOUNDED retry' is the " +
+                "audit's wording, and an unbounded retry against a peer whose handshakes keep dying would be a hot loop",
+            1, rig.bob.freshHandshakeAttemptsForTest(rig.aliceAddress),
+        )
+        rig.stop()
+    }
 }

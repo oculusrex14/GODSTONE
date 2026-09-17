@@ -377,4 +377,48 @@ class SessionManagerTest {
         smB.fireAgeDeadline(stale)
         assertEquals("an OLD callback leaveth the world exactly as it found it", 0, smB.slotCountForTest())
     }
+
+    // MARK: - CRYPTO-002's REQUIRED CLOSURE CLAUSES ON THIS ISLE (the twins of the iOS isle's)
+
+    /**
+     * The audit's clause: "EXACT AGE/COUNT BOUNDARIES ... retire correctly". Run through the REAL manager, pinning the
+     * boundary's side: the limit BELONGETH to the retirement.
+     *
+     * ITS HONEST STATUS: a CONTROL for the repair landed earlier (the defect it guards was closed by that repair), and
+     * an arm that cannot be red proves the law still holds -- written because the audit LISTS it as a required closure
+     * test, and a clause never exercised is a clause nobody can trust.
+     */
+    @Test
+    fun crypto002TheRecordBudgetRetirethAtItsBoundaryThroughTheManager() {
+        val identityA = MeshIdentity.generate()
+        val identityB = MeshIdentity.generate()
+        val smA = SessionManager(identityA, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val smB = SessionManager(identityB, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val peerB = identityB.nodeId
+        val peerA = identityA.nodeId
+        val hs1 = smA.initiatorStart(peerB, identityB.nodeHint)!!
+        val hs2 = smB.responderProcessHs1(peerA, identityA.nodeHint, hs1)!!
+        val hs3 = smA.initiatorProcessHs2(peerB, hs2, identityB.nodeHint)!!
+        assertTrue("the handshake completes", smB.responderProcessHs3(peerA, hs3, identityA.nodeHint))
+        val ctrl = smB.slotForTest(peerA)!!.controller!!
+        ctrl.noiseSession.recordBudgetForTest = 2
+
+        for (i in 0 until 2) {
+            val cipher = smA.seal(peerB, "record $i".toByteArray(Charsets.UTF_8))!!
+            assertTrue(
+                "record $i must authenticate: the budget is 2 and only $i preceded it",
+                smB.openWithResult(peerA, cipher) is NoiseSession.CryptoOpenResult.Authenticated,
+            )
+        }
+        assertTrue("the budget's LAST permitted record doth not retire the session", smB.isReady(peerA))
+
+        val beyond = smA.seal(peerB, "beyond the budget".toByteArray(Charsets.UTF_8))!!
+        assertEquals(
+            "the RECORD BUDGET's boundary belongeth to the retirement -- a TERMINAL answer, not a rejection",
+            NoiseSession.CryptoOpenResult.Expired, smB.openWithResult(peerA, beyond),
+        )
+        assertFalse("and readiness stoppeth with it", smB.isReady(peerA))
+        assertEquals("and the exact slot is released", 0, smB.slotCountForTest())
+    }
+
 }
