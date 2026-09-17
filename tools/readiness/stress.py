@@ -37,7 +37,27 @@ __all__ = [
     "FaultKind", "Fault", "FaultSchedule", "CampaignDefect", "StressCampaign",
     "CampaignResult", "Invariant", "DEFAULT_CYCLES", "PEER_COUNT",
     "LEASE_CAPACITY", "RETRY_CAP", "CONDUCTOR_FAULTS", "run_campaign",
+    "RESOURCE_MODEL_CATEGORY",
 ]
+
+# ---------------------------------------------------------------------------
+# GS-STRESS-001 step 1: THE CATEGORY THIS CONDUCTOR BELONGETH TO, NAMED WHERE IT LIVETH.
+#
+# This conductor MEASURES A **RESOURCE MODEL**, NOT THE PRODUCTION RUNTIME: its counters describe ITS OWN local
+# bookkeeping -- the card's step 6 sayeth so in its own words ('a mutation confined to StressCampaign's local
+# bookkeeping') -- so a result from here is evidence about THE MODEL'S INVARIANTS and never about a real device,
+# radio or store. THE AUDIT'S DISCIPLINE IS THAT SUCH A RESULT MUST NOT BE RELABELLED, AND ITS FIRST LINE IS TO NAME
+# THE CATEGORY WHERE IT LIVETH.
+#
+# *** THIS IS STEP 1 ON THE **THIRD** ISLE. MEASURED at round 521: the Android isle named this category at
+# `StressCampaign.kt:14` and the string appeared NOWHERE ELSE IN THE REPOSITORY. A CATEGORY THAT HOLDETH ON ONE ISLE
+# IS NOT A CATEGORY; the human's phase-two law requireth the shared contract on EVERY isle that carrieth the twin.
+#
+# THE NAME IS DELIBERATELY THE SAME SPELLING AS ITS ANDROID AND SWIFT TWINS, SO THAT ONE GREP FOR
+# `RESOURCE_MODEL_CATEGORY` FINDETH THE CONTRACT EVERYWHERE.
+# ---------------------------------------------------------------------------
+RESOURCE_MODEL_CATEGORY = "resource-model"
+
 
 
 class FaultKind:

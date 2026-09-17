@@ -241,4 +241,21 @@ final class ReadinessT72Tests: XCTestCase {
         XCTAssertTrue(matrix.contains("Simulation, not device"))
         XCTAssertTrue(matrix.contains("BLOCKED"))
     }
+
+    // ------------------------------------------------------------ W14
+
+    /// *** GS-STRESS-001 step 1 ON THE **SECOND** ISLE. The card: "Keep the current class under an explicitly named
+    /// resource-model test category." A campaign whose counters describe its own model must never be read as a
+    /// production stress result -- and the honest way to keep that so is to NAME the category where the result is
+    /// read, and to ASSERT it HERE, on this isle, not merely on the Android one.
+    ///
+    /// MEASURED at round 521: before this arm, the iOS isle carrieth NO name at all -- a reader consulting this isle's
+    /// T72 evidence could take a model result for a runtime result and had no way to learn otherwise. A CATEGORY THAT
+    /// HOLDETH ON ONE ISLE IS NOT A CATEGORY.
+    func testW14TheCampaignIsANamedResourceModel() {
+        XCTAssertEqual(RESOURCE_MODEL_CATEGORY, "resource-model",
+                       "the campaign must declare its CATEGORY by name, so no reader mistaketh a model for a runtime")
+        XCTAssertNotEqual(RESOURCE_MODEL_CATEGORY, "production",
+                          "and it must NOT be named for the production runtime it doth not measure")
+    }
 }

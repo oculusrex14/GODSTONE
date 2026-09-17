@@ -10,6 +10,27 @@ import Foundation
 // exactly. A red run that cannot be replayed is a rumour, not evidence.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// GS-STRESS-001 step 1: THE CATEGORY THIS CAMPAIGN BELONGETH TO, NAMED WHERE IT LIVETH.
+//
+// `StressCampaign` MEASURES A **RESOURCE MODEL**, NOT THE PRODUCTION RUNTIME: its counters describe ITS OWN local
+// bookkeeping -- the card's step 6 sayeth so in its own words ('a mutation confined to StressCampaign's local
+// bookkeeping') -- so a result from here is evidence about THE MODEL'S INVARIANTS and never about a real device,
+// radio or store. THE AUDIT'S DISCIPLINE IS THAT SUCH A RESULT MUST NOT BE RELABELLED, AND ITS FIRST LINE IS TO NAME
+// THE CATEGORY WHERE IT LIVETH.
+//
+// *** THIS IS STEP 1 ON THE **SECOND** ISLE, AND THAT IS WHY IT IS HERE. MEASURED at round 521: the Android isle
+// named this category at `StressCampaign.kt:14`, and the string appeared NOWHERE ELSE IN THE REPOSITORY -- grepped
+// across every `.swift`, `.py` and `.kt`. A READER CONSULTING THE iOS EVIDENCE MET NO NAME AT ALL, so a result from
+// this isle could be read as a production stress result by a reader who had no way to learn otherwise. A CATEGORY
+// THAT HOLDETH ON ONE ISLE IS NOT A CATEGORY; the human's phase-two law requireth the shared contract on BOTH.
+//
+// THE NAME IS DELIBERATELY THE SAME SPELLING AS THE ANDROID AND PYTHON TWINS, in breach of this isle's usual camelCase
+// habit, SO THAT ONE GREP FOR `RESOURCE_MODEL_CATEGORY` FINDETH THE CONTRACT ON EVERY ISLE -- a contract a reader must
+// already know the spelling of is a contract that will be missed.
+// ---------------------------------------------------------------------------
+public let RESOURCE_MODEL_CATEGORY: String = "resource-model"
+
 public enum FaultKind {
     public static let clockJump = "clock_jump"
     public static let diskFull = "disk_full"

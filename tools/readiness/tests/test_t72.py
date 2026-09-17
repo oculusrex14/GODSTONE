@@ -19,6 +19,8 @@ The card's law, one witness each where the rule speaketh:
   W11 the campaign is BOUNDED in time: 10k cycles settle inside the court's budget
   W12 the two isles carrieth the same invariants and the same fault kinds
   W13 the verification matrix keepeth the stress campaign apart from the device rows
+  W14 THE CONDUCTOR BELONGETH TO A **NAMED** CATEGORY, and doth NOT claim to measure the production runtime
+      (GS-STRESS-001 step 1 on THIS isle -- before round 521 the category was named on the Android isle alone)
 
 No external gate is closed; readiness stays false; no device is claimed.
 """
@@ -34,8 +36,9 @@ sys.path.insert(0, str(ROOT / "tools" / "readiness"))
 
 from stress import (  # noqa: E402
     ALL_FAULTS, CONDUCTOR_FAULTS, DEFAULT_CYCLES, DEFECT_TO_INVARIANT, LEASE_CAPACITY,
-    PEER_COUNT, RETRY_CAP, CampaignDefect, CampaignResult, Fault, FaultKind,
-    FaultSchedule, Invariant, StressCampaign, campaign_report, run_campaign,
+    PEER_COUNT, RETRY_CAP, RESOURCE_MODEL_CATEGORY, CampaignDefect, CampaignResult,
+    Fault, FaultKind, FaultSchedule, Invariant, StressCampaign, campaign_report,
+    run_campaign,
 )
 
 
@@ -254,6 +257,29 @@ class T72ParityTest(unittest.TestCase):
         for forbidden in ("device", "phone", "hardware"):
             self.assertNotIn(forbidden, code.lower(),
                              "the conductor must not claim a device observation (%s)" % forbidden)
+
+
+class T72NamedCategoryTest(unittest.TestCase):
+    """W14 -- GS-STRESS-001 step 1 ON THE THIRD ISLE.
+
+    The card: "Keep the current class under an explicitly named resource-model test category." A conductor whose
+    counters describe its own model must never be read as a production stress result -- and the honest way to keep
+    that so is to NAME the category where the result is read, and to ASSERT it HERE.
+
+    MEASURED at round 521: before this arm, this isle carrieth NO name at all -- a reader consulting the conductor's
+    evidence could take a model result for a runtime result and had no way to learn otherwise. A CATEGORY THAT
+    HOLDETH ON ONE ISLE IS NOT A CATEGORY.
+    """
+
+    def test_w14_the_conductors_category_is_named(self):
+        self.assertEqual(
+            RESOURCE_MODEL_CATEGORY, "resource-model",
+            "the conductor must declare its CATEGORY by name, so no reader mistaketh a model for a runtime")
+
+    def test_w14_the_category_does_not_name_the_runtime_it_does_not_measure(self):
+        self.assertNotEqual(
+            RESOURCE_MODEL_CATEGORY, "production",
+            "and it must NOT be named for the production runtime it doth not measure")
 
 
 if __name__ == "__main__":
