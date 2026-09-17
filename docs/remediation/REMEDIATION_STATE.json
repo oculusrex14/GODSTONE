@@ -4410,6 +4410,11 @@
     "FIX_SUBMITTED": 49,
     "VERIFIED_FIXED": 0
    }
+  },
+  "by_status_at_round_510": {
+   "FIX_SUBMITTED": 42,
+   "OPEN": 6,
+   "PARTIAL": 6
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -6707,10 +6712,16 @@
      "sha256": "e64bb52abfa913ae31d420b067f765e29a1802dd81f089ed9c605761283341db",
      "what": "***CRYPTO-005: THE COMPOSITION COURT IS WRITTEN, COMPILES, RUNS -- AND ITS FIRST ASSERTION REFUSED WITH `recipientAbsent`, THE SAME REJECTION ROUND 430's ORIGINAL ARM MEASURED TWENTY-EIGHT ROUNDS AGO.*** WHICH MEANS THE COMPOSITION'S TRUST WIRING IS ONE STEP SHORT: `KeyTableTrustResolver` resolves by `keys.publicSigningKey(forNodeId:)`, and the lab's `link(\"alice\",\"bob\")` does not necessarily populate that table with the recipient's key -- the lab's own `sendDirect` CALLS `a.trust(nodeId: b.nodeId, signingKey: b.identity.signingPublicKey)` EXPLICITLY (:486), WHICH IS THE STEP THE DURABLE PATH MUST ALSO TAKE. AND THAT IS WHAT A COURT IS FOR: THE ARM WRITTEN TO PROVE THE COMPOSITION FOUND THE COMPOSITION'S OWN GAP -- the FIFTH defect this finding has found by measurement rather than by reading",
      "outcome": "the arm is PARKED (round509-the-composition-court-RED-PARKED.patch) so the tree stays green; the tree is CLEAN AND GREEN at 564e069, carrying the whole durable medium, both adapters, the composition's durable send path and the exposed runtime command. REMAINING: (1) the trust pin in the durable path -- populate the trust table or resolve the recipient's key the way the lab's own send path does, which is the one line the court's refusal named; (2) the court re-applied -- and then the composition clause is proven end to end; (3) the absent/corrupt reader repair; (4) the Android mirror; (5) the device evidence (external, which I will not fabricate); and VERIFIED_FIXED, absent by rule."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round510b-CRYPTO-005-SUBMITTED-FIX_SUBMITTED-with-pending-proof-explicit.log",
+     "sha256": "9d49123d4fd11021c97bd544bfb6a9e115117d91821a0cc7cac43c23484c8c53",
+     "what": "***CRYPTO-005 IS SUBMITTED: FIX_SUBMITTED, WITH PENDING PROOF STATED IN FULL.*** JUSTIFIED BY TWO PASSING ARMS AT TWO LAYERS: the medium ('the intent survives a reopen of the durable store', round 489 -- write, discard, reopen from the same path, find identical bytes and ID) and THE COMPOSITION (round 510 -- build two nodes, link, INVOKE THE EXPOSED RUNTIME COMMAND, reopen the store from the same path, find the intent); AND THE SECOND IS THE ARM THAT FAILED AT ROUND 430, TWENTY-NINE ROUNDS AGO, WITH AN IN-MEMORY MEDIUM AND NO CALLER ANYWHERE. FIVE DEFECTS WERE FOUND BY MEASUREMENT RATHER THAN READING AND ALL ARE REPAIRED: the missing medium; the blind observer (StoreSchema.allTables); the unkeepable contract (load's bare optional); my own mis-binding in insertIntent; and the composition's assumed trust pin",
+     "outcome": "LANDED at 18622e4; the tree carries the whole chain, LANE-GREEN (ReadinessT36Tests 15 tests, 0 failing). PENDING PROOF IN THE THREE CATEGORIES THE PROGRAMME REQUIRES: (1) AWAITING INDEPENDENT VERIFICATION -- THE WHOLE FINDING, since VERIFIED_FIXED is zero across the programme and this author may not write it; (2) DEPENDING ON EXTERNAL ARTIFACTS -- the card asks for storage 'reopened in a NEW PROCESS'; these arms reopen the STORE from the same path (which is 'a new process' as far as the medium is concerned, and the isle's own courts annotate that idiom) BUT DO NOT TERMINATE A PROCESS, and a true process-boundary proof and any device measurement are NOT SUPPLIABLE HERE AND WILL NOT BE FABRICATED; also the absent/corrupt gap, named in the seam's own code at round 484; (3) STALE CLOSURE EVIDENCE -- the court's original arm claims a restart while reusing its medium (round 430's sibling exposed it by differing by one argument), carried as such rather than renamed; and THE ANDROID MIRROR IS OWED."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
-   "my_status": "OPEN",
+   "my_status": "FIX_SUBMITTED",
    "notes": null,
    "pending_proof": [],
    "proof": null,
@@ -6774,7 +6785,8 @@
      "consequence": "It RETRACTS round 452's conclusion: the store's own guard DOES fire (round 452 read a mis-spelled search as a silence). And it shows a third sentence is printed by a site neither of my two instruments covers.",
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round458b-CORRECTION-the-line-WAS-there-and-I-grepped-the-wrong-words.log"
     }
-   ]
+   ],
+   "submitted_at_round": 510
   },
   "CRYPTO-006": {
    "audit_status_at_snapshot": "OPEN",
