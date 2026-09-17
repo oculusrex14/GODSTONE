@@ -433,6 +433,18 @@ public final class ComposedRuntimeHarness {
     }
 
     /// Fix a crash at a named composition seam (nil cleareth it).
+    /// *** CRYPTO-005: **THE COMPOSITION'S EXPOSED DURABLE COMMAND** -- the harness's own door to `ComposedNode.sendDirectDurable`, because the
+    /// harness's `nodes` map is PRIVATE and the audit's closure test invoketh a command ON THE RUNTIME, not on a node it cannot reach. ***
+    ///
+    /// THE CARD'S OWN WORDS: "Composition test invokes the **EXPOSED RUNTIME COMMAND** and observes exactly one ...". IT IS THE ONLY METHOD IN
+    /// PRODUCTION THAT REACHETH A SEND PATH WHOSE JOURNAL IS THE DURABLE ONE, AND IT RETURNETH THE AUTHORITY'S OWN `SendDirectResult` LOSSLESSLY.
+    public func sendDirectDurable(_ from: String, recipient recipientLabel: String, plaintext: Data,
+                                  intentId: Data, storeURL: URL) async throws -> SendDirectResult {
+        guard let a = nodes[from] else { return .rejected(reason: .enqueueInvalidArgument) }
+        guard let b = nodes[recipientLabel] else { return .rejected(reason: .enqueueInvalidArgument) }
+        return try await a.sendDirectDurable(intentId, recipient: b, plaintext: plaintext, storeURL: storeURL)
+    }
+
     public func crashAfter(_ boundary: String?) { crashAt = boundary }
 
     /// A wipe is in progress: no epoch may send or publish afterwards.
