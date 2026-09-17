@@ -2612,6 +2612,66 @@ public final class SqliteMessageStore: MessageStore {
     /// (prepare/step error or missing handle) -- distinct from the nil absence
     /// result (C6.4-A). The expected recipient is nil when the column is SQL NULL
     /// (no recipient bound), distinct from an empty blob.
+    // ==================== CRYPTO-005: THE DURABLE INTENT JOURNAL'S VERBS ====================
+    //
+    // *** THESE THREE VERBS ARE THE **MIRROR OF THE DELIVERY PROTOCOL TWENTY LINES ABOVE** -- and that is not a coincidence of style
+    // but the ledger's own finding (round 478): `readDelivery` THROWS (a throw IS a fault), `insertDelivery` useth **ON CONFLICT DO
+    // NOTHING**, and `execDeliveryUpdate` is **A GUARDED UPDATE WHOSE AFFECTED-ROW COUNT IS THE STALENESS SIGNAL**. THE INTENT
+    // JOURNAL NEEDS EXACTLY THOSE THREE SHAPES, SO IT TAKETH THEM FROM ITS NEIGHBOUR RATHER THAN INVENTING THEM. ***
+    //
+    // AND THEY ARE **STORE METHODS** BECAUSE THE DURABLE HANDLE IS PRIVATE (round 479: `withDbThrowing` and `handle` are both
+    // private, so a sibling type cannot reach them): THE ISLE'S OWN TWO-LAYER SHAPE APPLIETH -- a THROWING WRAPPER THAT TAKETH THE
+    // LOCK, and a `…NoLockStrict(db, …)` INNER THAT ASSUMETH IT IS HELD.
+
+    static let intentSelectSql = """
+        SELECT \(StoreSchema.colIIntentId), \(StoreSchema.colILogicalMessageId), \(StoreSchema.colISignedPlaintext), \(StoreSchema.colICanonicalFrame),
+               \(StoreSchema.colIRecipientNodeId), \(StoreSchema.colIRecipientStaticDhPub), \(StoreSchema.colIAcceptedGeneration), \(StoreSchema.colIBindingDigest),
+               \(StoreSchema.colICreatedAt), \(StoreSchema.colIMessageNonce), \(StoreSchema.colIPriorityCode), \(StoreSchema.colIStateRank)
+        FROM \(StoreSchema.intentTable) WHERE \(StoreSchema.colIIntentId) = ?
+        """
+
+    /// THE READER, mirroring `readDelivery`: it THROWETH on a storage fault, and it ANSWERETH `nil` ONLY FOR ABSENCE -- WHICH IS THE
+    /// DISTINCTION THE SEAM'S TYPED OUTCOME (round 475) EXISTS TO CARRY.
+    internal func readIntent(_ intentId: Data) throws -> JournalEntry? {
+        try withDbThrowing { db in try readIntentNoLockStrict(db, intentId) }
+    }
+
+    private func readIntentNoLockStrict(_ db: OpaquePointer, _ intentId: Data) throws -> JournalEntry? {
+        return try readIntentRow(db, intentId)
+    }
+
+    /// Rebuild one `JournalEntry` from its row through **THE FAILABLE `init?`** -- so a row that breaketh its own invariants
+    /// (a short binding digest, a malformed nonce, an empty payload) IS **NOT** RETURNED AS A VALUE: it becometh `nil` here and
+    /// `.corrupt` at the seam, which is what "fail closed" meaneth for a read.
+    private func readIntentRow(_ db: OpaquePointer, _ intentId: Data) throws -> JournalEntry? {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, Self.intentSelectSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt)
+            throw StoreError.stepFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_bind_blob(stmt, 1, (intentId as NSData).bytes, Int32(intentId.count), nil) == SQLITE_OK else {
+            throw StoreError.stepFailed
+        }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+        let intent = blob(stmt, 0), logical = blob(stmt, 1), plaintext = blob(stmt, 2), frame = blob(stmt, 3)
+        let recipient = blob(stmt, 4), recipientDh = blob(stmt, 5)
+        let generation = UInt32(truncatingIfNeeded: sqlite3_column_int64(stmt, 6))
+        let digest = blob(stmt, 7), nonce = blob(stmt, 9)
+        let created = sqlite3_column_int64(stmt, 8), priority = Int(sqlite3_column_int(stmt, 10))
+        let rank = IntentStateRank(rawValue: Int(sqlite3_column_int(stmt, 11))) ?? .authored
+        return JournalEntry(intentId: intent, logicalMessageId: logical, signedPlaintextBytes: plaintext,
+                            canonicalFrameBytes: frame, recipientNodeId: recipient,
+                            recipientStaticDhPub: recipientDh, acceptedGeneration: generation,
+                            bindingDigest: digest, createdAtEpochSeconds: created, messageNonce: nonce,
+                            priorityCode: priority, stateRank: rank)
+    }
+
+    private func blob(_ stmt: OpaquePointer?, _ index: Int32) -> Data {
+        guard let bytes = sqlite3_column_blob(stmt, index) else { return Data() }
+        return Data(bytes: bytes, count: Int(sqlite3_column_bytes(stmt, index)))
+    }
+
     internal func readDelivery(_ msgId: Data) throws -> DeliveryRow? {
         try withDbThrowing { db in try readDeliveryNoLockStrict(db, msgId) }
     }
