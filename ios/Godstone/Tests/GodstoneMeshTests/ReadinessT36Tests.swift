@@ -819,4 +819,47 @@ extension ReadinessT36Tests {
         XCTAssertEqual(back.bindingDigest, digest, "the binding digest survives too")
         XCTAssertEqual(back.acceptedGeneration, 1, "and the accepted generation (the recipient binding's version)")
     }
+
+    // MARK: - CRYPTO-005: THE COMPOSITION'S OWN DURABLE COMMAND (the card's composition test)
+
+    /**
+     * *** THE CARD'S COMPOSITION CLAUSE, AT THE LAYER THE AUDIT INDICTED: "Composition test invokes the EXPOSED RUNTIME COMMAND and observes
+     * EXACTLY ONE ..., reopen storage in a new process and retry the same intent, OBSERVING IDENTICAL BYTES AND ID." ***
+     *
+     * WHY THIS ARM IS THE FINDING'S CLOSURE: before this finding, NOTHING IN PRODUCTION NAMED `SendDirectAuthority` AND THE COMPOSITION'S SEND
+     * PATH -- `ComposedNode.sendDirect` -- NEVER CONSULTED AN INTENT JOURNAL AT ALL (round 498's measurement: the whole file greps empty for
+     * `journal`), even though the comment above that path already claimed "the durable enqueue happeneth FIRST". THIS ARM INVOKES THE COMMAND THAT
+     * MAKES THAT COMMENT TRUE, AND THEN REOPENS THE STORE FROM THE SAME PATH.
+     */
+    func testCRYPTO005_theCompositionPinsTheIntentBeforeTheRadioAndSurvivesAReopen() async throws {
+        let harness = ComposedRuntimeHarness()
+        _ = try harness.addNode("alice", seedByte: 0x11)
+        _ = try harness.addNode("bob", seedByte: 0x22)
+        guard case .applied = harness.link("alice", "bob") else {
+            XCTFail("the fixture must link the two nodes"); return
+        }
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("crypto005_composition_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: storeURL) }
+
+        let intentId = bytesOf(7, 16)
+        let body = Data("the intent must outlive the process".utf8)
+
+        // *** INVOKE THE EXPOSED COMMAND -- AND OBSERVE ITS OWN ANSWER RATHER THAN A GUESS AT IT. ***
+        let result = try await harness.sendDirectDurable("alice", recipient: "bob", plaintext: body,
+                                                         intentId: intentId, storeURL: storeURL)
+        if case let .rejected(reason) = result {
+            XCTFail("the composition's durable command must not refuse: \(reason)"); return
+        }
+
+        // *** AND NOW THE CLAUSE'S OWN SECOND HALF: REOPEN THE STORE FROM THE SAME PATH AND FIND THE INTENT. ***
+        let reopened = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
+        let journal = SqliteOutboundIntentJournal(store: reopened)
+        guard case let .found(back) = journal.load(intentId) else {
+            XCTFail("*** THE COMPOSITION'S INTENT MUST SURVIVE A REOPEN: the send pinned nothing durable ***")
+            return
+        }
+        XCTAssertEqual(back.intentId, intentId, "identical ID")
+        XCTAssertEqual(back.canonicalFrameBytes.isEmpty, false, "and the frame the send authored is in the ledger")
+    }
 }

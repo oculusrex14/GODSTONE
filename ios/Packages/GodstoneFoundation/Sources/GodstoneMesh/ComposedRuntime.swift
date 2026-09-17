@@ -849,6 +849,13 @@ extension ComposedNode {
     /// THE COMPOSITION, WHICH IS THE ONE SUBSTITUTION THIS FINDING MUST MAKE (an in-memory store cannot carry an intent across a process).
     func sendDirectDurable(_ intentId: Data, recipient b: ComposedNode, plaintext: Data,
                            storeURL: URL) async throws -> SendDirectResult {
+        // *** THE TRUST PIN -- AND IT IS THE LINE ROUND 509's COURT NAMED: the lab's OWN in-memory path maketh this explicit
+        // (`a.trust(nodeId: b.nodeId, signingKey: b.identity.signingPublicKey)` at :486) WHILE THE DURABLE PATH ASSUMED IT, SO THE AUTHORITY'S
+        // RESOLVER ANSWERED `.absent` AND THE SEND REFUSED WITH `recipientAbsent` -- THE VERY SYMPTOM THAT OPENED THIS FINDING AT ROUND 430.
+        // THE PIN BELONGETH HERE, IN THE COMPOSITION, RATHER THAN IN A COURT: A SEND PATH THAT DEPENDETH ON A CALLER HAVING TRUSTED THE
+        // RECIPIENT IS A PATH THAT CAN BE CALLED UNTRUSTED. ***
+        trust(nodeId: b.nodeId, signingKey: b.identity.signingPublicKey)
+
         // WIRING 1: THE DURABLE STORE -- the same `SqliteMessageStore` the runtime uses, over a caller-named path (so a court can REOPEN it).
         let durableStore = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
         // WIRING 2: THE AUTHORITY ON THE NODE'S OWN MATERIAL, over both adapters and THE DURABLE JOURNAL.
