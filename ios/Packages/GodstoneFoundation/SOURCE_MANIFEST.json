@@ -81,7 +81,7 @@
     "Sources/GodstoneMesh/RuntimeLifecycleGate.swift": "736d25b16eadd15397eb91fcf29cdea6f5c2a7756590ea956f03b24172b5c8dc",
     "Sources/GodstoneMesh/SchemaMigration.swift": "207b9cb640ea83d6b36c41610d24d00d8c6f6c76f3feef42a471e4a4e9f73cd4",
     "Sources/GodstoneMesh/SealedSender.swift": "2283a5b0726e6aaf2cfc02fcc1b22ff648d5b2e9fbd6bbd434873c6762a9a9f9",
-    "Sources/GodstoneMesh/SendDirectAuthority.swift": "575f0cabba09227d2c8a527132f3f3167ed9301367b8ed9ae4b72cdc8cfcbb27",
+    "Sources/GodstoneMesh/SendDirectAuthority.swift": "684e34159f838fb9459d1692cdc12de0ac85ea714bfafc2e63dec600d64ec48f",
     "Sources/GodstoneMesh/SessionManager.swift": "5890cd21318694fe6362a75384c5398a2a59ea0985bcbcbed07d3defe1c7bc5c",
     "Sources/GodstoneMesh/SessionSlot.swift": "394ad662f4a23ebd5d79af6a8c7651a214b1b3b6f3cb7225abd87660e1417f0a",
     "Sources/GodstoneMesh/SignedMessageV1.swift": "c3678dc94eb111146b0de2cd7f16b109624febc06a6542ae3cf958196f2a8dac",
