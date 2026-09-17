@@ -430,6 +430,45 @@ And a **smell is named as a smell**: `cp.kind` is carried but **neither `checkpo
 **Measured:** iOS `SWIFT_RC=0`, `GodstoneMeshTests` **1193/0** (1192 → 1193); Android `:mesh` **1229/0** (1228 → 1229),
 78 classes; parity 7/0; symbols 0 unresolved; digests PASSED; store-schema gate PASS. The finding stays **`PARTIAL`**.
 
+## ROUND 529, PHASE TWO — CLOSURE 3 WITNESSED ON BOTH ISLES, AND *NOTHING WAS WRONG*
+
+**Measured first: closure 3 says *"related delivery/retention state must survive … REPEATED RESTART consistently"* — and
+NOT ONE ARM ON EITHER ISLE PERFORMED REPEATED RESTARTS.** The arms that stood reopened the store **once** (or faulted
+once), and the fault arms roll back the *held* row and the *delivery* rows — **not the retention write-back.** *A
+closure test's clause with no witness is a clause nobody has tested* — which is exactly how round 528's high-severity
+defect survived every arm that stood.
+
+**The arm asserts three clauses, each a way the state could go wrong:** the budget must fall by **exactly the total
+elapsed time** across six one-hour restarts (*double-counting spends a row early and destroys data; losing the debit
+holds it too long*); it must **never rise**; and the continuity counter must **not move**, because a restart is not a
+discontinuity.
+
+> **AND THE CODE IS VINDICATED BY MEASUREMENT — the arm PASSED on the first run, on both isles.** *That is worth saying
+> as plainly as a failure would be: a round that finds nothing wrong has still measured, and the measurement is the
+> deliverable.*
+
+**The negative case is the part worth keeping, and it ran on both isles:** with the anchor never re-based, the arm
+failed with **`("75600000") is not equal to ("21600000")`** — and 75,600,000 ms is **twenty-one hours, which is
+1+2+3+4+5+6: the triangular sum of the accumulated-elapsed double count.** *An arm whose failure mode is the arithmetic
+of its own defect is measuring the right thing*, and no hypothetical arm could have produced that number.
+
+**FOUR ATTEMPTS WERE SPENT ON THE ANDROID TWIN, ALL FOR ONE CAUSE, NOW RECORDED: the file imports
+`kotlin.test.assertTrue`, whose signature takes a LAMBDA rather than a Boolean** — so every JUnit-shaped call was
+unresolvable, and the compiler's messages (`actual type is kotlin.String, but kotlin.Double was expected`) pointed at the
+wrong suspects. **The fix was to stop negotiating with overloads and fully qualify** (`org.junit.Assert.assertTrue`).
+*When the mechanism keeps failing, simplify it until it cannot — and read the imports before writing assertions.*
+
+**AND THE EVIDENCE-DIGESTS CONTROL CAUGHT AN ERROR OF MINE IN THE SAME ROUND:** the ledger registered
+`round529-negative-case-closure3.log` — **a name I invented rather than read** — while the script had written
+`round529-negative-case.log`. The control failed with **`UNEXAMINED EVIDENCE IS NOT VERIFIED EVIDENCE`**, named the
+entry, and kept its denominator honest (`664 ≠ 663`, `665 ≠ 664`). *A name assumed instead of read* — the same species
+as a line number assumed for an anchor — **caught by an instrument rather than passed on to a reader.**
+
+**Measured:** iOS `SWIFT_RC=0`, `GodstoneMeshTests` **1194/0** (1193 → 1194); Android `:mesh` **1230/0** (1229 → 1230),
+78 classes; the negative case failing on **both** isles; parity 7/0; symbols 0 unresolved; digests PASSED; store-schema
+gate PASS. **Closure 3's *"survive transaction failure"* clause is NAMED AS STILL UNWITNESSED** — no arm faults the
+retention write-back itself. The finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is

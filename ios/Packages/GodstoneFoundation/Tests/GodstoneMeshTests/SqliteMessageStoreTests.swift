@@ -1646,6 +1646,62 @@ final class SqliteMessageStoreTests: XCTestCase {
         }
     }
 
+    /// *** GS-STORE-004 CLOSURE 3: *"related delivery/retention state must survive ... REPEATED RESTART
+    /// consistently."* RUN BEFORE ANY CLAIM IS MADE ABOUT IT. ***
+    ///
+    /// MEASURED AT ROUND 529, BEFORE THIS ARM WAS WRITTEN: the arms that stood REOPENED THE STORE **ONCE** (or
+    /// faulted once), and **NOT ONE PERFORMED REPEATED RESTARTS AND ASKED WHETHER THE STATE STAYED CONSISTENT.** The
+    /// fault arms roll back the HELD row and the DELIVERY rows -- not the retention write-back -- so this clause had
+    /// no witness at all, exactly as closure 2's two clauses had none before round 527.
+    ///
+    /// THE LAW, IN THREE CLAUSES, AND EACH IS A WAY THE STATE COULD GO WRONG:
+    ///   * the budget must decrease by **EXACTLY the total elapsed time** across all restarts -- NEITHER
+    ///     DOUBLE-COUNTED (which would spend a row early and destroy data) NOR LOST (which would hold it too long);
+    ///   * it must **never increase**: no restart may replenish what a receipt was granted once;
+    ///   * and the continuity counter must **not move**, because every same-boot restart PROVETH continuity.
+    func testGSSTORE004_repeatedRestartsLeaveTheRetentionStateConsistent() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-restarts-\(UUID().uuidString).db")
+        tmpURL = url
+        var now: Int64 = 1_000_000
+        let first = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        first.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(41, .direct, 48)
+        XCTAssertEqual(first.persist(f, receivedFrom: Data([7])), .heldNew)
+        let admitted = try XCTUnwrap(first.retentionCheckpointForTest(f.msgId).remainingMs,
+                                     "the minted budget must be persisted")
+        first.close()
+
+        let hours = 6
+        var previous = admitted
+        for restart in 1...hours {
+            now += 3_600_000                     // an hour of MONOTONIC time passes between restarts
+            let store = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+            store.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+            let held = store.allHeldMsgIds()
+            let cp = store.retentionCheckpointForTest(f.msgId)
+            store.close()
+
+            XCTAssertEqual(held.count, 1,
+                           "six hours of a seven-day hold must not retire the row (restart \(restart))")
+            let budget = try XCTUnwrap(cp.remainingMs, "the budget must be readable (restart \(restart))")
+            XCTAssertLessThanOrEqual(budget, previous,
+                                     "*** NO RESTART MAY REPLENISH THE BUDGET: a receipt is granted the lifetime "
+                                     + "EXACTLY ONCE (GS-STORE-004 closure 3; restart \(restart)) ***")
+            XCTAssertEqual(cp.discontinuity, 0,
+                           "*** EVERY SAME-BOOT RESTART PROVETH CONTINUITY: the counter must not move -- a restart "
+                           + "is not a discontinuity (GS-STORE-004 closure 3; restart \(restart)) ***")
+            previous = budget
+        }
+
+        // *** AND EXACTLY: THE DEBIT IS THE TOTAL ELAPSED TIME, NEITHER DOUBLE-COUNTED NOR LOST. *** This is the
+        // clause that can only be judged across MANY restarts, which is why a single reopen could never have found it.
+        XCTAssertEqual(admitted - previous, Int64(hours) * 3_600_000,
+                       "*** SIX ONE-HOUR RESTARTS MUST SPEND EXACTLY SIX HOURS: a re-based anchor that is debited "
+                       + "twice would spend twelve, and an anchor never re-based would spend nothing after the first "
+                       + "(GS-STORE-004 closure 3) ***")
+    }
+
     /// *** GS-STORE-004 CLOSURE 2: THE COUNTER MUST MEASURE **DISCONTINUITIES**, NOT **OPENS**. ***
     ///
     /// THE DEFECT THIS ARM NAMETH WAS FOUND BY AN INSTRUMENTED ARM AT ROUND 527, AND IT IS WHY THE BOUND ARM BELOW

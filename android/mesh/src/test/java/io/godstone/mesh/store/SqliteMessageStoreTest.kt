@@ -1402,4 +1402,66 @@ class SqliteMessageStoreTest {
         )
     }
 
+    /** *** GS-STORE-004 CLOSURE 3: "related delivery/retention state must survive ... REPEATED RESTART
+     *  consistently." -- THE ANDROID TWIN, BECAUSE THE CONTRACT IS SHARED BETWEEN THE ISLES. ***
+     *
+     * MEASURED AT ROUND 529 BEFORE THE TWIN WAS WRITTEN, ON BOTH ISLES: the arms that stood REOPENED THE STORE
+     * **ONCE** (or faulted once), and **NOT ONE PERFORMED REPEATED RESTARTS AND ASKED WHETHER THE STATE STAYED
+     * CONSISTENT.** The fault arms roll back the HELD row and the DELIVERY rows -- not the retention write-back --
+     * so this clause had no witness at all.
+     *
+     * THE LAW, IN THREE CLAUSES, AND EACH IS A WAY THE STATE COULD GO WRONG: the budget must fall by **EXACTLY the
+     * total elapsed time** (neither double-counted, which spendeth a row early and destroyeth data, nor lost, which
+     * holdeth it too long); it must **never rise**; and the counter must **not move**, because every same-boot
+     * restart PROVETH continuity.
+     */
+    @Test
+    fun gsstore004RepeatedRestartsLeaveTheRetentionStateConsistent() = runBlocking {
+        open(8L * 1024 * 1024)
+        var now = 5_000_000L
+        store.receiptTimeProvider = { now to "boot-A" }
+        val f = frame(41, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        val admitted = store.retentionCheckpointForTest(msgId(41))!![0] as Long
+        engine?.close()
+
+        val hours = 6
+        var previous = admitted
+        for (restart in 1..hours) {
+            now += 3_600_000L                      // an hour of MONOTONIC time passes between restarts
+            open(8L * 1024 * 1024)
+            store.receiptTimeProvider = { now to "boot-A" }
+            val held = heldIds()
+            val cp = store.retentionCheckpointForTest(msgId(41))
+            engine?.close()
+
+            // ASSERTED AS BOOLEANS, NOT AS OVERLOADED EQUALITIES: Kotlin resolveth JUnit's `Double` overload when
+            // the actual is `Any?`, and three attempts at the message-first form still lost that fight. **WHEN THE
+            // MECHANISM KEEPETH FAILING, SIMPLIFY IT UNTIL IT CANNOT** -- and an explicit boolean carrieth the actual
+            // values into the message, which the overloaded form could not.
+            org.junit.Assert.assertTrue(
+                "six hours of a seven-day hold must not retire the row (restart $restart, held=${held.size})",
+                held.size == 1,
+            )
+            val budget = cp!![0] as Long
+            org.junit.Assert.assertTrue(
+                "*** NO RESTART MAY REPLENISH THE BUDGET: a receipt is granted the lifetime EXACTLY ONCE " +
+                    "(GS-STORE-004 closure 3; restart $restart: $budget > $previous) ***",
+                budget <= previous,
+            )
+            org.junit.Assert.assertTrue(
+                "*** EVERY SAME-BOOT RESTART PROVETH CONTINUITY: the counter must not move -- a restart is not a " +
+                    "discontinuity (GS-STORE-004 closure 3; restart $restart: disc=${cp[3]}) ***",
+                (cp[3] as Long) == 0L,
+            )
+            previous = budget
+        }
+        org.junit.Assert.assertTrue(
+            "*** SIX ONE-HOUR RESTARTS MUST SPEND EXACTLY SIX HOURS: a re-based anchor debited twice would spend " +
+                "twelve, and an anchor never re-based would spend nothing after the first (GS-STORE-004 closure 3; " +
+                "spent=${admitted - previous}) ***",
+            admitted - previous == hours * 3_600_000L,
+        )
+    }
+
 }
