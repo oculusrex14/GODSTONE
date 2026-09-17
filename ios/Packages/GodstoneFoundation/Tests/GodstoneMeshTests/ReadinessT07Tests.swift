@@ -100,10 +100,17 @@ final class ReadinessT07Tests: XCTestCase {
         // A peer nonce at the agreed budget boundary is outside the budget.
         let forged = TransportCiphertextV1.encode(
             nonce: UnsignedNonce.policyCeiling, ciphertextAndTag: Data(count: 16))
-        guard case .expired = try bob.openWithResult(forged) else {
-            XCTFail("peer nonce beyond the budget must expire")
+        // CRYPTO-002: THE AUDIT'S LAW FOR THIS INPUT, QUOTED, because this arm previously asserted the OPPOSITE and
+        // the difference is load-bearing: "Bad tag, replay and forged high nonce remain BOUNDED REJECTION; a later
+        // genuine in-policy nonce still authenticates. Do not close a healthy session just because an attacker
+        // supplies an excessive nonce." A forged high nonce that RETIRED the session would be a ONE-PACKET
+        // denial-of-service against a healthy relation, so the bounded rejection is the correct expectation and this
+        // assertion is CORRECTED TO THE FINDING rather than bent to make a repair pass.
+        guard case .rejected = try bob.openWithResult(forged) else {
+            XCTFail("a forged high nonce is a BOUNDED REJECTION, never a retirement (CRYPTO-002)")
             return
         }
+        XCTAssertTrue(bob.isEstablished, "and the session survives it")
         // The window mutated nothing: the next legitimate frame works.
         if case .authenticated = try bob.openWithResult(
             try alice.encrypt(Data("next".utf8))) {} else {

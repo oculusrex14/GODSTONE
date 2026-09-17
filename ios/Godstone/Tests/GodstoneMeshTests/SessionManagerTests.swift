@@ -589,4 +589,55 @@ final class SessionManagerTests: XCTestCase {
     private func successor(of admission: RelationAdmission) -> RelationAdmission {
         ReadinessTrustedPairing.successor(of: admission)
     }
+
+    /// GS-CTRL-002 / CRYPTO-002 -- THE NEGATIVE CONTROLS FOR THE TERMINUS, AND THE AUDIT NAMETH WHY THEY MATTER:
+    /// "Do not close a healthy session just because an attacker supplies an excessive nonce." A repair that retired
+    /// on ANY failure would let a hostile peer destroy every relation by sending garbage -- so THIS arm demandeth
+    /// that a BAD TAG and a REPLAY remain BOUNDED REJECTIONS, that the session stays READY through both, and that a
+    /// LATER GENUINE packet still authenticates.
+    func testCRYPTO002_aBadTagOrReplayRemainBoundedRejections() throws {
+        let (smA, smB, keyA, keyB) = try establishedManagerPair()
+        XCTAssertTrue(smB.isReady(keyB), "the control: the session is healthy")
+
+        // (1) A BAD TAG: a genuine packet with one payload byte corrupted.
+        let genuine = try XCTUnwrap(smA.seal(keyA, Data("a genuine in-policy packet".utf8)))
+        var corrupted = genuine
+        corrupted[corrupted.count - 1] ^= 0xFF
+        XCTAssertEqual(smB.openWithResult(keyB, corrupted), .rejected,
+                       "a BAD TAG is a bounded rejection, never a retirement")
+        XCTAssertTrue(smB.isReady(keyB),
+                      "AND THE SESSION MUST SURVIVE IT -- else a hostile peer could retire every relation by "
+                      + "sending garbage")
+
+        // (2) A REPLAY: the same genuine ciphertext twice. The second is out of the window.
+        XCTAssertNotNil(smB.open(keyB, genuine), "the first delivery authenticates")
+        XCTAssertEqual(smB.openWithResult(keyB, genuine), .rejected, "the REPLAY is a bounded rejection")
+        XCTAssertTrue(smB.isReady(keyB), "and the session survives the replay too")
+
+        // (3) THE CONTROL THAT MAKETH (1) AND (2) MEANINGFUL: a LATER GENUINE packet still authenticates.
+        let later = try XCTUnwrap(smA.seal(keyA, Data("a later in-policy packet".utf8)))
+        guard case .authenticated(let clear) = smB.openWithResult(keyB, later) else {
+            XCTFail("a later genuine in-policy packet MUST still authenticate after bounded rejections")
+            return
+        }
+        XCTAssertEqual(clear, Data("a later in-policy packet".utf8))
+    }
+
+    /// CRYPTO-002's required closure clause: "slot/LEASE release" on a terminal retirement. A retired relation must
+    /// not keep holding the capacity it was granted -- readiness, capacity and resource ownership are the three things
+    /// the audit sayeth can "remain stuck after the 30-minute boundary".
+    func testCRYPTO002_aTerminalRetirementReleasethTheSlotAndItsLease() throws {
+        let (_, smB, _, keyB) = try establishedManagerPair()
+        let leaseBefore = smB.slotLeaseGenerationForTest(keyB)
+        XCTAssertNotNil(leaseBefore, "the control: a live slot carrieth a lease")
+        XCTAssertEqual(smB.slotCountForTest(), 1)
+
+        let ctrl = try XCTUnwrap(smB.slotForTest(keyB)?.controller)
+        ctrl.noiseSession.ageBudgetForTest = 1.0
+        ctrl.noiseSession.establishedMonoForTest = DispatchTime.now().uptimeNanoseconds &- 2_000_000_000
+        XCTAssertFalse(smB.isReady(keyB), "the idle path retires it")
+
+        XCTAssertEqual(smB.slotCountForTest(), 0, "the exact slot is released")
+        XCTAssertNil(smB.slotLeaseGenerationForTest(keyB), "and its LEASE with it -- capacity must not stay stuck")
+    }
 }

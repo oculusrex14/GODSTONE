@@ -358,12 +358,21 @@ public final class NoiseSession {
         let parsed = UnsignedNonce.parse(
             Data(repeating: 0, count: 0) + withUnsafeBytes(of: nonceRaw.bigEndian)
                 { Data($0) })
-        guard case .valid(let nonce) = parsed else { return .expired }
+        // CRYPTO-002 STEP 1, the audit's own words: "Make malformed/authentication/replay/out-of-policy input
+        // Rejected(reason); make actual age or authenticated-record budget exhaustion Retired/Expired(reason). DO NOT
+        // CLOSE A HEALTHY SESSION JUST BECAUSE AN ATTACKER SUPPLIES AN EXCESSIVE NONCE." So a MALFORMED or
+        // OUT-OF-POLICY nonce is a BOUNDED REJECTION -- it was returning `.expired`, which would have let ONE
+        // hostile packet retire a healthy relation.
+        guard case .valid(let nonce) = parsed else { return .rejected }
         replayLock.lock()
         defer { replayLock.unlock() }
         let plan = replayWindow.preview(nonce)
+        // AND A REPLAY IS A REJECTION TOO, for the same reason: the primitive used to answer `.expired`, and once
+        // the manager learned to PROPAGATE that terminus (this very finding's repair), a REPLAYED CAPTURED PACKET
+        // BECAME A WAY TO RETIRE A HEALTHY RELATION. The negative-control arm caught exactly that -- a regression
+        // introduced by the repair, found by the control clause rather than by review.
         guard case .accept(let accepted, let forwardShift, let index) = plan
-        else { return .expired }
+        else { return .rejected }
         let box = try? ChaChaPoly.SealedBox(
             nonce: NoiseSession.transportNonce(accepted),
             ciphertext: body.dropLast(NoiseSession.tagLen),
