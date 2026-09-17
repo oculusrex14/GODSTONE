@@ -4367,8 +4367,8 @@
    "MEDIUM": 6
   },
   "by_status": {
-   "OPEN": 5,
-   "FIX_SUBMITTED": 49,
+   "OPEN": 7,
+   "FIX_SUBMITTED": 41,
    "VERIFIED_FIXED": 0
   },
   "by_wave": {
@@ -4395,7 +4395,8 @@
   "by_status_at_snapshot": {
    "OPEN": 54
   },
-  "STATUS_CORRECTION_AT_ROUND_340": "THE MACHINE-READABLE COUNT HAD SAID `by_status: {OPEN: 54}` SINCE THE SNAPSHOT AND WAS NEVER UPDATED AS THE WORK LANDED -- WHILE 49 FINDINGS CARRIED THEIR OWN LOGS AND COMMITS AND 5 CARRIED NONE. A READER CONSULTING THAT FIELD WOULD HAVE SEEN 'NOTHING DONE'. THE COUNT IS NOW DERIVED FROM THE FINDINGS THEMSELVES (a finding counteth as FIX_SUBMITTED iff it carrieth at least one immutable log or a fix commit; NOTHING IS COUNTED AS VERIFIED_FIXED, because ONLY AN INDEPENDENT AUDIT MAY WRITE THAT), THE ORIGINAL VALUE IS KEPT ABOVE AS `by_status_at_snapshot`, AND THE CORRECTION IS RECORDED RATHER THAN SILENT -- WHICH IS THE SAME DISCIPLINE THIS LEDGER HATH APPLIED TO FIVE EARLIER INSTRUMENTS OF ITS OWN. THE FIVE FINDINGS WITH NO WORK ARE NAMED: CRYPTO-002, CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001, GS-STORE-006."
+  "STATUS_CORRECTION_AT_ROUND_340": "THE MACHINE-READABLE COUNT HAD SAID `by_status: {OPEN: 54}` SINCE THE SNAPSHOT AND WAS NEVER UPDATED AS THE WORK LANDED -- WHILE 49 FINDINGS CARRIED THEIR OWN LOGS AND COMMITS AND 5 CARRIED NONE. A READER CONSULTING THAT FIELD WOULD HAVE SEEN 'NOTHING DONE'. THE COUNT IS NOW DERIVED FROM THE FINDINGS THEMSELVES (a finding counteth as FIX_SUBMITTED iff it carrieth at least one immutable log or a fix commit; NOTHING IS COUNTED AS VERIFIED_FIXED, because ONLY AN INDEPENDENT AUDIT MAY WRITE THAT), THE ORIGINAL VALUE IS KEPT ABOVE AS `by_status_at_snapshot`, AND THE CORRECTION IS RECORDED RATHER THAN SILENT -- WHICH IS THE SAME DISCIPLINE THIS LEDGER HATH APPLIED TO FIVE EARLIER INSTRUMENTS OF ITS OWN. THE FIVE FINDINGS WITH NO WORK ARE NAMED: CRYPTO-002, CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001, GS-STORE-006.",
+  "by_status_derived_at_round": 425
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
  "external_input_lane": {
@@ -9913,7 +9914,7 @@
     }
    ],
    "my_red_case": null,
-   "my_status": "OPEN",
+   "my_status": "FIX_SUBMITTED",
    "notes": null,
    "pending_proof": [
     "ROUND 424 -- ***THE QUESTION THIS LEDGER NAMED FOR FOUR ROUNDS -- 'HOW DO `App`/`LabMesh` BRING THE MESH UP?' -- IS ANSWERED, AND THE ANSWER IS THAT THEY DO NOT: THE iOS COMPOSITION ROOT IS NOT IN THIS REPOSITORY.*** THE MEASUREMENTS: `ios/Godstone/Sources/App/` contains `AppContainer, GodstoneApp, MeshView, OracleView, RootView, SosView, ArchiveView, GodstoneTheme` -- a VIEW/SHELL TARGET; ***`grep -n 'Mesh|mesh' ios/Godstone/Sources/App/AppContainer.swift` RETURNS NOTHING AT ALL: THE APP'S CONTAINER DOES NOT WIRE THE MESH, DOES NOT CONSTRUCT A RUNTIME, A NODE, A SESSION MANAGER OR A STORE;*** AND `LabMesh/LabMeshApp.swift` SAYS SO IN ITS OWN COMMENT: 'T54 -- the LabMesh iOS target's application seam. This target carrieth the lab's OWN bundle identity ... there is no lab-only copy of any authority, and no way to [set readiness]; the interesting surface is `LabMeshApp`, WHICH CARRIETH NO READINESS SETTER.' ***SO THE TWO iOS TARGETS IN THIS REPOSITORY ARE APPLICATION SEAMS, NOT THE SHIPPING COMPOSITION: the mesh's runtime is brought up SOMEWHERE ELSE, AND `MeshRuntime.create` -- THE ONLY PLACE THE FOUR-STAGE LIFECYCLE IS COMPOSED ON iOS -- HAS NO CALLER IN THIS REPOSITORY AT ALL (round 397 measured that by grep; it is now EXPLAINED rather than merely observed).*** AND THAT CHANGES WHAT 'REMAINING' MEANS FOR GS-STORE-006 ON iOS: THE LIBRARY SIDE IS **COMPLETE, WIRED AND PROVEN** (the restored `RUNTIME_DRAINED` stage, the four-stage lifecycle, and four closure clauses measured by arms -- the composition carries the crash-resumable authority; the startup stops and erases nothing; every checkpoint stays pending; a refused identity publication stops the ladder), WHILE THE ONE THING REMAINING -- A PRODUCTION COMPOSITION ROOT FOR iOS -- IS **NOT A DEFECT IN THIS REPOSITORY**: it is absent because the app that would own it is not here. THE HONEST STATEMENT FOR THE AUDITOR: **THE iOS HALF OF GS-STORE-006 IS COMPLETE IN THE LIBRARY AND CANNOT BE CALLED COMPLETE IN THE SHIPPING APP FROM THIS TREE -- AND THE EVIDENCE IS A GREP THAT RETURNS NOTHING, NOT A CLAIM.** AND IT MUST NOT BE DRESSED EITHER WAY: NOT 'the composition still invokes old PanicWipe' (the old root is gone from the library and measured false by arm), AND NOT 'everything is wired' (nothing in this tree calls `create`). No file was modified and no lane was run this round; the tree is at HEAD and green by the previous rounds' measurements (iOS 1269/0; android 1222/0; parity 7/7; symbols 0 unresolved). REMAINING, WITH ITS TWO KINDS OF GAP SEPARATED: IN THIS REPOSITORY -- the held-write clause's instrumented/device form, the crash-at-every-checkpoint clause's device form, and the DEK-less-reopen clause (which the AUDIT ITSELF says requires DEVICE TESTING and which this environment cannot supply and which I WILL NOT FABRICATE); OUTSIDE IT -- the iOS production composition root and the device evidence the audit names; AND `VERIFIED_FIXED`, ABSENT BY RULE.",
@@ -10073,7 +10074,8 @@
      "consequence": "Nothing landed; the tree remains green at HEAD. The next round's four steps are named precisely, and the apply will run WITH its stderr visible.",
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round419-NOTHING-LANDED-and-the-cause-was-my-own-suppressed-stderr.log"
     }
-   ]
+   ],
+   "submitted_at_round": 425
   },
   "GS-STRESS-001": {
    "audit_status_at_snapshot": "OPEN",
