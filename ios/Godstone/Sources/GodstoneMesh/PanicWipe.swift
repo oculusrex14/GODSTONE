@@ -8,6 +8,18 @@ import Security
 public enum WipeState: String, Sendable {
     case idle
     case requested
+    /// GS-STORE-006: **THE STAGE THIS JOURNAL COULD NOT REPRESENT UNTIL NOW -- AND THE MISSING STAGE WAS THE MISSING
+    /// GUARANTEE.** The audit's charge was that "a successful helper wipe simulation is not proof that the actual runtime
+    /// cancels queued BLE work before erasing keys" -- AND THIS STATE MACHINE HAD NO PLACE TO RECORD THAT THE CANCEL
+    /// HAPPENED, so an authority that REQUIREth a durable drain checkpoint had nowhere to write it. The crash-resumable
+    /// coordinator's ladder is `REQUESTED -> RUNTIME_DRAINED -> KEYS_ERASED -> ARTIFACTS_DELETED -> NEW_IDENTITY -> IDLE`,
+    /// and this case is the one it was missing.
+    ///
+    /// IT IS PLACED BETWEEN `requested` AND `keyErased` BECAUSE THAT IS WHERE THE DRAIN BELONGETH -- AND ITS POSITION IN
+    /// THIS ENUM IS ALSO A SAFETY ARGUMENT: the parser is `WipeState(rawValue:) ?? .idle`, so an OLDER reader meeting
+    /// this spelling re-runneth the wipe FROM THE BEGINNING rather than advancing past the erasure. RE-ERASING IS
+    /// IDEMPOTENT; BELIEVING MATERIAL ERASED WHEN IT IS NOT, IS NOT.
+    case runtimeDrained
     case keyErased
     case artifactsDeleted
     case newIdentity
