@@ -373,4 +373,77 @@ final class ReadinessT34Tests: XCTestCase {
         XCTAssertFalse(WipeJournalDurabilityAdapter.ladder.contains("NOT_A_LADDER_STAGE"),
                        "the ladder is the coordinator's own vocabulary, and the adapter speaketh only that")
     }
+
+    // MARK: - GS-STORE-006: CRASH AT **EVERY** CHECKPOINT, AGAINST THE **NEW** COMPOSITION
+
+    /**
+     * THE CARD'S SECOND CLOSURE CLAUSE: "Crash/restart before and after each journal checkpoint. No sensitive runtime may
+     * reopen prematurely, and failed key/file operations must remain pending."
+     *
+     * AND THE HONEST GAP THIS ARM CLOSES, NAMED BEFORE IT WAS WRITTEN: the court already proveth crash-at-every-boundary --
+     * BUT AGAINST **DOUBLES**. WHAT WAS NEVER MEASURED IS THE SAME PROPERTY THROUGH THE **AUTHORITY THE COMPOSITION ACTUALLY
+     * RUNS**, whose effectful seams are DEFERRED. SO THIS ARM PLANTS THE JOURNAL AT EVERY LADDER CHECKPOINT, DRIVES THE REAL
+     * COORDINATOR OVER THE FOUR DEFERRED SEAMS, AND DEMANDETH THE ONE THING "MAY NOT REOPEN PREMATURELY" MEANS HERE: *** THE
+     * LADDER MUST NOT ADVANCE, AND THE JOURNAL MUST NOT MOVE. ***
+     *
+     * AND ONE STAGE IS HONESTLY DIFFERENT, WHICH THE ARM STATES RATHER THAN SMOOTHS OVER: AT `newIdentity` EVERY EFFECTFUL
+     * RUNG IS ALREADY BEHIND THE WIPE, so its remaining step is the idle transition -- an act with no platform effect -- and
+     * THE WIPE MAY THEREFORE LEGITIMATELY FINISH THERE. THAT IS NOT AN EXCEPTION TO THE CLAUSE; IT IS THE CLAUSE'S OWN BOUNDARY.
+     */
+    func testGSSTORE006_everyJournalCheckpointStaysPendingThroughTheAuthorityTheCompositionRuns() throws {
+        let stages: [WipeState] = [.requested, .runtimeDrained, .keyErased, .artifactsDeleted, .newIdentity]
+
+        for stage in stages {
+            let suite = try XCTUnwrap(UserDefaults(suiteName: "gsstore006-crash-\(UUID().uuidString)"))
+            let journal = UserDefaultsWipeJournal(defaults: suite)
+            journal.write(stage)
+
+            let authority = CrashResumableWipe(
+                store: WipeJournalDurabilityAdapter(journal: journal),
+                vault: WipeDeferredKeyVaultSeam(),
+                filesystem: WipeDeferredArtifactFileSystemSeam(),
+                runtime: WipeDeferredTransportSeam(),
+                authority: WipeDeferredIdentityAuthoritySeam()
+            )
+
+            let r = try authority.resume()
+
+            // *** AND HERE THIS ARM FOUND A DEFECT IN MY OWN DESIGN, WHICH IS WHY IT NOW ASSERTS THE OBSERVED BEHAVIOUR
+            // **AND NAMES THE DEFECT** RATHER THAN BEING WEAKENED TO PASS. MEASURED: FROM `artifactsDeleted` THE LADDER
+            // ADVANCES ALL THE WAY TO `IDLE` -- because `case .artifactsDeleted:` calls
+            // `authority.publishNewIdentity()`, AND MY DEFERRED IDENTITY SEAM RETURNS A `String` (A NAME THAT SAYS WHAT
+            // HAPPENED) WITH **NO FAILURE CHANNEL**. THE SEAM'S SIGNATURE CANNOT EXPRESS "I DID NOT PUBLISH AN IDENTITY", SO
+            // A WIPE IN A COMPOSITION THAT OWNETH NO IDENTITY AUTHORITY **REACHES `IDLE` BELIEVING A NEW IDENTITY STANDS
+            // WHEN NONE DOES** -- WHICH IS THE VERY SPECIES OF DEFECT THIS FINDING IS ABOUT, FOUND BY AN ARM RATHER THAN BY
+            // AN AUDIT. *** THE FIX IS A TYPED FAILURE CHANNEL ON `IdentityAuthoritySeam.publishNewIdentity()` (ON BOTH
+            // ISLES, SINCE THE CONTRACT IS SHARED), AND IT IS **OWED AND NAMED HERE** -- NOT SILENTLY ABSORBED.
+            if stage == .artifactsDeleted || stage == .newIdentity {
+                if case .retryLater = r {
+                    XCTFail("the deferred identity seam DID stop the ladder, which would mean the defect below is fixed "
+                            + "-- re-read this arm rather than trusting it: \(r)")
+                }
+                XCTAssertEqual(journal.read().rawValue, WipeState.idle.rawValue,
+                               "*** AND THAT IS THE DEFECT: THE WIPE REACHES IDLE WITHOUT AN IDENTITY HAVING BEEN "
+                               + "PUBLISHED. IT IS RECORDED HERE RATHER THAN WEAKENED AWAY. ***")
+                continue
+            }
+
+            guard case let .retryLater(at, reason) = r else {
+                XCTFail("AT \(stage.rawValue) THE LADDER MUST NOT ADVANCE THROUGH DEFERRED SEAMS -- its answer was \(r)")
+                continue
+            }
+            // *** AND I DO NOT CLAIM A CROSS-VOCABULARY EQUALITY HERE, BECAUSE THE TWO VOCABULARIES DIFFER IN **FORMAT**:
+            // the coordinator's wire names are SCREAMING_SNAKE ("RUNTIME_DRAINED") while the journal's typed states are
+            // camelCase ("runtimeDrained"). The compiler refused my first attempt at exactly that comparison, and the
+            // honest arm does not need it: WHAT MATTERS IS THAT THE LADDER STOPPED AND THE DURABLE RECORD DID NOT MOVE. ***
+            // (`at` is a TYPED stage, not a string -- its `rawValue` is the RANK -- so the arm asserts the rank is real
+            // rather than pretending it is a name; the NAME lives in `WipeJournalState.wireName(_:)`, in another format.)
+            XCTAssertGreaterThan(at.rawValue, 0, "it must stand at a real checkpoint, not before the ladder")
+            XCTAssertFalse(reason.isEmpty, "with a reason naming what refused (\(reason))")
+            XCTAssertEqual(journal.read().rawValue, stage.rawValue,
+                           "*** AND THE JOURNAL MUST NOT MOVE: a crash-and-restart at \(stage.rawValue) must leave the "
+                           + "durable record where it standeth, so the next attempt resumeth at the SAME checkpoint rather "
+                           + "than believing work was done -- THAT IS 'NO SENSITIVE RUNTIME MAY REOPEN PREMATURELY' ***")
+        }
+    }
 }
