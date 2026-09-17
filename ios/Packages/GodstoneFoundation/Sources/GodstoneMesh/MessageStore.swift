@@ -245,7 +245,7 @@ internal enum StoreSchema {
     /// store's own quota kind (`tombstoneRows`) hath always DESCRIBED a table that did not exist. This revision
     /// maketh that description true. THE SECOND DDL-BEARING EDGE (8 -> 9), and cheap because the engine's idempotent
     /// "add if absent" rule, measured at the first such edge, already liveth in every executor.
-    static let dbVersion: Int32 = 9
+    static let dbVersion: Int32 = 10
     static let table = "held_frames"
     static let colMsgId = "msg_id"
     static let colType = "type"
@@ -585,7 +585,7 @@ internal enum StoreSchema {
     // ------------------------------------------------------------------
 
     /// Every table this file owns.
-    static let allTables = [table, deliveryTable, ackObligationTable, ackFrameTable, tombstoneTable]
+    static let allTables = [table, deliveryTable, ackObligationTable, ackFrameTable, tombstoneTable, intentTable]
 
     /// The frozen columns, named by the SAME constants the DDL interpolates. A drift
     /// between these lists and the DDL cannot pass unnoticed: a fresh file is created
@@ -613,6 +613,9 @@ internal enum StoreSchema {
         /// A tombstone's only immutable cell is the id it standeth for -- it is a KEY, not a payload: there is
         /// nothing else in the row that a replay could corrupt.
         tombstoneTable: [colTMsgId],
+        intentTable: [colIIntentId, colILogicalMessageId, colISignedPlaintext, colICanonicalFrame,
+                      colIRecipientNodeId, colIRecipientStaticDhPub, colIAcceptedGeneration,
+                      colIBindingDigest, colICreatedAt, colIMessageNonce, colIPriorityCode],
     ]
 
     static func immutableColumnsOf(_ name: String) -> Set<String> { immutableColumns[name] ?? [] }
@@ -651,6 +654,8 @@ internal enum StoreSchema {
         // list, the immutable domain and the creates list were the others.
         TableFingerprint(name: tombstoneTable, columns: tombstoneColumns,
                          immutableColumns: immutableColumnsOf(tombstoneTable), ddl: createTombstoneSql),
+        TableFingerprint(name: intentTable, columns: intentColumns,
+                         immutableColumns: immutableColumnsOf(intentTable), ddl: createIntentSql),
     ])
 
     /// The ordered plan from an observed revision to the current one: ONE edge per
@@ -670,7 +675,7 @@ internal enum StoreSchema {
     /// any write.
     static func migrationPlan(from: Int, creatingTables: Bool, supportedMax: Int) -> [MigrationStep] {
         guard from < supportedMax else { return [] }
-        let creates = [createSql, createDeliverySql, createObligationSql, createAckFrameSql,
+        let creates = [createSql, createDeliverySql, createObligationSql, createAckFrameSql, createIntentSql,
                        createTombstoneSql]
         return (from..<supportedMax).map { revision in
             let statements: [String]
@@ -685,6 +690,8 @@ internal enum StoreSchema {
                 // learned: a brand-new file is CREATED with the tombstones table by the first edge, so an ALTER or
                 // a CREATE here would meet a table that already standeth.
                 statements = [StoreSchema.createTombstoneSql]
+            } else if revision == 9 && !creatingTables {
+                statements = [StoreSchema.createIntentSql]
             } else if revision == from && creatingTables {
                 // *** CRYPTO-005 (round 463): THE FIFTH INSTRUMENT -- the site that had never spoken. `creates` IS BUILT AND
                 // HANDED OVER HERE, and NOTHING HATH EVER PRINTED WHAT THIS STEP ACTUALLY RECEIVETH. One line, behaviour-preserving.
