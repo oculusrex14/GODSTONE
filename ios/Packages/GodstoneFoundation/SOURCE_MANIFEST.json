@@ -50,6 +50,7 @@
     "Sources/GodstoneMesh/GattServiceContract.swift": "b89d0032f719fdb8f571256ebabdaa26c580f6c7a297faa88fff2db26d2275f3",
     "Sources/GodstoneMesh/IdentityAckSigner.swift": "fb92d5d62907c303fe79b2e530abb4857af5962dae096048f08f430cd45203a5",
     "Sources/GodstoneMesh/IdentityBindingV1.swift": "446cdefc6e9b89fcb58700db2bee1baa4c6aedebfe181925f52a94130bb5b7ba",
+    "Sources/GodstoneMesh/KeyTableTrustResolver.swift": "6b407c62aadeb0ee7a8c0c33fa0038830939561605edce2a6ab81d2c345496fa",
     "Sources/GodstoneMesh/LabRuntime.swift": "c52fdd4ed0cd8e29c43d82cc04a7cbcf0d18e3d0212414d78c8c49f835d5672a",
     "Sources/GodstoneMesh/LifecycleTransportAdapter.swift": "fc58c3ffd75b4560eabaef13f1ee14b5851f97d3fdc79eafdc6d52b438117847",
     "Sources/GodstoneMesh/LifetimeControl.swift": "daf932e792cc46b195187a69c75f71246bb1a6136c33779d5eb6e4c5f961fd5f",
