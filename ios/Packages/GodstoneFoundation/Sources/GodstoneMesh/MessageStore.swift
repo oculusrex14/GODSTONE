@@ -2277,6 +2277,23 @@ public final class SqliteMessageStore: MessageStore {
         case .unsupportedVersion, .repairRequired, .failed:
             // The engine's own verdicts are typed refusals, not reasons to delete:
             // a refused file keeps its rows, its schema and its stamp.
+            //
+            // *** CRYPTO-005 (round 456): THE VERDICT'S OWN REASON IS **CARRIED** RATHER THAN DISCARDED. *** This `switch`
+            // USED to collapse THREE TYPED REFUSALS -- `unsupportedVersion(found:supportedMax:)`,
+            // `repairRequired(reason:)` and `failed(stage:rolledBack:versionPreserved:)` -- INTO ONE UNTYPED THROW, so
+            // the engine's diagnosis (which is EXACTLY what an investigation needs: e.g. round 292-296's
+            // "migrated schema drifts from the frozen fingerprint") was thrown away at the last line. Behaviour is
+            // UNCHANGED -- the same `migrationRefused` is thrown -- and the reason is now SPOKEN.
+            switch verdict {
+            case .unsupportedVersion(let found, let supportedMax):
+                print("StoreError.migrationRefused -- unsupportedVersion: found=\(found) supportedMax=\(supportedMax)")
+            case .repairRequired(let reason):
+                print("StoreError.migrationRefused -- repairRequired: \(reason)")
+            case .failed(let stage, let rolledBack, let versionPreserved):
+                print("StoreError.migrationRefused -- failed: stage=\(stage) rolledBack=\(rolledBack) versionPreserved=\(versionPreserved)")
+            default:
+                break
+            }
             throw StoreError.migrationRefused
         }
     }
