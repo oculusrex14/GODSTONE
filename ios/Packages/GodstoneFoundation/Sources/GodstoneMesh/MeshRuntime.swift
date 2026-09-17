@@ -213,8 +213,30 @@ public final class MeshRuntime {
                 peerStoreUrl: peerStoreUrl
             )
 
-        // Startup/Resume barrier: finish any pending wipe BEFORE opening stores or identity
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: effectiveArtifacts)
+        // Startup/Resume barrier: finish any pending wipe BEFORE opening stores or identity -- AND IT IS NOW THE
+        // CRASH-RESUMABLE AUTHORITY THAT FINISHETH IT (GS-STORE-006's card, step 1: one runtime-owned authority, and the
+        // old `PanicWipe` root retires rather than competing with it).
+        //
+        // *** AND IT RESUMETH ONLY WHAT NEEDETH NO TRANSPORT, WHICH IS A CONSEQUENCE OF THE ORDER THIS FUNCTION HATH,
+        // NOT A CHOICE: `create` runneth BEFORE the runtime object existeth, so no transport stands here -- and
+        // `RUNTIME_DRAINED` IS THE FIRST STAGE THAT REQUIRETH A RUNNING RUNTIME. THE DEFERRED SEAM ANSWERETH
+        // `.notDrained` WITH THAT REASON, SO THE LADDER STOPS AT `REQUESTED`; THE RUNTIME THAT LATER STANDS RESUMETH
+        // WITH THE LIVE SEAM. A seam answering `.drained()` here would let a restart erase keys while queued radio work
+        // stood -- the very charge this finding carrieth. ***
+        let resumeAuthority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            // EVERY EFFECTFUL SEAM IS DEFERRED AT CREATE TIME, because the runtime owns NO platform resource here:
+            // the VAULT (which would erase DEKs and identity keys), the TRANSPORT (which would drain radio work), and
+            // the IDENTITY (which would GENERATE one -- the call whose absence of an old counterpart best fitteth the
+            // measured hang). THE LADDER THEREFORE STOPS BEFORE `KEYS_ERASED`, exactly as the card's step 6 requires.
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam()
+        )
+        // A PENDING WIPE STAYETH PENDING: `retryLater` is not an error but the ladder's own refusal to advance without
+        // the resources it needs, so it is DISCARDED here and the journal keepeth the truth.
+        _ = try resumeAuthority.resume()
 
         let identity = try MeshIdentity.loadOrCreate(keychain: keychain)
         // ---- GS-STORE-002: the at-rest verdict BEFORE the store existeth -----------------------
