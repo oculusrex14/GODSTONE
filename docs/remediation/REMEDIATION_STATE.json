@@ -6015,6 +6015,12 @@
      "sha256": "db56f1d07f19ccfa524feb2d03478978ce6330ae26b8614d53955205142e3735",
      "what": "CRYPTO-002's inbound-branch reconciliation (the last owed iOS item): the branch now mirrors this isle's OWN inbound teardown (the unsubscribe path) -- publishTrustedLoss, activeInboundLifetimes.removeValue, cancelTimerLocked, inboundPeripheralConnections.removeValue, and NOT relationDelegates",
      "outcome": "IOS LANE rc=0, ZERO failing assertions, 1264 tests; ReadinessT14Tests 10/0; parity 7/7; symbols 0 unresolved (OK); the store-schema control rc 0; the composition control rc 0. CRYPTO-002 IS COMPLETE ON iOS FOR EVERY CLAUSE THE AUDIT NAMES."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-002/round511-THE-CARD-READ-and-the-new-open-set.log",
+     "sha256": "977a2734d06f44e7f349a95e917c47165fd7a7321e11660895920b6a217deae4",
+     "what": "***CRYPTO-002'S CARD IS READ, AND CRYPTO-005'S SUBMISSION HAS MOVED THE SETS: OPEN (6) = ANDROID-03, CRYPTO-002, GS-INBOX-001, GS-INTEGRATION-001, GS-STRESS-001, GS-UX-001; PARTIAL (6) = ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002, GS-STORE-004; FIX_SUBMITTED 42.*** THE HUMAN'S FIVE NOW STAND AT TWO SUBMITTED (CRYPTO-005, GS-STORE-006) AND THREE OPEN (CRYPTO-002, GS-INBOX-001, GS-INTEGRATION-001). CARD: 'Session retirement never reaches the transport authority and expired sessions remain READY' -- SEVERITY HIGH -- COMMIT BOUNDARY: 'Typed crypto retirement propagation plus authoritative slot/transport retirement and MONOTONIC TIMER TESTS ON BOTH PLATFORMS'. SO THERE ARE THREE TESTABLE CLAUSES: typed crypto retirement PROPAGATION (and the refusal must not be foldable into silence -- the law this span repaired into the identity seam at 421-423 and the journal's load at 475); AUTHORITATIVE slot/transport retirement (the slot and transport must ACTUALLY retire, not merely be marked so); and expired sessions must NOT remain READY -- with monotonic timer tests on BOTH isles",
+     "outcome": "no production file modified; the tree is at HEAD, CLEAN and LANE-GREEN; the FULL iOS LANE IS RUNNING AS MANAGED JOB bash-123 (owed for the three landings of rounds 507, 508 and 510), and its verdict shall be collected rather than assumed. THE NEXT ACT IS THE PROTOCOL'S FIRST STEP: MOVE AN INDEPENDENT FAILING ASSERTION INTO THE CANONICAL SUITE AND RUN IT AS A BEHAVIOURAL RED BEFORE TOUCHING PRODUCTION -- a court that drives a session to expiry and demands that (a) the transport authority learns of the retirement, and (b) the session no longer answers READY."
     }
    ],
    "my_red_case": null,
@@ -6113,7 +6119,8 @@
      "aggravating_note": "THE SAME MISTAKE WAS MADE ON THE iOS ISLE AT ROUND 345 (a probe returning nil because one manager's key was handed to both) -- SO THE LESSON WAS RECORDED AND NOT APPLIED, the second such repetition in this span.",
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-002/round364-RECORD_CORRECTION-the-defect-was-my-arm.log"
     }
-   ]
+   ],
+   "card_read_at_round": 511
   },
   "CRYPTO-003": {
    "audit_status_at_snapshot": "OPEN",
