@@ -394,6 +394,63 @@ internal enum StoreSchema {
     /// NOT a legal durable row, only an in-memory concept), and (c) the C6.1
     /// binding invariant (none -> null recipient; singleRecipient -> 16-byte
     /// recipient). Mirrors Android `StoreSchema.CREATE_DELIVERY_SQL`.
+    // ==================== CRYPTO-005: THE DURABLE INTENT ROWS ====================
+    //
+    // THE CARD'S OWN STEP: "Add a private encrypted SQLite intent table **in the same runtime-owned database transaction engine
+    // as held/delivery rows**. Persist the immutable intent key, binding digest, logical identity, authored canonical bytes,
+    // recipient binding/version and state with explicit schema migration."
+    //
+    // AND THE MEASURED RED (round 430) ADDED A REQUIREMENT: rebuilding an authority over a REOPENED medium failed with
+    // `.recipientAbsent`, BECAUSE THE RECIPIENT COULD NOT BE RESOLVED FROM THE REOPENED STORE EITHER. SO THIS TABLE CARRETH NOT
+    // ONLY THE INTENT BUT **THE RECIPIENT MATERIAL THE RETRY NEEDETH** -- A TABLE CARRYING ONLY THE INTENT WOULD **MOVE** THE
+    // FAILURE RATHER THAN REMOVE IT.
+    //
+    // THE COLUMN NAMES ARE CONSTANTS, as every other table's are, SO THE DDL, ITS COLUMN LIST AND ITS FINGERPRINT ENTRY CANNOT
+    // DISAGREE BY TYPOGRAPHY -- they read the same constants.
+    static let intentTable = "outbound_intents"
+    static let colIIntentId = "intent_id"
+    static let colILogicalMessageId = "logical_message_id"
+    static let colISignedPlaintext = "signed_plaintext_bytes"
+    static let colICanonicalFrame = "canonical_frame_bytes"
+    static let colIRecipientNodeId = "recipient_node_id"
+    static let colIRecipientStaticDhPub = "recipient_static_dh_pub"
+    static let colIAcceptedGeneration = "accepted_generation"
+    static let colIBindingDigest = "binding_digest"
+    static let colICreatedAt = "created_at_epoch_seconds"
+    static let colIMessageNonce = "message_nonce"
+    static let colIPriorityCode = "priority_code"
+    static let colIStateRank = "state_rank"
+
+    /// THE INTENT ROWS, IN THE SAME ENGINE AS HELD/DELIVERY ROWS. `intent_id` is the immutable intent key (16 bytes, enforced
+    /// in the schema as the other tables do); the state is an INTEGER rank so `advance` is a single monotone transition.
+    static let createIntentSql = """
+        CREATE TABLE \(intentTable) (
+            \(colIIntentId) BLOB PRIMARY KEY NOT NULL,
+            \(colILogicalMessageId) BLOB NOT NULL,
+            \(colISignedPlaintext) BLOB NOT NULL,
+            \(colICanonicalFrame) BLOB NOT NULL,
+            \(colIRecipientNodeId) BLOB NOT NULL,
+            \(colIRecipientStaticDhPub) BLOB NOT NULL,
+            \(colIAcceptedGeneration) INTEGER NOT NULL,
+            \(colIBindingDigest) BLOB NOT NULL,
+            \(colICreatedAt) INTEGER NOT NULL,
+            \(colIMessageNonce) BLOB NOT NULL,
+            \(colIPriorityCode) INTEGER NOT NULL,
+            \(colIStateRank) INTEGER NOT NULL,
+            CHECK (length(\(colIIntentId)) = 16)
+        )
+        """
+
+    /// CREATE-IF-ABSENT BESIDE ADD-IF-ABSENT: the same idempotence trick every other table uses, so creating this one twice
+    /// is harmless.
+    static let createIntentSqlIfNotExists =
+        createIntentSql.replacingOccurrences(of: "CREATE TABLE ", with: "CREATE TABLE IF NOT EXISTS ")
+
+    /// THE INTENT'S COLUMNS, IN ITS OWN ORDER -- read by the fingerprint, so the DDL and the fingerprint CANNOT disagree.
+    static let intentColumns = [colIIntentId, colILogicalMessageId, colISignedPlaintext, colICanonicalFrame,
+                                colIRecipientNodeId, colIRecipientStaticDhPub, colIAcceptedGeneration,
+                                colIBindingDigest, colICreatedAt, colIMessageNonce, colIPriorityCode, colIStateRank]
+
     static let createDeliverySql = """
         CREATE TABLE \(deliveryTable) (
             \(colDMsgId) BLOB PRIMARY KEY NOT NULL,
