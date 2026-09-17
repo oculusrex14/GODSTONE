@@ -177,8 +177,27 @@ public enum JournalAdvanceResult: Sendable, Equatable {
     case storageFailure
 }
 
+/// *** CRYPTO-005 (round 469): **THE TYPED LOAD OUTCOME -- THE CARD'S OWN WORDS.** *** The card's remediation step says: "Use typed
+/// load outcomes **Found/NotFound/Corrupt/StorageFailure; fail closed** on unavailable/corrupt reads rather than ..." -- AND THE PROTOCOL
+/// PROMISED THE SAME THING IN PROSE ("Load distinguishes absent from storage fault") WHILE ITS SIGNATURE RETURNED A BARE OPTIONAL, WHICH
+/// CANNOT: BOTH REACHED THE CALLER AS `nil`. THIS TYPE MAKETH THE PROMISE KEEPABLE, FOLLOWING THE ISLE'S OWN PRECEDENT (the other two
+/// verbs already carry `.storageFailure` in their typed results).
+public enum JournalLoadResult: Sendable, Equatable {
+    /// The row was read and rebuilt. (`JournalEntry.init?` is FAILABLE, so a row that failed its invariants is `corrupt`, not `found`.)
+    case found(JournalEntry)
+    /// The intent was NEVER stored. ABSENCE IS NOT A FAULT, and a caller may act on it.
+    case notFound
+    /// The row STANDETH but could not be rebuilt (a failed invariant, a short binding digest, a malformed nonce).
+    case corrupt(reason: String)
+    /// The LEDGER could not be read. THE WIPE MAY NOT PROCEED ON THIS -- "fail closed".
+    case storageFailure(reason: String)
+    /// The entry, if the read succeeded -- otherwise nil. CALLERS THAT CANNOT ACT ON A FAULT may use this and TREAT THE FAULT AS ABSENCE
+    /// only where that is safe (the insert path), while callers that must not (the retry path) can ask the typed answer directly.
+    public var entryOrNil: JournalEntry? { if case let .found(e) = self { return e }; return nil }
+}
+
 public protocol OutboundIntentJournal: AnyObject, Sendable {
-    func load(_ intentId: Data) -> JournalEntry?
+    func load(_ intentId: Data) -> JournalLoadResult
     func insertIfAbsent(_ entry: JournalEntry) -> JournalInsertResult
     func advance(intentId: Data, from: IntentStateRank, to: IntentStateRank) -> JournalAdvanceResult
 }
@@ -192,9 +211,10 @@ public final class InMemoryOutboundIntentJournal: OutboundIntentJournal, @unchec
 
     public init() {}
 
-    public func load(_ intentId: Data) -> JournalEntry? {
+    public func load(_ intentId: Data) -> JournalLoadResult {
         lock.lock(); defer { lock.unlock() }
-        return rows[Key(bytes: [UInt8](intentId))]?.copied()
+        guard let row = rows[Key(bytes: [UInt8](intentId))] else { return .notFound }
+        return .found(row.copied())
     }
 
     /// CRYPTO-006: the claim is keyed by the COMMAND REVISION, not by the token alone. Only the
@@ -429,7 +449,10 @@ public final class SendDirectAuthority: @unchecked Sendable {
                                                       priorityCode: Int(priority.rawValue))
 
         // ---- the pinned facts answer first: a retry LOADS, it does not re-create ----
-        if let row = journal.load(command.intentId), row.bindingDigest == digest {
+        let loadedRow = journal.load(command.intentId)
+        if case .storageFailure = loadedRow { return .rejected(reason: .enqueueCanonicMismatch) }
+        if case .corrupt = loadedRow { return .rejected(reason: .enqueueCanonicMismatch) }
+        if let row = loadedRow.entryOrNil, row.bindingDigest == digest {
             guard row.verifyLogicalIdentity(senderNodeId: identity.nodeId) else {
                 return .rejected(reason: .enqueueCanonicMismatch)
             }

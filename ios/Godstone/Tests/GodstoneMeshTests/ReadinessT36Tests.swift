@@ -324,7 +324,7 @@ final class ReadinessT36Tests: XCTestCase {
         }
         XCTAssertEqual(replayId, firstId, "the rotation cannot move the pinned replay")
         XCTAssertEqual(f.trust.resolves, resolvesBefore, "the replay did not consult the rotated table")
-        guard let pinned = f.journal.load(bytesOf(6, 16)) else {
+        guard let pinned = f.journal.load(bytesOf(6, 16)).entryOrNil else {
             XCTFail("the pinned row must exist"); return
         }
         XCTAssertEqual(pinned.acceptedGeneration, 1, "the row pins the FIRST generation")
@@ -335,7 +335,7 @@ final class ReadinessT36Tests: XCTestCase {
             XCTFail("the fresh accept must be durable"); return
         }
         XCTAssertFalse(freshId == firstId, "a fresh logical id, distinct from the pinned one")
-        guard let freshRow = f.journal.load(bytesOf(66, 16)) else {
+        guard let freshRow = f.journal.load(bytesOf(66, 16)).entryOrNil else {
             XCTFail("the fresh row must exist"); return
         }
         XCTAssertEqual(freshRow.acceptedGeneration, 2, "the fresh row pins generation 2")
@@ -357,7 +357,7 @@ final class ReadinessT36Tests: XCTestCase {
         XCTAssertEqual(reason, .enqueueStorageFailure,
                        "named StorageFailure at the enqueue boundary")
         XCTAssertEqual(f.store.allHeldMsgIds().count, 0, "no frame reached the store")
-        guard let row = f.journal.load(t) else {
+        guard let row = f.journal.load(t).entryOrNil else {
             XCTFail("the row persisted through the fault"); return
         }
         XCTAssertEqual(row.stateRank, IntentStateRank.authored,
@@ -373,7 +373,7 @@ final class ReadinessT36Tests: XCTestCase {
         XCTAssertEqual(f.factory.creates, 1, "one identity creation for the whole saga")
         XCTAssertEqual(f.trust.resolves, 1, "one resolve for the whole saga")
         XCTAssertEqual(f.store.allHeldMsgIds().count, 1, "the store now holds the one frame")
-        guard let climbed = f.journal.load(t) else {
+        guard let climbed = f.journal.load(t).entryOrNil else {
             XCTFail("the row must exist"); return
         }
         XCTAssertEqual(climbed.stateRank, IntentStateRank.committed, "the row climbed to COMMITTED")
@@ -429,7 +429,7 @@ final class ReadinessT36Tests: XCTestCase {
         XCTAssertEqual(f.factory.creates, 3, "three creations, one per accepted change")
         XCTAssertEqual(f.store.allHeldMsgIds().count, 3, "the store retains the whole history")
         XCTAssertEqual(f.journal.size(), 1, "one current row per token")
-        guard let current = f.journal.load(t) else {
+        guard let current = f.journal.load(t).entryOrNil else {
             XCTFail("the current row must exist"); return
         }
         XCTAssertEqual(current.stateRank, IntentStateRank.committed,
@@ -509,7 +509,7 @@ final class ReadinessT36Tests: XCTestCase {
             try cmd(t, bob.nodeId, ascii("prove me"))) else {
             XCTFail("the accept must be durable"); return
         }
-        guard let row = f.journal.load(t) else {
+        guard let row = f.journal.load(t).entryOrNil else {
             XCTFail("the pinned row must exist after the commit"); return
         }
         let held = f.store.allHeldOrderedByPriority()[0]
@@ -688,8 +688,8 @@ private final class StaleReadJournal: OutboundIntentJournal, @unchecked Sendable
 
     init(_ inner: OutboundIntentJournal) { self.inner = inner }
 
-    func load(_ intentId: Data) -> JournalEntry? {
-        if !missedOnce { missedOnce = true; return nil }
+    func load(_ intentId: Data) -> JournalLoadResult {
+        if !missedOnce { missedOnce = true; return .notFound }
         return inner.load(intentId)
     }
 
@@ -733,7 +733,7 @@ extension ReadinessT36Tests {
         XCTAssertEqual(f.store.base.allHeldMsgIds().count, 1,
                        "exactly ONE held row may stand for the intent")
         XCTAssertEqual(f.journal.size(), 1, "and the journal keeps ONE row for the token")
-        let row = try XCTUnwrap(f.journal.load(t), "the token's row must stand")
+        let row = try XCTUnwrap(f.journal.load(t).entryOrNil, "the token's row must stand")
         XCTAssertEqual(row.logicalMessageId, winnerId, "the row still pins the WINNER's logical id")
     }
 
