@@ -720,8 +720,38 @@ final class ReadinessT14Tests: XCTestCase {
                       "A RETIRED SESSION MUST UNPUBLISH ITS RELATION: 'session retirement never reaches the "
                       + "transport authority' IS the finding, and a peer left published as ready while every "
                       + "operation fails is exactly what the audit measured")
-        XCTAssertNil(transport.connection(for: peerId),
-                     "and the exact connection must be gone, so no fresh handshake can reuse a dead relation")
+        // *** THIS CLAUSE IS CORRECTED TO THE FINDING, AND THE CORRECTION IS MINE TO OWN: I had written "the exact
+        // connection must be gone", and the audit's step 5 says "close the EXACT RELATION, unpublish once, release
+        // leases and SCHEDULE THE PERMITTED BOUNDED FRESH-HANDSHAKE RETRY". A RETRY NEEDETH A LINK TO RETRY ON -- so
+        // tearing the physical connection down here would make the finding's own last clause unreachable. THE LINK
+        // STAYETH; THE TRUSTED RELATION IS WHAT DIED, and the arm that followeth proveth the retry happened. ***
+        XCTAssertNotNil(transport.connection(for: peerId),
+                        "the PHYSICAL LINK stays (a retry needs a link); it is the RELATION that was closed")
+        transport.stop()
+    }
+
+    /// GS-CTRL-002 / CRYPTO-002, THE LAST CLAUSE OF STEP 5: "schedule the PERMITTED **BOUNDED** FRESH-HANDSHAKE
+    /// RETRY". The finding's impact saith it plainly -- after a session retireth, "NO FRESH HANDSHAKE FOLLOWS" -- and a
+    /// relation merely unpublished leaveth the peer unreachable until the radio happeneth to reconnect. RUN RED BEFORE
+    /// THE REPAIR.
+    func testCRYPTO002_aTerminalRetirementSchedulesOneBoundedFreshHandshake() throws {
+        let pairing = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pairing) }
+        let transport = BleTransport(identity: pairing.aliceIdentity, store: T14MessageStore())
+        transport.sessions = pairing.aliceManager
+        let peerId = pairing.viaBob
+        _ = advanceToRoleBound(transport, peerId: peerId)
+        XCTAssertEqual(transport.freshHandshakeAttemptsForTest(peerId), 0, "the control: no retry yet")
+
+        let ctrl = try XCTUnwrap(pairing.aliceManager.slotForTest(peerId)?.controller)
+        ctrl.noiseSession.ageBudgetForTest = 1.0
+        ctrl.noiseSession.establishedMonoForTest = DispatchTime.now().uptimeNanoseconds &- 2_000_000_000
+        XCTAssertFalse(pairing.aliceManager.isReady(peerId), "the idle path retires the session")
+
+        XCTAssertEqual(transport.freshHandshakeAttemptsForTest(peerId), 1,
+                       "A FRESH HANDSHAKE MUST FOLLOW -- ONE, and the ONE is the point: 'the PERMITTED BOUNDED retry' "
+                       + "is the audit's wording, and an unbounded retry against a peer whose handshakes keep dying "
+                       + "would be a hot loop")
         transport.stop()
     }
 }

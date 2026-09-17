@@ -1253,24 +1253,51 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// and its delegate, CANCEL ITS TIMER (an old timer must not fire against whatever cometh next), mark the
     /// connection disconnected, drop the session's transport-side registration, forget the peer's characteristics and
     /// writers, and UNPUBLISH THE RELATION -- the last one outside the lock, as its own body doth.
+    /// GS-CTRL-002 / CRYPTO-002 (THE LAST CLAUSE OF STEP 5): "schedule the PERMITTED **BOUNDED** FRESH-HANDSHAKE
+    /// RETRY" -- because the finding's own impact sayeth that after a retirement "NO FRESH HANDSHAKE FOLLOWS", and a
+    /// relation that is merely unpublished leaveth the peer unreachable until the radio happeneth to reconnect. THE
+    /// BOUND IS PART OF THE LAW: an unbounded retry against a peer whose handshakes keep dying would be a hot loop,
+    /// so the retry is permitted ONCE per peer per retirement and the count is MEASURABLE.
+    internal static let maxFreshHandshakeRetries = 1
+    private var freshHandshakeAttempts: [UUID: Int] = [:]
+
+    /// Evidence hook: how many fresh-handshake retries THIS transport hath made for a peer.
+    internal func freshHandshakeAttemptsForTest(_ peerId: UUID) -> Int {
+        lockTransport(); defer { unlockTransport() }
+        return freshHandshakeAttempts[peerId] ?? 0
+    }
+
     internal func handleTerminalSessionRetirement(_ admission: RelationAdmission, reason: String) {
         _ = reason   // the notice carrieth it; the transport's state transitions are its own vocabulary
         lockTransport()
         var keyToUnpublish: RelationKey?
+        var retryPeer: UUID?
+        var retryHint: Data?
         if let (peerId, lifetime) = activeOutboundLifetimes.first(where: { Self.admissionOf($0.value) == admission }) {
             keyToUnpublish = lifetime.relationKey
             publishTrustedLoss(peerId)
             activeOutboundLifetimes.removeValue(forKey: peerId)
             relationDelegates.removeValue(forKey: peerId)
             cancelTimerLocked(matching: lifetime.relationKey)
-            let conn = outboundCentralConnections.removeValue(forKey: peerId)
-            conn?.markDisconnected()
             connectedPeripherals.removeValue(forKey: peerId)
             inboxCharacteristics.removeValue(forKey: peerId)
             digestCharacteristics.removeValue(forKey: peerId)
             linkInfoCharacteristics.removeValue(forKey: peerId)
-            pendingInitiatorRemoteHints.removeValue(forKey: peerId)
             if let purged = centralWriters.removeValue(forKey: peerId) { purged.shutdown() }
+            // *** WHAT IS TORN DOWN AND WHAT IS NOT, AND WHY THE DIFFERENCE IS THE FINDING'S OWN WORDS: the audit
+            // sayeth "close the EXACT RELATION, unpublish once, release leases and schedule the permitted bounded
+            // fresh-handshake retry". THE RELATION closeth; THE PHYSICAL LINK STAYETH -- because a retry needs a link
+            // to retry ON, and a transport that also tore the connection down could never keep the audit's last
+            // clause. THE HINT IS CAPTURED BEFORE IT IS FORGOTTEN, for the same reason. ***
+            retryPeer = peerId
+            // THE HINT COMETH FROM WHERE THE BEGIN ITSELF TAKETH IT (`getElectionContext(peerId)?.remoteNodeHint`,
+            // the roleBound site's own source) -- READ FROM THE CODE, NOT ASSUMED: the pending-hint map was my first
+            // guess and the counter stayed ZERO, which is what a guessed source looketh like in a measurement.
+            // THE DRIVER IS THE TRANSPORT'S OWN PROPERTY (`centralDriver`, read at :699), not the local the
+            // roleBound site happeneth to snapshot -- a second READ, because my first guess named a local that existeth
+            // three hundred lines away.
+            retryHint = centralDriver?.getElectionContext(peerId)?.remoteNodeHint
+            pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         } else if let (peerId, lifetime) = activeInboundLifetimes
             .first(where: { Self.admissionOf($0.value) == admission }) {
             keyToUnpublish = lifetime.relationKey
@@ -1279,8 +1306,18 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             relationDelegates.removeValue(forKey: peerId)
             cancelTimerLocked(matching: lifetime.relationKey)
         }
+        // THE BOUNDED RETRY: counted under the lock, attempted OUTSIDE it.
+        var mayRetry = false
+        if let peerId = retryPeer, retryHint != nil,
+           (freshHandshakeAttempts[peerId] ?? 0) < Self.maxFreshHandshakeRetries {
+            freshHandshakeAttempts[peerId, default: 0] += 1
+            mayRetry = true
+        }
         unlockTransport()
         if let key = keyToUnpublish { _ = unpublishRelation(key) }
+        if mayRetry, let peerId = retryPeer, let hint = retryHint {
+            _ = beginTrustedHandshake(peerId: peerId, remoteHint: hint)
+        }
     }
     public private(set) var snapshotAuthority: LinkInfoSnapshotAuthority!
     private let provisionalTimeoutSeconds: TimeInterval
