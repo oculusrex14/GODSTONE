@@ -172,6 +172,37 @@ EXTERNAL artifact — NOTHING here is evidence that any store IS encrypted.** Th
 dependency* (an acquisition, and **acquisition never closes a gate**), and its own third clause demands **device
 SQLCipher and locked-device evidence** before T30 may be called complete.
 
+## ROUND 522, PHASE TWO — THE AUDITOR'S OWN ARMS ENTER THE CANONICAL SUITE
+
+**GS-SOS-001's ordered FIRST step is done, and it is the first time in this programme that the assertion is not the
+author's.** The card placeth it first — *"Copy `Audit002SosSyncTest.missingSigningAuthorityMustNotQueueUnauthenticatedSos`
+into the canonical mesh tests and preserve its empty-store expectation. Keep `configuredAuthorityProducesVerifiableSos`
+as the positive control."* — and **the string appeared NOWHERE in the repository, on either isle**: the finding's other
+work had landed on *other* arms, so its own first instruction stood undone. **A card's ordered first step is a claim
+until it is measured, and it had not been.**
+
+The source is the auditor's own read-only file
+(`AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/sos_sync/Audit002SosSyncTest.kt`), **with the auditor's own recorded
+verdict beside it**: `tests="4" failures="3"`, that arm **FAILED** with *"Missing signing authority must be typed
+failure, got QueuedLocally"*, and the positive control passed. **So the arm AND its failure both pre-date this
+remediation, and the repair is measured against a bar THE AUDITOR ERECTED.**
+
+**MEASURED AFTER THE COPY: `tests="2" failures="0" errors="0"`, both arms passing; and in the full Android lane
+1226 tests / 0 failures across 78 classes.** Two deviations from the auditor's text are named rather than silent — the
+positive control's authority gained `currentIdentityBinding()`, *which is this finding's own second defect*, added in
+the auditor's own idiom so the arm could compile at all; nothing else changed.
+
+**AND THE NEGATIVE CASE IS THE STRONGEST EVIDENCE IN THIS FINDING'S HISTORY: with the refusal replaced by the legacy
+unauthenticated success, the arm failed with THE AUDITOR'S OWN RECORDED MESSAGE VERBATIM** — *"Missing signing authority
+must be typed failure, got QueuedLocally"* — **while the auditor's positive control still passed.** The arm judges; its
+green comes from the repair; and the failure is specific rather than a blanket breakage.
+
+**NOT COPIED, AND NAMED SO NOTHING CLAIMS THEY ARE DONE:** the auditor's file carries **four** arms and **two** also
+failed on the audited tree — `cancelDuringFirstPendingOfferMustSuppressLaterPeerOffer` (*"expected:\<1\> but was:\<2\>"*)
+and `inventoryReceiverMustEnforce64PageRunLimit` (*"65th page must be refused, got Accepted"*). They are **not copied,
+because a mandatory lane may not be made red by a copy**; their recorded messages are preserved in the copied court's
+own header.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
