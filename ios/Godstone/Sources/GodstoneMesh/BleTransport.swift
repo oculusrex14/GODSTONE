@@ -1300,11 +1300,18 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         } else if let (peerId, lifetime) = activeInboundLifetimes
             .first(where: { Self.admissionOf($0.value) == admission }) {
+            // *** THE INBOUND BRANCH IS RECONCILED AGAINST THIS ISLE'S OWN INBOUND TEARDOWN (the unsubscribe path),
+            // READ RATHER THAN GUESSED: that path performeth `publishTrustedLoss`, `activeInboundLifetimes.removeValue`,
+            // `cancelTimerLocked` AND `inboundPeripheralConnections.removeValue` -- AND IT DOTH **NOT** TOUCH
+            // `relationDelegates`. MY FIRST VERSION REMOVED THE DELEGATE (wrong for this direction: the delegate is
+            // not the subscription's to remove here) AND FORGOT THE PERIPHERAL CONNECTION. Both are now the path's own
+            // shape, so a retirement driven by the manager and one driven by the link cannot leave the transport in
+            // two different states. ***
             keyToUnpublish = lifetime.relationKey
             publishTrustedLoss(peerId)
             activeInboundLifetimes.removeValue(forKey: peerId)
-            relationDelegates.removeValue(forKey: peerId)
             cancelTimerLocked(matching: lifetime.relationKey)
+            inboundPeripheralConnections.removeValue(forKey: peerId)
         }
         // THE BOUNDED RETRY: counted under the lock, attempted OUTSIDE it.
         var mayRetry = false
