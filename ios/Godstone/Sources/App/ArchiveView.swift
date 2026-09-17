@@ -25,6 +25,26 @@ private struct ArchiveBrowser: View {
     @State private var submittedQuery = ""
     @State private var retry = 0
 
+    // --------------------------------------------------------------------------------------
+    // *** GS-ARCHIVE-005 STEP 4: THE SCENE'S PLACE, PERSISTED -- AND `snapshot`/`restore` GAIN THEIR FIRST
+    // PRODUCTION CALLER. ***
+    //
+    // THE DEFECT, MEASURED AT ROUNDS 523, 524 AND AGAIN AT 525 BEFORE THIS EDIT: `ArchiveSceneModel.snapshot(into:)`
+    // and `restore(from:)` HAD NO PRODUCTION CALLER WHATSOEVER -- the only callers were courts -- so a process
+    // recreation LOST the promised query and document place. The card's own words: "Both apps implement
+    // snapshot/restore methods but no production caller persists/restores them."
+    //
+    // THE VEHICLE IS THE ONE THE CARD NAMETH (`SceneStorage`), and the record is the model's own serialisable place:
+    // W16 (a behavioural arm in GodstoneCoreTests) MEASURABLY PROVETH that the handle surviveth a real
+    // `PropertyListSerialization` round-trip INTO A FRESH SCENE with its identity and metadata intact -- so this
+    // store is backed by a measured semantic and not by a hope about `[String: Any]`.
+    // --------------------------------------------------------------------------------------
+    @Environment(\.scenePhase) private var scenePhase
+    @SceneStorage("godstone.archive.scene") private var sceneRecord: Data = Data()
+    /// Restoration happeneth ONCE per scene: the `.task` below re-runneth on every submitted query, and a second
+    /// restoration would strike out the reader's own place.
+    @State private var restoredOnce = false
+
     private struct SceneID: Equatable {
         let submitted: String
         let retry: Int
@@ -33,6 +53,27 @@ private struct ArchiveBrowser: View {
     init(scene: ArchiveSceneModel, library: ArchiveLibrary) {
         _scene = ObservedObject(wrappedValue: scene)
         self.library = library
+    }
+
+    /// *** GS-ARCHIVE-005 STEP 4: THE PLACE, WRITTEN INTO THE SCENE-SCOPED STORE. *** `snapshot(into:)` is the
+    /// model's own serialisable place; the store is `SceneStorage`, which the card nameth by name. A record that
+    /// cannot be written is NOT written and the previous one standeth: A HALF-WRITTEN PLACE IS WORSE THAN AN OLD ONE,
+    /// because it restores something that was never true.
+    private func persistScenePlace() {
+        var handle: [String: Any] = [:]
+        scene.snapshot(into: &handle)
+        if let data = try? PropertyListSerialization.data(fromPropertyList: handle, format: .binary, options: 0) {
+            sceneRecord = data
+        }
+    }
+
+    /// A record that will not deserialise is **NO RECORD, not a crash**: a stale or corrupt store must leave the
+    /// reader at a first browse rather than refuse to open the Archive.
+    private static func decodeSceneRecord(_ data: Data) -> [String: Any]? {
+        guard !data.isEmpty,
+              let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+        else { return nil }
+        return plist as? [String: Any]
     }
 
     var body: some View {
@@ -77,6 +118,17 @@ private struct ArchiveBrowser: View {
                 }
             }
             .task(id: SceneID(submitted: submittedQuery, retry: retry)) {
+                // *** GS-ARCHIVE-005 STEP 4: **RESTORATION COMETH FIRST**, OR THE FIRST BROWSE OVERWRITETH THE PLACE.
+                // The card's clause is an ORDER -- "invoke the actual restore path BEFORE the first browse overwrites
+                // it" -- AND THE ORDER IS THE WHOLE OF IT: a restoration run after `loadDocuments()` would replace a
+                // restored document with the browse's own empty query, which is exactly the loss the finding chargeth.
+                if !restoredOnce {
+                    restoredOnce = true
+                    if let handle = Self.decodeSceneRecord(sceneRecord) {
+                        await scene.restore(from: handle)
+                        return
+                    }
+                }
                 if submittedQuery.isEmpty {
                     await scene.loadDocuments()
                 } else {
@@ -84,7 +136,14 @@ private struct ArchiveBrowser: View {
                     await scene.search()
                 }
             }
-            .onDisappear { scene.dismiss() }   // dismissal striketh out the in-flight petition
+            .onChange(of: scenePhase) { phase in
+                // the standard iOS moment: the place is written before the app may be suspended and killed
+                if phase != .active { persistScenePlace() }
+            }
+            .onDisappear {
+                persistScenePlace()
+                scene.dismiss()   // dismissal striketh out the in-flight petition
+            }
             .navigationDestination(for: ArchiveDocument.self) { document in
                 ArchiveDocumentReader(document: document, library: library, scene: scene)
             }

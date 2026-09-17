@@ -698,6 +698,93 @@ final class ReadinessT50Tests: XCTestCase {
                        "and the published identity of the search it returned to")
     }
 
+    // MARK: - GS-ARCHIVE-005 step 4: THE PRODUCTION CALLER (the defect, measured)
+
+    /// *** GS-ARCHIVE-005 STEP 4: `snapshot`/`restore` MUST HAVE A PRODUCTION CALLER, AND RESTORATION MUST COME
+    /// BEFORE THE FIRST BROWSE. RUN RED BEFORE ITS REPAIR. ***
+    ///
+    /// THE CARD'S OWN WORDS: "Read it on app/scene creation and invoke the actual restore path **before the first
+    /// browse overwrites it**." MEASURED at rounds 523 and 524 and still true: `ArchiveSceneModel.snapshot(into:)`
+    /// (`:317`) and `restore(from:)` (`:329`) HAVE NO PRODUCTION CALLER WHATSOEVER -- the only callers are courts --
+    /// so a process recreation loseth the promised query and document place. THAT IS THE DEFECT THIS ARM NAMETH.
+    ///
+    /// THE INSTRUMENT IS STRUCTURAL, AND THE ABSENCE OF A BEHAVIOURAL ONE WAS MEASURED FIRST (round 524): the view
+    /// liveth in the App target, and NO TEST BUNDLE CAN IMPORT IT (`Godstone` carrieth a 5-file allowlist; both test
+    /// bundles link onely the packages). WHAT THE STRUCTURAL CHECK ASSERTS IS THEREFORE ABOUT WIRING AND ORDER --
+    /// and the SEMANTICS it depends upon are witnessed BEHAVIOURALLY by W16 above, which proveth the record surviveth
+    /// a real serialisation round-trip into a fresh scene.
+    ///
+    /// THE FOURTH CLAUSE IS THE CARD'S OWN ORDER REQUIREMENT, and order is measurable in the source: restoration
+    /// must appear BEFORE the first browse, or the browse overwriteth the restored place.
+    func testW17TheSceneRecordHathAProductionCallerAndRestorationPrecedethTheFirstBrowse() throws {
+        let view = codeOnly(try repoFile(named: "ios/Godstone/Sources/App/ArchiveView.swift"))
+        XCTAssertTrue(view.contains("SceneStorage"),
+                      "*** THE SCENE'S PLACE MUST BE PERSISTED: MEASURED, `snapshot(into:)` and `restore(from:)` have "
+                      + "NO production caller, so a process recreation loseth the promised query and document place "
+                      + "(GS-ARCHIVE-005 step 4) ***")
+        XCTAssertTrue(view.contains("scene.snapshot(into:"),
+                      "and the production view must CALL snapshot -- a persist path with no caller persisteth nothing")
+        XCTAssertTrue(view.contains("scene.restore(from:"),
+                      "and it must CALL restore, or the persisted record is never read")
+
+        let restore = try XCTUnwrap(view.range(of: "scene.restore(from:")?.lowerBound,
+                                    "the restore call must appear")
+        let browse = try XCTUnwrap(view.range(of: "scene.loadDocuments()")?.lowerBound,
+                                   "the first browse must appear")
+        XCTAssertLessThan(view.distance(from: view.startIndex, to: restore),
+                          view.distance(from: view.startIndex, to: browse),
+                          "*** RESTORATION MUST PRECEDE THE FIRST BROWSE: the card's own clause is 'BEFORE the first "
+                          + "browse overwrites it', and an order the source can be asked about is an order this "
+                          + "check may assert (GS-ARCHIVE-005 step 4) ***")
+    }
+
+    // MARK: - GS-ARCHIVE-005 step 4: the record must survive a REAL persistence round-trip
+
+    /// *** GS-ARCHIVE-005 STEP 4 -- MEASURED, NOT ASSUMED. ***
+    ///
+    /// EVERY ARM THAT ROUND-TRIPPETH THIS HANDLE DOTH SO **IN MEMORY ONELY**: `snapshot(into: &handle)` and then
+    /// `restore(from: handle)` (`:532`, `:549`, `:564`, `:690`). **NOT ONE SERIALISETH IT**, and the card's whole step 4
+    /// is about a record that surviveth A PROCESS RECREATION. Measured: `PropertyListSerialization` appeareth NOWHERE
+    /// in the repository, so nothing at all proves the record surviveth a real store -- and the card asketh for "an
+    /// equivalent **Codable** scene/navigation record", WHICH `[String: Any]` IS NOT.
+    ///
+    /// THIS ARM TAKETH THE REAL ROAD: open a document, snapshot the handle, SERIALISE it, DESERIALISE it, and restore
+    /// into a FRESH scene -- the road a process recreation actually travellth.
+    func testW16TheSceneRecordSurvivethARealPersistenceRoundTrip() async throws {
+        _ = try makeArchive()
+        let (archive, library, _, scene) = composeTrio()
+        defer { archive.close() }
+        await scene.loadDocuments()
+        await seat(scene)
+        let first = try XCTUnwrap(scene.documents.first, "the archive must carry a document")
+        await scene.open(document: first)
+        await seat(scene)
+        XCTAssertEqual(scene.openedDocumentId, first.id,
+                       "the scene must actually stand IN the document, or this arm testeth another road")
+
+        var handle: [String: Any] = [:]
+        scene.snapshot(into: &handle)
+
+        // THE ROUND TRIP A REAL SCENE-RESTORATION STORE FORCETH.
+        let data = try PropertyListSerialization.data(fromPropertyList: handle, format: .binary, options: 0)
+        let readBack = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+        let restoredHandle = try XCTUnwrap(readBack as? [String: Any],
+                                           "the serialised record must deserialise into a handle")
+
+        // AND INTO A FRESH SCENE, which is what a process recreation giveth.
+        let (archive2, library2, model2, fresh) = composeTrio()
+        defer { archive2.close() }
+        _ = library2; _ = model2
+        await fresh.restore(from: restoredHandle)
+        await seat(fresh)
+
+        XCTAssertEqual(fresh.openedDocumentId, first.id,
+                       "*** THE OPENED DOCUMENT IDENTITY MUST SURVIVE SERIALISATION: a record that surviveth a "
+                       + "dictionary and not a store is not a restoration record (GS-ARCHIVE-005 step 4) ***")
+        XCTAssertNotNil(fresh.openedSource,
+                        "and the metadata of the restored document must stand with it")
+    }
+
     // MARK: - GS-ARCHIVE-005: the destination's own provenance
 
     /// *** GS-ARCHIVE-005 (step 1's SECOND option -- MEASURED at round 524 to be the right one): THE DOCUMENT

@@ -269,6 +269,32 @@ persistence and its production `snapshot`/`restore` caller are **untouched**, an
 is not satisfied**. The finding stays **`PARTIAL`**. Measured: iOS lane `SWIFT_RC=0`, `GodstoneCoreTests` **84/0** (82 →
 84: the +2 are the new arms), `GodstoneMeshTests` 1190/0; parity `--scope repo` 7/0; symbols 0 unresolved; digests PASSED.
 
+## ROUND 525, PHASE TWO — THE RECORD GAINS ITS FIRST PRODUCTION CALLER, AND A HYPOTHESIS IS REFUTED
+
+**GS-ARCHIVE-005 step 4's defect was the "no production caller" one:** `snapshot(into:)` and `restore(from:)` had
+**no caller but courts**, so a process recreation lost the promised query and document place. **The repair uses the
+vehicle the card names by name** — `@SceneStorage("godstone.archive.scene")`, written on every scene-phase departure
+and on disappear, read back and invoked **before the first browse**, *because the card's clause is an ORDER: a
+restoration run after `loadDocuments()` would replace a restored document with the browse's own empty query.*
+
+**AND THE ROUND'S FIRST MEASUREMENT REFUTED THE ROUND'S OWN HYPOTHESIS, WHICH IS WORTH MORE THAN THE REPAIR.** I
+suspected an `Int64` would not survive a real plist round-trip through the `[String: Any]` handle, and wrote W16 to test
+it. **W16 PASSED** — the handle does survive serialisation into a fresh scene, identity and metadata intact.
+**A suspected defect that a measurement refutes is still a measurement**, and it redirected the round to what was
+actually broken. *And no arm had ever asked:* **every existing arm round-trips the handle IN MEMORY ONLY**, while the
+whole of step 4 is about surviving a **process recreation** — `PropertyListSerialization` appeared **nowhere** in the
+repository. **A round-trip nobody ever serialised is not a round-trip.**
+
+**Measured:** RED first (`20 tests, with 4 failures`, all four clauses); negative case fails on the caller clauses
+**while W16 still passes**; **the shipping App target built** (`** BUILD SUCCEEDED **`) *because the SwiftPM lane never
+compiles `Godstone/Sources/App/`*; iOS lane `SWIFT_RC=0` with `GodstoneCoreTests` **86/0** (84 → 86) and
+`GodstoneMeshTests` 1190/0.
+
+**NOT LANDED, AND NAMED:** step 4's *"bind it to `NavigationStack`"* clause (step 1's second option was taken
+deliberately, so the stack still carries no `path:`), **step 3 (Android's `SavedStateHandle`) is untouched — this round
+is iOS-only**, and **no rendered-screen witness exists** on this isle, so the card's closure test 2 is witnessed at the
+**record and the wiring, not by recreating a process**. The finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
