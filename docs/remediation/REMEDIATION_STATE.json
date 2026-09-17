@@ -4399,8 +4399,8 @@
   "by_status_derived_at_round": 521,
   "by_status_all_kinds": {
    "FIX_SUBMITTED": 46,
-   "OPEN": 2,
-   "PARTIAL": 6
+   "OPEN": 0,
+   "PARTIAL": 8
   },
   "STATUS_DERIVATION_NOTE_at_round_425": "THE COUNTS ARE NOW DERIVED FROM EACH FINDING'S OWN `my_status`, AND THE DERIVATION CORRECTED THE RECORD: the ledger's earlier `by_status` carried {OPEN: 5, FIX_SUBMITTED: 49, VERIFIED_FIXED: 0}, WHICH WAS WRONG IN BOTH FIGURES -- it folded the PARTIAL findings into FIX_SUBMITTED and missed two that stand at OPEN. THE MEASURED DISTRIBUTION IS {'FIX_SUBMITTED': 41, 'OPEN': 7, 'PARTIAL': 6}. THE OLD VALUE IS PRESERVED RATHER THAN OVERWRITTEN, AS THIS LEDGER'S DISCIPLINE REQUIRES FOR EVERY CORRECTION.",
   "by_status_at_snapshot_PRESERVED": {
@@ -4438,15 +4438,16 @@
   },
   "by_status_at_round_521": {
    "FIX_SUBMITTED": 46,
-   "OPEN": 2,
-   "PARTIAL": 6
+   "OPEN": 0,
+   "PARTIAL": 8
   },
   "by_status_at_round_521a": {
    "FIX_SUBMITTED": 46,
    "OPEN": 2,
    "PARTIAL": 6
   },
-  "by_status_at_round_521_note": "GS-UX-001 remaineth OPEN AS A FINDING with a landed, measured slice; the count is NOT moved for it, because moving a count for a slice is the same error this programme corrected at round 340 and 425."
+  "by_status_at_round_521_note": "GS-UX-001 remaineth OPEN AS A FINDING with a landed, measured slice; the count is NOT moved for it, because moving a count for a slice is the same error this programme corrected at round 340 and 425.",
+  "by_status_at_round_521_NOTE": "**OPEN IS NOW ZERO, AND THAT WORD IS DOING PRECISE WORK: it meaneth NO FINDING CARRIETH NO LANDED WORK AT ALL.** It doth NOT mean the programme is finished. GS-UX-001 and GS-STRESS-001 moved from OPEN to PARTIAL because each now carrieth a MEASURED, landed slice WITH ITS REMAINING LIMBS NAMED -- the same sense in which ANDROID-05 and GS-RUNTIME-001 have been PARTIAL all along. `VERIFIED_FIXED` REMAINETH **0**, BY RULE: ONELY AN INDEPENDENT AUDIT MAY WRITE IT."
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
  "external_input_lane": {
@@ -10682,7 +10683,7 @@
    "final_review": null,
    "impact": "Ten thousand iterations and mutation kills in this campaign do not measure actual transport leases, timers, session memory, SQLite behavior or parser failures. Leaks and crashes in those owners can remain invisible.",
    "invalidated_dependents": [],
-   "my_fix_commit": "(ledger round 276, STEP 1 of six) THE RESOURCE-MODEL CATEGORY IS NAMED WHERE THE CLASS LIVETH: a TOP-LEVEL `RESOURCE_MODEL_CATEGORY = \"resource-model\"` in `io.godstone.mesh.stress`, with a docstring stating IN THE CARD'S OWN TERMS that the campaign measures ITS OWN local bookkeeping and never a device, radio or store -- and an arm in the T72 court asserteth the name and asserteth it is NOT called 'production' | 560c3f2 (round 274): the WITNESS repair -- `run()` reporteth the SMALLEST offending key for the duplicate-inbox and retry-cap complaints instead of whichever entry a Dictionary's iteration order presenteth first. Measured: the full iOS suite rc=0 with 0 errors, and no other arm moved.",
+   "my_fix_commit": "44100c0 (round 521, STEP 3 PARTLY) THE SESSION INVARIANT IS ASKED OF A REAL OWNER, AND NAMETH IT: `interface ResourceCensusSource` (the seam by which the campaign asketh a REAL owner through THE OWNER'S OWN evidence hook) + `StressCampaign(..., owners: List<ResourceCensusSource> = emptyList())` (EMPTY BY DEFAULT, so nothing that stood before changeth behaviour) + `run()` asking every given owner AFTER `shutdown()` and reporting `no_leaked_sessions` NAMING the owner.",
    "my_logs": [
     {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STRESS-001/green-round276-lane.log",
@@ -10701,12 +10702,29 @@
      "sha256": "716fa8fac788a24a3f24921fca02ba48842767b16ebb21eec78c04c4ce546962",
      "what": "the same run's complete output (a discrepancy is recorded in the ledger: 1148 executed tests where the round-259 log reported 1233)",
      "outcome": "0 failures, 0 errors."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STRESS-001/round521-negative-case-clause1.log",
+     "sha256": "17beac567c96b6b0f8ce7d5d4c3409479f99c4a36b7ca965c167b5fa1f5a63c0",
+     "what": "GS-STRESS-001 round 521: the NEGATIVE CASE for clause 1 -- the REAL-OWNER read removed from the session invariant",
+     "outcome": "`W14: java.lang.AssertionError: a REAL live slot must be reported against the owner that holdeth it: []` -- 15 tests completed, 1 failed, GRADLE_RC=1. THE ARM JUDGETH A REAL OWNER. And W14 was VERIFIED PRESENT in that filtered run (the script printeth \"ABSENT FROM THE FILTERED RUN\" if it is not), so the count is not a lie."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STRESS-001/round521-green-full-lane.log",
+     "sha256": "61fe31b1dfb1265681a83373b62b52b00c9be934df74aeb1d562f872218c9461",
+     "what": "GS-STRESS-001 round 521: THE FULL `:mesh` LANE, UNFILTERED -- the verdict run",
+     "outcome": "AGGREGATE across all 77 test classes: tests=1224 failures=0 errors=0 (was 1223 -- the +1 IS W14); BUILD SUCCESSFUL, GRADLE_RC=0; and W14 IN THE FULL RUN: `test_w14_the_session_invariant_is_asked_of_a_real_owner` (a passing testcase is self-closing). A `--tests` filter was us'd ONELY to iterate and for the negative case."
     }
    ],
-   "my_red_case": "the canonical arm `ReadinessT72Test.test_w00_the_campaign_is_a_named_resource_model`, which ASSERTETH a name the class did not carry before this round: `StressCampaign` (and its file) declared NO category at all, so its counters could be -- and in the audit's finding WERE -- read as production stress results. The arm FAILETH on the old tree by construction (an unresolved/absent name), and its NEGATIVE clause asserteth the category is NOT named for the production runtime the campaign doth not measure",
-   "my_status": "OPEN",
+   "my_red_case": "MEASURED, AND STATED RATHER THAN GLOSSED: A PRE-REPAIR BEHAVIOURAL RED WAS NOT CONSTRUCTIBLE, and the reason is a COMPILE-TIME absence -- `StressCampaign` had no owner parameter at all, so no expression in the language could ask these clauses and an arm asserting them would have failed the whole target to COMPILE (a target that cannot compile presenteth itself as \"no failures\", round 471's law). THE SEAM LANDED FIRST, and the arm's judging power is proven by a SEPARATE NEGATIVE CASE -- the real-owner read removed -- WHICH FAILED ON CLAUSE 1'S OWN NAME: `a REAL live slot must be reported against the owner that holdeth it: []`, 15 tests completed, 1 failed, GRADLE_RC=1. AND W14 WAS VERIFIED **PRESENT** IN THAT FILTERED RUN, so the count could not be a lie (a filter's count is not the filtered arm's verdict unless the arm is shown to be in it).",
+   "my_status": "PARTIAL",
    "notes": "ROUND 272 -- THE iOS LANE'S FIRST MEASUREMENT AFTER THE XCODE LICENCE WAS ACCEPTED, AND IT IS RED, WITH THIS FINDING BEHIND IT. Full suite: `ReadinessT72Tests.testW10AFailedSeedIsRecordedAndReproducible` FAILS ('the replay must be EXACT': the first failing inbox complaint nameth msg_id 268 entered 4 times in one run and msg_id 282 entered 8 times in the next). The SAME SUITE IN ISOLATION PASSES (13 tests / 0 failures). BOTH runs of that arm are in ONE PROCESS with ONE SEED and the campaign's generator is a seeded, toolchain-independent LCG (`StressCampaign.swift:124`) -- so a new runtime cannot make the two differ, and the pair of numbers can only mean ONE THING: SOME EARLIER TEST LEAVETH PROCESS-GLOBAL STATE THAT THE CAMPAIGN READS. THE DEFECT IS LATENT IN THE CODE; the new toolchain's TEST ORDER exposed it. It belongeth to THIS finding because a campaign whose reproducibility dependeth on what ran before it in the process maketh its own replay hint (`seed=.. cycles=.. first_failure=..`) honest in isolation and MISLEADING in a suite run. Measured and filed: `round272-iOS-BASELINE-RED.txt` (sha256 d91c2bc37a822b12b7244332521018dc78d0654daad1d487854bddb34ea4979a). NO EDIT WAS MADE: which global state is shared must be READ before a line changeth, and this round had no budget to read the campaign's collaborators. THE MECHANISM IS **NOT IDENTIFIED** AND THE RECORD SAYETH SO: the symptom's site IS read -- `run()` selecteth the named duplicate by `inbox.first(where:)`, i.e. by DICTIONARY ITERATION ORDER, whose per-process hash seed is the SAME for both runs of the arm -- so the difference cannot come from that route alone, and WHERE the suite reacheth the campaign is not yet shown. The next round's instrument is named in the filed note (print both lists and the census quantities IN THE FULL-SUITE CONTEXT and compare with isolation: the first quantity that differs localiseth the pollution). Recorded this way ON PURPOSE: a mechanism invented to close a file is the species this programme corrected in its own record at round 270. ROUND 273: THE PROBE RAN IN THE FULL-SUITE CONTEXT AND NARROWED THE DEFECT TO THE **MESSAGE**. Every measured quantity is IDENTICAL in the two runs (inboxRows 4096, deliveryAdvances 2701, refusals 6, census 2001, leases 0) -- the trajectory is FULLY REPRODUCIBLE -- and what differeth is only WHICH offending entry the complaint nameth (msg_id 52 entered 4 times / msg_id 721 entered 7 times), because `run()` chooseth it by `inbox.first(where:)`, i.e. by DICTIONARY ITERATION ORDER. SO THIS IS A **WITNESS/REPORTING** DEFECT AND NOT A BEHAVIOURAL ONE: the seed replayeth the campaign exactly; only the REPLAY HINT is unstable, and the arm's law ('the replay must be EXACT') therefore juddeth a hash table's order rather than the campaign. THE REPAIR, named: canonise the reported instance (the SMALLEST offending key, and the analogous choice for the retry cap), so the hint is stable whatever order the table hath -- and the arm then witnesseth the campaign's determinism, which the probe hath NOW MEASURED to be real. Filed in `round272-iOS-BASELINE-RED.txt` (sha256 b138f44a891ca269564ac5d41fa8afdd73a3154235859d191eed06bd07ba6d22). The probe was removed from the tree; nothing else was touched. ROUND 274 (the repair): the witness is landed -- the reported instance is CANONICAL (smallest offending key), so the replay hint is a function of the campaign and not of a hash table's order; the iOS lane is GREEN again (rc 0, 0 errors) and no other arm moved. THE FINDING REMAINETH OPEN: its central charge -- that the campaign 'measures a separate resource model' rather than the real transport, timers, sessions and SQLite -- is untouched, and this repair addressed only the WITNESS. A DISCREPANCY I RECORDED AT ROUND 274 WAS **MINE** AND IS CORRECTED AT ROUND 275: the '1148' was read from an INTERMEDIATE XCTest summary line, and the per-suite totals are IDENTICAL in both logs (1233 -> 1233, with zero suites changed and eighty suites in each). See `round275-COUNT-CORRECTION.txt` (sha256 0a45d2f85b8621e85a712efc0ecb27af8830c12efe1e26b0d2b0209a4e5e35e3). THE SPECIES IS THIS PROGRAMME'S OWN, TWINNED: 'rc read from tail instead of the command' hath a brother -- A COUNT READ FROM THE WRONG LINE.",
-   "pending_proof": [],
+   "pending_proof": [
+    "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
+    "THIS IS A SLICE, NOT THE FINDING. Steps 2, 4, 5 and 6 are NOT landed: they need a stress driver over the repaired integration runtime, real OS-facade fault injection, 10,000 real lifecycle cycles over a drained runtime, and a real release/capacity/retry-guard mutant. ONE INVARIANT NOW READETH ONE REAL OWNER -- that REDUCES the charge, it doth not close it.",
+    "THE OTHER SIX INVARIANTS STILL READ THE MODEL'S OWN INTEGERS (`no_leaked_leases`, `no_leaked_timers`, `no_duplicate_inbox`, `no_duplicate_delivery`, `no_uncaught_malformed`, `bounded_census`). `owners` asketh ONELY about session slots; the seam carrieth no other resource yet.",
+    "THE CARD'S STEP 6 IS STILL NOT SATISFIED AND IS NOT CLAIMED: a mutation confined to `StressCampaign`'s local bookkeeping remaineth the onely mutation the campaign lane carrieth (measured: all 12 T72 mutants touch `stress.py` / `StressCampaign.kt` / `StressCampaign.swift`, per `ci/mutations.py`)."
+   ],
    "proof": "All three implementations maintain standalone integer leases/timers/sessions and dictionaries. shutdown assigns zero; disk-full/corruption/malformed schedules increment local refusal counters, and slow ATT decrements a counter. No campaign calls BleTransport, SessionManager or the durable runtime. The census bound grows with cycles/4. Existing T72 Python cases passed within the executed readiness suite, illustrating the evidence boundary.",
    "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
    "remediation_steps": [
@@ -10732,7 +10750,8 @@
    "title": "The production stress campaign measures a separate resource model",
    "wave": "8",
    "pending_work": [
-    "ROUND 276 (GS-STRESS-001 STEP 1 LANDS: THE CAMPAIGN CARRIETH A **NAMED RESOURCE-MODEL CATEGORY** -- AND THE PLACEMENT ERROR IS RECORDED). (1) THE CARD'S OWN WORDS FOR STEP 1: 'Keep the current class under an explicitly named resource-model test category. Correct T72 evidence to distinguish model invariants from production fault/stress.' AND ITS STEP 6 SAYETH WHY: 'a mutation confined to StressCampaign's LOCAL bookkeeping' -- i.e. THE CLASS MEASURES ITS OWN MODEL, NOT THE RUNTIME. (2) WHAT LANDED: a TOP-LEVEL `RESOURCE_MODEL_CATEGORY = \"resource-model\"` IN `io.godstone.mesh.stress`, with a docstring that stateth the distinction IN THE CARD'S OWN TERMS (the counters describe ITS OWN local bookkeeping, so a result from here is evidence about THE MODEL'S INVARIANTS and never about a real device, radio or store); AND AN ARM IN THE T72 COURT -- `test_w00_the_campaign_is_a_named_resource_model` -- WHICH ASSERTETH THE NAME **AND** ASSERTETH IT IS NOT CALLED 'production'. A NAME THAT A COURT ASSERTETH CANNOT DRIFT AWAY FROM THE THING IT NAMETH. (3) ACCEPTANCE: **android :mesh 1193 tests, 0 failures, FORCED (`--rerun-tasks`)** -- the force being round 263's own rule, written after a cached build hid a missing import for two rounds. (4) AND ONE PLACEMENT ERROR, NAMED BY THE COMPILER RATHER THAN FOUND BY LUCK: THE CONSTANT WAS FIRST PUT IN THE WRONG `companion object` -- THE FILE CARRIETH SEVERAL CLASSES AND THE FIRST `companion object` BELONGETH TO `FaultSchedule` -- so `StressCampaign.CATEGORY` WAS UNRESOLVED IN TWO ARMS. It was corrected to a TOP-LEVEL CONSTANT IN THE SAME PACKAGE, WITH THE REASON WRITTEN WHERE IT LIVETH. A FILE WITH SEVERAL CLASSES IS A FILE WHERE A `companion object` ANCHOR IS NOT AN ANCHOR. (5) WHAT REMAINETH OF GS-STRESS-001, FIVE STEPS NAMED: the stress driver over GS-INTEGRATION-001's repaired runtime with SEEDS CHOOSING ACTUAL OS-FACADE EVENTS (2); the resource census READ FROM THE OWNERS THAT ALLOCATE (3); fault injection AT THE ACTUAL STORE CALLS, THE REAL DECODE INGRESS AND THE OS SEND FACADE (4); AT LEAST 10,000 LIFE-CYCLE CYCLES WITH A POST-QUIESCE CENSUS (5); and THE MUTATION PROOF -- mutate a real guard, compile the mutant, and show this lane detecteth it (6). STEPS 2-6 ALL DEPEND ON GS-INTEGRATION-001, WHICH IS OPEN -- so THE FINDING'S REMAINING WORK IS BLOCKED BY IT, exactly as GS-LAB-001's step 3 is blocked by GS-RUNTIME-001, and that blocker is now recorded. (6) GS-STRESS-001 STAYETH **OPEN** with step 1 landed and steps 2-6 named with their blocker."
+    "ROUND 276 (GS-STRESS-001 STEP 1 LANDS: THE CAMPAIGN CARRIETH A **NAMED RESOURCE-MODEL CATEGORY** -- AND THE PLACEMENT ERROR IS RECORDED). (1) THE CARD'S OWN WORDS FOR STEP 1: 'Keep the current class under an explicitly named resource-model test category. Correct T72 evidence to distinguish model invariants from production fault/stress.' AND ITS STEP 6 SAYETH WHY: 'a mutation confined to StressCampaign's LOCAL bookkeeping' -- i.e. THE CLASS MEASURES ITS OWN MODEL, NOT THE RUNTIME. (2) WHAT LANDED: a TOP-LEVEL `RESOURCE_MODEL_CATEGORY = \"resource-model\"` IN `io.godstone.mesh.stress`, with a docstring that stateth the distinction IN THE CARD'S OWN TERMS (the counters describe ITS OWN local bookkeeping, so a result from here is evidence about THE MODEL'S INVARIANTS and never about a real device, radio or store); AND AN ARM IN THE T72 COURT -- `test_w00_the_campaign_is_a_named_resource_model` -- WHICH ASSERTETH THE NAME **AND** ASSERTETH IT IS NOT CALLED 'production'. A NAME THAT A COURT ASSERTETH CANNOT DRIFT AWAY FROM THE THING IT NAMETH. (3) ACCEPTANCE: **android :mesh 1193 tests, 0 failures, FORCED (`--rerun-tasks`)** -- the force being round 263's own rule, written after a cached build hid a missing import for two rounds. (4) AND ONE PLACEMENT ERROR, NAMED BY THE COMPILER RATHER THAN FOUND BY LUCK: THE CONSTANT WAS FIRST PUT IN THE WRONG `companion object` -- THE FILE CARRIETH SEVERAL CLASSES AND THE FIRST `companion object` BELONGETH TO `FaultSchedule` -- so `StressCampaign.CATEGORY` WAS UNRESOLVED IN TWO ARMS. It was corrected to a TOP-LEVEL CONSTANT IN THE SAME PACKAGE, WITH THE REASON WRITTEN WHERE IT LIVETH. A FILE WITH SEVERAL CLASSES IS A FILE WHERE A `companion object` ANCHOR IS NOT AN ANCHOR. (5) WHAT REMAINETH OF GS-STRESS-001, FIVE STEPS NAMED: the stress driver over GS-INTEGRATION-001's repaired runtime with SEEDS CHOOSING ACTUAL OS-FACADE EVENTS (2); the resource census READ FROM THE OWNERS THAT ALLOCATE (3); fault injection AT THE ACTUAL STORE CALLS, THE REAL DECODE INGRESS AND THE OS SEND FACADE (4); AT LEAST 10,000 LIFE-CYCLE CYCLES WITH A POST-QUIESCE CENSUS (5); and THE MUTATION PROOF -- mutate a real guard, compile the mutant, and show this lane detecteth it (6). STEPS 2-6 ALL DEPEND ON GS-INTEGRATION-001, WHICH IS OPEN -- so THE FINDING'S REMAINING WORK IS BLOCKED BY IT, exactly as GS-LAB-001's step 3 is blocked by GS-RUNTIME-001, and that blocker is now recorded. (6) GS-STRESS-001 STAYETH **OPEN** with step 1 landed and steps 2-6 named with their blocker.",
+    "ROUND 521 (GS-STRESS-001 STEP 3'S FIRST SLICE LANDS -- ONE INVARIANT NOW READETH A REAL OWNER -- AND THE RECORD'S BLOCKER CLAIM IS CORRECTED). (1) WHAT WAS MEASURED: the model's `no_leaked_sessions` clause read an integer only the campaign could move, and `shutdown()` zeroed it unconditionally -- SO NO MUTATION OF THE CAMPAIGN COULD EVER FALSIFY IT. A MODEL THAT AGREETH WITH ITSELF IS NOT EVIDENCE ABOUT A RUNTIME, which is the card's own charge and the reason its step 6 forbiddeth a mutation confined to local bookkeeping. (2) THE SEAM: `ResourceCensusSource` + an `owners` list, EMPTY BY DEFAULT, so the campaign remaineth the model it was; where an owner IS given, the invariant is asked OF IT, through ITS OWN hook, AND THE FAILURE NAMETH IT. (3) THE ARM HOLDS A REAL SLOT, not a stub: a real `SessionManager` driv'n through its own handshake seam (the T08 idiom), with a SECOND real manager -- never handshaken, its zero MEASURED not assumed -- as the DISCRIMINATOR so clause 1 cannot be a clause that fireth for anything. (4) A PRE-REPAIR RED WAS NOT CONSTRUCTIBLE, AND THE REASON IS A COMPILE-TIME ABSENCE rather than a difficulty: `StressCampaign` had no owner parameter, so no expression in the language could ask the question. THE LAW THIS ROUND PAID FOR, NOW MEASURED TWICE (here and in GS-UX-001): WHEN THE REMAINING WORK OF AN \"INSTRUMENT EXISTETH, NO PATH REACHETH IT\" FINDING IS A COMPILE-TIME ABSENCE, AN HONEST ROUND SAYS SO, LANDS THE DOOR, AND PROVES THE ARM JUDGES BY ITS NEGATIVE CASE -- IT DOTH NOT INVENT A RED IT COULD NOT RUN. (5) AND THE RECORD'S OWN BLOCKER CLAIM IS CORRECTED: the card's pending_work nameth GS-INTEGRATION-001 as OPEN and therefore as the blocker of steps 2-6; MEASURED THIS ROUND, GS-INTEGRATION-001 STANDETH **FIX_SUBMITTED** with `pending_work: []`, so that claim is STALE and is corrected here rather than inherited. The genuine remaining prerequisite is different and is named: a stress driver over the repaired runtime, and the OS-facade fault road. (6) GS-STRESS-001 IS NOW **PARTIAL**, NOT FIX_SUBMITTED, AND THE DISTINCTION IS THE POINT: steps 2, 4, 5 and 6 are NOT landed, the OTHER SIX INVARIANTS STILL READ THE MODEL'S OWN INTEGERS, and the card's step 6 remains unsatisfied (all 12 T72 mutants still touch the campaign's own files). One invariant reading one real owner REDUCES the charge; claiming it CLOSES the charge would be exactly the relabelling this programme exists to refuse."
    ]
   },
   "GS-SUPPLY-001": {
@@ -11069,7 +11088,7 @@
     }
    ],
    "my_red_case": "MEASURED, AND STATED RATHER THAN GLOSSED: A PRE-REPAIR BEHAVIOURAL RED WAS **NOT CONSTRUCTIBLE** for these clauses, and the reason is a COMPILE-TIME fact on this isle, not a difficulty -- `LabRuntime.compose()` nameth no medium and `ComposedNode.store` is a CONCRETE `InMemoryMessageStore`, so before the door existed NO EXPRESSION IN THE LANGUAGE could ask the question, and an arm asserting it would have failed the whole target to COMPILE (and a target that cannot compile presenteth itself as \"no failures\", round 471's law). SO THE DOOR LANDED FIRST AND THE ARM'S JUDGING POWER IS PROVEN BY A SEPARATE NEGATIVE CASE -- the durable road replaced by the in-memory one -- WHICH FAILED ON BOTH JUDGING CLAUSES BY NAME: `LabMeshAppTests.swift:80 XCTAssertTrue failed - applied:handedToRelays(1)` and `:88 failed - the reopened store must carry the intent the lab's journey pinned`, `Executed 4 tests, with 2 failures`, SWIFT_RC=1.",
-   "my_status": "OPEN",
+   "my_status": "PARTIAL",
    "notes": null,
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
@@ -12735,6 +12754,12 @@
    "what_was_wrong": "ROUND 255'S OWN RECORD CLAIMED THE DIRECTION PROBLEM WAS RESOLVED BY TAKING \"the FIRST, 'avoid the construct'\" option -- and it did restore the mandatory control (measured, honestly, with all three instruments agreeing). BUT THE RESOLUTION IT CHOSE WAS TO BUILD THE RELATION FROM A FIXED `BleDirection.INBOUND`, AND THE RECORD DID NOT MEASURE WHAT THAT CHOICE DID TO THE RELATION ITSELF. Round 521 measured it: at an INITIATOR the transport publishes `OUTBOUND` and the capture was built `INBOUND` -- the same address and the same generation, and the wrong direction.",
    "the_correction": "The direction is now taken from THE TRANSPORT'S OWN DRIVER at the sealed round (`centralDriver.getActiveConnection(address) === conn` -> OUTBOUND, else INBOUND), which is the very split the two teardown paths already unpublish with. MEASURED: the census now reporteth `capturedRelation=RelationKey(direction=OUTBOUND, ...)` agreeing with `published=[RelationKey(direction=OUTBOUND, ...)]`.",
    "the_law_PAID_FOR": "WHEN A MANDATORY CONTROL CANNOT RESOLVE AN EXPRESSION, CHANGING THE EXPRESSION UNTIL THE CONTROL IS SATISFIED IS NOT SATISFYING THE CONTROL -- IT IS MOVING THE EVIDENCE. Round 255 traded a true relation for a green control, and the debt was carried silently for 266 rounds until a RED that printed its own census asked the relation what it was."
+  },
+  {
+   "at_round": 521,
+   "what_was_wrong": "GS-STRESS-001's own pending_work entry for an earlier round saith its steps 2-6 \"ALL DEPEND ON GS-INTEGRATION-001, WHICH IS OPEN\".",
+   "the_correction": "MEASURED this round: GS-INTEGRATION-001 standeth **FIX_SUBMITTED** with an empty `pending_work` list, so it is NOT open and cannot be a blocker in the sense claimed. The genuine remaining dependencies are named instead: a stress driver over the repaired runtime (itself gated by the OS-facade instrumentation road) and the Android instrumentation road for real fault injection.",
+   "the_law_PAID_FOR": "A BLOCKER RECORDED ONCE IS A CLAIM, NOT A MEASUREMENT -- and a stale blocker is worse than none, because it summoneth no repair and quieteneth the queue. Blocker entries must be RE-MEASURED when a round consults them, exactly as any other claim in this ledger."
   }
  ],
  "phase_one": {
@@ -12757,43 +12782,68 @@
  },
  "my_logs": [],
  "t78_convergence": {
-  "candidate_sha": "fdd5132f000e7dc76c2d708dd369cedbcef322bf",
-  "written_at_round": 520,
+  "at_round": 521,
+  "candidate_sha_android_isle": "44100c0",
+  "candidate_sha_ios_isle": "9153d40",
+  "audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "document": "docs/remediation/T78_CONVERGENCE.md",
-  "tree": "CLEAN at the time of writing",
-  "ledger": {
-   "FIX_SUBMITTED": 45,
-   "OPEN": 3,
-   "PARTIAL": 6
+  "ledger_at_this_round": {
+   "FIX_SUBMITTED": 46,
+   "OPEN": 0,
+   "PARTIAL": 8,
+   "VERIFIED_FIXED": 0,
+   "OPEN_ZERO_MEANING": "NO FINDING CARRIETH NO LANDED WORK AT ALL. It doth NOT mean the programme is finished: GS-UX-001 and GS-STRESS-001 moved OPEN -> PARTIAL because each carrieth a MEASURED, LANDED SLICE WITH ITS REMAINING LIMBS NAMED. PARTIAL IS NOT FIXED AND IS NOT WRITTEN AS FIXED."
   },
-  "lane": "GodstoneMeshTests 1187 tests, 0 failures; GodstoneCoreTests passed; exit code 0",
-  "scopes_reported_separately": {
-   "scope_A_LIGHT_Archive": "14 findings -- NOT this span's work; nothing in this candidate alters their standing, and none may be treated as verified on the strength of this SHA",
-   "scope_B_Mesh_Oracle": "40 findings -- the five findings named by the human are ALL FIX_SUBMITTED"
+  "scope_A_LIGHT_Archive": {
+   "findings": 14,
+   "standing": "NOT THIS SPAN'S WORK; NOTHING IN THESE CANDIDATES ALTERS THEIR STANDING; NONE MAY BE TREATED AS VERIFIED ON THE STRENGTH OF THESE SHAS."
   },
-  "awaiting_independent_verification": "ALL OF IT -- VERIFIED_FIXED is zero across the programme and no finding in this candidate has been examined by anyone but its author",
-  "depending_on_external_artifacts": "none supplied, none fabricated: a real process restart; device/radio measurements; platform-encryption proofs (GS-INBOX-001's card names them as explicitly tracked child commits, none taken); and the Android counterparts (the Mesh medium landed here is iOS-only)",
-  "stale_closure_evidence": "arms predating this span; CRYPTO-005's original restart arm (claims a restart while reusing its medium); and the old in-memory paths remaining beside the repaired ones",
-  "readiness_flags": "FALSE",
-  "external_gates": "OPEN (five) -- acquisition never closes a gate",
-  "remaining": "PHASE TWO: the six PARTIAL findings, the three remaining OPEN, and the four external artifacts"
+  "scope_B_Mesh_Oracle": {
+   "findings": 40,
+   "the_five_named_by_the_human": "ALL FIX_SUBMITTED, unchanged by this round",
+   "the_three_that_were_OPEN": {
+    "ANDROID-03": "FIX_SUBMITTED (its RED found a SECOND defect: the capture spoke for a relation the transport had never published)",
+    "GS-UX-001": "PARTIAL (the lab reacheth a real durable authority over a caller-named medium)",
+    "GS-STRESS-001": "PARTIAL (one invariant now readeth a REAL SessionManager through its own hook and nameth it)"
+   },
+   "lanes_unfiltered": {
+    "android_44100c0": ":mesh tests=1224 failures=0 errors=0 across 77 classes (the +1 IS the arm written this round)",
+    "ios_9153d40": "LabMeshTests 4/0, GodstoneMeshTests 1187/0, GodstoneCoreTests 82/0, exit 0, 0 compile errors"
+   },
+   "controls": "parity passed=7 failed=0 all invariants hold; symbols 0 unresolved; evidence digests 618/618 PASSED"
+  },
+  "awaiting_independent_verification": "ALL OF IT. VERIFIED_FIXED is zero across the programme and no finding in these candidates has been examined by anyone but its author. The three NEW arms each carrieth a NEGATIVE CASE that was RUN and FAILED ON ITS OWN NAME, which is the onely thing that proveth an arm judgeth.",
+  "depending_on_external_artifacts": [
+   "a real process restart (the arms reopen the store from the same path; NO PROCESS IS TERMINATED)",
+   "device/radio measurements (ANDROID-03 and GS-STRESS-001 included -- both driven on the host)",
+   "platform-encryption proofs (GS-INBOX-001's card nameth them as tracked child commits; NONE IS TAKEN)",
+   "a UI-testing target (GS-UX-001's \"exercise the rendered controls\" clause: no XCUIApplication, no androidTest, on either isle)",
+   "the Android counterparts (the Mesh medium landed is iOS-only; the Android lab UI is a TextView that cannot reach :app)"
+  ],
+  "stale_closure_evidence": [
+   "arms predating this span",
+   "CRYPTO-005's original restart arm (claims a restart while reusing its medium)",
+   "the old in-memory paths beside the repaired ones (ComposedRuntime.sendDirect; the harness LinkFacade; the lab sendDirect)",
+   "publishAuth reacheth no production site -- the T24 card nameth THREE events and TWO travel now",
+   "the round-228 blocker record for ANDROID-03 named ANDROID-01's absent D2 chain; ANDROID-01 is FIX_SUBMITTED and the witness was drivable"
+  ]
  },
  "phase_two": {
-  "status": "NOT STARTED -- the front read and recorded at round 520",
-  "front_read_at_round": 520,
-  "partial_six": {
-   "ANDROID-05": "HIGH -- unified Android lifecycle is unwired, failed startup suppresses retry, and write failure... (the isle this span never measured)",
-   "GS-ARCHIVE-005": "MEDIUM -- archive navigation bypasses selection metadata and persistence helpers",
-   "GS-RUNTIME-001": "HIGH -- sync and relay ACK pumps are not connected to the live transport runtime (a WIRING finding, the species of GS-INTEGRATION-001's owners)",
-   "GS-SOS-001": "HIGH -- missing signing authority still queues and offers an unauthenticated SOS (a FAIL-CLOSED finding, the doctrine this span repaired into load and the wipe)",
-   "GS-STORE-002": "HIGH -- iOS private stores still use ordinary SQLite without a store DEK (inside the very store this span just learned)",
-   "GS-STORE-004": "HIGH -- receipt-relative retention is not stored or executed by the real store"
-  },
-  "open_three": {
-   "ANDROID-03": "HIGH -- T24 trusted publication is unused; the real consumer still receives lossy MAC identities",
-   "GS-STRESS-001": "HIGH -- the production stress campaign measures a separate resource model (A FINDING ABOUT A MEASUREMENT THAT MEASURES THE WRONG SUBJECT -- the species this span documented six times in its own work)",
-   "GS-UX-001": "HIGH -- identity, messaging and SOS journeys stop at disconnected models and static text"
-  },
-  "suggested_order": "1. GS-STORE-002 and GS-STORE-004 (inside the store whose every description, observer and transaction this span has read); 2. GS-RUNTIME-001 and GS-SOS-001 (wiring and fail-closed, the two shapes this span repaired four times); 3. ANDROID-05 and ANDROID-03 (the other isle, read but never measured); 4. GS-STRESS-001 (a measurement finding); 5. GS-ARCHIVE-005 and GS-UX-001."
- }
+  "at_round": 521,
+  "PARTIAL_eight": [
+   "ANDROID-05",
+   "GS-ARCHIVE-005",
+   "GS-RUNTIME-001",
+   "GS-SOS-001",
+   "GS-STORE-002",
+   "GS-STORE-004",
+   "GS-UX-001",
+   "GS-STRESS-001"
+  ],
+  "OPEN": [],
+  "note": "NO FINDING IS OPEN. NONE IS VERIFIED_FIXED. THE TWO NEWLY PARTIAL CARRIETH A SLICE, NOT A FIX.",
+  "readiness_flags": "FALSE",
+  "external_gates": "FIVE, OPEN. ACQUISITION NEVER CLOSES A GATE."
+ },
+ "my_logs_note_at_round_521": "ROUND 521 ADDED SEVEN IMMUTABLE LOGS ACROSS THREE FINDINGS, EVERY PRIOR FAILURE KEPT SEPARATE: ANDROID-03 (a re-captured clean RED, a negative case, the full lane, and the round record); GS-UX-001 (the full lane, the corrected negative case, and a TRANSCRIPT of a run whose log I overwrote); GS-STRESS-001 (the negative case and the full lane)."
 }
