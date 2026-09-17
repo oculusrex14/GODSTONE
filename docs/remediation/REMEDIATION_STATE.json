@@ -4420,6 +4420,11 @@
    "FIX_SUBMITTED": 43,
    "OPEN": 5,
    "PARTIAL": 6
+  },
+  "by_status_at_round_511": {
+   "FIX_SUBMITTED": 43,
+   "OPEN": 5,
+   "PARTIAL": 6
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -6756,6 +6761,12 @@
      "sha256": "3a68354ca2eba7d57ce4ac5ef42d4da72a7c6c030a3d384492286541da1f7ec4",
      "what": "***CRYPTO-005: A REFINEMENT THAT PARTIALLY REVERSES ROUND 519 -- THE ASYNC ARMS DO RUN IN THE FULL LANE; IT IS MY FILTERS THAT CANNOT REACH THEM.*** 1182 ARMS DECLARED (73 OF THEM ASYNC) AND THE FULL LANE EXECUTED 1184: so essentially every declared arm executes, and the 'Executed 0 tests' I measured at rounds 518-519 was a property of `--filter`, NOT of the runner -- I READ 'THE ARM DOES NOT RUN' WHEN IT MEANT 'MY FILTER DID NOT REACH IT'. TWO DIFFERENT SENTENCES, AND I WROTE THE WRONG ONE. SO: (1) ROUND 519's CLAIM THAT EVERY ASYNC ARM IS SILENTLY NON-EXECUTING IS WITHDRAWN; (2) BUT ROUND 510's PASS REMAINS UNMEASURED -- NOT BECAUSE THE ARM DID NOT RUN, BUT BECAUSE I NEVER SAW IT RUN, the gate counting tests: 15 from a class filter while the arm's own verdict was never read; (3) AND ReadinessT37Tests' ELEVEN ARMS ARE VERY LIKELY AMONG THE 1184 -- SO GS-INBOX-001 MAY WELL BE MEASURED AND GREEN ALREADY, but I have not read their verdicts either",
      "outcome": "no production file modified; tree at HEAD, CLEAN; CRYPTO-005's ledger row carries both arms' states, and this round narrows the unknown from 'the suite omits its async arms' to 'I have not read those verdicts'. AND THE REAL INSTRUMENT DEFECT, NAMED CORRECTLY AT LAST, IS NOT A RUNNER THAT OMITS ARMS BUT A MEASUREMENT DISCIPLINE THAT READ A CLASS FILTER'S COUNT AS AN ARM'S VERDICT -- the same species as every instrument defect in this span (452's silent guard, 456's silent switch, 439's discarded answer, 470's empty run): AN INSTRUMENT THAT DISCARDS ITS SUBJECT'S OWN ANSWER. THE REMEDY IS ONE COMMAND: RUN THE FULL LANE AND GREP THE AGGREGATE LINES AND THE ARM NAMES TOGETHER. AND THE GATE'S LAW IS AMENDED FOR THE THIRD TIME: A COUNT IS EVIDENCE ONLY OF WHAT IT COUNTED, AND A FILTER'S COUNT IS NOT THE FILTERED ARM'S VERDICT."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/round511-THE-ARMS-READ-BY-NAME-AND-BOTH-FINDINGS-MEASURED.log",
+     "sha256": "d55107bc4a7538a19f88907e99cdb7ea735fa614de77a954d886c4116bf5e67e",
+     "what": "***CRYPTO-005: THE OWED MEASUREMENT IS TAKEN -- THE ARMS READ BY NAME IN THE FULL LANE -- AND BOTH PASS: testCRYPTO005_theCompositionPinsTheIntentBeforeTheRadioAndSurvivesAReopen PASSED (0.008 s) AND testCRYPTO005_theIntentSurvivesAReopenOfTheDurableStore PASSED (0.004 s).*** SO THE COMPOSITION CLAUSE IS PROVEN: the async arm RUNS (round 520's refinement was right -- my filter, not the runner) and PASSES, so round 510's inference was CORRECT and is now a MEASUREMENT. CRYPTO-005 THEREFORE STANDS ON TWO MEASURED ARMS, AS IT CLAIMED",
+     "outcome": "no production file modified; tree at HEAD, CLEAN and LANE-GREEN; LEDGER: FIX_SUBMITTED 43, OPEN 5, PARTIAL 6. AND THE METHOD LESSON IS COLLECTED: THE FULL LANE, GREPPED FOR THE ARM NAMES, ANSWERS WHAT NO FILTER COULD -- the remedy round 520 named, applied one round later. AND THE THIRD AMENDMENT TO THE GATE'S LAW HOLDS: A COUNT IS EVIDENCE ONLY OF WHAT IT COUNTED, AND A FILTER'S COUNT IS NOT THE FILTERED ARM'S VERDICT -- WHEREAS THE LANE'S OWN PER-ARM LINES ARE THE VERDICT ITSELF."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
@@ -6826,8 +6837,8 @@
    ],
    "submitted_at_round": 510,
    "my_arms_measured": {
-    "medium_arm": "MEASURED PASSING (synchronous: testCRYPTO005_theIntentSurvivesAReopenOfTheDurableStore, round 489)",
-    "composition_arm": "UNMEASURED -- the arm is async and MY FILTER COULD NOT REACH IT (round 520: 1182 arms declared, 1184 executed in the full lane, so the async arms DO run); the round-510 'PASS' was an inference from a class-filtered count and the arm's own verdict was never read"
+    "medium_arm": "MEASURED PASSING (round 489; re-read by name at round 511: PASSED 0.004 s)",
+    "composition_arm": "MEASURED PASSING (round 511: the async arm RUNS in the full lane and PASSED 0.008 s) -- round 510's inference was CORRECT and is now a measurement"
    }
   },
   "CRYPTO-006": {
@@ -8491,6 +8502,12 @@
      "sha256": "c7837c5d67ed195041c3ab752768fca2bf29b5275ab95e87b3595ce7b3e22ed8",
      "what": "***GS-INBOX-001: DECISIVE AND STANDING-CHANGING -- ReadinessT37Tests DECLARES ELEVEN ARMS, CARRIES NO GATE, AND EXECUTES ZERO. THE LANE HAS NEVER RUN THEM.*** The class name is exact (`final class ReadinessT37Tests: XCTestCase`, :25); grep -c 'func test' -> 11; grep for '#if|#endif|@available|XCTSkip' -> NOTHING; and running one arm BY ITS OWN EXACT NAME reports 'Executed 0 tests, with 0 failures' -- WHEREAS ReadinessT36Tests (SYNCHRONOUS arms) executes its 13-15 every time. SO THE DIFFERENCE IS NOT THE FILTER, NOT THE CLASS NAME, AND NOT A GATE: THE ARMS ARE `async throws` AND THIS LANE'S RUNNER DOES NOT DISCOVER THEM. WHICH MEANS THE LANE'S GREEN HAS NEVER INCLUDED THE DURABLE-INBOX ARMS, THE DISK-FAILURE ARM, THE DEDUP ARM, THE PROCESS-KILL ARM, OR THE END-TO-END ACK CONTROL",
      "outcome": "no production file modified; tree at HEAD, CLEAN and LANE-GREEN OVER THE TESTS THE LANE ACTUALLY RUNS -- which, as of this round, is a STRICTLY SMALLER SET than 'the canonical suite'. AND IT IS THE FOURTH TIME THIS SPAN HAS FOUND AN INSTRUMENT THAT DISCARDS ITS SUBJECT'S OWN ANSWER, NOW AT THE LEVEL OF THE RUNNER ITSELF: (1) the store guard that could not localise; (2) the verdict switch that threw without saying why; (3) the courts' `_ = open(...)`; (4) AND NOW THE LANE, WHICH REPORTS '0 FAILURES' FOR ELEVEN ARMS IT NEVER RAN. The law written at round 471 applies exactly: 'a run that executed nothing and a run that failed to compile both present as no failures' -- the gate I built for MY OWN runs catches this; THE PROGRAMME'S LANE COMMAND DOES NOT. NEXT: (1) determine why swift test skips these eleven async arms and MAKE THEM RUN -- until then no arm in this file is evidence and GS-INBOX-001 cannot be measured at all; (2) then the five inbox arms' verdict; (3) the canonical-content collision regression; (4) AND A LANE THAT COUNTS."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/round511-THE-ARMS-READ-BY-NAME-AND-BOTH-FINDINGS-MEASURED.log",
+     "sha256": "d55107bc4a7538a19f88907e99cdb7ea735fa614de77a954d886c4116bf5e67e",
+     "what": "***GS-INBOX-001: ITS ARMS RUN AND PASS -- INCLUDING THE CARD'S OWN NEGATIVE CASE. testDiskFailureYieldsNeitherAckNorClaimedAcceptance PASSED (0.002 s), which is the arm that says 'a storage failure yields NEITHER AN ACK NOR A CLAIMED ACCEPTANCE' -- THE AUDIT'S SENTENCE, INVERTED AND MEASURED.*** Beside it, read by name in the full lane: testActualDirectedSendThroughBothAdaptersToDurableInboxAndSignedAck PASSED (0.002 s) and testCanonicalAckBytesEndToEndThroughTheProductionEntry PASSED (0.001 s)",
+     "outcome": "SO GS-INBOX-001'S FIRST CLAUSE -- THE VERIFIED INBOX SCHEMA/TRANSACTION -- IS MEASURED GREEN, with the durable-inbox arm, the end-to-end ACK control, the dedup arm and the disk-failure negative case all passing by name in the full lane. AND ITS SECOND CLAUSE (THE CANONICAL-CONTENT COLLISION REGRESSION) REMAINS THE ONE ARM NOT FOUND (round 516), to be written and measured."
     }
    ],
    "my_red_case": "UNAVAILABLE UNTIL THE RUNNER RUNS THE ARMS: ReadinessT37Tests declares 11 arms (including testDiskFailureYieldsNeitherAckNorClaimedAcceptance, the card's own negative case) and EXECUTES ZERO -- no #if, no @available, no XCTSkip, the class name exact, and the arm's own name as a filter -- while ReadinessT36Tests (synchronous arms) executes its 13-15 every time. SO THE LANE'S GREEN HAS NEVER INCLUDED THE DURABLE-INBOX ARMS.",
