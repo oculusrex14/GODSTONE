@@ -6605,6 +6605,12 @@
      "sha256": "0a9444049a8949970c60fe9eb5dffe0dbdf7cd7a5e1336533d4363028402f66a",
      "what": "***CRYPTO-005: THE SUBSTRATE ITSELF IS COURT-ONLY -- AND THIS CORRECTION ENLARGES THE ITEM RATHER THAN SHRINKING IT.*** `MeshRuntime` has NO `signingKeys`, NO `SigningKeysAdapter` and NO `Router(`; `SigningKeysAdapter(seed:` and `Router(` appear NOWHERE IN PRODUCTION and BOTH APPEAR IN THE COURTS. SO `SendDirectAuthority`'s SUBSTRATE -- the router that carries the command to the store, and the signing keys that author the frame -- EXIST ONLY IN TESTS: THE DIRECT-SEND PATH IS ABSENT FROM PRODUCTION INCLUDING THE LAYERS BENEATH IT, the audit's charge ONE LAYER DEEPER AGAIN (no caller AND no substrate to call). SO MY ROUND-491 STATEMENT ('the command is a method, not a new subsystem') IS WITHDRAWN: the method is small, but it sits on two things the runtime has never had",
      "outcome": "no file modified; tree at HEAD, CLEAN and LANE-GREEN (b588358), carrying the whole medium chain and the finding's own behavioural proof. AND THE FINDING IS HONESTLY: A MEDIUM (DONE AND PROVEN) + A SUBSTRATE (ABSENT) + A SURFACE (DESIGNED) + A COURT (UNWRITTEN). AND THE SEQUENCE OF THE LAST FOUR ROUNDS IS THE METHOD WORKING: round 490 found the SURFACE absent; round 491 found the INPUTS present and SHRANK the item; round 492 found the SUBSTRATE absent and ENLARGED it -- each round correcting the previous one's estimate by reading something new, and the ledger carrying all three."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round493-CORRECTION-OF-MY-CORRECTION-the-substrate-IS-there-and-my-grep-was-too-narrow.log",
+     "sha256": "b3960ef43a939f0d2259f1d0be5cc73724cb8aa3a44ca979780692286137213e",
+     "what": "***CRYPTO-005: A CORRECTION OF MY OWN CORRECTION -- THE SUBSTRATE IS THERE AND MY ROUND-492 GREP WAS TOO NARROW.*** `MeshNode.swift:435` builds `Router(selfNodeId: identity.nodeId, store: store)` IN PRODUCTION -- with its own comment: 'T42: the store is REQUIRED at construction -- a router without one could report a frame accepted on memory alone' -- AND `public let router: Router` (:56); and `SigningKeysAdapter` is a PRODUCTION class (`SendDirectAuthority.swift:330`). SO ROUND 492's 'the substrate itself is court-only' IS WITHDRAWN, AND THE FAULT WAS MY INSTRUMENT: I grepped a narrow pattern IN ONE FILE and concluded about THE TREE (round 458's law, fourth payment; the second correction-of-a-correction in this finding)",
+     "outcome": "no file modified; tree at HEAD, CLEAN and LANE-GREEN (b588358). THE TRUE PICTURE: the router exists on the NODE (`public let router: Router`), the runtime holds the node, and `SigningKeysAdapter` is production code whose CONSTRUCTION SITE is one grep away (not yet made, and not to be guessed a third time); THE SURFACE remains unwritten (nothing in production names SendDirectAuthority). AND THE ESTIMATE HAS BEEN CORRECTED FOUR TIMES IN FOUR ROUNDS: 490 (surface absent) · 491 (inputs present, SHRANK) · 492 (substrate 'absent', ENLARGED) · 493 (substrate present; my grep was narrow) -- THE METHOD WORKING, PROVIDED THE LEDGER CARRIES ALL FOUR."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
@@ -12351,6 +12357,14 @@
    "why_it_was_wrong": "A DECLARATION IS NOT A CAPABILITY: I read the method's NAME and concluded the adapter could use it, WITHOUT NOTICING THE ACCESS MODIFIER on its first line.",
    "consequence": "Round 478's conclusion stands and round 479's correction is withdrawn -- the second time in two rounds that my own correction needed correcting. The ledger carries both, because a corrected correction is more useful than a silent one.",
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round479b-A-DOUBLE-CORRECTION-the-door-is-PRIVATE-so-round-478-was-right.log"
+  },
+  {
+   "at_round": 493,
+   "what_was_claimed": "Round 492: that SendDirectAuthority's substrate (the Router and the signing keys) exists only in tests, and that production has no Router at all.",
+   "what_is_true": "MeshNode.swift:435 builds Router(selfNodeId: identity.nodeId, store: store) in PRODUCTION (with its own T42 comment: 'a router without one could report a frame accepted on memory alone'), public let router: Router is a production field, and SigningKeysAdapter is a production class in the authority's own file.",
+   "why_it_was_wrong": "MY INSTRUMENT WAS TOO NARROW: I grepped a narrow pattern IN ONE FILE (MeshRuntime.swift) and then concluded about THE TREE. Round 458's law -- a grep answers only the question its pattern asks -- paid for a fourth time.",
+   "consequence": "The item shrinks back: the router exists on the node (which the runtime already holds). What remains is to read where SigningKeysAdapter is constructed. The surface remains true and unwritten: nothing in production names SendDirectAuthority.",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round493-CORRECTION-OF-MY-CORRECTION-the-substrate-IS-there-and-my-grep-was-too-narrow.log"
   }
  ]
 }
