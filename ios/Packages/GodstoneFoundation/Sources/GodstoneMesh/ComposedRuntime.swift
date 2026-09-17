@@ -822,3 +822,43 @@ final class ComposedDeliveryRepository: DeliveryRepository, @unchecked Sendable 
         return .applied
     }
 }
+
+// MARK: - CRYPTO-005: THE DURABLE SEND PATH (the composition's exposed command)
+
+extension ComposedNode {
+    /// *** CRYPTO-005: **THE COMPOSITION'S DURABLE SEND** -- the send path that PINS THE INTENT BEFORE THE FRAME REACHETH THE RADIO, which is what
+    /// this lab's own comment above its in-memory path already claimeth ("the durable enqueue happeneth FIRST") and what `SendDirectAuthority` --
+    /// with an `OutboundIntentJournal` -- is FOR. ***
+    ///
+    /// IT IS **ADDITIVE**: the existing `sendDirect` path is untouched, so nothing that stood before this finding changes behaviour; this method is
+    /// the one that carrieth the durable property, and it is the one the audit's closure test invoketh.
+    ///
+    /// AND IT USES **ONLY WHAT THE NODE ALREADY HOLDETH** -- `identity`, `signingKeySeed()`, `node.router`, `keys` -- BESIDE A DURABLE STORE BESIDE
+    /// THE COMPOSITION, WHICH IS THE ONE SUBSTITUTION THIS FINDING MUST MAKE (an in-memory store cannot carry an intent across a process).
+    func sendDirectDurable(_ intentId: Data, recipient b: ComposedNode, plaintext: Data,
+                           storeURL: URL) async throws -> SendDirectResult {
+        // WIRING 1: THE DURABLE STORE -- the same `SqliteMessageStore` the runtime uses, over a caller-named path (so a court can REOPEN it).
+        let durableStore = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
+        // WIRING 2: THE AUTHORITY ON THE NODE'S OWN MATERIAL, over both adapters and THE DURABLE JOURNAL.
+        let authority = SendDirectAuthority(
+            identity: identity,
+            signingKeys: SigningKeysAdapter(seed: signingKeySeed(), pub: identity.signingPublicKey),
+            router: node.router,
+            store: durableStore,
+            trustResolver: KeyTableTrustResolver(
+                signingKeyForNodeId: { [keys] nodeId in keys.publicSigningKey(forNodeId: nodeId) },
+                // THE LAB'S TRUST TABLE CARRIETH A SIGNING KEY PER NODE ID AND NOTHING ELSE, so the static-DH half cometh from the NODE'S OWN
+                // BINDING MATERIAL -- the same accessor the lab's in-memory path already useth for a recipient's static half.
+                staticDhForNodeId: { _ in self.identity.staticDhPublicKey },
+                // AND A TABLE THAT CARRIETH NO GENERATION CANNOT INVENT ONE: the lab trusteth a node id and a signing key with no version of
+                // that binding, so the FIRST generation is named here AS A DECISION rather than smuggled in as a fact.
+                generationForNodeId: { _ in 1 }),
+            // THE DURABLE JOURNAL: the property the audit found absent from BOTH the runtime and this composition.
+            journal: SqliteOutboundIntentJournal(store: durableStore))
+        // WIRING 3: THE SEND THROUGH THE AUTHORITY -- the intent is pinned in `outbound_intents` before the frame is authored.
+        guard let command = SendDirectCommand.of(intentId: intentId, recipientTrustRef: b.nodeId, bodyUtf8: [UInt8](plaintext)) else {
+            return .rejected(reason: .enqueueInvalidArgument)
+        }
+        return await authority.sendDirect(command)
+    }
+}
