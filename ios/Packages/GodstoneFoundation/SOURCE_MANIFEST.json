@@ -89,6 +89,7 @@
     "Sources/GodstoneMesh/SosCommand.swift": "aea3d73a0e22a2c0b678fc27e675c53e7860371ad452fcc598d9751d786b405d",
     "Sources/GodstoneMesh/SosFrameValidator.swift": "40da66c6cb8e6321733094655cc56c280e1fbd111fbbccb38eb392ee682c521a",
     "Sources/GodstoneMesh/SqliteDeliveryRepository.swift": "771412c4025c20e4a5f05bed673005374543e00071bb95d82e2f0823dc205225",
+    "Sources/GodstoneMesh/SqliteOutboundIntentJournal.swift": "620d3608532dbfaa07824ab513e0d9fcee8873e20ea0ca152c4a040fb78011ca",
     "Sources/GodstoneMesh/StableInventorySnapshot.swift": "9ef2cb3ab342b47c849ebab4960abfe6cebb4eced4590fa29607ab30a02c043b",
     "Sources/GodstoneMesh/StoreQuota.swift": "fcc5b7757c743fc97508d4433b15ca55a94ac5cc8e4a98d9a7425d030b174788",
     "Sources/GodstoneMesh/StressCampaign.swift": "8102a9c89cf208d49488cddb9da4ed6a13ab93772658da3528e9e1e52f31e434",
