@@ -6360,7 +6360,7 @@
     "DB/key/read/corruption/quota/wipe failures cannot create an untracked new send or report durable success.",
     "A composition test invokes the EXPOSED RUNTIME COMMAND and observes exactly one send."
    ],
-   "evidence_level": "SOURCE_CONFIRMED_NO_PROCESS_RESTART_PROOF",
+   "evidence_level": "SOURCE_CONFIRMED_IN_TREE_BOTH_ISLES_NO_CALLER",
    "final_review": {
     "audit_id": "AUDIT-003",
     "classification": "CARRIED_OPEN_CHANGED_SOURCE_REVIEW_NO_FULL_RETEST",
@@ -6377,9 +6377,15 @@
      "sha256": "63196126a2dc4ba8286e50bee19f76ae6844fc7cc4896ddd7229ba0e6d1a8918",
      "what": "CRYPTO-005: THE CARD READ IN FULL from the audit's authoritative index (FINDINGS.json) -- HIGH, T36, OPEN, SOURCE_CONFIRMED_NO_PROCESS_RESTART_PROOF: the only `OutboundIntentJournal` implementation ON EACH PLATFORM stores rows in a PROCESS-LOCAL MAP, `SendDirectAuthority` HAS NO CALLER in either MeshNode/composition root, the restart test REUSES THE SAME IN-MEMORY journal/store, and the full-call-path test invokes Router.ingest/verifier/ACK by hand with NO ACTUAL TRUSTED TRANSPORT. THE SAME SPECIES AS GS-STORE-006: a seam that EXISTS, whose only implementation is IN-MEMORY, and which NOTHING IN THE RUNTIME CALLS -- the audit's own phrase is 'the additive seam', which its commit boundary forbids treating as completion",
      "outcome": "no file modified, no lane run; tree at HEAD and green by prior measurement. The plan follows the method this span measured: (1) read the TREE rather than the snapshot (the journal's implementations on both isles, SendDirectAuthority's call graph, the composition roots); (2) THE RED FIRST, and it must be the clause's own substance -- write an intent through the runtime, then PROVE the durable medium is reopened from disk, because a test reusing an in-memory object would repeat the very error the audit found; (3) only then the schema/adapter in the runtime's own transaction engine, with typed load outcomes that FAIL CLOSED."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round427-the-tree-confirms-the-audit-on-both-isles.log",
+     "sha256": "2105ebd270c813504b3b59768f388997762ded6d0dc223b439bc1f2af10798e5",
+     "what": "CRYPTO-005: THE TREE CONFIRMS THE AUDIT VERBATIM ON BOTH ISLES WITH LINE NUMBERS -- iOS: `OutboundIntentJournal` (:180) with EXACTLY ONE implementation, `InMemoryOutboundIntentJournal` (:188); Android: the same (:251/:268) -- AND THE CALL GRAPH IS EMPTY: `grep -rln SendDirectAuthority` returns ONE FILE PER ISLE, THE DEFINITION'S OWN FILE, so the authority has NO CALLER anywhere, not in MeshNode and not in either composition root. THE SAME SPECIES AS GS-STORE-006: a contract, one implementation that cannot survive a restart, and nothing in the runtime that uses it",
+     "outcome": "no file modified, no lane run; tree at HEAD and green by prior measurement. THE DIFFERENCE THAT MATTERS IS IN THE CLOSURE CLAUSE, WHICH IS STRICTER HERE: GS-STORE-006's durability could be proved with a journal the isle already had, while CRYPTO-005 requires 'reopen storage in a new process and retry the same intent, observing identical bytes and ID' -- a claim about PERSISTENCE that no in-memory medium can support. THE RED IS DESIGNED AGAINST THE CLAUSE: write an intent through the authority, DISCARD the authority AND the journal, REOPEN the durable medium FROM DISK, and demand the same intent with identical bytes and ID -- today there is nothing to reopen, so the arm's failure IS the finding."
     }
    ],
-   "my_red_case": null,
+   "my_red_case": "Write an intent through the authority; DISCARD the authority AND the journal; REOPEN THE DURABLE MEDIUM FROM DISK; demand the same intent with IDENTICAL BYTES AND ID (the clause's own words). Today there is nothing to reopen -- the only implementation is a process-local map -- so the arm's failure is the finding.",
    "my_status": "OPEN",
    "notes": null,
    "pending_proof": [],
