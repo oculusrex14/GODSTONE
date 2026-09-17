@@ -142,6 +142,14 @@ private struct ArchiveBrowser: View {
 
 private struct ArchiveDocumentReader: View {
     let document: ArchiveDocument
+    /// *** GS-ARCHIVE-005 (round 524): THE DESTINATION PUBLISHETH ITS OWN CHECKED PROVENANCE, AND IT IS THE
+    /// LIBRARY THAT ANSWERETH -- NOT THE SCENE. *** The library was ALREADY handed to this view and DISCARDED (it
+    /// was used onely to build the reader model), while the provenance line was sourced from `scene.openedSource`,
+    /// which THE ROUTE NEVER SETTETH. `ArchiveLibrary` conformeth to `ArchiveReading` and carrieth
+    /// `nonisolated public func sourceMetadata(documentId:)`, so the metadata OF THE DOCUMENT ACTUALLY ON SCREEN is
+    /// one synchronous call away -- and it belongeth to the document this view was constructed FOR, so a NEIGHBOUR'S
+    /// provenance cannot be displayed by construction ("never metadata from a previous selection").
+    private let library: ArchiveLibrary
     @ObservedObject private var scene: ArchiveSceneModel
     @StateObject private var model: ArchiveReaderModel
     @State private var retry = 0
@@ -151,6 +159,7 @@ private struct ArchiveDocumentReader: View {
 
     init(document: ArchiveDocument, library: ArchiveLibrary, scene: ArchiveSceneModel) {
         self.document = document
+        self.library = library
         _scene = ObservedObject(wrappedValue: scene)
         _model = StateObject(wrappedValue: ArchiveReaderModel(library: library))
     }
@@ -184,7 +193,12 @@ private struct ArchiveDocumentReader: View {
     }
 
     @ViewBuilder private func provenanceLine() -> some View {
-        if let source = scene.openedSource, scene.openedDocumentId == document.id {
+        // *** GS-ARCHIVE-005 (round 524): THE LINE IS SOURCED FROM THE DOCUMENT THIS VIEW WAS CONSTRUCTED FOR. ***
+        // IT USED TO BE SOURCED FROM `scene.openedSource`, GUARDED BY `scene.openedDocumentId == document.id` -- and
+        // MEASURED: `.navigationDestination(for: ArchiveDocument.self)` calleth `scene.open(` NOWHERE, so that guard
+        // was NEVER SATISFIED AND THE REQUIRED PROVENANCE LINE RENDERED NOTHING. A guard that cannot be satisfied is
+        // not a provenance line; it is an absence with a condition in front of it.
+        if let source = library.sourceMetadata(documentId: document.id) {
             let tale: String = "source " + source.sourceId + " · revision " + source.revision
                 + " · licence " + source.licence
             Text(tale).font(.subheadline).foregroundStyle(.secondary)

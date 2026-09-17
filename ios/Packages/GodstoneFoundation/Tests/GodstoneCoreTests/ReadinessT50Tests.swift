@@ -698,4 +698,90 @@ final class ReadinessT50Tests: XCTestCase {
                        "and the published identity of the search it returned to")
     }
 
+    // MARK: - GS-ARCHIVE-005: the destination's own provenance
+
+    /// *** GS-ARCHIVE-005 (step 1's SECOND option -- MEASURED at round 524 to be the right one): THE DOCUMENT
+    /// DESTINATION MUST PUBLISH ITS **OWN** CHECKED PROVENANCE. RUN RED BEFORE ITS REPAIR. ***
+    ///
+    /// WHY THE SECOND OPTION AND NOT THE FIRST: the card offereth two. The first -- "route destination selection
+    /// through `scene.open(document:)`" -- would make the destination drive the SCENE's model while the reader
+    /// driveth its OWN, i.e. TWO LOADS OF ONE DOCUMENT. The second -- "replace the destination with a model that
+    /// owns and publishes its own checked metadata" -- is BOTH the smaller change AND the more honest one, because
+    /// the metadata shown must belong to the document ACTUALLY ON SCREEN, and `ArchiveDocumentReader` already
+    /// holdeth an `ArchiveReaderModel` whose `sourceMetadata(documentId:)` is `nonisolated public`
+    /// (`ArchiveReaderModel.swift:47`). IT NEEDETH THE SCENE NOT AT ALL.
+    ///
+    /// WHAT WAS MEASURED BEFORE THIS ARM WAS WRITTEN, so that it is AIMED and not guessed:
+    ///   * `.navigationDestination(for: ArchiveDocument.self)` (`ArchiveView.swift:88`) constructeth
+    ///     `ArchiveDocumentReader(document:library:scene:)` and calleth `scene.open(` **NOWHERE**;
+    ///   * so `openedDocumentId`/`openedSource` are **never set by the route**, and `provenanceLine()`'s guard
+    ///     (`scene.openedDocumentId == document.id`, `:187`) is **never satisfied**;
+    ///   * therefore **THE REQUIRED PROVENANCE LINE RENDERETH NOTHING** -- which is the finding's own charge:
+    ///     "the required document provenance line is absent".
+    ///
+    /// A GUARD THAT CAN NEVER BE SATISFIED IS NOT A PROVENANCE LINE; IT IS AN ABSENCE WITH A CONDITION IN FRONT OF IT.
+    func testW14TheDocumentDestinationPublishethItsOwnCheckedProvenance() throws {
+        // *** THE COMMENTS ARE STRUCK FIRST, AND THIS IS NOT PEDANTRY: the FIRST draft of this arm asserted on the
+        // RAW SOURCE, and IT FAILED ON ITS OWN REPAIR'S COMMENT -- which quoteth the very spelling it forbiddeth. A
+        // CHECK THAT READETH COMMENTS IS NOT A CHECK ON CODE, which is round 261's species exactly (a comment taken
+        // for code), and it was caught the way this programme always catcheth it: BY RUNNING THE THING. ***
+        let view = codeOnly(try repoFile(named: "ios/Godstone/Sources/App/ArchiveView.swift"))
+        XCTAssertTrue(view.contains("sourceMetadata(documentId:"),
+                      "*** THE DOCUMENT DESTINATION MUST PUBLISH ITS OWN CHECKED PROVENANCE: `ArchiveLibrary` "
+                      + "(declared at ArchiveReaderModel.swift:24) carrieth `nonisolated public func "
+                      + "sourceMetadata(documentId:)`, and the destination ALREADY receiveth the library -- it merely "
+                      + "DISCARDED it. MEASURED: the route never selecteth on the scene, so the scene-sourced "
+                      + "provenance line rendereth NOTHING (GS-ARCHIVE-005) ***")
+        XCTAssertFalse(view.contains("scene.openedSource"),
+                       "and the destination must NOT depend on a scene selection the route never setteth -- the "
+                       + "finding's charge is that this line is ABSENT, and a guard nobody can satisfy is how an "
+                       + "absence hid behind a condition")
+    }
+
+    /// The source with its LINE COMMENTS struck -- because a comment is not code. A `://` inside a URL literal is
+    /// kept whole, so a line is never truncated at a scheme by mistake.
+    private func codeOnly(_ source: String) -> String {
+        source.split(separator: "\n", omittingEmptySubsequences: false).map { line -> String in
+            guard let r = line.range(of: "//") else { return String(line) }
+            let before = line[line.startIndex..<r.lowerBound]
+            if before.hasSuffix(":") { return String(line) }
+            return String(before)
+        }.joined(separator: "\n")
+    }
+
+    /// AND THE STRUCTURAL ARM RESTS ON A MEASURED SEMANTIC, NOT ON HOPE: the provenance probe really answereth
+    /// THE DOCUMENT'S OWN METADATA, so the assertion above is not a claim about a method that answereth nil.
+    ///
+    /// AND THE PROBE BELONGETH TO THE **LIBRARY**, NOT THE READER MODEL -- AN ERROR OF MINE, RECORDED BECAUSE IT
+    /// NEARLY BECAME A WRONG REPAIR: this arm was FIRST written as `model.sourceMetadata(...)`, and the COMPILER
+    /// refused it ("value of type 'ArchiveReaderModel' has no member 'sourceMetadata'"). I had READ line 47 and
+    /// assumed its owner, BECAUSE THE FILE IS NAMED `ArchiveReaderModel.swift`. **THE OWNER IS
+    /// `public actor ArchiveLibrary: ArchiveReading`, DECLARED AT LINE 24 OF THAT SAME FILE**, and the reader model
+    /// (declared at line 78) carrieth no such member at all. **A FILE'S NAME IS NOT A TYPE'S NAME, and reading a
+    /// LINE is not reading the ANCHOR THAT OWNS IT.** The destination ALREADY receiveth the library
+    /// (`ArchiveDocumentReader.init(document:library:scene:)`), so the repair needeth it and needed nothing else.
+    func testW15TheLibrariesProvenanceProbeAnswerethTheDocumentsOwnMetadata() async throws {
+        _ = try makeArchive()
+        let (archive, library, _, scene) = composeTrio()
+        defer { archive.close() }
+        await scene.loadDocuments()
+        await seat(scene)
+        guard case .ready = scene.phase else { return XCTFail("the archive must stand ready: \(scene.phase)") }
+        let first = try XCTUnwrap(scene.documents.first, "the archive must carry at least one document")
+
+        // (A) THE SCENE'S SELECTION IS STILL UNSET HERE -- and this arm must NOT manufacture it, because a route
+        // that never setteth it IS the defect.
+        XCTAssertNil(scene.openedSource,
+                     "the scene's selection must still be UNSET: the route never setteth it")
+        let source = try XCTUnwrap(library.sourceMetadata(documentId: first.id),
+                                   "the library's own probe must answer the document's metadata")
+        XCTAssertFalse(source.sourceId.isEmpty, "and the metadata must carry the provenance the line displays")
+
+        // (B) AND IT ANSWERETH ABOUT THE DOCUMENT ASKED ABOUT -- another identity is never answered with this one,
+        // so the line cannot show a NEIGHBOUR'S provenance ("never metadata from a previous selection").
+        let absent = library.sourceMetadata(documentId: first.id &+ 9_999_999)
+        XCTAssertNotEqual(absent?.sourceId, source.sourceId,
+                          "a different document identity must never be answered with this one's provenance")
+    }
+
 }

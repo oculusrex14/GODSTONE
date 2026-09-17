@@ -111,7 +111,7 @@
     "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",
     "Tests/GodstoneCoreTests/OracleViewModelRuntimeTests.swift": "a04c5ac5186c28686c6767e8f3b89bf905bf936d5cb42eebad65bb455b6ddab0",
     "Tests/GodstoneCoreTests/ReadinessT48Tests.swift": "28d5cdac17061f56121755f639b801377d9564ca3a78973813edad37b28acc8d",
-    "Tests/GodstoneCoreTests/ReadinessT50Tests.swift": "f02c241b2b59af3cb8183cb3313b4c37198735d1e449e8058efb4ebf1073232a",
+    "Tests/GodstoneCoreTests/ReadinessT50Tests.swift": "e446952cb2db22247b55ad1db3f1749a7c49e720578e66513c75ea193d34c97b",
     "Tests/GodstoneCoreTests/ReadinessT51Tests.swift": "a8356dae08c4be1e367001805af76a5e398dc8681443162010f778843cf39272",
     "Tests/GodstoneCoreTests/ReadinessT61Tests.swift": "8d69e327da8ac0f9e591549717600d75cb89c5c56757ba745ec7d1950b639c06",
     "Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift": "1a21b6b9f551d5eff1154bb98869b83d73a6928755b1cd297e24662749e097aa",

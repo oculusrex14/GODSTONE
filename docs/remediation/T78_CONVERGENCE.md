@@ -234,6 +234,41 @@ steps 2–5 were landed in earlier rounds; step 6's half (a) is now measured lan
 conditional on a dependency the card itself names — measured, and named as owed-conditional. **The one thing that must
 not be read into this: `VERIFIED_FIXED` is still 0 and may not be written by this span.**
 
+## ROUND 524, PHASE TWO — GS-ARCHIVE-005: A GUARD NOBODY COULD SATISFY
+
+**The finding's own charge, measured and then repaired.** `.navigationDestination(for: ArchiveDocument.self)`
+(`ArchiveView.swift:88`) constructs `ArchiveDocumentReader(document:library:scene:)` and calls `scene.open(` **nowhere** —
+so `openedDocumentId`/`openedSource` are **never set by the route**, `provenanceLine()`'s guard (`:187`) is **never
+satisfied**, and **the required provenance line rendered nothing**: *the card's own words.*
+**A guard that cannot be satisfied is not a provenance line; it is an absence with a condition in front of it.**
+
+**The card offered two options, and the second is measurably right:** routing selection through `scene.open(document:)`
+would make the destination drive the *scene's* model while the reader drives its *own* — **two loads of one document** —
+whereas `ArchiveDocumentReader` **already receives the `ArchiveLibrary` and discarded it**, and `ArchiveLibrary` carries
+`nonisolated public func sourceMetadata(documentId:)`. **The metadata now belongs to the document actually on screen**,
+so a neighbour's provenance cannot be shown **by construction**.
+
+**The RED was taken first and failed on both clauses**, while its **witness passed in the same run** — so the structural
+clause rests on a **measured semantic**, not hope. **The instrument is structural and says so**: the view lives in the
+App target and **no test bundle can import it** (measured: a 5-file allowlist; both bundles link only the packages).
+*This is not the GS-STORE-002 situation, where a behavioural instrument was available and unused — here its absence was
+measured first.* **And the shipping target was verified the way it must be**: `xcodebuild -scheme Godstone-Light …
+build` answered **`** BUILD SUCCEEDED **`**, because **the SwiftPM lane never compiles `Godstone/Sources/App/`.**
+
+**THREE ERRORS OF MINE, EACH CAUGHT BY A DIFFERENT INSTRUMENT:** (a) I wrote `model.sourceMetadata(...)` and **the
+compiler refused it** — the member belongs to `ArchiveLibrary`, and I had inferred its owner **from the file's name**:
+*a file's name is not a type's name, and reading a line is not reading the anchor that owns it*; (b) **my structural
+check was fooled by my own repair's comment**, which quotes the very spelling the check forbids — *a check that reads
+comments is not a check on code* (round 261's species; the check now **strips comments first**); and (c) **I ran
+`git stash` to test a hypothesis the arm's own message had already answered, and stashed the work under verification** —
+restored in the same round, and recorded, *because a habit that suspends work to satisfy curiosity is a habit that will
+one day lose it.*
+
+**NOT CLAIMED:** the `NavigationStack` is **still unbound** (the second option was taken deliberately), step 4's
+persistence and its production `snapshot`/`restore` caller are **untouched**, and **closure test 2 (process recreation)
+is not satisfied**. The finding stays **`PARTIAL`**. Measured: iOS lane `SWIFT_RC=0`, `GodstoneCoreTests` **84/0** (82 →
+84: the +2 are the new arms), `GodstoneMeshTests` 1190/0; parity `--scope repo` 7/0; symbols 0 unresolved; digests PASSED.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
