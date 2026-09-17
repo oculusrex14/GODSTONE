@@ -336,4 +336,45 @@ class SessionManagerTest {
             smB.isReady(peerA),
         )
     }
+
+    /**
+     * CRYPTO-002 STEP 4 ON THIS ISLE: "Arm an IMMUTABLE RELATION-OWNED AGE TIMER at trusted establishment. Idle expiry
+     * must enter the same slot transition; OLD TIMER CALLBACKS CANNOT RETIRE A REPLACEMENT."
+     *
+     * ITS HONEST STATUS: a CONTROL for the machinery landed in the same round (as the iOS isle's timer arms were at
+     * round 352) -- an arm that cannot be red proves the law still holds, not that it was ever broken.
+     */
+    @Test
+    fun crypto002AnAgeTimerIsArmedAtEstablishmentAndItsFiringCannotTouchASuccessor() {
+        val identityA = MeshIdentity.generate()
+        val identityB = MeshIdentity.generate()
+        val smA = SessionManager(identityA, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val smB = SessionManager(identityB, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        var fired: (() -> Unit)? = null
+        var firedAdmission: RelationKey? = null
+        smB.scheduleAgeDeadline = { admission, _, f -> firedAdmission = admission; fired = f }
+        val peerB = identityB.nodeId
+        val peerA = identityA.nodeId
+        val hs1 = smA.initiatorStart(peerB, identityB.nodeHint)!!
+        val hs2 = smB.responderProcessHs1(peerA, identityA.nodeHint, hs1)!!
+        val hs3 = smA.initiatorProcessHs2(peerB, hs2, identityB.nodeHint)!!
+        assertTrue("the handshake completes", smB.responderProcessHs3(peerA, hs3, identityA.nodeHint))
+
+        // THE TIMER MUST EXIST, AND IT MUST HAVE REACHED WHOEVER OWNETH THE RUN LOOP.
+        assertEquals("EXACTLY ONE AGE TIMER, ARMED AT TRUSTED ESTABLISHMENT", 1, smB.armedAgeDeadlinesForTest().size)
+        assertNotNull("and the armed deadline must reach the scheduler that owneth the run loop", fired)
+        assertTrue("the control: nothing has expired yet", smB.isReady(peerA))
+
+        // FIRE IT: it must enter THE SAME SLOT TRANSITION the read path entereth.
+        fired!!.invoke()
+        assertFalse("the fired deadline must retire the session", smB.isReady(peerA))
+        assertEquals("and release the exact slot", 0, smB.slotCountForTest())
+
+        // *** THE OLD-CALLBACK CLAUSE: a LATE callback findeth no such incarnation and retireth NOTHING. This is why
+        // the callback carrieth the EXACT admission rather than a peer. ***
+        val stale = firedAdmission!!
+        assertNull("the incarnation is gone, so the old token matches nothing", smB.slotForTest(peerA))
+        smB.fireAgeDeadline(stale)
+        assertEquals("an OLD callback leaveth the world exactly as it found it", 0, smB.slotCountForTest())
+    }
 }

@@ -241,6 +241,52 @@ class SessionManager internal constructor(
         return lock.withLock { slot.controller?.authenticatedIdentityPub }
     }
 
+    /**
+     * GS-CTRL-002 / CRYPTO-002 STEP 4, MIRRORED FROM THE iOS ISLE: "Arm an IMMUTABLE RELATION-OWNED AGE TIMER at
+     * trusted establishment. Idle expiry must enter the same slot transition; OLD TIMER CALLBACKS CANNOT RETIRE A
+     * REPLACEMENT."
+     *
+     * The deadline is stored PER ADMISSION and IS IMMUTABLE: arming again never extendeth it, because a deadline a
+     * later event could push back would be NO DEADLINE AT ALL.
+     */
+    private val armedAgeDeadlines = HashMap<RelationKey, Long>()
+
+    /** Evidence hook: the armed deadlines. */
+    internal fun armedAgeDeadlinesForTest(): List<Long> = mapLock.withLock { armedAgeDeadlines.values.sorted() }
+
+    /**
+     * The delivery is DELEGATED, not owned: whoever owneth a run loop receiveth the deadline here. INSTALLING A
+     * LISTENER RE-DELIVERETH every already-armed deadline, because a manager may be established BEFORE the owner of
+     * the run loop existeth -- a deadline armed into nothing would be a timer that never fireth.
+     */
+    internal var scheduleAgeDeadline: ((admission: RelationKey, deadlineMono: Long, fire: () -> Unit) -> Unit)? = null
+        set(value) {
+            field = value
+            if (value == null) return
+            val armed = mapLock.withLock { HashMap(armedAgeDeadlines) }
+            for ((admission, deadline) in armed) {
+                value(admission, deadline) { fireAgeDeadline(admission) }
+            }
+        }
+
+    /** Called when a deadline is reached. */
+    internal fun fireAgeDeadline(admission: RelationKey) {
+        // THE EXACT INCARNATION IS THE WHOLE DEFENCE: if no such incarnation standeth, THIS CALLBACK IS THE OLD ONE,
+        // and the audit's clause applieth -- a successor carrieth a DIFFERENT admission and cannot be matched.
+        if (slotFor(admission) == null) return
+        // AND IT ENTERETH THE SAME SLOT TRANSITION the read path entereth: one terminus, one token-bound notice.
+        drop(admission)
+    }
+
+    private fun armAgeTimer(admission: RelationKey, controller: TrustedHandshakeController) {
+        mapLock.withLock {
+            if (armedAgeDeadlines.containsKey(admission)) return      // IMMUTABLE: never extended
+            val deadline = controller.noiseSession.ageDeadlineMono()
+            armedAgeDeadlines[admission] = deadline
+            scheduleAgeDeadline?.invoke(admission, deadline) { fireAgeDeadline(admission) }
+        }
+    }
+
     fun isReady(admission: RelationKey): Boolean {
         var retirable: RelationKey? = null
         return lifecycleRwLock.read {
@@ -334,6 +380,11 @@ class SessionManager internal constructor(
                     doomed = slot.retire()
                     return@serialize null
                 }
+                // CRYPTO-002 STEP 4: THE AGE TIMER IS ARMED WHERE THE MANAGER OBSERVES ESTABLISHMENT -- HERE,
+                // and nowhere else: the readiness guard above hath just PASSED, and the deadline cometh from the
+                // SESSION's own established reading (`ageDeadlineMono()`), so arming late still carrieth the right
+                // moment. It is armed INSIDE the slot's serialisation, so a concurrent teardown cannot interleave.
+                armAgeTimer(admission, ctrl)
                 hs3
             }
             doomed?.let { ctrl ->
@@ -407,6 +458,11 @@ class SessionManager internal constructor(
                     doomed = slot.retire()
                     return@serialize false
                 }
+                // CRYPTO-002 STEP 4: THE AGE TIMER IS ARMED WHERE THE MANAGER OBSERVES ESTABLISHMENT -- HERE,
+                // and nowhere else: the readiness guard above hath just PASSED, and the deadline cometh from the
+                // SESSION's own established reading (`ageDeadlineMono()`), so arming late still carrieth the right
+                // moment. It is armed INSIDE the slot's serialisation, so a concurrent teardown cannot interleave.
+                armAgeTimer(admission, ctrl)
                 true
             }
             doomed?.let { ctrl ->

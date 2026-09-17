@@ -125,6 +125,17 @@ class NoiseSession private constructor(
         return (System.nanoTime() - start) / 1_000_000L
     }
 
+    /**
+     * CRYPTO-002 STEP 4: WHEN THIS SESSION'S AGE BUDGET ENDETH, IN THIS CLOCK'S OWN UNITS -- computed from THE SAME
+     * TWO SOURCES `budgetAgeMs()` compareth, so a timer armed from this value cannot disagree with the check that
+     * retireth. A SECOND OPINION ABOUT THE DEADLINE WOULD BE A SECOND AUTHORITY.
+     */
+    internal fun ageDeadlineMono(): Long {
+        val start = establishedMonoForTest ?: establishedMono
+        val budgetMs = ageBudgetForTest ?: TIME_BUDGET_MS
+        return start + budgetMs
+    }
+
     private fun budgetLimit(): Long = recordBudgetForTest ?: RECORD_BUDGET
 
     /**
