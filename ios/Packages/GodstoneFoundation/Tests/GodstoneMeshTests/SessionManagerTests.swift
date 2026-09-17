@@ -539,4 +539,54 @@ final class SessionManagerTests: XCTestCase {
         // for both was MY bug, and it showed up as an unwrap of `seal` -- the probe was measuring the wrong object.
         return (smA, smB, peerB, peerA)
     }
+
+    /// GS-CTRL-002 / CRYPTO-002 -- THE FINDING'S TITLE, AS AN ARM: "Session retirement never reaches the transport
+    /// authority." The transport could always tell the manager to drop a relation; NOTHING TRAVELLED THE OTHER WAY.
+    /// This arm demandeth the reverse notice: TOKEN-BOUND, EXACTLY ONCE, and delivered on the IDLE path (no packet).
+    func testCRYPTO002_aTerminalRetirementNotifiethTheTransportOwnerExactlyOnce() throws {
+        let (_, smB, _, keyB) = try establishedManagerPair()
+        var notices: [(RelationAdmission, String)] = []
+        smB.onTerminalRetirement = { admission, reason in notices.append((admission, reason)) }
+        XCTAssertTrue(notices.isEmpty, "the control: nothing is noticed while the session is healthy")
+
+        let ctrl = try XCTUnwrap(smB.slotForTest(keyB)?.controller)
+        let exact = try XCTUnwrap(smB.slotAdmissionForTest(try XCTUnwrap(hostAdmission(smB, keyB))))
+        ctrl.noiseSession.ageBudgetForTest = 1.0
+        ctrl.noiseSession.establishedMonoForTest = DispatchTime.now().uptimeNanoseconds &- 2_000_000_000
+
+        XCTAssertFalse(smB.isReady(keyB), "the idle path retires it")
+        XCTAssertEqual(notices.count, 1, "EXACTLY ONE NOTICE -- not one per query, and not none")
+        XCTAssertEqual(notices.first?.0, exact,
+                       "and it carrieth the EXACT admission -- the token the transport minted for that relation, "
+                       + "so a notice can never be applied to a different incarnation")
+        XCTAssertFalse(notices.first?.1.isEmpty ?? true, "with a reason, because a notice that hideth why is "
+                       + "the species this programme keepeth correcting")
+
+        // A SECOND QUERY MUST NOT DELIVER AGAIN: the slot is already gone.
+        _ = smB.isReady(keyB)
+        XCTAssertEqual(notices.count, 1, "a retired incarnation notifieth ONCE, however often it is asked")
+    }
+
+    /// The STALE clause: a notice is bound to an incarnation. Once a REPLACEMENT standeth, retiring the old
+    /// admission must answer `.stale` and MUST NOT deliver a notice that could reach the successor.
+    func testCRYPTO002_aStaleNoticeNeverReachesTheReplacement() throws {
+        let (_, smB, _, keyB) = try establishedManagerPair()
+        var notices: [(RelationAdmission, String)] = []
+        smB.onTerminalRetirement = { admission, reason in notices.append((admission, reason)) }
+        let old = try XCTUnwrap(hostAdmission(smB, keyB))
+        XCTAssertEqual(smB.drop(successor(of: old)), .stale,
+                       "a successor admission is NOT the standing incarnation")
+        XCTAssertTrue(notices.isEmpty, "and a STALE retirement delivereth NO notice at all")
+    }
+
+    /// The admission the manager currently holdeth for a peer -- read through the existing hook rather than assumed.
+    private func hostAdmission(_ sm: SessionManager, _ peerId: UUID) throws -> RelationAdmission? {
+        let slot = try XCTUnwrap(sm.slotForTest(peerId))
+        return slot.admission
+    }
+
+    /// The successor of an admission: the SAME relation one incarnation later.
+    private func successor(of admission: RelationAdmission) -> RelationAdmission {
+        ReadinessTrustedPairing.successor(of: admission)
+    }
 }

@@ -101,6 +101,39 @@ public final class SessionManager {
     private let lifecycleRwLock = ReadWriteLock()
     private var managerState: ManagerState = .active
 
+    /// GS-CTRL-002 / CRYPTO-002 (the finding's TITLE): THE RETIREMENT EVENT TO THE TRANSPORT OWNER.
+    ///
+    /// "Session retirement never reaches the transport authority" -- the transport could tell the manager to drop a
+    /// relation (six sites do), and NOTHING travelled the other way. So a session that reached its own terminus left
+    /// the transport publishing a peer as ready, holding its leases and its connection, with no fresh handshake.
+    /// THIS IS THE OTHER DIRECTION: the notice carrieth the EXACT admission (the token the transport minted for that
+    /// relation, so a notice for a retired incarnation cannot touch its replacement) and the reason.
+    ///
+    /// DELIVERED OUTSIDE EVERY LOCK -- `retireSlotTerminally` only RECORDETH the notice and the drain delivereth it
+    /// after the caller's locks are released, because a handler that closeth a connection and releaseth leases must
+    /// be free to call back without deadlocking the registry that told it.
+    internal var onTerminalRetirement: ((RelationAdmission, String) -> Void)?
+
+    private var pendingRetirementNotices: [(RelationAdmission, String)] = []
+    private let noticeLock = NSLock()
+
+    private func recordRetirementNotice(_ admission: RelationAdmission, reason: String) {
+        noticeLock.lock()
+        pendingRetirementNotices.append((admission, reason))
+        noticeLock.unlock()
+    }
+
+    /// Deliver every notice recorded so far, OUTSIDE the locks. Called at the end of the two public entries that can
+    /// perform a terminus, never inside a locked region.
+    internal func drainRetirementNotices() {
+        noticeLock.lock()
+        let pending = pendingRetirementNotices
+        pendingRetirementNotices.removeAll()
+        noticeLock.unlock()
+        guard let sink = onTerminalRetirement else { return }
+        for (admission, reason) in pending { sink(admission, reason) }
+    }
+
     internal var testOperationHook: ((String) -> Void)?
     internal var testInvalidationAttemptHook: (() -> Void)?
 
@@ -262,7 +295,7 @@ public final class SessionManager {
     /// True IFF the peer has an active TrustedHandshakeController in `.ready`
     /// and the manager is not invalidated.
     public func isReady(_ admission: RelationAdmission) -> Bool {
-        return lifecycleRwLock.withReadLock {
+        let answer: Bool = lifecycleRwLock.withReadLock {
             guard isActive else { return false }
             guard let slot = slotFor(admission) else { return false }
             // GS-CTRL-002 (R06): the readiness query taketh the PER-PEER lock EXPLICITLY, under the
@@ -282,6 +315,8 @@ public final class SessionManager {
             }
             return ctrl.isReady && ctrl.state == .ready
         }
+        drainRetirementNotices()
+        return answer
     }
 
     /// Start initiator handshake for a relation and emit HS1 (32 bytes).
@@ -478,7 +513,8 @@ public final class SessionManager {
             }
             // TERMINAL RETIREMENT, ROUTED OUTSIDE THE SLOT LOCK (the discipline `drop` already followeth): the exact
             // incarnation is removed and destroyed, so a retired session cannot leak its slot.
-            if case .expired = outcome { retireSlotTerminally(admission) }
+            if case .expired = outcome { retireSlotTerminally(admission, reason: "age budget exhausted") }
+            drainRetirementNotices()
             return outcome
         }
     }
@@ -486,9 +522,12 @@ public final class SessionManager {
     /// CRYPTO-002: THE TERMINUS, IN ONE PLACE. The exact incarnation is removed and its controller destroyed
     /// OUTSIDE the slot lock -- the same order `drop` useth -- and the answer sayeth whether one truly stood.
     @discardableResult
-    private func retireSlotTerminally(_ admission: RelationAdmission) -> RelationRetirement {
+    private func retireSlotTerminally(_ admission: RelationAdmission, reason: String = "terminus") -> RelationRetirement {
+        // `.stale` when no such incarnation standeth -- the replacement is untouched, AND NO NOTICE IS SENT, because
+        // a notice for an incarnation that no longer standeth must not reach the transport and retire its successor.
         guard let slot = removeSlot(admission) else { return .stale }
         _ = slot.retire()?.destroy()
+        recordRetirementNotice(admission, reason: reason)
         return .retired
     }
 
