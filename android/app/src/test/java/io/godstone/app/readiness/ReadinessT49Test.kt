@@ -692,6 +692,56 @@ class ReadinessT49Test {
      * FIRST RUN, not a restoration: restoring from it would strike out the first browse with the empty place it had
      * just built -- the loss the finding chargeth, inverted.
      */
+    /**
+     * *** GS-ARCHIVE-005 step 3: "a VALID reading anchor" -- THE BEHAVIOURAL HALF, ON THE ISLE THAT HAD NO ANCHOR. ***
+     *
+     * MEASURED at round 526 before this work: the string `anchor` appeared NOWHERE in the Android browse path, so the
+     * card's step 3 could not be satisfied by persistence alone -- there was nothing to persist. This arm notes a
+     * place, recreates the view model over the same handle, and requireth THAT THE PLACE BE HONOURED, because the
+     * anchored passage STILL STANDETH in the document.
+     */
+    @Test
+    fun testAProcessRecreationRestorethTheReadingAnchorAndHonourethIt() = withMain {
+        val handle = SavedStateHandle()
+        val first = BrowseViewModel(FakeReader(), StandardTestDispatcher(testScheduler), handle)
+        advanceUntilIdle()
+        first.open(document)
+        advanceUntilIdle()
+        first.noteScroll(documentId = document.id, passageId = completion.chunkId)
+        advanceUntilIdle()
+        assertEquals("the asked-for anchor must be PERSISTED as asked for",
+                     completion.chunkId, handle.get<Long>("anchorPassage"))
+
+        val second = BrowseViewModel(FakeReader(), StandardTestDispatcher(testScheduler), handle)
+        advanceUntilIdle()
+        assertEquals("and it must be RESTORED", completion.chunkId, second.state.value.anchorPassageId)
+        assertEquals("*** AND HONOURED, because it still standeth in this document ***",
+                     completion.chunkId, second.state.value.readingTargetPassageId)
+    }
+
+    /**
+     * *** THE DISCRIMINATOR, WITHOUT WHICH THE ARM ABOVE WOULD PASS ON A BLIND LOOKUP. ***
+     *
+     * A persisted anchor is a promise about a document that may have been replaced, re-released or revised while the
+     * process was away. A STALE identity must NOT be honoured -- and must not silently place the reader at whatever
+     * passage now happeneth to carry that number.
+     */
+    @Test
+    fun testAStaleAnchorFallethBackToTheFirstPassageAndIsNotHonoured() = withMain {
+        val handle = SavedStateHandle()
+        handle["mode"] = "DOCUMENT"
+        handle["openedDocumentId"] = document.id
+        handle["openedTitle"] = "Archive guide"
+        handle["anchorPassage"] = 999_999L          // an identity THIS document doth not carrieth
+
+        val vm = BrowseViewModel(FakeReader(), StandardTestDispatcher(testScheduler), handle)
+        advanceUntilIdle()
+        assertEquals("the asked-for anchor is remembered AS ASKED FOR -- it is not silently discarded",
+                     999_999L, vm.state.value.anchorPassageId)
+        assertEquals("*** A STALE ANCHOR MUST NOT BE HONOURED: the reader is placed at the FIRST passage ***",
+                     passage.chunkId, vm.state.value.readingTargetPassageId)
+    }
+
     @Test
     fun testAnEmptyHandleIsAFirstRunAndNotARestorationOfNothing() = withMain {
         val vm = BrowseViewModel(FakeReader(), StandardTestDispatcher(testScheduler), SavedStateHandle())

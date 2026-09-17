@@ -18,11 +18,13 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import io.godstone.core.archive.ArchiveBridge
 import io.godstone.core.archive.ArchiveDatabase
 import io.godstone.core.archive.ArchiveDrivers
+import io.godstone.core.archive.ArchiveReadingAnchor
 import io.godstone.core.archive.ArchiveReadException
 import io.godstone.core.archive.ArchiveRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -286,4 +288,32 @@ class ReadinessArchive002Test {
         """.trimIndent()
     }
 
+    // MARK: - GS-ARCHIVE-005 step 3: "a VALID reading anchor"
+
+    /**
+     * *** THE LAW, WHERE IT LIVETH, ON THE ISLE THAT HAD NONE. ***
+     *
+     * iOS carrieth `ArchiveReadingAnchor` (`ArchiveReadingAnchor.swift:17`) and Android carried NOTHING: MEASURED at
+     * round 526, the string `anchor` appeared NOWHERE in the Android browse path. THE CARD'S STEP 3 NAMETH "a valid
+     * reading anchor" FOR BOTH ISLES, so this arm asserteth THE SAME LAW THE iOS ISLE CARRIETH -- and `VALID` is the
+     * whole of it: a persisted passage identity is a promise about a document that may have been replaced while the
+     * process was away.
+     */
+    @Test
+    fun testTheAnchorIsAValidPlaceAndNotAStaleIdentity() {
+        assertEquals("a saved passage that STILL STANDETH is honoured, because the reader's place is theirs",
+            12L, ArchiveReadingAnchor.target(listOf(11L, 12L), 12L))
+        assertEquals("*** A STALE ANCHOR MUST FALL BACK TO THE FIRST PASSAGE, not be honoured blindly ***",
+            11L, ArchiveReadingAnchor.target(listOf(11L, 12L), 99L))
+        assertEquals("with nothing saved, the first passage standeth",
+            11L, ArchiveReadingAnchor.target(listOf(11L, 12L), null))
+        assertNull("*** AN EMPTY DOCUMENT ANCHORETH NOTHING: inventing a passage would be a lie with a scroll behind it ***",
+            ArchiveReadingAnchor.target(emptyList(), 11L))
+
+        assertTrue("and the anchor's survival is REPORTABLE rather than assumed",
+            ArchiveReadingAnchor.anchorHolds(listOf(11L, 12L), 12L))
+        assertFalse("*** a stale anchor must NOT be reported as holding, or a caller would pretend it held ***",
+            ArchiveReadingAnchor.anchorHolds(listOf(11L, 12L), 99L))
+        assertFalse("nor may an absent anchor claim to hold", ArchiveReadingAnchor.anchorHolds(listOf(11L, 12L), null))
+    }
 }

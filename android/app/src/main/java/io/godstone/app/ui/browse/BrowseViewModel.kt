@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.godstone.core.archive.ArchiveDocument
 import io.godstone.core.archive.ArchivePassage
+import io.godstone.core.archive.ArchiveReadingAnchor
 import io.godstone.core.archive.ArchiveReader
 import io.godstone.core.archive.ArchiveRepository
 import io.godstone.core.archive.ArchiveSourceMetadata
@@ -49,6 +50,15 @@ data class BrowseUiState(
     val openedDocumentId: Long? = null,
     val openedTitle: String? = null,
     val openedSource: ArchiveSourceMetadata? = null,
+    // *** GS-ARCHIVE-005 step 3: "a VALID reading anchor". *** TWO FIELDS, AND THE DISTINCTION IS THE WHOLE LAW:
+    // `anchorPassageId` is the IDENTITY THE READER ASKED FOR (persisted, and restored on recreation), while
+    // `readingTargetPassageId` is WHERE THE READER SHALL ACTUALLY BE PLACED -- resolved through
+    // `ArchiveReadingAnchor.target`, which HONOURETH the asked-for passage only while it STILL STANDETH in the
+    // currently selected document and otherwise FALLETH BACK TO THE FIRST. A reader whose place survived should not
+    // be marched back to the top; a reader whose place did NOT survive must not be placed at whatever passage now
+    // happeneth to carry that id.
+    val anchorPassageId: Long? = null,
+    val readingTargetPassageId: Long? = null,
     val error: String? = null,
     val canRetry: Boolean = false
 )
@@ -97,11 +107,21 @@ class BrowseViewModel(
      */
     private fun restoreFromSavedStateIfAny(): Boolean {
         val handle = savedState ?: return false
-        val keys = listOf("query", "searchedQuery", "mode", "openedDocumentId", "openedTitle")
+        val keys = listOf("query", "searchedQuery", "mode", "openedDocumentId", "openedTitle",
+                          "anchorDocument", "anchorPassage")
         val persisted = keys.mapNotNull { key -> handle.get<Any?>(key)?.let { key to it } }.toMap()
         if (persisted.isEmpty()) return false
         restoreFrom(persisted)
         return true
+    }
+
+    /**
+     * *** GS-ARCHIVE-005 step 3: THE READER'S PLACE, NOTED. *** The Kotlin twin of the iOS scene's
+     * `noteScroll(documentId:passageId:)`: the reading anchor is a SMALL NAVIGATION IDENTITY (two longs), which is
+     * why it belongeth in a saved-state bundle at all.
+     */
+    fun noteScroll(documentId: Long? = null, passageId: Long? = null) {
+        _state.value = _state.value.copy(anchorPassageId = passageId)
     }
 
     /**
@@ -119,6 +139,10 @@ class BrowseViewModel(
         handle["mode"] = s.mode.name
         handle["openedDocumentId"] = s.openedDocumentId
         handle["openedTitle"] = s.openedTitle
+        // GS-ARCHIVE-005 step 3: "a valid reading anchor" -- the ASKED-FOR identity is what is persisted, NEVER the
+        // resolved target, because validity must be judged against the document that standeth WHEN IT IS REOPENED.
+        s.anchorPassageId?.let { handle["anchorPassage"] = it }
+        s.openedDocumentId?.let { handle["anchorDocument"] = it }
     }
 
     private val _state = MutableStateFlow(BrowseUiState())
@@ -306,6 +330,11 @@ class BrowseViewModel(
                                 openedDocumentId = documentId,
                                 openedTitle = title,
                                 openedSource = source,
+                                // GS-ARCHIVE-005 step 3: THE ANCHOR IS RESOLVED **WHERE THE PASSAGES ARE KNOWN**,
+                                // which is here and nowhere else -- validity is a judgement about THIS document's
+                                // passages, so it cannot be made when the anchor is read from the handle.
+                                readingTargetPassageId = ArchiveReadingAnchor.target(
+                                    found.map { it.chunkId }, _state.value.anchorPassageId),
                                 error = null,
                                 canRetry = false)
                         is ArchiveState.Unavailable ->
@@ -389,6 +418,11 @@ class BrowseViewModel(
         handle["mode"] = s.mode.name
         handle["openedDocumentId"] = s.openedDocumentId
         handle["openedTitle"] = s.openedTitle
+        // GS-ARCHIVE-005 step 3: THE TWO SERIALISATIONS MUST AGREE, because the card maketh THIS ONE "the
+        // serialization behind the real SavedStateHandle" -- a helper that dropped the anchor would silently lose it
+        // for every caller that used the helper rather than the seam.
+        s.anchorPassageId?.let { handle["anchorPassage"] = it }
+        s.openedDocumentId?.let { handle["anchorDocument"] = it }
     }
 
     fun restoreFrom(handle: Map<String, Any?>) {
@@ -399,10 +433,14 @@ class BrowseViewModel(
         val searchedQuery = handle["searchedQuery"] as? String
         val openedId = handle["openedDocumentId"] as? Long
         val openedTitle = handle["openedTitle"] as? String
+        val anchorPassage = handle["anchorPassage"] as? Long
         generation.incrementAndGet()
         returnScene = Scene(BrowseMode.DOCUMENTS, "", null, emptyList(), emptyList(), null, null, null)
         _state.value = BrowseUiState(
             query = query, searchedQuery = searchedQuery, mode = mode,
+            // GS-ARCHIVE-005 step 3: the ASKED-FOR anchor standeth from the moment of restoration; the RESOLVED
+            // target is computed when the document's passages are known (`openDocumentInternal`).
+            anchorPassageId = anchorPassage,
             phase = BrowsePhase.Loading, loading = true)
         when (mode) {
             BrowseMode.DOCUMENT -> {

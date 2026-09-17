@@ -327,6 +327,37 @@ parity `--scope repo` all invariants hold; symbols 0 unresolved; digests PASSED.
 anchor** (the Android state carries no anchor field) — so that clause is explicitly not claimed; step 4's
 `NavigationStack` clause is still undone; and **no rendered screen was ever exercised.** The finding stays **`PARTIAL`**.
 
+## ROUND 526, PHASE TWO — "A VALID READING ANCHOR", ON THE ISLE THAT HAD NONE
+
+**Step 3's anchor clause, and the measurement that set the whole shape of the round:** the string `anchor` appeared
+**nowhere in the Android browse path** — not in `BrowseViewModel`, not in `BrowseUiState`, and `android/core` carried no
+twin at all. **So the clause could not be satisfied by persistence: there was nothing to persist.**
+
+**The law was mirrored from the iOS isle** (`ArchiveReadingAnchor.swift:17-35`) **because the contract is shared** — a
+saved passage is honoured **only while it still standeth** in the currently selected document; otherwise **the first
+passage** standeth; an **empty** document anchors nothing; and `anchorHolds` exists **so the fallback is reportable
+rather than pretended.** *The word **valid** is the whole of the law: a persisted passage identity is a promise about a
+document that may have been replaced while the process was away.*
+
+**Two fields in the state, and the distinction is the law:** `anchorPassageId` is the identity **asked for** (persisted
+and restored); `readingTargetPassageId` is **where the reader shall actually be placed** — resolved where the passages
+are known, *because validity is a judgement about this document and cannot be made when the anchor is read from a
+handle.* **And the anchor travels through BOTH serialisations**, because the card makes the helper *"the serialization
+behind the real SavedStateHandle"* — a helper that dropped it would silently lose it for every caller using the helper.
+
+**AND THE ROUND'S OWN INSTRUMENT DEFECT, FOUND BY MEASURING THE NEGATIVE CASE RATHER THAN TRUSTING IT:** the first
+negative case ran `:core` and `:app` in one Gradle invocation **without `--continue`**; Gradle **stopped after `:core`
+failed**, **`:app` never ran**, and the app suite's XML was **stale** — reporting two arms **passing that had not
+executed**. **The timestamps caught it (CORE 18:12:23 vs APP 18:11:36).** *A negative case that runs only the first
+failing task proves only the first arm.* Re-run so both tasks executed, **both courts then failed on their own clauses**,
+and the **valid-anchor arm still passed** — correctly, since only the stale clause can judge validity, **so the arms are
+specific.**
+
+**Measured:** all three Android lanes green — core **21/0**, app **55/0** (was 53; the +2 *are* the anchor arms), mesh
+**1228/0**; parity `--scope repo` all invariants hold; symbols 0 unresolved; digests PASSED; lab isolation PASSED.
+**Still unclaimed:** step 4's `NavigationStack` clause, and **any rendered-screen witness** — a real Compose screen
+scrolling to `readingTargetPassageId` is **not** measured. The finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
