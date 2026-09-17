@@ -115,4 +115,82 @@ class WipeStartupHalfTest {
         assertEquals("KEY_ERASED", WipeJournalDurabilityAdapter.stageFor(PanicWipe.WipeState.KEY_ERASED))
         assertEquals("RUNTIME_DRAINED", WipeJournalDurabilityAdapter.stageFor(PanicWipe.WipeState.RUNTIME_DRAINED))
     }
+
+    // MARK: - THE CARD'S FIRST CLOSURE CLAUSE: A HELD WRITE
+
+    /** A transport seam whose work stands until the test RELEASES it -- the held write completion, in seam form. */
+    private class HeldTransport(var inFlight: Int) : TransportRuntimeSeam {
+        var drains = 0
+        override fun drainTransport(): RuntimeDrainReceipt {
+            drains += 1
+            return if (inFlight > 0) RuntimeDrainReceipt.NotDrained("$inFlight write(s) still in flight at the bound")
+            else RuntimeDrainReceipt.Drained(closedTransports = 1, quiescedRuntime = true)
+        }
+        override fun isQuiesced(): Boolean = inFlight == 0
+        override fun fireRadio(msg: String): Boolean = false
+        override fun sendVia(msg: String): Boolean = false
+    }
+
+    /** A vault seam that COUNTS what it was asked to erase -- so "blocked" is a number rather than a claim. */
+    private class RecordingVault : KeyVaultSeam {
+        var erasures = 0
+        override fun eraseKey(name: String): KeyDeletionResult {
+            erasures += 1
+            return KeyDeletionResult.Deleted
+        }
+    }
+
+    /**
+     * *** THE CARD'S FIRST CLOSURE CLAUSE, MEASURED: "Drive the real runtime wipe entry point with a HELD WRITE COMPLETION.
+     * KEY DELETION MUST REMAIN BLOCKED UNTIL TRANSPORT DRAIN COMPLETETH." ***
+     *
+     * AND ITS HONEST SCOPE, STATED RATHER THAN IMPLIED: this arm holds a write at the SEAM, which is where the coordinator
+     * can see it -- it does NOT drive a real `BleTransport` (that is a concrete class needing a device or an instrumented
+     * harness, and the isle's own `w.inFlightForTest()` seam is what an instrumented arm would use). WHAT IT PROVES IS THE
+     * ORDER, WHICH IS THE CLAUSE'S SUBSTANCE: no key is touched while the drain is refused, and keys are touched only after.
+     */
+    @Test
+    fun keyDeletionRemainsBlockedUntilTheHeldWriteCompletes() {
+        val journal = MemoryJournal(PanicWipe.WipeState.REQUESTED)
+        val transport = HeldTransport(inFlight = 1)          // a write IS in flight
+        val vault = RecordingVault()
+        val coordinator = CrashResumableWipe(
+            store = WipeJournalDurabilityAdapter(journal),
+            vault = vault,
+            filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
+            runtime = transport,
+            authority = WipeDeferredSeams.DeferredIdentityAuthoritySeam(),
+        )
+
+        val held = coordinator.resume()
+
+        assertTrue("the ladder must stop while the write is in flight -- its answer was $held",
+            held is WipeStepResult.RetryLater)
+        assertEquals("and it must stop AT REQUESTED, before the erasure rung",
+            WipeJournalState.REQUESTED, (held as WipeStepResult.RetryLater).at)
+        // *** THE CLAUSE ITSELF, AS A NUMBER: NOT ONE KEY WAS TOUCHED. ***
+        assertEquals("KEY DELETION MUST REMAIN BLOCKED UNTIL TRANSPORT DRAIN COMPLETES", 0, vault.erasures)
+        assertEquals(PanicWipe.WipeState.REQUESTED, journal.current())
+
+        transport.inFlight = 0                                // the held write COMPLETES
+
+        val after = coordinator.resume()
+
+        // *** AND HERE A THIRD EXPECTATION OF MINE WAS CORRECTED BY THE LANE, WHICH IS WHY THIS ARM IS NOW MORE INFORMATIVE
+        // THAN THE ONE I WROTE: WITH THE DRAIN GRANTED THE LADDER ADVANCES **TO THE ERASURE** AND THEN STOPS AT THE NEXT
+        // UNMET NEED -- the DEFERRED FILESYSTEM in this composition -- SO THE ANSWER IS RetryLater AT `KEY_ERASED`, NOT
+        // `Advanced`. THE CLAUSE'S SUBSTANCE IS UNTOUCHED AND IS NOW VISIBLE IN THE JOURNAL ITSELF: THE KEYS WERE ERASED
+        // **ONLY AFTER** THE DRAIN, AND THE WIPE DID NOT CLAIM A COMPLETION IT HAD NOT PERFORMED. ***
+        assertTrue("with the write released the ladder must ADVANCE PAST THE DRAIN -- its answer was $after",
+            after is WipeStepResult.RetryLater)
+        // *** AND A DETAIL OF THIS ISLE THAT IS WORTH THE LINE IT COSTS: THE **COORDINATOR'S** ENUM SPELLS IT
+        // `KEYS_ERASED` WHILE THE **JOURNAL'S** ENUM SPELLS IT `KEY_ERASED` -- TWO VOCABULARIES WITHIN THE SAME ISLE, WITH
+        // `fromWire("KEY_ERASED") -> KEYS_ERASED` BRIDGING THEM. THE MIRROR LAW IS THEREFORE NOT MERELY ABOUT ISLES. ***
+        assertEquals("and it must now stand AT the erasure it just reached (the COORDINATOR's spelling)",
+            WipeJournalState.KEYS_ERASED, (after as WipeStepResult.RetryLater).at)
+        assertEquals("so the KEYS WERE ERASED -- but only after the drain",
+            PanicWipe.WipeState.KEY_ERASED, journal.current())
+        assertTrue("and ONLY THEN were keys erased (erasures = ${vault.erasures})", vault.erasures > 0)
+        assertEquals("so the drain was asked twice and refused once", 2, transport.drains)
+    }
 }
