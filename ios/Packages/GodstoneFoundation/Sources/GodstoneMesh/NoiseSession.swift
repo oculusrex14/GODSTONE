@@ -421,6 +421,16 @@ public final class NoiseSession {
         return TimeInterval(now &- start) / 1_000_000_000.0
     }
 
+    /// CRYPTO-002 STEP 4: WHEN THIS SESSION'S AGE BUDGET ENDETH, IN THE MONOTONIC CLOCK'S OWN UNITS -- computed from
+    /// the SAME two sources `budgetAgeSeconds()` compareth (`establishedMonoForTest ?? establishedMono` and
+    /// `ageBudgetForTest ?? timeBudgetSeconds`), so a timer armed from this value cannot disagree with the check that
+    /// retireth. A SECOND OPINION ABOUT THE DEADLINE WOULD BE A SECOND AUTHORITY.
+    internal func ageDeadlineMono() -> UInt64 {
+        let start = establishedMonoForTest ?? establishedMono
+        let budgetSeconds = ageBudgetForTest ?? NoiseSession.timeBudgetSeconds
+        return start &+ UInt64(max(0, budgetSeconds) * 1_000_000_000)
+    }
+
     private func budgetLimit() -> UInt64 {
         recordBudgetForTest ?? NoiseSession.recordBudget
     }

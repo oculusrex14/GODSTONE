@@ -112,6 +112,27 @@ public final class SessionManager {
     /// DELIVERED OUTSIDE EVERY LOCK -- `retireSlotTerminally` only RECORDETH the notice and the drain delivereth it
     /// after the caller's locks are released, because a handler that closeth a connection and releaseth leases must
     /// be free to call back without deadlocking the registry that told it.
+    /// GS-CTRL-002 / CRYPTO-002 STEP 4, THE AUDIT'S OWN ORDER: "Arm an IMMUTABLE RELATION-OWNED AGE TIMER at trusted
+    /// establishment. Idle expiry must enter the same slot transition; OLD TIMER CALLBACKS CANNOT RETIRE A
+    /// REPLACEMENT."
+    ///
+    /// AT THIS STEP THE SEAM ALONE EXISTETH (it answereth NOTHING ARMED), so the arm that demandeth a timer FAILETH ON
+    /// ITS OWN SUBJECT rather than at compile time. The deadline is expressed in the INJECTED clock's own units -- the
+    /// only clock this store trusteth -- and the firing is delegated to a SCHEDULER SEAM rather than to a run loop,
+    /// because a registry that owned a run loop would own the process's liveness as well as its sessions.
+    /// The armed deadlines, by admission. IMMUTABLE PER ADMISSION: arming again for an admission that already
+    /// carrieth a deadline doth NOT extend it -- the audit asketh for an "IMMUTABLE relation-owned age timer", and a
+    /// deadline that could be pushed back by a later event would be no deadline at all.
+    private var armedAgeDeadlines: [RelationAdmission: Int64] = [:]
+
+    internal func armedAgeDeadlinesForTest() -> [Int64] { armedAgeDeadlines.values.sorted() }
+
+    private func armAgeTimer(_ admission: RelationAdmission, controller: TrustedHandshakeController) {
+        mapLock.lock(); defer { mapLock.unlock() }
+        guard armedAgeDeadlines[admission] == nil else { return }   // IMMUTABLE: never extended
+        armedAgeDeadlines[admission] = Int64(bitPattern: controller.noiseSession.ageDeadlineMono())
+    }
+
     internal var onTerminalRetirement: ((RelationAdmission, String) -> Void)?
 
     private var pendingRetirementNotices: [(RelationAdmission, String)] = []
@@ -351,6 +372,8 @@ public final class SessionManager {
                     return nil
                 }
                 slot.controller = ctrl
+                // CRYPTO-002 STEP 4: THE AGE TIMER IS ARMED WHERE TRUST IS ESTABLISHED, and NOWHERE ELSE.
+                armAgeTimer(admission, controller: ctrl)
                 return hs1
             }
         }
@@ -416,6 +439,8 @@ public final class SessionManager {
                     return nil
                 }
                 slot.controller = ctrl
+                // CRYPTO-002 STEP 4: THE AGE TIMER IS ARMED WHERE TRUST IS ESTABLISHED, and NOWHERE ELSE.
+                armAgeTimer(admission, controller: ctrl)
                 return hs2
             }
         }

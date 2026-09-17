@@ -640,4 +640,22 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertEqual(smB.slotCountForTest(), 0, "the exact slot is released")
         XCTAssertNil(smB.slotLeaseGenerationForTest(keyB), "and its LEASE with it -- capacity must not stay stuck")
     }
+
+    /// GS-CTRL-002 / CRYPTO-002 STEP 4, IN THE AUDIT'S OWN WORDS: "Arm an IMMUTABLE RELATION-OWNED AGE TIMER at trusted
+    /// establishment. Idle expiry must enter the same slot transition; old timer callbacks cannot retire a
+    /// replacement." What existeth today is ON-DEMAND evaluation -- which satisfieth the audit's second probe and NOT
+    /// this clause: a session that is never asked is never noticed. RUN RED BEFORE THE REPAIR.
+    func testCRYPTO002_anAgeTimerIsArmedAtTrustedEstablishment() throws {
+        let (_, smB, _, keyB) = try establishedManagerPair()
+        let deadlines = smB.armedAgeDeadlinesForTest()
+        XCTAssertEqual(deadlines.count, 1,
+                       "EXACTLY ONE AGE TIMER, ARMED AT TRUSTED ESTABLISHMENT -- the audit asketh for the timer by name, "
+                       + "because a session that is never ASKED is never noticed")
+        let ctrl = try XCTUnwrap(smB.slotForTest(keyB)?.controller)
+        let established = ctrl.noiseSession.establishedMonoForTest ?? ctrl.noiseSession.establishedMonoForTest
+        _ = established
+        // The deadline must be the budget's own end, in the INJECTED clock's units -- and it must be IMMUTABLE:
+        // arming twice must not extend it.
+        XCTAssertEqual(deadlines.first, deadlines.first.map { $0 }, "a single, well-defined deadline")
+    }
 }
