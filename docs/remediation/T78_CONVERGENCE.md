@@ -543,6 +543,40 @@ deliver — **so it was reverted. An unlanded change with a true record beats a 
 **The owed work is named exactly: an INSTRUMENTATION ROAD (a Context-bearing Android test)** — the same external item
 this finding's siblings carry, and **acquisition never closes a gate.** The finding stays **`PARTIAL`**.
 
+## ROUND 532, PHASE TWO — THE LEDGER SWEPT FOR CLAIMS THAT OUTLIVED THEIR DEFECTS
+
+**Round 531 corrected two stale claims in one finding, so this round asked whether the class lurks elsewhere.** The
+sharpest instance is not a stale claim but an **EMPTY** one: **`GS-RUNTIME-001` stood `PARTIAL` with
+`pending_proof = []`** — *a reader was told nothing about what it owed, while eighteen other findings stated theirs.*
+It is now filled from a **re-measurement taken this round, not inherited**: `ackPump` is never assigned in production on
+Android; `subscribeToReadiness` has **zero** production call sites; **both isles freeze the link layer**
+(`LINK_LAYER_READY = false`, `linkLayerReady = false` — which the objective requires); and iOS's assignment
+(`MeshRuntime.swift:174`) is reached only by an **archive-only** owner. **So the ACK road is complete, witnessed by
+courts, and reached by no runtime a user's message travels through** — the recurring shape again, and what is owed is
+the **live-transport instrumentation road**, an external artifact.
+
+**And one GENUINE self-contradiction was found and marked superseded:** `GS-ARCHIVE-005`'s field carried **both** a
+claim (*"NO PRODUCTION CALLER REACHETH EITHER … step 4 IS UNLANDED"*) **and its own refutation** (*"STEP 4's PRODUCTION
+CALLER IS LANDED AND PROVEN"*) — **so a reader met the contradiction and read the false half first.** The tree measures
+`ArchiveView.swift:64` and `:128` as real callers. The original text is preserved in quotation, per this ledger's
+discipline, rather than overwritten.
+
+> **A field that contradicts itself is worse than a field that is merely old.**
+
+**AND THE SWEEP'S OWN INSTRUMENT IS RECORDED WITH ITS FALSE-POSITIVE RATE, NOT ONLY ITS HIT:** a heuristic over all 54
+findings flagged **~60 "contradictions"**, and **after reading each entry's *subject*, exactly ONE was genuine.** Every
+other flag was a chronological round-log — an entry mentioning *"ZERO failing assertions"* followed by a later
+*"LANDED"* is a **history**, not a contradiction. **A pattern is not a subject** — the same law as reading the anchor
+rather than the line number, applied to prose. *An instrument that reports 60 findings when there is 1 cannot be
+handed on as if it were a control.*
+
+**THREE FINDINGS THIS SPAN CARRIED LEDGER CLAIMS THAT OUTLIVED THEIR DEFECTS** (GS-STRESS-001's blocker, round 521;
+ANDROID-05's two claims, round 531; GS-ARCHIVE-005's field, round 532) — **the class is now named, swept once, and its
+survivors corrected with anchors, which is what the convergence's stale-evidence section is for.**
+
+**Measured:** only `REMEDIATION_STATE.json` changed this round (no production or test file); parity `--scope repo` 7/0;
+symbols 0 unresolved; evidence digests PASSED; the python lane at its two pre-existing T01 failures (not this span's).
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
