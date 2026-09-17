@@ -685,4 +685,57 @@ final class SessionManagerTests: XCTestCase {
         smB.fireAgeDeadline(stale)
         XCTAssertEqual(notices.count, 1, "an OLD callback delivereth NO second notice")
     }
+
+    // MARK: - CRYPTO-002's REQUIRED CLOSURE CLAUSES: boundaries and DIRECTION
+
+    /// The audit's clause: "EXACT AGE/COUNT BOUNDARIES ... retire correctly". This arm runneth the primitive's own
+    /// budget case THROUGH THE REAL MANAGER, and pins the boundary's side: the limit BELONGETH to the retirement
+    /// (`>=`), not to the session.
+    ///
+    /// NOTE ITS HONEST STATUS: these two arms are CONTROLS for the repair landed in rounds 343-351 rather than
+    /// behavioural REDs -- the defect they guard against was closed by those rounds, and an arm that cannot be red
+    /// proves no more than that the law still holdeth. They are written because the audit LISTETH them as required
+    /// closure tests, and a clause that is never exercised is a clause nobody can trust.
+    func testCRYPTO002_theRecordBudgetRetirethAtItsBoundaryThroughTheManager() throws {
+        let (smA, smB, keyA, keyB) = try establishedManagerPair()
+        let ctrl = try XCTUnwrap(smB.slotForTest(keyB)?.controller)
+        ctrl.noiseSession.recordBudgetForTest = 2            // TWO authenticated records of receive budget
+
+        for i in 0..<2 {
+            let cipher = try XCTUnwrap(smA.seal(keyA, Data("record \(i)".utf8)))
+            guard case .authenticated = smB.openWithResult(keyB, cipher) else {
+                XCTFail("record \(i) must authenticate: the budget is 2 and only \(i) preceded it")
+                return
+            }
+        }
+        XCTAssertTrue(smB.isReady(keyB), "the budget's LAST permitted record doth not retire the session")
+
+        let beyond = try XCTUnwrap(smA.seal(keyA, Data("beyond the budget".utf8)))
+        XCTAssertEqual(smB.openWithResult(keyB, beyond), .expired,
+                       "the RECORD BUDGET's boundary belongeth to the retirement -- a TERMINAL answer, not a rejection")
+        XCTAssertFalse(smB.isReady(keyB), "and readiness stoppeth with it")
+        XCTAssertEqual(smB.slotCountForTest(), 0, "and the exact slot is released")
+    }
+
+    /// The audit's clause: "ASYMMETRIC DIRECTIONAL TRAFFIC retireth correctly" -- and the direction that mattereth
+    /// most is the one an attacker controlleth: A's heavy inbound traffic must NOT consume B's OUTBOUND budget, or a
+    /// talkative (or hostile) peer could silence its neighbour by merely TALKING.
+    func testCRYPTO002_inboundTrafficDoesNotConsumeTheOutboundBudget() throws {
+        let (smA, smB, keyA, keyB) = try establishedManagerPair()
+        let ctrlB = try XCTUnwrap(smB.slotForTest(keyB)?.controller)
+        ctrlB.noiseSession.recordBudgetForTest = 3
+
+        for i in 0..<2 {                                     // A sends TWO of the three permitted records
+            let cipher = try XCTUnwrap(smA.seal(keyA, Data("in \(i)".utf8)))
+            guard case .authenticated = smB.openWithResult(keyB, cipher) else {
+                XCTFail("A's record \(i) must authenticate")
+                return
+            }
+        }
+        for i in 0..<3 {                                     // B MUST STILL BE ABLE TO SEND ALL THREE OF ITS OWN
+            XCTAssertNotNil(smB.seal(keyB, Data("out \(i)".utf8)),
+                            "INBOUND traffic must not consume the OUTBOUND budget -- else a talkative peer could "
+                            + "silence its neighbour by merely talking (record \(i) of 3)")
+        }
+    }
 }

@@ -174,7 +174,7 @@
     "Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift": "95d4ea4863a24fecaa69605f3191797ead99b15853db93df2da1671398d698ab",
     "Tests/GodstoneMeshTests/RouterTests.swift": "248acb245e296e90add2fc76f84915e5099e1f46d3af652daa217f9da46c07bb",
     "Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift": "5528001819a79413a6a592becf854ca9c061d3dca4483326e79162bb0b778b52",
-    "Tests/GodstoneMeshTests/SessionManagerTests.swift": "01a6eeb992edb637cad17c95172c49841b786d421a45f3257b5fc43f31881ef8",
+    "Tests/GodstoneMeshTests/SessionManagerTests.swift": "ab6079ae07d79b489d22f1dc88cc7e872903febb983142f529766bb2bd48e6d5",
     "Tests/GodstoneMeshTests/SosTestAuthority.swift": "254990dfacade518e9b27fdb2eeb0922fc981536b62be12cdadabc5c615823f6",
     "Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift": "7ac4408873dfbd2efd24a39242afad29d62101d91001baf15212e449f3a73baa",
     "Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift": "666a1f09a4a2061262eaf9153f934b4046e43a9042f8f6f65a644318c60e275d",
