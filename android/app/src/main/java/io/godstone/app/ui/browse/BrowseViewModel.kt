@@ -1,5 +1,6 @@
 package io.godstone.app.ui.browse
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,12 +66,60 @@ data class BrowseUiState(
 @HiltViewModel
 class BrowseViewModel(
     private val reader: ArchiveReader,
-    private val dispatcher: CoroutineDispatcher
+    private val dispatcher: CoroutineDispatcher,
+    // --------------------------------------------------------------------------------------
+    // *** GS-ARCHIVE-005 STEP 3: THE SMALL NAVIGATION IDENTITIES, WHERE PROCESS RECREATION CAN FIND THEM. ***
+    //
+    // THE CARD NAMETH THIS VEHICLE BY NAME -- "Persist only small navigation identities on Android through
+    // `SavedStateHandle` injected into the actual Hilt ViewModel constructor ... Restore them from the constructor;
+    // remove unused MutableMap-only helpers or make them the serialization behind the real SavedStateHandle."
+    //
+    // MEASURED BEFORE THIS EDIT: `snapshotTo`/`restoreFrom` existed and **NO PRODUCTION CALLER REACHED EITHER**, and
+    // `SavedStateHandle` appeared NOWHERE in the Android tree -- so the card's charge, "Both apps implement
+    // snapshot/restore methods but no production caller persists/restores them", WAS EXACTLY TRUE ON THIS ISLE TOO.
+    // THE HELPERS ARE THEREFORE NOT REMOVED BUT **MADE THE SERIALISATION BEHIND THE REAL HANDLE**, which is the
+    // card's own second option: nothing is lost, and the map is no longer the DESTINATION -- it is the BRIDGE.
+    // --------------------------------------------------------------------------------------
+    private val savedState: SavedStateHandle? = null
 ) : ViewModel() {
 
     /** The shipping composition: the real repository, off the main thread. */
     @Inject
-    constructor(archive: ArchiveRepository) : this(archive, Dispatchers.Default)
+    constructor(archive: ArchiveRepository, savedState: SavedStateHandle)
+        : this(archive, Dispatchers.Default, savedState)
+
+    /**
+     * *** GS-ARCHIVE-005 STEP 3: THE SMALL IDENTITIES, READ WHERE THE PLATFORM KEPT THEM. ***
+     *
+     * A handle carrying NOTHING is a FIRST RUN, not a restoration: restoring from an empty handle would strike out
+     * the first browse with the empty place it just built -- the loss the finding chargeth, inverted. IT ANSWERETH
+     * WHETHER IT RESTORED, because the caller MUST NOT browse when it did.
+     */
+    private fun restoreFromSavedStateIfAny(): Boolean {
+        val handle = savedState ?: return false
+        val keys = listOf("query", "searchedQuery", "mode", "openedDocumentId", "openedTitle")
+        val persisted = keys.mapNotNull { key -> handle.get<Any?>(key)?.let { key to it } }.toMap()
+        if (persisted.isEmpty()) return false
+        restoreFrom(persisted)
+        return true
+    }
+
+    /**
+     * *** GS-ARCHIVE-005 STEP 3: THE SMALL IDENTITIES, WRITTEN WHERE THE PLATFORM WILL KEEP THEM. ***
+     *
+     * ONELY THE SMALL ONES, which is the card's own bound ("Persist only small navigation identities"): a query, a
+     * mode, a document identity and a title. NO RESULTS, NO PASSAGES AND NO ARCHIVE CONTENT enter a saved-state
+     * bundle -- those are re-read from the archive, which is why restoring a PLACE is cheap.
+     */
+    private fun persistToSavedState() {
+        val handle = savedState ?: return
+        val s = _state.value
+        handle["query"] = s.query
+        handle["searchedQuery"] = s.searchedQuery
+        handle["mode"] = s.mode.name
+        handle["openedDocumentId"] = s.openedDocumentId
+        handle["openedTitle"] = s.openedTitle
+    }
 
     private val _state = MutableStateFlow(BrowseUiState())
     val state: StateFlow<BrowseUiState> = _state.asStateFlow()
@@ -123,7 +172,26 @@ class BrowseViewModel(
     private var returnScene: Scene? = null
     private var lastRequest: (() -> Unit)? = null
 
-    init { loadDocuments() }
+    // *** GS-ARCHIVE-005 STEP 3: THE RESTORATION STANDETH **AFTER THE DECLARATIONS AND BEFORE THE FIRST BROWSE** --
+    // AND BOTH HALVES OF THAT SENTENCE ARE LOAD-BEARING, EACH MEASURED RATHER THAN REASONED: ***
+    //
+    //   * BEFORE THE FIRST BROWSE, because `loadDocuments()` below would otherwise strike out the restored place with
+    //     the browse's own empty query -- THE VERY LOSS THE FINDING CHARGETH, inverted;
+    //   * AND **AFTER THE DECLARATIONS**, BECAUSE `init` BLOCKS RUN IN DECLARATION ORDER. The first draft of this
+    //     restore sat near the TOP of the class (by the constructor), where `_state` (`:133`), `generation` (`:168`)
+    //     and `returnScene` (`:181`) stand UNINITIALISED -- and THE BEHAVIOURAL ARM CAUGHT IT IN ONE RUN:
+    //       `NullPointerException: Cannot invoke "AtomicLong.incrementAndGet()" because "this.generation" is null`
+    //     **A STRUCTURAL CHECK COULD NEVER HAVE SEEN THAT**, and neither could reading: the code LOOKED right at both
+    //     positions. It is the card's own demand ("Restore them from the constructor") that maketh the order matter.
+    //
+    // AND THE WRITE GOETH FROM ONE SEAM RATHER THAN FROM EVERY PUBLISHER: the state flow carrieth the whole place, so
+    // a collector over it CANNOT MISS one -- whereas a call added to each of the nine `_state.value = ...` sites could
+    // be forgotten by whoever addeth the tenth. **A RULE ENFORCED AT ONE SEAM BEATETH A RULE REMEMBERED AT N CALL
+    // SITES.** With no handle wired the write is a NO-OP, so every existing court constructeth this class unchanged.
+    init {
+        if (!restoreFromSavedStateIfAny()) loadDocuments()
+        viewModelScope.launch { _state.collect { persistToSavedState() } }
+    }
 
     fun onQueryChanged(value: String) {
         // the gate keepeth the bounds the engine itself commandeth

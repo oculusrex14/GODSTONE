@@ -2,6 +2,7 @@ package io.godstone.app.readiness
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.lifecycle.SavedStateHandle
 import io.godstone.app.ui.browse.BrowseMode
 import io.godstone.app.ui.browse.BrowsePhase
 import io.godstone.app.ui.browse.BrowseViewModel
@@ -648,5 +649,55 @@ class ReadinessT49Test {
     fun tearDown() {
         // the latch workers of W9 are shut down within the test itself; the
         // main dispatcher is reset there too -- nothing lingers between seats
+    }
+
+    // MARK: - GS-ARCHIVE-005 step 3: the place, where the platform keepeth it
+
+    /**
+     * *** GS-ARCHIVE-005 STEP 3, MEASURED BEHAVIOURALLY ON THIS ISLE. ***
+     *
+     * THE CARD'S OWN CHARGE, WHICH WAS EXACTLY TRUE HERE BEFORE THIS ROUND: `snapshotTo`/`restoreFrom` existed and
+     * **NO PRODUCTION CALLER REACHED EITHER**, and `SavedStateHandle` appeared NOWHERE in the Android tree -- so a
+     * process recreation lost the promised query and document place on THIS isle just as on the iOS one.
+     *
+     * THIS ARM TAKETH THE REAL ROAD, WHICH IS WHY IT IS BEHAVIOURAL AND NOT STRUCTURAL: it constructeth the view
+     * model OVER A HANDLE, drives a real OPEN, and then CONSTRUCTS A SECOND VIEW MODEL OVER THE SAME HANDLE -- which
+     * is what a process recreation giveth to the platform.
+     */
+    @Test
+    fun testProcessRecreationFindethThePlaceInTheSavedStateHandle() = withMain {
+        val handle = SavedStateHandle()
+        val first = BrowseViewModel(FakeReader(), StandardTestDispatcher(testScheduler), handle)
+        advanceUntilIdle()
+        first.open(document)
+        advanceUntilIdle()
+        assertEquals("the scene must stand IN the document", BrowseMode.DOCUMENT, first.state.value.mode)
+        assertEquals("and the open must have been WRITTEN where recreation can find it",
+                     document.id, handle.get<Long>("openedDocumentId"))
+        assertEquals("and the mode with it", "DOCUMENT", handle.get<String>("mode"))
+        assertEquals("and the title", "Archive guide", handle.get<String>("openedTitle"))
+
+        // A SECOND VIEW MODEL OVER THE SAME HANDLE IS A PROCESS RECREATION.
+        val second = BrowseViewModel(FakeReader(), StandardTestDispatcher(testScheduler), handle)
+        advanceUntilIdle()
+        assertEquals("*** THE RESTORED PLACE MUST STAND: the mode (GS-ARCHIVE-005 step 3) ***",
+                     BrowseMode.DOCUMENT, second.state.value.mode)
+        assertEquals("and the document identity must be the one that was open",
+                     document.id, second.state.value.openedDocumentId)
+        assertEquals("and its title", "Archive guide", second.state.value.openedTitle)
+    }
+
+    /**
+     * *** THE DISCRIMINATOR, SO THE ARM ABOVE CANNOT PASS ON A RESTORATION OF NOTHING. *** An EMPTY handle is a
+     * FIRST RUN, not a restoration: restoring from it would strike out the first browse with the empty place it had
+     * just built -- the loss the finding chargeth, inverted.
+     */
+    @Test
+    fun testAnEmptyHandleIsAFirstRunAndNotARestorationOfNothing() = withMain {
+        val vm = BrowseViewModel(FakeReader(), StandardTestDispatcher(testScheduler), SavedStateHandle())
+        advanceUntilIdle()
+        assertEquals("*** AN EMPTY HANDLE MUST MEAN A FIRST BROWSE ***", BrowseMode.DOCUMENTS, vm.state.value.mode)
+        assertEquals("and the documents must come home", listOf(document), vm.state.value.documents)
+        assertNull("and nothing may be claimed as restored", vm.state.value.openedDocumentId)
     }
 }

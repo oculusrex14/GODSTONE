@@ -295,6 +295,38 @@ deliberately, so the stack still carries no `path:`), **step 3 (Android's `Saved
 is iOS-only**, and **no rendered-screen witness exists** on this isle, so the card's closure test 2 is witnessed at the
 **record and the wiring, not by recreating a process**. The finding stays **`PARTIAL`**.
 
+## ROUND 525b, PHASE TWO — THE BOTH-ISLES MIRROR, AND A DEFECT ONLY RUNNING COULD FIND
+
+**The objective's phase-two law requires the shared contract "on BOTH isles where the contract is shared"; round 525
+had landed step 4 on iOS alone, so this went to Android.** Measured before any edit: `snapshotTo`/`restoreFrom` existed
+on `BrowseViewModel` with **no production caller**, and **`SavedStateHandle` appeared nowhere in the Android tree** —
+*so the card's charge was exactly true on this isle too.* The repair takes the card's own second option (the helpers are
+**not removed but made the serialisation behind the real handle**) and the vehicle it names.
+
+**AND THE BEHAVIOURAL ARM FOUND A REAL DEFECT IN PRODUCTION CODE ON ITS FIRST RUN:**
+
+```
+NullPointerException: Cannot invoke "java.util.concurrent.atomic.AtomicLong.incrementAndGet()"
+                      because "this.generation" is null
+```
+
+**The cause is the card's own demand meeting Kotlin's initialisation order:** the card says *"Restore them from the
+constructor"*, and `init` blocks run **in declaration order** — so a restore placed near the constructor reaches
+`generation` (`:168`), `_state` (`:133`) and `returnScene` (`:181`) **while they are still null.** *The code looked right
+at both positions, and a structural check would have agreed with it: **only running it could tell.*** The repair moves
+the restoration to the class's existing startup `init`, **after every declaration and before the first browse** — and
+**suppresses the browse when it restores**, because `loadDocuments()` would otherwise strike out the place just restored.
+
+**The write comes from ONE seam** (a collector over the state flow) rather than from each of nine publishers —
+*a rule enforced at one seam beats a rule remembered at N call sites.* **The discriminator:** an empty handle must mean a
+**first browse**, not a restoration of nothing.
+
+**Measured:** `:app` lane `BUILD SUCCESSFUL`, **53 tests / 0 failures / 0 errors**; `:mesh` lane re-run, **1228 / 0 / 0**;
+parity `--scope repo` all invariants hold; symbols 0 unresolved; digests PASSED.
+**NOT claimed:** step 3 also asks for **a valid reading anchor**, and this round persists the *place* but **not the
+anchor** (the Android state carries no anchor field) — so that clause is explicitly not claimed; step 4's
+`NavigationStack` clause is still undone; and **no rendered screen was ever exercised.** The finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
