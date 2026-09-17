@@ -60,6 +60,20 @@ class PanicWipe(
     enum class WipeState {
         IDLE,
         REQUESTED,
+        /**
+         * GS-STORE-006: **THE STAGE THIS JOURNAL COULD NOT REPRESENT -- AND THE MISSING STAGE WAS THE MISSING GUARANTEE.**
+         *
+         * This isle's coordinator ALREADY requires the drain (`CrashResumableWipe` declares "advancing past REQUESTED
+         * requires a Drained RuntimeDrainReceipt") and ALREADY persists it (`RUNTIME_DRAINED`) -- BUT THIS ENUM HAD NO
+         * VALUE FOR IT, SO THE JOURNAL THE COMPOSITION ACTUALLY USES COULD NOT RECORD THE FACT. An authority that cannot
+         * RECORD the drain cannot REQUIRE it.
+         *
+         * IT IS PLACED BETWEEN `REQUESTED` AND `KEY_ERASED` BECAUSE THAT IS WHERE THE DRAIN BELONGS -- and the position
+         * is also a safety argument: a reader meeting an unknown spelling falls back to `IDLE`, so an OLDER build RE-RUNS
+         * the wipe FROM THE BEGINNING rather than advancing past the erasure. RE-ERASING IS IDEMPOTENT; BELIEVING
+         * MATERIAL ERASED WHEN IT IS NOT, IS NOT.
+         */
+        RUNTIME_DRAINED,
         KEY_ERASED,
         ARTIFACTS_DELETED,
         NEW_IDENTITY,
