@@ -12,7 +12,7 @@ Branch: `codex/production-blueprint` (pushed).
 ## Ledger at this round
 
 ```
-FIX_SUBMITTED 46 · OPEN 0 · PARTIAL 8        (54 findings total)
+FIX_SUBMITTED 47 · OPEN 0 · PARTIAL 7        (54 findings total)
 VERIFIED_FIXED  0        — ABSENT BY RULE: only an independent audit may write it.
 ```
 
@@ -208,6 +208,31 @@ command away from being measured the whole time, and measuring them closed the a
 measurement: the first transcription **dropped the auditor's `import io.godstone.mesh.router.*`**, and I read the
 resulting eight unresolved references as *"the types have moved since the audit"* — **false**, they live exactly where
 the auditor's import says. *A cause invented from a plausible story is not a cause*; the truth was found by grepping.
+
+## ROUND 523, PHASE TWO — THE UNMEASURED BECOMES A MEASUREMENT, AND A FINDING MOVES ON IT
+
+**Round 522 named GS-SOS-001's step 6 UNMEASURED and said plainly that the next round measures it rather than
+inheriting a guess. This round measured it, and the measurement replaced the note.**
+
+* **half (a) — *"carry the same failure semantics through retry/UI projection"* — IS LANDED on BOTH isles**, read from
+  the handlers: Android maps `SosOutcome.Refused -> withAuthorityError("the call could not be placed: " + outcome.reason)`
+  and `RetryOutcome.Refused -> withAuthorityError("retry refused: " + outcome.reason)`; iOS carries
+  `SosOutcome { enqueued, cancelled, alreadyCancelled, refused(String) }` and `RetryOutcome`. **The typed refusal and its
+  reason reach the projection — not collapsed into a generic error.**
+* **half (b) — *"wire authenticated receiving observers through the actual runtime when their dependency is available"*
+  — is CONDITIONAL IN THE CARD'S OWN WORDS, and its state is now measured:** the `SosObserver` seam exists on both
+  isles, is **consulted** at the SOS dispatch site (`MeshNode.swift:1071`, `MeshNode.kt:1123`, `if (observer != null)`),
+  and **IS NEVER ASSIGNED IN PRODUCTION ON EITHER ISLE** — the only assignments are two courts. **The seventh
+  appearance of this programme's recurring shape**, after ANDROID-04's sweep, IOS-07's deadline sweep, T24's trusted
+  publication, GS-RUNTIME-001's ACK pumps, ANDROID-03's fall, and GS-UX-001's durable door. Its wiring is gated by
+  GS-RUNTIME-001 (still `PARTIAL`), and **nothing was wired: wiring an observer to a runtime that does not stand would
+  be fabricating integration** — the very substitution the card's last sentence forbids.
+
+**SO GS-SOS-001 MOVES TO `FIX_SUBMITTED` ON FOUR MEASURED GROUNDS:** its central charge is closed against **the
+auditor's own complete arm set** (`tests="4" failures="0"` versus the auditor's recorded `tests="4" failures="3"`); its
+steps 2–5 were landed in earlier rounds; step 6's half (a) is now measured landed on both isles; and half (b) is
+conditional on a dependency the card itself names — measured, and named as owed-conditional. **The one thing that must
+not be read into this: `VERIFIED_FIXED` is still 0 and may not be written by this span.**
 
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
