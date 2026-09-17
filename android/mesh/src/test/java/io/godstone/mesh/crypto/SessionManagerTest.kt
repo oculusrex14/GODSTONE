@@ -421,4 +421,48 @@ class SessionManagerTest {
         assertEquals("and the exact slot is released", 0, smB.slotCountForTest())
     }
 
+
+    /**
+     * The audit's clause: "ASYMMETRIC DIRECTIONAL TRAFFIC retireth correctly" -- the direction that mattereth most is
+     * the one an attacker controlleth: A's inbound traffic must NOT consume B's outbound budget, OR A TALKATIVE (OR
+     * HOSTILE) PEER COULD SILENCE ITS NEIGHBOUR BY MERELY TALKING.
+     *
+     * *** A CORRECTION CARRIED IN THE ARM ITSELF, BECAUSE THE FIRST VERSION OF IT CLAIMED A DEFECT THAT DID NOT EXIST:
+     * the first draft ended with `smB.seal(peerB, ...)`, WHILE `peerB` IS **B's OWN NODE ID** -- so B asked for a
+     * session keyed by ITSELF, received null, and the arm reported "a talkative peer silences its neighbour" AGAINST A
+     * PRODUCTION THAT WAS INNOCENT. Each manager's key is ITS OWN name for the relation (`peerA` for smB), and the
+     * primitive's counters were then READ to settle it: `messageCount` is incremented ONLY by `encrypt` and checked
+     * ONLY by `enforceSendBudget`, while `receiveCount` incremented by the receive path and checked only by
+     * `enforceReceiveBudget` -- THE DIRECTIONS NEVER SHARED A COUNTER. ***
+     */
+    @Test
+    fun crypto002InboundTrafficDoesNotConsumeTheOutboundBudget() {
+        val identityA = MeshIdentity.generate()
+        val identityB = MeshIdentity.generate()
+        val smA = SessionManager(identityA, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val smB = SessionManager(identityB, RecordingTrustAuthority(PeerTrustApplyResult.Accepted))
+        val peerB = identityB.nodeId      // SM-A's name for the relation
+        val peerA = identityA.nodeId      // SM-B's name for it
+        val hs1 = smA.initiatorStart(peerB, identityB.nodeHint)!!
+        val hs2 = smB.responderProcessHs1(peerA, identityA.nodeHint, hs1)!!
+        val hs3 = smA.initiatorProcessHs2(peerB, hs2, identityB.nodeHint)!!
+        assertTrue("the handshake completes", smB.responderProcessHs3(peerA, hs3, identityA.nodeHint))
+        val ctrlB = smB.slotForTest(peerA)!!.controller!!
+        ctrlB.noiseSession.recordBudgetForTest = 3
+
+        for (i in 0 until 2) {
+            val cipher = smA.seal(peerB, "in $i".toByteArray(Charsets.UTF_8))!!
+            assertTrue(
+                "A's record $i must authenticate",
+                smB.openWithResult(peerA, cipher) is NoiseSession.CryptoOpenResult.Authenticated,
+            )
+        }
+        for (i in 0 until 3) {
+            assertNotNull(
+                "INBOUND traffic must not consume the OUTBOUND budget -- else a talkative peer could silence its " +
+                    "neighbour by merely talking (record $i of 3)",
+                smB.seal(peerA, "out $i".toByteArray(Charsets.UTF_8)),
+            )
+        }
+    }
 }
