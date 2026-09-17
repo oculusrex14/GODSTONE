@@ -1285,6 +1285,20 @@ class SqliteMessageStore internal constructor(
      *  and the four checkpoint columns then stay NULL rather than carrying a fabricated budget. */
     internal var receiptTimeProvider: (() -> Pair<Long, String>)? = null
 
+    /**
+     * *** GS-STORE-004 (round 530): THE RETENTION WRITE-BACK'S OWN FAULT SEAM -- THE ANDROID TWIN, BECAUSE THE
+     * CONTRACT IS SHARED. ***
+     *
+     * MEASURED BEFORE IT WAS ADDED, AND IT IS WHY IT EXISTETH: this isle's fault seam (`faultInjector: ((String) ->
+     * Unit)?`) IS A **CONSTRUCTOR PARAMETER OF THE PERSIST PATH** (`persistAtWithFault`, with the phases
+     * `after_insert`, `after_evict`, `before_contains` and `obligation`). **THE READ PATH HATH NO SUCH PARAMETER**,
+     * and the retention write-back runneth DURING A READ (`isForwardable`'s `persistDebit` road) -- **SO NO COURT
+     * COULD MAKE IT FAIL ON THIS ISLE EITHER.** The finding's closure 3 saith *"related delivery/retention state
+     * must survive TRANSACTION FAILURE"*, and **A CLAUSE WHOSE PATH CANNOT BE FAULTED CANNOT BE WITNESSED.** The
+     * seam is `internal` and defaulted `null`, so NOTHING in production changeth.
+     */
+    internal var retentionWriteBackFault: (() -> Unit)? = null
+
     /** GS-STORE-004 (round 326, THE SEAM -- THE API WITHOUT ITS SEMANTICS): THE BOUNDED EXPIRY SWEEP. It retireth
      *  AT MOST [limit] rows whose persisted budget is spent and answereth HOW MANY it retired. AT THIS STEP IT IS A
      *  STUB RETURNING ZERO, so the arm that demandeth a retired row FAILETH ON ITS OWN SUBJECT rather than at
@@ -1868,10 +1882,15 @@ class SqliteMessageStore internal constructor(
         val discontinuityChanged = next.discontinuityCount != checkpoint.discontinuityCount
         if (persistDebit && next.remainingMs > 0 &&
             (discontinuityChanged || now.first - mono >= RetentionClock.CHECKPOINT_CADENCE_MS)) {
-            engine.setRetentionCheckpoint(
-                id, next.remainingMs.toLong(), next.checkpointMonotonicMs.toLong(),
-                storedBoot ?: now.second, next.discontinuityCount.toLong(),
-            )
+            // GS-STORE-004 (round 530): THE FAULT IS INJECTED **BEFORE** THE WRITE, so a refusal leaveth the row
+            // EXACTLY as it was -- a single UPDATE is atomic, and a write that never began cannot half-apply.
+            val refused = retentionWriteBackFault?.let { runCatching { it() }.isFailure } ?: false
+            if (!refused) {
+                engine.setRetentionCheckpoint(
+                    id, next.remainingMs.toLong(), next.checkpointMonotonicMs.toLong(),
+                    storedBoot ?: now.second, next.discontinuityCount.toLong(),
+                )
+            }
         }
         return next.remainingMs > 0 && reason == ExpiryReason.NotExpired
     }

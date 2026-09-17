@@ -1646,6 +1646,73 @@ final class SqliteMessageStoreTests: XCTestCase {
         }
     }
 
+    /// *** GS-STORE-004 CLOSURE 3's LAST CLAUSE: *"related delivery/retention state must survive ... TRANSACTION
+    /// FAILURE."* IT COULD NOT BE WITNESSED BEFORE THIS ROUND, BECAUSE THE PATH COULD NOT BE FAULTED AT ALL. ***
+    ///
+    /// MEASURED AT ROUND 530, BEFORE ANY EDIT: the store's fault seam is *"`fault: ((String, OpaquePointer?) throws
+    /// -> Void)?`"* -- **A PARAMETER OF THE PERSIST PATH** (`persistAtWithFault`, with the phases `after_insert` and
+    /// `after_heldbytes`). **THE READ PATH HATH NO SUCH PARAMETER**, and the retention write-back runneth DURING A
+    /// READ on the reader's own handle -- SO **NO COURT COULD MAKE IT FAIL**, and a clause whose path cannot be
+    /// faulted cannot be witnessed. Round 530 added `retentionWriteBackFault` for that reason; **THIS ARM IS THE
+    /// SECOND HALF.**
+    ///
+    /// THE LAW, IN THREE CLAUSES, EACH A WAY IT COULD GO WRONG:
+    ///   * a REFUSED write-back leaveth the row **EXACTLY AS IT WAS** -- a single UPDATE is atomic, so a write that
+    ///     never began cannot half-apply (budget, anchor and counter all unmoved);
+    ///   * the row is **STILL OFFERED**: a refused write cost it nothing, and a refusal that silently lost the row
+    ///     would be DATA LOSS DRESSED AS SAFETY;
+    ///   * and when the fault is CLEARED the state **SELF-HEALETH** -- the next read recomputeth the FULL debit from
+    ///     the STORED anchor, so a refused write loseth nothing.
+    ///
+    /// THE THIRD CLAUSE IS ALSO THE ARM'S OWN DISCRIMINATOR, AND WITHOUT IT THE ARM WOULD PROVE NOTHING: a seam that
+    /// never reached the write-back would leave the row unmoved for EVERY clause. **A CHECK MUST SHOW THAT ITS
+    /// INSTRUMENT REACHED THE THING IT JUDGETH.**
+    func testGSSTORE004_theRetentionWriteBackSurvivethATransactionFailure() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-wbfault-\(UUID().uuidString).db")
+        tmpURL = url
+        var now: Int64 = 1_000_000
+        let store = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        defer { store.close() }
+        store.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+        let f = frame(51, .direct, 48)
+        XCTAssertEqual(store.persist(f, receivedFrom: Data([7])), .heldNew)
+        let atAdmission = store.retentionCheckpointForTest(f.msgId)
+
+        // AN HOUR ON -- PAST THE CADENCE, SO THE WRITE-BACK IS DUE -- AND IT IS REFUSED.
+        now += 3_600_000
+        store.retentionWriteBackFault = { throw StoreOpenFault.io("injected: the retention write-back is refused") }
+        let heldWhileRefused = store.allHeldMsgIds()
+
+        // (1) THE ROW IS EXACTLY AS IT WAS: the refused write left no half behind it.
+        let afterFault = store.retentionCheckpointForTest(f.msgId)
+        XCTAssertEqual(afterFault.remainingMs, atAdmission.remainingMs,
+                       "a REFUSED write-back must leave the stored budget unmoved -- a write that never began "
+                       + "cannot half-apply")
+        XCTAssertEqual(afterFault.checkpointMono, atAdmission.checkpointMono,
+                       "nor the anchor")
+        XCTAssertEqual(afterFault.discontinuity, atAdmission.discontinuity,
+                       "nor the continuity counter")
+
+        // (2) AND THE ROW IS STILL OFFERED: the refusal cost it nothing.
+        XCTAssertEqual(heldWhileRefused, [f.msgId],
+                       "*** A REFUSED WRITE-BACK MUST NOT LOSE THE ROW: a refusal that silently dropt it would be "
+                       + "DATA LOSS DRESSED AS SAFETY (GS-STORE-004 closure 3) ***")
+
+        // (3) *** THE DISCRIMINATOR AND THE SELF-HEALING CLAUSE IN ONE: WITH THE FAULT CLEARED, THE NEXT READ
+        // PERSISTETH THE **FULL** DEBIT FROM THE STORED ANCHOR -- so the refused write lost nothing. ***
+        store.retentionWriteBackFault = nil
+        now += 3_600_000
+        _ = store.allHeldMsgIds()
+        let healed = store.retentionCheckpointForTest(f.msgId)
+        let spent = Int64(atAdmission.remainingMs ?? -1) - Int64(healed.remainingMs ?? -2)
+        XCTAssertEqual(spent, 2 * 3_600_000,
+                       "*** THE STATE MUST SELF-HEAL: two hours have passed and the stored budget must have spent "
+                       + "EXACTLY TWO -- computed from the STORED anchor, so the refused write cost it nothing "
+                       + "(and this clause proveth the fault REACHED the write-back, which the clauses above could "
+                       + "not) (GS-STORE-004 closure 3) ***")
+    }
+
     /// *** GS-STORE-004 CLOSURE 3: *"related delivery/retention state must survive ... REPEATED RESTART
     /// consistently."* RUN BEFORE ANY CLAIM IS MADE ABOUT IT. ***
     ///

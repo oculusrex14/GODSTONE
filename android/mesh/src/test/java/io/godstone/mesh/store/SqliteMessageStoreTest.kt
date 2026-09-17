@@ -1464,4 +1464,64 @@ class SqliteMessageStoreTest {
         )
     }
 
+    /** *** GS-STORE-004 CLOSURE 3's LAST CLAUSE: "survive ... TRANSACTION FAILURE" -- THE ANDROID TWIN, BECAUSE THE
+     *  CONTRACT IS SHARED BETWEEN THE ISLES. ***
+     *
+     * MEASURED AT ROUND 530 BEFORE THIS TWIN WAS WRITTEN, ON BOTH ISLES: the fault seam (`faultInjector`) IS A
+     * **CONSTRUCTOR PARAMETER OF THE PERSIST PATH**, and the retention write-back runneth DURING A READ
+     * (`isForwardable`'s `persistDebit` road) -- **SO NO COURT COULD MAKE IT FAIL**, and a clause whose path cannot
+     * be faulted cannot be witnessed. The seam `retentionWriteBackFault` was added for that reason; this arm is the
+     * second half.
+     *
+     * THE LAW, IN THREE CLAUSES: a REFUSED write-back leaveth the row exactly as it was (budget, anchor and counter
+     * unmoved -- one UPDATE is atomic); the row is STILL OFFERED (a refusal that silently dropt it would be DATA LOSS
+     * DRESSED AS SAFETY); and when the fault is cleared the state **SELF-HEALETH**, recomputing the FULL debit from
+     * the STORED anchor. THE THIRD CLAUSE IS ALSO THE ARM'S OWN DISCRIMINATOR: a seam that never reached the
+     * write-back would leave the row unmoved for every clause. **A CHECK MUST SHOW THAT ITS INSTRUMENT REACHED THE
+     * THING IT JUDGETH.**
+     */
+    @Test
+    fun gsstore004TheRetentionWriteBackSurvivethATransactionFailure() = runBlocking {
+        open(8L * 1024 * 1024)
+        var now = 5_000_000L
+        store.receiptTimeProvider = { now to "boot-A" }
+        val f = frame(51, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        val atAdmission = store.retentionCheckpointForTest(msgId(51))!!
+        val budgetAtAdmission = atAdmission[0] as Long
+        val anchorAtAdmission = atAdmission[1] as Long
+
+        // AN HOUR ON -- PAST THE CADENCE, SO THE WRITE-BACK IS DUE -- AND IT IS REFUSED.
+        now += 3_600_000L
+        store.retentionWriteBackFault = {
+            throw IllegalStateException("injected: the retention write-back is refused")
+        }
+        val heldWhileRefused = heldIds()
+
+        val afterFault = store.retentionCheckpointForTest(msgId(51))!!
+        org.junit.Assert.assertTrue(
+            "a REFUSED write-back must leave the stored budget unmoved -- a write that never began cannot " +
+                "half-apply (was ${afterFault[0]}, admission $budgetAtAdmission)",
+            afterFault[0] == budgetAtAdmission,
+        )
+        org.junit.Assert.assertTrue("nor the anchor", afterFault[1] == anchorAtAdmission)
+        org.junit.Assert.assertTrue(
+            "*** A REFUSED WRITE-BACK MUST NOT LOSE THE ROW: a refusal that silently dropt it would be DATA LOSS " +
+                "DRESSED AS SAFETY (GS-STORE-004 closure 3) ***",
+            heldWhileRefused.size == 1,
+        )
+
+        // *** THE DISCRIMINATOR AND THE SELF-HEALING CLAUSE IN ONE. ***
+        store.retentionWriteBackFault = null
+        now += 3_600_000L
+        heldIds()
+        val healed = store.retentionCheckpointForTest(msgId(51))!!
+        org.junit.Assert.assertTrue(
+            "*** THE STATE MUST SELF-HEAL: two hours have passed and the stored budget must have spent EXACTLY " +
+                "TWO -- computed from the STORED anchor, so the refused write cost it nothing (and this clause " +
+                "proveth the fault REACHED the write-back) (GS-STORE-004 closure 3; spent=${budgetAtAdmission - (healed[0] as Long)}) ***",
+            budgetAtAdmission - (healed[0] as Long) == 2 * 3_600_000L,
+        )
+    }
+
 }

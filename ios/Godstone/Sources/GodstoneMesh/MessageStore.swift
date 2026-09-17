@@ -1109,7 +1109,24 @@ public final class SqliteMessageStore: MessageStore {
 
     /// GS-STORE-004 STEP EIGHT: the debit, written back to the row it belongeth to. One statement, one row, and
     /// the policy's `next` checkpoint is the ONLY source of the values.
+    /// *** GS-STORE-004 (round 530): THE RETENTION WRITE-BACK'S OWN FAULT SEAM. ***
+    ///
+    /// MEASURED BEFORE IT WAS ADDED, AND IT IS WHY IT EXISTETH: the store's fault seam (`fault: ((String,
+    /// OpaquePointer?) throws -> Void)?`) is a **PARAMETER OF THE PERSIST PATH** -- `persistAtWithFault` passeth it,
+    /// with the phases `after_insert` and `after_heldbytes`. **THE READ PATH HATH NO SUCH PARAMETER**, so the
+    /// retention write-back (which runneth DURING A READ, on the reader's own handle) **COULD NOT BE MADE TO FAIL BY
+    /// ANY COURT.** The finding's closure 3 saith *"related delivery/retention state must survive TRANSACTION
+    /// FAILURE"* -- and **A CLAUSE WHOSE PATH CANNOT BE FAULTED CANNOT BE WITNESSED.** This seam maketh it faultable,
+    /// which is the first half of witnessing it. It is `internal` and defaulted `nil`, so NOTHING in production
+    /// changeth: the write-back runneth exactly as before when no court injecteth a fault.
+    internal var retentionWriteBackFault: (() throws -> Void)?
+
     private func persistCheckpoint(db: OpaquePointer, msgId: Data, next: RetentionCheckpoint) -> Bool {
+        // THE FAULT IS INJECTED **BEFORE THE STATEMENT IS PREPARED**, so the refusal leaveth the row EXACTLY as it
+        // was: a single UPDATE is atomic, and a write that never began cannot half-apply.
+        if let fault = retentionWriteBackFault {
+            do { try fault() } catch { return false }
+        }
         // GS-STORE-004 (round 310): THE WRITE RUNNETH ON THE HANDLE THE READER ALREADY HOLDS. Round 309's attempt
         // called `withDb` FROM INSIDE `withDb` -- taking the store's NON-RECURSIVE lock a second time -- and the
         // court HUNG. THE LAW, NOW MEASURED: a write performed DURING a read uses the reader's own handle and the

@@ -12,7 +12,7 @@ Branch: `codex/production-blueprint` (pushed).
 ## Ledger at this round
 
 ```
-FIX_SUBMITTED 47 · OPEN 0 · PARTIAL 7        (54 findings total)
+FIX_SUBMITTED 48 · OPEN 0 · PARTIAL 6        (54 findings total)
 VERIFIED_FIXED  0        — ABSENT BY RULE: only an independent audit may write it.
 ```
 
@@ -468,6 +468,42 @@ as a line number assumed for an anchor — **caught by an instrument rather than
 78 classes; the negative case failing on **both** isles; parity 7/0; symbols 0 unresolved; digests PASSED; store-schema
 gate PASS. **Closure 3's *"survive transaction failure"* clause is NAMED AS STILL UNWITNESSED** — no arm faults the
 retention write-back itself. The finding stays **`PARTIAL`**.
+
+## ROUND 530, PHASE TWO — AN INSTRUMENT GAP REPAIRED, AND GS-STORE-004 SUBMITTED ON MEASUREMENT
+
+**Measured before any edit: closure 3's *"survive … TRANSACTION FAILURE"* clause could not be witnessed at all,
+because the path could not be faulted.** On **both** isles the fault seam is a **parameter of the persist path**
+(Swift `persistAtWithFault`; Kotlin `persistAtWithFault`), while the retention write-back runs **during a read**.
+
+> **A clause whose path cannot be faulted cannot be witnessed.** So the finding here is *not* that the code was wrong —
+> it is that **the evidence was unobtainable**, which is a different defect and one this programme can repair.
+
+**The repair: `retentionWriteBackFault` on both stores** — `internal`, defaulted nil, consulted **before** the write, so
+**production is unchanged** and a refusal leaves the row exactly as it was. **And the arm was written with its own
+discriminator built in, because its first two clauses alone would pass for a seam that reached nothing:** the third
+clause — **self-healing**, the next read persisting the *full* debit from the *stored* anchor — is the one that proves
+the fault landed. *A check must show that its instrument reached the thing it judges*, and here the check and the proof
+are the same clause. **The arm passed first run on both isles**, and the negative case (the seam ignored, so the
+"refused" write landed) failed the arm exactly as it must.
+
+### GS-STORE-004 MOVES TO `FIX_SUBMITTED` — ALL THREE CLOSURE TESTS WITNESSED, CLAUSE BY CLAUSE
+
+The witnesses are **named in `pending_proof` so a reader can check rather than trust**: closure 1 (persist / reopen /
+debit / duplicate), closure 2 (wall-clock rollback, boot continuity, maximum hold, discontinuity bound), closure 3
+(read gate and sweep, repeated restart, transaction failure) — **each on both isles where the contract is shared.**
+
+**And the caveats are stated rather than implied:** **no device evidence and no real process restart** (*the
+"restarts" are reopens of the same file by a fresh store object; no process is terminated*); the two new fault seams
+leave production unchanged; the Android read gate's `kind` default remains **a named smell, not a claimed defect**; and
+**independent verification is owed — only an independent audit may write `VERIFIED_FIXED`.**
+
+> **AND ONE OBSERVATION WORTH CARRYING FORWARD: this finding held 55 `pending_proof` entries and an EMPTY
+> `pending_work`, and TWO HIGH-SEVERITY DEFECTS were still hiding in it** — the continuity identifier never advanced
+> (round 527) and the mint granting every row seven days (round 528) — **until its closure bar was measured CLAUSE BY
+> CLAUSE across rounds 527–530. A ledger that looks complete is not a finding that has been witnessed.**
+
+**Measured:** iOS `SWIFT_RC=0`, `GodstoneMeshTests` **1195/0** (1194 → 1195); Android `:mesh` **1231/0** (1230 → 1231);
+parity 7/0; symbols 0 unresolved; digests PASSED; store-schema gate PASS.
 
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
