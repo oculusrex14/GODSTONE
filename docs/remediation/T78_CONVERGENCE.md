@@ -653,6 +653,41 @@ census would be a category error.**
 unresolved; digests PASSED. **Five named owners remain unread, and the iOS twin `StressCampaign.swift` carries no
 owner census at all** — the both-isles mirror is owed. The finding stays **`PARTIAL`**.
 
+## ROUND 535, PHASE TWO — A SHARED CONTRACT WAS MET ON ONE ISLE; IT IS NOW MET ON BOTH
+
+**The measured asymmetry that set the round:** Android has carried the GS-STRESS-001 step-3 owner census since round
+521, while **`StressCampaign.swift` carried none at all** — *a grep for any owner or census concept in that file
+returned only the `censusHighWater` field.* **So a contract the human's phase-two law requires on BOTH isles where the
+contract is shared was met on one** — *exactly the asymmetry the audit's own method is built to find.*
+
+**The mirror carries the same name and the same law** (`public protocol ResourceCensusSource`; an `owners:` parameter
+**empty by default**, so nothing that stood before changes behaviour; `run()` asking each given owner **through the
+owner's own hook** and **naming it** in the failure). **The arm is the Android arm's mirror clause for clause**, in the
+T72 court where the twin's contract lives, holding a **real** `SessionManager` slot through the manager's own
+handshake ladder — **with its discriminator**: a second real manager, never handshaken, whose zero is *measured*, not
+assumed. The negative case failed it **on its own name** (*"a REAL live slot must be reported against the owner that
+holdeth it: []"*) while clause 2 still passed.
+
+### AND THREE COMPILE ERRORS OF MINE, EACH NAMED BY THE COMPILER IN ONE LINE
+
+1. **`return from initializer without initializing all stored properties`** — I *declared* the `owners` field and never
+   assigned it: **a declaration is not a capability** (round 479's law, met again).
+2. **`applyValidatedBinding(binding:)` has different argument labels from those required by protocol** — I invented a
+   label; the correction was **read** from the proven idiom in `SessionManagerConcurrencyTests`.
+3. And before those, the first negative-case patch **anchored on text that was not there and aborted** —
+   **a patch that aborts has measured nothing** (round 534's law, applied one round later).
+
+**Each was caught by an instrument, not by a reader.**
+
+**The parity of the contract was itself measured, not assumed:** `ResourceCensusSource` now appears in **both** campaign
+files. **Measured:** iOS lane `SWIFT_RC=0`, `GodstoneMeshTests` **1196/0** (1195 → 1196); parity `--scope repo` 7/0;
+symbols 0 unresolved; digests PASSED.
+
+**STILL OWED, AND NAMED:** the other owners the card names (timers, observers, inventory leases, ACK work, database
+rows) are unread **on both isles**; **the Swift twin reads a session owner only**, so the *writer-reservation* census
+made askable on Android at round 534 is **not yet mirrored**; and steps 2/4/5/6 need **external artifacts**. The
+finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is

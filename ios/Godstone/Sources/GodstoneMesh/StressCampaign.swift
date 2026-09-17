@@ -31,6 +31,32 @@ import Foundation
 // ---------------------------------------------------------------------------
 public let RESOURCE_MODEL_CATEGORY: String = "resource-model"
 
+/**
+ * *** GS-STRESS-001 STEP 3 (round 535): THE OWNER CENSUS -- **THE SWIFT TWIN**, BECAUSE THE CONTRACT IS SHARED. ***
+ *
+ * THE CARD'S OWN WORDS: *'Read resource census from the owners that allocate timers, writer reservations, SESSIONS,
+ * observers, inventory leases, ACK work and database rows.'*
+ *
+ * MEASURED BEFORE THIS WAS ADDED, AND IT IS WHY IT EXISTETH: the Android isle hath carried an owner census since
+ * round 521 (`io.godstone.mesh.stress.ResourceCensusSource`) while **THIS ISLE CARRIED NONE AT ALL** -- a grep for
+ * any owner or census concept in this file returned only the `censusHighWater` FIELD. **SO A CONTRACT THE HUMAN'S
+ * LAW REQUIREth ON *BOTH* ISLES WAS MET ON ONE**, which is an asymmetry of the exact kind the audit's own
+ * method is built to find.
+ *
+ * WHY A SEAM RATHER THAN A SECOND COUNTER: a number only the campaign can move is evidence about the campaign, and
+ * **NO MUTATION OF THE CAMPAIGN'S OWN BOOKKEEPING CAN EVER FALSIFY AN INVARIANT ABOUT A RUNTIME**. An owner
+ * answereth through **ITS OWN** evidence hook (`SessionManager.slotCountForTest()`), so the number is the OWNER'S.
+ *
+ * THE NAMES ARE THE ANDROID ISLE'S, SPELLED THE SAME WAY, so that ONE GREP FINDETH THE CONTRACT ON EVERY ISLE.
+ */
+public protocol ResourceCensusSource: AnyObject {
+    /// The owner's own name, so a failure can NAME whom it accuseth rather than saying 'sessions'.
+    var ownerName: String { get }
+
+    /// How many live session slots the REAL owner holdeth RIGHT NOW, read through its own evidence hook.
+    func liveSessionSlots() -> Int
+}
+
 public enum FaultKind {
     public static let clockJump = "clock_jump"
     public static let diskFull = "disk_full"
@@ -139,6 +165,8 @@ public final class StressCampaign {
     public let peers: Int
     public let schedule: FaultSchedule
     public let defect: String
+    /// GS-STRESS-001 step 3 (round 535): the real owners this campaign shall ask, if any were given.
+    public let owners: [any ResourceCensusSource]
 
     private var state: Int64
     private func next(_ bound: Int) -> Int {
@@ -157,11 +185,20 @@ public final class StressCampaign {
 
     public init(seed: Int64, cycles: Int = StressCampaign.defaultCycles,
                 peers: Int = StressCampaign.peerCount,
-                schedule: FaultSchedule? = nil, defect: String = CampaignDefect.none) {
+                schedule: FaultSchedule? = nil, defect: String = CampaignDefect.none,
+                /// *** GS-STRESS-001 step 3: THE REAL OWNERS THIS CAMPAIGN SHALL ASK. ***
+                /// EMPTY BY DEFAULT, so nothing that stood before this finding changeth behaviour -- the campaign
+                /// remaineth the resource model it was. Where an owner IS given, the session invariant is asked OF
+                /// IT, through the owner's own hook, AND THE FAILURE NAMETH IT.
+                owners: [any ResourceCensusSource] = []) {
         precondition(cycles >= 1, "a campaign carrieth at least one cycle")
         self.seed = seed; self.cycles = cycles; self.peers = peers
         self.schedule = schedule ?? FaultSchedule.fromSeed(seed, cycles: cycles)
         self.defect = defect
+        // AND THE OWNERS ARE KEPT: a seam that the initializer DROPPETH is a seam no campaign ever asketh, and the
+        // COMPILER named exactly this omission ("return from initializer without initializing all stored
+        // properties") -- WHICH IS WHY A DECLARATION IS NOT A CAPABILITY.
+        self.owners = owners
         self.state = seed &* 2862933555777941757 &+ 3037000493
     }
 
@@ -247,6 +284,18 @@ public final class StressCampaign {
         }
         if sessions != 0 {
             failures.append("\(Invariants.noLeakedSessions): \(sessions) session(s) leaked after shutdown")
+        }
+        // *** GS-STRESS-001 step 3: AND THE INVARIANT IS ASKED OF THE REAL OWNERS. The clause above readeth the
+        // MODEL'S OWN integer, which only this campaign can move -- so it cannot be falsified by a real leak, and a
+        // model that agreeth with itself is not evidence about a runtime. THE NUMBERS BELOW ARE THE OWNERS' OWN,
+        // read through the owners' evidence hooks, and a failure NAMETH the owner it accuseth.
+        // IT IS ASKED AFTER `shutdown()` (above), because the question is whether the owner RETAINED anything. ***
+        for owner in owners {
+            let live = owner.liveSessionSlots()
+            if live != 0 {
+                failures.append("\(Invariants.noLeakedSessions): \(live) session slot(s) still live in the REAL "
+                    + "owner '\(owner.ownerName)' after shutdown")
+            }
         }
         // GS-STRESS-001 (round 274): THE REPORTED INSTANCE IS CANONICAL, AND THIS IS A WITNESS REPAIR RATHER
         // THAN A BEHAVIOURAL ONE. `first(where:)` over a Dictionary chooseth WHICHEVER offending entry the

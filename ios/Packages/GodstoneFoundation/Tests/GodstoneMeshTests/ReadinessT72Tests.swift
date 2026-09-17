@@ -258,4 +258,79 @@ final class ReadinessT72Tests: XCTestCase {
         XCTAssertNotEqual(RESOURCE_MODEL_CATEGORY, "production",
                           "and it must NOT be named for the production runtime it doth not measure")
     }
+
+    // ------------------------------------------------------------ W15
+
+    /**
+     * *** GS-STRESS-001 STEP 3 ON THE **SECOND** ISLE: THE SESSION INVARIANT IS ASKED OF A REAL OWNER, AND NAMETH IT. ***
+     *
+     * MEASURED AT ROUND 535: THIS ISLE CARRIED NO OWNER CENSUS AT ALL while Android hath carried one since round 521
+     * -- **A CONTRACT THE HUMAN'S LAW REQUIREth ON BOTH ISLES WAS MET ON ONE.** This arm is the mirror of Android's
+     * `test_w14_the_session_invariant_is_asked_of_a_real_owner`, clause for clause.
+     *
+     * THE ARM HOLDS A **REAL** `SessionManager` SLOT -- driv'n through the manager's OWN handshake ladder, the idiom
+     * `SessionManagerConcurrencyTests` owneth -- and asketh the campaign about it. BOTH clauses read a REAL owner
+     * through `slotCountForTest()`, so neither is a stub:
+     *   CLAUSE 1 -- the live slot is reported, and the failure NAMETH the owner that holdeth it;
+     *   CLAUSE 2 -- THE DISCRIMINATOR: a SECOND real `SessionManager`, never handshaken, retaineth nothing, and the
+     *               selfsame campaign accuseth NOBODY -- so clause 1 is not a clause that fireth for anything.
+     */
+    private final class W15Keychain: LocalIdentityKeychain, @unchecked Sendable {
+        var storage: [String: Data] = [:]
+        func read(tag: String) throws -> Data? { storage[tag] }
+        func add(tag: String, data: Data) throws { storage[tag] = data }
+        func delete(tag: String) throws { storage.removeValue(forKey: tag) }
+    }
+
+    private final class W15TrustAuthority: PeerBindingTrustAuthority, @unchecked Sendable {
+        func applyValidatedBinding(_ binding: ValidatedPeerBinding) -> PeerTrustApplyResult { .accepted }
+    }
+
+    func testW15TheSessionInvariantIsAskedOfARealOwnerAndNamethIt() throws {
+        let identityA = try MeshIdentity.generateAndStore(keychain: W15Keychain())
+        let identityB = try MeshIdentity.generateAndStore(keychain: W15Keychain())
+        let live = SessionManager(identity: identityA, trustAuthority: W15TrustAuthority())
+        let peerSide = SessionManager(identity: identityB, trustAuthority: W15TrustAuthority())
+
+        // A REAL handshake, through the managers' OWN ladder: hs1 -> hs2 -> hs3 -> sealed.
+        let peerB = UUID()
+        let peerA = UUID()
+        let hs1 = try XCTUnwrap(live.initiatorStart(peerB, remoteHint: identityB.nodeHint))
+        let hs2 = try XCTUnwrap(peerSide.responderProcessHs1(peerA, remoteHint: identityA.nodeHint, hs1: hs1))
+        let hs3 = try XCTUnwrap(live.initiatorProcessHs2(peerB, hs2: hs2, advertisedRemoteHint: identityB.nodeHint))
+        XCTAssertTrue(peerSide.responderProcessHs3(peerA, hs3: hs3, advertisedRemoteHint: identityA.nodeHint),
+                      "the REAL handshake must seal")
+        XCTAssertGreaterThan(live.slotCountForTest(), 0, "a REAL slot must stand in the real owner")
+
+        let adapter = W15Census(ownerName: "SessionManager", slots: { live.slotCountForTest() })
+
+        // CLAUSE 1 -- THE INVARIANT IS ASKED OF THE REAL OWNER, AND NAMETH IT.
+        let accused = StressCampaign(seed: 7, cycles: 64, owners: [adapter]).run()
+        XCTAssertTrue(accused.failures.contains {
+            $0.contains(Invariants.noLeakedSessions) && $0.contains("SessionManager")
+        }, "a REAL live slot must be reported against the owner that holdeth it: \(accused.failures)")
+
+        // CLAUSE 2 -- THE DISCRIMINATOR, ALSO A REAL OWNER: a second manager never handshaken retaineth nothing,
+        // and the selfsame campaign must accuse NOBODY.
+        let fresh = SessionManager(identity: try MeshIdentity.generateAndStore(keychain: W15Keychain()),
+                                   trustAuthority: W15TrustAuthority())
+        XCTAssertEqual(fresh.slotCountForTest(), 0,
+                       "the discriminator's premise must be MEASURED, not assumed")
+        let clean = W15Census(ownerName: "SessionManager", slots: { fresh.slotCountForTest() })
+        let clear = StressCampaign(seed: 7, cycles: 64, owners: [clean]).run()
+        XCTAssertTrue(clear.failures.allSatisfy { !$0.contains("REAL owner") },
+                      "a real owner that retained nothing must NOT be accused: \(clear.failures)")
+    }
+
+    /// The adapter the arm hands the campaign: the owner's OWN hook, never a copy the campaign keepeth.
+    private final class W15Census: ResourceCensusSource {
+        let ownerName: String
+        private let slots: () -> Int
+        init(ownerName: String, slots: @escaping () -> Int) {
+            self.ownerName = ownerName
+            self.slots = slots
+        }
+        func liveSessionSlots() -> Int { slots() }
+    }
+
 }
