@@ -18,8 +18,11 @@ import io.godstone.mesh.identity.AndroidWipeArtifacts
 import io.godstone.mesh.identity.DefaultRuntimeLifecycleGate
 import io.godstone.mesh.identity.FileWipeJournal
 import io.godstone.mesh.identity.Identity
+import io.godstone.mesh.identity.CrashResumableWipe
 import io.godstone.mesh.identity.MeshRuntimeInvalidator
 import io.godstone.mesh.identity.PanicWipe
+import io.godstone.mesh.identity.WipeDeferredSeams
+import io.godstone.mesh.identity.WipeJournalDurabilityAdapter
 import io.godstone.mesh.identity.PeerIdentityRepository
 import io.godstone.mesh.identity.RuntimeAwareWipeArtifacts
 import io.godstone.mesh.identity.RuntimeGatedPeerBindingTrustAuthority
@@ -62,7 +65,26 @@ class MeshStartupWipeBarrier internal constructor(
 ) {
     init {
         runStartupWipeBarrier {
-            PanicWipe.resumeIfPending(ctx)
+            // *** GS-STORE-006: THE OLD `PanicWipe.resumeIfPending(ctx)` IS REPLACED BY **ONE RUNTIME-OWNED AUTHORITY** --
+            // THE CRASH-RESUMABLE COORDINATOR THE ISLE ALREADY HAD BUT WHICH NOTHING IN PRODUCTION EVER CALLED (round 400
+            // counted ZERO production conformances for any of its five seams). ***
+            //
+            // AND AT THE STARTUP **EVERY EFFECTFUL SEAM IS DEFERRED**, BECAUSE THIS PROCESS OWNS NO PLATFORM RESOURCE YET:
+            // no transport, no keystore, no database handles. THE LADDER THEREFORE STOPS WHERE IT CAN HONESTLY STOP --
+            // nothing erased, nothing deleted, no store opened on an erased key -- AND THE WIPE STAYS PENDING FOR THE
+            // RUNTIME THAT STANDS, exactly as the card's step 6 requires ("on restart, resume from the durable compatible
+            // journal BEFORE opening keys, databases, discovery or a new identity").
+            //
+            // THE JOURNAL IS NOT DEFERRED: writing a checkpoint is DURABILITY, not destruction, and it is the whole point of
+            // this half. `FileWipeJournal` commits synchronously, which is what makes the checkpoint survive the crash the
+            // ladder's durability is built for.
+            CrashResumableWipe(
+                store = WipeJournalDurabilityAdapter(FileWipeJournal(ctx)),
+                vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
+                filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
+                runtime = WipeDeferredSeams.DeferredTransportRuntimeSeam(),
+                authority = WipeDeferredSeams.DeferredIdentityAuthoritySeam(),
+            ).resume()
         }
     }
 }
