@@ -56,13 +56,20 @@ This span's work lies here. Measured this round:
 * **AND TWO DEFECTS IN THAT LAST CONTROL WERE FOUND AND REPAIRED THIS ROUND, BOTH OF THE SPECIES *A CHECK THAT CANNOT
   JUDGE*:** its accessibility invariant's **identifier half searched the whole source**, so **one tab carrying an
   identifier satisfied it for all five** — *committed by the very function that names the law twelve lines above it,
-  "a window that reacheth past the thing it judgeth is not a check"*; and **all eight `check_the_lab_*` invariants
-  ignored the `--root` they were handed** (a declared door that was not a door). Both repaired. **The proof is a
+  "a window that reacheth past the thing it judgeth is not a check"*. **The proof is a
   measurement on one tree, not an argument:** with SOS's identifier removed, the **old** whole-source regex answered
   `True` — it would have passed — while the **new** per-tab check answered `False`, and the repaired control then
   failed **naming the tab**: `the tabs carrieth labels but NO ACCESSIBILITY IDENTIFIER on the tab(s): SOS`.
-  **Still owed:** `SELFTEST_FILES` does not carry `LabMeshRootApp.swift`, so the selftest cannot yet exercise those
-  invariants; their proof remains by hand, now that they can honour a root at all.
+  **AND A CLAIM I MADE IN THE SAME BREATH IS WITHDRAWN: I ALSO "REPAIRED" THE EIGHT `check_the_lab_*` INVARIANTS TO
+  HONOUR THE `--root` THEY ARE HANDED — AND THAT WAS WRONG, BECAUSE THE BEHAVIOUR WAS LOAD-BEARING.** `test_t54.py`
+  passes a temp root carrying only `SELFTEST_FILES`, and **three t54 arms depend on those invariants reading the real
+  repository**; my change turned 2 failures into 2 failures **plus 3 errors**. It is **reverted exactly** (the diff is
+  now the accessibility block alone) and the identifier half is kept, because it is proven by measurement and breaks
+  nothing. **I ran the control, it passed, I committed — and the three broken arms surfaced only when the full lane was
+  run afterwards: a mandatory control can be green while the repair of it breaks another lane, and the control cannot
+  tell you.** *A behaviour that looks like a defect may be load-bearing — measure what depends on it before calling it
+  broken.* **Still owed:** the selftest cannot yet exercise those invariants (`SELFTEST_FILES` lacks
+  `LabMeshRootApp.swift`), so their proof remains by hand.
 * **THE PYTHON LANE, MEASURED HONESTLY BECAUSE THIS SPAN HAD NEVER RUN IT: `python3 -m unittest discover -s
   tools/readiness/tests` → `Ran 637 tests` · `FAILED (failures=2)`.** The two failures are
   `test_t01.InventoryFactsTest.test_inventory_matches_live_git_facts` (480 != 496) and
