@@ -21,8 +21,12 @@ import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.identity.CrashResumableWipe
 import io.godstone.mesh.identity.MeshRuntimeInvalidator
 import io.godstone.mesh.identity.PanicWipe
+import io.godstone.mesh.identity.WipeArtifactFileSystemSeam
 import io.godstone.mesh.identity.WipeDeferredSeams
+import io.godstone.mesh.identity.WipeIdentityAuthoritySeam
 import io.godstone.mesh.identity.WipeJournalDurabilityAdapter
+import io.godstone.mesh.identity.WipeKeyVaultSeam
+import io.godstone.mesh.identity.WipeTransportDrainSeam
 import io.godstone.mesh.identity.PeerIdentityRepository
 import io.godstone.mesh.identity.RuntimeAwareWipeArtifacts
 import io.godstone.mesh.identity.RuntimeGatedPeerBindingTrustAuthority
@@ -99,14 +103,27 @@ class MeshStartupWipeBarrier internal constructor(
 @Singleton
 class MeshPanicWipe internal constructor(
     @ApplicationContext private val ctx: Context,
-    private val invalidator: MeshRuntimeInvalidator
+    private val invalidator: MeshRuntimeInvalidator,
+    private val node: MeshNode
 ) {
     fun begin() {
         val artifacts = RuntimeAwareWipeArtifacts(
             invalidator = invalidator,
             delegate = AndroidWipeArtifacts(ctx)
         )
-        PanicWipe(FileWipeJournal(ctx), artifacts).begin()
+        // *** GS-STORE-006: THIS ROOT IS THE RUNTIME-SIDE AUTHORITY, SO IT RUNS THE COORDINATOR OVER THE **LIVE** SEAMS --
+        // and it can, because the module provideth the node, and the node owneth the transport. ***
+        // `PanicWipe(FileWipeJournal(ctx), artifacts).begin()` RETIRES HERE: THE OLD COORDINATOR IS NO LONGER WHAT THE
+        // RUNTIME-SIDE WIPE RUNS.
+        val journal = FileWipeJournal(ctx)
+        CrashResumableWipe(
+            store = WipeJournalDurabilityAdapter(journal),          // the mapping; the journal is the isle's own
+            vault = WipeKeyVaultSeam(artifacts),                    // over the RuntimeAwareWipeArtifacts built ABOVE, so
+                                                                    // the invalidation ordering the isle owns is kept
+            filesystem = WipeArtifactFileSystemSeam(journal),       // the same journal handle: one durable record
+            runtime = WipeTransportDrainSeam(node.bleTransportForWipe),  // THE LIVE TRANSPORT the runtime itself uses
+            authority = WipeIdentityAuthoritySeam(ctx, artifacts),  // the isle's own regeneration + naming
+        ).resume()
     }
 }
 
@@ -225,9 +242,10 @@ internal object MeshModule {
     @Provides @Singleton
     fun provideMeshPanicWipe(
         @ApplicationContext ctx: Context,
-        invalidator: MeshRuntimeInvalidator
+        invalidator: MeshRuntimeInvalidator,
+        node: MeshNode                    // GS-STORE-006: THE LIVE TRANSPORT'S OWNER, so the wipe may drain what it owns
     ): MeshPanicWipe =
-        MeshPanicWipe(ctx, invalidator)
+        MeshPanicWipe(ctx, invalidator, node)
 
     // ============================ GS-RUNTIME-001 step 2 on THIS isle: THE FOUR OWNERS ============================
     //

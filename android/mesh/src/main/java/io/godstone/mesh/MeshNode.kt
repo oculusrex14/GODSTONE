@@ -426,6 +426,16 @@ class MeshNode(
         ))
 
     internal val router: Router by lazy { Router(store, identity.nodeId) }
+    /**
+     * GS-STORE-006: **THE LIVE TRANSPORT, HANDED OUT FOR THE WIPE'S OWN SEAM.**
+     *
+     * The card's step 2 forbids a composition in which a wipe can omit a required resource, and the transport is the resource
+     * the finding's title names ("Crash-resumable wipe does not own transport drain"). The field is private, so rather than
+     * widening its visibility THE NODE NAMES THE RESPONSIBILITY HERE, and `WipeTransportDrainSeam` takes it -- so the drain
+     * asketh the VERY transport the runtime useth, not a second one.
+     */
+    internal val bleTransportForWipe: BleTransport get() = ble
+
     private val ble: BleTransport by lazy {
         // ctx is non-null in production; null only in pure-JVM tests
         // that never start the node and so never reach the transports.
