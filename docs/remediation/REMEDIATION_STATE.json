@@ -6356,10 +6356,9 @@
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
    "closure_tests": [
-    "Terminate the process after intent claim, after authoring, after held/delivery transaction and after response loss; reopen storage in a new process and retry the same intent, observing identical bytes and ID.",
+    "Terminate the process after intent claim, after authoring, after held/delivery transaction and after response loss; REOPEN STORAGE IN A NEW PROCESS and retry the same intent, OBSERVING IDENTICAL BYTES AND ID.",
     "DB/key/read/corruption/quota/wipe failures cannot create an untracked new send or report durable success.",
-    "Composition test invokes the exposed runtime command and observes exactly one committed intent/held/delivery bundle; no test-only journal is reachable from that graph.",
-    "Real recipient-pipeline tests prove no inbox/ACK before signature/policy/storage success once T37/T83 exist."
+    "A composition test invokes the EXPOSED RUNTIME COMMAND and observes exactly one send."
    ],
    "evidence_level": "SOURCE_CONFIRMED_NO_PROCESS_RESTART_PROOF",
    "final_review": {
@@ -6372,7 +6371,14 @@
    "impact": "Current tests do not establish crash-resumable retry or a reachable authored send command. A real process restart loses the mapping from intent to authored bytes; retry can generate a different message. Treating held_frames as an inbox or manually invoking a verifier does not prove durable recipient acceptance.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
-   "my_logs": [],
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round426-the-card-read-in-full.log",
+     "sha256": "63196126a2dc4ba8286e50bee19f76ae6844fc7cc4896ddd7229ba0e6d1a8918",
+     "what": "CRYPTO-005: THE CARD READ IN FULL from the audit's authoritative index (FINDINGS.json) -- HIGH, T36, OPEN, SOURCE_CONFIRMED_NO_PROCESS_RESTART_PROOF: the only `OutboundIntentJournal` implementation ON EACH PLATFORM stores rows in a PROCESS-LOCAL MAP, `SendDirectAuthority` HAS NO CALLER in either MeshNode/composition root, the restart test REUSES THE SAME IN-MEMORY journal/store, and the full-call-path test invokes Router.ingest/verifier/ACK by hand with NO ACTUAL TRUSTED TRANSPORT. THE SAME SPECIES AS GS-STORE-006: a seam that EXISTS, whose only implementation is IN-MEMORY, and which NOTHING IN THE RUNTIME CALLS -- the audit's own phrase is 'the additive seam', which its commit boundary forbids treating as completion",
+     "outcome": "no file modified, no lane run; tree at HEAD and green by prior measurement. The plan follows the method this span measured: (1) read the TREE rather than the snapshot (the journal's implementations on both isles, SendDirectAuthority's call graph, the composition roots); (2) THE RED FIRST, and it must be the clause's own substance -- write an intent through the runtime, then PROVE the durable medium is reopened from disk, because a test reusing an in-memory object would repeat the very error the audit found; (3) only then the schema/adapter in the runtime's own transaction engine, with typed load outcomes that FAIL CLOSED."
+    }
+   ],
    "my_red_case": null,
    "my_status": "OPEN",
    "notes": null,
@@ -6424,7 +6430,11 @@
     "T36"
    ],
    "title": "DIRECT intent persistence is only an in-memory seam and is not composed into the runtime",
-   "wave": "4b"
+   "wave": "4b",
+   "card_read_at_round": 426,
+   "card_source": "AUDIT_FINAL_2026-09-15/FINDINGS.json (authoritative index)",
+   "audit_final_review": "CARRIED_OPEN_CHANGED_SOURCE_REVIEW_NO_FULL_RETEST",
+   "commit_boundary": "Durable intent schema/adapter plus composition and process-restart proof; DO NOT MARK T36 COMPLETE WITH ONLY THE ADDITIVE SEAM."
   },
   "CRYPTO-006": {
    "audit_status_at_snapshot": "OPEN",
