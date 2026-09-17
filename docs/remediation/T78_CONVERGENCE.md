@@ -577,6 +577,39 @@ survivors corrected with anchors, which is what the convergence's stale-evidence
 **Measured:** only `REMEDIATION_STATE.json` changed this round (no production or test file); parity `--scope repo` 7/0;
 symbols 0 unresolved; evidence digests PASSED; the python lane at its two pre-existing T01 failures (not this span's).
 
+## ROUND 533, PHASE TWO — THE EMPTY PROOF FIELDS CURED, AND FIVE AUDIT SENTENCES OVERTURNED BY MEASUREMENT
+
+**Round 532 counted twelve findings whose `pending_proof` was empty. Round 533 cured all twelve — the count is now
+ZERO.** Three were findings the human named directly (CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001); the other nine were
+each written from a measurement taken this round.
+
+**AND THE MEASUREMENTS OVERTURNED THEIR OWN AUDIT SENTENCES FIVE TIMES, EACH WITH A COUNT:**
+
+| finding | the audit's `impact` sentence | measured now |
+|---|---|---|
+| **IOS-02** | `beginTrustedHandshake(` *"only at its declaration"* | **3 sites** — declaration + **two real callers** (`:1326`, `:3770`) |
+| **IOS-04** | `PeerEventPublisher` *"no construction or use"* | **1** production construction |
+| **IOS-05** | `PeerGovernor` *"no construction or method call"* | **1** |
+| **IOS-06** | *"no production constructors"* of the lifecycle | **1**, plus `LifecycleTransportAdapter(` **1** — **and the Android twin at `MeshNode.kt:526-531`** |
+| **IOS-07** | `sweepInboundLeases` *"no caller anywhere in canonical Sources"* | **3 sites**, one a **real caller at `:737`** |
+| **ANDROID-06** | `sealAndQueueOf` *"has no consumed/cancelled ticket check"* | both checks present (`:243`, `:261`) |
+| **ANDROID-07** | *"No AdmissionBudget ... called in GATT ingress"* | **3 constructions, 12 references** |
+| **GS-LAB-001** | *"lack launchable application entry points"* | both isles launchable; control **PASSED, 14 notes** |
+| **IOS-01** | *"`stopQuiesced` sets that context to nil ... subsequent calls consume that nil context"* | the close **captures the context first**, then nils |
+
+**THE `impact` FIELD IS THE AUDIT'S OWN TEXT AND IS LEFT AS IT STANDS — but an empty `pending_proof` meant NO READER WAS
+EVER TOLD WHICH OF ITS SENTENCES TIME HATH ANSWERED**, and that is the record defect this round closes.
+**A ledger must say not only what was done but which claims it has answered.**
+
+**AND TWO BOUNDARIES ARE STATED RATHER THAN IMPLIED, because measurement found them:** the counts for ANDROID-07 are
+*references*, not a measurement of the governor's behaviour under real ingress traffic; and GS-LAB-001's own audit point
+stands — **"host library tests do not establish application launch", and they still do not.** *What is measured is that
+the entry points exist and are asserted by the control; no installed lab was launched.*
+**Every one of the twelve carrieth the same two owed items: no device/radio evidence, and independent verification.**
+
+**Measured:** only `REMEDIATION_STATE.json` changed this round; parity `--scope repo` 7/0; symbols 0 unresolved; evidence
+digests PASSED; the python lane at its two pre-existing T01 failures (not this span's).
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
