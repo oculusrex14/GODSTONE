@@ -44,8 +44,12 @@ import io.godstone.mesh.delivery.RecipientKeyResolver
 import io.godstone.mesh.delivery.RecipientInboxRepository
 
 /**
- * Startup barrier execution primitive ensuring [PanicWipe.resumeIfPending] executes before
- * sensitive cryptographic identity or database stores are opened (Stage 4 Phase C8.4B.2).
+ * Startup barrier execution primitive ensuring the RUNTIME-OWNED WIPE AUTHORITY executes before sensitive cryptographic
+ * identity or database stores are opened (Stage 4 Phase C8.4B.2).
+ *
+ * GS-STORE-006: it USED to ensure `[PanicWipe.resumeIfPending]` did so; since round 412 it runs the CRASH-RESUMABLE
+ * COORDINATOR over the DEFERRED seams instead. THIS DOCUMENTATION IS CORRECTED RATHER THAN LEFT DESCRIBING A CALL THE CODE
+ * NO LONGER MAKES -- a comment that lieth about the code beside it is a defect, not a nicety.
  */
 internal fun runStartupWipeBarrier(resumePendingWipe: () -> Unit) {
     resumePendingWipe()
@@ -60,8 +64,12 @@ internal class MeshStartupCoordinator(
 }
 
 /**
- * Startup barrier token ensuring [PanicWipe.resumeIfPending] executes before
- * any sensitive cryptographic identity or database store is opened (Stage 4B.1 / C8.4B.1 / C8.4B.2).
+ * Startup barrier token ensuring the RUNTIME-OWNED WIPE AUTHORITY executes before any sensitive cryptographic identity or
+ * database store is opened (Stage 4B.1 / C8.4B.1 / C8.4B.2).
+ *
+ * GS-STORE-006: the authority is the CRASH-RESUMABLE COORDINATOR with EVERY EFFECTFUL SEAM DEFERRED (this process owns no
+ * transport, no keystore and no database handles yet), so a pending wipe STOPS where it can honestly stop and stays PENDING
+ * for the runtime that stands.
  */
 @Singleton
 class MeshStartupWipeBarrier internal constructor(
