@@ -43,3 +43,29 @@ public final class WipeDeferredKeyVaultSeam: KeyVaultSeam {
         return .failed(keyName: name, retryable: true, reason: Self.reason)
     }
 }
+
+/// The artifact filesystem of a runtime that does not yet stand. It DELETETH NOTHING -- and IT IS HERE BECAUSE A MEASURED
+/// RUN SAID SO: a court which planted a journal at `keyErased` saw this seam (the LIVE one) DELETE ITS REAL PATHS, after
+/// which the court could not open its peer store (`stepFailed`, `PeerIdentityStore.swift:292`). THE RULE IS THE SAME RULE
+/// A THIRD TIME: at create time the runtime owns no platform resource, so a seam that REMOVES FILES may not run there.
+///
+/// `exists(_:)` STILL READETH THE REAL FILESYSTEM, AND THAT IS DELIBERATE: READING IS NOT AN EFFECT -- and a reader that
+/// could not see the truth would be worse than no reader at all.
+public final class WipeDeferredArtifactFileSystemSeam: ArtifactFileSystemSeam {
+    public static let reason = "the runtime does not yet stand: no artifact may be deleted at the startup resume"
+    private let fileManager: FileManager
+
+    public init(fileManager: FileManager = .default) { self.fileManager = fileManager }
+
+    public func exists(_ path: String) -> Bool { return fileManager.fileExists(atPath: path) }
+
+    /// NEVER `.deleted` and NEVER `.absent`: a NAMED, RETRYABLE PENDING FAILURE, so the ladder STOPPETH before
+    /// `ARTIFACTS_DELETED` and the wipe remaineth pending rather than claiming a cleanup it did not perform.
+    public func deleteArtifact(_ path: String) -> FileDeletionResult {
+        return .failed(path: path, reason: Self.reason)
+    }
+
+    /// NOTHING IS READABLE WHILE NO RUNTIME STANDS: the keys that would decrypt anything are not this seam's to judge,
+    /// and answering `true` here would invite a reader to try.
+    public func isReadable(_ path: String) -> Bool { return false }
+}
