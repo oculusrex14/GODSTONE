@@ -686,6 +686,9 @@ internal enum StoreSchema {
                 // a CREATE here would meet a table that already standeth.
                 statements = [StoreSchema.createTombstoneSql]
             } else if revision == from && creatingTables {
+                // *** CRYPTO-005 (round 463): THE FIFTH INSTRUMENT -- the site that had never spoken. `creates` IS BUILT AND
+                // HANDED OVER HERE, and NOTHING HATH EVER PRINTED WHAT THIS STEP ACTUALLY RECEIVETH. One line, behaviour-preserving.
+                print("CRYPTO-005 fresh-file step: revision=\(revision) from=\(from) creatingTables=\(creatingTables) statements=\(creates.count)")
                 statements = creates
             } else {
                 statements = []
