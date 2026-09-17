@@ -6509,6 +6509,12 @@
      "sha256": "728c68174138afacb5ae1936cc6bddebf9d029c42ad42e501e1acf5e41e0cd77",
      "what": "***CRYPTO-005: A CORRECTION OF MY OWN PREVIOUS ROUND -- THE DOOR ALREADY EXISTS.*** `readDelivery` and `insertDelivery` are both `try withDbThrowing { db in try …NoLockStrict(db, …) }`, I.E. **`withDbThrowing` HANDS THE DURABLE HANDLE TO A CLOSURE -- EXACTLY the door I said in round 478 the adapter would need, ALREADY BUILT, ALREADY USED BY EVERY WRITE IN THIS STORE, AND CAREFUL ABOUT LOCKS BY CONSTRUCTION** (`…NoLock` is in the inner name). SO MY ROUND-478 CONCLUSION IS WITHDRAWN: THE PRIVATE FIELD STAYS PRIVATE AND NOTHING NEW NEEDS OPENING -- THE THIRD CORRECTION OF MY OWN PLANS IN THIS FINDING, AND LIKE THE OTHER TWO IT SHRANK THE WORK",
      "outcome": "no file modified; tree at HEAD, CLEAN and LANE-GREEN (cc6ce98: 1184 + 82, 0 failures, exit 0). AND THE TWO-LAYER PATTERN IS NOW THE WHOLE SPECIFICATION: every verb is a THROWING WRAPPER THAT TAKES THE LOCK plus an INNER IMPLEMENTATION THAT ASSUMES THE LOCK IS HELD. The intent journal mirrors both layers (`readIntentRow`/`insertIntent`/`advanceIntent` over their `…NoLockStrict` twins). SO NOT A SINGLE PREREQUISITE REMAINS: no door to open, no primitive to add, no shape to read. THE NEXT ROUND WRITES IT AND LETS THE GATE JUDGE."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round479b-A-DOUBLE-CORRECTION-the-door-is-PRIVATE-so-round-478-was-right.log",
+     "sha256": "002e31c1d2c179fed9277c9dc9c03dcc6fabb7a642202174ec538f16961e2ee9",
+     "what": "***CRYPTO-005: A DOUBLE CORRECTION -- ROUND 478 WAS RIGHT AND MY ROUND-479 'CORRECTION' WAS ITSELF WRONG.*** `private func withDbThrowing<T>(_ body: (OpaquePointer) throws -> T) throws -> T` IS PRIVATE, SO A SIBLING TYPE CANNOT CALL IT: round 478's conclusion STANDS and round 479's claim that 'nothing new needs opening' is WITHDRAWN. THE FIELD `handle` STAYS PRIVATE, `withDbThrowing` STAYS PRIVATE, AND THE JOURNAL'S THREE VERBS MUST BE METHODS OF `SqliteMessageStore` ITSELF",
+     "outcome": "no file modified; tree at HEAD, CLEAN and LANE-GREEN (cc6ce98: 1184 + 82, 0 failures, exit 0). AND A NEW LESSON: A DECLARATION IS NOT A CAPABILITY -- I READ THE NAME, CONCLUDED THE ADAPTER COULD USE IT, AND CORRECTED A CONCLUSION THAT WAS RIGHT, WITHOUT NOTICING THE ACCESS MODIFIER ON ITS FIRST LINE. THE THIRD FORM OF A LAW ALREADY CARRIED TWICE IN THIS LEDGER: A GREP ANSWERS ONLY THE QUESTION ITS PATTERN ASKS (458); READ THE ANCHOR (383); A NAME IS NOT A DOOR -- THE MODIFIER IS PART OF THE CLAIM."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
@@ -12246,5 +12252,15 @@
    "The five external gates, which NO amount of repository work can close."
   ],
   "the_goal": "**LEFT ACTIVE AND INCOMPLETE.** Twelve findings stand OPEN, five external gates stand OPEN, and no independent audit hath yet written a single `VERIFIED_FIXED`. Calling this achieved would be the one claim this whole programme was built to make impossible."
- }
+ },
+ "record_corrections": [
+  {
+   "at_round": 479,
+   "what_was_claimed": "That `withDbThrowing` is an existing door the adapter could use, so round 478's 'prerequisite' was unnecessary.",
+   "what_is_true": "`withDbThrowing` is `private`. The field stays private and so does the door; the journal's three verbs must therefore be METHODS OF SqliteMessageStore, exactly as round 478 concluded.",
+   "why_it_was_wrong": "A DECLARATION IS NOT A CAPABILITY: I read the method's NAME and concluded the adapter could use it, WITHOUT NOTICING THE ACCESS MODIFIER on its first line.",
+   "consequence": "Round 478's conclusion stands and round 479's correction is withdrawn -- the second time in two rounds that my own correction needed correcting. The ledger carries both, because a corrected correction is more useful than a silent one.",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round479b-A-DOUBLE-CORRECTION-the-door-is-PRIVATE-so-round-478-was-right.log"
+  }
+ ]
 }
