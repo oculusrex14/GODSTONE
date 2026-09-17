@@ -12677,5 +12677,27 @@
   "lane": "1187 tests, 0 failures, exit code 0 (round 517), the count grown by the arms this span wrote",
   "honest_caveats": "NO VERIFIED_FIXED ANYWHERE (by rule: only an independent audit may write it). EVERY finding carries what awaits independent verification, what depends on external artifacts (device/process-boundary proofs, platform-encryption proofs, the Android counterparts -- none suppliable here, none fabricated), and which closure evidence is stale (arms predating this span, and the old in-memory paths remaining beside the repaired ones)."
  },
- "my_logs": []
+ "my_logs": [],
+ "t78_convergence": {
+  "candidate_sha": "fdd5132f000e7dc76c2d708dd369cedbcef322bf",
+  "written_at_round": 520,
+  "document": "docs/remediation/T78_CONVERGENCE.md",
+  "tree": "CLEAN at the time of writing",
+  "ledger": {
+   "FIX_SUBMITTED": 45,
+   "OPEN": 3,
+   "PARTIAL": 6
+  },
+  "lane": "GodstoneMeshTests 1187 tests, 0 failures; GodstoneCoreTests passed; exit code 0",
+  "scopes_reported_separately": {
+   "scope_A_LIGHT_Archive": "14 findings -- NOT this span's work; nothing in this candidate alters their standing, and none may be treated as verified on the strength of this SHA",
+   "scope_B_Mesh_Oracle": "40 findings -- the five findings named by the human are ALL FIX_SUBMITTED"
+  },
+  "awaiting_independent_verification": "ALL OF IT -- VERIFIED_FIXED is zero across the programme and no finding in this candidate has been examined by anyone but its author",
+  "depending_on_external_artifacts": "none supplied, none fabricated: a real process restart; device/radio measurements; platform-encryption proofs (GS-INBOX-001's card names them as explicitly tracked child commits, none taken); and the Android counterparts (the Mesh medium landed here is iOS-only)",
+  "stale_closure_evidence": "arms predating this span; CRYPTO-005's original restart arm (claims a restart while reusing its medium); and the old in-memory paths remaining beside the repaired ones",
+  "readiness_flags": "FALSE",
+  "external_gates": "OPEN (five) -- acquisition never closes a gate",
+  "remaining": "PHASE TWO: the six PARTIAL findings, the three remaining OPEN, and the four external artifacts"
+ }
 }
