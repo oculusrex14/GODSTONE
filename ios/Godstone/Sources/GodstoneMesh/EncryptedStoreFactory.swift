@@ -71,6 +71,15 @@ public final class EncryptedStoreFactory: @unchecked Sendable {
         self.provider = provider; self.engine = engine
     }
 
+    /// GS-STORE-006: **THE KEY PROVIDER, HANDED OUT FOR THE WIPE'S OWN VAULT SEAM.**
+    ///
+    /// The card's step 2 forbiddeth a composition in which "a default-nil dependency permit[s] a production wipe to omit
+    /// a required resource" -- and THE DEK's ONE OWNER IS THIS PROVIDER (its `deleteDEK(tag:)` is the only verb that
+    /// eraseth the wrapping key). The field is `private`, so rather than reaching into it from the composition, THE
+    /// FACTORY NAMETH THE RESPONSIBILITY HERE, and the wipe's `WipeKeyVaultSeam` taketh it as its `any
+    /// PrivateStoreKeyProvider`. A wipe wired without it would reach `IDLE` WITHOUT HAVING ERASED THE DEK.
+    internal var keyProviderForWipe: PrivateStoreKeyProvider { provider }
+
     /// Open (creating if first install) the encrypted store at `path`, keyed by `tag`.
     public func openStore(path: String, tag: String) -> EncryptedStoreOpenResult {
         guard engine.kind == .pinnedSQLCipher else { return .unavailable }   // no plaintext fallback, ever
