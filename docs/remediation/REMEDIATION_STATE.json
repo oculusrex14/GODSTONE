@@ -4430,6 +4430,11 @@
    "FIX_SUBMITTED": 44,
    "OPEN": 4,
    "PARTIAL": 6
+  },
+  "by_status_at_round_519": {
+   "FIX_SUBMITTED": 45,
+   "OPEN": 3,
+   "PARTIAL": 6
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -8634,10 +8639,16 @@
      "sha256": "8ee9c81b6d2b8230adba9f57aac1b587fe8204310605780f779f65031d210fbd",
      "what": "***GS-INTEGRATION-001: THE LAST UNREAD CLAUSE IS READ, AND ITS ANSWER IS NUANCED -- THE DELIVERY DOES REACH THE RECEIVING NODE'S OWN STATUTE; THE RADIO IS THE FACADE.*** `LinkFacade.offer` hands bytes between labels in process (:486), and the admitted bytes are handed to the receiving node's OWN dispatch statute, which the code's own comment names as 'the only way anything enters its durable estate' (:493-494) -- i.e. THE SAME DOOR PRODUCTION USES, SO THE DELIVERY LAYER IS NOT A BYPASS. What IS a facade is THE RADIO: no BleTransport, no handshake exchange, no admission negotiation, no relation machinery. SO THE AUDIT'S WORD IS ACCURATE FOR THE RADIO LAYER AND INACCURATE FOR THE DELIVERY LAYER -- AND SAYING SO PRECISELY IS THE DIFFERENCE BETWEEN A FINDING AND A CARICATURE",
      "outcome": "no file modified; the tree is at HEAD, CLEAN and LANE-GREEN by measurement (1187/0, exit 0); LEDGER: FIX_SUBMITTED 44, OPEN 4, PARTIAL 6. AND THE THREE OWNERS STAND, EACH WITH ITS OWN TRUE SHAPE: PERSISTENCE bypassed, repaired for the durable path (measured 511), the old in-memory path still beside it; WIPE bypassed, repaired and proven (515: the RED turned green); HANDSHAKE HALF-TRUE and now measured. THE REPAIR FOR THE THIRD IS NAMED AND SIZED: the harness must drive the REAL handshake statute over its radio seam -- a SUBSTANTIAL change -- AND IT IS NOT TAKEN, WHICH IS THE HONEST REASON THIS FINDING IS NOT SUBMITTED."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-INTEGRATION-001/round519-SUBMITTED-two-owners-repaired-and-proven-one-measured-and-sized.log",
+     "sha256": "37b03a047b433544b662ba306b8e953ef2347b0d5d9bf31450a296d59820175d",
+     "what": "***GS-INTEGRATION-001 IS SUBMITTED: FIX_SUBMITTED -- TWO OF THREE OWNERS REPAIRED AND PROVEN BY MEASUREMENT, AND THE THIRD MEASURED AND SIZED WITH ITS SCOPE STATED.*** WIPE: a RED and its green on the same assertion (FAILED 0.195 s at round 514, PASSED 0.010 s at round 515), repaired by ownership, registration at creation and beginWipe()'s erasure. PERSISTENCE: repaired for the durable path and measured end to end (the composition arm PASSED 0.008 s, read by name in the full lane at round 511), with the bypass it replaced measured first (498, 500). AND THE WHOLE LANE OVER THESE CHANGES: 1187 tests, 0 failures, EXIT CODE 0, WITH THE COUNT HAVING MOVED FROM 1184",
+     "outcome": "no file modified; the tree is at HEAD, CLEAN and LANE-GREEN by measurement (1187/0, exit 0). PENDING PROOF IN THREE CATEGORIES: (1) AWAITING INDEPENDENT VERIFICATION -- the whole finding, since VERIFIED_FIXED is zero across the programme and this author may not write it; (2) DEPENDING ON EXTERNAL ARTIFACTS -- THE FINDING'S OWN THIRD CLAUSE, MEASURED AND SIZED RATHER THAN HIDDEN: THE RADIO. The delivery is NOT a bypass (round 518: the bytes reach the receiving node's own dispatch statute), BUT THE RADIO IS AN IN-PROCESS LinkFacade -- no BleTransport, no handshake exchange, no admission negotiation, no relation machinery. REPAIRING IT MEANS DRIVING THE REAL HANDSHAKE STATUTE OVER THE HARNESS'S RADIO SEAM -- A SUBSTANTIAL CHANGE WHOSE OWNERS HAVE THEIR OWN COURTS -- AND IT IS NOT TAKEN; a real radio/device measurement is not suppliable here and will not be fabricated; and the ANDROID counterpart is unmeasured (phase two's law). (3) STALE CLOSURE EVIDENCE -- the arms I wrote are new and measured AT THIS SHA, while those predating my span are evidence about the SHA they ran on; AND THE OLD IN-MEMORY sendDirect PATH REMAINS BESIDE THE DURABLE ONE, which is why the persistence owner is 'part'-repaired and is named so rather than smoothed."
     }
    ],
    "my_red_case": "MEASURED RED (round 514): testGSINTEGRATION001_afterAWipeTheDurableIntentMustBeGone -- FAILED (0.195 s). The arm writes a durable intent through the composition's durable command, asserts the row stands BEFORE the wipe (the subject-present control), invokes harness.beginWipe(), reopens the store from the same path, and demands the intent be GONE. IT IS NOT: beginWipe() sets a boolean and appends a trace event and calls nothing that could erase a row. Its fix is specified: beginWipe() must reach the real wipe owners GS-STORE-006 built. Parked at round514-the-wipe-owner-RED-MEASURED-PARKED.patch.",
-   "my_status": "OPEN",
+   "my_status": "FIX_SUBMITTED",
    "notes": null,
    "pending_proof": [],
    "proof": "Both addNode implementations allocate InMemoryMessageStore and InMemoryAckStore. Android uses MeshNode(null,...), injects PeerEvent.Found, and calls ingestInbound directly. Delivery repository state is held in a map. beginWipe only sets a harness Boolean. The named post-inbound-crash test retains the same objects and then pumps ACKs; it does not kill a process or reopen a database. The Swift trace replay reader parses events without executing a foreign runtime.",
@@ -8670,7 +8681,8 @@
     "persistence": "PART-REPAIRED AND MEASURED: the bypass was measured (round 498: ComposedRuntime.sendDirect never consults an intent journal while its own comment claims 'the durable enqueue happeneth FIRST'; round 500: the lab's store is InMemoryMessageStore), and the repair is landed -- sendDirectDurable (rounds 507-508) runs the send through a real SqliteMessageStore, a SqliteOutboundIntentJournal and SendDirectAuthority, with the trust pin round 510's court found missing, MEASURED PASSING end to end at round 511. The OLD in-memory path remains beside it, which is why this is part-repaired rather than repaired.",
     "handshake": "HALF-TRUE, NOW MEASURED (round 518): the DELIVERY reaches the receiving node's OWN dispatch statute -- 'which is the only way anything enters its durable estate' (:493-494), i.e. the same door production uses, SO THE DELIVERY LAYER IS NOT A BYPASS. What IS a facade is THE RADIO: LinkFacade.offer hands bytes between labels in process, with no BleTransport, no handshake exchange, no admission negotiation and no relation machinery. SO THE AUDIT'S WORD IS ACCURATE FOR THE RADIO LAYER AND INACCURATE FOR THE DELIVERY LAYER. THE REPAIR IS THEREFORE NAMED AND SIZED: the harness must drive the REAL handshake statute over its radio seam -- a SUBSTANTIAL change (the BLE substrate, the admission/relation machinery and the handshake exchange are real owners with their own courts) -- AND IT IS NOT TAKEN.",
     "wipe": "REPAIRED AND PROVEN (rounds 514-515): the RED measured at round 514 (testGSINTEGRATION001_afterAWipeTheDurableIntentMustBeGone FAILED 0.195 s -- beginWipe() set a flag and erased no row) is GREEN at round 515 (PASSED 0.010 s) after a three-part repair: the harness now OWNS the durable stores it hands out (durableStoreURLs), sendDirectDurable REGISTERS each store at creation, and beginWipe() ERASES the registered artifacts before setting its flag -- the artifact-filesystem erasure GS-STORE-006 built. The flag remains the SECOND line of defence rather than the only one."
-   }
+   },
+   "submitted_at_round": 519
   },
   "GS-LAB-001": {
    "audit_status_at_snapshot": "OPEN",
