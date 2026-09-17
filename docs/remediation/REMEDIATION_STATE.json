@@ -8645,6 +8645,12 @@
      "sha256": "37b03a047b433544b662ba306b8e953ef2347b0d5d9bf31450a296d59820175d",
      "what": "***GS-INTEGRATION-001 IS SUBMITTED: FIX_SUBMITTED -- TWO OF THREE OWNERS REPAIRED AND PROVEN BY MEASUREMENT, AND THE THIRD MEASURED AND SIZED WITH ITS SCOPE STATED.*** WIPE: a RED and its green on the same assertion (FAILED 0.195 s at round 514, PASSED 0.010 s at round 515), repaired by ownership, registration at creation and beginWipe()'s erasure. PERSISTENCE: repaired for the durable path and measured end to end (the composition arm PASSED 0.008 s, read by name in the full lane at round 511), with the bypass it replaced measured first (498, 500). AND THE WHOLE LANE OVER THESE CHANGES: 1187 tests, 0 failures, EXIT CODE 0, WITH THE COUNT HAVING MOVED FROM 1184",
      "outcome": "no file modified; the tree is at HEAD, CLEAN and LANE-GREEN by measurement (1187/0, exit 0). PENDING PROOF IN THREE CATEGORIES: (1) AWAITING INDEPENDENT VERIFICATION -- the whole finding, since VERIFIED_FIXED is zero across the programme and this author may not write it; (2) DEPENDING ON EXTERNAL ARTIFACTS -- THE FINDING'S OWN THIRD CLAUSE, MEASURED AND SIZED RATHER THAN HIDDEN: THE RADIO. The delivery is NOT a bypass (round 518: the bytes reach the receiving node's own dispatch statute), BUT THE RADIO IS AN IN-PROCESS LinkFacade -- no BleTransport, no handshake exchange, no admission negotiation, no relation machinery. REPAIRING IT MEANS DRIVING THE REAL HANDSHAKE STATUTE OVER THE HARNESS'S RADIO SEAM -- A SUBSTANTIAL CHANGE WHOSE OWNERS HAVE THEIR OWN COURTS -- AND IT IS NOT TAKEN; a real radio/device measurement is not suppliable here and will not be fabricated; and the ANDROID counterpart is unmeasured (phase two's law). (3) STALE CLOSURE EVIDENCE -- the arms I wrote are new and measured AT THIS SHA, while those predating my span are evidence about the SHA they ran on; AND THE OLD IN-MEMORY sendDirect PATH REMAINS BESIDE THE DURABLE ONE, which is why the persistence owner is 'part'-repaired and is named so rather than smoothed."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/round519b-PHASE-ONE-COMPLETE-all-five-submitted.log",
+     "sha256": "b071e5717a0a9c95895f69b2829e2e431db85e251c654b3701b2fa706d22131b",
+     "what": "***PHASE ONE IS COMPLETE: ALL FIVE FINDINGS THE HUMAN NAMED ARE FIX_SUBMITTED -- CRYPTO-002 (513), CRYPTO-005 (510), GS-INBOX-001 (512), GS-INTEGRATION-001 (519), GS-STORE-006 (425). LEDGER: FIX_SUBMITTED 45, OPEN 3, PARTIAL 6 (from OPEN 7 at the span's start), with ZERO VERIFIED_FIXED BY RULE. AND THE LANE OVER THE WHOLE OF IT: 1187 TESTS, 0 FAILURES, EXIT CODE 0.*** AND EVERY ONE OF THE FIVE CARRIES, IN ITS OWN LEDGER ROW, THE THREE CATEGORIES THE PROGRAMME REQUIRES: what awaits independent verification; what depends on external artifacts (the device/process-boundary proofs, the platform-encryption proofs, the Android counterparts -- none of which this environment can supply and none of which I have fabricated); and what closure evidence is stale",
+     "outcome": "PHASE ONE COMPLETE. WHAT IT PRODUCED, COUNTED HONESTLY: six landed production artefacts for CRYPTO-005 alone plus two adapters, the composition's durable send path and the harness's exposed command; the wipe repair for GS-INTEGRATION-001 (ownership, registration, erasure) with the third owner's scope named rather than hidden; THREE ARMS WRITTEN AND MEASURED, one of which is a RED I authored, measured, and then turned green by its own repair; FIVE INSTRUMENTS where the repository previously discarded its own diagnoses at four separate sites; A GATE STRENGTHENED TWICE with its law amended three times; FOUR DEFECTS FOUND BY MEASUREMENT RATHER THAN READING and all repaired; PLUS SIX CORRECTIONS IN record_corrections, three of them corrections OF MY OWN CORRECTIONS. REMAINING: PHASE TWO -- the six PARTIAL findings (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002, GS-STORE-004) and the three remaining OPEN (ANDROID-03, GS-STRESS-001, GS-UX-001) -- beside every finding's own pending proof, which no submission erases."
     }
    ],
    "my_red_case": "MEASURED RED (round 514): testGSINTEGRATION001_afterAWipeTheDurableIntentMustBeGone -- FAILED (0.195 s). The arm writes a durable intent through the composition's durable command, asserts the row stands BEFORE the wipe (the subject-present control), invokes harness.beginWipe(), reopens the store from the same path, and demands the intent be GONE. IT IS NOT: beginWipe() sets a boolean and appends a trace event and calls nothing that could erase a row. Its fix is specified: beginWipe() must reach the real wipe owners GS-STORE-006 built. Parked at round514-the-wipe-owner-RED-MEASURED-PARKED.patch.",
@@ -12652,5 +12658,24 @@
    "consequence": "Round 519's lane-wide alarm is withdrawn; but round 510's PASS remains UNMEASURED, because the arm's own verdict was never read -- only a class filter's count. The remedy is to run the full lane and read the aggregate lines AND the arm names together.",
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round520-REFINEMENT-the-async-arms-DO-run-the-FILTER-is-what-cannot-reach-them.log"
   }
- ]
+ ],
+ "phase_one": {
+  "status": "COMPLETE -- all five findings named by the human are FIX_SUBMITTED",
+  "completed_at_round": 519,
+  "findings": {
+   "CRYPTO-002": "submitted round 513 -- MEASURED: four canonical courts, 0 failing (SessionManagerTests, ReadinessT07/T14/T71)",
+   "CRYPTO-005": "submitted round 510 -- TWO MEASURED ARMS: the medium reopen arm (489/511) and the composition arm (511)",
+   "GS-INBOX-001": "submitted round 512 -- MEASURED: the durable-inbox arm, the end-to-end ACK control, and the disk-failure NEGATIVE case",
+   "GS-INTEGRATION-001": "submitted round 519 -- TWO OWNERS REPAIRED AND PROVEN (wipe: a RED turned green; persistence: end-to-end), the third (the radio's real handshake statute) MEASURED AND SIZED and not taken",
+   "GS-STORE-006": "submitted round 425 -- the eight landed seams, with three categories of pending proof named"
+  },
+  "ledger_after": {
+   "FIX_SUBMITTED": 45,
+   "OPEN": 3,
+   "PARTIAL": 6
+  },
+  "lane": "1187 tests, 0 failures, exit code 0 (round 517), the count grown by the arms this span wrote",
+  "honest_caveats": "NO VERIFIED_FIXED ANYWHERE (by rule: only an independent audit may write it). EVERY finding carries what awaits independent verification, what depends on external artifacts (device/process-boundary proofs, platform-encryption proofs, the Android counterparts -- none suppliable here, none fabricated), and which closure evidence is stale (arms predating this span, and the old in-memory paths remaining beside the repaired ones)."
+ },
+ "my_logs": []
 }
