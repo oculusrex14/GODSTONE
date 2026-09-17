@@ -135,7 +135,16 @@ public final class SchemaMigrationEngine: @unchecked Sendable {
         }
         if expect != supportedMax { return .failed(stage: "plan ended at \(expect), short of current \(supportedMax)", rolledBack: false, versionPreserved: true) }
         let after = executor.observeFingerprint()
-        if !fingerprint.matches(after) { return .repairRequired(reason: "migrated schema drifts from the frozen fingerprint") }
+        if !fingerprint.matches(after) {
+            // *** CRYPTO-005 (round 459): THE **SECOND** DRIFT CHECK, AND THE ONE THAT ACTUALLY FIRED -- IT ASKED THE BOOLEAN ON
+            // `after`, THE FINGERPRINT OBSERVED **AFTER THE EDGES RAN**, AND ANSWERED WITH A FIXED SENTENCE. The store's guard and
+            // the engine's first check (:113, on `observed`, before the edges) BOTH SPOKE DIFFERENT WORDS, WHICH IS HOW TWELVE ROUNDS
+            // WERE SPENT LOOKING AT THE WRONG SITE: THE SENTENCE PRINTED IN THE FAILING RUN IS **THIS ONE'S**, VERBATIM. The verdict
+            // is unchanged; the reason now carries the diagnosis, which is the same repair as rounds 451, 456 and 458, in the FOURTH
+            // and FINAL place a computed truth was discarded.
+            let difference = StoreSchema.fingerprintDifference(fingerprint, after)
+            return .repairRequired(reason: "migrated schema drifts from the frozen fingerprint -- \(difference)")
+        }
         return .upgraded(from: start, to: supportedMax)
     }
 }
