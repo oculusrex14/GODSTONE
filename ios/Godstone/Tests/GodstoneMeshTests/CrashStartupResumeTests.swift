@@ -817,4 +817,58 @@ final class CrashStartupResumeTests: XCTestCase {
         XCTAssertFalse(runtime.sessionManager.isActive)
         XCTAssertNil(runtime.recipientKeyResolver.publicSigningKey(forNodeId: Data(count: 16)))
     }
+
+    // MARK: - GS-STORE-006: BOTH HALVES OF THE WIPE, THROUGH THE COMPOSITION
+
+    /**
+     * THE ARM THE FINDING OWED, AND IT DRIVETH THE REAL LIFECYCLE IN THE ORDER THE CARD'S STEP 6 PRESCRIBES:
+     *
+     *   (1) THE STARTUP RESUMES ONLY THE TRANSPORT-LESS PREFIX -- every effectful seam deferred -- so a pending wipe
+     *       STOPS and the stores may be opened (SR02 measured exactly this);
+     *   (2) THE RUNTIME THAT STANDS CONTINUES THE SAME LADDER WITH THE LIVE SEAMS.
+     *
+     * AND WHAT IT DEMANDS IS THE CARD'S FIRST CLOSURE CLAUSE READ CAREFULLY: "Drive the real runtime wipe entry point with
+     * a held write completion. **KEY DELETION MUST REMAIN BLOCKED UNTIL TRANSPORT DRAIN COMPLETES**; late callbacks must be
+     * ignored." THE ORDER OF THIS ARM'S ASSERTIONS IS THEREFORE THE CLAUSE ITSELF: THE DRAIN HAPPENED FIRST (the live
+     * transport quiesced over `meshNode.ble`), AND ONLY THEN WAS KEY ERASURE ATTEMPTED -- AND IN THIS COMPOSITION, WHICH
+     * STORED NO KEY PROVIDER, THE ERASURE **FAILED HONESTLY AND RETRYABLY**, SO THE WIPE STAYS PENDING RATHER THAN
+     * CLAIMING AN ERASURE NOBODY PERFORMED. THAT IS THE SAFE DIRECTION, AND IT IS MEASURABLE.
+     */
+    func testGSSTORE006_theRuntimeThatStandsContinuesTheWipeAndErasesNothingWithoutAProvider() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr006b_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr006b_peer_\(UUID().uuidString).db")
+        let journal = InMemoryJournal()
+        journal.write(.requested)                                    // a wipe requested before this process started
+        let keychain = InMemoryKeychain()
+
+        // HALF ONE: the startup. The wipe must NOT advance past the prefix, and the stores must be openable.
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
+        XCTAssertEqual(journal.state, .requested,
+                       "*** HALF ONE: THE STARTUP STOPS AT THE PREFIX -- it owns no transport, no keychain and no store "
+                       + "handles yet, so it may not drain, may not erase and may not delete ***")
+
+        // HALF TWO: the runtime that stands continues the ladder with the LIVE seams.
+        let r = try runtime.continuePendingWipeIfNeeded()
+
+        guard case let .retryLater(at, reason) = r else {
+            XCTFail("WITH NO KEY PROVIDER STORED THE WIPE MUST STAY PENDING, not claim completion -- its answer was \(r)")
+            return
+        }
+        XCTAssertEqual(at, .runtimeDrained,
+                       "*** AND IT MUST HAVE STOPPED **AFTER** THE DRAIN: the live transport was quiesced FIRST (over "
+                       + "meshNode.ble), and only then was the vault consulted -- WHICH IS THE CARD'S FIRST CLOSURE "
+                       + "CLAUSE ITSELF: KEY DELETION REMAINS BLOCKED UNTIL TRANSPORT DRAIN COMPLETES ***")
+        XCTAssertFalse(reason.isEmpty, "with a reason naming what refused (it was: \(reason))")
+        XCTAssertEqual(journal.state, .runtimeDrained,
+                       "and the DRAIN CHECKPOINT is persisted through the LIVE path, so a crash here resumes at the "
+                       + "drain rather than at the erasure")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
 }
