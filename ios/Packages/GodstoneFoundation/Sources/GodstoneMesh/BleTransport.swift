@@ -1518,6 +1518,22 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return true
     }
 
+    /// GS-STORE-006: **A BARRIER ON THE ACTIVE CONTEXT'S OWN EXECUTOR.** The transport owneth its `ManagerContext`
+    /// PRIVATELY (`activeManagerContext`, :711), so the wipe's seam cannot reach `serialise` from another file -- and
+    /// rather than widening that field's visibility, the transport offereth THE ONE THING THE SEAM NEEDETH: a call that
+    /// returneth only after every reduction already queued on the live context hath completed.
+    ///
+    /// WHY THIS IS A MEASUREMENT AND NOT A PROMISE: `serialise` runneth `queue.sync { withSerial(body) }`, so an EMPTY
+    /// BODY waiteth for everything before it. WHEN THIS RETURNS, THE CONTEXT IS DRAINED -- and the transport's own
+    /// teardown useth the same road ("so the authority receiveth a MEASUREMENT rather than the assumption", :599).
+    /// A transport with NO live context hath no queue, and therefore nothing left to drain.
+    @discardableResult
+    internal func barrierOnActiveContext() -> Bool {
+        guard let context = activeManagerContext else { return true }
+        context.serialise { }
+        return true
+    }
+
     public func stop() {
         // IOS-07: the owned sweep is cancelled WITH the transport; an orphan job would outlive it.
         leaseSweepJob?.cancel()
