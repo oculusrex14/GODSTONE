@@ -862,4 +862,54 @@ extension ReadinessT36Tests {
         XCTAssertEqual(back.intentId, intentId, "identical ID")
         XCTAssertEqual(back.canonicalFrameBytes.isEmpty, false, "and the frame the send authored is in the ledger")
     }
+
+    // MARK: - GS-INTEGRATION-001: THE HARNESS'S WIPE MUST REACH THE REAL OWNERS
+
+    /**
+     * *** THE FINDING'S OWN SENTENCE, TURNED INTO AN ASSERTION: "the crash-safe composition harness BYPASSES REAL PERSISTENCE, HANDSHAKE AND WIPE
+     * OWNERS." THIS ARM TAKES THE **WIPE** OWNER: ***
+     *
+     * * a DURABLE INTENT IS WRITTEN THROUGH THE COMPOSITION'S DURABLE COMMAND (so a real row exists in a real store);
+     * * THE HARNESS'S WIPE IS THEN INVOKED;
+     * * AND THE STORE IS REOPENED FROM THE SAME PATH AND ASKED FOR THAT INTENT -- **WHICH MUST BE GONE**, BECAUSE A WIPE THAT LEAVETH THE INTENT LEDGER
+     *   STANDING IS NOT A WIPE: it is a FLAG (`wiped = true`), which is EXACTLY what the audit described.
+     *
+     * *** AND IT IS RED BEFORE THE REPAIR, BY CONSTRUCTION: THE HARNESS'S `beginWipe()` SETTETH A BOOLEAN AND APPENDETH A TRACE EVENT, AND CALLETH
+     * NOTHING THAT COULD ERASE A ROW. ***
+     */
+    func testGSINTEGRATION001_afterAWipeTheDurableIntentMustBeGone() async throws {
+        let harness = ComposedRuntimeHarness()
+        _ = try harness.addNode("alice", seedByte: 0x31)
+        _ = try harness.addNode("bob", seedByte: 0x32)
+        guard case .applied = harness.link("alice", "bob") else {
+            XCTFail("the fixture must link the two nodes"); return
+        }
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gsint001_wipe_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: storeURL) }
+
+        let intentId = bytesOf(21, 16)
+        let sent = try await harness.sendDirectDurable("alice", recipient: "bob",
+                                                       plaintext: Data("a durable intent must not outlive a wipe".utf8),
+                                                       intentId: intentId, storeURL: storeURL)
+        if case let .rejected(reason) = sent { XCTFail("the durable send must not refuse: \(reason)"); return }
+
+        // THE ROW MUST STAND **BEFORE** THE WIPE, OR THE ARM PROVES NOTHING (round 460's law: establish the subject was present).
+        do {
+            let before = SqliteOutboundIntentJournal(store: try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024))
+            guard case .found = before.load(intentId) else {
+                XCTFail("the pinned intent must stand BEFORE the wipe, or this arm measures nothing"); return
+            }
+        }
+
+        // *** THE WIPE ***
+        harness.beginWipe()
+        XCTAssertTrue(harness.isWiped(), "the harness reports itself wiped")
+
+        // *** AND THE CLAUSE: THE INTENT MUST BE GONE. ***
+        let reopened = SqliteOutboundIntentJournal(store: try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024))
+        if case .found = reopened.load(intentId) {
+            XCTFail("*** GS-INTEGRATION-001: THE WIPE MUST REACH THE REAL OWNER -- THE DURABLE INTENT STILL STANDS AFTER beginWipe() ***")
+        }
+    }
 }

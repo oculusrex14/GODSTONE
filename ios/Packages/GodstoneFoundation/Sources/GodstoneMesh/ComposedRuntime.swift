@@ -130,6 +130,8 @@ final class ComposedNode: @unchecked Sendable {
     let keys: MutableKeyTable
     let ackPump: DurableAckPump
     private let signingSeed: Data
+    /// The harness this node belongeth to, if any -- so a durable store this node createth is **OWNED** by the composition rather than orphaned.
+    internal weak var ownerHarness: ComposedRuntimeHarness?
 
     var nodeId: Data { identity.nodeId }
 
@@ -291,6 +293,9 @@ public final class ComposedRuntimeHarness {
     private var handleLabels: [UUID: String] = [:]
     private var wiped = false
     private var crashAt: String?
+    /// *** GS-INTEGRATION-001: THE DURABLE STORES THIS HARNESS HATH HANDED OUT -- AND IT MUST **OWN** THEM, BECAUSE **A WIPE THAT OWNS NOTHING
+    /// HATH NOTHING TO REACH** (round 514's measured RED: `beginWipe()` setteth a flag and eraseth no row, so the intent ledger stood after a wipe). ***
+    private var durableStoreURLs: Set<URL> = []
 
     /// The composition seam a crash can be fixed at, before the radio.
     public static let seamBeforeLink: String = "before_link"
@@ -378,6 +383,8 @@ public final class ComposedRuntimeHarness {
         let composed = ComposedNode(label: label, identity: identity, signingSeed: seed,
                                     store: store, tracker: tracker, node: node, inbox: inbox,
                                     ackStore: ackStore, keys: keys, ackPump: ackPump)
+        // GS-INTEGRATION-001: THE NODE KNOWETH ITS HARNESS, SO WHAT IT CREATETH IS **OWNED** BY THE COMPOSITION (and a wipe can therefore reach it).
+        composed.ownerHarness = self
         nodes[label] = composed
         trace.append(TraceEvent(kind: "node_composed", atMonoMillis: clock.monoMillis(),
                                 fields: ["node": label, "node_id": ComposedRuntimeHarness.hex(identity.nodeId)]))
@@ -448,7 +455,15 @@ public final class ComposedRuntimeHarness {
     public func crashAfter(_ boundary: String?) { crashAt = boundary }
 
     /// A wipe is in progress: no epoch may send or publish afterwards.
+    /// GS-INTEGRATION-001: the composition TAKETH OWNERSHIP of a durable store it created.
+    internal func registerDurableStore(_ url: URL) { durableStoreURLs.insert(url) }
+
+    /// GS-INTEGRATION-001: **THE WIPE NOW REACHETH THE REAL OWNER.** Round 514's RED measured that `beginWipe()` set a flag and erased NO row, so a
+    /// durable intent stood after a wipe. IT NOW ERASETH THE DURABLE ARTIFACTS IT OWNS -- which is the artifact-filesystem erasure GS-STORE-006 built,
+    /// applied to the stores this composition handed out -- AND THE FLAG REMAINS THE SECOND LINE OF DEFENCE RATHER THAN THE ONLY ONE.
     public func beginWipe() {
+        for url in durableStoreURLs { try? FileManager.default.removeItem(at: url) }
+        durableStoreURLs.removeAll()
         wiped = true
         trace.append(TraceEvent(kind: "wipe_begin", atMonoMillis: clock.monoMillis(), fields: [:]))
     }
@@ -858,6 +873,9 @@ extension ComposedNode {
 
         // WIRING 1: THE DURABLE STORE -- the same `SqliteMessageStore` the runtime uses, over a caller-named path (so a court can REOPEN it).
         let durableStore = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
+        // AND THE COMPOSITION TAKETH **OWNERSHIP** OF WHAT IT CREATED, so that ITS OWN WIPE can reach it (GS-INTEGRATION-001: a wipe that owns nothing
+        // has nothing to reach -- which is exactly the measured RED of round 514).
+        ownerHarness?.registerDurableStore(storeURL)
         // WIRING 2: THE AUTHORITY ON THE NODE'S OWN MATERIAL, over both adapters and THE DURABLE JOURNAL.
         let authority = SendDirectAuthority(
             identity: identity,
