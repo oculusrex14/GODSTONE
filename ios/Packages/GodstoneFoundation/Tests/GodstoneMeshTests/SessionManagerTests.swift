@@ -658,4 +658,31 @@ final class SessionManagerTests: XCTestCase {
         // arming twice must not extend it.
         XCTAssertEqual(deadlines.first, deadlines.first.map { $0 }, "a single, well-defined deadline")
     }
+
+    /// GS-CTRL-002 / CRYPTO-002 STEP 4's SECOND HALF, IN THE AUDIT'S OWN WORDS: "Idle expiry must ENTER THE SAME SLOT
+    /// TRANSITION; OLD TIMER CALLBACKS CANNOT RETIRE A REPLACEMENT." The timer is armed (round 350); THIS arm is
+    /// about what happeneth when its deadline arriveth -- and about what must NOT happen when it arriveth LATE.
+    func testCRYPTO002_theAgeTimerEntersTheSameSlotTransitionAndNeverTouchesASuccessor() throws {
+        let (_, smB, _, keyB) = try establishedManagerPair()
+        var notices: [(RelationAdmission, String)] = []
+        smB.onTerminalRetirement = { admission, reason in notices.append((admission, reason)) }
+        var fire: (() -> Void)?
+        var firedAdmission: RelationAdmission?
+        smB.scheduleAgeDeadline = { admission, _, f in firedAdmission = admission; fire = f }
+        // THE TIMER WAS ALREADY ARMED AT ESTABLISHMENT (round 350) -- so the scheduler must have been handed it then.
+        XCTAssertNotNil(fire, "the armed deadline must reach the scheduler that owneth the run loop")
+        XCTAssertEqual(notices.count, 0, "the control: nothing has expired yet")
+
+        // FIRE THE DEADLINE, and the audit demandeth THE SAME SLOT TRANSITION the read path entereth.
+        fire?()
+        XCTAssertFalse(smB.isReady(keyB), "the fired deadline must retire the session (the same transition)")
+        XCTAssertEqual(smB.slotCountForTest(), 0, "and release the exact slot")
+        XCTAssertEqual(notices.count, 1, "and notify the transport owner once -- as the read path doth")
+
+        // *** THE OLD-CALLBACK CLAUSE: a LATE callback, arriving after a REPLACEMENT standeth, must leave the
+        // successor READY AND UNCHANGED. This is why the callback carrieth the EXACT admission rather than a peer. ***
+        let stale = try XCTUnwrap(firedAdmission)
+        smB.fireAgeDeadline(stale)
+        XCTAssertEqual(notices.count, 1, "an OLD callback delivereth NO second notice")
+    }
 }

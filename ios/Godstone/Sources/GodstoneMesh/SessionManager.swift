@@ -127,10 +127,49 @@ public final class SessionManager {
 
     internal func armedAgeDeadlinesForTest() -> [Int64] { armedAgeDeadlines.values.sorted() }
 
+    /// THE FIRING'S SEAM (CRYPTO-002 step 4's second half). The deadline is ARMEd here; the delivering belongeth to
+    /// whoever OWNETH A RUN LOOP (`scheduleAgeDeadline`), and the callback carrieth **THE EXACT ADMISSION** -- because
+    /// the audit's clause is that "OLD TIMER CALLBACKS CANNOT RETIRE A REPLACEMENT", and a callback that carrieth only
+    /// a peer would have no way to tell an incarnation from its successor.
+    /// INSTALLING A SCHEDULER **RE-DELIVERETH EVERY ALREADY-ARMED DEADLINE**, and the reason is not convenience: a
+    /// manager may be established BEFORE the owner of the run loop existeth (the composition buildeth the registry
+    /// first), and a deadline armed into nothing would be a timer that never fireth -- which is exactly the audit's
+    /// charge in another dress. THE ARMING AND THE DELIVERY ARE THEREFORE IDEMPOTENT IN BOTH ORDERS.
+    internal var scheduleAgeDeadline: ((_ admission: RelationAdmission, _ deadlineMono: Int64, _ fire: @escaping () -> Void) -> Void)? {
+        didSet {
+            guard let schedule = scheduleAgeDeadline else { return }
+            mapLock.lock()
+            let armed = armedAgeDeadlines
+            mapLock.unlock()
+            for (admission, deadline) in armed {
+                schedule(admission, deadline) { [weak self] in self?.fireAgeDeadline(admission) }
+            }
+        }
+    }
+
+    /// Called when the deadline is reached. AT THIS STEP IT IS A SEAM: it retireth NOTHING, so the arm that
+    /// demandeth an idle expiry to enter "the same slot transition" FAILETH ON ITS OWN SUBJECT.
+    internal func fireAgeDeadline(_ admission: RelationAdmission) {
+        // *** THE EXACT INCARNATION IS THE WHOLE DEFENCE, AND IT IS WHY THE CALLBACK CARRIETH AN ADMISSION RATHER THAN
+        // A PEER: if `slotFor(admission)` findeth nothing -- because the incarnation was replaced, dropped or already
+        // retired -- then THIS CALLBACK IS THE OLD ONE, and the audit's clause applyeth: "OLD TIMER CALLBACKS CANNOT
+        // RETIRE A REPLACEMENT." A successor carrieth a DIFFERENT admission, so it cannot be matched by this token. ***
+        guard slotFor(admission) != nil else { return }
+        // AND IT ENTERETH **THE SAME SLOT TRANSITION** the read path entereth -- the same single terminus, the same
+        // token-bound notice -- so an idle expiry and an observed expiry cannot leave the world in two shapes.
+        _ = retireSlotTerminally(admission, reason: "idle age deadline reached")
+        drainRetirementNotices()
+    }
+
     private func armAgeTimer(_ admission: RelationAdmission, controller: TrustedHandshakeController) {
         mapLock.lock(); defer { mapLock.unlock() }
         guard armedAgeDeadlines[admission] == nil else { return }   // IMMUTABLE: never extended
-        armedAgeDeadlines[admission] = Int64(bitPattern: controller.noiseSession.ageDeadlineMono())
+        let deadline = Int64(bitPattern: controller.noiseSession.ageDeadlineMono())
+        armedAgeDeadlines[admission] = deadline
+        // THE DELIVERY IS DELEGATED, NOT OWNED: a registry that owned a run loop would own the process's liveness.
+        if let schedule = scheduleAgeDeadline {
+            schedule(admission, deadline) { [weak self] in self?.fireAgeDeadline(admission) }
+        }
     }
 
     internal var onTerminalRetirement: ((RelationAdmission, String) -> Void)?
