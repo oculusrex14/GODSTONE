@@ -198,7 +198,8 @@ public final class MeshRuntime {
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
-        artifacts: WipeArtifacts? = nil
+        artifacts: WipeArtifacts? = nil,
+        encryptedStores: EncryptedStoreFactory? = nil
     ) throws -> MeshRuntime {
         try create(
             messageStoreUrl: messageStoreUrl,
@@ -206,12 +207,63 @@ public final class MeshRuntime {
             maxStoreBytes: maxStoreBytes,
             journal: journal,
             artifacts: artifacts,
-            keychain: DefaultLocalIdentityKeychain()
+            keychain: DefaultLocalIdentityKeychain(),
+            encryptedStores: encryptedStores
         )
     }
 
     /// Internal creation overload accepting custom `LocalIdentityKeychain` for testing.
+    ///
+    /// *** GS-STORE-002 (round 521): **THE PRIVATE COMPOSITION, AND IT CARRIETH NO PLAINTEXT ROAD.** ***
+    ///
+    /// THE CARD'S LAW: "ordinary SQLite may never BE a private store." So THIS entry REFUSETH OUTRIGHT when it is
+    /// given no verifying `EncryptedStoreFactory`, and it can therefore only ever produce stores that asserted
+    /// encrypted-at-rest. THE RED WAS RUN FIRST AND IT WAS BEHAVIOURAL: the card's own closure test, taken on the tree
+    /// BEFORE this repair, measured STOCK UNKEYED sqlite3 preparing a statement against the composition's private
+    /// store -- `rc=0`, with the message naming the law.
+    ///
+    /// AND THE HOST/ARCHIVE COMPOSITION HATH ITS OWN NAME NOW (`createArchiveOnlyHostComposition`), BECAUSE A COMMENT
+    /// HAD BEEN CARRYING THIS FINDING'S WHOLE REASSURANCE: the old code's own comment claimed the legacy default "at
+    /// least SAYETH so now, instead of opening ordinary SQLite in silence" WHILE **THE CODE SAID NOTHING AT ALL** --
+    /// it merely instantiated `SqliteMessageStore` and `SqlitePeerIdentityStore`. A COMMENT IS NOT A MEASUREMENT; A
+    /// NAME IS, because a caller must now WRITE IT DOWN to obtain a plaintext store, and a reader can FIND it.
     internal static func create(
+        messageStoreUrl: URL,
+        peerStoreUrl: URL,
+        maxStoreBytes: Int64 = 64 * 1024 * 1024,
+        journal: WipeJournal = UserDefaultsWipeJournal(),
+        artifacts: WipeArtifacts? = nil,
+        keychain: any LocalIdentityKeychain,
+        encryptedStores: EncryptedStoreFactory? = nil
+    ) throws -> MeshRuntime {
+        guard let factory = encryptedStores else {
+            throw MeshRuntimeError.privateStoreNotEncrypted(
+                "GS-STORE-002: a PRIVATE store is opened ONELY through a verifying EncryptedStoreFactory. A "
+                + "composition that carrieth ordinary SQLite is the ARCHIVE/HOST composition and must SAY so by "
+                + "calling createArchiveOnlyHostComposition -- it may not be reached by saying nothing.")
+        }
+        return try createArchiveOnlyHostComposition(
+            messageStoreUrl: messageStoreUrl,
+            peerStoreUrl: peerStoreUrl,
+            maxStoreBytes: maxStoreBytes,
+            journal: journal,
+            artifacts: artifacts,
+            keychain: keychain,
+            encryptedStores: factory
+        )
+    }
+
+    /// *** GS-STORE-002 (round 521): **THE DECLARED ARCHIVE/HOST COMPOSITION** -- ordinary SQLite, SAYED ALOUD. ***
+    ///
+    /// Its STORES ARE NOT PRIVATE and it carrieth no DEK: the card's own words, "Public Archive SQLite stays on its
+    /// existing separate read-only path." THE ONELY THING THE OLD DEFAULT DID NOT DO IS EXIST UNDER A NAME, and that
+    /// absence is what let the silent plaintext private store live: the composition now REQUIRETH a caller to write
+    /// this name down.
+    ///
+    /// Its 25 callers are all courts that exercise the runtime over plaintext files on the host, and NOT ONE of them
+    /// claimed a private store -- MEASURED before the rename, so the rename breaketh no production caller, because
+    /// THERE IS NO PRODUCTION CALLER: this composition root is archive-only and unreferenced by the shipping target.
+    internal static func createArchiveOnlyHostComposition(
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,

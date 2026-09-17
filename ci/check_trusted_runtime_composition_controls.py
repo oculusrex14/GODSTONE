@@ -483,12 +483,19 @@ def check_controls(
     if "Thread.sleep" in swift_test_concurrency or "Thread.yield" in swift_test_concurrency:
         errors.append("iOS SessionManagerConcurrencyTests contains timing assumptions (Thread.sleep/Thread.yield) (R30)")
 
+    # *** GS-STORE-002 (round 521): THE ENTRY'S NAME IS NOW SPELLED WITH ITS TRUTH. `MeshRuntime.create` REFUSETH a
+    # composition that carrieth no verifying EncryptedStoreFactory, so the plaintext road is reached through
+    # `createArchiveOnlyHostComposition` and these two arms SAY SO AT THEIR CALL SITES. THIS CONTROL ASSERTETH A
+    # RELATIONSHIP (runtime1 wipeth, runtime2 is built at the SAME store paths, the node id changeth) AND NOT A
+    # NAME -- so the pattern accepteth EITHER SPELLING rather than pinning the incidental one. THE RENAME BROKE THIS
+    # CONTROL AND THE FAILURE WAS FOUND BY RUNNING IT: a control that greps the TEXT of a neighbour's arm is coupled
+    # to that arm's wording, WHICH IS A REAL PRICE OF SOURCE-LEVEL CHECKS AND IS NAMED HERE RATHER THAN HIDDEN. ***
     # iOS SR05: runtime1 beginPanicWipe, runtime2 SAME store URLs, node id change
-    if not re.search(r"runtime1\.beginPanicWipe.*MeshRuntime\.create\(.*messageStoreUrl:\s*msgUrl,\s*peerStoreUrl:\s*peerUrl.*XCTAssertNotEqual\(oldNodeId,\s*runtime2\.identity\.nodeId\)", swift_test_startup, re.DOTALL):
+    if not re.search(r"runtime1\.beginPanicWipe.*MeshRuntime\.create(?:ArchiveOnlyHostComposition)?\(.*messageStoreUrl:\s*msgUrl,\s*peerStoreUrl:\s*peerUrl.*XCTAssertNotEqual\(oldNodeId,\s*runtime2\.identity\.nodeId\)", swift_test_startup, re.DOTALL):
         errors.append("iOS CrashStartupResumeTests SR05 missing runtime1 beginPanicWipe / runtime2 same store URLs / node ID change assertion (R30)")
 
     # iOS SR06: peer inserted in runtime1, beginPanicWipe, runtime2 SAME peer URL, post-wipe absence
-    if not re.search(r"applyValidatedBinding.*lookup1.*runtime1\.beginPanicWipe.*MeshRuntime\.create\(.*peerStoreUrl:\s*peerUrl.*peerIdentityStore\.readRaw.*lookup2.*notFound.*recipientKeyResolver.*XCTAssertNil", swift_test_startup, re.DOTALL):
+    if not re.search(r"applyValidatedBinding.*lookup1.*runtime1\.beginPanicWipe.*MeshRuntime\.create(?:ArchiveOnlyHostComposition)?\(.*peerStoreUrl:\s*peerUrl.*peerIdentityStore\.readRaw.*lookup2.*notFound.*recipientKeyResolver.*XCTAssertNil", swift_test_startup, re.DOTALL):
         errors.append("iOS CrashStartupResumeTests SR06 missing prior peer insertion / same-path fresh store / post-wipe absence proof (R30)")
 
     # iOS SR07: beginPanicWipe, invalidated gate, inactive sessions, nil resolver

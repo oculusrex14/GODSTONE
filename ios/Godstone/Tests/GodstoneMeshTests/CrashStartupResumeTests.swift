@@ -57,7 +57,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // (MY FIRST DRAFT INVENTED THE FACTORY'S PARAMETERS AND THE COMPILER SAID SO: the real signature is
         // `(messageStoreUrl:peerStoreUrl:journal:keychain:)`, and the identity is derived from the keychain --
         // THE SIXTH SPECIES AGAIN, A NAME ASSUMED INSTEAD OF READ, caught by compiling before claiming.)
-        let runtime = try MeshRuntime.create(
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: InMemoryJournal(),
@@ -89,7 +89,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00c_TheBoundedTurnServethTheNamedRelationAndRefusethAnUnknownOne() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
         let handle = UUID()
         let nodeId = Data(repeating: 0x41, count: 16)
@@ -116,7 +116,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00b_TheReadinessSchedullethTheAckWorkerAndTheFarewellCancellethIt() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00b_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00b_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
         let handle = UUID()
         let nodeId = Data(repeating: 0x31, count: 16)
@@ -144,7 +144,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00d_ThePeriodicDeadlineWakethTheWorkerAndDiethWithItsOwner() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00d_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00d_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
         runtime.meshNode.start()
 
@@ -183,7 +183,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00e_AnInboundRequestWakethTheWorkerForItsOwnRelationOnly() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00e_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00e_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
         let handle = UUID()
         let nodeId = Data(repeating: 0x61, count: 16)
@@ -212,7 +212,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00f_AStaleRelationGenerationIsRefusedAtTheHandOff() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00f_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00f_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
         let handle = UUID()
         let nodeId = Data(repeating: 0x71, count: 16)
@@ -245,7 +245,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00g_AWipedCandidateIsNeverHandedOn() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00g_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00g_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
         let handle = UUID()
         let nodeId = Data(repeating: 0x81, count: 16)
@@ -299,7 +299,7 @@ final class CrashStartupResumeTests: XCTestCase {
                                        routingTag: Data(repeating: 0, count: 4), ttl: ackInitialTtl)
 
         do {
-            let first = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+            let first = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                                journal: InMemoryJournal(), keychain: InMemoryKeychain())
             first.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: nodeId, generation: 1)
             _ = first.ackPump.admit(frame.encode(), receivedFrom: relayFrom, now: 1_000)
@@ -310,7 +310,7 @@ final class CrashStartupResumeTests: XCTestCase {
         }
 
         // **THE REOPEN: A NEW RUNTIME OVER THE SAME PRIVATE DATABASE.**
-        let second = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let second = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                            journal: InMemoryJournal(), keychain: InMemoryKeychain())
         XCTAssertEqual(second.ackStore.countFrames(), 1,
                        "GS-RUNTIME-001 step 6: THE FRAME NAMESPACE MUST SURVIVE THE REOPEN -- a fresh runtime that "
@@ -344,7 +344,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00i_TheWipeDrainethTheWorkersBeforeTheStoresAreClosed() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00i_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00i_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
         let handle = UUID()
         let nodeId = Data(repeating: 0xA1, count: 16)
@@ -376,7 +376,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00j_NewlyCommittedForwardWorkWakethTheWorkerForItsOwnRelation() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00j_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00j_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
         let handle = UUID()
         let nodeId = Data(repeating: 0xB1, count: 16)
@@ -422,7 +422,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00k_TheLifecycleAuthorityOwnethTheRealTransportAndDrivethASeam() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00k_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00k_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
 
         // (1) THE CONFORMANCE -- a compile-time fact now, and the reason the runtime can own the transport at all:
@@ -504,7 +504,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00m_APowerOrPermissionLossReachethTheOneAuthority() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00m_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00m_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
 
         let before = runtime.meshNode.lifecycleEventsForwarded
@@ -571,7 +571,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR00o_TheWipeClosethTheRadioThroughTheOneOwner() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00o_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00o_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
                                             journal: InMemoryJournal(), keychain: InMemoryKeychain())
 
         XCTAssertEqual(runtime.meshNode.adaptersClosedThroughTheOwner, 0, "nothing hath closed yet")
@@ -598,7 +598,7 @@ final class CrashStartupResumeTests: XCTestCase {
         let journal = InMemoryJournal()
         let keychain = InMemoryKeychain()
 
-        let runtime = try MeshRuntime.create(
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -616,7 +616,7 @@ final class CrashStartupResumeTests: XCTestCase {
         journal.write(.requested)
         let keychain = InMemoryKeychain()
 
-        let runtime = try MeshRuntime.create(
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -655,7 +655,7 @@ final class CrashStartupResumeTests: XCTestCase {
         // `stepFailed` at `PeerIdentityStore.swift:292` -- the peer store declining to open on a key its own journal says
         // is erased.) ***
         XCTAssertThrowsError(
-            try MeshRuntime.create(
+            try MeshRuntime.createArchiveOnlyHostComposition(
                 messageStoreUrl: msgUrl,
                 peerStoreUrl: peerUrl,
                 journal: journal,
@@ -678,7 +678,7 @@ final class CrashStartupResumeTests: XCTestCase {
         journal.write(.artifactsDeleted)
         let keychain = InMemoryKeychain()
 
-        let runtime = try MeshRuntime.create(
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -705,7 +705,7 @@ final class CrashStartupResumeTests: XCTestCase {
         let journal = InMemoryJournal()
         let keychain = InMemoryKeychain()
 
-        let runtime1 = try MeshRuntime.create(
+        let runtime1 = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -718,7 +718,7 @@ final class CrashStartupResumeTests: XCTestCase {
         XCTAssertFalse(runtime1.sessionManager.isActive)
 
         // Construct runtime2 with the SAME store URLs
-        let runtime2 = try MeshRuntime.create(
+        let runtime2 = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -738,7 +738,7 @@ final class CrashStartupResumeTests: XCTestCase {
         let keychain = InMemoryKeychain()
 
         // 1. Create runtime1 using messageStoreUrl and peerStoreUrl
-        let runtime1 = try MeshRuntime.create(
+        let runtime1 = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -787,7 +787,7 @@ final class CrashStartupResumeTests: XCTestCase {
         XCTAssertTrue(runtime1.lifecycleGate.isInvalidated)
 
         // 5. Create runtime2 using the SAME messageStoreUrl and SAME peerStoreUrl
-        let runtime2 = try MeshRuntime.create(
+        let runtime2 = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -814,7 +814,7 @@ final class CrashStartupResumeTests: XCTestCase {
         let journal = InMemoryJournal()
         let keychain = InMemoryKeychain()
 
-        let runtime = try MeshRuntime.create(
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -852,7 +852,7 @@ final class CrashStartupResumeTests: XCTestCase {
         let keychain = InMemoryKeychain()
 
         // HALF ONE: the startup. The wipe must NOT advance past the prefix, and the stores must be openable.
-        let runtime = try MeshRuntime.create(
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
@@ -897,7 +897,7 @@ final class CrashStartupResumeTests: XCTestCase {
     func testGSSTORE006_theCompositionCarriesTheCrashResumableAuthority() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_peer_\(UUID().uuidString).db")
-        let runtime = try MeshRuntime.create(
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: InMemoryJournal(),

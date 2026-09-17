@@ -4,10 +4,83 @@
 // prepare SELECT payload FROM held_frames. MeshRuntime still instantiates both old stores."
 import XCTest
 import Foundation
+import SQLite3
 @testable import GodstoneMesh
 @testable import GodstoneCore
 
 final class ReadinessStore002Tests: XCTestCase {
+
+    private final class InMemoryKeychain: LocalIdentityKeychain, @unchecked Sendable {
+        var storage: [String: Data] = [:]
+        func read(tag: String) throws -> Data? { storage[tag] }
+        func add(tag: String, data: Data) throws { storage[tag] = data }
+        func delete(tag: String) throws { storage.removeValue(forKey: tag) }
+    }
+
+    private final class InMemoryJournal: WipeJournal, @unchecked Sendable {
+        var state: WipeState = .idle
+        func read() -> WipeState { state }
+        func write(_ s: WipeState) { state = s }
+        func clear() { state = .idle }
+    }
+
+    /// A Keychain seam that holdeth real DEKs, so a first install can mint them and a reopen can find them.
+    private final class VerifyingProvider: PrivateStoreKeyProvider, @unchecked Sendable {
+        var deks: [String: StoreDEK] = [:]
+        /// How many times the composition ASKED this provider for a DEK -- the measurement that proveth the factory
+        /// road was REACHED and not merely permitted (a first draft of the control reached for the runtime's PRIVATE
+        /// `wipeKeyProvider`, and THE LAW IS THAT A PRIVATE FIELD IS NOT A DOOR: the assertion was changed rather
+        /// than the field's protection -- and the count is the better witness anyway, because it observeth the
+        /// REACHING rather than the RESULT).
+        var fetchCount = 0
+        var dekByteCount: Int { 32 }
+        func fetchDEK(tag: String) throws -> StoreDEK {
+            fetchCount += 1
+            guard let d = deks[tag] else { throw StoreKeyError.dekNotFound }
+            return d
+        }
+        func createDEK(tag: String) throws -> StoreDEK {
+            let d = StoreDEK(bytes: Data(repeating: 0xAB, count: 32)); deks[tag] = d; return d
+        }
+        func deleteDEK(tag: String) throws { deks.removeValue(forKey: tag) }
+        func applyFileProtection(paths: [String], protection: FileProtectionClass) -> ProtectionResult {
+            .success
+        }
+    }
+
+    /// *** A FAKE ENGINE THAT ANSWERETH ON ITS OWN WORD -- WHICH IS EXACTLY WHAT THE CARD FORBIDDETH A CALLER FROM
+    /// BELIEVING: "an enum value called pinnedSQLCipher is not engine verification." It is used ONELY as the positive
+    /// control for the SHAPE of the refusal, and NOTHING in this court is evidence that any store is encrypted. ***
+    private final class VerifyingEngine: EncryptedStoreEngine, @unchecked Sendable {
+        var kind: StoreEngineKind { .pinnedSQLCipher }
+        var supportedCipherVersion: Int { 4 }
+        private func handle(_ path: String) -> EncryptedStoreHandle {
+            EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: true, cipherVersion: 4)
+        }
+        func openForWriting(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle { handle(path) }
+        func reopenRequiringDEK(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle { handle(path) }
+    }
+
+    /// The audit's own probe, exactly: **STOCK UNKEYED sqlite3** preparing against the file the composition wrote.
+    /// It answereth the prepare's return code, so a caller can judge both readable and unreadable databases -- and a
+    /// caller that only ever seeth one of them cannot tell a law from a file that was never created.
+    private func unkeyedPrepare(_ url: URL) -> Int32 {
+        var db: OpaquePointer?
+        guard sqlite3_open(url.path, &db) == SQLITE_OK else { return -1 }
+        defer { sqlite3_close(db) }
+        var stmt: OpaquePointer?
+        let sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='held_frames'"
+        let rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nil)
+        if stmt != nil { sqlite3_finalize(stmt) }
+        return rc
+    }
+
+    private func privateDir(_ name: String) throws -> URL {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("\(name)-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
 
     /// W01 -- THE FINDING'S CORE: the runtime must obtain its stores through the factory.
     func testW01TheRuntimeOpenethItsStoresThroughTheEncryptedFactory() throws {
@@ -47,6 +120,92 @@ final class ReadinessStore002Tests: XCTestCase {
         XCTAssertFalse(code.contains("try? SqliteMessageStore"),
                        "a store that cannot be opened under its DEK must REFUSE, never be swallowed")
         XCTAssertFalse(code.contains("try? SqlitePeerIdentityStore"))
+    }
+
+    /// W04 -- *** BEHAVIOURAL, AND THE CARD'S OWN CLOSURE TEST. RUN RED BEFORE ITS REPAIR. ***
+    ///
+    /// The three arms above are SOURCE laws: they read the TEXT of the composition and look for substrings. That is
+    /// ONE STEP ABOVE A COMMENT -- it proveth what the code SAYETH and never what it DOTH, and this finding's whole
+    /// history is a composition whose own comment claimed the legacy default "at least SAYETH so now, instead of
+    /// opening ordinary SQLite in silence" WHILE THE CODE SAID NOTHING AT ALL.
+    ///
+    /// The card's closure test is behavioural -- "The independent testPrivateMessageStoreMustNotBeReadableByUnkeyedSQLite
+    /// must pass with a nonempty private database" -- so this arm COMPOSETH the runtime through the composition root,
+    /// WRITETH a private store, and then READS THAT FILE WITH STOCK UNKEYED sqlite3, which is the audit's own
+    /// reproduction: "The resulting file has the SQLite format 3 header, and stock unkeyed sqlite3 can prepare SELECT
+    /// payload FROM held_frames."
+    ///
+    /// IT ACCEPTETH EITHER OF **TWO** LAWFUL OUTCOMES AND REFUSETH EVERY OTHER: the composition either REFUSETH to
+    /// compose a private store at all (no verifying factory, no private store), or it produced a store an unkeyed
+    /// reader CANNOT prepare against. THE THIRD OUTCOME -- silently producing a readable "private" store -- IS THE
+    /// FINDING.
+    func testW04APrivateStoreIsNeverReadableByUnkeyedSQLite() throws {
+        let dir = try privateDir("gs-store-002")
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // *** (A) THE DISCRIMINATOR FIRST, OR THE SILENCE PROVETH NOTHING. *** The law below asserteth that the probe
+        // CANNOT read the private store -- and that assertion would pass just as well if the probe could not read
+        // ANYTHING, or if no file existed at all. So the probe is FIRST pointed at the composition that declares
+        // itself plaintext, and it MUST detect that one: A CHECK THAT CANNOT SEE THE THING IT JUDGES IS NOT A CHECK.
+        let plainURL = dir.appendingPathComponent("declared-plaintext.db")
+        _ = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: plainURL,
+            peerStoreUrl: dir.appendingPathComponent("declared-plaintext-peers.db"),
+            journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        XCTAssertEqual(unkeyedPrepare(plainURL), SQLITE_OK,
+                       "THE DISCRIMINATOR: the unkeyed probe MUST detect a readable database, or its verdict on the "
+                       + "private store proveth nothing at all")
+
+        let messageURL = dir.appendingPathComponent("messages.db")
+        let peerURL = dir.appendingPathComponent("peers.db")
+
+        do {
+            _ = try MeshRuntime.create(
+                messageStoreUrl: messageURL, peerStoreUrl: peerURL,
+                journal: InMemoryJournal(), keychain: InMemoryKeychain())
+        } catch MeshRuntime.MeshRuntimeError.privateStoreNotEncrypted {
+            // THE FIRST LAWFUL OUTCOME: the composition REFUSED to compose a private store without a verifying factory,
+            // so no private store existeth to be read. The law this arm asserteth holdeth.
+            return
+        }
+
+        // IT DID NOT REFUSE -- so it carrieth a PRIVATE store, and THAT store must not admit an unkeyed reader.
+        let rc = unkeyedPrepare(messageURL)
+        XCTAssertNotEqual(rc, SQLITE_OK,
+                          "*** AN UNKEYED sqlite3 PREPARED A STATEMENT AGAINST THE COMPOSITION'S PRIVATE STORE "
+                          + "(rc=\(rc)): ORDINARY SQLITE MAY NEVER BE A PRIVATE STORE (GS-STORE-002) ***")
+    }
+
+    /// W05 -- *** THE VALID POSITIVE CONTROL: THE REFUSAL IS TARGETED, NOT A WALL. ***
+    ///
+    /// W04 accepteth a refusal as one of its two lawful outcomes -- SO AN IMPLEMENTATION THAT REFUSED **EVERY**
+    /// COMPOSITION WOULD SATISFY IT WHILE BEING USELESS: a refusal that answereth everything is not a law, it is an
+    /// outage. This arm therefore composes WITH a verifying factory and requireth that the composition STAND, and
+    /// that THE DEK'S OWNER reach it -- `wipeKeyProvider` is the factory's own key provider, the one verb of which
+    /// eraseth the wrapping key.
+    ///
+    /// ITS SCOPE IS STATED SO IT CANNOT BE OVERREAD: the engine below ANSWERETH ON ITS OWN WORD. It is a control for
+    /// the SHAPE of the decision, NOT evidence that any store is encrypted -- that needeth the real SQLCipher
+    /// artifact, which is an EXTERNAL input, and this round doth not have it and doth not claim it.
+    func testW05TheRefusalIsTargetedAndAKeyedCompositionStillStands() throws {
+        let dir = try privateDir("gs-store-002-keyed")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let provider = VerifyingProvider()
+        // reopenExisting minteth NOTHING (no create-on-reopen), so a first install minteth both DEKs -- which is what
+        // the real composition doth and what a caller must do before reopening.
+        _ = try provider.createDEK(tag: "message-store")
+        _ = try provider.createDEK(tag: "peer-identity-store")
+        let factory = EncryptedStoreFactory(provider: provider, engine: VerifyingEngine())
+
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: dir.appendingPathComponent("m.db"),
+            peerStoreUrl: dir.appendingPathComponent("p.db"),
+            journal: InMemoryJournal(), keychain: InMemoryKeychain(),
+            encryptedStores: factory)
+        _ = runtime
+        XCTAssertGreaterThanOrEqual(provider.fetchCount, 2,
+                        "the composition must STAND with a verifying factory AND ASK it for BOTH stores' DEKs -- else "
+                        + "the refusal were a wall that answereth everything, which is not a law but an outage")
     }
 
     private func repoRoot() -> URL {
