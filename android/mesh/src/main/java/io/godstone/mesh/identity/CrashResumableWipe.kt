@@ -117,7 +117,18 @@ interface TransportRuntimeSeam {
 }
 
 interface IdentityAuthoritySeam {
-    fun publishNewIdentity(): String
+    /**
+     * *** GS-STORE-006: A TYPED FAILURE CHANNEL, WHICH IS THE FIX AN ARM FORCED (round 421 on iOS, and on THIS isle by the
+     * shared contract). ***
+     *
+     * IT RETURNED A NON-NULL `String`, AND A `String` CANNOT SAY "I DID NOT PUBLISH AN IDENTITY": the deferred seam answered
+     * a NAME THAT SAID WHAT HAPPENED -- honest prose -- and the ladder, having no way to read a refusal as a refusal,
+     * ADVANCED TO `IDLE` BELIEVING AN IDENTITY STOOD WHEN NONE DID. An authority that cannot FAIL where it must not succeed
+     * is the very species of defect this finding is about.
+     *
+     * `null` MEANS **NOT PUBLISHED**, and the ladder must therefore STAY PENDING rather than reach `IDLE`.
+     */
+    fun publishNewIdentity(): String?
     fun identity(): String?
 }
 
@@ -273,7 +284,13 @@ class CrashResumableWipe(
                     persist(from, WipeJournalState.ARTIFACTS_DELETED)
                 }
                 WipeJournalState.ARTIFACTS_DELETED -> {
-                    authority.publishNewIdentity()
+                    // THE TYPED REFUSAL IS HONOURED HERE, WHICH THE COMPILER CANNOT ENFORCE: a nullable result used as a
+                    // STATEMENT is perfectly legal Kotlin, SO THE TYPE CHANGE ALONE WOULD NOT HAVE FIXED THIS -- THE
+                    // CALLER HAD TO HONOUR IT. `null` means the identity was NOT published, so the wipe must NOT record
+                    // `NEW_IDENTITY` and must NOT advance: it stays PENDING for the runtime that owns an identity.
+                    if (authority.publishNewIdentity() == null) {
+                        return WipeStepResult.RetryLater(from, "no identity could be published")
+                    }
                     persist(from, WipeJournalState.NEW_IDENTITY)
                 }
                 WipeJournalState.NEW_IDENTITY -> {

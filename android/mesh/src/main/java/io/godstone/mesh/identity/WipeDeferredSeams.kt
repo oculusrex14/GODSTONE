@@ -46,7 +46,10 @@ object WipeDeferredSeams {
 
     /** The identity authority of a runtime that does not yet stand: it PUBLISHES NOTHING, and NAMES its own absence. */
     class DeferredIdentityAuthoritySeam : IdentityAuthoritySeam {
-        override fun publishNewIdentity(): String = REASON
+        override fun publishNewIdentity(): String? {
+            // IT PUBLISHES NOTHING, AND NOW IT CAN SAY SO: \`null\` stops the ladder AT \`ARTIFACTS_DELETED\`.
+            return null
+        }
         override fun identity(): String? = null
 
         companion object {

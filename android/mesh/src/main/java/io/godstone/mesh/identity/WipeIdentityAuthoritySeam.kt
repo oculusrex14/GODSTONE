@@ -23,7 +23,7 @@ class WipeIdentityAuthoritySeam(
     private val artifacts: WipeArtifacts,
 ) : IdentityAuthoritySeam {
 
-    override fun publishNewIdentity(): String {
+    override fun publishNewIdentity(): String? {
         return try {
             artifacts.regenerateIdentity()
             // THE ISLE'S OWN NAMING: the hint of the identity that now stands. If it cannot be read back, we do NOT claim

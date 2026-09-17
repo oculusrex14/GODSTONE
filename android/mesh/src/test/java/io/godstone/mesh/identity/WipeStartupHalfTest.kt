@@ -193,4 +193,35 @@ class WipeStartupHalfTest {
         assertTrue("and ONLY THEN were keys erased (erasures = ${vault.erasures})", vault.erasures > 0)
         assertEquals("so the drain was asked twice and refused once", 2, transport.drains)
     }
+
+    /**
+     * *** THE ANDROID HALF OF THE DEFECT AN iOS ARM FOUND (round 421) AND THE FIX LANDED IN THIS ROUND: THE LADDER MUST
+     * HONOUR A REFUSED IDENTITY PUBLICATION. ***
+     *
+     * WHY THIS ARM HAD TO BE WRITTEN RATHER THAN ASSUMED: WHEN THE FIX LANDED, THE ANDROID LANE STAYED GREEN AT 1221 --
+     * THE COUNT DID NOT MOVE, WHICH MEANT **NO ANDROID ARM WAS MEASURING THIS DEFECT AT ALL**. A FIX WITH NO ARM IS A CLAIM;
+     * THIS ARM MAKES IT A MEASUREMENT.
+     *
+     * AND THE CALLER HAD TO HONOUR THE TYPED REFUSAL, WHICH THE COMPILER **CANNOT** ENFORCE: a nullable result used as a
+     * STATEMENT is perfectly legal Kotlin, so changing the protocol alone would have left the defect alive and the build
+     * green. That is why the arm matters more than the signature.
+     */
+    @Test
+    fun theLadderStaysPendingWhenTheIdentityWasNotPublished() {
+        val journal = MemoryJournal(PanicWipe.WipeState.ARTIFACTS_DELETED)
+        val coordinator = startupCoordinator(journal)          // the FOUR DEFERRED SEAMS: the identity seam publishes NOTHING
+
+        val result = coordinator.resume()
+
+        assertTrue("a refused identity publication must STOP the ladder -- its answer was $result",
+            result is WipeStepResult.RetryLater)
+        assertEquals("and it must stop AT the stage it could not pass",
+            WipeJournalState.ARTIFACTS_DELETED, (result as WipeStepResult.RetryLater).at)
+        assertTrue("with a reason naming what refused: '${(result as WipeStepResult.RetryLater).reason}'",
+            (result as WipeStepResult.RetryLater).reason.contains("no identity could be published"))
+        // *** AND THE POINT OF THE WHOLE DEFECT: THE JOURNAL MUST NOT MOVE -- A WIPE MAY NOT REACH IDLE BELIEVING AN
+        // IDENTITY STANDS WHEN NONE DOES. ***
+        assertEquals("THE WIPE MUST STAY PENDING AT ARTIFACTS_DELETED",
+            PanicWipe.WipeState.ARTIFACTS_DELETED, journal.current())
+    }
 }
