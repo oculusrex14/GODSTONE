@@ -48,6 +48,19 @@ public final class MeshRuntime {
     public let peerStoreUrl: URL
     public let journal: WipeJournal
 
+    /// GS-STORE-006: **THE KEY PROVIDER THE WIPE MUST HAVE, HELD BY THE RUNTIME ITSELF.**
+    ///
+    /// THE CARD'S STEP 2 IN ITS OWN WORDS: "Make MeshModule/MeshRuntime pass the exact live transport, session owner,
+    /// database handles, key provider and artifact paths into that authority. DEFAULT-NIL DEPENDENCIES MUST NOT PERMIT A
+    /// PRODUCTION WIPE TO OMIT A REQUIRED RESOURCE."
+    ///
+    /// AND THE MEASUREMENT THAT PUT IT HERE: `encryptedStores` was a PARAMETER OF `create` THAT WAS USED ONCE (to open the
+    /// stores) AND THEN DROPPED -- SO NO METHOD OF A COMPOSED RUNTIME COULD REACH THE KEY PROVIDER AT ALL, AND THE SECOND
+    /// HALF OF THE WIPE (the half that runs once the runtime STANDS, where the resources finally exist) HAD **NO WAY TO
+    /// ERASE THE DEK**. THAT IS A STRONGER DEFECT THAN A NIL DEFAULT: EVEN A CALLER WHO PASSED A PROVIDER COULD NOT HAVE
+    /// IT USED. Holding it here is what maketh the second half possible.
+    private let wipeKeyProvider: (any PrivateStoreKeyProvider)?
+
     internal init(
         identity: MeshIdentity,
         messageStore: SqliteMessageStore,
@@ -55,7 +68,8 @@ public final class MeshRuntime {
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         journal: WipeJournal = UserDefaultsWipeJournal(),
-        lifecycleGate: DefaultRuntimeLifecycleGate = DefaultRuntimeLifecycleGate()
+        lifecycleGate: DefaultRuntimeLifecycleGate = DefaultRuntimeLifecycleGate(),
+        wipeKeyProvider: (any PrivateStoreKeyProvider)? = nil
     ) {
         self.identity = identity
         self.messageStore = messageStore
@@ -64,6 +78,7 @@ public final class MeshRuntime {
         self.peerStoreUrl = peerStoreUrl
         self.journal = journal
         self.lifecycleGate = lifecycleGate
+        self.wipeKeyProvider = wipeKeyProvider
 
         let peerRepo = PeerIdentityRepository(store: peerIdentityStore)
         self.peerRepository = peerRepo
@@ -266,13 +281,44 @@ public final class MeshRuntime {
             peerIdentityStore: peerStore,
             messageStoreUrl: messageStoreUrl,
             peerStoreUrl: peerStoreUrl,
-            journal: journal
+            journal: journal,
+            wipeKeyProvider: encryptedStores?.keyProviderForWipe
         )
     }
 
     /// Active panic-wipe execution for this runtime graph (Stage 4B.1 / C8.4B.1).
     /// Uses `RuntimeAwareWipeArtifacts` to ensure runtime handles are invalidated
     /// before cryptographic key erasure.
+    /// GS-STORE-006: **THE RUNTIME THAT STANDS FINISHES THE WIPE THE STARTUP COULD NOT** -- the SECOND HALF of the card's
+    /// step 6, and the half both corrected courts name as owed.
+    ///
+    /// WHY IT IS SEPARATE: `MeshRuntime.create` performs the startup resume BEFORE the runtime object exists, so it owns NO
+    /// platform resource and therefore DEFERS EVERY EFFECTFUL SEAM -- the ladder reaches as far as `REQUESTED` and no
+    /// further, and the wipe stays PENDING (the safe direction: nothing erased, nothing deleted, no store opened on an
+    /// erased key; a court measured the runtime REFUSING to open exactly those stores). **ONCE THE RUNTIME STANDS, THOSE
+    /// RESOURCES EXIST, AND THIS RESUMES THE VERY SAME LADDER WITH THE LIVE SEAMS:** the transport over `meshNode.ble`, the
+    /// vault over `wipeKeyProvider` (which this type now HOLDS, because holding it is what makes this half possible at
+    /// all), the real filesystem, and the real identity authority.
+    ///
+    /// **IT INVENTS NO SECOND AUTHORITY**: the same `CrashResumableWipe` over the same journal, and THE DURABLE
+    /// CHECKPOINTS are what make the two halves safe in either order and safe to REPEAT after a crash between them -- which
+    /// is the property the journal's `RUNTIME_DRAINED` stage was restored to carry.
+    ///
+    /// IDEMPOTENT: a finished wipe answers `.alreadyAtOrPast(.idle)`; one that cannot proceed answers `.retryLater` WITH
+    /// THE REASON and leaves the journal where it stands. A composition that stored no key provider answers the vault's
+    /// honest pending failure and therefore STAYS PENDING rather than completing falsely.
+    @discardableResult
+    public func continuePendingWipeIfNeeded() throws -> WipeStepResult {
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeKeyVaultSeam(dekProvider: wipeKeyProvider),
+            filesystem: WipeArtifactFileSystemSeam(journal: WipeJournalDurabilityAdapter(journal: journal)),
+            runtime: WipeTransportDrainSeam(transport: meshNode.ble),
+            authority: WipeIdentityAuthoritySeam()
+        )
+        return try authority.resume()
+    }
+
     public func beginPanicWipe() throws {
         try beginPanicWipe(keychain: DefaultLocalIdentityKeychain())
     }
