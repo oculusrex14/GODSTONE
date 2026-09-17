@@ -2252,7 +2252,15 @@ public final class SqliteMessageStore: MessageStore {
                 // A REFUSAL THAT NAMETH **WHICH PART** DRIFTETH, kept from round 336's instrument because it cost
                 // this programme rounds on BOTH isles to learn that a bare "migrationRefused" is not a reason.
                 let observedFp = observeFingerprint(db)
-                _ = StoreSchema.fingerprintDifference(StoreSchema.frozenFingerprint, observedFp)
+                // *** CRYPTO-005 (round 451): THE DIFFERENCE IS **CARRIED** RATHER THAN DISCARDED. *** This line USED to
+                // compute `fingerprintDifference` -- the very function that NAMES which part drifted ("table COUNT (frozen=…
+                // observed=…)", "COLUMNS of …", "IMMUTABLE DOMAIN of …", "DDL of …") -- AND THROW IT AWAY with `_ =`, which is
+                // why a schema drift cost many rounds of inference while the store KNEW THE ANSWER. The comment three lines up
+                // already boasted of the opposite ("WHICH PART differeth is now SAID"). BEHAVIOUR IS UNCHANGED: the same refusal
+                // is thrown; what changeth is that the reason is no longer discarded. And a refusal that hideth its reason is
+                // the one thing this repository's own doctrine forbiddeth.
+                let drift = StoreSchema.fingerprintDifference(StoreSchema.frozenFingerprint, observedFp)
+                if !drift.isEmpty { print("StoreError.migrationRefused -- fingerprint drift: \(drift)") }
                 throw StoreError.migrationRefused
             }
         }
