@@ -12855,7 +12855,22 @@
    "the old in-memory paths beside the repaired ones (ComposedRuntime.sendDirect; the harness LinkFacade; the lab sendDirect)",
    "publishAuth reacheth no production site -- the T24 card nameth THREE events and TWO travel now",
    "the round-228 blocker record for ANDROID-03 named ANDROID-01's absent D2 chain; ANDROID-01 is FIX_SUBMITTED and the witness was drivable"
-  ]
+  ],
+  "python_lane_MEASURED_at_round_521b": {
+   "command": "python3 -m unittest discover -s tools/readiness/tests",
+   "result": "Ran 637 tests, FAILED (failures=2)",
+   "failures": [
+    "test_t01.InventoryFactsTest.test_inventory_matches_live_git_facts (480 != 496)",
+    "test_t01.OriginalPreservationTest.test_original_status_unchanged (324 != 340, declared addition AUDIT_FINAL_2026-09-15 drifted)"
+   ],
+   "whose": "NOT THIS SPAN'S. Both concern /Users/oculus/Projects/GODSTONE, THE MAIN CHECKOUT THIS SPAN NEVER WRITETH TO. The 16 extra entries are AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/... written 2026-09-17 15:25-15:32, including latest-submission-state.json and source-snapshot-a3af03de.tar.gz -- AN INDEPENDENT AUDITOR'S OWN WORKING FILES. THE AUDIT BUNDLE IS READ-ONLY TO THIS SPAN AND WAS NOT TOUCHED OR DELETED. The declaration was deliberately NOT edited to match a third party's mid-flight writes.",
+   "the_TWO_that_WERE_this_records_own_doing_AND_ARE_NOW_FIXED": [
+    "counts.by_status had been re-derived at round 340 into a value test_remediation.py:131 can never accept (that control compares it against the audit registry {OPEN: 54}) -- 181 ROUNDS RED AND UNNOTICED",
+    "FIVE findings (CRYPTO-002, CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001, GS-STORE-006) carrieth EMPTY my_red_case/my_fix_commit fields while their justification lived onely as PROSE in my_logs; they now carrieth MEASURED commits and MEASURED arm names"
+   ],
+   "law_paid_for": "WHEN A CONTROL COMPARETH A LEDGER FIELD AGAINST AN EXTERNAL REGISTRY, THAT CONTROL OWNS THE FIELD'S MEANING. Re-purposing the field without re-reading its control is not a correction -- it is a red lane wearing a correction's clothes. AND: A LANE THAT IS NEVER RUN IS A LANE THAT IS ASSUMED GREEN."
+  },
+  "the_three_new_arms_at_round_521b": "GS-STRESS-001 step 1 on the SECOND and THIRD isles: the iOS testW14TheCampaignIsANamedResourceModel and the python T72NamedCategoryTest.test_w14_* arms, EACH PROVEN TO JUDGE -- the category renamed to production (the thing the card forbiddeth) and BOTH python arms FAILED ON THEIR OWN NAMES. Measured: iOS GodstoneMeshTests 1188/0 (was 1187 -- the +1 IS the arm), LabMeshTests 4/0, GodstoneCoreTests 82/0, SWIFT_RC=0; python Ran 637 tests."
  },
  "phase_two": {
   "at_round": 521,

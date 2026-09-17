@@ -51,7 +51,37 @@ This span's work lies here. Measured this round:
     the arm written this round), `BUILD SUCCESSFUL`;
   * iOS at `9153d40`: **`LabMeshTests` 4 tests 0 failures · `GodstoneMeshTests` 1187 tests 0 failures · `GodstoneCoreTests`
     82 tests 0 failures**, exit code 0, 0 compile errors;
-* **controls: parity `passed=7 failed=0`, all invariants hold · symbols `0 unresolved` · evidence digests `618/618 PASSED`**.
+* **controls: parity `passed=7 failed=0`, all invariants hold · symbols `0 unresolved` · evidence digests `627/627 PASSED`**
+  *(the digest count grew to 630 with round 521b's three logs, all verified)*;
+* **THE PYTHON LANE, MEASURED HONESTLY BECAUSE THIS SPAN HAD NEVER RUN IT: `python3 -m unittest discover -s
+  tools/readiness/tests` → `Ran 637 tests` · `FAILED (failures=2)`.** The two failures are
+  `test_t01.InventoryFactsTest.test_inventory_matches_live_git_facts` (480 != 496) and
+  `test_t01.OriginalPreservationTest.test_original_status_unchanged` (324 != 340, *"declared addition
+  AUDIT_FINAL_2026-09-15 drifted"*). **Neither is this span's:** both concern `/Users/oculus/Projects/GODSTONE`, the
+  **main checkout this span never writes to**, and the 16 extra entries are
+  `AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/…` written **2026-09-17 15:25–15:32** — including
+  `latest-submission-state.json` and `source-snapshot-a3af03de.tar.gz` — **an independent auditor's own working
+  files.** The audit bundle is read-only to this span and was **not touched or deleted**. **The lane carried FOUR
+  failures; the two that were this record's own doing are FIXED** (see below), and the declaration was deliberately
+  **not** edited to match a third party's mid-flight writes, because that would be changing the expression until the
+  control is satisfied — moving the evidence.
+
+### A CORRECTION AGAINST THIS RECORD, AND IT IS THE MOST EXPENSIVE OF THE SPAN
+**The python lane was red with four failures and this span never ran it**, while writing *"every mandatory lane
+green"* into its own commits. Two of the four had stood **since PHASE ONE**:
+* `counts.by_status` was re-derived at round 340 into a value `test_remediation.py:131` **can never accept** — that
+  control compares the field against the audit's own registry `{OPEN: 54}`. The field carries the snapshot again; the
+  derived distribution lives in its own named field;
+* **five findings** (CRYPTO-002, CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001, GS-STORE-006) were submitted with their
+  `my_red_case`/`my_fix_commit` **fields empty** while their justification lived only as prose in `my_logs`. They now
+  carry their **measured** commits and **measured** arm names — with the honest boundary stated: for CRYPTO-002 and
+  GS-STORE-006 the charge was a seam **unbound to a court**, so the "red" is **the absence of a witness** and is not
+  dressed as a behavioural RED.
+
+**Law paid for: WHEN A CONTROL COMPARETH A LEDGER FIELD AGAINST AN EXTERNAL REGISTRY, THAT CONTROL OWNS THE FIELD'S
+MEANING.** Re-purposing the field without re-reading its control is not a correction — it is **a red lane wearing a
+correction's clothes.** And round 340's went unnoticed for **181 rounds because nobody ran the lane**: *a lane that is
+never run is a lane that is assumed green.*
 
 ## WHAT AWAITS INDEPENDENT VERIFICATION
 **ALL OF IT.** `VERIFIED_FIXED` is **zero** across the programme, and **no finding in these candidates has been examined by
