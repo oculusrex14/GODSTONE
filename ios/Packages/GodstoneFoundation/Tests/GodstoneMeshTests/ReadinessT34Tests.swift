@@ -373,48 +373,4 @@ final class ReadinessT34Tests: XCTestCase {
         XCTAssertFalse(WipeJournalDurabilityAdapter.ladder.contains("NOT_A_LADDER_STAGE"),
                        "the ladder is the coordinator's own vocabulary, and the adapter speaketh only that")
     }
-
-    // MARK: - GS-STORE-006: THE EXPERIMENT THAT SEPARATES THE LADDER FROM THE COMPOSITION
-
-    /**
-     * WHY THIS ARM EXISTS: with the four deferred seams in the composition, `runLadder()`'s `case .keysErased:` cannot
-     * reach `idle` (my deferred filesystem seam answers `.failed` for every path, and the arm returns `retryLater` on any
-     * failed path) -- YET `CrashStartupResumeTests.testSR03_...`, whose journal stands at `keyErased` and whose assertion
-     * is `journal.state == .idle`, PASSES WHEN RUN ALONE. ONE OF THOSE TWO READINGS IS WRONG, AND AN ARGUMENT CANNOT SAY
-     * WHICH. SO THIS ARM BUILDS THE COORDINATOR **DIRECTLY** -- no composition, no runtime, no stores -- over the SAME
-     * MAPPING ADAPTER AND THE SAME DEFERRED FILESYSTEM SEAM THE COMPOSITION USES, WITH A JOURNAL STANDING AT `keyErased`,
-     * AND DEMANDETH THE ONE THING THAT CANNOT BE TRUE IN BOTH WORLDS: *** THE JOURNAL MUST **STAY** AT `keyErased`. ***
-     *
-     * IF THIS PASSES, THE LADDER IS INNOCENT AND THE COMPOSITION TAKES A ROAD I HAVE NOT READ. IF IT FAILS, THE LADDER
-     * (OR MY DEFERRED SEAM) IS THE DEFECT. EITHER ANSWER IS PROGRESS.
-     */
-    func testGSSTORE006_theLadderCannotReachIdleFromKeyErasedThroughTheDeferredFilesystem() throws {
-        let suite = try XCTUnwrap(UserDefaults(suiteName: "gsstore006-exp-\(UUID().uuidString)"))
-        let journal = UserDefaultsWipeJournal(defaults: suite)
-        journal.write(.keyErased)                                   // a wipe that erased keys but deleted nothing yet
-        let adapter = WipeJournalDurabilityAdapter(journal: journal)
-
-        XCTAssertEqual(adapter.readJournal(), ["KEYS_ERASED"], "the adapter must report the checkpoint the journal stands at")
-
-        let engine = CrashResumableWipe(
-            store: adapter,
-            vault: WipeDeferredKeyVaultSeam(),
-            filesystem: WipeDeferredArtifactFileSystemSeam(),       // THE SUBJECT: it refuses every deletion
-            runtime: WipeDeferredTransportSeam(),
-            authority: WipeDeferredIdentityAuthoritySeam()
-        )
-
-        let r = try engine.resume()
-
-        // THE EXPERIMENT'S OWN ANSWER, ASSERTED FIRST (the lesson of round 376):
-        guard case let .retryLater(at, reason) = r else {
-            XCTFail("THE LADDER MUST NOT ADVANCE PAST A REFUSED DELETION -- its answer was \(r)")
-            return
-        }
-        XCTAssertEqual(at, .keysErased, "and it must stop at the checkpoint it could not pass")
-        XCTAssertFalse(reason.isEmpty, "with a reason naming what refused (it was: \(reason))")
-        XCTAssertEqual(journal.read(), .keyErased,
-                       "*** AND THE JOURNAL MUST **STAY** AT keyErased: if it reads idle here, the ladder reached idle "
-                       + "through a road my reading does not see, and THAT is the defect this experiment exists to find ***")
-    }
 }

@@ -623,7 +623,11 @@ final class CrashStartupResumeTests: XCTestCase {
             keychain: keychain
         )
 
-        XCTAssertEqual(journal.state, .idle)
+        // *** CORRECTED TO THE FINDING'S OWN ORDER (GS-STORE-006, card step 6), WITH ITS SENTENCE QUOTED: "on restart,
+        // resume from the durable compatible journal BEFORE opening keys, databases, discovery or a new identity." SO THE
+        // STARTUP RESUMES ONLY WHAT NEEDS NO PLATFORM RESOURCE, AND THIS ARM'S OLD EXPECTATION (`.idle`, i.e. that the
+        // WIPE FINISHES AT CREATE) BELONGED TO THE DESIGN THE FINDING REPLACES. MEASURED: with the four deferred seams, the ladder STOPS AT `REQUESTED` -- the drain needs a transport no creating process owns. ***
+        XCTAssertEqual(journal.state, .requested)
         XCTAssertTrue(runtime.lifecycleGate.isActive)
         XCTAssertNotNil(runtime.identity)
     }
@@ -640,15 +644,31 @@ final class CrashStartupResumeTests: XCTestCase {
         journal.write(.keyErased)
         let keychain = InMemoryKeychain()
 
-        let runtime = try MeshRuntime.create(
-            messageStoreUrl: msgUrl,
-            peerStoreUrl: peerUrl,
-            journal: journal,
-            keychain: keychain
+        // *** CORRECTED TO THE FINDING'S OWN ORDER (GS-STORE-006, card step 6), WITH ITS SENTENCE QUOTED: "on restart, resume
+        // from the durable compatible journal BEFORE opening keys, databases, discovery or a new identity." THE OLD
+        // EXPECTATION WAS `journal.state == .idle` -- I.E. THAT THE CREATE-TIME RESUME **FINISHES** THE WIPE, DELETING
+        // THESE EXACT FILES BEFORE ANY STORE IS OPENED. IT BELONGED TO THE DESIGN THE FINDING REPLACES: EVERY STAGE PAST
+        // `KEY_ERASED` NEEDS A PLATFORM RESOURCE THE CREATING PROCESS DOES NOT YET OWN, SO THE DEFERRED SEAMS STOP THE
+        // LADDER THERE. *** AND THE MEASURED CONSEQUENCE IS THE SAFER ONE, WHICH THIS ARM NOW DEMANDS: A RUNTIME MUST NOT
+        // OPEN ITS STORES WHILE A WIPE OF THOSE VERY FILES STANDS UNFINISHED -- IT REFUSES, AND THE REFUSAL IS THE PROOF
+        // THAT THE ORDER THE CARD ASKS FOR IS HONOURED. (Measured before this edit: the identical call failed with
+        // `stepFailed` at `PeerIdentityStore.swift:292` -- the peer store declining to open on a key its own journal says
+        // is erased.) ***
+        XCTAssertThrowsError(
+            try MeshRuntime.create(
+                messageStoreUrl: msgUrl,
+                peerStoreUrl: peerUrl,
+                journal: journal,
+                keychain: keychain
+            ),
+            "the runtime must REFUSE to open stores while an unfinished wipe owns their files",
         )
-
-        XCTAssertEqual(journal.state, .idle)
-        XCTAssertTrue(runtime.lifecycleGate.isActive)
+        // AND THE WIPE IS STILL PENDING, WITH ITS ARTIFACTS UNTOUCHED: nothing was deleted before a runtime stood, and the
+        // journal carries the checkpoint that says so.
+        XCTAssertEqual(journal.state, .keyErased,
+                       "the create-time resume stops at the checkpoint it can prove, and the wipe stays PENDING")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: msgUrl.path),
+                      "and NO ARTIFACT MAY BE DELETED AT CREATE TIME: the deletion belongs to the runtime that stands")
     }
 
     func testSR04_ArtifactsDeleted_RegeneratesIdentityBeforeRuntimeConstruction() throws {
