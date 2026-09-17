@@ -2630,6 +2630,75 @@ public final class SqliteMessageStore: MessageStore {
         FROM \(StoreSchema.intentTable) WHERE \(StoreSchema.colIIntentId) = ?
         """
 
+    static let intentInsertIfAbsentSql = """
+        INSERT OR IGNORE INTO \(StoreSchema.intentTable) (
+            \(StoreSchema.colIIntentId), \(StoreSchema.colILogicalMessageId), \(StoreSchema.colISignedPlaintext),
+            \(StoreSchema.colICanonicalFrame), \(StoreSchema.colIRecipientNodeId), \(StoreSchema.colIRecipientStaticDhPub),
+            \(StoreSchema.colIAcceptedGeneration), \(StoreSchema.colIBindingDigest), \(StoreSchema.colICreatedAt),
+            \(StoreSchema.colIMessageNonce), \(StoreSchema.colIPriorityCode), \(StoreSchema.colIStateRank))
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        """
+
+    /// *** THE ATOMIC INSERT-IF-ABSENT, MIRRORING `insertDelivery` EXACTLY: `ON CONFLICT DO NOTHING` SPELLED AS `INSERT OR IGNORE` IN
+    /// THIS ENGINE, RETURNING TRUE IFF A NEW ROW WAS INSERTED -- AND THE CALLER RE-READETH TO CLASSIFY THE CONFLICT (WHICH IS HOW
+    /// `.duplicate(winner:)` GETTETH ITS WINNER, RATHER THAN BEING GUESSED HERE). ***
+    internal func insertIntent(_ entry: JournalEntry) throws -> Bool {
+        try withDbThrowing { db in try insertIntentNoLockStrict(db, entry) }
+    }
+
+    private func insertIntentNoLockStrict(_ db: OpaquePointer, _ entry: JournalEntry) throws -> Bool {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, Self.intentInsertIfAbsentSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.stepFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        let blobs = [entry.intentId, entry.logicalMessageId, entry.signedPlaintextBytes, entry.canonicalFrameBytes,
+                     entry.recipientNodeId, entry.recipientStaticDhPub, entry.bindingDigest]
+        for (i, b) in blobs.enumerated() {
+            guard sqlite3_bind_blob(stmt, Int32(i + 1), (b as NSData).bytes, Int32(b.count), nil) == SQLITE_OK else {
+                throw StoreError.stepFailed
+            }
+        }
+        guard sqlite3_bind_int64(stmt, 8, Int64(entry.acceptedGeneration)) == SQLITE_OK,
+              sqlite3_bind_int64(stmt, 9, entry.createdAtEpochSeconds) == SQLITE_OK,
+              sqlite3_bind_blob(stmt, 10, (entry.messageNonce as NSData).bytes, Int32(entry.messageNonce.count), nil) == SQLITE_OK,
+              sqlite3_bind_int64(stmt, 11, Int64(entry.priorityCode)) == SQLITE_OK,
+              sqlite3_bind_int64(stmt, 12, Int64(entry.stateRank.rawValue)) == SQLITE_OK else {
+            throw StoreError.stepFailed
+        }
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        // TRUE IFF A NEW ROW WAS INSERTED -- `INSERT OR IGNORE` LEAVETH `changes` AT 0 FOR A CONFLICT, WHICH IS THE CONFLICT SIGNAL.
+        return sqlite3_changes(db) > 0
+    }
+
+    static let intentAdvanceSql = """
+        UPDATE \(StoreSchema.intentTable) SET \(StoreSchema.colIStateRank) = ?
+        WHERE \(StoreSchema.colIIntentId) = ? AND \(StoreSchema.colIStateRank) = ?
+        """
+
+    /// *** THE SINGLE EXPLICIT TRANSITION, MIRRORING `execDeliveryUpdate`'s CAS: THE **AFFECTED-ROW COUNT IS THE ANSWER** -- 1 MEANS
+    /// THE TOKEN MATCHED AND ADVANCED, 0 MEANS THE ROW HAD ALREADY MOVED (WHICH THE SEAM CALLETH `.stale`, BECAUSE THE TOKEN WAS
+    /// REVALIDATED RATHER THAN ASSUMED). ***
+    internal func advanceIntent(intentId: Data, from: IntentStateRank, to: IntentStateRank) throws -> Int {
+        try withDbThrowing { db in try advanceIntentNoLockStrict(db, intentId: intentId, from: from, to: to) }
+    }
+
+    private func advanceIntentNoLockStrict(_ db: OpaquePointer, intentId: Data,
+                                           from: IntentStateRank, to: IntentStateRank) throws -> Int {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, Self.intentAdvanceSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.stepFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_bind_int64(stmt, 1, Int64(to.rawValue)) == SQLITE_OK,
+              sqlite3_bind_blob(stmt, 2, (intentId as NSData).bytes, Int32(intentId.count), nil) == SQLITE_OK,
+              sqlite3_bind_int64(stmt, 3, Int64(from.rawValue)) == SQLITE_OK else {
+            throw StoreError.stepFailed
+        }
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return Int(sqlite3_changes(db))
+    }
+
     /// THE READER, mirroring `readDelivery`: it THROWETH on a storage fault, and it ANSWERETH `nil` ONLY FOR ABSENCE -- WHICH IS THE
     /// DISTINCTION THE SEAM'S TYPED OUTCOME (round 475) EXISTS TO CARRY.
     internal func readIntent(_ intentId: Data) throws -> JournalEntry? {
