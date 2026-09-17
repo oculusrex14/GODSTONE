@@ -155,6 +155,23 @@ Nothing in these candidates supplies, or claims to supply, any of the following 
   asking the RC **and** the bundle verdict **and** the arm's name — three questions, all answering "nothing happened"), and
   **a log I overwrote**, recorded as a transcript because the capture is gone.
 
+## ROUND 521, PHASE TWO — WHAT MOVED AND WHAT IT OWES
+
+**GS-STORE-002 moved its central charge from a COMMENT to a CODE LAW.** Its three standing arms (W01–W03) are
+**source-substring** laws — *they prove what the composition SAYETH, never what it DOTH* — so a **behavioural RED** was
+taken first: **the card's own closure test**, composing the runtime, writing a private store, and reading that file with
+**stock unkeyed `sqlite3`**. MEASURED RED, `rc=0` (`SQLITE_OK`) against the composition's private store. The repair makes
+`MeshRuntime.create` **refuse without a verifying factory**, and the plaintext road now exists **only under a name a
+caller must write down** (`createArchiveOnlyHostComposition`). **A comment is not a measurement; a name is.**
+**And a mandatory control broke and was found by RUNNING it, not by reading:** the rename broke two relational
+assertions in `check_trusted_runtime_composition_controls.py`, which greps a *neighbour's text*. Measured after:
+**iOS lane 1190 tests / 0 failures** (1188 → 1190: the +2 are the new arms), all gates PASS.
+
+**IT IS STILL `PARTIAL`, AND THE OWED PROOF IS NAMED RATHER THAN IMPLIED: the concrete SQLCipher engine is an
+EXTERNAL artifact — NOTHING here is evidence that any store IS encrypted.** The card's step 1 needs a *pinned
+dependency* (an acquisition, and **acquisition never closes a gate**), and its own third clause demands **device
+SQLCipher and locked-device evidence** before T30 may be called complete.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
