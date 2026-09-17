@@ -98,6 +98,7 @@
     "Sources/GodstoneMesh/TrustedHandshakeController.swift": "855d8752f8aa5fd516884d8930fccaff552ffbd4b43865a5efa2218d438392cf",
     "Sources/GodstoneMesh/TrustedPeerChannel.swift": "86eabac74cd00b7201f0967ce0afd07b51ea40925b86de7257dd1c3a4ce70333",
     "Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift": "1349bcab58ed7d47657bda51250cb0993a8bbf18c61fb28d9b458091a34a0a8b",
+    "Sources/GodstoneMesh/WipeArtifactFileSystemSeam.swift": "eb86d9cc981cb0b8e0528c97aa6dbd39ce1ec6cbce01fc75b24f49159c2b96eb",
     "Sources/GodstoneMesh/WipeTransportDrainSeam.swift": "70674aa17da5af0eb787f57dd84a0d67cc03cb4d1332b7afe3e37d439ad865df",
     "Sources/GodstoneMesh/WireV2.swift": "bac25e7bda845cdab3aa8c221dd693963be97c8ab313fba103a66b7308e6bf2e",
     "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",
