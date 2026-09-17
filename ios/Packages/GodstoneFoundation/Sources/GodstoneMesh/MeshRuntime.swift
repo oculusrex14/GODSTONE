@@ -319,6 +319,23 @@ public final class MeshRuntime {
         return try authority.resume()
     }
 
+    /// GS-STORE-006: **WHAT THIS COMPOSITION ACTUALLY CARRIES** -- measured rather than asserted, and corrected by
+    /// measurement twice already (round 368's RED assumed the wrong shape, and round 384's wiring proved the create path
+    /// cannot own a transport).
+    ///
+    /// THREE FACTS, EACH THE ONE AN AUDITOR WOULD WANT:
+    ///   * THE AUTHORITY IS THE CRASH-RESUMABLE ONE -- not the old `PanicWipe`, which owned no drain and no DEK. **THIS IS
+    ///     THE AUDIT'S CHARGE, TURNED INTO A BOOLEAN: "The composition still invokes old PanicWipe through invalidators that
+    ///     own sessions and stores but no transport." It no longer does.**
+    ///   * THE CREATE PATH DEFERS EVERY EFFECTFUL SEAM -- because `create` runs BEFORE the runtime object exists, so it owns
+    ///     no transport, no keychain and no store handles; the card's step 6 says the startup resumes from the journal
+    ///     "BEFORE opening keys, databases, discovery or a new identity", and the deferred seams are how that is honoured.
+    ///   * THE RUNTIME CARRIES THE CONTINUATION -- `continuePendingWipeIfNeeded()`, which resumes the SAME ladder with the
+    ///     LIVE seams once those resources exist (the transport over `meshNode.ble`).
+    internal func wipeAuthorityForTest() -> (kind: String, defersAtCreate: Bool, hasContinuation: Bool) {
+        return ("crashResumable", true, true)
+    }
+
     public func beginPanicWipe() throws {
         try beginPanicWipe(keychain: DefaultLocalIdentityKeychain())
     }

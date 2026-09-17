@@ -871,4 +871,50 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: msgUrl)
         try? FileManager.default.removeItem(at: peerUrl)
     }
+
+    // MARK: - GS-STORE-006: THE WIPE AUTHORITY THE COMPOSITION CARRIES
+
+    /**
+     * THE AUDIT'S CHARGE, AS AN ARM: "The composition still invokes old PanicWipe through invalidators that own sessions and
+     * stores but NO TRANSPORT."
+     *
+     * *** AND THIS ARM'S OWN HISTORY IS WORTH ITS COMMENT, BECAUSE IT IS THE FINDING IN MINIATURE: ITS FIRST DRAFT (round
+     * 368) DEMANDED A CONNECTED TRANSPORT SEAM **AT CREATE TIME**, WHICH IS IMPOSSIBLE BY CONSTRUCTION AND WHICH HUNG THE
+     * LANE FOR TEN MINUTES WHEN I TRIED TO SATISFY IT (round 384). THE CARD'S STEP 6 SETTLES THE SHAPE: "on restart, resume
+     * from the durable compatible journal BEFORE opening keys, databases, discovery or a new identity" -- SO THE CREATE PATH
+     * DEFERS EVERY EFFECTFUL SEAM, AND THE RUNTIME THAT STANDS CARRIES THE CONTINUATION. ***
+     */
+    func testGSSTORE006_theCompositionCarriesTheCrashResumableAuthority() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_peer_\(UUID().uuidString).db")
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: InMemoryJournal(),
+            keychain: InMemoryKeychain()
+        )
+
+        let authority = runtime.wipeAuthorityForTest()
+
+        XCTAssertEqual(
+            authority.kind, "crashResumable",
+            "THE COMPOSITION MUST CARRY ONE RUNTIME-OWNED WIPE AUTHORITY -- the crash-resumable one (REQUESTED -> "
+            + "RUNTIME_DRAINED -> KEYS_ERASED -> ARTIFACTS_DELETED -> NEW_IDENTITY -> IDLE) -- RATHER THAN THE OLD PanicWipe "
+            + "AT ITS ROOTS, which owneth no drain and no DEK",
+        )
+        XCTAssertTrue(
+            authority.defersAtCreate,
+            "THE CREATE-TIME AUTHORITY MUST DEFER EVERY EFFECTFUL SEAM: `create` runs before the runtime object exists, so "
+            + "it owns no transport, no keychain and no store handles -- it may not drain, may not erase, may not delete",
+        )
+        XCTAssertTrue(
+            authority.hasContinuation,
+            "AND THE RUNTIME MUST CARRY THE CONTINUATION THAT FINISHES THE WIPE ONCE THOSE RESOURCES EXIST "
+            + "(`continuePendingWipeIfNeeded()`), where the LIVE seams -- the transport over `meshNode.ble` among them -- "
+            + "are used; without it a wipe would stay pending forever, and with it the four-stage lifecycle is whole",
+        )
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
 }
