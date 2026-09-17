@@ -1355,4 +1355,51 @@ class SqliteMessageStoreTest {
         )
     }
 
+    /** *** GS-STORE-004 (round 528): THE MINT MUST GRANT THE ROW'S **OWN** KIND. ***
+     *
+     * HOW THIS DEFECT SURVIVED EVERY ARM THAT STOOD ON BOTH ISLES, AND IT IS THE ROUND'S OWN LESSON: EVERY retention
+     * arm persisted `frame(..., type = TypeV2.MESSAGE)` -- THE DEFAULT -- so every row was DIRECT, and
+     * `kind = MessageKind.DIRECT` **HARDCODED IN THE MINT WAS INDISTINGUISHABLE FROM A CORRECT DERIVATION**.
+     * **AN ARM THAT EXERCISETH ONE KIND CANNOT JUDGE A PER-KIND TABLE.**
+     *
+     * MEASURED ON THIS ISLE BEFORE THE REPAIR: `MessageKind` carried **NO OCTET MAPPING AT ALL**, BOTH mint sites
+     * hardcoded DIRECT, and `isForwardable`'s `kind` DEFAULTED to DIRECT with BOTH of its callers passing nothing --
+     * SO THE ENTIRE PER-KIND RETENTION TABLE WAS INERT HERE, and an SOS (the policy's twenty-four hours) was
+     * retained **SEVEN TIMES** too long.
+     */
+    @Test
+    fun gsstore004TheMintGrantethTheRowsOwnKindAndNotADefaultedDirect() = runBlocking {
+        open(8L * 1024 * 1024)
+        store.receiptTimeProvider = { 5_000_000L to "boot-A" }
+
+        // AN SOS FRAME: the policy saith twenty-four hours, and the mint must agree.
+        val sos = frame(31, Priority.DIRECT, payloadSize = 48, type = TypeV2.SOS)
+        assertEquals(PersistResult.HELD_NEW, store.persist(sos, receivedFrom = ByteArray(0)))
+        assertEquals(
+            RetentionClock.lifetimeMs.getValue(MessageKind.SOS),
+            store.retentionCheckpointForTest(msgId(31))!![0],
+            "*** AN SOS MUST BE GRANTED THE SOS LIFETIME: the mint hardcoded DIRECT, so the most sensitive row on " +
+                "this isle was retained SEVEN TIMES too long (GS-STORE-004 step 3) ***",
+        )
+
+        // AND A BULK FRAME: one hour, not seven days.
+        val bulk = frame(32, Priority.DIRECT, payloadSize = 48, type = TypeV2.BULK_CHUNK)
+        assertEquals(PersistResult.HELD_NEW, store.persist(bulk, receivedFrom = ByteArray(0)))
+        assertEquals(
+            RetentionClock.lifetimeMs.getValue(MessageKind.BULK),
+            store.retentionCheckpointForTest(msgId(32))!![0],
+            "*** AND A BULK ROW ONE HOUR, NOT ONE HUNDRED AND SIXTY-EIGHT TIMES ITS OWN ***",
+        )
+
+        // THE DISCRIMINATOR: a plain MESSAGE frame IS direct -- so this arm cannot pass by minting one kind for all,
+        // and the defaulted frame of every OTHER arm in this file stayeth lawful.
+        assertEquals(PersistResult.HELD_NEW, store.persist(frame(33, Priority.DIRECT, payloadSize = 48),
+                                                           receivedFrom = ByteArray(0)))
+        assertEquals(
+            RetentionClock.lifetimeMs.getValue(MessageKind.DIRECT),
+            store.retentionCheckpointForTest(msgId(33))!![0],
+            "and a DIRECT row carrieth DIRECT's lifetime",
+        )
+    }
+
 }

@@ -398,6 +398,38 @@ the revision is **the next round's work, named**.
 `GodstoneCoreTests` 86/0; `SqliteMessageStoreTests` 71/0; parity `--scope repo` all invariants hold; symbols 0
 unresolved; digests PASSED; store-schema gate PASS. The finding stays **`PARTIAL`**.
 
+## ROUND 528, PHASE TWO — A HIGH-SEVERITY RETENTION DEFECT ON BOTH ISLES
+
+**The round began by measuring round 527's premise — that an over-cap budget is reachable — and the measurement refuted
+it:** `admit` is the only mint and grants exactly the lifetime, the only mutation is the debit, and **every lifetime is
+at or below the cap.** So **no schema revision 10 is needed**; round 527's parked arm asserted a state the store cannot
+produce, and it is **retired with its reason**. *A defect claim whose premise is unmeasured is not a defect claim; it is
+a hypothesis.*
+
+**And the arm that replaced it FAILED on its first run:** `("Optional(604800000)") is not equal to ("Optional(86400000)")`
+— an SOS row carried DIRECT's seven days. **The easy move was to relax the assertion to *"one of the lifetimes"*. That
+would have hidden a real defect**, so the instrument was aimed at the mapping instead — and it found the insert path
+**hardcoding `kind: MessageKind.direct`.**
+
+> **IN RETENTION TERMS: every row was minted seven days.** An **SOS** — the most sensitive row on either isle — was held
+> **seven times** the policy's 24 hours; a **bulk** row **168×** its own. **On Android it was broader still:**
+> `MessageKind` carried **no octet mapping at all**, both mint sites hardcoded `DIRECT`, and `isForwardable`'s `kind`
+> **defaulted to `DIRECT` with both callers passing nothing** — *so the entire per-kind table was inert on that isle.*
+
+**WHY EVERY ARM ON BOTH ISLES HAD MISSED IT — the round's sharpest lesson: every retention arm persisted
+`frame(…, type = TypeV2.MESSAGE)` — the DEFAULT — so every row was DIRECT, and a hardcoded `DIRECT` was
+indistinguishable from a correct derivation. AN ARM THAT EXERCISES ONE KIND CANNOT JUDGE A PER-KIND TABLE.** The Android
+mirror arm therefore carries a **discriminator** clause, so it cannot pass by minting one kind for all.
+
+**Repaired on both isles**, each in the place where its space is known: iOS derives the kind from `frame.type` (a
+`TypeV2` **octet**) at the insert; Android gains the **same mapping as a twin, case for case, because the contract is
+shared**, plus both mint sites. **The negative case ran on both isles and both arms failed with the defect restored.**
+And a **smell is named as a smell**: `cp.kind` is carried but **neither `checkpoint` nor `isExpired` consults it**
+(measured), so the persisted **budget** is what binds — which is why the mint was the substantive repair.
+
+**Measured:** iOS `SWIFT_RC=0`, `GodstoneMeshTests` **1193/0** (1192 → 1193); Android `:mesh` **1229/0** (1228 → 1229),
+78 classes; parity 7/0; symbols 0 unresolved; digests PASSED; store-schema gate PASS. The finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is

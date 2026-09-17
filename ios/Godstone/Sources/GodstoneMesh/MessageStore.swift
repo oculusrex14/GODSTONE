@@ -1565,8 +1565,20 @@ public final class SqliteMessageStore: MessageStore {
         // reading, and NAMETH the continuity identity the reopen path will judge against.
         let retention = receiptTimeProvider.map { provider in
             let stamp = provider()
+            // *** GS-STORE-004 STEP 3, REPAIRED AT ROUND 528: THE BUDGET COMETH FROM THE POLICY **FOR THE ROW'S OWN
+            // KIND** -- AND UNTIL THIS EDIT IT DID NOT. `kind:` WAS HARDCODED `MessageKind.direct`, SO **EVERY ROW
+            // WAS MINTED SEVEN DAYS**: an SOS (the policy's twenty-four hours) was retained SEVEN TIMES too long, and a
+            // BULK row (one hour) ONE HUNDRED AND SIXTY-EIGHT TIMES. MEASURED FIRST, by an arm written for closure
+            // 2's maximum-hold clause: it read back `604800000` where the SOS lifetime is `86400000`. ***
+            // THE CONVERSION HAPPENETH **HERE**, WHERE THE SPACE IS KNOWN (round 315's law): `frame.type` is a
+            // `TypeV2` octet, which is exactly what `ofStoredTypeCode` expecteth -- the two-space bug of round 312
+            // came of a caller passing a KIND where an OCTET was wanted, and this caller holdeth the octet.
+            // AND AN UNKNOWN OCTET FALLETH TO `.direct`: NOT because DIRECT is right, but because the alternative is
+            // to destroy a row whose type could not be read -- 'a guess with a deletion behind it' (round 313), and
+            // the longest-lived kind is the conservative one for a row we cannot name.
             return RetentionPolicy.admit(msgId: frame.msgId.map { String(format: "%02x", $0) }.joined(),
-                                         kind: MessageKind.direct, priority: 0,
+                                         kind: MessageKind.ofStoredTypeCode(Int(frame.type.rawValue)) ?? .direct,
+                                         priority: 0,
                                          firstReceiptId: String(format: "%02x", 0),
                                          nowMono: Int(stamp.monoMs),
                                          bootIdentity: stamp.bootIdentity)

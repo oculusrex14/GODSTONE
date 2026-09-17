@@ -1368,7 +1368,12 @@ class SqliteMessageStore internal constructor(
                     val stamp = clock()
                     val cp = RetentionClock.admit(
                         msgId = String(frame.msgId, Charsets.ISO_8859_1),
-                        kind = MessageKind.DIRECT,
+                        // GS-STORE-004 (round 528): THE ROW'S OWN KIND, NOT A HARDCODED DIRECT. The conversion
+                        // happeneth HERE, where the space is known: `frame.type.code` is a TypeV2 OCTET, which is
+                        // what `ofStoredTypeCode` expecteth. An octet this build cannot name falleth to DIRECT --
+                        // the longest-lived kind is the conservative one for a row we cannot name, and destroying it
+                        // would be 'a guess with a deletion behind it' (the isles' shared round-313 law).
+                        kind = MessageKind.ofStoredTypeCode(frame.type.code.toInt()) ?: MessageKind.DIRECT,
                         priority = 0,
                         firstReceiptId = String(frame.msgId, Charsets.ISO_8859_1),
                         nowMono = stamp.first,
@@ -1454,7 +1459,12 @@ class SqliteMessageStore internal constructor(
                     val stamp = clock()
                     val cp = RetentionClock.admit(
                         msgId = String(frame.msgId, Charsets.ISO_8859_1),
-                        kind = MessageKind.DIRECT,
+                        // GS-STORE-004 (round 528): THE ROW'S OWN KIND, NOT A HARDCODED DIRECT. The conversion
+                        // happeneth HERE, where the space is known: `frame.type.code` is a TypeV2 OCTET, which is
+                        // what `ofStoredTypeCode` expecteth. An octet this build cannot name falleth to DIRECT --
+                        // the longest-lived kind is the conservative one for a row we cannot name, and destroying it
+                        // would be 'a guess with a deletion behind it' (the isles' shared round-313 law).
+                        kind = MessageKind.ofStoredTypeCode(frame.type.code.toInt()) ?: MessageKind.DIRECT,
                         priority = 0,
                         firstReceiptId = String(frame.msgId, Charsets.ISO_8859_1),
                         nowMono = stamp.first,

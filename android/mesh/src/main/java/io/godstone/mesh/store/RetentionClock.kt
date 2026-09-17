@@ -1,5 +1,7 @@
 package io.godstone.mesh.store
 
+import io.godstone.mesh.wire.v2.TypeV2
+
 // ---------------------------------------------------------------------------
 // T32 SHARED RETENTION CONTRACT (android) -- the exact section14 (rows 57-72)
 // receipt-relative, non-replenishing retention algorithm. ADDITIVE, PURE-KOTLIN
@@ -16,7 +18,32 @@ package io.godstone.mesh.store
 // ---------------------------------------------------------------------------
 
 /** The kind of held row: selects the canonical local lifetime. NOT a sender field. */
-enum class MessageKind { DIRECT, SOS, GROUP, BROADCAST, BULK }
+enum class MessageKind {
+    DIRECT, SOS, GROUP, BROADCAST, BULK;
+
+    companion object {
+        /**
+         * *** GS-STORE-004 (round 528): THE KOTLIN TWIN OF iOS's `MessageKind.ofStoredTypeCode`, AND IT WAS ABSENT. ***
+         *
+         * MEASURED ON THIS ISLE BEFORE THIS EDIT: `MessageKind` carried **NO OCTET MAPPING AT ALL**, the two mint
+         * sites hardcoded `MessageKind.DIRECT`, and `isForwardable`'s `kind` parameter DEFAULTED to `DIRECT` with both
+         * of its callers passing NOTHING -- **SO THE ENTIRE PER-KIND RETENTION TABLE WAS INERT ON THIS ISLE**: every
+         * row was minted seven days and judged as a DIRECT message, and an SOS (the policy's twenty-four hours) was
+         * retained SEVEN TIMES too long.
+         *
+         * THE MAPPING IS THE iOS ISLE'S, CASE FOR CASE, BECAUSE THE CONTRACT IS SHARED: `message` is DIRECT, `sos` is
+         * SOS, the two bulk types are BULK, the control types are DIRECT -- and `null` for an octet this build cannot
+         * name, so a caller can CHOOSE to refuse rather than guess.
+         */
+        fun ofStoredTypeCode(code: Int): MessageKind? = when (TypeV2.from(code.toByte())) {
+            TypeV2.MESSAGE -> DIRECT
+            TypeV2.SOS -> SOS
+            TypeV2.BULK_OFFER, TypeV2.BULK_CHUNK -> BULK
+            TypeV2.HELLO, TypeV2.DIGEST, TypeV2.WANT, TypeV2.ACK, TypeV2.PING, TypeV2.GOODBYE -> DIRECT
+            null -> null
+        }
+    }
+}
 
 /** The clock-continuity verdict a platform adapter returns for one reopen. */
 sealed class ClockContinuityStamp {

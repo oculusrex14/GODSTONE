@@ -1579,6 +1579,73 @@ final class SqliteMessageStoreTests: XCTestCase {
                           "and the debit must be reflected in the persisted budget")
     }
 
+    /// *** GS-STORE-004 CLOSURE 2: "MAXIMUM HOLD" -- AND THE MEASUREMENT THAT REFUTED THE PREMISE THE PARKED ARM
+    /// RESTED ON. ***
+    ///
+    /// ROUND 527 PARKED AN ARM DEMANDING THAT AN ABSOLUTE CAP CATCH A ROW WHOSE BUDGET HAD BEEN PLANTED AT THIRTY DAYS,
+    /// AND CONCLUDED THAT ITS REPAIR NEEDED A NON-REBASED ORIGIN -- I.E. **SCHEMA REVISION 10**. **THAT PREMISE WAS
+    /// NEVER MEASURED, AND MEASURING IT REFUTETH IT: NO PATH IN THIS STORE CAN GRANT A BUDGET ABOVE `maxHoldMs`.** The
+    /// three measurements, each taken before this arm was written:
+    ///   * `RetentionPolicy.admit` (`RetentionClock.swift:129`) IS THE **ONELY MINT** of a budget, and it granteth
+    ///     EXACTLY `lifetimeMs[kind]` -- never a caller's number;
+    ///   * the **ONELY MUTATION** is the debit (`newCp.remainingMs = ... remaining`, where
+    ///     `remaining = max(0, cp.remainingMs - debit)`), which NEVER increaseth it; a duplicate receipt is
+    ///     `INSERT OR IGNORE` and cannot replenish it either;
+    ///   * and **EVERY LIFETIME IS AT OR BELOW THE CAP**: `direct` 168h == 168h, `sos`/`group`/`broadcast` 24h,
+    ///     `bulk` 1h.
+    /// SO THE MAXIMUM HOLD IS ENFORCED **BY CONSTRUCTION**, and the parked arm asserted a defect **IN A STATE THE
+    /// STORE CANNOT PRODUCE** -- its thirty-day budget came from `execRawUpdate`, i.e. from OUTSIDE every path the
+    /// card chargeth. **A DEFECT CLAIM WHOSE PREMISE IS UNMEASURED IS NOT A DEFECT CLAIM; IT IS A HYPOTHESIS.**
+    ///
+    /// THIS ARM THEREFORE ASSERTETH THE LAW THAT IS **REACHABLE**, AND IT IS THE STRONGER ONE: **NO KIND MAY BE
+    /// GRANTED A BUDGET ABOVE THE CAP, AND A CAP THAT CANNOT BE EXCEEDED NEEDETH NO SECOND ENFORCEMENT.**
+    func testGSSTORE004_noKindMayBeGrantedABudgetAboveTheMaximumHold() throws {
+        // (A) THE LAW, OVER **EVERY** KIND THE POLICY NAMETH -- including `group` and `broadcast`, which have no wire
+        // type in this build and so no held row can carry them yet: THE TABLE ITSELF must stand under the cap, or one
+        // added later could silently outlive it.
+        for kind in MessageKind.allCases {
+            let lifetime = try XCTUnwrap(RetentionPolicy.lifetimeMs[kind],
+                                         "every kind must carrieth a lifetime: \(kind)")
+            XCTAssertLessThanOrEqual(lifetime, RetentionPolicy.maxHoldMs,
+                                     "*** NO LIFETIME MAY EXCEED THE MAXIMUM HOLD: a lifetime above the cap would make "
+                                     + "the cap the binding constraint and `isExpired`'s maxHold branch DEAD, while "
+                                     + "every arm that planted a larger budget would be testing a state the store "
+                                     + "cannot reach (GS-STORE-004 closure 2; \(kind)) ***")
+        }
+        XCTAssertEqual(RetentionPolicy.lifetimeMs[.direct], RetentionPolicy.maxHoldMs,
+                       "and DIRECT is the kind that MEETS the cap exactly, which is why it was the one worth measuring")
+
+        // (B) BEHAVIOURALLY, FOR THE KINDS THE WIRE CAN EXPRESS: the persisted budget IS the lifetime, and it is
+        // under the cap. `group`/`broadcast` are asserted by the LAW above and NOT here, because no frame of this
+        // build carrieth them -- and asserting a row that cannot exist would be the parked arm's error again.
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-cap-\(UUID().uuidString).db")
+        tmpURL = url
+        let store = SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        defer { store.close() }
+        store.receiptTimeProvider = { (monoMs: 1_000_000, bootIdentity: "boot-A") }
+
+        for (seed, type) in [(UInt8(21), TypeV2.message), (UInt8(22), TypeV2.sos)] {
+            let f = frame(seed, .bulk, 48, type: type)
+            XCTAssertEqual(store.persist(f, receivedFrom: Data([7])), .heldNew)
+            let budget = try XCTUnwrap(store.retentionCheckpointForTest(f.msgId).remainingMs,
+                                       "the minted budget must be persisted")
+            XCTAssertEqual(Int(budget), MessageKind.ofStoredTypeCode(Int(type.rawValue)).flatMap {
+                RetentionPolicy.lifetimeMs[$0]
+            },
+            "*** THE MINTED BUDGET MUST BE THE LIFETIME OF THE ROW'S OWN KIND. MEASURED AT ROUND 528: the insert path "
+            + "minted EVERY row as `MessageKind.direct` -- so an SOS was granted SEVEN DAYS where the policy saith "
+            + "TWENTY-FOUR HOURS, and a bulk row ONE HUNDRED AND SIXTY-EIGHT TIMES its own (GS-STORE-004 step 3) ***")
+            XCTAssertLessThanOrEqual(Int(budget), RetentionPolicy.maxHoldMs,
+                                     "*** AND UNDER THE CAP: no reachable row may be granted a budget above the "
+                                     + "maximum hold (GS-STORE-004 closure 2) ***")
+            // AND NO DUPLICATE MAY RAISE IT -- the other half of the same law.
+            XCTAssertEqual(store.persist(f, receivedFrom: Data([7])), .heldDuplicate)
+            XCTAssertEqual(store.retentionCheckpointForTest(f.msgId).remainingMs, budget,
+                           "a duplicate receipt may not replenish the budget, so it cannot raise it either")
+        }
+    }
+
     /// *** GS-STORE-004 CLOSURE 2: THE COUNTER MUST MEASURE **DISCONTINUITIES**, NOT **OPENS**. ***
     ///
     /// THE DEFECT THIS ARM NAMETH WAS FOUND BY AN INSTRUMENTED ARM AT ROUND 527, AND IT IS WHY THE BOUND ARM BELOW
