@@ -21,12 +21,14 @@ public final class WipeIdentityAuthoritySeam: IdentityAuthoritySeam {
 
     public init() {}
 
-    public func publishNewIdentity() -> String {
+    public func publishNewIdentity() -> String? {
         lock.lock()
         defer { lock.unlock() }
         guard let identity = try? MeshIdentity.generateAndStore() else {
+            // THE TYPED REFUSAL: `nil`, NOT a name that says what happened -- because the CALLER must be able to tell a
+            // refusal from a success, and prose cannot be told apart from an identifier.
             current = nil
-            return Self.generationFailedName
+            return nil
         }
         current = Self.name(of: identity)
         return current ?? Self.generationFailedName

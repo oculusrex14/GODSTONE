@@ -131,7 +131,16 @@ public protocol TransportRuntimeSeam: AnyObject {
 }
 
 public protocol IdentityAuthoritySeam: AnyObject {
-    func publishNewIdentity() -> String
+    /// *** GS-STORE-006: A TYPED FAILURE CHANNEL, WHICH IS THE FIX AN ARM FORCED (round 421). ***
+    ///
+    /// IT RETURNED A NON-OPTIONAL `String`, AND A `String` CANNOT SAY "I DID NOT PUBLISH AN IDENTITY": the deferred seam
+    /// answered a NAME THAT SAID WHAT HAPPENED -- honest prose -- and the ladder, having no way to read a refusal as a
+    /// refusal, ADVANCED TO `IDLE` BELIEVING AN IDENTITY STOOD WHEN NONE DID. An authority that cannot FAIL where it must
+    /// not succeed is the very species of defect this finding is about, and I had built one into the seam whose job was to
+    /// prevent it.
+    ///
+    /// `nil` MEANS **NOT PUBLISHED**, and the ladder must therefore STAY PENDING rather than reach `IDLE`.
+    func publishNewIdentity() -> String?
     func identity() -> String?
 }
 
@@ -305,7 +314,11 @@ public final class CrashResumableWipe {
                 }
                 try persist(from, .artifactsDeleted)
             case .artifactsDeleted:
-                _ = authority.publishNewIdentity()
+                // THE TYPED REFUSAL IS HONOURED HERE: `nil` means the identity was NOT published, so the wipe must NOT
+                // record `NEW_IDENTITY` and must NOT advance -- it stays PENDING for the runtime that owns an identity.
+                guard authority.publishNewIdentity() != nil else {
+                    return .retryLater(at: from, reason: "no identity could be published")
+                }
                 try persist(from, .newIdentity)
             case .newIdentity:
                 try persist(from, .idle)

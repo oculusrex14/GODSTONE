@@ -24,7 +24,10 @@ public final class WipeDeferredIdentityAuthoritySeam: IdentityAuthoritySeam {
 
     /// IT NAMETH ITS OWN ABSENCE RATHER THAN INVENTING A NAME: the ladder records `NEW_IDENTITY` only when this is
     /// called, and the caller's journal then carrieth a state that SAYS the identity was not published.
-    public func publishNewIdentity() -> String { Self.reason }
+    public func publishNewIdentity() -> String? {
+        // IT PUBLISHETH NOTHING, AND NOW IT CAN SAY SO: `nil` stoppeth the ladder AT `ARTIFACTS_DELETED`.
+        nil
+    }
 
     /// NO IDENTITY STANDS AT THIS MOMENT -- and `nil` is exactly the seam's own vocabulary for that.
     public func identity() -> String? { nil }

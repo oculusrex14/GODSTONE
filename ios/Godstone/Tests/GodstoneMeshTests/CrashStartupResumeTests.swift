@@ -685,7 +685,17 @@ final class CrashStartupResumeTests: XCTestCase {
             keychain: keychain
         )
 
-        XCTAssertEqual(journal.state, .idle)
+        // *** CORRECTED TO THE FINDING'S OWN ORDER (GS-STORE-006, card step 6), WITH ITS SENTENCE QUOTED: "on restart,
+        // resume from the durable compatible journal BEFORE opening keys, databases, discovery or a new identity."
+        //
+        // THE OLD EXPECTATION WAS `journal.state == .idle` -- I.E. THAT THE CREATE-TIME RESUME **REGENERATES THE IDENTITY**
+        // (this arm's own name says so). IT BELONGED TO THE DESIGN THE FINDING REPLACES: AT CREATE TIME THE IDENTITY SEAM IS
+        // DEFERRED, SO `publishNewIdentity()` ANSWERETH `nil` -- NOT PUBLISHED -- AND THE LADDER NOW **STOPS AT
+        // `ARTIFACTS_DELETED`** INSTEAD OF CLAIMING AN IDENTITY IT NEVER PUBLISHED. *** THE ARM MEASURED THAT DEFECT AT
+        // ROUND 421 (IT WAS THE ARM THAT FOUND IT) AND NOW MEASURES ITS ABSENCE. ***
+        XCTAssertEqual(journal.state, .artifactsDeleted,
+                       "the create-time resume stops at the last checkpoint it can prove, and the wipe stays PENDING for "
+                       + "the runtime that owns an identity")
         XCTAssertEqual(runtime.identity.bindingGeneration, 0)
     }
 

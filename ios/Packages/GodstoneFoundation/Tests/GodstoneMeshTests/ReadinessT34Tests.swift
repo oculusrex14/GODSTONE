@@ -73,7 +73,7 @@ final class ReadinessT34Tests: XCTestCase {
     fileprivate final class T34Authority: IdentityAuthoritySeam {
         var current: String? = nil
         var published: [String] = []
-        func publishNewIdentity() -> String { let id = "node-\(published.count + 1)"; published.append(id); current = id; return id }
+        func publishNewIdentity() -> String? { let id = "node-\(published.count + 1)"; published.append(id); current = id; return id }
         func identity() -> String? { current }
     }
 
@@ -408,23 +408,18 @@ final class ReadinessT34Tests: XCTestCase {
 
             let r = try authority.resume()
 
-            // *** AND HERE THIS ARM FOUND A DEFECT IN MY OWN DESIGN, WHICH IS WHY IT NOW ASSERTS THE OBSERVED BEHAVIOUR
-            // **AND NAMES THE DEFECT** RATHER THAN BEING WEAKENED TO PASS. MEASURED: FROM `artifactsDeleted` THE LADDER
-            // ADVANCES ALL THE WAY TO `IDLE` -- because `case .artifactsDeleted:` calls
-            // `authority.publishNewIdentity()`, AND MY DEFERRED IDENTITY SEAM RETURNS A `String` (A NAME THAT SAYS WHAT
-            // HAPPENED) WITH **NO FAILURE CHANNEL**. THE SEAM'S SIGNATURE CANNOT EXPRESS "I DID NOT PUBLISH AN IDENTITY", SO
-            // A WIPE IN A COMPOSITION THAT OWNETH NO IDENTITY AUTHORITY **REACHES `IDLE` BELIEVING A NEW IDENTITY STANDS
-            // WHEN NONE DOES** -- WHICH IS THE VERY SPECIES OF DEFECT THIS FINDING IS ABOUT, FOUND BY AN ARM RATHER THAN BY
-            // AN AUDIT. *** THE FIX IS A TYPED FAILURE CHANNEL ON `IdentityAuthoritySeam.publishNewIdentity()` (ON BOTH
-            // ISLES, SINCE THE CONTRACT IS SHARED), AND IT IS **OWED AND NAMED HERE** -- NOT SILENTLY ABSORBED.
-            if stage == .artifactsDeleted || stage == .newIdentity {
-                if case .retryLater = r {
-                    XCTFail("the deferred identity seam DID stop the ladder, which would mean the defect below is fixed "
-                            + "-- re-read this arm rather than trusting it: \(r)")
-                }
-                XCTAssertEqual(journal.read().rawValue, WipeState.idle.rawValue,
-                               "*** AND THAT IS THE DEFECT: THE WIPE REACHES IDLE WITHOUT AN IDENTITY HAVING BEEN "
-                               + "PUBLISHED. IT IS RECORDED HERE RATHER THAN WEAKENED AWAY. ***")
+            // *** AND HERE THIS ARM USED TO ASSERT A DEFECT, BECAUSE IT FOUND ONE (round 421): FROM `artifactsDeleted`
+            // THE LADDER ADVANCED ALL THE WAY TO `IDLE`, BECAUSE `IdentityAuthoritySeam.publishNewIdentity()` RETURNED A
+            // NON-OPTIONAL `String` AND A `String` CANNOT SAY "I DID NOT PUBLISH AN IDENTITY". SO A COMPOSITION THAT OWNED NO
+            // IDENTITY AUTHORITY **REACHED `IDLE` BELIEVING AN IDENTITY STOOD WHEN NONE DID.** *** THE FIX LANDED IN THIS
+            // ROUND -- `publishNewIdentity() -> String?`, WITH `nil` MEANING NOT PUBLISHED AND THE LADDER HONOURING IT AS A
+            // `retryLater` -- AND THIS BRANCH THEREFORE NOW ASSERTS **THE FIX**: AT `artifactsDeleted` THE LADDER MUST STOP
+            // AND THE JOURNAL MUST NOT MOVE. THE ARM WAS NOT DELETED; IT WAS TURNED AROUND. ***
+            if stage == .newIdentity {
+                // PAST EVERY EFFECTFUL RUNG ONLY THE IDLE TRANSITION REMAINS, AND IT HATH NO PLATFORM EFFECT -- so
+                // finishing here is the clause's own boundary rather than a premature reopen.
+                XCTAssertTrue(advanced(r, .idle), "at NEW_IDENTITY the idle transition may finish the wipe: \(r)")
+                XCTAssertEqual(journal.read().rawValue, WipeState.idle.rawValue)
                 continue
             }
 
