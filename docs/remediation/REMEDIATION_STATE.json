@@ -9545,6 +9545,12 @@
      "sha256": "21334cc60428b6cba9a8823ddc7b66370778d0a7eaed93044d33bab827f0b2e5",
      "what": "the three arms green in the canonical Swift lane; the whole package green",
      "log": "GS-STORE-002/green/store-002-GREEN.log"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/round520b-THE-PHASE-TWO-FRONT-READ-AND-RECORDED.log",
+     "sha256": "b4a59219344103ddf6c78b4d513d70949a1c6ff3a2dbee2f6f4a5092b2a58a46",
+     "what": "***THE PHASE-TWO FRONT IS READ AND RECORDED. THE SIX PARTIAL: ANDROID-05 (HIGH - the isle this span never measured), GS-ARCHIVE-005 (MEDIUM), GS-RUNTIME-001 (HIGH - a WIRING finding, the species of GS-INTEGRATION-001's owners), GS-SOS-001 (HIGH - a FAIL-CLOSED finding, the doctrine this span repaired into load and the wipe), GS-STORE-002 (HIGH - inside the very store this span just learned), GS-STORE-004 (HIGH). THE THREE OPEN: ANDROID-03 (HIGH), GS-STRESS-001 (HIGH - A FINDING ABOUT A MEASUREMENT THAT MEASURES THE WRONG SUBJECT, the species this span documented six times in its own work), GS-UX-001 (HIGH).*** AND THE SUGGESTED ORDER BY PROXIMITY TO WHAT THIS SPAN NOW KNOWS: (1) GS-STORE-002 and GS-STORE-004, inside the store whose every description, observer and transaction this span has read; (2) GS-RUNTIME-001 and GS-SOS-001, the two shapes this span repaired four times; (3) ANDROID-05 and ANDROID-03, the other isle; (4) GS-STRESS-001; (5) GS-ARCHIVE-005 and GS-UX-001",
+     "outcome": "THE CANDIDATE'S INTEGRITY IS CONFIRMED AT THIS ROUND: `git status --porcelain` -> 0 entries (the tree is CLEAN), and the code candidate remains fdd5132, with f77020b as the ledger's record of the convergence. READINESS FLAGS FALSE; FIVE GATES OPEN. PHASE TWO IS NOT STARTED, and the goal stays ACTIVE: PHASE ONE is complete and the T78 convergence is produced, but the nine findings above and the four external artifacts remain."
     }
    ],
    "my_red_case": {
@@ -12699,5 +12705,23 @@
   "readiness_flags": "FALSE",
   "external_gates": "OPEN (five) -- acquisition never closes a gate",
   "remaining": "PHASE TWO: the six PARTIAL findings, the three remaining OPEN, and the four external artifacts"
+ },
+ "phase_two": {
+  "status": "NOT STARTED -- the front read and recorded at round 520",
+  "front_read_at_round": 520,
+  "partial_six": {
+   "ANDROID-05": "HIGH -- unified Android lifecycle is unwired, failed startup suppresses retry, and write failure... (the isle this span never measured)",
+   "GS-ARCHIVE-005": "MEDIUM -- archive navigation bypasses selection metadata and persistence helpers",
+   "GS-RUNTIME-001": "HIGH -- sync and relay ACK pumps are not connected to the live transport runtime (a WIRING finding, the species of GS-INTEGRATION-001's owners)",
+   "GS-SOS-001": "HIGH -- missing signing authority still queues and offers an unauthenticated SOS (a FAIL-CLOSED finding, the doctrine this span repaired into load and the wipe)",
+   "GS-STORE-002": "HIGH -- iOS private stores still use ordinary SQLite without a store DEK (inside the very store this span just learned)",
+   "GS-STORE-004": "HIGH -- receipt-relative retention is not stored or executed by the real store"
+  },
+  "open_three": {
+   "ANDROID-03": "HIGH -- T24 trusted publication is unused; the real consumer still receives lossy MAC identities",
+   "GS-STRESS-001": "HIGH -- the production stress campaign measures a separate resource model (A FINDING ABOUT A MEASUREMENT THAT MEASURES THE WRONG SUBJECT -- the species this span documented six times in its own work)",
+   "GS-UX-001": "HIGH -- identity, messaging and SOS journeys stop at disconnected models and static text"
+  },
+  "suggested_order": "1. GS-STORE-002 and GS-STORE-004 (inside the store whose every description, observer and transaction this span has read); 2. GS-RUNTIME-001 and GS-SOS-001 (wiring and fail-closed, the two shapes this span repaired four times); 3. ANDROID-05 and ANDROID-03 (the other isle, read but never measured); 4. GS-STRESS-001 (a measurement finding); 5. GS-ARCHIVE-005 and GS-UX-001."
  }
 }
