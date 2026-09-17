@@ -101,7 +101,7 @@
     "Sources/GodstoneMesh/WipeArtifactFileSystemSeam.swift": "eb86d9cc981cb0b8e0528c97aa6dbd39ce1ec6cbce01fc75b24f49159c2b96eb",
     "Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift": "d921eba233fa6eea2baf465cbed71a1866d6461823ed80818b9722420bb1e1aa",
     "Sources/GodstoneMesh/WipeJournalDurabilityAdapter.swift": "f90aa30cfe0eb411e21e35ce0e24741274ef02671977efadfbcfabaed199d5b4",
-    "Sources/GodstoneMesh/WipeKeyVaultSeam.swift": "1689454e1bdb97ea4a6cc86fb48292af68feb78b49f562236984bac7fc981442",
+    "Sources/GodstoneMesh/WipeKeyVaultSeam.swift": "2ea45ac25edf229c077a8605d813892874cd29bb0ed3eade15ab9f4bd8b0d63a",
     "Sources/GodstoneMesh/WipeTransportDrainSeam.swift": "70674aa17da5af0eb787f57dd84a0d67cc03cb4d1332b7afe3e37d439ad865df",
     "Sources/GodstoneMesh/WireV2.swift": "bac25e7bda845cdab3aa8c221dd693963be97c8ab313fba103a66b7308e6bf2e",
     "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",

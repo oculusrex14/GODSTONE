@@ -17,13 +17,19 @@ import Foundation
 /// retryable failure), and the identity path is the SAME call the runtime useth at wipe time -- one owner, one verb, so
 /// the seam and the composition cannot disagree about what "erased" meaneth.
 public final class WipeKeyVaultSeam: KeyVaultSeam {
-    private let dekProvider: any PrivateStoreKeyProvider
+    /// `nil` when the composition carrieth NO private-store key provider -- and then EVERY key answereth a NAMED,
+    /// RETRYABLE PENDING FAILURE, so the wipe STAYETH PENDING rather than completing falsely. THE TWO DISHONEST OPTIONS
+    /// ARE BOTH FORBIDDEN: wiring the wipe without the vault would reach `IDLE` WITH THE DEK STILL STANDING, and
+    /// throwing at composition time would refuse a runtime for a reason the runtime cannot fix -- and the audit's own
+    /// sentence governeth the case: "do not claim cryptographic erasure on iOS until encrypted private stores are
+    /// actually wired".
+    private let dekProvider: (any PrivateStoreKeyProvider)?
     private let deleteIdentityKeys: () throws -> Void
     /// The tag the private store's DEK standeth under. Read from the provider's own vocabulary rather than invented:
     /// `EncryptedStoreFactory` createth it under this tag.
     public static let storeDEKTag = "godstone.store.dek"
 
-    public init(dekProvider: any PrivateStoreKeyProvider,
+    public init(dekProvider: (any PrivateStoreKeyProvider)?,
                 deleteIdentityKeys: @escaping () throws -> Void = { try MeshIdentity.deleteFromKeychain() }) {
         self.dekProvider = dekProvider
         self.deleteIdentityKeys = deleteIdentityKeys
@@ -32,8 +38,14 @@ public final class WipeKeyVaultSeam: KeyVaultSeam {
     public func eraseKey(_ name: String) -> KeyDeletionResult {
         switch name {
         case "store-dek":
+            guard let provider = dekProvider else {
+                // NO PROVIDER WAS WIRED: the key cannot be erased AND THE WIPE MUST NOT PRETEND OTHERWISE -- a named,
+                // retryable pending failure is the only honest answer, and it keepeth `KEYS_ERASED` unreachable.
+                return .failed(keyName: name, retryable: true,
+                               reason: "no private-store key provider was wired into this composition")
+            }
             do {
-                try dekProvider.deleteDEK(tag: Self.storeDEKTag)
+                try provider.deleteDEK(tag: Self.storeDEKTag)
             } catch {
                 // A THROW IS A RETRYABLE FAILURE, NEVER A SILENT SUCCESS: the card requireth that a failed key
                 // operation REMAIN PENDING, so the wipe may resume rather than proceed past it.
