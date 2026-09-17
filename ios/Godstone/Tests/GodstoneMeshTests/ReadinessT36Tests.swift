@@ -757,4 +757,66 @@ extension ReadinessT36Tests {
         XCTAssertEqual(f.store.base.allHeldMsgIds().count, 1, "one held row stands for the token")
         XCTAssertEqual(f.journal.size(), 1, "and one journal row")
     }
+
+    // MARK: - CRYPTO-005: THE INTENT SURVIVES A REOPEN OF THE DURABLE STORE
+
+    /**
+     * *** THE FINDING'S OWN BEHAVIOURAL PROOF, AND THE CLAUSE'S OWN WORDS: "**reopen storage in a new process and retry the same intent,
+     * OBSERVING IDENTICAL BYTES AND ID**." ***
+     *
+     * WHY THIS ARM EXISTS IN THIS FORM: round 430's arm built its "reopened medium" as a FRESH `InMemoryOutboundIntentJournal()` -- THE
+     * OLD MEDIUM -- so it measured THE ABSENCE OF THAT MEDIUM rather than the presence of the durable one (round 467). THIS ARM USES **THE
+     * REAL MEDIUM**: a `SqliteMessageStore` on a real file, written through `SqliteOutboundIntentJournal`, THEN **THE STORE IS CLOSED AND
+     * REOPENED FROM THE SAME PATH** -- which is "a new process" as far as the medium is concerned, exactly as `SqliteMessageStoreTests`
+     * demonstrably does ("// Reopen the seeded file").
+     *
+     * AND IT IS RED BEFORE THE FIX WOULD HAVE BEEN GREEN: with only the in-memory journal the row was simply gone after a reopen.
+     */
+    func testCRYPTO005_theIntentSurvivesAReopenOfTheDurableStore() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("crypto005_intent_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let intentId = bytesOf(7, 16)
+        let logicalId = bytesOf(8, 16)                 // MessageId.nodeIdBytes == 16
+        let nonce = bytesOf(9, 16)                     // messageNonceBytes == 16
+        let frame = Data([0x01, 0x02, 0x03, 0x04, 0x05])
+        let plaintext = Data([0x0a, 0x0b])
+        let recipient = bytesOf(10, 16)
+        let recipientDh = bytesOf(11, 32)              // recipientStaticDhPub == 32
+        let digest = bytesOf(12, 32)                   // bindingDigest == 32
+        let entry = try XCTUnwrap(JournalEntry(
+            intentId: intentId, logicalMessageId: logicalId, signedPlaintextBytes: plaintext,
+            canonicalFrameBytes: frame, recipientNodeId: recipient, recipientStaticDhPub: recipientDh,
+            acceptedGeneration: 1, bindingDigest: digest, createdAtEpochSeconds: 1_700_000_123,
+            messageNonce: nonce, priorityCode: 0, stateRank: .authored),
+            "the fixture must be a COHERENT entry -- the failable init? is the first control")
+
+        // WRITE THROUGH THE REAL MEDIUM.
+        let first = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+        let firstJournal = SqliteOutboundIntentJournal(store: first)
+        XCTAssertEqual(firstJournal.insertIfAbsent(entry), .stored, "the first insert must take the token's row")
+        // AND A SECOND INSERT OF THE SAME TOKEN MUST BE THE DUPLICATE, CARRYING THE WINNER.
+        guard case let .duplicate(winner) = firstJournal.insertIfAbsent(entry) else {
+            XCTFail("a second insert of the same intent must be .duplicate"); return
+        }
+        XCTAssertEqual(winner.intentId, intentId, "and the winner must be the row that stands")
+
+        // *** DISCARD THE STORE ENTIRELY AND REOPEN IT FROM THE SAME PATH. ***
+        first.close()
+        let reopened = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+        let secondJournal = SqliteOutboundIntentJournal(store: reopened)
+
+        // THE CLAUSE'S OWN DEMAND, ASSERTED ON THE SUBJECT'S OWN ANSWER FIRST.
+        guard case let .found(back) = secondJournal.load(intentId) else {
+            XCTFail("*** THE INTENT MUST SURVIVE A REOPEN: 'reopen storage in a new process and retry the same intent' ***")
+            return
+        }
+        XCTAssertEqual(back.intentId, intentId, "identical ID")
+        XCTAssertEqual(back.logicalMessageId, logicalId, "identical logical identity")
+        XCTAssertEqual(back.canonicalFrameBytes, frame, "IDENTICAL BYTES -- the clause's own words")
+        XCTAssertEqual(back.signedPlaintextBytes, plaintext, "and the authored plaintext with them")
+        XCTAssertEqual(back.bindingDigest, digest, "the binding digest survives too")
+        XCTAssertEqual(back.acceptedGeneration, 1, "and the accepted generation (the recipient binding's version)")
+    }
 }

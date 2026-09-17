@@ -2652,14 +2652,22 @@ public final class SqliteMessageStore: MessageStore {
             sqlite3_finalize(stmt); throw StoreError.stepFailed
         }
         defer { sqlite3_finalize(stmt) }
+        // *** CRYPTO-005 (round 489): THE TWO LISTS ARE READ TOGETHER, WHICH IS THE LAW THIS SPAN LEARNED FOR THE SCHEMA AT ROUND 432
+        // ("a list that describeth a shape existeth in more than one place"), APPLIED HERE TO A **BIND SEQUENCE**. The first version
+        // carried SEVEN blobs -- the seventh being `bindingDigest`, WHICH IS **COLUMN 8** -- and then bound `acceptedGeneration` at
+        // `:8`, SO EVERY BIND FROM THE DIGEST ONWARD SAT ONE COLUMN TOO EARLY AND `stateRank` LANDED NOWHERE IT BELONGED. **A ROW'S
+        // INCOHERENCE THAT SQLITE ACCEPTED SILENTLY** (its types are loose), which is why the ONLY symptom was that a SECOND insert of
+        // the same token did not answer `.duplicate` (round 487's arm). *** SIX BLOBS, THEN SIX SCALARS, IN THE DDL'S OWN ORDER: ***
         let blobs = [entry.intentId, entry.logicalMessageId, entry.signedPlaintextBytes, entry.canonicalFrameBytes,
-                     entry.recipientNodeId, entry.recipientStaticDhPub, entry.bindingDigest]
+                     entry.recipientNodeId, entry.recipientStaticDhPub]
         for (i, b) in blobs.enumerated() {
             guard sqlite3_bind_blob(stmt, Int32(i + 1), (b as NSData).bytes, Int32(b.count), nil) == SQLITE_OK else {
                 throw StoreError.stepFailed
             }
         }
-        guard sqlite3_bind_int64(stmt, 8, Int64(entry.acceptedGeneration)) == SQLITE_OK,
+        // AND THE SIX SCALARS IN THE SAME ORDER THE COLUMN LIST DECLARETH (7..12).
+        guard sqlite3_bind_int64(stmt, 7, Int64(entry.acceptedGeneration)) == SQLITE_OK,
+              sqlite3_bind_blob(stmt, 8, (entry.bindingDigest as NSData).bytes, Int32(entry.bindingDigest.count), nil) == SQLITE_OK,
               sqlite3_bind_int64(stmt, 9, entry.createdAtEpochSeconds) == SQLITE_OK,
               sqlite3_bind_blob(stmt, 10, (entry.messageNonce as NSData).bytes, Int32(entry.messageNonce.count), nil) == SQLITE_OK,
               sqlite3_bind_int64(stmt, 11, Int64(entry.priorityCode)) == SQLITE_OK,
