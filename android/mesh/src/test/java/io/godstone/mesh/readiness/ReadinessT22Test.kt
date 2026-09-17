@@ -1254,4 +1254,31 @@ class ReadinessT22Test {
         return Rig(pair, aliceAddress, bobAddress, aliceOutlet, bobOutlet, alice, bob, scope)
     }
 
+
+    // MARK: - CRYPTO-002: SESSION RETIREMENT MUST REACH THE TRANSPORT AUTHORITY (the ANDROID twin of iOS round 345)
+
+    @Test
+    fun testATerminalSessionRetirementUnpublishethTheRelation() {
+        val rig = standDoor()
+        val bPeer = rig.responderConnection().peerId.copyOf()
+        driveToReady(rig)
+        val genLive = rig.bob.serverDriver.getClientGeneration(rig.aliceAddress) ?: -1L
+        assertTrue("the control: an enrollment of the owner's hand is listed",
+                   rig.bob.publishRelation(RelationKey(BleDirection.INBOUND, rig.aliceAddress, genLive), null))
+        assertTrue("the control: the relation IS published", rig.bob.publishedRelationsForTest().isNotEmpty())
+
+        val slot = rig.pair.smB.slotForTest(bPeer)
+        assertNotNull("the control: the relation carrieth a crypto slot", slot)
+        slot!!.controller!!.noiseSession.ageBudgetForTest = 1L
+        slot.controller!!.noiseSession.establishedMonoForTest = System.nanoTime() - 2_000_000_000L
+        assertFalse("the manager retires it on the idle path", rig.pair.smB.isReady(bPeer))
+
+        assertEquals(
+            "A RETIRED SESSION MUST UNPUBLISH ITS RELATION: 'session retirement never reaches the transport " +
+                "authority' IS the finding, and a peer left published as ready while every operation fails is " +
+                "exactly what the audit measured",
+            0, rig.bob.publishedRelationsForTest().size,
+        )
+        rig.stop()
+    }
 }

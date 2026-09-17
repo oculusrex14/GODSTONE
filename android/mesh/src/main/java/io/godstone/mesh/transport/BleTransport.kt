@@ -1,5 +1,6 @@
 package io.godstone.mesh.transport
 
+import io.godstone.mesh.crypto.RelationKey as CryptoRelationKey
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
@@ -130,6 +131,23 @@ class BleTransport(
      */
     private val leaseSweepIntervalMillis: Long = LEASE_SWEEP_INTERVAL_MS,
 ) : DisconnectingTransport, Transport, InFlightAwareTransport {
+    init {
+        // CRYPTO-002 -- SESSION RETIREMENT REACHES THE TRANSPORT AUTHORITY. `sessions` arriveth as a CONSTRUCTOR
+        // PARAMETER here (a difference from the iOS isle READ, not assumed), so the registration belongeth in `init`.
+        sessions?.onTerminalRetirement = { admission, reason ->
+            handleTerminalSessionRetirement(admission, reason)
+        }
+    }
+
+    /**
+     * CRYPTO-002: THE TRANSPORT'S ANSWER TO A TERMINAL SESSION RETIREMENT -- A PURE LOOKUP, because the mapping was
+     * recorded where it was minted. No driver accessor, no notice-time conversion, and nothing the repository's symbol
+     * detector cannot follow.
+     */
+    private fun handleTerminalSessionRetirement(admission: CryptoRelationKey, reason: String) {
+        if (reason.isEmpty()) return
+        relationByAdmission.remove(admission)?.let { unpublishRelation(it) }
+    }
 
     override val name = "BLE"
     override val isBulkCapable = false
@@ -291,6 +309,18 @@ class BleTransport(
     private val publishedRelations = ConcurrentHashMap.newKeySet<RelationKey>()
 
     private val activeClientConnections = ConcurrentHashMap<String, GattClientConnection>()
+
+    /**
+     * CRYPTO-002: THE CRYPTO ADMISSION -> THE TRANSPORT'S PUBLICATION KEY, RECORDED **WHERE IT IS MINTED**.
+     *
+     * Two types share the simple name `RelationKey` on this isle and are NOT the same key (the crypto one carrieth the
+     * platform peer handle, the transport one the MAC publication vocabulary), and a conversion at NOTICE time would
+     * have to ask a driver for a connection -- an accessor the repository's own symbol detector cannot read -- while the
+     * transport's own connection map holdeth a type `admissionOf` does not accept. THE CONFLICT SETTLED THE DESIGN:
+     * THE MAPPING IS RECORDED AT THE THREE SITES THAT STAMP `conn.relationAdmission`, WHERE **BOTH IDENTITIES ARE IN
+     * HAND**, so the retirement notice becometh a PURE LOOKUP and nothing is guessed at notice time.
+     */
+    private val relationByAdmission = ConcurrentHashMap<CryptoRelationKey, RelationKey>()
     /**
      * ANDROID-07 / T26: THE PRE-AUTH ADMISSION BUDGET, owned by the transport and charged at the
      * ingress doors BEFORE parsing, reassembly or crypto.
@@ -586,6 +616,7 @@ class BleTransport(
                 centralDriver.getActiveConnection(address)?.let { conn ->
                     conn.relationKeyProvider = { relation }
                     conn.relationAdmission = admissionOf(conn, BleDirection.OUTBOUND, gen)
+                    conn.relationAdmission?.let { relationByAdmission[it] = relation }
                 }
                 publishRelation(relation, meta)
                 // ANDROID-01: AND HERE THE APPLICATION BEGINS D2 ITSELF.
@@ -1022,6 +1053,7 @@ class BleTransport(
             // CRYPTO-001: the relation's admission -- epoch included -- is stamped on the very
             // connection the guards token-check, at the instant of admission.
             conn.relationAdmission = admissionOf(conn, BleDirection.OUTBOUND, boundGen)
+            conn.relationAdmission?.let { relationByAdmission[it] = relation }
         }
         // T23 (section 13): a half-spoken exchange that hath stalled past the
         // ten-second monotonic hour, with no counsel in flight, is felled by the
@@ -1124,6 +1156,7 @@ class BleTransport(
             conn.relationKeyProvider = { relation }
             // CRYPTO-001: as at the central's arm -- the admission is stamped at admission.
             conn.relationAdmission = admissionOf(conn, BleDirection.INBOUND, gen)
+            conn.relationAdmission?.let { relationByAdmission[it] = relation }
         }
         // T23 (section 13): the half-spoken stall is felled by the owners hand,
         // never a seat that heareth yet, and never one whose counsel are yet

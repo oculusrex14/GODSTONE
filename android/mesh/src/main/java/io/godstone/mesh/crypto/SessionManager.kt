@@ -287,6 +287,26 @@ class SessionManager internal constructor(
         }
     }
 
+    /**
+     * GS-CTRL-002 / CRYPTO-002 (THE FINDING'S TITLE): THE RETIREMENT NOTICE TO THE TRANSPORT OWNER -- token-bound,
+     * RECORDED UNDER THE LOCK AND DELIVERED OUTSIDE IT, because the transport's handler taketh ITS lock while the
+     * transport's own paths call INTO this manager.
+     */
+    internal var onTerminalRetirement: ((RelationKey, String) -> Unit)? = null
+
+    private val pendingNotices = ArrayList<Pair<RelationKey, String>>()
+    private val noticeLock = ReentrantLock()
+
+    private fun recordNotice(admission: RelationKey, reason: String) {
+        noticeLock.withLock { pendingNotices.add(admission to reason) }
+    }
+
+    internal fun drainRetirementNotices() {
+        val pending = noticeLock.withLock { val copy = ArrayList(pendingNotices); pendingNotices.clear(); copy }
+        val sink = onTerminalRetirement ?: return
+        for ((admission, reason) in pending) sink(admission, reason)
+    }
+
     fun isReady(admission: RelationKey): Boolean {
         var retirable: RelationKey? = null
         return lifecycleRwLock.read {
@@ -315,6 +335,7 @@ class SessionManager internal constructor(
         }.also { answer ->
             // THE RETIREMENT, OUTSIDE THE LOCK, through the manager's own verb.
             if (retirable != null) drop(retirable!!)
+            drainRetirementNotices()
         }
     }
 
@@ -545,7 +566,10 @@ class SessionManager internal constructor(
         }
         // THE TERMINUS IS ROUTED **OUTSIDE** THE LOCK, through the manager's OWN teardown verb, so the two lock
         // orders cannot meet (the same discipline the iOS isle's round 309/344/345 taught).
-        if (outcome is NoiseSession.CryptoOpenResult.Expired) drop(admission)
+        if (outcome is NoiseSession.CryptoOpenResult.Expired) {
+            drop(admission)
+            drainRetirementNotices()
+        }
         return outcome
     }
 
@@ -559,6 +583,7 @@ class SessionManager internal constructor(
             // destroy is routed OUTSIDE the slot lock.
             val slot = removeSlot(admission) ?: return RelationRetirement.STALE
             slot.retire()?.destroy()
+            recordNotice(admission, "terminal retirement")
             return RelationRetirement.RETIRED
         }
     }
