@@ -115,6 +115,44 @@ public final class LabRuntime: @unchecked Sendable {
         describe(await harness.sendSos(from, plaintext: plaintext))
     }
 
+    /// *** GS-UX-001 (STEPS 6 AND 2): **THE LAB'S DURABLE ROAD** -- AND IT IS THE WHOLE POINT OF THE FINDING.
+    ///
+    /// The card's charge is that the journeys 'stop at disconnected models and static text', and that 'passing a
+    /// model test with a fake port does not show a user action reaches a durable authority'. THE DOOR THIS
+    /// CALLETH ALREADY STOOD AND IS PUBLIC (`ComposedRuntimeHarness.sendDirectDurable`, landed for CRYPTO-005),
+    /// AND ITS ONELY CALLERS WERE TWO COURTS. The lab could not reach it: its own `sendDirect` taketh the
+    /// in-memory road, and `compose()` nameth no medium at all -- so NO LAB JOURNEY COULD LEAVE ANYTHING BEHIND.
+    ///
+    /// THAT IS THIS PROGRAMME'S RECURRING SHAPE IN ITS SIXTH APPEARANCE (an instrument built, witnessed by courts,
+    /// and reached by no path a user travels), and it is why the repair is A DOOR AND NOT A NEW MECHANISM: the real
+    /// durable authority, BOTH adapters, the trust pin, the trust resolver, the durable journal and the WIPE
+    /// OWNERSHIP all stand already -- they were simply never reached from here.
+    ///
+    /// The medium is CALLER-NAMED, so a journey's consequence can be REOPENED and read by whoever authored it --
+    /// which is what the finding's step 6 asketh ('restore ... from the real reopened store') and what no
+    /// in-memory medium can ever answer.
+    public func sendDirectDurable(_ from: String, recipient: String, plaintext: Data,
+                                  intentId: Data, storeURL: URL) async -> String {
+        do {
+            return describeDurable(try await harness.sendDirectDurable(from, recipient: recipient,
+                                                                       plaintext: plaintext,
+                                                                       intentId: intentId, storeURL: storeURL))
+        } catch {
+            return "refused:\(error)"
+        }
+    }
+
+    /// The authority's own answer, reported LOSSLESSLY and by name, so no internal type crosses this seam.
+    private func describeDurable(_ result: SendDirectResult) -> String {
+        switch result {
+        case .durablyEnqueued(let logicalMessageId, let fromRetry):
+            return "durable:" + logicalMessageId.map { String(format: "%02x", $0) }.joined()
+                + (fromRetry ? ":retry" : "")
+        case .rejected(let reason):
+            return "refused:\(reason)"
+        }
+    }
+
     /// One bounded sync turn from `from` to `to`.
     @discardableResult public func turn(_ from: String, _ to: String) -> Int { harness.turn(from, to) }
 
