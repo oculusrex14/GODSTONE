@@ -838,4 +838,63 @@ class ReadinessT18Test {
         assertEquals("the sequence number stands", 0, conn.peekOutboundSequenceForTest())
         assertTrue("the writer keeps the station reserved", !writer.isClosedForTest())
     }
+    // ================================================================ GS-STRESS-001 STEP 3 / ANDROID-06
+
+    /**
+     * *** THE OWNER'S CENSUS, AND THE DEFECT IT FOUND. ***
+     *
+     * GS-STRESS-001's step 3 nameth the owners whose census must be READ -- *'timers, WRITER RESERVATIONS, sessions,
+     * observers, inventory leases, ACK work and database rows'* -- and MEASURED AT ROUND 534 the writer's
+     * reservations were reachable from INSIDE onely (`reserved.size` figured in the capacity check at `:217` and
+     * nowhere else), SO AN OWNER THAT ALLOCATETH COULD NOT BE ASKED WHAT IT HOLDETH.
+     *
+     * THE INVARIANT ASSERTED HERE IS THE ONELY UNAMBIGUOUS ONE: **AN OWNER THAT HATH CLOSED HOLDETH NOTHING.** A
+     * reservation taken and never sealed is a LIVE ALLOCATION; it must perish when the relation closeth -- and it
+     * DID in `shutdown()` but **NOT in `failed()`**, so TWO CLOSE PATHS DISAGREED ABOUT WHAT A CLOSED WRITER IS.
+     * The census hook made the disagreement measurable; this arm keepeth it so.
+     */
+    @Test
+    fun testTheWritersReservationCensusAnswerethAndAClosedWriterHoldethNothing() {
+        fun freshWriter(): RecordWriter =
+            RecordWriter(BleConnection(ByteArray(16) { 0x31 }),
+                         RelationKey(BleDirection.OUTBOUND, "AA:BB:CC:DD:EE:FF", 1L))
+
+        // (1) THE DISCRIMINATOR FIRST: a writer that never reserved reporteth ZERO, so the census is no constant.
+        assertEquals("*** a writer that never reserved holdeth NONE ***", 0, freshWriter().reservedCountForTest())
+
+        // (2) A RESERVATION IS A LIVE ALLOCATION THE OWNER NOW ANSWERETH FOR.
+        val writer = freshWriter()
+        // (a) a SEALED reservation, so that `failed()` may be driven with an operation the writer's OWN pump handed.
+        val sealed = writer.reserve(BleRecordType.DATA, 16) as ReservationAnswer.Admitted
+        assertTrue("the seal must hold",
+                   sealed.reservation.sealAndQueue(ByteArray(16)) { payload ->
+                       // THE SEAL MUST CARRIETH THE ENVELOPE: the writer refuseth a sealer that lieth about it
+                       // (`sealed.size != clearLength + SEAL_OVERHEAD_BYTES`), WHICH IS THE WRITER BEING RIGHT --
+                       // my first sealer returned the payload alone and was refused. A SEALER IS NOT AN IDENTITY.
+                       payload + ByteArray(RecordWriter.SEAL_OVERHEAD_BYTES)
+                   } is SealAnswer.Queued)
+        // (b) AND A RESERVATION NEVER SEALED -- the live allocation under test.
+        assertTrue("the second reservation must stand",
+                   writer.reserve(BleRecordType.DATA, 16) is ReservationAnswer.Admitted)
+        assertEquals("the sealed one left the table on seal; ONE unsealed reservation standeth",
+                     1, writer.reservedCountForTest())
+
+        // (3) *** AND A CLOSED RELATION HOLDETH NOTHING -- THE DEFECT THE CENSUS FOUND. ***
+        val handed = writer.nextOut() ?: error("the sealed value must be handed by the pump")
+        writer.failed(handed.operation)
+        assertEquals("*** A CLOSED WRITER MUST HOLD NO RESERVATION: `failed()` and `shutdown()` must agree about " +
+                         "what a closed owner holdeth (GS-STRESS-001 step 3; ANDROID-06) ***",
+                     0, writer.reservedCountForTest())
+        assertEquals("nor an admitted record", 0, writer.admittedCountForTest())
+
+        // (4) AND THE OTHER CLOSE PATH AGREED ALL ALONG -- the CONTROL that localised the disagreement to ONE path.
+        val other = freshWriter()
+        assertTrue(other.reserve(BleRecordType.DATA, 16) is ReservationAnswer.Admitted)
+        assertEquals("the second writer standeth with one", 1, other.reservedCountForTest())
+        other.shutdown()
+        assertEquals("*** `shutdown()` releaseth them, as it always did -- so the disagreement was in one path and " +
+                         "not in the census ***",
+                     0, other.reservedCountForTest())
+    }
+
 }

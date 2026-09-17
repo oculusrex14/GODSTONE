@@ -610,6 +610,49 @@ the entry points exist and are asserted by the control; no installed lab was lau
 **Measured:** only `REMEDIATION_STATE.json` changed this round; parity `--scope repo` 7/0; symbols 0 unresolved; evidence
 digests PASSED; the python lane at its two pre-existing T01 failures (not this span's).
 
+## ROUND 534, PHASE TWO — A SECOND NAMED OWNER MADE ASKABLE, AND THE DEFECT ITS FIRST QUESTION FOUND
+
+**GS-STRESS-001's step 3 names the owners whose census must be read** — *"timers, **writer reservations**, sessions,
+observers, inventory leases, ACK work and database rows."* Measured: `reserved` was reachable **from inside only**
+(`reserved.size` figured in the capacity check at `:217` and nowhere else) — **an owner that allocates could not be
+asked what it holds**, so it could not be censused, could not be checked for a leak, and could not be **named** in a
+failure.
+
+> **And the first question asked of it found a real defect:** `failed()` — the partial-failure close — set `closed =
+> true` and cleared `admitted` **but left `reserved` standing**, while `shutdown()` cleared **both**. **Two close paths
+> disagreed about what a closed writer is**, and the disagreement was invisible until the census made it askable.
+> *A closed relation accepts nothing further: what it holds must be released.*
+
+**The arm carries its own control, which is why it located the defect to ONE path rather than to the census:** clause
+(4) asserts that `shutdown()` releases them *as it always did*. **A failing clause with a passing neighbour is a
+localised defect; a failing clause alone is only a failure.** And the negative case reproduced it exactly —
+**`expected:<0> but was:<1>`**, a closed writer holding one reservation.
+
+### TWO INSTRUMENT FAILURES OF MINE, BOTH THE SAME SPECIES — AND BOTH WORTH MORE THAN THE REPAIR
+
+1. **I wrote a script that lands the hook and the arm — and never ran it.** My next script then aborted on a missing
+   marker, and the lane reported **`tests="12"` failures=0 — green because NOTHING HAD BEEN ADDED.** It was caught
+   **only by grepping for the arm's own name**, which is the one instrument that can tell an *absent* arm from a
+   *passing* one.
+2. **The first negative case patched with a wrong anchor and aborted**, so the tree was unchanged — and I came within
+   one step of recording ***"the arm does NOT judge"*** as a finding about the arm.
+
+> **A patch that aborts has measured nothing; the lane's green is the green of the unpatched tree.**
+
+**The remedy, now a habit: verify the landing — the marker present, the counter changed — before running anything.**
+And a third error, found by the writer refusing me: my first sealer was `{ payload -> payload }` and the writer refused
+it — *"the seal lied about the envelope"* — because a seal must carry `clearLength + SEAL_OVERHEAD_BYTES`.
+**The writer was right and my sealer was wrong: a sealer is not an identity.**
+
+**AND A CANDIDATE MEASURED AND REFUSED, WITH ITS REASON:** `RecipientInboxRepository.census()` counts **events** (its
+own doc: *"telemetry, not authority"*) and `tombstoneRowCount()` counts **legitimate lifetime-bounded rows** —
+**neither can answer "is anything still allocated that should have been released?", and feeding either into a leak
+census would be a category error.**
+
+**Measured:** `:mesh` **1232 tests / 0 failures / 0 errors** (was 1231 — the +1 *is* the arm); parity 7/0; symbols 0
+unresolved; digests PASSED. **Five named owners remain unread, and the iOS twin `StressCampaign.swift` carries no
+owner census at all** — the both-isles mirror is owed. The finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is

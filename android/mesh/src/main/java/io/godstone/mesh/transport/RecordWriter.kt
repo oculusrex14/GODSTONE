@@ -392,6 +392,14 @@ class RecordWriter(
         }
         closed = true
         admitted.clear()
+        // *** AND THE RESERVATIONS PERISH WITH THE RELATION, EXACTLY AS `shutdown()` RELEASETH THEM. ***
+        // MEASURED BEFORE THIS LINE, AND THE MEASUREMENT IS THE WHOLE REASON THE CENSUS HOOK ABOVE WAS WORTH
+        // ADDING: `failed()` set `closed = true` and cleared `admitted` **BUT LEFT `reserved` STANDING**, so A
+        // CLOSED WRITER STILL HELD ITS RESERVATIONS -- while the OTHER close path (`shutdown()`, `:402`) cleared
+        // BOTH. **A CLOSED RELATION ACCEPTETH NOTHING FURTHER: WHAT IT HOLDETH MUST BE RELEASED**, and two close
+        // paths that disagree about what they release are two close paths that disagree about what a closed writer
+        // IS. The hook made the disagreement VISIBLE; the line removeth it.
+        reserved.clear()
         inFlight = null
         inFlightBytes = null
         return@synchronized true
@@ -440,6 +448,19 @@ class RecordWriter(
     // carry the module mangling that the reflection scan insists upon.
 
     internal fun admittedCountForTest(): Int = synchronized(lock) { admitted.size }
+
+    /**
+     * *** GS-STRESS-001 STEP 3 (round 534): THE OWNER'S OWN CENSUS FOR **WRITER RESERVATIONS** -- ONE OF THE
+     * OWNERS THE CARD NAMETH BY NAME: *'Read resource census from the owners that allocate timers, WRITER
+     * RESERVATIONS, sessions, observers, inventory leases, ACK work and database rows.'* ***
+     *
+     * MEASURED BEFORE THIS HOOK WAS ADDED: `reserved` (`:172`) was reachable from INSIDE the class ONELY -- its
+     * size figured in the capacity check at `:217` and NOWHERE ELSE -- so **AN OWNER THAT ALLOCATETH COULD NOT BE
+     * ASKED WHAT IT HOLDETH.** An owner no one can ask cannot be censused, cannot be checked for a leak, and cannot
+     * be NAMED in a failure -- and the card's step 3 asketh for exactly that census. **THIS HOOK IS WHAT MAKETH THE
+     * INVARIANT ASKABLE, and the measurement it enabled found a real defect in the close paths (below).**
+     */
+    internal fun reservedCountForTest(): Int = synchronized(lock) { reserved.size }
 
     internal fun stagedValuesForTest(): Int = synchronized(lock) { stagedLocked() }
 
