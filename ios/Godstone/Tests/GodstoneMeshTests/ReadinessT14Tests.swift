@@ -691,4 +691,37 @@ final class ReadinessT14Tests: XCTestCase {
         XCTAssertFalse(traces[0].reentrant, "the dispatch path was carried onto the queue")
         transport.stop()
     }
+
+    // MARK: - CRYPTO-002: SESSION RETIREMENT MUST REACH THE TRANSPORT AUTHORITY
+
+    /// THE FINDING'S TITLE, AS AN ARM. The transport could always tell the manager to drop a relation; NOTHING
+    /// TRAVELLED THE OTHER WAY -- so a session that aged out left the transport PUBLISHING a peer as ready, holding
+    /// its connection, with no fresh handshake. The manager's own notice is landed; THE TRANSPORT'S RESPONSE IS THIS
+    /// ARM'S SUBJECT, and it is a REAL behavioural RED (nothing registers the sink today).
+    func testCRYPTO002_aTerminalSessionRetirementUnpublishethTheRelation() throws {
+        let pairing = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pairing) }
+        let transport = BleTransport(identity: pairing.aliceIdentity, store: T14MessageStore())
+        transport.sessions = pairing.aliceManager
+        let peerId = pairing.viaBob
+        _ = advanceToRoleBound(transport, peerId: peerId)
+        XCTAssertNotNil(transport.connection(for: peerId), "the control: a connection stands")
+        XCTAssertFalse(transport.publishedRelationsForTest().isEmpty,
+                       "the control: a trusted relation IS published")
+
+        // AGE THE SESSION through the manager's own primitive -- the manager-side half is already landed.
+        let ctrl = try XCTUnwrap(pairing.aliceManager.slotForTest(peerId)?.controller)
+        ctrl.noiseSession.ageBudgetForTest = 1.0
+        ctrl.noiseSession.establishedMonoForTest = DispatchTime.now().uptimeNanoseconds &- 2_000_000_000
+        XCTAssertFalse(pairing.aliceManager.isReady(peerId), "the manager retires it on the idle path")
+
+        // AND THE TRANSPORT MUST LEARN -- that is the whole finding.
+        XCTAssertTrue(transport.publishedRelationsForTest().isEmpty,
+                      "A RETIRED SESSION MUST UNPUBLISH ITS RELATION: 'session retirement never reaches the "
+                      + "transport authority' IS the finding, and a peer left published as ready while every "
+                      + "operation fails is exactly what the audit measured")
+        XCTAssertNil(transport.connection(for: peerId),
+                     "and the exact connection must be gone, so no fresh handshake can reuse a dead relation")
+        transport.stop()
+    }
 }

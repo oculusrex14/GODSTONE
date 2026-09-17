@@ -1230,7 +1230,58 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return SessionHandshakeAuthority(sessions: sessions)
     }
 
-    public var sessions: SessionManager?
+    public var sessions: SessionManager? {
+        didSet {
+            // CRYPTO-002: THE OTHER DIRECTION. The manager can now NOTIFY the transport when a session reacheth its
+            // terminus -- and the transport must answer by tearing the EXACT relation down. Registered here, at the
+            // single place the transport taketh its manager, so no wiring path can forget it.
+            sessions?.onTerminalRetirement = { [weak self] admission, reason in
+                self?.handleTerminalSessionRetirement(admission, reason: reason)
+            }
+        }
+    }
+
+    /// CRYPTO-002 -- THE FINDING'S TITLE ANSWERED: SESSION RETIREMENT REACHES THE TRANSPORT AUTHORITY.
+    ///
+    /// The notice arriveth TOKEN-BOUND (the exact admission), and OUTSIDE every one of the manager's locks -- which
+    /// mattereth, because THIS handler taketh the transport's own lock, and the transport's other paths (six of them)
+    /// call INTO the manager while holding it. Delivering from inside the manager's locks would have made the two
+    /// orders meet and deadlock; the manager's drain runneth after its locks are released for exactly that reason.
+    ///
+    /// The steps are THE TRANSPORT'S OWN (the body its central teardown already useth), so a retirement driven by the
+    /// manager and a teardown driven by the link fail in the SAME way: publish the trusted loss, remove the lifetime
+    /// and its delegate, CANCEL ITS TIMER (an old timer must not fire against whatever cometh next), mark the
+    /// connection disconnected, drop the session's transport-side registration, forget the peer's characteristics and
+    /// writers, and UNPUBLISH THE RELATION -- the last one outside the lock, as its own body doth.
+    internal func handleTerminalSessionRetirement(_ admission: RelationAdmission, reason: String) {
+        _ = reason   // the notice carrieth it; the transport's state transitions are its own vocabulary
+        lockTransport()
+        var keyToUnpublish: RelationKey?
+        if let (peerId, lifetime) = activeOutboundLifetimes.first(where: { Self.admissionOf($0.value) == admission }) {
+            keyToUnpublish = lifetime.relationKey
+            publishTrustedLoss(peerId)
+            activeOutboundLifetimes.removeValue(forKey: peerId)
+            relationDelegates.removeValue(forKey: peerId)
+            cancelTimerLocked(matching: lifetime.relationKey)
+            let conn = outboundCentralConnections.removeValue(forKey: peerId)
+            conn?.markDisconnected()
+            connectedPeripherals.removeValue(forKey: peerId)
+            inboxCharacteristics.removeValue(forKey: peerId)
+            digestCharacteristics.removeValue(forKey: peerId)
+            linkInfoCharacteristics.removeValue(forKey: peerId)
+            pendingInitiatorRemoteHints.removeValue(forKey: peerId)
+            if let purged = centralWriters.removeValue(forKey: peerId) { purged.shutdown() }
+        } else if let (peerId, lifetime) = activeInboundLifetimes
+            .first(where: { Self.admissionOf($0.value) == admission }) {
+            keyToUnpublish = lifetime.relationKey
+            publishTrustedLoss(peerId)
+            activeInboundLifetimes.removeValue(forKey: peerId)
+            relationDelegates.removeValue(forKey: peerId)
+            cancelTimerLocked(matching: lifetime.relationKey)
+        }
+        unlockTransport()
+        if let key = keyToUnpublish { _ = unpublishRelation(key) }
+    }
     public private(set) var snapshotAuthority: LinkInfoSnapshotAuthority!
     private let provisionalTimeoutSeconds: TimeInterval
 
