@@ -3,11 +3,17 @@
 // campaign, with the SAME invariants, fault kinds and bounds.
 package io.godstone.mesh.readiness
 
+import io.godstone.mesh.MeshIdentity
+import io.godstone.mesh.crypto.PeerBindingTrustAuthority
+import io.godstone.mesh.crypto.SessionManager
+import io.godstone.mesh.identity.PeerTrustApplyResult
+import io.godstone.mesh.identity.ValidatedPeerBinding
 import io.godstone.mesh.stress.CampaignDefect
 import io.godstone.mesh.stress.Fault
 import io.godstone.mesh.stress.FaultKind
 import io.godstone.mesh.stress.FaultSchedule
 import io.godstone.mesh.stress.Invariants
+import io.godstone.mesh.stress.ResourceCensusSource
 import io.godstone.mesh.stress.StressCampaign
 import org.junit.Assert
 import org.junit.Test
@@ -286,5 +292,81 @@ class ReadinessT72Test {
         Assert.assertTrue(matrix.contains("Mesh simulation regression"))
         Assert.assertTrue(matrix.contains("Simulation, not device"))
         Assert.assertTrue(matrix.contains("BLOCKED"))
+    }
+
+    // ------------------------------------------------------------ W14
+
+    /**
+     * GS-STRESS-001 step 3: **THE SESSION INVARIANT IS ASKED OF A REAL OWNER, AND NAMETH IT.**
+     *
+     * The card's charge is that 'the stress campaign measures a separate resource model', and its step 6 forbiddeth the
+     * obvious escape in its own words: a mutation confined to `StressCampaign`'s LOCAL BOOKKEEPING cannot be the
+     * production negative control. The model's own `no_leaked_sessions` clause readeth an integer only the campaign can
+     * move, so **no mutation of the campaign can ever falsify it** -- a model that agreeth with itself is not evidence
+     * about a runtime.
+     *
+     * THIS ARM THEREFORE HOLDETH A **REAL** `SessionManager` SLOT -- driv'n through the manager's OWN handshake seam,
+     * the idiom `ReadinessT08Test` already owneth -- and asketh the campaign about it. BOTH clauses read a REAL owner
+     * through `slotCountForTest()`, so neither is a stub:
+     *   CLAUSE 1 -- the live slot is reported, and the failure NAMETH the owner that holdeth it;
+     *   CLAUSE 2 -- THE DISCRIMINATOR: a SECOND real `SessionManager`, never handshaken, retaineth nothing, and the
+     *               selfsame campaign accuseth NOBODY -- so clause 1 is not a clause that fireth for anything.
+     *
+     * HONESTY ABOUT THE RED, MEASURED RATHER THAN GLOSSED: a PRE-REPAIR behavioural RED was NOT CONSTRUCTIBLE, and the
+     * reason is a COMPILE-TIME absence -- `StressCampaign` had no owner parameter at all, so no expression in the
+     * language could ask this question and an arm asserting it would have failed the whole target to COMPILE (a target
+     * that cannot compile presenteth itself as 'no failures', round 471's law). THE SEAM LANDED FIRST, and the arm's
+     * judging power is proven by a SEPARATE NEGATIVE CASE (the real-owner read removed) which faileth on clause 1's own
+     * name.
+     */
+    @Test
+    fun test_w14_the_session_invariant_is_asked_of_a_real_owner() {
+        val authority = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(
+                binding: ValidatedPeerBinding
+            ): PeerTrustApplyResult = PeerTrustApplyResult.Accepted
+        }
+
+        // A REAL SessionManager, driv'n through its OWN handshake seam to exactly ONE live slot.
+        val identityI = MeshIdentity.generate()
+        val identityR = MeshIdentity.generate()
+        val live = SessionManager(identityI, authority)
+        val peerSide = SessionManager(identityR, authority)
+        val peer = identityR.nodeId
+        val hs1 = live.initiatorStart(peer, identityR.nodeHint)
+            ?: throw AssertionError("HS1 must be emitted")
+        val hs2 = peerSide.responderProcessHs1(peer, identityI.nodeHint, hs1)
+            ?: throw AssertionError("HS2 must be emitted")
+        val hs3 = live.initiatorProcessHs2(peer, hs2, identityR.nodeHint)
+            ?: throw AssertionError("HS3 must be emitted")
+        Assert.assertTrue("the REAL handshake must seal",
+            peerSide.responderProcessHs3(peer, hs3, identityI.nodeHint))
+        Assert.assertTrue("a REAL slot must stand in the real owner",
+            live.slotCountForTest() > 0)
+
+        val adapter = object : ResourceCensusSource {
+            override val ownerName: String = "SessionManager"
+            override fun liveSessionSlots(): Int = live.slotCountForTest()
+        }
+
+        // CLAUSE 1 -- THE INVARIANT IS ASKED OF THE REAL OWNER, AND NAMETH IT.
+        val accused = StressCampaign(seed = 7L, cycles = 64, owners = listOf(adapter)).run()
+        Assert.assertTrue("a REAL live slot must be reported against the owner that holdeth it: " + accused.failures,
+            accused.failures.any {
+                it.contains(Invariants.NO_LEAKED_SESSIONS) && it.contains("SessionManager")
+            })
+
+        // CLAUSE 2 -- THE DISCRIMINATOR, ALSO A REAL OWNER: a second SessionManager never handshaken retaineth
+        // nothing, and the selfsame campaign must accuse NOBODY.
+        val fresh = SessionManager(MeshIdentity.generate(), authority)
+        Assert.assertEquals("the discriminator's premise must be MEASURED, not assumed",
+            0, fresh.slotCountForTest())
+        val clean = object : ResourceCensusSource {
+            override val ownerName: String = "SessionManager"
+            override fun liveSessionSlots(): Int = fresh.slotCountForTest()
+        }
+        val clear = StressCampaign(seed = 7L, cycles = 64, owners = listOf(clean)).run()
+        Assert.assertTrue("a real owner that retained nothing must NOT be accused: " + clear.failures,
+            clear.failures.none { it.contains("REAL owner") })
     }
 }

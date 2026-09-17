@@ -13,6 +13,28 @@ package io.godstone.mesh.stress
  */
 const val RESOURCE_MODEL_CATEGORY: String = "resource-model"
 
+/**
+ * GS-STRESS-001 step 3: **THE OWNER CENSUS** -- the seam by which the campaign asketh a REAL owner instead of reading
+ * its own model.
+ *
+ * The card's charge is that 'the stress campaign measures a separate resource model', and step 3 nameth the remedy in
+ * its own words: 'READ RESOURCE CENSUS FROM THE OWNERS THAT ALLOCATE timers, writer reservations, SESSIONS, observers,
+ * inventory leases, ACK work and database rows.'
+ *
+ * WHY A SEAM RATHER THAN A SECOND COUNTER: a number only the campaign can move is evidence about the campaign, and
+ * **NO MUTATION OF THE CAMPAIGN'S OWN BOOKKEEPING CAN EVER FALSIFY AN INVARIANT ABOUT A RUNTIME** -- which is exactly
+ * why the card's step 6 forbiddeth a mutation confined to `StressCampaign`'s local bookkeeping as the production
+ * negative control. An owner answereth through **ITS OWN** evidence hook (`SessionManager.slotCountForTest()` for the
+ * session half), so the number is the OWNER'S and never a copy the campaign keepeth.
+ */
+interface ResourceCensusSource {
+    /** The owner's own name, so a failure can NAME whom it accuseth rather than saying 'sessions'. */
+    val ownerName: String
+
+    /** How many live session slots the REAL owner holdeth RIGHT NOW, read through its own evidence hook. */
+    fun liveSessionSlots(): Int
+}
+
 // ---------------------------------------------------------------------------
 // T72 -- bounded production-path stress and deterministic fault campaigns
 // (Android isle).
@@ -126,6 +148,14 @@ class StressCampaign(
     val peers: Int = PEER_COUNT,
     val schedule: FaultSchedule = FaultSchedule.fromSeed(seed, cycles),
     val defect: String = CampaignDefect.NONE,
+    /**
+     * GS-STRESS-001 step 3: THE REAL OWNERS THIS CAMPAIGN SHALL ASK.
+     *
+     * EMPTY BY DEFAULT, so nothing that stood before this finding changeth behaviour -- the campaign remaineth the
+     * resource model it was and its own counters are untouched. WHERE AN OWNER IS GIVEN, the session invariant is
+     * asked OF THAT OWNER, through the owner's own evidence hook, AND THE FAILURE NAMETH IT.
+     */
+    val owners: List<ResourceCensusSource> = emptyList(),
 ) {
     init {
         require(cycles >= 1) { "a campaign carrieth at least one cycle" }
@@ -215,6 +245,19 @@ class StressCampaign(
         if (leases != 0) failures.add("${Invariants.NO_LEAKED_LEASES}: $leases lease(s) leaked after shutdown")
         if (timers != 0) failures.add("${Invariants.NO_LEAKED_TIMERS}: $timers timer(s) leaked after shutdown")
         if (sessions != 0) failures.add("${Invariants.NO_LEAKED_SESSIONS}: $sessions session(s) leaked after shutdown")
+        // *** GS-STRESS-001 step 3: AND THE INVARIANT IS ASKED OF THE REAL OWNERS. The clause above readeth the
+        // MODEL'S OWN integer, which only this campaign can move -- so it cannot be falsified by a real leak, and a
+        // model that agreeth with itself is not evidence about a runtime. THE NUMBERS BELOW ARE THE OWNERS' OWN, read
+        // through the owners' evidence hooks, and a failure NAMETH the owner it accuseth.
+        // IT IS ASKED AFTER `shutdown()` (above), because the question is whether the owner RETAINED anything -- the
+        // very question the model's clause asketh of itself, now askable of something that actually allocateth. ***
+        for (owner in owners) {
+            val live = owner.liveSessionSlots()
+            if (live != 0) {
+                failures.add("${Invariants.NO_LEAKED_SESSIONS}: $live session slot(s) still live in the REAL owner " +
+                    "'${owner.ownerName}' after shutdown")
+            }
+        }
         inbox.entries.firstOrNull { it.value != 1 }?.let {
             failures.add("${Invariants.NO_DUPLICATE_INBOX}: msg_id ${it.key} entered the inbox ${it.value} times")
         }
