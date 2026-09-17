@@ -563,6 +563,9 @@ class BleTransport(
         globalCapacity.reset()
 
         publishedRelations.clear()
+        // ANDROID-03 (T24) round 521: the retained captures perish with the published relations they belong to --
+        // a stop doth not leave a peer behind for a relation this transport no longer holdeth.
+        capturedPeers.clear()
         centralRemoteLinkInfo.clear()
         responderRemoteLinkInfo.clear()
     }
@@ -967,6 +970,26 @@ class BleTransport(
                 if (!hasRemaining) {
                     val peerMacBytes = PeerId.fromAddress(key.peerAddress) ?: key.peerAddress.toByteArray()
                     peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
+                }
+            }
+            // *** ANDROID-03 (T24), round 521: THE FALL CARRIETH THE SAME IMMUTABLE PEER THE RISE DID, AND THE
+            // OFFER'S VERDICT IS OBSERVED -- the discipline round 227 brought to the rise, brought now to the fall.
+            // THIS IS WHERE THE CARD'S OWN SENTENCE LIVETH: '`unpublishRelation` ... similarly ignores Lost emission
+            // failure'. It is the ONE chokepoint every real relation fall funneleth through -- the central
+            // disconnect, the server disconnect, the inbound timeout, the provisional failures, the terminal session
+            // retirement and the withdrawal -- and until now it published a LOSSY MAC IDENTITY (the `PeerEvent.Lost`
+            // above, whose verdict is still discarded) and NO authenticated peer at all.
+            // IT IS NOT GUARDED BY `hasRemaining`: the MAC event above cannot tell two generations apart, but T24's
+            // identity IS the relation -- generation and all -- so the exact relation that fell is the one whose peer
+            // is carried, and another generation at the same address is ANOTHER relation with its own rise and fall.
+            // A RELATION THAT NEVER ROSE CARRIETH NO CAPTURED PEER AND THEREFORE PUBLISHEth NO FALL: nothing is
+            // invented here, and the identity remaineth the one the sealed round captured. ***
+            val fallen = capturedPeers.remove(key)
+            if (fallen != null) {
+                val verdict = peerEvents.publishLinkLost(fallen)
+                if (verdict != OfferVerdict.Accepted) {
+                    recordRejection(PeerId.fromAddress(key.peerAddress) ?: key.peerAddress.toByteArray(),
+                        "t24.linklost", "the bounded conduit refused the fall's offer")
                 }
             }
             true
@@ -1855,6 +1878,22 @@ class BleTransport(
     private var lastCapturedPeer: TrustedPeer? = null
 
     /**
+     * ANDROID-03 (T24), round 521: THE CAPTURED PEERS, RETAINED BY THE SELFSAME RELATION THAT CARRIED THE RISE.
+     *
+     * T24's frozen law is that a peer is 'bound to exactly one relation' and that the identity deliver'd on a
+     * LATER event is 'the CAPTURED, immutable TrustedPeer, never a handle re-look'd-up at delivery'. The single
+     * `lastCapturedPeer` slot CANNOT hold that law: with two peers it carrieth only whichever was captured most
+     * recently, so the event for the first relation would carry the second relation's peer -- and on a FALL there
+     * was nothing at all to carry, because `publishLinkLost` reacheth no production site (MEASURED: one call site
+     * for the rise, none for the fall).
+     *
+     * So the capture is kept under its OWN relation key, and BOTH the rise and the fall read it back by that key.
+     * A relation that never rose carrieth no captured peer and therefore publisheth no fall: the identity is never
+     * invented, and `TrustedPeer.capture` remaineth the only factory.
+     */
+    private val capturedPeers = ConcurrentHashMap<RelationKey, TrustedPeer>()
+
+    /**
      * ANDROID-03 (T24) slice (c): THE OWNED EVENT CONDUIT. The channel is BOUNDED and the publisher OBSERVETH every
      * offer's verdict -- a refused offer (a full bounded buffer) is NOT swallowed and doth NOT mark the relation
      * published, which is the contract FOUR courts already witness. The capacity is the courts' own (64).
@@ -1870,23 +1909,23 @@ class BleTransport(
     /** Observation for courts: the peer captured at the last sealed round, if any. */
     internal fun lastCapturedPeerForTest(): TrustedPeer? = lastCapturedPeer
 
-    private fun captureTrustedPeerLocked(conn: BleConnection, relation: RelationKey) {
+    private fun captureTrustedPeerLocked(conn: BleConnection, relation: RelationKey): TrustedPeer? {
         // ANDROID-03 (round 228): WHY A CAPTURE DID NOT HAPPEN IS RECORDED, not left to inference. A silent capture
         // is the exact shape that cost rounds 207-209 on the android isle's sweep, and an instrument is cheaper than
         // a hypothesis.
         val manager = sessions
         if (manager == null) {
             recordRejection(conn.peerId, "t24.capture", "no session manager on this transport")
-            return
+            return null
         }
         val pub = manager.authenticatedIdentityPubOf(conn.peerId)
         if (pub == null) {
             recordRejection(conn.peerId, "t24.capture", "the authenticated identity public key is not answerable")
-            return
+            return null
         }
         if (pub.size != 32) {
             recordRejection(conn.peerId, "t24.capture", "the authenticated key is not thirty-two octets")
-            return
+            return null
         }
         // THE RELATION IS THE CONNECTION'S OWN: it carrieth the provider the driver installed, so no direction or
         // address is invented here -- and if the provider is not yet installed, NOTHING is captured rather than a
@@ -1898,9 +1937,14 @@ class BleTransport(
         // the repository's static parity control cannot resolve, and a MANDATORY control must be GREEN, not explained.
         if (relation.generation <= 0L) {
             recordRejection(conn.peerId, "t24.capture", "the relation is unclaimed")
-            return
+            return null
         }
-        lastCapturedPeer = TrustedPeer.capture(relation, pub, relation.generation)
+        val captured = TrustedPeer.capture(relation, pub, relation.generation)
+        lastCapturedPeer = captured
+        // RETAINED UNDER ITS OWN RELATION (round 521): the rise and the fall both read the identity back by THIS
+        // key, so neither can carry 'the most recent capture' in place of the peer its own relation sealed.
+        capturedPeers[relation] = captured
+        return captured
     }
 
     private fun publishApplicationLinkReadyOnce(peerId: ByteArray): Boolean = synchronized(linkReadyPublishLock) {
@@ -2016,14 +2060,31 @@ class BleTransport(
             // THE ADDRESS COMETH FROM THE TRANSPORT'S OWN RESOLVER (the function every door here useth), and an
             // unresolvable peer is SKIPPED rather than given an invented relation -- the same honesty the unclaimed
             // guard carrieth.
-            resolvePeerAddress(peerId)?.let { inboundAddress ->
-                captureTrustedPeerLocked(conn,
-                    RelationKey(BleDirection.INBOUND, inboundAddress, conn.relationGeneration))
+            // *** ANDROID-03 (T24), round 521: THE RELATION IS THE TRANSPORT'S OWN RELATION -- DIRECTION INCLUDED.
+            // T24's frozen law is that a peer is 'bound to exactly one relation', and `RelationKey` CARRIETH THE
+            // DIRECTION. MEASURED RED BEFORE THIS EDIT, by the canonical arm that printeth its own census:
+            //   published=[RelationKey(direction=OUTBOUND, peerAddress=…, generation=1)]
+            //   capturedRelation=RelationKey(direction=INBOUND,  peerAddress=…, generation=1)
+            // -- the SAME address and the SAME generation, and the WRONG DIRECTION, so the captured peer spoke for
+            // a relation this transport had never published and NO fall could ever find it. The split is not
+            // invented here: it is the very split the two teardown paths already unpublish with
+            // (`handleCentralDisconnected` -> OUTBOUND, `handleServerDisconnected` -> INBOUND). Round 255 built
+            // this relation from a fixed INBOUND to keep a mandatory parity control green; the control stayed green
+            // and the relation became a lie, which is recorded here rather than quietly repaired. ***
+            val captured = resolvePeerAddress(peerId)?.let { address ->
+                val direction = if (centralDriver.getActiveConnection(address) === conn) {
+                    BleDirection.OUTBOUND
+                } else {
+                    BleDirection.INBOUND
+                }
+                captureTrustedPeerLocked(conn, RelationKey(direction, address, conn.relationGeneration))
             }
             // ANDROID-03 (T24) slice (c): THE CAPTURED PEER TRAVELETH ON THE EVENT. The offer's verdict is OBSERVED,
             // never discarded: a refused offer (the bounded buffer full) is recorded in the transport's own census
             // and leaveth the relation UNpublished, so a later attempt may retry -- the contract the T24 courts hold.
-            lastCapturedPeer?.let { captured ->
+            // AND THE PEER PUBLISHD IS THE ONE CAPTURED FOR *THIS* RELATION (round 521), never 'the most recent
+            // capture': the rise must carry its own identity, exactly as the fall must.
+            if (captured != null) {
                 val verdict = peerEvents.publishLinkReady(captured)
                 if (verdict != OfferVerdict.Accepted) {
                     recordRejection(conn.peerId, "t24.linkready", "the bounded conduit refused the offer")

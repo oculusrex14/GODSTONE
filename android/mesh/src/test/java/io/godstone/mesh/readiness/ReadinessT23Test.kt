@@ -34,6 +34,7 @@ import io.godstone.mesh.transport.BleTransport
 import io.godstone.mesh.transport.BleReassembledRecord
 import io.godstone.mesh.transport.HandshakeDispatchViolation
 import io.godstone.mesh.transport.KeyConfirmationControl
+import io.godstone.mesh.transport.LinkEvent
 import io.godstone.mesh.transport.GattClientConnection
 import io.godstone.mesh.transport.InvariantLedger
 import io.godstone.mesh.transport.PeerId
@@ -1209,6 +1210,96 @@ class ReadinessT23Test {
                        conn.keyConfirmation.outstanding() == null)
             assertFalse("a REPLAYED echo must not confirm a second time",
                 kotlinx.coroutines.runBlocking { false } && conn.keyConfirmation.matchesAndConsume(ByteArray(0)))
+        } finally {
+            rig.stop()
+        }
+    }
+
+    /**
+     * ANDROID-03: THE FALL CARRIETH THE SAME IMMUTABLE PEER THE RISE DID.
+     *
+     * The card nameth THREE authoritative events -- `LinkReady(TrustedPeer)`, `LinkLost(TrustedPeer)` and
+     * `Auth(TrustedPeer)` -- and T24's own contract saith 'exactly one LinkReady and one LinkLost travel a
+     * relation in its lifecycle'. MEASURED before this arm was written: `publishLinkReady` reacheth ONE
+     * production call site, while `publishLinkLost` and `publishAuth` reacheth NONE -- so the machinery
+     * standeth and only the RISE travelleth.
+     *
+     * This arm therefore asketh the two things the finding's remaining work is made of, IN ORDER, and it was
+     * RUN RED BEFORE ANY PRODUCTION EDIT:
+     *   (1) THE CAPTURE IS BOUND TO THE SELFSAME RELATION THE TRANSPORT PUBLISHD. The frozen identity law
+     *       maketh a peer 'bound to exactly one relation', and `RelationKey` carrieth the DIRECTION -- so a
+     *       capture built for one direction and published for another is a peer that speaketh for a relation
+     *       the transport never published, which is the card's 'revalidate the captured relation token'.
+     *   (2) THE FALL PUBLISHEth exactly one `LinkLost` carrying THAT SAME immutable peer, at the production
+     *       chokepoint every real teardown funneleth through (`unpublishRelation`, whose six callers are the
+     *       disconnect, the timeout and the withdrawal paths) -- never a lossy MAC identity, and never twice.
+     *
+     * WHY THIS ARM STANDETH IN THE T23 COURT: the sealed key-confirmation round is the ONELY circuit in the
+     * repository that reacheth the capture and the publication, and the arm above (ANDROID-01's) holdeth the
+     * same place for the same reason. The arm is NAMED for ANDROID-03, that a reader may find it by grep.
+     */
+    @Test
+    fun testAndroid03_theFallCarriethTheSameImmutablePeerTheRiseDid() {
+        val rig = standDoor()
+        try {
+            val events = CopyOnWriteArrayList<LinkEvent>()
+            rig.alice.addTrustedPeerSink { event -> events.add(event) }
+            // `standDoor()` hath ALREADY stood both ladders; the exchange alone remaineth (as ANDROID-01's arm
+            // above doth it). `completeTrust()` re-runneth BOTH ladders and dieth at the responder's admission --
+            // MEASURED, and recorded: the first draft of this arm us'd it and rais'd an ERROR rather than failing
+            // cleanly, which the programme's own law refuseth ('an ERROR is not a clean RED').
+            rig.completeHandshake()
+            awaitBothReady(rig)
+            // the application's OWN challenge, then the sealed round -- no court issueth it here
+            val challenge = awaitUntilCount("the application's own challenge") {
+                rig.aliceOutlet.writesTo(rig.bobAddress).filter { !isType(it, BleRecordType.HS1) }
+            }
+            rig.aliceOutlet.clear()
+            rig.pushToResponder(challenge)
+            val echo = awaitUntilCount("the responder's echo") {
+                rig.bobOutlet.notificationsTo(rig.aliceAddress)
+            }
+            rig.bobOutlet.clear()
+            rig.pushToInitiator(echo)
+            awaitUntil("the sealed round must come home to application readiness") {
+                rig.alice.linkReadyPeersForTest().isNotEmpty()
+            }
+
+            // THE INSTRUMENT FIRST: the census telleth WHICH HALF IS SILENT, so a failure is not a guess.
+            val published = rig.alice.publishedRelationsForTest()
+            val towardBob = published.filter { it.peerAddress == rig.bobAddress }
+            val captured = rig.alice.lastCapturedPeerForTest()
+            println("ANDROID-03 CENSUS published=" + published +
+                " towardBob=" + towardBob +
+                " capturedRelation=" + captured?.relation +
+                " events=" + events.map { it.javaClass.simpleName })
+
+            assertNotNull("the sealed round must have captured a trusted peer", captured)
+            assertEquals("exactly one event travelled at the rise", 1, events.size)
+            assertTrue("the rise is a LinkReady", events[0] is LinkEvent.LinkReady)
+            assertEquals("the rise carrieth the captured, immutable peer",
+                captured, (events[0] as LinkEvent.LinkReady).peer)
+
+            val outbound = towardBob.filter { it.direction == BleDirection.OUTBOUND }
+            assertEquals("the initiator published exactly one relation toward its peer", 1, outbound.size)
+            val risen = outbound.single()
+            assertEquals("(1) the capture is bound to the SELFSAME relation the transport published",
+                risen, captured!!.relation)
+
+            // THE FALL, upon the production chokepoint every real teardown funneleth through.
+            events.clear()
+            assertTrue("the relation must really fall", rig.alice.unpublishRelation(risen))
+            awaitUntil("the fall must publish exactly one LinkLost") { events.isNotEmpty() }
+            assertEquals("exactly one event travels at the fall", 1, events.size)
+            assertTrue("the fall is a LinkLost", events[0] is LinkEvent.LinkLost)
+            assertEquals("(2) the fall carrieth the SAME immutable identity the rise did",
+                captured, (events[0] as LinkEvent.LinkLost).peer)
+
+            // AND ONCE ONLY: a duplicate completion is an idempotent no-op, as the publisher's own contract saith
+            events.clear()
+            rig.alice.unpublishRelation(risen)
+            Thread.sleep(40)
+            assertEquals("a second fall publisheth nothing more", 0, events.size)
         } finally {
             rig.stop()
         }
