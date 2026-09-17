@@ -309,4 +309,68 @@ final class ReadinessT34Tests: XCTestCase {
         if case .refused = r { return true }
         return false
     }
+
+    // MARK: - GS-STORE-006: THE DRAIN CHECKPOINT IN THE **REAL** JOURNAL, THROUGH THE MAPPING
+
+    /**
+     * THE ARM THIS FINDING DESERVETH, AND ITS FIRST DRAFT WOULD HAVE BEEN IMPOSSIBLE TO WRITE: the court's own doubles
+     * exercise the crash-resumable ladder faithfully, but they exercise it against a DOUBLE JOURNAL -- while the
+     * production journal carrieth ONE TYPED `WipeState`, WHICH HAD **NO CASE FOR THE DRAIN** UNTIL THIS ROUND. So this
+     * arm driveth the REAL coordinator, through the SAME first step the court already driveth, with **THE MAPPING
+     * ADAPTER OVER A REAL `WipeJournal`** in place of the double, and demandeth that the durable checkpoint it standeth
+     * at is `runtimeDrained` -- i.e. THAT THE DRAIN IS WRITTEN DOWN WHERE A CRASH CAN FIND IT, which is the whole of
+     * the audit's charge ("key deletion must remain blocked until transport drain completeth").
+     *
+     * ITS HONEST STATUS: a CONTROL, since the mapping landed in the same round -- an arm that cannot be red proves the
+     * law still holdeth. ITS NEGATIVE TWIN BELOW IS THE PART THAT CAN FAIL.
+     */
+    func testGSSTORE006_theDrainCheckpointIsPersistedInTheRealJournal() throws {
+        // *** THE CRASH IS INJECTED AT `KEYS_ERASED` -- ONE STAGE PAST THE DRAIN -- BECAUSE `requestWipe()` RUNNETH THE
+        // WHOLE LADDER TO COMPLETION (the first draft of this arm measured `advanced(from: .newIdentity, to: .idle)` and
+        // read a FINISHED wipe's journal, which is why it could not see the checkpoint it was asking about). THE COURT'S
+        // OWN TECHNIQUE, READ RATHER THAN REINVENTED: inject the crash where you want the ladder to STOP. ***
+        let rig = T34Rig(crashBefore: "KEYS_ERASED")
+        // THE **PRODUCTION** JOURNAL ITSELF, IN ITS OWN SUITE: `UserDefaultsWipeJournal` is the field-proven
+        // implementation the composition carrieth, and putting it in a private suite meaneth this arm measures the REAL
+        // durable object rather than a double -- and touches no other domain.
+        let suite = try XCTUnwrap(UserDefaults(suiteName: "gsstore006-\(UUID().uuidString)"))
+        let journal = UserDefaultsWipeJournal(defaults: suite)
+        let adapter = WipeJournalDurabilityAdapter(journal: journal)
+        let engine = CrashResumableWipe(store: adapter, vault: rig.vault, filesystem: rig.fs,
+                                        runtime: rig.runtime, authority: rig.authority, hooks: rig.hook)
+
+        let r = drive(engine) { try engine.requestWipe() }
+
+        // *** THE SUBJECT'S OWN ANSWER, ASSERTED FIRST: WITHOUT IT THE ARM COULD NOT SAY WHETHER THE COORDINATOR
+        // REFUSED BEFORE WRITING OR WROTE AND THE JOURNAL FAILED TO KEEP IT -- the gap its first draft had. THE INJECTED
+        // CRASH MEANETH THE ANSWER IS `retryLater`, AND WHAT MATTERS IS THAT IT STOPPED ONE STAGE PAST THE DRAIN. ***
+        XCTAssertTrue(retryAt(r, .requested),
+                      "the injected crash at KEYS_ERASED must stop the ladder (its answer was \(r))")
+        XCTAssertEqual(journal.read().rawValue, WipeState.runtimeDrained.rawValue,
+                       "THE DRAIN MUST BE WRITTEN DOWN IN THE PRODUCTION JOURNAL'S OWN TYPED STATE -- it is the "
+                       + "checkpoint a crash resumeth from, and before this round THE JOURNAL HAD NO CASE FOR IT")
+        XCTAssertEqual(adapter.readJournal(), ["RUNTIME_DRAINED"],
+                       "and the adapter must report the single checkpoint the journal actually standeth at")
+        XCTAssertEqual(rig.runtime.drainCalls, 1, "the drain happened exactly once")
+    }
+
+    /**
+     * THE NEGATIVE CONTROL: an UNKNOWN STAGE NAME must be REFUSED rather than silently dropped, because a dropped
+     * checkpoint is a wipe that restarteth LATER than it should -- or, worse, one that believeth it erased what it hath
+     * not. THE ADAPTER FAILETH CLOSED, AND THIS ARM DEMANDETH IT.
+     */
+    func testGSSTORE006_anUnknownStageNameIsRefusedAndTheCheckpointDoesNotMove() throws {
+        let suite = try XCTUnwrap(UserDefaults(suiteName: "gsstore006-neg-\(UUID().uuidString)"))
+        let journal = UserDefaultsWipeJournal(defaults: suite)
+        let adapter = WipeJournalDurabilityAdapter(journal: journal)
+        adapter.appendJournal("REQUESTED")
+        XCTAssertEqual(journal.read().rawValue, WipeState.requested.rawValue, "a known stage is written through")
+
+        adapter.appendJournal("NOT_A_LADDER_STAGE")
+        XCTAssertEqual(journal.read().rawValue, WipeState.requested.rawValue,
+                       "AN UNKNOWN STAGE MUST BE REFUSED: the checkpoint must NOT move, because a checkpoint that "
+                       + "advances on a name nobody meant is a wipe that skips work it still oweth")
+        XCTAssertFalse(WipeJournalDurabilityAdapter.ladder.contains("NOT_A_LADDER_STAGE"),
+                       "the ladder is the coordinator's own vocabulary, and the adapter speaketh only that")
+    }
 }
