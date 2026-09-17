@@ -505,6 +505,44 @@ leave production unchanged; the Android read gate's `kind` default remains **a n
 **Measured:** iOS `SWIFT_RC=0`, `GodstoneMeshTests` **1195/0** (1194 → 1195); Android `:mesh` **1231/0** (1230 → 1231);
 parity 7/0; symbols 0 unresolved; digests PASSED; store-schema gate PASS.
 
+## ROUND 531, PHASE TWO — ANDROID-05: TWO STALE CLAIMS, ONE UNREACHABLE COURT, AND AN ERROR OF MY OWN
+
+**The round opened by asking what ANDROID-05 genuinely still owes. Measuring its own `pending_proof` settled that, and
+the first thing measurement did was REFUTE THE LEDGER** — twice:
+
+* *"the hardcoded `resourcesReleased = 1` remaineth"* — **false now, and measured**: `RuntimeLifecycle.kt:243` computes
+  `leaseReleased + retired + drained`, `:77` requires `resourcesReleased >= 1 && inFlightOutstanding == 0`, and an arm
+  asserts **0** where nothing was released;
+* *"no constructions"* of the unified lifecycle in production — **false now, and measured**: `MeshNode.kt:526-531`
+  **constructs** it and the node **drives** it at `:553`, `:557`, `:562`, `:669`. Production sites: **2**; test
+  constructions: **11**.
+
+> **A stale claim is worse than no claim: it summons no repair and quietens the queue.** This is the **second** finding
+> this span whose ledger entry outlived its defect (GS-STRESS-001's blocker was the first, round 521).
+
+**And I made an error of the same species myself, in the same round:** `grep … | head -8` showed only *test*
+constructions, and I nearly recorded *"constructed only in tests"* as a finding — **the production hit was simply the
+ninth line.** *`head` giveth a prefix, not a population* — the same family as a truncated grep (round 473) and a
+truncated lane log (round 521). The population was then **counted** (`wc -l`) and read.
+
+**The genuine remainder is closure 4 — *"test the REAL lifecycle composition, not a new fake-only state machine"* — and
+it is UNREACHABLE ON THE HOST in two independent layers, each measured:** the **start** half is gated off by
+`LINK_LAYER_READY = false` (**which the objective requires false**), and the **stop** half — and even *reading* the
+authority — demands a platform `Context` at `ble` (`:443`, reached through the authority's own seam) **and** `wifi`
+(`:450`). **`grep` for `.lifecycle` across the whole test tree: ZERO, while eighteen arms construct a real `MeshNode`.**
+
+**The RED was run and failed** — a clean assertion failure naming `java.lang.NullPointerException` rather than an error,
+because the arm reports its composition through `runCatching` (*an error is not a clean red*) — **and the arm is parked
+with its evidence, because a mandatory lane may not be red and its green is not reachable here.**
+
+**And a change I made and REVERTED is recorded:** a one-line `wifi` guard did **not** make the composition stoppable,
+because the authority's seam reaches `ble`, which is *also* `ctx!!`. Its comment claimed a testability it could not
+deliver — **so it was reverted. An unlanded change with a true record beats a landed change with a false comment.**
+*The tree stands exactly where round 530 left it, and only the ledger differs.*
+
+**The owed work is named exactly: an INSTRUMENTATION ROAD (a Context-bearing Android test)** — the same external item
+this finding's siblings carry, and **acquisition never closes a gate.** The finding stays **`PARTIAL`**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
