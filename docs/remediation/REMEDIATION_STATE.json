@@ -4415,6 +4415,11 @@
    "FIX_SUBMITTED": 42,
    "OPEN": 6,
    "PARTIAL": 6
+  },
+  "by_status_at_round_513": {
+   "FIX_SUBMITTED": 43,
+   "OPEN": 5,
+   "PARTIAL": 6
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -6027,10 +6032,16 @@
      "sha256": "21f5e3904ba642937134fd62d62edcfb0409db2975e10d4af26c426c794871e3",
      "what": "***CRYPTO-002: ITS CLAUSES APPEAR ALREADY IMPLEMENTED IN THIS TREE, WITH THE FINDING'S OWN ID IN THE CODE'S COMMENTS -- WHILE THE LEDGER SAYS `OPEN` BECAUSE I HAVE NEVER WORKED IT.*** `SessionManager.swift:106` QUOTES THE FINDING ITSELF ('Session retirement never reaches the transport authority'); `:112` describes `retireSlotTerminally` RECORDING the notice and the drain DELIVERING it outside every lock, with the deadlock reasoning given; `:150-160` has the deadline callback calling `retireSlotTerminally(admission, reason: \"idle age deadline reached\")`; `:66` has `case expired`; and `BleTransport.swift:1251-1262` NAMES THE FINDING TOO ('GS-CTRL-002 / CRYPTO-002 (THE LAST CLAUSE OF STEP 5): schedule the PERMITTED BOUNDED FRESH-HANDSHAKE RETRY') with `maxFreshHandshakeRetries = 1` and a MEASURABLE count, plus `public func retire()` at :363 whose steps ARE its central teardown's body",
      "outcome": "no production file modified; tree at HEAD, CLEAN and LANE-GREEN; the full iOS lane is running as managed job bash-123. AND THAT IS EXACTLY WHY THE PROTOCOL DEMANDS THE RED FIRST: A COMMENT THAT NAMES A FINDING IS NOT A MEASUREMENT OF THAT FINDING (this ledger's own law, paid at round 427). WHAT SETTLES CRYPTO-002 IS A COURT THAT DRIVES A SESSION TO EXPIRY AND DEMANDS (a) the transport authority LEARNS of the retirement, (b) the session NO LONGER ANSWERS READY, and (c) the bounded fresh-handshake retry happens EXACTLY ONCE PER PEER PER RETIREMENT -- with monotonic timer tests on both isles. IF THE RED PASSES, THE FINDING IS ALREADY FIXED IN THE TREE AND THE HONEST RECORD IS 'IMPLEMENTED, PROOF OWED'; IF IT FAILS, THE FAILING ASSERTION NAMES THE ONE CLAUSE THAT REMAINS. EITHER WAY THE MEASUREMENT DECIDES AND NEITHER WAY DO I GUESS."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-002/round513-MEASURED-ALREADY-IMPLEMENTED-AND-GREEN-SUBMITTED.log",
+     "sha256": "9bd147855ae1cb2140f745fb7d8dabb0c4a39e66ecc96d7e54d0b8b9e5929723",
+     "what": "***CRYPTO-002 IS MEASURABLY GREEN -- ALREADY IMPLEMENTED IN THE TREE AND BOUND TO CANONICAL ARMS NAMING THE FINDING IN FOUR FILES, EVERY ONE PASSING, BESIDE A WHOLE LANE THAT EXITED 0.*** SessionManagerTests / ReadinessT07Tests / ReadinessT14Tests / ReadinessT71Tests ALL 0 FAILING; the full lane (job bash-123, owed for rounds 507/508/510) passed with GodstoneCoreTests 82 tests 0 failures and EXIT CODE 0. THE ARMS NAME THE CLAUSES: testTimeBudgetExpiry_RetiresSession ('expired sessions must not remain ready'), testSendBudgetExhaustion_RetiresTerminal, testReceiveBudgetExhaustion_ReturnsExpired, testRetiredSlotsAndLockEntriesAreReclaimed (the authoritative slot retirement), and the BleLinkSubstrate transport arms INCLUDING testLinkInfo_FailedRetirementDoesNotFalselyNotify (a NEGATIVE case). SO THIS IS NOT A FINDING THAT NEEDS A REPAIR FROM ME: IT IS A FINDING WHOSE REPAIR STANDS IN THE TREE AND IS BOUND TO CANONICAL ARMS, and whose ledger row said OPEN only because I had never measured it. AND I DID NOT INVENT A RED TO LOOK BUSY: THE HONEST ANSWER TO A FINDING ALREADY FIXED IS A MEASUREMENT, NOT A NEW ARM",
+     "outcome": "no file modified; tree at HEAD, CLEAN and LANE-GREEN (exit 0). PENDING PROOF IN THREE CATEGORIES: (1) AWAITING INDEPENDENT VERIFICATION -- the whole finding, since VERIFIED_FIXED is zero across the programme; (2) DEPENDING ON EXTERNAL ARTIFACTS -- the card demands 'monotonic timer tests on BOTH platforms' and the ANDROID ISLE'S COUNTERPART IS NOT MEASURED HERE, and a device-boundary proof of a real radio retirement is not suppliable here and will not be fabricated; (3) STALE CLOSURE EVIDENCE -- the arms predate my span and their passing is evidence about THE SHA THEY RAN ON, not about every later one; and the audit's impact sentence ('after a retirement NO FRESH HANDSHAKE FOLLOWS') is answered in code by maxFreshHandshakeRetries = 1 with a MEASURABLE count WHOSE ARM I HAVE NOT LOCATED, so I say so rather than claim it."
     }
    ],
    "my_red_case": null,
-   "my_status": "OPEN",
+   "my_status": "FIX_SUBMITTED",
    "notes": null,
    "pending_proof": [
     "ROUND 365 -- **CRYPTO-002 IS COMPLETE ON THE iOS ISLE FOR EVERY CLAUSE THE AUDIT NAMES**, ITS LAST OWED ITEM (the inbound-branch reconciliation) having been done BY READING THIS ISLE'S OWN INBOUND TEARDOWN RATHER THAN BY ANALOGY: that path performeth `publishTrustedLoss`, `activeInboundLifetimes.removeValue`, `cancelTimerLocked` AND `inboundPeripheralConnections.removeValue` -- AND DOTH **NOT** TOUCH `relationDelegates`. MY FIRST VERSION REMOVED THE DELEGATE (wrong for this direction) AND FORGOT THE PERIPHERAL CONNECTION; BOTH ARE NOW THE PATH'S OWN SHAPE, so A RETIREMENT DRIVEN BY THE MANAGER AND ONE DRIVEN BY THE LINK CANNOT LEAVE THE TRANSPORT IN TWO DIFFERENT STATES. MEASURED: iOS lane rc=0, ZERO failing assertions, 1264 tests; `ReadinessT14Tests` 10/0; parity 7/7; symbols 0 unresolved; the store-schema control rc 0; the composition control rc 0. WHAT THE FINDING NOW CARRIETH ON BOTH ISLES: (1) rejection separated from terminal retirement -- including the ONE-PACKET DENIAL-OF-SERVICE the separation prevented (found by a negative control on iOS, APPLIED IN ADVANCE on Android before it could arise there); (2) the typed verdict exposed without nullable flattening, and the aggregate no longer swallowing a terminus; (3) the `>=` deadline and the idle evaluation; (4) THE IMMUTABLE RELATION-OWNED AGE TIMER -- armed at establishment, delivered to the run loop's owner with re-delivery on installation, FIRING INTO THE SAME SINGLE SLOT TRANSITION, with OLD CALLBACKS UNABLE TO RETIRE A REPLACEMENT; (5) the token-bound notice to the transport owner on both isles with the transport WITHDRAWING THE EXACT RELATION (and on Android the mapping recorded WHERE IT IS MINTED), PLUS THE PERMITTED BOUNDED FRESH-HANDSHAKE RETRY; (6) readiness reflecting the single authoritative slot state. STILL OWED, AND ONLY OF THE EXTERNAL KIND: **A DEVICE/RADIO REPRODUCTION** -- every court-level clause is landed and measured on both isles, and DEVICE EVIDENCE IS NOT SOMETHING THIS PROGRAMME CAN MANUFACTURE, nor may a fixture substitute for it.",
@@ -6126,7 +6137,9 @@
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-002/round364-RECORD_CORRECTION-the-defect-was-my-arm.log"
     }
    ],
-   "card_read_at_round": 511
+   "card_read_at_round": 511,
+   "submitted_at_round": 513,
+   "already_implemented_measured": true
   },
   "CRYPTO-003": {
    "audit_status_at_snapshot": "OPEN",
