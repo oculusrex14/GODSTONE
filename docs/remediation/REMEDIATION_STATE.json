@@ -8445,7 +8445,14 @@
    "impact": "A peer that has seen a message ID can send a corrupted relay copy first. A later genuine delivery can be acknowledged to the sender without persisting its actual content. A restart then loses the genuine local message although the sender may accept DELIVERED. Generic relay eviction also cannot stand in for a durable user inbox/tombstone. This is a storage-proof failure, not a forged recipient signature; current missing composition/readiness gates remain separate blockers.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
-   "my_logs": [],
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/round514-the-last-two-cards-and-a-CONVERGENCE.log",
+     "sha256": "53d1994877eb8fa6e00b6c0a4be70e16062e335d7234c15e137464b90b8d3d88",
+     "what": "GS-INBOX-001'S CARD IS READ (HIGH): 'Recipient ACK can certify a message whose verified ciphertext was never durably stored' -- COMMIT BOUNDARY: 'Verified inbox schema/transaction and canonical-content collision regression; then composition and platform encryption/device proof as explicitly tracked child commits'. AND IT IS THE SAME DOCTRINE AS CRYPTO-005'S CARD ON THE RECEIVING SIDE: CRYPTO-005 demands the OUTBOUND intent be pinned before the frame reaches the radio; GS-INBOX-001 demands the INBOUND verified ciphertext be durably stored before an ACK certifies it -- BOTH ARE 'NO CERTIFICATE WITHOUT A DURABLE RECORD'",
+     "outcome": "no production file modified; tree at HEAD, CLEAN and LANE-GREEN; LEDGER: FIX_SUBMITTED 43, OPEN 5, PARTIAL 6. THE ORDER FOR THE REMAINING PHASE-ONE WORK, BY WHAT IS MEASURABLE FIRST: (1) GS-INBOX-001 -- its first clause (the verified inbox schema/transaction) is inside the store I have just been working in, so its RED and its repair are the next natural step: A COURT THAT ACKS WITHOUT A DURABLY-STORED VERIFIED CIPHERTEXT MUST REFUSE; (2) GS-INTEGRATION-001 -- its first clause is already part-repaired by sendDirectDurable, and its remaining clauses (HANDSHAKE and WIPE owners) are the largest item, since they demand the harness stop substituting for owners it should use."
+    }
+   ],
    "my_red_case": null,
    "my_status": "OPEN",
    "notes": null,
@@ -8501,7 +8508,8 @@
     "T83"
    ],
    "title": "Recipient ACK can certify a message whose verified ciphertext was never durably stored",
-   "wave": "5"
+   "wave": "5",
+   "card_read_at_round": 514
   },
   "GS-INTEGRATION-001": {
    "audit_status_at_snapshot": "OPEN",
@@ -8517,7 +8525,14 @@
    "impact": "T44 evidence cannot establish crash-safe multihop or real runtime integration. These tests can pass while the live store, trusted handshake, adapters and wipe ordering are broken.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
-   "my_logs": [],
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/round514-the-last-two-cards-and-a-CONVERGENCE.log",
+     "sha256": "53d1994877eb8fa6e00b6c0a4be70e16062e335d7234c15e137464b90b8d3d88",
+     "what": "GS-INTEGRATION-001'S CARD IS READ (HIGH): 'The crash-safe composition harness bypasses real persistence, handshake and wipe owners' (its card carries NO commit-boundary field, so the remediation plan must supply its shape). AND IT IS A CONVERGENCE: THIS IS EXACTLY WHAT I MEASURED MYSELF -- round 498 the composition's send path never consults an intent journal while its own comment claims 'the durable enqueue happeneth FIRST'; round 500 the lab's store is InMemoryMessageStore (NOT REAL PERSISTENCE); round 502 production's RecipientTrustResolver is implemented nowhere outside the authority; and GS-STORE-006's work found the iOS composition root absent. SO GS-INTEGRATION-001 IS THE FINDING WHOSE EVIDENCE I PRODUCED WITHOUT KNOWING ITS NAME, AND CRYPTO-005'S LAST FIVE LANDINGS ARE ALREADY ITS FIRST REPAIR: sendDirectDurable REPLACES AN IN-MEMORY SEND WITH A REAL SqliteMessageStore AND A DURABLE JOURNAL",
+     "outcome": "no production file modified; tree at HEAD, CLEAN and LANE-GREEN; LEDGER: FIX_SUBMITTED 43, OPEN 5, PARTIAL 6. THE ORDER FOR THE REMAINING PHASE-ONE WORK, BY WHAT IS MEASURABLE FIRST: (1) GS-INBOX-001 -- its first clause (the verified inbox schema/transaction) is inside the store I have just been working in, so its RED and its repair are the next natural step: A COURT THAT ACKS WITHOUT A DURABLY-STORED VERIFIED CIPHERTEXT MUST REFUSE; (2) GS-INTEGRATION-001 -- its first clause is already part-repaired by sendDirectDurable, and its remaining clauses (HANDSHAKE and WIPE owners) are the largest item, since they demand the harness stop substituting for owners it should use."
+    }
+   ],
    "my_red_case": null,
    "my_status": "OPEN",
    "notes": null,
@@ -8546,7 +8561,8 @@
     "T44"
    ],
    "title": "The crash-safe composition harness bypasses real persistence, handshake and wipe owners",
-   "wave": "6"
+   "wave": "6",
+   "card_read_at_round": 514
   },
   "GS-LAB-001": {
    "audit_status_at_snapshot": "OPEN",
