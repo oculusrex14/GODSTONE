@@ -272,6 +272,14 @@ public final class SessionManager {
             peerLock.lock()
             defer { peerLock.unlock() }
             guard let ctrl = slot.controller else { return false }
+            // CRYPTO-002: THE IDLE PATH. A session that reached its own terminus while `state` still sayeth
+            // `.ready` must not keep publishing ready -- and THE PRIMITIVE IS THE AUTHORITY on its own terminus
+            // (`isEstablished` falleth when it retireth, which the T07 court already proved at the primitive).
+            // The retirement is performed HERE rather than merely reported, so the slot cannot leak either.
+            if ctrl.state == .ready && ctrl.isTerminallyRetired {
+                retireSlotTerminally(admission)
+                return false
+            }
             return ctrl.isReady && ctrl.state == .ready
         }
     }
@@ -448,14 +456,40 @@ public final class SessionManager {
             guard isActive else { return .rejected }
             testOperationHook?("open")
             guard let slot = slotFor(admission) else { return .rejected }
-            return slot.serialize { () -> CryptoOpenResult in
+            let outcome = slot.serialize { () -> CryptoOpenResult in
                 guard slot.state == .active else { return .rejected }
                 guard let ctrl = slot.controller else { return .rejected }
-                guard ctrl.isReady && ctrl.state == .ready else { return .rejected }
-                guard let clear = ctrl.open(ciphertext) else { return .rejected }
-                return .authenticated(clear)
+                // GS-CTRL-002 / CRYPTO-002: THE CONTROLLER IS ASKED **ONCE**, AND ITS TYPED ANSWER TRAVELS. The
+                // pre-checks against `ctrl.isReady`/`ctrl.state` used to swallow the difference between A PACKET
+                // THE PEER GOT WRONG (rejected) and THE SESSION REACHING ITS OWN TERMINUS (expired) -- so the
+                // manager could never answer `expired`, and the audit's first probe measured exactly that.
+                // TWO ENUMS SHARE A NAME AND A VOCABULARY (`NoiseSession.CryptoOpenResult` the primitive's,
+                // `SessionManager.CryptoOpenResult` the registry's), SO THE CONVERSION HAPPENETH HERE, AT THE
+                // BOUNDARY WHERE BOTH SPACES ARE KNOWN -- EXPLICITLY AND EXHAUSTIVELY. The compiler refused the
+                // implicit form in one line ("cannot convert value of type NoiseSession.CryptoOpenResult to closure
+                // result type CryptoOpenResult"): THE ROUND-314 FAMILY AGAIN -- TWO SPACES, ONE ROAD.
+                switch ctrl.openWithResult(ciphertext) {
+                case .authenticated(let clear): return .authenticated(clear)
+                case .expired: return .expired
+                case .rejected:
+                    guard ctrl.isReady && ctrl.state == .ready else { return .rejected }
+                    return .rejected
+                }
             }
+            // TERMINAL RETIREMENT, ROUTED OUTSIDE THE SLOT LOCK (the discipline `drop` already followeth): the exact
+            // incarnation is removed and destroyed, so a retired session cannot leak its slot.
+            if case .expired = outcome { retireSlotTerminally(admission) }
+            return outcome
         }
+    }
+
+    /// CRYPTO-002: THE TERMINUS, IN ONE PLACE. The exact incarnation is removed and its controller destroyed
+    /// OUTSIDE the slot lock -- the same order `drop` useth -- and the answer sayeth whether one truly stood.
+    @discardableResult
+    private func retireSlotTerminally(_ admission: RelationAdmission) -> RelationRetirement {
+        guard let slot = removeSlot(admission) else { return .stale }
+        _ = slot.retire()?.destroy()
+        return .retired
     }
 
     /// CRYPTO-001: THE RELATION'S TEARDOWN, ADDRESSED TO AN INCARNATION.
@@ -590,11 +624,17 @@ public final class SessionManager {
     }
 
     internal func openWithResult(_ peerId: UUID, _ ciphertext: Data) -> CryptoOpenResult {
+        // CRYPTO-002: THE AGGREGATE MUST NOT SWALLOW A TERMINUS. The old body returned `.rejected` for EVERYTHING
+        // that did not authenticate -- so an exhausted session was indistinguishable from a bad packet AT THE ONLY
+        // API MOST CALLERS USE. A terminus is now reported AS a terminus (it is the more specific, and the more
+        // actionable, of the two answers), while a plain rejection still falls through to `.rejected`.
+        var sawExpired = false
         for admission in hostIncarnations(peerId) {
             let outcome = openWithResult(admission, ciphertext)
             if case .authenticated = outcome { return outcome }
+            if case .expired = outcome { sawExpired = true }
         }
-        return .rejected
+        return sawExpired ? .expired : .rejected
     }
 
     internal func authenticatedNodeIdOf(_ peerId: UUID) -> Data? {

@@ -5864,7 +5864,7 @@
     "Bad tag, replay and forged high nonce remain bounded rejection; a later genuine in-policy nonce still authenticates.",
     "Old retirement timer/event after replacement leaves the replacement ready and unchanged."
    ],
-   "evidence_level": "REPRODUCED_SWIFT_SESSION_MANAGER_AND_SOURCE_CONFIRMED_ANDROID",
+   "evidence_level": "REPRODUCED_AND_REPAIRED_ON_IOS_STEPS_1_3_TRANSPORT_EVENT_AND_ANDROID_PENDING",
    "final_review": {
     "audit_id": "AUDIT-003",
     "classification": "SOURCE_ANCHORS_IDENTICAL_NO_RUNTIME_RETEST",
@@ -5875,11 +5875,20 @@
    "impact": "The new key budget does not provide the promised lifecycle behavior: a peer can remain published/selected as ready while every operation fails, and no fresh handshake follows. Readiness, capacity and resource ownership can remain stuck after the 30-minute boundary. This is a lifecycle/integration defect; the audit did not observe acceptance of ciphertext after primitive retirement.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
-   "my_logs": [],
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-002/round343-steps-1-3-RED-then-GREEN.log",
+     "sha256": "4e4eb14cbfafaf738497fa0febaff81b2c2f94afdb2dd8b99b59dc818681b6b1",
+     "what": "CRYPTO-002 steps 1-3 (iOS): the audit's own two probes written into the canonical suite as REDs, then the typed terminus propagation (controller -> manager -> readiness) with terminal slot retirement; plus the deadline fix ('>' -> '>=') and the missing idle age evaluation",
+     "outcome": "RED first, reproducing the finding verbatim ('rejected' where 'expired' was due; readiness still true; slot still registered; idle expired session still publishing ready). Then GREEN: iOS rc=0, ZERO failing assertions, 1254 tests (1252 -> 1254); parity 7/7; symbols 0 unresolved; T07's primitive boundary courts still green (6/0)."
+    }
+   ],
    "my_red_case": null,
    "my_status": "OPEN",
    "notes": null,
-   "pending_proof": [],
+   "pending_proof": [
+    "ROUND 343 -- CRYPTO-002 STEPS 1-3 ARE LANDED ON THE iOS ISLE AND THE FINDING IS **NOT** CLOSED. THE AUDIT'S OWN TWO PROBES (`AuditCryptoTests.testExpiredReadMustReachManagerAndClearReadiness`, `testIdleExpiredSessionMustNotStillPublishReady`) did NOT exist in this repository, so they were WRITTEN INTO `SessionManagerTests.swift` and run as behavioural REDs BEFORE any production edit -- and they reproduced the finding verbatim: `('rejected') is not equal to ('expired')`, readiness still true, the SLOT STILL REGISTERED (a leak), and an idle aged session still publishing ready. THE REPAIR (one coherent atomic change, both directions of the terminus): the controller carrieth the primitive's TYPED answer without nullable flattening and marks itself terminal on a terminus; the manager asks the controller ONCE in the slot-locked walk, PROPAGATES `.expired` instead of swallowing it into `.rejected`, and RETIRES THE EXACT SLOT OUTSIDE THE SLOT LOCK; readiness consulteth the terminus so an aged session stops publishing ready WITH NO PACKET; `NoiseSession.evaluateTimeBudget()` addeth the missing on-demand evaluation (the budget checks were reachable ONLY from send/open), retiring through the SAME `retire(_:)` so the roads cannot drift; and the deadline became `>=` in all three age checks as the audit's step 3 requireth. ALSO MEASURED: two enums share a name and a vocabulary (`NoiseSession.CryptoOpenResult` and `SessionManager.CryptoOpenResult`), and the compiler refused the implicit transfer in one line -- THE ROUND-314 FAMILY AGAIN, and the conversion is now explicit at the boundary. MEASURED: iOS rc=0, ZERO failing assertions, 1254 tests (1252 -> 1254, the two probes in the tree and passing); parity 7/7; symbols 0 unresolved; T07's primitive boundary courts still green after the deadline change. **PENDING PROOF, EXPLICIT**: (a) the audit's STEP 4 asked for an IMMUTABLE RELATION-OWNED AGE TIMER armed at trusted establishment with old callbacks unable to retire a replacement -- what landed is on-demand evaluation, which satisfies the second probe and NOT the timer clause; (b) STEP 5's TOKEN-BOUND RETIREMENT EVENT TO THE TRANSPORT OWNER is NOT sent (LinkLost, lease release, unpublish-once, bounded fresh-handshake retry) -- THE TRANSPORT AUTHORITY IS STILL UNREACHED, WHICH IS THE FINDING'S TITLE; (c) STEP 3's DIRECTIONAL RECORD BUDGET before consuming another nonce; (d) the remaining REQUIRED CLOSURE TESTS (exact boundaries, asymmetric directional traffic, invalid packets not counting as authenticated records, bad tag/replay/forged-high-nonce bounded rejection with a later genuine nonce authenticating, and old-timer-after-replacement); (e) THE ANDROID ISLE, where none of steps 1-6 is mirrored -- and the finding's own commit boundary requireth BOTH PLATFORMS."
+   ],
    "proof": null,
    "remediation_report": "evidence/crypto/findings.md",
    "remediation_steps": [

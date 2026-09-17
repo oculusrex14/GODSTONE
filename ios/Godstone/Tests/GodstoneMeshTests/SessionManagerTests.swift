@@ -476,4 +476,67 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertEqual(sm.incarnationCountForTest(elsewhere), 1)
         XCTAssertNotNil(sm.slotForTest(elsewhere))
     }
+
+    // MARK: - CRYPTO-002: THE AUDIT'S OWN PROBES, MOVED INTO THE CANONICAL SUITE
+    //
+    // The audit's evidence class for this finding is explicit about WHY the existing courts missed it:
+    // "ReadinessT07Tests acts directly on raw NoiseSession and proves primitive isEstablished becomes false. It
+    // does not exercise trusted controller, manager, transport close/publication or idle timer ownership." SO THE
+    // PROBES BELOW ACT ON THE **MANAGER**, and they are the audit's two by name:
+    //   AuditCryptoTests.testExpiredReadMustReachManagerAndClearReadiness
+    //   AuditCryptoTests.testIdleExpiredSessionMustNotStillPublishReady
+
+    /// A completed trusted handshake, whose PRIMITIVE is then aged past its own budget through the existing hooks.
+    /// The manager must answer a TYPED TERMINAL RETIREMENT -- not a packet rejection -- and readiness must stop.
+    func testCRYPTO002_anAgedReadMustRetireThroughTheManagerAndClearReadiness() throws {
+        let (smA, smB, keyA, keyB) = try establishedManagerPair()
+        // The RECEIVER's primitive is aged out: budget one second, established two seconds ago.
+        let ctrl = try XCTUnwrap(smB.slotForTest(keyB)?.controller)
+        ctrl.noiseSession.ageBudgetForTest = 1.0
+        ctrl.noiseSession.establishedMonoForTest = DispatchTime.now().uptimeNanoseconds &- 2_000_000_000
+        let before = smB.slotCountForTest()
+
+        let genuine = try XCTUnwrap(smA.seal(keyA, Data("a genuine in-policy packet".utf8)))
+        let outcome = smB.openWithResult(keyB, genuine)
+
+        XCTAssertEqual(outcome, .expired,
+                       "AGE IS A TERMINAL RETIREMENT, NOT A PACKET REJECTION -- the vocabulary for it existeth "
+                       + "(`CryptoOpenResult.expired`) and was unreachable")
+        XCTAssertFalse(smB.isReady(keyB),
+                       "and readiness must STOP: a session past its budget may not remain published as ready")
+        XCTAssertEqual(smB.slotCountForTest(), 0,
+                       "and the EXACT slot must be gone -- a retired session left registered is a slot leak")
+        XCTAssertLessThan(smB.slotCountForTest(), before)
+    }
+
+    /// The audit's second probe: NO packet at all. Merely ASKING must be enough for the manager to notice that the
+    /// session it owneth hath aged out -- an idle timer's own transition, not a reader's side effect.
+    func testCRYPTO002_anIdleAgedSessionMustNotStillPublishReady() throws {
+        let (_, smB, _, keyB) = try establishedManagerPair()
+        let ctrl = try XCTUnwrap(smB.slotForTest(keyB)?.controller)
+        XCTAssertTrue(smB.isReady(keyB), "the control: a fresh handshake IS ready")
+        ctrl.noiseSession.ageBudgetForTest = 1.0
+        ctrl.noiseSession.establishedMonoForTest = DispatchTime.now().uptimeNanoseconds &- 2_000_000_000
+
+        XCTAssertFalse(smB.isReady(keyB),
+                       "an IDLE expired session must not still publish ready -- no packet should be required")
+    }
+
+    /// A real trusted handshake at the MANAGER level, returning the two managers and the receiving relation's key.
+    private func establishedManagerPair() throws -> (SessionManager, SessionManager, UUID, UUID) {
+        let identityA = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
+        let identityB = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
+        let smA = SessionManager(identity: identityA, trustAuthority: RecordingTrustAuthority())
+        let smB = SessionManager(identity: identityB, trustAuthority: RecordingTrustAuthority())
+        let peerB = UUID()
+        let peerA = UUID()
+        let hs1 = try XCTUnwrap(smA.initiatorStart(peerB, remoteHint: identityB.nodeHint))
+        let hs2 = try XCTUnwrap(smB.responderProcessHs1(peerA, remoteHint: identityA.nodeHint, hs1: hs1))
+        let hs3 = try XCTUnwrap(smA.initiatorProcessHs2(peerB, hs2: hs2, advertisedRemoteHint: identityB.nodeHint))
+        XCTAssertTrue(smB.responderProcessHs3(peerA, hs3: hs3, advertisedRemoteHint: identityA.nodeHint))
+        XCTAssertTrue(smB.isReady(peerA), "the probe requireth a REAL established session")
+        // EACH MANAGER'S OWN KEY: `peerB` is SM-A's name for the relation, `peerA` is SM-B's. Returning one key
+        // for both was MY bug, and it showed up as an unwrap of `seal` -- the probe was measuring the wrong object.
+        return (smA, smB, peerB, peerA)
+    }
 }

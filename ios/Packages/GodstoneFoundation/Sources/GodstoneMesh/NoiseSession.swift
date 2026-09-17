@@ -431,8 +431,25 @@ public final class NoiseSession {
             retire("send budget: 2^20 authenticated records reached")
             return "send budget exceeded (records)"
         }
-        if budgetAgeSeconds() > (ageBudgetForTest ?? NoiseSession.timeBudgetSeconds) {
+        // CRYPTO-002 step 3: "test age using >= AT THE DEADLINE" -- `>` let a session live one instant past the
+        // agreed budget the policy promiseth. The boundary BELONGETH to the retirement, not to the session.
+        if budgetAgeSeconds() >= (ageBudgetForTest ?? NoiseSession.timeBudgetSeconds) {
             retire("send budget: 30 minutes elapsed")
+            return "send budget exceeded (time)"
+        }
+        return nil
+    }
+
+    /// CRYPTO-002: EVALUATE THE AGE BUDGET **WITHOUT A PACKET**. The budget checks above are reached only from
+    /// send/open -- so AN IDLE SESSION NEVER LEARNETH THAT IT HATH AGED OUT, which is exactly what the audit's second
+    /// probe measured ("age out the same way and call only isReady; actual answer remains true without a new
+    /// packet"). This entry asketh THE SAME QUESTION THE SEND PATH ASKETH, and retireth through THE SAME
+    /// `retire(_:)`, so the two roads cannot drift apart about what "aged out" meaneth.
+    @discardableResult
+    public func evaluateTimeBudget() -> String? {
+        if let reason = retiredReason { return reason }
+        if budgetAgeSeconds() >= (ageBudgetForTest ?? NoiseSession.timeBudgetSeconds) {
+            retire("idle budget: 30 minutes elapsed")
             return "send budget exceeded (time)"
         }
         return nil
@@ -445,7 +462,7 @@ public final class NoiseSession {
             retire("receive budget: 2^20 authenticated records reached")
             return "receive budget exceeded (records)"
         }
-        if budgetAgeSeconds() > (ageBudgetForTest ?? NoiseSession.timeBudgetSeconds) {
+        if budgetAgeSeconds() >= (ageBudgetForTest ?? NoiseSession.timeBudgetSeconds) {
             retire("receive budget: 30 minutes elapsed")
             return "receive budget exceeded (time)"
         }

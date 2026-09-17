@@ -65,6 +65,15 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
 
     var isReady: Bool { state == .ready }
 
+    /// CRYPTO-002: DOES THIS CONTROLLER'S SESSION STAND TERMINALLY RETIRED -- ASKED **WITHOUT A PACKET**?
+    ///
+    /// Readiness must not depend on somebody trying to send: an idle session that hath aged out must stop publishing
+    /// ready on its own. The question is put to the PRIMITIVE, which owneth the budget, and the answer counteth BOTH
+    /// kinds of terminus -- the age budget (evaluated on demand) and the retired/destroyed state.
+    var isTerminallyRetired: Bool {
+        noiseSession.evaluateTimeBudget() != nil || !noiseSession.isEstablished
+    }
+
     /// CRYPTO-003: the controller is terminally destroyed (see HandshakeTrustState.destroyed).
     var isDestroyed: Bool { state == .destroyed }
 
@@ -274,6 +283,23 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
     }
 
     /// Application open: decrypts ciphertext only if state == READY.
+    /// CRYPTO-002 (step 2 of the finding's own order): THE TYPED ANSWER, WITHOUT NULLABLE FLATTENING.
+    ///
+    /// The audit's charge: the controller "converts primitive errors/expired into nil, and SessionManager converts
+    /// nil into Rejected", so **NEITHER MANAGER EVER RETURNS `Expired`** and a session past its budget remaineth
+    /// published as ready. This accessor carrieth the primitive's own typed verdict outward, AND ON A TERMINAL
+    /// RETIREMENT IT MARKS THE CONTROLLER TERMINAL FIRST -- the same discipline `destroy()` already useth, so no
+    /// window existeth in which a retired controller still looketh usable.
+    func openWithResult(_ ciphertext: Data) -> NoiseSession.CryptoOpenResult {
+        let outcome = (try? noiseSession.openWithResult(ciphertext)) ?? .rejected
+        if case .expired = outcome {
+            retainedNodeId = nil
+            retainedIdentityPub = nil
+            if state != .destroyed { state = .destroyed }
+        }
+        return outcome
+    }
+
     func open(_ ciphertext: Data) -> Data? {
         guard state == .ready else { return nil }
         return try? noiseSession.decrypt(ciphertext)
