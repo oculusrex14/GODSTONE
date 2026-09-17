@@ -6744,6 +6744,12 @@
      "sha256": "9d49123d4fd11021c97bd544bfb6a9e115117d91821a0cc7cac43c23484c8c53",
      "what": "***CRYPTO-005 IS SUBMITTED: FIX_SUBMITTED, WITH PENDING PROOF STATED IN FULL.*** JUSTIFIED BY TWO PASSING ARMS AT TWO LAYERS: the medium ('the intent survives a reopen of the durable store', round 489 -- write, discard, reopen from the same path, find identical bytes and ID) and THE COMPOSITION (round 510 -- build two nodes, link, INVOKE THE EXPOSED RUNTIME COMMAND, reopen the store from the same path, find the intent); AND THE SECOND IS THE ARM THAT FAILED AT ROUND 430, TWENTY-NINE ROUNDS AGO, WITH AN IN-MEMORY MEDIUM AND NO CALLER ANYWHERE. FIVE DEFECTS WERE FOUND BY MEASUREMENT RATHER THAN READING AND ALL ARE REPAIRED: the missing medium; the blind observer (StoreSchema.allTables); the unkeepable contract (load's bare optional); my own mis-binding in insertIntent; and the composition's assumed trust pin",
      "outcome": "LANDED at 18622e4; the tree carries the whole chain, LANE-GREEN (ReadinessT36Tests 15 tests, 0 failing). PENDING PROOF IN THE THREE CATEGORIES THE PROGRAMME REQUIRES: (1) AWAITING INDEPENDENT VERIFICATION -- THE WHOLE FINDING, since VERIFIED_FIXED is zero across the programme and this author may not write it; (2) DEPENDING ON EXTERNAL ARTIFACTS -- the card asks for storage 'reopened in a NEW PROCESS'; these arms reopen the STORE from the same path (which is 'a new process' as far as the medium is concerned, and the isle's own courts annotate that idiom) BUT DO NOT TERMINATE A PROCESS, and a true process-boundary proof and any device measurement are NOT SUPPLIABLE HERE AND WILL NOT BE FABRICATED; also the absent/corrupt gap, named in the seam's own code at round 484; (3) STALE CLOSURE EVIDENCE -- the court's original arm claims a restart while reusing its medium (round 430's sibling exposed it by differing by one argument), carried as such rather than renamed; and THE ANDROID MIRROR IS OWED."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round519-CORRECTION-my-own-async-arm-never-ran-so-round-510s-PASS-was-inferred-not-measured.log",
+     "sha256": "30d4f76ce2e8b25d8a5d680a040fad9c359a7560bb25f7228ce87d8f7e86b63a",
+     "what": "***CRYPTO-005: A CORRECTION, AND THE MOST CONSEQUENTIAL OF THIS FINDING -- MY OWN ASYNC ARM (THE COMPOSITION COURT I CALLED PASSING AT ROUND 510) EXECUTES ZERO TESTS.*** `swift test --filter 'testCRYPTO005_theCompositionPinsTheIntentBeforeTheRadioAndSurvivesAReopen'` -> 'Executed 0 tests, with 0 failures'. THAT ARM IS MINE, WRITTEN AT ROUND 509 AND DECLARED PASSING AT ROUND 510 WHEN THE GATE REPORTED `tests: 15` -- A COUNT TAKEN WITH `--filter 'ReadinessT36Tests'`, WHICH RUNS THAT CLASS'S SYNCHRONOUS ARMS: THE ASYNC ARM WAS NEVER IN THE COUNT. SO ROUND 510'S 'GATE: PASS -- THE COMPOSITION COURT PASSES' WAS AN INFERENCE FROM A COUNT THAT EXCLUDED THE ARM ITSELF, NOT A MEASUREMENT OF IT. And the programme's own law names this exactly: A COUNT IS EVIDENCE ONLY OF WHAT IT COUNTED",
+     "outcome": "no production file modified; tree at HEAD, CLEAN. THE TRUE STATE OF CRYPTO-005'S TWO ARMS: the MEDIUM arm (synchronous) RUNS and its round-489 passing is MEASURED; the COMPOSITION arm (async) HAS NEVER RUN, so THE COMPOSITION CLAUSE IS NOT PROVEN BY MEASUREMENT -- the code is landed and the arm exists and compiles, and its behaviour is UNMEASURED. CRYPTO-005'S SUBMISSION THEREFORE RESTS ON ONE MEASURED ARM, NOT TWO, AND THE LEDGER NOW SAYS SO. AND THE LANE-WIDE IMPLICATION IS LARGER: EVERY ASYNC ARM IN THIS SUITE IS SILENTLY NON-EXECUTING -- and ReadinessT37Tests alone declares eleven (including the durable-inbox and disk-failure arms) -- SO AN UNKNOWN NUMBER OF THE CANONICAL SUITE'S ARMS HAVE NEVER RUN, and every '0 failures' this span reported from a filtered run is a claim about the SYNCHRONOUS SUBSET ONLY. NEXT, IN ORDER: (1) MAKE THE ASYNC ARMS RUN; (2) A LANE THAT COUNTS EVERY ARM IT DECLARES; (3) THEN RE-MEASURE EVERY ARM THIS SPAN REPORTED AS PASSING FROM A FILTERED COUNT."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
@@ -6812,7 +6818,11 @@
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round458b-CORRECTION-the-line-WAS-there-and-I-grepped-the-wrong-words.log"
     }
    ],
-   "submitted_at_round": 510
+   "submitted_at_round": 510,
+   "my_arms_measured": {
+    "medium_arm": "MEASURED PASSING (synchronous: testCRYPTO005_theIntentSurvivesAReopenOfTheDurableStore, round 489)",
+    "composition_arm": "UNMEASURED -- the arm is async and this lane's runner executes ZERO of it (round 519); the round-510 'PASS' was an inference from a filtered count (tests: 15) that NEVER INCLUDED the async arm"
+   }
   },
   "CRYPTO-006": {
    "audit_status_at_snapshot": "OPEN",
@@ -12539,6 +12549,14 @@
    "why_it_was_wrong": "MY INSTRUMENT WAS TOO NARROW: I grepped a narrow pattern IN ONE FILE (MeshRuntime.swift) and then concluded about THE TREE. Round 458's law -- a grep answers only the question its pattern asks -- paid for a fourth time.",
    "consequence": "The item shrinks back: the router exists on the node (which the runtime already holds). What remains is to read where SigningKeysAdapter is constructed. The surface remains true and unwritten: nothing in production names SendDirectAuthority.",
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round493-CORRECTION-OF-MY-CORRECTION-the-substrate-IS-there-and-my-grep-was-too-narrow.log"
+  },
+  {
+   "at_round": 519,
+   "what_was_claimed": "Round 510: 'GATE: PASS -- the composition court PASSES', on a gate reporting 'tests: 15, failing 0'.",
+   "what_is_true": "The composition arm is `async` and this lane's runner executes ZERO of it. The `tests: 15` count came from `--filter 'ReadinessT36Tests'`, which runs that class's SYNCHRONOUS arms; the async arm was never in the count.",
+   "why_it_was_wrong": "I INFERRED a passing arm from a count that did not include it. A COUNT IS EVIDENCE ONLY OF WHAT IT COUNTED -- and my gate, built at round 471 to catch empty runs, verified 'a non-zero count' without verifying THAT THE ARM WAS IN IT.",
+   "consequence": "CRYPTO-005's submission rests on ONE measured arm (the synchronous medium arm, round 489), not two; and EVERY async arm in the canonical suite is silently non-executing, so an unknown number of the suite's arms have never run.",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round519-CORRECTION-my-own-async-arm-never-ran-so-round-510s-PASS-was-inferred-not-measured.log"
   }
  ]
 }
