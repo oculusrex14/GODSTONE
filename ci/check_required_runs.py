@@ -22,9 +22,21 @@ WHAT IT ENFORCES, AND WHAT IT DELIBERATELY DOES NOT.
        record. A finding stripped of both is an empty claim.
     3. THE STATUS IS ONE I MAY SET. `VERIFIED_FIXED` belongs to an independent audit alone; if this
        ledger ever carrieth it, that is a finding against this work.
-    4. THE DERIVED COUNT AGREES. `counts.by_status_derived_at_round_530` must equal the population
-       actually derived from each finding's own `my_status` field -- so a summary cannot drift from
-       the entries it summariseth.
+    4. THE DERIVED COUNT AGREES. The summary NAMED BY `counts.by_status_derived_at_round` must
+       equal the population actually derived from each finding's own `my_status` field -- so a
+       summary cannot drift from the entries it summariseth.
+
+       *** THE SUMMARY IS FOUND BY ITS POINTER, NOT BY A HARD-CODED ROUND (round 608). ***
+       THIS CLAUSE PREVIOUSLY READ `counts.by_status_derived_at_round_530` **LITERALLY**, AND A
+       HARD-CODED ROUND IS A HISTORICAL RECORD, NOT A SUMMARY: once any status moved past round 530
+       the two could ONLY disagree, so the invariant silently stopped tracking and REDDENED on a
+       record that was perfectly honest about being old. **MEASURED THIS ROUND: the round-530 block
+       read 48/6 while the entries derived 49/5 -- and the block was not wrong, it was STALE.** A
+       round-530 record must not be asked to describe a round-608 population. The ledger carrieth
+       `by_status_derived_at_round` = 530 (the pointer) and the block named for it, so the check now
+       followeth the pointer and comparerh the CURRENT derived summary against the entries. **THIS IS
+       THE SAME DEFECT CLASS THE LEDGER FILEth AS `GS-FINAL-012` -- narrative serving as current state
+       after the state had moved -- AND IT WAS SITTING INSIDE THE INSTRUMENT THAT HUNTETH IT.**
 
   RECORDED, NOT ENFORCED, AND THE DISTINCTION IS THE POINT:
     * A RED SAVED AS PROSE RATHER THAN A LOG PATH. Twenty-two findings describe their red in the
@@ -128,16 +140,33 @@ def audit(ledger_path: Path) -> dict:
     # disagreement -- the declared block recordeth the zero that `OPEN 0` earned -- so a status is
     # compared where it carrieth a count, and a status the entries do not carry is only a disagreement
     # when the declared count is NONZERO.
-    declared = counts.get("by_status_derived_at_round_530") or {}
+    # THE SUMMARY IS FOUND BY ITS POINTER. `by_status_derived_at_round` nameth the round the current
+    # summary was derived at, and the block for that round is the one to compare. A block from an
+    # OLDER round is a historical record and is NOT compared -- asking a round-530 record to describe
+    # a round-608 population is a disagreement that can never be resolved, which is how this clause
+    # came to redden on an honest ledger. (The pointer is required: without it, "the current summary"
+    # is ambiguous among the many historical blocks the ledger carrieth, and guessing the newest key
+    # by suffix would be the same hard-coding one layer up.)
+    current_round = counts.get("by_status_derived_at_round")
+    summary_key = "by_status_derived_at_round_%s" % current_round if current_round is not None else None
+    if summary_key is None:
+        errors.append("counts.by_status_derived_at_round is absent, so THIS CONTROL cannot tell the "
+                      "current summary from the ledger's historical ones -- and a control that cannot "
+                      "identify its subject cannot judge it")
+    declared = counts.get(summary_key) or {}
+    if summary_key is not None and not declared:
+        errors.append("counts.by_status_derived_at_round nameth round %r but %s is absent or empty -- "
+                      "the pointer and its block must agree, or the summary is unreachable" %
+                      (current_round, summary_key))
     if declared:
         disagreement = {k: (declared.get(k, 0), derived.get(k, 0))
                         for k in set(declared) | set(derived)
                         if declared.get(k, 0) != derived.get(k, 0) and (declared.get(k, 0) or derived.get(k, 0))}
         if disagreement:
-            errors.append("counts.by_status_derived_at_round_530 readeth %s while the entries "
+            errors.append("%s readeth %s while the entries "
                           "themselves derive %s -- a summary that disagreeth with what it summariseth "
                           "on: %s"
-                          % (json.dumps(declared, sort_keys=True), json.dumps(derived, sort_keys=True),
+                          % (summary_key, json.dumps(declared, sort_keys=True), json.dumps(derived, sort_keys=True),
                              json.dumps({k: {"declared": d, "derived": v} for k, (d, v) in disagreement.items()},
                                         sort_keys=True)))
 

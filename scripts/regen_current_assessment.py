@@ -22,6 +22,20 @@ ca['candidate_sha'] = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT,
                                      capture_output=True, text=True).stdout.strip()
 ca['derived_status_counts']['original_54'] = dict(Counter(v.get('my_status') for v in findings.values()))
 ca['derived_status_counts']['audit_13_new'] = dict(Counter(v.get('my_status') for v in new.values()))
+# *** ROUND 608: THE DERIVED SUMMARY THAT NOBODY DERIVED. ***
+#
+# `ci/check_required_runs.py` requireth that the summary named by `counts.by_status_derived_at_round` equalleth the
+# population derived from the entries -- AND THIS SCRIPT DID NOT WRITE IT, so the block was hand-maintained and DRIFTED
+# (measured: it read 48/6 at round 530 while the entries derived 49/5, and the control REDDENED on it). **A SUMMARY THAT
+# IS TYPED BY HAND IS A SUMMARY THAT WILL LIE**, which is the same lesson this file's own docstring recordeth from the
+# first time the current-assessment control caught its author. The block is DERIVED HERE, at the round the pointer
+# names, so no status change can move the entries without moving the summary.
+_counts = d['counts']
+_round = _counts.get('by_status_derived_at_round')
+if _round is not None:
+    _counts['by_status_derived_at_round_%s' % _round] = dict(
+        Counter(v.get('my_status') for v in findings.values()))
+
 ca['independent_audit_dispositions_at_e07e6ca'] = dict(
     Counter(r['status'] for r in closure if r.get('record_type') == 'original_finding'))
 

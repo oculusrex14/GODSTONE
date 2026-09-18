@@ -4394,7 +4394,7 @@
    "OPEN": 54
   },
   "STATUS_CORRECTION_AT_ROUND_340": "THE MACHINE-READABLE COUNT HAD SAID `by_status: {OPEN: 54}` SINCE THE SNAPSHOT AND WAS NEVER UPDATED AS THE WORK LANDED -- WHILE 49 FINDINGS CARRIED THEIR OWN LOGS AND COMMITS AND 5 CARRIED NONE. A READER CONSULTING THAT FIELD WOULD HAVE SEEN 'NOTHING DONE'. THE COUNT IS NOW DERIVED FROM THE FINDINGS THEMSELVES (a finding counteth as FIX_SUBMITTED iff it carrieth at least one immutable log or a fix commit; NOTHING IS COUNTED AS VERIFIED_FIXED, because ONLY AN INDEPENDENT AUDIT MAY WRITE THAT), THE ORIGINAL VALUE IS KEPT ABOVE AS `by_status_at_snapshot`, AND THE CORRECTION IS RECORDED RATHER THAN SILENT -- WHICH IS THE SAME DISCIPLINE THIS LEDGER HATH APPLIED TO FIVE EARLIER INSTRUMENTS OF ITS OWN. THE FIVE FINDINGS WITH NO WORK ARE NAMED: CRYPTO-002, CRYPTO-005, GS-INBOX-001, GS-INTEGRATION-001, GS-STORE-006.",
-  "by_status_derived_at_round": 530,
+  "by_status_derived_at_round": 608,
   "by_status_all_kinds": {
    "FIX_SUBMITTED": 46,
    "OPEN": 0,
@@ -4461,6 +4461,10 @@
    "FIX_SUBMITTED": 48,
    "OPEN": 0,
    "PARTIAL": 6
+  },
+  "by_status_derived_at_round_608": {
+   "FIX_SUBMITTED": 49,
+   "PARTIAL": 5
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -13553,6 +13557,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-5/round603-android-lineage-instrument-defect.log",
    "sha256": "e6efef7b452a4569cab14bef8576986faad54620418913d47a43959540bf81ac",
    "correction": "EVERY ANDROID MUTATION ROD RETURNED INVALID :: \"the baseline itself did not pass unmutated\", WHICH READS LIKE A BROAD CODE PROBLEM ON THAT ISLE AND IS NOT ONE. THE LOG SAID IT PLAINLY: \"A problem occurred configuring project :llm. > SDK location not found. Define a valid SDK location with an ANDROID_HOME environment variable.\" THE HARNESS RAN ITS GRADLE SUBPROCESS WITH NO env=, SO THE DISPOSABLE WORKTREE INHERITED NOTHING AND COULD NOT CONFIGURE -- THE MUTANT NEVER BUILT, SO NO ANDROID ROD COULD EVER BE KILLED, WHILE THE HARNESS REPORTED A VERDICT ABOUT THE CODE. FIXED: the subprocess now carries JAVA_HOME/ANDROID_HOME (defaulted, so an operator values win). BOTH SIDES PROVEN DIRECTLY WITH AN EMPTY ENVIRONMENT: without them \"BUILD FAILED in 6s\"; with them the same command succeeds. OWED: THE ANDROID LINEAGE HAS STILL NOT BEEN OBSERVED TO KILL A ROD -- the ~50-minute run that would produce ANDROID KILLS has not been read, and the corrected T39 rod is in the same queue."
+  },
+  {
+   "round": 608,
+   "finding": "GS-FINAL-012",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-012/round608-the-control-that-hunted-this-defect-carried-it.log",
+   "sha256": "cd3f752204b0f72f8f9d095f350866bb9d34d291b34a4825a6a72089c47bb78b",
+   "correction": "THE INSTRUMENT THAT HUNTETH STALE NARRATIVE WAS CARRYING ONE. `ci/check_required_runs.py` clause 4 read `counts.by_status_derived_at_round_530` LITERALLY -- a HARD-CODED ROUND, which is a HISTORICAL RECORD and not a summary. Once any status moved past round 530 the two could ONLY disagree, so the invariant SILENTLY STOPPED TRACKING THE ENTRIES and reddened on an honest ledger (measured: the block read 48/6 while the entries derived 49/5 -- the block was not wrong, it was STALE). **IT IS THE DEFECT THIS PROGRAMME FILED AS GS-FINAL-012, SITTING INSIDE THE INSTRUMENT THAT HUNTETH IT.** REPAIRED IN TWO PARTS, because either alone would have been a patch: (1) the control FOLLOWETH A POINTER (`counts.by_status_derived_at_round`), with new refusals for an ABSENT pointer and a pointer naming an ABSENT block -- without them the repaired control could compare nothing and PASS OVER AN ABSENT SUMMARY; (2) `scripts/regen_current_assessment.py` now DERIVETH the block its pointer nameth, so the summary is no longer typed by hand. BOTH DIRECTIONS PROVEN: drift reddens the control, and regen self-healeth it (PARTIAL injected as 99 -> rewritten to 5). The court's own R05 arm also followed the hard-coded key and now readeth the pointer, with R08/R09 pinning the refusals -- **9 passed**. ONE POINTER MOVED (530 -> 608) AND ONE BLOCK ADDED; the round-530 block is PRESERVED AS HISTORY; no status and no production line changed."
   }
  ],
  "phase_one": {
@@ -14315,7 +14326,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "c69b53766cf5d3d3d2d51e867c7609566c5f0df1",
+  "candidate_sha": "fc3f00a3aabd3c323a0e2e110cde5b705c59e6d8",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
