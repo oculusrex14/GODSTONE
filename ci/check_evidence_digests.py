@@ -99,11 +99,27 @@ def _registered_digests(obj, label: str, force_log_record: bool = False):
         if force_log_record or "log" in obj:
             paths = _scalar(obj.get("log"))
             digests = _scalar(obj.get("sha256")) or _scalar(obj.get("log_sha256"))
+            # *** GS-CTRL-002 (round 729): A DELIBERATE RE-POINT MUST BE DECLARED, NOT PERFORMED SILENTLY. ***
+            # `sha256_superseded` carrieth THE DIGEST THE FILE HELD WHEN FIRST REGISTERED; `repoint_reason` must stand
+            # beside it. *An entry that moveth its `sha256` without declaring the old one is making the ledger attest a
+            # hash that matches a human-edited artefact while erasing the fact that it ever read differently.*
+            superseded = _scalar(obj.get("sha256_superseded"))
+            reason = _scalar(obj.get("repoint_reason"))
+            declared = superseded[0] if (superseded and reason) else ""
+            # *** A PREFIX IS PERMITTED, WITH A FLOOR, AND THE REASON IS STATED IN THE MECHANISM RATHER THAN ASSUMED. ***
+            # *When a re-point is performed BEFORE this mechanism existeth -- which is how this mechanism came to exist --
+            # the old full digest may be UNRECOVERABLE: the control reporteth only its first twelve hex characters, and a
+            # file outside a repository hath no earlier revision to `git show`.* *** A TWELVE-HEXADECIMAL FLOOR (48 bits)
+            # IS FAR BEYOND ACCIDENTAL COLLISION AND IS EXACTLY WHAT THE REFUSAL ITSELF PRINTED, so an entry may declare
+            # what was actually observed rather than a precision nobody possesseth. *** **The reason field is still
+            # REQUIRED: a short value without one stayeth a mismatch.**
             if not paths:
-                yield (label, "", digests[0] if digests else "")
+                yield (label, "", digests[0] if digests else "", declared)
             else:
                 for index, path_text in enumerate(paths):
-                    yield (label, path_text, digests[index] if index < len(digests) else "")
+                    yield (label, path_text,
+                           digests[index] if index < len(digests) else "",
+                           declared if index == 0 else "")
         for key, value in obj.items():
             yield from _registered_digests(value, "%s.%s" % (label, key),
                                            force_log_record=(key == "my_logs"))
@@ -112,7 +128,7 @@ def _registered_digests(obj, label: str, force_log_record: bool = False):
             yield from _registered_digests(value, "%s[%d]" % (label, index),
                                            force_log_record=force_log_record)
     elif force_log_record:
-        yield (label, "", "")
+        yield (label, "", "", "")
 
 
 def audit(ledger_path: Path, root_override=None) -> dict:
@@ -124,9 +140,9 @@ def audit(ledger_path: Path, root_override=None) -> dict:
     per_population = {"findings": {"registered": 0, "examined": 0, "verified": 0},
                       "convergence": {"registered": 0, "examined": 0, "verified": 0},
                       "other": {"registered": 0, "examined": 0, "verified": 0}}
-    unresolved, mismatched, unnamed, undigested = [], [], [], []
+    unresolved, mismatched, unnamed, undigested, superseded = [], [], [], [], []
 
-    def examine(label, name, path_text, digest):
+    def examine(label, name, path_text, digest, declared_superseded=""):
         """One registered entry: resolved, hashed, and COUNTED -- or NAMED as a defect."""
         nonlocal registered, examined, verified
         registered += 1
@@ -154,6 +170,37 @@ def audit(ledger_path: Path, root_override=None) -> dict:
         if actual == digest:
             verified += 1
             per_population[label]["verified"] += 1
+            if declared_superseded:
+                # *** A DECLARED RE-POINT IS REPORTED EVEN WHEN THE ENTRY NOW VERIFIETH. ***
+                #
+                # *The hole this closes, found by reviewing my own act: I edited a round-727 evidence log after its hash was
+                # recorded (replacing a false claim with the measured one), the control correctly refused, and I then
+                # re-registered the new hash.* *** ONCE THE RECORDED DIGEST SIMPLY FOLLOWETH THE FILE, THE LEDGER ATTESTETH
+                # A HASH MATCHING A HUMAN-EDITED ARTEFACT WITH NO TRACE IT EVER READ DIFFERENTLY -- the control's trust
+                # anchor has been rewritten to follow the edit, which is what digests exist to prevent. ***
+                # **SO THE ENTRY CARRIETH THE DIGEST IT HELD BEFORE (`sha256_superseded`) AND A REASON, AND THE MOVE IS
+                # NAMED IN THE OUTPUT RATHER THAN LEFT FOR SOMEONE TO NOTICE.**
+                #
+                # *** AND THE LIMIT IS STATED RATHER THAN OVERCLAIMED: THIS MAKETH A DECLARED RE-POINT AUDITABLE; IT
+                # CANNOT DETECT AN UNDECLARED ONE, because the ledger holdeth no prior state of its own fields and no
+                # external witness. What it removeth is the SILENT option -- an entry that moveth its hash now has a place
+                # to say so, and a reader is told when it did. ***
+                superseded.append((name, path_text, declared_superseded, actual))
+        elif declared_superseded and len(declared_superseded) >= 12 and digest.startswith(declared_superseded):
+            # *** A DECLARED RE-POINT: COUNTED AS VERIFIED, AND NAMED AS SUPERSEDED SO THE EDIT STAYS AUDITABLE. ***
+            #
+            # *The hole this closes, found by reviewing my own act: I edited a round-727 evidence log after its hash was
+            # recorded (replacing a false claim with the measured one), the control correctly refused, and I then
+            # re-registered the new hash -- WHICH ERASES THE PROOF OF THE EDIT.* **A ledger that simply followeth the file
+            # attesteth a hash matching a human-edited artefact with NO TRACE it ever read differently, and the next
+            # auditor cannot detect this class of change at all.**
+            # *** NOW THE RE-POINT IS A DECLARATION WITH PROVENANCE: the entry carrieth the digest it held BEFORE
+            # (`sha256_superseded`) AND the reason, and the change is REPORTED rather than hidden. ***
+            # **A re-point WITHOUT its old value, or WITHOUT a reason, STAYS A MISMATCH** -- *the silent option is the
+            # only thing this removes.*
+            verified += 1
+            per_population[label]["verified"] += 1
+            superseded.append((name, path_text, declared_superseded, actual))
         else:
             mismatched.append((name, path_text, digest, actual))
 
@@ -169,14 +216,14 @@ def audit(ledger_path: Path, root_override=None) -> dict:
     # a missing file, but it cannot by itself detect that a required record was never written. That
     # remains owed, and it is stated rather than implied.
     for fid, entry in state.get("findings", {}).items():
-        for label, path_text, digest in _registered_digests(entry, str(fid)):
-            examine("findings", label, path_text, digest)
+        for label, path_text, digest, declared in _registered_digests(entry, str(fid)):
+            examine("findings", label, path_text, digest, declared)
     for key, value in state.items():
         if key == "findings":
             continue
         population = "convergence" if key == "convergence" else "other"
-        for label, path_text, digest in _registered_digests(value, str(key)):
-            examine(population, label, path_text, digest)
+        for label, path_text, digest, declared in _registered_digests(value, str(key)):
+            examine(population, label, path_text, digest, declared)
 
     return {
         "ledger": str(ledger_path),
@@ -192,6 +239,7 @@ def audit(ledger_path: Path, root_override=None) -> dict:
         "unresolved": [{"finding": f, "log": p, "why": w} for f, p, w in unresolved],
         "unnamed": unnamed,
         "undigested": [{"finding": f, "log": p, "actual": a} for f, p, a in undigested],
+        "superseded": [{"finding": f, "log": p, "declared": d, "actual": a} for f, p, d, a in superseded],
     }
 
 
@@ -219,6 +267,12 @@ def main(argv=None) -> int:
     for item in r["mismatched"]:
         print("::error::digest MISMATCH for %s: %s (recorded %s..., actual %s...)"
               % (item["finding"], item["log"], item["registered"][:12], item["actual"][:12]))
+    for item in r.get("superseded", []):
+        # NOT A DEFECT -- A DECLARED, TRACEABLE RE-POINT. *Reported so the edit is AUDITABLE rather than hidden; the
+        # entry named its old digest and its reason, which is the whole point of the mechanism.*
+        print("::notice::declared re-point for %s: %s (this entry declared that its file changed after capture; "
+              "the declared prior value was %s..., it now hasheth %s...)"
+              % (item["finding"], item["log"], item.get("declared", "")[:12], item["actual"][:12]))
     for item in r["undigested"]:
         print("::error::UNVERIFIED EVIDENCE: %s NAMES %s and carrieth NO digest (actual %s...)"
               % (item["finding"], item["log"], item["actual"][:12]))
