@@ -91,6 +91,34 @@ interface MonotonicClockAdapter {
  */
 object RetentionClock {
     const val MS_PER_HOUR: Long = 3_600_000L
+
+    /**
+     * *** GS-FINAL-005 (round 705): THE DEFAULT RUNTIME CLOCK -- ANDROID'S TWIN OF iOS `DefaultRetentionClock`. ***
+     *
+     * **THE AUDIT SAID "Android parity incomplete", AND IT WAS RIGHT: this isle's `receiptTimeProvider` was a NULLABLE
+     * `var` with NO PRODUCTION INSTALLER** (*measured: every assignment site lives in `SqliteMessageStoreTest`*), so
+     * the permissive `nil` branches were not a fallback -- **THEY WERE THE ONLY PATH PRODUCTION EVER TOOK.**
+     * *`isForwardable` returned `true` for every row, and `sweepExpired` returned 0 without sweeping: retention did not
+     * enforce, and forwarding was never refused.*
+     *
+     * **THE FIX IS THE TYPE, NOT A GUARD**: iOS made the property non-optional with this very default, under the
+     * comment *"THIS TYPE CANNOT EXPRESS THE DEFECT"* -- *a construction error would leave the property optional and
+     * let the next caller write `nil`*. **This is that same default, so the two isles now carry ONE law.**
+     *
+     * **THE BOOT IDENTITY IS DERIVED, NOT INVENTED, AND THE WALL CLOCK IS USED ONLY TO NAME THE BOOT** -- the exact
+     * discipline iOS already useth: *monotonic uptime carrieth the duration, and wall-minus-mono carrieth the boot's
+     * name*, so a user-set clock or an NTP step can change the NAME but can never lengthen a lifetime. **`System.nanoTime()`
+     * cannot be set** (*ANDROID-04 already establisheth this for the handshake bounds*), and the wall component is
+     * rounded to the second so ordinary drift does not rename the boot on every call.
+     */
+    fun defaultSample(): Pair<Long, String> {
+        val monoMs = System.nanoTime() / 1_000_000L
+        val wallMs = System.currentTimeMillis()
+        // Round the derived base to the SECOND: monotonic and wall clocks drift apart by milliseconds, and a boot
+        // whose NAME changed on every sample would read as a reboot on every read.
+        val bootBase = (wallMs - monoMs) / 1_000L
+        return monoMs to "boot-" + java.lang.Long.toHexString(bootBase)
+    }
     const val DISCONTINUITY_LIMIT: Int = 32
     const val CHECKPOINT_CADENCE_MS: Long = 60_000L
 

@@ -136,6 +136,73 @@ final class ReadinessT43Tests: XCTestCase {
         return frame.msgId
     }
 
+    // ------------------------------------ GS-FINAL-003 (round 701): THE DIRECTED AUTHORING ROAD
+
+    /// The gate as this isle's composition builds it: a real class conforming to the protocol, never a lambda.
+    private final class FixedWipeGate: WipeSensitiveUseGate, @unchecked Sendable {
+        private let permits: Bool
+        init(permits: Bool) { self.permits = permits }
+        func allowsSensitiveUse() -> Bool { permits }
+    }
+
+    /// The SAME rig with a REAL gate over the passed store and tracker -- *so this arm differeth from its control by the
+    /// gate alone.*
+    private func gatedRig(permits: Bool, store: InMemoryMessageStore,
+                          tracker: DeliveryTracker, tag: UInt8) throws -> MeshNode {
+        let identity = try newLocal(tag, tag &+ 9)
+        let node = MeshNode(identity: identity.id, store: store, deliveryTracker: tracker,
+                            sessions: SessionManager(identity: identity.id,
+                                                     trustAuthority: FailClosedTrust()),
+                            wipeGate: FixedWipeGate(permits: permits))
+        node.sosAuthority = SosTestAuthority()
+        return node
+    }
+
+    /// *** GS-FINAL-003 (round 701) -- `dispatchDirect` IS GATED, BECAUSE IT IS `dispatchSos`'s OWN TWIN. ***
+    ///
+    /// **SAME CLASS OF ROAD, SAME DURABLE WRITE:** *`store.enqueueDirectOutbound` inserts the frame AND the
+    /// `QUEUED_DURABLY` row in one transaction.* **A PENDING WIPE MUST NOT BE HANDED NEW DURABLE WORK ON EITHER ROAD**,
+    /// and gating one twin while leaving the other open is exactly the two-of-three asymmetry the command door had.
+    ///
+    /// **THIS ARM EXISTS BECAUSE I ENUMERATED THE TWINS RATHER THAN TRUSTING THE ONE REPAIR:** this very file already
+    /// carried a *directed* authoring helper (`authorAndOffer`) that would have gone on passing while the directed twin
+    /// stayed open.
+    ///
+    /// **A BEHAVIOURAL RED:** pre-fix the refusing node enqueued the directed message anyway.
+    func testGF003APendingWipeRefusethTheDirectedAuthoringRoad() throws {
+        let store = InMemoryMessageStore()
+        let keys = KeyTable()
+        let auth = CountingAuthenticator(Ed25519AckAuthenticator(resolver: keys))
+        let tracker = DeliveryTracker(repo: InMemoryDeliveryRepositoryForT43(store), authenticator: auth)
+        let recipient = try newLocal(0x71, 0x72)
+        keys.put(recipient.id.nodeId, recipient.id.signingPublicKey)
+
+        // THE POSITIVE CONTROL FIRST: the PERMITTING rig really enqueues, so the refusal below is not vacuous.
+        let permitting = try gatedRig(permits: true, store: store, tracker: tracker, tag: 0x31)
+        bringPeerUp(permitting, UUID())
+        let allowed = permitting.dispatchDirect(directedFrame(11), expectedRecipient: recipient.id.nodeId) { _, _ in true }
+        guard case .handedToRelays = allowed else {
+            return XCTFail("*** THE PERMITTING RIG MUST REALLY DISPATCH, or the refusal below measures nothing. " +
+                "Observed: \(allowed) ***")
+        }
+
+        // THE SAME STORE AND TRACKER, NOW GATED CLOSED.
+        let heldBefore = store.allHeldMsgIds().count
+        let refusing = try gatedRig(permits: false, store: store, tracker: tracker, tag: 0x41)
+        bringPeerUp(refusing, UUID())
+        var sends = 0
+        let dark = refusing.dispatchDirect(directedFrame(12), expectedRecipient: recipient.id.nodeId) { _, _ in
+            sends += 1; return true
+        }
+        guard case .rejected = dark else {
+            return XCTFail("*** A PENDING WIPE MUST REFUSE THE DIRECTED AUTHORING ROAD. Observed: \(dark) ***")
+        }
+        XCTAssertEqual(store.allHeldMsgIds().count, heldBefore,
+                       "*** AND NOTHING MAY BE ADDED TO THE STORE: a wipe that still accepts new frames is not a " +
+                       "wipe. ***")
+        XCTAssertEqual(sends, 0, "nor may any bytes be offered")
+    }
+
     // ------------------------------------------------------------ W01
 
     /// W01 -- the card's named mutation: an ATT success advances NOTHING durable.

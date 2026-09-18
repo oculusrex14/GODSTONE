@@ -1263,6 +1263,47 @@ class SqliteMessageStoreTest {
         )
     }
 
+    /**
+     * *** GS-FINAL-005 (round 705) -- THE ANDROID TWIN OF THE iOS `GsFinal005MandatoryClockTests` ARMS, AND THE RED
+     * FOR THIS ISLE. ***
+     *
+     * **THE AUDIT'S OWN SENTENCE: "Android parity incomplete ... Missing production clock must be a construction
+     * error."** *Measured: this isle's `receiptTimeProvider` was a NULLABLE `var` WITH NO PRODUCTION INSTALLER -- every
+     * assignment site lived in this very test file -- so the permissive branches were not a fallback. THEY WERE THE
+     * ONLY PATH PRODUCTION EVER TOOK: `isForwardable` returned `true` for every row and `sweepExpired` returned 0
+     * without sweeping.* **RETENTION WAS INERT ON THIS ISLE AND AN UNBOUNDED STORE LOOKED EXACTLY LIKE A HEALTHY ONE.**
+     *
+     * **THE ARM ASSERTETH BEHAVIOUR, NOT A PROPERTY'S NULLNESS.** *The iOS twin asserts `XCTAssertNotNil` on the
+     * clock, which its own reviewer noted became RUNTIME-VACUOUS once the property went non-optional -- green on both
+     * revisions, therefore proving nothing about the defect.* **This arm instead drives the PRODUCTION SHAPE ("open the
+     * store and never install a clock") and MEASURES THE CONSEQUENCE: a spent row must be retired by the sweep that
+     * runs, rather than the sweep returning 0 because no clock was ever installed.**
+     *
+     * *The clock is NOT assigned here, deliberately -- that is the whole point of the arm.*
+     */
+    @Test
+    fun gsfinal005AStoreOpenedTheProductionWayStillEnforcesRetention() = runBlocking {
+        open(8L * 1024 * 1024)   // THE PRODUCTION SHAPE: no `receiptTimeProvider = ...` follows
+        val f = frame(21, Priority.DIRECT, payloadSize = 48)
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        store.engine.execRawSql("UPDATE ${StoreSchema.TABLE} SET ${StoreSchema.COL_REMAINING_MS} = 0")
+        assertNotNull(store.retentionCheckpointForTest(msgId(21)), "the row stands before the sweep")
+
+        // *** THE DISCRIMINATING ASSERTION. *** Pre-fix this returned 0 -- *not because nothing was spent, but because
+        // NO CLOCK WAS INSTALLED*, which is the silence the audit called out. A store that answers "nothing to do"
+        // for every row is indistinguishable from a healthy one, and that is exactly what made the defect invisible.
+        assertEquals(
+            1, store.sweepExpired(limit = 8),
+            "*** GS-FINAL-005: A STORE OPENED WITH NO CLOCK INSTALLED MUST STILL ENFORCE RETENTION. Pre-fix the sweep " +
+                "returned 0 HERE -- silently declining to sweep -- so a spent row survived in storage forever. The " +
+                "audit: 'policy cannot silently become permissive because injection was omitted.' ***",
+        )
+        assertNull(
+            store.retentionCheckpointForTest(msgId(21)),
+            "the spent row must be GONE FROM STORAGE -- a hidden row is not a retired one",
+        )
+    }
+
     /** GS-STORE-004 (round 326), the finding's own words: "Expiration must ATOMICALLY retire held rows ...". THE
      *  DISCRIMINATING LAW, MIRRORED FROM iOS ROUND 311: a spent row must be GONE FROM STORAGE, not merely hidden
      *  from readers -- and the sweep must SAY how many it retired. RUN RED BEFORE THE REPAIR. */

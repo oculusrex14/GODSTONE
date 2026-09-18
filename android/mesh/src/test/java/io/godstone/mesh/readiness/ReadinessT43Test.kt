@@ -454,6 +454,80 @@ class ReadinessT43Test {
             AckMode.NONE, (r.tracker.lookup(mid) as DeliveryLookup.Found).record.ackMode)
     }
 
+    // ------------------------------------ GS-FINAL-003 (round 701): THE DIRECTED AUTHORING ROAD
+
+    /**
+     * *** GS-FINAL-003 (round 701) -- `dispatchDirect` IS GATED, BECAUSE IT IS `dispatchSos`'s OWN TWIN. ***
+     *
+     * **SAME CLASS OF ROAD, SAME DURABLE WRITE:** *`store.enqueueDirectOutbound` inserts the frame AND the
+     * `QUEUED_DURABLY` row in one transaction.* **A PENDING WIPE MUST NOT BE HANDED NEW DURABLE WORK ON EITHER ROAD**,
+     * and gating one twin while leaving the other open is exactly the two-of-three asymmetry the command door had.
+     *
+     * **THIS ARM EXISTS BECAUSE I ENUMERATED THE TWINS RATHER THAN TRUSTING THE ONE REPAIR:** the earlier round fixed
+     * `dispatchSos` and this file already had a *directed* authoring helper (`authorAndOffer`) that would have gone on
+     * passing while the directed twin stayed open.
+     *
+     * **A BEHAVIOURAL RED:** pre-fix the refusing node enqueued the directed message anyway and reported a durable
+     * success. **AND THE POSITIVE CONTROL IS INSIDE THE ARM** (the permitting rig really dispatches first), *so it
+     * cannot pass by refusing everything.*
+     */
+    @Test
+    fun test_gf003_the_directed_authoring_road_is_gated_on_a_pending_wipe() = runTest {
+        val store = InMemoryMessageStore()
+        val keys = KeyTable()
+        val auth = CountingAuthenticator(Ed25519AckAuthenticator(keys))
+        val tracker = DeliveryTracker(InMemoryDeliveryRepositoryForT43(store), auth)
+        val recipient = newLocal()
+        keys.put(recipient.id, recipient.pub)
+
+        // THE POSITIVE CONTROL FIRST: the PERMITTING rig really enqueues, so the refusal below is not vacuous.
+        val permitting = gatedDirectNode(permits = true, store = store, tracker = tracker)
+        permitting.injectPeerForTest(ByteArray(16) { 0x40 })
+        val allowed = permitting.dispatchDirect(directedFrame(11), expectedRecipient = recipient.id) { _, _ -> true }
+        Assert.assertTrue("*** THE PERMITTING RIG MUST REALLY DISPATCH, or the refusal below measures nothing. " +
+            "Observed: " + allowed + " ***",
+            allowed is io.godstone.mesh.DirectDispatchResult.HandedToRelays ||
+                allowed is io.godstone.mesh.DirectDispatchResult.QueuedLocally)
+
+        // THE SAME STORE AND TRACKER, NOW GATED CLOSED: the directed message must not be enqueued.
+        val heldBefore = store.allHeldMsgIds().size
+        val refusing = gatedDirectNode(permits = false, store = store, tracker = tracker)
+        refusing.injectPeerForTest(ByteArray(16) { 0x41 })
+        var sends = 0
+        val dark = refusing.dispatchDirect(directedFrame(12), expectedRecipient = recipient.id) { _, _ -> sends++; true }
+        Assert.assertTrue("*** A PENDING WIPE MUST REFUSE THE DIRECTED AUTHORING ROAD. Observed: " + dark + " ***",
+            dark is io.godstone.mesh.DirectDispatchResult.Rejected)
+        Assert.assertEquals("*** AND NOTHING MAY BE ADDED TO THE STORE: a wipe that still accepts new frames is " +
+            "not a wipe. ***", heldBefore, store.allHeldMsgIds().size)
+        Assert.assertEquals("nor may any bytes be offered", 0, sends)
+    }
+
+    /** A node with a REAL gate over the passed store and tracker, differing from its control BY THE GATE ALONE. */
+    private fun gatedDirectNode(permits: Boolean, store: InMemoryMessageStore,
+                                tracker: DeliveryTracker): MeshNode {
+        // ONE generate PER key pair: `fromKeyMaterial` REJECTS a pub that does not match its priv (my first draft
+        // generated them independently and it threw -- *the builder guarding me, not the gate*).
+        val ed = Ed25519Keys.generate(rng)
+        val dh = X25519Keys.generate(rng)
+        val identity = Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv)
+        val node = MeshNode(
+            ctx = null,
+            identity = identity,
+            store = store,
+            deliveryTracker = tracker,
+            wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { permits },
+            sessions = io.godstone.mesh.crypto.SessionManager(
+                identity = identity,
+                trustAuthority = object : io.godstone.mesh.crypto.PeerBindingTrustAuthority {
+                    override fun applyValidatedBinding(binding: io.godstone.mesh.identity.ValidatedPeerBinding) =
+                        io.godstone.mesh.identity.PeerTrustApplyResult.StorageFailure()
+                },
+            ),
+        )
+        node.sosAuthority = SosTestAuthority()
+        return node
+    }
+
     // ------------------------------------------------------------ GS-FINAL-003 (round 699): THE DELIVERY READ ROAD
 
     /**

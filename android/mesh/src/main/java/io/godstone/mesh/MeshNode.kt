@@ -1120,6 +1120,19 @@ class MeshNode(
         expectedRecipient: ByteArray,
         send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
     ): DirectDispatchResult {
+        // *** GS-FINAL-003 (round 701): THE DIRECTED AUTHORING ROAD IS GATED -- `dispatchSos`'s OWN TWIN. ***
+        //
+        // **`dispatchDirect` IS THE DIRECTED TWIN OF `dispatchSos`: same class of road, same durable write**
+        // (*`store.enqueueDirectOutbound` inserts the frame AND the `QUEUED_DURABLY` delivery row in one transaction*).
+        // **A PENDING WIPE MUST NOT BE HANDED NEW DURABLE WORK ON EITHER ROAD**, and gating one twin while leaving the
+        // other open is the same two-of-three asymmetry the command door had. *Found by the same enumeration.*
+        //
+        // **THE REFUSAL USETH THE TYPE'S OWN VOCABULARY: `Rejected(OutboundEnqueueResult.StorageFailure)`**, *which is
+        // honestly what a pending wipe is from this road's point of view: the store is not available for use, and
+        // nothing was added.* No invented error, and no plausible-looking success.
+        if (!wipeGate.allowsSensitiveUse()) {
+            return DirectDispatchResult.Rejected(OutboundEnqueueResult.StorageFailure)
+        }
         val enqueueRes = store.enqueueDirectOutbound(frame, expectedRecipient, identity.nodeId)
         val canonicalFrame = when (enqueueRes) {
             is OutboundEnqueueResult.Created -> enqueueRes.canonicalFrame

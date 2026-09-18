@@ -1280,10 +1280,26 @@ class SqliteMessageStore internal constructor(
     /** Internal test constructor without a fault seam (kept for existing callers). */
     internal constructor(engine: StoreDb, maxBytes: Long) : this(engine, maxBytes, null)
 
-    /** GS-STORE-004 (round 320), MIRRORED FROM iOS: the RUNTIME clock, injected -- the monotonic reading AND the
-     *  continuity identifier of the boot it was taken in. NULL means "no runtime clock": the historical behaviour,
-     *  and the four checkpoint columns then stay NULL rather than carrying a fabricated budget. */
-    internal var receiptTimeProvider: (() -> Pair<Long, String>)? = null
+    /**
+     * *** GS-FINAL-005 (round 705): THE RUNTIME CLOCK IS MANDATORY -- THIS TYPE CAN NO LONGER EXPRESS THE DEFECT. ***
+     *
+     * **THE AUDIT SAID "Android parity incomplete" AND IT WAS RIGHT, MEASURED:** this property used to be a NULLABLE
+     * `var` whose docstring called NULL *"the historical behaviour"* -- **and there was NO PRODUCTION INSTALLER AT ALL**
+     * (*every assignment site lived in `SqliteMessageStoreTest`*). **SO THE PERMISSIVE BRANCHES WERE NOT A FALLBACK:
+     * THEY WERE THE ONLY PATH PRODUCTION EVER TOOK.** *`isForwardable` returned `true` for EVERY row and
+     * `sweepExpired` returned 0 without sweeping -- retention did not enforce on this isle, and forwarding was never
+     * refused.*
+     *
+     * **THE REPAIR IS THE TYPE, NOT A GUARD, AND IT IS iOS's REPAIR** (*round 560 made the iOS twin non-optional under
+     * the comment "THIS TYPE CANNOT EXPRESS THE DEFECT"*): **a construction error would have left the property
+     * optional, so the next caller could still write `nil` and be refused at runtime -- the defect would survive as a
+     * possibility.** This property is therefore non-optional and defaulteth to the canonical runtime clock, so *the
+     * ONLY way to get an unclocked store is to never construct one.*
+     *
+     * **AND THE 26 COURTS THAT ASSIGN A FIXED CLOCK KEEP COMPILING AND KEEP THEIR DELIBERATE FROZEN TIME** -- *a fixed
+     * clock is now a CHOICE rather than an absence*, which is precisely the distinction the audit asked for.
+     */
+    internal var receiptTimeProvider: () -> Pair<Long, String> = { RetentionClock.defaultSample() }
 
     /**
      * *** GS-STORE-004 (round 530): THE RETENTION WRITE-BACK'S OWN FAULT SEAM -- THE ANDROID TWIN, BECAUSE THE
@@ -1304,7 +1320,9 @@ class SqliteMessageStore internal constructor(
      *  STUB RETURNING ZERO, so the arm that demandeth a retired row FAILETH ON ITS OWN SUBJECT rather than at
      *  COMPILE TIME -- which is what maketh it a behavioural RED. */
     internal fun sweepExpired(limit: Int = 64): Int {
-        if (receiptTimeProvider == null) return 0
+        // *** GS-FINAL-005 (round 705): THE PERMISSIVE BRANCH IS GONE. *** *It used to return 0 -- "swept nothing" --
+        // when no clock was installed, and NO PRODUCTION INSTALLER EXISTED: the sweep never ran in production.*
+        // **The clock is now non-optional, so there is no such state to branch on.**
         // (1) A BOUNDED SCAN THAT REUSETH **THE GATE ITSELF** -- so the sweep and the readers can NEVER disagree
         // about what "spent" meaneth (the same discipline the iOS sweep carrieth).
         val spent = ArrayList<ByteArray>()
@@ -1377,8 +1395,12 @@ class SqliteMessageStore internal constructor(
                 // THE BUDGET UN-REPLENISHABLE. The value cometh from `RetentionClock.admit` (the Kotlin policy object;
                 // on iOS the same contract liveth under the name `RetentionPolicy`), which granteth the local
                 // lifetime EXACTLY ONCE, anchored at the INJECTED monotonic reading.
+                // *** GS-FINAL-005 (round 705): `clock != null` IS GONE WITH THE OPTIONALITY. *** *It used to be that
+                // a store with no clock ADMITTED NOTHING -- no retention checkpoint was ever granted, which is why the
+                // audit could call retention unenforced on this isle. The clock is mandatory now, so the admission is
+                // unconditional and the branch is the honest `isNew` alone.*
                 val clock = receiptTimeProvider
-                if (isNew && clock != null) {
+                if (isNew) {
                     val stamp = clock()
                     val cp = RetentionClock.admit(
                         msgId = String(frame.msgId, Charsets.ISO_8859_1),
@@ -1468,8 +1490,12 @@ class SqliteMessageStore internal constructor(
                 // THE BUDGET UN-REPLENISHABLE. The value cometh from `RetentionClock.admit` (the Kotlin policy object;
                 // on iOS the same contract liveth under the name `RetentionPolicy`), which granteth the local
                 // lifetime EXACTLY ONCE, anchored at the INJECTED monotonic reading.
+                // *** GS-FINAL-005 (round 705): `clock != null` IS GONE WITH THE OPTIONALITY. *** *It used to be that
+                // a store with no clock ADMITTED NOTHING -- no retention checkpoint was ever granted, which is why the
+                // audit could call retention unenforced on this isle. The clock is mandatory now, so the admission is
+                // unconditional and the branch is the honest `isNew` alone.*
                 val clock = receiptTimeProvider
-                if (isNew && clock != null) {
+                if (isNew) {
                     val stamp = clock()
                     val cp = RetentionClock.admit(
                         msgId = String(frame.msgId, Charsets.ISO_8859_1),
@@ -1800,10 +1826,13 @@ class SqliteMessageStore internal constructor(
         if (!startupMaintenanceDone) {
             startupMaintenanceDone = true
             sweepExpired(limit = StoreSchema.STARTUP_SWEEP_LIMIT)
-            lastSweepMonoMs = receiptTimeProvider?.invoke()?.first
+            lastSweepMonoMs = receiptTimeProvider().first
             return
         }
-        val now = receiptTimeProvider?.invoke()?.first ?: return
+        // *** GS-FINAL-005 (round 705): `?: return` MADE A MISSING CLOCK SILENTLY DISABLE THE CADENCE. *** *The clock
+        // is non-optional now; `lastSweepMonoMs` staying nullable is a DIFFERENT fact -- the FIRST tick has no
+        // previous reading, and returning there is correct.* ***
+        val now = receiptTimeProvider().first
         val last = lastSweepMonoMs ?: return
         if (now - last >= RetentionClock.CHECKPOINT_CADENCE_MS) {
             sweepExpired(limit = StoreSchema.STARTUP_SWEEP_LIMIT)
@@ -1815,7 +1844,7 @@ class SqliteMessageStore internal constructor(
      *  composition root's timer, or a test's hand). It runneth the same bounded sweep the automatic path runneth. */
     internal fun runScheduledMaintenance(limit: Int = StoreSchema.STARTUP_SWEEP_LIMIT): Int {
         val retired = sweepExpired(limit = limit)
-        lastSweepMonoMs = receiptTimeProvider?.invoke()?.first
+        lastSweepMonoMs = receiptTimeProvider().first
         return retired
     }
 
@@ -1845,7 +1874,10 @@ class SqliteMessageStore internal constructor(
      *  FORWARDED: a row this store never governed is not retroactively destroyed by a gate. */
     private fun isForwardable(id: ByteArray, kind: MessageKind = MessageKind.DIRECT,
                               persistDebit: Boolean = true): Boolean {
-        val clock = receiptTimeProvider ?: return true
+        // *** GS-FINAL-005 (round 705): `?: return true` WAS THE AUDITED DEFECT ITSELF. ***
+        // *With no clock installed -- WHICH WAS ALWAYS, in production -- EVERY row was forwardable and retention
+        // enforced nothing.* **The clock cannot be absent now, so this line is unconditional.**
+        val clock = receiptTimeProvider
         val cp = engine.retentionCheckpointOf(id) ?: return true
         val remaining = cp[0] as? Long ?: return true
         val mono = cp[1] as? Long ?: return true
