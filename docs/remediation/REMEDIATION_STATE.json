@@ -13993,12 +13993,27 @@
     "root_cause": "A malformed heredoc/commit-message construction, consistent with the disclosed accident.",
     "exact_remediation": "Do not amend or rebase. Add an owner-approved provenance annotation mapping the immutable SHA to its intended documentation change and the bounded diff review. Use a prepared message file and inspect it before future git commit invocations.",
     "regression_test": "Check the annotation references the exact immutable commit and does not change historical SHA references.",
-    "my_status": "OPEN"
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 558 (this commit) -- provenance annotation + ci/check_commit_provenance.py",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-013/round558-provenance.log",
+      "sha256": "98e91d6d642db55a8b06921d1fe3fc03ce4845b48486fa757abe2fa8692cdfe6",
+      "what": "The finding, the bounded diff, the message map, the control and its mutation.",
+      "outcome": "ci/check_commit_provenance.py 8 checks PASSED; mutation naming a wrong SHA FAILED; restored PASSED."
+     }
+    ],
+    "my_red_case": "THE AUDIT'S OWN REGRESSION CLAUSE IS EXECUTED AS THE CONTROL: *\"Check the annotation references the exact immutable commit and does not change historical SHA references.\"* The control checks the annotation AGAINST THE COMMIT IN THE OBJECT STORE, and it reddens if the annotation names a wrong SHA (measured) or if the commit no longer carries its debris (i.e. if someone amended it).",
+    "pending_proof": [
+     "THE MESSAGE IS NOT FIXED, AND CANNOT BE WITHOUT REWRITING HISTORY, WHICH THE AUDIT FORBIDS BY NAME. This is an ANNOTATION, NOT A REPAIR: the defect remains visible in `git log` at the immutable SHA, and that is the honest state. Anything reading `git log` for that commit will still see the debris first.",
+     "THE OWNER APPROVAL the remedy names is the user's. The annotation is recorded in docs/remediation/ and in the ledger for review; the user's standing direction was \"complete all the remediations\". It changes no historical SHA reference, which is the property the audit demanded.",
+     "AND THE DURABLE PART IS PRACTICE, NOT A CONTROL: the cause was a heredoc whose delimiter was consumed by an earlier command in the same invocation, so the script meant to RUN became the COMMIT MESSAGE. Every commit in this round writes its message to a file first, prints it, and only then runs `git commit -F <file>` -- NEVER `-F -` with a heredoc. That is a convention, so it is stated rather than asserted as enforced."
+    ]
    }
   }
  },
  "current_assessment": {
-  "candidate_sha": "60d30caaf421cb9e851f3a66be085521e239044d",
+  "candidate_sha": "c30be16b4cd5de7f09082e7561aa7f1935e18026",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14010,9 +14025,9 @@
     "PARTIAL": 6
    },
    "audit_13_new": {
-    "FIX_SUBMITTED": 7,
+    "FIX_SUBMITTED": 8,
     "PARTIAL": 3,
-    "OPEN": 3
+    "OPEN": 2
    },
    "note": "DERIVED FROM THE ENTRIES, NOT WRITTEN BESIDE THEM. This is the audit's own requirement: \"Derive summary counts from entries.\" A count that is asserted rather than derived is the defect this finding is about."
   },
