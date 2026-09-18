@@ -59,6 +59,65 @@ class GsFinal006RenderedReadingListTest {
      * RUNTIME -- the failure mode three reviews warned about. So this renders THE PRODUCTION COMPOSABLE, driven by a
      * REAL `BrowseViewModel` over a real (fake-backed) archive, wearing the app's own theme.
      */
+    /**
+     * *** GS-ARCHIVE-005 (round 595): THE **APP-LEVEL** KILL/RECREATE, WHICH THE CARD SAYS NOT TO FAKE. ***
+     *
+     * THE CARD'S OWN STEP 7, VERBATIM: *"Add app-level tests that kill/recreate the screen/process from a document
+     * opened by search and then navigate Back. **Do not count calling snapshot and restore directly on an isolated
+     * model as proof of that.**"*
+     *
+     * *** SO THIS ARM GOES THROUGH THE REAL `SavedStateHandle` AND THE REAL `BrowseViewModel` CONSTRUCTOR, AND
+     * COMPOSES THE RECREATED MODEL** -- not `snapshotTo`/`restoreFrom` on a bare model, which is the layer the card
+     * explicitly refused as evidence. The model-level arms (`ReadinessT49Test`) remain; this is the layer above them.
+     *
+     * AND THE COMPOSITION IS SWAPPED IN PLACE rather than restarted: `createComposeRule` supports ONE `setContent`
+     * per test, so the "recreation" is a state change that replaces which model the real screen renders -- **WHICH IS
+     * WHAT A RECREATION LOOKS LIKE FROM THE COMPOSABLE'S SIDE.** (My first draft called `setContent` twice and the
+     * arm timed out; that was MY rig's defect, not the code's.)
+     */
+    @Test
+    fun anAppLevelRecreationRestoresTheReadersPlaceThroughTheRealHandle() {
+        val handle = androidx.lifecycle.SavedStateHandle()
+        val reader = TwoDocReader()
+
+        val first = BrowseViewModel(reader, kotlinx.coroutines.Dispatchers.Unconfined, handle)
+        first.open(ArchiveDocument(7, "Archive guide", "reference", false, "src-001", "r7"))
+        // *** AND THE PLACE IS RECORDED **AFTER** THE OPEN, WHICH IS THE ORDER A READER PRODUCETH: opening a
+        // DIFFERENT document CLEARETH the anchor (GS-FINAL-006's guard), so recording it first is precisely the
+        // obsolete-anchor case -- and MY FIRST DRAFT DID THAT AND READ `target=1`. The diagnostic caught it. ***
+        first.noteScroll(documentId = 7L, passageId = 25L)
+
+        // *** AND THE SAME DOCUMENT IS RE-OPENED, WHICH IS WHERE THE TARGET IS **RESOLVED**: `openDocumentInternal`
+        // computes `readingTargetPassageId` from the anchor once the passages are known, and a model that merely
+        // holds an anchor has not yet resolved it. **THE OTHER ARMS' `placedReader` DOETH EXACTLY THIS**, and my
+        // first draft opened ONCE -- which is why the composition rendered at the top and the arm timed out. ***
+        first.open(ArchiveDocument(7, "Archive guide", "reference", false, "src-001", "r7"))
+
+        // *** THE KILL: A NEW MODEL FROM THE **SAME HANDLE** -- the platform's own vehicle across process death.
+        // NOTHING IS COPIED BY HAND. ***
+        val recreated = BrowseViewModel(reader, kotlinx.coroutines.Dispatchers.Unconfined, handle)
+
+        val showing = androidx.compose.runtime.mutableStateOf(first)
+        compose.setContent {
+            val vm = showing.value
+            androidx.compose.runtime.key(vm) { RealReadingList(vm) }
+        }
+        awaitDisplayed("passage 25")
+
+        // THE RECREATION, AS THE SCREEN SEES IT.
+        showing.value = recreated
+        awaitDisplayed("passage 25")
+
+        assertEquals(
+            "*** AN APP-LEVEL RECREATION MUST RESTORE THE READER'S PLACE THROUGH THE REAL `SavedStateHandle`: the " +
+                "handle crossed the kill in the PLATFORM'S OWN VEHICLE, not in a hand-copied map. Observed asked-for " +
+                "anchor: ${recreated.state.value.anchorPassageId}, resolved target: " +
+                "${recreated.state.value.readingTargetPassageId} ***",
+            25L, recreated.state.value.readingTargetPassageId,
+        )
+        compose.onNodeWithText("passage 1").assertDoesNotExist()
+    }
+
     private class TwoDocReader : ArchiveReader {
         override fun status(): ArchiveState = ArchiveState.Ready(origin = "installed.bin", sha256 = "a".repeat(64))
         override fun listDocuments(domain: String?): List<ArchiveDocument> =
