@@ -828,6 +828,28 @@ class MeshNode(
      * is [SosCancelResult.NotBroadcast] and stands untouched.
      */
     internal suspend fun cancelSos(msgId: ByteArray): SosCancelResult {
+        // *** GS-FINAL-003 (round 699): THE `Cancel` ARM IS GATED -- AND THE REASON IS THAT IT IS *ALSO A READ ROAD*. ***
+        //
+        // **THIS ONE LOOKETH LIKE A WRITE AND IS BOTH.** *It tombstones the row (a write) AND returneth a result
+        // DERIVED FROM THAT ROW* -- `Cancelled(wasRelayed = true|false)`, `AlreadyCancelled`, `RejectedTerminal(EXPIRED
+        // | ACKNOWLEDGED_BY_RECIPIENT)`. **WHILE A WIPE IS PENDING THAT IS A DISCLOSURE OF DURABLE STATE FROM A STORE
+        // BEING ERASED** -- *the same class as `deliveryProjection` and the ACK census, hiding on a road whose NAME
+        // suggesteth a mutation.* My arm caught it in exactly that form: pre-fix it returned
+        // `Cancelled(wasRelayed=false)` from a wiping node.
+        //
+        // **AND THE DIRECTION IS THE SAFE ONE TO GATE, MEASURED RATHER THAN ASSUMED.** The gate protecteth USE, not
+        // DESTRUCTION (*`WipeGatedAckObligationStore.deleteAllFrames()` is deliberately open, because the eraser must
+        // be able to erase*). **SO I CHECKED WHETHER THE WIPE'S OWN PATH NEEDS THIS ROAD BEFORE GATING IT: grepping
+        // `cancelSos`/`SosCommand.Cancel` across `identity/` and `runtime/` returneth NOTHING** -- *refusing here
+        // cannot deadlock the wipe, which is the failure mode this programme measured twice on constructor gates.*
+        // Cancelling is a USE of the store, never the erasure of it.
+        //
+        // **THE REFUSAL USETH THE TYPE'S OWN VOCABULARY: `StorageFailure`, whose docstring already readeth "a storage
+        // failure during the guarded transaction: rolled back whole"** -- *which is precisely true here: nothing moved,
+        // nothing was disclosed, and no invented case was added to the sealed hierarchy for the caller to exhaust.*
+        if (!wipeGate.allowsSensitiveUse()) {
+            return SosCancelResult.StorageFailure
+        }
         val result = deliveryTracker.cancelSosBroadcast(msgId)
         // GS-SOS-002: a SUCCESSFUL cancellation retireth the message's dispatch lease, so an offer
         // loop already iterating cannot newly offer a call whose durable row was just retired.
@@ -985,6 +1007,22 @@ class MeshNode(
         payload: ByteArray,
         send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
     ): SosDispatchResult {
+        // *** GS-FINAL-003 (round 699): THE `Author` ARM IS GATED -- AND IT WAS FOUND BY ENUMERATING THE DOOR. ***
+        //
+        // **`handleSosCommand` IS ONE DOOR WITH THREE ARMS, AND TWO OF THE THREE WERE GATED:** `Retry` asketh the gate
+        // first (round 633) and `Cancel` consulteth it. **`Author` DID NOT -- AND IT IS THE ARM THAT WRITETH**:
+        // *`store.persist` and `deliveryTracker.enqueueSosOutbound` both run below.* **A PENDING WIPE MUST NOT BE
+        // HANDED NEW DURABLE WORK**, and this asymmetry inside a single `when` was invisible to road-by-road review
+        // *because the roads were reviewed one at a time.*
+        //
+        // **THE GATE COMETH FIRST, BEFORE THE AUTHORITY LOOKUP**, for the reason round 633 already paid for on
+        // `retrySos`: *a gate placed after the thing it gates letteth that thing HAPPEN and merely reporteth on it.*
+        // Here the ordering additionally mattereth because `authorSignedSos` CONSUMETH A NONCE -- **a refused authoring
+        // must leave the nonce stream untouched, or a wipe would burn identities' worth of nonces for nothing.** The
+        // refusal useth the type's OWN vocabulary (a typed `Failed` naming the wipe), never an invented error.
+        if (!wipeGate.allowsSensitiveUse()) {
+            return SosDispatchResult.Failed("sos: a wipe is pending; sensitive use is refused")
+        }
         val authority = sosAuthority ?: return SosDispatchResult.Failed(
             "no SOS signing authority: an unauthenticated distress call may not be offered")
         val frame = authorSignedSos(authority, payload) ?: return SosDispatchResult.Failed(

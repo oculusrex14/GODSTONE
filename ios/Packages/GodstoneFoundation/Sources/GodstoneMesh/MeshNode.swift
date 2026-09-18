@@ -704,6 +704,23 @@ public final class MeshNode {
     /// SOS through `router.ingest` would cause.
     @discardableResult
     internal func dispatchSos(payload: Data, send: (FrameV2, UUID) -> Bool) -> SosDispatchResult {
+        // *** GS-FINAL-003 (round 699): THE `Author` ARM IS GATED -- AND IT WAS FOUND BY ENUMERATING THE DOOR, NOT BY
+        // READING A ROAD. ***
+        //
+        // **THE COMMAND SURFACE IS ONE DOOR WITH THREE ARMS, AND TWO OF THE THREE WERE GATED:** `retrySos` asketh the
+        // gate first (round 633) and `cancelSos` consulteth it. **`dispatchSos` -- WHICH IS THE ARM THAT WRITETH --
+        // DID NOT.** *It calleth `deliveryTracker.enqueueSosOutbound` and `store.persist` below.* **A PENDING WIPE MUST
+        // NOT BE HANDED NEW DURABLE WORK.** *The identical defect existed on Android, and both isles were repaired
+        // together so a reader of either findeth the same law.*
+        //
+        // **THE GATE COMETH FIRST, BEFORE THE AUTHORITY LOOKUP**, and the ordering is load-bearing for a reason beyond
+        // the one round 633 already paid for (*a gate that runs after the thing it gates is a report, not a gate*):
+        // **`SignedSosV1.author` CONSUMETH A NONCE**, so a refused authoring must leave the nonce stream untouched --
+        // *otherwise a wipe would burn a nonce for a call it never queued.* The refusal useth the type's OWN
+        // vocabulary (a typed `.failed` naming the wipe), never an invented error.
+        if let gate = wipeGate, !gate.allowsSensitiveUse() {
+            return .failed("sos: a wipe is pending; sensitive use is refused")
+        }
         // GMP/2.1 (ADR-001 §3.3, C6.7): msg_id is content-and-nonce derived.
         // The creation time and message_nonce are bound into the id (little-endian)
         // and authenticated alongside the payload by the signature below. Byte-identical to
@@ -925,6 +942,25 @@ public final class MeshNode {
     /// `.notBroadcast` and stands untouched.
     @discardableResult
     internal func cancelSos(_ msgId: Data) -> SosCancelResult {
+        // *** GS-FINAL-003 (round 699): THE CANCEL ROAD IS GATED -- IT LOOKS LIKE A WRITE AND IS *ALSO A READ*. ***
+        //
+        // *It tombstones the row (a write) AND returneth a result DERIVED FROM THAT ROW* -- `.cancelled(wasRelayed:)`,
+        // `.alreadyCancelled(wasRelayed:)`, `.rejectedTerminal(state)`. **WHILE A WIPE IS PENDING THAT DISCLOSES
+        // DURABLE STATE FROM A STORE BEING ERASED** -- *the same class as `deliveryProjection` and the ACK census,
+        // hiding on a road whose NAME suggesteth a mutation.* The Android arm caught it in exactly that form: pre-fix
+        // it returned `Cancelled(wasRelayed=false)` from a wiping node. **THE IDENTICAL GAP WAS ON BOTH ISLES, AND THEY
+        // WERE REPAIRED TOGETHER SO A READER OF EITHER FINDETH THE SAME LAW.**
+        //
+        // **AND THE DIRECTION IS THE SAFE ONE TO GATE, MEASURED RATHER THAN ASSUMED.** The gate protecteth USE, not
+        // DESTRUCTION (*`WipeGatedAckObligationStore.deleteAllFrames()` is deliberately open, because the eraser must
+        // be able to erase*). **SO I CHECKED WHETHER THE WIPE'S OWN PATH NEEDS THIS ROAD: `cancelSos`/`.cancel` do not
+        // appear in `CrashResumableWipe.swift` or `MeshRuntime.swift`** -- *refusing here cannot deadlock the wipe,
+        // the failure mode this programme measured twice on constructor gates.* Cancelling is a USE of the store.
+        //
+        // **THE REFUSAL USETH THE TYPE'S OWN VOCABULARY: `.storageFailure`, whose docstring already readeth "a storage
+        // failure during the guarded transaction: rolled back whole"** -- *precisely true here: nothing moved, nothing
+        // was disclosed, no invented case added for callers to exhaust.*
+        if let gate = wipeGate, !gate.allowsSensitiveUse() { return .storageFailure }
         let outcome = deliveryTracker.cancelSosBroadcast(msgId)
         // GS-SOS-002: a SUCCESSFUL cancellation retireth the message's dispatch lease, so an offer
         // loop already iterating cannot newly offer a call whose durable row was just retired.

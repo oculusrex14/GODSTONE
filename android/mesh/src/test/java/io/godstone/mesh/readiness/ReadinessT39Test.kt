@@ -444,6 +444,130 @@ class ReadinessT39Test {
         Assert.assertEquals("and no bytes may go out for it either", 0, sends)
     }
 
+    // ------------------------------------------------- GS-FINAL-003 (round 699): THE AUTHOR ARM
+
+    /** A rig whose node carries a REAL gate over the SAME store and tracker, differing only by the gate. */
+    private fun gatedRig(permits: Boolean, store: InMemoryMessageStore, tracker: DeliveryTracker): MeshNode {
+        val node = MeshNode(
+            ctx = null,
+            identity = newIdentity(),
+            store = store,
+            deliveryTracker = tracker,
+            wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { permits },
+            sessions = io.godstone.mesh.crypto.SessionManager(
+                identity = newIdentity(),
+                trustAuthority = object : io.godstone.mesh.crypto.PeerBindingTrustAuthority {
+                    override fun applyValidatedBinding(binding: io.godstone.mesh.identity.ValidatedPeerBinding) =
+                        io.godstone.mesh.identity.PeerTrustApplyResult.StorageFailure()
+                }
+            ),
+        )
+        node.sosAuthority = SosTestAuthority()
+        return node
+    }
+
+    /**
+     * *** GS-FINAL-003 (round 699) -- THE `Author` ARM OF THE ONE COMMAND DOOR IS GATED. ***
+     *
+     * **THE DEFECT, FOUND BY ENUMERATING RATHER THAN BY READING: `handleSosCommand` IS ONE DOOR WITH THREE ARMS, AND
+     * TWO OF THE THREE WERE GATED.** *`Retry` asketh the gate first (round 633) and `Cancel` consulteth it; `Author`
+     * did NOT -- and it is the arm that WRITETH: `dispatchSos` calleth `store.persist` and `deliveryTracker
+     * .enqueueSosOutbound`.* **A PENDING WIPE MUST NOT BE HANDED NEW DURABLE WORK**, and the asymmetry inside a
+     * single `when` was invisible to every road-by-road review because the roads were reviewed one at a time.
+     *
+     * **THIS IS A BEHAVIOURAL RED, NOT A COMPILE ERROR:** against the pre-fix revision the refusing node AUTHORETH
+     * ANYWAY -- the frame reacheth the store -- so the assertion below fails on the durable facts, not on syntax.
+     *
+     * AND THE POSITIVE CONTROL IS INSIDE THE ARM: the SAME rig with a PERMITTING gate must really author, so the arm
+     * cannot pass by refusing everything.
+     */
+    @Test
+    fun testGF003APendingWipeRefusethTheAuthorArm() {
+        val store = InMemoryMessageStore()
+        val auth = RecordingAuthenticator()
+        val tracker = DeliveryTracker(AuthorityRepository(store, null), auth)
+
+        // THE POSITIVE CONTROL FIRST: with the gate OPEN the SAME rig really authors and really persists.
+        val permitting = gatedRig(permits = true, store = store, tracker = tracker)
+        permitting.injectPeerForTest(peerOf(1))
+        var allowed: SosDispatchResult? = null
+        runTest { allowed = permitting.dispatchSos("an open gate authors".toByteArray()) { _, _ -> true } }
+        Assert.assertTrue("*** THE PERMITTING RIG MUST REALLY AUTHOR, or the refusal below measures nothing. " +
+            "Observed: " + allowed + " ***", allowed is SosDispatchResult.HandedToRelays)
+        Assert.assertTrue("and the frame must really be durably held",
+            heldIdsOf(store).isNotEmpty())
+
+        // NOW A FRESH STORE, GATED CLOSED: nothing may be persisted and nothing offered.
+        val closedStore = InMemoryMessageStore()
+        val closedTracker = DeliveryTracker(AuthorityRepository(closedStore, null), auth)
+        val refusing = gatedRig(permits = false, store = closedStore, tracker = closedTracker)
+        refusing.injectPeerForTest(peerOf(1))
+        var sends = 0
+        var out: SosDispatchResult? = null
+        runTest { out = refusing.dispatchSos("a wipe must refuse this".toByteArray()) { _, _ -> sends++; true } }
+        Assert.assertTrue("*** A PENDING WIPE MUST REFUSE THE AUTHOR ARM. Observed: " + out + " ***",
+            out is SosDispatchResult.Failed)
+        Assert.assertEquals("*** AND NOTHING MAY BE DURABLY HELD: a wipe that still accepts new frames is not a " +
+            "wipe. ***", 0, heldIdsOf(closedStore).size)
+        Assert.assertEquals("nor may any bytes be offered", 0, sends)
+    }
+
+    /**
+     * *** GS-FINAL-003 (round 699) -- THE `Cancel` ARM IS GATED TOO, AND ITS LEAK IS THE REASON. ***
+     *
+     * **`cancelSos` LOOKETH LIKE A WRITE ROAD AND IS ALSO A READ ROAD.** *It tombstones the row (a write) AND it
+     * RETURNETH a result DERIVED FROM THAT ROW's state* -- `Cancelled(wasRelayed = true|false)`,
+     * `AlreadyCancelled`, `RejectedTerminal(EXPIRED | ACKNOWLEDGED_BY_RECIPIENT)`, `UnknownMessage`, `Corrupt`.
+     * **WHILE A WIPE IS PENDING THAT IS A STATE DISCLOSURE FROM A STORE BEING ERASED** -- the same class as
+     * `deliveryProjection` and the ACK census, on a road whose name suggesteth a mutation.
+     *
+     * **AND THE DIRECTION IS THE SAFE ONE TO GATE, MEASURED RATHER THAN ASSUMED:** the gate protecteth USE, not
+     * DESTRUCTION (`WipeGatedAckObligationStore.deleteAllFrames()` is deliberately open *because the eraser must be
+     * able to erase*). **I CHECKED WHETHER THE WIPE'S OWN PATH NEEDS THIS ROAD BEFORE GATING IT -- grep for
+     * `cancelSos`/`SosCommand.Cancel` across `identity/` and `runtime/` returneth NOTHING**, so refusing here cannot
+     * deadlock the wipe, which is the failure mode this programme measured twice on constructor gates. *Cancelling is
+     * a USE of the store, not the erasure of it.*
+     *
+     * **A BEHAVIOURAL RED:** against the pre-fix revision the refusing node CANCELLETH ANYWAY and reporteth the row's
+     * real relayed state.
+     */
+    @Test
+    fun testGF003APendingWipeRefusethTheCancelArm() {
+        val store = InMemoryMessageStore()
+        val auth = RecordingAuthenticator()
+        val tracker = DeliveryTracker(AuthorityRepository(store, null), auth)
+
+        // SEED through a PERMITTING rig over a store and tracker we keep handles on.
+        val permitting = gatedRig(permits = true, store = store, tracker = tracker)
+        permitting.injectPeerForTest(peerOf(1))
+        var authored: SosDispatchResult? = null
+        runTest { authored = permitting.dispatchSos("a call a wipe must hide".toByteArray()) { _, _ -> true } }
+        Assert.assertTrue("the rig must really hold a call: " + authored,
+            authored is SosDispatchResult.HandedToRelays)
+        val mid = firstHeldFrame(store).msgId.copyOf()
+
+        // THE POSITIVE CONTROL, STATED FIRST AND INSIDE THE ARM: the permitting rig cancels and reporteth the truth.
+        var live: SosCancelResult? = null
+        runTest { live = permitting.cancelSos(mid) }
+        Assert.assertTrue("*** THE PERMITTING RIG MUST REALLY CANCEL, or the refusal below measures nothing. " +
+            "Observed: " + live + " ***", live is SosCancelResult.Cancelled)
+
+        // A SECOND CALL, THEN THE SAME STORE GATED CLOSED.
+        var authored2: SosDispatchResult? = null
+        runTest { authored2 = permitting.dispatchSos("a second call".toByteArray()) { _, _ -> true } }
+        val mid2 = firstHeldFrame(store).msgId.copyOf()
+
+        val refusing = gatedRig(permits = false, store = store, tracker = tracker)
+        var dark: SosCancelResult? = null
+        runTest { dark = refusing.cancelSos(mid2) }
+        Assert.assertFalse(
+            "*** WHILE A WIPE IS PENDING THE CANCEL ROAD MUST NOT REPORT THE ROW's STATE -- not even as a refusal " +
+                "taxonomy, because `UnknownMessage`/`RejectedTerminal`/`Cancelled(wasRelayed)` ALL DISCLOSE WHAT THE " +
+                "ROW HELD. Observed: " + dark + " ***",
+            dark is SosCancelResult.Cancelled || dark is SosCancelResult.AlreadyCancelled ||
+                dark is SosCancelResult.RejectedTerminal)
+    }
+
     // ------------------------------------------------------------------ W8 the command surface
 
     /** W8 -- SosCommand.Author/Retry/Cancel route through one door and each

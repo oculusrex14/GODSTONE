@@ -158,6 +158,128 @@ final class MeshNodeSosDispatchTests: XCTestCase {
         return node
     }
 
+    /// The gate as this isle's composition builds it: a real class conforming to the protocol, never a lambda.
+    private final class FixedWipeGate: WipeSensitiveUseGate, @unchecked Sendable {
+        private let permits: Bool
+        init(permits: Bool) { self.permits = permits }
+        func allowsSensitiveUse() -> Bool { permits }
+    }
+
+    /// The SAME rig with a real gate over the SAME store and tracker -- *so the arm differeth from its control by the
+    /// gate alone*, exactly as the round-696 read-road arms on this isle do.
+    private func gatedNode(permits: Bool, store: MessageStore, tracker: DeliveryTracker) -> MeshNode {
+        let node = MeshNode(
+            identity: try! MeshIdentity.generateAndStore(keychain: InMemoryKeychain()),
+            store: store,
+            deliveryTracker: tracker,
+            wipeGate: FixedWipeGate(permits: permits)
+        )
+        node.sosAuthority = SosTestAuthority()
+        return node
+    }
+
+    /// *** GS-FINAL-003 (round 699) -- THE `Author` ARM IS GATED. ***
+    ///
+    /// **THE DEFECT, FOUND BY ENUMERATING THE DOOR RATHER THAN BY READING A ROAD: the command surface is ONE door with
+    /// THREE arms, and TWO were gated.** *`retrySos` asketh the gate first (round 633) and `cancelSos` consulteth it;
+    /// `dispatchSos` -- THE ARM THAT WRITETH -- did not.* **A PENDING WIPE MUST NOT BE HANDED NEW DURABLE WORK.** *The
+    /// identical gap existed on Android, where `handleSosCommand` makes the asymmetry visible inside a single `when`.*
+    ///
+    /// **A BEHAVIOURAL RED, NOT A COMPILE ERROR:** against the pre-fix revision the refusing node AUTHORETH ANYWAY.
+    ///
+    /// AND THE POSITIVE CONTROL IS INSIDE THE ARM: the SAME rig with a PERMITTING gate must really author, so the arm
+    /// cannot pass by refusing everything.
+    func testGF003APendingWipeRefusethTheAuthorArm() throws {
+        // THE POSITIVE CONTROL FIRST: with the gate OPEN the SAME rig really authors and really persists.
+        let openStore = InMemoryMessageStore()
+        let openTracker = DeliveryTracker(
+            repo: InMemoryDeliveryRepository(),
+            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
+        let permitting = gatedNode(permits: true, store: openStore, tracker: openTracker)
+        // *** A RELAY MUST BE REALLY UP, or the permitting rig reporteth `.queuedDurably` instead of
+        // `.handedToRelays` -- and my FIRST DRAFT ASSERTED `handedToRelays` WITHOUT BRINGING A PEER UP, SO THE
+        // POSITIVE CONTROL ITSELF FAILED. *That was the control doing its job: it refused to let the arm proceed on a
+        // rig that could not demonstrate the allowed behaviour.* ***
+        bringPeerUp(permitting, UUID(uuidString: "00000000-0000-0000-0000-0000000000A1")!)
+        let allowed = permitting.dispatchSos(payload: Data("an open gate authors".utf8)) { _, _ in true }
+        guard case .handedToRelays(let n) = allowed else {
+            return XCTFail("*** THE PERMITTING RIG MUST REALLY AUTHOR, or the refusal below measures nothing. " +
+                "Observed: \(allowed) ***")
+        }
+        XCTAssertGreaterThan(n, 0, "and it must really hand the call to a relay")
+
+        // NOW A FRESH STORE, GATED CLOSED: nothing may be persisted and nothing offered.
+        let closedStore = InMemoryMessageStore()
+        let closedTracker = DeliveryTracker(
+            repo: InMemoryDeliveryRepository(),
+            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
+        let refusing = gatedNode(permits: false, store: closedStore, tracker: closedTracker)
+        bringPeerUp(refusing, UUID(uuidString: "00000000-0000-0000-0000-0000000000A1")!)
+        var sends = 0
+        let out = refusing.dispatchSos(payload: Data("a wipe must refuse this".utf8)) { _, _ in
+            sends += 1; return true
+        }
+        guard case .failed(let reason) = out else {
+            return XCTFail("*** A PENDING WIPE MUST REFUSE THE AUTHOR ARM. Observed: \(out) ***")
+        }
+        XCTAssertTrue(reason.contains("wipe"),
+                      "*** AND THE REFUSAL MUST NAME THE WIPE, so a caller can tell it from an ordinary policy " +
+                      "drop. Observed: \(reason) ***")
+        XCTAssertTrue(closedStore.allHeldMsgIds().isEmpty,
+                      "*** NOTHING MAY BE DURABLY HELD: a wipe that still accepts new frames is not a wipe. ***")
+        XCTAssertEqual(sends, 0, "nor may any bytes be offered")
+    }
+
+    /// *** GS-FINAL-003 (round 699) -- THE CANCEL ROAD IS GATED, BECAUSE IT IS *ALSO A READ*. ***
+    ///
+    /// *It tombstones the row (a write) AND returneth a result DERIVED FROM THAT ROW* -- `.cancelled(wasRelayed:)`,
+    /// `.alreadyCancelled(wasRelayed:)`, `.rejectedTerminal(state)`. **WHILE A WIPE IS PENDING THAT DISCLOSES DURABLE
+    /// STATE FROM A STORE BEING ERASED** -- *the same class as `deliveryProjection`, hiding on a road whose NAME
+    /// suggesteth a mutation.*
+    ///
+    /// **AND THE DIRECTION IS THE SAFE ONE TO GATE, MEASURED RATHER THAN ASSUMED:** the gate protecteth USE, not
+    /// DESTRUCTION (*`deleteAllFrames()` is deliberately open, because the eraser must be able to erase*). I checked
+    /// that the wipe's own path does not need this road (`cancelSos` appears in neither `CrashResumableWipe.swift` nor
+    /// `MeshRuntime.swift`), so refusing here cannot deadlock the wipe.
+    ///
+    /// **A BEHAVIOURAL RED:** pre-fix the refusing node cancelled anyway and reported the row's real relayed state.
+    func testGF003APendingWipeRefusethTheCancelRoad() throws {
+        // SEED through a PERMITTING rig over a store and tracker we keep handles on.
+        let store = InMemoryMessageStore()
+        let tracker = DeliveryTracker(
+            repo: InMemoryDeliveryRepository(),
+            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
+        let permitting = gatedNode(permits: true, store: store, tracker: tracker)
+        bringPeerUp(permitting, UUID(uuidString: "00000000-0000-0000-0000-0000000000A2")!)
+        let authored = permitting.dispatchSos(payload: Data("a call a wipe must hide".utf8)) { _, _ in true }
+        guard case .handedToRelays = authored else {
+            return XCTFail("the rig must really hold a call: \(authored)")
+        }
+        let mid = try XCTUnwrap(store.allHeldMsgIds().first, "the rig must really hold a frame")
+
+        // THE POSITIVE CONTROL FIRST: the permitting rig cancels and reports the truth.
+        let live = permitting.cancelSos(mid)
+        guard case .cancelled = live else {
+            return XCTFail("*** THE PERMITTING RIG MUST REALLY CANCEL, or the refusal below measures nothing. " +
+                "Observed: \(live) ***")
+        }
+
+        // A SECOND CALL, THEN THE SAME STORE GATED CLOSED.
+        let authored2 = permitting.dispatchSos(payload: Data("a second call".utf8)) { _, _ in true }
+        guard case .handedToRelays = authored2 else {
+            return XCTFail("the rig must hold a second call: \(authored2)")
+        }
+        let mid2 = try XCTUnwrap(store.allHeldMsgIds().last)
+
+        let refusing = gatedNode(permits: false, store: store, tracker: tracker)
+        let dark = refusing.cancelSos(mid2)
+        guard case .storageFailure = dark else {
+            return XCTFail("*** WHILE A WIPE IS PENDING THE CANCEL ROAD MUST NOT REPORT THE ROW's STATE -- not even " +
+                "as a refusal taxonomy, because `.unknownMessage`/`.rejectedTerminal`/`.cancelled(wasRelayed:)` ALL " +
+                "DISCLOSE WHAT THE ROW HELD. Observed: \(dark) ***")
+        }
+    }
+
     /// B4: persist fails -> `.notPersisted`, ZERO sends. The previous iOS
     /// `broadcastSos` ignored `router.ingest`'s return and could attempt BLE
     /// sends after a persistence failure; this gate exits before any transport op.
