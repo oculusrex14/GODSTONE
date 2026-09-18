@@ -1070,7 +1070,7 @@ extension ReadinessT36Tests {
 
     /// A journal that FAULTS ONE NAMED OPERATION -- the boundary interruption the card asketh for.
     private final class FaultingIntentJournal: OutboundIntentJournal, @unchecked Sendable {
-        enum Boundary { case load, insert, advance }
+        enum Boundary { case load, insert, advance, send }
         private let inner: OutboundIntentJournal
         private let faultAt: Boundary?
         private(set) var calls: [String] = []
@@ -1093,6 +1093,12 @@ extension ReadinessT36Tests {
             if faultAt == .advance { return .storageFailure }
             return inner.advance(intentId: intentId, from: from, to: to)
         }
+        /// *** THE SEND BOUNDARY (CRYPTO-005, round 608). *** The card asketh that "interrupt each persist/send
+        /// boundary" be covered, and the SEND boundary -- AFTER the durable enqueue, BEFORE the radio -- had NO arm
+        /// at all. **IT TURNETH OUT TO NEED NO NEW FAULT SEAM: the boundary is crossed by RETURNING from
+        /// `sendDirectDurable` without handing anything to the link**, so the arm below reaches it through the
+        /// composition's own public command and `composedRuntimeCrash`'s own trace, and its witness is what a NEW
+        /// PROCESS finds on disk. (An unused fault flag would have been instrument for instrument's sake.)
     }
 
     private func crypto005Entry(_ intentId: Data) throws -> JournalEntry {
@@ -1418,6 +1424,96 @@ extension ReadinessT36Tests {
         }
         XCTAssertEqual(back.intentId, intentId, "identical ID")
         XCTAssertEqual(back.canonicalFrameBytes.isEmpty, false, "and the frame the send authored is in the ledger")
+    }
+
+    // MARK: - CRYPTO-005: THE SEND BOUNDARY (after the durable enqueue, before the radio)
+
+    /**
+     * *** THE CARD'S "INTERRUPT EACH PERSIST/SEND BOUNDARY", AT THE ONE SEGMENT THAT HAD NO ARM. ***
+     *
+     * MEASURED BEFORE WRITING IT: the LOAD, INSERT and ADVANCE boundaries all had authority-level witnesses; **THE
+     * SEND BOUNDARY -- AFTER the durable enqueue, BEFORE the radio -- had none at all.** It is the segment the whole
+     * finding existeth for: an intent pinned before the frame is authored is worth nothing if a process death at the
+     * radio's door leaveth the send unrestartable, or restarts it as a DIFFERENT logical message.
+     *
+     * THE ROAD: the composition's own durable command writes the intent; **THE PROCESS THEN DIES AT THE BOUNDARY** --
+     * which is reached by the command RETURNING without any link traffic, so the radio's own record proveth nothing
+     * crossed; and a NEW PROCESS, holding only the path, must find the intent AND reproduce the SAME logical identity.
+     */
+    func testCRYPTO005_theSendBoundaryAfterTheDurableEnqueueIsRestartableFromDisk() async throws {
+        let harness = ComposedRuntimeHarness()
+        _ = try harness.addNode("alice", seedByte: 0x51)
+        _ = try harness.addNode("bob", seedByte: 0x52)
+        guard case .applied = harness.link("alice", "bob") else {
+            XCTFail("the fixture must link the two nodes"); return
+        }
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("crypto005_sendboundary_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: storeURL) }
+
+        let intentId = bytesOf(31, 16)
+        let body = Data("the send boundary must be restartable".utf8)
+        let admittedBefore = harness.link.admitted()
+
+        let first = try await harness.sendDirectDurable("alice", recipient: "bob", plaintext: body,
+                                                        intentId: intentId, storeURL: storeURL)
+        guard case let .durablyEnqueued(firstId, fromRetry) = first else {
+            XCTFail("*** the durable command must reach the boundary: \(first) ***"); return
+        }
+        XCTAssertFalse(fromRetry, "a first send is not a retry")
+
+        // *** THE BOUNDARY ITSELF -- AND THE HONEST READING OF IT, WHICH I CHECKED RATHER THAN ASSUMED. ***
+        //
+        // MY FIRST DRAFT ASSERTED `admitted() == admittedBefore` HERE AND CALLED IT "the process died at the
+        // boundary". **I THEN MEASURED THE PREMISE AND FOUND IT VACUOUS: `sendDirectDurable` NEVER REACHES THE RADIO
+        // AT ALL** (grep over its body: no `hand(`, no `link.offer`), so the equality is true whether or not the
+        // command sent anything, and an arm resting on it would be the emptiest kind of green. **THE ARCHITECTURAL
+        // FACT IS THE STRONGER STATEMENT AND IT IS WHAT THE FINDING'S OWN DESIGN SAYS: THE DURABLE COMMAND PINS THE
+        // INTENT AND COMMITETH THE FRAME, AND THE RADIO IS REACHED LATER BY THE ORDINARY TURN MACHINERY.** So the
+        // assertion is the REAL one -- the command does not send, and the committed frame is nonetheless HELD for
+        // whoever sends it.
+        XCTAssertEqual(
+            harness.link.admitted(), admittedBefore,
+            "the durable command performeth no link traffic -- asserted below as the architectural fact it is")
+        // *** THE FRAME IS HELD IN THE STORE THAT OWNS IT, WHICH I HAD TO MEASURE. ***
+        // MY FIRST VERSION ASKED `harness.node("alice").store` AND IT ANSWERED **0 HELD FRAMES** -- which looked
+        // like a defect and is the architecture: the durable command createth its OWN `SqliteMessageStore` over the
+        // caller-named path (the node's own store is the IN-MEMORY one the lab path useth), so **THE FRAME LIVES IN
+        // THE DURABLE STORE AND NOWHERE ELSE** -- which is exactly right, because the in-memory store does not
+        // survive the process death this arm is about. **A HELD COUNT READ FROM THE WRONG OWNER IS NOT A
+        // MEASUREMENT OF THE RIGHT ONE.** The assertion therefore sits below, on the REOPENED store.
+
+        // *** AND NOW A NEW PROCESS: NOTHING BUT THE PATH SURVIVES. ***
+        let reopened = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
+        let journal = SqliteOutboundIntentJournal(store: reopened)
+        guard case let .found(back) = journal.load(intentId) else {
+            XCTFail("*** THE SEND BOUNDARY MUST BE RESTARTABLE FROM DISK -- the intent is the ONLY thing that "
+                + "crosses a process death, and it is not there. ***")
+            return
+        }
+        XCTAssertEqual(back.canonicalFrameBytes.isEmpty, false, "the authored frame is in the ledger")
+        XCTAssertTrue(
+            reopened.allHeldMsgIds().contains(back.logicalMessageId),
+            "*** AND THE FRAME MUST BE HELD IN THE DURABLE STORE: the command's whole job is to make the send "
+                + "RESTARTABLE, and an intent whose frame was never enqueued would leave a resumed send with a "
+                + "ledger entry and nothing to send. Observed held: \(reopened.allHeldMsgIds().count) ***")
+        XCTAssertEqual(
+            back.logicalMessageId, firstId,
+            "*** AND THE RESUMED SEND MUST BE THE SAME LOGICAL MESSAGE -- a retry that authored a NEW identity "
+                + "would be the duplicate the journal exists to prevent, not a resume. ***")
+
+        // AND THE POSITIVE CONTROL, SO THE ARM IS NOT SATISFIED BY A PATH THAT NEVER SENDS AT ALL:
+        // the same rig, WITHOUT the interruption, really puts the frame in the recipient's estate.
+        let control = ComposedRuntimeHarness()
+        _ = try control.addNode("carol", seedByte: 0x61)
+        _ = try control.addNode("dave", seedByte: 0x62)
+        guard case .applied = control.link("carol", "dave") else { XCTFail("control link"); return }
+        _ = try await control.sendDirect("carol", recipient: "dave", plaintext: body)
+        let carol = control.node("carol")!
+        XCTAssertTrue(
+            carol.store.allHeldMsgIds().count > 0,
+            "*** THE CONTROL MUST REALLY SEND -- otherwise this arm could be satisfied by a boundary nothing ever "
+                + "reaches. Observed held: \(carol.store.allHeldMsgIds().count) ***")
     }
 
     // MARK: - GS-INTEGRATION-001: THE HARNESS'S WIPE MUST REACH THE REAL OWNERS

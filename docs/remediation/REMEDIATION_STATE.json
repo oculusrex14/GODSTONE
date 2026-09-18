@@ -6887,6 +6887,12 @@
      "sha256": "36035c9e59dd59039b581ff14868ea26523ea33c6a04e7c03aca19a4f8fe5bfa",
      "what": "The INSERT and ADVANCE boundaries witnessed at authority level; \"the replay repairs the rank\" turned from a docstring claim into an assertion.",
      "outcome": "Insert: faulted pin refuses, nothing held. Advance: the rank stays .authored AND the durable commit stands by design; a later healthy send advances from the LOADED rank to .committed. Three rig defects of mine found (a wrong law asserted; a faulted second send; an invalid UTF-8 body), each by a different instrument. 26 tests, 0 failures."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round610-the-send-boundary-after-the-durable-enqueue.log",
+     "sha256": "fa6b44d680557a563f42e7dfe0206ad36313e4132085bc08cdfd098bec5cb5d8",
+     "what": "The SEND boundary (after the durable enqueue, before the radio) witnessed: the intent and the frame both cross a process death.",
+     "outcome": "Re-measured the ledger's remainder and found HALF STALE (INSERT/ADVANCE authority arms exist since 7e0ebf53). The SEND boundary half was true and is now witnessed. TWO MUTATIONS BOTH KILL THE ARM BY NAME (an in-memory journal on the durable path; a fabricated `created(frame)` so the store is never asked). Three of my own drafts were wrong and each was caught by measuring -- a vacuous precondition, a held count read from the wrong owner, and two mutations that did not compile."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
@@ -6973,7 +6979,7 @@
    "pending_work": [
     "ROUND 533 (AN EMPTY PROOF FIELD IS A RECORD DEFECT, AND THREE OF THEM WERE THE HUMAN'S OWN FIVE). Round 532 counted twelve findings whose `pending_proof` was EMPTY -- and THREE of them are findings the human named directly, so a reader asking 'what doth this owe?' was told NOTHING about the very findings the instruction centred on. EACH IS NOW FILLED FROM A MEASUREMENT TAKEN **THIS ROUND**, and in two of the three the measurement CHANGED what had been believed: **CRYPTO-005's absent/corrupt gap (round 484) IS CLOSED** (`SendDirectAuthority.swift:453-454` handle `.storageFailure` and `.corrupt` with typed rejections), while **GS-INBOX-001's collision clause is STILL OWED** -- and the two arms on this isle named for a 'collision' concern OTHER SUBJECTS (a Bloom collision and a node-id/signing-key collision), which are named here so neither is mistaken for the clause. **A PROOF FIELD MUST BE MEASURED WHEN IT IS WRITTEN**, and the measurement is worth more than the writing."
    ],
-   "remaining_work": "THE OWED ARM IS DONE AND CAUSALLY PROVEN (round 585), SO THE ROUND-584 GAP IS CLOSED. The faulting journal is injected INTO a real `SendDirectAuthority` (its initialiser taketh `journal:`), a real command is sent, and the arm asserts the faulted operation was ACTUALLY REACHED (a call log), that the result is the TYPED `.enqueueCanonicMismatch`, and that NOTHING WAS WRITTEN. **THE MUTATION THAT SURVIVED LAST ROUND NOW REDDENS:** deleting the authority's guard produces 1 failure, with the authority observed `durablyEnqueued` -- **RE-AUTHORING rather than refusing, exactly the duplicate the intent journal exists to prevent.** The positive control (same rig, unfaulted journal) really sends and really holds the frame. **WHAT REMAINS UNMEASURED:** \"interrupt each persist/send boundary\" is covered for the LOAD boundary; the INSERT and ADVANCE boundaries have typed-decorator arms but no authority-level witness, and the SEND boundary (after durable enqueue) is not faulted at all."
+   "remaining_work": "THE SEND BOUNDARY IS NOW WITNESSED (round 610), SO \"INTERRUPT EACH PERSIST/SEND BOUNDARY\" IS COVERED AT ALL FOUR SEGMENTS: LOAD, INSERT, ADVANCE (each with an authority-level arm since `7e0ebf53`) AND NOW SEND. *** AND THE OLD LINE ABOUT INSERT/ADVANCE WAS STALE AND IS CORRECTED: it claimed they had \"typed-decorator arms but no authority-level witness\", and I RE-MEASURED RATHER THAN INHERITED -- `testCRYPTO005_aFaultedInsertInsideTheAuthorityRefusesAndHoldsNothing` and `..._aFaultedAdvanceLeavesTheRankUnadvancedWhileTheCommitStands` both EXIST. THE LEDGER HAD OUTLIVED ITS OWN RECORD. *** THE SEND ARM: the composition's durable command writes the intent, the boundary is crossed by that command RETURNING with no link traffic, and a NEW PROCESS holding only the path must find the intent AND the frame AND the SAME logical message. **TWO MUTATIONS KILL IT BY NAME** (an in-memory journal on the durable path; a fabricated `created(frame)` so the store is never asked). **AND THREE OF MY OWN DRAFTS WERE WRONG, EACH CAUGHT BY MEASURING: a vacuous precondition (`sendDirectDurable` never reaches the radio, so an admitted-count equality proved nothing), a held count read from the WRONG OWNER (the frame lives in the durable store, not the node's in-memory one), and two mutations that did not compile -- and a compile error is not a behavioural red.** NOTHING CRYPTOGRAPHIC OR AT-REST IS CLAIMED: this is a process-death restartability law over an injected durable seam, and physical bytes remain device evidence."
   },
   "CRYPTO-006": {
    "audit_status_at_snapshot": "OPEN",
@@ -14326,7 +14332,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "fc3f00a3aabd3c323a0e2e110cde5b705c59e6d8",
+  "candidate_sha": "de57885f7f20e9c2a65c7184149f2f3706757e02",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
