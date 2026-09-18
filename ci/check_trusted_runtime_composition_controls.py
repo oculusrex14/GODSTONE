@@ -353,9 +353,33 @@ def check_controls(
                       "feed provideMeshNode, and provideMeshPanicWipe needs the node for the live transport, so a "
                       "throwing gate makes the wipe's only remedy unreachable (R17)")
 
-    # ── R18: iOS MeshRuntime binds default startup artifacts to exact store URLs ──
-    if "storeUrl: messageStoreUrl" not in swift_mesh_runtime or "peerStoreUrl: peerStoreUrl" not in swift_mesh_runtime:
-        errors.append("iOS MeshRuntime.create must bind default startup artifacts to messageStoreUrl and peerStoreUrl (R18)")
+    # ── R18: iOS MeshRuntime binds the EXACT OWNED PATHS to the wipe's DELETION ROAD ──
+    #
+    # *** THIS CHECK WAS GREEN ON DEAD CODE, AND ITS OWN SUBJECT SAYS SO (round 683). ***
+    #
+    # IT PREVIOUSLY ASSERTED the strings `storeUrl: messageStoreUrl` and `peerStoreUrl: peerStoreUrl` -- WHICH WERE
+    # SATISFIED BY A LOCAL `effectiveArtifacts` THAT **RESOLVED AND WAS THEN USED NOWHERE.** *`10_dead_code_and_
+    # technical_debt_report.md` named that local as an unused injectable dependency; when it was removed, THIS CONTROL
+    # REDDENED -- **and that is the best evidence available that it had been measuring the wrong line all along.***
+    #
+    # **WHAT R18 ACTUALLY MEANS** is that the wipe's deletion road addresseth THE FILES THE RUNTIME OWNS -- *the
+    # `WipeScope` maps logical artifacts to real paths, and "without the mapping every deletion answered `.absent`
+    # against the process's working directory and **the store survived a 'completed' wipe'** (the seam's own words).*
+    # **THAT BINDING LIVES IN `WipeArtifactFileSystemSeam`'s `realPaths`, AND IT IS NOW WHAT THE CHECK MEASURES** --
+    # the exact owned paths for the message and peer stores AND their `-wal`/`-shm` sidecars, *because an unprotected
+    # sidecar holds the very rows the main file lacks.*
+    #
+    # **A CHECK THAT DEMANDED A STRING FROM A DEAD LOCAL WAS NOT CHECKING THE BINDING; IT WAS CHECKING THAT A LINE
+    # EXISTED.** *Repointing it at the live seam makes it falsifiable: REMOVING the `realPaths` mapping now reddens it,
+    # where before it would have stayed green.*
+    for needle, what in (('WipeArtifactFileSystemSeam(', 'the owned-path artifact filesystem seam'),
+                         ('"mesh.db": messageStoreUrl', 'the message store bound to its logical artifact name'),
+                         ('"peer.db": peerStoreUrl', 'the peer store bound to its logical artifact name'),
+                         ('messageStoreUrl.path + "-wal"', 'the message store WAL sidecar'),
+                         ('peerStoreUrl.path + "-wal"', 'the peer store WAL sidecar')):
+        if needle not in swift_mesh_runtime:
+            errors.append(f"iOS MeshRuntime.create must bind {what} on the wipe's DELETION ROAD (R18); "
+                          f"absent: {needle!r}")
 
     # ── R19: Android MeshNode consumes trusted SessionManager and forbids independent identity load ──
     if "sessions: io.godstone.mesh.crypto.SessionManager" not in kt_mesh_node and "sessions: SessionManager" not in kt_mesh_node:

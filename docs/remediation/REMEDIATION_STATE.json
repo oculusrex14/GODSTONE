@@ -13745,6 +13745,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-8/round679-my-own-count-corrected-five-not-seven.log",
    "sha256": "4b1afb77aea72ec32837fd58937930550dfa7b7e9ffa739317eb1f22f0e9ae42",
    "correction": "MY OWN COUNT CORRECTED: FIVE HARD OBLIGATIONS, NOT SEVEN. I reported a frontier of \"7 genuine internal items\" and RE-MEASURED IT AS A MISCOUNT IN TWO DIRECTIONS AT ONCE: the classifier reports 26 `internal_remaining` and 4 excluded-as-narrative, so \"7\" was neither number -- **it came from an earlier, blunter marker set whose exclusions I did not re-derive after narrowing them** (the `round ` marker over-matched; after narrowing, the excluded population fell from 34 to 4). *That is the same error this round has been repairing one layer out: a number carried forward from a measurement taken under DIFFERENT RULES.* **AND OF THE 26, ONLY FIVE STATE A HARD OBLIGATION:** GS-ARCHIVE-005 (hosted convergence -- no hosted lane exists); GS-STRESS-001 (the card's step 6 -- needs a real runtime to mutate); GS-FINAL-003's typed startup permit (measured on both isles to deadlock if consumed at construction) and its Phase-1-exit clause (whose mechanism is the admission point BECAUSE the constructor gate deadlocks); and GS-FINAL-006/GS-UX-001's platform and public-surface items. **EVERY ONE IS BLOCKED ON SOMETHING THIS WORK CANNOT SUPPLY:** a hosted lane, a real runtime, a device, or a product decision this work is forbidden from taking. **AND THE LESSON IS THIS ROUND'S OWN THEME: A TALLY IS ONLY AS TRUE AS THE RULES IT WAS DERIVED UNDER** -- the ledger carrieth the current excluded population so the report derives from it rather than from memory. **IT IS THE FIFTH INSTANCE THIS SESSION OF ONE SHAPE: round 608's hard-coded round name, round 640/641's rod witness, round 645's status field, round 660's `168`, and now a count carried across a rule change.**"
+  },
+  {
+   "round": 683,
+   "finding": "GS-STORE-002",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-002/round683-a-control-that-was-green-on-dead-code.log",
+   "sha256": "36efbd8bc4f317a32896baaa336d3f0c7f258a4d597f65486d97edf3931e081e",
+   "correction": "A CONTROL WAS GREEN ON DEAD CODE, AND THE REMOVAL OF THAT CODE IS WHAT REVEALED IT. Round 681 removed the unused `effectiveArtifacts` local (report 10's own item) and `ci/check_trusted_runtime_composition_controls.py` FAILED at R18 -- **and the failure was not a regression but a control revealing what it had been measuring:** R18 asserted the strings `storeUrl: messageStoreUrl` and `peerStoreUrl: peerStoreUrl`, **WHICH WERE SUPPLIED BY THE DEAD LOCAL** (the `KeychainWipeArtifacts` construction that resolved `effectiveArtifacts` and was used nowhere). *So the control was green on a line that did nothing.* **WHAT R18 ACTUALLY MEANS** is that the wipe's DELETION ROAD addresses the files the runtime owns -- the seam's own words: *\"without the mapping every deletion answered `.absent` against the process's working directory and the store survived a 'completed' wipe\"* -- **and THAT binding lives in `WipeArtifactFileSystemSeam`'s `realPaths` at `:637`, already correct** (both stores plus both `-wal` and `-shm` sidecars). **SO THE RUNTIME WAS RIGHT AND THE CHECK WAS WRONG.** REPAIRED: it now asserts FIVE bindings by name, each failure naming what is missing. **AND THE REPAIRED CHECK IS FALSIFIABLE WHERE THE OLD ONE WAS NOT:** removing the peer WAL sidecar mapping -- which the old check would have tolerated, since its strings came from the dead local -- now reddens it by name: *\"must bind the peer store WAL sidecar on the wipe's DELETION ROAD (R18); absent: 'peerStoreUrl.path + \\\"-wal\\\"'\"*. **THE LESSON: A CONTROL THAT NAMES A STRING IS NOT A CONTROL THAT MEASURES A BINDING** -- the same species this session has found five times, here in the instrument itself, found only because a repair of the thing it watched made it fail. **VERIFIED: 9 of 9 controls green after the repair.**"
   }
  ],
  "phase_one": {
@@ -14552,7 +14559,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "fcdc832ec84e7398cb8286b618795ecc18e58e5c",
+  "candidate_sha": "ba5c00290f88f811bacf47a35bcc6fee0a5519e3",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
