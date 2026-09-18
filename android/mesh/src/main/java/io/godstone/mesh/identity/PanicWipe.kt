@@ -127,15 +127,24 @@ class PanicWipe(
     }
 
     companion object {
-        /** Production entry point: start a full wipe using platform glue. */
-        fun begin(ctx: Context) {
-            PanicWipe(FileWipeJournal(ctx), AndroidWipeArtifacts(ctx)).begin()
-        }
-
-        /** Call on app launch: finishes a wipe that a crash interrupted. */
-        fun resumeIfPending(ctx: Context) {
-            PanicWipe(FileWipeJournal(ctx), AndroidWipeArtifacts(ctx)).resumeIfPending()
-        }
+        // *** GS-FINAL-002 (round 715): THE OLD-LADDER ENTRY ALIASES ARE REMOVED -- THE AUDIT'S CLAUSE, EXECUTED. ***
+        //
+        // **THE AUDIT: "Migrate existing stage journals and route old API aliases to the same owner before removing
+        // them."** *These two statics (`begin(ctx)`, `resumeIfPending(ctx)`) constructed the RETIRED non-resumable
+        // `PanicWipe` ladder over `AndroidWipeArtifacts` and ran it -- **A SECOND PUBLIC WIPE ENTRY BESIDE THE RETAINED
+        // AUTHORITY**, which is exactly the "added beside, rather than made the sole owner" root cause this finding
+        // names.*
+        //
+        // *** AND THE CUTOVER IS CLEAN BECAUSE THE ENUMERATION WAS MEASURED FIRST: BOTH DOORS HAVE ZERO CALLERS. ***
+        // *`grep -rn "PanicWipe\.begin(|PanicWipe\.resumeIfPending("` across `android/` returneth NOTHING -- not in
+        // `:app`, not in `:mesh` production, **and not even in the tests** (unlike iOS, whose same doors are driven by
+        // `WipeLifecycleTests`).* **SO THERE WAS NOTHING TO MIGRATE AND NOTHING TO LEAVE BEHIND.**
+        //
+        // **THE ADVANCING ROAD IS THE RETAINED ONE AND IT ALREADY CARRIED ITS OWN ENTRY:**
+        // `MeshPanicWipe.begin(): WipeStepResult` -> `CrashResumableWipe.requestWipe()` (*durable REQUESTED first,
+        // typed outcome to the caller*), and the startup barrier's `resume()` for recovery. **`PanicWipe.WipeState`
+        // REMAINS, because the journal and the admission gate read it** -- *what is removed is the second WAY IN, not
+        // the vocabulary the durable record speaks.*
     }
 }
 

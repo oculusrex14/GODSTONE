@@ -135,17 +135,25 @@ public final class PanicWipe {
 
     // MARK: - Production entry points
 
-    /// Production entry point: start a full wipe using platform glue.
-    public static func begin(journal: WipeJournal = UserDefaultsWipeJournal(),
-                             artifacts: WipeArtifacts = KeychainWipeArtifacts()) throws {
-        try PanicWipe(journal: journal, artifacts: artifacts).begin()
-    }
-
-    /// Call on app launch: finishes a wipe that a crash interrupted.
-    public static func resumeIfPending(journal: WipeJournal = UserDefaultsWipeJournal(),
-                                       artifacts: WipeArtifacts = KeychainWipeArtifacts()) throws {
-        try PanicWipe(journal: journal, artifacts: artifacts).resumeIfPending()
-    }
+    // *** GS-FINAL-002 (round 715): THE OLD-LADDER STATIC ENTRY ALIASES ARE REMOVED -- THE AUDIT'S CLAUSE, EXECUTED. ***
+    //
+    // **THE AUDIT: "Migrate existing stage journals and route old API aliases to the same owner before removing
+    // them."** *These two statics were a SECOND PUBLIC WIPE ENTRY BESIDE THE RETAINED AUTHORITY -- they built the
+    // RETIRED non-resumable ladder over `UserDefaultsWipeJournal`/`KeychainWipeArtifacts` and ran it.* **That is the
+    // "added beside, rather than made the sole owner" root cause this finding names, in its most literal form: the same
+    // file offered two ways in.**
+    //
+    // *** AND THE CUTOVER IS CLEAN BECAUSE THE ENUMERATION WAS MEASURED FIRST: `begin` HAD **ZERO** CALLERS ANYWHERE,
+    // AND `resumeIfPending`'s FIVE WERE ALL IN ONE COURT (`WipeLifecycleTests`) TESTING THE RETIRED LADDER ITSELF. ***
+    // *No production code called either.* **The five sites were MIGRATED to the class method they already meant**
+    // (`PanicWipe(journal:artifacts:).resumeIfPending()`) -- *a rewrite that preserveth each arm's subject rather than
+    // deleting the coverage.*
+    //
+    // **THE ADVANCING ROAD IS THE RETAINED ONE, AND IT CARRIED ITS OWN ENTRY ALREADY:**
+    // `MeshRuntime.beginPanicWipe() throws -> WipeStepResult` -> `wipeAuthority.requestWipe()` (*durable REQUESTED
+    // first, typed outcome to the caller -- round 707*), with the startup barrier's `resume()` for recovery. **THE
+    // `PanicWipe` CLASS AND ITS VOCABULARY REMAIN** (*the durable journal speaketh `PanicWipe.WipeState`*); *what is
+    // removed is the second WAY IN, not the record the ladder reads.*
 }
 
 // MARK: - Production glue

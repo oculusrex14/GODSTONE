@@ -306,6 +306,31 @@ def check_controls(
                       "exact_remediation: 'Return a typed outcome to the caller and render completion only at durable "
                       "IDLE' -- a Void entry cannot render it.*")
 
+    # ── R14b (round 715): THE OLD-LADDER ENTRY ALIASES STAY REMOVED ──
+    #
+    # *** GS-FINAL-002's `exact_remediation`: "route old API aliases to the same owner before removing them." ***
+    # *The aliases WERE removed this round (iOS `PanicWipe.begin`/`resumeIfPending` statics and Android
+    # `PanicWipe.begin(ctx)`/`resumeIfPending(ctx)`), and the removal is only durable if something REFUSES THEIR RETURN.*
+    #
+    # **WHY A CONTROL AND NOT JUST THE COMMIT:** *the finding's root cause is "the new coordinator was added BESIDE,
+    # rather than made the sole owner" -- and a second entry point is exactly the kind of thing a later convenience
+    # change re-adds. The substrate control is where this repository already keepeth that law.*
+    #
+    # **THE SHAPE TESTED IS THE ALIAS, NOT THE CLASS:** `PanicWipe.WipeState` must survive (*the durable journal speaketh
+    # it*), and the instance methods stay (*the migrated courts drive them*) -- so this refuseth only a **static**
+    # `PanicWipe.begin(`/`resumeIfPending(`, which would be a second way in.
+    # *** COMMENTS ARE STRIPPED, exactly as the rest of this control doth *** -- *so a doc comment DESCRIBING the removed
+    # alias (which both files now carry, on purpose) cannot satisfy or trip the refusal. The law is about CODE.*
+    # (`kt_wipe` and `swift_wipe` were read above -- the SAME files, comments already stripped.)
+    if "fun begin(ctx: Context)" in kt_wipe:
+        errors.append("Android `PanicWipe.begin(ctx)` has RETURNED -- a second public wipe entry beside the retained "
+                      "authority, which is GS-FINAL-002's own root cause (R14b)")
+    if "static func begin(journal:" in swift_wipe:
+        errors.append("iOS `PanicWipe.begin` static alias has RETURNED -- a second public wipe entry beside the retained "
+                      "authority, which is GS-FINAL-002's own root cause (R14b)")
+    if "static func resumeIfPending(journal:" in swift_wipe:
+        errors.append("iOS `PanicWipe.resumeIfPending` static alias has RETURNED (R14b)")
+
     # ── R15: Android MeshModule wires BoundRecipientKeyResolver and SessionManager ──
     if "BoundRecipientKeyResolver" not in kt_mesh_mod:
         errors.append("Android MeshModule must wire BoundRecipientKeyResolver (R15)")
@@ -835,8 +860,19 @@ def selftest() -> int:
         else: failures.append("Mutation R17b (a construction-refusing gate) was NOT caught")
         reset_all()
 
-        # Mutation R18: iOS MeshRuntime.create does not bind exact URLs
-        f_swift_runtime.write_text(f_swift_runtime.read_text(encoding="utf-8").replace("storeUrl: messageStoreUrl", "storeUrl: nil"), encoding="utf-8")
+        # *** Mutation R18: the wipe's DELETION ROAD loses its owned-path binding. ***
+        #
+        # *** THIS MUTATION WAS STALE AND THE SELFTEST SAID SO (found in round 715 -- the selftest FAILED "Mutation R18 was
+        # NOT caught", and it was the ONLY failure in an otherwise green run). ***
+        # *It replaced `"storeUrl: messageStoreUrl"` -- A STRING THAT NO LONGER EXISTS IN THE FILE (`grep -c` returneth
+        # 0), because round 683 REPOINTED the check away from that dead local and onto the live seam's `realPaths`.*
+        # **SO THE MUTATION WAS A NO-OP: `str.replace` of an absent string changeth nothing, the check stayed green
+        # because NOTHING WAS BROKEN, and the selftest recorded a control that "was not caught" -- which is exactly the
+        # "a mutation that cannot redden is not a mutation" defect, sitting inside the harness whose job is to prove
+        # other mutations CAN redden.** *Repointed at what the check now measures.*
+        f_swift_runtime.write_text(
+            f_swift_runtime.read_text(encoding="utf-8").replace('"mesh.db": messageStoreUrl,', '"mesh.db": "",'),
+            encoding="utf-8")
         if any("R18" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R18 was NOT caught")
         reset_all()

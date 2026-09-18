@@ -58,7 +58,7 @@ final class WipeLifecycleTests: XCTestCase {
     func testWipe_CleanIdle_NoOp() throws {
         let journal = InMemoryJournal()
         let artifacts = RecordingArtifacts()
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
+        try PanicWipe(journal: journal, artifacts: artifacts).resumeIfPending()
         XCTAssertEqual(artifacts.calls.count, 0)
         XCTAssertEqual(journal.state, .idle)
     }
@@ -316,7 +316,7 @@ final class WipeLifecycleTests: XCTestCase {
         XCTAssertEqual(journal.state, .requested)
         XCTAssertEqual(artifacts.calls.count, 0)
 
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
+        try PanicWipe(journal: journal, artifacts: artifacts).resumeIfPending()
         XCTAssertEqual(artifacts.calls, ["eraseKeys", "deleteArtifacts", "regenerateIdentity"])
         XCTAssertEqual(journal.state, .idle)
     }
@@ -330,7 +330,7 @@ final class WipeLifecycleTests: XCTestCase {
         XCTAssertEqual(journal.state, .keyErased)
         XCTAssertEqual(artifacts.calls, ["eraseKeys"])
 
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
+        try PanicWipe(journal: journal, artifacts: artifacts).resumeIfPending()
         XCTAssertEqual(artifacts.calls, ["eraseKeys", "deleteArtifacts", "regenerateIdentity"])
         XCTAssertEqual(journal.state, .idle)
     }
@@ -344,7 +344,7 @@ final class WipeLifecycleTests: XCTestCase {
         XCTAssertEqual(journal.state, .artifactsDeleted)
         XCTAssertEqual(artifacts.calls, ["eraseKeys", "deleteArtifacts"])
 
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
+        try PanicWipe(journal: journal, artifacts: artifacts).resumeIfPending()
         XCTAssertEqual(artifacts.calls, ["eraseKeys", "deleteArtifacts", "regenerateIdentity"])
         XCTAssertEqual(journal.state, .idle)
     }
@@ -354,7 +354,7 @@ final class WipeLifecycleTests: XCTestCase {
         journal.write(.newIdentity)
         let artifacts = RecordingArtifacts()
 
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
+        try PanicWipe(journal: journal, artifacts: artifacts).resumeIfPending()
         XCTAssertEqual(artifacts.calls.count, 0)
         XCTAssertEqual(journal.state, .idle)
     }

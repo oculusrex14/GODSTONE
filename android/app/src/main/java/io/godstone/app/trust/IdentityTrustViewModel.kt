@@ -160,7 +160,13 @@ class IdentityTrustViewModel(
     fun refresh(): TrustUiState = project(lastOutcome = null, error = null)
 
     /** Handle one command. Returns the new projection. */
-    fun onCommand(command: ContactVerificationCommand): TrustUiState = when (command) {
+    fun onCommand(command: ContactVerificationCommand): TrustUiState {
+        if (isProtectedCommand(command) && !protectedData.isProtectedDataAvailable()) {
+            // *** REFUSED BEFORE ANY EFFECT: THE PORT IS NOT CALLED AT ALL. *** *The arm for this injects a port that
+            // THROWS on every protected call and demands zero calls.*
+            return unavailableProjection(lastOutcome = "refused: protected data is unavailable", error = null)
+        }
+        return when (command) {
         is ContactVerificationCommand.ShowOwnIdentity ->
             project(lastOutcome = "own identity shown", error = null)
 
@@ -188,6 +194,70 @@ class IdentityTrustViewModel(
         }
 
         is ContactVerificationCommand.ClearError -> project(lastOutcome = null, error = null)
+        }
+    }
+
+    /**
+     * *** THE EXPLICIT UNAVAILABLE PROJECTION -- "an explicit unavailable projection without invoking the port." ***
+     *
+     * *Every field that would have come FROM the port is answered with its own honest "unavailable" vocabulary rather
+     * than a plausible-looking empty value:* `census` is `TrustCensus.Unavailable` (*the type already speaketh it*),
+     * `own` is nil, and `contacts` is empty **BECAUSE NOTHING WAS READ -- not because the authority said there are
+     * none.** **`wipe` reporteth `Idle` for the same reason, and `protectedDataAvailable = false` tell the UI WHY.**
+     */
+    private fun unavailableProjection(lastOutcome: String?, error: String?): TrustUiState =
+        TrustUiState(
+            own = null,
+            contacts = emptyList(),
+            census = TrustCensus.Unavailable("protected data is unavailable"),
+            wipe = WipeProgressState.Idle,
+            error = error,
+            lastOutcome = lastOutcome,
+            redacted = false,
+            protectedDataAvailable = false,
+            revision = state.revision + 1,
+        )
+
+    /**
+     * *** AND THE COMMANDS ARE GATED AT ADMISSION, NOT ONLY IN BUTTONS -- THE AUDIT'S SECOND CLAUSE. ***
+     *
+     * *The audit: "Enforce the same gate atomically at command/repository admission, not only in buttons."*
+     *
+     * *** THE CLASSIFICATION IS DERIVED FROM ONE STATED TEST, NOT FROM PER-COMMAND INTUITION: A COMMAND IS PROTECTED
+     * IFF ITS HANDLER REACHES `port.` DIRECTLY. *** *A reviewer asked me to re-derive this rather than intuit it, and the
+     * derivation is mechanical:* **`handleImport` -> `port.importBinding`, `handleCompare` ->
+     * `port.confirmVerified`, `handleApprove` -> `port.approveRotation`, `handleRevoke` -> `port.revoke`, and the two
+     * wipe arms call `port.beginWipe()`/`port.resumeWipe()` inline -- THOSE SEVEN REACH THE AUTHORITY.** *The other
+     * three -- `ShowOwnIdentity`, `Refresh`, `ClearError` -- call NOTHING but `project()`, which asketh the gate itself,
+     * so they are covered transitively by ONE enforcement point rather than by a second guard a future caller could
+     * forget.*
+     *
+     * **AND `DismissRotation` FALLS ON THE "DOES NOT REACH" SIDE, MEASURED RATHER THAN ASSUMED** -- *it was challenged as
+     * an exemption that "moveth the durable estate", and `handleDismiss` was read to settle it:* **its own comment says
+     * "A dismissal is a UI decision, not an authority mutation" and its entire body is `project()` + a lookup on the
+     * RESULT** -- *no port call, so the pending row genuinely stands untouched and `project()`'s gate covereth it.*
+     *
+     * *** AND THE WIPE ARMS STAY PROTECTED (true) ON PURPOSE, WHICH IS A DECIDED CHOICE WITH A REASON -- NOT A BYPRODUCT
+     * OF WHERE THEY FELL IN A SPLIT. *** *This repository already decided the question one layer down, in
+     * `WipeGatedAckObligationStore.deleteAllFrames`, whose comment readeth: **"THE ONE METHOD THAT IS *NOT* GATED ... A
+     * WIPE MUST BE ABLE TO ERASE THE ACK NAMESPACE WHILE A WIPE IS PENDING -- gating this would make the eraser refuse to
+     * erase ... THE GATE PROTECTS USE, NOT DESTRUCTION."*** **HERE THE SAME LAW POINTS THE OTHER WAY, AND THE ASYMMETRY
+     * IS THE POINT:** that seam sits INSIDE the wipe's own execution (*it must not refuse*), whereas this gate sits on
+     * the UI's ADMISSION to START one (*a locked device is exactly when a user may need to trigger a wipe, and refusing
+     * it would be the deadlock the eraser's exemption existeth to prevent*). *Both are wipe roads; one must not be
+     * refused, the other must not be able to refuse. Naming that is the decision.*
+     */
+    internal fun isProtectedCommand(command: ContactVerificationCommand): Boolean = when (command) {
+        is ContactVerificationCommand.ImportRecipientBinding -> true
+        is ContactVerificationCommand.CompareAndConfirmFingerprint -> true
+        is ContactVerificationCommand.ApproveRotation -> true
+        is ContactVerificationCommand.DismissRotation -> true
+        is ContactVerificationCommand.Revoke -> true
+        is ContactVerificationCommand.BeginWipe -> true
+        is ContactVerificationCommand.ResumeWipe -> true
+        is ContactVerificationCommand.ShowOwnIdentity -> false
+        is ContactVerificationCommand.Refresh -> false
+        is ContactVerificationCommand.ClearError -> false
     }
 
     // ------------------------------------------------------------ handlers
@@ -289,6 +359,21 @@ class IdentityTrustViewModel(
 
     /** The ONE read of the durable authority, and the ONLY writer of state. */
     private fun project(lastOutcome: String?, error: String?): TrustUiState {
+        // *** GS-FINAL-009 (round 715): THE GATE COMES FIRST -- THIS VIEW-MODEL WAS A SECOND, UNDECLARED CONSUMER OF THE
+        // SAME DEFECT. ***
+        //
+        // **FOUND BY AN INDEPENDENT SWEEP THAT ENUMERATED EVERY CONSUMER OF `ProtectedDataGate` RATHER THAN TRUSTING THE
+        // FINDING'S `affected_files`** (*which named only `MeshContracts.kt` and `MeshViewModel.kt`*). *The audit's own
+        // wording is generic to the CLASS, not to one file: "view-model methods are callable ... Enforce the same gate
+        // atomically at command/repository admission, not only in buttons."*
+        //
+        // **MEASURED, THIS METHOD READ THE PORT BEFORE ASKING THE GATE:** `port.contacts()`, `port.ownIdentity()` and
+        // `port.wipeProgress()` all ran FIRST, and `protectedData.isProtectedDataAvailable()` was consulted only to fill a
+        // PRESENTATION FIELD -- *precisely the root cause the audit names: "Availability is represented as presentation
+        // metadata rather than a prerequisite capability for data access and side effects."*
+        if (!protectedData.isProtectedDataAvailable()) {
+            return unavailableProjection(lastOutcome = lastOutcome, error = error)
+        }
         val census = port.contacts()
         val contacts = (census as? TrustCensus.Readable)?.contacts ?: emptyList()
         val own = port.ownIdentity()
