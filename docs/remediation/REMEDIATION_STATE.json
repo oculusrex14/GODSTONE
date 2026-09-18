@@ -13732,6 +13732,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-8/round677-the-objective-verified-against-the-audits-closure-matrix.log",
    "sha256": "ffebf7d74f7709a04a38e98fb2dd50556dc8d5fde10763adf63d011529b05b52",
    "correction": "THE OBJECTIVE VERIFIED AGAINST THE AUDIT'S OWN CLOSURE MATRIX, ROW BY ROW. The matrix carries 67 rows (54 original, 13 new), and the THIRTEEN are the audit's own findings against this candidate -- ALL THIRTEEN `NOT_FIXED` (or `UNABLE_TO_VERIFY`) at the audited SHA. **MEASURED NOW: every one carries landed, evidenced work** -- GS-FINAL-001/002/005/007/008/009/010/011/012/013 are `FIX_SUBMITTED` (1-7 evidence logs each), and GS-FINAL-003/004/006 are `PARTIAL` with their remainders named. The derivation is a program: `my_status in (FIX_SUBMITTED, PARTIAL)` over the ledger, printing \"NONE\" for rows without landed work. AND WHAT PARTIAL MEANS ON THE THREE IS STATED RATHER THAN GLOSSED: GS-FINAL-003 -- admission points landed and mutation-proven on both isles (including this session's Android ACK decorator, both isles' SOS read roads, and iOS's Router admission point); what remains is the typed startup permit (measured on both isles to DEADLOCK if consumed at construction) and the Hilt binding's portability. GS-FINAL-004 -- TWO of its four clauses landed and mutation-proven ((c) round 647, (d) round 605); the other two need a production `EncryptedStoreEngine`, which the tree does not contain. GS-FINAL-006 -- the Android half closed with an EXECUTED witness; the platform half is external by the audit's own distinction. AND NOT ONE ROW IS `VERIFIED_FIXED`, BY RULE: only an independent audit may write it. **THE VERDICT REMAINS NO_GO**, the five external gates remain OPEN or BLOCKED, no hosted lane exists, and the readiness flags remain false. What is claimed is narrow: every one of the thirteen carries landed work, and the remainder of each is named in its own `remaining_work` -- which, until this session, SEVEN OF THEM DID NOT STATE AT ALL."
+  },
+  {
+   "round": 679,
+   "finding": "PHASE-8-FRONTIER-COUNT",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-8/round679-my-own-count-corrected-five-not-seven.log",
+   "sha256": "4b1afb77aea72ec32837fd58937930550dfa7b7e9ffa739317eb1f22f0e9ae42",
+   "correction": "MY OWN COUNT CORRECTED: FIVE HARD OBLIGATIONS, NOT SEVEN. I reported a frontier of \"7 genuine internal items\" and RE-MEASURED IT AS A MISCOUNT IN TWO DIRECTIONS AT ONCE: the classifier reports 26 `internal_remaining` and 4 excluded-as-narrative, so \"7\" was neither number -- **it came from an earlier, blunter marker set whose exclusions I did not re-derive after narrowing them** (the `round ` marker over-matched; after narrowing, the excluded population fell from 34 to 4). *That is the same error this round has been repairing one layer out: a number carried forward from a measurement taken under DIFFERENT RULES.* **AND OF THE 26, ONLY FIVE STATE A HARD OBLIGATION:** GS-ARCHIVE-005 (hosted convergence -- no hosted lane exists); GS-STRESS-001 (the card's step 6 -- needs a real runtime to mutate); GS-FINAL-003's typed startup permit (measured on both isles to deadlock if consumed at construction) and its Phase-1-exit clause (whose mechanism is the admission point BECAUSE the constructor gate deadlocks); and GS-FINAL-006/GS-UX-001's platform and public-surface items. **EVERY ONE IS BLOCKED ON SOMETHING THIS WORK CANNOT SUPPLY:** a hosted lane, a real runtime, a device, or a product decision this work is forbidden from taking. **AND THE LESSON IS THIS ROUND'S OWN THEME: A TALLY IS ONLY AS TRUE AS THE RULES IT WAS DERIVED UNDER** -- the ledger carrieth the current excluded population so the report derives from it rather than from memory. **IT IS THE FIFTH INSTANCE THIS SESSION OF ONE SHAPE: round 608's hard-coded round name, round 640/641's rod witness, round 645's status field, round 660's `168`, and now a count carried across a rule change.**"
   }
  ],
  "phase_one": {
@@ -14539,7 +14546,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "40075bd6638da242dc141a27290986c1da9c8135",
+  "candidate_sha": "ac3fa2d22d2c34c7f8c513b19e5d32bd8c699f0f",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
