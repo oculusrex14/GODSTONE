@@ -240,7 +240,23 @@ public final class MeshNode {
     // system clock. The owner consumes the link controls at the ingress
     // demultiplex and nothing else does; T41 wires the outbound pump onto
     // this same instance.
-    internal var controlClock: () -> Int64 = { Int64((Date().timeIntervalSince1970 * 1000).rounded()) }
+    /// *** GS-FINAL-005 (round 709): THIS PROPERTY WAS WALL TIME WEARING A MONOTONIC NAME. ***
+    ///
+    /// **THE AUDIT: "InventorySnapshotAuthority and SyncControlOwner receive Date-based closures named
+    /// monotonicNowMillis."** *Measured, the wall reading did not stop at those two: THIS property was the ROOT, and
+    /// `defaultSyncPump` (:106), the SOS dispatch paths (:843, :943) and both control-plane seams all read through it.*
+    /// **A user-set clock, an NTP step or a correction could move every one of them, and `atMonoMillis` and
+    /// `lastPingSentMono` would carry the lie into comparisons that assume it cannot be set.**
+    ///
+    /// **AND THE OTHER ISLE ALREADY HAD IT RIGHT -- MEASURED, NOT ASSUMED: Android's `MeshNode.controlClock` readeth
+    /// `System.nanoTime() / 1_000_000L`**, *which cannot be set.* This is therefore parity with a correct twin rather
+    /// than a new invention. **The source is the repository's own monotonic sample**, so the two notions of "now" in
+    /// this node cannot drift apart.
+    ///
+    /// *I FIRST REPAIRED THIS WITH A LOCAL `let` INSIDE `init`, AND MEASURED THAT IT SHADOWED THE ROOT -- the four
+    /// OTHER readers above would have kept the wall clock while the two named in the audit went clean. **A repair that
+    /// fixes the named sites and leaves the root is a repair that moves the defect, not one that removes it.***
+    internal var controlClock: () -> Int64 = { DefaultRetentionClock.sample().monoMs }
     internal var snapshotAuthority: InventorySnapshotAuthority!
     internal var syncControlOwner: SyncControlOwner!
 
@@ -469,10 +485,23 @@ public final class MeshNode {
         self.wipeGate = wipeGate
         self.ble.store = store
         self.ble.identity = identity
-        // T40: the control plane rides the same durable store and clock.
-        self.snapshotAuthority = InventorySnapshotAuthority(store: store, monotonicNowMillis: { Int64((Date().timeIntervalSince1970 * 1000).rounded()) })
+        // *** GS-FINAL-005 (round 709): THE PARAMETER SAYS `monotonic` AND IT NOW REALLY IS. ***
+        //
+        // **THE AUDIT'S OWN OBSERVATION, VERBATIM: "InventorySnapshotAuthority and SyncControlOwner receive Date-based
+        // closures named monotonicNowMillis."** *Measured at this line: both were handed
+        // `Date().timeIntervalSince1970 * 1000` -- WALL time, passed to a parameter whose NAME promiseth a monotonic
+        // reading.* **A user-set clock, an NTP step or a correction can move it, and every deadline and budget computed
+        // from it moves with the lie.**
+        //
+        // **AND THE OTHER ISLE ALREADY HAD THIS RIGHT -- MEASURED, NOT ASSUMED: Android's `MeshNode.controlClock`
+        // readeth `System.nanoTime() / 1_000_000L`**, *which cannot be set.* **So this is parity with a correct twin
+        // rather than a new invention.**
+        //
+        // *Both seams read the node's OWN clock (fixed at the property above), so the control plane and the pump cannot
+        // disagree about what "monotonic" means on this isle.*
+        self.snapshotAuthority = InventorySnapshotAuthority(store: store, monotonicNowMillis: { self.controlClock() })
         self.syncControlOwner = SyncControlOwner(store: store, authority: snapshotAuthority,
-                                                  monotonicNowMillis: { Int64((Date().timeIntervalSince1970 * 1000).rounded()) },
+                                                  monotonicNowMillis: { self.controlClock() },
                                                   localNodeId: identity.nodeId)
     }
 

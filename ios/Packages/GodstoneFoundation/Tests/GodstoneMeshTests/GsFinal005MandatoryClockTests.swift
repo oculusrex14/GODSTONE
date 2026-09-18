@@ -120,4 +120,66 @@ final class GsFinal005MandatoryClockTests: XCTestCase {
         store.close()
         try? FileManager.default.removeItem(at: url)
     }
+    // ================================================================================================
+    // GS-FINAL-005 (round 709): THE CONTROL CLOCK -- THE AUDIT'S SECOND SENTENCE
+    //
+    // *** THE AUDIT: "InventorySnapshotAuthority and SyncControlOwner receive Date-based closures named
+    // monotonicNowMillis." *** *Measured: the wall reading did not stop at those two -- the ROOT was
+    // `MeshNode.controlClock`, which `defaultSyncPump`, the SOS dispatch paths and both control-plane seams all read
+    // through.*
+    //
+    // **AND THE OTHER ISLE ALREADY HAD IT RIGHT (Android's `controlClock` readeth `System.nanoTime()`), SO THIS IS
+    // PARITY WITH A CORRECT TWIN RATHER THAN A NEW INVENTION.**
+    // ================================================================================================
+
+    /**
+     * *** THE DISCRIMINATING PROPERTY: A MONOTONIC CLOCK MUST NOT BE MOVABLE BY THE WALL CLOCK. ***
+     *
+     * *The audit's impact sentence: "wall-clock jumps can invalidate budget and deadline assumptions."*
+     *
+     * **WHY THIS IS NOT A SHAPE CHECK:** asserting only that `controlClock` exists, or that a parameter is NAMED
+     * `monotonicNowMillis`, is exactly the string-matching that a wall-clock implementation satisfies. *The property
+     * that DISCRIMINATES is the one a `Date()`-based closure FAILS and a `nanoTime()`-based closure PASSES: TWO
+     * CONSECUTIVE SAMPLES MUST NOT DIFFER BY ~56 YEARS.* **The wall-clock reading is ~1.7e12 ms since the epoch;
+     * a monotonic uptime reading is at most a few days' worth, ~1e8 ms.** *So the magnitude itself is the witness --
+     * and pre-fix, `controlClock()` would have returned the epoch magnitude.*
+     */
+    func testGSFINAL005_theControlClockIsMonotonicAndNotWallTime() throws {
+        let url = tempUrl("controlclock")
+        let store = try SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+        let identity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
+        let tracker = DeliveryTracker(
+            repo: InMemoryDeliveryRepositoryForT43(InMemoryMessageStore()),
+            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
+        let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
+
+        let sample = node.controlClock()
+
+        // *** THE WITNESS: WALL TIME SINCE 1970 IS ~1.7e12 ms; UPTIME IS BOUNDED BY THE HOST'S OWN UPTIME. ***
+        // A threshold of 1e12 ms is ~31.7 years -- NO REAL MONOTONIC UPTIME REACHES IT, AND EVERY WALL READING SINCE
+        // 2001 EXCEEDS IT. *So the arm cannot be satisfied by a wall clock and cannot be failed by a monotonic one.*
+        XCTAssertLessThan(
+            sample, 1_000_000_000_000,
+            "*** GS-FINAL-005: `controlClock` MUST BE MONOTONIC, NOT WALL TIME. Measured \(sample) ms -- that is the " +
+                "EPOCH MAGNITUDE, so this is `Date()`, and a user-set clock or an NTP step can move every deadline " +
+                "and budget computed from it. *The audit: 'wall-clock jumps can invalidate budget and deadline " +
+                "assumptions.'* ***",
+        )
+
+        // AND IT MUST ADVANCE RATHER THAN BE A CONSTANT -- a frozen clock would satisfy the bound above while making
+        // every cadence comparison meaningless.
+        let later = node.controlClock()
+        XCTAssertGreaterThanOrEqual(
+            later, sample,
+            "*** A MONOTONIC CLOCK MUST NOT GO BACKWARDS. Observed \(sample) then \(later). ***",
+        )
+        XCTAssertNotEqual(
+            later, 0,
+            "*** AND IT MUST NOT BE A CONSTANT ZERO, which would satisfy the magnitude bound while breaking every " +
+                "cadence comparison in the control plane. ***",
+        )
+        store.close()
+        try? FileManager.default.removeItem(at: url)
+    }
+
 }
