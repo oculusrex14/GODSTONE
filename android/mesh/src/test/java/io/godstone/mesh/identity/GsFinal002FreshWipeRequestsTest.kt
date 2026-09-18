@@ -35,6 +35,12 @@ class GsFinal002FreshWipeRequestsTest {
         override fun eraseKey(name: String): KeyDeletionResult { erased.add(name); return KeyDeletionResult.Deleted }
     }
 
+    /** A vault whose erasure FAILS RETRYABLY, so the ladder answereth `RetryLater` rather than advancing. */
+    private class RefusingVault : KeyVaultSeam {
+        override fun eraseKey(name: String): KeyDeletionResult =
+            KeyDeletionResult.Failed(name, retryable = true, reason = "the key store is busy")
+    }
+
     /** A filesystem whose deletions always succeed. */
     private class PassingFileSystem : ArtifactFileSystemSeam {
         val deleted = mutableListOf<String>()
@@ -110,6 +116,14 @@ class GsFinal002FreshWipeRequestsTest {
         }
     }
 
+    // *** NOTE (round 707): AN ARM FOR THE TYPED-OUTCOME CLAUSE STOOD HERE AND WAS DELETED, DELIBERATELY. ***
+    // *It drove the STATIC helper `MeshPanicWipe.runRuntimeSideWipe(...)`, which ALREADY returned `WipeStepResult`
+    // before this round -- so it was green while `begin()` still returned `Unit`, and it stayed green when I reverted
+    // ONLY the propagation. An independent review caught it, and the mutation confirmed it: an arm about the helper is
+    // not an arm about the entry.* **The clause is now evidenced by
+    // `GsFinal003ContextProviderTest.testGF002TheInstanceEntryHandethTheTypedOutcomeToItsCaller`, which drives the REAL
+    // instance entry over a Robolectric Context and couples the answer to the DURABLE JOURNAL -- and which REDDENS when
+    // only the propagation is reverted.**
     /**
      * *** AND THE REFUSAL IS PINNED AS CORRECT **FOR `resume`**, SO THE TWO VERBS STAY DISTINGUISHABLE. ***
      *

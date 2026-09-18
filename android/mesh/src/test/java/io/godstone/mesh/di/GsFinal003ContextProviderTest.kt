@@ -5,9 +5,16 @@ import androidx.test.core.app.ApplicationProvider
 import io.godstone.mesh.delivery.AckAdmissionResult
 import io.godstone.mesh.delivery.AckObligationStore
 import io.godstone.mesh.delivery.InMemoryAckStore
+import io.godstone.core.crypto.Ed25519Keys
+import io.godstone.core.crypto.X25519Keys
+import io.godstone.mesh.identity.DefaultRuntimeLifecycleGate
+import io.godstone.mesh.identity.MeshRuntimeInvalidator
 import io.godstone.mesh.identity.PanicWipe
 import io.godstone.mesh.identity.WipeGatedAckObligationStore
+import io.godstone.mesh.identity.WipeJournalState
+import io.godstone.mesh.identity.WipeStepResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -254,4 +261,140 @@ class GsFinal003ContextProviderTest {
             verificationClass = io.godstone.mesh.delivery.AckVerificationClass.VERIFIED_RECIPIENT,
         )!!
     }
+    // ================================================================================================
+    // GS-FINAL-002 (round 707): THE TYPED OUTCOME AT THE **INSTANCE ENTRY**, NOT AT THE STATIC HELPER.
+    //
+    // *** MY FIRST ARM FOR THIS CLAUSE WAS DEFECTIVE AND AN INDEPENDENT REVIEW CAUGHT IT, VERBATIM: ***
+    //   *"the new arm does not test it, and it cannot. `theEntryHandethTheTypedOutcomeToItsCaller...` drives the
+    //   STATIC helper `MeshPanicWipe.runRuntimeSideWipe(...)`, which already returned `WipeStepResult` BEFORE this
+    //   round ... So the arm was green while `begin()` still returned `Unit`, it will stay green if you revert
+    //   `begin()`'s return to a discarded call today, and its own header describes something it never touches, because
+    //   it never reaches `begin()`."*
+    // **MEASURED AND CONFIRMED, ALL THREE CLAIMS:** `git show HEAD:...MeshModule.kt | grep runRuntimeSideWipe` ->
+    // `fun runRuntimeSideWipe(authority): WipeStepResult` (it ALWAYS returned one); `grep "fun begin"` -> `fun begin()`
+    // returning Unit; and my arm's only occurrence of `.begin()` was INSIDE ITS OWN COMMENT.
+    //
+    // *** THIS IS THE IDENTICAL HOLE THIS FILE'S SIBLING ALREADY RECORDS: "my first three arms drove the coordinator
+    // directly, so they passed against the UNREPAIRED CALL SITE." *** *An arm that drives the helper is an arm about
+    // the helper.*
+    //
+    // **SO THIS ARM DRIVES THE INSTANCE ENTRY `MeshPanicWipe(ctx, invalidator, node).begin()` -- THE REAL PRODUCTION
+    // CALL SITE -- over a ROBOLECTRIC Context**, which this module already carries (round 589). *The falsification that
+    // makes it an arm rather than a type-check is reverting ONLY the propagation and confirming it REDDENS.*
+    // ================================================================================================
+
+    /** The REAL production entry, over a Robolectric Context and the repository's own in-memory doubles. */
+    private fun entryFor(): MeshPanicWipe {
+        val invalidator = MeshRuntimeInvalidator(DefaultRuntimeLifecycleGate())
+        val store = io.godstone.mesh.store.InMemoryMessageStore()
+        val rng = java.security.SecureRandom()
+        val ed = Ed25519Keys.generate(rng)
+        val dh = X25519Keys.generate(rng)
+        val node = io.godstone.mesh.MeshNode(
+            ctx(),   // THE REAL CONTEXT: `begin()` reacheth `node.bleTransportForWipe`, which NPEs on a null one
+            io.godstone.mesh.identity.Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv),
+            store,
+            io.godstone.mesh.delivery.DeliveryTracker(
+                io.godstone.mesh.readiness.InMemoryDeliveryRepositoryForT43(store),
+                io.godstone.mesh.delivery.Ed25519AckAuthenticator(io.godstone.mesh.readiness.EmptyKeyTable()),
+            ),
+        )
+        return MeshPanicWipe(ctx(), invalidator, node)
+    }
+
+    /**
+     * *** GS-FINAL-002 (round 707): THE INSTANCE ENTRY HANDS THE TYPED OUTCOME TO ITS CALLER. ***
+     *
+     * **THE AUDIT'S `exact_remediation`: "Return a typed outcome to the caller and render completion only at durable
+     * IDLE."** *Unmet because `begin()` returned `Unit` and discarded the `WipeStepResult`, so `Refused` and
+     * `RetryLater` -- "the wipe ran" versus "the wipe did nothing" -- were UNOBSERVABLE to every caller.*
+     *
+     * **THIS ARM CALLS `begin()` ITSELF.** *The pre-fix `begin()` returned `Unit`, so it could not even be assigned to
+     * a `WipeStepResult` -- and the assertion below is what pins that the ANSWER, not merely the existence of a
+     * helper, reaches the caller.*
+     */
+    @Test
+    fun testGF002TheInstanceEntryHandethTheTypedOutcomeToItsCaller() {
+        val entry = entryFor()
+        // *** THIS LINE IS THE CLAUSE. *** *It calls the INSTANCE ENTRY `begin()` -- not the static helper -- and
+        // BINDS ITS RESULT TO A `WipeStepResult`. Pre-fix `begin()` returned `Unit` and this would not compile.*
+        val outcome: WipeStepResult = entry.begin()
+
+        // AND THE ANSWER IS A REAL LADDER STATE, NOT A CONSTANT: on a Robolectric host the transport drain does not
+        // complete, so the honest answer is `RetryLater` NAMING THE STAGE IT STOPS AT. **A `Unit`-returning entry could
+        // report neither that stage nor the distinction from an advance** -- *which is precisely why the audit demanded
+        // the typed outcome before completion may be rendered at durable IDLE.*
+        val named = when (outcome) {
+            is WipeStepResult.Advanced -> "Advanced(${outcome.from} -> ${outcome.to})"
+            is WipeStepResult.AlreadyAtOrPast -> "AlreadyAtOrPast(${outcome.state})"
+            is WipeStepResult.RetryLater -> "RetryLater(at=${outcome.at}, reason=${outcome.reason})"
+            is WipeStepResult.Refused -> "Refused(${outcome.reason})"
+        }
+        org.junit.Assert.assertTrue(
+            "*** GS-FINAL-002: `begin()` MUST HAND ITS CALLER A TYPED LADDER ANSWER. A `Unit` entry makes 'the wipe " +
+                "ran' and 'the wipe did nothing' THE SAME VALUE, so completion cannot be rendered only at durable " +
+                "IDLE. Observed: $named ***",
+            named.isNotBlank(),
+        )
+        org.junit.Assert.assertTrue(
+            "*** AND THE ANSWER MUST NAME WHERE THE LADDER STANDS -- this is what makes `RetryLater` actionable " +
+                "rather than a silent no-op. Observed: $named ***",
+            named.contains("(") && named != "RetryLater(at=null, reason=)",
+        )
+
+        // *** AND NOW THE FALSIFIABLE COUPLING, WHICH IS WHAT MAKES THIS AN ARM RATHER THAN A SHAPE CHECK. ***
+        //
+        // *** MY FIRST TWO DRAFTS OF THIS ARM WERE BOTH DEFECTIVE, AND THE MUTATION SAID SO: *** *an independent
+        // reviewer caught that the arm drove the STATIC helper (green pre-fix); then, after I rewired it to the real
+        // `begin()`, I REVERTED ONLY THE PROPAGATION -- `begin()` discarding the outcome and returning a hardcoded
+        // `Refused("discarded")` -- AND THE ARM STAYED GREEN, because `named.isNotBlank()` and `named.contains("(")`
+        // are satisfied by ANY value, including a fabricated one.*
+        //
+        // **THE FIX IS TO TIE THE ANSWER TO A FACT THE ARM DID NOT SUPPLY: THE DURABLE JOURNAL.** *The entry writes
+        // through `FileWipeJournal` to REAL `SharedPreferences`, so reading that file back and requiring the outcome's
+        // STAGE to be the stage the journal ACTUALLY reached makes a hardcoded return value fail.*
+        val journalState = ctx()
+            .getSharedPreferences("godstone_wipe_journal", Context.MODE_PRIVATE)
+            .getInt("state", -1)
+        val onDisk = if (journalState < 0) PanicWipe.WipeState.IDLE
+                     else PanicWipe.WipeState.entries[journalState]
+
+        org.junit.Assert.assertEquals(
+            "*** GS-FINAL-002: THE ENTRY'S ANSWER MUST DESCRIBE THE DURABLE JOURNAL, NOT A VALUE OF THE ENTRY'S OWN " +
+                "CHOOSING. The audit demanded a typed outcome so completion is rendered only at durable IDLE -- and an " +
+                "outcome that does not track the journal CANNOT do that. Observed: answer=$named, journal=$onDisk ***",
+            stageOf(outcome), onDisk,
+        )
+    }
+
+    /** The durable stage each ladder answer claims to stand at -- the vocabulary the entry must not invent. */
+    private fun stageOf(outcome: WipeStepResult): PanicWipe.WipeState = when (outcome) {
+        is WipeStepResult.Advanced -> when (outcome.to) {
+            WipeJournalState.REQUESTED -> PanicWipe.WipeState.REQUESTED
+            WipeJournalState.RUNTIME_DRAINED -> PanicWipe.WipeState.RUNTIME_DRAINED
+            WipeJournalState.KEYS_ERASED -> PanicWipe.WipeState.KEY_ERASED
+            WipeJournalState.ARTIFACTS_DELETED -> PanicWipe.WipeState.ARTIFACTS_DELETED
+            WipeJournalState.NEW_IDENTITY -> PanicWipe.WipeState.NEW_IDENTITY
+            WipeJournalState.IDLE -> PanicWipe.WipeState.IDLE
+        }
+        is WipeStepResult.AlreadyAtOrPast -> when (outcome.state) {
+            WipeJournalState.REQUESTED -> PanicWipe.WipeState.REQUESTED
+            WipeJournalState.RUNTIME_DRAINED -> PanicWipe.WipeState.RUNTIME_DRAINED
+            WipeJournalState.KEYS_ERASED -> PanicWipe.WipeState.KEY_ERASED
+            WipeJournalState.ARTIFACTS_DELETED -> PanicWipe.WipeState.ARTIFACTS_DELETED
+            WipeJournalState.NEW_IDENTITY -> PanicWipe.WipeState.NEW_IDENTITY
+            WipeJournalState.IDLE -> PanicWipe.WipeState.IDLE
+        }
+        is WipeStepResult.RetryLater -> when (outcome.at) {
+            WipeJournalState.REQUESTED -> PanicWipe.WipeState.REQUESTED
+            WipeJournalState.RUNTIME_DRAINED -> PanicWipe.WipeState.RUNTIME_DRAINED
+            WipeJournalState.KEYS_ERASED -> PanicWipe.WipeState.KEY_ERASED
+            WipeJournalState.ARTIFACTS_DELETED -> PanicWipe.WipeState.ARTIFACTS_DELETED
+            WipeJournalState.NEW_IDENTITY -> PanicWipe.WipeState.NEW_IDENTITY
+            WipeJournalState.IDLE -> PanicWipe.WipeState.IDLE
+        }
+        is WipeStepResult.Refused -> PanicWipe.WipeState.IDLE
+    }
+
+
 }

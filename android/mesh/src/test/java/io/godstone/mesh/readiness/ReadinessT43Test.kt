@@ -574,6 +574,11 @@ class ReadinessT43Test {
 
 /** The minimal in-memory delivery repository the T43 court requireth (the
  *  durable CAS itself is T37's and is exercised by its own courts). */
+/** A resolver that knows no keys -- the wipe entry never drives the ACK path, so it is never consulted. */
+internal class EmptyKeyTable : RecipientKeyResolver {
+    override fun publicSigningKey(nodeId: ByteArray): ByteArray? = null
+}
+
 internal class InMemoryDeliveryRepositoryForT43(
     private val store: InMemoryMessageStore,
 ) : io.godstone.mesh.delivery.DeliveryRepository {

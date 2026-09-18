@@ -154,7 +154,21 @@ class MeshPanicWipe internal constructor(
     private val invalidator: MeshRuntimeInvalidator,
     private val node: MeshNode
 ) {
-    fun begin() {
+    /**
+     * *** GS-FINAL-002 (round 707): THE ENTRY RETURNS THE TYPED OUTCOME -- THE AUDIT'S CLAUSE, FULFILLED. ***
+     *
+     * **THE AUDIT'S `exact_remediation` SAYS: "Return a typed outcome to the caller and render completion only at
+     * durable IDLE."** *That clause was UNMET HERE: this method returned `Unit` and DISCARDED the `WipeStepResult` of
+     * `runRuntimeSideWipe` below, so `Refused` and `RetryLater` -- the difference between "the wipe ran" and "the wipe
+     * did nothing" -- were UNOBSERVABLE to every caller.* **A caller that cannot tell those apart cannot render
+     * completion at durable IDLE, because it cannot see the state at all.** *Found by an independent sweep that
+     * enumerated this finding's clauses rather than trusting its evidence list.*
+     *
+     * **THE RETURN TYPE NAMES ITS OWN CONSEQUENCE: `WipeStepResult` is the ladder's own vocabulary**
+     * (`Advanced`/`AlreadyAtOrPast`/`RetryLater`/`Refused`), *so the caller receives the coordinator's answer in the
+     * coordinator's words rather than a boolean somebody invented here.*
+     */
+    fun begin(): WipeStepResult {
         val artifacts = RuntimeAwareWipeArtifacts(
             invalidator = invalidator,
             delegate = AndroidWipeArtifacts(ctx)
@@ -163,7 +177,7 @@ class MeshPanicWipe internal constructor(
         // and it can, because the module provideth the node, and the node owneth the transport. ***
         // `PanicWipe(FileWipeJournal(ctx), artifacts).begin()` RETIRES HERE: THE OLD COORDINATOR IS NO LONGER WHAT THE
         // RUNTIME-SIDE WIPE RUNS.
-        MeshPanicWipe.runRuntimeSideWipe(wipeAuthority(artifacts, FileWipeJournal(ctx)))
+        return MeshPanicWipe.runRuntimeSideWipe(wipeAuthority(artifacts, FileWipeJournal(ctx)))
     }
 
     /**

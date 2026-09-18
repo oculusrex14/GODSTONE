@@ -13828,6 +13828,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-005/round705-android-clock-parity-red-green.log",
    "sha256": "baf9d1461b2425ec8aa70eb6365136602f209eb818a4cfab66d306637487cb61",
    "correction": "ANDROID PARITY, FOUND BY AN INDEPENDENT SWEEP OF THIS ENTRY'S OWN EVIDENCE LIST, AND WORSE THAN \"PARITY INCOMPLETE\": the Android `receiptTimeProvider` was a nullable `var` whose EVERY assignment site lived in the test file, so the permissive branches were the ONLY path production ever took -- `isForwardable` returned true for every row and `sweepExpired` returned 0 without sweeping. Repaired with iOS's repair (the TYPE, not a guard): non-optional with a new `RetentionClock.defaultSample()`, all four permissive branches removed, red proven against the true pre-fix revision."
+  },
+  {
+   "round": 707,
+   "finding": "GS-FINAL-002",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round707-typed-outcome-at-the-instance-entry.log",
+   "sha256": "4e1b5246e60a75268933875b720b3c9cce1f0c6d65db9fd9145c869e95818aac",
+   "correction": "THE TYPED-OUTCOME CLAUSE: both production entries now return the coordinator's own answer. **AND TWO DEFECTIVE ARMS OF MINE STOOD IN THE WAY.** The first drove the STATIC helper (green pre-fix -- *an arm about the helper is not an arm about the entry*); the second asserted only non-blankness and SURVIVED the propagation-reverted mutation. The surviving arm drives the REAL instance entry over a Robolectric Context and ties the answer to the DURABLE JOURNAL, and it REDDENS when only the propagation is reverted."
   }
  ],
  "phase_one": {
@@ -14063,7 +14070,11 @@
      "A DEVICE-LEVEL WIPE RESULT IS NOT CLAIMED. Every measurement here is a HOST reproduction: the erasure of real Keystore/Keychain material and the physical deletion of a real database file on a device remain the external gate (T73-T75). The arms measure the ORDER and the OBSERVED EFFECTS through recording seams; they do not claim a device cryptographic-erasure proof.",
      "The iOS `beginPanicWipe(keychain:)` overload is `internal` (LocalIdentityKeychain is internal, so it cannot be public). A caller outside the module must build an authority; whether the PUBLIC surface should offer a keychain parameter is left as it was, because widening it was not this finding.",
      "CROSS-ISLE DIVERGENCE, STATED RATHER THAN HIDDEN: iOS and Android now use the SAME LAW with different spellings. iOS routes the fresh path through `wipeAuthority.requestWipe()`; Android through `MeshPanicWipe.runRuntimeSideWipe(authority)` which calls `requestWipe()`. The Android routing decision was EXTRACTED into its own function precisely because the first three arms justified the coordinator and not the decision. The two isles are not byte-identical and are not claimed to be."
-    ]
+    ],
+    "evidence": [
+     "ROUND 707 -- THE TYPED-OUTCOME CLAUSE, AND TWO DEFECTIVE ARMS OF MINE ON THE WAY TO IT. An independent sweep, asked to enumerate every CLAUSE of the audit's exact_remediation rather than trust this entry's evidence list, reported \"the typed-outcome clause is unmet at both production entries\" -- verified: Android `begin()` DISCARDED the WipeStepResult and iOS public `beginPanicWipe()` returned Void, so `Refused`/`RetryLater` (the difference between \"the wipe ran\" and \"the wipe did nothing\") were UNOBSERVABLE, and a caller that cannot see the state cannot render completion at durable IDLE. Both entries now return the coordinator's own answer (`begin(): WipeStepResult`; `@discardableResult ... -> WipeStepResult`), which keeps every call site compiling. **AND MY FIRST ARM FOR THE CLAUSE WAS WRONG, CAUGHT BY AN INDEPENDENT REVIEW AND CONFIRMED BY MEASUREMENT:** it drove the STATIC helper `runRuntimeSideWipe(...)`, which ALREADY returned WipeStepResult pre-fix (`git show HEAD:...MeshModule.kt`), so it was green before the repair and stayed green when I reverted only the propagation -- *the identical hole this repository already records: \"my first three arms drove the coordinator directly, so they passed against the UNREPAIRED CALL SITE.\"* I DELETED IT. **MY SECOND DRAFT ALSO FAILED THE MUTATION** (it asserted only that the answer was non-blank -- satisfied by a fabricated value). **THE ARM THAT DISCRIMINATES TIES THE ANSWER TO A FACT IT DID NOT SUPPLY: THE DURABLE JOURNAL** -- it drives the REAL instance entry over a Robolectric Context and requires the outcome's stage to BE the stage the journal reached. MEASURED with the propagation reverted: \"answer=Refused(discarded), journal=...\" -> FAILED; restored -> BUILD SUCCESSFUL."
+    ],
+    "remaining_work": "(i) THE OLD-LADDER PUBLIC DOORS REMAIN UNROUTED: `PanicWipe.begin(ctx)`/`resumeIfPending(ctx)` (android PanicWipe.kt:131-138) and the iOS statics (PanicWipe.swift:139-148) still exist; the audit's clause \"route old API aliases to the same owner before removing them\" is UNSATISFIED. *Measured: zero production callers -- test-only -- so the door is LATENT, not reachable, which is why this is recorded rather than guessed at.* (ii) THE WEAK CONTROL: `ci/check_trusted_runtime_composition_controls.py` R14 accepts the old road OR the new (`_r14_old or _r14_new`), so a regression restoring the audited verb would keep the control green; only the CrashStartupResumeTests arms guard the route. (iii) THE iOS PUBLIC ENTRY'S KEYCHAIN PARAM IS DISCARDED (disclosed in pending_proof)."
    },
    "GS-FINAL-003": {
     "severity": "High",
@@ -14641,7 +14652,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "fcb00a05c385e6455e66ed24a1258021b755f8b8",
+  "candidate_sha": "883cf3e5ebb9d955aab5adaa27c30a4e7e1c5831",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

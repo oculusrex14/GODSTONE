@@ -658,7 +658,21 @@ public final class MeshRuntime {
     /// The wipe authority the composition carries, OBSERVED rather than asserted.
     internal func wipeAuthorityForTest() -> CrashResumableWipe { wipeAuthority }
 
-    public func beginPanicWipe() throws {
+    /// *** GS-FINAL-002 (round 707): THE PUBLIC ENTRY RETURNS THE TYPED OUTCOME -- THE AUDIT'S CLAUSE, FULFILLED. ***
+    ///
+    /// **THE AUDIT'S `exact_remediation` SAYS: "Return a typed outcome to the caller and render completion only at
+    /// durable IDLE."** *That clause was UNMET AT BOTH PRODUCTION ENTRIES: this one returned `Void` and the Android
+    /// `MeshPanicWipe.begin()` discarded its `WipeStepResult`, so a `refused` or `retryLater` answer -- the difference
+    /// between "the wipe ran" and "the wipe did nothing" -- was UNOBSERVABLE to every caller.* **A caller that cannot
+    /// tell those apart cannot render completion at durable IDLE, because it cannot see the state at all.**
+    ///
+    /// *Found by an independent sweep that enumerated this finding's clauses rather than trusting its evidence list.*
+    /// **`@discardableResult` keeps every existing call site compiling** -- *the shape of the repair the repository
+    /// already useth for the internal overload one line below* -- while making the answer AVAILABLE rather than
+    /// ERASED. **A public type cannot be returned here only if it were internal: `WipeStepResult` is public**, so
+    /// there is no encapsulation reason for the erasure and there never was.
+    @discardableResult
+    public func beginPanicWipe() throws -> WipeStepResult {
         try beginPanicWipe(keychain: DefaultLocalIdentityKeychain())
     }
 
