@@ -156,8 +156,39 @@ public final class NoHooks: WipeHooks {
 
 /// The enumerated private scope. Deletion must never exceed it; public assets never appear in it.
 public enum WipeScope {
-    public static let privateKeys: [String] = ["store-dek", "identity-ed25519", "identity-x25519", "binding-salt"]
-    public static let privateArtifacts: [String] = ["mesh.db", "mesh.db-wal", "mesh.db-shm", "export.tmp", "relay.cache"]
+    /// GS-FINAL-002: **`binding-salt` WAS REMOVED, AND THE REASON IS A MEASURED ONE.**
+    ///
+    /// The list formerly read `["store-dek", "identity-ed25519", "identity-x25519", "binding-salt"]`. THE FOURTH NAME
+    /// HAS NO OWNER ANYWHERE IN THIS CODEBASE: no keychain item, no store column, no provider method. `WipeKeyVaultSeam`
+    /// answereth it with a PERMANENT RETRYABLE FAILURE, which means THE LADDER COULD NEVER ADVANCE PAST `KEYS_ERASED`
+    /// -- and therefore never erased the DEK, never deleted an artifact, and never published a new identity. A wipe that
+    /// can never complete is not a conservative wipe; it is a wipe that does nothing while reporting that it is
+    /// pending.
+    ///
+    /// THE HONEST REPAIR IS TO NAME ONLY WHAT EXISTS. The three real keys are all erased through `MeshIdentity`'s own
+    /// single deletion verb. IF a bindings salt is ever introduced, its owner names it here -- and until then, a name
+    /// with no owner must not be able to hold a wipe open forever.
+    public static let privateKeys: [String] = ["store-dek", "identity-ed25519", "identity-x25519"]
+    /// GS-FINAL-002: **EVERY NAME HERE HAS AN OWNER, AND THAT IS NOW A REQUIREMENT RATHER THAN A HOPE.**
+    ///
+    /// The list formerly ended `..., "export.tmp", "relay.cache"`. NEITHER NAME HAS ANY OWNER IN THIS CODEBASE: no file
+    /// is ever written under either name, on either isle (the Android twin carrieth the same two speculative names).
+    /// A NAME WITH NO OWNER IS NOT A DEFENSIVE EXTRA -- IT IS A TRAP, and it fired: with the artifact map in place the
+    /// unmapped name correctly answers `.failed`, which is RETRYABLE, WHICH STALLED THE LADDER AT `KEYS_ERASED`
+    /// FOREVER. Measured: "the wipe is complete" became `retryLater(at: .keysErased, reason: "mesh.db,...,export.tmp,
+    /// relay.cache")`.
+    ///
+    /// THE RULE THIS LIST NOW OBEYS: every entry must be an artifact the runtime can actually address, because a
+    /// deletion the composition cannot perform must not be able to hold a wipe open. If such an artifact is ever
+    /// introduced, its owner names it here AND maps it in the composition's `realPaths`.
+    ///
+    /// AND THE PEER-IDENTITY STORE IS NAMED, WHICH IT WAS NOT BEFORE -- the old `PanicWipe` path deleted both durable
+    /// stores through `SqliteMessageStore.panicWipe` and `SqlitePeerIdentityStore.panicWipe`, so a scope naming only
+    /// `mesh.db` would have silently stopped deleting it. The crash-restart arm SR06 measured exactly that.
+    public static let privateArtifacts: [String] = [
+        "mesh.db", "mesh.db-wal", "mesh.db-shm",
+        "peer.db", "peer.db-wal", "peer.db-shm",
+    ]
     public static func filterPrivatePaths(_ paths: [String]) -> [String] { paths.filter { privateArtifacts.contains($0) } }
 }
 

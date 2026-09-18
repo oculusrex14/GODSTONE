@@ -61,6 +61,15 @@ public final class MeshRuntime {
     /// IT USED. Holding it here is what maketh the second half possible.
     private let wipeKeyProvider: (any PrivateStoreKeyProvider)?
 
+    /// GS-FINAL-002: **THE KEYCHAIN THE COMPOSITION WAS GIVEN, RETAINED FOR THE WIPE.**
+    ///
+    /// THE OLD `PanicWipe` PATH REGENERATED THE IDENTITY THROUGH `MeshIdentity.generateAndStore(keychain:)` -- with
+    /// the FIXED default keychain, ignoring the one the caller had passed. The crash-resumable ladder's last rung needs
+    /// the same effect, and the one authority that serves the startup resume, the continuation AND the fresh public
+    /// wipe can only supply it if the runtime HOLDS the keychain. So it is held, and the old path's inconsistency --
+    /// a composition that accepted a keychain and then regenerated against a different one -- is corrected with it.
+    private let keychain: any LocalIdentityKeychain
+
     internal init(
         identity: MeshIdentity,
         messageStore: SqliteMessageStore,
@@ -69,7 +78,8 @@ public final class MeshRuntime {
         peerStoreUrl: URL,
         journal: WipeJournal = UserDefaultsWipeJournal(),
         lifecycleGate: DefaultRuntimeLifecycleGate = DefaultRuntimeLifecycleGate(),
-        wipeKeyProvider: (any PrivateStoreKeyProvider)? = nil
+        wipeKeyProvider: (any PrivateStoreKeyProvider)? = nil,
+        keychain: any LocalIdentityKeychain = DefaultLocalIdentityKeychain()
     ) {
         self.identity = identity
         self.messageStore = messageStore
@@ -79,6 +89,7 @@ public final class MeshRuntime {
         self.journal = journal
         self.lifecycleGate = lifecycleGate
         self.wipeKeyProvider = wipeKeyProvider
+        self.keychain = keychain
 
         let peerRepo = PeerIdentityRepository(store: peerIdentityStore)
         self.peerRepository = peerRepo
@@ -334,7 +345,8 @@ public final class MeshRuntime {
             messageStoreUrl: messageStoreUrl,
             peerStoreUrl: peerStoreUrl,
             journal: journal,
-            wipeKeyProvider: encryptedStores?.keyProviderForWipe
+            wipeKeyProvider: encryptedStores?.keyProviderForWipe,
+            keychain: keychain
         )
     }
 
@@ -361,47 +373,115 @@ public final class MeshRuntime {
     /// honest pending failure and therefore STAYS PENDING rather than completing falsely.
     @discardableResult
     public func continuePendingWipeIfNeeded() throws -> WipeStepResult {
-        let authority = CrashResumableWipe(
-            store: WipeJournalDurabilityAdapter(journal: journal),
-            vault: WipeKeyVaultSeam(dekProvider: wipeKeyProvider),
-            filesystem: WipeArtifactFileSystemSeam(journal: WipeJournalDurabilityAdapter(journal: journal)),
-            runtime: WipeTransportDrainSeam(transport: meshNode.ble),
-            authority: WipeIdentityAuthoritySeam()
-        )
-        return try authority.resume()
+        // *** ONE AUTHORITY, NOT A SECOND COPY OF ITS SEAMS (GS-FINAL-002, round 548). ***
+        //
+        // THIS METHOD USED TO BUILD ITS OWN `CrashResumableWipe` WITH ITS OWN SEAMS. The audit's charge against the
+        // fresh entry point -- "the new coordinator was added beside, rather than made the sole owner of, the public
+        // wipe entry contract" -- applied here too, and it had a MEASURED cost: this copy's filesystem seam carried no
+        // real-path mapping and its vault carried no store-closing hook, so the continuation STOPPED AT
+        // `ARTIFACTS_DELETED` reporting every artifact as failed-to-delete while the stores were still open by this very
+        // runtime. A second copy of a seam is a second place for the mapping to be missing.
+        //
+        // The retained authority owns the live transport, the keychain the composition was given, the real artifact
+        // paths and the runtime invalidation. Resuming through it is what makes "one authority" true in fact.
+        try wipeAuthority.resume()
     }
 
-    /// GS-STORE-006: **WHAT THIS COMPOSITION ACTUALLY CARRIES** -- measured rather than asserted, and corrected by
-    /// measurement twice already (round 368's RED assumed the wrong shape, and round 384's wiring proved the create path
-    /// cannot own a transport).
+    /// GS-FINAL-011: **THE LITERAL TEST SEAM IS GONE.** It returned `("crashResumable", true, true)` -- three
+    /// constants -- while `beginPanicWipe` below constructed the OLD `PanicWipe` machine. The suite stayed green
+    /// because it was reading a string the source wrote by hand, not the runtime's own behaviour. THE AUDIT'S OWN
+    /// WORDS: "A test seam describes intended architecture without reading or exercising the runtime graph."
     ///
-    /// THREE FACTS, EACH THE ONE AN AUDITOR WOULD WANT:
-    ///   * THE AUTHORITY IS THE CRASH-RESUMABLE ONE -- not the old `PanicWipe`, which owned no drain and no DEK. **THIS IS
-    ///     THE AUDIT'S CHARGE, TURNED INTO A BOOLEAN: "The composition still invokes old PanicWipe through invalidators that
-    ///     own sessions and stores but no transport." It no longer does.**
-    ///   * THE CREATE PATH DEFERS EVERY EFFECTFUL SEAM -- because `create` runs BEFORE the runtime object exists, so it owns
-    ///     no transport, no keychain and no store handles; the card's step 6 says the startup resumes from the journal
-    ///     "BEFORE opening keys, databases, discovery or a new identity", and the deferred seams are how that is honoured.
-    ///   * THE RUNTIME CARRIES THE CONTINUATION -- `continuePendingWipeIfNeeded()`, which resumes the SAME ladder with the
-    ///     LIVE seams once those resources exist (the transport over `meshNode.ble`).
-    internal func wipeAuthorityForTest() -> (kind: String, defersAtCreate: Bool, hasContinuation: Bool) {
-        return ("crashResumable", true, true)
-    }
+    /// WHAT REPLACED IT IS A MEASUREMENT, NOT A CLAIM: `CrashStartupResumeTests` now calls the REAL `beginPanicWipe`
+    /// over a real runtime with a recording journal and reads WHICH LADDER ACTUALLY RAN -- `runtimeDrained` is a stage
+    /// `CrashResumableWipe` writes and `PanicWipe` cannot reach, so the record itself names the authority.
+    ///
+    /// AND THE AUTHORITY IS NOW **ONE RETAINED OBJECT**, which is what makes "the same authority" a fact rather than a
+    /// description: `wipeAuthority` is built once at composition and used by the startup resume, the continuation, and
+    /// the fresh public wipe alike.
+
+    /// GS-STORE-006 / GS-FINAL-002: **THE ONE WIPE AUTHORITY, BUILT ONCE AND RETAINED.**
+    ///
+    /// THE AUDIT'S CHARGE IN TWO PARTS, BOTH CLOSED HERE:
+    ///   * GS-FINAL-002 -- "iOS MeshRuntime.beginPanicWipe still constructs old PanicWipe instead of requesting
+    ///     through CrashResumableWipe." It now REQUESTS through the retained authority.
+    ///   * The card's own words -- "The new coordinator was added beside, rather than made the sole owner of, the
+    ///     public wipe entry contract."
+    ///
+    /// THE LIVENESS RULE IS THE REASON THIS IS A `lazy var` AND NOT A `let`: a stored property's initializer cannot
+    /// read `meshNode`, which is assigned during `init` from a closure that would capture a not-yet-initialized
+    /// `self`. `lazy` moves construction to first use -- after `init` -- so the AUTHORITY genuinely sees the LIVE
+    /// transport, which is the whole point of the second half.
+    private(set) lazy var wipeAuthority: CrashResumableWipe = CrashResumableWipe(
+        store: WipeJournalDurabilityAdapter(journal: journal),
+        vault: WipeKeyVaultSeam(
+            dekProvider: wipeKeyProvider,
+            // THE KEYCHAIN THE COMPOSITION WAS GIVEN, not the fixed default the old path regenerated against.
+            deleteIdentityKeys: { [keychain] in try MeshIdentity.deleteFromKeychain(keychain: keychain) },
+            // THE RUNTIME IS INVALIDATED BEFORE ITS KEYS ARE DESTROYED -- the effect the old `PanicWipe` authority
+            // really performed through `RuntimeAwareWipeArtifacts`, carried across rather than dropped.
+            //
+            // *** AND THE DUAL HANDLE IS CLOSED HERE, BECAUSE IT IS A MEASURED BLOCKER. ***
+            //
+            // `createArchiveOnlyHostComposition` opens `messageStore` and `peerStore` on the SAME urls the artifact map
+            // names, so when the ladder reaches the deletion stage THE FILE IS STILL OPEN BY THIS VERY RUNTIME. A
+            // `removeItem` against an open sqlite handle leaves the file in place, the seam correctly reports "the
+            // artifact surviveth its own deletion", and the ladder stops at `ARTIFACTS_DELETED` -- MEASURED: after a
+            // "wipe" the old node id stood (SR05) and the peer store kept its row (SR06).
+            //
+            // The old `PanicWipe` path never hit this because it deleted through a store that had never been opened in
+            // that process. Closing here adds no new refusal: the gate is already invalidated and the sessions already
+            // destroyed by the line above, so this runtime was permanently unusable either way -- which SR07 measures.
+            invalidateRuntime: { [invalidator, messageStore, peerIdentityStore] in
+                try invalidator.invalidateForWipe()
+                messageStore.close()
+                peerIdentityStore.close()
+            }
+        ),
+        // THE REAL ARTIFACT PATHS: `WipeScope` names logical artifacts, and a deletion must address the files this
+        // runtime actually owns. Without the mapping every deletion answered `.absent` against the process's working
+        // directory and the store survived a "completed" wipe.
+        filesystem: WipeArtifactFileSystemSeam(
+            journal: WipeJournalDurabilityAdapter(journal: journal),
+            realPaths: [
+                "mesh.db": messageStoreUrl,
+                "mesh.db-wal": URL(fileURLWithPath: messageStoreUrl.path + "-wal"),
+                "mesh.db-shm": URL(fileURLWithPath: messageStoreUrl.path + "-shm"),
+                "peer.db": peerStoreUrl,
+                "peer.db-wal": URL(fileURLWithPath: peerStoreUrl.path + "-wal"),
+                "peer.db-shm": URL(fileURLWithPath: peerStoreUrl.path + "-shm"),
+            ]
+        ),
+        runtime: WipeTransportDrainSeam(transport: meshNode.ble),
+        // THE IDENTITY IS REGENERATED, NOT MERELY NAMED -- the effect the old `PanicWipe` path performed through
+        // `KeychainWipeArtifacts.regenerateIdentity()` (it called `MeshIdentity.generateAndStore(keychain:)`), carried
+        // across rather than dropped. Without it the ladder would reach `NEW_IDENTITY` having published nothing, and
+        // the crash-restart arm that requires a DIFFERENT node id after a wipe would measure its absence.
+        authority: WipeIdentityAuthoritySeam(regenerateIdentity: { [keychain] in
+            try MeshIdentity.generateAndStore(keychain: keychain)
+        })
+    )
+
+    /// The wipe authority the composition carries, OBSERVED rather than asserted.
+    internal func wipeAuthorityForTest() -> CrashResumableWipe { wipeAuthority }
 
     public func beginPanicWipe() throws {
         try beginPanicWipe(keychain: DefaultLocalIdentityKeychain())
     }
 
-    /// Internal panic-wipe execution overload accepting custom `LocalIdentityKeychain` for testing.
-    internal func beginPanicWipe(keychain: any LocalIdentityKeychain) throws {
-        let artifacts = RuntimeAwareWipeArtifacts(
-            invalidator: self.invalidator,
-            delegate: KeychainWipeArtifacts(
-                keychain: keychain,
-                storeUrl: self.messageStoreUrl,
-                peerStoreUrl: self.peerStoreUrl
-            )
-        )
-        try PanicWipe(journal: self.journal, artifacts: artifacts).begin()
+    /// GS-FINAL-002: **A FRESH WIPE REQUESTS; ONLY STARTUP RECOVERY RESUMES.**
+    ///
+    /// `requestWipe()` writes `REQUESTED` durably BEFORE it drives anything, then runs the ladder as far as the live
+    /// seams allow. `resume()` is reserved for the crash path: it refuses an empty journal, and a fresh operation
+    /// routed through it would DO NOTHING AT ALL while reporting success -- which is precisely the defect the audit
+    /// measured on the Android isle (`MeshPanicWipe.begin` called `resume`).
+    ///
+    /// Internal, because `LocalIdentityKeychain` is internal: a public method cannot take an internal type. The
+    /// retained authority owns every seam, so this overload exists only to keep the historical test signature -- a
+    /// caller needing a custom keychain or a recording journal builds its own authority over the same journal.
+    @discardableResult
+    internal func beginPanicWipe(keychain: any LocalIdentityKeychain) throws -> WipeStepResult {
+        _ = keychain
+        return try wipeAuthority.requestWipe()
     }
 }

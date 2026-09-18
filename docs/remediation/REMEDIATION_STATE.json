@@ -13598,7 +13598,40 @@
     "root_cause": "The new coordinator was added beside, rather than made the sole owner of, the public wipe entry contract.",
     "exact_remediation": "In MeshPanicWipe.begin and MeshRuntime.beginPanicWipe, use one retained CrashResumableWipe authority and call requestWipe for a new operation; reserve resume for startup recovery. Return a typed outcome to the caller and render completion only at durable IDLE. Migrate existing stage journals and route old API aliases to the same owner before removing them. Do not simply rename PanicWipe.",
     "regression_test": "Proposed FreshWipeStartsRequested: empty journal, live entry method, sequence records REQUESTED before drain/key deletion. Interrupt after each stage; reconstruct through the production root and complete without duplicate identity issuance.",
-    "my_status": "OPEN"
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 548 (this commit) -- one retained authority on BOTH isles; a fresh wipe REQUESTS, only recovery RESUMES",
+    "my_red_case": "BEHAVIOURAL RED TAKEN BEFORE THE PRODUCTION EDIT, ON BOTH ISLES. iOS: two new arms in the canonical CrashStartupResumeTests, run RED FIRST -- BOTH failed, and the journal they printed was the finding itself: `[\"requested\", \"keyErased\", \"artifactsDeleted\", \"newIdentity\"]`, which is the OLD PanicWipe ladder, ERASING KEYS WITH NO `runtimeDrained` CHECKPOINT AT ALL. Android: `GsFinal002FreshWipeRequestsTest`, run RED FIRST -- the routing arm failed on the audited verb.",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-full-ios-lane.log",
+      "sha256": "00efdb0473a339a17870ebcb9b4756e73e47f0821581b7c2b97e3feed7e854fd",
+      "what": "THE iOS RED: the unmodified runtime at the top of the round, with the two new arms failing.",
+      "outcome": "GodstoneMeshTests: Executed 1200 tests, with 3 FAILURES -- the two new GS-FINAL arms plus SR05. The journal printed by the arm is the finding verbatim: [\"requested\",\"keyErased\",\"artifactsDeleted\",\"newIdentity\"] -- keys erased with NO drain checkpoint, and the old node id standing after a \"wipe\"."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-ios-lane-GREEN-FINAL.log",
+      "sha256": "dfc608cdcd99c1a5274be240e36a1e1ce5b17f1e57f54b7404a6aac79a2dd7c7",
+      "what": "THE iOS GREEN: the same lane after the repair.",
+      "outcome": "LabMeshTests 5/0, GodstoneMeshTests 1201/0, GodstoneCoreTests 89/0 -- 1295 tests, 0 failures, rc 0."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-ANDROID-RED-GREEN-mutation.log",
+      "sha256": "38a89983576892f0e1536cd26ae0c1d034467c5ced7573c3533dcf7ce7bea353",
+      "what": "THE ANDROID CAUSAL PROOF: the routing decision mutated back to the audited verb and restored.",
+      "outcome": "MUTANT (`authority.resume()`): \"GsFinal002FreshWipeRequestsTest > aFreshWipeRecordsRequestedRatherThanBeingRefusedAsNothingToResume FAILED -- 3 tests completed, 1 failed\". RESTORED (`authority.requestWipe()`): BUILD SUCCESSFUL, 3 tests, 0 failed."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-ANDROID-full-mesh-lane.log",
+      "sha256": "296189e8218707459da643a1565b83f4219219d26867c05090bff46a3269759e",
+      "what": "THE ANDROID LANE: the whole :mesh suite, forced.",
+      "outcome": "BUILD SUCCESSFUL; 79 result files read directly: tests=1236 skipped=0 failures=0 errors=0."
+     }
+    ],
+    "pending_proof": [
+     "A DEVICE-LEVEL WIPE RESULT IS NOT CLAIMED. Every measurement here is a HOST reproduction: the erasure of real Keystore/Keychain material and the physical deletion of a real database file on a device remain the external gate (T73-T75). The arms measure the ORDER and the OBSERVED EFFECTS through recording seams; they do not claim a device cryptographic-erasure proof.",
+     "The iOS `beginPanicWipe(keychain:)` overload is `internal` (LocalIdentityKeychain is internal, so it cannot be public). A caller outside the module must build an authority; whether the PUBLIC surface should offer a keychain parameter is left as it was, because widening it was not this finding.",
+     "CROSS-ISLE DIVERGENCE, STATED RATHER THAN HIDDEN: iOS and Android now use the SAME LAW with different spellings. iOS routes the fresh path through `wipeAuthority.requestWipe()`; Android through `MeshPanicWipe.runRuntimeSideWipe(authority)` which calls `requestWipe()`. The Android routing decision was EXTRACTED into its own function precisely because the first three arms justified the coordinator and not the decision. The two isles are not byte-identical and are not claimed to be."
+    ]
    },
    "GS-FINAL-003": {
     "severity": "High",
@@ -13619,7 +13652,27 @@
     "root_cause": "DI sequencing is mistaken for successful state transition; construction of a barrier object says nothing about the returned coordinator result.",
     "exact_remediation": "Replace Unit/ignored result with an internal, non-forgeable startup permit issued only after a typed recovery decision. Both Identity.loadOrCreate and private-store factory construction consume that permit. Treat absent journal as a validated no-pending-wipe state, malformed journal as blocked, retryable failure as blocked-with-retry, and completed wipe as ready. Register unlock/retry events without opening a parallel normal-start path.",
     "regression_test": "For every nonterminal stage, inject refusal and exception separately; spy identity creation and DB open counts must remain zero. A clean first launch must still open exactly once.",
-    "my_status": "OPEN"
+    "my_status": "PARTIAL",
+    "my_fix_commit": "round 548 (this commit) -- ANDROID half landed; the iOS half is measured and named below",
+    "my_red_case": "THE AUDIT'S MEASUREMENT, REPRODUCED AT SOURCE: \"Android MeshStartupWipeBarrier returns Unit after calling resume; providers require the barrier object, not a successful recovery capability.\" The three sensitive providers each took `_barrier: MeshStartupWipeBarrier` -- THE UNDERSCORE IS KOTLIN'S OWN CONVENTION FOR IGNORED -- so the graph proved only that the constructor had run.",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-ANDROID-full-mesh-lane.log",
+      "sha256": "296189e8218707459da643a1565b83f4219219d26867c05090bff46a3269759e",
+      "what": "THE ANDROID HALF, MEASURED: the typed outcome and the permit the three providers now consume.",
+      "outcome": "BUILD SUCCESSFUL; 1236 tests, 0 failures, 0 errors, 0 skipped. The barrier RETAINS the coordinator's typed `WipeStepResult` as `outcome` and exposes `permitsStartup`; `requireStartupPermit(barrier)` is consulted by provideIdentity, provideSqliteMessageStore and providePeerIdentityStore."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-ANDROID-RED-GREEN-mutation.log",
+      "sha256": "38a89983576892f0e1536cd26ae0c1d034467c5ced7573c3533dcf7ce7bea353",
+      "what": "The control that guarded this shape was itself a false witness and is repaired with the finding.",
+      "outcome": "R17 previously required the literal `_barrier: MeshStartupWipeBarrier` -- SATISFIED BY THE DEFECT. It now requires the permit to be CONSUMED (>= 3 call sites), and its mutation harness breaks the consumption rather than deleting the parameter. selftest: 55/55 mutations caught."
+     }
+    ],
+    "pending_proof": [
+     "THE iOS HALF IS NOT DONE. iOS `MeshRuntime.createArchiveOnlyHostComposition` DISCARDS the resume result (`_ = try resumeAuthority.resume()`), and the create-time authority is a SEPARATE, DEFERRED instance rather than the retained one. The remaining work: issue a non-forgeable startup permit from a typed recovery decision on the iOS isle too, and have the store/identity construction consume it. Stated as owed rather than claimed.",
+     "THE CREATE-TIME DEFERRAL IS LOAD-BEARING AND WAS NOT CHANGED: `create` runs before the runtime object exists, so it owns no transport and the ladder must STOP at `REQUESTED`. What is owed is the PERMIT -- the create path currently proceeds to open stores after a resume that may have answered `retryLater`."
+    ]
    },
    "GS-FINAL-004": {
     "severity": "High",
@@ -13760,7 +13813,27 @@
     "root_cause": "A test seam describes intended architecture without reading or exercising the runtime graph.",
     "exact_remediation": "Remove the literal architectural assertion. Inject or observe real coordinator dependencies at the composition boundary and run the public begin path. Record actual journal/drain/key/file operations in a deterministic test adapter with no production truth flags. Keep production telemetry descriptive, never authoritative for safety state.",
     "regression_test": "Call begin through the real runtime with a recording wipe engine; verify REQUESTED, drain, deletion and IDLE outcomes. Do not assert an authority-name tuple.",
-    "my_status": "OPEN"
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 548 (this commit) -- the literal tuple is deleted; the authority is OBSERVED",
+    "my_red_case": "THE AUDIT'S OWN MEASUREMENT IS THE RED, AND IT WAS REPRODUCED: `wipeAuthorityForTest()` returned the literal `(\"crashResumable\", true, true)` while `beginPanicWipe` constructed the OLD `PanicWipe`. The new arm `testGSFINAL011_theWipeAuthorityIsObservedRatherThanAsserted` called the REAL public wipe over a real runtime and read the durable journal; it FAILED pre-repair, printing [\"requested\",\"keyErased\",\"artifactsDeleted\",\"newIdentity\"] -- three constants describing a tree that was not there.",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-full-ios-lane.log",
+      "sha256": "00efdb0473a339a17870ebcb9b4756e73e47f0821581b7c2b97e3feed7e854fd",
+      "what": "THE RED for GS-FINAL-011 as well: the same pre-repair lane carries the failing observation arm.",
+      "outcome": "Executed 1200 tests, with 3 failures -- one of them `testGSFINAL011_theWipeAuthorityIsObservedRatherThanAsserted`."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-ios-lane-GREEN-FINAL.log",
+      "sha256": "dfc608cdcd99c1a5274be240e36a1e1ce5b17f1e57f54b7404a6aac79a2dd7c7",
+      "what": "THE GREEN: the old literal-based arm was REPLACED rather than propped up, and the whole lane is green.",
+      "outcome": "GodstoneMeshTests 1201/0 -- the observation arm passes, the literal-tuple arm no longer exists."
+     }
+    ],
+    "pending_proof": [
+     "THE OLD ARM WAS DELETED, NOT REWRITTEN IN PLACE, and that is deliberate: `testGSSTORE006_theCompositionCarriesTheCrashResumableAuthority` asserted the three constants back. It now performs the same OBSERVATION as the GS-FINAL-011 arm (journal order), so the two arms share a subject. Whether both should remain is a tidiness question, NOT a coverage one -- neither is weaker than the observation it performs.",
+     "`ci/check_trusted_runtime_composition_controls.py` R14 was ALSO a literal pin (`RuntimeAwareWipeArtifacts` in MeshRuntime.swift) and was retargeted to the law it guards -- invalidate-before-erase, accepted through EITHER the adapter composition or the crash-resumable vault seam -- with its mutation harness corrected in the same edit. Its selftest now catches 55/55 mutations."
+    ]
    },
    "GS-FINAL-012": {
     "severity": "Medium",

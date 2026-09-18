@@ -977,6 +977,61 @@ one would be demanding a fabrication.
 malformed-I/O diagnostics."* **Not delivered, and stated as owed.** `VERIFIED_FIXED` remains **0**, and only an
 independent audit may write it. GS-FINAL-002..013 remain **OPEN**.
 
+## ROUND 548 — PHASE ONE: THE WIPE AUTHORITY, ON BOTH ISLES
+
+The audit's three High findings meet on one path, and the first two are now repaired.
+
+**GS-FINAL-002 — A FRESH WIPE THAT DID NOTHING.** The audit's sentence: *"Android `MeshPanicWipe.begin` constructs
+the coordinator and calls `resume`; resume refuses an empty journal"* — so **"A fresh Android wipe may do no wipe at
+all."** iOS had the mirror-image defect: `MeshRuntime.beginPanicWipe` constructed the **old `PanicWipe`** while the
+comment directly above it claimed *"THE AUTHORITY IS THE CRASH-RESUMABLE ONE"*. Both are closed; the fresh path now
+**requests**, and the retained authority is the sole owner of the public wipe contract on each isle.
+
+**The RED was the finding in one line.** The pre-repair arm drove the real public wipe and printed the journal it
+actually wrote:
+
+```
+["requested", "keyErased", "artifactsDeleted", "newIdentity"]      <- the OLD ladder
+```
+
+That is `PanicWipe`'s state machine: **keys erased with no `runtimeDrained` checkpoint at all** — the very charge
+GS-STORE-006 carries. The crash-restart arms measured the consequence from the other side: after a "wipe" the old node
+id still stood (SR05) and the peer store still held its row (SR06).
+
+**FOUR defects fell out of routing the fresh wipe onto the correct ladder, and every one was found by measurement:**
+
+| what | measured consequence | repair |
+|---|---|---|
+| `binding-salt` in `WipeScope` **has no owner anywhere** | a permanent retryable failure **stalled the ladder forever** — no DEK erased, no artifact deleted, no identity published | the ownerless name is removed; `.absent` answers a composition carrying no DEK provider |
+| `export.tmp` / `relay.cache` likewise | same stall, after the first fix surfaced it | the scope now names only artifacts an owner really writes |
+| the **peer store was not in the artifact scope** | SR06 measures it: the peer row survived | `peer.db` (+ WAL/SHM) named, mapped to the real URL |
+| `create` opens both stores on the **same urls** the artifacts name | a `removeItem` against an open sqlite handle leaves the file; the ladder stopped at `ARTIFACTS_DELETED` | the handles are closed before deletion, in the same step that invalidates the runtime |
+
+**AND MY OWN FIRST THREE ANDROID ARMS WERE DEFECTIVE, WHICH IS THE ROUND'S SHARPEST LESSON.** They drove the
+coordinator directly, so they **passed against the unrepaired call site**: a mutation restoring `.resume()` at
+`MeshPanicWipe.begin` left the suite **green**. They justified the coordinator, which was never in doubt, and said
+nothing about the verb the entry point chose. *The routing decision was extracted into
+`MeshPanicWipe.runRuntimeSideWipe`* so it could be judged — and the mutation now fails the arm on its own name.
+
+**GS-FINAL-011 — THE PROOF HOOK THAT ASSERTED INSTEAD OF OBSERVING.** `wipeAuthorityForTest()` returned the literal
+`("crashResumable", true, true)`. It is **deleted**; the arm now calls the real public wipe and reads the durable
+journal, so no constant can satisfy it. `ci/check_trusted_runtime_composition_controls.py` **R14 was the same species
+at the control layer** — it pinned the token `RuntimeAwareWipeArtifacts` — and is retargeted to the law it guards
+(invalidate-before-erase, accepted through either road), its mutation harness corrected with it.
+
+**GS-FINAL-003 — PARTIAL, and the iOS half is named rather than implied.** Android now retains the coordinator's typed
+`WipeStepResult` as `outcome`, exposes `permitsStartup`, and **three sensitive providers consume
+`requireStartupPermit(barrier)`** instead of taking an ignored `_barrier`. That control (R17) was *also* satisfied by
+the defect — it required the literal `_barrier:`, the underscore being Kotlin's own "ignored" — and now demands the
+permit be **consumed**. **iOS is NOT done:** `create` still discards the resume result
+(`_ = try resumeAuthority.resume()`).
+
+**MEASURED AT THIS ROUND:** iOS **1295 tests, 0 failures** (1201 GodstoneMesh + 89 GodstoneCore + 5 LabMesh); Android
+**1236 tests, 0 failures, 0 errors, 0 skipped** across 79 result files read directly; every repository control green,
+including `check_trusted_runtime_composition_controls --selftest` **55/55 mutations caught**.
+
+**NOT CLAIMED:** no device cryptographic-erasure proof (that is the external gate), and `VERIFIED_FIXED` remains **0**.
+
 ## REMAINING WORK
 **PHASE TWO** — the **six `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-STORE-002, GS-UX-001,
 GS-STRESS-001) and the external artifacts above. **No finding is `OPEN`; none is `VERIFIED_FIXED`; and the `PARTIAL`

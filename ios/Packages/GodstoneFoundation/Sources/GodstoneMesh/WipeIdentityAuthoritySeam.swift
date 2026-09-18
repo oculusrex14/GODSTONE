@@ -15,16 +15,34 @@ import Foundation
 public final class WipeIdentityAuthoritySeam: IdentityAuthoritySeam {
     private let lock = NSLock()
     private var current: String?
+    /// GS-FINAL-002: **THE REGENERATION THE OLD PATH PERFORMED, CARRIED ACROSS RATHER THAN DROPPED.**
+    ///
+    /// `PanicWipe`'s `KeychainWipeArtifacts.regenerateIdentity()` called `MeshIdentity.generateAndStore(keychain:)`
+    /// -- with the FIXED default keychain, ignoring whatever keychain the composition had been given. The ladder's
+    /// last rung needs the same effect, and the composition now supplies it WITH ITS OWN KEYCHAIN, which is both the
+    /// carried-across effect and a correction of the old path's own inconsistency.
+    private let regenerateIdentity: () throws -> MeshIdentity
 
     /// The name recorded when the identity could not be published. It sayeth what happened; it is not an identifier.
     public static let generationFailedName = "identity-generation-failed"
 
-    public init() {}
+    /// *** THE FIRST DRAFT OF THIS REPAIR SPLIT ONE ACT INTO TWO, AND MEASURED ITS OWN BUG (round 548). ***
+    ///
+    /// It called the injected `regenerateIdentity()` and then read the result back with `MeshIdentity.loadFromKeychain()`
+    /// -- WHICH USES THE *DEFAULT* KEYCHAIN. In production those are the same keychain, so the split was invisible; under
+    /// a test composition they are not, and the ladder answered `retryLater(at: .artifactsDeleted, reason: "no identity
+    /// could be published")` AFTER the keys had already been erased. A regenerate that does not say WHAT it regenerated
+    /// forces its caller to go and guess, and the guess reads a different store.
+    ///
+    /// ONE VERB, ONE ANSWER: the closure returns the identity it published, and the seam never loads anything.
+    public init(regenerateIdentity: @escaping () throws -> MeshIdentity = { try MeshIdentity.generateAndStore() }) {
+        self.regenerateIdentity = regenerateIdentity
+    }
 
     public func publishNewIdentity() -> String? {
         lock.lock()
         defer { lock.unlock() }
-        guard let identity = try? MeshIdentity.generateAndStore() else {
+        guard let identity = try? regenerateIdentity() else {
             // THE TYPED REFUSAL: `nil`, NOT a name that says what happened -- because the CALLER must be able to tell a
             // refusal from a success, and prose cannot be told apart from an identifier.
             current = nil

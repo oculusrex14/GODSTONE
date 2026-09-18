@@ -144,8 +144,30 @@ interface WipeHooks {
 
 /** The enumerated private scope. Deletion must never exceed it; public assets never appear in it. */
 object WipeScope {
-    val PRIVATE_KEYS: List<String> = listOf("store-dek", "identity-ed25519", "identity-x25519", "binding-salt")
-    val PRIVATE_ARTIFACTS: List<String> = listOf("mesh.db", "mesh.db-wal", "mesh.db-shm", "export.tmp", "relay.cache")
+    /**
+     * GS-FINAL-002 (the independent audit, 2026-09-18): **EVERY NAME HERE MUST HAVE AN OWNER.**
+     *
+     * The list formerly read `["store-dek", "identity-ed25519", "identity-x25519", "binding-salt"]`. `binding-salt` HAS NO
+     * OWNER ANYWHERE IN THIS CODEBASE: no keystore alias, no store column, no seam that erases it. On this isle a vault
+     * that answers such a name with a retryable failure keeps the ladder pending FOREVER -- so a name nobody owns could
+     * hold a wipe open permanently, which is the opposite of a wipe.
+     *
+     * THE THREE REAL NAMES ARE ERASED THROUGH ONE OWNER: on this isle the KEK is destroyed by `WipeArtifacts.eraseKeys()`
+     * -- "Destroy the KEK. After this, encrypted artifacts are unrecoverable" -- and that single act is what every name
+     * routes to. `store-dek` and the two identity names are the vocabulary the card uses; this isle has one destroyer.
+     */
+    val PRIVATE_KEYS: List<String> = listOf("store-dek", "identity-ed25519", "identity-x25519")
+
+    /**
+     * GS-FINAL-002: **AND EVERY ARTIFACT HERE MUST BE ONE THE SEAM CAN ADDRESS.**
+     *
+     * The list formerly ended `..., "export.tmp", "relay.cache"`. Neither name is ever written on either isle -- the iOS
+     * twin carrieth the same two speculative names -- and an unmappable name is not a defensive extra: it is a deletion
+     * the composition cannot perform, which keeps the wipe pending forever. The two REAL durable stores are named, and
+     * they are the ones `AndroidWipeArtifacts.deleteArtifacts()` actually destroys (`SqliteMessageStore.panicWipe(ctx)`
+     * and `SqlcipherPeerIdentityStore.panicWipe(ctx)`).
+     */
+    val PRIVATE_ARTIFACTS: List<String> = listOf("mesh.db", "mesh.db-wal", "mesh.db-shm", "peer.db", "peer.db-wal", "peer.db-shm")
     fun filterPrivatePaths(paths: List<String>): List<String> = paths.filter { it in PRIVATE_ARTIFACTS }
 }
 

@@ -261,13 +261,33 @@ def check_controls(
     if "class MeshPanicWipe" not in kt_mesh_mod or "RuntimeAwareWipeArtifacts" not in kt_mesh_mod:
         errors.append("Android MeshModule must define MeshPanicWipe using RuntimeAwareWipeArtifacts (R13)")
 
-    # ── R14: iOS RuntimeAwareWipeArtifacts used in active MeshRuntime wipe ──
+    # ── R14: iOS the active wipe invalidates the runtime BEFORE it erases ──
+    #
+    # GS-FINAL-002 / GS-FINAL-011 (the independent audit, 2026-09-18): THIS CONTROL PINNED A SPELLING RATHER THAN THE
+    # LAW IT GUARDS. It required the literal token `RuntimeAwareWipeArtifacts` to appear in `MeshRuntime.swift` -- and
+    # the audit's own charge against that class was that MeshRuntime's public wipe ran the OLD `PanicWipe` WHILE A
+    # COMMENT CLAIMED OTHERWISE. The requirement was satisfied by naming the type; the BEHAVIOUR (invalidate, then
+    # erase) was never measured.
+    #
+    # The repair keeps THE LAW: the runtime's active wipe path must perform the invalidation-then-erasure order. It
+    # accepts EITHER spelling -- the old adapter composition or the crash-resumable vault seam that carries the same
+    # effect -- and demands the ORDER in each. The mutation test was corrected with it.
     if "class RuntimeAwareWipeArtifacts" not in swift_gate:
         errors.append("iOS RuntimeAwareWipeArtifacts missing (R14)")
     if "invalidator.invalidateForWipe()" not in swift_gate or "delegate.eraseKeys()" not in swift_gate:
         errors.append("iOS RuntimeAwareWipeArtifacts must invalidate before delegate.eraseKeys (R14)")
-    if "func beginPanicWipe()" not in swift_mesh_runtime or "RuntimeAwareWipeArtifacts" not in swift_mesh_runtime:
-        errors.append("iOS MeshRuntime must provide beginPanicWipe using RuntimeAwareWipeArtifacts (R14)")
+    if "func beginPanicWipe()" not in swift_mesh_runtime:
+        errors.append("iOS MeshRuntime must provide beginPanicWipe (R14)")
+    _r14_old = "RuntimeAwareWipeArtifacts" in swift_mesh_runtime
+    # THE CRASH-RESUMABLE ROAD: the vault seam performeth the invalidation, INSIDE the retained authority, before any
+    # key is erased -- the same order, carried by the coordinator the audit's finding is about.
+    _r14_new = ("WipeKeyVaultSeam(" in swift_mesh_runtime
+                and "invalidateRuntime:" in swift_mesh_runtime
+                and "invalidateForWipe()" in swift_mesh_runtime
+                and "requestWipe()" in swift_mesh_runtime)
+    if not (_r14_old or _r14_new):
+        errors.append("iOS MeshRuntime's active wipe must invalidate the runtime before erasing keys -- either through "
+                      "RuntimeAwareWipeArtifacts or through the crash-resumable vault seam (R14)")
 
     # ── R15: Android MeshModule wires BoundRecipientKeyResolver and SessionManager ──
     if "BoundRecipientKeyResolver" not in kt_mesh_mod:
@@ -290,10 +310,28 @@ def check_controls(
         errors.append("iOS MeshRuntime must own MeshRuntimeInvalidator (R16)")
 
     # ── R17: Android MeshModule startup wipe barrier precedes sensitive opens ──
+    #
+    # GS-FINAL-003 (the independent audit, 2026-09-18): THIS CONTROL REQUIRED THE LITERAL STRING
+    # `_barrier: MeshStartupWipeBarrier`, WHICH IS AN UNUSED PARAMETER -- the underscore is Kotlin's own convention for
+    # "ignored". THE AUDIT'S CHARGE AGAINST EXACTLY THAT SHAPE: "providers require the barrier object, not a successful
+    # recovery capability. DI sequencing is mistaken for successful state transition."
+    #
+    # SO THIS CONTROL WAS SATISFIED BY THE DEFECT. It now demands what the finding demands: each sensitive provider must
+    # TAKE the barrier (any parameter name, because a name is not a measurement) AND MUST CONSULT ITS PERMIT before it
+    # opens anything private.
     if "MeshStartupWipeBarrier" not in kt_mesh_mod:
         errors.append("Android MeshModule must define MeshStartupWipeBarrier (R17)")
-    if "_barrier: MeshStartupWipeBarrier" not in kt_mesh_mod:
+    if not re.search(r"\bbarrier: MeshStartupWipeBarrier\b", kt_mesh_mod):
         errors.append("Android MeshModule sensitive providers must depend on MeshStartupWipeBarrier (R17)")
+    # AND THEY MUST ACTUALLY ASK IT. The mutation harness proved this check's first draft insufficient: grepping for
+    # `requireStartupPermit(` was satisfied by the FUNCTION'S OWN DEFINITION, so a provider that never called it passed.
+    # A CHECK SATISFIED BY A DEFINITION IS THE SAME SPECIES AS A CHECK SATISFIED BY A NAME. The permit must be consumed
+    # AT LEAST AS MANY TIMES AS THERE ARE SENSITIVE PROVIDERS THAT TAKE THE BARRIER.
+    _r17_permits = len(re.findall(r"requireStartupPermit\(\s*barrier\s*\)", kt_mesh_mod))
+    if "permitsStartup" not in kt_mesh_mod or _r17_permits < 3:
+        errors.append("Android MeshModule sensitive providers must CONSULT the startup permit, not merely hold the "
+                      "barrier object: construction of a barrier says nothing about the returned coordinator result. "
+                      "Observed %d permit consumption(s), expected at least 3 (R17)" % _r17_permits)
 
     # ── R18: iOS MeshRuntime binds default startup artifacts to exact store URLs ──
     if "storeUrl: messageStoreUrl" not in swift_mesh_runtime or "peerStoreUrl: peerStoreUrl" not in swift_mesh_runtime:
@@ -697,8 +735,12 @@ def selftest() -> int:
         else: failures.append("Mutation R13 was NOT caught")
         reset_all()
 
-        # Mutation R14: iOS MeshRuntime active wipe bypasses RuntimeAwareWipeArtifacts
-        f_swift_runtime.write_text(f_swift_runtime.read_text(encoding="utf-8").replace("RuntimeAwareWipeArtifacts", "PlainWipeArtifacts"), encoding="utf-8")
+        # Mutation R14: iOS MeshRuntime's active wipe loses the invalidate-before-erase order.
+        #
+        # GS-FINAL-002: the mutation formerly replaced the token `RuntimeAwareWipeArtifacts`, which a control that only
+        # NAMED the type would miss -- and did. THE MUTATION NOW BREAKS THE LAW: it removes the invalidation from the
+        # vault seam, so the runtime would erase keys with the runtime still live.
+        f_swift_runtime.write_text(f_swift_runtime.read_text(encoding="utf-8").replace("invalidateForWipe()", "noInvalidationAtAll()"), encoding="utf-8")
         if any("R14" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R14 was NOT caught")
         reset_all()
@@ -715,8 +757,12 @@ def selftest() -> int:
         else: failures.append("Mutation R16 was NOT caught")
         reset_all()
 
-        # Mutation R17: Android MeshModule sensitive providers omit MeshStartupWipeBarrier
-        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("_barrier: MeshStartupWipeBarrier", "// no barrier"), encoding="utf-8")
+        # Mutation R17: Android MeshModule sensitive providers hold the barrier but never CONSULT its permit.
+        #
+        # GS-FINAL-003: the mutation formerly deleted the `_barrier` parameter, so a control satisfied by an UNUSED
+        # parameter -- the defect itself -- was the only thing it could catch. THE MUTATION NOW BREAKS THE LAW: the
+        # providers keep the dependency and stop asking it anything.
+        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("requireStartupPermit(barrier)", "// permit not consulted"), encoding="utf-8")
         if any("R17" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R17 was NOT caught")
         reset_all()

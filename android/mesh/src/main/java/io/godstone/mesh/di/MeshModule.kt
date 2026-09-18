@@ -27,6 +27,10 @@ import io.godstone.mesh.identity.WipeIdentityAuthoritySeam
 import io.godstone.mesh.identity.WipeJournalDurabilityAdapter
 import io.godstone.mesh.identity.WipeKeyVaultSeam
 import io.godstone.mesh.identity.WipeTransportDrainSeam
+import io.godstone.mesh.identity.WipeArtifacts
+import io.godstone.mesh.identity.WipeJournal
+import io.godstone.mesh.identity.WipeJournalState
+import io.godstone.mesh.identity.WipeStepResult
 import io.godstone.mesh.identity.PeerIdentityRepository
 import io.godstone.mesh.identity.RuntimeAwareWipeArtifacts
 import io.godstone.mesh.identity.RuntimeGatedPeerBindingTrustAuthority
@@ -51,16 +55,12 @@ import io.godstone.mesh.delivery.RecipientInboxRepository
  * COORDINATOR over the DEFERRED seams instead. THIS DOCUMENTATION IS CORRECTED RATHER THAN LEFT DESCRIBING A CALL THE CODE
  * NO LONGER MAKES -- a comment that lieth about the code beside it is a defect, not a nicety.
  */
-internal fun runStartupWipeBarrier(resumePendingWipe: () -> Unit) {
-    resumePendingWipe()
-}
+internal fun <T> runStartupWipeBarrier(resumePendingWipe: () -> T): T = resumePendingWipe()
 
-internal class MeshStartupCoordinator(
-    private val resumePendingWipe: () -> Unit
+internal class MeshStartupCoordinator<T>(
+    private val resumePendingWipe: () -> T
 ) {
-    fun executeBarrier() {
-        runStartupWipeBarrier(resumePendingWipe)
-    }
+    fun executeBarrier(): T = runStartupWipeBarrier(resumePendingWipe)
 }
 
 /**
@@ -75,21 +75,23 @@ internal class MeshStartupCoordinator(
 class MeshStartupWipeBarrier internal constructor(
     @ApplicationContext ctx: Context
 ) {
+    /**
+     * *** GS-FINAL-003 (the independent audit, 2026-09-18): THE STARTUP'S OUTCOME IS A VALUE, NOT A SIDE EFFECT. ***
+     *
+     * THE AUDIT'S MEASUREMENT: "Android MeshStartupWipeBarrier returns Unit after calling resume; providers require the
+     * barrier object, not a successful recovery capability." AND ITS ROOT CAUSE, WHICH IS THE PRECISE ONE: "DI sequencing
+     * is mistaken for successful state transition; construction of a barrier object says nothing about the returned
+     * coordinator result."
+     *
+     * THAT IS EXACTLY WHAT THIS PROPERTY FIXETH. A provider that asked for `MeshStartupWipeBarrier` RECEIVED A
+     * CONSTRUCTED OBJECT WHETHER THE PENDING WIPE HAD BEEN RECOVERED, REFUSED, OR FAILED -- the dependency graph proved
+     * only that the constructor had run. The coordinator's own typed answer is retained here so a consumer can ASK
+     * rather than assume.
+     */
+    val outcome: WipeStepResult
+
     init {
-        runStartupWipeBarrier {
-            // *** GS-STORE-006: THE OLD `PanicWipe.resumeIfPending(ctx)` IS REPLACED BY **ONE RUNTIME-OWNED AUTHORITY** --
-            // THE CRASH-RESUMABLE COORDINATOR THE ISLE ALREADY HAD BUT WHICH NOTHING IN PRODUCTION EVER CALLED (round 400
-            // counted ZERO production conformances for any of its five seams). ***
-            //
-            // AND AT THE STARTUP **EVERY EFFECTFUL SEAM IS DEFERRED**, BECAUSE THIS PROCESS OWNS NO PLATFORM RESOURCE YET:
-            // no transport, no keystore, no database handles. THE LADDER THEREFORE STOPS WHERE IT CAN HONESTLY STOP --
-            // nothing erased, nothing deleted, no store opened on an erased key -- AND THE WIPE STAYS PENDING FOR THE
-            // RUNTIME THAT STANDS, exactly as the card's step 6 requires ("on restart, resume from the durable compatible
-            // journal BEFORE opening keys, databases, discovery or a new identity").
-            //
-            // THE JOURNAL IS NOT DEFERRED: writing a checkpoint is DURABILITY, not destruction, and it is the whole point of
-            // this half. `FileWipeJournal` commits synchronously, which is what makes the checkpoint survive the crash the
-            // ladder's durability is built for.
+        outcome = runStartupWipeBarrier {
             CrashResumableWipe(
                 store = WipeJournalDurabilityAdapter(FileWipeJournal(ctx)),
                 vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
@@ -99,6 +101,28 @@ class MeshStartupWipeBarrier internal constructor(
             ).resume()
         }
     }
+
+    /**
+     * *** WHETHER A PENDING WIPE WAS SAFELY RESOLVED, IN THE ONLY TERMS THAT MATTER TO A CONSUMER. ***
+     *
+     * `true` means the startup may proceed to open stores and issue an identity: either NO WIPE WAS EVER REQUESTED
+     * (the coordinator's typed `Refused("nothing to resume...")`, which is a CLEAN FIRST LAUNCH and not a failure), or
+     * the pending wipe completed.
+     *
+     * `false` means a wipe IS OUTSTANDING and the ladder stopped where it could honestly stop -- deferred seams cannot
+     * drain a transport this process does not own -- so NOTHING was erased, and a store opened now would be opened on a
+     * key that a later resume is going to erase. A consumer that respects the permit refuses that.
+     */
+    val permitsStartup: Boolean
+        get() = when (val r = outcome) {
+            // NO WIPE WAS EVER REQUESTED -- the clean first launch. Distinguished from a pending wipe by the REASON,
+            // because `Refused` is also used for a malformed journal, and treating THAT as clean would be unsound.
+            is WipeStepResult.Refused -> r.reason.contains("nothing to resume")
+            is WipeStepResult.AlreadyAtOrPast -> true
+            is WipeStepResult.Advanced -> r.to == WipeJournalState.IDLE
+            // A PENDING WIPE THAT COULD NOT ADVANCE: blocked, and the safe answer is to say so.
+            is WipeStepResult.RetryLater -> false
+        }
 }
 
 /**
@@ -123,7 +147,15 @@ class MeshPanicWipe internal constructor(
         // and it can, because the module provideth the node, and the node owneth the transport. ***
         // `PanicWipe(FileWipeJournal(ctx), artifacts).begin()` RETIRES HERE: THE OLD COORDINATOR IS NO LONGER WHAT THE
         // RUNTIME-SIDE WIPE RUNS.
-        val journal = FileWipeJournal(ctx)
+        MeshPanicWipe.runRuntimeSideWipe(wipeAuthority(artifacts, FileWipeJournal(ctx)))
+    }
+
+    /**
+     * THE ONE RUNTIME-SIDE AUTHORITY, in its own function so the seams are named once and the ENTRY VERB is the only
+     * thing a caller chooses. A second copy of these seams is a second place for a mapping to go missing -- which is
+     * precisely what the audit measured on the other isle.
+     */
+    private fun wipeAuthority(artifacts: WipeArtifacts, journal: WipeJournal): CrashResumableWipe =
         CrashResumableWipe(
             store = WipeJournalDurabilityAdapter(journal),          // the mapping; the journal is the isle's own
             vault = WipeKeyVaultSeam(artifacts),                    // over the RuntimeAwareWipeArtifacts built ABOVE, so
@@ -131,7 +163,27 @@ class MeshPanicWipe internal constructor(
             filesystem = WipeArtifactFileSystemSeam(journal),       // the same journal handle: one durable record
             runtime = WipeTransportDrainSeam(node.bleTransportForWipe),  // THE LIVE TRANSPORT the runtime itself uses
             authority = WipeIdentityAuthoritySeam(ctx, artifacts),  // the isle's own regeneration + naming
-        ).resume()
+        )
+
+    companion object {
+        /**
+         * *** GS-FINAL-002 (the independent audit, 2026-09-18): THE FRESH ENTRY VERB, ISOLATED SO IT CAN BE JUDGED. ***
+         *
+         * THE AUDIT'S MEASUREMENT: "Android `MeshPanicWipe.begin` constructs the coordinator and calls `resume`; resume
+         * refuses an empty journal." AND THE CONSEQUENCE IT NAMES: "A fresh Android wipe may do no wipe at all."
+         *
+         * WHY THE VERB IS A FUNCTION OF ITS OWN: my first repair changed the call site and wrote three arms -- AND EVERY
+         * ONE OF THEM PASSED AGAINST THE UNREPAIRED CALL SITE, because they drove the COORDINATOR directly and so never
+         * exercised the ROUTING DECISION at all. A mutation that restored `.resume()` at the call site left the suite
+         * green: the arms justified the coordinator, not the choice made here. THIS FUNCTION IS THAT CHOICE, made
+         * separately testable, so the arm judges the decision rather than the thing the decision drives.
+         *
+         * A NEW OPERATION REQUESTS; ONLY CRASH RECOVERY RESUMES. `requestWipe` recordeth `REQUESTED` durably BEFORE it
+         * drives anything -- which is what makes the wipe crash-resumable at all -- while `resume` answereth
+         * `Refused("nothing to resume; no wipe was ever requested")` on a clean journal, WHICH IS THE STATE A USER'S
+         * FIRST WIPE IS ALWAYS IN.
+         */
+        fun runRuntimeSideWipe(authority: CrashResumableWipe): WipeStepResult = authority.requestWipe()
     }
 }
 
@@ -159,6 +211,29 @@ internal object MeshModule {
     fun provideStartupWipeBarrier(@ApplicationContext ctx: Context): MeshStartupWipeBarrier =
         MeshStartupWipeBarrier(ctx)
 
+    /**
+     * *** GS-FINAL-003: THE BARRIER IS NOT A TOKEN TO BE INJECTED -- IT IS A PERMIT TO BE HONOURED. ***
+     *
+     * THE AUDIT'S MEASUREMENT: "providers require the barrier object, not a successful recovery capability. DI sequencing
+     * is mistaken for successful state transition." THE THREE PROVIDERS BELOW EACH TOOK `_barrier: MeshStartupWipeBarrier`
+     * AS AN UNUSED PARAMETER -- the underscore said so -- so the graph proved only that the CONSTRUCTOR HAD RUN. A wipe
+     * that had been requested and could not be recovered left every one of them free to open a private store and issue an
+     * identity on a key the next resume was going to erase.
+     *
+     * THIS THROWS RATHER THAN PROCEEDS, and the cleanup direction is the safe one: the ladder reached no erasure, the
+     * journal stands where it stood, and a later resume with the LIVE seams finishes the job. What must NOT happen is a
+     * store opened on a pending wipe, because that is the state the ladder exists to make impossible.
+     */
+    private fun requireStartupPermit(barrier: MeshStartupWipeBarrier) {
+        if (!barrier.permitsStartup) {
+            throw IllegalStateException(
+                "GS-FINAL-003: a wipe is outstanding and the startup recovery did not reach a terminal state " +
+                    "(${barrier.outcome}); private stores and identity issuance are UNREACHABLE until it does. " +
+                    "No key was erased and no artifact deleted -- resume with the live runtime seams to finish it."
+            )
+        }
+    }
+
     @Provides @Singleton
     fun provideRuntimeLifecycleGate(): DefaultRuntimeLifecycleGate =
         DefaultRuntimeLifecycleGate()
@@ -166,9 +241,11 @@ internal object MeshModule {
     @Provides @Singleton
     fun provideIdentity(
         @ApplicationContext ctx: Context,
-        _barrier: MeshStartupWipeBarrier
-    ): Identity =
-        Identity.loadOrCreate(ctx)
+        barrier: MeshStartupWipeBarrier
+    ): Identity {
+        requireStartupPermit(barrier)
+        return Identity.loadOrCreate(ctx)
+    }
 
     /**
      * The ONE process-wide `SqliteMessageStore`. Provided as the concrete type so
@@ -179,9 +256,11 @@ internal object MeshModule {
     @Provides @Singleton
     fun provideSqliteMessageStore(
         @ApplicationContext ctx: Context,
-        _barrier: MeshStartupWipeBarrier
-    ): SqliteMessageStore =
-        SqliteMessageStore(ctx, STORE_MAX_BYTES)
+        barrier: MeshStartupWipeBarrier
+    ): SqliteMessageStore {
+        requireStartupPermit(barrier)
+        return SqliteMessageStore(ctx, STORE_MAX_BYTES)
+    }
 
     /// Re-expose the store as its `MessageStore` interface for `MeshNode` injection.
     @Provides @Singleton
@@ -190,9 +269,11 @@ internal object MeshModule {
     @Provides @Singleton
     fun providePeerIdentityStore(
         @ApplicationContext ctx: Context,
-        _barrier: MeshStartupWipeBarrier
-    ): SqlcipherPeerIdentityStore =
-        SqlcipherPeerIdentityStore(ctx)
+        barrier: MeshStartupWipeBarrier
+    ): SqlcipherPeerIdentityStore {
+        requireStartupPermit(barrier)
+        return SqlcipherPeerIdentityStore(ctx)
+    }
 
     @Provides @Singleton
     fun providePeerIdentityRepository(store: SqlcipherPeerIdentityStore): PeerIdentityRepository =

@@ -16,8 +16,14 @@ final class CrashStartupResumeTests: XCTestCase {
         var state: WipeState = .idle
         var writes = 0
         var clears = 0
+        /// GS-FINAL-002: **EVERY RECORD THIS JOURNAL EVER CARRIED, IN ORDER.**
+        ///
+        /// `state` holdeth only the LAST value, so an arm asking "did the drain precede the erasure?" cannot read it
+        /// from `state` -- a ladder that walks past both in one call leaves `state` at the later rung and the ORDER, which
+        /// is the actual safety property, is unobservable. A journal that keepeth its writes maketh the order readable.
+        var writeLog: [String] = []
         func read() -> WipeState { state }
-        func write(_ s: WipeState) { state = s; writes += 1 }
+        func write(_ s: WipeState) { state = s; writes += 1; writeLog.append(s.rawValue) }
         func clear() { state = .idle; clears += 1 }
     }
 
@@ -840,9 +846,25 @@ final class CrashStartupResumeTests: XCTestCase {
      * AND WHAT IT DEMANDS IS THE CARD'S FIRST CLOSURE CLAUSE READ CAREFULLY: "Drive the real runtime wipe entry point with
      * a held write completion. **KEY DELETION MUST REMAIN BLOCKED UNTIL TRANSPORT DRAIN COMPLETES**; late callbacks must be
      * ignored." THE ORDER OF THIS ARM'S ASSERTIONS IS THEREFORE THE CLAUSE ITSELF: THE DRAIN HAPPENED FIRST (the live
-     * transport quiesced over `meshNode.ble`), AND ONLY THEN WAS KEY ERASURE ATTEMPTED -- AND IN THIS COMPOSITION, WHICH
-     * STORED NO KEY PROVIDER, THE ERASURE **FAILED HONESTLY AND RETRYABLY**, SO THE WIPE STAYS PENDING RATHER THAN
-     * CLAIMING AN ERASURE NOBODY PERFORMED. THAT IS THE SAFE DIRECTION, AND IT IS MEASURABLE.
+     * transport quiesced over `meshNode.ble`), AND ONLY THEN WAS KEY ERASURE ATTEMPTED.
+     *
+     * *** AND ITS EXPECTATION WAS CORRECTED BY MEASUREMENT (GS-FINAL-002, round 548). ***
+     *
+     * THIS ARM USED TO REQUIRE `.retryLater` WITH THE WIPE STUCK AT `runtimeDrained` -- because the vault answered
+     * `store-dek` with a PERMANENT RETRYABLE FAILURE WHENEVER NO KEY PROVIDER WAS WIRED. THAT REQUIREMENT WAS THE
+     * FINDING IN MINIATURE: IT MADE A WIPE STRUCTURALLY UNCOMPLETABLE IN A COMPOSITION THAT HAS NO ENCRYPTED PRIVATE
+     * STORE. The audit measured the consequence from the other side -- the fresh public wipe could not reach the
+     * crash-resumable ladder at all -- and routing it there, as GS-FINAL-002 requires, made this arm's stall into a
+     * REGRESSION: after a "wipe" the old node id stood and the peer store kept its row.
+     *
+     * THE LAW THE ARM ACTUALLY GUARDS IS UNCHANGED AND IS STILL MEASURED HERE: THE DRAIN MUST PRECEDE THE ERASURE. What
+     * changed is the honest answer for a DEK THAT DOES NOT EXIST. `keyProviderForWipe` is non-nil EXACTLY WHEN the
+     * composition carries an encrypted private store, so its absence means there is no DEK to erase -- `.absent`, which
+     * is the tri-state doctrine's own word -- and erasing the identity keys and deleting the stores is then a COMPLETE
+     * wipe, exactly as the old authority performed it.
+     *
+     * THE SAFETY PROPERTY IS NOT DROPPED; IT IS PROVEN SEPARATELY AND ADVERSARIALLY IN THE NEXT ARM, where a provider IS
+     * wired and FAILS: there the wipe must stay pending and must NOT claim an erasure nobody performed.
      */
     func testGSSTORE006_theRuntimeThatStandsContinuesTheWipeAndErasesNothingWithoutAProvider() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr006b_msg_\(UUID().uuidString).db")
@@ -865,18 +887,193 @@ final class CrashStartupResumeTests: XCTestCase {
         // HALF TWO: the runtime that stands continues the ladder with the LIVE seams.
         let r = try runtime.continuePendingWipeIfNeeded()
 
-        guard case let .retryLater(at, reason) = r else {
-            XCTFail("WITH NO KEY PROVIDER STORED THE WIPE MUST STAY PENDING, not claim completion -- its answer was \(r)")
+        // *** AND THE CLAUSE IS AN ORDER, SO THE ARM ASSERTS THE **ORDER OF THE RECORDS WRITTEN**, NOT A RANK. ***
+        //
+        // TWO DRAFTS OF THIS ASSERTION WERE WRONG BEFORE THIS ONE, AND BOTH MISTAKES ARE WORTH THE LINES:
+        //   (i) `journal.state == .runtimeDrained` demanded the wipe HALT where it should proceed -- `InMemoryJournal`
+        //       holds only the last state, and the ladder walks past the drain in the same call;
+        //   (ii) `state.rawValue >= .runtimeDrained.rawValue` compared RANKS, and `IDLE` (6) is the LARGEST rank, so a
+        //       COMPLETED wipe failed it. A rank is not an order of events.
+        //
+        // The journal this arm now records keeps EVERY write, so the drain's POSITION is readable directly -- which is
+        // the only form in which "the drain preceded the erasure" is actually true or false.
+        XCTAssertTrue(journal.writeLog.contains("runtimeDrained"),
+                      "the DRAIN CHECKPOINT must have been WRITTEN through the LIVE seams: \(journal.writeLog)")
+        if let drain = journal.writeLog.firstIndex(of: "runtimeDrained") {
+            for earlier in ["keyErased", "artifactsDeleted", "newIdentity"] {
+                if let index = journal.writeLog.firstIndex(of: earlier) {
+                    XCTAssertLessThan(
+                        drain, index,
+                        "*** KEY DELETION MUST REMAIN BLOCKED UNTIL TRANSPORT DRAIN COMPLETES: the drain checkpoint "
+                        + "must be WRITTEN BEFORE \(earlier). Observed order: \(journal.writeLog) ***")
+                }
+            }
+        }
+
+        // AND WITH NO ENCRYPTED PRIVATE STORE THERE IS NO DEK, so the wipe COMPLETES rather than stalling forever --
+        // the old authority's behaviour, and the behaviour GS-FINAL-002 requires of the fresh entry point.
+        guard case .advanced(_, to: .idle) = r else {
+            XCTFail("WITH NO ENCRYPTED PRIVATE STORE THE WIPE IS COMPLETE: the identity keys are erased, the stores are "
+                    + "deleted and a new identity is published. Its answer was \(r)")
             return
         }
-        XCTAssertEqual(at, .runtimeDrained,
-                       "*** AND IT MUST HAVE STOPPED **AFTER** THE DRAIN: the live transport was quiesced FIRST (over "
-                       + "meshNode.ble), and only then was the vault consulted -- WHICH IS THE CARD'S FIRST CLOSURE "
-                       + "CLAUSE ITSELF: KEY DELETION REMAINS BLOCKED UNTIL TRANSPORT DRAIN COMPLETES ***")
-        XCTAssertFalse(reason.isEmpty, "with a reason naming what refused (it was: \(reason))")
-        XCTAssertEqual(journal.state, .runtimeDrained,
-                       "and the DRAIN CHECKPOINT is persisted through the LIVE path, so a crash here resumes at the "
-                       + "drain rather than at the erasure")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
+    /// *** THE SAFETY PROPERTY, PROVEN ADVERSARIALLY: A REAL DEK THAT CANNOT BE ERASED KEEPS THE WIPE PENDING. ***
+    ///
+    /// THE PREVIOUS ARM'S OLD EXPECTATION -- "stay pending when no provider is wired" -- conflated two different states.
+    /// THIS ARM SEPARATES THEM: a provider IS wired, so a DEK really exists, and it REFUSES. The wipe must then stop at
+    /// the drain with the erasure unclaimed, and the identity must survive. A wipe that reached `IDLE` here would be
+    /// CLAIMING CRYPTOGRAPHIC ERASURE NOBODY PERFORMED -- the audit's own prohibition.
+    func testGSFINAL002_aFailingDEKProviderKeepsTheWipePendingAndErasesNoIdentity() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf002b_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf002b_peer_\(UUID().uuidString).db")
+        let journal = InMemoryJournal()
+        journal.write(.requested)
+        let keychain = InMemoryKeychain()
+        let identityBefore = try MeshIdentity.generateAndStore(keychain: keychain)
+
+        // A RUNNING TRANSPORT THAT DRAINS (so we reach the vault), AND A VAULT WHOSE DEK ERASURE FAILS.
+        final class DrainingTransport: TransportRuntimeSeam {
+            func drainTransport() -> RuntimeDrainReceipt { .drained(closedTransports: 1, quiescedRuntime: true) }
+            func isQuiesced() -> Bool { true }
+            func fireRadio(_ msg: String) -> Bool { false }
+            func sendVia(_ msg: String) -> Bool { false }
+        }
+        final class RefusingVault: KeyVaultSeam {
+            var erased: [String] = []
+            func eraseKey(_ name: String) -> KeyDeletionResult {
+                if name == "store-dek" { return .failed(keyName: name, retryable: true, reason: "the DEK would not go") }
+                erased.append(name)
+                return .deleted
+            }
+        }
+        let vault = RefusingVault()
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: vault,
+            filesystem: WipeArtifactFileSystemSeam(journal: WipeJournalDurabilityAdapter(journal: journal)),
+            runtime: DrainingTransport(),
+            authority: WipeIdentityAuthoritySeam()
+        )
+
+        let result = try authority.resume()
+        guard case .retryLater(at: .runtimeDrained, reason: let reason) = result else {
+            XCTFail("A FAILING DEK ERASURE MUST KEEP THE WIPE PENDING AT THE DRAIN -- it must NOT advance to "
+                    + "`KEYS_ERASED`, and it must NOT claim completion. Its answer was \(result)")
+            return
+        }
+        XCTAssertFalse(reason.isEmpty, "the refusal must NAME what could not be erased")
+        XCTAssertEqual(journal.state, WipeState.runtimeDrained,
+                       "the journal must stand at the DRAIN, so a later resume retries the erasure rather than skipping it")
+        // *** WHAT THE LADDER DOES WITH THE OTHER KEYS IS DELIBERATE, AND MY FIRST DRAFT OF THIS ARM GOT IT WRONG. ***
+        //
+        // I asserted that no later key is erased when an earlier one refuses. THE LADDER DOES NOT WORK THAT WAY, AND IT
+        // SHOULD NOT: it walks the whole scope, erasing what it CAN and collecting what it cannot, because erasing every
+        // reachable key is strictly safer than erasing none. What the safety depends on is that THE JOURNAL DOES NOT
+        // ADVANCE -- so the refused key is RETRIED on the next resume, and no stage after `KEYS_ERASED` is reached. The
+        // assertions below measure exactly that, and the over-strong one is replaced rather than deleted silently.
+        XCTAssertEqual(vault.erased.sorted(), ["identity-ed25519", "identity-x25519"],
+                       "the reachable keys ARE erased -- erasing what one can is safer than erasing none")
+        XCTAssertNotNil(try? MeshIdentity.loadFromKeychain(keychain: keychain),
+                        "AND THE IDENTITY SURVIVES -- a wipe that erased it while claiming a DEK erasure it never "
+                        + "performed would be the worst possible ordering")
+        XCTAssertNotEqual(identityBefore.nodeId, Data(), "sanity: a real identity stood before the wipe")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
+    // MARK: - GS-STORE-006: THE WIPE AUTHORITY THE COMPOSITION CARRIES
+
+    /// *** GS-FINAL-002 / GS-FINAL-011 (the independent audit, 2026-09-18): RECORD THE REAL WIPE PATH. ***
+    ///
+    /// THE AUDIT'S CHARGE, AND IT IS TWO CHARGES MEETING ON ONE LINE:
+    ///   * GS-FINAL-002: "iOS MeshRuntime.beginPanicWipe still constructs old PanicWipe instead of requesting
+    ///     through CrashResumableWipe" -- so the FRESH wipe ran the OLD state machine, which owneth no drain
+    ///     checkpoint and no DEK, WHILE the comment directly above it claimed the opposite.
+    ///   * GS-FINAL-011: "MeshRuntime.wipeAuthorityForTest returns a literal authority name and true flags" --
+    ///     a test seam that ASSERTED the intended architecture instead of reading the runtime graph, so the
+    ///     suite stayed GREEN while the behaviour it described was absent.
+    ///
+    /// THIS ARM REPLACES THE LITERAL WITH A RECORDING. It calls the REAL public `beginPanicWipe`, over a REAL
+    /// runtime, and reads WHAT ACTUALLY HAPPENED: which journal records were written, in what order, and whether
+    /// the transport was drained before any key was erased. Every assertion is about OBSERVED EFFECTS.
+    private final class RecordingJournal: WipeJournal, @unchecked Sendable {
+        var states: [WipeState] = []
+        private var current: WipeState = .idle
+        func read() -> WipeState { current }
+        func write(_ s: WipeState) { current = s; states.append(s) }
+        func clear() { current = .idle }
+    }
+
+    private final class RecordingArtifacts: WipeArtifacts, @unchecked Sendable {
+        var steps: [String] = []
+        func eraseKeys() throws { steps.append("eraseKeys") }
+        func deleteArtifacts() throws { steps.append("deleteArtifacts") }
+        func regenerateIdentity() throws { steps.append("regenerateIdentity") }
+    }
+
+    /// THE OBSERVED PATH OF THE FRESH PUBLIC WIPE. It must run the CRASH-RESUMABLE LADDER -- which is the only
+    /// authority that carries a durable DRAIN checkpoint and a DEK owner -- and it must NOT be the old machine.
+    func testGSFINAL002_theFreshPublicWipeRunsTheCrashResumableLadderAndDrainsFirst() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf002_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf002_peer_\(UUID().uuidString).db")
+        let journal = RecordingJournal()
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: InMemoryKeychain()
+        )
+
+        try runtime.beginPanicWipe(keychain: InMemoryKeychain())
+
+        let written = journal.states.map { $0.rawValue }
+        XCTAssertTrue(
+            written.contains("runtimeDrained"),
+            "GS-FINAL-002: THE FRESH PUBLIC WIPE MUST RUN THE CRASH-RESUMABLE LADDER, WHOSE FIRST RECORD AFTER "
+            + "`requested` IS THE DURABLE DRAIN CHECKPOINT. The old `PanicWipe` machine carrieth NO DRAIN STAGE "
+            + "AT ALL, so a wipe that reaches `keyErased` WITHOUT EVER WRITING `runtimeDrained` HAS ERASED KEYS "
+            + "WITHOUT PROVING THE RADIO WAS QUIET -- the exact charge GS-STORE-006 carrieth. "
+            + "Observed journal: \(written)",
+        )
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
+    /// GS-FINAL-011: THE PROOF SEAM MUST READ THE RUNTIME, NOT ASSERT ABOUT IT. The literal tuple is replaced by
+    /// an OBSERVATION: the fresh wipe's own journal records tell us which authority ran.
+    func testGSFINAL011_theWipeAuthorityIsObservedRatherThanAsserted() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf011_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf011_peer_\(UUID().uuidString).db")
+        let journal = RecordingJournal()
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: InMemoryKeychain()
+        )
+
+        try runtime.beginPanicWipe(keychain: InMemoryKeychain())
+
+        // THE AUTHORITY IS NAMED BY ITS OWN DURABLE RECORD, NOT BY A RETURNED STRING. `CrashResumableWipe`
+        // writeth `runtimeDrained` (via `WipeJournalState.wireName`); `PanicWipe` cannot write it, because
+        // `WipeState.runtimeDrained` is a stage its `run()` never reaches.
+        let written = Set(journal.states.map { $0.rawValue })
+        XCTAssertTrue(
+            written.contains("runtimeDrained"),
+            "GS-FINAL-011: A TEST SEAM MAY NOT ASSERT AN ARCHITECTURE THE RUNTIME DOES NOT EXHIBIT. The audit's "
+            + "measurement was that `wipeAuthorityForTest()` returned `(\"crashResumable\", true, true)` WHILE "
+            + "`beginPanicWipe` CONSTRUCTED `PanicWipe` -- a green suite describing a tree that was not there. "
+            + "The OBSERVED authority is named by its own durable record: `runtimeDrained` is a stage "
+            + "`CrashResumableWipe` writeth and `PanicWipe` cannot reach. "
+            + "Observed journal: \(journal.states.map { $0.rawValue })",
+        )
 
         try? FileManager.default.removeItem(at: msgUrl)
         try? FileManager.default.removeItem(at: peerUrl)
@@ -885,44 +1082,53 @@ final class CrashStartupResumeTests: XCTestCase {
     // MARK: - GS-STORE-006: THE WIPE AUTHORITY THE COMPOSITION CARRIES
 
     /**
-     * THE AUDIT'S CHARGE, AS AN ARM: "The composition still invokes old PanicWipe through invalidators that own sessions and
-     * stores but NO TRANSPORT."
+     * *** THIS ARM WAS THE FINDING, AND IT IS REPLACED RATHER THAN PROPPED UP. ***
      *
-     * *** AND THIS ARM'S OWN HISTORY IS WORTH ITS COMMENT, BECAUSE IT IS THE FINDING IN MINIATURE: ITS FIRST DRAFT (round
-     * 368) DEMANDED A CONNECTED TRANSPORT SEAM **AT CREATE TIME**, WHICH IS IMPOSSIBLE BY CONSTRUCTION AND WHICH HUNG THE
-     * LANE FOR TEN MINUTES WHEN I TRIED TO SATISFY IT (round 384). THE CARD'S STEP 6 SETTLES THE SHAPE: "on restart, resume
-     * from the durable compatible journal BEFORE opening keys, databases, discovery or a new identity" -- SO THE CREATE PATH
-     * DEFERS EVERY EFFECTFUL SEAM, AND THE RUNTIME THAT STANDS CARRIES THE CONTINUATION. ***
+     * GS-FINAL-011 (the independent audit, 2026-09-18) measured that `MeshRuntime.wipeAuthorityForTest()` returned
+     * `("crashResumable", true, true)` -- A LITERAL -- while the fresh public wipe constructed the OLD `PanicWipe`.
+     * This arm read those three constants and asserted them back, so IT WAS GREEN ON A TREE THAT DID NOT EXHIBIT
+     * WHAT IT DESCRIBED. A test that asks the source to repeat itself is not a control.
+     *
+     * The arm is now THE OBSERVATION ITSELF: it calls the REAL public wipe over a real runtime and reads the DURABLE
+     * JOURNAL the wipe actually wrote. `runtimeDrained` is a stage `CrashResumableWipe` writes and `PanicWipe` cannot
+     * reach, so the record names the authority that ran -- no constant is consulted, and none could satisfy this.
+     *
+     * AND IT CARRIES THE JOURNALS, IN ORDER, BECAUSE ORDER IS THE SAFETY PROPERTY: the DRAIN checkpoint must precede
+     * any erasure. A wipe that erased keys without proving the radio quiet is the charge GS-STORE-006 carries, and
+     * this arm would measure it.
      */
     func testGSSTORE006_theCompositionCarriesTheCrashResumableAuthority() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_peer_\(UUID().uuidString).db")
+        let journal = RecordingJournal()
         let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
-            journal: InMemoryJournal(),
+            journal: journal,
             keychain: InMemoryKeychain()
         )
 
-        let authority = runtime.wipeAuthorityForTest()
+        try runtime.beginPanicWipe(keychain: InMemoryKeychain())
 
-        XCTAssertEqual(
-            authority.kind, "crashResumable",
-            "THE COMPOSITION MUST CARRY ONE RUNTIME-OWNED WIPE AUTHORITY -- the crash-resumable one (REQUESTED -> "
-            + "RUNTIME_DRAINED -> KEYS_ERASED -> ARTIFACTS_DELETED -> NEW_IDENTITY -> IDLE) -- RATHER THAN THE OLD PanicWipe "
-            + "AT ITS ROOTS, which owneth no drain and no DEK",
+        let written = journal.states.map { $0.rawValue }
+        XCTAssertTrue(
+            written.contains("requested"),
+            "A FRESH WIPE MUST FIRST RECORD `REQUESTED` DURABLY -- `requestWipe()` writes it BEFORE driving anything, "
+            + "where `resume()` would have refused an empty journal and done nothing. Observed: \(written)",
         )
         XCTAssertTrue(
-            authority.defersAtCreate,
-            "THE CREATE-TIME AUTHORITY MUST DEFER EVERY EFFECTFUL SEAM: `create` runs before the runtime object exists, so "
-            + "it owns no transport, no keychain and no store handles -- it may not drain, may not erase, may not delete",
+            written.contains("runtimeDrained"),
+            "AND THE LADDER IT RUNS MUST BE THE CRASH-RESUMABLE ONE, whose first record after `requested` is the "
+            + "DURABLE DRAIN CHECKPOINT -- the stage the old `PanicWipe` machine carrieth NO counterpart for. "
+            + "Observed: \(written)",
         )
-        XCTAssertTrue(
-            authority.hasContinuation,
-            "AND THE RUNTIME MUST CARRY THE CONTINUATION THAT FINISHES THE WIPE ONCE THOSE RESOURCES EXIST "
-            + "(`continuePendingWipeIfNeeded()`), where the LIVE seams -- the transport over `meshNode.ble` among them -- "
-            + "are used; without it a wipe would stay pending forever, and with it the four-stage lifecycle is whole",
-        )
+        if let drainIndex = written.firstIndex(of: "runtimeDrained"),
+           let eraseIndex = written.firstIndex(of: "keyErased") {
+            XCTAssertLessThan(
+                drainIndex, eraseIndex,
+                "AND THE ORDER IS THE SAFETY PROPERTY: THE DRAIN MUST PRECEDE THE ERASURE. Observed: \(written)",
+            )
+        }
 
         try? FileManager.default.removeItem(at: msgUrl)
         try? FileManager.default.removeItem(at: peerUrl)
