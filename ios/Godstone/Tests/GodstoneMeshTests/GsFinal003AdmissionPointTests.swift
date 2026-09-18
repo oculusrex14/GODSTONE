@@ -241,6 +241,132 @@ final class GsFinal003AdmissionPointTests: XCTestCase {
         try? FileManager.default.removeItem(at: msgUrl)
         try? FileManager.default.removeItem(at: peerUrl)
     }
+    // ================================================================================================
+    // GS-FINAL-003 (round 747): *** THE SHIPPED COMPOSITION'S GATE, ASSERTED RATHER THAN ASSUMED. ***
+    //
+    // **AND IT CLOSES A MEASURED CROSS-ISLE ASYMMETRY:** *Android's `MeshNode` taketh `wipeGate` as a REQUIRED
+    // constructor parameter -- its own docstring saith "an omitted edge is a compile error rather than a silent
+    // always-admit" -- while this isle's `MeshNode.init(..., wipeGate: (any WipeSensitiveUseGate)? = nil)` LEAVETH IT
+    // OPTIONAL, so a future caller that omitteth the edge compiles away every guard silently.*
+    //
+    // *Production IS wired (`MeshRuntime.swift:171` passeth the real gate), so today's shipping path is fine. **THE
+    // EXPOSURE IS THE NEXT CALLER** -- and rather than re-open the optional (which would force every court to fail
+    // closed, the round-633 lesson), the gap is closed where it is cheap:* **THIS ARM ASSERTETH THAT THE SHIPPED
+    // COMPOSITION'S NODE REFUSES THE READ ROAD, so "the composition passes the gate" becometh something the suite
+    // reddens on rather than something a reader verifies.**
+    // ================================================================================================
+
+    func testGSFINAL003_theShippedCompositionsReadRoadRefusethWhileAWipeIsPending() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003rp_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003rp_peer_\(UUID().uuidString).db")
+        // *** THE JOURNAL MUST STAND PENDING **BEFORE** THE RUNTIME IS BUILT, AND MY FIRST TWO DRAFTS GOT THIS WRONG. ***
+        //
+        // *I first called `beginPanicWipe` (which RUNS the ladder to completion and re-opens the gate), then wrote
+        // `journal.state = .keyErased` AFTER construction -- and both failed to make the gate refuse.* **THE REASON IS
+        // IN THE AUTHORITY: `CrashResumableWipe` LOADETH THE JOURNAL INTO MEMORY AT CONSTRUCTION (`current()` readeth its
+        // own copy), so a write to the fake journal afterwards is never seen.** *Measured: with the runtime already built
+        // the gate answered `Optional(true)` -- the instrument naming my own wrong ordering rather than a defect.*
+        let journal = GsFinal003Journal()          // IDLE first: THE WRITE ROAD NEEDS A LEGITIMATE RUNTIME TO SEED WITH
+        let keychain = GsFinal003Keychain()
+
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
+
+        // *** (1) SEED A REAL DELIVERY ROW -- OTHERWISE THE ARM IS VACUOUS. ***
+        //
+        // *** AND MY FIRST DRAFT WAS EXACTLY THAT, MEASURED BY REMOVING THE GUARD AND WATCHING IT STAY GREEN: *** *a
+        // 16-octet id with NO row returneth `unavailable` from the body's own corrupt-or-absent branch, SO THE
+        // ASSERTION BELOW WOULD PASS WHETHER OR NOT THE GATE WAS EVER CONSULTED.* **The fix is the same one the Android
+        // twin already carrieth: assert the PERMITTING node really reads the row, then swap in the pending wipe.**
+        let recipient = Data((0..<16).map { UInt8($0 &+ 0x40) })
+        let frame = FrameV2(type: .message, msgId: Data((0..<16).map { UInt8($0) }),
+                            routingTag: Data(repeating: 3, count: 4),
+                            ttl: FrameV2.defaultTtl, hopCount: 0,
+                            flags: FrameV2.Flags.sealed | UInt16(Priority.direct.rawValue << 8),
+                            payload: Data(repeating: 0x41, count: 24))
+        let dispatched = runtime.meshNode.dispatchDirect(frame, expectedRecipient: recipient) { _, _ in false }
+        guard case .queuedLocally = dispatched else {
+            return XCTFail("*** THE RIG MUST REALLY HOLD A DELIVERY ROW, or the refusal below measures an empty store. " +
+                "Observed: \(dispatched) ***")
+        }
+        let mid = frame.msgId
+
+        // (2) THE POSITIVE CONTROL, STATED FIRST AND INSIDE THE ARM: while the gate stands OPEN the SAME row is READ.
+        XCTAssertNotEqual(
+            runtime.meshNode.deliveryProjection(mid).state, .unavailable,
+            "*** THE PERMITTING NODE MUST READ THE REAL ROW -- otherwise the refusal below proveth only that the store " +
+                "is empty. ***")
+
+        // *** (3) SEED A **PENDING** WIPE IN THE DURABLE JOURNAL -- AND MY FIRST DRAFT DID NOT, WHICH IS WHY IT WAS
+        // VACUOUS FOR A SECOND REASON. ***
+        //
+        // *I first called `beginPanicWipe`, and that RUNS THE LADDER: over this court's fake seams the wipe COMPLETES, the
+        // journal returneth to IDLE, and the gate RE-OPENS -- so the refusal assertion passed with the guard removed
+        // because there was nothing to refuse.* **The gate readeth the DURABLE JOURNAL per call
+        // (`CoordinatorWipeSensitiveUseGate.allowsSensitiveUse` -> `authority.allowsSensitiveApi()` -> `!isWipePending`), so
+        // a PENDING state is a JOURNAL FACT and must be seeded as one.**
+        // *** (3) A SECOND COMPOSITION OVER THE **SAME STORES**, WHOSE JOURNAL STANDS PENDING **BEFORE CONSTRUCTION**
+        // -- because `CrashResumableWipe` LOADETH THE JOURNAL INTO MEMORY AT CONSTRUCTION, so a write afterwards is
+        // never seen. *** *This is the shape the gate actually meeteth in production: a restart, with the pending record
+        // already durable.*
+        // *** AND THE MECHANISM IS THE SIBLING ARM'S, WHICH I FOUND ONLY AFTER THREE FAILED DRAFTS OF MY OWN. ***
+        //
+        // *I first tried `beginPanicWipe` (which RUNS the ladder to completion), then `journal.state = .keyErased`
+        // AFTER construction, then the same write BEFORE it -- and the gate answered `Optional(true)` to all three.*
+        // **THE SIBLING ARM'S OWN COMMENT STATETH THE REASON, AND IT IS THE CORRECT ONE: "MUTATING THE TEST JOURNAL DOES
+        // NOT REACH THE COORDINATOR ... THE HONEST ROUTE, MEASURED: REQUEST THE WIPE THROUGH THE COORDINATOR WHILE ITS
+        // VAULT CANNOT ERASE, BY COMPOSING WITH A JOURNAL WHOSE SEAM ANSWERS PENDING."** *`WipeDeferredKeyVaultSeam` is the
+        // startup road's own seam, so this reproduces the real state rather than inventing one.*
+        let pendingJournal = GsFinal003Journal()
+        let pendingAuthority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: pendingJournal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam()
+        )
+        _ = try pendingAuthority.requestWipe()
+        XCTAssertFalse(pendingAuthority.allowsSensitiveApi(),
+                       "the rig must really stand in a pending wipe for the assertions below to mean anything")
+
+        let pendingRuntime = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: pendingJournal,
+            keychain: keychain
+        )
+
+        // *** AND MEASURE THE GATE ITSELF, so a refusal that cometh from a NIL BOX cannot masquerade as the guard
+        // working. `wipeGateBox.authority?.allowsSensitiveApi() ?? false` FAILETH CLOSED when the authority was never
+        // built -- *so "the projection refused" would be true for the wrong reason.* ***
+        // *The sibling arm readeth `pendingRuntime.wipeAuthority` -- the retention that the box is later filled FROM --
+        // so this useth the same accessor rather than the box, which may still be unbuilt at this point.*
+        let gateAnswer = pendingRuntime.wipeAuthority.allowsSensitiveApi()
+        XCTAssertEqual(
+            gateAnswer, false,
+            "*** THE NODE'S OWN GATE MUST ANSWER false WHILE THE JOURNAL STANDS PENDING -- if it answereth true (or the " +
+                "gate is nil) the refusal below would be about something else. Observed: \(String(describing: gateAnswer)) ***",
+        )
+        let projection = pendingRuntime.meshNode.deliveryProjection(mid)
+
+        XCTAssertEqual(
+            projection.state, .unavailable,
+            "*** GS-FINAL-003: AFTER A WIPE REQUEST, THE SHIPPED COMPOSITION'S READ ROAD MUST NOT REPORT A LIVE DELIVERY " +
+                "STATE. This is the cross-isle parity Android carrieth by CONSTRUCTION (a required `wipeGate`); here it " +
+                "is held by this arm, so the shipping wiring cannot be dropped silently. Observed: \(projection.state) " +
+                "(journal: \(journal.state)) ***",
+        )
+        XCTAssertFalse(projection.claimsDelivery, "and it must not claim the bytes reached the recipient")
+        XCTAssertFalse(projection.claimsRelayCustody, "nor claim relay custody")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
 }
 
 // MARK: - the end-to-end arm's doubles
@@ -250,6 +376,8 @@ private final class GsFinal003Journal: WipeJournal, @unchecked Sendable {
     func read() -> WipeState { state }
     func write(_ s: WipeState) { state = s }
     func clear() { state = .idle }
+
+
 }
 
 private final class GsFinal003Keychain: LocalIdentityKeychain, @unchecked Sendable {
