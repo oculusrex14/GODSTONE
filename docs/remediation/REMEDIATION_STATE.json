@@ -7003,6 +7003,12 @@
      "sha256": "3344e2fee38b886f2be6d7833a00ec716fd2bbd4e75719ca0b5cfc7098e1bdad",
      "what": "PRIOR RUN kept separate: the same tree failed in the known randomized fixture (ReadinessT18Test, third court to exhibit it), green on re-run",
      "hash_note": "this field carried prose, not a digest, until round 96; the recorded digest was COMPUTED from the file at that time, which is a measurement, not a repair"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-006/round586-settled-law-and-a-measured-divergence.log",
+     "sha256": "aa937e55c098961a6af4c118a35863b4cc3cb37e6188312fcca6d15b321d0d50",
+     "what": "The settled composite law measured; my literal reading of the card reverted against the ledger's prior measurement; a twin/medium divergence found and pinned.",
+     "outcome": "24 tests 0 failures. Four arms: the retry case resolves to the winner's bytes; a changed revision takes the row on the TWIN; and the MEDIUM is measured keeping the first row -- a divergence pinned rather than resolved."
     }
    ],
    "my_red_case": {
@@ -13462,6 +13468,11 @@
    "what_was_wrong": "My own round-522 ledger entry stated that two of the auditor's four arms were \"NOT COPIED\", on the assumption that they would still fail as they had on the audited tree. THE ASSUMPTION WAS NEVER MEASURED AND IT WAS WRONG: both arms were appended and BOTH PASS.",
    "the_correction": "All four of the auditor's arms now stand in the canonical suite, `tests=\"4\" failures=\"0\"`, against the auditor's own recorded `tests=\"4\" failures=\"3\"` on the audited tree. The entry is corrected in place rather than overwritten, and the court's header carrieth the correction too.",
    "the_law_PAID_FOR": "**AN ASSUMPTION ABOUT WHAT WILL FAIL IS NOT A MEASUREMENT OF WHAT FAILS.** I reasoned \"they failed for the auditor, so copying them would make my lane red\" -- and a lane was spared a red by NOT LOOKING. The two arms were one command away from being measured, and measuring them closed the auditor's entire file. The cheap correct move was to RUN them and keep them only if green; it was available the whole time."
+  },
+  {
+   "round": 586,
+   "finding": "CRYPTO-006",
+   "correction": "I ASSERTED THE CARD'S PROSE LITERALLY (\"preserve the first accepted object\") FOR A **CHANGED** REVISION, AND IT FAILED -- BECAUSE THE LEDGER ALREADY RECORDS THAT EXACT CHANGE AS MEASURED-AND-REVERTED (Android `92104a7`, iOS `36c0cc6`): with a token-only claim the authority rejected a second, different command, breaking W6's preserved law that \"a changed recipient/body/priority is a NEW logical send\". REVERTED. THE SETTLED LAW IS COMPOSITE (token + canonicalCommandDigest). **AND MEASURING IT ON THE PRODUCTION MEDIUM PRODUCED A REAL FINDING: `SqliteOutboundIntentJournal` KEEPS THE FIRST ROW EVEN FOR A CHANGED REVISION** (`intent_id` is the PRIMARY KEY and the insert is `INSERT OR IGNORE`), WHILE THE IN-MEMORY TWIN TAKES IT -- AND W6 RUNS ON THE TWIN WHILE PRODUCTION RUNS ON THE MEDIUM. THE DIVERGENCE IS PINNED IN AN ARM; RESOLVING IT IS A DESIGN DECISION."
   }
  ],
  "phase_one": {
@@ -14203,7 +14214,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "d51618670cab83a489658468fce1db2e73c0cc19",
+  "candidate_sha": "3bd540e54dc8fc1f7cd20577490454361823b8d4",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

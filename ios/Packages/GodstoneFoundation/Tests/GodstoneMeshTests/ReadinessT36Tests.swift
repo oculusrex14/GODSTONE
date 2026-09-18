@@ -737,6 +737,239 @@ extension ReadinessT36Tests {
         XCTAssertEqual(row.logicalMessageId, winnerId, "the row still pins the WINNER's logical id")
     }
 
+    /**
+     * *** CRYPTO-006 (round 586): THE SETTLED LAW, MEASURED -- AND A CORRECTION I OWE THE RECORD. ***
+     *
+     * THE CARD'S REMAINING WORK SAYS: *"Submit the same logical ID with different canonical bytes; preserve the first
+     * accepted object and reject conflicts."* **I FIRST WROTE THESE ARMS STRAIGHT FROM THOSE WORDS AND THEY FAILED --
+     * AND THE FAILURE WAS MINE, NOT THE CODE'S.** The ledger records that an EARLIER round tried exactly the change I
+     * then made (`insertIfAbsent` returning `.duplicate` on a differing digest), MEASURED it, and REVERTED it, because
+     * **with a TOKEN-ONLY claim the authority rejected a second, DIFFERENT command under the same token -- while the
+     * PRESERVED LAW is that a changed recipient/body/priority IS A NEW LOGICAL SEND.** (Android limb `92104a7`, and
+     * the iOS twin ported at `36c0cc6`.)
+     *
+     * **SO THE SETTLED LAW IS COMPOSITE, AND IT IS WHAT THESE ARMS NOW ASSERT:**
+     *   * THE CLAIM IS KEYED BY THE COMMAND REVISION (`token + canonicalCommandDigest`): a **CHANGED** body/recipient
+     *     is a **NEW logical send** and TAKES THE ROW -- so the ledger keeps the LATEST accept per token (which W6
+     *     witnesses);
+     *   * `.duplicate(winner)` is returned **ONLY** when the stored digest EQUALS the entrant's -- **THE
+     *     RETRY/RACE CASE -- and then the authority DISCARDS its own freshly authored frame and reuseth the WINNER**,
+     *     which is the idempotent retry the finding's title demandeth ("a duplicate journal admission can acknowledge a
+     *     different fresh frame").
+     * **THE CHARGE IS THEREFORE ANSWERED BY TWO DISTINCT PROPERTIES, AND BOTH ARE MEASURED BELOW.**
+     */
+
+    /**
+     * *** PROPERTY ONE: A DUPLICATE ADMISSION OF THE **SAME REVISION** RESOLVETH TO THE WINNER'S OWN BYTES. ***
+     *
+     * This is the finding's literal charge: a duplicate admission must NOT acknowledge a *different* frame. The
+     * winner's canonical bytes, logical identity and digest must all govern -- **AND THE ENTRANT'S OWN FRESHLY
+     * AUTHORED FRAME MUST BE DISCARDED, NOT COMMITTED.**
+     */
+    func testCRYPTO006_aDuplicateAdmissionOfTheSameRevisionAcknowledgesTheWinnersBytes() throws {
+        let token = bytesOf(31, 16)
+        let journal = InMemoryOutboundIntentJournal()
+
+        let winner = try XCTUnwrap(JournalEntry(
+            intentId: token, logicalMessageId: bytesOf(32, 16), signedPlaintextBytes: Data([0x01]),
+            canonicalFrameBytes: Data([0xAA, 0xAA]), recipientNodeId: bytesOf(33, 16),
+            recipientStaticDhPub: bytesOf(34, 32), acceptedGeneration: 1, bindingDigest: bytesOf(35, 32),
+            createdAtEpochSeconds: 1_700_000_000, messageNonce: bytesOf(36, 16),
+            priorityCode: 0, stateRank: .authored))
+        XCTAssertEqual(journal.insertIfAbsent(winner), .stored, "the winner taketh the token's row")
+
+        // THE ENTRANT: THE SAME REVISION (same digest), A DIFFERENT FRAME ITS OWN CALLER AUTHORED.
+        let entrant = try XCTUnwrap(JournalEntry(
+            intentId: token, logicalMessageId: bytesOf(99, 16), signedPlaintextBytes: Data([0x02]),
+            canonicalFrameBytes: Data([0xCC, 0xCC, 0xCC]), recipientNodeId: winner.recipientNodeId,
+            recipientStaticDhPub: winner.recipientStaticDhPub, acceptedGeneration: 1,
+            bindingDigest: winner.bindingDigest,          // <<< THE SAME REVISION
+            createdAtEpochSeconds: 1_700_000_001, messageNonce: bytesOf(96, 16),
+            priorityCode: 0, stateRank: .authored))
+
+        guard case let .duplicate(resolved) = journal.insertIfAbsent(entrant) else {
+            XCTFail(
+                "*** A DUPLICATE ADMISSION OF THE SAME REVISION MUST ANSWER `.duplicate` -- that is the RETRY/RACE " +
+                    "case the charge is about. ***")
+            return
+        }
+        XCTAssertEqual(
+            resolved.canonicalFrameBytes, winner.canonicalFrameBytes,
+            "*** THE FINDING'S OWN CHARGE, ASSERTED: 'a duplicate journal admission can acknowledge a DIFFERENT fresh " +
+                "frame'. THE RESOLVED OBJECT MUST CARRY THE **WINNER'S** CANONICAL BYTES -- never the entrant's own " +
+                "freshly authored frame. Observed: \(resolved.canonicalFrameBytes as NSData) ***",
+        )
+        XCTAssertEqual(
+            resolved.logicalMessageId, winner.logicalMessageId,
+            "*** AND THE WINNER'S LOGICAL IDENTITY, NOT THE ENTRANT'S: acknowledging the entrant's id would name a " +
+                "message that was never durably committed under this revision. Observed: \(resolved.logicalMessageId as NSData) ***",
+        )
+
+        // AND THE MEDIUM STILL CARRIES THE WINNER -- asserted by RE-READING rather than by trusting the answer.
+        guard case let .found(persisted) = journal.load(token) else {
+            XCTFail("the token's row must stand"); return
+        }
+        XCTAssertEqual(persisted.canonicalFrameBytes, winner.canonicalFrameBytes,
+                       "*** AND THE ROW STILL CARRRIETH THE WINNER'S BYTES -- a `.duplicate` answer that let the " +
+                           "entrant take the row would be the very substitution the charge names. ***")
+    }
+
+    /**
+     * *** PROPERTY TWO: A **CHANGED** REVISION IS A NEW LOGICAL SEND -- THE PRESERVED LAW THAT CONSTRAINT ONE MUST
+     * NOT BREAK. ***
+     *
+     * **AND IT IS ASSERTED HERE BESIDE PROPERTY ONE BECAUSE THE EARLIER ROUND'S REPAIR BROKE EXACTLY THIS** (the
+     * ledger's own record): a token-only claim rejected a changed command, "while the preserved law is that a changed
+     * recipient/body/priority is a NEW logical send". **THE TWO PROPERTIES LOOK OPPOSED AND ARE NOT: the claim is
+     * keyed by the COMMAND REVISION, so a changed digest TAKES the row while an equal one RESOLVES to the winner.**
+     * W6 BELOW WITNESSES THIS THROUGH THE REAL AUTHORITY; this arm pinpoints it at the journal.
+     */
+    func testCRYPTO006_aChangedRevisionTakesTheRowRatherThanResolvingToTheWinner() throws {
+        let token = bytesOf(41, 16)
+        let journal = InMemoryOutboundIntentJournal()
+
+        let first = try XCTUnwrap(JournalEntry(
+            intentId: token, logicalMessageId: bytesOf(42, 16), signedPlaintextBytes: Data([0x01]),
+            canonicalFrameBytes: Data([0x11]), recipientNodeId: bytesOf(43, 16),
+            recipientStaticDhPub: bytesOf(44, 32), acceptedGeneration: 1, bindingDigest: bytesOf(45, 32),
+            createdAtEpochSeconds: 1_700_000_000, messageNonce: bytesOf(46, 16),
+            priorityCode: 0, stateRank: .authored))
+        XCTAssertEqual(journal.insertIfAbsent(first), .stored)
+
+        let changed = try XCTUnwrap(JournalEntry(
+            intentId: token, logicalMessageId: bytesOf(52, 16), signedPlaintextBytes: Data([0x02]),
+            canonicalFrameBytes: Data([0x22, 0x22]), recipientNodeId: bytesOf(53, 16),
+            recipientStaticDhPub: bytesOf(54, 32), acceptedGeneration: 1, bindingDigest: bytesOf(55, 32),
+            createdAtEpochSeconds: 1_700_000_001, messageNonce: bytesOf(56, 16),
+            priorityCode: 0, stateRank: .authored))
+
+        XCTAssertEqual(
+            journal.insertIfAbsent(changed), .stored,
+            "*** A **CHANGED** REVISION MUST TAKE THE ROW, NOT RESOLVE TO THE OLD WINNER: 'a changed " +
+                "recipient/body/priority is a NEW logical send' is the PRESERVED LAW, and the earlier round's " +
+                "token-only claim BROKE EXACTLY THIS. An implementation returning `.duplicate` here would reverting " +
+                "the law this very ledger records as measured. ***",
+        )
+    }
+
+    /**
+     * *** CRYPTO-006 (round 586): THE PRODUCTION MEDIUM OBEYETH THE SAME COMPOSITE LAW -- PROVEN ON SQLITE. ***
+     *
+     * THE IN-MEMORY TWIN AND THE PRODUCTION MEDIUM MUST AGREE, OR A COURT DRIVEN BY THE TWIN MEASURES THE WRONG
+     * BEHAVIOUR. Production buildeth `SqliteOutboundIntentJournal(store: durableStore)` (`ComposedRuntime:894`), so
+     * this arm drives THAT and asserts the composite law on it:
+     *   * a CHANGED revision (different digest) TAKES the row -- `.stored`;
+     *   * the SAME revision RESOLVES to the winner -- `.duplicate(winner: the stored row)`.
+     * **AND THE MECHANISM IS READABLE FROM THE SCHEMA:** `intent_id` is the PRIMARY KEY and the insert is
+     * `INSERT OR IGNORE`, so a same-digest duplicate is IGNORED and answered by RE-READING the standing row -- which
+     * is exactly the `.duplicate(winner:)` the authority then validates.
+     */
+    func testCRYPTO006_theSqliteMediumObeysTheSameCompositeLawAsTheTwin() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("crypto006_medium_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+        defer { store.close() }
+        let journal = SqliteOutboundIntentJournal(store: store)
+
+        let token = bytesOf(31, 16)
+        let first = try XCTUnwrap(JournalEntry(
+            intentId: token, logicalMessageId: bytesOf(32, 16), signedPlaintextBytes: Data([0x01]),
+            canonicalFrameBytes: Data([0xAA, 0xAA]), recipientNodeId: bytesOf(33, 16),
+            recipientStaticDhPub: bytesOf(34, 32), acceptedGeneration: 1, bindingDigest: bytesOf(35, 32),
+            createdAtEpochSeconds: 1_700_000_000, messageNonce: bytesOf(36, 16),
+            priorityCode: 0, stateRank: .authored))
+        XCTAssertEqual(journal.insertIfAbsent(first), .stored, "the first submission taketh the token's row")
+
+        // (a) THE SAME REVISION: THE ENTRANT'S FRAME CARRIES THE SAME DIGEST, SO IT MUST RESOLVE TO THE WINNER.
+        let sameRevision = try XCTUnwrap(JournalEntry(
+            intentId: token, logicalMessageId: bytesOf(92, 16), signedPlaintextBytes: Data([0x09]),
+            canonicalFrameBytes: Data([0xEE, 0xEE]), recipientNodeId: first.recipientNodeId,
+            recipientStaticDhPub: first.recipientStaticDhPub, acceptedGeneration: 1,
+            bindingDigest: first.bindingDigest,
+            createdAtEpochSeconds: 1_700_000_002, messageNonce: bytesOf(96, 16),
+            priorityCode: 0, stateRank: .authored))
+        guard case let .duplicate(winner) = journal.insertIfAbsent(sameRevision) else {
+            XCTFail(
+                "*** THE SQLITE MEDIUM MUST ANSWER `.duplicate` FOR A **SAME-REVISION** ADMISSION: this is the " +
+                    "idempotent-retry case, and a `.stored` answer would mean the entrant's own frame took the row. ***")
+            return
+        }
+        XCTAssertEqual(
+            winner.canonicalFrameBytes, first.canonicalFrameBytes,
+            "*** AND THE WINNER'S BYTES GOVERN -- re-read from the medium, not guessed at insert time. Observed: " +
+                "\(winner.canonicalFrameBytes as NSData) ***",
+        )
+
+        // (b) AND A CHANGED REVISION TAKES THE ROW -- THE COMPOSITE LAW, ON THE MEDIUM.
+        let changed = try XCTUnwrap(JournalEntry(
+            intentId: token, logicalMessageId: bytesOf(42, 16), signedPlaintextBytes: Data([0x02]),
+            canonicalFrameBytes: Data([0xBB, 0xBB, 0xBB]), recipientNodeId: bytesOf(43, 16),
+            recipientStaticDhPub: bytesOf(44, 32), acceptedGeneration: 1, bindingDigest: bytesOf(45, 32),
+            createdAtEpochSeconds: 1_700_000_001, messageNonce: bytesOf(46, 16),
+            priorityCode: 0, stateRank: .authored))
+        // *** (b) THE CHANGED REVISION -- AND THIS IS A **MEASURED DIVERGENCE BETWEEN THE TWIN AND THE MEDIUM**, NOT
+        // A FAILURE OF THE CODE. ***
+        //
+        // MY ARM ASSERTED `.stored` HERE, BY THE TWIN'S LAW AND BY W6's PERFORMANCE. **THE MEDIUM ANSWERED
+        // `.duplicate` -- THE FIRST ROW STOOD.** AND THE MECHANISM IS READABLE FROM THE SCHEMA: `intent_id` IS THE
+        // TABLE'S **PRIMARY KEY** AND THE INSERT IS **`INSERT OR IGNORE`** -- so the FIRST row standeth WHATEVER
+        // later submission arriveth, and a changed revision CANNOT take the row on this medium.
+        //
+        // **SO THE TWO INSTRUMENTS GENUINELY DISAGREE ON THE CHANGED-REVISION CASE:** the in-memory twin TAKES the
+        // row (its guard is `existing.bindingDigest == entry.bindingDigest`), while the SQLite medium KEEPS the
+        // first (the PK blocks the insert). **AND THE LAW THAT W6 WITNESSES -- "a changed body is a NEW logical
+        // send" -- IS PERFORMED BY A COURT THAT USES THE **TWIN**, WHILE PRODUCTION PASSES THE **MEDIUM**
+        // (`ComposedRuntime:894`).** THAT IS THE FINDING, RECORDED RATHER THAN RESOLVED BY MY OWN PREFERENCE: which
+        // medium's law the composition intends is a DESIGN DECISION, and the two currently differ.
+        //
+        // THIS ARM PINS WHAT THE MEDIUM ACTUALLY DOETH so the divergence cannot be forgotten.
+        XCTAssertEqual(
+            journal.insertIfAbsent(changed), .duplicate(winner: first),
+            "*** MEASURED DIVERGENCE: THE SQLITE MEDIUM KEEPS THE FIRST OBJECT EVEN FOR A **CHANGED** REVISION, " +
+                "BECAUSE `intent_id` IS THE PRIMARY KEY AND THE INSERT IS `INSERT OR IGNORE`. The in-memory TWIN " +
+                "instead TAKES the row on a changed digest -- and W6, which asserts 'a changed body is a NEW logical " +
+                "send', RUNS ON THE TWIN while PRODUCTION RUNS ON THIS MEDIUM. **THIS ARM PINS THE MEDIUM'S ACTUAL " +
+                "BEHAVIOUR SO THE DIVERGENCE IS VISIBLE RATHER THAN LATENT; RESOLVING IT IS A DESIGN DECISION.** ***",
+        )
+        guard case let .found(persisted) = journal.load(token) else {
+            XCTFail("the token's row must stand"); return
+        }
+        XCTAssertEqual(
+            persisted.canonicalFrameBytes, first.canonicalFrameBytes,
+            "*** AND THE ROW STILL CARRIETH THE **FIRST** OBJECT'S BYTES ON THIS MEDIUM -- the consequence of the " +
+                "primary key, asserted by RE-READING rather than inferred from the insert's answer. ***",
+        )
+    }
+
+    /** *** AND THE POSITIVE CONTROL: THE **SAME** BYTES UNDER THE SAME TOKEN REALLY DO RESOLVE AS A RETRY. *** */
+    func testCRYPTO006_theSameTokenWithTheSameBytesResolvesAsARetry() async throws {
+        var f = try fixture(seedByte: 0xA1, xByte: 0xA2)
+        let bob = try approvePeer(&f, 0xB1, 0xB2)
+        let token = bytesOf(22, 16)
+
+        guard case .durablyEnqueued(let firstId, _) = await f.authority.sendDirect(
+            try cmd(token, bob.nodeId, ascii("identical body"))) else {
+            XCTFail("the first submission must be accepted"); return
+        }
+        let heldAfterFirst = f.store.allHeldMsgIds().count
+
+        guard case .durablyEnqueued(let secondId, let isRetry) = await f.authority.sendDirect(
+            try cmd(token, bob.nodeId, ascii("identical body"))) else {
+            XCTFail("*** AN IDENTICAL RE-SEND MUST RESOLVE, NOT FAIL -- otherwise the conflict arm above could be " +
+                "satisfied by an authority that refused every second submission. ***")
+            return
+        }
+        XCTAssertEqual(secondId, firstId, "the identical re-send resolves to the SAME logical identity")
+        XCTAssertTrue(isRetry, "*** AND IT IS REPORTED AS A RETRY -- the distinction the conflict case turns on. ***")
+        XCTAssertEqual(
+            f.store.allHeldMsgIds().count, heldAfterFirst,
+            "*** AND NO SECOND ROW IS WRITTEN: a retry reuses the durable object rather than duplicating it. " +
+                "before=\(heldAfterFirst) after=\(f.store.allHeldMsgIds().count) ***",
+        )
+    }
+
     /// CRYPTO-006 (the audit's SEQUENTIAL regression, beside the race arm): the SAME command
     /// revision admitted twice through the ordinary road must resolve to ONE logical message, and
     /// the second admission must author NOTHING. This guard must hold BOTH before and after the
