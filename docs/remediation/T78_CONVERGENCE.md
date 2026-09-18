@@ -1144,6 +1144,35 @@ reader must be able to tell which figures an instrument produced before it was r
   instrument's OUTPUT was compatible with the code being fine. **A GREEN THAT CANNOT REDDEN WHEN ITS CONSUMER IS BROKEN
   IS NOT EVIDENCE ABOUT THE CONSUMER.**
 
+
+## ROUND 611 — THE REPOSITORY-SIDE CANDIDATE, RE-MEASURED AT ONE CLEAN EXACT SHA
+
+**Candidate `b6998c38df35`, tree `5a65fc7acd80`, `git status --porcelain` EMPTY.** Every figure below was measured at THIS revision, after
+the tree was confirmed clean -- not inherited from an earlier round's table.
+
+| lane | measured at this SHA |
+|---|---|
+| Android `:app` | **97 tests, 0 skipped, 0 failures, 0 errors** (11 result files) |
+| Android `:core` | **21 tests, 0 skipped, 0 failures, 0 errors** (2 result files) |
+| Android `:mesh` | **1885 tests, 0 skipped, 0 failures, 0 errors** (108 result files), `BUILD SUCCESSFUL`, rc 0, **forced** (`--rerun-tasks`) |
+| iOS (mirrored package) | full lane green; `GodstoneCoreTests` **94 tests, 0 failures**; `ReadinessT36Tests` 27/0 and `ReadinessT30Tests` 18/0 by name |
+| Lane/manifest control | `ci/check_lane_results.py` — **PASSED** (every lane ran, executed at least one test, carried no skipped/failed/errored arm) |
+| Mirror membership | **PASSED** — GodstoneCore=23, GodstoneMesh=84, GodstoneCoreTests=7, GodstoneMeshTests=79, LabMeshTests=1 |
+| Evidence digests | **PASSED** (every registered entry examined, every digest matching) |
+| Nine repository controls | **all green** (`check_parity --scope repo` 7/7, lab isolation, store schema 111 controls, trusted runtime composition, release surface, required runs, current assessment, commit provenance) |
+
+**WHAT THE LANE CONTROL ACTUALLY ASSERTS, SO ITS GREEN IS NOT OVERREAD:** it reads the JUnit **result XML**, never stdout;
+it **refuseth** when no result files exist, when any lane records `tests="0"` (a zero-test run has measured nothing),
+when ANY arm is skipped, failed or errored (**named**), and when the generated mirror's membership disagrees with
+canonical. Its own selftest is **mutation-proven** (a naive regex drops it to 3/4 and the attribution arm falls).
+
+## THE EXTERNAL HALF, AND WHY T78 IS STILL NOT CLAIMED
+
+**T78 requireth that all applicable HOSTED lanes be enabled, executed and green at one clean exact SHA. NO HOSTED LANE,
+RUN URL, RUN ID OR LOG EXISTETH HERE** -- no CI service is reachable from this work -- so the hosted half is ABSENT and
+the repository-side half is complete. **NO FINDING IS `VERIFIED_FIXED`** (only an independent audit may write it), **THE
+READINESS FLAGS REMAIN FALSE**, and **THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED**. **ACQUISITION CLOSES NOTHING.**
+
 ## REMAINING WORK
 
 **RE-DERIVED FROM THE LEDGER AT THIS REVISION, NOT INHERITED.** *(The paragraph below previously named "the six
