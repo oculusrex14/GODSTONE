@@ -146,9 +146,26 @@ object FaultKind {
 
 /** The invariant ids: a failure NAMETH the invariant it broke. */
 object Invariants {
+    // *** ONE INVARIANT PER OWNER-KIND, ADDED IN ROUND 671 BECAUSE MY OWN ARMS REUSED THE NEAREST NAME. ***
+    //
+    // MEASURED: FIVE KINDS REPORTED UNDER `NO_LEAKED_SESSIONS` (sessions, writer reservations, admitted inventory
+    // leases, pending ACKs) AND TWO UNDER `NO_LEAKED_LEASES` (the authority's observers and the store's observers).
+    // **AN INVARIANT THAT MISNAMES WHAT LEAKED SENDS A MAINTAINER TO THE WRONG OWNER** -- which is the exact defect
+    // this programme already filed twice (round 651: *"otherwise the two censuses would be one census wearing two
+    // names, AND A MAINTAINER SENT TO THE WRONG OWNER"*; and the GS-FINAL-009 note about a name that asserts what the
+    // mechanism does not provide). *I wrote the wrong name into my own arms while asserting that distinction in a
+    // comment.*
     const val NO_LEAKED_LEASES = "no_leaked_leases"
     const val NO_LEAKED_TIMERS = "no_leaked_timers"
     const val NO_LEAKED_SESSIONS = "no_leaked_sessions"
+    /** Writer reservations -- one of the card's named owners. */
+    const val NO_LEAKED_RESERVATIONS = "no_leaked_reservations"
+    /** Admitted inventory leases -- the card's own term. */
+    const val NO_LEAKED_INVENTORY_LEASES = "no_leaked_inventory_leases"
+    /** Pending ACK obligations: work the system owed and did not discharge. */
+    const val PENDING_ACK_WORK = "pending_ack_work"
+    /** Observer registrations, which name their OWNER because the two owners share the NAME `observers`. */
+    const val NO_LEAKED_OBSERVERS = "no_leaked_observers"
     const val NO_DUPLICATE_INBOX = "no_duplicate_inbox"
     const val NO_DUPLICATE_DELIVERY = "no_duplicate_delivery"
     const val NO_UNCAUGHT_MALFORMED = "no_uncaught_malformed"
@@ -359,7 +376,7 @@ class StressCampaign(
                 reservations == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
                     "${owner.ownerName} (reservations)")
                 reservations != 0 -> failures.add(
-                    "${Invariants.NO_LEAKED_SESSIONS}: $reservations writer reservation(s) still live in the REAL " +
+                    "${Invariants.NO_LEAKED_RESERVATIONS}: $reservations writer reservation(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
             }
             // THE THIRD OWNER: THE INVENTORY LEASES THE CARD NAMETH -- `admitted`, whose hook already existeth.
@@ -368,7 +385,7 @@ class StressCampaign(
                 admittedLeases == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
                     "${owner.ownerName} (admitted leases)")
                 admittedLeases != 0 -> failures.add(
-                    "${Invariants.NO_LEAKED_SESSIONS}: $admittedLeases admitted lease(s) still live in the REAL " +
+                    "${Invariants.NO_LEAKED_INVENTORY_LEASES}: $admittedLeases admitted lease(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
             }
             // THE FOURTH OWNER: TIMERS -- an armed deadline that nobody fired leaves NO OTHER TRACE.
@@ -386,7 +403,7 @@ class StressCampaign(
                 observers == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
                     "${owner.ownerName} (observers)")
                 observers != 0 -> failures.add(
-                    "${Invariants.NO_LEAKED_LEASES}: $observers observer registration(s) still live in the REAL " +
+                    "${Invariants.NO_LEAKED_OBSERVERS}: $observers observer registration(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
             }
             // THE SIXTH OWNER: PENDING ACK WORK -- a duty the system owed and did not discharge.
@@ -395,7 +412,7 @@ class StressCampaign(
                 pendingAcks == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
                     "${owner.ownerName} (pending acks)")
                 pendingAcks != 0 -> failures.add(
-                    "${Invariants.NO_LEAKED_SESSIONS}: $pendingAcks pending ACK obligation(s) still live in the REAL " +
+                    "${Invariants.PENDING_ACK_WORK}: $pendingAcks pending ACK obligation(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
             }
             // THE SEVENTH: THE STORE'S OWN OBSERVER SET -- the same NAME as `observers`, a DIFFERENT owner.
@@ -404,7 +421,7 @@ class StressCampaign(
                 storeObservers == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
                     "${owner.ownerName} (store observers)")
                 storeObservers != 0 -> failures.add(
-                    "${Invariants.NO_LEAKED_LEASES}: $storeObservers store observer(s) still live in the REAL " +
+                    "${Invariants.NO_LEAKED_OBSERVERS}: $storeObservers store observer(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
             }
         }

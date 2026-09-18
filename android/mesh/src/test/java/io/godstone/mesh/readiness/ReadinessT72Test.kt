@@ -392,7 +392,7 @@ class ReadinessT72Test {
         Assert.assertTrue(
             "*** A LEAK IN THE SECOND OWNER MUST BE REPORTED, AND THE FAILURE MUST NAME IT -- otherwise the seam " +
                 "promiseth a census it cannot take. Observed: ${result.failures} ***",
-            result.failures.any { it.contains(Invariants.NO_LEAKED_SESSIONS) && it.contains("RecordWriter") },
+            result.failures.any { it.contains(Invariants.NO_LEAKED_RESERVATIONS) && it.contains("RecordWriter") },
         )
     }
 
@@ -462,7 +462,7 @@ class ReadinessT72Test {
         Assert.assertTrue(
             "*** A LEAK IN THE THIRD OWNER MUST BE REPORTED AND NAMED -- the card nameth 'inventory leases' among the " +
                 "owners to census. Observed: ${result.failures} ***",
-            result.failures.any { it.contains("admitted lease") && it.contains("RecordWriter") },
+            result.failures.any { it.contains(Invariants.NO_LEAKED_INVENTORY_LEASES) && it.contains("RecordWriter") },
         )
     }
 
@@ -476,7 +476,7 @@ class ReadinessT72Test {
             override fun liveAdmittedLeases(): Int = 1
         }
         val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(leaseOnly)).run()
-        Assert.assertTrue("the lease leak must be named", result.failures.any { it.contains("admitted lease") })
+        Assert.assertTrue("the lease leak must be named", result.failures.any { it.contains(Invariants.NO_LEAKED_INVENTORY_LEASES) })
         Assert.assertTrue(
             "*** AND THE RESERVATION KIND MUST NOT BE ACCUSED FOR IT -- otherwise the two censuses would be one " +
                 "census wearing two names, and a maintainer sent to the wrong owner. Observed: ${result.failures} ***",
@@ -540,7 +540,7 @@ class ReadinessT72Test {
         Assert.assertTrue(
             "*** A PENDING ACK OBLIGATION IS NOT TELEMETRY -- it is WORK THE SYSTEM OWED AND MUST DISCHARGE, which is " +
                 "why it is censused where the two refused counters were not. Observed: ${result.failures} ***",
-            result.failures.any { it.contains("pending ACK") && it.contains("AckObligationStore") },
+            result.failures.any { it.contains(Invariants.PENDING_ACK_WORK) && it.contains("AckObligationStore") },
         )
     }
 
@@ -561,7 +561,7 @@ class ReadinessT72Test {
         Assert.assertTrue(
             "*** THE STORE'S OBSERVERS MUST BE REPORTED -- the card's word covereth both owners, and asking only one " +
                 "would leave the other's leak invisible. Observed: ${result.failures} ***",
-            result.failures.any { it.contains("store observer") && it.contains("MessageStore") },
+            result.failures.any { it.contains(Invariants.NO_LEAKED_OBSERVERS) && it.contains("MessageStore") },
         )
         Assert.assertTrue(
             "*** AND THE AUTHORITY'S SET MUST NOT BE ACCUSED FOR IT -- two owners of one NAME must stay " +
