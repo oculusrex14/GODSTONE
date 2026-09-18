@@ -84,7 +84,7 @@ private struct ArchiveBrowser: View {
         }
     }
 
-    /// *** GS-ARCHIVE-005 step 1 (round 536): THE PATH FOLLOWETH THE SCENE, IN BOTH DIRECTIONS. ***
+    /// *** GS-ARCHIVE-005 step 1 (round 536): THE PATH FOLLOWETH THE SCENE. ***
     ///
     /// A restoration placeth the SCENE in a document while the STACK's path standeth empty (the process is new), so
     /// the path must be PUT BACK; and a return to the list must CLEAR it, or the stack would stand ahead of the
@@ -102,6 +102,34 @@ private struct ArchiveBrowser: View {
         // THE DESTINATION from the library (`sourceMetadata(documentId:)`), which is round 524's law and the reason
         // this reconstruction needeth no more than the identity and the title.
         path = [ArchiveDocument(id: id, title: scene.openedTitle ?? "", domain: "", isCritical: false)]
+    }
+
+    /// *** GS-FINAL-006 (the independent audit, 2026-09-18): THE OTHER DIRECTION WAS NEVER WIRED, SO THE SCENE WAS
+    /// NEVER TOLD. ***
+    ///
+    /// THE AUDIT'S MEASUREMENT, WHICH I REPRODUCED EXACTLY: *"iOS NavigationLink values update a local navigation
+    /// stack without calling the scene open operations whose identities are saved. ... Parallel navigation owners on
+    /// iOS."* A grep of the whole App source set for `scene.open(` returned **NOTHING** -- so:
+    ///
+    ///   * `NavigationLink(value:)` pushed onto `path`;
+    ///   * `syncPathWithScene()` drove `path` FROM `scene`;
+    ///   * **AND NOTHING DROVE `scene` FROM `path`.**
+    ///
+    /// TWO OWNERS FOR ONE FACT, and the consequences were real on both sides of that gap:
+    ///   * `scene.openedDocumentId` stayed NIL while a document was on screen, so `persistScenePlace()` wrote a place
+    ///     with no document -- **the restoration charged in GS-ARCHIVE-005 step 4 had nothing to restore**;
+    ///   * `scene.mode` stayed whatever it was, so the toolbar and title rendered the OLD mode's controls over the
+    ///     new screen;
+    ///   * and the reader's own `noteScroll`/anchor road ran against a scene that did not know where it was.
+    ///
+    /// THE REMEDY IS THE AUDIT'S OWN: *"Choose one iOS route authority. Replace value-only navigation with actions
+    /// that open through ArchiveSceneModel."* THE SCENE IS THE AUTHORITY FOR NAVIGATION, and the path is its
+    /// REFLECTION rather than a rival. The list and the hits therefore call `open(document:)` -- the scene's own
+    /// checked road, which sets `openedDocumentId`, `openedTitle`, the return scene, and the mode -- and the `onChange`
+    /// below then brings the path into line.
+    private func openFromPath(_ document: ArchiveDocument) {
+        guard scene.openedDocumentId != document.id else { return }
+        Task { await scene.open(document: document) }
     }
 
     /// A record that will not deserialise is **NO RECORD, not a crash**: a stale or corrupt store must leave the
@@ -184,6 +212,18 @@ private struct ArchiveBrowser: View {
             // TOLD APART from a change (else this would fight every tap the user made), and the path is CLEARED
             // when the scene returneth to the list (else Back would leave the stack ahead of the scene).
             .onChange(of: scene.openedDocumentId) { _ in syncPathWithScene() }
+            // *** GS-FINAL-006: AND THE PATH TELLETH THE SCENE WHEN *IT* MOVES. ***
+            // A swipe-back pop removes the last path element WITHOUT `scene.back()` ever running, so the scene would
+            // keep `openedDocumentId` set while the reader is back at the list -- the divergence in the other
+            // direction, and the one the toolbar's own Back button could never fix. An empty path now returns the
+            // scene to its list, and a non-empty one re-opens the document the stack now shows.
+            .onChange(of: path) { newPath in
+                guard let shown = newPath.last else {
+                    if scene.mode == .document { scene.back() }
+                    return
+                }
+                if scene.openedDocumentId != shown.id { openFromPath(shown) }
+            }
             .onAppear { syncPathWithScene() }
             .onChange(of: scenePhase) { phase in
                 // the standard iOS moment: the place is written before the app may be suspended and killed
@@ -201,6 +241,10 @@ private struct ArchiveBrowser: View {
 
     private var documentList: some View {
         List(scene.documents) { document in
+            // *** GS-FINAL-006: THE SELECTION GOETH THROUGH THE SCENE, NOT PAST IT. ***
+            // A `NavigationLink(value:)` alone would push the path while leaving `scene.openedDocumentId` nil -- the
+            // parallel-owner defect verbatim. `simultaneousGesture` lets the link's own push stand AND tells the scene,
+            // so the two owners are updated from ONE tap and cannot disagree about which document is open.
             NavigationLink(value: document) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(document.title).font(.headline)
@@ -219,6 +263,8 @@ private struct ArchiveBrowser: View {
                 }
                 .frame(minHeight: GodstoneTheme.minimumTapTarget, alignment: .leading)
             }
+            // THE SCENE IS TOLD IN THE SAME TAP THAT PUSHES THE PATH (GS-FINAL-006).
+            .simultaneousGesture(TapGesture().onEnded { openFromPath(document) })
         }
         .listStyle(.plain)
     }
@@ -242,6 +288,12 @@ private struct ArchiveBrowser: View {
                     }
                     .padding(.vertical, 8)
                 }
+                // AND THE SEARCH ROAD GETTETH THE SAME TREATMENT, so a hit and a list row cannot disagree about
+                // whether the scene was told (GS-FINAL-006).
+                .simultaneousGesture(TapGesture().onEnded {
+                    openFromPath(ArchiveDocument(id: passage.documentId,
+                        title: passage.documentTitle, domain: passage.domain, isCritical: false))
+                })
             }
         }
         .listStyle(.plain)

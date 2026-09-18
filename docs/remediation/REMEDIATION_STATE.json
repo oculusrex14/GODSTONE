@@ -13760,7 +13760,23 @@
     "root_cause": "Parallel navigation owners on iOS and an unconsumed state output on Android; model tests exercise APIs the view does not drive.",
     "exact_remediation": "Choose one iOS route authority. Replace value-only navigation with actions that open through ArchiveSceneModel, or bind a route model bidirectionally and persist that same route. Render the corresponding scene rather than an independent reading identity. Report stable visible passage IDs during actual scrolling. On Android remember a LazyListState, consume the resolved anchor only after matching document data/layout exists, and observe visible item identity into saved state. Clear obsolete anchors on document changes.",
     "regression_test": "Open a non-first search hit, scroll to a later passage, background/recreate, assert matching document and visible passage; repeat from document browse. Drive actual taps and native back, not direct snapshot/restore calls alone.",
-    "my_status": "OPEN"
+    "my_status": "PARTIAL",
+    "my_fix_commit": "round 555 (this commit) -- the scene is the navigation authority on iOS; the path reflects it",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-006/round555-006-repair-and-boundary.log",
+      "sha256": "231ba13d7eea1672cd6795bc24243c2e9672e019d4018af111ddca5ed305448f",
+      "what": "The defect measured at source, the repair, and the boundary that blocks its verification.",
+      "outcome": "MEASURED: `grep -rn \"scene.open(\" ios/Godstone/Sources/App/` returns NOTHING. REPAIRED. UNVERIFIED: the App-layer compile is blocked by the NATIVE_MODELS gate."
+     }
+    ],
+    "my_red_case": "THE AUDIT'S MEASUREMENT, REPRODUCED DIRECTLY AT SOURCE: `grep -rn \"scene.open(\" ios/Godstone/Sources/App/` returns NOTHING but a comment -- so `NavigationLink(value:)` pushed onto `path` while NOTHING EVER TOLD THE SCENE. That is the parallel-owners defect as a grep, which is a stronger red than an arm here because no arm can run against Sources/App (see pending_proof).",
+    "pending_proof": [
+     "*** THE APP-LAYER COMPILE IS BLOCKED BY AN EXTERNAL GATE, SO THIS EDIT IS UNVERIFIED. *** `xcodebuild` fails on \"archive_light.db could not be opened\" -- AND IT FAILS IDENTICALLY WITHOUT THIS EDIT, so it is pre-existing. ROOT CAUSE, measured: `*.db` is in .gitignore, so `archive_light.db` is a GENERATED artifact never committed; generating it runs `python3 -m content.ingest.build_archive --tier LIGHT`, which exits 2 with \"embedding dependency unavailable: No module named llama_cpp\" -- THE NATIVE_MODELS EXTERNAL GATE. No fixture may stand in for it, so the App cannot be built here at all, and the SwiftPM lane never compiles `Sources/App`.",
+     "WHAT WAS VERIFIED INSTEAD, AND IT IS WEAKER: `swiftc -parse ios/Godstone/Sources/App/ArchiveView.swift` exits 0, so the file PARSES. A parse is not a compile: it resolves no imports and checks no types. It is stated as what it is, not as a build witness.",
+     "THE ANDROID HALF IS NOT DONE. The audit charges the same finding against Android: *\"Android BrowseScreen has no list state or scroll action consuming the stored anchor\"* and *\"Android never consumes the model's scroll anchor.\"* That work is untouched and remains open.",
+     "NO RENDERED-SCREEN WITNESS ON EITHER ISLE -- the same UI-target gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7 (no XCUIApplication, no androidTest)."
+    ]
    },
    "GS-FINAL-007": {
     "severity": "Medium",
