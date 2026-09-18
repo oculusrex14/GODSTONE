@@ -292,9 +292,24 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
             throw error
         }
 
-        // Apply FileProtectionType.complete fail-closed via protectionSetter
+        // *** GS-STORE-002 (round 685): THE PROTECTION CLASS IS NOW THE FIELD'S, NOT A LITERAL. ***
+        //
+        // MEASURED BEFORE THIS EDIT: `fileProtection` was declared at `:258` as `internal let fileProtection:
+        // FileProtectionType = .complete` AND **NEVER READ** -- while this line passed a HARDCODED `.complete`
+        // instead. **SO THE FIELD WAS A DECORATION: a reader (and a court) would believe it controlled the class the
+        // store applies, and it did not.**
+        //
+        // **AND THE ARM THAT WATCHED IT WAS VACUOUS, PROVEN BY MUTATION:** changing THIS line's literal to `.none` --
+        // *weakening the actual protection to nothing* -- left `testFileProtectionCompleteByDefault` GREEN, because
+        // that arm asserteth `store.fileProtection == .complete`, **A CONSTANT THE MUTATION DOES NOT TOUCH.** *A test
+        // that asks the source to repeat a literal is not a control; it is the same defect the audit filed against
+        // `wipeAuthorityForTest`'s literal tuple.*
+        //
+        // **READING THE FIELD MAKES BOTH TRUE AT ONCE:** the declaration now controls what is applied, and an arm may
+        // observe the class the store actually uses. *Fail-closed is unchanged -- the same value is applied, from the
+        // one place that names it.*
         do {
-            try protectionSetter(path, .complete)
+            try protectionSetter(path, fileProtection)
         } catch {
             sqlite3_close_v2(validDb)
             handle = nil

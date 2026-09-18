@@ -245,14 +245,35 @@ final class SqliteMessageStoreTests: XCTestCase {
 
     // --- at-rest encryption intent pinned structurally (device enforces it) ---
 
-    func testFileProtectionDefaultIsComplete() {
-        // The production default for the DB file is complete data protection
-        // (encrypted at rest with a device-passcode-derived key). A regression
-        // to a weaker class is a test failure, not a silent weakening. The
-        // macOS host accepts but does not enforce the attribute, so this pins
-        // INTENT; the device verifies enforcement.
-        _ = open(maxBytes: Int64.max)
-        XCTAssertEqual(store.fileProtection, FileProtectionType.complete)
+    /// *** GS-STORE-002 (round 685): THIS ARM NOW READS THE CLASS BACK FROM THE FILESYSTEM. ***
+    ///
+    /// **IT WAS VACUOUS, PROVEN BY MUTATION:** it asserted `store.fileProtection` -- *the FIELD* -- and **changing the
+    /// attribute the store actually APPLIES to `FileProtectionType.none` left all 74 arms GREEN**, because the mutation
+    /// never touched the field the arm reads. *So the comment's claim -- "a regression to a weaker class is a test
+    /// failure, not a silent weakening" -- was FALSE: the weakening was silent.*
+    ///
+    /// **AND THE HOST CAN ANSWER THE REAL QUESTION, MEASURED RATHER THAN ASSUMED:** `attributesOfItem` returneth
+    /// `NSFileProtectionComplete` on this macOS host after the store applies it -- *so the arm need not settle for
+    /// "intent" when the attribute is readable.* **IT NOW ASSERTS BOTH:** what the store DECLARES, and **what the file
+    /// actually CARRIES.** *The first is the declaration; the second is the mechanism, and only the pair makes a
+    /// weakening detectable.*
+    func testFileProtectionCompleteIsWhatTheFileCarries() {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-store-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let s = SqliteMessageStore(url: url, maxBytes: Int64.max)
+
+        // (1) WHAT THE STORE DECLARES.
+        XCTAssertEqual(s.fileProtection, FileProtectionType.complete, "the store must declare complete protection")
+
+        // (2) AND WHAT THE FILE ACTUALLY CARRIES -- read back from the filesystem, not from the store's own field.
+        let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let applied = attrs?[.protectionKey] as? FileProtectionType
+        XCTAssertEqual(
+            applied, .complete,
+            "*** THE CLASS THE FILE CARRIES IS THE MECHANISM, AND IT MUST BE `.complete`. Reading it back from the " +
+                "filesystem is what makes a silent weakening DETECTABLE -- the field alone could not, as the mutation " +
+                "proved. Observed: \(String(describing: applied)) ***")
     }
 
     // MARK: - Stage 4B.1 / B2: persist means HELD AFTER cap enforcement

@@ -99,12 +99,36 @@ final class PeerIdentityStoreTests: XCTestCase {
         XCTAssertThrowsError(try SqlitePeerIdentityStore(url: url))
     }
 
-    func testFileProtectionCompleteByDefault() throws {
+    /// *** GS-STORE-002 (round 685): THE ARM NOW MEASURES THE CLASS THE STORE ACTUALLY APPLIES. ***
+    ///
+    /// IT PREVIOUSLY ASSERTED `store.fileProtection == .complete` -- **A CONSTANT.** *And it was VACUOUS, PROVEN BY
+    /// MUTATION:* changing the production line to apply `.none` -- **weakening the real protection to nothing** --
+    /// left this arm GREEN, because the mutation never touches the constant the arm reads. **A TEST THAT ASKS THE
+    /// SOURCE TO REPEAT A LITERAL IS NOT A CONTROL.**
+    ///
+    /// **THE SEAM MAKES THE APPLIED CLASS OBSERVABLE, SO THE ARM OBSERVES IT:** it opens through the injected
+    /// `protectionSetter`, records what the store PASSED to it, and asserts THAT. *The mutation above now reddens
+    /// this arm, which is what makes it a control rather than a recital.*
+    func testFileProtectionCompleteIsTheClassTheStoreApplies() throws {
         let url = tempDbUrl()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let store = try SqlitePeerIdentityStore(url: url)
-        XCTAssertEqual(store.fileProtection, .complete)
+        var applied: [FileProtectionType] = []
+        let store = try SqlitePeerIdentityStore(url: url, protectionSetter: { _, protection in
+            applied.append(protection)
+        })
+
+        XCTAssertEqual(
+            applied.count, 1,
+            "*** THE STORE MUST APPLY EXACTLY ONE PROTECTION CLASS ON OPEN -- observed: \(applied) ***")
+        XCTAssertEqual(
+            applied.first, .complete,
+            "*** THE CLASS THE STORE APPLIES MUST BE `.complete`, MEASURED AT THE SEAM THAT APPLIES IT. A regression " +
+                "to a weaker class is a failure, not a silent weakening. Observed: \(String(describing: applied.first)) ***")
+        XCTAssertEqual(
+            store.fileProtection, applied.first,
+            "*** AND THE DECLARED FIELD MUST BE THE SAME VALUE THE STORE APPLIES -- otherwise the declaration is a " +
+                "decoration a reader (and this court) would be misled by. ***")
     }
 
     struct InjectedProtectionError: Error {}
