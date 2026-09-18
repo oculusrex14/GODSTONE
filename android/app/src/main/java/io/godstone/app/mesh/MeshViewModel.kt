@@ -76,18 +76,30 @@ class MeshViewModel(
      * GATE IS THE MECHANISM. A command can arrive from a restored state, a gesture already in flight, a test, or a
      * future caller -- and none of those consult a button.
      *
-     * WHICH COMMANDS ARE PROTECTED, AND WHY THE OTHERS ARE NOT: the reads and the side effects that touch the protected
-     * estate are `SendDirect`, `Retry`, `ArmSos`, `ConfirmSos`, `DisarmSos`, `CancelSos` and `RestoreActiveSos`.
-     * `Draft`, `SelectRecipient`, `Refresh` and `ClearError` are NOT gated here -- a draft is the user's own typing and
-     * `project()` already carrieth the gate for the roads that read. Each is named rather than swept, so the list can
-     * be read and argued with.
+     * WHICH COMMANDS ARE PROTECTED, AND THE TEST IS ONE QUESTION: **DOES THIS COMMAND READ OR WRITE THE PROTECTED
+     * ESTATE?** The reads and the side effects that do are `SendDirect`, `Retry`, `ArmSos`, `ConfirmSos`, `DisarmSos`,
+     * `CancelSos`, `RestoreActiveSos` -- **AND `SelectRecipient`**. `Draft`, `Refresh` and `ClearError` are NOT gated
+     * here: a draft is the user's own typing, and `Refresh`/`ClearError` reach the estate only through `project()`,
+     * WHICH ASKETH THE GATE FIRST.
+     *
+     * *** AND `SelectRecipient` IS IN THE LIST BECAUSE A REVIEW CAUGHT IT, NOT BECAUSE I DID. *** My first repair
+     * listed it as NOT protected and justified that with a comment about `project()` -- **WHICH IS FALSE FOR THIS
+     * COMMAND, AND THE GREP PROVES IT: its handler calleth `port.recipients()` DIRECTLY, so the protected read
+     * happeneth BEFORE `project()` is ever reached.** With the gate down, this one command still read the protected
+     * store -- precisely what the audit forbids ("zero calls must occur").
+     *
+     * **THE LESSON IS THE ONE THIS PROGRAMME KEEPS PAYING FOR: A COMMENT THAT EXPLAINS WHY A COMMAND IS SAFE IS NOT A
+     * MEASUREMENT OF WHETHER IT IS.** The rule is mechanical now, and it is stated so the next command can be judged
+     * against it rather than against prose: *if the handler names `port.` at all, it is protected.*
      */
     private fun isProtectedCommand(command: MeshCommand): Boolean = when (command) {
         is MeshCommand.SendDirect, is MeshCommand.Retry, is MeshCommand.ArmSos,
         is MeshCommand.ConfirmSos, is MeshCommand.DisarmSos, is MeshCommand.CancelSos,
         is MeshCommand.RestoreActiveSos -> true
-        is MeshCommand.Refresh, is MeshCommand.ClearError, is MeshCommand.Draft,
-        is MeshCommand.SelectRecipient -> false
+        // THE HANDLER READS `port.recipients()` DIRECTLY -- see the docstring above.
+        is MeshCommand.SelectRecipient -> true
+        // AND THESE REACH THE ESTATE ONLY THROUGH `project()`, WHICH ASKETH THE GATE FIRST.
+        is MeshCommand.Refresh, is MeshCommand.ClearError, is MeshCommand.Draft -> false
     }
 
     fun onCommand(command: MeshCommand): MeshUiState {

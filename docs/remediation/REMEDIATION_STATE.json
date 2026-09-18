@@ -13885,6 +13885,12 @@
       "sha256": "8e40f4144b3620ba5115552c4bc06b8be3491b25062fae488db046b225c1ab73",
       "what": "The defect at source, the RED, the three-part repair, and the causal mutation.",
       "outcome": "RED 5 tests/3 failures (exactly the defect arms); MUTATION failed the same 2; GREEN 5/5; lanes app 73, core 21, mesh 1869, all 0 failures."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-009/round562-review-caught-bypass.log",
+      "sha256": "038174fc18f038dfc1270a9202a341c3dfda0e3187e5f3cfeaf6fbd2e08385c6",
+      "what": "A protected read my first repair missed, caught by review; the RED, the fix, and the mechanical rule.",
+      "outcome": "RED: selectRecipientIsGatedBecauseItReadsTheProtectedStoreDirectly FAILED. GREEN: 6/6; lanes app 74, core 21, mesh 1869, all 0 failures."
      }
     ],
     "my_red_case": "BEHAVIOURAL RED BEFORE THE EDIT: 3 of 5 arms failed -- `anUnavailableGateProjectsWithoutReadingThePortAtAll` (the port WAS read), `theUnavailableProjectionCarriesItsOwnTypedStateAndNotEmptyLists`, and `protectedCommandsAreRefusedAtAdmissionWhenTheGateSaysUnavailable` (protected calls were made). The audit's own instrument: A PORT THAT THROWS ON EVERY PROTECTED READ AND COMMAND, WITH ZERO CALLS DEMANDED -- a throw rather than an empty answer, because an empty list would let an unguarded projection publish \"you have no contacts\".",
@@ -13892,7 +13898,7 @@
      "NO RENDERED-SCREEN WITNESS, AND IT MATTERS MORE HERE THAN ELSEWHERE: the audit's clause is about what the SCREEN sayeth. The arms drive the ViewModel, and `MeshUiState.protectedUnavailable` exists so a screen CAN distinguish unavailable from empty -- but whether the Compose surface actually RENDERS that distinction is unverified, because no `androidTest` target exists (the same gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7).",
      "THE AUDIT ASKS FOR SUBSCRIPTION TO PLATFORM AVAILABILITY TRANSITIONS: *\"Subscribe to platform availability transitions, clear sensitive projections and cancel in-flight operations using generation tokens.\"* THIS IS NOT DONE. This isle's gate is POLLED at each projection and command admission, which closes the reading window and the command window -- but a transition that arrives while no call is made is not observed. The reason it is not claimed: the app has no shipping Mesh composition (`UnavailableMeshPort` is the shipping binding), so there is nothing to subscribe TO yet. Named rather than worked around.",
      "ANDROID FIRST-UNLOCK vs iOS COMPLETE-PROTECTION: the audit warns these must not be confused. This isle's gate is a plain \"may I read protected storage right now\" (`ProtectedDataGate.isProtectedDataAvailable`), with no first-unlock semantics claimed. The iOS clause is NOT addressed by this repair and is not claimed to be.",
-     "THE `isProtectedCommand` LIST IS A JUDGEMENT, NOT A MEASUREMENT: SendDirect/Retry/ArmSos/ConfirmSos/DisarmSos/CancelSos/RestoreActiveSos are gated; Draft/SelectRecipient/Refresh/ClearError are not. The reasoning for each is in-comment so it can be argued with, but a future command added to `MeshCommand` would NOT be gated by default -- an exhaustive `when` would make the compiler demand a decision, and that is the durable fix this round did not make."
+     "THE `isProtectedCommand` LIST IS STILL A JUDGEMENT, BUT THE RULE IS NOW MECHANICAL AND STATED SO THE NEXT COMMAND CAN BE JUDGED AGAINST IT RATHER THAN AGAINST PROSE: **IF THE HANDLER NAMES `port.` AT ALL, IT IS PROTECTED.** AND ONE ENTRY WAS WRONG UNTIL REVIEW CAUGHT IT (round 562): `SelectRecipient` read `port.recipients()` directly and I had listed it as NOT protected, justified by a comment about `project()` that is NEVER REACHED for that command. A FUTURE `MeshCommand` WOULD STILL NOT BE GATED BY DEFAULT -- an exhaustive `when` with no `else` would make the compiler demand a decision, and that remains the durable fix not made here."
     ]
    },
    "GS-FINAL-010": {
@@ -14044,7 +14050,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "b1788fd2452db0fb7293a6503d2ace33b4e17bf2",
+  "candidate_sha": "a52ed9024579fc3e531e653bb75e9661164e0b93",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

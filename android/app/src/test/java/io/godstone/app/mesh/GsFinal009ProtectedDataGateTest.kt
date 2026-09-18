@@ -155,6 +155,35 @@ class GsFinal009ProtectedDataGateTest {
     }
 
     /**
+     * *** AND `SelectRecipient` IS A PROTECTED READ, WHICH MY FIRST REPAIR MISSED. ***
+     *
+     * *** FOUND BY REVIEW, NOT BY ME, AND THE GREP PROVES IT: *** `onCommand`'s `SelectRecipient` branch calls
+     * `port.recipients()` DIRECTLY -- a protected read -- AND MY `isProtectedCommand` LISTED IT AS *NOT* PROTECTED. So
+     * with the gate DOWN this one command still read the protected store, which is precisely what the audit forbids:
+     * *"zero calls must occur."*
+     *
+     * AND MY OWN COMMENT WAS THE FALSE ASSURANCE: it said *"`project()` already carrieth the gate for the roads that
+     * read"* -- TRUE OF `Refresh`, AND FALSE OF THIS ONE, because the `recipients()` call happeneth IN THE HANDLER
+     * BEFORE `project()` is ever reached.
+     */
+    @Test
+    fun selectRecipientIsGatedBecauseItReadsTheProtectedStoreDirectly() {
+        val port = RecordingPort()
+        val vm = MeshViewModel(port = port, protectedData = SwitchableGate(available = false))
+
+        val projected = vm.onCommand(MeshCommand.SelectRecipient(ByteArray(16)))
+
+        assertEquals(
+            "*** GS-FINAL-009: `SelectRecipient` READS `port.recipients()` DIRECTLY, SO IT IS A PROTECTED COMMAND. My " +
+                "first repair listed it as NOT protected and justified that with a comment about `project()` -- which " +
+                "is NEVER REACHED, because the read happeneth in the handler first. Observed protected reads: " +
+                "${port.recipientCalls} ***",
+            0, port.recipientCalls,
+        )
+        assertFalse("and it must report the unavailable state", projected.protectedDataAvailable)
+    }
+
+    /**
      * *** POSITIVE CONTROL: AN AVAILABLE GATE CHANGES NOTHING. ***
      *
      * The repair must refuse an unavailable store WITHOUT refusing an ordinary one -- otherwise it is a denial of
