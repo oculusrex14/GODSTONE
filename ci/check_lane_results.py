@@ -55,6 +55,55 @@ LANES = [
     ("android:mesh", "android/mesh/build/test-results/*/*.xml"),
 ]
 
+# *** AND THE iOS LANE, WHICH THIS CONTROL DID NOT COVER AT ALL (round 691). ***
+#
+# **MEASURED: `LANES` NAMED THREE ANDROID LANES AND NOTHING ELSE -- SO "lane results PASSED" SAID NOTHING ABOUT iOS,
+# WHILE I CITED IT BESIDE AN iOS CLAIM.** *And the iOS claim itself came from a grep that could only print failures:*
+# `grep -E "error: |Executed [0-9]+ tests, with [1-9]"` **matché NEITHER ALTERNATIVE on a green run**, so the output was
+# empty whether the lane passed or died early -- *absence of output reported as success.*
+#
+# **`swift test` WRITETH NO xunit FILE (measured: no `*.xml` under `.build`), SO THE LOG IS THE ARTIFACT** and this
+# control parses IT. The pattern is written to be satisfied ONLY by a real aggregate line:
+#     "Executed 1242 tests, with 0 failures (0 unexpected) in 103.478 (103.537) seconds"
+# *so a run that died before the suites finish -- which prints errors and NO such line -- is REFUSED rather than
+# silently passing.*
+IOS_LOG = REPO / "ios-lane.log"
+IOS_SUITE = re.compile(r"^Test Suite '(\w+)\.xctest' passed", re.M)
+IOS_TOTAL = re.compile(r"^\s*Executed (\d+) tests?, with (\d+) failures? \(\d+ unexpected\)", re.M)
+
+
+def check_ios_lane() -> tuple[list[str], dict]:
+    """Parse the iOS log: three suites must PASS and the totals must carry tests with zero failures."""
+    problems: list[str] = []
+    totals = {"suites": 0, "tests": 0, "failures": 0}
+    if not IOS_LOG.is_file():
+        return ([f"the iOS lane log is absent at {IOS_LOG} -- the lane has not been run, and AN UNRUN LANE IS NOT A "
+                 f"PASS"], totals)
+    text = IOS_LOG.read_text(encoding="utf-8", errors="replace")
+    # EVERY SUITE THAT PRINTED A RESULT MUST HAVE PASSED.
+    passed = IOS_SUITE.findall(text)
+    totals["suites"] = len(passed)
+    for name in ("GodstoneMeshTests", "GodstoneCoreTests", "LabMeshTests"):
+        if name not in passed:
+            problems.append(f"the iOS lane carrieth no PASSED line for suite {name} -- a suite that did not run "
+                            f"(or did not pass) is not covered by this control")
+    # AND THE AGGREGATE LINE, PER SUITE, MUST CARRY TESTS AND NO FAILURES.
+    run = [(int(t), int(f)) for t, f in IOS_TOTAL.findall(text)]
+    if not run:
+        problems.append("the iOS lane log carrieth NO 'Executed N tests, with M failures' line -- the run died before "
+                        "its suites finished, which is exactly what a truncated or broken lane looks like")
+    for tests, failures in run:
+        totals["tests"] += tests
+        totals["failures"] += failures
+    if totals["tests"] == 0:
+        problems.append("the iOS lane executed ZERO tests -- a zero-test run has not measured anything")
+    for name, n in re.findall(r"^\s*Executed (\d+) tests?, with (\d+) failures?", text, re.M):
+        if int(name) and int(n):
+            problems.append(f"the iOS lane carrieth a failing count: {name} tests, {n} failures")
+    if re.search(r"^.*error: ", text, re.M):
+        problems.append("the iOS lane log carrieth `error:` lines")
+    return problems, totals
+
 # *** SELF-CLOSING-TOLERANT: a passing case is `<testcase ... />`, and the naive pattern swallows what follows. ***
 TESTCASE = re.compile(r"<testcase\b([^>]*?)(?:/>|>(.*?)</testcase>)", re.S)
 SUITE = re.compile(
@@ -239,6 +288,12 @@ def main() -> int:
             f"  {label:<14} files={len(files):<3} tests={total['tests']:<5} skipped={total['skipped']} "
             f"failures={total['failures']} errors={total['errors']}")
         all_problems.extend(probs)
+
+    ios_probs, ios_totals = check_ios_lane()
+    summary.append(
+        f"  {'ios:foundation':<14} suites={ios_totals['suites']:<3} tests={ios_totals['tests']:<5} "
+        f"failures={ios_totals['failures']}")
+    all_problems.extend(ios_probs)
 
     print("LANE RESULTS (parsed from the result files, not grepped from stdout):")
     print("\n".join(summary))

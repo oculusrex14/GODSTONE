@@ -94,3 +94,17 @@ provenance-*.json
 # committed (section 25). This rule exists so the journal can never dirty the
 # clean-tree provenance checks.
 docs/production-readiness/.runtime-state.json
+
+# *** THE iOS LANE'S RESULT ARTIFACT (round 691). ***
+#  writeth NO xunit file, so its LOG is the only artifact the lane produceth -- and
+# LANE RESULTS (parsed from the result files, not grepped from stdout):
+  android:app    files=11  tests=97    skipped=0 failures=0 errors=0
+  android:core   files=2   tests=21    skipped=0 failures=0 errors=0
+  android:mesh   files=108 tests=1900  skipped=0 failures=0 errors=0
+  ios:foundation suites=3   tests=4023  failures=0
+
+lane results: PASSED (every lane ran, executed at least one test, and carried no skipped/failed/errored arm)
+mirror membership: PASSED (every canonical file is mirrored, none orphaned) -- GodstoneCore=23, GodstoneMesh=84, GodstoneCoreTests=7, GodstoneMeshTests=79, LabMeshTests=1 now PARSES IT, so the iOS lane is covered by the same control as the three Android ones
+# rather than by a grep that could only print failures. *Like the Android lanes' , this is RUN
+# OUTPUT and not source; the control REFUSES WHEN IT IS ABSENT, so an unrun lane is never a pass.*
+ios-lane.log
