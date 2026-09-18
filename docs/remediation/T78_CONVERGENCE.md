@@ -1106,10 +1106,65 @@ a live route defaults to `isUnloaded == false` and falls through to that reload 
 discriminates**: removing the reload makes it fail with `browse calls before: 1, after: 1`. A reasoned concern was
 measured instead of argued, which is the only way to tell those two outcomes apart.
 
+
+## ROUNDS 600–607 — THE INSTRUMENTS THEMSELVES WERE MEASURED, AND THREE OF THEM WERE LYING
+
+*Recorded here because three of the rounds below changed a CONTROL rather than a product line, and this document's
+reader must be able to tell which figures an instrument produced before it was repaired.*
+
+* **ROUND 600–601 — `GS-RUNTIME-001`'s WRITE HALF, FROM VACUOUS TO CAUSALLY PROVEN.** Round 600 added the named
+  prerequisite (`MeshNode.transportSendOverride`, one override of the one operation the ACK turn useth, defaulting to
+  `null` so production is unchanged) and I recorded honestly that **my own arm was VACUOUS: a mutation making the turn
+  ignore the seam SURVIVED, because `writes` was empty and `[].all { ... }` is trivially true.** Round 601 rebuilt the
+  arm in a court that carries the machinery (`admitForeignCandidate` -> a real candidate -> the node's own
+  `runAckTurnForEveryTrustedRelation` -> the transport), and **THE SAME MUTATION THAT SURVIVED NOW REDDENS IT.** The
+  fixture also taught a relay law by refusing: **the pump will not echo a candidate back to the peer it came from
+  (`RECEIVED_FROM_THIS_PEER`)**, so a candidate admitted FROM the origin must be offered TO a different relation.
+* **ROUND 602 — THE ONE `ESCAPED` MUTATION ROD WAS A MISNAMED WITNESS, NOT AN UNGUARDED LAW.** `T39-RC1-ios-cancel-is-ui-only`
+  mutates the CANCEL road and SIX CASES DID FAIL UNDER IT — but the rod declared a witness on the **DISPATCH** road,
+  which a cancel mutation cannot reach. **A name asserting coverage the mechanism does not provide** — the same species
+  as every finding in this programme. Corrected to the arm that actually fails, and its `gradle_filter` (which named the
+  ANDROID court for an iOS mutant) replaced by `swift_filter`.
+* **ROUND 603 — EVERY ANDROID ROD WAS `INVALID` FOR AN INSTRUMENT REASON, NOT A CODE REASON.** The verdict read
+  *"the baseline itself did not pass unmutated"*, which sounds like a statement about the candidate and was a statement
+  about the harness: **its gradle subprocess ran with NO `env=`, so the disposable worktree inherited no `ANDROID_HOME`
+  and could not even configure** (*"SDK location not found"*). **The whole Android lineage was silently unrunnable while
+  reporting a verdict about the code.** Fixed; both sides proven directly with an empty environment (`BUILD FAILED in
+  6s` without the variables, success with them). **OWED: the Android lineage has not yet been OBSERVED to kill a rod.**
+* **ROUND 605 — `GS-FINAL-004` CLAUSE (d): A ROLLBACK CLAIM THAT WAS ASSUMED, NOT MEASURED.** `sourcePreserved` was
+  derived from **where the failure happened**, never from the disk; and the swap is not atomic — the encrypted copy is
+  adopted, the plaintext retired, and **a failure between those two steps leaves the source GONE while the outcome
+  claimed it survived.** RED observed first (two arms failing pre-repair); repair adds `PlaintextMigrationEngine.sourceIsPresent`
+  (which is also the RESUME'S own first question), the honest terminal state `.sourceRetiredCopyUnselected` with
+  `requiresResume`, and one `failurePreservingSource(...)` that ASKS THE ENGINE, treating a throwing query as the worse
+  case. **THE MUTATION RESTORING THE POSITIONAL ASSUMPTION KILLS THE NEW ARM.** Clauses (a)(b)(c) remain BLOCKED on the
+  re-verified structural fact that **no production `EncryptedStoreEngine` exists at all**.
+* **THE METHOD NOTE, WHICH IS THE POINT OF THE WHOLE SPAN.** Three times in these rounds **the defect was in the
+  instrument, not the product** — a vacuous arm, a misnamed witness, a missing environment variable — and each time the
+  instrument's OUTPUT was compatible with the code being fine. **A GREEN THAT CANNOT REDDEN WHEN ITS CONSUMER IS BROKEN
+  IS NOT EVIDENCE ABOUT THE CONSUMER.**
+
 ## REMAINING WORK
-**PHASE TWO** — the **six `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-STORE-002, GS-UX-001,
-GS-STRESS-001) and the external artifacts above. **No finding is `OPEN`; none is `VERIFIED_FIXED`; and the `PARTIAL`
-carrieth a slice, not a fix.**
+
+**RE-DERIVED FROM THE LEDGER AT THIS REVISION, NOT INHERITED.** *(The paragraph below previously named "the six
+`PARTIAL`" and omitted the independent audit's own findings entirely — the SAME defect class this document recorded
+against itself at `GS-FINAL-012`: narrative prose serving as current state after the state had moved. The audit added
+THIRTEEN findings, so a list of "the six" could not have been the whole frontier once they existed. Repaired by
+DERIVATION, and the derivation is printed rather than described.)*
+
+| | original 54 | independent audit (13) |
+|---|---|---|
+| `FIX_SUBMITTED` | 49 | 10 |
+| `PARTIAL` | 5 | 3 |
+| `OPEN` | 0 | 0 |
+| `VERIFIED_FIXED` | 0 | 0 |
+
+**THE `PARTIAL`s, NAMED — EIGHT IN TOTAL, NOT SIX:**
+* **original 54 (5):** `GS-ARCHIVE-005`, `GS-RUNTIME-001`, `GS-STORE-002`, `GS-STRESS-001`, `GS-UX-001`
+* **independent audit (3):** `GS-FINAL-003`, `GS-FINAL-004`, `GS-FINAL-006`
+
+**No finding is `OPEN`; none is `VERIFIED_FIXED`; and every `PARTIAL` carrieth a MEASURED SLICE with its remainder
+NAMED — a slice, not a fix.**
 
 *(A correction, recorded rather than quietly edited: this section previously said "the **eight** `PARTIAL`" and named
 GS-SOS-001 and GS-STORE-004 among them. The ledger carrieth **six**, and the block above at `:785` always named the

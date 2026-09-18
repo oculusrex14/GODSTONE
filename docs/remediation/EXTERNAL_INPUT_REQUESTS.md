@@ -139,3 +139,43 @@ be an `xcodebuild` that cannot run. **The programme may not vendor, stub or synt
 build**, exactly as it may not manufacture an approval. Adding an app-layer lane that excludes the native targets is a
 possible second path, and it is written down rather than taken: it would have to be weighed against the audit's rule that
 no mandatory lane may be weakened, and against whether such a lane proves anything the audit accepts.
+
+---
+
+# RE-VERIFIED AT ROUND 607 (`945b8294`, tree clean)
+
+Written because the last re-verification block above is bound to round 119 / source `223592689021`, and **the lane's own
+acceptance rule sayeth that an approval of an older revision is stale the moment a production owner changes — the same
+rule obligeth this REQUEST document to be re-read at the current revision rather than quoted from memory.** Every fact
+below was READ FROM THE ARTEFACTS at this revision, and the commands are printed so a reader may repeat them.
+
+* **NO EXTERNAL PARTY HAS BEEN CONTACTED and NO ARTIFACT HAS BEEN RECEIVED** — the ledger's own
+  `external_input_lane.audit_has_contacted_external_parties` is **`False`**.
+* **EVERY EXTERNAL GATE IS STILL OPEN OR BLOCKED**, read from `docs/production/RELEASE_GATES_STATUS.json` at this
+  revision:
+  * `A-06-independent-noise-vectors` — **OPEN**
+  * `production-corpus` — **OPEN**
+  * `model-native-stack` — **OPEN**
+  * `device-interoperability` — **BLOCKED**
+  * `accessibility` — **BLOCKED**
+  * `battery-thermal` — **BLOCKED**
+  * `signing-store-approval` — **BLOCKED**
+  * (`android-archive-only-release` — **CLOSED**, and classified **HISTORICAL: inputs changed since (34)** by
+    `ci/check_release_gates_status.py`, so it closeth nothing for the candidate.)
+* **THE LANE'S OWN CONTROL PASSETH, AND ITS SELFTESTS REFUSE AMPUTATION**: `test_external_input_requests.py` —
+  **12 passed**; `ci/check_release_gates_status.py` — the gate-evidence selftest **refuseth 15 of 15** evidence controls,
+  the repo-owned lane selftest **refuseth 7 of 7** amputation controls, and *"2 repository-owned lanes carry every face
+  they must hold; an amputated lane is refused by name."*
+* **NO FINDING CARRETH CLOSURE EVIDENCE**, so every "Closure evidence today" row above remaineth `None`.
+* **THE READINESS FLAGS REMAIN FALSE** (`android LINK_LAYER_READY = false`, `ios linkLayerReady = false`).
+
+**AND ONE NEWLY IDENTIFIED DEPENDENT, NAMED RATHER THAN FOLDED IN: `GS-FINAL-004`'s CLAUSES (a)(b)(c).** The audit's
+finding asketh for *"an owned verified connection with restricted construction"* and *"typed open errors"*. **MEASURED
+THIS ROUND: NO PRODUCTION `EncryptedStoreEngine` EXISTS AT ALL** — `grep -rln ": EncryptedStoreEngine"` over the canonical
+sources returneth the protocol DECLARATION alone; the only implementors in the tree are courts' `FakeEngine`s, because
+the real SQLCipher binding **is** the injected seam this gate owns. A handle cannot be asked to carry a connection that
+no production code produces. **CLAUSE (d) — the resumable migration with preserved rollback evidence — NEEDED NO NATIVE
+ENGINE AND IS LANDED (round 605)**, so this gate blocketh three clauses of that finding and not four.
+
+**WHAT THIS BLOCK IS NOT:** not acquisition, not an approval, not a status change, and not evidence that any gate may
+close. **ACQUISITION CLOSES NOTHING**, and no self-generated fixture may substitute for an approval.
