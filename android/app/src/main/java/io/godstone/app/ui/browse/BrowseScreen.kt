@@ -249,6 +249,8 @@ internal fun ReadingList(state: BrowseUiState, vm: BrowseViewModel) {
     //     through the list, which is DOCUMENTS mode);
     //   * AND WHERE A NEW DOCUMENT IS OPENED, `ArchiveReadingAnchor.target` returneth THE FIRST PASSAGE (a cleared
     //     anchor resolveth to `first`), so the consume-effect scrolls to index 0 REGARDLESS of the inherited offset.
+    //   AND IT WAS RE-RUN ON THE FINAL TREE, AFTER THE ARM AND THE FLOW-OBSERVATION FIX EXISTED, BECAUSE THE EARLIER
+    //   GREEN PREDATED BOTH AND WOULD HAVE BEEN A STALE VERDICT: STILL GREEN, 5/5.
     // THE KEY THEREFORE GUARDETH A TRANSITION THE CURRENT NAVIGATION CANNOT PRODUCE. It is kept because it is correct
     // and cheap and would matter the moment a "next document" affordance existeth -- **AND IT IS RECORDED AS
     // UNEXERCISED RATHER THAN COUNTED AS COVERED.**

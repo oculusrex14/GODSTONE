@@ -179,9 +179,14 @@ class GsFinal006RenderedReadingListTest {
      *   * the shipped navigation cannot produce a direct document-to-document transition; and
      *   * `ArchiveReadingAnchor.target` returneth THE FIRST passage for a new document, so the consume-effect
      *     scrolls to index 0 whatever offset was inherited.
-     * **WHAT THIS ARM REALLY MEASURES IS THE BEHAVIOUR THE READER SEES** -- the new document really starteth at its
-     * own beginning -- and THAT is causally connected to the scroll: under MUTATION M1 (the consume-effect removed)
-     * THIS ARM REDDENS. It is a real control on a real journey; it is simply NOT a control on the key, and it no
+     * **AND I FIRST CLAIMED "UNDER M1 THIS ARM REDDENS" AS THOUGH THAT MADE IT A CONTROL ON THE TRANSITION -- SO I
+     * CHECKED WHICH ASSERTION ACTUALLY FAILS, AND IT IS NOT THE TRANSITION ONE.** Under M1 the arm dieth at its FIRST
+     * assertion (`passage 25` was never placed), so it reddens for the PLACEMENT's reason and never reacheth the
+     * document change at all. **A RED ARM IS NOT THEREBY A CONTROL ON THE THING YOU WERE TESTING** -- the same
+     * lesson as the tape-measure arm and the vacuous setter arm, one level up.
+     *
+     * SO WHAT IS THIS ARM? THE BEHAVIOUR THE READER SEES WHEN THEY OPEN A NEW DOCUMENT: it starteth at its own
+     * beginning. That is worth asserting and it is really observed. IT IS NOT EVIDENCE ABOUT `key(...)`, and it no
      * longer claimeth to be.
      */
     @Test
@@ -200,6 +205,38 @@ class GsFinal006RenderedReadingListTest {
         compose.onNodeWithText("field 126").assertDoesNotExist()
     }
 
+    /**
+     * *** THE `key(...)`: A MEASURED NONDETERMINISM, RECORDED RATHER THAN CLAIMED EITHER WAY. ***
+     *
+     * THIS IS THE THIRD ANSWER I HAVE GIVEN ABOUT ONE `key(...)`, AND THE THIRD WAS "MY COURT IS NOT RELIABLE HERE":
+     *
+     *   1. I CLAIMED THE KEY GUARDED AN INHERITED OFFSET. MEASURED (mutation C, on a court that read `state.value`
+     *      ONCE and never recomposed): ALL GREEN -- so I concluded the key was NOT load-bearing. **THE COURT COULD NOT
+     *      HAVE SEEN IT: A COMPOSABLE THAT NEVER RECOMPOSES NEVER EVALUATES `key(...)` AT ALL.**
+     *   2. AFTER THE FLOW-OBSERVATION FIX: mutation C REDDENED `aResolvedTargetReallyPlacesTheReader`, TWICE IN A ROW.
+     *   3. AND THEN, ON A LATER RUN OF THE SAME MUTATION WITH NOTHING RELEVANT CHANGED: ALL GREEN AGAIN.
+     *
+     * A THIRD RUN WAS NOT ATTEMPTED TO BREAK THE TIE, BECAUSE THE TIE IS THE FINDING: **REMOVING THE KEY SOMETIMES
+     * FAILS A RENDERED ARM AND SOMETIMES DOES NOT, WHICH MAKES THIS COURT NONDETERMINISTIC UNDER MUTATION. A FLAKY
+     * COURT IS WORSE THAN NO COURT, because when it passes it sayeth nothing and when it fails it sayeth "flaky"
+     * rather than "broken".** The clean tree, by contrast, was GREEN IN SIX CONSECUTIVE RUNS -- so the arms are
+     * reliable on the shipped wiring and the nondeterminism APPEARETH ONLY UNDER MUTATION.
+     *
+     * THE LIKELY CAUSE, OFFERED AS A HYPOTHESIS AND NOT AS A MEASUREMENT: `rememberLazyListState` is a
+     * `rememberSaveable`, so what surviveth a recomposition or a document change can depend on SAVEABLE-STATE
+     * RESTORATION, whose timing this court does not control -- `waitForIdle` waiteth for the composition and the
+     * frame clock, not for a saveable registry.
+     *
+     * AND I WROTE AN ARM SPECIFICALLY TO SETTLE IT, THEN DELETED IT: feeding a state with
+     * `readingTargetPassageId = null` so the consume-effect could not mask the inheritance -- **IT PASSED WITH AND
+     * WITHOUT THE KEY, SO IT WAS NOT A CONTROL EITHER. A TEST THAT PASSES WHICHEVER WAY THE MECHANISM IS WIRED
+     * MEASURES ITS OWN RIG**, the antipattern this programme keeps paying for, and I had just written another one.
+     *
+     * **THE HONEST STATE OF THE `key(...)`: UNPROVEN. Kept (correct, cheap, and it would matter the moment a "next
+     * document" affordance is added), recorded as uncovered, and NOT counted as verified.** What would settle it is a
+     * court that controls saveable-state restoration explicitly, or a `LazyListState` injected as a parameter rather
+     * than remembered -- neither of which is in this round.
+     */
     /**
      * *** AND AFTER THE PLACEMENT LANDS, THE READER'S OWN SCROLL **IS** RECORDED. ***
      *
