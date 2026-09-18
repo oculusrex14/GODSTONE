@@ -228,12 +228,20 @@ class EvidenceDigestTest(unittest.TestCase):
         recorded their digests, and this arm keeps the CLASS judged rather than depending on the data
         still being broken."""
         state = ledger()
-        # A synthetic record that NAMES a log and claims NO digest; the file itself is valid.
-        state["findings"]["GS-TEST-001"] = {"my_red_case": {"log": "valid.log", "case": "synthetic"}}
-        (Path(state["evidence_root"]) / "REMEDIATION" / "GS-TEST-001").mkdir(parents=True, exist_ok=True)
-        rel = "GS-TEST-001/valid.log"
-        (Path(state["evidence_root"]) / "REMEDIATION" / rel).write_text("synthetic\n")
-        state["findings"]["GS-TEST-001"]["my_red_case"]["log"] = rel
+        # *** THE FIXTURE IS SYNTHETIC AND ITS ROOT IS A TEMP DIRECTORY -- NEVER THE IMMUTABLE EVIDENCE TREE. ***
+        #
+        # THE FIRST DRAFT OF THIS ARM WROTE `valid.log` UNDER THE REAL `evidence_root` AND LEFT IT THERE: it committed
+        # TEST POLLUTION INTO THE VERY TREE WHOSE IMMUTABILITY THIS PROGRAMME VERIFIES, and it was found as
+        # `REMEDIATION/GS-TEST-001/valid.log` on disk. A control whose fixture writes into the evidence it audits is
+        # destroying the thing it measures. The ledger's `findings` are also left out, because this arm's subject is the
+        # ARM's own record-shape handling, not the real population.
+        base = Path(tempfile.mkdtemp(prefix="gs-final-001-w08-"))
+        (base / "REMEDIATION" / "GS-TEST-001").mkdir(parents=True, exist_ok=True)
+        (base / "REMEDIATION" / "GS-TEST-001" / "valid.log").write_text("synthetic\n")
+        state = {"evidence_root": str(base), "findings": {}, "convergence": {}}
+        state["findings"]["GS-TEST-001"] = {
+            "my_red_case": {"log": "GS-TEST-001/valid.log", "case": "synthetic"}
+        }
         rc, out, parsed = run_instrument(write_temp(state))
         self.assertEqual(1, rc,
                          "a log named without a digest is UNVERIFIED EVIDENCE and must redden the "

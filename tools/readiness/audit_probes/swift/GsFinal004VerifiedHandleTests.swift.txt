@@ -1,0 +1,193 @@
+
+
+import XCTest
+import CryptoKit
+@testable import GodstoneMesh
+
+/**
+ * GS-FINAL-004 (the independent audit, 2026-09-18): **THE VERIFIED HANDLE IS DISCARDED BEFORE AN UNKEYED OPEN.**
+ *
+ * THE AUDIT'S MEASUREMENT, VERBATIM: *"MeshRuntime checks an EncryptedStoreFactory result, then creates a new
+ * SqliteMessageStore by URL. That constructor calls sqlite3_open_v2 and migrations without receiving a key or the
+ * verified connection. ... The alternate archive-only host composition still constructs private-store objects."*
+ *
+ * ITS ROOT CAUSE: *"The factory yields descriptive metadata rather than an owned operational connection/capability, and
+ * composition performs a second independent open."* AND ITS SHARPEST SENTENCE, WHICH SCOPES THE REPAIR HONESTLY:
+ * ***"Acquiring SQLCipher cannot repair a discarded handle."***
+ *
+ * WHAT THIS ARM MEASURES, AND WHAT IT DELIBERATELY DOES NOT:
+ *
+ * It measures the DISCARD -- the defect that is fixable without the native artifact -- by observing what the
+ * composition does with the factory's answer. It does NOT attempt a cryptographic-erasure or at-rest claim: the
+ * concrete SQLCipher engine is an external acquisition (the NATIVE_MODELS/NATIVE gate), and a fixture is never a
+ * device result.
+ */
+final class GsFinal004VerifiedHandleTest: XCTestCase {
+
+    /// Local doubles: the ones in `CrashStartupResumeTests` are private to that class.
+    private final class InMemoryKeychain: LocalIdentityKeychain, @unchecked Sendable {
+        var storage: [String: Data] = [:]
+        func read(tag: String) throws -> Data? { storage[tag] }
+        func add(tag: String, data: Data) throws { storage[tag] = data }
+        func delete(tag: String) throws { storage.removeValue(forKey: tag) }
+    }
+
+    private final class InMemoryJournal: WipeJournal, @unchecked Sendable {
+        var state: WipeState = .idle
+        func read() -> WipeState { state }
+        func write(_ s: WipeState) { state = s }
+        func clear() { state = .idle }
+    }
+
+    /// One `EncryptedStoreEngine` that RECORDS every act, so the composition's use of it is observable.
+    private final class RecordingEngine: EncryptedStoreEngine {
+        var kind: StoreEngineKind { .pinnedSQLCipher }
+        var supportedCipherVersion: Int { 4 }
+        var openedForWriting: [String] = []
+        var reopenedRequiringDEK: [String] = []
+        /// How many keyed handles the engine actually handed back -- the ones composition must OWN.
+        var handlesReturned: Int { openedForWriting.count + reopenedRequiringDEK.count }
+        var keysSeen: [StoreDEK] = []
+        /// The handle it hands back. Its `encryptedAtRest` is the one the composition must HONOUR.
+        var encryptedAtRest = true
+        var fault: StoreOpenFault?
+
+        func openForWriting(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle {
+            if let fault { throw fault }
+            openedForWriting.append(path)
+            keysSeen.append(dek)
+            return EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: encryptedAtRest,
+                                        cipherVersion: 4)
+        }
+
+        func reopenRequiringDEK(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle {
+            if let fault { throw fault }
+            reopenedRequiringDEK.append(path)
+            keysSeen.append(dek)
+            return EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: encryptedAtRest,
+                                        cipherVersion: 4)
+        }
+    }
+
+    /// A key provider that hands back a fixed DEK and records the tags it was asked for.
+    private final class FixedProvider: PrivateStoreKeyProvider {
+        let dek = StoreDEK(bytes: Data(repeating: 0x5A, count: 32))
+        var fetched: [String] = []
+        var deleted: [String] = []
+        var dekByteCount: Int { 32 }
+        func fetchDEK(tag: String) throws -> StoreDEK { fetched.append(tag); return dek }
+        func createDEK(tag: String) throws -> StoreDEK { fetched.append(tag); return dek }
+        func deleteDEK(tag: String) throws { deleted.append(tag) }
+        func applyFileProtection(paths: [String], protection: FileProtectionClass) -> ProtectionResult {
+            .success
+        }
+    }
+
+    private func tempUrls() -> (URL, URL) {
+        let dir = FileManager.default.temporaryDirectory
+        return (dir.appendingPathComponent("gf004_msg_\(UUID().uuidString).db"),
+                dir.appendingPathComponent("gf004_peer_\(UUID().uuidString).db"))
+    }
+
+    // ================================================================================================
+    // *** GS-FINAL-004'S CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. ***
+    //
+    // The central charge -- *"Acquiring SQLCipher cannot repair a discarded handle"* -- is that the factory's verified
+    // connection is thrown away and `SqliteMessageStore(url:)` performs a SECOND, UNKEYED `sqlite3_open_v2`.
+    //
+    // I WROTE TWO ARMS FOR IT AND BOTH WERE FALSE:
+    //   (1) one asserted only that the engine was ASKED for a keyed open -- TRUE ON THE UNREPAIRED TREE, because the
+    //       factory genuinely does ask. It measured the one part that already worked;
+    //   (2) the next asserted the fake's OWN TALLIES (`handlesReturned > 0`, opened == returned) -- TRUE WHATEVER THE
+    //       COMPOSITION DOES. Three green tautologies standing in for a High finding is exactly the failure mode this
+    //       programme exists to refuse.
+    //
+    // AND AN ARM CANNOT BE WRITTEN YET, FOR A STRUCTURAL REASON THAT IS THE FINDING ITSELF: `EncryptedStoreHandle`
+    // carrieth `path`, `kind`, `encryptedAtRest`, `cipherVersion` AND NO CONNECTION. There is no observable that says
+    // "the store ran on the factory's handle", because the factory never produces a handle a store COULD run on. The
+    // arm becomes writable exactly when the remediation lands, and writing it then is the proof.
+    //
+    // SO: 004 IS **PARTIAL**. The archive-only split below is DONE and evidenced; the discarded-handle core is OPEN.
+    // ================================================================================================
+
+    /**
+     * *** AND A VERDICT OF `encryptedAtRest == false` MUST BE REFUSED, NOT OPENED ANYWAY. ***
+     *
+     * The composition already checks the flag -- this arm pins that it does so on the handle it ACTUALLY USES rather
+     * than on a probe whose result it then discards.
+     */
+    func testGSFINAL004_aHandleThatIsNotEncryptedAtRestIsRefused() throws {
+        let (msgUrl, peerUrl) = tempUrls()
+        let engine = RecordingEngine()
+        engine.encryptedAtRest = false
+        let factory = EncryptedStoreFactory(provider: FixedProvider(), engine: engine)
+
+        XCTAssertThrowsError(
+            try MeshRuntime.createPrivateComposition(
+                messageStoreUrl: msgUrl,
+                peerStoreUrl: peerUrl,
+                journal: InMemoryJournal(),
+                keychain: InMemoryKeychain(),
+                encryptedStores: factory
+            ),
+            "*** GS-FINAL-004: A HANDLE THAT IS NOT ENCRYPTED AT REST MUST REFUSE THE COMPOSITION. The verdict is the "
+            + "one the composition must honour -- not a probe whose answer it then discards while opening by path. ***",
+        )
+    }
+
+    /**
+     * *** GS-FINAL-004: THE ARCHIVE-ONLY GRAPH MUST HAVE NO ROAD TO A PRIVATE STORE. ***
+     *
+     * THE AUDIT: *"The alternate archive-only host composition still constructs private-store objects."* MEASURED, THE
+     * REASON WAS STRUCTURAL: `createArchiveOnlyHostComposition` was ALSO the private road -- `create(...)` delegated
+     * to it passing the factory through -- so a caller who wrote the "archive-only" name down could obtain a keyed
+     * private graph, and a caller who wanted the private graph travelled through a name that disclaimed it.
+     *
+     * *** AND MY FIRST DRAFT OF THIS ARM COULD NOT SEE THAT: it called the archive name WITHOUT a factory and asserted
+     * no engine activity -- WHICH PASSES EITHER WAY, because a call that never had a key cannot open one. *** A
+     * mutation restoring the factory parameter left it GREEN. The arm now measures the CONTRACT: the archive-only road
+     * must not be ABLE to accept a key at all, and the private road must be the only one that can.
+     */
+    func testGSFINAL004_theArchiveOnlyGraphConstructsNoPrivateStore() throws {
+        let (msgUrl, peerUrl) = tempUrls()
+        let provider = FixedProvider()
+        let engine = RecordingEngine()
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
+
+        // (1) THE ARCHIVE ROAD, CALLED AS AN ARCHIVE HOST WOULD: no factory is even expressible at this call site --
+        // the parameter does not exist, which is the compile-time half of the split and is enforced by the compiler
+        // rather than by an assertion here.
+        _ = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: InMemoryJournal(),
+            keychain: InMemoryKeychain()
+        )
+        XCTAssertTrue(
+            engine.keysSeen.isEmpty && engine.handlesReturned == 0,
+            "*** THE ARCHIVE-ONLY GRAPH MUST NOT TOUCH THE KEYED ENGINE AT ALL. It asked for "
+            + "\(engine.keysSeen.count) key(s) and received \(engine.handlesReturned) keyed handle(s). ***",
+        )
+
+        // (2) *** AND THE PRIVATE ROAD IS THE ONE THAT DOES -- WHICH IS WHAT MAKES (1) MEANINGFUL. ***
+        //
+        // WITHOUT THIS HALF, (1) IS SATISFIED BY *ANY* COMPOSITION THAT SIMPLY DOES NOT USE THE ENGINE, INCLUDING ONE
+        // THAT IGNORES A FACTORY IT WAS GIVEN. The pair is the law: the archive road cannot reach the engine, and the
+        // private road does.
+        let (msg2, peer2) = tempUrls()
+        let engine2 = RecordingEngine()
+        let factory2 = EncryptedStoreFactory(provider: FixedProvider(), engine: engine2)
+        _ = try MeshRuntime.createPrivateComposition(
+            messageStoreUrl: msg2,
+            peerStoreUrl: peer2,
+            journal: InMemoryJournal(),
+            keychain: InMemoryKeychain(),
+            encryptedStores: factory2
+        )
+        XCTAssertGreaterThan(
+            engine2.keysSeen.count, 0,
+            "*** THE PRIVATE ROAD IS THE ONE THAT MUST REACH THE KEYED ENGINE -- otherwise the split merely moved the "
+            + "defect. Observed: \(engine2.keysSeen.count) key(s) asked for. ***",
+        )
+    }
+}

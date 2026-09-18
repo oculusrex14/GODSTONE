@@ -13700,7 +13700,28 @@
     "root_cause": "The factory yields descriptive metadata rather than an owned operational connection/capability, and composition performs a second independent open.",
     "exact_remediation": "Change EncryptedStoreFactory to return an owned verified connection with restricted construction and explicit close ownership. Make SqliteMessageStore accept that connection, not reopen by path; run migrations only after keying and a real page/schema verification. Return typed open errors instead of a nominal store with a nil handle. Split the archive-only graph from private-store construction; keep plaintext test adapters in a test/lab target. Implement explicit plaintext-to-encrypted migration as a separate resumable operation with preserved rollback evidence.",
     "regression_test": "Inject an engine recording open, key, first page read, migration and repository queries; all must reference the same handle in that order. Then use the pinned native engine with correct, wrong and missing keys, WAL and restart.",
-    "my_status": "OPEN"
+    "my_status": "PARTIAL",
+    "my_fix_commit": "round 551 (this commit) -- the archive-only SPLIT landed; the discarded-handle core is OPEN and stated",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-004/round551-GREEN-and-MUTATION.log",
+      "sha256": "8de0eb430d5351fe97586e5f638416681ce67598d6c27ebca58626ddead6fc12",
+      "what": "The split, the causal mutation, and the deletion of the false arm.",
+      "outcome": "MUTATION (guard the private road's factory consultation with false): both arms FAILED. RESTORED: both 2/2 PASS."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-004/round551-ios-lane.log",
+      "sha256": "b04a622f8d87bece7970151b6ba5a2533f8b42b195be06e51b09ad652de47a97",
+      "what": "The full iOS lane after the split.",
+      "outcome": "LabMesh 5/0, GodstoneMesh 1201/0, GodstoneCore 89/0 -- 1295 tests, 0 failures, rc 0."
+     }
+    ],
+    "pending_proof": [
+     "THE CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. The central defect -- the factory's verified connection is discarded and `SqliteMessageStore(url:)` performs a SECOND, UNKEYED `sqlite3_open_v2` -- cannot be armed yet FOR A STRUCTURAL REASON THAT IS THE FINDING ITSELF: `EncryptedStoreHandle` carrieth `path`, `kind`, `encryptedAtRest`, `cipherVersion` AND NO CONNECTION, so there is no observable that says 'the store ran on the factory's handle'. The arm becomes writable when the return type carries a connection.",
+     "TWO FALSE ARMS WERE WRITTEN AND BOTH WERE DELETED RATHER THAN KEPT GREEN: (1) one asserted only that the engine was ASKED for a keyed open -- TRUE ON THE UNREPAIRED TREE, because the factory genuinely does ask, so it measured the one part that already worked; (2) the next asserted the FAKE'S OWN TALLIES (`handlesReturned > 0`, opened == returned) -- TRUE WHATEVER THE COMPOSITION DOES. Three green tautologies standing in for a High finding is the failure mode this programme exists to refuse.",
+     "DONE AND EVIDENCED: the archive-only SPLIT. `createArchiveOnlyHostComposition` no longer takes an `encryptedStores` parameter at all, so a composition that cannot be given a key cannot open a private store; `createPrivateComposition` requires the factory and is the only road to a keyed store; and `MeshRuntime.create` no longer travels through the archive name. Causal proof: mutating the private road to skip the factory FAILED both arms; restoring made both pass.",
+     "REMAINING, AND IT IS THE BULK OF THE FINDING: (a) `EncryptedStoreFactory` must return an OWNED VERIFIED CONNECTION with restricted construction and explicit close ownership; (b) `SqliteMessageStore` must ACCEPT that connection instead of reopening by path, with migrations only after keying and a real page/schema verification; (c) typed open errors instead of a nominal store with a nil handle; (d) an explicit plaintext-to-encrypted migration as a separate resumable operation. THE SECOND PART OF THE FINDING'S OWN SENTENCE ALSO APPLIES AND IS NOT OVERCLAIMED: \"Acquiring SQLCipher cannot repair a discarded handle\" -- the pinned native engine remains an external artifact (NATIVE_MODELS), and no arm here claims an at-rest or cryptographic-erasure result on the host."
+    ]
    },
    "GS-FINAL-005": {
     "severity": "Medium",

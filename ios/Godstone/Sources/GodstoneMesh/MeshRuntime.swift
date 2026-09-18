@@ -253,7 +253,7 @@ public final class MeshRuntime {
                 + "composition that carrieth ordinary SQLite is the ARCHIVE/HOST composition and must SAY so by "
                 + "calling createArchiveOnlyHostComposition -- it may not be reached by saying nothing.")
         }
-        return try createArchiveOnlyHostComposition(
+        return try createPrivateComposition(
             messageStoreUrl: messageStoreUrl,
             peerStoreUrl: peerStoreUrl,
             maxStoreBytes: maxStoreBytes,
@@ -271,17 +271,80 @@ public final class MeshRuntime {
     /// absence is what let the silent plaintext private store live: the composition now REQUIRETH a caller to write
     /// this name down.
     ///
+    /// *** GS-FINAL-004 (the independent audit, 2026-09-18): THIS NAME WAS DOING TWO JOBS, AND THE ANALYSIS IS WHY. ***
+    ///
+    /// THE AUDIT'S CHARGE: *"The alternate archive-only host composition still constructs private-store objects."* IT
+    /// WAS RIGHT, AND THE REASON IS NOW MEASURED RATHER THAN GUESSED: THIS FUNCTION WAS ALSO THE **PRIVATE** ROAD --
+    /// `create(messageStoreUrl:..., encryptedStores: factory)` DELEGATED HERE, passing the factory through. So a caller
+    /// who wrote the "archive-only" name down could obtain an ENCRYPTED PRIVATE STORE GRAPH, AND A CALLER WHO WANTED
+    /// THE PRIVATE GRAPH TRAVELLED THROUGH A NAME THAT DISCLAIMED IT. One function, two contracts, and the name
+    /// described only one of them.
+    ///
+    /// THE SPLIT: this entry is now GENUINELY archive-only -- it carrieth NO `encryptedStores` parameter at all, so
+    /// there is no road from it to a private store. The private composition keeps the factory, and `create` no longer
+    /// travels through the archive name. **A COMPOSITION THAT CANNOT BE GIVEN A KEY CANNOT OPEN A PRIVATE STORE.**
+    ///
     /// Its 25 callers are all courts that exercise the runtime over plaintext files on the host, and NOT ONE of them
     /// claimed a private store -- MEASURED before the rename, so the rename breaketh no production caller, because
     /// THERE IS NO PRODUCTION CALLER: this composition root is archive-only and unreferenced by the shipping target.
+    /// (Re-measured this round: no file under `Sources/App/` or `Sources/GodstoneCore/` names either entry.)
     internal static func createArchiveOnlyHostComposition(
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
         artifacts: WipeArtifacts? = nil,
+        keychain: any LocalIdentityKeychain
+    ) throws -> MeshRuntime {
+        try composeRuntimeGraph(
+            messageStoreUrl: messageStoreUrl,
+            peerStoreUrl: peerStoreUrl,
+            maxStoreBytes: maxStoreBytes,
+            journal: journal,
+            artifacts: artifacts,
+            keychain: keychain,
+            encryptedStores: nil
+        )
+    }
+
+    /// *** THE PRIVATE COMPOSITION: THE ONLY ROAD TO A KEYED PRIVATE STORE (GS-FINAL-004). ***
+    ///
+    /// It reacheth the shared graph WITH a factory, so the two stores it opens are the ones a verifying
+    /// `EncryptedStoreFactory` has already judged. **GS-FINAL-004'S REMAINING WORK IS NAMED HERE RATHER THAN IMPLIED:**
+    /// the factory still returns METADATA (`path`, `kind`, `encryptedAtRest`, `cipherVersion`) and NOT an owned
+    /// connection, so this function checks the verdict and then opens the stores by URL -- a second, independent open.
+    /// *"Acquiring SQLCipher cannot repair a discarded handle."* Closing that needs the factory's return type to carry
+    /// the connection, which is the probe's subject (`tools/readiness/audit_probes/swift/GsFinal004*`).
+    internal static func createPrivateComposition(
+        messageStoreUrl: URL,
+        peerStoreUrl: URL,
+        maxStoreBytes: Int64 = 64 * 1024 * 1024,
+        journal: WipeJournal = UserDefaultsWipeJournal(),
+        artifacts: WipeArtifacts? = nil,
         keychain: any LocalIdentityKeychain,
-        encryptedStores: EncryptedStoreFactory? = nil
+        encryptedStores: EncryptedStoreFactory
+    ) throws -> MeshRuntime {
+        try composeRuntimeGraph(
+            messageStoreUrl: messageStoreUrl,
+            peerStoreUrl: peerStoreUrl,
+            maxStoreBytes: maxStoreBytes,
+            journal: journal,
+            artifacts: artifacts,
+            keychain: keychain,
+            encryptedStores: encryptedStores
+        )
+    }
+
+    /// The ONE runtime graph, built by both declared compositions. The only difference between them is the factory,
+    /// and it is passed explicitly rather than defaulted -- **so neither road can accidentally become the other.**
+    private static func composeRuntimeGraph(
+        messageStoreUrl: URL,
+        peerStoreUrl: URL,
+        maxStoreBytes: Int64,
+        journal: WipeJournal,
+        artifacts: WipeArtifacts?,
+        keychain: any LocalIdentityKeychain,
+        encryptedStores: EncryptedStoreFactory?
     ) throws -> MeshRuntime {
         let effectiveArtifacts =
             artifacts ??
