@@ -10922,6 +10922,12 @@
      "sha256": "1685d7e7adfaa3e6059849657af83389ea326f784fb3dcc1bfa7d5baa3454565",
      "what": "GS-STORE-006: THE iOS PRODUCTION CALLER QUESTION ANSWERED -- THE iOS COMPOSITION ROOT IS NOT IN THIS REPOSITORY. `grep -n 'Mesh|mesh' App/AppContainer.swift` returns NOTHING AT ALL (the app's container does not wire the mesh, construct a runtime, node, session manager or store), and `LabMesh/LabMeshApp.swift` says so in its own comment: 'the LabMesh iOS target's application seam ... there is no lab-only copy of any authority ... LabMeshApp, which carrieth no readiness setter'. So the two iOS targets are APPLICATION SEAMS, and `MeshRuntime.create` -- the only place the four-stage lifecycle is composed on iOS -- has NO CALLER IN THIS REPOSITORY (which round 397 measured by grep and which is now explained rather than merely observed)",
      "outcome": "no file modified, no lane run; tree at HEAD and green by prior measurement. WHAT THIS CHANGES FOR 'REMAINING': the iOS library side is COMPLETE, WIRED AND PROVEN (four closure clauses measured by arms), and the one thing remaining -- a production composition root for iOS -- is NOT A DEFECT IN THIS REPOSITORY: it is absent because the app that would own it is not here. AND IT MUST NOT BE DRESSED EITHER WAY: not 'the composition still invokes old PanicWipe' (measured false by arm), and not 'everything is wired' (nothing in this tree calls create)."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round574-close.log",
+     "sha256": "d709a171354a87def04549020364108d05db919e8bf6a0960c511eadab7a6638",
+     "what": "The three observed claims measured individually; the legacy PanicWipe.begin road proven unreachable; the drain proven REQUIRED by the ladder.",
+     "outcome": "PanicWipe.begin has NO production caller (tests only); beginPanicWipe -> requestWipe; the ladder returns RetryLater rather than advancing without a drain receipt, and re-proves the quiesce on re-entry."
     }
    ],
    "my_red_case": "THE ARMS THAT CARRIETH THE FINDING'S OWN ID, MEASURED BY NAME: `ios/Godstone/Tests/GodstoneMeshTests/CrashStartupResumeTests.swift` -- `testGSSTORE006_theRuntimeThatStandsContinuesTheWipeAndErasesNothingWithoutAProvider` (:847) and `testGSSTORE006_theCompositionCarriesTheCrashResumableAuthority` (:897); and `ReadinessT34Tests.swift` -- `testGSSTORE006_theDrainCheckpointIsPersistedInTheRealJournal` (:327), `testGSSTORE006_anUnknownStageNameIsRefusedAndTheCheckpointDoesNotMove` (:362), `testGSSTORE006_everyJournalCheckpointStaysPendingThroughTheAuthorityTheCompositionRuns` (:393). HONEST BOUNDARY: as with CRYPTO-002, the charge was a seam UNBOUND TO A COURT; the RED is the ABSENCE OF A WITNESS, stated as such.",
@@ -11110,7 +11116,8 @@
      ]
     }
    ],
-   "submitted_at_round": 425
+   "submitted_at_round": 425,
+   "remaining_work": "CLOSED AS REPAIRED, ON MEASUREMENT (round 574). All three observed claims addressed: the fresh road is `requestWipe()` (durable REQUESTED before driving anything); `PanicWipe.begin` is UNREACHABLE FROM PRODUCTION (grep: no caller outside tests) and `beginPanicWipe()` delegates to `requestWipe()`; and the startup verdict is typed and consumed AT THE ADMISSION POINT because consuming it at CONSTRUCTION was measured to deadlock the graph that finishes the wipe (both isles). THE CARD'S CORE CLAIM IS MET: the ladder REQUIRES the drain -- it returns RetryLater rather than advancing without a drain receipt, and re-proves the quiesce on re-entry. NOT CLAIMED: the enum-ordering fallback argument for older builds is an argument, not a measurement."
   },
   "GS-STRESS-001": {
    "audit_status_at_snapshot": "OPEN",
@@ -14116,7 +14123,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "2c47559debd070bc14028cb0c3dc7b7b8526086c",
+  "candidate_sha": "666b36e48b079bb78516076ccf21f30a7b33f73d",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

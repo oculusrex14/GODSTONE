@@ -86,10 +86,6 @@ class MeshRuntimeInvalidator internal constructor(
 }
 
 /**
- * Adapter ensuring [PeerIdentityLookupSource] fails closed (returns StorageFailure)
- * when the runtime lifecycle gate has been invalidated.
- */
-/**
  * *** GS-FINAL-003 (round 573): A NAMED SEAM INSTEAD OF A RAW LAMBDA -- BETTER SHAPE, AND IT MIRRORS iOS. ***
  *
  * A REVIEW RAISED THE RAW `() -> Boolean` BINDING, SO IT WAS ASSESSED AND REPLACED. **THE ASSESSMENT, STATED
@@ -119,6 +115,10 @@ fun interface WipeSensitiveUseGate {
     fun allowsSensitiveUse(): Boolean
 }
 
+/**
+ * Adapter ensuring [PeerIdentityLookupSource] fails closed (returns StorageFailure)
+ * when the runtime lifecycle gate has been invalidated.
+ */
 internal class RuntimeGatedPeerIdentityLookupSource(
     private val delegate: PeerIdentityLookupSource,
     private val lifecycleGate: RuntimeLifecycleGate,
