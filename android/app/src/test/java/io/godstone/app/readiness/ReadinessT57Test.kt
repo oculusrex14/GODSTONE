@@ -547,4 +547,47 @@ class ReadinessT57Test {
             Assert.assertTrue("the durable projection carrieth $label", durable.contains(label))
         }
     }
+    // ================================================================ GS-UX-001 step 4: THE SELECTOR DISPATCHETH
+
+    /**
+     * *** GS-UX-001 STEP 4: *'Add a real recipient selector'* -- AND A SELECTOR IS A DISPATCHER, NOT A LIST. ***
+     *
+     * MEASURED BEFORE ROUND 541: the mesh screen printed *'Choose a recipient'* and offered **NO WAY TO CHOOSE
+     * ONE** -- the recipients came from the port and nothing let the operator select one. **A PROMPT WITH NO CONTROL
+     * IS NOT A CONTROL.**
+     *
+     * AND THE INVARIANT THIS ARM KEEPS IS THE ONE THAT MATTERS ABOUT A UI-SIDE SELECTOR: **THE SELECTION MUST
+     * TRAVEL TO THE AUTHORITY THE SEND USES.** The control dispatcheth `SelectRecipient` -- EXACTLY what the chip in
+     * `MeshContent` dispatcheth -- and the arm then asserteth that the SEND GOETH TO THE CHOSEN RECIPIENT. **A
+     * SELECTOR WHOSE CHOICE NEVER REACHES THE SEND IS DECORATION.**
+     */
+    @Test
+    fun test_ux041_the_recipient_selector_dispatches_and_the_send_follows_it() {
+        val port = MeshDouble()
+        val aunt = port.seedRecipient(0x21, "Aunt", ContactTrustLabel.USER_VERIFIED)
+        port.seedRecipient(0x31, "Uncle", ContactTrustLabel.TOFU_UNVERIFIED)
+        val view = model(port)
+        view.refresh()
+        val offered = view.uiState().recipients
+        Assert.assertTrue("*** the port must offer recipients, or this arm tests nothing ***",
+            offered.size >= 2)
+
+        // THE CONTROL'S OWN CALL: exactly what the chip dispatcheth.
+        view.onCommand(MeshCommand.SelectRecipient(aunt.nodeIdCopy()))
+        val selected = view.uiState().selectedRecipient
+        Assert.assertNotNull("the dispatch must select", selected)
+        Assert.assertTrue("*** and the selection must be the one CHOSEN, by identity ***",
+            selected!!.nodeIdCopy().contentEquals(aunt.nodeIdCopy()))
+
+        // *** AND IT FLOWETH: the draft-and-send then travelleth to THAT recipient. *** The double labelleth the
+        // row with the recipient it was HANDED, so the label IS the witness of where the send went.
+        view.onCommand(MeshCommand.Draft("the mill road is cut"))
+        view.onCommand(MeshCommand.SendDirect)
+        val row = view.uiState().messages.singleOrNull()
+        Assert.assertNotNull("the send must queue exactly one row", row)
+        Assert.assertEquals(
+            "*** THE SEND MUST GO TO THE RECIPIENT THE SELECTOR CHOSE: a selector whose choice never reaches the " +
+                "send is decoration (GS-UX-001 step 4) ***",
+            "Aunt", row!!.peerLabel)
+    }
 }

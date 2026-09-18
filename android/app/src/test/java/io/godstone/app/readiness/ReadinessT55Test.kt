@@ -618,4 +618,76 @@ class ReadinessT55Test {
         Assert.assertTrue("and the same three operands are the SAME candidate",
             ref.sameCandidateAs(ref.copy()))
     }
+
+    // ================================================================ GS-UX-001 step 4: THE THREE ACTIONS DISPATCH
+
+    /**
+     * *** GS-UX-001 STEP 4: *'Wire retry, explicit fingerprint compare/confirm, exact rotation-candidate approval
+     * and revoke actions to their existing commands.'* -- AND EACH OF THESE ARMS DISPATCHES **EXACTLY WHAT A CONTROL
+     * IN `TrustContent` DISPATCHETH**, carrying THE VALUES THE SCREEN SHOWS. ***
+     *
+     * MEASURED BEFORE ROUND 541: the trust screen DISPLAYED the fingerprint, the rotation notice and the contact
+     * label, and **ITS CONTROLS DISPATCHED NONE OF THE THREE COMMANDS THE VIEWMODEL ALREADY HANDLED.** A screen that
+     * showeth everything and dispatch eth nothing is a screen whose operator cannot act.
+     *
+     * *** AND THE FIRST CLAUSE IS THE ONE THAT MATTERS MOST ABOUT A UI: THE CONFIRM MUST CARRY **THE FINGERPRINT
+     * THE SCREEN SHOWED**. A control that re-read the fingerprint at click time could confirm a code the operator
+     * never saw -- WHICH IS THE SUBSTITUTION THE CARD NAMETH (*'never mutate a UI-only map'*), ARRIVING THROUGH THE
+     * BACK DOOR OF A RE-READ. ***
+     */
+    @Test
+    fun test_ux042_the_confirm_carries_the_displayed_fingerprint() {
+        val port = DurableTrustDouble()
+        val nodeId = port.seedTofu(0x60, "Cousin")
+        val model = viewModel(port)
+        val shown = model.refresh().contact(nodeId)!!
+
+        // THE CONTROL'S OWN CALL, with the value the screen PRINTS (`contact.fingerprintHex`).
+        val after = model.onCommand(
+            ContactVerificationCommand.CompareAndConfirmFingerprint(nodeId, shown.fingerprintHex))
+        Assert.assertEquals("*** THE DISPLAYED CODE MUST BE THE ONE CONFIRMED ***",
+            ContactTrustLabel.USER_VERIFIED, after.contact(nodeId)!!.trust)
+
+        // *** AND THE DISCRIMINATOR: A DIFFERENT CODE, TYPED FOR THE SAME CONTACT, MUST NOT VERIFY. *** Without it
+        // this arm would pass on a control that ignored its own argument.
+        val other = DurableTrustDouble()
+        val otherNode = other.seedTofu(0x61, "Cousin")
+        val otherModel = viewModel(other)
+        val otherShown = otherModel.refresh().contact(otherNode)!!
+        val wrong = otherShown.fingerprintHex.reversed()
+        val refused = otherModel.onCommand(
+            ContactVerificationCommand.CompareAndConfirmFingerprint(otherNode, wrong))
+        Assert.assertNotNull("*** a MISMATCHED fingerprint must NOT verify, and must SAY so ***", refused.error)
+        Assert.assertNotEquals("and the contact must not be promoted by a code that was never shown",
+            ContactTrustLabel.USER_VERIFIED, refused.contact(otherNode)!!.trust)
+    }
+
+    /**
+     * *** AND THE OTHER TWO ACTIONS, dispatched as their controls dispatch them: the EXACT rotation candidate the
+     * card's own word demandeth, and the revoke. ***
+     */
+    @Test
+    fun test_ux043_the_rotation_and_revoke_controls_dispatch_their_existing_commands() {
+        val port = DurableTrustDouble()
+        val ref = port.seedVerified(0x70, "Brother")
+        val nodeId = ref.nodeIdCopy()
+        val model = viewModel(port)
+        // *** THE CANDIDATE MUST BE **OFFERED** BEFORE IT CAN BE SHOWN: `seedVerified` seedeth a VERIFIED contact
+        // with no pending rotation -- MEASURED BY THIS ARM'S OWN FIRST RUN, which failed on its own premise
+        // ('the screen must have a candidate to approve, or this arm tests nothing') BECAUSE I HAD ASSUMED THE
+        // FIXTURE OFFERED ONE. `offerRotation` is the door, and it is the door the other arms use. ***
+        port.offerRotation(nodeId, generation = 2L, keySeed = 0x71)
+        val shown = model.refresh().contact(nodeId)!!
+        val candidate = shown.pendingRotation
+        Assert.assertNotNull("*** the screen must have a candidate to approve, or this arm tests nothing ***",
+            candidate)
+
+        // THE APPROVE CONTROL's call: the EXACT candidate the projection carrieth -- the card's own word.
+        val approved = model.onCommand(ContactVerificationCommand.ApproveRotation(candidate!!))
+        Assert.assertNull("the exact candidate must be approved", approved.error)
+
+        // AND THE REVOKE CONTROL's call.
+        val revoked = model.onCommand(ContactVerificationCommand.Revoke(nodeId))
+        Assert.assertNull("*** the revoke control must reach its existing command ***", revoked.error)
+    }
 }

@@ -1,8 +1,11 @@
 package io.godstone.app.ui.trust
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -13,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import io.godstone.app.trust.ContactVerificationCommand
 import io.godstone.app.trust.ContactProjection
 import io.godstone.app.trust.ContactTrustLabel
 import io.godstone.app.trust.IdentityTrustViewModel
@@ -46,6 +50,11 @@ fun screenshotProtectionWanted(state: TrustUiState): Boolean =
 const val TRUST_LIST_TAG = "trust-list"
 const val OWN_IDENTITY_TAG = "own-identity"
 const val WIPE_STATE_TAG = "wipe-state"
+// GS-UX-001 step 4 (round 541): the action controls' own addresses, so a court can NAME each action.
+const val CONFIRM_FINGERPRINT_TAG = "trust-confirm"
+const val REVOKE_TAG = "trust-revoke"
+const val APPROVE_ROTATION_TAG = "trust-approve-rotation"
+const val DISMISS_ROTATION_TAG = "trust-dismiss-rotation"
 
 @Composable
 fun TrustScreen(viewModel: IdentityTrustViewModel, modifier: Modifier = Modifier) {
@@ -53,12 +62,16 @@ fun TrustScreen(viewModel: IdentityTrustViewModel, modifier: Modifier = Modifier
     // MEASURED BEFORE THIS EDIT: the screen read `uiState()` ONCE -- a SNAPSHOT -- so a durable event
     // could not reach it. The idiom is this app's own (`BrowseScreen.kt:37`).
     val state by viewModel.flow.collectAsStateWithLifecycle()
-    TrustContent(state, modifier)
+    // *** GS-UX-001 STEP 4 (round 541): THE REAL DISPATCHER, so the controls reach the durable authority. ***
+    TrustContent(state, modifier, onCommand = viewModel::onCommand)
 }
 
 /** The stateless projection: the court can render or inspect the SAME state. */
 @Composable
-fun TrustContent(state: TrustUiState, modifier: Modifier = Modifier) {
+fun TrustContent(state: TrustUiState, modifier: Modifier = Modifier,
+                /// *** GS-UX-001 STEP 4 (round 541): DEFAULTED TO A NO-OP, so every existing caller --
+                /// the court included -- compiles and renders exactly as it did. ***
+                onCommand: (ContactVerificationCommand) -> Unit = {}) {
     Column(modifier = modifier.padding(16.dp)) {
         OwnIdentityCard(state)
         state.error?.let { message ->
@@ -74,7 +87,7 @@ fun TrustContent(state: TrustUiState, modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.error,
             )
             is TrustCensus.Unavailable -> Text("Trust is unavailable: ${census.reason}")
-            is TrustCensus.Readable -> ContactList(census.contacts)
+            is TrustCensus.Readable -> ContactList(census.contacts, onCommand)
         }
     }
 }
@@ -92,7 +105,8 @@ private fun OwnIdentityCard(state: TrustUiState) {
 }
 
 @Composable
-private fun ContactList(contacts: List<ContactProjection>) {
+private fun ContactList(contacts: List<ContactProjection>,
+                          onCommand: (ContactVerificationCommand) -> Unit) {
     Column(Modifier.fillMaxWidth().testTag(TRUST_LIST_TAG)) {
         for (contact in contacts) {
             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -100,12 +114,46 @@ private fun ContactList(contacts: List<ContactProjection>) {
                     Text(contact.label, style = MaterialTheme.typography.titleSmall)
                     Text(trustLabel(contact.trust))
                     Text(contact.fingerprintHex.chunked(4).joinToString(" "))
+                    // *** STEP 4's FINGERPRINT COMPARE/CONFIRM: *'explicit fingerprint compare/confirm'*. ***
+                    // MEASURED BEFORE THIS EDIT: the fingerprint was DISPLAYED and THE OPERATOR COULD NOT CONFIRM
+                    // IT -- `CompareAndConfirmFingerprint` was handled by the ViewModel and dispatched by NO
+                    // CONTROL. The button passeth THE FINGERPRINT SHOWN HERE, so a mismatch between what is
+                    // displayed and what is confirmed is impossible by construction.
+                    Button(
+                        onClick = {
+                            onCommand(
+                                ContactVerificationCommand.CompareAndConfirmFingerprint(
+                                    nodeId = contact.nodeIdCopy(),
+                                    displayedFingerprintHex = contact.fingerprintHex,
+                                ),
+                            )
+                        },
+                        modifier = Modifier.testTag(CONFIRM_FINGERPRINT_TAG + "." + contact.label),
+                    ) { Text("Confirm fingerprint") }
+                    // AND THE REVOKE, which the same projection already offered a label for.
+                    Button(
+                        onClick = { onCommand(ContactVerificationCommand.Revoke(contact.nodeIdCopy())) },
+                        modifier = Modifier.testTag(REVOKE_TAG + "." + contact.label),
+                    ) { Text("Revoke") }
                     contact.pendingRotation?.let { ref ->
                         Text(
                             "A new key is offered (generation ${ref.pendingGeneration}). " +
                                 "Compare it before approving.",
                             color = MaterialTheme.colorScheme.tertiary,
                         )
+                        // *** STEP 4's *'exact rotation-candidate approval'*: the command carrieth THE EXACT
+                        // CANDIDATE (the card's own word), so an approval cannot be misdirected at a candidate the
+                        // operator was not shown. ***
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { onCommand(ContactVerificationCommand.ApproveRotation(ref)) },
+                                modifier = Modifier.testTag(APPROVE_ROTATION_TAG + "." + contact.label),
+                            ) { Text("Approve this key") }
+                            Button(
+                                onClick = { onCommand(ContactVerificationCommand.DismissRotation(ref)) },
+                                modifier = Modifier.testTag(DISMISS_ROTATION_TAG + "." + contact.label),
+                            ) { Text("Dismiss") }
+                        }
                     }
                 }
             }

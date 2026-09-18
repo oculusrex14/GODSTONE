@@ -1,5 +1,6 @@
 package io.godstone.app.ui.mesh
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.godstone.app.mesh.MeshCommand
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -42,6 +44,8 @@ const val SECURITY_CHIP_TAG = "mesh-security"
 const val LINK_BANNER_TAG = "mesh-link"
 const val SOS_CONTROL_TAG = "mesh-sos"
 const val COMPOSE_TAG = "mesh-compose"
+/// GS-UX-001 step 4 (round 541): the recipient selector's own address, so a court can name a choice.
+const val RECIPIENT_CHOICE_TAG = "mesh-recipient"
 
 @Composable
 fun MeshScreen(viewModel: MeshViewModel, modifier: Modifier = Modifier) {
@@ -49,12 +53,20 @@ fun MeshScreen(viewModel: MeshViewModel, modifier: Modifier = Modifier) {
     // MEASURED BEFORE THIS EDIT: the screen read `uiState()` ONCE -- a SNAPSHOT -- so a durable event
     // could not reach it. The idiom is this app's own (`BrowseScreen.kt:37`).
     val state by viewModel.flow.collectAsStateWithLifecycle()
-    MeshContent(state, modifier)
+    // *** GS-UX-001 STEP 4 (round 541): THE SCREEN PASSETH THE REAL DISPATCHER, SO THE CONTROLS ARE WIRED TO THE
+    // VIEWMODEL'S OWN COMMANDS -- which reach the durable authority -- rather than to a UI-only map. ***
+    MeshContent(state, modifier, onCommand = viewModel::onCommand)
 }
 
-/** The stateless projection: the court can inspect the SAME state the screen renders. */
+/** The stateless projection: the court can inspect the SAME state the screen renders.
+ *
+ * *** GS-UX-001 STEP 4 (round 541): IT NOW TAKEth A COMMAND DOOR. *** It is DEFAULTED to a no-op **so every existing
+ * caller -- the court included -- compiles and renders exactly as it did**, while the screen itself passeth the
+ * ViewModel's real `onCommand`. **A SIGNATURE CHANGE THAT BROKE THE COURT WOULD BE A CHANGE THAT BROKE THE
+ * EVIDENCE.** */
 @Composable
-fun MeshContent(state: MeshUiState, modifier: Modifier = Modifier) {
+fun MeshContent(state: MeshUiState, modifier: Modifier = Modifier,
+                onCommand: (MeshCommand) -> Unit = {}) {
     Column(modifier = modifier.padding(16.dp)) {
         LinkBanner(state)
         SecurityChip(state)
@@ -64,7 +76,7 @@ fun MeshContent(state: MeshUiState, modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(12.dp))
             }
         }
-        ComposeField(state)
+        ComposeField(state, onCommand)
         SosControl(state.sos, state.sosArmed)
         Conversation(state.messages)
     }
@@ -94,9 +106,24 @@ private fun SecurityChip(state: MeshUiState) {
 }
 
 @Composable
-private fun ComposeField(state: MeshUiState) {
+private fun ComposeField(state: MeshUiState, onCommand: (MeshCommand) -> Unit) {
     Column(Modifier.fillMaxWidth().testTag(COMPOSE_TAG)) {
         Text(state.selectedRecipient?.label?.let { "To: $it" } ?: "Choose a recipient")
+        // *** THE RECIPIENT SELECTOR (step 4's first clause). *** MEASURED BEFORE THIS: the screen printed
+        // 'Choose a recipient' AND OFFERED NO WAY TO CHOOSE ONE -- the recipients came from the port and NOTHING LET
+        // THE OPERATOR SELECT ONE. **A PROMPT WITH NO CONTROL IS NOT A CONTROL.** The chips are built from
+        // `state.recipients`, which the ViewModel projecteth FROM THE PORT, and a tap dispatcheth the real
+        // `SelectRecipient` command -- so the selection travelleth to the durable authority, not into a UI copy.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.recipients.forEach { recipient ->
+                Text(
+                    recipient.label,
+                    modifier = Modifier
+                        .testTag(RECIPIENT_CHOICE_TAG + "." + recipient.label)
+                        .clickable { onCommand(MeshCommand.SelectRecipient(recipient.nodeIdCopy())) },
+                )
+            }
+        }
         Text(state.draft)
         Text("${state.bytesRemaining} bytes left")
         if (!state.canSend) Text("Nothing to send yet.")
