@@ -248,6 +248,55 @@ class GsFinal006RenderedReadingListTest {
      * `target` IS STILL THE RESTORED PLACEMENT -- so the reader is thrown BACK to where they were restored, undoing
      * the scroll they just made. THIS IS THE VISIBLE SYMPTOM: "init works but the post-interaction state breaks."
      */
+    /**
+     * *** THE DECISIVE ARM: TWO SCROLLS WITH AN UNRELATED STATE CHANGE BETWEEN THEM. ***
+     *
+     * THE HYPOTHESIS UNDER TEST, FROM REVIEW, AND IT IS A PREDICTION I CAN FALSIFY RATHER THAN ARGUE WITH:
+     * *"drive an UNRELATED state change (a `loading`/`phase` copy) BETWEEN the two scrolls -- if the second scroll's
+     * report then vanishes, the self-restart is confirmed."*
+     *
+     * `onQueryChanged` IS THE UNRELATED CHANGE: it writeth `query`, WHICH `ReadingList` NEVER READETH, so the list's
+     * content, offsets and target are all untouched. THE ONLY THING IT CAN DISTURB IS AN EFFECT'S KEY.
+     *
+     * AND WHY THIS ARM IS STRONGER THAN THE PLAIN TWO-SCROLL ONE: the first report may land before any restart
+     * interleaves, so the plain arm can pass while the post-re-render state is broken -- **it would be a FALSE
+     * POSITIVE FOR THE VERY BUG IT LOOKS LIKE IT COVERS.** Forcing the recomposition in the MIDDLE removeth the timing
+     * from the question: either the gate surviveth it, or it does not.
+     *
+     * AND THE PREDICTION IS FALSE, WHICH IS WHY THE ASSERTION IS WHAT IT IS: `LaunchedEffect` KEYS COMPARE WITH
+     * STRUCTURAL EQUALITY (measured in isolation, round 568), so a content-equal rebuilt `ids` list does NOT restart
+     * the effect and `placementLanded` surviveth. **IF THIS ARM EVER FAILS, THE PREMISE HAS BECOME TRUE AND THE
+     * MEMOIZATION FIX BECOMES NECESSARY.**
+     */
+    @Test
+    fun aScrollAfterAnUnrelatedStateChangeIsStillRecorded() {
+        val vm = placedReader(25L)
+
+        compose.setContent { RealReadingList(vm) }
+        awaitDisplayed("passage 25")
+
+        compose.onNodeWithTag(READING_LIST_TAG).performScrollToIndex(20)
+        awaitDisplayed("passage 21")
+        val afterFirst = vm.state.value.anchorPassageId
+
+        // *** THE UNRELATED CHANGE: IT TOUCHES `query`, WHICH THE READING LIST NEVER READETH. ***
+        vm.onQueryChanged("an unrelated edit")
+        compose.waitForIdle()
+
+        compose.onNodeWithTag(READING_LIST_TAG).performScrollToIndex(32)
+        awaitDisplayed("passage 33")
+        val afterSecond = vm.state.value.anchorPassageId
+
+        assertEquals(
+            "*** A SCROLL AFTER AN UNRELATED STATE CHANGE MUST STILL BE RECORDED. IF IT IS NOT, THE REPORT EFFECT " +
+                "RESTARTED ON A RECOMPOSITION THAT CHANGED NOTHING IT CARES ABOUT: `previous` AND `placementLanded` " +
+                "WERE RESET, THE GATE RE-LOCKED, AND THE READER'S PLACE STOPPED BEING PERSISTED FOR THE REST OF THE " +
+                "SESSION. after first scroll: $afterFirst, after the unrelated change and second scroll: " +
+                "$afterSecond ***",
+            33L, afterSecond,
+        )
+    }
+
     @Test
     fun theReaderIsNotYankedBackToTheRestoredTargetByTheirOwnScroll() {
         val vm = placedReader(25L)
