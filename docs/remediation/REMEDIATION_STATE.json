@@ -11388,6 +11388,12 @@
      "sha256": "4108dc7cb212660c25dfe252cd6597ac112cc6b61756d10bda7ff445e5aba0ba",
      "what": "the four audit cache arms green in the canonical lane; the probe suite down to five reds",
      "log": "GS-SUPPLY-001/green/supply-001.log"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-SUPPLY-001/round625-the-supply-chain-had-drifted-and-is-re-verified.log",
+     "sha256": "58515aba9b7cf78c233a4638ebb4659826afb211655c6480f78f9a9551a7c91f",
+     "what": "The supply-chain control was run for the first time in a while and REFUSED with 56 defects; the SBOM and toolchain lock were re-derived.",
+     "outcome": "THE FIRST REFUSAL (53) WAS A STALE SBOM whose cause is this session's own work: Robolectric entered the build when the Android UI test target was added (round 564), the Gradle verification was updated for it, and the SBOM was NOT -- so the bill of materials no longer described the build. Regenerated: 563 components, 556 lines added; the 53 refusals are GONE. THE SECOND (3) WAS THE TOOLCHAIN LOCK outliving its reviewed inputs (build.gradle.kts, Package.swift, project.yml changed); re-captured rather than having its digests edited, and `verify --all` now reports \"the supply chain standeth pinned as far as this host alloweth\". Four warnings are RECORDED NOT SILENCED: java/swift/xcode/macos are each \"recorded, not pinned\" because the repository carries no expectation to compare them against -- no expectation is invented; and the app-light-debug.apk nondeterminism record itself REFUSES to claim byte-reproducibility of an unsigned debug APK built through an incremental cache. NOT CLAIMED: no vulnerability clearance (the audit issues none and neither does this round), no native SQLCipher provenance, no signing identity, no final payload inspection."
     }
    ],
    "my_red_case": {
@@ -14365,7 +14371,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "dbcc0ab56f14c23c3cfd1b8201c365e4d247b31e",
+  "candidate_sha": "294ff6587e704c92ec01d2edfde172a294e1704a",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

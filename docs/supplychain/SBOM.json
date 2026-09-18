@@ -1,5 +1,5 @@
 {
-  "built_utc": "2026-09-14T15:39:04+00:00",
+  "built_utc": "2026-09-18T14:29:28+00:00",
   "components": [
     {
       "digest": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72",
@@ -235,6 +235,17 @@
       "version": "4.16.0"
     },
     {
+      "digest": "8256bbef652625546ca6eb6ed96a6ac3d429dc9527551aa8a77aa9a7e414bca1",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.activity:activity",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.2.1"
+    },
+    {
       "digest": "4b04b42d2c1f81c02faf0f7b6e9cc9fede10fdee8f66136cd4b99f88e8f48c0f",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -323,6 +334,17 @@
       "version": "1.7.0-beta01"
     },
     {
+      "digest": "d590a0d8e02f405de749e8dc80b741dc503c6e3e4c9c016d614d76b65f0b59ef",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.annotation:annotation",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.8.0"
+    },
+    {
       "digest": "e6386e85afdd865044e216575e493ed39a63a6325bd925379a21429c3941c8b5",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -376,6 +398,17 @@
       "name": "androidx.annotation:annotation-experimental",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "1.4.1"
+    },
+    {
+      "digest": "61514762e567b50287f2d8792698a5f46eb9a73a4b336f0e4e25dbd7a9c980dd",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.annotation:annotation-jvm",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.7.0-beta01"
     },
     {
       "digest": "9aab326d9492800991854360ac248f493ce7f7c3183519309b78ace9e240f6f6",
@@ -840,6 +873,61 @@
       "version": "1.7.2"
     },
     {
+      "digest": "f44ce1bf62d2db3def1af9390da8844b823211d00fe4fde9c0975bf718749355",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.compose.ui:ui-test",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.7.2"
+    },
+    {
+      "digest": "06ef210a1e9cfa1da2ebdf86c76aa8d0fe3b01512f7daac4f9838d566f5f39e2",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.compose.ui:ui-test-android",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.7.2"
+    },
+    {
+      "digest": "8e5351730557080c726d6084ee73d7c2bdbaa2780690d4331a60ea878f774d9e",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.compose.ui:ui-test-junit4",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.7.2"
+    },
+    {
+      "digest": "02f95016477ada5ae18863679f5e42dcb4492d7ee249c6ac2d3b8f7079810e98",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.compose.ui:ui-test-junit4-android",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.7.2"
+    },
+    {
+      "digest": "6584c581c17d88e58c0ac1a887e49f8af7a56fc1c19ba22aeecff0fcfc679875",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.compose.ui:ui-test-manifest",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.7.2"
+    },
+    {
       "digest": "9c71e27b23e0a86fe5071900b9a8f8cbe41bfbbbd22783339e9c6bc31b0c8a96",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -939,6 +1027,17 @@
       "version": "1.1.0"
     },
     {
+      "digest": "dae46132cdcd46b798425f7cb78fd65890869b6d26101ccdcd43461a4f51754c",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.core:core",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.1.0"
+    },
+    {
       "digest": "2f63fbeda23ca0919738d09e406de661f21bac583d6e04a1797dcb77e3b6ae95",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -972,6 +1071,17 @@
       "version": "1.13.1"
     },
     {
+      "digest": "524b8b88ceb6a74a7e44e6b567a135660f211799904cb218bfee5be1166820b2",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.core:core",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.2.0"
+    },
+    {
       "digest": "59c54e6129e9261c6d810f8eea4a6ee2f4994d8162b1cd9fc88c9c84c92accfc",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -992,6 +1102,17 @@
       "name": "androidx.core:core-ktx",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "1.13.1"
+    },
+    {
+      "digest": "dcb74d510d552b35eff73b0dd27b829649535f3902e5b5a1f26040383c10a940",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.core:core-ktx",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.2.0"
     },
     {
       "digest": "20e5b8f6526a34595a604f56718da81167c0b40a7a94a57daa355663f2594df2",
@@ -1280,7 +1401,7 @@
       "version": "2.6.2"
     },
     {
-      "digest": "71f3bf687873f16efd84dacbe3a1f421d196950b22d9a30ef30a9119fa7c7ce0",
+      "digest": "d4ae4e8dc0ca6265b683d7b2333a102a3ee84ad97ccb9fbec4334f5cd0e3f54d",
       "digest_status": "PINNED",
       "ecosystem": "maven",
       "lane": "android",
@@ -1588,6 +1709,17 @@
       "version": "1.3.1"
     },
     {
+      "digest": "6eea2bc150828c8fcba777e93037038e2ee3ec441c43d6acecf2c5cd9ddc5374",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.savedstate:savedstate",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.1.0"
+    },
+    {
       "digest": "4247c23308abcb5d0ff8cdaf7dfd583f3c2a1016f68d13f1a41c21600b6fafd7",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -1775,6 +1907,17 @@
       "version": "1.1.1"
     },
     {
+      "digest": "c0754928effe1968c3a9a7b55d1dfc7ceb1e1e7c9f3f09f98afd42431f712492",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.test:annotation",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.0.1"
+    },
+    {
       "digest": "7a7af31c21785ddb7c4319c838847e6d4d9b5bb531f3a951481ec3b98780bf51",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -1795,6 +1938,39 @@
       "name": "androidx.test:monitor",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "1.7.1"
+    },
+    {
+      "digest": "b3c5aabd545b6c260528c8f4e7c98f73628614ea3d5df3a7a44af2136fd8720b",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.test:runner",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.5.0"
+    },
+    {
+      "digest": "34b0493f4e002f205d961e562add0c0c31bb0acc657e89d89d4b188ac13f242c",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.test.espresso:espresso-core",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "3.5.0"
+    },
+    {
+      "digest": "bc63a8780f1c707724e389f530cb2e1a6847da97f6a8114604c002aba2fd86ca",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.test.espresso:espresso-idling-resource",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "3.6.1"
     },
     {
       "digest": "7b146a73c545b983430d2fae0081df67c76722c19a9abd2904e131696a8c5b20",
@@ -1841,6 +2017,17 @@
       "version": "1.1.0"
     },
     {
+      "digest": "9a1d77140ac222b7866b5054ee7d159bc1800987ed2d46dd6afdd145abb710c1",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "androidx.versionedparcelable:versionedparcelable",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.1.0"
+    },
+    {
       "digest": "57e8d93260d18d5b9007c9eed3c64ad159de90c8609ebfc74a347cbd514535a4",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -1861,6 +2048,17 @@
       "name": "androidx.viewpager:viewpager",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "1.0.0"
+    },
+    {
+      "digest": "243a64470fda0e86a6fddeb0af4c7aa9426ce84e68cbfe18d75ee5da4b7e0b92",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.almworks.sqlite4java:sqlite4java",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.0.392"
     },
     {
       "digest": "c1dca2c683634ee1a294298f9c7179578af6a86e080bdc40f961915bc5c8142f",
@@ -2622,6 +2820,17 @@
       "version": "6"
     },
     {
+      "digest": "5a055ce4255333b3346e1a8703da5bf8ff049532286fdcd31712d624abe111dd",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.google.auto.value:auto-value-annotations",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.11.0"
+    },
+    {
       "digest": "b48b04ddba40e8ac33bf036f06fc43995fc5084bd94bdaace807ce27d3bea3fb",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -2631,6 +2840,17 @@
       "name": "com.google.auto.value:auto-value-annotations",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "1.6.2"
+    },
+    {
+      "digest": "5a0d1d718552e8a45dcce0128d1b6b9623fa971a82cd245753233ba7208cb29d",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.google.auto.value:auto-value-parent",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.11.0"
     },
     {
       "digest": "27b640c82179f5cff62009c0b72033d9bc60f60e9902a66802274b7fe37fc81c",
@@ -2908,7 +3128,18 @@
       "version": "2.0.20-1.0.25"
     },
     {
-      "digest": "0261ca01f2d2e9ac2ae2ece75d42c56323b385fb294b6bc943f62ef4e92ddf08",
+      "digest": "38c45cdaf993a7df6697703ca6ee00acbe376d3dade8d44daac3e33f039ca516",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.google.errorprone:error_prone_annotation",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "2.19.1"
+    },
+    {
+      "digest": "721cb91842b46fa056847d104d5225c8b8e1e8b62263b993051e1e5a0137b7ec",
       "digest_status": "PINNED",
       "ecosystem": "maven",
       "lane": "android",
@@ -2972,6 +3203,17 @@
       "name": "com.google.errorprone:error_prone_parent",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "2.18.0"
+    },
+    {
+      "digest": "82f889260fe1d50ff6300f3b1977a7a80cd794f95f1b48ef210b85e4d16109cd",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.google.errorprone:error_prone_parent",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "2.19.1"
     },
     {
       "digest": "f5470a4b3104fe309fbe94a80d16c3c54d20f748f4c5de4f68a428688f30cbd4",
@@ -3062,6 +3304,17 @@
       "version": "1.0.2"
     },
     {
+      "digest": "a42edc9cab792e39fe39bb94f3fca655ed157ff87a8af78e1d6ba5b07c4a00ab",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.google.guava:guava",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "31.1-jre"
+    },
+    {
       "digest": "bd7fa227591fb8509677d0d1122cf95158f3b8a9f45653f58281d879f6dc48c5",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -3093,6 +3346,17 @@
       "name": "com.google.guava:guava-parent",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "26.0-android"
+    },
+    {
+      "digest": "4439626783b44ad25ef05ff07621dd4bb796cc4eb4f2966a4a461fea4130e0fc",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.google.guava:guava-parent",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "31.1-jre"
     },
     {
       "digest": "43ed0e36b353f41e5eb75cd756667c9e2df97cef06eb16066967158a1d034d2a",
@@ -3139,7 +3403,7 @@
       "version": "9999.0-empty-to-avoid-conflict-with-guava"
     },
     {
-      "digest": "5faca824ba115bee458730337dfdb2fcea46ba2fd774d4304edbf30fa6a3f055",
+      "digest": "21af30c92267bd6122c0e0b4d20cccb6641a37eaf956c6540ec471d584e64a7b",
       "digest_status": "PINNED",
       "ecosystem": "maven",
       "lane": "android",
@@ -3304,6 +3568,28 @@
       "version": "1.0.3"
     },
     {
+      "digest": "543e43a91d1499e331c711a756f833d6fb8cc019f9c9913c0bdf4d53009932d5",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.ibm.icu:icu4j",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "75.1"
+    },
+    {
+      "digest": "27ea661f668a6fe14fa4716d26d7ae4ba94cb67232c6db8d00ef4ac03404f08a",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.ibm.icu:icu4j-root",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "75.1"
+    },
+    {
       "digest": "1690340a222279f2cbadf373e88826fa20f7f3cc3ec0252f36818fed32701ab1",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -3324,6 +3610,17 @@
       "name": "com.squareup:javapoet",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "1.13.0"
+    },
+    {
+      "digest": "f699823d0081f69cbb676c1845ea222e0ada79bc88a53e5d22d8bd02d328f57e",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "com.squareup:javawriter",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "2.1.1"
     },
     {
       "digest": "fcfb09fb0ea0aa97d3cfe7ea792398081348e468f126b3603cb3803f240197f0",
@@ -4239,6 +4536,17 @@
       "version": "2.5.8"
     },
     {
+      "digest": "ff10785ac2a357ec5de9c293cb982a2cbb605c0309ea4cc1cb9b9bc6dbe7f3cb",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.checkerframework:checker-qual",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "3.12.0"
+    },
+    {
       "digest": "e316255bbfcd9fe50d165314b85abb2b33cb2a66a93c491db648e498a82c2de1",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -4303,6 +4611,17 @@
       "name": "org.codehaus.mojo:mojo-parent",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "74"
+    },
+    {
+      "digest": "eaf537d98e033d0f0451cd1b8cc74e02d7b55ec882da63c88060d806ba89c348",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.conscrypt:conscrypt-openjdk-uber",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "2.5.2"
     },
     {
       "digest": "7495a07a797e88e43c3bc1a87421bd8b1fc55e32291fa18e4e32d8031ddc873f",
@@ -4378,6 +4697,28 @@
       "license": "unknown",
       "license_source": "not carried by the metadata",
       "name": "org.hamcrest:hamcrest-core",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.3"
+    },
+    {
+      "digest": "70f418efbb506c5155da5f9a5a33262ea08a9e4d7fea186aa9015c41a7224ac2",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.hamcrest:hamcrest-integration",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.3"
+    },
+    {
+      "digest": "711d64522f9ec410983bd310934296da134be4254a125080a0416ec178dfad1c",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.hamcrest:hamcrest-library",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "1.3"
     },
@@ -5427,6 +5768,17 @@
       "version": "9.6"
     },
     {
+      "digest": "adf46d5e34940bdf148ecdd26a9ee8eea94496a72034ff7141066b3eea5c4e9d",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.ow2.asm:asm",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "9.7"
+    },
+    {
       "digest": "d92832d7c37edc07c60e2559ac6118b31d642e337a6671edcb7ba9fae68edbbb",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -5436,6 +5788,17 @@
       "name": "org.ow2.asm:asm-analysis",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "9.6"
+    },
+    {
+      "digest": "7bc6bcbc21379948a0c8c467fb0f864206e5b818f6bc0b546872f5c9f941556f",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.ow2.asm:asm-analysis",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "9.7"
     },
     {
       "digest": "7aefd0d5c0901701c69f7513feda765fb6be33af2ce7aa17c5781fc87657c511",
@@ -5449,6 +5812,17 @@
       "version": "9.6"
     },
     {
+      "digest": "389bc247958e049fc9a0408d398c92c6d370c18035120395d4cba1d9d9304b7a",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.ow2.asm:asm-commons",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "9.7"
+    },
+    {
       "digest": "c43ecf17b539c777e15da7b5b86553b377e2d39a683de6285567d5283888e7ef",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -5460,6 +5834,17 @@
       "version": "9.6"
     },
     {
+      "digest": "62f4b3bc436045c1acb5c3ba2d8ec556ec3369093d7f5d06c747eb04b56d52b1",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.ow2.asm:asm-tree",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "9.7"
+    },
+    {
       "digest": "c635a7402f4aa9bf66b2f4230cea62025a0fe1cd63e8729adefc9b1994fac4c3",
       "digest_status": "PINNED",
       "ecosystem": "maven",
@@ -5469,6 +5854,160 @@
       "name": "org.ow2.asm:asm-util",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "9.6"
+    },
+    {
+      "digest": "37a6414d36641973f1af104937c95d6d921b2ddb4d612c66c5a9f2b13fc14211",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.ow2.asm:asm-util",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "9.7"
+    },
+    {
+      "digest": "d813def0542230c510fb1a8f062f0e05e81b914878a4d961281437c99c177e21",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:annotations",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "945e0ac1868aa8f6550e7021ad0e00efa00f25da5a62d12583d2dbe16117b63a",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:junit",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "2c3d6945cdf4b8569125d35c2ffc72444ba0cfde24717127becd56cb77e0dff5",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:nativeruntime",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "688d499acc8b33315c1f799cd9afb1f0486cd4605b89e3f8e7df72588365bccd",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:nativeruntime-dist-compat",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "1.0.12"
+    },
+    {
+      "digest": "48a31c50c4cfd90b2f27b70ebc5d1946b4cc6dc94df275e4743c48c75ea6a25e",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:pluginapi",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "0cb77f7bf1f2cb7e54b5cb72caa3ad0f0d03f856590a50dff1e50d35a1dab890",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:plugins-maven-dependency-resolver",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "a7231dd85420ef1db2b1c17da665fe12bef6b1d60f2010b7dfe349b695955fa6",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:resources",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "10006cb69518e3b29225368f4047d62f7e5a3cc0c3d9e228ff547abe40b70c6c",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:robolectric",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "6536350562eb11ab289b1ac28423b5fdcfbfe090ef5e6360ce441333191d0cd5",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:sandbox",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "277b664d4829701314dd464dfea10ce74a0bd0b2b4811ae7dcc1c335e1b440c3",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:shadowapi",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "101e89d6dd3379368b113fd50883b8a5546189f6695bcde9b188ba8459e83083",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:shadows-framework",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "1f55e97fdcba5b4224e6f26744a86e8545888638747f738d2eec409e91eeda05",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:utils",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
+    },
+    {
+      "digest": "d54286f22b0af6491064546326221b9c593ba2a72f0a6506caf86af23f549ccd",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.robolectric:utils-reflector",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4.13"
     },
     {
       "digest": "cdba07964d1bb40a0761485c6b1e8c2f8fd9eb1d19c53928ac0d7f9510105c57",
@@ -5491,6 +6030,17 @@
       "name": "org.slf4j:slf4j-parent",
       "supplied_by": "android/gradle/verification-metadata.xml",
       "version": "1.7.30"
+    },
+    {
+      "digest": "c513995cf019d9213d4fda666589937b2bf1bea5c4cdd337e6170e80b18406ee",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.sonatype.oss:oss-parent",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "4"
     },
     {
       "digest": "b51f8867c92b6a722499557fc3a1fdea77bdf9ef574722fe90ce436a29559454",
@@ -5715,7 +6265,7 @@
   ],
   "licence_census": {
     "n/a": 11,
-    "unknown": 502
+    "unknown": 552
   },
   "note": "An unknown licence is counted, never omitted: a component whose licence nobody recorded is a fact about this inventory, not a blank to be filled in later.",
   "schema": 1,
@@ -5726,6 +6276,6 @@
     "model:generation-large standeth UNPINNED (external gate NATIVE_MODELS)",
     "model:embedding-small standeth UNPINNED (external gate NATIVE_MODELS)",
     "model:embedding-base standeth UNPINNED (external gate NATIVE_MODELS)",
-    "502 component(s) carry an unknown licence; the inventory recordeth them by name rather than omitting them"
+    "552 component(s) carry an unknown licence; the inventory recordeth them by name rather than omitting them"
   ]
 }

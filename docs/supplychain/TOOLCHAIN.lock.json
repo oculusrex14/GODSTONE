@@ -1,5 +1,5 @@
 {
-  "captured_utc": "2026-09-14T14:06:07+00:00",
+  "captured_utc": "2026-09-18T14:29:33+00:00",
   "host": {
     "arch": "arm64",
     "build": "25G83",
@@ -19,10 +19,10 @@
       "sha256": "dfd484694bda2b7bed0450b2ab4ee5c85fc15da59de46fa30bea9bbd710f839d"
     },
     {
-      "bytes": 12558,
+      "bytes": 14317,
       "path": "android/app/build.gradle.kts",
       "role": "the application's compile/target SDK and JDK",
-      "sha256": "5a3e2dd9e82cc2d745d241e62ee8253c4aaeb3b87d9a3d934bc98467d80edc79"
+      "sha256": "bb18e466972023ddb94a15e1fbe1e7142d27fefa731953187fb539fa704d5df3"
     },
     {
       "bytes": 503,
@@ -31,16 +31,16 @@
       "sha256": "a815d44a29e006ec99fda6c39030c46d0553c426822d37ec855e91bd4cab51c8"
     },
     {
-      "bytes": 1156,
+      "bytes": 1468,
       "path": "ios/Godstone/Package.swift",
       "role": "the Swift tools version, platforms and package pins",
-      "sha256": "edf2ad0fc26282874eaf6b4d4e623c8a30782414bd700c4d39571b8596e8f24e"
+      "sha256": "cf898de3869d8e8b6d72f984c3056a93e7a9da952aca17fb37cfdd5f61f099dd"
     },
     {
-      "bytes": 4436,
+      "bytes": 6318,
       "path": "ios/project.yml",
       "role": "the Xcode project specification XcodeGen regenerateth from",
-      "sha256": "09600e3a567a1456847b219389922c538e8c6a978eb0bb5273ddd9690a9d4eb9"
+      "sha256": "9dd06d76a4692fdb6768cfb0c57112f6ed4a8e3262bd49dc0d8f80710ae1f09c"
     },
     {
       "bytes": 916,
@@ -97,7 +97,7 @@
     },
     {
       "expected": null,
-      "measured": "6.3.3",
+      "measured": "6.4",
       "name": "swift",
       "note": "the compiler; Package.swift's swift-tools-version is recorded separately as swift-tools",
       "probe": "swift --version",
@@ -113,7 +113,7 @@
     },
     {
       "expected": null,
-      "measured": "26.6",
+      "measured": "27.0",
       "name": "xcode",
       "note": "the App Store toolchain cannot be pinned from inside the repository; it is recorded so a change is visible",
       "probe": "xcodebuild -version",
@@ -163,8 +163,8 @@
   "unpinned": [
     "python measureth 3.14.4 and the repository carrieth no expectation to compare it against: recorded, not pinned",
     "java measureth 17.0.20.1 and the repository carrieth no expectation to compare it against: recorded, not pinned",
-    "swift measureth 6.3.3 and the repository carrieth no expectation to compare it against: recorded, not pinned",
-    "xcode measureth 26.6 and the repository carrieth no expectation to compare it against: recorded, not pinned",
+    "swift measureth 6.4 and the repository carrieth no expectation to compare it against: recorded, not pinned",
+    "xcode measureth 27.0 and the repository carrieth no expectation to compare it against: recorded, not pinned",
     "macos measureth macOS 26.6.2 and the repository carrieth no expectation to compare it against: recorded, not pinned"
   ],
   "unresolved": [
