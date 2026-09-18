@@ -2,7 +2,7 @@
 
 **CANDIDATE SHAs — ONE CLEAN EXACT CANDIDATE PER DECLARED SCOPE, AT A CLEAN TREE (`git status --porcelain` = 0):**
 * **Scope A — LIGHT Archive (14 findings): `44100c0`** — *unchanged and NOT reopened by this span; see Scope A below.*
-* **Scope B — Mesh/Oracle (40 findings): `3eb1904`** — **the exact commit at which the final
+* **Scope B — Mesh/Oracle (40 findings): `430e5ce`** — **the exact commit at which the final
   measurement pass ran, with a clean tree.** Every lane cited in the round sections below was run at, or before, this
   SHA on a tree whose diff to it is only this document and the ledger.
 * **The earlier per-isle anchors remain for the round sections that name them** (`44100c0` Android `:mesh`,
@@ -911,6 +911,32 @@ road, a pinned native SQLCipher artifact, 10,000 real lifecycle cycles over a dr
 `10,000`-cycle stress driver), and **one is forbidden by the card's own text** without that same instrumentation road.
 **They are named, sized, and left `PARTIAL` rather than quietly relabelled.** *Acquisition never closes a gate;* the
 readiness flags remain **false** and the five external gates remain **OPEN**.
+
+## ROUNDS 536–546, THE FINAL WORK — EVERY HOST-REACHABLE ITEM LANDED, EVERY REMAINDER MEASURED
+
+**Ten further rounds, each landing a repair or correcting a claim that had outlived its defect.** What they added to the
+programme's terminal state:
+
+| round | what landed | what it cost, and what it taught |
+|---|---|---|
+| **536** | GS-ARCHIVE-005 step 1: `NavigationStack(path:)`, **driven in both directions** | the shipping App built to prove it compiles |
+| **537** | steps 5 and 6: the return-to-search identity; the **visible** passage anchor | **the shipping build caught `cannot find 'found' in scope`** — the only instrument that compiles `App/` |
+| **538** | the writer-reservation census **mirrored**; a bound evadable by a caller that never sealed | the other isle's round-534 scar applied *before* a court found it |
+| **539** | GS-UX-001 step 1: the lab's journeys **reach the one retained runtime** | three journeys were one line of `Text` each |
+| **540** | step 3: `StateFlow` + lifecycle collection; `ObservableObject`/`@Published` | *a capability an owner's sibling has is one it never wired* |
+| **541** | step 4: the selector, the confirm, the rotation approval, the revoke | **a prompt with no control is not a control** |
+| **542** | step 6: the protected-data gate on the isle that lacked it | the second instance of the *shared-contract-met-on-one-isle* shape |
+| **543** | measured the last unattempted item **to its blocking obstacle** | *a capability may not be bought with the very substitution the finding forbids* |
+| **544** | GS-STORE-002 step 5: DB/**WAL/SHM and directory** protection | **a path that is never named is never protected**; steps 4 and 7 re-measured as already landed |
+| **545** | GS-RUNTIME-001: **the missing assignment** — the pump now reaches the node | **a DI framework makes an unused parameter invisible: it compiles, it wires, it reaches nothing** |
+| **546** | step 2 re-measured fully landed; a **fourth** stale claim corrected | *a ledger written in the same breath as a repair describes what it intended* |
+
+**AND THE FOUR RECORD CORRECTIONS, NOW NAMED AS A SINGLE PATTERN:** a ledger written *in the same breath as a repair*
+describes what the repair **intended**; three rounds later the intention has been met **and the sentence has not been
+re-read.** `GS-RUNTIME-001`'s empty proof field and `GS-ARCHIVE-005`'s self-contradicting field (round 532),
+`GS-STORE-002`'s landed steps 4 and 7 bundled with untouched ones (round 544), and `GS-ARCHIVE-005`'s step 2 (round
+546). **The remedy is one act, applied four times: read the claim against the tree.** With the twelve empty proof fields
+cured at zero, **both record classes are now closed by measurement rather than by intention.**
 
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
