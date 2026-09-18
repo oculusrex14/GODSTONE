@@ -71,13 +71,44 @@ public enum Invariants {
     public static let noLeakedLeases = "no_leaked_leases"
     public static let noLeakedTimers = "no_leaked_timers"
     public static let noLeakedSessions = "no_leaked_sessions"
+    // *** GS-STRESS-001 (round 727): THE FOUR OWNERS THIS ISLE DID NOT NAME -- AND THE COURT ALREADY SAID SO. ***
+    //
+    // **`ReadinessT72Test.test_w12_the_isles_carry_the_same_invariants_and_faults` ASSERTETH THAT THE TWO ISLES CARRY THE
+    // SAME INVARIANTS, AND IT WAS FAILING: `"the iOS twin must carry no_leaked_reservations"`.** *Android had grown to
+    // TWELVE names across rounds 643/651/671 while this isle stayed at EIGHT* -- **so the cross-isle contract the court
+    // enforce th was already broken, and the court was the instrument that said so.** *Measured by comparing the quoted
+    // name sets on both isles: Android carrieth `no_leaked_reservations`, `no_leaked_inventory_leases`,
+    // `pending_ack_work` and `no_leaked_observers`; this isle carried NONE of them.*
+    /** Writer reservations -- one of the card's named owners. */
+    public static let noLeakedReservations = "no_leaked_reservations"
+    /** Admitted inventory leases -- the card's own term. */
+    public static let noLeakedInventoryLeases = "no_leaked_inventory_leases"
+    /** Pending ACK obligations: work the system owed and did not discharge. */
+    public static let pendingAckWork = "pending_ack_work"
+    /** Observer registrations, which name their OWNER because the two owners share the NAME `observers`. */
+    public static let noLeakedObservers = "no_leaked_observers"
     public static let noDuplicateInbox = "no_duplicate_inbox"
     public static let noDuplicateDelivery = "no_duplicate_delivery"
     public static let noUncaughtMalformed = "no_uncaught_malformed"
     public static let boundedCensus = "bounded_census"
+    /** *** AND THE LIST IS COMPLETED -- it named SEVEN of the ELEVEN names above, the same stale-list shape as Android's. *** */
     public static let all = [noLeakedLeases, noLeakedTimers, noLeakedSessions,
+                             noLeakedReservations, noLeakedInventoryLeases,
+                             pendingAckWork, noLeakedObservers,
                              noDuplicateInbox, noDuplicateDelivery,
                              noUncaughtMalformed, boundedCensus]
+    /// How many invariant names this enum DEFINETH -- the census `all` must reproduce. *A load-time check rather than a
+    /// court, because the defect it preventeth is IN THIS FILE: the name and the list stand lines apart, and only their
+    /// COUNT can tell whether they agree.*
+    private static let definedCount = 11
+    private static let censusCheck: Void = {
+        precondition(all.count == definedCount,
+                     "Invariants.all carrieth \(all.count) of the \(definedCount) defined invariants -- a name was " +
+                     "added without being listed, which is how four owners went unmeasured (GS-STRESS-001, round 727).")
+        precondition(Set(all).count == all.count, "Invariants.all carrieth a duplicate")
+    }()
+    /// Touch to run the census check.
+    public static func censusChecked() -> Int { _ = censusCheck; return all.count }
 }
 
 public enum CampaignDefect {

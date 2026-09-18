@@ -137,16 +137,44 @@ CONDUCTOR_FAULTS = (
 
 
 class Invariant:
+    """*** GS-STRESS-001 (round 727): THIS LIST WAS STALE, AND A COURT WAS ALREADY FAILING OVER IT. ***
+
+    `ReadinessT72Test.test_w12_the_isles_carry_the_same_invariants_and_faults` ASSERTETH THAT ALL THREE ARTEFACTS -- this
+    conductor, the Swift twin and the Android isle -- CARRY THE SAME INVARIANT NAMES, and it was failing on
+    *"the conductor must carry no_leaked_reservations"*. **Android grew to ELEVEN names across rounds 643/651/671 while
+    this conductor and the Swift twin stayed at SEVEN** -- *so the three-way contract the court enforced was already
+    broken, and the court was the instrument that said so.*
+    """
+
     NO_LEAKED_LEASES = "no_leaked_leases"
     NO_LEAKED_TIMERS = "no_leaked_timers"
     NO_LEAKED_SESSIONS = "no_leaked_sessions"
+    # THE FOUR OWNERS THIS CONDUCTOR DID NOT NAME -- one per round that added them on Android:
+    NO_LEAKED_RESERVATIONS = "no_leaked_reservations"          # writer reservations
+    NO_LEAKED_INVENTORY_LEASES = "no_leaked_inventory_leases"  # admitted inventory leases
+    PENDING_ACK_WORK = "pending_ack_work"                      # the ACK obligations the system owed
+    NO_LEAKED_OBSERVERS = "no_leaked_observers"                # observer registrations, naming their OWNER
     NO_DUPLICATE_INBOX = "no_duplicate_inbox"
     NO_DUPLICATE_DELIVERY = "no_duplicate_delivery"
     NO_UNCAUGHT_MALFORMED = "no_uncaught_malformed"
     BOUNDED_CENSUS = "bounded_census"
 
-    ALL = (NO_LEAKED_LEASES, NO_LEAKED_TIMERS, NO_LEAKED_SESSIONS, NO_DUPLICATE_INBOX,
-           NO_DUPLICATE_DELIVERY, NO_UNCAUGHT_MALFORMED, BOUNDED_CENSUS)
+    ALL = (NO_LEAKED_LEASES, NO_LEAKED_TIMERS, NO_LEAKED_SESSIONS,
+           NO_LEAKED_RESERVATIONS, NO_LEAKED_INVENTORY_LEASES, PENDING_ACK_WORK, NO_LEAKED_OBSERVERS,
+           NO_DUPLICATE_INBOX, NO_DUPLICATE_DELIVERY, NO_UNCAUGHT_MALFORMED, BOUNDED_CENSUS)
+
+    # *** AND THE CENSUS IS ASSERTED AT IMPORT, SO THE NEXT ADDITION CANNOT QUIETLY MISS THE TUPLE. *** *The defect this
+    # preventeth is IN THIS CLASS -- the name and the tuple stand lines apart, and only their COUNT can tell whether they
+    # agree.* A declared count rather than a `len(dir())` scan, so the check is legible and cannot be satisfied by
+    # accident.
+    DEFINED_COUNT = 11
+
+
+assert len(Invariant.ALL) == Invariant.DEFINED_COUNT, (
+    f"Invariant.ALL carries {len(Invariant.ALL)} of the {Invariant.DEFINED_COUNT} defined invariants -- a name was "
+    "added without being listed, which is how four owners went unmeasured (GS-STRESS-001, round 727)."
+)
+assert len(set(Invariant.ALL)) == len(Invariant.ALL), "Invariant.ALL carries a duplicate"
 
 
 @dataclass

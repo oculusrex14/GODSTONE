@@ -170,8 +170,36 @@ object Invariants {
     const val NO_DUPLICATE_DELIVERY = "no_duplicate_delivery"
     const val NO_UNCAUGHT_MALFORMED = "no_uncaught_malformed"
     const val BOUNDED_CENSUS = "bounded_census"
+    /**
+     * *** GS-STRESS-001 (round 727): THIS LIST WAS STALE AND, MEASURED, HAD NO CONSUMER AT ALL. ***
+     *
+     * *It named SEVEN invariants while the object DEFINETH ELEVEN* -- **the four added by later rounds
+     * (`NO_LEAKED_RESERVATIONS`, `NO_LEAKED_INVENTORY_LEASES`, `PENDING_ACK_WORK`, `NO_LEAKED_OBSERVERS`) were never
+     * listed**, and `grep -rn "Invariant.ALL"` across both isles returneth **NOTHING**. *** A STALE LIST THAT NOBODY
+     * READS IS STILL A LANDMINE: the next reader taketh it for the authoritative set and concludeth that four owners are
+     * unmeasured, or worse, addeth a consumer and silently checks seven of eleven. ***
+     *
+     * **SO IT IS COMPLETED RATHER THAN DELETED** -- *the set is a true statement about this object and a future consumer
+     * would want it* -- **and its completeness is now DERIVED, not typed:** `require(ALL.size == DEFINED_COUNT)` below
+     * falleth the moment a constant is added without being listed, *which is the failure that produced this comment.*
+     */
     val ALL = listOf(NO_LEAKED_LEASES, NO_LEAKED_TIMERS, NO_LEAKED_SESSIONS,
+        NO_LEAKED_RESERVATIONS, NO_LEAKED_INVENTORY_LEASES, PENDING_ACK_WORK, NO_LEAKED_OBSERVERS,
         NO_DUPLICATE_INBOX, NO_DUPLICATE_DELIVERY, NO_UNCAUGHT_MALFORMED, BOUNDED_CENSUS)
+
+    /** How many invariant constants this object DEFINETH -- the census `ALL` must reproduce. */
+    private const val DEFINED_COUNT = 11
+
+    init {
+        // *** AND THE CENSUS IS ASSERTED, SO THE NEXT ADDITION CANNOT QUIETLY MISS THE LIST AGAIN. *** *This is a
+        // load-time invariant rather than a court, because the defect it preventeth is IN THIS FILE: the constant and
+        // the list live four lines apart, and only their COUNT can tell whether they agree.*
+        require(ALL.size == DEFINED_COUNT) {
+            "Invariants.ALL carrieth ${ALL.size} of the $DEFINED_COUNT defined invariants -- *a constant was added " +
+                "without being listed, which is exactly how four owners went unmeasured (GS-STRESS-001, round 727).*"
+        }
+        require(ALL.toSet().size == ALL.size) { "Invariants.ALL carrieth a duplicate" }
+    }
 }
 
 /** The deliberate defects the court injecteth to prove the invariants bite. */
