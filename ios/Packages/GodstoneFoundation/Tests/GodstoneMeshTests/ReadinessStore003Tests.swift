@@ -160,6 +160,148 @@ final class ReadinessStore003Tests: XCTestCase {
 
     // MARK: - helpers
 
+    // ================================================================================================
+    // *** GS-STORE-003 (round 582): FAULTING **EACH DDL/COMMIT BOUNDARY** -- THE NAMED GAP. ***
+    //
+    // THE CARD'S REMAINING WORK, VERBATIM: *"Upgrade every supported historical schema with signed-byte fixtures and
+    // **fault each DDL/commit boundary**; compare immutable data."* W04-W07 COVER THE BYTE COMPARISON ACROSS A
+    // MIGRATION; **THE FAULTING WAS THE UNMEASURED HALF**, and the audit's own charge against the original tree was
+    // that "crash rollback was not established".
+    //
+    // *** AND THE ENGINE'S OWN CONTRACT IS WHAT MAKETH THIS ARMABLE: `SchemaMigrationEngine.migrate` IS `public` AND
+    // DRIVETH AN INJECTED `MigrationExecutor` PROTOCOL.** So a court can supply an executor that THROWETH AT A CHOSEN
+    // EDGE -- literally "fault each DDL/commit boundary" -- and read the engine's TYPED verdict, rather than hoping a
+    // real crash lands where the arm wanteth it.
+    //
+    // THE TWO PROPERTIES ARE SEPARATE FIELDS AND ARE ASSERTED SEPARATELY:
+    //   `rolledBack`       -- a failed step was rolled back (no half-applied DDL);
+    //   `versionPreserved` -- the version was NOT advanced past the failed edge.
+    // **A MIGRATION THAT FAILED, ROLLED BACK, AND STILL ADVANCED THE VERSION WOULD BE THE WORST OF BOTH: THE FILE
+    // WOULD CLAIM A REVISION IT NEVER REACHED, AND EVERY LATER OPEN WOULD SKIP THAT EDGE FOR EVER.**
+    // ================================================================================================
+
+    /// An executor that FAILS ON A NAMED EDGE -- the fault injection the card asketh for.
+    private final class FaultingExecutor: MigrationExecutor {
+        private(set) var checkpoint = 0
+        private(set) var executed: [String] = []
+        private let failAt: Int
+        private let fingerprint: SchemaFingerprint
+        init(failAt: Int, fingerprint: SchemaFingerprint) {
+            self.failAt = failAt
+            self.fingerprint = fingerprint
+        }
+        func checkpointedThrough() -> Int { checkpoint }
+        func execute(step: MigrationStep, statements: [String]) throws {
+            if step.to == failAt {
+                // THE BOUNDARY FAULT, thrown BEFORE the step's effects commit -- which is what a crash between the
+                // DDL and the version stamp looks like from the engine's side.
+                throw NSError(domain: "gs-store-003", code: failAt,
+                              userInfo: [NSLocalizedDescriptionKey: "faulted at edge ->\(failAt)"])
+            }
+            executed.append("\(step.from)->\(step.to)")
+            checkpoint = step.to
+        }
+        func observeFingerprint() -> SchemaFingerprint { fingerprint }
+        func immutableDigest() -> String { "digest" }
+        func markCheckpointed(step: MigrationStep) { checkpoint = step.to }
+    }
+
+    private func engineForFaults(supportedMax: Int) -> SchemaMigrationEngine {
+        SchemaMigrationEngine(
+            steps: StoreSchema.migrationPlan(from: 0, creatingTables: false, supportedMax: supportedMax),
+            supportedMax: supportedMax,
+            fingerprint: StoreSchema.frozenFingerprint,
+        )
+    }
+
+    /**
+     * *** FAULT AT **EVERY** EDGE, ONE AT A TIME -- THE CARD'S OWN PHRASE, TAKEN LITERALLY. ***
+     *
+     * For EACH edge the executor is told to fail there, and EVERY ONE must answer a typed failure with the version
+     * preserved -- because a version advanced past a faulted edge would make the next open SKIP that edge for ever.
+     * The count of edges actually faulted is ASSERTED, so the arm cannot pass by exercising fewer than the plan has.
+     */
+    func testW08AFaultAtEveryEdgeAnswersATypedFailureAndPreservesTheVersion() {
+        let supported = Int(StoreSchema.dbVersion)
+        guard supported > 1 else {
+            XCTFail("the rig needs a multi-edge plan to fault; supportedMax is \(supported)")
+            return
+        }
+        var faultsExercised = 0
+
+        for edge in 1...supported {
+            let engine = engineForFaults(supportedMax: supported)
+            let executor = FaultingExecutor(failAt: edge, fingerprint: StoreSchema.frozenFingerprint)
+
+            let result = engine.migrate(currentVersion: 0, observed: StoreSchema.frozenFingerprint,
+                                        executor: executor)
+
+            guard case .failed(let stage, _, let versionPreserved) = result else {
+                XCTFail("*** A FAULT AT EDGE ->\(edge) MUST ANSWER A TYPED `.failed`, NOT \(result). An engine that " +
+                    "reported success for a step that threw would advance the version over unapplied DDL. ***")
+                continue
+            }
+            XCTAssertTrue(
+                versionPreserved,
+                "*** AND THE VERSION MUST NOT SURVIVE A FAULTED EDGE (edge ->\(edge)): `versionPreserved` was false, " +
+                    "meaning the file could CLAIM A REVISION IT NEVER REACHED -- and every later open would SKIP that " +
+                    "edge for ever. stage=\(stage) ***",
+            )
+            faultsExercised += 1
+        }
+
+        XCTAssertEqual(
+            faultsExercised, supported,
+            "*** EVERY EDGE MUST BE FAULTED -- 'fault each DDL/commit boundary', taken literally. " +
+                "Exercised \(faultsExercised) of \(supported) edges. ***",
+        )
+    }
+
+    /** *** AND A FAULT ROLLETH BACK RATHER THAN HALF-APPLYING -- THE `rolledBack` FIELD, MEASURED. *** */
+    func testW09AFaultedEdgeReportsThatItRolledBack() {
+        let supported = Int(StoreSchema.dbVersion)
+        let engine = engineForFaults(supportedMax: supported)
+        let executor = FaultingExecutor(failAt: 1, fingerprint: StoreSchema.frozenFingerprint)
+
+        let result = engine.migrate(currentVersion: 0, observed: StoreSchema.frozenFingerprint, executor: executor)
+
+        guard case .failed(let stage, let rolledBack, _) = result else {
+            XCTFail("a fault at the first edge must answer `.failed`, not \(result)")
+            return
+        }
+        XCTAssertTrue(
+            rolledBack,
+            "*** A CAUGHT STEP FAILURE MUST HAVE ROLLED BACK: `rolledBack` was false, which describeth a migration " +
+                "that left PARTIAL DDL BEHIND -- the destructive failure mode this finding is about. stage=\(stage) ***",
+        )
+        XCTAssertEqual(
+            executor.executed, [],
+            "*** AND NO EDGE MAY COUNT AS APPLIED: the faulted first edge threw before committing, so the executed " +
+                "list must be EMPTY. Observed: \(executor.executed) ***",
+        )
+    }
+
+    /** *** AND THE POSITIVE CONTROL: WITH NO FAULT, THE SAME RIG REALLY UPGRADES EVERY EDGE. *** */
+    func testW10WithNoFaultTheEngineUpgradesEveryEdge() {
+        let supported = Int(StoreSchema.dbVersion)
+        let engine = engineForFaults(supportedMax: supported)
+        let executor = FaultingExecutor(failAt: -1, fingerprint: StoreSchema.frozenFingerprint)
+
+        let result = engine.migrate(currentVersion: 0, observed: StoreSchema.frozenFingerprint, executor: executor)
+
+        guard case .upgraded(let from, let to) = result else {
+            XCTFail("*** THE CONTROL: WITHOUT A FAULT THE ENGINE MUST UPGRADE -- otherwise an engine that failed " +
+                "everything would satisfy the two fault arms while making every upgrade impossible. Observed: \(result) ***")
+            return
+        }
+        XCTAssertEqual(from, 0)
+        XCTAssertEqual(to, supported)
+        XCTAssertEqual(
+            executor.executed.count, supported,
+            "*** AND EVERY EDGE MUST HAVE RUN, IN ORDER -- observed \(executor.executed) ***",
+        )
+    }
+
     private func tempUrl() -> URL {
         URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("godstone-store003-\(UUID().uuidString).db")

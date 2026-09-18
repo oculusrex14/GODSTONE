@@ -607,5 +607,4 @@ final class ReadinessT37Tests: XCTestCase {
         guard held.count >= 1 else { XCTFail("a held frame is required to inspect"); return }
         XCTAssertEqual(held[0].encode(), frame.encode(), "the held row is the original bytes")
     }
-
 }

@@ -1145,37 +1145,4 @@ final class CrashStartupResumeTests: XCTestCase {
         try? FileManager.default.removeItem(at: msgUrl)
         try? FileManager.default.removeItem(at: peerUrl)
     }
-
-    // ---------------------------------------------------------------------------------------------
-    // *** GS-FINAL-003 (round 572): THE COMMIT ROAD -- FIXED, BUT NOT YET PROVEN END-TO-END HERE. ***
-    //
-    // THE FINDING IS REAL AND IS GREP-PROVEN: `RecipientInboxRepository` is handed a `commitInbound` CLOSURE writing
-    // STRAIGHT to `commitInboundWithObligationAtWithFault` -- the method that CREATES the pending ACK obligation and
-    // the held row -- and `wipeGate` appeared NOWHERE in `MessageStore.swift`. **A DECORATOR GATES AN INTERFACE; AN
-    // INJECTED CLOSURE IS NOT THAT INTERFACE.** The guard is now in place at `MeshRuntime` and the held store is the
-    // gated decorator.
-    //
-    // *** AND I COULD NOT BUILD A CONTROL FOR IT HERE, WHICH IS RECORDED RATHER THAN PAPERED OVER. *** FOUR ARMS WERE
-    // ATTEMPTED AND ALL FOUR WERE VACUOUS, EACH FOR A DIFFERENT REASON, EACH CAUGHT BY THE ARM'S OWN RIG ASSERTION
-    // RATHER THAN BY ASSUMPTION:
-    //   1. A hand-built `RecipientInboxRepository` over `InMemoryMessageStore` with the guard RE-IMPLEMENTED IN THE
-    //      TEST'S OWN CLOSURE -- reverting the REAL guard left it green. **A STAND-IN THAT PASSES WHETHER OR NOT THE
-    //      GATE IS WIRED IS NOT A CONTROL.** Deleted.
-    //   2. A frame with no priority flags -> refused at gate 0 (`notDirect`), never reaching the commit.
-    //   3. A frame not sealed to this runtime -> refused at gate 2 (`notForUs`), then `verificationFailed`, then
-    //      `keyUnavailable` -- each a DIFFERENT earlier gate, each leaving the census zero for an unrelated reason.
-    //   4. THE REAL COMPOSITION, with the journal set pending BEFORE construction: the frame is refused EARLIER than
-    //      the commit, so removing the real guard still leaves the arm GREEN.
-    //
-    // AND THE LIVE CASE -- the one the guard actually exists for, stores open and the wipe becoming pending
-    // underneath an exchange -- IS NOT REACHABLE FROM HERE: `requestWipe()` on a test composition drives the ladder
-    // TO COMPLETION (the journal returns to IDLE, `allowsSensitiveApi()` becomes true again), so the authority never
-    // STAYS pending alongside open stores. **THAT IS A REAL COVERAGE GAP, NOT A CLAIM.**
-    //
-    // SO THE COMMIT ROAD'S PROOF RESTETH ON: the grep-proven absence before the repair, the guard itself, and the
-    // FOUR DECORATOR ARMS in `GsFinal003AdmissionPointTests`, which ARE causally proven (reverting the decorator
-    // reddens them). **THE END-TO-END arm needs a seam that can hold the ladder pending across a live runtime, and
-    // that does not exist yet.**
-    // ---------------------------------------------------------------------------------------------
-
 }

@@ -9997,6 +9997,12 @@
      "log": "GS-STORE-003/green/store-003-partial.log",
      "sha256": "c47af25ed2de7c23ca141092ff75857fe90b37c4c256adf471e2879e9d417403",
      "what": "PRIOR FAILURE kept separate: the earlier reverted attempt (drops removed with no engine bound), which the experiment diagnosed"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-003/round582-boundary-faults.log",
+     "sha256": "d185759e1e5f8e4e050fd113c19dbc1aa17d0bdb51e661ab90959b8ce281b8ec",
+     "what": "Every DDL/commit boundary faulted through the public engine seam; the generated-package trap that invalidated three runs.",
+     "outcome": "W08 faults all ten edges (mutation reddens it once per edge, naming edge ->1..->10); W09 measures rolledBack; W10 is the positive control. Full iOS lane PASSED. The arms live in CANONICAL ios/Godstone/Tests and are propagated by sync_ios_foundation_package.py."
     }
    ],
    "my_red_case": {
@@ -10051,7 +10057,8 @@
     "T31"
    ],
    "title": "Actual message-store upgrades still drop durable tables",
-   "wave": "4a"
+   "wave": "4a",
+   "remaining_work": "THE NAMED GAP IS CLOSED (round 582): *\"fault each DDL/commit boundary\"* is now measured through the engine's own PUBLIC seam -- `SchemaMigrationEngine.migrate` over an injected `MigrationExecutor` that throws at a chosen edge. W08 faults ALL TEN EDGES one at a time and asserts the count exercised; W09 measures `rolledBack` SEPARATELY from the verdict; W10 is the positive control that reaches `.upgraded` with every edge executed. THE MUTATION REDDENS W08 ONCE PER EDGE, naming `edge ->1`..`->10`, so all ten are genuinely exercised. Full iOS lane PASSED. **AND A BUILD-SYSTEM TRAP IS RECORDED:** `ios/Packages/GodstoneFoundation/` is a GENERATED artifact (the sync script `rmtree`s and recopies it), so editing its Sources/Tests by hand is silently overwritten -- three mutation runs looked green and one set of my arms was destroyed before I moved them to canonical `ios/Godstone/`, which is where the script's own docstring says they belong. **\"Compare immutable data\" IS COVERED BY W04-W07 (byte-for-byte across a migration), NOT re-measured here.**"
   },
   "GS-STORE-004": {
    "audit_status_at_snapshot": "OPEN",
@@ -14176,7 +14183,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "06a211be89a3cba2777be310083c000f560e7415",
+  "candidate_sha": "c273965cbd59122439161f44deb0211220aeabfa",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
