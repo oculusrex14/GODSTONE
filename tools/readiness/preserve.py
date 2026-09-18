@@ -409,6 +409,15 @@ def verify_preservation(root: str, evidence_dir: str, inventory: dict) -> list[s
         expected = entry.get('declared_entries', entry.get('entries'))
         if not os.path.exists(os.path.join(root, entry['path'])):
             failures.append(f'declared addition absent: {entry["path"]}')
+        # *** AND THE CONTENT, NOT ONLY THE COUNT (round 689). ***
+        #
+        # `08_evidence_and_test_integrity_report.md` requireth *"exact paths/hashes, not a blanket exclusion of the
+        # entire audit directory"* -- **AND A COUNT IS THE BLANKET EXCLUSION.** *MEASURED BEFORE THIS EDIT: tampering
+        # one file's CONTENTS inside a declared bundle left the count identical and the verification GREEN, so a
+        # SUBSTITUTION inside audit evidence was UNDETECTABLE.* The manifests are written by
+        # `tools/readiness/declare_external_addition.py`; a recorded path must keep its bytes, while NEW paths stay
+        # permitted because the folders are written by another party's process and grow.
+        failures.extend(_content_manifest_failures(root, entry['path']))
         grows = bool(entry.get('grows'))
         if grows:
             # a GROWING folder owned by another process: the count may rise, never fall
@@ -468,3 +477,43 @@ def main(argv: list[str]) -> int:
 
 if globals().get('__name__') == '__main__':
     raise SystemExit(main(sys.argv))
+
+def _content_manifest_failures(root: str, bundle: str) -> list[str]:
+    """Every recorded file under `bundle` must exist with its recorded sha256.
+
+    **NEW FILES ARE PERMITTED; CHANGED OR REMOVED RECORDED FILES ARE NOT.** *Growth is another party adding an output;
+    a changed recorded file is a SUBSTITUTION, which a count can never see.* An absent manifest is reported rather than
+    silently skipped -- *an unrecorded bundle is the blanket exclusion this check exists to replace.*
+    """
+    # *** RESOLVED PER-TREE, LIKE THE DECLARATION ITSELF (round 689) -- AND THE THREE CASES ARE THE SAME THREE. ***
+    #
+    # *A tree that maintaineth a DECLARATION FILE carrieth a claim about content, so it MUST carry the content record:
+    # an absent manifest there is the "blanket exclusion" report 08 forbids, and it is REPORTED.* **A tree that carries
+    # NEITHER (a reconstructed fixture, whose declared additions come from its own immutable inventory) is verifyed
+    # against that inventory, which predateth the manifest concept -- *demanding a manifest of a historical record would
+    # be demanding a shape the record never had.*
+    if not os.path.isfile(declarations_path_for(root)):
+        return []
+    path = os.path.join(root, _CONTENT_MANIFEST_RELPATH)
+    if not os.path.isfile(path):
+        return [f'no content manifest for the declared addition {bundle!r}: a tree that declareth its additions must '
+                f'record their CONTENT -- a count verifyeth a population, never a substitution']
+    try:
+        with open(path, encoding='utf-8') as stream:
+            files = json.load(stream).get('files', {}).get(bundle, {})
+    except (OSError, ValueError) as e:
+        return [f'the content manifest is unreadable: {e}']
+    if not files:
+        return [f'the content manifest carrieth no record for the declared addition {bundle!r}']
+    out: list[str] = []
+    for key, meta in files.items():
+        full = os.path.join(root, key)
+        if not os.path.isfile(full):
+            out.append(f'declared addition REMOVED a recorded file: {key}')
+        elif sha256_file(full) != meta.get('sha256'):
+            out.append(f'declared addition CHANGED a recorded file: {key}')
+    return out
+
+
+_CONTENT_MANIFEST_RELPATH = os.path.join('docs', 'production-readiness',
+                                          'ORIGINAL_CHECKOUT_ADDITIONS.hashes.json')

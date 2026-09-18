@@ -353,6 +353,85 @@ class OriginalPreservationTest(ReadinessTestCase):
                                 msg='an undeclared path must still fail verification')
 
 
+class ExternalAdditionContentTest(ReadinessTestCase):
+    """*** REPORT 08's REQUIREMENT: "EXACT PATHS/HASHES, NOT A BLANKET EXCLUSION" (round 689). ***
+
+    *`08_evidence_and_test_integrity_report.md` asketh that later legitimate additions be recorded in a manifest with
+    exact paths/hashes rather than excluded wholesale.* **AND A COUNT IS THE BLANKET EXCLUSION: MEASURED BEFORE THIS
+    COURT EXISTED, tampering one file's CONTENTS inside a declared bundle left the count identical and the verification
+    GREEN -- so a SUBSTITUTION inside audit evidence was undetectable.**
+
+    THESE ARMS DRIVE THE CONTENT CHECK DIRECTLY, because the same check inside `verify_preservation` only runneth when a
+    tree carrieth its own declaration file -- *and a control that only runs in one mode is a control half the time.*
+    """
+
+    def test_w01_the_manifest_recordeth_content_not_only_a_count(self):
+        """*** THE POSITIVE CONTROL, AND IT BUILDS ITS OWN TREE SO IT NEVER SKIPS. ***
+
+        *A `skipTest` here would mean the control DID NOT RUN in whichever mode lacked the manifest -- and a skipped arm
+        measured nothing.* **THE ARMS THEREFORE CARRY THEIR OWN MINIMAL TREE**, so all three run in BOTH modes and the
+        suite's lane control (which refuseth skips) is satisfied by EXECUTION rather than by an exemption.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _ = self._fixture_with_manifest(tmp)
+            _path, doc = None, json.load(open(os.path.join(
+                root, 'docs', 'production-readiness', 'ORIGINAL_CHECKOUT_ADDITIONS.hashes.json'),
+                encoding='utf-8'))
+            files = doc.get('files') or {}
+            self.assertTrue(files, 'the manifest must record at least one declared addition')
+            total = sum(len(v) for v in files.values())
+            self.assertGreater(total, 0, 'the manifest must record file hashes, not an empty population')
+            for bundle, entries in files.items():
+                for key, meta in entries.items():
+                    self.assertIn('sha256', meta, f'{key} carrieth no hash')
+                    self.assertEqual(len(meta['sha256']), 64, f'{key} carrieth a malformed hash')
+
+    def _fixture_with_manifest(self, tmp):
+        """A minimal tree: one declared bundle of two files, a manifest recording them, and a declaration file."""
+        root = os.path.join(tmp, 'checkout')
+        os.makedirs(os.path.join(root, 'docs', 'production-readiness'))
+        bundle = os.path.join(root, 'EXT')
+        os.makedirs(bundle)
+        paths = []
+        for name in ('a.txt', 'b.txt'):
+            p = os.path.join(bundle, name)
+            with open(p, 'w', encoding='utf-8') as fh:
+                fh.write('original ' + name)
+            paths.append(p)
+        entries = {os.path.relpath(p, root): {'sha256': preserve.sha256_file(p),
+                                              'size': os.path.getsize(p)} for p in paths}
+        base = os.path.join(root, 'docs', 'production-readiness')
+        with open(os.path.join(base, 'ORIGINAL_CHECKOUT_ADDITIONS.hashes.json'), 'w', encoding='utf-8') as fh:
+            json.dump({'files': {'EXT': entries}}, fh)
+        with open(os.path.join(base, 'ORIGINAL_CHECKOUT_ADDITIONS.json'), 'w', encoding='utf-8') as fh:
+            json.dump({'additions': [{'path': 'EXT', 'entries': 2, 'grows': True}]}, fh)
+        return root, paths
+
+    def test_w02_a_changed_recorded_file_is_refused(self):
+        """*** THE DEFECT THIS COURT EXISTS FOR: a SUBSTITUTION inside a declared bundle. ***"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, paths = self._fixture_with_manifest(tmp)
+            a = paths[0]
+            clean = preserve._content_manifest_failures(root, 'EXT')
+            self.assertEqual([], clean, 'a pristine bundle must pass: ' + repr(clean))
+
+            # *** TAMPER ONE FILE'S CONTENTS, LEAVING THE COUNT IDENTICAL. ***
+            with open(a, 'w', encoding='utf-8') as fh: fh.write('SUBSTITUTED')
+            failures = preserve._content_manifest_failures(root, 'EXT')
+            self.assertNotEmpty([f for f in failures if 'CHANGED' in f],
+                                msg='a changed recorded file must be refused -- a count cannot see this')
+
+    def test_w03_a_removed_recorded_file_is_refused(self):
+        """And REMOVAL is refused too: removed audit evidence is a failure, not a repair."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, paths = self._fixture_with_manifest(tmp)
+            a = paths[0]
+            os.remove(a)
+            failures = preserve._content_manifest_failures(root, 'EXT')
+            self.assertNotEmpty([f for f in failures if 'REMOVED' in f],
+                                msg='a removed recorded file must be refused')
+
+
 class FixtureClassificationTest(ReadinessTestCase):
     """Distinguish ignored debug fixtures from approved inputs and noise."""
 

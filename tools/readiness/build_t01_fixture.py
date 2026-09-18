@@ -116,6 +116,10 @@ def add_declared(repo, dest, inv):
         src = os.path.join(repo, entry['path'])
         if os.path.isdir(src) and not os.path.exists(os.path.join(dest, entry['path'])):
             shutil.copytree(src, os.path.join(dest, entry['path']))
+    # *** NO CONTENT MANIFEST IS COPIED EITHER, AND FOR THE SAME REASON AS THE DECLARATION: *** resolution is per-tree,
+    # so a fixture carrying neither is verified against its OWN immutable inventory -- *which predateth the manifest
+    # concept.* **A fixture carrying a declaration file but no manifest is REPORTED by name rather than silently
+    # skipped**, so the escape is closed in the direction that matters.
     return dest
 
 

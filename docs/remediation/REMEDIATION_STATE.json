@@ -13765,6 +13765,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-002/round687-the-sweep-for-the-shape-and-its-exhaustion.log",
    "sha256": "c4fc92dfbb07087af32396865246c64464d313b60940e1f2cb71ef19ac3cc477",
    "correction": "THE SWEEP FOR THE SHAPE, AND ITS EXHAUSTION. Rounds 683 and 685 found the SAME DEFECT THREE TIMES IN THREE CONTAINERS -- a control asserting strings a DEAD LOCAL supplied (R18); a declared field the open path never read while passing a hardcoded literal (peer store); and an arm that could not see the APPLIED attribute weakened while its own comment claimed it could (message store). **THE SHAPE: A NAME -- A FIELD, A STRING, A CONSTANT -- ASSERTING SOMETHING THE MECHANISM DOES NOT PROVIDE.** SWEPT MECHANICALLY: (1) Swift production single-use `let` bindings -> 4 hits, ALL public struct fields (`peerLabel`, `outgoing`, `authorityNote`, `sendCount`), which callers read; NO DEAD FIELD REMAINS. (2) The narrower signature -- an internal/private field with a literal value, never read, while a same-type literal is passed nearby -> ZERO HITS; the exact shape that produced the peer-store defect is GONE. (3) Android production single-use properties -> 105 hits, inspected as public API and enum members (`bleTransportForWipe`, `statusFlow`, `MESH`, `isReady`, `recordSeq`); **THE ANDROID ISLE DID NOT CARRY THE SHAPE.** AND EXHAUSTION IS STATED PRECISELY: it means no further instance of THIS SHAPE is findable BY THIS METHOD -- not that the tree is clean. A mechanical scan cannot find a comment claiming the wrong thing, a semantic mismatch between two agreeing components, or a control whose ASSERTION is weaker than its name; TWO OF THE THREE INSTANCES WERE OF THAT SECOND KIND, found by MUTATION rather than grep. AND THE THREE REPAIRS STAND, EACH MUTATION-PROVEN, with none claiming an enforcement result: physical enforcement remains a device gate."
+  },
+  {
+   "round": 689,
+   "finding": "GS-CTRL-002",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/round689-exact-paths-and-hashes-not-a-blanket-exclusion.log",
+   "sha256": "58cc16700121edf69ef6f8991f4ecbd9157ec8d03769ec8132b484de49bb36b2",
+   "correction": "REPORT 08'S REQUIREMENT WAS UNMET AND IS NOW MET: *\"Record later legitimate additions in a new independently reviewed manifest with EXACT PATHS/HASHES, NOT A BLANKET EXCLUSION of the entire audit directory.\"* **THE DECLARATION COMPARED ONLY COUNTS -- AND A COUNT IS THE BLANKET EXCLUSION ONE LAYER DOWN: it verifies a POPULATION and never a SUBSTITUTION.** MEASURED BEFORE WRITING ANYTHING: tampering ONE FILE'S CONTENTS inside a declared bundle, leaving the entry count identical, produced **NO failure** -- so a substitution inside audit evidence was undetectable. BUILT: `tools/readiness/declare_external_addition.py` writes and checks `ORIGINAL_CHECKOUT_ADDITIONS.hashes.json` -- **392 file hashes across the two declared bundles** -- with the count-floor's own three cases one layer more precise: a RECORDED path whose BYTES changed FAILS; a RECORDED path now ABSENT FAILS; a NEW path is PERMITTED (the folders are written by another party's process and grow). **SO GROWTH STAYS PERMITTED AND CONTENT CHANGES DO NOT, WHICH IS THE DISTINCTION THE COUNT COULD NOT DRAW.** AND IT IS WIRED INTO `preserve.py`, resolved PER-TREE like the declaration itself, so it is not a script a maintainer must remember: a tree carrying a declaration must carry the content record (an absent manifest is REPORTED, not skipped), while a reconstructed fixture is verified against its own immutable inventory, which predates the manifest concept. CAUSAL PROOF IN BOTH DIRECTIONS: clean tree 0 failures; the tamper gives *\"declared addition CHANGED a recorded file ... *Growth is adding files; a changed RECORDED file is a substitution, not growth.\"*\" THREE ARMS IN `ExternalAdditionContentTest`, EACH BUILDING ITS OWN TREE SO NONE SKIPS -- and a skipped arm measured nothing. MEASURED: readiness suite in designed fixture mode **664 passed, 0 failed, 0 skipped** (was 661)."
   }
  ],
  "phase_one": {
@@ -14572,7 +14579,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "bf043445ba30cc287f727165f12ddff9041ae273",
+  "candidate_sha": "5a4eb5138d096f414a165b660031996e7346840a",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

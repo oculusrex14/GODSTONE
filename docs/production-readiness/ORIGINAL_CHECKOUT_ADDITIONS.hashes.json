@@ -1,0 +1,1579 @@
+{
+ "files": {
+  "AUDIT_FINAL_2026-09-15": {
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-001-AUDIT_REPORT.md": {
+    "sha256": "0700118ec2bceb34d896b188d5aa31c1e049558bae0dcd85def2ba0b349d7cbf",
+    "size": 14541
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-001-AUDIT_STATE.json": {
+    "sha256": "2658f388883a4c70737fbb5cd7e2539c23dd63e4cd5d9bfd88136712f2df9ee9",
+    "size": 1051
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-001-EVIDENCE_MANIFEST.json": {
+    "sha256": "cabb3a79f4a014dd1aeaaaf32398bfd7896e3d55a0e63307a5a860fd49fec909",
+    "size": 7512
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-001-FINDINGS.json": {
+    "sha256": "550e42f091c61ba66b1b333afcbbd3d869c746e7b0936ed2eca98658b668154b",
+    "size": 89876
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-001-MAINTENANCE.md": {
+    "sha256": "4e9b2bd74f2767497b68ec240888cac1ff93a371299122dfdabafdf5cf1b164a",
+    "size": 4078
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-001-QWEN_REMEDIATION_QUEUE.md": {
+    "sha256": "2d310bc3879867b70f5df1538e280602195cbee59416372e4566973a05d6a9c0",
+    "size": 9416
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-001-TASK_COVERAGE.json": {
+    "sha256": "ead325c6263b66ea4b8eb3b794ede48985bb14c750ddb381c7fd3ab8800d39c9",
+    "size": 12806
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-002-AUDIT_REPORT.md": {
+    "sha256": "184532855e308f44eb13e3fc28f2da3319be74521374dc105511c41d16fa2607",
+    "size": 12206
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-002-AUDIT_STATE.json": {
+    "sha256": "4dddac0cdeac890f8afa9b4ec14e2f9234a5bcecccbcc1bf1a34c4af28d4b252",
+    "size": 1526
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-002-AUDIT_VALIDATION.json": {
+    "sha256": "94912d4d625d2351de2f739ef06356d912940ea5da95b4c9e3da49564f395b4d",
+    "size": 288
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-002-EVIDENCE_MANIFEST.json": {
+    "sha256": "21106969171445fc2880414c62780c93acc649ed4bb93e0ae7444c5704bfe7d1",
+    "size": 13140
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-002-FINDINGS.json": {
+    "sha256": "6b58158729cc6f5732fcc07f543bc7f11a10517d832d99c9e6c6dbd6757ae921",
+    "size": 201811
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-002-MAINTENANCE.md": {
+    "sha256": "6cb6c3a061bee8a3e7c4cd0c814396101cbfe9aef8ce58e019d6cebfa0285efe",
+    "size": 4780
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-002-QWEN_REMEDIATION_QUEUE.md": {
+    "sha256": "0e0c58e1234dde202f6d6882ad68a94e00f0d0f1fa58cd6ce73f169d366cfa13",
+    "size": 12183
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-002-TASK_COVERAGE.json": {
+    "sha256": "52e82370e82890bcb035c483d13e1b037845951b4efacc9418b220604dd99a52",
+    "size": 29056
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-AUDIT_REPORT.md": {
+    "sha256": "820c097a928601a1261c48758bb983ff38b4d4fa65246872e5b306f2a7e9c958",
+    "size": 17984
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-AUDIT_STATE.json": {
+    "sha256": "33d083dcf3ed4b1a8e1a0eba2c0bc7f8d45c777c3e0ee8fb6972323fa70364be",
+    "size": 2160
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-AUDIT_VALIDATION-02.json": {
+    "sha256": "cdc0fe88b94a681e0cb9a00985dc73ba3dce290f07500e0e4f1c543935cbaefe",
+    "size": 673
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-AUDIT_VALIDATION.json": {
+    "sha256": "0223b211e33a970585426ef907dae2232d9b3eb9ce2db9bd962587055831adf9",
+    "size": 1109
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-EVIDENCE_MANIFEST-02.json": {
+    "sha256": "1d5a67f8252d7732c0eb9f0cce14907b2b26533bf01b7a6eed2baecff56da42c",
+    "size": 34804
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-EVIDENCE_MANIFEST.json": {
+    "sha256": "9828d1350de2519ade077038f2ecab6e72205dbb76f0c1f785b3b7997eb62a79",
+    "size": 34228
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-FINAL_REMEDIATION_DETAILS.md": {
+    "sha256": "f3e0ec975a6bb774891d191d5ab3f2eea77b827128add4efc56537ff7914b02d",
+    "size": 37270
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-FINDINGS.json": {
+    "sha256": "dad27c996fe1aaa8ce3056318fab4ccbed0ce690229bc5fc0070d4f0769a4df4",
+    "size": 270583
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-MAINTENANCE.md": {
+    "sha256": "7aee4c5809aeb11b91eb235ada66a27d4a66e0f0a82641700c1f628b1c9e22f2",
+    "size": 806
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-QWEN_REMEDIATION_QUEUE.md": {
+    "sha256": "dff920517fefa372307206d691a5b47eed7134b46b14f8c79055e280ce2fd783",
+    "size": 4666
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-AUDIT_REPORT.md": {
+    "sha256": "ce7944b835d138458ceda5279516cfdb5111b5d7c1ff34c16c9ba3cfadf25771",
+    "size": 21978
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-AUDIT_STATE.json": {
+    "sha256": "c302a15e1923a87bc139c2528f3332a02378f71cd6cff322cc2c0d530ffc79b1",
+    "size": 3964
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-AUDIT_VALIDATION.json": {
+    "sha256": "9f00cd211db2ad3550e1fd2abff8b1839422719e64819224d8395a0d1144101a",
+    "size": 1453
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-CLOSURE_AMENDMENTS_R1.md": {
+    "sha256": "bf1f9447403c235f0d914333600e2b49ac26e7f7613e523b9380509c59723c73",
+    "size": 17077
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-EVIDENCE_MANIFEST.json": {
+    "sha256": "f8b8e7a6a66e3b65dd8e5b947d70380fc18a6aa77696fd69ce6ba2fdf6d613cb",
+    "size": 41434
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-FEEDBACK_REVIEW_R1.md": {
+    "sha256": "d9e910a386ddf861e70191a492efb8a96371a0419e950c723efd4f788abe81c3",
+    "size": 5608
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-FINAL_REMEDIATION_DETAILS.md": {
+    "sha256": "f3e0ec975a6bb774891d191d5ab3f2eea77b827128add4efc56537ff7914b02d",
+    "size": 37270
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-FINDINGS.json": {
+    "sha256": "d2ef1c3d59f37eeb74f765634e9a3b2deecd70fc4160abdd1af97f0c1a1d9ff6",
+    "size": 279472
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-MAINTENANCE.md": {
+    "sha256": "5d0ff8ed3a94d007491d4d6d7161dc60fc011a98186c8baf12a5f5db9408abc6",
+    "size": 1562
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-AUDIT_REPORT.md": {
+    "sha256": "820c097a928601a1261c48758bb983ff38b4d4fa65246872e5b306f2a7e9c958",
+    "size": 17984
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-AUDIT_STATE.json": {
+    "sha256": "33d083dcf3ed4b1a8e1a0eba2c0bc7f8d45c777c3e0ee8fb6972323fa70364be",
+    "size": 2160
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-AUDIT_VALIDATION.json": {
+    "sha256": "cdc0fe88b94a681e0cb9a00985dc73ba3dce290f07500e0e4f1c543935cbaefe",
+    "size": 673
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-EVIDENCE_MANIFEST.json": {
+    "sha256": "1d5a67f8252d7732c0eb9f0cce14907b2b26533bf01b7a6eed2baecff56da42c",
+    "size": 34804
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-FINAL_REMEDIATION_DETAILS.md": {
+    "sha256": "f3e0ec975a6bb774891d191d5ab3f2eea77b827128add4efc56537ff7914b02d",
+    "size": 37270
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-FINDINGS.json": {
+    "sha256": "dad27c996fe1aaa8ce3056318fab4ccbed0ce690229bc5fc0070d4f0769a4df4",
+    "size": 270583
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-MAINTENANCE.md": {
+    "sha256": "7aee4c5809aeb11b91eb235ada66a27d4a66e0f0a82641700c1f628b1c9e22f2",
+    "size": 806
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-QWEN_REMEDIATION_QUEUE.md": {
+    "sha256": "dff920517fefa372307206d691a5b47eed7134b46b14f8c79055e280ce2fd783",
+    "size": 4666
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-README.md": {
+    "sha256": "16c0ba2c34ca38c1431496bc3467a0a590488f9cb64c41115f0931b0c4fb6887",
+    "size": 403
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-TASK_COVERAGE.json": {
+    "sha256": "4975d4aa680a7c7f7bb9a3cfe4aae9d96ca150478933b9ea2df74ad3a3d97df6",
+    "size": 52444
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-PRE-TASK_COVERAGE.md": {
+    "sha256": "94478a41942aeca38f628758ff30adbaae200a9bc01d55380a6a3387a0e18b44",
+    "size": 10574
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-QWEN_REMEDIATION_QUEUE.md": {
+    "sha256": "2cd88406e20b88107e42a0c9966b629e182bada3158e7baec9b3f7550eba668b",
+    "size": 13748
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-README.md": {
+    "sha256": "93bcb03de42ef0b85a11184f706ce31bcb7342a55387fe21146c2ebdb8e4907c",
+    "size": 787
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-REPAIR_PLAN.json": {
+    "sha256": "095c0a1237bb1c580fee6b344cac197fffbc4217c5e0525d504f53db81e602be",
+    "size": 13744
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-TASK_COVERAGE.json": {
+    "sha256": "fa00af7368218377181488431928d87b922bfa74244b3d20bfb417a7668a2236",
+    "size": 53938
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-R1-TASK_COVERAGE.md": {
+    "sha256": "2afb1944446560908af0dc679f40b8d23fd2c49bceb67e87de709a4529575e93",
+    "size": 11061
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-TASK_COVERAGE.json": {
+    "sha256": "4975d4aa680a7c7f7bb9a3cfe4aae9d96ca150478933b9ea2df74ad3a3d97df6",
+    "size": 52444
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_HISTORY/AUDIT-003-TASK_COVERAGE.md": {
+    "sha256": "94478a41942aeca38f628758ff30adbaae200a9bc01d55380a6a3387a0e18b44",
+    "size": 10574
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_REPORT.md": {
+    "sha256": "ce7944b835d138458ceda5279516cfdb5111b5d7c1ff34c16c9ba3cfadf25771",
+    "size": 21978
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_STATE.json": {
+    "sha256": "c302a15e1923a87bc139c2528f3332a02378f71cd6cff322cc2c0d530ffc79b1",
+    "size": 3964
+   },
+   "AUDIT_FINAL_2026-09-15/AUDIT_VALIDATION.json": {
+    "sha256": "9f00cd211db2ad3550e1fd2abff8b1839422719e64819224d8395a0d1144101a",
+    "size": 1453
+   },
+   "AUDIT_FINAL_2026-09-15/EVIDENCE_MANIFEST.json": {
+    "sha256": "f8b8e7a6a66e3b65dd8e5b947d70380fc18a6aa77696fd69ce6ba2fdf6d613cb",
+    "size": 41434
+   },
+   "AUDIT_FINAL_2026-09-15/FEEDBACK_REVIEW_R1.md": {
+    "sha256": "d9e910a386ddf861e70191a492efb8a96371a0419e950c723efd4f788abe81c3",
+    "size": 5608
+   },
+   "AUDIT_FINAL_2026-09-15/FINAL_REMEDIATION_DETAILS.md": {
+    "sha256": "f3e0ec975a6bb774891d191d5ab3f2eea77b827128add4efc56537ff7914b02d",
+    "size": 37270
+   },
+   "AUDIT_FINAL_2026-09-15/FINDINGS.json": {
+    "sha256": "d2ef1c3d59f37eeb74f765634e9a3b2deecd70fc4160abdd1af97f0c1a1d9ff6",
+    "size": 279472
+   },
+   "AUDIT_FINAL_2026-09-15/MAINTENANCE.md": {
+    "sha256": "5d0ff8ed3a94d007491d4d6d7161dc60fc011a98186c8baf12a5f5db9408abc6",
+    "size": 1562
+   },
+   "AUDIT_FINAL_2026-09-15/PRIOR_AUDIT_REPORT.md": {
+    "sha256": "184532855e308f44eb13e3fc28f2da3319be74521374dc105511c41d16fa2607",
+    "size": 12206
+   },
+   "AUDIT_FINAL_2026-09-15/PRIOR_QWEN_REMEDIATION_QUEUE.md": {
+    "sha256": "0e0c58e1234dde202f6d6882ad68a94e00f0d0f1fa58cd6ce73f169d366cfa13",
+    "size": 12183
+   },
+   "AUDIT_FINAL_2026-09-15/QWEN_REMEDIATION_QUEUE.md": {
+    "sha256": "2cd88406e20b88107e42a0c9966b629e182bada3158e7baec9b3f7550eba668b",
+    "size": 13748
+   },
+   "AUDIT_FINAL_2026-09-15/README.md": {
+    "sha256": "93bcb03de42ef0b85a11184f706ce31bcb7342a55387fe21146c2ebdb8e4907c",
+    "size": 787
+   },
+   "AUDIT_FINAL_2026-09-15/REPAIR_PLAN.json": {
+    "sha256": "095c0a1237bb1c580fee6b344cac197fffbc4217c5e0525d504f53db81e602be",
+    "size": 13744
+   },
+   "AUDIT_FINAL_2026-09-15/TASK_COVERAGE.json": {
+    "sha256": "fa00af7368218377181488431928d87b922bfa74244b3d20bfb417a7668a2236",
+    "size": 53938
+   },
+   "AUDIT_FINAL_2026-09-15/TASK_COVERAGE.md": {
+    "sha256": "2afb1944446560908af0dc679f40b8d23fd2c49bceb67e87de709a4529575e93",
+    "size": 11061
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md": {
+    "sha256": "3a53ac30ec1171ffe3e4527b5740386414ed59a2ca962c22fd7cd386898e9bc9",
+    "size": 14990
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md": {
+    "sha256": "bf9943005306da1107b6a82ae17483cf962103a866dbaf21e06114cf845c948e",
+    "size": 20834
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/ArchiveAuditProbe.kt": {
+    "sha256": "dfe07a577be6723e5c0c5c7d6424d65f3936d485531c4d0289d304a0bfd58938",
+    "size": 1985
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/ArchiveTrustProbe.swift": {
+    "sha256": "954145c7164e3ab3d2b6cfbd90172f2a518fbbfe096627509aa3ec0a29349f55",
+    "size": 970
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/android-compile-attempt1-missing-compiler-dependency.log": {
+    "sha256": "947a098ec4773b84683edacc24ab77144d71849ea3657a58d5a1241b3ae229e6",
+    "size": 2747
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/android-compile-command.json": {
+    "sha256": "9bd48b8db6dad23ca3236142a05bf97af8ebe5c91bca1d233ae6679d33d5edd8",
+    "size": 2998
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/android-compile.log": {
+    "sha256": "0c0ff70c11dced589cdd28287ae33af6b555767a36982e1aa061864e04404dd5",
+    "size": 1146
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/android-probe-attempt1-fixture-index-order.log": {
+    "sha256": "20d247a9512fcbfc3b98d309ae7bad92339c945a7d45643947c29b3c526ea7c8",
+    "size": 857
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/android-probe.log": {
+    "sha256": "bb924ce5fab61be91b1839d1314f4d653bb12e95b13afccd5769ba5c4111c774",
+    "size": 857
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/android-run-command.json": {
+    "sha256": "b02858258c173c2c55dc8b5b71d2bb03e6344901124b2a253a4c937da1d2af74",
+    "size": 942
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/android-source-checksums.json": {
+    "sha256": "f06858a7cfbe161e160e39e17629f42c00a20e6cd244b31f023aa4a7108214b5",
+    "size": 1365
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/coverage.json": {
+    "sha256": "9ff4c7f7b8f7d605220937468a536705327fc450c4668f80ea6d680e5fca5131",
+    "size": 1387
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/evidence-checksums.json": {
+    "sha256": "a6b5ea05757d57563b57d05177aa661c5ce702a9e445d7f08d4c6e7b1451b8e1",
+    "size": 2685
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/findings.json": {
+    "sha256": "4ce78c4b288f6ea3acbca08320bdaecc56d39d5d7413012c4190d8f53a878ea8",
+    "size": 21701
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/run_android_probe.py": {
+    "sha256": "8155d8d2e77dedd0c9985c749e8d1159d1342b63a8a9946f688d676f8129f740",
+    "size": 3177
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/run_swift_probe.py": {
+    "sha256": "b9abe202e899e673c433f3bf866bfc1d27180022482054a3a9f17e649b04f73c",
+    "size": 1307
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/run_swift_probe_b439f35f.py": {
+    "sha256": "f12eda260074cde67121f0a80cc2bf33fb216a1e3a71504dc7d07f89cabb4dbc",
+    "size": 1392
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/source-carry-forward.json": {
+    "sha256": "3e89c1322054cc00d3ae75a90d99388271b6b2c5b2968716de4aca0cd9da7607",
+    "size": 3563
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-b439f35f-compile-command.json": {
+    "sha256": "1665ff6177bd5616733e758c687a2f97816d9783a46c60fbbb2be17997aafb33",
+    "size": 816
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-b439f35f-compile.log": {
+    "sha256": "c9378b22067102e0f70bd92e3a921bdf3e2d7d65394997bf65e8cd3162d7ab87",
+    "size": 6891
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-b439f35f-probe.log": {
+    "sha256": "b543edd3ef9c76824ed54f2666228f23361566fa53df35e86ea8639d24feff04",
+    "size": 395
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-b439f35f-run-command.json": {
+    "sha256": "ff8bc43bf50a4754ef0b2c4b1e3aa51474ed510f1ee564ea302340ee5b4e0344",
+    "size": 111
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-b439f35f-source-checksums.json": {
+    "sha256": "fa701346cbf883c0c145d63c77a0a552d0476fc3860dd666b599249ded46b1e5",
+    "size": 1086
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-build-b439f35f/archive_light.db": {
+    "sha256": "471388f0c4258a3a28e071fddd212aadade0b2c789e3379d51fa64993acb7588",
+    "size": 81920
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-build/archive_light.db": {
+    "sha256": "471388f0c4258a3a28e071fddd212aadade0b2c789e3379d51fa64993acb7588",
+    "size": 81920
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-compile-command.json": {
+    "sha256": "25f310624986f12ca17a1d95c66da2a55ed3a073aa829eb06dfe5556c2b44a02",
+    "size": 691
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-compile.log": {
+    "sha256": "08f3d4752286edb82f1175f36ac1fcbd32701bd1a5986e78f3278535ede4dac1",
+    "size": 6249
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-probe.log": {
+    "sha256": "d3edd3f542e3ad846a8097c5fb98e6f2ae292b68d6b72eddef3247e7484bb245",
+    "size": 377
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-run-command.json": {
+    "sha256": "6521508ef7b3a78db0a23806d91fd1358eeed7f20c9435246cd86deefdc7f418",
+    "size": 102
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/swift-source-checksums.json": {
+    "sha256": "8f68781306cf17037a511623cf4d23ebbde5ae2ef9559fe842ce13f86075b21f",
+    "size": 902
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/archive/write_archive_findings.py": {
+    "sha256": "15da0676ce0ef646b3d2c43d7a877a737e829a21ce643a65adc99c3c107bd967",
+    "size": 23224
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/CHECKSUMS.sha256": {
+    "sha256": "139bde497ffd412cb1fec6814ebf3e31e2aa1cbd97bec10140109151a20db60e",
+    "size": 1015
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/FINDINGS.md": {
+    "sha256": "df07f4f26ca148e3a826842236446245909fc5599f689384c49c1c2356917dd9",
+    "size": 19697
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/audit-content-current-b439f35f-v2.log": {
+    "sha256": "5cda04a83fdba19d268df320b6bd6b4d11c5366b87b428b57baa64225cacc946",
+    "size": 12197
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/audit-content-current-b439f35f.log": {
+    "sha256": "f5eb512a32a55a4f6dc59f5e8ff363a757545502ead73933d1b90453e4aa168d",
+    "size": 10985
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/audit-content-tests-b439f35f.log": {
+    "sha256": "1d73b9cf9168f0a66d42f15143f3d93c4c8aeeea79d99749c7e6189b161d0b19",
+    "size": 9743
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/audit-content-tests.log": {
+    "sha256": "e5c8e9302dabe6a44805bcf1f5c65ad9955ed526d828f16583428f1bf53c2a50",
+    "size": 8867
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/audit_content_current_tests.py": {
+    "sha256": "53d16ce6d209c729951674ba19cd56fab9204a69b279b3f3a14f2c7e747b30b9",
+    "size": 5900
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/audit_content_tests.py": {
+    "sha256": "dbda887b24cef56f09ffa3962a8f6185d44c9f451314b8d6037f25f6d2238c9c",
+    "size": 7169
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/builder-focused-tests-b439f35f.log": {
+    "sha256": "a4cc9202d82d2e7ef645c470ba53473f06be29e8e2ce836d1a6ad0b49d1a320a",
+    "size": 12564
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/builder-focused-tests.log": {
+    "sha256": "fe365b32bca6a94a807cf382997e4f2dc3542e48e773f1d2c445893f8c49f151",
+    "size": 12260
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/findings.json": {
+    "sha256": "4b88058e8477e1a265e341f5dfb3b42fff26392d3bf45b7101e0c62773008087",
+    "size": 19529
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/content/write_findings.py": {
+    "sha256": "de2552c20826c8026853c5e89e0d99626458995f95a37f22ee6b255fce20524e",
+    "size": 19853
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/latest-builder-observation.json": {
+    "sha256": "a8e2f205540e90bcbbb079ae31d9efe70e372cc1ee894499d42b2f3ecba6f1c7",
+    "size": 7531
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/Audit002RecipientTests.swift": {
+    "sha256": "9814e3a5122180c8073083a2271192ca01365b97b4da9eb91bc2a092e4612118",
+    "size": 16532
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/CHECKSUMS.json": {
+    "sha256": "edaf3637f86bbe79c673e903d0c0268bd3096e78139daee6d80133de672f00dd",
+    "size": 761
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/findings.json": {
+    "sha256": "2ed6ae4e4aca252da59d9afc76b7e99bef21415be50b8c43eab557e25040cd2c",
+    "size": 29988
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/findings.md": {
+    "sha256": "d0c84bde6f64d5516c8916dd52046c1608ae71be151de221c9811cc816ed52f8",
+    "size": 19989
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/probe-command.json": {
+    "sha256": "98a9071b189803b3456196d67efd432c2738d92abaeb7f505ebe5c6761c67ae1",
+    "size": 1218
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/probe-package/Package.swift": {
+    "sha256": "bc841b5755f1e5b67546235aa9dc51b0e2afea821747a02cc03d4de83a199645",
+    "size": 333
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/probe-package/Tests/GodstoneMeshTests/Audit002RecipientTests.swift": {
+    "sha256": "9814e3a5122180c8073083a2271192ca01365b97b4da9eb91bc2a092e4612118",
+    "size": 16532
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/reviewed-source-manifest.json": {
+    "sha256": "9a8bbed2483f4c0aa788d2fbef017426b2b66625d5a4f1bbec8034da6ba29694",
+    "size": 2250
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/source-copy-manifest.json": {
+    "sha256": "4f3df4dcf3962987c63052f977dcda4be485049c16e5561b75f6867460a22470",
+    "size": 34654
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/swift-probe-attempt-1.log": {
+    "sha256": "cd8876fa6ac187fe4b225f469d2e523fd234b44c8a05e213b39b081912e5bbba",
+    "size": 459149
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/mesh_receive/write_findings.py": {
+    "sha256": "3937c2d604bbe017e7c2174357ccc492d5b172e6a9f146b2171305c2a3dfd382",
+    "size": 21215
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/model/AuditModelStaging.kt": {
+    "sha256": "279df46cc46d51c4f631cd6ff3f280820ed75f9d1573968ec8a66a7239aefc68",
+    "size": 1193
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/model/compile-command.json": {
+    "sha256": "404e62441705be45af8c939dfb6c20f8a9dc0c953d9f57643cfc124b2247037d",
+    "size": 2443
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/model/compile.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/model/probe.log": {
+    "sha256": "d0076d1668a5c15d49b163999d4b0a4c5ebbdbd0f2242f6b027bceab5943d4c9",
+    "size": 198
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/model/run-command.json": {
+    "sha256": "383466fdad770b87b3d13d172579fda9d4e4922f1ddcaf17a5167f1649bd7e0f",
+    "size": 921
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/model/source-checksums.json": {
+    "sha256": "2daf6d3ea141ade7558e58d362e9e3b49e392c5dc0252ffb84eca90647d39c9b",
+    "size": 650
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/prior-finding-source-comparison.json": {
+    "sha256": "a424bb1493ff54bbf0af4c4413e9479a0787ac80be8e77ffd9738ee7c346d568",
+    "size": 17221
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/publish_audit002.py": {
+    "sha256": "238bfd772f2a628fcf51663f2941b83d8080e783b85601c4758643de3a4cb12b",
+    "size": 19323
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/root-findings.json": {
+    "sha256": "add3ad2f81480cc4d7640af22276b61bfeee6def8f49c4fa8f633bc2b9614c1d",
+    "size": 14691
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/sos_sync/Audit002SosSyncTest.kt": {
+    "sha256": "a86d2e31e4f67029c826f4349f99046a245da972128436c9a215fbcb1cf61192",
+    "size": 3822
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/sos_sync/command.json": {
+    "sha256": "8df9cc0bb64ced77d6fc86f407678410dc26da0fcf9628da710d3d3f3299ab8f",
+    "size": 283
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/sos_sync/gradle-probe.log": {
+    "sha256": "844e9b85b5e98a2fcb31fa3338d8e09271497c6e0a6bc1eea11cffe157d5f31a",
+    "size": 5604
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/sos_sync/xml/TEST-io.godstone.mesh.readiness.Audit002SosSyncTest.xml": {
+    "sha256": "a87e45ca071df61a3486237176b5d6d0ff61019aa7f36c6a4b941c46827f36cf",
+    "size": 20560
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-002/write_root_delta.py": {
+    "sha256": "bc832462e0a1589b98649fe85c3f1f30b185acc5600153ffb751b048bdcaf759",
+    "size": 13950
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/BleTransport.kt.extract.txt": {
+    "sha256": "c3f42bb269572a0c7cd43d7fdba4feaaf5b67d5a8527fad5da55c3f3cbe8e21c",
+    "size": 9283
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/RecordWriter.kt.extract.txt": {
+    "sha256": "d92d0c2e3830e21774cdfbcbcfeb26146cdea2cd01fe0295531a033f64842546",
+    "size": 1476
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/build.gradle.kts.profile-extract.txt": {
+    "sha256": "4ae349730afd0a331d0c9449af48c19465bd82c21f112295af4d6586363217b3",
+    "size": 2235
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/capabilities.py.profile-extract.txt": {
+    "sha256": "5c595539b93c2e92f79ff6c1f6c7e544e0d3d63bc2dea4599b164ec7a492a22a",
+    "size": 2600
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/clean-after-t77.txt": {
+    "sha256": "92d402f509a98365d460203af88de7073da0f9ce466eb71c9f9e2ff1f2af7f2c",
+    "size": 27
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/clean-before.txt": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/exact-sha-symbols.command.json": {
+    "sha256": "08c761372103c199a3868bffc57850580134cb12de11998964389402ed3ed921",
+    "size": 357
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/exact-sha-symbols.log": {
+    "sha256": "4cc54126d074ab191d4490f900bfdc4769254efd5784f0356175c87ff1e8578d",
+    "size": 4756
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/project.yml.profile-extract.txt": {
+    "sha256": "185f75dbc362095a3f3e4a06e9b5a6193875e64eac406ed97cbb2d65728dd6ad",
+    "size": 1070
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/repository-verification.yml.extract.txt": {
+    "sha256": "7cb5f20037b05aad2f849fa0e635d986c6cdf98c323441960be581df08747ba7",
+    "size": 2521
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/run_check.py": {
+    "sha256": "e3e3b899742f6acc1808449a406a03aebbc8ed1c9287576770b898a3dd46cd02",
+    "size": 765
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/shipping-dependencies.extract.txt": {
+    "sha256": "2ce45c08a60d211d89b00fa8c7b2ec84a9f6a14a000e8533a77c8e54b7e55f98",
+    "size": 5482
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/source-extracts.json": {
+    "sha256": "7f95a1d0e1989a9e729da2770c1e527b3ccf41a9dbc1114c1af225d3e352a060",
+    "size": 1060
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/t77-exact-workflow-rehearsal.command.json": {
+    "sha256": "6b6bff5a4ae06c6e3614780f63328c29365521f6a961c002284d72c1af5998d1",
+    "size": 595
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/t77-exact-workflow-rehearsal.log": {
+    "sha256": "fde555ec20af55fe96bac1fbe7308df9929e92afa7f9d30fa3d5a9d8503f962c",
+    "size": 1423
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/t77-final-provenance.command.json": {
+    "sha256": "e9f276ba2ae65f0fec9bcb13fae93c2b88b3b6539e0cffa2fcc5c6033c2154ea",
+    "size": 438
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/t77-final-provenance.json": {
+    "sha256": "e459341574fe60aafee969de752fcdf6e5ce29d5fb3f5663831a81f94d07654a",
+    "size": 691
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/t77-final-provenance.log": {
+    "sha256": "31aa96c96ecebe551b16c8552b55c453c02eeda6af4360f95738b8de28672f73",
+    "size": 992
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/t77-recovery-rehearsal.json": {
+    "sha256": "ca5214fde268d77318099355f0f75a8090e4b88b24f90c7e352c8c986bbc0fde",
+    "size": 22885
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/task-profile-extract.json": {
+    "sha256": "3670bc3e9eb5aeb8513b2f3e5412bd08f34eb4dc549e7f17cd9039d055b08058",
+    "size": 61625
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/validate_bundle.py": {
+    "sha256": "0d609d71e8b68de2f0697d82db8ee00ac6e7d853b8b05fc29b144621f29e749d",
+    "size": 7689
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003-R1/verification-summary.json": {
+    "sha256": "63118700542a0bf12b86ec49b00c7ec81e87b50bf4a1cabce052e4fccbf03d04",
+    "size": 710
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/Audit002RecipientTests-final.swift": {
+    "sha256": "aaf573d1a51b46b589ab799c16d50d1dec809d377b06456050c11d248225305b",
+    "size": 16587
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/Audit003SyncTests.swift": {
+    "sha256": "3ad76436a3baeea5727518adbe4fe5f1fc85fa97e3f22283d2397651e86403a6",
+    "size": 3043
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/audit_final_negative_tests.py": {
+    "sha256": "63c9a4dae31dcb02408b8066a1462bd3995a45958fe401ed6e9234f9142423da",
+    "size": 6003
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/audit_runner_tests.py": {
+    "sha256": "d3a687452d73f3d857e3dda4ddc005262d6add174c8a6b15f0ba602332c2c7bd",
+    "size": 1878
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/builder-observation.json": {
+    "sha256": "80d52cd7a4b5b8c89c95af7a40c607d0973e35c714dc16ca33ad6e8e7e9b37f3",
+    "size": 1031505
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/changed-paths.txt": {
+    "sha256": "b575e6201f36752d693bdc0d5ba20480726c5bf41f2993c50e13d2a2df3673d5",
+    "size": 8915
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/completion-validator-retest.command.json": {
+    "sha256": "46ddbb893913b6dfa0466c73ea3c0a5e770ab0aae5be2441559941a1f870398b",
+    "size": 462
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/completion-validator-retest.log": {
+    "sha256": "777796b3753e6b4514eb58b817da2fea3964c4e2d14a70289dba501bea3aea50",
+    "size": 2346
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/content-retest.command.json": {
+    "sha256": "d1aa190f955d534448422628c8554c90430058ee97ab2203273f1f2ad2f89887",
+    "size": 525
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/content-retest.log": {
+    "sha256": "fafdd70ac42e27bb18bb7741d80d159b0f1b3782ac33812cdc114c6fe36a464d",
+    "size": 12314
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/content/audit_content_current_tests.py": {
+    "sha256": "53d16ce6d209c729951674ba19cd56fab9204a69b279b3f3a14f2c7e747b30b9",
+    "size": 5900
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/content/audit_content_tests.py": {
+    "sha256": "dbda887b24cef56f09ffa3962a8f6185d44c9f451314b8d6037f25f6d2238c9c",
+    "size": 7169
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/final-builder-observation.json": {
+    "sha256": "be0878e16f342323cb3c044d2ad9deaf84d015639a68cd38e1d6eef9ed1cf991",
+    "size": 165
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/final-frontier.command.json": {
+    "sha256": "7a47a98ed7800441cc1a2b15758d1be4319f9ec5cc458ff70ca1cbcdf488b01f",
+    "size": 372
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/final-frontier.log": {
+    "sha256": "c4659e633d23718808173b916346deed5b0661a646d1baa95b1db31340bf760b",
+    "size": 395
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/final-negative-probes-02.command.json": {
+    "sha256": "6b57ccbb94eb07bd63fbeb2292063c71258182d9ba5537a1705623289c411db9",
+    "size": 462
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/final-negative-probes-02.log": {
+    "sha256": "51adba5b7f6fa0e823a4cfb783a1848d75b80a159e5491d63ecc53fb0c021b7f",
+    "size": 7832
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/final-negative-probes.command.json": {
+    "sha256": "9ff437a9902d678c791aebb4ffc927e48ac6f310165dbe2c6e0a97cdf1c9fd30",
+    "size": 457
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/final-negative-probes.log": {
+    "sha256": "e2b39ef0f7365c226dcc9e303ad3d0b069cb865e2b9ef8948495b54a807a7d70",
+    "size": 7746
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/new-findings.json": {
+    "sha256": "7bdd5563ea37c2c0fd924f138dc79c0cea113e3feec859128f531438ada37538",
+    "size": 37965
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/prior-evidence-import.json": {
+    "sha256": "c18221b37771a1637a90983d3c5956a6fcb92dce778aaccca35f64b3672321ab",
+    "size": 20255
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/prior-finding-final-comparison.json": {
+    "sha256": "0b785f7a67312daa5ad17dda3c2aa8f3a834e0c8d3cc35695ca5bf11799c3c47",
+    "size": 45996
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/readiness-suite-venv.command.json": {
+    "sha256": "2f2c570923a5e27662ae7a629be0adb852a27d12237249b05167b924f5bca718",
+    "size": 507
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/readiness-suite-venv.log": {
+    "sha256": "164fecdb1a64be06d0e12a7a85587b202bec4018e5dff4fbf469bceac89d110d",
+    "size": 112995
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/readiness-suite.command.json": {
+    "sha256": "2aa50207361eeeb335e63c990c4ccb634fadc0092fd05715d45d1ceb9a6b2a81",
+    "size": 423
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/readiness-suite.log": {
+    "sha256": "8f897d963c84c8f7a993255f7975e30b51c959eca34a7013274916b41854bae3",
+    "size": 138681
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/recipient-probe-adaptation.txt": {
+    "sha256": "8f3716c6fa7875ab05580d52d00c82f3da9a354839b2126a021496a7179a5f3c",
+    "size": 239
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/recipient-retest-02.command.json": {
+    "sha256": "3e5f2b31d56645334b55283b6fe84fab0c522acc1cdf71b7df2e41602326928e",
+    "size": 654
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/recipient-retest-02.log": {
+    "sha256": "40a182c3e7068d726dc903dba83bb89bdec47cc526d04814b85e5825c8c15667",
+    "size": 550217
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/recipient-retest-03.command.json": {
+    "sha256": "8a1617a768bb5761a4793c67a64af4ed54175e5cb5b20d47e85a7a20fa15e964",
+    "size": 656
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/recipient-retest-03.log": {
+    "sha256": "f9c52403aa96e070750e97a7a3a1b1c645c0bc70899c88fcf5dad0b03104ecc2",
+    "size": 4623
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/recipient-retest.command.json": {
+    "sha256": "0ea53ca42f2382392b08c845412810f93d899c80c789e3b1fcd4db932fb7cab5",
+    "size": 555
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/recipient-retest.log": {
+    "sha256": "00690f1e03939acd1c3088e5c6977b50adf8b4d579b66d1791b84fc8075f16a8",
+    "size": 3713
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/run_check.py": {
+    "sha256": "e3e3b899742f6acc1808449a406a03aebbc8ed1c9287576770b898a3dd46cd02",
+    "size": 765
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source-caller-searches.txt": {
+    "sha256": "c06619b9ddef72463f9ec05d82d25ec71f971c30af18dcec30266edd87d4a388",
+    "size": 7311
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source-snapshot-c683a2bf.tar.gz": {
+    "sha256": "6d56ba9a7903d53e7b83af4e1533fbb755162baa10e17e20d4121dd542c9e90b",
+    "size": 5168541
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/app/src/main/java/io/godstone/app/mesh/MeshViewModel.kt": {
+    "sha256": "a92c969b05e33c879c264f0e1a7a6d10d88f81e9c747140147c787af4a9c6508",
+    "size": 9541
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/app/src/main/java/io/godstone/app/trust/IdentityTrustViewModel.kt": {
+    "sha256": "654f37c4f163b5bd561610d4395241a65ca7e0a250d961c266c28719e3b5bf66",
+    "size": 13886
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreens.kt": {
+    "sha256": "e45da37a9b46e9a632eb53d7f88b6e26f76ea83e1db56b0d142771f3c3a1e452",
+    "size": 5655
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/labmesh/src/main/AndroidManifest.xml": {
+    "sha256": "96354d5f2871ff013118a102da0d8dc41ae577616f3220512a7ab7552e47b867",
+    "size": 1255
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/labmesh/src/main/java/io/godstone/labmesh/LabMeshApp.kt": {
+    "sha256": "a8203dacd142206f30f35c68beacd949c514bafb7bdaa2e471575ccf67b753cd",
+    "size": 1951
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt": {
+    "sha256": "1602879a4c5db80dc0619d256f509145b1a97bf7d3d20f9a88c5dd99256316c7",
+    "size": 44979
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt": {
+    "sha256": "eec79b0aa479dd20382f2f6b69c4c43e945a754790a9118c10459c463e39f610",
+    "size": 8062
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/mesh/src/main/java/io/godstone/mesh/diag/Diagnostics.kt": {
+    "sha256": "2947d9b49589089466feeea6ba00300e8742d093ee8439bb3510303cb4f8b524",
+    "size": 7010
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt": {
+    "sha256": "ae7f835337d637639e700dcf5702fa62291de5c3e4ad0995588886a750f83f92",
+    "size": 23551
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/mesh/src/main/java/io/godstone/mesh/runtime/ComposedRuntime.kt": {
+    "sha256": "46dabdb855c11ea87134a17d6feb2b8466ea6da03a0146d37a47ee8784adb2d5",
+    "size": 31374
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt": {
+    "sha256": "ddbafe48254d344502d2031ad734b837978d71342d92a763a04f2bbf585d380a",
+    "size": 9319
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift": {
+    "sha256": "5f70b2f5709077fe439f8e6b8e531b451d6b6a3687d545b62280fe578a8c43a8",
+    "size": 36168
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/Diagnostics.swift": {
+    "sha256": "2c84015e6d912adeab7403d591e1ed7244ec3823e8b858c1e1e38c4c9ee28dd3",
+    "size": 8074
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/MeshNode.swift": {
+    "sha256": "9f181d5703df77d5fe86d95a501b6e80abb5c2f98134bad62a9f3eca9186c226",
+    "size": 42600
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift": {
+    "sha256": "7864dd5fa4747245224d657030d6e4fdd7091492037ad9caa1bd8aa46ce6e2b0",
+    "size": 6858
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift": {
+    "sha256": "7f9ee722a5dcd3047417ce8669876df2679e3a17b7cd1dad5df3fde861634deb",
+    "size": 22974
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/Router.swift": {
+    "sha256": "242d0a17d12f65ca76db2205af0a1f39a2b11895177cc92c23133b72178d4ce4",
+    "size": 15199
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift": {
+    "sha256": "5734a0fa740fd421ddf84a773bc6cbf391c7b8a264699d260910f2347a23128c",
+    "size": 10237
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift": {
+    "sha256": "2acfbb515e0ec23b4e55e966eb2f8c3fbc56e12b97619f78fb41db6b21de7b16",
+    "size": 23789
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift": {
+    "sha256": "f4048d434dd3579c5be1875903b61add363f1b3dfc564f36387e316be83c697e",
+    "size": 32452
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Sources/LabMesh/LabMeshApp.swift": {
+    "sha256": "3aaea717cc4046eb4c40ac65d1e14d91825bae104a634bed2ae53decee16a4ea",
+    "size": 2329
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/Godstone/Tests/GodstoneMeshTests/ReadinessT44Tests.swift": {
+    "sha256": "2a58aa353a1b318d93cf5d5f5f1d925518cd4700704aad508e13b37cb0ef9177",
+    "size": 15756
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/ios/project.yml": {
+    "sha256": "9dd06d76a4692fdb6768cfb0c57112f6ed4a8e3262bd49dc0d8f80710ae1f09c",
+    "size": 6318
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/scripts/inspect_android_release.py": {
+    "sha256": "6e2b60b191a55f352e65674aa245a798a0b47a04a95199e543605552875a2939",
+    "size": 31313
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/scripts/inspect_ios_artifacts.py": {
+    "sha256": "0f3001bedee22fb009ce2a707929da17b173352c4056ffb8d9a6ff184f9304f4",
+    "size": 37508
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/scripts/upgrade_recovery.py": {
+    "sha256": "41ec1a1d3be192469bdc0a4fcd306799e1c819a971afd9cf49c1454a2af52628",
+    "size": 87975
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/tools/readiness/accessibility.py": {
+    "sha256": "68e950bf3c5cae01d7d74329d691b795f0a10fa08a85632ded8dd47896b03f00",
+    "size": 19213
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/tools/readiness/capabilities.py": {
+    "sha256": "e613dad20c22f8a95d17e9a2c20f98db7122accd5fff86a6c0242090c3bb0965",
+    "size": 15963
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/tools/readiness/diagnostics.py": {
+    "sha256": "af4b7415859de975dd0b0fea7b5661b8913289b675dcd71544eb21b5b4b15fdd",
+    "size": 11347
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/tools/readiness/stress.py": {
+    "sha256": "72e8f85c946b9d1f35f1cd004ae19677f8dd0cd18f0b59fb92e77f3800e3d195",
+    "size": 14820
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/source/tools/supplychain/supply_chain.py": {
+    "sha256": "14426722a08a9dab6649a28012501a60fbb8712222a7faae902a9be0c8a75b90",
+    "size": 85313
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/supplemental-remediation-import.json": {
+    "sha256": "765ee50ca8a133fb0699e1f80d4cef08ee7fd30fba4bd225ba961af986351b75",
+    "size": 486
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/swift-source-copy-manifest.json": {
+    "sha256": "923d76ad4ae569790c198808af2893dcb3b982afea4d0d685443389c8a846d5f",
+    "size": 14749
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/sync-final-probes.command.json": {
+    "sha256": "1725535541b00d75fee2f41e170e68d338f866d350036a64ce9112e2d2112279",
+    "size": 647
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/sync-final-probes.log": {
+    "sha256": "ce2a18e27a6f757f999624a318d99680d15da19605baf5ac82312f96f942bf96",
+    "size": 3183
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/write_final_report.py": {
+    "sha256": "4ea407240174f0f0d176e9a2f455833430f432e20e4b5cbfeed33fe02419a14a",
+    "size": 55715
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/ArchiveRepository.kt.extract.txt": {
+    "sha256": "5fe6f9f03d00a239a744f884d72132deef346aa2db0c1cad7893c5a96dbe746a",
+    "size": 2641
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/ArchiveView.swift.extract.txt": {
+    "sha256": "4f091e198867cb3b551d3f7cd2d3752e545f7248af17c36ee512fcea8dac6b85",
+    "size": 2045
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android-archive-retest.command.json": {
+    "sha256": "cf8c4b74226e5029345ee290b67fd489668666fc9bafd767181359a2f8a42a21",
+    "size": 451
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android-archive-retest.log": {
+    "sha256": "2c10997a3cd370f41a1319b4c2f4b1067727a1b96ce04e052493702ab16d732c",
+    "size": 823
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/ArchiveAuditProbe.kt": {
+    "sha256": "dfe07a577be6723e5c0c5c7d6424d65f3936d485531c4d0289d304a0bfd58938",
+    "size": 1985
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-build/fixtures/cache-valid/current/archive.db": {
+    "sha256": "7427267cdc24895a11345e07ba818b15bba81ff8503f3af4deb7743bcf51921b",
+    "size": 81920
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-build/fixtures/cache-valid/current/archive.record.json": {
+    "sha256": "cba864369d217692021a47d49521258edd2bb8f7dfb027c92d8f30a557fc0580",
+    "size": 150
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-build/fixtures/malformed.db": {
+    "sha256": "11ba1f45e1eb0097becfc761d6bc1cbb238488a8ad33e039d91172308a4342a8",
+    "size": 16384
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-build/fixtures/valid.db": {
+    "sha256": "471388f0c4258a3a28e071fddd212aadade0b2c789e3379d51fa64993acb7588",
+    "size": 81920
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-build/probe.jar": {
+    "sha256": "c7010f5efd487ebe5b266bad8f664f0ba9f0a7186a7f51ad5ba3888c5d8a5379",
+    "size": 96335
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-build/sqlite-api.jar": {
+    "sha256": "a867aa4f876cc99d3adad590ffb0f852f57234e67a370ee375192558349cd26f",
+    "size": 37456
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-compile-command.json": {
+    "sha256": "b582d49606811b542c96192723158f2a21ef53fc6358965f7ebf6108ef9f2055",
+    "size": 2953
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-compile.log": {
+    "sha256": "42c6c901110d461e7bce20399edc7e98611258b69c5a4683bba0ed1489e41a4a",
+    "size": 1173
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-probe.log": {
+    "sha256": "2492fb8ea2731fbd00478bacebffb9bd1f3a4c28f03a873cd313f0017dee80e2",
+    "size": 822
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-run-command.json": {
+    "sha256": "bb5b2bfbe9afd387f6be3557e2dacf4c6ecfef65f4af923a224fab9c643d777c",
+    "size": 993
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/android-source-checksums.json": {
+    "sha256": "1e2d75dd6c1aa07e1667c4da5780080cd6c84d0167e70c78ae038a08280bc1a5",
+    "size": 1286
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/android/run_android_probe.py": {
+    "sha256": "bdf481ae94c5d0727bcccd16031a1d686d86a9fbff94454c5971d2afc312770c",
+    "size": 3120
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/build_archive.py.extract.txt": {
+    "sha256": "8dd3c64485bdc2ba8a1c9062c0a0db659df76766dab9c610d44b301bad8afff7",
+    "size": 6219
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/builder-after.json": {
+    "sha256": "61cf726f6addb5f30fcc2b0212b42d9b9641f9771e700a9171f709e16d3633f5",
+    "size": 1121
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/builder-before.json": {
+    "sha256": "041732493f0ff6461df2a26afa57f82742f8746eb6c0381a87f9b0b7528193dd",
+    "size": 385
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/canonical-content-suite.command.json": {
+    "sha256": "70b7745754a48ebd8e100916dc692e4b75437fdd8dc4a54bd16a5268fe712c60",
+    "size": 498
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/canonical-content-suite.log": {
+    "sha256": "b93e60eb284b5169afc970270f1b9e904360c7c508e5b3e6f5054b1f530963fc",
+    "size": 37906
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/changed-paths.txt": {
+    "sha256": "065903151525598109a94b1370e319055ed6a5114518cd6bf4a82e6d6fa064d8",
+    "size": 2041
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/check_release_gates_status.py.extract.txt": {
+    "sha256": "6f0639946820b1d1cd6ff4f020277d99920a5eb7b8e61cb05f9bb6752e764533",
+    "size": 4661
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/clean-source-provenance.command.json": {
+    "sha256": "82b06e5221bb2ca3196de1128c989225c338f53a2d733f7d3ccb75ac51b8154a",
+    "size": 433
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/clean-source-provenance.json": {
+    "sha256": "fbedf850d7f17e834a04baa2669c414dd8ae3c1739c6607811745572d12b2e9e",
+    "size": 667
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/clean-source-provenance.log": {
+    "sha256": "7a4dd15fa240b862bd82f762f95482c69f8a3320fdac521584e6b9831c7e0ed1",
+    "size": 812
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-canonical-content-suite.command.json": {
+    "sha256": "55aa8240adc8ba806c7617c2af1f723b820584d2b337bb6e854afe8e3ef56d12",
+    "size": 523
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-canonical-content-suite.log": {
+    "sha256": "caa62a532a7e463864da88c5849f02f0bf7746e138d50c02760f44f5d278dd88",
+    "size": 11216
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-independent-probes-v2.command.json": {
+    "sha256": "21b271db2a7cbd6583b9f6ffde4efa4b6f1da56cacea8ebf5f57b25224d16aae",
+    "size": 634
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-independent-probes-v2.log": {
+    "sha256": "f787e0c356236517e0d32af0c8baef4bca01daa29fe6dbc9f6afeee284bd0e85",
+    "size": 1697
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-remaining-path-probes.command.json": {
+    "sha256": "3488eb3a61fe62977119e40d13fe63407b3e84308ae4ec0ea70729a7326a1282",
+    "size": 630
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-remaining-path-probes.log": {
+    "sha256": "776227ba58d27312bf314d74145fd65c8f64d2884ad7b40c562bd8f0b1d1a649",
+    "size": 4602
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-symbol-resolver.command.json": {
+    "sha256": "a02fa7a8dcc9f73d32d633b3c80b08c17723d5df4ee2447b09e0e089b1dccc66",
+    "size": 371
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-symbol-resolver.log": {
+    "sha256": "e6bf145d5711e6475c8115b2420c9a1eaa76bd6da19e284dc3e1e9278ab735ae",
+    "size": 215
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-t52-trust-suite.command.json": {
+    "sha256": "67e110868d8531b3bc54781133a1ec7f48836a850b041be495c3ff9e1d839104",
+    "size": 542
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-t52-trust-suite.log": {
+    "sha256": "1e5bbb4b466ce319ea209045fef2b2eac890db40d4f623c3fe4153a87320b2fd",
+    "size": 4576
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-t77-rehearsal.command.json": {
+    "sha256": "23d534b0cee456ccd4d7e01f11229ba92770d397a2e11ea63c59b29d2e08b58c",
+    "size": 630
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current-t77-rehearsal.log": {
+    "sha256": "cd930bf878e5de5b7e3f1b3f418ea85d8720b2e74520645c22cdcf10ad1b715f",
+    "size": 1435
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/current_remaining_probes.py": {
+    "sha256": "09b23a40075302a53f091c65587dde92893190b4c8fc86ddd5285228cca3e90b",
+    "size": 7040
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/finding-path-comparison.json": {
+    "sha256": "ea0f3d5dcd0fd820789136188fd4e38999e4e0de5d2eb93296713706b9d51056",
+    "size": 16576
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/heldout-baseline-positive.command.json": {
+    "sha256": "ace4cf5eb8edcbfb321d9263f547b40579ad3dd27f8d04e6d37086884463fc00",
+    "size": 700
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/heldout-baseline-positive.log": {
+    "sha256": "419c77cbb12c9f342e16da06f113f0edde9f425b791765fb80351f59e1ca2589",
+    "size": 240
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent-repair-probes-v2.command.json": {
+    "sha256": "9b00612e0effc2ecb811fac3a5cdbdb3c05a548fd9672f7f2d9ba39ece8c5a6e",
+    "size": 617
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent-repair-probes-v2.log": {
+    "sha256": "ac4a94ce5cb3e86ad3427a517c520ded57e66d315bed69d2ba3035e2e5723602",
+    "size": 8871
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent-repair-probes.command.json": {
+    "sha256": "89c341739ad4eac7dd2a26c3eda95e10f71a00934b6eb8450444fb743a41175c",
+    "size": 607
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent-repair-probes.log": {
+    "sha256": "f2ebf168f7f5d4d70a9847b8e45f335bca4949b21b94a942ca8a744a3ad93b63",
+    "size": 12581
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent_repair_probes.py": {
+    "sha256": "d083da470899588fa45f6ba7bef43aef1d85ff0847cc33abf720fba6910ea51f",
+    "size": 7480
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent_repair_probes_v2.py": {
+    "sha256": "e9c194b903d356fce83d4bf2b2cbaf6644836a42b96c0accd3a0989a09a72c03",
+    "size": 7615
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/latest-retest-before.json": {
+    "sha256": "48fb439f7debea0eff13c40721a1eef16b43478b3e326e22a7594769384047d9",
+    "size": 314
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/latest-submission-state.json": {
+    "sha256": "5d61892e9e7f2a7cd49f6da6d4b3f87253a78a1f2d0d716dc8f5833d56a58885",
+    "size": 1898562
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/prepare_release_assets.py.extract.txt": {
+    "sha256": "15916fa4b01c8a7f786d37f12cc7a6430d1495d37682ebc58fed8deb92d793cc",
+    "size": 3130
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/remediation-state-at-snapshot.json": {
+    "sha256": "34d9022bc8c4c0d8a8bb0c26cc4eea631f1523d042d6dc8f2cbca4c687c32075",
+    "size": 238444
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/repository-verification.yml.extract.txt": {
+    "sha256": "540c61423b307b0823386aaf68de3070bd72afb0e47e1e041b2e3b6658fce515",
+    "size": 1208
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/run.py.extract.txt": {
+    "sha256": "4fbab656e2bbac7e59fe37a02ce04b755f03a356eddafa87c0c6c6deab763486",
+    "size": 4844
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/run_check.py": {
+    "sha256": "e3e3b899742f6acc1808449a406a03aebbc8ed1c9287576770b898a3dd46cd02",
+    "size": 765
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/source-diff.patch": {
+    "sha256": "9f8bc4d2ab49d6aea257d3b622be1ee4e0944e2431f668f85696c4eca529f0f1",
+    "size": 292383
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/source-extracts.json": {
+    "sha256": "3a705f4af08f39492440b376f1dd9df9391fe58931cee43c20f7bbd40c3d95aa",
+    "size": 1990
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/source-snapshot-33be0b0b.tar.gz": {
+    "sha256": "c169396d7af77174f743d7611043a2a007b32b2a802dd67c73456d1afeb7b5f5",
+    "size": 5277243
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/source-snapshot-a3af03de.tar.gz": {
+    "sha256": "b2f4a52b8304e1f2579255cd0a71e9b6c29bea43c646e7157097a3364772f0f1",
+    "size": 6478146
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/submission-summary.json": {
+    "sha256": "0c308cd4f74fe8ddd27f37002cc866cd66128dfcd4d9cfbc132fd18719301fe2",
+    "size": 18775
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/submitted-python-audit-cases.command.json": {
+    "sha256": "998db716db4cdce669f7d462c62bdc6bd5d37bc4f4397a857290a2010add5385",
+    "size": 548
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/submitted-python-audit-cases.log": {
+    "sha256": "5d1667a5ae04e3093ff4ce7a3ae2f495f67511f9aefeaef472d09e4c10ac2608",
+    "size": 8693
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/symbol-resolver-selftest.command.json": {
+    "sha256": "801d7e06029598df94c93be3850361429b20323a90a3c4636536ee84d3ad0a7f",
+    "size": 385
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/symbol-resolver-selftest.log": {
+    "sha256": "4313efefec524560f95cc8cb098d1c15bc1c0c10a9cf5a6f31221675941b96f6",
+    "size": 1685
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/symbol-resolver.command.json": {
+    "sha256": "23d28d1083b549b8d98ac44ae8ef543ed7a0596485b859b6277c072e78999f0a",
+    "size": 347
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/symbol-resolver.log": {
+    "sha256": "c28110f629dfaf379a227420ee5c9a1d4d64c970ba14ddb93b12b5b2633aace9",
+    "size": 215
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/t77-canonical-rehearsal.command.json": {
+    "sha256": "cb825797dd8c4d57910c001809e2de32f23f6021aa85b8f4b132bb92bf04f0f6",
+    "size": 609
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/t77-canonical-rehearsal.log": {
+    "sha256": "cc8191b28a76998e38ce70d7916f9d593a787f8c8fddada1a64048b56b1dec03",
+    "size": 1403
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/t77-recovery-rehearsal.json": {
+    "sha256": "e6d7f8b32ec6743e74ed97d7a2110550cc34d9d5c4f578a3c8e9d4b6d091cf31",
+    "size": 22840
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/AuditAndroidRecordWriterTest.baseline-executed.kt": {
+    "sha256": "ce342f1a2e8dcda81c8987c398333514481ccbb05d82b79bf9cff9b789a7857b",
+    "size": 2238
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/AuditAndroidRecordWriterTest.kt": {
+    "sha256": "9abb51200da94a0273c82dbda475b36e07074cbdb4447b7c422d4d76ff8fa9b8",
+    "size": 2613
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/AuditSealedOpenerTest.kt": {
+    "sha256": "9a2c013d523bd803e2b9ddfa5cf9b609c3b36d79520c1684be3cbf170e90e564",
+    "size": 830
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/findings.json": {
+    "sha256": "5d16b0e23c0499717da7be8ec57abb9a58207f8a7e06881e3bf585c6570a8897",
+    "size": 2187
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/findings.md": {
+    "sha256": "15f3f7c31b1a73ab8d6fed19f2d3e1c6f25b23b5f017314096ceb4025b0b2ab3",
+    "size": 22445
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/governor_calls.txt": {
+    "sha256": "d8bba20ca560aa184497f9b9388709a09a328347901031b4e7b9b0d4fd76f165",
+    "size": 986
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/gradle-audit-final.log": {
+    "sha256": "92bb83167c3655fb6ee4c09cd64d5e758ec9bd7b814f76419c9c990ce8aa96fa",
+    "size": 3156
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/gradle-writer-probe.log": {
+    "sha256": "b60be4ca9df8cd795b849d5dc3131b9c934b6164dd9bbf442026325ffc099a41",
+    "size": 5198
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/handshake_test_fixture.txt": {
+    "sha256": "f1593f1ceab0564e4696156f6a36918df2e7d9c5450eb906be7f6e1122d00250",
+    "size": 1050
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/keyconfirmation_callers.txt": {
+    "sha256": "a62bfb53719796605fd069f6e1c1a423810f92e4364105359f4d0db87a8e5dfa",
+    "size": 1068
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/manifest.json": {
+    "sha256": "520fdad61426f5bb288ad41981fbc22fcd7c3cf4fbcdc7d200aec88f7a92cf83",
+    "size": 767
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/probe-command.json": {
+    "sha256": "fad755061c50b6dc8834a370fb00b82a1d76a2f22b46901b6002e6b05ce7d3bf",
+    "size": 388
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/probe-final-command.json": {
+    "sha256": "aa6db66aa6047786942b61ae07ec7c68c24c4a7ad545695b547f6796b5668d05",
+    "size": 393
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/production_entrypoints.txt": {
+    "sha256": "7e79ed3717d8f1ae7344d4ac761de797c17fa41ecc9528f1c8638e9f97571d89",
+    "size": 1068
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/xml-final/TEST-io.godstone.mesh.readiness.AuditAndroidRecordWriterTest.xml": {
+    "sha256": "ad3f4c2832d54c7d6c7a52c9795043c57c4abb906c30905c606894dbd9130d4d",
+    "size": 14186
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/android/xml-final/TEST-io.godstone.mesh.readiness.AuditSealedOpenerTest.xml": {
+    "sha256": "04f1ae06b1ce38aa40883742c817e18382a9c872993cfa90d7becae69f25ae03",
+    "size": 5068
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/controls/audit-runner-tests.log": {
+    "sha256": "5c8a09c1fbea4e247e2f3281c4a1104851e92c26ee7a7f6fb49aa5c1ee78c75b",
+    "size": 2292
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/controls/audit_runner_tests.py": {
+    "sha256": "2e5462f69a7e682e3e544397bbebbbdda477052d0bf58b903e6ec4dad4afce6c",
+    "size": 1887
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/controls/probe-command.json": {
+    "sha256": "8be40b57dabe46a39ed72fb9c7a66cddb6f7a4081376e8c309dc023f19d6b4f6",
+    "size": 391
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/controls/readiness-unit.log": {
+    "sha256": "fbd7d00b4d8ba4684e5e837079607ee16c0dfc590b6c40655ed5404e0b87a6b9",
+    "size": 16226
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/controls/state-validator.log": {
+    "sha256": "7050f67ce10616842b732df99f687601e41b2fd3aa17013c9bb0094a9cc06cb9",
+    "size": 165
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/findings-array.json": {
+    "sha256": "389b84eac5ebedc4017720c5154f11bbc21f2253a03ee953a641db5e468fc763",
+    "size": 49599
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/findings-manifest.json": {
+    "sha256": "4542f779fa96bdafb099ea5834ced6a4558b4670671cfbb42ef7d2e5c46e32c2",
+    "size": 549
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/findings.json": {
+    "sha256": "2fbce1b6384dd40bd391513ea725278417cd5e0fbd956a66c98164710f5dcd91",
+    "size": 52845
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/findings.md": {
+    "sha256": "8e3efc21bba8c4da6ea0f3e6831ef0aba443e9b3f09514d65227ad053ad55f40",
+    "size": 35997
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/probe-command.json": {
+    "sha256": "c700ae94f46f823ff5e670dfa55f5c21a19a12f9b47a727b0e9631b91906b01f",
+    "size": 509
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/probe-package/Package.swift": {
+    "sha256": "dd29d6bc699f54be333686eeeb08097ecaef0b973c9a9c75cca743c2d6b6fa9b",
+    "size": 320
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/probe-package/Tests/AuditTests/AuditCryptoTests.swift": {
+    "sha256": "121bf67f4ee506c2c29d8ccb2dca447479f0d65c7d790a4e13f0b8f2fb37126b",
+    "size": 3708
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/probe-package/Tests/AuditTests/AuditDirectTests.swift": {
+    "sha256": "7b3a9d5ae15ebfaa40f008eb65a30cd428f15c8ffce33e534a54e9ed2836d2ca",
+    "size": 38893
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/probe-package/Tests/AuditTests/AuditStorageTests.swift": {
+    "sha256": "81606f7a4fa626fe1218843dba5c14b054ececf597833e6138ff8a7b609cdc54",
+    "size": 2484
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/probe-source-manifest.json": {
+    "sha256": "64b2552bb40f4e5d36177b72e6095fcd9643aacd9a42e93d2c82acb9325a995d",
+    "size": 11279
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/source-copy-verification.json": {
+    "sha256": "942506a88f16ca7613fc1bb9aa83ddc88fa1c72dfcf82d25141bd55c083171cd",
+    "size": 39
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/crypto/swift-probe.log": {
+    "sha256": "d8b08f634e873d3e2516d10273735a8f81bff97ac215877f80d056bf09cbbc69",
+    "size": 411779
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/ios/findings.json": {
+    "sha256": "6155e2db2f1c16dfc9aa211618fb4a44d6fae70f3ed000a428b7c5df44b1ff1d",
+    "size": 2883
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/ios/findings.md": {
+    "sha256": "3191557c917e2dd536afaebda7c396130b1c748f89db105f59cdea277167c94f",
+    "size": 20777
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/ios/source-evidence.txt": {
+    "sha256": "ac87d5c763aa1237771c31bce6ac52bc33bd7021dcc9bb5bb2d3ad341f72e2a5",
+    "size": 26603
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/latest-builder-observation.json": {
+    "sha256": "2f7b6f21c52744b2158de51cdffeb419ca26d5f957c70863a5b757b9c8464abc",
+    "size": 6398
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/root-findings.json": {
+    "sha256": "415a072d19d37d701ec93c73fd042c676644e32fbe559caa62f18d78cf71b2cf",
+    "size": 25959
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/snapshot-build-state.json": {
+    "sha256": "10ccef8f2a316112026a4a413868891163c64623a8c30ced94e0e7ebf4b49e6c",
+    "size": 251962
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/storage/probe-command.json": {
+    "sha256": "56b8f20ee8614766547881c2e8d03a778df5bceaee35e838d2c836f2490ad756",
+    "size": 567
+   },
+   "AUDIT_FINAL_2026-09-15/evidence/storage/swift-storage-probe.log": {
+    "sha256": "4db77869fc639cd0e2454044a3644cdf355ec8b4f825739bc7d2fc17c0886072",
+    "size": 2519
+   },
+   "AUDIT_FINAL_2026-09-15/reports/AUDIT_004_REPAIR_REVIEW.md": {
+    "sha256": "754b54e443673e6a2519ae12e470d7445fe43b88ba3a3697817ef097ac608dbb",
+    "size": 20157
+   },
+   "AUDIT_FINAL_2026-09-15/reports/CLOSURE_AMENDMENTS_R1.md": {
+    "sha256": "bf1f9447403c235f0d914333600e2b49ac26e7f7613e523b9380509c59723c73",
+    "size": 17077
+   },
+   "AUDIT_FINAL_2026-09-15/reports/CONTROL_REMEDIATION.md": {
+    "sha256": "c3f1769e20859b1d9cce46292efd79c508d5722217ae343842428a2837c20550",
+    "size": 6028
+   },
+   "AUDIT_FINAL_2026-09-15/reports/STORAGE_REMEDIATION.md": {
+    "sha256": "7303e003eecf39747190a25b5771161fae35ed65cd9df4724ce717c4acf894aa",
+    "size": 21190
+   }
+  },
+  "godstone-audit": {
+   "godstone-audit/.DS_Store": {
+    "sha256": "6d068b198ad2205a2c21c9d08a5b271fc405dbed79e951f8d0ea7e75025c2d60",
+    "size": 6148
+   },
+   "godstone-audit/GODSTONE_INDEPENDENT_AUDIT.md": {
+    "sha256": "23f35130de0f963c52002d050b2b391ce3a1a45ba6a791793253895b57868931",
+    "size": 326266
+   },
+   "godstone-audit/MANIFEST.sha256": {
+    "sha256": "ea4f73c53b63dfa5a56aac947b4135e189ca6b4172dc9557bf13e2d9febb9874",
+    "size": 4510
+   },
+   "godstone-audit/README.md": {
+    "sha256": "ee8e0f2d9459d928be5955db88f1ae270e7cff93eec93b14d3aa0acdbef1c135",
+    "size": 1945
+   },
+   "godstone-audit/SOURCE_INDEX.md": {
+    "sha256": "a81b5666750e6f5242491af580f947fffa1344289d764dd9799a59f1ee640e71",
+    "size": 11766
+   },
+   "godstone-audit/data/closure_matrix.json": {
+    "sha256": "46092127a73e4f816aa1473003c82ad3b0c825c71718536f4b0ee754f6e01b00",
+    "size": 34962
+   },
+   "godstone-audit/data/new_findings.json": {
+    "sha256": "42afa83254e3ac243e39efac2c10531d04dc62783dd52901a10fefae8eb1393b",
+    "size": 52067
+   },
+   "godstone-audit/data/original_findings.json": {
+    "sha256": "2fcdeeb272e471bf3f65cbcac9c667c564f2b1fcebce8a89b4ca9923ca1197a1",
+    "size": 87734
+   },
+   "godstone-audit/data/package_summary.json": {
+    "sha256": "7e9c7ae5711a1eee93a62fea94e9a6327476081ecb0a4911b3e099c371283876",
+    "size": 613
+   },
+   "godstone-audit/data/residual_uncertainties.json": {
+    "sha256": "3ef10c148bba361eb7f24fac3ef341a3b03c039f6cba17afb1268664a80e109f",
+    "size": 7972
+   },
+   "godstone-audit/data/source_index.json": {
+    "sha256": "717c48935df075e53a8d363083333919a283e1c46cb6bbd3ef1b20b459def15d",
+    "size": 10297
+   },
+   "godstone-audit/evidence/build_control_repair.py": {
+    "sha256": "4043b179906917dcfed158a242d0bc7b17d5575e7352d2a07fac8187ebe32ce1",
+    "size": 7284
+   },
+   "godstone-audit/evidence/clone.log": {
+    "sha256": "52b3ec55f6246a28a135964cdb5af44f03635a23b7874fc56091ce7dfcd8ab40",
+    "size": 161
+   },
+   "godstone-audit/evidence/digest-contract-run.log": {
+    "sha256": "970aecf6930f75292e5fdab0e9e5bd532c551e3199ceb5393280bd0eb27e70f8",
+    "size": 5440
+   },
+   "godstone-audit/evidence/digest-control-provenance.json": {
+    "sha256": "50ca6606287699c83c1b0811f868931e6f3a8787c6f437a277808c06425a91c9",
+    "size": 820
+   },
+   "godstone-audit/evidence/digest-repair-green.log": {
+    "sha256": "0bc1abd4d7359cb56e99f2de943ca99c63ab138325c98cbd803534e84b8bba01",
+    "size": 1177
+   },
+   "godstone-audit/evidence/digest-repair-mutant-red.log": {
+    "sha256": "0529d1ad3f2eebcbf24135e0d11885d88af984e642d36775edbacdd240d65a85",
+    "size": 1761
+   },
+   "godstone-audit/evidence/digest-repair-provenance.json": {
+    "sha256": "d62080a9a16d1eca03604a5c5d599952d136de42748957bd64cded25b60ae0ed",
+    "size": 934
+   },
+   "godstone-audit/evidence/digest-repair-restored-green.log": {
+    "sha256": "d24919c15c84cb5531018eb78b749460b13fb38e07e4d878656def56278f39b3",
+    "size": 625
+   },
+   "godstone-audit/evidence/patch-application-check.json": {
+    "sha256": "1b57c4293b2a531d60784bd484049123ff54add86323ced1075f8f379c3b9275",
+    "size": 172
+   },
+   "godstone-audit/evidence/run_control_variant.py": {
+    "sha256": "a5a2a124737be5ff856b4c6bb2018870f3c1287fa9259b0d1d5c3dcedbbf807d",
+    "size": 855
+   },
+   "godstone-audit/evidence/test_digest_contract.py": {
+    "sha256": "3696d7bd591016b411492f73a9dfee1be0ba349058c2e1e4c46ab13d4ec85a2d",
+    "size": 4128
+   },
+   "godstone-audit/observed-source/ci/check_evidence_digests.py": {
+    "sha256": "fd61427c417d13f330177ec4d855c0e92217338f725f93f1171ed816d4143325",
+    "size": 9312
+   },
+   "godstone-audit/proposed-repair/.DS_Store": {
+    "sha256": "df239a2b7c496986e791eb3d244389796d992a1b28e3e1047aeb57627ad7532c",
+    "size": 6148
+   },
+   "godstone-audit/proposed-repair/ci/check_evidence_digests.py": {
+    "sha256": "764c42593bb0d3a83c57d14562a3ed566b62c9dd63effe9f346e8b5259a3c74f",
+    "size": 9699
+   },
+   "godstone-audit/proposed-repair/evidence-digests.patch": {
+    "sha256": "39b5ac717481c1f849664ed658929462829b42f7d31560e8495c1e13e62b34cd",
+    "size": 6266
+   },
+   "godstone-audit/proposed-repair/mutants/skip-nested-records.py": {
+    "sha256": "1ff0e1f6977312815e462bbc217364917e59be8b6680a0faa8d426f46506d9f8",
+    "size": 9758
+   },
+   "godstone-audit/quarantine/README.md": {
+    "sha256": "acff7755f9cc3a90b3faaa16dfd59f66bc487547e5f3579e4be6909ecd723703",
+    "size": 811
+   },
+   "godstone-audit/quarantine/untrusted-actions-provenance-ios.zip": {
+    "sha256": "d513514deae9f89b97a863a2148b66f06ad673193e3d04e65ccea5adf6a84f3a",
+    "size": 589
+   },
+   "godstone-audit/reports/01_executive_audit_summary.md": {
+    "sha256": "b6d6b0b8eaa6f333f9c59436bf609812b9451dbd5bdbab52a7707699bdda8b65",
+    "size": 6151
+   },
+   "godstone-audit/reports/02_54-finding_independent_verification_register.md": {
+    "sha256": "16950f058e132f568ddcd1f08f11d6e2ab749159c00f83f1db2a1c19023c94fa",
+    "size": 139063
+   },
+   "godstone-audit/reports/03_new_findings_report.md": {
+    "sha256": "791a8431e8db3fae9f59cde31d0c0ec44576ce1c68700cf9fa08c3c5e7aa4f5b",
+    "size": 48950
+   },
+   "godstone-audit/reports/04_code-level_remediation_report.md": {
+    "sha256": "2347c8b416a52d4468d2693f41dc179d956252be6041e774e38aeab1dfb729b8",
+    "size": 14834
+   },
+   "godstone-audit/reports/05_security_assessment.md": {
+    "sha256": "744a12248c2b1736e64aaf6673334e245be2956559f98b5a9914d969588ebcc3",
+    "size": 5420
+   },
+   "godstone-audit/reports/06_architecture_and_cross-system_assessment.md": {
+    "sha256": "1a19423d6110fffd3850e4a58915d373bf089a19edb91a678f6df3672b30ba8e",
+    "size": 5001
+   },
+   "godstone-audit/reports/07_cross-platform_parity_report.md": {
+    "sha256": "f7a0bfa523fc0f40f05d122c73d1df97052ab927151591aaaa35cd025fcbd631",
+    "size": 4702
+   },
+   "godstone-audit/reports/08_evidence_and_test_integrity_report.md": {
+    "sha256": "5430164128e087a0b65c4eb287f20224af641d6cc1c827b96f2e977ad6f07651",
+    "size": 7982
+   },
+   "godstone-audit/reports/09_ledger_integrity_report.md": {
+    "sha256": "648f410715e8d467306ba58667528b6dcbb6f4ef88067de0391280ca714c2d91",
+    "size": 5146
+   },
+   "godstone-audit/reports/10_dead_code_and_technical_debt_report.md": {
+    "sha256": "2c439832750e019894fcbdab46867ae32fc6ada2e92777637595c70a1cae62d5",
+    "size": 4021
+   },
+   "godstone-audit/reports/11_ui_ux_and_accessibility_report.md": {
+    "sha256": "0aebfbac0501bd8df66aac5b9b3eba4a25af256d58c55f531324ad68e11dfdc4",
+    "size": 4472
+   },
+   "godstone-audit/reports/12_dependency_build_and_supply-chain_report.md": {
+    "sha256": "b4b7be426885dbd8b9d513424f5cfc0d844ec9896c815a5994baf6f75e8d748d",
+    "size": 3911
+   },
+   "godstone-audit/reports/13_external_gate_test_book.md": {
+    "sha256": "0a9d616f21a021c04ff564131c7d0baed83b37feae6fc254c9dcfc97cffb6aa6",
+    "size": 11888
+   },
+   "godstone-audit/reports/14_ordered_remediation_plan.md": {
+    "sha256": "7b9d9da44ebb9bcfab33b8753feadd0ce93d37abea2e9895637faa674fda33d7",
+    "size": 6610
+   },
+   "godstone-audit/reports/15_final_closure_matrix.md": {
+    "sha256": "159152fbda93e304e8b9ed536331712044436166cbcd744d504055d427fe38c0",
+    "size": 36722
+   },
+   "godstone-audit/reports/16_residual_risk_and_uncertainty_register.md": {
+    "sha256": "fec3dcb410e289ec3d0c44dbecd8b093f27461f3cfae421c1884d4b96fe38fe5",
+    "size": 8045
+   },
+   "godstone-audit/verification/NEXT_EXECUTION.md": {
+    "sha256": "f187dcdda93a8b3db5ebaf083066f95ddde4a34c58c3147101bfc2b928f48a01",
+    "size": 9546
+   },
+   "godstone-audit/verification/record_run.py": {
+    "sha256": "10fb6dbbfa0177498dd03a9d7da537d5d23d8a9efd6c9505c9519fe984f68bf6",
+    "size": 3392
+   }
+  }
+ },
+ "kind": "EXTERNAL_ADDITION_CONTENT_MANIFEST",
+ "rule": "Every recorded path must exist with the recorded sha256. NEW paths are PERMITTED (the folders are written by another party's process and grow); a CHANGED or REMOVED recorded path FAILS.",
+ "source": "docs/production-readiness/ORIGINAL_CHECKOUT_ADDITIONS.json"
+}
