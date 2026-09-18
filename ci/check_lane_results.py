@@ -49,11 +49,24 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 
-# The lanes the remediation actually runs. Each is (label, glob) -- the glob is relative to the repo root.
+# The lanes the remediation actually runs. Each is (label, task-dir, glob).
+#
+# *** THE GLOB NAMES THE EXACT TASK DIRECTORY, NOT A WILDCARD (round 745). ***
+#
+# *The entries used to read `.../test-results/*/*.xml`, AND THAT SINGLE `*` WAS THE INFLATION MECHANISM:* **a FILTERED run
+# (`--tests ...`, which the courts and mutation harness use) writes its reports into a SIBLING directory beside the lane's
+# own** -- `mesh-di/`, `mesh-identity/`, `testLightDebugUnitTest/` -- *and the wildcard summed those in as lane evidence.*
+# **MEASURED: `android:mesh` reported `files=108 tests=1906` while its SOURCES declare 1273 `@Test`s and its 80
+# `@Test`-bearing classes write 80 files;** *deleting the results root and letting ONE generation rebuild it gave 80/1273,
+# twice.* *The app lane carrieth the same pollution on a smaller scale (`100` vs the honest `96`)*, and **the stray
+# directory that caused it was listed in this very build tree.**
+#
+# **SO THE LANE NAMES ITS TASK DIRECTORY EXACTLY, and an UNEXPECTED SIBLING IS REFUSED BY NAME** -- *because a control
+# that quietly sums a directory it was not told about is a control whose denominator nobody can compute.*
 LANES = [
-    ("android:app", "android/app/build/test-results/*/*.xml"),
-    ("android:core", "android/core/build/test-results/*/*.xml"),
-    ("android:mesh", "android/mesh/build/test-results/*/*.xml"),
+    ("android:app", "testLightDebugUnitTest", "android/app/build/test-results/testLightDebugUnitTest/*.xml"),
+    ("android:core", "testDebugUnitTest", "android/core/build/test-results/testDebugUnitTest/*.xml"),
+    ("android:mesh", "testDebugUnitTest", "android/mesh/build/test-results/testDebugUnitTest/*.xml"),
 ]
 
 # *** AND THE iOS LANE, WHICH THIS CONTROL DID NOT COVER AT ALL (round 691). ***
@@ -330,9 +343,24 @@ def main() -> int:
 
     all_problems: list[str] = []
     summary: list[str] = []
-    for label, pattern in LANES:
+    for label, task_dir, pattern in LANES:
         probs = check_lane(label, pattern)
         files = glob.glob(str(REPO / pattern))
+        # *** AND AN UNEXPECTED SIBLING UNDER `test-results/` IS REFUSED BY NAME (round 745). ***
+        #
+        # *A sibling means SOMEONE RAN A FILTERED SUITE beside the lane* -- the courts and the mutation harness both do --
+        # **and while the glob above no longer sums it, its PRESENCE is the warning that the lane's own directory may be a
+        # partial generation.** *This is the same "two trees, one claim" shape that let a stray report directory inflate
+        # the mesh lane to 1906 for eight verifications.*
+        results_root = (REPO / pattern).parent.parent
+        if results_root.is_dir():
+            siblings = sorted(d.name for d in results_root.iterdir()
+                              if d.is_dir() and d.name != task_dir)
+            if siblings:
+                all_problems.append(
+                    f"{label}: `{results_root.relative_to(REPO)}` carrieth UNEXPECTED SIBLING DIRECTORIES {siblings} "
+                    f"-- *a filtered run wrote beside the lane's own `{task_dir}`, and a sibling is how this lane's count "
+                    f"was inflated before. Clear `build/test-results/` and run the lane alone.*")
         total = {"tests": 0, "skipped": 0, "failures": 0, "errors": 0}
         for f in files:
             p = Path(f)
