@@ -1,7 +1,11 @@
 package io.godstone.app.ui.browse
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.test.assertIsDisplayed
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -57,10 +61,12 @@ class GsFinal006RenderedReadingListTest {
     private class TwoDocReader : ArchiveReader {
         override fun status(): ArchiveState = ArchiveState.Ready(origin = "installed.bin", sha256 = "a".repeat(64))
         override fun listDocuments(domain: String?): List<ArchiveDocument> =
-            listOf(ArchiveDocument(7, "Archive guide", "reference", false, "src-001", "r7"))
+            listOf(ArchiveDocument(7, "Archive guide", "reference", false, "src-001", "r7"),
+                   ArchiveDocument(8, "Field manual", "reference", false, "src-002", "r8"))
         override fun listDomains(): List<String> = emptyList()
         override fun passages(documentId: Long): List<ArchivePassage> =
-            (1L..40L).map { ArchivePassage(it, 7, "Archive guide", "reference", "S", "passage $it") }
+            if (documentId == 7L) (1L..40L).map { ArchivePassage(it, 7, "Archive guide", "reference", "S", "passage $it") }
+            else (101L..140L).map { ArchivePassage(it, 8, "Field manual", "reference", "S", "field $it") }
         override fun search(query: String, limit: Int): List<ArchivePassage> = passages(7)
         override fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? = null
     }
@@ -73,10 +79,20 @@ class GsFinal006RenderedReadingListTest {
         return vm
     }
 
+    /**
+     * *** AND IT OBSERVES THE FLOW RATHER THAN READING IT ONCE. ***
+     *
+     * MY FIRST DRAFT READ `vm.state.value` DIRECTLY -- WHICH DOES NOT SUBSCRIBE, SO THE COMPOSABLE NEVER
+     * RECOMPOSED. Every arm passed anyway, because `setContent` evaluateth once and the state was already placed; but
+     * a court that cannot observe a STATE CHANGE cannot see a document change either, **AND THAT IS WHY REMOVING THE
+     * `key(...)` FROM THE LIST STATE LEFT THE WHOLE COURT GREEN.** `collectAsStateWithLifecycle` is the app's own
+     * idiom (`BrowseScreen.kt:37`) and it is what maketh the composition follow the model.
+     */
     @androidx.compose.runtime.Composable
     private fun RealReadingList(vm: BrowseViewModel) {
+        val state by vm.state.collectAsStateWithLifecycle()
         io.godstone.app.ui.theme.GodstoneTheme(redNightMode = false) {
-            ReadingList(vm.state.value, vm)
+            ReadingList(state, vm)
         }
     }
 
@@ -153,24 +169,72 @@ class GsFinal006RenderedReadingListTest {
     }
 
     /**
-     * *** AND THE READER'S OWN SCROLL **IS** RECORDED -- THE GATE MUST NOT SILENCE THE MECHANISM. ***
+     * *** OPENING A NEW DOCUMENT SHOWETH **THAT** DOCUMENT'S BEGINNING, NOT THE OLD ONE'S POSITION. ***
      *
-     * A gate that never lets anything through would be the same species of defect this programme keeps finding (a
-     * control nobody consults, a mechanism that never fires). With NO placement outstanding, the reader's own
-     * movement must reach the state, or the place could never be persisted at all.
+     * *** AND ITS NAME IS DELIBERATE, BECAUSE A REVIEW ASKED ME TO PROVE THE `key(...)` AND THE MEASUREMENT SAID I
+     * COULD NOT: REMOVING THE KEY LEAVES THIS ARM GREEN.*** A first draft of this arm claimed it measured the key.
+     * IT DOES NOT, AND THE REASON IS STRUCTURAL:
+     *   * `ReadingList` is composed only in `BrowseMode.DOCUMENT`, so leaving that mode UNCOMPOSES it and
+     *     `remember` is discarded regardless of any key;
+     *   * the shipped navigation cannot produce a direct document-to-document transition; and
+     *   * `ArchiveReadingAnchor.target` returneth THE FIRST passage for a new document, so the consume-effect
+     *     scrolls to index 0 whatever offset was inherited.
+     * **WHAT THIS ARM REALLY MEASURES IS THE BEHAVIOUR THE READER SEES** -- the new document really starteth at its
+     * own beginning -- and THAT is causally connected to the scroll: under MUTATION M1 (the consume-effect removed)
+     * THIS ARM REDDENS. It is a real control on a real journey; it is simply NOT a control on the key, and it no
+     * longer claimeth to be.
      */
     @Test
-    fun aReadersOwnScrollIsReallyRecorded() {
-        val vm = placedReader(1L)                // placed at the top: the placement lands, nothing is outstanding
+    fun openingANewDocumentShowsThatDocumentsBeginning() {
+        val vm = placedReader(25L)
 
         compose.setContent { RealReadingList(vm) }
         compose.waitForIdle()
+        compose.onNodeWithText("passage 25").assertIsDisplayed()
 
-        // THE READER MOVES. There is no placement outstanding any more, so this is THEIR movement.
-        vm.noteScroll(documentId = 7L, passageId = 30L)
+        // THE READER OPENS A DIFFERENT DOCUMENT. Its passages are `field 101..140`.
+        vm.open(ArchiveDocument(8, "Field manual", "reference", false, "src-002", "r8"))
         compose.waitForIdle()
 
-        assertEquals("the reader's own movement must reach the state",
-                     30L, vm.state.value.anchorPassageId)
+        compose.onNodeWithText("field 101").assertIsDisplayed()
+        compose.onNodeWithText("field 126").assertDoesNotExist()
+    }
+
+    /**
+     * *** AND AFTER THE PLACEMENT LANDS, THE READER'S OWN SCROLL **IS** RECORDED. ***
+     *
+     * *** THIS ARM WAS VACUOUS AND IS NOW A CONTROL. *** AS FIRST WRITTEN IT CALLED `vm.noteScroll(documentId = 7L,
+     * passageId = 30L)` DIRECTLY AND THEN ASSERTED `anchorPassageId == 30` -- A TAUTOLOGY ON THE SETTER, which
+     * EXERCISED NONE OF THE REPORT PATH (`snapshotFlow` -> `reportedAnchorPassageId` -> `vm.noteScroll`) INSIDE
+     * `ReadingList`. **IF THE REPORT PATH WERE BROKEN SO IT NEVER FIRED -- the very "mechanism that never fires"
+     * defect this file's own docstring nameth -- THAT ARM STILL PASSED, BECAUSE IT WROTE THE STATE ITSELF.**
+     *
+     * AND THE GAP IT HID IS THE MAIN JOURNEY: after a placement lands, `targetIndex` stayeth pinned (it deriveth
+     * from `readingTargetPassageId`, which `noteScroll` never changeth), so a rule keyed on "targetIndex != null" alone
+     * WOULD SUPPRESS EVERY LATER SCROLL AND FREEZE THE READING PLACE FOR THE WHOLE SESSION. `placementLanded` is what
+     * openeth the gate permanently -- AND THIS ARM IS WHAT MEASURETH THAT IT REALLY OPENETH.
+     *
+     * THE GESTURE IS REAL: `performScrollToIndex` moves the production `LazyListState`, the production effect sees
+     * it, and the production `vm.noteScroll` is what records it.
+     */
+    @Test
+    fun aReadersOwnScrollAfterThePlacementIsReallyRecorded() {
+        val vm = placedReader(25L)
+
+        compose.setContent { RealReadingList(vm) }
+        compose.waitForIdle()
+        assertEquals("the rig must really have placed the reader first", 25L, vm.state.value.readingTargetPassageId)
+
+        // THE READER MOVES -- A REAL GESTURE AGAINST THE PRODUCTION LIST.
+        compose.onNodeWithTag(READING_LIST_TAG).performScrollToIndex(32)
+        compose.waitForIdle()
+
+        assertEquals(
+            "*** THE READER'S OWN SCROLL AFTER A PLACEMENT MUST BE RECORDED. `targetIndex` stayeth pinned for the " +
+                "whole session, so a gate that never reopeneth WOULD FREEZE THE READING PLACE AT THE RESTORED " +
+                "POSITION -- the main journey, silently broken. Observed anchor: ${vm.state.value.anchorPassageId}, " +
+                "observed visible index: ${compose.onNodeWithTag(READING_LIST_TAG).fetchSemanticsNode()} ***",
+            33L, vm.state.value.anchorPassageId,
+        )
     }
 }

@@ -13795,13 +13795,19 @@
       "sha256": "0225bc86f37b8f77e4a33d7f3141b3c44aff2278e41feea951719bec630fb00a",
       "what": "The isle's first executed UI witness: Robolectric + Compose, rendering the REAL ReadingList, with two causal mutations.",
       "outcome": "MUTATION 1 (consume-effect removed) FAILED the placement arm; MUTATION 2 (report gate removed) FAILED the fallback arm. Restored: 4/4. Lanes app 89, core 21, mesh 1869, all 0 failures."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-006/round566-mutation-battery.log",
+      "sha256": "0592e33646d06fe2bfd5ae6d3d0561fb348d759dc22ef53fec850d3b5311b764",
+      "what": "The vacuous arm repaired into a real control; the mutation battery; two further claims killed by measurement.",
+      "outcome": "MUTATION E reddens ONLY the gesture arm (the freeze fix proven); M1 reddens three; C stays green, so the key is UNEXERCISED. Removing ui-test-manifest fails all four arms. Lanes app 90, core 21, mesh 1869, all 0 failures."
      }
     ],
     "my_red_case": "THE AUDIT'S MEASUREMENT, REPRODUCED DIRECTLY AT SOURCE: `grep -rn \"scene.open(\" ios/Godstone/Sources/App/` returns NOTHING but a comment -- so `NavigationLink(value:)` pushed onto `path` while NOTHING EVER TOLD THE SCENE. That is the parallel-owners defect as a grep, which is a stronger red than an arm here because no arm can run against Sources/App (see pending_proof).",
     "pending_proof": [
      "THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendereth the composition but is not a device, and the audit's own distinction applies (\"automation distinguishes internal model proof from real OS/device proof\"). The iOS App layer still cannot be compiled here at all (NATIVE_MODELS).",
      "GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET NOW EXISTETH (it did not before this round) and it really renders, lays out and scrolls. THE PHYSICAL GATES REMAIN OPEN and are external.",
-     "AND THE PROTECTED-DATA GATE IS NOW ASKED THE PLATFORM (round 564): `PlatformProtectedDataGate` reads `UserManager.isUserUnlocked` and DI supplieth it, where before every construction site was a test and `AlwaysAvailableProtectedData` (a constant) was the only gate shipping could see. What is NOT established is whether the Mesh/Trust VMs are reachable at all in the shipped navigation: measured, `GodstoneNavHost` routes ONLY Home and Browse, and `MeshScreen`/`TrustScreen` have NO caller. That is either a deliberate scope decision or a defect, and it is NOT settled here."
+     "THE KEY IS UNEXERCISED, MEASURED RATHER THAN ASSUMED (round 566): removing `key(state.openedDocumentId)` leaves every arm green, because `ReadingList` is composed only in `BrowseMode.DOCUMENT` (so leaving that mode discards the state anyway), the shipped navigation cannot produce a direct document-to-document transition, and `ArchiveReadingAnchor.target` resolves to the FIRST passage for a new document -- so the consume-effect scrolls to index 0 whatever offset was inherited. The key is kept as defensive and is RECORDED AS UNCOVERED, not counted. AND ONE ARM WAS FOUND VACUOUS AND IS NOW A CONTROL: the \"reader's own scroll\" arm asserted a value it had just set itself, so it would have passed with the report path entirely dead; it now drives a real gesture against the production composable and reddens under both directions of mutation."
     ]
    },
    "GS-FINAL-007": {
@@ -14067,7 +14073,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "e5d1dd221b6ab63f866e669788f5aab6c7341b5e",
+  "candidate_sha": "67e0208f20015659100aec2e679942ca8000482a",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14143,7 +14149,7 @@
    "GS-FINAL-004: THE CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. The central defect -- the factory's verified connection is discarded and `SqliteMessageStore(url:)` perfor",
    "GS-FINAL-004: TWO FALSE ARMS WERE WRITTEN AND BOTH WERE DELETED RATHER THAN KEPT GREEN: (1) one asserted only that the engine was ASKED for a keyed open -- TRUE ON THE UNREPAIRED TREE, because t",
    "GS-FINAL-004: DONE AND EVIDENCED: the archive-only SPLIT. `createArchiveOnlyHostComposition` no longer takes an `encryptedStores` parameter at all, so a composition that cannot be given a key ca",
-   "GS-FINAL-006: AND THE PROTECTED-DATA GATE IS NOW ASKED THE PLATFORM (round 564): `PlatformProtectedDataGate` reads `UserManager.isUserUnlocked` and DI supplieth it, where before every constructi"
+   "GS-FINAL-006: THE KEY IS UNEXERCISED, MEASURED RATHER THAN ASSUMED (round 566): removing `key(state.openedDocumentId)` leaves every arm green, because `ReadingList` is composed only in `BrowseMo"
   ],
   "external_acceptance": [
    "ANDROID-05: *** AND CLOSURE 4 IS **UNREACHABLE ON THE HOST**, MEASURED IN TWO INDEPENDENT LAYERS -- so it is OWED as an INSTRUMENTATION ROAD and NOT counted as met: *** (i) THE START HALF is g",
