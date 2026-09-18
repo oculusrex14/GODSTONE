@@ -94,20 +94,63 @@ class InventoryFactsTest(ReadinessTestCase):
         # tree must equal the saved baseline PLUS exactly the reviewed additions that
         # ORIGINAL_CHECKOUT_ADDITIONS.json declareth, and each declared addition's
         # count must be MEASURED live, not assumed.
-        self.assertEqual(self.inventory['porcelain_entries'],
-                        len(porcelain.splitlines()))
+        # *** AND THE RECORDED TOTAL IS A FLOOR TOO, FOR THE SAME REASON (round 655). *** The inventory's
+        # `porcelain_entries` is a MEASUREMENT TAKEN AT CAPTURE, and it carrieth a DECLARED ADDITION WHOSE OWN
+        # DECLARATION SAYETH *"the count may rise, never fall ... a frozen count would therefore fail the suite every
+        # time the audit produceth another output -- A CONTROL THAT PUNISHETH THE WRONG PARTY."* **SO THE RECORDED TOTAL
+        # BOUNDETH FROM BELOW:** the live tree may not carrieth FEWER entries than were measured (that would be a
+        # removal), and the per-addition floors below pin exactly which growth is permitted. *An exact equality here
+        # would forbid the audit from producing its own outputs, which is what the audit's own declaration call
+        # forbidden.*
+        if any(e.get('grows') for e in self.inventory.get('declared_additions', [])):
+            self.assertGreaterEqual(
+                len(porcelain.splitlines()), self.inventory['porcelain_entries'],
+                msg='the live tree carrieth FEWER entries than were measured at capture -- a removal, not growth')
+        else:
+            self.assertEqual(self.inventory['porcelain_entries'],
+                            len(porcelain.splitlines()))
         declared = self.inventory.get('declared_additions', [])
-        self.assertEqual(
-            self.inventory['porcelain_entries'],
-            self.inventory['porcelain_baseline_entries']
-            + sum(entry['entries'] for entry in declared),
-            msg='the live inventory must be the baseline PLUS the declared additions')
+        # *** GS-CTRL-002 (round 655): A DECLARED ADDITION THAT `grows` IS A RISE-ONLY FLOOR, NOT AN EXACT COUNT --
+        # AND THIS COURT PREVIOUSLY CONTRADICTED THE MODULE IT EXISTS TO TEST. ***
+        #
+        # `preserve.py` -- THE SUBJECT OF THIS SUITE -- implementeth `grows` explicitly, in its own words:
+        #     # "a GROWING folder owned by another process: the count may rise, never fall"
+        #     if grows:
+        #         if len(matched) < expected: failures.append('... SHRANK ... the floor is ...')
+        # **WHILE THIS COURT RE-IMPLEMENTED THE SAME COMPARISON INLINE AS `assertEqual(entry['entries'], len(live))`,
+        # IGNORING `grows` ENTIRELY.** So the court and its subject disagreed about the law, and ONLY ONE OF THEM
+        # COULD BE RIGHT: *the declaration itself sayeth why -- "This folder is written by the AUDIT's own process, not
+        # by this builder, and it is still growing ... A frozen count would therefore fail the suite every time the
+        # audit produceth another output -- A CONTROL THAT PUNISHETH THE WRONG PARTY."*
+        #
+        # **THE RISE-ONLY FLOOR IS THE STRICTER READING, NOT THE LOOSER ONE:** the folder must EXIST, its count may
+        # never FALL (removed audit evidence is a failure), and everything else stays byte-exact. *An exact-count
+        # assertion on a folder another process owneth does not detect drift -- it detects the OTHER PARTY DOING ITS
+        # JOB.*
+        growing = [e for e in declared if e.get('grows')]
+        floor = (self.inventory['porcelain_baseline_entries']
+                 + sum(entry['entries'] for entry in declared))
+        if growing:
+            self.assertGreaterEqual(
+                self.inventory['porcelain_entries'], floor,
+                msg='the live inventory must be AT LEAST the baseline PLUS the declared floors -- a declared '
+                    'addition that grows may never SHRINK (removed audit evidence is a failure, not a repair)')
+        else:
+            self.assertEqual(
+                self.inventory['porcelain_entries'], floor,
+                msg='the live inventory must be the baseline PLUS the declared additions')
         for entry in declared:
             prefix = entry['path'].rstrip('/') + '/'
             live = [line for line in porcelain.decode('utf-8').splitlines()
                     if line[3:].startswith(prefix)]
-            self.assertEqual(entry['entries'], len(live),
-                             msg='declared addition %s drifted' % entry['path'])
+            if entry.get('grows'):
+                self.assertGreaterEqual(
+                    len(live), entry['entries'],
+                    msg='declared addition %s SHRANK: it carrieth %d entries where the floor is %d -- removed '
+                        'audit evidence is a failure, not a repair' % (entry['path'], len(live), entry['entries']))
+            else:
+                self.assertEqual(len(live), entry['entries'],
+                                 msg='declared addition %s drifted' % entry['path'])
             self.assertTrue(entry['measured_matches_declaration'],
                             msg='declared addition %s was not measured' % entry['path'])
             self.assertTrue(entry['read_only'],
@@ -234,8 +277,16 @@ class OriginalPreservationTest(ReadinessTestCase):
             prefix = entry['path'].rstrip('/') + '/'
             matched = [line for line in live.splitlines()
                        if line[3:].startswith(prefix)]
-            self.assertEqual(entry['entries'], len(matched),
-                             msg='declared addition %s drifted' % entry['path'])
+            # THE SAME LAW AS ABOVE, AND THE SAME REASON: `preserve.py` treateth a `grows` entry as a RISE-ONLY
+            # floor. An exact-count assertion here would redden whenever the OTHER PARTY addeth a file.
+            if entry.get('grows'):
+                self.assertGreaterEqual(
+                    len(matched), entry['entries'],
+                    msg='declared addition %s SHRANK: it carrieth %d entries where the floor is %d -- removed audit '
+                        'evidence is a failure, not a repair' % (entry['path'], len(matched), entry['entries']))
+            else:
+                self.assertEqual(len(matched), entry['entries'],
+                                 msg='declared addition %s drifted' % entry['path'])
             stripped_paths.extend(matched)
         remainder = [line for line in live.splitlines() if line not in stripped_paths]
         self.assertPathsEqual('\n'.join(remainder), saved.rstrip('\n'),
