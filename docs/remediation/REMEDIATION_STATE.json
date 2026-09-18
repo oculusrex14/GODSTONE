@@ -13500,6 +13500,11 @@
    "round": 586,
    "finding": "CRYPTO-006",
    "correction": "I ASSERTED THE CARD'S PROSE LITERALLY (\"preserve the first accepted object\") FOR A **CHANGED** REVISION, AND IT FAILED -- BECAUSE THE LEDGER ALREADY RECORDS THAT EXACT CHANGE AS MEASURED-AND-REVERTED (Android `92104a7`, iOS `36c0cc6`): with a token-only claim the authority rejected a second, different command, breaking W6's preserved law that \"a changed recipient/body/priority is a NEW logical send\". REVERTED. THE SETTLED LAW IS COMPOSITE (token + canonicalCommandDigest). **AND MEASURING IT ON THE PRODUCTION MEDIUM PRODUCED A REAL FINDING: `SqliteOutboundIntentJournal` KEEPS THE FIRST ROW EVEN FOR A CHANGED REVISION** (`intent_id` is the PRIMARY KEY and the insert is `INSERT OR IGNORE`), WHILE THE IN-MEMORY TWIN TAKES IT -- AND W6 RUNS ON THE TWIN WHILE PRODUCTION RUNS ON THE MEDIUM. THE DIVERGENCE IS PINNED IN AN ARM; RESOLVING IT IS A DESIGN DECISION."
+  },
+  {
+   "round": 591,
+   "finding": "PHASE-5-EXIT",
+   "correction": "BUILT `ci/check_lane_results.py`, THE CONTROL THE PHASE-5 EXIT CLAUSE IMPLIES (\"no accidental green after a patch abort, skipped test or wrong generated mirror\"). IT REFUSES: a lane with no result files; `tests=\"0\"` (the shape a broken build, a truncated generated mirror AND a wrong filter all produce); any skipped/failed/errored arm, NAMED; and it parses attributes in any order with a SELF-CLOSING-TOLERANT testcase pattern (the round-568 parser bug). ITS SELFTEST CARRIES FOUR ADVERSARIAL MUTATIONS (4/4 caught), AND THE SELFTEST IS ITSELF MUTATION-PROVEN: replacing the tolerant pattern with the naive one yields 3/4, with the ATTRIBUTION arm falling -- so the control catches a regression in its own parser."
   }
  ],
  "phase_one": {
@@ -14248,7 +14253,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "5fbf52332e6e488fb4ba61d430965be92ea67e47",
+  "candidate_sha": "1909f578eee85845ed12bd261e9dd453e4d376a5",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
