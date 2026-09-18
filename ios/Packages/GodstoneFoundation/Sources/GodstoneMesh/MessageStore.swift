@@ -978,9 +978,43 @@ public final class SqliteMessageStore: MessageStore {
     /// AT THIS STEP **NOTHING CONSULTETH IT**: the wall-clock stamp below standeth unchanged, so the arm that
     /// injects a clock and demandeth the store's anchor to come from it FAILETH -- ON ITS ASSERTION, which is
     /// what maketh it a behavioural RED rather than a compile failure.
-    public var receiptTimeProvider: (() -> (monoMs: Int64, bootIdentity: String))?
+    /// *** GS-FINAL-005 (the independent audit, 2026-09-18): THE RETENTION CLOCK IS **NOT OPTIONAL**. ***
+    ///
+    /// THE AUDIT'S MEASUREMENT: *"`SqliteMessageStore.isForwardable` returns true when `receiptTimeProvider` is nil.
+    /// Inspected MeshRuntime/Node construction does not install it."* AND MEASURED HERE, WORSE THAN NOT INSTALLED:
+    /// **26 test sites assigned this property and ZERO production sites did** -- so in production it was ALWAYS nil,
+    /// and every reader treated nil as the permissive answer:
+    ///
+    ///   * `isForwardable`  -> `return true`   ("this row is fine")
+    ///   * the expiry predicate -> `return true`  ("not expired")
+    ///   * only `sweepExpiredNoLock` refused.
+    ///
+    /// SO A PRODUCTION STORE ERASED NOTHING AND FORWARDED EVERYTHING: **PER-KIND RETENTION -- THE WHOLE SUBJECT OF
+    /// GS-STORE-004 -- WAS INERT**, and the failure was SILENT, because an unbounded store looks exactly like a
+    /// healthy one.
+    ///
+    /// THE AUDIT'S REMEDY: *"Make a single runtime clock protocol mandatory ... Remove the permissive nil branch
+    /// from production; place deliberate fixed-clock adapters only in tests. Missing production clock must be a
+    /// construction error."*
+    ///
+    /// **THE SHAPE HERE IS STRONGER THAN A CONSTRUCTION ERROR, AND DELIBERATELY SO: A STORE SIMPLY HAS NO WAY TO BE
+    /// CLOCKLESS.** The property is non-optional and DEFAULTS TO THE REAL PLATFORM CLOCK, so:
+    ///   * production cannot open a store without a clock -- there is no `nil` to reach;
+    ///   * every permissive `nil` branch is GONE BY CONSTRUCTION rather than by a guard a future edit could restore;
+    ///   * and the 26 courts that assign a FIXED clock keep compiling and keep their deliberate frozen time.
+    ///
+    /// A CONSTRUCTION ERROR WOULD HAVE BEEN A WEAKER REPAIR ON THIS POINT: it would leave the property optional, and
+    /// the next caller could still write `nil` and be refused at runtime. THIS TYPE CANNOT EXPRESS THE DEFECT.
+    public var receiptTimeProvider: () -> (monoMs: Int64, bootIdentity: String) = {
+        DefaultRetentionClock.sample()
+    }
 
     public func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {
+        // THE PRODUCTION ROAD NAMES NO INSTANT: the runtime clock is the only source of "now".
+        return persistWithFault(frame, receivedFrom: receivedFrom, receiptAt: nil, fault: nil)
+    }
+
+    private func persistUnusedLegacySignature(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {
         persistAt(frame, receivedFrom: receivedFrom,
                   receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
     }
@@ -1019,7 +1053,7 @@ public final class SqliteMessageStore: MessageStore {
                                 storedCheckpoint: Int64? = nil, storedBoot: String? = nil,
                                 storedDiscontinuity: Int64? = nil, persistDebitFor msgId: Data? = nil,
                                 onHandle db: OpaquePointer? = nil) -> Bool {
-        guard let provider = receiptTimeProvider else { return true }
+        let provider = receiptTimeProvider
         // GS-STORE-004 (round 313): THE KIND IS MAPPED FROM THE STORED TYPE OCTET, and the mapping is DECIDED
         // AND DOCUMENTED rather than inferred from two unrelated `rawValue` spaces. ROUND 312 MEASURED THE DEFECT
         // THIS REPLACETH: `MessageKind(rawValue: typeCode)` missed for an ordinary DIRECT frame, the `guard`
@@ -1180,10 +1214,7 @@ public final class SqliteMessageStore: MessageStore {
     /// otherwise: `withDb` inside `withDb` hung the court.
     @discardableResult
     internal func sweepExpiredNoLock(db: OpaquePointer, limit: Int = 64) -> Int {
-        guard let provider = receiptTimeProvider else {
-            lastSweepReport = "REFUSED: no receipt clock was injected (a store with no runtime clock governeth no retention)"
-            return 0
-        }
+        let provider = receiptTimeProvider
         let now = provider().monoMs
         let boot = provider().bootIdentity
         do {
@@ -1286,7 +1317,7 @@ public final class SqliteMessageStore: MessageStore {
     @discardableResult
     public func runScheduledMaintenance(limit: Int = 64) -> Int {
         let retired = sweepExpired(limit: limit)
-        if let now = receiptTimeProvider?().monoMs { lastSweepMonoMs = now }
+        lastSweepMonoMs = receiptTimeProvider().monoMs
         return retired
     }
 
@@ -1351,7 +1382,7 @@ public final class SqliteMessageStore: MessageStore {
               sqlite3_step(stmt) == SQLITE_ROW else { return false }
         let expiresAt = Int64(sqlite3_column_int64(stmt, 0))
         let boot = sqlite3_column_text(stmt, 1).map { String(cString: $0) }
-        guard let clock = receiptTimeProvider else { return true }
+        let clock = receiptTimeProvider
         let stamp = clock()
         guard let writtenBy = boot, writtenBy == stamp.bootIdentity else { return true }
         return stamp.monoMs < expiresAt
@@ -1558,6 +1589,14 @@ public final class SqliteMessageStore: MessageStore {
         _ frame: FrameV2, receivedFrom: Data, receivedAt: Int64,
         fault: ((String, OpaquePointer?) throws -> Void)?
     ) -> PersistResult {
+        persistWithFault(frame, receivedFrom: receivedFrom, receiptAt: receivedAt, fault: fault)
+    }
+
+    /// The public road's own body, with the receipt instant OPTIONAL so the runtime clock is the default.
+    internal func persistWithFault(
+        _ frame: FrameV2, receivedFrom: Data, receiptAt: Int64?,
+        fault: ((String, OpaquePointer?) throws -> Void)?
+    ) -> PersistResult {
         // GS-STORE-005 STEP THREE: THE QUOTA GATE, CONSULTED BEFORE THE TRANSACTION BEGINS AND THEREFORE BEFORE
         // ANY ROW (HELD OR PROTECTED) CAN BE TOUCHED. The snapshot cometh from the INJECTED source -- the
         // composition root's real measurements of the database, its WAL and the logical row categories -- and
@@ -1576,12 +1615,23 @@ public final class SqliteMessageStore: MessageStore {
         // continuity identifier and the discontinuity counter are STILL OWED (they need the schema columns);
         // what this step establisheth is the LAW THE FINDING NAMETH FIRST: no wall time is read inside a
         // transaction method when a runtime hath supplied the platform's own clock.
-        let receiptAnchor = receiptTimeProvider?().monoMs ?? receivedAt
+        // *** AND THE EXPLICIT PARAMETER KEEPETH PRECEDENCE, WHICH MY FIRST DRAFT OF GS-FINAL-005 BROKE. ***
+        //
+        // `persistAt(_:receivedFrom:receivedAt:)` EXISTETH SO A CALLER MAY NAME THE RECEIPT INSTANT, and 20 arms
+        // across `SqliteMessageStoreTests` drive retention and eviction through it. When I de-optionalised the clock I
+        // wrote `receiptTimeProvider().monoMs` alone and DROPPED the `?? receivedAt` fallback -- so those arms' own
+        // instants were IGNORED, every row was stamped "now", and 20 arms failed for a reason that had nothing to do
+        // with this finding.
+        //
+        // **THE FINDING IS ABOUT A CLOCK THAT WAS ABSENT IN PRODUCTION, NOT ABOUT WHICH CLOCK A CALLER MAY NAME.**
+        // The explicit parameter is the caller's own seam and it stays: the runtime clock is the DEFAULT for a path
+        // that names no instant, and it is no longer possible for there to be NO clock at all.
+        let receiptAnchor = receiptAt ?? receiptTimeProvider().monoMs
         // GS-STORE-004 STEP FIVE: THE BUDGET COMETH FROM THE POLICY, not from arithmetic here --
         // `RetentionPolicy.admit` granteth the local lifetime EXACTLY ONCE, anchored at the INJECTED monotonic
         // reading, and NAMETH the continuity identity the reopen path will judge against.
-        let retention = receiptTimeProvider.map { provider in
-            let stamp = provider()
+        let retention: RetentionCheckpoint = { () -> RetentionCheckpoint in
+            let stamp = receiptTimeProvider()
             // *** GS-STORE-004 STEP 3, REPAIRED AT ROUND 528: THE BUDGET COMETH FROM THE POLICY **FOR THE ROW'S OWN
             // KIND** -- AND UNTIL THIS EDIT IT DID NOT. `kind:` WAS HARDCODED `MessageKind.direct`, SO **EVERY ROW
             // WAS MINTED SEVEN DAYS**: an SOS (the policy's twenty-four hours) was retained SEVEN TIMES too long, and a
@@ -1599,7 +1649,7 @@ public final class SqliteMessageStore: MessageStore {
                                          firstReceiptId: String(format: "%02x", 0),
                                          nowMono: Int(stamp.monoMs),
                                          bootIdentity: stamp.bootIdentity)
-        }
+        }()
         if let source = quotaSnapshotSource {
             switch StoreQuota.admit(snapshot: source(),
                                     candidateSize: Int64(frame.payload.count),
@@ -1624,7 +1674,7 @@ public final class SqliteMessageStore: MessageStore {
                 // isNew=false without throwing. A real SQL/IO failure throws.
                 let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom,
                                                       receivedAt: receiptAnchor, retention: retention,
-                                                      bootIdentity: receiptTimeProvider.map { $0().bootIdentity })
+                                                      bootIdentity: receiptTimeProvider().bootIdentity)
                 try fault?("after_insert", db)
                 if isNew {
                     let held = try heldBytesNoLockStrict(db)
@@ -1688,7 +1738,12 @@ public final class SqliteMessageStore: MessageStore {
         _ frame: FrameV2,
         expectedRecipient: Data,
         localOriginNodeId: Data,
-        receivedAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+        // *** GS-FINAL-005: NO WALL-CLOCK DEFAULT INSIDE A TRANSACTION METHOD. *** The audit: *"inspected production
+        // timing seams use wall time."* This parameter's default read `Date().timeIntervalSince1970 * 1000` -- a WALL
+        // clock -- while the store's whole retention policy is built on MONOTONIC time. It is now `nil`, and the body
+        // taketh `receiptTimeProvider().monoMs` when no caller names an instant, so a caller that passes one still
+        // decides and a caller that does not get the RUNTIME's clock rather than the wall's.
+        receivedAt: Int64? = nil,
         fault: ((String, OpaquePointer?) throws -> Void)? = nil
     ) -> OutboundEnqueueResult {
         guard frame.msgId.count == 16,
@@ -1741,7 +1796,28 @@ public final class SqliteMessageStore: MessageStore {
                     return .inconsistentState
                 }
 
-                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: localOriginNodeId, receivedAt: receivedAt)
+                // *** GS-FINAL-005: THE OUTBOUND ROADS PASS THE RETENTION TOO, AND THE INSTANT IS THE RUNTIME'S. ***
+                //
+                // MEASURED BEFORE THIS EDIT, AND IT IS THE SECOND HALF OF THE SAME DEFECT: these calls passed NO
+                // `retention`, so an outbound row was admitted with NO per-kind budget AND NO continuity identity --
+                // and its `receivedAt` came from a WALL-CLOCK default taken inside a transaction method. The audit
+                // named both halves: *"inspected production timing seams use wall time"* and *"Use one captured
+                // (monotonic instant, boot identity) sample per transition."*
+                //
+                // *** AND IT WAS FOUND BY THE LANE, NOT BY READING: *** with the clock made mandatory, two arms
+                // measured an outbound row being EVICTED where it had been protected, because it now carrieth a real
+                // per-kind budget its siblings are judged against. THE ARMS WERE RIGHT AND THE ROW WAS WRONG.
+                let outboundStamp = receiptTimeProvider()
+                let outboundRetention = RetentionPolicy.admit(
+                    msgId: frame.msgId.map { String(format: "%02x", $0) }.joined(),
+                    kind: MessageKind.ofStoredTypeCode(Int(frame.type.rawValue)) ?? .direct,
+                    priority: 0,
+                    firstReceiptId: String(format: "%02x", 0),
+                    nowMono: Int(outboundStamp.monoMs),
+                    bootIdentity: outboundStamp.bootIdentity)
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: localOriginNodeId,
+                                                      receivedAt: Int64(outboundStamp.monoMs),
+                                                      retention: outboundRetention)
                 guard isNew else { throw StoreError.stepFailed }
 
                 try fault?("after_held_insert", db)
@@ -1806,7 +1882,12 @@ public final class SqliteMessageStore: MessageStore {
     internal func enqueueSosOutboundAtWithFault(
         _ frame: FrameV2,
         localOriginNodeId: Data,
-        receivedAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+        // *** GS-FINAL-005: NO WALL-CLOCK DEFAULT INSIDE A TRANSACTION METHOD. *** The audit: *"inspected production
+        // timing seams use wall time."* This parameter's default read `Date().timeIntervalSince1970 * 1000` -- a WALL
+        // clock -- while the store's whole retention policy is built on MONOTONIC time. It is now `nil`, and the body
+        // taketh `receiptTimeProvider().monoMs` when no caller names an instant, so a caller that passes one still
+        // decides and a caller that does not get the RUNTIME's clock rather than the wall's.
+        receivedAt: Int64? = nil,
         fault: ((String, OpaquePointer?) throws -> Void)? = nil
     ) -> OutboundEnqueueResult {
         guard frame.msgId.count == 16,
@@ -1859,7 +1940,28 @@ public final class SqliteMessageStore: MessageStore {
                     return .inconsistentState
                 }
 
-                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: localOriginNodeId, receivedAt: receivedAt)
+                // *** GS-FINAL-005: THE OUTBOUND ROADS PASS THE RETENTION TOO, AND THE INSTANT IS THE RUNTIME'S. ***
+                //
+                // MEASURED BEFORE THIS EDIT, AND IT IS THE SECOND HALF OF THE SAME DEFECT: these calls passed NO
+                // `retention`, so an outbound row was admitted with NO per-kind budget AND NO continuity identity --
+                // and its `receivedAt` came from a WALL-CLOCK default taken inside a transaction method. The audit
+                // named both halves: *"inspected production timing seams use wall time"* and *"Use one captured
+                // (monotonic instant, boot identity) sample per transition."*
+                //
+                // *** AND IT WAS FOUND BY THE LANE, NOT BY READING: *** with the clock made mandatory, two arms
+                // measured an outbound row being EVICTED where it had been protected, because it now carrieth a real
+                // per-kind budget its siblings are judged against. THE ARMS WERE RIGHT AND THE ROW WAS WRONG.
+                let outboundStamp = receiptTimeProvider()
+                let outboundRetention = RetentionPolicy.admit(
+                    msgId: frame.msgId.map { String(format: "%02x", $0) }.joined(),
+                    kind: MessageKind.ofStoredTypeCode(Int(frame.type.rawValue)) ?? .direct,
+                    priority: 0,
+                    firstReceiptId: String(format: "%02x", 0),
+                    nowMono: Int(outboundStamp.monoMs),
+                    bootIdentity: outboundStamp.bootIdentity)
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: localOriginNodeId,
+                                                      receivedAt: Int64(outboundStamp.monoMs),
+                                                      retention: outboundRetention)
                 guard isNew else { throw StoreError.stepFailed }
 
                 try fault?("after_held_insert", db)
@@ -3050,8 +3152,8 @@ public final class SqliteMessageStore: MessageStore {
         if !startupMaintenanceDone {
             startupMaintenanceDone = true
             _ = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
-            lastSweepMonoMs = receiptTimeProvider?().monoMs
-        } else if let now = receiptTimeProvider?().monoMs, let last = lastSweepMonoMs,
+            lastSweepMonoMs = receiptTimeProvider().monoMs
+        } else if let last = lastSweepMonoMs, let now = Optional(receiptTimeProvider().monoMs),
                   now - last >= Int64(RetentionPolicy.checkpointCadenceMs) {
             _ = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
             lastSweepMonoMs = now
@@ -3386,7 +3488,12 @@ internal final class InMemoryMessageStore: MessageStore {
     internal func enqueueSosOutboundAtWithFault(
         _ frame: FrameV2,
         localOriginNodeId: Data,
-        receivedAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+        // *** GS-FINAL-005: NO WALL-CLOCK DEFAULT INSIDE A TRANSACTION METHOD. *** The audit: *"inspected production
+        // timing seams use wall time."* This parameter's default read `Date().timeIntervalSince1970 * 1000` -- a WALL
+        // clock -- while the store's whole retention policy is built on MONOTONIC time. It is now `nil`, and the body
+        // taketh `receiptTimeProvider().monoMs` when no caller names an instant, so a caller that passes one still
+        // decides and a caller that does not get the RUNTIME's clock rather than the wall's.
+        receivedAt: Int64? = nil,
         fault: ((String) throws -> Void)? = nil
     ) -> OutboundEnqueueResult {
         guard frame.msgId.count == 16,
@@ -3423,7 +3530,8 @@ internal final class InMemoryMessageStore: MessageStore {
             let backupDeliveryRows = deliveryRows
             do {
                 try fault?("before_held_insert")
-                rows[frame.msgId] = Held(frame: frame, receivedFrom: localOriginNodeId, receivedAt: receivedAt)
+                rows[frame.msgId] = Held(frame: frame, receivedFrom: localOriginNodeId,
+                                          receivedAt: receivedAt ?? DefaultRetentionClock.sample().monoMs)
                 try fault?("after_held_insert")
                 if totalBytesNoLock > maxBytes { evictUntilUnderCapNoLock() }
                 if rows[frame.msgId] == nil {

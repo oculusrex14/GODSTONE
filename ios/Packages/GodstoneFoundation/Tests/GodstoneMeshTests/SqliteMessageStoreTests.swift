@@ -1295,11 +1295,26 @@ final class SqliteMessageStoreTests: XCTestCase {
         sqlite3_exec(db, StoreSchema.createDeliverySqlIfNotExists, nil, nil, nil)
         sqlite3_exec(db, StoreSchema.createObligationSqlIfNotExists, nil, nil, nil)
         sqlite3_exec(db, StoreSchema.createAckFrameSqlIfNotExists, nil, nil, nil)
+        // *** GS-FINAL-005: A SEEDED ROW NEEDS A REAL RETENTION BUDGET, OR THE STORE (CORRECTLY) JUDGES IT EXPIRED. ***
+        //
+        // THIS SEED WROTE NO RETENTION COLUMNS AT ALL. WHILE THE CLOCK WAS OPTIONAL THAT WAS HARMLESS, because the
+        // store could not judge retention at all; WITH A MANDATORY RUNTIME CLOCK THE ROW IS JUDGED, and a row with no
+        // budget is a row with nothing left -- so the sweep retired it before this arm could count it, and the arm
+        // failed for a reason that had nothing to do with its subject (TYPE-SKIPPING).
+        //
+        // THE FIX IS THE FIXTURE'S, NOT THE STORE'S: the seed now admits the row through the SAME policy production
+        // uses, so the row stands exactly as a real receipt would and the arm measures what it was written to measure.
+        let seeded = RetentionPolicy.admit(
+            msgId: msgId.map { String(format: "%02x", $0) }.joined(),
+            kind: .direct, priority: 0, firstReceiptId: String(format: "%02x", 0),
+            nowMono: Int(Date().timeIntervalSince1970 * 1000), bootIdentity: "seed-boot")
         let sql = "INSERT INTO \(StoreSchema.table) (" +
             "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
             "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +
             "\(StoreSchema.colRoutingTag), \(StoreSchema.colPayload), " +
-            "\(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt)) VALUES (?,?,?,?,?,?,?,?,?,?)"
+            "\(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt), " +
+            "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), " +
+            "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity)) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
             sqlite3_finalize(stmt); sqlite3_close_v2(db); return
@@ -1322,6 +1337,11 @@ final class SqliteMessageStoreTests: XCTestCase {
         }
         sqlite3_bind_zeroblob(stmt, 9, 0)
         sqlite3_bind_int64(stmt, 10, 100)
+        // AND THE FOUR RETENTION COLUMNS, so the row is JUDGEABLE rather than instantly spent (GS-FINAL-005).
+        sqlite3_bind_int64(stmt, 11, Int64(seeded.remainingMs))
+        sqlite3_bind_int64(stmt, 12, Int64(seeded.checkpointMonotonicMs))
+        sqlite3_bind_text(stmt, 13, seeded.bootIdentity, -1, transient)
+        sqlite3_bind_int64(stmt, 14, Int64(seeded.discontinuityCount))
         sqlite3_step(stmt)
         sqlite3_finalize(stmt)
         // C6.4-E: stamp PRAGMA user_version = dbVersion so the store, on reopen,

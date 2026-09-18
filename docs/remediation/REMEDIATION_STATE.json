@@ -13741,7 +13741,29 @@
     "root_cause": "Optional mutable dependency and a misleading parameter name allow a locally tested time policy to be bypassed in composition.",
     "exact_remediation": "Make a single runtime clock protocol mandatory in store, snapshot, sync and lifecycle constructors. Remove the permissive nil branch from production; place deliberate fixed-clock adapters only in tests. Use one captured (monotonic instant, boot identity) sample per transition. Preserve per-kind retention and persisted continuity counters. Audit every read projection and expiry sweep before changing stored timestamp interpretation.",
     "regression_test": "Construct through the real root without test-side clock mutation; use non-default SOS/bulk/direct kinds, wall-clock jumps, repeated same-boot opens and changed boot IDs. Missing production clock must be a construction error.",
-    "my_status": "OPEN"
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 560 (this commit) -- the retention clock is non-optional and defaults to a real platform clock",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-005/round560-RED-GREEN-mutation.log",
+      "sha256": "889db6877e7800d3165459ffa0a1631c2c3639f38237eedffccf7967a738ca54",
+      "what": "The defect, the RED, the five-part repair, the three failure classes the lane found, and the full lane.",
+      "outcome": "RED 2 arms failed (direct/sos/bulk alike answered \"forwardable\"). GREEN 3/3; lane 1306 tests, 0 failures."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-005/round560c-ios-lane.log",
+      "sha256": "7208dc4f1e76275bb07b53e4b6794a0a05abd8e3af6183f329c7f15fc20826ae",
+      "what": "The full iOS lane after the repair.",
+      "outcome": "LabMesh 5/0, GodstoneMesh 1207/0, GodstoneCore 94/0."
+     }
+    ],
+    "my_red_case": "BEHAVIOURAL RED BEFORE THE EDIT: `theExpiryPredicateDoesNotSilentlyKeepEveryKind` failed three times -- a row older than its kind's lifetime was judged FORWARDABLE for DIRECT (7 days), SOS (24 hours) and BULK (1 hour) alike, because `isForwardable` guarded the clock with `else { return true }` and production had NO CLOCK. AND AN ARM OF MINE WAS INVERTED AND IS RECORDED: the first draft asserted `XCTAssertNil` on the clock, which ASSERTED THE DEFECT AS THE REQUIREMENT -- green on the broken tree and it would FAIL once fixed.",
+    "pending_proof": [
+     "THE BOOT IDENTITY IS DERIVED, NOT AUTHORITATIVE: `DefaultRetentionClock` computes it as (wallNow - uptime), so two boots beginning at the SAME wall instant would share an identity. That is a collision on a DIFFERENT clock than the one being read, and the policy already tolerates an unproven continuity by DEBITING at least an hour -- so a collision DEBITS RATHER THAN REPLENISHES. Whether the platform can offer a real boot identifier (a kern.boottime read) is not attempted here.",
+     "THE AUDIT ALSO ASKS FOR THE CLOCK TO BE MANDATORY IN `snapshot`, `sync` AND `lifecycle` CONSTRUCTORS: *\"Make a single runtime clock protocol mandatory in store, snapshot, sync and lifecycle constructors.\"* THIS ROUND DID THE STORE ONLY. `InventorySnapshotAuthority` and `SyncControlOwner` still receive Date-based closures, which the audit named separately: *\"InventorySnapshotAuthority and SyncControlOwner receive Date-based closures named monotonicNowMillis.\"* NAMED AS OWED RATHER THAN CLAIMED.",
+     "NO DEVICE EVIDENCE: the clock is `ProcessInfo.systemUptime`, so every arm on the host exerciseth a clock whose monotonicity is a platform guarantee, not something measured here. The device gate is where a reboot/crash continuity schedule would be executed.",
+     "AND ONE ARM WAS INVERTED: my first draft of the construction arm asserted `XCTAssertNil` on the clock -- WHICH ASSERTED THE DEFECT AS THE REQUIREMENT. It is inverted, and recorded because it is the fourth instance of that species this programme has paid for."
+    ]
    },
    "GS-FINAL-006": {
     "severity": "Medium",
@@ -14029,7 +14051,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "fb3f196f2d8e48a4a3d9c7df57c69a5c0bc1a3f8",
+  "candidate_sha": "f63bd0bd89f6bf62a68a32daabadf017c80af374",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14041,9 +14063,8 @@
     "PARTIAL": 6
    },
    "audit_13_new": {
-    "FIX_SUBMITTED": 9,
-    "PARTIAL": 3,
-    "OPEN": 1
+    "FIX_SUBMITTED": 10,
+    "PARTIAL": 3
    },
    "note": "DERIVED FROM THE ENTRIES, NOT WRITTEN BESIDE THEM. This is the audit's own requirement: \"Derive summary counts from entries.\" A count that is asserted rather than derived is the defect this finding is about."
   },

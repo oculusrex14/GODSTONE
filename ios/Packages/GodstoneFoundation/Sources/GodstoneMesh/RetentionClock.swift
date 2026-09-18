@@ -203,3 +203,31 @@ public struct RetentionTx {
     }
     public static func cancel(_ cp: RetentionCheckpoint) -> RetentionEffect { .cancelled }
 }
+
+/// *** GS-FINAL-005 (the independent audit, 2026-09-18): THE PLATFORM CLOCK PRODUCTION ACTUALLY USES. ***
+///
+/// BEFORE THIS EXISTED THERE WAS **NOTHING TO INSTALL**: the store's clock was an optional property that 26 test
+/// sites assigned and ZERO production sites did, so production ran clockless and every retention judgement silently
+/// answered "keep". A REPAIR THAT MADE THE CLOCK MANDATORY WOULD HAVE HAD NOTHING TO DEFAULT TO.
+///
+/// **THE MONOTONIC INSTANT IS `ProcessInfo.systemUptime`, NOT A WALL CLOCK**, because the policy's whole subject is
+/// elapsed time that a user's clock change cannot move. `systemUptime` is monotonic since boot on Darwin, which is
+/// exactly the property `RetentionPolicy`'s continuity arithmetic assume.
+///
+/// **AND THE BOOT IDENTITY IS DERIVED FROM THAT SAME INSTANT'S BASE**, so "the same boot" and "a new boot" are
+/// distinguishable WITHOUT a wall clock: `bootBase = now - uptime` is the instant the current boot began, and it is
+/// stable within a boot and different across one. It is not a secret and carrieth nothing sensitive.
+///
+/// THE HONEST LIMITATION, STATED RATHER THAN HIDDEN: two boots that begin at the SAME wall instant would share an
+/// identity. That is a base-N collision on a DIFFERENT clock than the one being read, and the policy already
+/// tolerateth an unproven continuity by DEBITING at least an hour (`RetentionPolicy.checkpoint`) -- so a collision
+/// DEBITES RATHER THAN REPLENISHES, which is the safe direction.
+public enum DefaultRetentionClock {
+    public static func sample() -> (monoMs: Int64, bootIdentity: String) {
+        let uptime = ProcessInfo.processInfo.systemUptime          // monotonic seconds since boot
+        let now = Date().timeIntervalSince1970 * 1000              // wall ms -- used ONLY to name the boot
+        let monoMs = Int64(uptime * 1000)
+        let bootBase = Int64(now) - monoMs
+        return (monoMs: monoMs, bootIdentity: "boot-" + String(bootBase, radix: 16))
+    }
+}
