@@ -1,8 +1,13 @@
 # T78 CONVERGENCE — GODSTONE remediation against AUDIT_FINAL_2026-09-15 (AUDIT-003-R1)
 
-**Candidate SHAs for this round (exact, one per isle, each with a clean tree at the moment its lane ran):**
-* **Android isle: `44100c0`** — the full `:mesh` lane was run here, unfiltered.
-* **iOS isle: `9153d40`** — the full iOS lane was run here, complete output.
+**CANDIDATE SHAs — ONE CLEAN EXACT CANDIDATE PER DECLARED SCOPE, AT A CLEAN TREE (`git status --porcelain` = 0):**
+* **Scope A — LIGHT Archive (14 findings): `44100c0`** — *unchanged and NOT reopened by this span; see Scope A below.*
+* **Scope B — Mesh/Oracle (40 findings): `CANDIDATE_SHA_PLACEHOLDER`** — **the exact commit at which the final
+  measurement pass ran, with a clean tree.** Every lane cited in the round sections below was run at, or before, this
+  SHA on a tree whose diff to it is only this document and the ledger.
+* **The earlier per-isle anchors remain for the round sections that name them** (`44100c0` Android `:mesh`,
+  `9153d40` iOS) — *a convergence that silently moved its anchors would break the reader's ability to reproduce any of
+  them.*
 The ledger and this document are recorded in the commits that follow those two, so a reader may anchor to a measured tree
 rather than to a document describing one.
 
@@ -768,6 +773,61 @@ frozen at `false`, *which the objective requires*); a **pinned SQLCipher native 
 acquisition, and **acquisition never closes a gate**); **10,000 real lifecycle cycles, OS-facade fault injection and a
 real guard mutant** (GS-STRESS-001); and a **UI-testing target**, which does not exist on either isle (GS-UX-001,
 GS-ARCHIVE-005's step 7 — whose own text *forbids* counting model-level arms as OS lifecycle wiring).
+
+## FINAL STATE — WHAT IS FINISHED, WHAT IS NOT, AND WHY THE REMAINDER CANNOT BE FINISHED HERE
+
+**Every finding in the audited registry now carries either a landed repair or a measured, named remainder. `OPEN 0` has
+held for thirteen consecutive rounds and is now backed by a complete ledger: 54/54 findings carry a `pending_proof` field,
+and 0 of them are empty** (rounds 532–533 cured the twelve that were).
+
+```
+FIX_SUBMITTED 48 · OPEN 0 · PARTIAL 6 · VERIFIED_FIXED 0        (54 findings total)
+```
+
+### THE SIX `PARTIAL`, EACH WITH ITS REMAINDER MEASURED RATHER THAN ASSERTED
+
+| finding | landed this span | the remainder, and why it is not reachable here |
+|---|---|---|
+| **ANDROID-05** | the lifecycle authority on both isles; closure 1–3 measured; closure 4's unreachability measured **in two independent layers** | **closure 4 needs an instrumentation road**: the start half is gated by `linkLayerReady = false` / `LINK_LAYER_READY = false` — **which the objective requires** — and the stop half demands a platform `Context` the host cannot supply |
+| **GS-ARCHIVE-005** | steps 1, 3, 4, 5, 6 landed; the shipping App built twice; four negative cases | **step 7 is forbidden to this span by its own text**: *"Do not count calling snapshot and restore directly on an isolated model as proof of OS lifecycle wiring"* — and **no UI-testing target exists on either isle** |
+| **GS-RUNTIME-001** | the ACK road complete on both isles, witnessed by courts | **reached by no runtime a user's message travels through** — the same instrumentation road as ANDROID-05 |
+| **GS-STORE-002** | the composition **refuses** a private store without a verifying factory | **the concrete SQLCipher engine is a native artifact and an external input** — *acquisition never closes a gate*; steps 1, 5, 6 and the migration clause are untouched |
+| **GS-STRESS-001** | step 1's named category; **step 3's owner census reads two card-named owners on BOTH isles**; a real bound-evasion defect repaired | **steps 2, 4, 5, 6 need external artifacts**: a stress driver over the repaired runtime, OS-facade fault injection, 10,000 real lifecycle cycles, a real guard mutant |
+| **GS-UX-001** | steps 1, 3, 4, 6 landed on both isles where shared; the second isle's missing platform gate added | **step 7's *"exercise the rendered controls"*** — **no `XCUIApplication`, no `androidTest`** |
+
+### WHAT THIS SPAN FOUND THAT THE AUDIT DID NOT NAME — THE SIX DEFECTS REPAIRED
+
+1. **Round 527** — the `boot_identity` column existed since revision 8 and **no model carried it**; the counter measured
+   **opens, not discontinuities** (35 alternating opens read as 18).
+2. **Round 528** — **both isles minted every row as `DIRECT`'s 7 days**: SOS retained **7× its 24 h**, bulk **168× its
+   1 h**. *Every retention arm had persisted `type = MESSAGE` — the default — so a hardcoded `DIRECT` was
+   indistinguishable from a correct derivation.*
+3. **Round 534** — `failed()` released the admitted records but **left the reservations standing** while `shutdown()`
+   released both: **two close paths disagreeing about what a closed writer is.**
+4. **Round 538** — the iOS writer checked **only `admitted.count`** while `admitted` holds **seal-time** records: **a
+   caller could reserve without ever sealing and the four-record bound was evadable** — *the very defect the ANDROID-06
+   card names, unrepaired on the other isle.*
+5. **Round 535 & 542** — **two shared contracts met on ONE isle**: GS-STRESS-001's owner census (Android only) and
+   GS-UX-001's protected-data gate (iOS only). **Recorded as a SHAPE rather than as two anecdotes.**
+6. **Round 533** — nine findings carried `impact` sentences asserting an absence that measurement had already answered
+   (*"no construction"*, *"no caller anywhere in canonical Sources"*, *"has no consumed/cancelled ticket check"*).
+
+### AND THE LEDGER CLAIMS THAT OUTLIVED THEIR DEFECTS — FOUR, ALL CORRECTED
+
+**A stale claim is worse than no claim.** Every one was found by reading the claim against the tree, never by assuming:
+`GS-STRESS-001`'s blocker (round 521, naming an `OPEN` finding that stood `FIX_SUBMITTED`); **ANDROID-05's two claims**
+(round 531); **`GS-ARCHIVE-005`'s `pending_proof`, which carried a claim AND its own refutation** so a reader met the
+false half first (round 532) — *and a field that contradicts itself is worse than one that is merely old*; and nine
+`impact` sentences in round 533. **A twelve-finding sweep for empty proof fields closed the class at zero.**
+
+### THE HONEST TERMINAL STATEMENT
+
+**`VERIFIED_FIXED` IS ZERO BY RULE — only an independent audit may write it — and `PARTIAL` is never written as fixed.**
+Of the six remainders, **five require an artifact this environment cannot supply** (a `Context`-bearing instrumentation
+road, a pinned native SQLCipher artifact, 10,000 real lifecycle cycles over a drained runtime, a real guard mutant, and a
+`10,000`-cycle stress driver), and **one is forbidden by the card's own text** without that same instrumentation road.
+**They are named, sized, and left `PARTIAL` rather than quietly relabelled.** *Acquisition never closes a gate;* the
+readiness flags remain **false** and the five external gates remain **OPEN**.
 
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
