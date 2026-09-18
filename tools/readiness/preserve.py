@@ -504,6 +504,18 @@ def _content_manifest_failures(root: str, bundle: str) -> list[str]:
     # carrieth a content manifest naming this bundle, that record IS the tree's claim about its content, and it must
     # hold whatever else is present or absent.* *A reconstructed fixture, which carrieth neither the declaration nor a
     # manifest for its historical inventory, is therefore NOT over-policed: it has made no content claim to verify.*
+    # *** AND THE FILES THEMSELVES ARE ANCHORED TO GIT-TRACKED TRUTH (round 695). ***
+    #
+    # MEASURED: **DELETING *BOTH* THE DECLARATION AND THE MANIFEST RETURNED ZERO CONTENT FAILURES** -- *either alone was
+    # caught, but removing both removed the question itself.* **A GATE ANCHORED ON THE PRESENCE OF THE ARTIFACTS IT
+    # GOVERNS IS A GATE THE SAME ACTOR CAN SWITCH OFF.**
+    #
+    # **SO THE FIRST CHECK IS THAT THE RECORDS EXIST AT ALL, AND IT IS ASKED OF GIT RATHER THAN THE FILESYSTEM:** both
+    # files are TRACKED AND COMMITTED, so a deletion MUST surface as a ` D ` row -- *and a tracked-file deletion is a
+    # LOUD FAILURE rather than a silent skip.*
+    missing_records = _record_deletions(root)
+    if missing_records:
+        return missing_records
     if not _tree_declares_a_grown_addition(root, bundle):
         return []
     path = os.path.join(root, _CONTENT_MANIFEST_RELPATH)
@@ -559,3 +571,41 @@ def _tree_declares_a_grown_addition(root: str, bundle: str) -> bool:
             return bundle in (json.load(stream).get('files') or {})
     except (OSError, ValueError):
         return False
+
+#: The two records that together make a CONTENT CLAIM about the external additions.
+_RECORD_RELPATHS = (
+    os.path.join('docs', 'production-readiness', 'ORIGINAL_CHECKOUT_ADDITIONS.json'),
+    _CONTENT_MANIFEST_RELPATH,
+)
+
+
+def _record_deletions(root: str) -> list[str]:
+    """The declaration and the manifest must be PRESENT AND UNMODIFIED as git tracketh them.
+
+    **THIS IS THE ANCHOR, AND IT IS GIT-TRACKED TRUTH RATHER THAN FILE PRESENCE.** *Both files are committed, so a
+    deletion appeareth as a ` D ` row and a modification as ` M ` -- and either is a LOUD failure.* **Without this, an
+    actor deleting both records removeth the question along with the answer:** *measured before this edit, deleting both
+    returned ZERO content failures while a tampered file stood in a declared bundle.*
+
+    A tree that carrieth NEITHER file AND whose git carrieth no such path (a reconstructed fixture, whose records live
+    outside it) is untouched by this check -- *it has made no content claim to verify.*
+    """
+    out: list[str] = []
+    for rel in _RECORD_RELPATHS:
+        # IS THIS PATH TRACKED IN THE COMMITTED TREE? (`ls-files` exits nonzero when it is not.)
+        proc = subprocess.run(['git', 'ls-files', '--error-unmatch', rel],
+                              cwd=root, capture_output=True, text=True)
+        if proc.returncode != 0:
+            # THE COMMITTED TREE DOES NOT CARRY IT: nothing to enforce (a preserved-history fixture).
+            continue
+        full = os.path.join(root, rel)
+        if not os.path.isfile(full):
+            out.append(f'the content RECORD {rel} was DELETED from a tree whose git carrieth it -- *a deleted record '
+                       f'removeth the question, not the duty: restore it rather than removing the check*')
+            continue
+        status = subprocess.run(['git', 'status', '--porcelain=v1', '--', rel],
+                                cwd=root, capture_output=True, text=True).stdout.strip()
+        if status[:2] not in ('', '??'):
+            out.append(f'the content RECORD {rel} was MODIFIED ({status[:2]}) -- *the record must be changed by a '
+                       f'reviewed act, not by a `rm` or an edit that escapes it*')
+    return out

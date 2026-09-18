@@ -13786,6 +13786,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/round692-the-ios-lane-is-now-covered-by-the-lane-control.log",
    "sha256": "34e30dd493eb17b81e58fcbdc006865d38517172f9817aaf78fb31ce521de82a",
    "correction": "THE ROOT CAUSE: **THE LANE CONTROL NEVER COVERED iOS.** Round 691 established my iOS \"green\" was an inference from silence (a grep that matches neither alternative on a green run), AND that I had cited `ci/check_lane_results.py` beside it -- **MEASURED: its `LANES` list named THREE ANDROID LANES AND NOTHING ELSE, so the control I cited covered 3 of 4 lanes while I reported it as covering the run.** THE FIX: **`swift test` writes NO xunit file (measured: no `*.xml` under `.build`), so the LOG is the only artifact the iOS lane produces, and the control now PARSES IT.** `check_ios_lane()` asserts each of the three suites printed a `passed` line; that an aggregate `Executed N tests, with M failures` line exists (a run that died before its suites finish prints errors and NO such line); nonzero tests; and no failing count or `error:` lines. **AND IT REFUSES AN UNRUN LANE:** absent log -> *\"the lane has not been run, and AN UNRUN LANE IS NOT A PASS.\"* PROVEN IN THREE STATES (absent -> refused; present -> suites=3 failures=0 PASSED; and the real numbers GodstoneMeshTests 1242 + GodstoneCoreTests 94 + LabMeshTests 5 = 1341 tests, 0 failures, 0 skips). **AND THE CONTROL IS FALSIFIABLE, PROVEN BY TWO MUTATIONS:** removing one suite's `passed` line is REFUSED by name; truncating the log before any aggregate line is REFUSED naming both missing suites -- *where before, a broken iOS lane produced an empty grep and I called it green.* `ios-lane.log` is gitignored like the Android lanes' `build/` output, *which is what makes the refusal meaningful: its absence is the normal state.*"
+  },
+  {
+   "round": 695,
+   "finding": "GS-CTRL-002",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/round695-the-strongest-bypass-and-the-over-count.log",
+   "sha256": "96d445affb963a461190241c6d4743b2f1a039423e7e3a46d7f20cec2f68f266",
+   "correction": "THREE ADVISORIES, EACH MEASURED. (1) **THE STRONGEST BYPASS SURVIVED MY OWN REPAIR:** declaration deleted alone -> 1 failure, manifest deleted alone -> 2 failures, **BOTH DELETED -> 0 FAILURES.** *Either record alone was caught; removing both removed the question.* FIXED BY ANCHORING ON GIT-TRACKED TRUTH: `_record_deletions(root)` asks GIT whether each record is tracked (both ARE, committed) and requires it to exist and be unmodified -- a tracked record GONE fails (*\"a deleted record removeth the question, not the duty\"*) and one MODIFIED fails; a preserved-history fixture is untouched because `ls-files` exits nonzero there. **MUTATION RE-RUN: all three cases now fire (1/2/2 failures), naming the deletions by path -- NO LONGER 0.** (2) **NO REGEX REUSE FOR iOS, MEASURED:** iOS uses its own `IOS_SUITE`/`IOS_TOTAL` patterns against the LOG, while the Android XML parser (`TESTCASE`/`SUITE`) never sees iOS -- *and structurally so, because `swift test` writes NO xunit file, so the log is the only artifact.* The `tests > 0` assertion and the failing-count/`error:` refusals were already present. (3) **AND A DEFECT IT EXPOSED: THE PARSE OVER-COUNTED.** Printing the real aggregate line as asked showed the parse said **4023** while the bundle totals are **1242+94+5 = 1341** -- *XCTest nested suites re-print their children (90 `Executed` lines summing to exactly 4023), so summing over-counts by the nesting depth.* The parse now takes EACH xctest BUNDLE'S OWN TOTAL and prints the per-bundle evidence beside it: **1341, reconcilable with the artifact.** FALSIFIABILITY SURVIVES: changing one bundle's `passed` line to `FAILED`, or truncating the log, is REFUSED BY NAME. MEASURED: reconstructed fixture 26 passed/0 failed (green BY RIGHT -- its git carries no records); clean live tree 0 content failures; lane control 4 lanes PASSED."
   }
  ],
  "phase_one": {
@@ -14593,7 +14600,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "dd95673a168671d3d0d606d2152dfc555eff9230",
+  "candidate_sha": "705159c72a01c6bf8140a83e6ca93737996ca146",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

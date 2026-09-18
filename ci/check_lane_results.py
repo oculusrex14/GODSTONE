@@ -87,14 +87,32 @@ def check_ios_lane() -> tuple[list[str], dict]:
         if name not in passed:
             problems.append(f"the iOS lane carrieth no PASSED line for suite {name} -- a suite that did not run "
                             f"(or did not pass) is not covered by this control")
-    # AND THE AGGREGATE LINE, PER SUITE, MUST CARRY TESTS AND NO FAILURES.
-    run = [(int(t), int(f)) for t, f in IOS_TOTAL.findall(text)]
+    # *** AND THE AGGREGATE LINES ARE COUNTED AT THE OUTERMOST LEVEL ONLY (round 695). ***
+    #
+    # **MEASURED: THE 90 `Executed` LINES IN THE LOG SUM TO 4023 WHILE THE LANE'S TRUE TOTAL IS 1341** -- *XCTest's
+    # nested suites RE-PRINT their children, so a suite's `Executed` line carrieth the sum of its cases AND each case's
+    # test class printeth its own.* **SUMMING THEM OVER-COUNTS BY EXACTLY THE NESTING DEPTH**, and `swift test` ends with
+    # the outermost total per xctest bundle:
+    #     Test Suite 'GodstoneMeshTests.xctest' passed  ->  Executed 1242 tests, with 0 failures
+    #     Test Suite 'GodstoneCoreTests.xctest' passed  ->  Executed   94 tests, with 0 failures
+    #     Test Suite 'LabMeshTests.xctest' passed       ->  Executed    5 tests, with 0 failures
+    # **SO THE PARSE TAKES EACH **xctest BUNDLE**'S OWN TOTAL, AND NOTHING ELSE.** *A number that over-counts is the
+    # same defect class as one that under-counts: a total nobody can reconcile with the artifact.*
+    run: list[tuple[int, int]] = []
+    for name in ("GodstoneMeshTests", "GodstoneCoreTests", "LabMeshTests"):
+        m = re.search(r"^Test Suite '" + name + r"\.xctest' passed.*?^\s*Executed (\d+) tests?, with (\d+) failures?",
+                      text, re.M | re.S)
+        if m:
+            run.append((int(m.group(1)), int(m.group(2))))
     if not run:
-        problems.append("the iOS lane log carrieth NO 'Executed N tests, with M failures' line -- the run died before "
-                        "its suites finished, which is exactly what a truncated or broken lane looks like")
+        problems.append("the iOS lane log carrieth NO per-bundle 'Executed N tests, with M failures' total -- the run "
+                        "died before its suites finished, which is exactly what a truncated or broken lane looks like")
     for tests, failures in run:
         totals["tests"] += tests
         totals["failures"] += failures
+    # AND THE REAL AGGREGATE LINES ARE CARRIED ALONGSIDE THE PARSE, so a reader can reconcile the two without
+    # re-deriving them -- *the cross-check, not a substitute for it.*
+    totals["evidence"] = [f"{t} tests / {f} failures" for t, f in run]
     if totals["tests"] == 0:
         problems.append("the iOS lane executed ZERO tests -- a zero-test run has not measured anything")
     for name, n in re.findall(r"^\s*Executed (\d+) tests?, with (\d+) failures?", text, re.M):
@@ -292,7 +310,7 @@ def main() -> int:
     ios_probs, ios_totals = check_ios_lane()
     summary.append(
         f"  {'ios:foundation':<14} suites={ios_totals['suites']:<3} tests={ios_totals['tests']:<5} "
-        f"failures={ios_totals['failures']}")
+        f"failures={ios_totals['failures']}  <- per bundle: " + "; ".join(ios_totals.get("evidence", [])))
     all_problems.extend(ios_probs)
 
     print("LANE RESULTS (parsed from the result files, not grepped from stdout):")
