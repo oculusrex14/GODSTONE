@@ -13884,6 +13884,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/round721-counts-bound-to-sources.log",
    "sha256": "b183e7de3cee0a640ec6adb81a25fbfa00ed4b22d62b653543ba1d2f096c712d",
    "correction": "A COUNT THAT ONLY EVER GREW, BECAUSE NOTHING REMOVED THE DEAD FILES. The lane control reported `android:mesh files=108 tests=1906` all session; deleting the results directory and re-running gave 80/1273, TWICE -- and the SOURCES agree (1273 `@Test` annotations, 80 `@Test`-bearing classes). **So the higher number was never a bigger suite: it was stale XMLs from a sibling task directory, because the glob `test-results/*/*.xml` matches ANY task dir.** *This is the staleness defect one path over: the digest binds the SOURCES to the result, but a stale sibling directory carries a CURRENT digest happily -- and a count that only ever grows cannot be falsified.* **THE LAW ADDED: the sources' own `@Test` census is the expected count**, and any disagreement is refused by name. **AND A REVIEW ADVISORY CAUGHT ME FAILING THE FALSIFICATION:** my first attempt `cp`d an identical file, the chain continued on `;`, and my \"planted\" echo proved nothing -- *a chain that continues past a failed write is how a green run misleads you into believing the gate was tested.* The second attempt planted a 3071-byte XML in a sibling dir, ASSERTED it on disk, and the control refused: \"reports 1289 tests but its SOURCES declare 1273\". All three lanes now agree with their sources."
+  },
+  {
+   "round": 723,
+   "finding": "GS-FINAL-011",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-011/round723-red-proven-by-mutation.log",
+   "sha256": "bc2c632e9339e5ff301a7508bb856055dbc58d1af31c5b107d5262cce2826fb3",
+   "correction": "THE CITED \"RED\" WAS NOT A RED. An independent sweep flagged that the log this entry named as its red shows the arm PASSING; **I ENUMERATED EVERY OCCURRENCE RATHER THAN READING THE FIRST MATCH, BECAUSE ONE \"passed\" LINE IS CONSISTENT WITH BOTH STORIES** (an earlier attempt failing and re-running later; or the arm never reddening) -- `grep -n testGSFINAL011` returns EXACTLY TWO LINES, started and passed, and the journal print the red_case quotes is ABSENT from that file (`grep -c` = 0). **So the file is GREEN evidence and is retained as such.** *Per this work's own standing rule the cited run is the authority, so I corrected the fields rather than reasoned from the narrative -- and PROVED THE RED MYSELF BY MUTATION ON THE CURRENT TREE: the audited defect reintroduced (fresh wipe routed through the old ladder that cannot write `runtimeDrained`) produced \"Observed journal: []\" and the arm FAILED; restored, it passes.* **`Observed journal: []` is a better red than the narrative it replaces, because the arm keys on the DURABLE RECORD and cannot be satisfied by a returned string.** *A FIX_SUBMITTED resting on a named artifact that denieth it poisoneth belief in the whole block, not just the line.*"
   }
  ],
  "phase_one": {
@@ -14615,12 +14622,12 @@
     "regression_test": "Call begin through the real runtime with a recording wipe engine; verify REQUESTED, drain, deletion and IDLE outcomes. Do not assert an authority-name tuple.",
     "my_status": "FIX_SUBMITTED",
     "my_fix_commit": "round 548 (this commit) -- the literal tuple is deleted; the authority is OBSERVED",
-    "my_red_case": "THE AUDIT'S OWN MEASUREMENT IS THE RED, AND IT WAS REPRODUCED: `wipeAuthorityForTest()` returned the literal `(\"crashResumable\", true, true)` while `beginPanicWipe` constructed the OLD `PanicWipe`. The new arm `testGSFINAL011_theWipeAuthorityIsObservedRatherThanAsserted` called the REAL public wipe over a real runtime and read the durable journal; it FAILED pre-repair, printing [\"requested\",\"keyErased\",\"artifactsDeleted\",\"newIdentity\"] -- three constants describing a tree that was not there.",
+    "my_red_case": "*** CORRECTED (round 723). THE AUDIT'S OWN MEASUREMENT IS THE ORIGINAL OBSERVATION, AND THE RED FOR *THIS ARM* WAS PRODUCED BY MUTATION TODAY -- NOT INHERITED FROM A LANE THAT SHOWS IT PASSING. ***\n\nTHE AUDIT'S FINDING (the original observation, verbatim in substance): `wipeAuthorityForTest()` returned the literal `(\"crashResumable\", true, true)` while `beginPanicWipe` constructed the OLD `PanicWipe` -- *a green suite describing a tree that was not there.*\n\n*** THE RED, PROVEN BY MUTATION ON THE CURRENT TREE (round 723): *** the audited defect was REINTRODUCED -- `MeshRuntime.beginPanicWipe(keychain:)` routed back through `PanicWipe(...).begin()`, the old ladder that CANNOT write `runtimeDrained` -- and the arm FAILED IMMEDIATELY:\n    CrashStartupResumeTests.swift:1105: error: XCTAssertTrue failed - GS-FINAL-011: A TEST SEAM MAY NOT ASSERT AN ARCHITECTURE THE RUNTIME DOES NOT EXHIBIT ... Observed journal: []\n**`Observed journal: []` IS A BETTER RED THAN THE NARRATIVE IT REPLACES:** *the mutation produced an EMPTY journal where the repaired tree produces `runtimeDrained`, so the arm keyeth on the DURABLE RECORD and cannot be satisfied by a returned string.* Restored -> the arm passes.\n\n**WHY THE FIELD WAS REWRITTEN RATHER THAN DEFENDED:** an independent sweep found that `my_logs[0]` named this file as \"THE RED\" while the file shows the arm PASSING (*enumerated: two lines, started and passed*), **and a `FIX_SUBMITTED` resting on a named artifact that DENIETH it poisoneth belief in the whole block rather than the single line.** *The fix is right and the arm is right; the RED ARTIFACT was mislabelled, and the red now cited is one measured today.*",
     "my_logs": [
      {
       "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-002/round548-full-ios-lane.log",
       "sha256": "00efdb0473a339a17870ebcb9b4756e73e47f0821581b7c2b97e3feed7e854fd",
-      "what": "THE RED for GS-FINAL-011 as well: the same pre-repair lane carries the failing observation arm.",
+      "what": "*** CORRECTED (round 723): THIS FILE WAS LABELLED \"THE RED for GS-FINAL-011\" AND IT IS NOT ONE. *** *An independent sweep flagged the contradiction and I ENUMERATED EVERY OCCURRENCE rather than reading the first match, because one \"passed\" line is consistent with BOTH stories (an earlier attempt failing and re-running later; or the arm never reddening at all):* `grep -n testGSFINAL011` on this file returneth EXACTLY TWO LINES -- \"started\" and \"passed\" -- and `grep -c` confirmeth 2. **THE ARM NEVER FAILED HERE.** And the journal print the `red_case` quotes is absent too (`grep -c` returneth 0), so that quotation cannot have come from this artifact. **THIS FILE IS GREEN EVIDENCE, and it is retained as such.** *Per this work's own standing rule, the run recorded in the cited file is the authority and an inherited narrative cannot outrank it.*",
       "outcome": "Executed 1200 tests, with 3 failures -- one of them `testGSFINAL011_theWipeAuthorityIsObservedRatherThanAsserted`."
      },
      {
@@ -14628,6 +14635,11 @@
       "sha256": "dfc608cdcd99c1a5274be240e36a1e1ce5b17f1e57f54b7404a6aac79a2dd7c7",
       "what": "THE GREEN: the old literal-based arm was REPLACED rather than propped up, and the whole lane is green.",
       "outcome": "GodstoneMeshTests 1201/0 -- the observation arm passes, the literal-tuple arm no longer exists."
+     },
+     {
+      "what": "*** THE RED FOR THIS ARM, PRODUCED BY MUTATION ON THE CURRENT TREE (round 723) -- replacing the inherited narrative that an independent sweep found mislabelled. *** *The audited defect was reintroduced and the arm FAILED with `Observed journal: []`; restored, it passes.*",
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-011/round723-red-proven-by-mutation.log",
+      "sha256": "bc2c632e9339e5ff301a7508bb856055dbc58d1af31c5b107d5262cce2826fb3"
      }
     ],
     "pending_proof": [
@@ -14709,7 +14721,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "2b7dcd1d140682ce75d8ec224d6d1c365fce129e",
+  "candidate_sha": "915b6ad08b8b6322a28d3b6313ef0b922f69fbe2",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
