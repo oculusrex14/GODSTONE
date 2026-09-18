@@ -1,0 +1,101 @@
+    // MARK: - GS-FINAL-003: THE STARTUP PERMIT
+
+    /**
+     * *** THE AUDIT'S CHARGE, ON THIS ISLE: "iOS discards the result of resume before creating identity/stores." ***
+     *
+     * `MeshRuntime.createArchiveOnlyHostComposition` runs the startup resume and then begins
+     * `MeshIdentity.loadOrCreate` and the store construction REGARDLESS of what the coordinator answered. Its root
+     * cause, in the audit's own words: *"DI sequencing is mistaken for successful state transition."*
+     *
+     * THIS ARM MEASURES THE ONE THING THAT MATTERS: WITH A PENDING WIPE THAT CANNOT BE RESOLVED, NOTHING PRIVATE MAY BE
+     * CONSTRUCTED. A store opened here would be opened on the key a later resume is going to erase.
+     */
+    func testGSFINAL003_aPendingWipeThatCannotResolveRefusesTheStartup() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003_peer_\(UUID().uuidString).db")
+        let journal = InMemoryJournal()
+        // A WIPE WAS REQUESTED BEFORE THIS PROCESS STARTED AND ITS DRAIN WAS ALREADY CHECKPOINTED -- so the create-time
+        // ladder faces the ERASURE rung, where every seam is deferred and the ladder must STOP.
+        journal.state = .runtimeDrained
+
+        XCTAssertThrowsError(
+            try MeshRuntime.createArchiveOnlyHostComposition(
+                messageStoreUrl: msgUrl,
+                peerStoreUrl: peerUrl,
+                journal: journal,
+                keychain: InMemoryKeychain()
+            ),
+            "*** GS-FINAL-003: A PENDING WIPE THAT CANNOT BE RESOLVED MUST REFUSE THE STARTUP. The composition "
+                + "proceeded to open the private stores and issue an identity while the wipe stood at "
+                + "`runtimeDrained` -- and a store opened now is a store opened on the key a later resume will erase. ***",
+        ) { error in
+            let text = String(describing: error)
+            XCTAssertTrue(
+                text.contains("wipe") || text.contains("pending") || text.contains("Wipe"),
+                "the refusal must NAME the reason so a caller can act on it, and it read: \(text)",
+            )
+        }
+
+        // AND NOTHING WAS OPENED: the checkpoint must not have advanced, because the create-time seams cannot erase.
+        XCTAssertEqual(journal.state, .runtimeDrained,
+                       "the create-time resume must leave the journal where it stood: it owns no transport, no keychain "
+                       + "and no store handles, so it may not erase, may not delete and may not republish")
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: msgUrl.path),
+                       "and NO PRIVATE STORE MAY HAVE BEEN CREATED while the wipe stands -- that is the whole point: "
+                       + "a store opened now would be opened on the key a later resume is going to erase")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
+    /**
+     * *** AND THE POSITIVE CONTROL: A CLEAN FIRST LAUNCH STILL OPENS EXACTLY ONCE. ***
+     *
+     * The permit must REFUSE a pending wipe WITHOUT refusing an ordinary start -- otherwise the repair would be a
+     * denial of service rather than a gate. The audit's own distinction: "Treat absent journal as a validated
+     * no-pending-wipe state ... and completed wipe as ready."
+     */
+    func testGSFINAL003_aCleanFirstLaunchStillOpensExactlyOnce() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003c_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003c_peer_\(UUID().uuidString).db")
+        let journal = InMemoryJournal()   // empty: nothing was ever requested -- a clean first launch
+
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: InMemoryKeychain()
+        )
+        XCTAssertNotNil(runtime.identity, "a clean first launch must still produce a working runtime")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: msgUrl.path),
+                      "and it must have opened the private store -- the gate must not refuse an ordinary start")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+
+    /**
+     * *** AND A COMPLETED WIPE IS READY, NOT BLOCKED. ***
+     *
+     * A journal standing at `newIdentity` (the wipe finished everything but the final IDLE write) must NOT be treated as
+     * pending: the material is gone and the node is a stranger, which is a legitimate state to start from.
+     */
+    func testGSFINAL003_aCompletedWipeIsReadyRatherThanBlocked() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003d_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003d_peer_\(UUID().uuidString).db")
+        let journal = InMemoryJournal()
+        journal.state = .newIdentity
+
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: InMemoryKeychain()
+        )
+        XCTAssertNotNil(runtime.identity, "a completed wipe leaves a legitimate state to start from")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
+    }
+

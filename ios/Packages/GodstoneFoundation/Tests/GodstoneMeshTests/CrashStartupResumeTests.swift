@@ -633,6 +633,18 @@ final class CrashStartupResumeTests: XCTestCase {
         // resume from the durable compatible journal BEFORE opening keys, databases, discovery or a new identity." SO THE
         // STARTUP RESUMES ONLY WHAT NEEDS NO PLATFORM RESOURCE, AND THIS ARM'S OLD EXPECTATION (`.idle`, i.e. that the
         // WIPE FINISHES AT CREATE) BELONGED TO THE DESIGN THE FINDING REPLACES. MEASURED: with the four deferred seams, the ladder STOPS AT `REQUESTED` -- the drain needs a transport no creating process owns. ***
+        //
+        // *** AND A FURTHER MEASUREMENT IS RECORDED HERE RATHER THAN SILENTLY DROPPED (GS-FINAL-003, round 549). ***
+        //
+        // THE AUDIT'S CHARGE THAT iOS "discards the result of resume before creating identity/stores" IS REAL, AND THIS
+        // ARM PASSES **BECAUSE** OF IT: a runtime IS handed back while the wipe stands at `requested`. A FIRST REPAIR OF
+        // MINE REFUSED HERE INSTEAD -- AND DEADLOCKED THE COMPOSITION, because `continuePendingWipeIfNeeded` is a method
+        // on a CONSTRUCTED runtime and drains through `meshNode.ble`, which is built FROM these very stores. Refusing
+        // means the transport never exists and the wipe can never finish. THE PREREQUISITE IS ARCHITECTURAL -- a recovery
+        // entry point that drives the ladder with a live transport without constructing the store graph -- and until it
+        // exists the permit CANNOT be consumed at this call site. The finding's iOS half is therefore OPEN, and the
+        // red-by-design arms that measure what the permit must do live in
+        // `tools/readiness/audit_probes/swift/GsFinal003StartupPermitTests.swift.txt`.
         XCTAssertEqual(journal.state, .requested)
         XCTAssertTrue(runtime.lifecycleGate.isActive)
         XCTAssertNotNil(runtime.identity)

@@ -312,6 +312,28 @@ public final class MeshRuntime {
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam()
         )
+        // *** GS-FINAL-003: THE ANSWER IS NOT YET CONSUMED HERE, AND THE DEADLOCK THAT MAKES THAT SO IS MEASURED. ***
+        //
+        // THE AUDIT'S CHARGE STANDS: *"iOS discards the result of resume before creating identity/stores."* A FIRST
+        // REPAIR OF MINE GATED THIS CALL SITE -- refusing construction whenever the permit was `.blocked` -- AND IT
+        // DEADLOCKED THE COMPOSITION, which is why it is REVERTED rather than shipped:
+        //
+        //   * the ONLY path that can finish a pending wipe is `continuePendingWipeIfNeeded`, WHICH IS A METHOD ON A
+        //     CONSTRUCTED RUNTIME;
+        //   * that method drains through `meshNode.ble`, AND `MeshNode` IS BUILT FROM THE VERY STORES THIS FUNCTION
+        //     WOULD REFUSE TO OPEN;
+        //   * so refusing here means the runtime is never constructed, the transport never exists, the drain can never
+        //     run, and THE WIPE CAN NEVER COMPLETE. A gate that makes the only remedy unreachable is worse than the
+        //     defect it closes.
+        //
+        // THE PREREQUISITE IS THEREFORE AN ARCHITECTURAL ONE, AND IT IS NAMED RATHER THAN WORKED AROUND: iOS needs a
+        // RECOVERY ENTRY POINT THAT DRIVES THE LADDER WITH A LIVE TRANSPORT WITHOUT CONSTRUCTING THE PRIVATE STORES --
+        // i.e. a composition whose transport seam exists before (and independently of) the store graph. UNTIL THAT
+        // EXISTS, THE PERMIT CANNOT BE CONSUMED AT THIS CALL SITE, and the finding's iOS half remains open. It is
+        // recorded as owed in the ledger, and the red-by-design arms that measure what the permit MUST do live in
+        // `tools/readiness/audit_probes/swift/GsFinal003StartupPermitTests.swift.txt`. The `StartupPermit` type this
+        // would need, and its `decide` function, are preserved in that probe.
+        //
         // A PENDING WIPE STAYETH PENDING: `retryLater` is not an error but the ladder's own refusal to advance without
         // the resources it needs, so it is DISCARDED here and the journal keepeth the truth.
         _ = try resumeAuthority.resume()
