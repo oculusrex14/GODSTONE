@@ -54,6 +54,20 @@ interface ResourceCensusSource {
      */
     fun liveReservations(): Int = NOT_MEASURED
 
+    /**
+     * *** GS-STRESS-001 step 3 (round 651): THE THIRD OWNER -- `ADMITTED`, WHICH IS ONE OF THE CARD'S OWN
+     * "INVENTORY LEASES". ***
+     *
+     * The card nameth its owners: *"timers, writer reservations, sessions, observers, **inventory leases**, ACK work and
+     * database rows."* **`RecordWriter.admittedCountForTest()` IS THE INVENTORY-LEASE HOOK** and it already existeth --
+     * *added for the same reason `reservedCountForTest()` was: an owner that allocateth must be askable what it
+     * holdeth.* **SO THIS IS THE THIRD OWNER MADE ASKABLE, AND THE THIRD KIND THIS SEAM CAN CENSUS.**
+     *
+     * *AND IT IS ADDED BECAUSE THE SEAM NOW MAKETH THE DISTINCTION POSSIBLE: before round 643 an owner had ONE verb and
+     * an unmeasurable owner was indistinguishable from a clean one.*
+     */
+    fun liveAdmittedLeases(): Int = NOT_MEASURED
+
     companion object {
         /** The sentinel for an owner whose kind this seam cannot yet census. NEVER counted as zero. */
         const val NOT_MEASURED: Int = -1
@@ -303,6 +317,15 @@ class StressCampaign(
                     "${owner.ownerName} (reservations)")
                 reservations != 0 -> failures.add(
                     "${Invariants.NO_LEAKED_SESSIONS}: $reservations writer reservation(s) still live in the REAL " +
+                        "owner '${owner.ownerName}' after shutdown")
+            }
+            // THE THIRD OWNER: THE INVENTORY LEASES THE CARD NAMETH -- `admitted`, whose hook already existeth.
+            val admittedLeases = owner.liveAdmittedLeases()
+            when {
+                admittedLeases == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
+                    "${owner.ownerName} (admitted leases)")
+                admittedLeases != 0 -> failures.add(
+                    "${Invariants.NO_LEAKED_SESSIONS}: $admittedLeases admitted lease(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
             }
         }

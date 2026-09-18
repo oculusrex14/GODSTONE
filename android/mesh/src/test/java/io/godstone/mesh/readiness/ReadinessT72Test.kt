@@ -426,7 +426,13 @@ class ReadinessT72Test {
         val clean = object : ResourceCensusSource {
             override val ownerName: String = "RecordWriter"
             override fun liveSessionSlots(): Int = 0
+            // *** EVERY KIND THIS SEAM CAN CENSUS MUST BE OVERRIDDEN FOR AN OWNER TO BE "FULLY MEASURED" -- AND THIS
+            // ARM CAUGHT ITSELF WHEN THE THIRD KIND WAS ADDED: it failed with "unmeasured: [RecordWriter (admitted
+            // leases)]", which is the seam CORRECTLY reporting that a hook added since the arm was written maketh the
+            // owner no longer fully measured. *A control that silently kept passing across a new census kind would be
+            // measuring a narrower seam than it claimeth.* ***
             override fun liveReservations(): Int = 0     // MEASURED, AND CLEAN
+            override fun liveAdmittedLeases(): Int = 0   // MEASURED, AND CLEAN
         }
         val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(clean)).run()
         Assert.assertTrue("a measured clean owner must not be accused: ${result.failures}",
@@ -436,6 +442,41 @@ class ReadinessT72Test {
                 "a seam that reported EVERY owner as unmeasured, which is the cheapest possible way to pass. " +
                 "Observed: ${result.unmeasuredOwners} ***",
             result.unmeasuredOwners.none { it.contains("RecordWriter") },
+        )
+    }
+
+    /** *** THE THIRD OWNER -- THE CARD'S OWN "INVENTORY LEASES" -- IS CENSUSED TOO. *** */
+    @Test
+    fun testGSSTRESS001theThirdOwnerAdmittedLeasesIsCensused() {
+        val leaking = object : ResourceCensusSource {
+            override val ownerName: String = "RecordWriter"
+            override fun liveSessionSlots(): Int = 0
+            override fun liveReservations(): Int = 0     // clean in its own kind ...
+            override fun liveAdmittedLeases(): Int = 2   // ... and LEAKING inventory leases
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(leaking)).run()
+        Assert.assertTrue(
+            "*** A LEAK IN THE THIRD OWNER MUST BE REPORTED AND NAMED -- the card nameth 'inventory leases' among the " +
+                "owners to census. Observed: ${result.failures} ***",
+            result.failures.any { it.contains("admitted lease") && it.contains("RecordWriter") },
+        )
+    }
+
+    /** *** AND THE THIRD KIND IS DISTINGUISHABLE FROM THE SECOND: an owner clean in reservations but not leases accuseth ONLY the lease. *** */
+    @Test
+    fun testGSSTRESS001theThirdOwnerIsDistinctFromTheSecond() {
+        val leaseOnly = object : ResourceCensusSource {
+            override val ownerName: String = "RecordWriter"
+            override fun liveSessionSlots(): Int = 0
+            override fun liveReservations(): Int = 0
+            override fun liveAdmittedLeases(): Int = 1
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(leaseOnly)).run()
+        Assert.assertTrue("the lease leak must be named", result.failures.any { it.contains("admitted lease") })
+        Assert.assertTrue(
+            "*** AND THE RESERVATION KIND MUST NOT BE ACCUSED FOR IT -- otherwise the two censuses would be one " +
+                "census wearing two names, and a maintainer sent to the wrong owner. Observed: ${result.failures} ***",
+            result.failures.none { it.contains("writer reservation") },
         )
     }
 
