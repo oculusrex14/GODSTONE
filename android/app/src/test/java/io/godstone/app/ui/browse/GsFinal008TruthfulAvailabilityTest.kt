@@ -166,4 +166,118 @@ class GsFinal008TruthfulAvailabilityTest {
         assertEquals("installed.bin", (published as ArchiveState.Ready).origin)
         assertNull("and no error is fabricated for a healthy read", vm.state.value.error)
     }
+    /**
+     * *** GS-FINAL-008 (round 719): THE AUDIT'S OTHER TWO CLAUSES, WHICH HAD NO ARMS. ***
+     *
+     * An independent sweep reported: *"the audit's explicit 'cancellation and a later successful retry' regression clause
+     * has no arms, and `canRetry=false` closes the retry door on the status-throw path."* **MEASURED AND CONFIRMED --
+     * the court had exactly three arms and neither of these.** *The audit's `Regression test` clause readeth verbatim:
+     * "Fake the reader so content read succeeds but status throws; assert a typed error/unavailable phase and no
+     * fabricated Ready. **INCLUDE CANCELLATION AND A LATER SUCCESSFUL RETRY.**"*
+     */
+
+    /** A reader whose status probe THROWS only while [broken] is true -- so the arm can HEAL it and retry. */
+    private inner class HealableStatusReader : ArchiveReader {
+        var broken = true
+        var statusCalls = 0
+        override fun status(): ArchiveState {
+            statusCalls += 1
+            if (broken) throw IllegalStateException("the status probe is unreadable")
+            return ArchiveState.Ready(origin = "installed.bin", sha256 = "b".repeat(64))
+        }
+        override fun listDocuments(domain: String?): List<ArchiveDocument> = listOf(document)
+        override fun listDomains(): List<String> = emptyList()
+        override fun passages(documentId: Long): List<ArchivePassage> = listOf(passage)
+        override fun search(query: String, limit: Int): List<ArchivePassage> = listOf(passage)
+        override fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? = null
+    }
+
+    /**
+     * *** "A LATER SUCCESSFUL RETRY": THE SAME VIEW-MODEL, ONCE THE STATUS PROBE RECOVERS, MUST REACH A TRUTHY STATE. ***
+     *
+     * **WHY THIS IS NOT A RESTATEMENT OF THE FIRST ARM:** *that arm proveth a status throw does not become `Ready`; THIS
+     * one proveth the refusal is **NOT PERMANENT** -- that the view-model can be asked again and, when the archive
+     * answereth, publishes the archive's OWN metadata rather than a fabricated one.* **The two together are what maketh
+     * the refusal honest rather than merely cautious:** a view-model that answered `Unavailable` for ever would satisfy
+     * the first arm and be useless.
+     */
+    @Test
+    fun aLaterSuccessfulRetryReachethTheRealMetadata() = runTest(dispatcher) {
+        val reader = HealableStatusReader()
+        val vm = viewModel(reader)
+
+        vm.onQueryChanged("guide")
+        vm.search()
+        advanceUntilIdle()
+        assertEquals(
+            "*** the broken probe must first publish UNAVAILABLE -- the arm's own premise ***",
+            BrowsePhase.Unavailable::class, vm.state.value.phase::class,
+        )
+        assertFalse("and it must NOT be a fabricated readiness", vm.state.value.phase is BrowsePhase.Ready)
+
+        // *** THE ARCHIVE RECOVERS, AND THE SAME VIEW-MODEL IS ASKED AGAIN. ***
+        reader.broken = false
+        vm.search()
+        advanceUntilIdle()
+
+        val after = vm.state.value
+        assertTrue(
+            "*** GS-FINAL-008: A LATER SUCCESSFUL RETRY MUST REACH A TRUTHY STATE. The audit asked for exactly this " +
+                "arm, and it is what separateth an honest refusal from a permanent one. Observed: " + after.phase +
+                " ***",
+            after.phase is BrowsePhase.Ready,
+        )
+        // *** THE METADATA LIVETH ON ITS OWN FLOW, PUBLISHED BY `refreshArchiveStatus` -- NOT BY `search()` *** (*the
+        // phase carrieth none*). *My first draft read `archiveStatus` after a `search()` and the arm failed with "the
+        // recovered archive must have published a verdict" -- the arm naming its OWN wrong road rather than a defect.*
+        // **So the retry is driven through the road that publishes the metadata, which is also the road the audit's own
+        // sentence paireth with `search`: "Map status exceptions through ONE typed mapper used by refresh, search and
+        // open."**
+        vm.refreshArchiveStatus()
+        advanceUntilIdle()
+        val status = vm.archiveStatus.value
+        assertTrue("the recovered archive must have published a verdict", status is ArchiveState.Ready)
+        val ready = status as ArchiveState.Ready
+        assertEquals(
+            "*** AND THE METADATA MUST BE THE ARCHIVE'S OWN -- never an assumed origin or an empty digest, which is the " +
+                "fabrication this finding was about. ***",
+            "installed.bin", ready.origin,
+        )
+        assertEquals("b".repeat(64), ready.sha256)
+    }
+
+    /**
+     * *** "CANCELLATION": AN OBSOLETE OPERATION MUST NOT PUBLISH OVER A NEWER ONE. ***
+     *
+     * *The audit paireth cancellation with the retry clause, and the reason is the same one the repository already
+     * recordeth for this view-model: a superseded search that publishes late WOULD OVERWRITE THE NEWER ANSWER.* **This
+     * arm raiseth a slow status-throwing search, supersedes it with a query whose probe recovereth, and demands the
+     * OBSOLETE failure never land on top of the newer truth.**
+     */
+    @Test
+    fun aSupersededStatusThrowCannotOverwriteANewerResult() = runTest(dispatcher) {
+        val reader = HealableStatusReader()
+        val vm = viewModel(reader)
+
+        // the ELDER operation runs against a broken probe...
+        vm.onQueryChanged("elder")
+        vm.search()
+        // ...and is superseded BEFORE it can publish, by a query whose probe now works.
+        reader.broken = false
+        vm.onQueryChanged("newer")
+        vm.search()
+        advanceUntilIdle()
+
+        val after = vm.state.value
+        assertTrue(
+            "*** THE NEWER RESULT MUST STAND: an obsolete status throw must not overwrite it. Observed: " + after.phase +
+                " ***",
+            after.phase is BrowsePhase.Ready,
+        )
+        assertEquals(
+            "*** and the published identity must be the NEWER query's, not the elder's ***",
+            "newer", after.searchedQuery,
+        )
+    }
+
 }
