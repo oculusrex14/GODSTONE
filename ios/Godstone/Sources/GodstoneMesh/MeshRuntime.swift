@@ -61,6 +61,11 @@ public final class MeshRuntime {
     /// IT USED. Holding it here is what maketh the second half possible.
     private let wipeKeyProvider: (any PrivateStoreKeyProvider)?
 
+    /// *** GS-FINAL-003: THE ONE-SLOT HOLDER THE ADMISSION GATE RESOLVETH ITS AUTHORITY THROUGH. ***
+    /// Declared here so the composition can fill it AFTER construction (`wipeAuthority` is lazy and reads
+    /// `meshNode`), while `init` can still hand the same box to the decorators.
+    internal let wipeGateBox: WipeGateBox
+
     /// GS-FINAL-002: **THE KEYCHAIN THE COMPOSITION WAS GIVEN, RETAINED FOR THE WIPE.**
     ///
     /// THE OLD `PanicWipe` PATH REGENERATED THE IDENTITY THROUGH `MeshIdentity.generateAndStore(keychain:)` -- with
@@ -94,9 +99,35 @@ public final class MeshRuntime {
         let peerRepo = PeerIdentityRepository(store: peerIdentityStore)
         self.peerRepository = peerRepo
 
-        let gatedLookup = RuntimeGatedPeerIdentityLookupSource(
-            delegate: peerRepo,
-            lifecycleGate: lifecycleGate
+        // *** GS-FINAL-003: THE WIPE GATE IS NOW WIRED INTO AN ADMISSION POINT -- AND IT WAS NOT BEFORE. ***
+        //
+        // MEASURED: `CrashResumableWipe.allowsStartup()` / `allowsSensitiveApi()` were called by FOUR TEST SITES AND
+        // ZERO PRODUCTION SITES. The gate existed, was journal-bound, and **NOBODY CONSULTED IT** -- so "a wipe is
+        // pending" was a fact no production road acted on.
+        //
+        // IT IS WRAPPED AROUND THE EXISTING LIFECYCLE-GATED SURFACES, because the two gates answer DIFFERENT
+        // QUESTIONS and both must be asked: the lifecycle gate asketh "hath this runtime been invalidated", and the
+        // wipe gate asketh "is a wipe's journal outstanding". A runtime can be validly constructed WHILE a wipe
+        // standeth pending (that is what keeps the drain reachable, measured in round 549), and in that state
+        // sensitive USE must be refused even though the gate is active.
+        //
+        // ASKED PER CALL, NEVER SAMPLED: the decorators hold the gate, and the gate readeth the durable journal each
+        // time. That is the property the third arm measures.
+        // *** AND THE GATE IS CAPTURED AS A DEFERRED READ, FOR THE SAME LIVENESS REASON `wipeAuthority` IS LAZY: ***
+        // constructing the coordinator here would read `meshNode`, which is assigned a few lines BELOW. A closure that
+        // resolveth the authority at CALL time (after init) keeps the one-authority rule AND the initialisation order.
+        // A BOX, NOT A `self` CAPTURE: `[weak self]` inside `init` reacheth `self` before every stored property is
+        // assigned, which the COMPILER refused -- correctly, and it is the same liveness class as the `lazy` clause
+        // above. The box is filled ONCE below, after `init` returneth, and read at call time thereafter.
+        let wipeGateBox = WipeGateBox()
+        self.wipeGateBox = wipeGateBox
+        let wipeGate = DeferredWipeSensitiveUseGate { wipeGateBox.authority?.allowsSensitiveApi() ?? false }
+        let gatedLookup = WipeGatedPeerIdentityLookupSource(
+            delegate: RuntimeGatedPeerIdentityLookupSource(
+                delegate: peerRepo,
+                lifecycleGate: lifecycleGate
+            ),
+            wipeGate: wipeGate
         )
         let resolver = BoundRecipientKeyResolver(source: gatedLookup)
         self.recipientKeyResolver = resolver
@@ -110,9 +141,12 @@ public final class MeshRuntime {
         let tracker = DeliveryTracker(repo: delivRepo, authenticator: ackAuth)
         self.deliveryTracker = tracker
 
-        let gatedTrust = RuntimeGatedPeerBindingTrustAuthority(
-            delegate: RepositoryPeerBindingTrustAuthority(repository: peerRepo),
-            lifecycleGate: lifecycleGate
+        let gatedTrust = WipeGatedPeerBindingTrustAuthority(
+            delegate: RuntimeGatedPeerBindingTrustAuthority(
+                delegate: RepositoryPeerBindingTrustAuthority(repository: peerRepo),
+                lifecycleGate: lifecycleGate
+            ),
+            wipeGate: wipeGate
         )
         let sessions = SessionManager(
             identity: identity,
@@ -423,7 +457,7 @@ public final class MeshRuntime {
         }
         let messageStore = SqliteMessageStore(url: messageStoreUrl, maxBytes: maxStoreBytes)
         let peerStore = try SqlitePeerIdentityStore(url: peerStoreUrl)
-        return MeshRuntime(
+        let runtime = MeshRuntime(
             identity: identity,
             messageStore: messageStore,
             peerIdentityStore: peerStore,
@@ -433,6 +467,11 @@ public final class MeshRuntime {
             wipeKeyProvider: encryptedStores?.keyProviderForWipe,
             keychain: keychain
         )
+        // *** AND THE BOX IS FILLED ONLY NOW, WITH THE RETIRED AUTHORITY THE WIPE PATHS THEMSELVES USE. ***
+        // This is the ONE-AUTHORITY rule made literal: the admission point and the wipe entry points resolve the
+        // SAME object, so "a wipe is pending" cannot mean two different things in two places.
+        runtime.wipeGateBox.authority = runtime.wipeAuthority
+        return runtime
     }
 
     /// Active panic-wipe execution for this runtime graph (Stage 4B.1 / C8.4B.1).

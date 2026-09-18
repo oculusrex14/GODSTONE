@@ -135,3 +135,103 @@ internal final class RuntimeGatedPeerBindingTrustAuthority: PeerBindingTrustAuth
         return delegate.applyValidatedBinding(binding)
     }
 }
+
+// ================================================================================================
+// *** GS-FINAL-003 (the independent audit, 2026-09-18): THE JOURNAL-BOUND GATE, AT AN ADMISSION POINT. ***
+//
+// THE AUDIT'S CHARGE: *"Startup proceeds after wipe recovery returns a non-complete outcome. ... Android
+// `MeshStartupWipeBarrier` returns Unit after calling resume; providers require the barrier object, not a successful
+// recovery capability."* AND ITS REMEDY: *"block private opens while a wipe is pending."*
+//
+// *** ROUND 549 MEASURED WHY THE OBVIOUS PLACE -- REFUSING CONSTRUCTION -- DEADLOCKS: *** the barrier's own inputs feed
+// `MeshNode`, and `MeshNode` carrieth the live transport the wipe must drain, so a throwing constructor makes the
+// wipe's REMEDY unreachable. A gate that makes its own remedy unreachable is worse than the defect it closeth.
+//
+// THE MECHANISM THAT DOES NOT DEADLOCK ALREADY EXISTED, AND NOTHING CONSULTED IT:
+// `CrashResumableWipe.allowsStartup()` / `allowsSensitiveApi()` are JOURNAL-BOUND -- the authority's own words: *"The
+// gate answers from the journal alone -- it cannot be bypassed by a cached flag."* MEASURED BEFORE THIS EDIT: those two
+// functions were called by FOUR TEST SITES AND ZERO PRODUCTION SITES. **A GATE NOBODY CONSULTS IS NOT A GATE.**
+//
+// SO: CONSTRUCTION PROCEEDS, AND SENSITIVE **USE** IS REFUSED, THROUGH THE ADMISSION POINT. The shape follows the
+// established `RuntimeGatedPeerIdentityLookupSource` / `RuntimeGatedPeerBindingTrustAuthority` decorators on this isle
+// -- they fail closed when the lifecycle gate is inactive; these fail closed when a wipe is pending.
+//
+// AND THE GATE IS ASKED PER CALL, NOT SAMPLED AT CONSTRUCTION, because a decorator that cached the verdict would answer
+// from a stale one -- which is precisely the "DI sequencing mistaken for a successful state transition" the audit
+// named. ONE ARM MEASURES EXACTLY THAT.
+// ================================================================================================
+
+/// *** THE ADMISSION SEAM: whether a wipe's journal permitteth sensitive use RIGHT NOW. ***
+///
+/// It is a PROTOCOL rather than a concrete `CrashResumableWipe` so a court can drive both answers without a journal,
+/// and so the decorators depend on the LAW rather than on the coordinator's whole surface.
+public protocol WipeSensitiveUseGate: AnyObject, Sendable {
+    /// True iff the journal carrieth no outstanding wipe. Bound to
+    /// `CrashResumableWipe.allowsSensitiveApi()` in the composition.
+    func allowsSensitiveUse() -> Bool
+}
+
+/// The composition's adapter: the coordinator's OWN journal-bound answer, unaltered.
+public final class CoordinatorWipeSensitiveUseGate: WipeSensitiveUseGate, @unchecked Sendable {
+    private let authority: CrashResumableWipe
+    public init(authority: CrashResumableWipe) { self.authority = authority }
+    /// *** ASKED PER CALL, NEVER CACHED: `allowsSensitiveApi()` readeth the durable journal each time. ***
+    public func allowsSensitiveUse() -> Bool { authority.allowsSensitiveApi() }
+}
+
+/// The one-slot holder that letteth a decorator be built during `init` and resolveth its authority afterwards.
+public final class WipeGateBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _authority: CrashResumableWipe?
+    public init() {}
+    public var authority: CrashResumableWipe? {
+        get { lock.lock(); defer { lock.unlock() }; return _authority }
+        set { lock.lock(); _authority = newValue; lock.unlock() }
+    }
+}
+
+/// *** THE COMPOSITION'S DEFERRED READ, FOR THE LIVENESS REASON THE AUTHORITY ITSELF IS LAZY. ***
+///
+/// `MeshRuntime.wipeAuthority` is a `lazy var` because constructing it reacheth `meshNode`, which is assigned later in
+/// `init`. A decorator built during `init` would therefore have to read it too early. This adapter resolveth the
+/// authority AT CALL TIME -- after construction -- so the one-authority rule and the initialisation order both hold.
+///
+/// **AND IT FAILS CLOSED WHEN THE READER IS GONE:** if the runtime hath been released, the answer is `false`, which
+/// refuseth sensitive use. A vanished owner is not permission.
+public final class DeferredWipeSensitiveUseGate: WipeSensitiveUseGate, @unchecked Sendable {
+    private let read: @Sendable () -> Bool
+    public init(read: @escaping @Sendable () -> Bool) { self.read = read }
+    public func allowsSensitiveUse() -> Bool { read() }
+}
+
+/// Reroutes lookups to `.storageFailure` while a wipe is pending. The delegate is NOT reached.
+internal final class WipeGatedPeerIdentityLookupSource: PeerIdentityLookupSource, @unchecked Sendable {
+    private let delegate: any PeerIdentityLookupSource
+    private let wipeGate: any WipeSensitiveUseGate
+
+    internal init(delegate: any PeerIdentityLookupSource, wipeGate: any WipeSensitiveUseGate) {
+        self.delegate = delegate
+        self.wipeGate = wipeGate
+    }
+
+    internal func lookup(_ nodeId: Data) -> PeerIdentityLookup {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.lookup(nodeId)
+    }
+}
+
+/// Reroutes binding applications to `.storageFailure` while a wipe is pending. The delegate is NOT reached.
+internal final class WipeGatedPeerBindingTrustAuthority: PeerBindingTrustAuthority, @unchecked Sendable {
+    private let delegate: any PeerBindingTrustAuthority
+    private let wipeGate: any WipeSensitiveUseGate
+
+    internal init(delegate: any PeerBindingTrustAuthority, wipeGate: any WipeSensitiveUseGate) {
+        self.delegate = delegate
+        self.wipeGate = wipeGate
+    }
+
+    internal func applyValidatedBinding(_ binding: ValidatedPeerBinding) -> PeerTrustApplyResult {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.applyValidatedBinding(binding)
+    }
+}

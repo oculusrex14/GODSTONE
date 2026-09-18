@@ -13653,34 +13653,27 @@
     "exact_remediation": "Replace Unit/ignored result with an internal, non-forgeable startup permit issued only after a typed recovery decision. Both Identity.loadOrCreate and private-store factory construction consume that permit. Treat absent journal as a validated no-pending-wipe state, malformed journal as blocked, retryable failure as blocked-with-retry, and completed wipe as ready. Register unlock/retry events without opening a parallel normal-start path.",
     "regression_test": "For every nonterminal stage, inject refusal and exception separately; spy identity creation and DB open counts must remain zero. A clean first launch must still open exactly once.",
     "my_status": "PARTIAL",
-    "my_fix_commit": "round 548 (android typed outcome), round 549 (the iOS attempt and its measured deadlock), round 550 (the SAME deadlock found on Android and reverted there too). BOTH ISLES NOW BLOCKED ON ONE ARCHITECTURAL PREREQUISITE.",
-    "my_red_case": "THE AUDIT'S MEASUREMENT, REPRODUCED AT SOURCE: \"Android MeshStartupWipeBarrier returns Unit after calling resume; providers require the barrier object, not a successful recovery capability.\" The three sensitive providers each took `_barrier: MeshStartupWipeBarrier` -- THE UNDERSCORE IS KOTLIN'S OWN CONVENTION FOR IGNORED -- so the graph proved only that the constructor had run.",
+    "my_fix_commit": "round 561 (this commit) -- the journal-bound gate is wired into an iOS admission point",
+    "my_red_case": "BEHAVIOURAL RED VIA THE CAUSAL MUTATION, because the artefact did not exist to fail first: with the gate UNWIRED (the audited state -- the decorators exist and nobody consults them) the end-to-end arm fails with \"THE GATE IS NOT WIRED\", while the three decorator arms stay green. AND TWO OF MY OWN ARMS WERE FALSE AND ARE RECORDED: the first end-to-end draft was VACUOUS (it asserted nil for a peer the store never had, which passes whether or not the gate is wired -- proven by mutation); the second failed on its own precondition because CrashResumableWipe SNAPSHOTS its journal at construction, so mutating the test journal never reached it.",
     "my_logs": [
      {
-      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round549-ios-lane-FINAL.log",
-      "sha256": "ad375243ab8a9dd5418feffd00e8520265ac2226e27ce40d17198485c8d3d704",
-      "what": "iOS after the gate was reverted: the deadlock gone, every other arm intact.",
-      "outcome": "1295 tests, 0 failures."
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round561-RED-GREEN-mutation.log",
+      "sha256": "74aff0a5213df407531dfdc37f1cfae123243d672e9b64bf43f525bb53e40413",
+      "what": "The charge, why construction-refusal deadlocks, the admission seam, two false arms of mine, the mutation.",
+      "outcome": "MUTATION: the end-to-end arm FAILED with \"THE GATE IS NOT WIRED\". RESTORED: 4/4. Lane 1310 tests, 0 failures."
      },
      {
-      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round549-ios-lane.log",
-      "sha256": "1fe61a6561ba9f6167372b6cbf7d6dfa5635b44b02333c8d50fdbc1770c5692a",
-      "what": "iOS WITH the gate: the measurement that condemned it.",
-      "outcome": "testSR02 threw `startupBlockedByPendingWipe` -- an arm asserting a runtime comes back, failing because none did."
-     },
-     {
-      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round550-ANDROID-lane-after-revert.log",
-      "sha256": "e84db0d0433444346df89bfdc8be0d0cff85b9405bb6e343fa074f3c9157c621",
-      "what": "Android after the SAME gate was reverted there (round 550).",
-      "outcome": "BUILD SUCCESSFUL; 1236 tests, 0 failures, 0 errors, 0 skipped across 79 result files."
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round561-ios-lane.log",
+      "sha256": "1a4c875f4a0f1c55bcea517e32e589c9d6447a97e9a20a401fb4e73d556b7314",
+      "what": "The full iOS lane after the wiring.",
+      "outcome": "LabMesh 5/0, GodstoneMesh 1211/0, GodstoneCore 94/0."
      }
     ],
     "pending_proof": [
-     "BOTH ISLES ARE BLOCKED ON ONE ARCHITECTURAL PREREQUISITE, AND IT WAS MEASURED TWICE RATHER THAN REASONED ONCE. THE DEPENDENCY CHAIN IS THE SAME ON EACH: the only path that finishes a pending wipe needs the LIVE TRANSPORT; the transport lives on the node; THE NODE IS BUILT FROM THE VERY STORES A STARTUP PERMIT WOULD REFUSE. So gating CONSTRUCTION means no node, no transport, no drain, AND A WIPE THAT CAN NEVER COMPLETE -- any mid-wipe crash would brick the app until the journal was cleared by hand, STRICTLY WORSE than the discard being repaired.",
-     "iOS: `MeshRuntime.continuePendingWipeIfNeeded()` is a METHOD ON A CONSTRUCTED RUNTIME and drains through `meshNode.ble`. Measured by `testSR02` throwing `startupBlockedByPendingWipe`. Gate reverted; `StartupPermit` and its three arms preserved in tools/readiness/audit_probes/swift/.",
-     "Android: `provideMeshPanicWipe(invalidator, node)` needs the `MeshNode`, which takes `provideIdentity`, `provideSqliteMessageStore` and `providePeerIdentityStore` as inputs -- the three the gate would throw from. The chain was read out of the DI graph, not assumed. Gate reverted in round 550; the barrier now RETAINS the typed answer (`outcome`) and exposes `permitsStartup`.",
-     "WHAT THE AUDIT ACTUALLY ASKS FOR IS \"block private opens while a wipe is pending\", AND THE MECHANISM FOR THAT ALREADY EXISTS: `CrashResumableWipe.allowsStartup()` / `allowsSensitiveApi()` are JOURNAL-BOUND -- they answer from the durable record, not a cached boolean -- so they can refuse sensitive USE without refusing CONSTRUCTION. What is missing is that the coordinator is not REACHABLE from an admission point: on Android the runtime-side authority is constructed inside `MeshPanicWipe.begin`; on iOS it lives behind `meshNode`. Wiring the journal-bound gate into an admission point is the prerequisite, and it is stated rather than worked around.",
-     "THE CONTROL WAS CORRECTED TWICE AND BOTH CORRECTIONS ARE RECORDED, because each was a false witness of the same species the finding is about: R17 first required the literal `_barrier: MeshStartupWipeBarrier` -- SATISFIED BY THE DEFECT (the underscore means ignored); then counted `requireStartupPermit(barrier)` call sites -- SATISFIED BY A THROW THAT DEADLOCKS; then counted log-only consults -- ASSERTING SAFETY WHILE BLOCKING NOTHING. It now asserts the dependency and the RETAINED ANSWER, and explicitly REFUSES to claim enforcement, with a mutation that reddens if a construction-refusing gate is reintroduced (56/55 mutations caught)."
+     "ANDROID'S HALF IS `MeshStartupWipeBarrier.permitsStartup`, LANDED IN ROUND 548: the barrier retains the coordinator's typed answer and three sensitive providers consult it by recording the refusal. That is a NAMED record, not a refusal of USE -- the same admission-point question, and wiring it through a decorator of the same shape as the iOS one is the remaining work on that isle.",
+     "THE WIRING COVERS TWO ADMISSION POINTS, NOT ALL OF THEM: `recipientKeyResolver` and `sessionManager` are wrapped. The ACK surfaces (`ackStore`, `ackDriver`, `ackPump`) and `recipientInbox` are NOT, and neither is the message store's own direct read road. A wipe pending does not block a caller that reacheth those directly. Named rather than implied.",
+     "NO DEVICE EVIDENCE: every arm is a host reproduction over the composition the tests build. A real process restart with a genuinely interrupted wipe is the device gate.",
+     "AND THE AUDIT'S OTHER PRESCRIBED OPTION REMAINS OPEN: a TYPED REFUSAL from `start()` after a terminal stop. `MeshNode.start()` still returns Bool; the journal-bound gate is the mechanism chosen instead, and this is recorded so the alternative is not mistaken for done."
     ],
     "my_prerequisite_is_internal": "NOT BLOCKED_EXTERNAL. The prerequisite is INTERNAL, WRITABLE CODE: wiring the EXISTING journal-bound gates `CrashResumableWipe.allowsStartup()` / `allowsSensitiveApi()` into an admission point that can refuse sensitive USE without refusing CONSTRUCTION. No external artifact and no acquisition is needed. This status was first written BLOCKED_EXTERNAL, which OVERSTATED external dependence and UNDERCOUNTED open internal work -- the same overstatement the audit filed against the programme as GS-FINAL-012."
    },
@@ -14051,7 +14044,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "f63bd0bd89f6bf62a68a32daabadf017c80af374",
+  "candidate_sha": "b1788fd2452db0fb7293a6503d2ace33b4e17bf2",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14121,11 +14114,9 @@
    "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ",
    "GS-UX-001: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
    "GS-UX-001: ROUND 543 (THE iOS ADAPTER'S BLOCKING OBSTACLE, MEASURED): the lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` is blocked by THREE obstacles -- a synchronous port a",
-   "GS-FINAL-003: BOTH ISLES ARE BLOCKED ON ONE ARCHITECTURAL PREREQUISITE, AND IT WAS MEASURED TWICE RATHER THAN REASONED ONCE. THE DEPENDENCY CHAIN IS THE SAME ON EACH: the only path that finishes",
-   "GS-FINAL-003: iOS: `MeshRuntime.continuePendingWipeIfNeeded()` is a METHOD ON A CONSTRUCTED RUNTIME and drains through `meshNode.ble`. Measured by `testSR02` throwing `startupBlockedByPendingWip",
-   "GS-FINAL-003: Android: `provideMeshPanicWipe(invalidator, node)` needs the `MeshNode`, which takes `provideIdentity`, `provideSqliteMessageStore` and `providePeerIdentityStore` as inputs -- the ",
-   "GS-FINAL-003: WHAT THE AUDIT ACTUALLY ASKS FOR IS \"block private opens while a wipe is pending\", AND THE MECHANISM FOR THAT ALREADY EXISTS: `CrashResumableWipe.allowsStartup()` / `allowsSensitiv",
-   "GS-FINAL-003: THE CONTROL WAS CORRECTED TWICE AND BOTH CORRECTIONS ARE RECORDED, because each was a false witness of the same species the finding is about: R17 first required the literal `_barri",
+   "GS-FINAL-003: ANDROID'S HALF IS `MeshStartupWipeBarrier.permitsStartup`, LANDED IN ROUND 548: the barrier retains the coordinator's typed answer and three sensitive providers consult it by recor",
+   "GS-FINAL-003: THE WIRING COVERS TWO ADMISSION POINTS, NOT ALL OF THEM: `recipientKeyResolver` and `sessionManager` are wrapped. The ACK surfaces (`ackStore`, `ackDriver`, `ackPump`) and `recipie",
+   "GS-FINAL-003: AND THE AUDIT'S OTHER PRESCRIBED OPTION REMAINS OPEN: a TYPED REFUSAL from `start()` after a terminal stop. `MeshNode.start()` still returns Bool; the journal-bound gate is the mec",
    "GS-FINAL-004: THE CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. The central defect -- the factory's verified connection is discarded and `SqliteMessageStore(url:)` perfor",
    "GS-FINAL-004: TWO FALSE ARMS WERE WRITTEN AND BOTH WERE DELETED RATHER THAN KEPT GREEN: (1) one asserted only that the engine was ASKED for a keyed open -- TRUE ON THE UNREPAIRED TREE, because t",
    "GS-FINAL-004: DONE AND EVIDENCED: the archive-only SPLIT. `createArchiveOnlyHostComposition` no longer takes an `encryptedStores` parameter at all, so a composition that cannot be given a key ca",
@@ -14157,6 +14148,7 @@
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO HUMAN ACCESSIBILITY ACCEPTANCE: no text-scale, RTL, VoiceOver or TalkBack result is claimed anywhere.",
    "GS-UX-001: *** WHAT REMAINS, NAMED: *** (i) **the iOS app-side wiring of step 4's four actions** (its models carry the commands; its shipping views do not dispatch them -- and its `ProtectedD",
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO REAL LOCKED-DEVICE READING: the gate is exercised through INJECTED gates in the court, and **THE PLATFORM IMPLEMENTATION THAT READETH A REAL LOCK",
+   "GS-FINAL-003: NO DEVICE EVIDENCE: every arm is a host reproduction over the composition the tests build. A real process restart with a genuinely interrupted wipe is the device gate.",
    "GS-FINAL-004: REMAINING, AND IT IS THE BULK OF THE FINDING: (a) `EncryptedStoreFactory` must return an OWNED VERIFIED CONNECTION with restricted construction and explicit close ownership; (b) `S",
    "GS-FINAL-006: *** THE APP-LAYER COMPILE IS BLOCKED BY AN EXTERNAL GATE, SO THIS EDIT IS UNVERIFIED. *** `xcodebuild` fails on \"archive_light.db could not be opened\" -- AND IT FAILS IDENTICALLY W",
    "GS-FINAL-006: NO RENDERED-SCREEN WITNESS ON EITHER ISLE -- the same UI-target gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7 (no XCUIApplication, no androidTest)."
