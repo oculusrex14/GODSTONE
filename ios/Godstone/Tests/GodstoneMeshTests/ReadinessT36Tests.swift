@@ -938,6 +938,84 @@ extension ReadinessT36Tests {
         )
     }
 
+    /**
+     * *** CRYPTO-005 (round 585): THE FAULT ARRIVETH **INSIDE** THE AUTHORITY, WHICH IS WHAT WAS OWED. ***
+     *
+     * THE PREVIOUS ROUND'S ARMS FAULTED THE JOURNAL DIRECTLY AND THE MUTATION PROVED THEY MEASURE **THE DECORATOR**,
+     * NOT THE AUTHORITY'S CONSUMPTION OF A FAULT: deleting the authority's own guard at `SendDirectAuthority:453`
+     * (`if case .storageFailure = loadedRow { return .rejected(...) }`) **SURVIVED**. A GREEN THAT CANNOT REDDEN WHEN
+     * THE CONSUMER IS BROKEN IS NOT EVIDENCE ABOUT THE CONSUMER.
+     *
+     * *** SO THIS ARM INJECTS THE FAULTING JOURNAL **INTO** THE AUTHORITY AND DRIVES A REAL SEND** -- which is
+     * reachable because `SendDirectAuthority.init` TAKETH `journal:` AS A PARAMETER. The claim is the one the card's
+     * own words demand: a boundary fault mid-send must REFUSE, **NOT re-author** -- because re-authoring a message
+     * that may already have been sent is the duplicate the intent journal existeth to prevent.
+     */
+    func testCRYPTO005_aFaultedLoadInsideTheAuthorityRefusesRatherThanReAuthoring() async throws {
+        var f = try fixture(seedByte: 0x41, xByte: 0x42)
+        let peer = try approvePeer(&f, 0x51, 0x52)
+
+        // THE FAULTING JOURNAL, WRAPPING THE REAL ONE, INJECTED INTO A REAL AUTHORITY.
+        let faulting = FaultingIntentJournal(wrapping: f.journal, faultAt: .load)
+        let authority = SendDirectAuthority(
+            identity: f.id, signingKeys: f.signing, router: f.router, store: f.store,
+            trustResolver: TrustedPeerIdentityResolver(source: f.trust),
+            journal: faulting, identityFactory: f.factory, clock: f.clock)
+
+        let result = await authority.sendDirect(try cmd(bytesOf(7, 16), peer.nodeId, [0x61, 0x62]))
+
+        // *** THE LOAD WAS ACTUALLY REACHED -- OTHERWISE A REFUSAL WOULD BE ATTRIBUTABLE TO AN EARLIER GATE. ***
+        XCTAssertTrue(
+            faulting.calls.contains("load"),
+            "*** THE RIG MUST REACH THE FAULTED OPERATION: the authority's own sequence must call `load` before this " +
+                "arm can say anything about a fault THERE. Observed calls: \(faulting.calls) ***",
+        )
+        guard case let .rejected(reason) = result else {
+            XCTFail(
+                "*** A FAULTED LOAD **INSIDE THE AUTHORITY** MUST REFUSE, NOT PROCEED. Proceeding would RE-AUTHOR a " +
+                    "message whose durable intent could not be read -- and re-authoring a message that may already " +
+                    "have been sent is exactly the duplicate the intent journal exists to prevent. Observed: \(result) ***")
+            return
+        }
+        XCTAssertEqual(
+            reason, SendDirectRejection.enqueueCanonicMismatch,
+            "*** AND THE REFUSAL MUST BE THE TYPED ONE THE FAULT PATH NAMES -- `enqueueCanonicMismatch` -- NOT A " +
+                "SUCCESS OR AN UNRELATED REJECTION. Observed: \(reason) ***",
+        )
+
+        // *** AND NOTHING WAS WRITTEN: A REFUSAL THAT STILL COMMITTED WOULD BE THE WORST OF BOTH. ***
+        XCTAssertEqual(
+            f.store.allHeldMsgIds().count, 0,
+            "*** FINAL STATE: A REFUSED SEND MUST LEAVE NOTHING HELD -- the refusal must precede the enqueue, not " +
+                "follow it. Observed held: \(f.store.allHeldMsgIds().count) ***",
+        )
+    }
+
+    /** *** AND THE POSITIVE CONTROL: THE **SAME** RIG WITH AN UNFAULTED JOURNAL REALLY SENDS. *** */
+    func testCRYPTO005_theSameAuthorityWithAnUnfaultedJournalReallySends() async throws {
+        var f = try fixture(seedByte: 0x61, xByte: 0x62)
+        let peer = try approvePeer(&f, 0x71, 0x72)
+
+        let passthrough = FaultingIntentJournal(wrapping: f.journal, faultAt: nil)
+        let authority = SendDirectAuthority(
+            identity: f.id, signingKeys: f.signing, router: f.router, store: f.store,
+            trustResolver: TrustedPeerIdentityResolver(source: f.trust),
+            journal: passthrough, identityFactory: f.factory, clock: f.clock)
+
+        let result = await authority.sendDirect(try cmd(bytesOf(8, 16), peer.nodeId, [0x71, 0x72]))
+
+        if case let .rejected(reason) = result {
+            XCTFail("*** THE CONTROL MUST REALLY SEND: an authority that refused everything would satisfy the fault " +
+                "arm while making the send path useless. Rejected with: \(reason) ***")
+            return
+        }
+        XCTAssertTrue(
+            f.store.allHeldMsgIds().count > 0,
+            "*** AND THE FRAME MUST BE HELD -- otherwise `.accepted` would be a report with nothing behind it. " +
+                "Observed held: \(f.store.allHeldMsgIds().count) ***",
+        )
+    }
+
     // MARK: - CRYPTO-005: THE COMPOSITION'S OWN DURABLE COMMAND (the card's composition test)
 
     /**

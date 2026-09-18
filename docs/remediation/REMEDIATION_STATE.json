@@ -6858,6 +6858,12 @@
      "sha256": "283c835374ed09130077e46c4d5b06800314022edaa77f0d886b19bf50476c52",
      "what": "Boundary faults at each journal operation, and the mutation that showed they measure the decorator not the authority's guard.",
      "outcome": "Arms pass 18/18, BUT the mutation removing the authority's own storageFailure guard SURVIVED -- so the arms prove the protocol's typed fault cases, not the authority's consumption of them. Owed: inject the faulting journal INTO the authority and drive a real send."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round585-fault-inside-the-authority.log",
+     "sha256": "62dac1673e70f3cc007d5ed4037b7792fb9d175dc4ebba84acef64c582b99037",
+     "what": "The owed work: the faulting journal injected INTO the authority, driving a real send -- and the mutation that survived last round now reddening.",
+     "outcome": "MUTATION (authority storageFailure guard deleted, grep-confirmed): 1 FAILURE, with the authority observed durablyEnqueued -- i.e. RE-AUTHORING instead of refusing. Last round this mutation SURVIVED; now it reddens. Restored 20/20."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
@@ -6943,7 +6949,7 @@
    "pending_work": [
     "ROUND 533 (AN EMPTY PROOF FIELD IS A RECORD DEFECT, AND THREE OF THEM WERE THE HUMAN'S OWN FIVE). Round 532 counted twelve findings whose `pending_proof` was EMPTY -- and THREE of them are findings the human named directly, so a reader asking 'what doth this owe?' was told NOTHING about the very findings the instruction centred on. EACH IS NOW FILLED FROM A MEASUREMENT TAKEN **THIS ROUND**, and in two of the three the measurement CHANGED what had been believed: **CRYPTO-005's absent/corrupt gap (round 484) IS CLOSED** (`SendDirectAuthority.swift:453-454` handle `.storageFailure` and `.corrupt` with typed rejections), while **GS-INBOX-001's collision clause is STILL OWED** -- and the two arms on this isle named for a 'collision' concern OTHER SUBJECTS (a Bloom collision and a node-id/signing-key collision), which are named here so neither is mistaken for the clause. **A PROOF FIELD MUST BE MEASURED WHEN IT IS WRITTEN**, and the measurement is worth more than the writing."
    ],
-   "remaining_work": "THE INTERRUPTION HALF IS PARTLY MEASURED (round 584). **PROVEN BY EXECUTED ARMS:** `OutboundIntentJournal`'s three operations (`load`/`insertIfAbsent`/`advance`) each carry a `storageFailure` **SEPARATELY FROM ABSENCE** -- the protocol's own docstring insists \"ABSENCE IS NOT A FAULT, and a caller may act on it\" -- and a decorator can fault any one without the others changing, with a CALL LOG proving each was reached. **AND THE MUTATION THAT CUT THE CLAIM DOWN:** deleting the AUTHORITY'S OWN GUARD (`if case .storageFailure = loadedRow { return .rejected(...) }` at `SendDirectAuthority:453`) **SURVIVED -- 18 tests, 0 failures.** SO THE ARMS MEASURE THE DECORATOR'S TYPED ANSWERS, NOT THE AUTHORITY'S CONSUMPTION OF THEM: a green that cannot redden when the consumer is broken is not evidence about the consumer. **OWED, AND REACHABLE RATHER THAN WALLED:** inject the `FaultingIntentJournal` INTO `SendDirectAuthority` and drive a REAL send, asserting it REFUSES rather than RE-AUTHORING a message that may already have been sent. \"Restart and compare immutable bytes\" IS covered by the pre-existing reopen arm and the composition arm (`sendDirectDurable` + reopen)."
+   "remaining_work": "THE OWED ARM IS DONE AND CAUSALLY PROVEN (round 585), SO THE ROUND-584 GAP IS CLOSED. The faulting journal is injected INTO a real `SendDirectAuthority` (its initialiser taketh `journal:`), a real command is sent, and the arm asserts the faulted operation was ACTUALLY REACHED (a call log), that the result is the TYPED `.enqueueCanonicMismatch`, and that NOTHING WAS WRITTEN. **THE MUTATION THAT SURVIVED LAST ROUND NOW REDDENS:** deleting the authority's guard produces 1 failure, with the authority observed `durablyEnqueued` -- **RE-AUTHORING rather than refusing, exactly the duplicate the intent journal exists to prevent.** The positive control (same rig, unfaulted journal) really sends and really holds the frame. **WHAT REMAINS UNMEASURED:** \"interrupt each persist/send boundary\" is covered for the LOAD boundary; the INSERT and ADVANCE boundaries have typed-decorator arms but no authority-level witness, and the SEND boundary (after durable enqueue) is not faulted at all."
   },
   "CRYPTO-006": {
    "audit_status_at_snapshot": "OPEN",
@@ -14197,7 +14203,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "95e70fa5a378d5435fb455e056093cc2ea8cd344",
+  "candidate_sha": "d51618670cab83a489658468fce1db2e73c0cc19",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
