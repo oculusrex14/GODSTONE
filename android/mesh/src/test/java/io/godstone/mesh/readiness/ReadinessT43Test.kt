@@ -74,7 +74,8 @@ class ReadinessT43Test {
 
     private class Rig(val store: InMemoryMessageStore, val keys: KeyTable,
                       val tracker: DeliveryTracker, val node: MeshNode,
-                      val auth: CountingAuthenticator) {
+                      val auth: CountingAuthenticator,
+                      val identity: Identity, val sessions: io.godstone.mesh.crypto.SessionManager) {
         private var seedCounter = 0
         /** A fresh msg_id seed per authored frame: two authorings are two messages. */
         fun nextSeed(): Int = ++seedCounter * 13 + 5
@@ -90,7 +91,7 @@ class ReadinessT43Test {
         val identity = Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv)
         val node = MeshNode(null, identity, store, tracker)
         node.sosAuthority = SosTestAuthority()   // GS-SOS-001: a court that dispatcheth an SOS must wire an authority
-        return Rig(store, keys, tracker, node, auth)
+        return Rig(store, keys, tracker, node, auth, identity, node.sessions)
     }
 
     private fun msgId(seed: Int): ByteArray = ByteArray(16) { ((it + seed) and 0xFF).toByte() }
@@ -452,6 +453,49 @@ class ReadinessT43Test {
         Assert.assertEquals("and the row standeth NONE-mode, binding no recipient",
             AckMode.NONE, (r.tracker.lookup(mid) as DeliveryLookup.Found).record.ackMode)
     }
+
+    // ------------------------------------------------------------ GS-FINAL-003 (round 699): THE DELIVERY READ ROAD
+
+    /**
+     * *** GS-FINAL-003 (round 699) -- THE DELIVERY READ ROAD IS GATED, AND THIS ARM IS ITS RED. ***
+     *
+     * **THE DEFECT: `deliveryProjection` READ A DELIVERY ROW WITHOUT CONSULTING THE ADMISSION SEAM.** *Measured by
+     * sweeping every function that toucheth `store`/`deliveryTracker`: `retrySos` and `activeSosSnapshot` were gated
+     * in round 633, this one was NOT -- and it readeth the same store.*
+     *
+     * **AND THIS ARM IS A BEHAVIOURAL RED, NOT A COMPILE ERROR:** against the pre-fix revision the projector
+     * RETURNETH THE ROW'S REAL STATE (`OFFERED`), because the guard did not exist. *A compile error would have proved
+     * only that I can type; this proves the ROAD.*
+     *
+     * The positive control below is the SAME rig with a PERMITTING gate: it must still report the real label, so the
+     * arm cannot pass by refusing everything.
+     */
+    @Test
+    fun test_gf003_the_delivery_read_road_is_gated_on_a_pending_wipe() = runTest {
+        val r = rig()
+        val recipient = newLocal()
+        r.keys.put(recipient.id, recipient.pub)
+        val mid = authorAndOffer(r, recipient, peers = 2)
+
+        // the row IS durable and the PERMITTING rig seeth it -- the positive control, stated first
+        Assert.assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(r.tracker, mid))
+        Assert.assertEquals("the PERMITTING rig reads the real label -- so this road works when allowed",
+            DeliveryLabel.OFFERED, r.node.deliveryProjection(mid).label)
+
+        // NOW THE SAME NODE, WITH THE SEAM REFUSING: the read must not report a live state from a store under erasure
+        val refusing = refusingNodeFor(r)
+        val projection = refusing.deliveryProjection(mid)
+        Assert.assertEquals("*** a wipe in flight must NOT yield a live delivery state ***",
+            DeliveryState.UNAVAILABLE, projection.state)
+        Assert.assertFalse("and it must not claim the bytes left the device", projection.claimsDelivery)
+        Assert.assertFalse("nor claim relay custody", projection.claimsRelayCustody)
+    }
+
+    /** The SAME rig with ONLY the seam refusing -- *so the arm differeth from its control by the gate alone.* */
+    private fun refusingNodeFor(r: Rig): MeshNode =
+        MeshNode(null, r.identity, r.store, r.tracker,
+            io.godstone.mesh.identity.WipeSensitiveUseGate { false }, r.sessions)
+            .also { it.sosAuthority = SosTestAuthority() }
 }
 
 /** The minimal in-memory delivery repository the T43 court requireth (the

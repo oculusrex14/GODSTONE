@@ -703,6 +703,48 @@ extension ReadinessT39Tests {
                 "empty-store nil: the SAME store holds a real active SOS, as the assertion above just showed. ***")
     }
 
+    // ================================================================================================
+    // GS-FINAL-003 (round 699): THE SAME SWEEP, ONE ROAD FURTHER -- `deliveryProjection`.
+    //
+    // **ROUND 636 GATED THE TWO SOS READ ROADS AND STOPPED. I DID NOT ASSUME THAT WAS THE WHOLE SET: I ENUMERATED
+    // EVERY FUNCTION IN `MeshNode` THAT TOUCHETH `store`/`deliveryTracker`, ON BOTH ISLES, AND `deliveryProjection`
+    // READ A DELIVERY ROW WITH NO GATE AT ALL.** *Its consumers today are courts only -- and it is gated regardless,
+    // because a read road that reporteth delivery state from a store being erased is A CLAIM THAT LOOKS LIKE A STATE.*
+    // **The identical gap existed on Android, and both isles were repaired together so a reader of either findeth the
+    // same law.**
+    // ================================================================================================
+
+    /// *** A PENDING WIPE CLAIMETH NO DELIVERY STATE -- FROM A STORE THAT REALLY HOLDS A ROW. ***
+    func testGF003APendingWipeHidesTheDeliveryProjection() throws {
+        // SEED FIRST THROUGH A PERMITTING NODE -- otherwise a refusal assertion would be TRUE WHETHER OR NOT THE GATE
+        // IS CONSULTED, which is the vacuity round 633's mutation caught in its own first draft.
+        let store = InMemoryMessageStore()
+        let auth = RecordingAuthenticator()
+        let tracker = DeliveryTracker(repo: AuthorityRepository(store: store, failAt: nil), authenticator: auth)
+        let permitting = try gatedRig(permits: true, store: store, tracker: tracker)
+        for i in 0..<1 { bringPeerUp(permitting, UUID(uuidString: Self.peerUuid(i))!) }
+        _ = permitting.dispatchSos(payload: Data("a call whose delivery state a wipe must hide".utf8)) { _, _ in true }
+        let mid = try XCTUnwrap(store.allHeldMsgIds().first, "the rig must really hold a row to project")
+
+        // THE POSITIVE CONTROL, STATED FIRST AND INSIDE THE ARM: the permitting node DOES read the row, so the arm
+        // below cannot pass by refusing everything.
+        let live = permitting.deliveryProjection(mid)
+        XCTAssertNotEqual(
+            live.state, .unavailable,
+            "*** THE PERMITTING RIG MUST REALLY READ THE ROW, or the refusal below measures nothing. ***")
+        XCTAssertEqual(live.label, .offered, "and it must read the REAL label")
+
+        // THE SAME STORE AND TRACKER, NOW GATED CLOSED.
+        let refusing = try gatedRig(permits: false, store: store, tracker: tracker)
+        let dark = refusing.deliveryProjection(mid)
+        XCTAssertEqual(
+            dark.state, .unavailable,
+            "*** WHILE A WIPE IS PENDING THE PROJECTION MUST NOT REPORT A LIVE STATE FROM A STORE BEING ERASED. " +
+                "Observed: \(dark.state) ***")
+        XCTAssertFalse(dark.claimsDelivery, "and it must not claim the bytes reached the recipient")
+        XCTAssertFalse(dark.claimsRelayCustody, "nor claim relay custody")
+    }
+
     /** *** THE POSITIVE CONTROL: WITH THE GATE OPEN THE SAME RIG READS, SO A NODE HARDWIRED TO REFUSE CANNOT SATISFY THE ARMS ABOVE. *** */
     func testGF003AnOpenGateLetsTheSosReadRoadsThrough() throws {
         let store = InMemoryMessageStore()

@@ -216,9 +216,25 @@ class MeshNode(
      */
     internal val linkOffers = io.godstone.mesh.delivery.LinkOfferLedger()
 
-    /** T43: the honest label a consumer may read for [msgId]. */
-    internal fun deliveryProjection(msgId: ByteArray): DeliveryProjection =
-        when (val lookup = deliveryTracker.lookup(msgId)) {
+    /**
+     * T43: the honest label a consumer may read for [msgId].
+     *
+     * *** GS-FINAL-003 (round 699): THE DELIVERY READ ROAD IS GATED. ***
+     * 
+     * MEASURED BY SWEEPING EVERY FUNCTION THAT TOUCHETH `store`/`deliveryTracker`: **THIS ONE WAS UNGATED** while
+     * `retrySos` and `activeSosSnapshot` were gated in round 633. *It READETH A DELIVERY ROW -- the same class of
+     * access the round-633 repair closed on the SOS roads.*
+     * 
+     * **AND IT IS GATED EVEN THOUGH NO PRODUCTION CALLER REACHETH IT TODAY** (*measured: courts only*), because
+     * **A READ ROAD THAT REPORTS DELIVERY STATE FROM A STORE BEING ERASED IS A CLAIM THAT LOOKS LIKE A STATE** --
+     * the exact distinction the ACK census and the SOS projection already honour. *A road protected only while
+     * nobody calls it is protected by accident; it is gated here so the FIRST caller inherits the law rather than
+     * the defect.* **The refusal reuseth the type's OWN vocabulary: `unavailable`, which the body already returned
+     * for a corrupt or unreadable row** -- *no invented error, and no plausible-looking empty answer.*
+     */
+    internal fun deliveryProjection(msgId: ByteArray): DeliveryProjection {
+        if (!wipeGate.allowsSensitiveUse()) return DeliveryProjection.unavailable(msgId)
+        return when (val lookup = deliveryTracker.lookup(msgId)) {
             is DeliveryLookup.Found -> DeliveryProjection.of(
                 msgId, lookup.record.state,
                 linkOffers = linkOffers.admittedCountFor(msgId),
@@ -228,6 +244,7 @@ class MeshNode(
             // a corrupt or unreadable row is never labelled queued (fail closed)
             else -> DeliveryProjection.unavailable(msgId)
         }
+    }
 
     /**
      * T41 (section 14): the per-TrustedPeer bounded sync pump -- the scheduler and

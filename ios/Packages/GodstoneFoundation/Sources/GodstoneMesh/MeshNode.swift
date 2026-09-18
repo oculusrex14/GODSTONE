@@ -132,6 +132,20 @@ public final class MeshNode {
 
     /// T43: the honest label a consumer may read for `msgId`.
     internal func deliveryProjection(_ msgId: Data) -> DeliveryProjection {
+        // *** GS-FINAL-003 (round 699): THE DELIVERY READ ROAD IS GATED, THE SAME REPAIR AS `activeSosSnapshot`.
+        // ***
+        //
+        // **MEASURED BY SWEEPING EVERY FUNCTION THAT TOUCHETH `store`/`deliveryTracker`, ON BOTH ISLES:** `retrySos`,
+        // `activeSosSnapshot` and `cancelSos` were gated in rounds 633/638; **THIS ONE WAS NOT, AND IT READETH A
+        // DELIVERY ROW.** *The identical gap existed on Android (`MeshNode.deliveryProjection`), and the two isles
+        // were repaired together so a reader of either findeth the same law.*
+        //
+        // **GATED REGARDLESS OF REACH** (*measured: courts only today*), *because a read road that reporteth delivery
+        // state from a store being erased is a claim that looks like a state* -- the same reason the ACK census
+        // answereth 0 and the SOS projection answereth `nil`. **And the refusal reuseth the type's OWN vocabulary:
+        // `unavailable`, which the body already returned for a corrupt or unreadable row** -- *no invented error, and
+        // no plausible-looking empty answer.*
+        if let gate = wipeGate, !gate.allowsSensitiveUse() { return DeliveryProjection.unavailable(msgId) }
         switch deliveryTracker.lookup(msgId) {
         case .found(let record):
             return DeliveryProjection.of(msgId, state: record.state,
