@@ -13906,8 +13906,8 @@
    "round": 727,
    "finding": "GS-STRESS-001",
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STRESS-001/round727-three-way-invariant-census.log",
-   "sha256": "5eb1b342dce77e8af2252952db775a4079e69e45c028adcf63072cdda8913dfe",
-   "correction": "A THREE-WAY CONTRACT THAT HAD SILENTLY DRIFTED, HIDDEN BY A STALE LIST INSIDE THE COURT ITSELF. `Invariants.ALL` was stale (11 defined, 7 listed) AND had no consumer; and `ReadinessT72Test.test_w12` *** AND THE MEASUREMENT CORRECTED ME: I FIRST WROTE THAT THE COURT WAS \"ALREADY FAILING\", THEN CHECKED AT `e65ca8a8` AND FOUND *** BUILD SUCCESSFUL *** -- the court PASSED, because it iterated the STALE `ALL` and so only ever asked about the seven names both twins happened to carry. *The court was measuring the LIST, not the CONTRACT.* COMPLETING `ALL` TO ELEVEN MADE IT ASK ABOUT ALL ELEVEN, AND THEN IT FAILED on two artefacts *** (android 11, swift 7, python 7). Rather than reason about the contract I RAN the court. All three listes completed and given the same derived census check; the Python guard is proven to fire. MEASURED: all three equal at 11, T72 24/24."
+   "sha256": "005349a58a88d9ede91ff1c42940d63d194c67a598f5f095a8fabc85f79c0586",
+   "correction": "A THREE-WAY CONTRACT THAT HAD SILENTLY DRIFTED, HIDDEN BY A STALE LIST INSIDE THE COURT ITSELF. `Invariants.ALL` was stale (11 defined, 7 listed) AND had no consumer; and `ReadinessT72Test.test_w12` *** AND THE MEASUREMENT CORRECTED ME: I FIRST WROTE THAT THE COURT WAS \"ALREADY FAILING\", THEN CHECKED AT `e65ca8a8` AND FOUND *** BUILD SUCCESSFUL *** -- the court PASSED, because it iterated the STALE `ALL` and so only ever asked about the seven names both twins happened to carry. *The court was measuring the LIST, not the CONTRACT.* COMPLETING `ALL` TO ELEVEN MADE IT ASK ABOUT ALL ELEVEN, AND THEN IT FAILED on two artefacts *** (android 11, swift 7, python 7). Rather than reason about the contract I RAN the court. All three listes completed and given the same derived census check; the Python guard is proven to fire. MEASURED: all three equal at 11, T72 24/24. *** AND THIS ENTRY'S OWN DIGEST WAS RE-REGISTERED (round 729): I EDITED THE LOG AFTER RECORDING ITS HASH, AND `check_evidence_digests` REFUSED WITH \"digest MISMATCH for record_corrections[54]\" -- *the control catching me, which is what it is for.* The log carrieth the corrected Defect-2 text (the court was PASSING, not failing). ***"
   }
  ],
  "phase_one": {
@@ -14741,7 +14741,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "f0d51f8a3aba5097d57cd70be9ba0323c169d80c",
+  "candidate_sha": "c8590bea6bd0d541294e2cf3f30cdb23622b32c1",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
