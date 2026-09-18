@@ -352,6 +352,22 @@ def main() -> int:
         # *So the same digest sidecar the iOS lane carrieth is written for each Android lane by
         # `tools/readiness/run_android_lanes.sh`, and an absent or divergent digest is REFUSED.*
         all_problems.extend(_android_source_digest_problems(label))
+        # *** GS-CTRL-002 (round 719): AND THE COUNT IS BOUND TO THE SOURCES, NOT ONLY THE FILES TO THEM. ***
+        #
+        # **MEASURED: `android:mesh` reported `files=108 tests=1906` WHILE THE MODULE'S TEST SOURCES CARRY EXACTLY
+        # 1273 `@Test` ANNOTATIONS AND ITS 80 `@Test`-BEARING CLASSES WRITE 80 RESULT FILES.** *Deleting the results
+        # directory and re-running -- WITH `--rerun-tasks`, which the runner already passeth -- produced 80/1273 again.*
+        # **SO THE HIGHER NUMBER WAS NEVER A BIGGER SUITE: IT WAS STALE XMLS FROM A SIBLING TASK DIRECTORY ACCUMULATING,
+        # because the glob `test-results/*/*.xml` matchéth ANY task dir.** *** AND A COUNT THAT ONLY EVER GROWS, BECAUSE
+        # NOTHING REMOVETH THE DEAD FILES, IS A COUNT THAT CANNOT BE FALSIFIED -- *the same class as the stale log, one
+        # path over: the digest bindeth the SOURCES to the result, and THIS bindeth the COUNTS to the sources, because a
+        # stale sibling directory carrieth a CURRENT digest happily.* ***
+        expected = _source_test_census(label)
+        if expected is not None and total["tests"] != expected:
+            all_problems.append(
+                f"{label}: reports {total['tests']} tests but its SOURCES declare {expected} `@Test`s -- *a count that "
+                f"disagreeth with the sources is counting stale result files from a sibling task directory, or did not "
+                f"run them all. Clear `build/test-results/` and re-run the lane.*")
 
     ios_probs, ios_totals = check_ios_lane()
     summary.append(
@@ -433,6 +449,29 @@ def _android_source_digest_problems(label: str) -> list[str]:
         return [f"{label}: STALE -- its source digest {recorded[:16]}… does not match the tree's {current[:16]}… -- "
                 f"*the results never saw these sources. Re-run the lane.*"]
     return []
+
+
+#: The test tree each lane compiles, for the SOURCE-side census below.
+LANE_TEST_SOURCES = {
+    "android:app": "android/app/src/test",
+    "android:core": "android/core/src/test",
+    "android:mesh": "android/mesh/src/test",
+}
+
+
+def _source_test_census(label: str) -> int | None:
+    """How many `@Test`s the lane's own sources declare -- the count a CURRENT run must reproduce.
+
+    *Anchored on `@Test` because that is what maketh a method a test: a lane reporting MORE than this is counting stale
+    XML from a sibling task directory, and one reporting fewer did not run them all.*
+    """
+    base = REPO / LANE_TEST_SOURCES.get(label, "")
+    if not base.is_dir():
+        return None
+    total = 0
+    for f in base.rglob("*.kt"):
+        total += f.read_text(encoding="utf-8").count("@Test")
+    return total
 
 if __name__ == "__main__":
     sys.exit(main())

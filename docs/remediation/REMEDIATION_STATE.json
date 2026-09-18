@@ -13870,6 +13870,20 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-009/round717-second-consumer-gated-red-green.log",
    "sha256": "19189174df0f166dfdda582745aeee015ca6f3c7ef3bfc4f86f6a8d432e8ff1e",
    "correction": "THE SECOND CONSUMER GATED: `IdentityTrustViewModel` read the protected port BEFORE asking the gate -- the finding's root-cause sentence describing code, found by an independent sweep that enumerated the consumers. Gate moved to the top of `project()`; explicit unavailable projection added; commands gated at admission under a DERIVED rule (\"protected iff the handler reaches `port.`\"). The wipe arms' protected status is a decided choice citing the repository's own \"THE GATE PROTECTS USE, NOT DESTRUCTION\" law and the lock-screen deadlock it would otherwise create. Red proven against the pre-fix revision (the port THREW from inside the protected store)."
+  },
+  {
+   "round": 719,
+   "finding": "GS-FINAL-008",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-008/round719-retry-and-cancellation-arms-red-green.log",
+   "sha256": "eb9e9649aedc6f1df49291b340d76df6b5bc3dce3b533c8095bb2f6d674ce96e",
+   "correction": "THE AUDIT'S MISSING RETRY AND CANCELLATION ARMS ADDED (the court had three; the clause named two more). Red proven against the TRUE pre-fix (`ad4cfcaa^`, NOT HEAD -- *HEAD already carried the fix, so restoring it produced a green run that proved nothing*). And a review advisory correctly refused a bare `BUILD SUCCESSFUL` as evidence: I settled it BY DELETION -- removed the result XML, re-ran, and the XML returned with tests=5 failures=0, which an UP-TO-DATE skip could not have produced."
+  },
+  {
+   "round": 721,
+   "finding": "GS-CTRL-002",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/round721-counts-bound-to-sources.log",
+   "sha256": "b183e7de3cee0a640ec6adb81a25fbfa00ed4b22d62b653543ba1d2f096c712d",
+   "correction": "A COUNT THAT ONLY EVER GREW, BECAUSE NOTHING REMOVED THE DEAD FILES. The lane control reported `android:mesh files=108 tests=1906` all session; deleting the results directory and re-running gave 80/1273, TWICE -- and the SOURCES agree (1273 `@Test` annotations, 80 `@Test`-bearing classes). **So the higher number was never a bigger suite: it was stale XMLs from a sibling task directory, because the glob `test-results/*/*.xml` matches ANY task dir.** *This is the staleness defect one path over: the digest binds the SOURCES to the result, but a stale sibling directory carries a CURRENT digest happily -- and a count that only ever grows cannot be falsified.* **THE LAW ADDED: the sources' own `@Test` census is the expected count**, and any disagreement is refused by name. **AND A REVIEW ADVISORY CAUGHT ME FAILING THE FALSIFICATION:** my first attempt `cp`d an identical file, the chain continued on `;`, and my \"planted\" echo proved nothing -- *a chain that continues past a failed write is how a green run misleads you into believing the gate was tested.* The second attempt planted a 3071-byte XML in a sibling dir, ASSERTED it on disk, and the control refused: \"reports 1289 tests but its SOURCES declare 1273\". All three lanes now agree with their sources."
   }
  ],
  "phase_one": {
@@ -14493,6 +14507,9 @@
     "pending_proof": [
      "NO RENDERED-SCREEN WITNESS. The arms drive the ViewModel, which is the state owner; they do not exercise the Compose surface (`BrowseScreen.kt`), so whether the Unavailable phase is DISPLAYED correctly remains the same UI-target gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7 (no `androidTest` target exists).",
      "THE `origin = \"assumed\"` STRING SURVIVES IN ONE PLACE: the docstring recording this finding, not in any verdict the code can publish. Verified by grep."
+    ],
+    "evidence": [
+     "ROUND 719 -- THE AUDIT'S OTHER TWO CLAUSES, WHICH HAD NO ARMS. An independent sweep reported: \"the audit's explicit 'cancellation and a later successful retry' regression clause has no arms, and `canRetry=false` closes the retry door on the status-throw path\" -- MEASURED AND CONFIRMED (the court carried exactly three arms). **THE AUDIT'S WORDS, VERBATIM: \"...assert a typed error/unavailable phase and no fabricated Ready. INCLUDE CANCELLATION AND A LATER SUCCESSFUL RETRY.\"** Two arms added: a HEALABLE reader whose probe throws then recovers, requiring the same view-model to reach `Ready` WITH THE ARCHIVE'S OWN METADATA (*never `origin = \"assumed\"` with `sha256 = \"\"`*), and a superseded-status-throw arm requiring the newer query's result to stand. *The retry arm is not a restatement of the headline arm: that one proves a throw does not BECOME Ready; this one proves the refusal is NOT PERMANENT -- together they make the refusal honest rather than merely cautious.* **TWO OF MY OWN DRAFTS WERE CORRECTED BY THEIR OWN FAILURES:** my first retry arm read `archiveStatus` after a `search()` (*only `refreshArchiveStatus` publishes it -- the arm named its OWN wrong road*), and `BrowsePhase.Ready` is an object carrying no metadata. **AND THE RED WAS PROVEN AGAINST THE TRUE PRE-FIX REVISION, WHICH WAS NOT `HEAD`:** *HEAD already contains the fix, so restoring it produced a GREEN run that proved nothing; the true pre-fix is `ad4cfcaa^`*, and with that restored: **\"5 tests completed, 2 failed\"**, the retry arm catching the fabricated `Ready`. **AND A REVIEW ADVISORY DEMANDED I NOT READ A BARE `BUILD SUCCESSFUL` AS A RESULT** (*a task skipped as UP-TO-DATE executes nothing and cannot fail*) -- **settled BY DELETION rather than by argument: the result XML was removed, the run re-executed, and the XML CAME BACK carrying `tests=5 failures=0`.** *An UP-TO-DATE skip would have left the directory empty.* The production file was verified to be the fixed bytes before that run. **AND `canRetry` IS RECORDED, NOT CHANGED:** the repository's own distinction is coherent (*an EXCEPTION road is `recoverable = true`; a STATUS VERDICT is not*), and the retry ROAD exists -- the arm proves it reaches the truth."
     ]
    },
    "GS-FINAL-009": {
@@ -14692,7 +14709,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "3c148dab820e69c6488c11acfac150ff945d759f",
+  "candidate_sha": "2b7dcd1d140682ce75d8ec224d6d1c365fce129e",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
