@@ -820,6 +820,30 @@ FIX_SUBMITTED 48 · OPEN 0 · PARTIAL 6 · VERIFIED_FIXED 0        (54 findings 
 false half first (round 532) — *and a field that contradicts itself is worse than one that is merely old*; and nine
 `impact` sentences in round 533. **A twelve-finding sweep for empty proof fields closed the class at zero.**
 
+### ROUND 545 — GS-RUNTIME-001: THE MISSING ASSIGNMENT, AND A LAW ABOUT DEPENDENCY INJECTION
+
+**Measured:** `provisionAckPump` was **injected into `provideMeshNode` and never assigned** — so `MeshNode.ackPump`
+stayed **null in production while the pump was manufactured, injected, and handed to nobody.** Every consumer took the
+null road: `nextScheduledAck` returned null, `onLinkReady`/`onLinkGone` were never told, and `isScheduled(fromPeer)`
+was **always false** — so an inbound ACK was never recognised as ours.
+
+> **THE LAW THIS ROUND PAID FOR, AND IT IS NEW TO THIS SPAN: a dependency-injection framework makes an unused
+> parameter invisible — it compiles, it wires, and it reaches nothing.** A grep for `ackPump =` had found nothing for
+> many rounds, and **nothing in the build, the lane or any control complained**, because an unassigned parameter is not
+> an error in any of them. *The dispatcher beside it was assigned; the pump was not; and the difference between two
+> adjacent lines was the whole of the defect.*
+
+**The instrument is structural because the graph cannot be instantiated on the host** — `provideMeshNode` demands an
+`@ApplicationContext` `Context`, **which is exactly the wall ANDROID-05's closure 4 met: met twice in one span, and
+therefore named as a property of this environment rather than of one finding.** The arm strips comments before
+searching (round 521b's law) and asserts both the assignment *and* the injection, so it cannot pass on a node built by
+hand elsewhere. Its negative case failed it **on its own name**.
+
+**Measured:** `:mesh` **1233 tests / 0 failures / 0 errors** (1232 → 1233); parity 7/0; symbols 0 unresolved; digests
+PASSED; the trusted-runtime composition gate PASSED. **The finding stays `PARTIAL`** — and the reason is now measured
+twice: `subscribeToReadiness` still has zero production call sites, both link layers remain frozen at `false` (*which
+the objective requires*), and **on neither isle is the pump reached by the runtime a user's message travels.**
+
 ### ROUND 544 — GS-STORE-002 STEP 5 LANDS, AND THE LEDGER'S OWN CLAIM ABOUT STEPS 4 AND 7 WAS STALE
 
 **Measured:** both protection call sites passed `paths: [path]` — **the main database file alone** — while the card

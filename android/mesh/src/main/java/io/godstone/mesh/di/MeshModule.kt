@@ -312,6 +312,18 @@ internal object MeshModule {
             verifyOrigin = { deliveryTracker.acknowledge(it.msgId, it) },
             admitCandidate = { encoded, from -> pump.admit(encoded, from) },
         )
+        // --------------------------------------------------------------------------------------
+        // *** GS-RUNTIME-001 (round 545): THE PUMP ITSELF REACHETH THE NODE -- THE ASSIGNMENT THAT WAS MISSING. ***
+        //
+        // MEASURED BEFORE THIS LINE: `provisionAckPump` WAS INJECTED INTO THIS FUNCTION AND **NEVER ASSIGNED**, so
+        // `MeshNode.ackPump` -- *'internal var ackPump: DurableAckPump? = null'* -- STAYED NULL IN PRODUCTION, WHILE
+        // THE PUMP WAS MANUFACTURED, INJECTED, AND HANDED TO NOBODY. **A DEPENDENCY INJECTION FRAMEWORK MAKES AN
+        // UNUSED PARAMETER INVISIBLE: it compiles, it wires, and it reacheth nothing.** Every consumer of the pump
+        // on this isle therefore took the null road: `nextScheduledAck` returned null, `onLinkReady`/`onLinkGone`
+        // were never told, and `isScheduled(fromPeer)` was ALWAYS FALSE -- **SO AN INBOUND ACK WAS NEVER RECOGNISED AS
+        // OURS.** THE DISPATCHER BESIDE IT WAS ASSIGNED; THE PUMP WAS NOT; AND THE DIFFERENCE BETWEEN THE TWO LINES
+        // WAS THE WHOLE OF THE FINDING.
+        node.ackPump = pump
         // GS-RUNTIME-001 step 2: **THE RECIPIENT INBOX -- THE LAST OF THE FOUR OWNERS -- OVER THE T83 COMMIT ROAD.**
         // Its DH road is the one production CAN satisfy on this isle: `Identity.staticDhPriv` is exposed INTERNALLY
         // on the very precedent `staticDhPub`/`staticDhPriv` already stood upon, so the seed never leaveth the module.

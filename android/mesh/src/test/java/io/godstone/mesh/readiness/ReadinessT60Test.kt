@@ -367,4 +367,43 @@ class ReadinessT60Test {
         Assert.assertTrue(AccessibilityContract.checkRtlMeaning(healthy(), rtl = false).passed)
         Assert.assertTrue(AccessibilityContract.checkLongContent(healthy(), "en").passed)
     }
+
+    // ================================================================ GS-RUNTIME-001: THE PUMP REACHETH THE NODE
+
+    /**
+     * *** GS-RUNTIME-001 (round 545): THE INJECTED PUMP MUST ACTUALLY REACH THE NODE. ***
+     *
+     * MEASURED BEFORE THE REPAIR, AND IT IS THE FINDING IN ONE LINE: `provisionAckPump` WAS INJECTED INTO
+     * `provideMeshNode` AND **NEVER ASSIGNED**, so `MeshNode.ackPump` -- *'internal var ackPump: DurableAckPump? =
+     * null'* -- STAYED NULL IN PRODUCTION WHILE **THE PUMP WAS MANUFACTURED, INJECTED, AND HANDED TO NOBODY.** The
+     * dispatcher BESIDE it was assigned; the pump was not; and the difference between the two lines was the whole of
+     * the defect.
+     *
+     * *** AND THE INSTRUMENT IS STRUCTURAL BECAUSE THE DI GRAPH CANNOT BE INSTANTIATED ON THE HOST: `provideMeshNode`
+     * demandeth an Android `@ApplicationContext` Context, WHICH NO HOST TEST CAN SUPPLY (the same wall ANDROID-05's
+     * closure 4 met). WHAT IS HOST-OBSERVABLE IS THE GRAPH'S OWN SOURCE -- and the claim being checked is EXACTLY a
+     * source-level claim: *an injected parameter that is never assigned*.** So the arm readeth the file, strips the
+     * comments (**a comment mentioning an assignment is not an assignment** -- round 521b's law), and asserteth BOTH
+     * that the pump is assigned AND that it is USED rather than merely named.
+     *
+     * **A DEPENDENCY INJECTION FRAMEWORK MAKES AN UNUSED PARAMETER INVISIBLE: it compiles, it wires, and it
+     * REACHETH NOTHING.**
+     */
+    @Test
+    fun test_gs_runtime_001_the_injected_pump_reacheth_the_node() {
+        val source = java.io.File("src/main/java/io/godstone/mesh/di/MeshModule.kt").readText()
+        // COMMENTS ARE STRIPPED FIRST: a comment mentioning an assignment is not an assignment.
+        val code = source.lines().filterNot { line ->
+            val trimmed = line.trim()
+            trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")
+        }.joinToString("\n")
+        Assert.assertTrue(
+            "*** THE PUMP MUST BE ASSIGNED: an injected parameter that is never assigned is a pump manufactured, " +
+                "injected, and handed to NOBODY (GS-RUNTIME-001) ***",
+            code.contains("node.ackPump = pump"))
+        // AND THE PARAMETER IS STILL INJECTED -- the control that locateth the claim to the DI graph rather than to
+        // a node constructed by hand somewhere else.
+        Assert.assertTrue("and the pump must still be INJECTED into the graph",
+            code.contains("pump: DurableAckPump"))
+    }
 }
