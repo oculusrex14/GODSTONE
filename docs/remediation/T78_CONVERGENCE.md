@@ -1214,6 +1214,59 @@ is a failure, not a repair."*
 and are now COMMITTED** (27 measured tracked). *A snapshot of an older tree cannot equal a newer one -- running the
 suite against the live tree was never the designed usage.*
 
+
+## ROUNDS 660–663 — THE T01 CONDITION ROOT-CAUSED: A DEAD DECLARATION FILE, AND FOUR WRONG DRAFTS
+
+**Candidate `dae5580430b4`, tree `3ff83c75d066`, `git status --porcelain` EMPTY.**
+
+**THE FOUR FAILURES, NAMED, AND PROVEN PRE-EXISTING BY EXECUTION:** all four are in `test_t01.py` alone
+(`657 passed`; no other file fails). A worktree at my session-start commit (`5462fa34`, with the same untracked bundles
+replayed so only my commits differ) reporteth **`4 failed, 18 passed -- live-minus-declared=167, baseline=156`,
+IDENTICAL to HEAD in count, in the four names, and in the printed arithmetic.** *(And a correction: the remainder is 167
+in BOTH trees -- an earlier figure of 168 came from a transient uncommitted edit of mine, not from any commit.)*
+
+**AND THE SEARCH FOUND A REAL DEFECT RATHER THAN MERELY EXPLAINING THE FAILURES AWAY.** Two sources carrieth the
+declaration of externally-supplied additions: the inventory's **frozen snapshot** and the **maintained**
+`ORIGINAL_CHECKOUT_ADDITIONS.json`, which existeth precisely to record additions *reviewed after* the capture.
+**`preserve.py` READ THE SNAPSHOT AND FELL BACK TO THE FILE ONLY WHEN THE KEY WAS ABSENT -- WHICH IT NEVER IS.** *So the
+maintained declaration was never read at all: dead configuration wearing the name of the authority* (measured:
+appending an addition changed the verdict by **nothing**). **And the inventory's own note saith why that cannot work:
+"The T01 baseline is IMMUTABLE ... This work never rewrites it."**
+
+**FOUR WRONG DRAFTS OF THE FIX, EACH CAUGHT BY A DIFFERENT ARM OF THE COURT'S OWN NEGATIVE CONTROL:**
+
+| draft | what the control caught |
+|---|---|
+| file **replaces** the inventory | a *tampered* inventory became **invisible** -- *the fix would have made the control **unfalsifiable*** |
+| **unconditional union**, resolved from `__file__` | a **temporary fixture inherited this repository's declarations** |
+| union + per-tree, file copied in **untracked** | remainder **157** vs baseline 156 -- *the single extra being exactly that file* |
+| ...and **committed** instead | it **moved `HEAD`**, failing the identity assertion against the recorded `b5c3d3d3` |
+
+**AND DRAFTS 3–4 HIT A VALUE-COLLISION OF THE SAME SHAPE:** `load_declared_additions(path='')` fell back to
+`DECLARATIONS_PATH`, so a per-tree resolution finding no file was **silently sent back to this repository's**.
+*"A default and an absence must not be the same value" — the same distinction already drawn between an empty list
+(a statement) and an absent key (a gap).*
+
+**THE SETTLEMENT — four requirements, four mechanisms; removing any one breaks one of the four arms that found them:**
+the inventory's declarations are **authoritative per path**; the per-tree file **augments only**, minus any path the
+inventory already declares; it is resolved by `declarations_path_for(root)` so a foreign fixture inherits nothing; and
+`None` means "our repo" while `''` means "this tree carries none".
+
+| | |
+|---|---|
+| **T01 court, designed fixture mode** | **22 passed, 0 failed** — *including every negative control* |
+| **Full readiness suite, fixture mode** | **661 passed, 0 failed** (was 4 failed / 657) |
+| **Live mode, `live-minus-declared`** | **167 → 122**, exactly as predicted — *both declared bundles now honoured* |
+| **Live mode arithmetic, exact** | 122 remainder + 340 + 45 declared = **507 = the actual live porcelain** — *every extra is declared* |
+| Nine repository controls | **all green** |
+
+**AND THE RESIDUAL LIVE-MODE GAP IS STRUCTURAL, MEASURED AND ACCOUNTED FOR:** the saved baseline snapshots
+`b5c3d3d3` on branch `codex/archive-reliability`, **1,368 commits behind HEAD** on `codex/production-blueprint`; of its
+156 entries, **27 are files COMMITTED since capture and 7 are PARKED** in `8fb2be71` (*"7 untracked test files belonging
+to the same WIP"*, verified by `git cat-file -e`), with `stash@{0}` holding the 18 tracked modifications.
+**ALL 34 ACCOUNTED FOR — 0 LOST.** *A snapshot of one branch cannot equal another, which is why the audit's step 3
+requireth `GODSTONE_ROOT` to point at a RECONSTRUCTED fixture — where the court passeth 22/22.*
+
 ## REMAINING WORK
 
 **RE-DERIVED FROM THE LEDGER AT THIS REVISION, NOT INHERITED.** *(The paragraph below previously named "the six
