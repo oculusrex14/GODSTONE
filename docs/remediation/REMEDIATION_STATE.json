@@ -13948,6 +13948,12 @@
       "sha256": "70055180e15446a23a57723d5f01ec93e744fc4947e3ed5a2091a7f7724b267f",
       "what": "The SOS read roads gated -- a wipeGate carried but consulted only at Router construction; and my first placement of it was after the tracker read.",
       "outcome": "FOUND BY GREPPING WHERE THE FIELD IS USED RATHER THAN DECLARED: `MeshNode` carried a required wipeGate and consulted it in exactly ONE place (the lazy Router), so `retrySos` could still read and re-offer a held SOS frame during a pending wipe, and `activeSosSnapshot` could still claim an active call from a store being erased. MY FIRST PLACEMENT WAS AFTER THE TRACKER LOOKUP AND MY OWN ARM NAMED IT (`retry: no durable row`), meaning the durable row was consulted before the wipe was considered -- A SECURITY GATE THAT RUNS AFTER THE THING IT GATES IS A REPORT, NOT A GATE. Moved to the top. MY FIRST ARM WAS ALSO VACUOUS (it asserted null on an EMPTY store, true whether or not the gate is consulted; the mutation left it GREEN) and is now seeded with a real active SOS read through the same store and tracker under two different gates. MUTATION (both gates removed, grep-confirmed): BOTH refusal arms FAILED while the positive control stayed GREEN. AND A NONDETERMINISTIC CROSS-LANE INTERACTION IS RECORDED HONESTLY: one three-lane run had ReadinessT17Test#testBackpressureIsReportedNotSilentlyDropped fail; that arm tests the BLE transport flooding window and touches neither MeshNode nor retrySos nor activeSosSnapshot, passes in isolation, and two consecutive three-lane runs then passed."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round636-the-ios-router-admission-point-the-twin-round-574-named.log",
+      "sha256": "567a834dff170df70bf0ba95befe7ca341b230cb5b30dae428442f9f9fad700d",
+      "what": "The iOS Router admission point built -- the twin round 574 named as owed and never done.",
+      "outcome": "MEASURED: Android's Router carried a REQUIRED wipeGate asked BEFORE store.persist; iOS's carried NONE AT ALL, so `accept` could write the held row during a pending wipe. Built: an OPTIONAL gate defaulting to nil (nil means NO GATE -- the road unchanged -- so no existing composition changes, and an arm pins that meaning); the admission point is asked BEFORE store.persist because asked after it would be a report rather than a gate; MeshNode's initialiser hands it to the Router it builds, and MeshRuntime passes the SAME DeferredWipeSensitiveUseGate every other admission point on the isle receives. THREE ARMS: refusal with the store asserted really untouched; the positive control (same frame, same store, only the gate differing); and the additivity arm. MUTATION (the admission line removed, grep-confirmed): the refusal arm FAILED while the positive control stayed GREEN. MEASURED: full iOS lane green; ReadinessT42Tests 22 tests 0 failures. NOT CLAIMED: the iOS SOS read roads (retrySos, activeSosSnapshot) remain ungated -- a larger change, recorded as the next owed item."
      }
     ],
     "pending_proof": [
@@ -14397,7 +14403,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "80bec64e58aeaeb2c1749b3bb23b0352e6d1b820",
+  "candidate_sha": "ecdec7b7bf5a3e32492d27e424d48ea5d841647c",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

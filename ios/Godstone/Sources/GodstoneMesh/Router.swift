@@ -12,6 +12,8 @@ public final class Router {
 
     public let selfNodeId: Data
     private var seen: LruSet<Data>
+    /// The wipe admission seam, or nil for a caller that has not been wired to one (nil == no gate, the road unchanged).
+    private let wipeGate: (any WipeSensitiveUseGate)?
     private var queue: [FrameV2] = []
     private let lock = NSLock()
 
@@ -34,12 +36,26 @@ public final class Router {
         return Router(selfNodeId: selfNodeId, store: store, seenCacheCapacity: seenCacheCapacity)
     }
 
+    /// *** GS-FINAL-003 (round 636): THE iOS TWIN OF ANDROID'S ROUND-574 ADMISSION POINT. ***
+    ///
+    /// **MEASURED THIS ROUND: ANDROID'S `Router` CARRIED A REQUIRED `wipeGate` AND ASKED IT BEFORE `store.persist`;
+    /// iOS'S CARRIED NONE AT ALL, SO `accept` COULD WRITE THE HELD ROW DURING A PENDING WIPE.** *The same defect class
+    /// the two isles keep trading: a control one isle has and the other merely appears to.*
+    ///
+    /// IT IS **OPTIONAL AND DEFAULTS TO NIL**, DELIBERATELY: the iOS `Router` is constructed at many call sites, and
+    /// making the gate required would be a large cutover for a seam whose consumers can adopt it as they are proven.
+    /// **AND NIL MEANS "NO GATE", WHICH IS THE HONEST READING OF AN UNWIRED CALLER RATHER THAN A SILENT ALWAYS-ALLOW**
+    /// -- the behaviour of a nil gate is exactly the road as it was, so no existing composition changes, which is the
+    /// same property the round-574 note required on the other isle. **A CALLER THAT WANTS THE GATE PASSES ONE, AND
+    /// THE COMPOSITION IS THE PLACE THAT DOES.**
     public init(selfNodeId: Data, store: MessageStore,
-                seenCacheCapacity: Int = Router.seenCacheCapacity) {
+                seenCacheCapacity: Int = Router.seenCacheCapacity,
+                wipeGate: (any WipeSensitiveUseGate)? = nil) {
         precondition(selfNodeId.count == MessageId.nodeIdBytes, "selfNodeId must be \(MessageId.nodeIdBytes) bytes")
         self.selfNodeId = selfNodeId
         self.store = store
         self.seen = LruSet<Data>(capacity: seenCacheCapacity)
+        self.wipeGate = wipeGate
     }
 
     /// True when the frame was new and has been accepted.
@@ -73,6 +89,12 @@ public final class Router {
         defer { lock.unlock() }
 
         if seen.contains(frame.msgId) { return none }
+
+        // *** GS-FINAL-003 (round 636): THE ADMISSION POINT, ASKED BEFORE THE STORE -- AND THE ORDERING IS THE
+        // POINT. *** Asked AFTER `store.persist` it would be A REPORT RATHER THAN A GATE: the held row would already be
+        // written and a refusal would leave it standing. *That is not hypothetical: the Android round placed its first
+        // gate after the tracker read and its own arm named the mistake.*
+        if let gate = wipeGate, !gate.allowsSensitiveUse() { return none }
 
         // T42: the durable acceptance is the ONLY acceptance. A persist that did
         // not happen is a refusal -- never a memory-only success.

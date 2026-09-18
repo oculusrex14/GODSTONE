@@ -165,7 +165,10 @@ public final class MeshRuntime {
             identity: identity,
             store: messageStore,
             deliveryTracker: tracker,
-            sessions: sessions
+            sessions: sessions,
+            // GS-FINAL-003 (round 636): THE COMPOSITION IS WHERE THE GATE IS PASSED -- the same 
+            // every other admission point on this isle already receiveth, never a hand-typed lambda.
+            wipeGate: wipeGate
         )
 
         // GS-RUNTIME-001 step 2: THE FOUR OWNERS, OVER THE SAME STORE AND THE SAME PINNED IDENTITY.

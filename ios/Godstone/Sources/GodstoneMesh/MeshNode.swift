@@ -424,15 +424,26 @@ public final class MeshNode {
     private var isStarted = false
 
     /// Production initializer: a node owns its durable store, durable delivery tracker, and trusted SessionManager.
+    /// *** GS-FINAL-003 (round 636): THE NODE CAN NOW HAND ITS ROUTER A WIPE ADMISSION SEAM. ***
+    ///
+    /// **MEASURED THIS ROUND: THIS INITIALISER BUILT `Router(selfNodeId:store:)` WITH NO GATE, AND `Router.accept`
+    /// WRITETH THE HELD ROW THROUGH `store.persist` -- SO ON iOS A PENDING WIPE DID NOT REFUSE THE INBOUND WRITE ROAD.
+    /// ANDROID CLOSED EXACTLY THIS IN ROUND 574** (*"`Router.ingest` called `store.persist` directly -- the method
+    /// that writes the held row -- with NOTHING on that road"*), **AND ITS OWN NOTE RECORDED THAT "the iOS `Router`
+    /// twin was NOT re-done this round." THIS IS THAT TWIN.**
+    ///
+    /// OPTIONAL AND DEFAULTED TO NIL, so all existing call sites are unchanged and `nil` means NO GATE -- the road
+    /// exactly as it was -- rather than a silent always-allow. **A CALLER THAT HAS A GATE PASSES ONE.**
     public init(identity: MeshIdentity, store: MessageStore,
-                deliveryTracker: DeliveryTracker, sessions: SessionManager) {
+                deliveryTracker: DeliveryTracker, sessions: SessionManager,
+                wipeGate: (any WipeSensitiveUseGate)? = nil) {
         self.identity = identity
         self.store = store
         self.deliveryTracker = deliveryTracker
         self.sessions = sessions
         // T42: the store is REQUIRED at construction -- a router without one
         // could report a frame accepted on memory alone.
-        self.router = Router(selfNodeId: identity.nodeId, store: store)
+        self.router = Router(selfNodeId: identity.nodeId, store: store, wipeGate: wipeGate)
         self.ble.store = store
         self.ble.identity = identity
         // T40: the control plane rides the same durable store and clock.

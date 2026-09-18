@@ -783,4 +783,60 @@ extension ReadinessT42Tests {
                       + "(held=\(boxed.count), bound=16 = MeshNode.maxControlRepliesPerDestination)")
         XCTAssertFalse(boxed.isEmpty, "and the destination's answer must still be there at all")
     }
+    // ================================================================================================
+    // *** GS-FINAL-003 (round 636): THE iOS ROUTER'S ADMISSION POINT -- ANDROID'S ROUND-574 TWIN. ***
+    //
+    // ROUND 574 GAVE ANDROID'S `Router.ingest` A REQUIRED `wipeGate` ASKED BEFORE `store.persist`, AND ITS OWN NOTE
+    // RECORDED THE DEBT: *"the iOS `Router` twin was NOT re-done this round."* **MEASURED THIS ROUND, THE iOS TWIN HAD
+    // NO GATE AT ALL** -- `Router(selfNodeId:store:)` carrieth none, `accept` writeth the held row through
+    // `store.persist`, so **a pending wipe did not refuse the inbound write road on this isle.**
+    // ================================================================================================
+
+    /** The gate as this isle's composition builds it: a real class conforming to the protocol, never a lambda. */
+    private final class FixedWipeGate: WipeSensitiveUseGate, @unchecked Sendable {
+        private let permits: Bool
+        init(permits: Bool) { self.permits = permits }
+        func allowsSensitiveUse() -> Bool { permits }
+    }
+
+    /** *** A PENDING WIPE REFUSES THE INBOUND WRITE ROAD: THE FRAME IS NEVER COMMITTED. *** */
+    func testGF003APendingWipeRefusethTheRouterWriteRoad() throws {
+        let store = InMemoryMessageStore()
+        let router = Router(selfNodeId: nodeId(1, 0), store: store, wipeGate: FixedWipeGate(permits: false))
+        let frame = messageFrame(0x71)
+
+        let accepted = router.ingest(frame, isAddressedToMe: true, receivedFrom: nodeId(2, 0))
+
+        XCTAssertFalse(accepted, "*** A PENDING WIPE MUST REFUSE THE INBOUND WRITE ROAD. ***")
+        XCTAssertTrue(
+            store.allHeldMsgIds().isEmpty,
+            "*** AND THE STORE MUST REALLY BE UNTOUCHED -- the gate is asked BEFORE `store.persist`, so a refusal " +
+                "cannot leave a held row standing. Observed held: \(store.allHeldMsgIds().count) ***")
+    }
+
+    /** *** AND THE ORDERING IS THE POINT: A GATE ASKED AFTER THE PERSIST WOULD BE A REPORT, NOT A GATE. *** */
+    func testGF003TheGateIsAskedBeforeTheStoreRatherThanAfter() throws {
+        // THE SAME FRAME, THE SAME STORE, THE ONLY DIFFERENCE THE GATE -- so the held row's presence is attributable
+        // to the gate and to nothing else.
+        let permitting = InMemoryMessageStore()
+        let openRouter = Router(selfNodeId: nodeId(1, 0), store: permitting, wipeGate: FixedWipeGate(permits: true))
+        let frame = messageFrame(0x72)
+        XCTAssertTrue(
+            openRouter.ingest(frame, isAddressedToMe: true, receivedFrom: nodeId(2, 0)),
+            "*** THE POSITIVE CONTROL MUST REALLY ACCEPT -- otherwise a router hardwired to refuse would satisfy the " +
+                "arm above while making the inbound road useless. ***")
+        XCTAssertEqual(permitting.allHeldMsgIds().count, 1, "and the accepted frame must really be HELD")
+    }
+
+    /** *** AND A NIL GATE LEAVES THE ROAD EXACTLY AS IT WAS -- which is what makes the seam additive. *** */
+    func testGF003ANilGateLeavesTheRoadUnchanged() throws {
+        let store = InMemoryMessageStore()
+        let router = Router(selfNodeId: nodeId(1, 0), store: store)   // no gate at all
+        XCTAssertTrue(
+            router.ingest(messageFrame(0x73), isAddressedToMe: true, receivedFrom: nodeId(2, 0)),
+            "*** A CALLER THAT HAS NOT BEEN WIRED TO A GATE MUST BEHAVE EXACTLY AS BEFORE: nil meaneth NO GATE, and " +
+                "the road is unchanged. Anything else would be a silent always-allow dressed as a default. ***")
+        XCTAssertEqual(store.allHeldMsgIds().count, 1)
+    }
+
 }
