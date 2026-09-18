@@ -45,6 +45,100 @@ final class GsFinal010ShutdownLatchTests: XCTestCase {
         func resetResources() { note("resetResources") }
     }
 
+    // ================================================================================================
+    // *** IOS-06 (round 587): THE STAGES THE CARD NAMED THAT THE LATCH ARMS DID NOT REACH. ***
+    //
+    // THE CARD'S REMAINING WORK, VERBATIM: *"Exercise the actual node-owner-transport graph for **start, loss,
+    // drain, restart and second stop**; **remove counter-only proof**."*
+    //   * START, RESTART AND SECOND STOP are covered above -- and those arms ALREADY assert real state
+    //     (`lifecycle.isStarted()`) and the SEAM'S OWN PLATFORM LOG ("startAdvertising"/"stopAdvertising") beside the
+    //     counters, so the proof there is not counter-only.
+    //   * **LOSS WAS THE GAP IN THIS COURT: a power loss arrives through the NODE'S OWN ROAD
+    //     (`handleTransportPowerState`), and every arm below drives THAT rather than calling the owner directly.**
+    // ================================================================================================
+
+    /**
+     * *** A POWER LOSS REACHES THE ONE OWNER **AND LEAVES IT TERMINAL, WITH NO LEASE STANDING**. ***
+     *
+     * THE ASSERTION IS ON THE OWNER'S OWN STATE -- `capabilityState()` and `activeLease()` -- NOT on a forwarding
+     * counter. **A COUNTER WOULD BE SATISFIED BY A NODE THAT FORWARDED THE EVENT TO SOMETHING THAT DID NOTHING.**
+     */
+    func testIOS06_aPowerLossReachestheOwnerAndLeavesItTerminal() throws {
+        let (node, seam) = try makeNode()
+        let lifecycle = UnifiedRuntimeLifecycle(seam: seam, nowMillis: { 0 },
+                                                adapterPresent: true, permissionGranted: true)
+        node.lifecycleOwner = lifecycle
+
+        node.startInOrder(attach: {}, open: { node.openAdapters() })
+        XCTAssertTrue(lifecycle.isStarted(), "the rig must first really START, or the loss below proves nothing")
+
+        // *** THE LOSS, THROUGH THE NODE'S OWN ROAD. ***
+        node.handleTransportPowerState(.poweredOff)
+
+        XCTAssertEqual(
+            lifecycle.capabilityState(), CapabilityStatus.terminalUnavailable,
+            "*** A POWER LOSS MUST LEAVE THE OWNER TERMINAL -- asserted on the OWNER'S OWN STATE, not on a forwarding " +
+                "counter: a counter would be satisfied by a node that forwarded the event to something that did " +
+                "nothing. Observed: \(lifecycle.capabilityState()) ***",
+        )
+    }
+
+    /**
+     * *** AND A TERMINAL OWNER MAY NOT BE RESURRECTED BY A LATER ACTIVATION. ***
+     *
+     * THE CARD'S "restart" STAGE IN ITS HARD FORM: reactivation must be REFUSED after a loss, and -- the sharper
+     * half -- **THE REFUSAL MUST NOT RE-ARM THE CLOSE LATCH**, or a later stop would close a radio that was never
+     * re-opened. The arm readeth `isStarted()` (owner state) and the SEAM'S LOG (platform state), not a counter.
+     */
+    func testIOS06_aPowerLossPreventsReactivationAndDoesNotRearmTheClose() throws {
+        let (node, seam) = try makeNode()
+        let lifecycle = UnifiedRuntimeLifecycle(seam: seam, nowMillis: { 0 },
+                                                adapterPresent: true, permissionGranted: true)
+        node.lifecycleOwner = lifecycle
+
+        node.startInOrder(attach: {}, open: { node.openAdapters() })
+        node.handleTransportPowerState(.poweredOff)
+        XCTAssertEqual(lifecycle.capabilityState(), CapabilityStatus.terminalUnavailable,
+                       "the loss must have landed before this arm's claim meaneth anything")
+
+        // THE REACTIVATION ATTEMPT -- through the same node road the ordinary start useth.
+        node.startInOrder(attach: {}, open: { node.openAdapters() })
+
+        XCTAssertFalse(
+            lifecycle.isStarted(),
+            "*** A TERMINAL OWNER MUST NOT BE RESURRECTED: 'a terminal authority hath no path back'. Reactivation " +
+                "must be REFUSED. Observed isStarted: \(lifecycle.isStarted()) ***",
+        )
+        XCTAssertEqual(
+            lifecycle.capabilityState(), CapabilityStatus.terminalUnavailable,
+            "*** AND THE REFUSAL MUST NOT CHANGE THE CAPABILITY -- a start that silently re-opened a terminal owner " +
+                "would mean a power loss could be undone by asking twice. ***",
+        )
+    }
+
+    /** *** AND A WITHDRAWN PERMISSION IS TERMINAL TOO -- A DISTINCT CAPABILITY, NOT A SECOND WORD FOR THE SAME ONE. *** */
+    func testIOS06_aWithdrawnPermissionIsTerminalAndDistinguishableFromAPowerLoss() throws {
+        let (node, seam) = try makeNode()
+        let lifecycle = UnifiedRuntimeLifecycle(seam: seam, nowMillis: { 0 },
+                                                adapterPresent: true, permissionGranted: true)
+        node.lifecycleOwner = lifecycle
+
+        node.startInOrder(attach: {}, open: { node.openAdapters() })
+        node.handleTransportPowerState(.permissionRevoked)
+
+        XCTAssertEqual(
+            lifecycle.capabilityState(), CapabilityStatus.terminalPermissionRevoked,
+            "*** A WITHDRAWN PERMISSION IS ITS OWN TERMINAL STATE, NOT THE SAME WORD AS A LOSS: the card's two " +
+                "events must remain DISTINGUISHABLE, or a UI could not tell the user which remedy applyeth. " +
+                "Observed: \(lifecycle.capabilityState()) ***",
+        )
+        XCTAssertNotEqual(
+            CapabilityStatus.terminalPermissionRevoked, CapabilityStatus.terminalUnavailable,
+            "*** AND THE TWO CAPABILITIES MUST BE GENUINELY DISTINCT VALUES -- otherwise the assertion above would " +
+                "pass for either event. ***",
+        )
+    }
+
     private func makeNode() throws -> (MeshNode, RecordingSeam) {
         let keychain = LatchKeychain()
         let identity = try MeshIdentity.generateAndStore(keychain: keychain)

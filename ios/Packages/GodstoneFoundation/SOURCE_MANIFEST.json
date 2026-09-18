@@ -124,7 +124,7 @@
     "Tests/GodstoneMeshTests/DeliveryTrackerTests.swift": "7320a211076c209a9f2929f6e40a8c6ec893ad9c43fdce745a781d88a0db70a8",
     "Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift": "db3470edfad5be4a22a483e7600859217f702b4ab60f852b7f1e54d351403334",
     "Tests/GodstoneMeshTests/GsFinal005MandatoryClockTests.swift": "c98c2ab4ef608964fb049e8b3c136a52be0eca5ad1c4313919f79cb06cbf63dc",
-    "Tests/GodstoneMeshTests/GsFinal010ShutdownLatchTests.swift": "84d391a00e37c0b027713868534f0834ad0f43786658ffb1a57719a58bbf4fc1",
+    "Tests/GodstoneMeshTests/GsFinal010ShutdownLatchTests.swift": "8e2a30667117cc686b805d059ab69915971ce524f2345bcb89b7b107c1219382",
     "Tests/GodstoneMeshTests/IdentityBindingV1Tests.swift": "7e61b53b580e852d9539753a710879e4f245a2e2c1f8ac5ea7f154774c262b67",
     "Tests/GodstoneMeshTests/LocalIdentityStateV1Tests.swift": "5e28f7ff4595a056bc320047449b4e39fe3c5ab3ced2f6b85d6b5ff5de76a9be",
     "Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift": "2a128ea6dbdb78e64941bb785e91b61161d55aa9fc1e26e305fd6dbb94eaca67",
