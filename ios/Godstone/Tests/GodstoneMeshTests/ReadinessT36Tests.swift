@@ -1225,6 +1225,134 @@ extension ReadinessT36Tests {
     }
 
     /** *** AND THE POSITIVE CONTROL: THE **SAME** RIG WITH AN UNFAULTED JOURNAL REALLY SENDS. *** */
+    /**
+     * *** CRYPTO-005 (round 599): THE TWO BOUNDARIES ROUND 585 LEFT OWED -- **INSERT** AND **ADVANCE**. ***
+     *
+     * ROUND 585's AUTHORITY-LEVEL ARM COVERED THE **LOAD** BOUNDARY ONLY, and its own `pending_proof` recordeth that:
+     * *"the INSERT and ADVANCE boundaries have typed-decorator arms but no authority-level witness, and the SEND
+     * boundary is not faulted at all."* **THE CARD'S OWN WORDS ARE "interrupt each persist/send boundary", SO THE
+     * MISSING TWO ARE THE REMAINING HALF OF ITS CLAIM.**
+     *
+     * AND THE POINT OF DOING THEM **AT AUTHORITY LEVEL** IS THE LESSON ROUND 584 PAID FOR: a decorator arm that hands
+     * itself the value measures the decorator. **THESE INJECT THE FAULTING JOURNAL INTO A REAL `SendDirectAuthority`
+     * AND DRIVE A REAL SEND**, so what is measured is the AUTHORITY'S CONSUMPTION of the fault rather than the
+     * journal's answer.
+     */
+
+    /** *** THE INSERT BOUNDARY: A FAULTED PIN MUST REFUSE, AND NOTHING MAY BE HELD. *** */
+    func testCRYPTO005_aFaultedInsertInsideTheAuthorityRefusesAndHoldsNothing() async throws {
+        var f = try fixture(seedByte: 0xA1, xByte: 0xA2)
+        let peer = try approvePeer(&f, 0xB1, 0xB2)
+
+        let faulting = FaultingIntentJournal(wrapping: f.journal, faultAt: .insert)
+        let authority = SendDirectAuthority(
+            identity: f.id, signingKeys: f.signing, router: f.router, store: f.store,
+            trustResolver: TrustedPeerIdentityResolver(source: f.trust),
+            journal: faulting, identityFactory: f.factory, clock: f.clock)
+
+        let result = await authority.sendDirect(try cmd(bytesOf(31, 16), peer.nodeId, ascii("insert boundary")))
+
+        XCTAssertTrue(
+            faulting.calls.contains("insert"),
+            "*** THE RIG MUST REACH THE FAULTED OPERATION -- otherwise a refusal would be attributable to an earlier " +
+                "gate. Observed calls: \(faulting.calls) ***",
+        )
+        guard case .rejected = result else {
+            XCTFail(
+                "*** A FAULTED **INSERT** MUST REFUSE: the intent could not be pinned, so the authority may not " +
+                    "proceed to author and commit a frame whose revision has no durable record -- the very 'message " +
+                    "that may already have been sent' the journal exists to prevent. Observed: \(result) ***")
+            return
+        }
+        XCTAssertEqual(
+            f.store.allHeldMsgIds().count, 0,
+            "*** AND NOTHING MAY BE HELD: a refusal that still committed would be the worst of both. Observed held: " +
+                "\(f.store.allHeldMsgIds().count) ***",
+        )
+    }
+
+    /**
+     * *** THE ADVANCE BOUNDARY, AND THE LAW THE CODE ACTUALLY HOLDS -- WHICH IS **NOT** THE ONE I FIRST ASSERTED. ***
+     *
+     * MY FIRST DRAFT ASSERTED THAT A FAULTED ADVANCE MUST NOT YIELD `durablyEnqueued(fromRetry: false)`. **IT FAILED,
+     * AND THE FAILURE WAS MY MISREADING RATHER THAN A DEFECT: `advanceQuietly` DISCARDS THE RESULT DELIBERATELY, AND
+     * ITS OWN DOCSTRING SAYETH WHY -- *"An advance failure never revokes a proven durable commit; the replay repairs
+     * the rank."*
+     *
+     * *** AND I CHECKED THAT CLAIM RATHER THAN ACCEPTING IT: THE RETRY PATH USES `from: row.stateRank` -- THE RANK
+     * **LOADED FROM THE JOURNAL** -- NOT A HARDCODED `.authored`, SO A LATER SUCCESSFUL ADVANCE FROM THAT SAME LOADED
+     * RANK SUCCEEDS AND REPAIRS IT. THE DOCUMENTED REASONING IS TRUE, AND THE SUBSEQUENT REJECTION UNDER THE TYPED
+     * ANSWER -- NOT UNDER MY GUESS ABOUT WHAT THE ANSWER SHOULD BE. ***
+     *
+     * THE DISPUTED CASE, TAKEN PROPERLY: THE ADVANCE FAULTED, SO THE **JOURNAL** MUST STILL SHOW THE ROW AT ITS
+     * PRE-ADVANCE RANK -- AND THE HELD FRAME MUST STAND, BECAUSE THE DURABLE COMMIT REALLY DID HAPPEN AND REVOKING IT
+     * WOULD BE THE WORSE ERROR. **THAT IS WHAT THE CODE CHOOSETH, AND THAT IS WHAT THIS ARM NOW MEASURE.**
+     */
+    func testCRYPTO005_aFaultedAdvanceLeavesTheRankUnadvancedWhileTheCommitStands() async throws {
+        var f = try fixture(seedByte: 0xC1, xByte: 0xC2)
+        let peer = try approvePeer(&f, 0xD1, 0xD2)
+
+        let faulting = FaultingIntentJournal(wrapping: f.journal, faultAt: .advance)
+        let authority = SendDirectAuthority(
+            identity: f.id, signingKeys: f.signing, router: f.router, store: f.store,
+            trustResolver: TrustedPeerIdentityResolver(source: f.trust),
+            journal: faulting, identityFactory: f.factory, clock: f.clock)
+
+        let token = bytesOf(41, 16)
+        let result = await authority.sendDirect(try cmd(token, peer.nodeId, ascii("advance boundary")))
+
+        XCTAssertTrue(
+            faulting.calls.contains("advance"),
+            "*** THE RIG MUST REACH THE STATE TRANSITION -- the advance is what recordeth that the revision was " +
+                "COMMITTED. If the road never reached it, this arm would say nothing about it. Observed calls: " +
+                "\(faulting.calls) ***",
+        )
+
+        // THE COMMIT STANDS: the durable frame is really held, so the send is not a lie.
+        XCTAssertTrue(
+            f.store.allHeldMsgIds().count > 0,
+            "*** THE DURABLE COMMIT MUST STAND: `advanceQuietly`'s own law is that 'an advance failure never revokes " +
+                "a proven durable commit' -- revoking it would discard a frame that really was persisted. Observed " +
+                "held: \(f.store.allHeldMsgIds().count) ***",
+        )
+
+        // *** AND THE RANK IS REPAIRED BY A LATER ADVANCE **FROM THE LOADED RANK**: that is the code's own claim, and
+        // it is the only part of the design my first draft got wrong. Measured THROUGH THE JOURNAL, not assumed. ***
+        guard case .found(let rowAfterFault) = faulting.load(token) else {
+            XCTFail("the token's row must stand after a faulted advance"); return
+        }
+        XCTAssertEqual(
+            rowAfterFault.stateRank, .authored,
+            "*** THE FAULTED ADVANCE MUST HAVE LEFT THE RANK WHERE IT WAS -- nothing else may claim the transition " +
+                "happened. Observed: \(rowAfterFault.stateRank) ***",
+        )
+
+        // *** AND THE REPAIR IS MEASURED ON A **FAULT-FREE** AUTHORITY OVER THE SAME JOURNAL -- WHICH IS THE CORRECT
+        // RIG, AND MY FIRST DRAFT GOT IT WRONG: I DROVE THE SECOND SEND THROUGH THE **SAME FAULTING DECORATOR**, SO
+        // THE SECOND ADVANCE FAULTED TOO AND THE RANK COULD NOT MOVE. **THAT MEASURED MY OWN RIG, NOT THE CODE'S
+        // CLAIM** -- "the replay repairs the rank" describeth what a LATER REAL RUN doeth, not what a permanently
+        // faulted journal doeth. ***
+        let healthy = SendDirectAuthority(
+            identity: f.id, signingKeys: f.signing, router: f.router, store: f.store,
+            trustResolver: TrustedPeerIdentityResolver(source: f.trust),
+            journal: f.journal, identityFactory: f.factory, clock: f.clock)
+
+        let second = await healthy.sendDirect(try cmd(token, peer.nodeId, ascii("advance boundary")))
+        if case let .durablyEnqueued(_, fromRetry) = second {
+            XCTAssertTrue(fromRetry, "the second send of the same revision is a retry")
+        }
+        guard case .found(let repaired) = f.journal.load(token) else {
+            XCTFail("the row must be readable through the journal"); return
+        }
+        XCTAssertEqual(
+            repaired.stateRank, .committed,
+            "*** 'THE REPLAY REPAIRS THE RANK': the retry path advanceth FROM THE LOADED RANK, so a later attempt on " +
+                "a HEALTHY journal COMPLETES the transition the faulted one could not. **THIS IS THE CLAIM THE CODE " +
+                "MAKES, AND IT IS NOW MEASURED RATHER THAN BELIEVED.** Observed: \(repaired.stateRank) ***",
+        )
+    }
+
+
     func testCRYPTO005_theSameAuthorityWithAnUnfaultedJournalReallySends() async throws {
         var f = try fixture(seedByte: 0x61, xByte: 0x62)
         let peer = try approvePeer(&f, 0x71, 0x72)

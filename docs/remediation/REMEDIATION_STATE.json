@@ -6877,6 +6877,12 @@
      "sha256": "62dac1673e70f3cc007d5ed4037b7792fb9d175dc4ebba84acef64c582b99037",
      "what": "The owed work: the faulting journal injected INTO the authority, driving a real send -- and the mutation that survived last round now reddening.",
      "outcome": "MUTATION (authority storageFailure guard deleted, grep-confirmed): 1 FAILURE, with the authority observed durablyEnqueued -- i.e. RE-AUTHORING instead of refusing. Last round this mutation SURVIVED; now it reddens. Restored 20/20."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round599-remaining-boundaries-and-a-verified-claim.log",
+     "sha256": "36035c9e59dd59039b581ff14868ea26523ea33c6a04e7c03aca19a4f8fe5bfa",
+     "what": "The INSERT and ADVANCE boundaries witnessed at authority level; \"the replay repairs the rank\" turned from a docstring claim into an assertion.",
+     "outcome": "Insert: faulted pin refuses, nothing held. Advance: the rank stays .authored AND the durable commit stands by design; a later healthy send advances from the LOADED rank to .committed. Three rig defects of mine found (a wrong law asserted; a faulted second send; an invalid UTF-8 body), each by a different instrument. 26 tests, 0 failures."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
@@ -6887,7 +6893,8 @@
     "THE CENTRAL CHARGE IS LANDED AND RE-MEASURED: **ONE PRODUCTION CALLER** reacheth the durable send -- `ComposedRuntime.swift:880 let authority = SendDirectAuthority(` -- which is the composition's own durable command (`sendDirectDurable`), so the intent is pinned in `outbound_intents` BEFORE the frame is authored, on the composition as well as on the medium.",
     "*** AND THE ABSENT/CORRUPT GAP NAMED AT ROUND 484 IS **CLOSED**, MEASURED: `SendDirectAuthority.swift:453-454` now handle BOTH `if case .storageFailure = loadedRow` AND `if case .corrupt = loadedRow` with TYPED REJECTIONS (`.rejected(reason: .enqueueCanonicMismatch)`), where the earlier seam returned nil for absence and for an unrebulidable row ALIKE and could not tell them apart. **A SEAM THAT CARRIETH A DISTINCTION ITS CALLER CANNOT OBSERVE IS NOT A DISTINCTION**, which was round 484's own law, and the caller now observeth it. ***",
     "WHAT IS OWED, AND IT IS NOT A REPAIR BUT EVIDENCE: (i) **NO DEVICE EVIDENCE AND NO REAL PROCESS RESTART** -- the arms re-open the store from the same path, which is 'a new process' as far as the medium is concerned, **BUT NO PROCESS IS TERMINATED**; (ii) **A FILTER CANNOT SELECT AN ASYNC XCTEST ARM ON THIS TOOLCHAIN** (measured at rounds 518-520: a filtered run of an async arm reporteth `Executed 0 tests`), SO **ANY FILTERED EVIDENCE IS VOID** and only the FULL LANE counteth -- which is why every submission this span quoteth the full lane grepped for the arm's own name.",
-    "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED."
+    "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
+    "THE INSERT AND ADVANCE BOUNDARIES ARE NOW WITNESSED AT AUTHORITY LEVEL (round 599), closing the half round 585 owed. A FAULTED INSERT REFUSES AND HOLDS NOTHING. **AND THE ADVANCE'S DESIGN IS MEASURED RATHER THAN BELIEVED:** `advanceQuietly` discards the result at all four sites BY DESIGN -- *\"an advance failure never revokes a proven durable commit; the replay repairs the rank\"* -- AND BOTH HALVES OF THAT SENTENCE ARE NOW ASSERTIONS: a faulted advance leaves the rank at `.authored` while the DURABLE COMMIT STANDS, and a later send on a HEALTHY journal advances FROM THE LOADED RANK to `.committed`. **MY OWN RIGS WERE WRONG THREE TIMES BEFORE THE CLAIM WAS** (an asserted law the code does not hold; a second send driven through the same faulting decorator; an invalid UTF-8 body), each caught by a different instrument. THE SEND BOUNDARY (after the durable enqueue) REMAINS UNFAULTED AND IS RECORDED AS OWED."
    ],
    "proof": null,
    "remediation_report": "evidence/crypto/findings.md",
