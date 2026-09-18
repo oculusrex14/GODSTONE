@@ -11,9 +11,9 @@ import io.godstone.mesh.identity.ValidatedPeerBinding
 import io.godstone.mesh.stress.CampaignDefect
 import io.godstone.mesh.stress.Fault
 import io.godstone.mesh.stress.FaultKind
+import io.godstone.mesh.stress.ResourceCensusSource
 import io.godstone.mesh.stress.FaultSchedule
 import io.godstone.mesh.stress.Invariants
-import io.godstone.mesh.stress.ResourceCensusSource
 import io.godstone.mesh.stress.StressCampaign
 import org.junit.Assert
 import org.junit.Test
@@ -435,6 +435,8 @@ class ReadinessT72Test {
             override fun liveAdmittedLeases(): Int = 0   // MEASURED, AND CLEAN
             override fun liveArmedTimers(): Int = 0      // MEASURED, AND CLEAN
             override fun liveObservers(): Int = 0        // MEASURED, AND CLEAN
+            override fun livePendingAcks(): Int = 0      // MEASURED, AND CLEAN
+            override fun liveStoreObservers(): Int = 0   // MEASURED, AND CLEAN
         }
         val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(clean)).run()
         Assert.assertTrue("a measured clean owner must not be accused: ${result.failures}",
@@ -518,6 +520,53 @@ class ReadinessT72Test {
             "*** A LEAKED OBSERVER MUST BE REPORTED AND NAMED -- a registration that outlives its owner is a CALLBACK " +
                 "INTO A DEAD OBJECT. Observed: ${result.failures} ***",
             result.failures.any { it.contains("observer") && it.contains("LinkInfoSnapshotAuthority") },
+        )
+    }
+
+    /** *** THE SIXTH OWNER -- `ACK WORK` -- IS CENSUSED: a pending obligation is a DUTY THE SYSTEM OWED. *** */
+    @Test
+    fun testGSSTRESS001theSixthOwnerPendingAcksIsCensused() {
+        val leaking = object : ResourceCensusSource {
+            override val ownerName: String = "AckObligationStore"
+            override fun liveSessionSlots(): Int = 0
+            override fun liveReservations(): Int = 0
+            override fun liveAdmittedLeases(): Int = 0
+            override fun liveArmedTimers(): Int = 0
+            override fun liveObservers(): Int = 0
+            override fun livePendingAcks(): Int = 2      // work owed and not discharged
+            override fun liveStoreObservers(): Int = 0
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(leaking)).run()
+        Assert.assertTrue(
+            "*** A PENDING ACK OBLIGATION IS NOT TELEMETRY -- it is WORK THE SYSTEM OWED AND MUST DISCHARGE, which is " +
+                "why it is censused where the two refused counters were not. Observed: ${result.failures} ***",
+            result.failures.any { it.contains("pending ACK") && it.contains("AckObligationStore") },
+        )
+    }
+
+    /** *** AND THE SEVENTH: THE STORE'S OWN OBSERVER SET -- THE SAME NAME AS `observers`, A DIFFERENT OWNER. *** */
+    @Test
+    fun testGSSTRESS001theStoreObserversAreADistinctOwnerFromTheAuthoritys() {
+        val storeOnly = object : ResourceCensusSource {
+            override val ownerName: String = "MessageStore"
+            override fun liveSessionSlots(): Int = 0
+            override fun liveReservations(): Int = 0
+            override fun liveAdmittedLeases(): Int = 0
+            override fun liveArmedTimers(): Int = 0
+            override fun liveObservers(): Int = 0            // the AUTHORITY's set is clean ...
+            override fun livePendingAcks(): Int = 0
+            override fun liveStoreObservers(): Int = 4       // ... and the STORE's is not
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(storeOnly)).run()
+        Assert.assertTrue(
+            "*** THE STORE'S OBSERVERS MUST BE REPORTED -- the card's word covereth both owners, and asking only one " +
+                "would leave the other's leak invisible. Observed: ${result.failures} ***",
+            result.failures.any { it.contains("store observer") && it.contains("MessageStore") },
+        )
+        Assert.assertTrue(
+            "*** AND THE AUTHORITY'S SET MUST NOT BE ACCUSED FOR IT -- two owners of one NAME must stay " +
+                "distinguishable, or a maintainer is sent to the wrong one. Observed: ${result.failures} ***",
+            result.failures.none { it.contains("observer registration") },
         )
     }
 

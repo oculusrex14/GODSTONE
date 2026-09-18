@@ -87,6 +87,30 @@ interface ResourceCensusSource {
      */
     fun liveObservers(): Int = NOT_MEASURED
 
+    /**
+     * *** GS-STRESS-001 step 3 (round 665): THE SIXTH OWNER -- `ACK WORK`, THE CARD'S OWN WORD. ***
+     *
+     * `AckObligationStore.countObligations()` IS `AckObligationStore`'s LAW, not a court-only hook: **the durable
+     * pending-ACK census, read from the authority's own tables** (`SqliteAckStore` answereth via
+     * `engine.countObligationRows()`, and a storage failure answereth `-1` rather than a false zero).
+     *
+     * **AND IT IS DELIBERATELY NOT ONE OF THE TWO COUNTERS THIS LEDGER ALREADY REFUSED.** Those were
+     * `RecipientInboxRepository.census()` (*"telemetry, not authority"*, its own words) and `tombstoneRowCount()`
+     * (legitimate lifetime-bounded rows). **A PENDING ACK OBLIGATION IS NEITHER: IT IS WORK THE SYSTEM OWED AND MUST
+     * DISCHARGE**, so a non-zero census after shutdown is a real leak, not a lifetime-bounded reading.
+     */
+    fun livePendingAcks(): Int = NOT_MEASURED
+
+    /**
+     * *** AND THE SEVENTH-LOOKING OWNER: THE STORE'S OWN OBSERVER REGISTRATIONS. ***
+     *
+     * The card nameth `observers`; `liveObservers()` above asketh the *authority* that records observers. **BUT THE
+     * MESSAGE STORE HATH ITS OWN SET** (`MessageStore.registerHeldSetObserver`, with
+     * `heldSetObserverCountForTest()` as the hook) -- **a SECOND owner of the same NAME, and asking only one of them
+     * would leave the other's leak invisible.** *The card's word covereth both, so both are asked.*
+     */
+    fun liveStoreObservers(): Int = NOT_MEASURED
+
     companion object {
         /** The sentinel for an owner whose kind this seam cannot yet census. NEVER counted as zero. */
         const val NOT_MEASURED: Int = -1
@@ -363,6 +387,24 @@ class StressCampaign(
                     "${owner.ownerName} (observers)")
                 observers != 0 -> failures.add(
                     "${Invariants.NO_LEAKED_LEASES}: $observers observer registration(s) still live in the REAL " +
+                        "owner '${owner.ownerName}' after shutdown")
+            }
+            // THE SIXTH OWNER: PENDING ACK WORK -- a duty the system owed and did not discharge.
+            val pendingAcks = owner.livePendingAcks()
+            when {
+                pendingAcks == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
+                    "${owner.ownerName} (pending acks)")
+                pendingAcks != 0 -> failures.add(
+                    "${Invariants.NO_LEAKED_SESSIONS}: $pendingAcks pending ACK obligation(s) still live in the REAL " +
+                        "owner '${owner.ownerName}' after shutdown")
+            }
+            // THE SEVENTH: THE STORE'S OWN OBSERVER SET -- the same NAME as `observers`, a DIFFERENT owner.
+            val storeObservers = owner.liveStoreObservers()
+            when {
+                storeObservers == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
+                    "${owner.ownerName} (store observers)")
+                storeObservers != 0 -> failures.add(
+                    "${Invariants.NO_LEAKED_LEASES}: $storeObservers store observer(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
             }
         }
