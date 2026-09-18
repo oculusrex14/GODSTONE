@@ -820,6 +820,23 @@ FIX_SUBMITTED 48 · OPEN 0 · PARTIAL 6 · VERIFIED_FIXED 0        (54 findings 
 false half first (round 532) — *and a field that contradicts itself is worse than one that is merely old*; and nine
 `impact` sentences in round 533. **A twelve-finding sweep for empty proof fields closed the class at zero.**
 
+### THE LAST UNATTEMPTED ITEM, MEASURED TO ITS BLOCKING OBSTACLE (ROUND 543)
+
+**GS-UX-001's step 2 Swift half — a lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` — was the one
+remainder that looked like code rather than an acquisition. I measured it to its obstacle, and there are three:**
+
+1. **the port is synchronous and the runtime is asynchronous** — `sendDirect(recipientNodeId:body:) -> SendOutcome`
+   against `LabRuntime.sendDirect(...) async -> String`;
+2. **the port and the model's initialiser are both `internal`** (`:275`, `:318`) — a *public-surface decision*, not code;
+3. ***and the decisive one: `LabRuntime` exposes **no `messages()`, no `recipients()` and no `linkState()` — counted at
+   zero** — so the port's own three read members have nothing to adapt.***
+
+**Building the adapter would therefore mean INVENTING message and recipient projections inside the lab runtime — which
+is precisely the substitution the card forbids (*"never mutate a UI-only map"*) and exactly what
+`check_the_lab_buildeth_no_owner_of_its_own` exists to prevent.** *A capability may not be bought with the very
+substitution the finding is about.* **The measurement closes the question rather than leaving it open: this is not a
+task the span skipped, but a task whose prerequisite does not exist.**
+
 ### THE HONEST TERMINAL STATEMENT
 
 **`VERIFIED_FIXED` IS ZERO BY RULE — only an independent audit may write it — and `PARTIAL` is never written as fixed.**
