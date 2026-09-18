@@ -13954,6 +13954,12 @@
       "sha256": "567a834dff170df70bf0ba95befe7ca341b230cb5b30dae428442f9f9fad700d",
       "what": "The iOS Router admission point built -- the twin round 574 named as owed and never done.",
       "outcome": "MEASURED: Android's Router carried a REQUIRED wipeGate asked BEFORE store.persist; iOS's carried NONE AT ALL, so `accept` could write the held row during a pending wipe. Built: an OPTIONAL gate defaulting to nil (nil means NO GATE -- the road unchanged -- so no existing composition changes, and an arm pins that meaning); the admission point is asked BEFORE store.persist because asked after it would be a report rather than a gate; MeshNode's initialiser hands it to the Router it builds, and MeshRuntime passes the SAME DeferredWipeSensitiveUseGate every other admission point on the isle receives. THREE ARMS: refusal with the store asserted really untouched; the positive control (same frame, same store, only the gate differing); and the additivity arm. MUTATION (the admission line removed, grep-confirmed): the refusal arm FAILED while the positive control stayed GREEN. MEASURED: full iOS lane green; ReadinessT42Tests 22 tests 0 failures. NOT CLAIMED: the iOS SOS read roads (retrySos, activeSosSnapshot) remain ungated -- a larger change, recorded as the next owed item."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round638-the-ios-sos-read-roads-gated-round633s-twin.log",
+      "sha256": "5dee5e2a31d6dc01701dcd85f7fd20dc95564d6593c9ce249d77bae839916867",
+      "what": "The iOS SOS read roads gated -- round 633's twin, after round 636 threaded the gate and dropped it.",
+      "outcome": "ROUND 636 threaded the gate to the Router AND DROPPED IT, so the node's own read roads had nothing to consult -- \"a gate passed to a collaborator and not kept is a gate this object cannot consult\", which is round 633's finding one layer further out. The gate is now kept and BOTH roads consult it: `retrySos` asks it FIRST, before the tracker lookup (round 633's measured ordering lesson -- asked after, it is a report rather than a gate), and `activeSosSnapshot` returns nil for the same reason the ACK census answers 0. BOTH ARMS SEED A REAL ACTIVE SOS through a permitting node over a shared store and tracker, then build a refusing node over the SAME store and tracker -- because round 633's own first draft was vacuous (null on an empty store, true whether or not the gate is consulted). AND A RIG DEFECT WAS FOUND: the three-argument test convenience initialiser forwards NO wipeGate, so an arm built through it would silently measure a nil gate -- the round-589 trap in miniature; a gate-carrying overload was added. MUTATION (both gates removed, grep-confirmed): BOTH ARMS FAILED -- the resume arm observing `queuedDurably` and the projection arm printing the FULL ActiveSos object, which is itself proof the rig had something to hide -- while the positive control stayed GREEN. MEASURED: full iOS lane green (271s); ReadinessT39Tests 16 tests 0 failures. NOT TOUCHED: the Hilt-binding portability question and the construction-time typed permit."
      }
     ],
     "pending_proof": [
@@ -14403,7 +14409,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "ecdec7b7bf5a3e32492d27e424d48ea5d841647c",
+  "candidate_sha": "a5e74c0d802a7d9b652bf88129c31be4255896c9",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

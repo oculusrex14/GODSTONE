@@ -628,6 +628,96 @@ extension ReadinessT39Tests {
     }
 
 
+    // ================================================================================================
+    // *** GS-FINAL-003 (round 638): THE iOS SOS READ ROADS, GATED -- ROUND 633's TWIN. ***
+    //
+    // Round 633 measured on Android that `MeshNode` CARRIED a `wipeGate` AND CONSULTED IT ON ONLY ONE ROAD, so `retrySos`
+    // could still read and re-offer a held SOS frame during a pending wipe. **THE iOS NODE CARRIED NO GATE AT ALL** --
+    // round 636 threaded one to the `Router` and DROPPED IT -- so BOTH read roads were ungated here. They now consult
+    // it, and the gate is asked FIRST, before any read.
+    // ================================================================================================
+
+    private final class FixedWipeGate: WipeSensitiveUseGate, @unchecked Sendable {
+        private let permits: Bool
+        init(permits: Bool) { self.permits = permits }
+        func allowsSensitiveUse() -> Bool { permits }
+    }
+
+    /** A rig whose node carries a REAL gate over the same store and tracker, so the two reads differ only by the gate. */
+    private func gatedRig(permits: Bool, store: InMemoryMessageStore, tracker: DeliveryTracker) throws -> MeshNode {
+        // *** THE SESSIONS HALF IS THE RIG'S OWN BUSINESS, NOT THE SUBJECT'S: the arms below exercise the SOS READ
+        // ROADS, which consult the `wipeGate` and the store and never the session manager. A private per-file
+        // `RecordingTrustAuthority` would be a SECOND convention beside the one this file already uses, so the
+        // simplest legal construction is the one already legal everywhere else on this isle. ***
+        let node = MeshNode(
+            identity: try newIdentity(0xD1, 0xE3),
+            store: store,
+            deliveryTracker: tracker,
+            wipeGate: FixedWipeGate(permits: permits)
+        )
+        node.sosAuthority = SosTestAuthority()
+        return node
+    }
+
+    /** *** A PENDING WIPE REFUSES THE RESUME READ -- FROM A STORE THAT REALLY HOLDS AN ACTIVE CALL. *** */
+    func testGF003APendingWipeRefusethTheSosResumeRead() throws {
+        // SEED FIRST THROUGH A PERMITTING NODE OVER A STORE AND TRACKER WE HOLD HANDLES ON -- otherwise a null/refusal
+        // assertion would be TRUE WHETHER OR NOT THE GATE IS CONSULTED, which is the vacuity round 633's mutation
+        // caught in its own first draft.
+        let store = InMemoryMessageStore()
+        let auth = RecordingAuthenticator()
+        let tracker = DeliveryTracker(repo: AuthorityRepository(store: store, failAt: nil), authenticator: auth)
+        let permitting = try gatedRig(permits: true, store: store, tracker: tracker)
+        for i in 0..<1 { bringPeerUp(permitting, UUID(uuidString: Self.peerUuid(i))!) }
+        _ = permitting.dispatchSos(payload: Data("an active call a wipe must hide".utf8)) { _, _ in true }
+        let mid = try XCTUnwrap(store.allHeldMsgIds().first, "the rig must really hold an active SOS")
+
+        // THE SAME STORE AND TRACKER, NOW GATED CLOSED.
+        let refusing = try gatedRig(permits: false, store: store, tracker: tracker)
+        let out = refusing.retrySos(msgId: mid) { _, _ in true }
+        guard case .failed(let reason) = out else {
+            XCTFail("*** A PENDING WIPE MUST REFUSE THE SOS RESUME READ. Observed: \(out) ***"); return
+        }
+        XCTAssertTrue(
+            reason.contains("wipe"),
+            "*** AND THE REFUSAL MUST NAME THE WIPE, so a caller can tell it from an ordinary policy drop. Observed: " +
+                "\(reason) ***")
+    }
+
+    /** *** AND A PENDING WIPE CLAIMETH NO ACTIVE CALL -- FROM THAT SAME STORE THAT REALLY HOLDS ONE. *** */
+    func testGF003APendingWipeClaimethNoActiveSos() throws {
+        let store = InMemoryMessageStore()
+        let auth = RecordingAuthenticator()
+        let tracker = DeliveryTracker(repo: AuthorityRepository(store: store, failAt: nil), authenticator: auth)
+        let permitting = try gatedRig(permits: true, store: store, tracker: tracker)
+        for i in 0..<1 { bringPeerUp(permitting, UUID(uuidString: Self.peerUuid(i))!) }
+        _ = permitting.dispatchSos(payload: Data("an active call a wipe must hide".utf8)) { _, _ in true }
+        XCTAssertNotNil(
+            permitting.activeSosSnapshot(),
+            "*** THE RIG MUST REALLY HOLD AN ACTIVE SOS, or the null below measures an empty store instead. ***")
+
+        let refusing = try gatedRig(permits: false, store: store, tracker: tracker)
+        XCTAssertNil(
+            refusing.activeSosSnapshot(),
+            "*** WHILE A WIPE IS PENDING NOTHING MAY BE CLAIMED ABOUT A STORE BEING ERASED -- and this is NOT the " +
+                "empty-store nil: the SAME store holds a real active SOS, as the assertion above just showed. ***")
+    }
+
+    /** *** THE POSITIVE CONTROL: WITH THE GATE OPEN THE SAME RIG READS, SO A NODE HARDWIRED TO REFUSE CANNOT SATISFY THE ARMS ABOVE. *** */
+    func testGF003AnOpenGateLetsTheSosReadRoadsThrough() throws {
+        let store = InMemoryMessageStore()
+        let auth = RecordingAuthenticator()
+        let tracker = DeliveryTracker(repo: AuthorityRepository(store: store, failAt: nil), authenticator: auth)
+        let node = try gatedRig(permits: true, store: store, tracker: tracker)
+        for i in 0..<1 { bringPeerUp(node, UUID(uuidString: Self.peerUuid(i))!) }
+        _ = node.dispatchSos(payload: Data("an active call".utf8)) { _, _ in true }
+        XCTAssertNotNil(node.activeSosSnapshot(), "the open gate must really admit the projection")
+        let mid = try XCTUnwrap(store.allHeldMsgIds().first)
+        if case .failed(let reason) = node.retrySos(msgId: mid) { _, _ in true } {
+            XCTAssertFalse(reason.contains("wipe"), "an OPEN gate must not produce a wipe refusal: \(reason)")
+        }
+    }
+
 }
 
 // GS-SOS-002 (the audit's ordered step 6) on this isle: NO arm is added here, and that is a MEASUREMENT,

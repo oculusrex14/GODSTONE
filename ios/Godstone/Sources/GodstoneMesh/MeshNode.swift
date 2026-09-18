@@ -55,6 +55,9 @@ public final class MeshNode {
     public private(set) lazy var ble = BleTransport()
     public let router: Router
     public let sessions: SessionManager
+    /// The wipe admission seam, or nil for a node that was not wired to one. **Kept, not merely forwarded**, because
+    /// this node's OWN SOS read roads consult it (round 638).
+    private let wipeGate: (any WipeSensitiveUseGate)?
 
     /// T37 (section 14): the recipient inbox transaction of the authenticated
     /// link -- injectable and absent by default, so the relay/ACK-ingest
@@ -444,6 +447,12 @@ public final class MeshNode {
         // T42: the store is REQUIRED at construction -- a router without one
         // could report a frame accepted on memory alone.
         self.router = Router(selfNodeId: identity.nodeId, store: store, wipeGate: wipeGate)
+        // *** GS-FINAL-003 (round 638): THE NODE KEEPETH THE GATE SO ITS OWN READ ROADS CAN CONSULT IT. *** Round 636
+        // threaded the gate to the `Router` and DROPPED IT. **BUT `MeshNode` HAS TWO SOS READ ROADS OF ITS OWN --
+        // `retrySos` AND `activeSosSnapshot` -- WHICH READ THE HELD FRAMES OUT OF THE STORE, AND ROUND 633 MEASURED ON
+        // THE OTHER ISLE THAT *THOSE* WERE THE UNGATED ONES.** *A gate passed to a collaborator and not kept is a gate
+        // this object cannot consult.*
+        self.wipeGate = wipeGate
         self.ble.store = store
         self.ble.identity = identity
         // T40: the control plane rides the same durable store and clock.
@@ -848,6 +857,14 @@ public final class MeshNode {
     @discardableResult
     internal func retrySos(msgId: Data, send: (FrameV2, UUID) -> Bool) -> SosDispatchResult {
         guard msgId.count == 16 else { return .failed("retry: msg_id must be 16 bytes") }
+        // *** GS-FINAL-003 (round 638): THE GATE COMES FIRST -- AND THE ORDERING IS THE POINT, MEASURED ON THE OTHER
+        // ISLE. *** Round 633 placed Android's first attempt at this AFTER the tracker read and **ITS OWN ARM NAMED
+        // THE MISTAKE** (`retry: no durable row`), meaning the durable row was CONSULTED BEFORE THE WIPE WAS
+        // CONSIDERED. *A security gate that runs after the thing it gates is a report, not a gate.* Asked here, before
+        // any read, so a pending wipe reacheth nothing and the caller can tell this refusal from an ordinary drop.
+        if let gate = wipeGate, !gate.allowsSensitiveUse() {
+            return .failed("retry: a wipe is pending; sensitive use is refused")
+        }
         let row: DeliveryRecord
         switch deliveryTracker.lookup(msgId) {
         case .found(let rec): row = rec
@@ -938,6 +955,11 @@ public final class MeshNode {
     /// is what the plain UI flag could never promise. Broadcast shows the local
     /// queue only: nothing here claims recipient-delivered or guaranteed rescue.
     internal func activeSosSnapshot() -> ActiveSos? {
+        // *** GS-FINAL-003 (round 638): THE PROJECTION IS GATED TOO. *** *"A call counts active while its row is ... and
+        // its frame is still held"* -- **BUT WHILE A WIPE IS PENDING NOTHING MAY BE CLAIMED ABOUT A STORE WHOSE
+        // CONTENTS ARE BEING ERASED.** The honest answer is `nil` (no active call), for the same reason the ACK census
+        // answereth 0: a projection read from an erasing store is A CLAIM THAT LOOKS LIKE A STATE.
+        if let gate = wipeGate, !gate.allowsSensitiveUse() { return nil }
         for frame in store.allHeldOrderedByPriority() {
             guard frame.type == .sos else { continue }
             var row: DeliveryRecord? = nil

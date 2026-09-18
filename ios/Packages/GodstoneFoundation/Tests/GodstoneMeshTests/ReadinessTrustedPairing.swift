@@ -216,4 +216,20 @@ extension MeshNode {
         self.init(identity: identity, store: store,
                   deliveryTracker: deliveryTracker, sessions: sessions)
     }
+
+    /// *** GS-FINAL-003 (round 638): THE SAME NONSHIPPING ENTRANCE, WITH A WIPE GATE. ***
+    ///
+    /// *The three-argument convenience above CANNOT EXPRESS A GATE* -- it forwards no `wipeGate`, so an arm built
+    /// through it would silently measure a node whose gate is `nil`. **THAT IS THE ROUND-589 TRAP IN MINIATURE: a
+    /// court that wants to observe a REFUSAL must be able to construct the thing that refuses.** This overload addeth
+    /// the one argument such an arm needs and forwardeth it, so the gate it passes is the gate the node consults.
+    convenience init(identity: MeshIdentity, store: MessageStore,
+                     deliveryTracker: DeliveryTracker,
+                     wipeGate: any WipeSensitiveUseGate) {
+        let sessions = SessionManager(identity: identity,
+                                       trustAuthority: ReadinessTrustedPairing.FailClosedTrustAuthority())
+        self.init(identity: identity, store: store,
+                  deliveryTracker: deliveryTracker, sessions: sessions,
+                  wipeGate: wipeGate)
+    }
 }
