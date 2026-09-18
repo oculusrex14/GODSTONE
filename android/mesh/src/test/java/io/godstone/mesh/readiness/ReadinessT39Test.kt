@@ -725,4 +725,111 @@ class ReadinessT39Test {
         )
         Assert.assertNull("the durable scan must agree with the darkness", r.node.activeSosSnapshot())
     }
+    // ================================================================================================
+    // *** GS-FINAL-003 (round 633): THE SOS READ ROADS, GATED -- A GATE CARRIED BUT NOT CONSULTED. ***
+    //
+    // `MeshNode` ALREADY CARRIED A REQUIRED `wipeGate`, AND CONSULTED IT **ONLY WHEN CONSTRUCTING THE ROUTER**. So
+    // while a wipe was pending, `retrySos` COULD STILL READ THE HELD SOS FRAME OUT OF THE STORE AND RE-OFFER IT, and
+    // `activeSosSnapshot` COULD STILL CLAIM AN ACTIVE CALL FROM A STORE BEING ERASED.
+    // **A GATE THAT IS CARRIED BUT NOT CONSULTED ON A ROAD IS NOT A GATE ON THAT ROAD** -- the same class as the
+    // round-589 inversion, one layer out. Both roads now consult it, and refuse in their OWN type's vocabulary.
+    // ================================================================================================
+
+    private fun gatedNode(
+        permits: Boolean,
+        store: InMemoryMessageStore = InMemoryMessageStore(),
+        tracker: DeliveryTracker? = null,
+    ): MeshNode {
+        val tracker = tracker ?: DeliveryTracker(AuthorityRepository(store, null), RecordingAuthenticator())
+        val identity = newIdentity()
+        // *** A GATE THAT REFUSES MUST BE PASSED THROUGH THE FULL CONSTRUCTOR, AND THAT IS WHY THIS RIG EXISTS. ***
+        // `MeshNode`'s PURE-JVM CONVENIENCE CONSTRUCTOR HARDWIRES `WipeSensitiveUseGate { true }` -- deliberately,
+        // as its own comment recordeth (*"a convenience constructor that breaks its callers is not more secure; it is
+        // just broken"*), because it existeth for courts that never touch a journal. **SO AN ARM THAT WANTED TO
+        // OBSERVE A REFUSAL WOULD SILENTLY MEASURE AN ALWAYS-ADMIT GATE IF IT USED THAT ROAD** -- the round-589 trap
+        // in miniature. This rig taketh the six-argument constructor and builds a real `SessionManager` beside it.
+        val sessions = io.godstone.mesh.crypto.SessionManager(
+            identity = identity,
+            trustAuthority = object : io.godstone.mesh.crypto.PeerBindingTrustAuthority {
+                override fun applyValidatedBinding(
+                    binding: io.godstone.mesh.identity.ValidatedPeerBinding,
+                ): io.godstone.mesh.identity.PeerTrustApplyResult =
+                    io.godstone.mesh.identity.PeerTrustApplyResult.Accepted
+            },
+        )
+        return MeshNode(
+            ctx = null,
+            identity = identity,
+            store = store,
+            deliveryTracker = tracker,
+            wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { permits },
+            sessions = sessions,
+        ).also { it.sosAuthority = SosTestAuthority() }
+    }
+
+    /** *** A PENDING WIPE REFUSES THE SOS RESUME READ: THE FRAME IS NOT EVEN LOOKED FOR. *** */
+    @Test
+    fun testGF003APendingWipeRefusesTheSosResumeRead() = runTest {
+        val node = gatedNode(permits = false)
+        val out = node.retrySos(ByteArray(16) { 0x11 }) { _, _ -> true }
+        Assert.assertTrue(
+            "*** THE RESUME ROAD MUST REFUSE WHILE A WIPE IS PENDING -- and it must refuse AS A TYPED FAILURE, " +
+                "not by an invented error. Observed: $out ***",
+            out is SosDispatchResult.Failed,
+        )
+        Assert.assertTrue(
+            "and the refusal must NAME the wipe, so a caller can tell it from an ordinary policy drop. Observed: $out",
+            (out as SosDispatchResult.Failed).reason.contains("wipe"),
+        )
+    }
+
+    /** *** AND A PENDING WIPE CLAIMETH NO ACTIVE CALL -- FROM A STORE THAT REALLY HOLDS ONE. *** */
+    @Test
+    fun testGF003APendingWipeClaimethNoActiveSos() = runTest {
+        // *** MY FIRST DRAFT OF THIS ARM WAS VACUOUS, AND THE MUTATION SAID SO. *** It called
+        // `activeSosSnapshot()` ON AN EMPTY STORE WITH THE GATE CLOSED AND ASSERTED NULL -- **WHICH IS TRUE WHETHER OR
+        // NOT THE GATE IS CONSULTED**, so removing the gate left the arm green. *The mutation that should have killed
+        // it did not, and that is the only instrument that catches this.* **THE ARM NOW SEEDS A REAL ACTIVE SOS FIRST
+        // -- through the SAME NODE, under an OPEN gate -- AND THEN CLOSES THE GATE ON THAT SAME NODE**, so the
+        // projection has something to hide and the two answers are observably different.
+        // SEED THROUGH A PERMITTING NODE OVER A STORE WE HOLD A HANDLE ON, THEN BUILD A REFUSING NODE OVER **THE SAME
+        // STORE AND THE SAME TRACKER** -- so the projection has a real call to hide, and the only thing that differs
+        // between the two reads is the GATE.
+        val store = InMemoryMessageStore()
+        val tracker = DeliveryTracker(AuthorityRepository(store, null), RecordingAuthenticator())
+        val permitting = gatedNode(permits = true, store = store, tracker = tracker)
+        val seeded = permitting.dispatchSos("an active call that a wipe must hide".toByteArray()) { _, _ -> true }
+        Assert.assertTrue(
+            "the rig must really hold an active SOS, or the arm below measures an empty store again: $seeded",
+            permitting.activeSosSnapshot() != null,
+        )
+
+        // THE SAME STORE AND TRACKER, NOW GATED CLOSED: the projection must stop claiming the call.
+        val refusing = gatedNode(permits = false, store = store, tracker = tracker)
+        Assert.assertNull(
+            "*** WHILE A WIPE IS PENDING NOTHING MAY BE CLAIMED ABOUT A STORE BEING ERASED -- and this is NOT the " +
+                "empty-store null: the SAME store holdeth a real active SOS, as the assertion above just showed. A " +
+                "projection read from an erasing store is A CLAIM THAT LOOKS LIKE A STATE. ***",
+            refusing.activeSosSnapshot(),
+        )
+    }
+
+    /** *** THE POSITIVE CONTROL: WITH THE GATE OPEN THE SAME NODE REALLY READS. *** Without it, a node hardwired to refuse would satisfy both arms above. */
+    @Test
+    fun testGF003AnOpenGateLetsTheSosReadRoadsThrough() = runTest {
+        val node = gatedNode(permits = true)
+        // The projection really runs its scan (an empty store is a legitimate null, so the assertion is that it
+        // DID NOT refuse -- observable because the refusing node's answer would be indistinguishable otherwise).
+        Assert.assertNull("an empty store genuinely has no active SOS", node.activeSosSnapshot())
+        // AND THE RESUME ROAD REACHES THE TRACKER: with no durable row the answer is the NOT-FOUND refusal, which is
+        // a DIFFERENT reason from the wipe refusal -- and naming that difference is what proves the gate was passed.
+        val out = node.retrySos(ByteArray(16) { 0x11 }) { _, _ -> true }
+        Assert.assertTrue("the resume road must reach the tracker", out is SosDispatchResult.Failed)
+        Assert.assertTrue(
+            "*** AND ITS REFUSAL MUST NOT BE THE WIPE'S: a node whose gate is OPEN must get PAST the gate and fail " +
+                "for the store's own reason. Observed: ${(out as SosDispatchResult.Failed).reason} ***",
+            !out.reason.contains("wipe"),
+        )
+    }
+
 }

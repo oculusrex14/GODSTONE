@@ -736,6 +736,20 @@ class MeshNode(
         send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
     ): SosDispatchResult {
         if (msgId.size != 16) return SosDispatchResult.Failed("retry: msg_id must be 16 bytes")
+        // *** GS-FINAL-003 (round 633): THE GATE COMES FIRST -- AND MY FIRST PLACEMENT OF IT WAS WRONG IN A WAY THAT
+        // AN ARM CAUGHT. *** THIS NODE ALREADY CARRIED A `wipeGate` AND CONSULTED IT **ONLY WHEN CONSTRUCTING THE
+        // ROUTER**, so while a wipe was pending this road could still READ THE HELD SOS FRAME OUT OF THE STORE AND
+        // RE-OFFER IT. **A GATE CARRIED BUT NOT CONSULTED ON A ROAD IS NOT A GATE ON THAT ROAD.**
+        //
+        // I FIRST PUT THIS CHECK **AFTER** THE TRACKER LOOKUP, AND THE REFUSAL ARM FAILED WITH
+        // `retry: no durable row for this msg_id` -- **MY OWN ARM NAMING THE ORDERING DEFECT.** That is worse than a
+        // cosmetic misordering: it means the durable row was CONSULTED BEFORE THE WIPE WAS CONSIDERED, so a pending
+        // wipe still reached the store and the caller could not tell a wipe refusal from an ordinary policy drop.
+        // **A SECURITY GATE THAT RUNS AFTER THE THING IT GATES IS A REPORT, NOT A GATE.** The refusal useth the
+        // type's OWN vocabulary (a typed `Failed`), never an invented error.
+        if (!wipeGate.allowsSensitiveUse()) {
+            return SosDispatchResult.Failed("retry: a wipe is pending; sensitive use is refused")
+        }
         val row: DeliveryRecord = when (val l = deliveryTracker.lookup(msgId)) {
             is DeliveryLookup.Found -> l.record
             DeliveryLookup.NotFound ->
@@ -842,6 +856,11 @@ class MeshNode(
      * queue only: nothing here claims recipient-delivered or guaranteed rescue.
      */
     internal suspend fun activeSosSnapshot(): ActiveSos? {
+        // *** GS-FINAL-003 (round 633): THE PROJECTION READ IS GATED TOO. *** *"A call counts active while its row is
+        // ... and its frame is still held"* -- **BUT WHILE A WIPE IS PENDING, NOTHING MAY BE CLAIMED ABOUT A STORE
+        // WHOSE CONTENTS ARE BEING ERASED.** The honest answer is `null` (no active call), for the same reason the
+        // ACK census answereth 0: a projection read from an erasing store would be A CLAIM THAT LOOKS LIKE A STATE.
+        if (!wipeGate.allowsSensitiveUse()) return null
         for (frame in store.allHeldOrderedByPriority()) {
             if (frame.type != io.godstone.mesh.wire.v2.TypeV2.SOS) continue
             val row = when (val l = deliveryTracker.lookup(frame.msgId)) {

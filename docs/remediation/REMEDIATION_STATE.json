@@ -13942,6 +13942,12 @@
       "sha256": "2a8cd0ac64e6cd8a976b9f023c4c1fb8fca8cb45d171cd642fb643e12659588b",
       "what": "The Android ACK namespace is now gated by a decorator over the AckObligationStore protocol, driven through the REAL provider.",
       "outcome": "The finding's remaining half on Android is closed: `WipeGatedAckObligationStore` wraps all 17 methods with each method's OWN typed refusal, wired in DI from the same `WipeSensitiveUseGate` binding (never a hand-typed lambda). `deleteAllFrames()` is deliberately NOT gated because the eraser must erase during a pending wipe -- the gate protects USE, not DESTRUCTION. FOUR ARMS drive the real journal file, the real provider and the real decorator. MUTATION (storeCandidate's gate removed, grep-confirmed on disk): the two refusal arms FAILED while the positive control stayed GREEN. MEASURED: app 97/0, core 21/0, mesh 1888/0 (+3). NOT CLAIMED: the Hilt binding's portability to a real component (no :mesh Dagger component exists on LIGHT); nothing cryptographic or at-rest."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round633-the-sos-read-roads-gated-a-gate-carried-but-not-consulted.log",
+      "sha256": "70055180e15446a23a57723d5f01ec93e744fc4947e3ed5a2091a7f7724b267f",
+      "what": "The SOS read roads gated -- a wipeGate carried but consulted only at Router construction; and my first placement of it was after the tracker read.",
+      "outcome": "FOUND BY GREPPING WHERE THE FIELD IS USED RATHER THAN DECLARED: `MeshNode` carried a required wipeGate and consulted it in exactly ONE place (the lazy Router), so `retrySos` could still read and re-offer a held SOS frame during a pending wipe, and `activeSosSnapshot` could still claim an active call from a store being erased. MY FIRST PLACEMENT WAS AFTER THE TRACKER LOOKUP AND MY OWN ARM NAMED IT (`retry: no durable row`), meaning the durable row was consulted before the wipe was considered -- A SECURITY GATE THAT RUNS AFTER THE THING IT GATES IS A REPORT, NOT A GATE. Moved to the top. MY FIRST ARM WAS ALSO VACUOUS (it asserted null on an EMPTY store, true whether or not the gate is consulted; the mutation left it GREEN) and is now seeded with a real active SOS read through the same store and tracker under two different gates. MUTATION (both gates removed, grep-confirmed): BOTH refusal arms FAILED while the positive control stayed GREEN. AND A NONDETERMINISTIC CROSS-LANE INTERACTION IS RECORDED HONESTLY: one three-lane run had ReadinessT17Test#testBackpressureIsReportedNotSilentlyDropped fail; that arm tests the BLE transport flooding window and touches neither MeshNode nor retrySos nor activeSosSnapshot, passes in isolation, and two consecutive three-lane runs then passed."
      }
     ],
     "pending_proof": [
@@ -14391,7 +14397,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "4dfcde78125582060dfadca05620cba3de1d9adb",
+  "candidate_sha": "80bec64e58aeaeb2c1749b3bb23b0352e6d1b820",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
