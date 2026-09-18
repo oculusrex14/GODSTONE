@@ -1057,16 +1057,24 @@ repaired.** Reverted, and recorded as reverting.
 | counted log-only consults | by a call that **blocks nothing** | a comment with a stack trace |
 
 It now asserts the dependency and the **retained typed answer**, and **explicitly refuses to claim enforcement** — with
-a new mutation that reddens if a construction-refusing gate is ever reintroduced. `--selftest`: **56/55 mutations
-caught**.
+a new mutation that reddens if a construction-refusing gate is ever reintroduced. `--selftest`: **56/56 mutations
+caught** — and that denominator is now **measured**, not a literal. It read `55` beside a *counted* numerator, so a run
+that caught 56 printed `56/55`: **an impossible ratio that made the line look wrong rather than the count look right.**
+A hard-coded denominator beside a counted numerator is the same species as a count asserted instead of read.
 
 **THE MECHANISM THE AUDIT ACTUALLY ASKS FOR ALREADY EXISTS AND IS NAMED:** `CrashResumableWipe.allowsStartup()` /
 `allowsSensitiveApi()` are **journal-bound** — they answer from the durable record, not a cached boolean — so they can
 refuse sensitive *use* without refusing *construction*. What is missing is that the coordinator is not **reachable from
 an admission point** (Android builds it inside `MeshPanicWipe.begin`; iOS hides it behind `meshNode`).
 
-**SO GS-FINAL-003 IS `BLOCKED_EXTERNAL` ON BOTH ISLES, AND THE PREREQUISITE IS ONE THING:** wire the journal-bound
-gate into an admission point. It is stated rather than worked around, and no arm was retargeted to green to avoid it.
+**SO GS-FINAL-003 IS `PARTIAL` ON BOTH ISLES, AND THE PREREQUISITE IS ONE THING, AND IT IS INTERNAL:** wire the
+journal-bound gate into an admission point. It is stated rather than worked around, and no arm was retargeted to green
+to avoid it.
+
+*(This entry first recorded the finding as `BLOCKED_EXTERNAL`. That was WRONG IN THE SAME DIRECTION AS `GS-FINAL-012`:
+it overstated external dependence and undercounted open internal work. **No acquisition is involved** — the gates exist,
+the types exist, and the missing piece is wiring, which is writable here. Corrected, with the reason recorded on the
+ledger entry itself.)*
 
 **MEASURED:** Android **1236 tests, 0 failures, 0 errors, 0 skipped** after the revert; iOS **1295 tests, 0 failures**;
 every repository control green.
