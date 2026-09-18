@@ -47,6 +47,12 @@ final class GsFinal004VerifiedHandleTest: XCTestCase {
         var reopenedRequiringDEK: [String] = []
         /// How many keyed handles the engine actually handed back -- the ones composition must OWN.
         var handlesReturned: Int { openedForWriting.count + reopenedRequiringDEK.count }
+        /// *** THE IDENTITY OF EACH HANDLE ISSUED, AND WHAT EACH CARRIED. ***
+        ///
+        /// `EncryptedStoreHandle` is `Equatable` and carrieth no connection, so the BEST an arm can do today is hold the
+        /// issued values and compare identities. THE ARM'S FAILURE IS THEREFORE A RUNTIME FAILURE ON THE MISSING
+        /// CONNECTION, NOT A COMPILE ERROR -- which matters, because a compile error is not a behavioural red.
+        var issuedConnections: [EncryptedStoreHandle] = []
         var keysSeen: [StoreDEK] = []
         /// The handle it hands back. Its `encryptedAtRest` is the one the composition must HONOUR.
         var encryptedAtRest = true
@@ -56,16 +62,20 @@ final class GsFinal004VerifiedHandleTest: XCTestCase {
             if let fault { throw fault }
             openedForWriting.append(path)
             keysSeen.append(dek)
-            return EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: encryptedAtRest,
-                                        cipherVersion: 4)
+            let h = EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: encryptedAtRest,
+                                         cipherVersion: 4)
+            issuedConnections.append(h)
+            return h
         }
 
         func reopenRequiringDEK(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle {
             if let fault { throw fault }
             reopenedRequiringDEK.append(path)
             keysSeen.append(dek)
-            return EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: encryptedAtRest,
-                                        cipherVersion: 4)
+            let h = EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: encryptedAtRest,
+                                         cipherVersion: 4)
+            issuedConnections.append(h)
+            return h
         }
     }
 
@@ -90,24 +100,41 @@ final class GsFinal004VerifiedHandleTest: XCTestCase {
     }
 
     // ================================================================================================
-    // *** GS-FINAL-004'S CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. ***
+    // *** GS-FINAL-004'S CORE REQUIREMENT, ASSERTED POSITIVELY AND LEFT RED. ***
     //
-    // The central charge -- *"Acquiring SQLCipher cannot repair a discarded handle"* -- is that the factory's verified
-    // connection is thrown away and `SqliteMessageStore(url:)` performs a SECOND, UNKEYED `sqlite3_open_v2`.
+    // THE REQUIREMENT: *"The exact connection used by private repositories is keyed and verified before its first
+    // schema read or write."* THE ASSERTION THAT MEASURES IT: the store's own connection must be THE ONE THE FACTORY
+    // RETURNED -- an identity, not a tally.
     //
-    // I WROTE TWO ARMS FOR IT AND BOTH WERE FALSE:
-    //   (1) one asserted only that the engine was ASKED for a keyed open -- TRUE ON THE UNREPAIRED TREE, because the
-    //       factory genuinely does ask. It measured the one part that already worked;
-    //   (2) the next asserted the fake's OWN TALLIES (`handlesReturned > 0`, opened == returned) -- TRUE WHATEVER THE
-    //       COMPOSITION DOES. Three green tautologies standing in for a High finding is exactly the failure mode this
-    //       programme exists to refuse.
+    // IT CANNOT PASS TODAY, AND THE REASON IS THE FINDING: `EncryptedStoreHandle` carrieth `path`, `kind`,
+    // `encryptedAtRest`, `cipherVersion` AND NO CONNECTION. There is no object a store could run on and therefore no
+    // way to assert that it ran on the factory's. The arm stays RED, which is the honest state of the finding.
     //
-    // AND AN ARM CANNOT BE WRITTEN YET, FOR A STRUCTURAL REASON THAT IS THE FINDING ITSELF: `EncryptedStoreHandle`
-    // carrieth `path`, `kind`, `encryptedAtRest`, `cipherVersion` AND NO CONNECTION. There is no observable that says
-    // "the store ran on the factory's handle", because the factory never produces a handle a store COULD run on. The
-    // arm becomes writable exactly when the remediation lands, and writing it then is the proof.
+    // AN EARLIER DRAFT OF THIS ARM ASSERTED THE FAKE'S OWN TALLIES (`handlesReturned > 0`, opened == returned) AND
+    // PASSED -- VACUOUS GREENS, the same false-proof species as `wipeAuthorityForTest`'s literal tuple. They are
+    // deleted rather than kept, because an arm that measures the rig is worse than no arm.
+    // ================================================================================================
+
+    // ================================================================================================
+    // *** WHY THERE IS NO ARM FOR THE CORE, AND WHY THAT IS NOT AN OMISSION. ***
     //
-    // SO: 004 IS **PARTIAL**. The archive-only split below is DONE and evidenced; the discarded-handle core is OPEN.
+    // THE REQUIREMENT: *"The exact connection used by private repositories is keyed and verified before its first
+    // schema read or write."* THE OBSERVABLE THAT WOULD MEASURE IT: the store's connection IS the factory's, by
+    // identity.
+    //
+    // THAT OBSERVABLE DOES NOT EXIST, AND THE REASON IS THE FINDING: `EncryptedStoreHandle` carrieth `path`, `kind`,
+    // `encryptedAtRest`, `cipherVersion` AND NO CONNECTION. There is nothing for a store to run on and therefore
+    // nothing to compare. **AN ARM CANNOT BE WRITTEN AGAINST A TYPE THAT CANNOT CARRY ITS SUBJECT.**
+    //
+    // THREE ATTEMPTS WERE MADE AND ALL THREE WERE FALSE, AND THEY ARE RECORDED SO NONE IS RE-INVENTED:
+    //   (1) assert the engine was ASKED for a keyed open -- TRUE ON THE UNREPAIRED TREE (the factory genuinely asks);
+    //   (2) assert the fake's own tallies (`handlesReturned > 0`, opened == returned) -- TRUE WHATEVER THE CODE DOES,
+    //       the same vacuous species as `wipeAuthorityForTest`'s literal tuple;
+    //   (3) assert a production `messageStoreWasBuiltFromVerifiedHandle` flag -- THAT IS GS-FINAL-011 OVER AGAIN: a
+    //       proof hook that asserts an architecture instead of observing the runtime. REJECTED.
+    //
+    // THE ARM BECOMES WRITABLE EXACTLY WHEN THE REMEDIATION LANDS, AND WRITING IT THEN IS THE PROOF. Until then the
+    // two arms below are what 004 has, and they measure the split -- which is a DIFFERENT clause of the same finding.
     // ================================================================================================
 
     /**

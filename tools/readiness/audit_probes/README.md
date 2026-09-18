@@ -165,6 +165,12 @@ enough to sweep frozen-clock courts mid-witness.
 
 ## Kotlin probe — `kotlin/t20-owned-sweep-time-witness.kt.txt` (ANDROID-04, the time-based witness)
 
+**WHICH SUFFIX MEANS PARKED.** A probe that must stay RED carries the **`.txt` suffix** (`…Tests.swift.txt`,
+`…Test.kt.txt`), because Swift and Gradle compile every source in a module: a `.swift`/`.kt` file here would be compiled
+if it were copied, but as `.txt` the harness and the discovery walkers skip it. A probe WITHOUT the suffix
+(`python/test_*.py`) is a Python arm, which `discover` DOES collect — those live here only while RED and move into
+`tools/readiness/tests/` when the repair lands.
+
 Parked with its **measurement**, not merely its failure. The witness drives the owned lease sweep by **time alone** (an
 injected clock past the lease's deadline, a **25 ms** interval, **no** traffic) and asserts the silent relation retires. It
 was RED — and **its diagnostic assertion passed**, proving the job **is armed** (`hasLeaseSweepJob()` true) and ticking —

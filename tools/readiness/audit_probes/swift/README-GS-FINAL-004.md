@@ -7,7 +7,7 @@ belong in a lane expected green** (Swift runs every test source in a module, so 
 
 | arm | subject |
 |---|---|
-| `theStoreIsOpenedThroughTheVerifiedHandleNotASecondUnkeyedOpen` | the factory's keyed handle must be what the store runs on |
+| `theStoreRunsOnTheFactoriesVerifiedConnection` | **the core requirement, positively asserted — RED by design** |
 | `aHandleThatIsNotEncryptedAtRestIsRefused` | a non-encrypted verdict must refuse composition (**passes today** — the one part that already works) |
 | `theArchiveOnlyGraphConstructsNoPrivateStore` | an archive-only graph must contain no private store (**FAILS today**) |
 
@@ -22,18 +22,39 @@ Measured at source: `EncryptedStoreHandle` carries `path`, `kind`, `encryptedAtR
 connection at all**. There is nothing for composition to hand to a store, so `SqliteMessageStore(url:)` runs its own,
 independent, **unkeyed** `sqlite3_open_v2` on the same path. The verdict is computed and thrown away.
 
-## Two false reds I wrote and corrected
+## The arms, and which way each falls
+
+| arm | today |
+|---|---|
+| `theArchiveOnlyGraphConstructsNoPrivateStore` | **PASSES** — the split is landed |
+| `aHandleThatIsNotEncryptedAtRestIsRefused` | **PASSES** — the guard already worked |
+| `theStoreRunsOnTheFactoriesVerifiedConnection` | **FAILS — the core defect, and it cannot pass yet** |
+
+## Three false arms I wrote and corrected
 
 1. **The first draft asserted only that the engine was asked for a keyed open** — which *passes on the unrepaired tree*,
    because the factory genuinely does ask. It measured the one part that already worked.
 2. **The second draft asserted `XCTAssertFalse(storeWasBuiltFromHandle)`** — which asserts **the defect as the
    requirement**: green on the broken tree, and it would *fail* the moment someone fixed the finding. An arm that
    demands the bug is worse than no arm.
-3. **A `messageStoreWasBuiltFromVerifiedHandle` production flag was considered and REJECTED**: that is GS-FINAL-011 over
+3. **THE VACUOUS PAIR.** After (1) and (2) were deleted, an arm remained asserting the fake's own tallies
+   (`handlesReturned > 0`, opened == returned). **Those pass on the unrepaired tree** — the same false-proof species as
+   `wipeAuthorityForTest`'s literal tuple, re-entering through the test file. It is replaced by
+   `theStoreRunsOnTheFactoriesVerifiedConnection`, which asserts the REAL requirement (the store's connection IS the
+   factory's, by identity) and therefore STAYS RED until the handle carries a connection.
+4. **A `messageStoreWasBuiltFromVerifiedHandle` production flag was considered and REJECTED**: that is GS-FINAL-011 over
    again — a proof hook that asserts an architecture instead of observing the runtime. The remaining measurements are
    the **engine's own record** of what it handed back.
 
-## Why this is not closeable in one round
+## The external boundary, stated precisely
+
+**The connection-ownership refactor is INTERNAL and host-verifiable.** `EncryptedStoreFactory` documents "a
+deterministic fake in the court" as its engine seam, and `RecordingEngine` here is exactly that — so parts 1 and 2
+below can be implemented and proven on the host today. **Only the ON-DEVICE at-rest cipher proof is the external
+acquisition** (the pinned SQLCipher engine, the `NATIVE_MODELS` gate). Do not cite the native artifact as the reason
+this finding is open; the reason is that the handle type carries no connection.
+
+## Why the full remediation is not closeable in one round
 
 The remediation the audit prescribes has three parts, and the third is architectural:
 

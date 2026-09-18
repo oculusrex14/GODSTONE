@@ -36,11 +36,16 @@ private final class HitReader: ArchiveReading, @unchecked Sendable {
     var searchAnswers: [[ArchivePassage]] = []
     var hitsForSearch: [ArchivePassage] = []
     private(set) var searched: [String] = []
+    /// THE DOCUMENTS ROUTE'S OWN ANSWER AND TALLY -- the new arm needs a GENUINELY EMPTY list and needs to observe
+    /// whether the reload road was ridden again.
+    var browseRows: [ArchiveDocument]? = nil
+    private(set) var browseCalls = 0
 
     func read(_ request: ArchiveRequest) async throws -> ArchivePage {
         switch request {
         case .browse:
-            return .documents([document])
+            lock.lock(); browseCalls += 1; lock.unlock()
+            return .documents(browseRows ?? [document])
         case .search(let phrase):
             lock.lock()
             searched.append(phrase)
@@ -143,6 +148,43 @@ final class GsFinal007SearchReturnTests: XCTestCase {
         XCTAssertEqual(
             fresh.searchedQuery, "guide",
             "and the published search identity must be the saved query, so the reader knows what was run",
+        )
+    }
+
+    /**
+     * *** AND THE LIVE-STASHED EMPTY DOCUMENTS ROUTE KEEPS ITS RELOAD. ***
+     *
+     * THIS ARM EXISTS BECAUSE A REVIEW RAISED THE CONCERN THAT THE NEW `if scene.isUnloaded { ... return }` BRANCH HID
+     * THE PRE-EXISTING RELOAD at the bottom of `back()` -- the one that re-runs `loadDocuments()` for a stashed
+     * documents route with zero rows. THE CONCERN IS REASONED, SO IT IS MEASURED HERE RATHER THAN ARGUED: a live route
+     * is built by `stashScene` with `isUnloaded` DEFAULTING TO FALSE, so it does not enter that branch and does fall
+     * through to the reload. IF THIS ARM FAILS, THE CONCERN IS REAL AND THE RELOAD MUST BE HOISTED.
+     */
+    func testGSFINAL007_aLiveStashedEmptyDocumentsRouteStillReloads() async throws {
+        let reader = HitReader()
+        let model = ArchiveReaderModel(library: reader)
+        let scene = ArchiveSceneModel(reading: reader, model: model)
+
+        // (1) a LIVE documents route that finds NOTHING, so the stash carries zero rows and `isUnloaded == false`.
+        reader.browseRows = []
+        await scene.loadDocuments()
+        await settled()
+        XCTAssertEqual(scene.mode, .documents, "the rig must stand in DOCUMENTS mode")
+        XCTAssertTrue(scene.documents.isEmpty, "and the route must be genuinely empty for this arm to mean anything")
+
+        // (2) a document is opened FROM the empty list (the road the stash exists for), then Back.
+        await scene.open(document: reader.document)
+        await settled()
+        let before = reader.browseCalls
+        scene.back()
+        await settled()
+
+        XCTAssertEqual(scene.mode, .documents, "Back must return to the documents route")
+        XCTAssertGreaterThan(
+            reader.browseCalls, before,
+            "*** A LIVE-STASHED EMPTY DOCUMENTS ROUTE MUST STILL RE-RUN `loadDocuments()`. The reload used to sit at "
+            + "the bottom of `back()` unconditionally; the new unloaded-route branch must not hide it. browse calls "
+            + "before: \(before), after: \(reader.browseCalls) ***",
         )
     }
 

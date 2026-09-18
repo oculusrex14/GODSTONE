@@ -1079,6 +1079,33 @@ ledger entry itself.)*
 **MEASURED:** Android **1236 tests, 0 failures, 0 errors, 0 skipped** after the revert; iOS **1295 tests, 0 failures**;
 every repository control green.
 
+## ROUND 554 — A BOUNDARY THE AUDIT MUST NOT MISREAD
+
+Measured while closing 004, and recorded here so no closure below is read as production coverage:
+
+**THE iOS COMPOSITION ROOT HAS NO SHIPPING CALLER.** Across all of `ios/`, the only callers of `MeshRuntime.create` /
+`createArchiveOnlyHostComposition` / `createPrivateComposition` are **test files**; `MeshRuntime`'s own docstring
+already conceded *"THERE IS NO PRODUCTION CALLER."* **The shipping app stands up `ArchiveSceneModel` +
+`ArchiveLibrary` and nothing else** (`AppContainer.swift:22-29`) — it never constructs a `MeshRuntime` at all.
+
+**WHAT THAT MEANS FOR THE TWO PARTIALS, STATED PLAINLY:**
+
+- **GS-FINAL-003's startup permit** and **GS-FINAL-004's handle threading** both harden a road **no shipping code
+  walks.** Their repairs are real and their arms judge real behaviour — but **neither may be read as production
+  coverage**, and the audit's exit criteria that reference "the app" or "a real user" cannot be met for them until a
+  shipping composition exists.
+- **THE MISSING SHIPPING COMPOSITION IS ITSELF A FINDING** and is not one of the audit's 13. It is recorded here as a
+  candidate so the next audit sees the boundary rather than inferring coverage.
+- **THE LIGHT CANDIDATE IS UNAFFECTED IN PRACTICE**: the archive is the shipping surface, and it is served by
+  `ArchiveSceneModel`/`ArchiveLibrary`, which 006/007/008 *do* address. The Mesh/Oracle candidate is the one whose
+  composition this concerns.
+
+**AND ONE MORE CORRECTION, MADE BY MEASUREMENT RATHER THAN BY ARGUMENT:** a review raised that the new `isUnloaded`
+branch in `back()` might have hidden the pre-existing reload for a LIVE-stashed empty DOCUMENTS route. **It did not** —
+a live route defaults to `isUnloaded == false` and falls through to that reload — **and the arm that says so
+discriminates**: removing the reload makes it fail with `browse calls before: 1, after: 1`. A reasoned concern was
+measured instead of argued, which is the only way to tell those two outcomes apart.
+
 ## REMAINING WORK
 **PHASE TWO** — the **six `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-STORE-002, GS-UX-001,
 GS-STRESS-001) and the external artifacts above. **No finding is `OPEN`; none is `VERIFIED_FIXED`; and the `PARTIAL`

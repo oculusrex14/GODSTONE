@@ -13781,7 +13781,7 @@
     "my_logs": [
      {
       "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-007/round553-RED-GREEN-MUTATION.log",
-      "sha256": "f42acf6aead3fa47ec7f405a474bd3c2d43a58c0c28d5c1294a2763ee552fb9e",
+      "sha256": "3e7617e6ba36bd33328757c03a6606b3a807336288849263c09b65f7a417f3c3",
       "what": "The defect, the RED, the repair and the causal mutation.",
       "outcome": "RED: phase noResults, passages 0, searches 1->1. MUTATION: two defect arms FAILED while both controls stayed green. GREEN: 4/4."
      },
@@ -13796,7 +13796,8 @@
     "pending_proof": [
      "NO RENDERED-SCREEN WITNESS. The arms drive the scene (the state owner); they do not exercise SwiftUI. Whether `ArchiveView` renders the Loading phase correctly during the re-run is the same UI-target gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7 -- no XCUIApplication target exists.",
      "THE SCOPE OF `isUnloaded` IS DELIBERATELY NARROW: only `.search` routes are marked unloaded by `restore`, because only a search carries a query that can be RE-RUN. An unloaded `.documents` route already had its own reload road, and an unloaded `.document` route has nothing to re-run (a document is opened from the list).",
-     "AND THE FIRST DRAFT OF THE CONTROLS WAS WRONG AND IS RECORDED: the genuinely-empty arm shared ONE answer for every search, so the re-run returned the same two hits and the arm failed for a rig reason, not a code reason. The rig now returns a QUEUE of answers -- two for the initial search, none for the re-run -- because a single fixed answer could not distinguish 'the re-run found nothing' from 'the re-run never happened', WHICH IS THE ARM'S SUBJECT."
+     "AND THE FIRST DRAFT OF THE CONTROLS WAS WRONG AND IS RECORDED: the genuinely-empty arm shared ONE answer for every search, so the re-run returned the same two hits and the arm failed for a rig reason, not a code reason. The rig now returns a QUEUE of answers -- two for the initial search, none for the re-run -- because a single fixed answer could not distinguish 'the re-run found nothing' from 'the re-run never happened', WHICH IS THE ARM'S SUBJECT.",
+     "A REVIEW CONCERN WAS RAISED AND MEASURED RATHER THAN ARGUED (round 554): that the new `isUnloaded` branch hid the pre-existing reload at the bottom of `back()` for a LIVE-stashed empty DOCUMENTS route. A fifth arm (`aLiveStashedEmptyDocumentsRouteStillReloads`) PASSES -- a live route defaults to `isUnloaded == false`, so it falls through to that reload -- AND THE ARM DISCRIMINATES: removing the reload makes it fail with `browse calls before: 1, after: 1`. Had it failed, the reload would have been hoisted; it did not, and the measurement is recorded."
     ]
    },
    "GS-FINAL-008": {
