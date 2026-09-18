@@ -65,7 +65,38 @@ class MeshViewModel(
 
     fun refresh(): MeshUiState = project(lastOutcome = null, error = null)
 
-    fun onCommand(command: MeshCommand): MeshUiState = when (command) {
+    /**
+     * *** GS-FINAL-009: EVERY PROTECTED COMMAND IS REFUSED AT ADMISSION, NOT ONLY IN THE BUTTON. ***
+     *
+     * THE AUDIT'S MEASUREMENT: *"send/retry/SOS command methods are not guarded by that gate."* AND ITS REMEDY, WHICH
+     * THIS FUNCTION IS: *"Enforce the same gate atomically at command/repository admission, not only in buttons."*
+     *
+     * WHY A DISABLED BUTTON IS NOT ENOUGH, IN THE AUDIT'S OWN TERMS: *"Availability is represented as presentation
+     * metadata rather than a prerequisite capability for data access and side effects."* A BUTTON IS A UI PROMISE; THE
+     * GATE IS THE MECHANISM. A command can arrive from a restored state, a gesture already in flight, a test, or a
+     * future caller -- and none of those consult a button.
+     *
+     * WHICH COMMANDS ARE PROTECTED, AND WHY THE OTHERS ARE NOT: the reads and the side effects that touch the protected
+     * estate are `SendDirect`, `Retry`, `ArmSos`, `ConfirmSos`, `DisarmSos`, `CancelSos` and `RestoreActiveSos`.
+     * `Draft`, `SelectRecipient`, `Refresh` and `ClearError` are NOT gated here -- a draft is the user's own typing and
+     * `project()` already carrieth the gate for the roads that read. Each is named rather than swept, so the list can
+     * be read and argued with.
+     */
+    private fun isProtectedCommand(command: MeshCommand): Boolean = when (command) {
+        is MeshCommand.SendDirect, is MeshCommand.Retry, is MeshCommand.ArmSos,
+        is MeshCommand.ConfirmSos, is MeshCommand.DisarmSos, is MeshCommand.CancelSos,
+        is MeshCommand.RestoreActiveSos -> true
+        is MeshCommand.Refresh, is MeshCommand.ClearError, is MeshCommand.Draft,
+        is MeshCommand.SelectRecipient -> false
+    }
+
+    fun onCommand(command: MeshCommand): MeshUiState {
+        if (isProtectedCommand(command) && !protectedData.isProtectedDataAvailable()) {
+            // *** REFUSED BEFORE ANY EFFECT: THE PORT IS NOT CALLED AT ALL. *** The arm that proveth it injects a port
+            // that THROWS on every protected call and demands zero calls.
+            return publishProtectedUnavailable(lastOutcome = "refused: protected data is unavailable")
+        }
+        return when (command) {
         is MeshCommand.Refresh -> project(lastOutcome = null, error = null)
         is MeshCommand.ClearError -> project(lastOutcome = null, error = null)
 
@@ -90,6 +121,7 @@ class MeshViewModel(
         is MeshCommand.DisarmSos -> handleDisarm()
         is MeshCommand.CancelSos -> handleCancelSos(command.msgId)
         is MeshCommand.RestoreActiveSos -> handleRestore()
+        }
     }
 
     // ------------------------------------------------------------ compose
@@ -206,17 +238,37 @@ class MeshViewModel(
 
     // ------------------------------------------------------------ projection
 
-    /** The ONE read of the authority, and the ONLY writer of state. */
+    /**
+     * *** GS-FINAL-009 (the independent audit, 2026-09-18): THE GATE IS A PREREQUISITE, NOT PRESENTATION METADATA. ***
+     *
+     * THE AUDIT'S MEASUREMENT, REPRODUCED AT SOURCE: this function called `port.recipients()` **on its first line**
+     * and only asked the gate three lines later -- so an unavailable protected store WAS READ and its (unreadable)
+     * contents were projected, with the answer arriving afterwards as a field a screen might or might not show. AND
+     * THE ROOT CAUSE IT NAMED IS THE SHAPE OF THAT CODE: *"Availability is represented as presentation metadata rather
+     * than a prerequisite capability for data access and side effects."*
+     *
+     * THE REMEDY IT PRESCRIBES: *"Check availability before projecting protected fields; expose an explicit
+     * unavailable projection WITHOUT INVOKING THE PORT."* So the gate is asked FIRST, and when it says no, **NOT ONE
+     * PROTECTED READ HAPPENS** -- the arm that proves it injects a port that THROWS on every read, and demands zero
+     * calls.
+     *
+     * AND THE UNAVAILABLE PROJECTION IS TYPED, NOT EMPTY: *"an unavailable protected store must NOT be read as an
+     * empty one."* Empty lists would say "you have no contacts", which is a lie that looks like a state.
+     */
     private fun project(lastOutcome: String?, error: String?): MeshUiState {
+        if (!protectedData.isProtectedDataAvailable()) {
+            return publishProtectedUnavailable(lastOutcome = lastOutcome)
+        }
         val recipients = port.recipients()
         val selected = state.selectedRecipient?.let { previous ->
             recipients.firstOrNull { it.nodeIdCopy().contentEquals(previous.nodeIdCopy()) }
         }
-        // *** AND THE PLATFORM IS ASKED BEFORE THE ESTATE IS PROJECTED: an unavailable protected store must NOT be
-        // read as an empty one, so the projection carrieth the answer AND the screen sayeth it. ***
-        val available = protectedData.isProtectedDataAvailable()
+        // *** THE GATE WAS ALREADY ASKED, ABOVE THIS FUNCTION'S FIRST READ (GS-FINAL-009). *** Recording it here
+        // again would be a second opinion about one fact -- the shape the audit condemned. Reaching this line MEANS
+        // the gate said yes, so the projection carrieth that answer rather than re-deriving it.
         val next = MeshUiState(
-            protectedDataAvailable = available,
+            protectedDataAvailable = true,
+            protectedUnavailable = false,
             link = port.linkState(),
             recipients = recipients,
             selectedRecipient = selected,
@@ -235,6 +287,37 @@ class MeshViewModel(
         return next
     }
 
+    /**
+     * *** THE TYPED UNAVAILABLE PROJECTION -- AND IT INVOKES THE PORT FOR NOTHING. ***
+     *
+     * The audit's remedy: *"expose an explicit unavailable projection without invoking the port."* Every protected
+     * projection is emptied BY CONSTRUCTION rather than by reading and discarding, so there is no window in which an
+     * unreadable store's contents could reach a screen.
+     *
+     * `draft` and the selection are KEPT: a draft is the user's own typing, not protected estate, and discarding it
+     * would punish them for a platform state they cannot control. The SOS ARM is dropped, because an armed gesture
+     * belongs to a call that lives in the protected store.
+     */
+    private fun publishProtectedUnavailable(lastOutcome: String?): MeshUiState {
+        val next = MeshUiState(
+            link = state.link,
+            recipients = emptyList(),
+            selectedRecipient = state.selectedRecipient,
+            draft = state.draft,
+            draftBytes = state.draftBytes,
+            messages = emptyList(),
+            sos = null,
+            sosArmed = false,
+            protectedDataAvailable = false,
+            protectedUnavailable = true,
+            error = PROTECTED_UNAVAILABLE_REASON,
+            lastOutcome = lastOutcome,
+            revision = state.revision + 1,
+        )
+        state = next
+        return next
+    }
+
     private fun withError(message: String): MeshUiState {
         state = state.copy(error = message, lastOutcome = null, revision = state.revision + 1)
         return state
@@ -246,5 +329,13 @@ class MeshViewModel(
     companion object {
         /** The broadcast body: it carrieth no free text and no private detail. */
         const val SOS_BODY: String = "SOS"
+
+        /**
+         * *** WHY THE SCREEN CARRIETH NOTHING -- SAID RATHER THAN LEFT BLANK. *** The audit's own clause: an
+         * unavailable protected store must not read as an empty one. A blank screen and an empty estate look the
+         * same; a named reason does not.
+         */
+        const val PROTECTED_UNAVAILABLE_REASON: String =
+            "Protected data is not available right now; this phone's protected storage cannot be read."
     }
 }

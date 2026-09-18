@@ -13862,7 +13862,23 @@
     "root_cause": "Availability is represented as presentation metadata rather than a prerequisite capability for data access and side effects.",
     "exact_remediation": "Check availability before projecting protected fields; expose an explicit unavailable projection without invoking the port. Enforce the same gate atomically at command/repository admission, not only in buttons. Subscribe to platform availability transitions, clear sensitive projections and cancel in-flight operations using generation tokens. Android first-unlock semantics must not be confused with iOS complete-protection lock semantics.",
     "regression_test": "Inject an unavailable gate and a port that records/throws on any protected read or command; zero calls must occur. Flip availability during an in-flight operation and verify stale completion cannot publish.",
-    "my_status": "OPEN"
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 559 (this commit) -- the gate is asked before any protected read, and at every command admission",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-009/round559-RED-GREEN-MUTATION.log",
+      "sha256": "8e40f4144b3620ba5115552c4bc06b8be3491b25062fae488db046b225c1ab73",
+      "what": "The defect at source, the RED, the three-part repair, and the causal mutation.",
+      "outcome": "RED 5 tests/3 failures (exactly the defect arms); MUTATION failed the same 2; GREEN 5/5; lanes app 73, core 21, mesh 1869, all 0 failures."
+     }
+    ],
+    "my_red_case": "BEHAVIOURAL RED BEFORE THE EDIT: 3 of 5 arms failed -- `anUnavailableGateProjectsWithoutReadingThePortAtAll` (the port WAS read), `theUnavailableProjectionCarriesItsOwnTypedStateAndNotEmptyLists`, and `protectedCommandsAreRefusedAtAdmissionWhenTheGateSaysUnavailable` (protected calls were made). The audit's own instrument: A PORT THAT THROWS ON EVERY PROTECTED READ AND COMMAND, WITH ZERO CALLS DEMANDED -- a throw rather than an empty answer, because an empty list would let an unguarded projection publish \"you have no contacts\".",
+    "pending_proof": [
+     "NO RENDERED-SCREEN WITNESS, AND IT MATTERS MORE HERE THAN ELSEWHERE: the audit's clause is about what the SCREEN sayeth. The arms drive the ViewModel, and `MeshUiState.protectedUnavailable` exists so a screen CAN distinguish unavailable from empty -- but whether the Compose surface actually RENDERS that distinction is unverified, because no `androidTest` target exists (the same gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7).",
+     "THE AUDIT ASKS FOR SUBSCRIPTION TO PLATFORM AVAILABILITY TRANSITIONS: *\"Subscribe to platform availability transitions, clear sensitive projections and cancel in-flight operations using generation tokens.\"* THIS IS NOT DONE. This isle's gate is POLLED at each projection and command admission, which closes the reading window and the command window -- but a transition that arrives while no call is made is not observed. The reason it is not claimed: the app has no shipping Mesh composition (`UnavailableMeshPort` is the shipping binding), so there is nothing to subscribe TO yet. Named rather than worked around.",
+     "ANDROID FIRST-UNLOCK vs iOS COMPLETE-PROTECTION: the audit warns these must not be confused. This isle's gate is a plain \"may I read protected storage right now\" (`ProtectedDataGate.isProtectedDataAvailable`), with no first-unlock semantics claimed. The iOS clause is NOT addressed by this repair and is not claimed to be.",
+     "THE `isProtectedCommand` LIST IS A JUDGEMENT, NOT A MEASUREMENT: SendDirect/Retry/ArmSos/ConfirmSos/DisarmSos/CancelSos/RestoreActiveSos are gated; Draft/SelectRecipient/Refresh/ClearError are not. The reasoning for each is in-comment so it can be argued with, but a future command added to `MeshCommand` would NOT be gated by default -- an exhaustive `when` would make the compiler demand a decision, and that is the durable fix this round did not make."
+    ]
    },
    "GS-FINAL-010": {
     "severity": "Medium",
@@ -14013,7 +14029,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "c30be16b4cd5de7f09082e7561aa7f1935e18026",
+  "candidate_sha": "fb3f196f2d8e48a4a3d9c7df57c69a5c0bc1a3f8",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14025,9 +14041,9 @@
     "PARTIAL": 6
    },
    "audit_13_new": {
-    "FIX_SUBMITTED": 8,
+    "FIX_SUBMITTED": 9,
     "PARTIAL": 3,
-    "OPEN": 2
+    "OPEN": 1
    },
    "note": "DERIVED FROM THE ENTRIES, NOT WRITTEN BESIDE THEM. This is the audit's own requirement: \"Derive summary counts from entries.\" A count that is asserted rather than derived is the defect this finding is about."
   },

@@ -235,6 +235,18 @@ data class MeshUiState(
      * ONE MUST NOT READ THE SAME.**
      */
     val protectedDataAvailable: Boolean,
+    /**
+     * *** GS-FINAL-009 (the independent audit, 2026-09-18): THE TYPED UNAVAILABLE STATE. ***
+     *
+     * THE AUDIT'S OWN CLAUSE, WHICH THIS FIELD EXISTETH TO SATISFY: *"an unavailable protected store must NOT be read
+     * as an empty one."* `protectedDataAvailable == false` with EMPTY LISTS is ambiguous to a screen: it looketh
+     * exactly like "you have no contacts", WHICH IS A LIE THAT LOOKS LIKE A STATE. This flag maketh the two states
+     * distinguishable BY TYPE rather than by the reader's care.
+     *
+     * IT DEFAULTS TO `false`, so a state built before this field existed still compiles AND still meaneth what it
+     * meant: an ordinary projection is not an unavailable one.
+     */
+    val protectedUnavailable: Boolean = false,
     val error: String?,
     val lastOutcome: String?,
     val revision: Long,
@@ -243,7 +255,7 @@ data class MeshUiState(
         val EMPTY = MeshUiState(
             link = LinkState.Offline, recipients = emptyList(), selectedRecipient = null,
             draft = "", draftBytes = 0, messages = emptyList(), sos = null, sosArmed = false,
-            protectedDataAvailable = true,
+            protectedDataAvailable = true, protectedUnavailable = false,
             error = null, lastOutcome = null, revision = 0,
         )
     }
