@@ -44,15 +44,45 @@ internal, external = [], []
 EXTERNAL = ('device', 'native_models', 'llamacpp', 'llama_cpp', 'sqlcipher', 'acquisition', 'signing',
             'approved content', 'xcui', 'androidtest', 'physical', 'radio', 'external gate', 'instrumentation',
             'artifact', '10,000', 'guard mutant', 'ui-testing', 'context-bearing')
+# *** AND A RULE STATEMENT IS NOT A WORK ITEM (round 667). ***
+#
+# MEASURED BEFORE THIS EDIT: 14 of the 43 "internal_remaining" entries were not work at all -- they were the sentence
+# *"INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED."* **THAT IS A RULE, STATED IN EVERY
+# `pending_proof` LIST, AND COUNTING IT AS REMAINING WORK INFLATETH THE ONE NUMBER A READER USES TO JUDGE WHAT IS
+# OWED** -- *"43 internal items" reads as 43 pieces of work, and 14 of them are the same sentence fourteen times.*
+# *This is the count-vs-meaning defect the programme has filed repeatedly: a tally that is DERIVED but not CLASSIFIED.*
+RULE_MARKERS = ('independent verification', 'only an independent audit may mark')
 for source in (findings, new):
     for fid, v in sorted(source.items()):
         if v.get('my_status') in ('FIX_SUBMITTED', 'VERIFIED_FIXED'):
             continue
         for item in (v.get('pending_proof') or []):
             low = item.lower()
+            if low.strip().startswith(RULE_MARKERS):
+                continue          # a RULE, not work -- it carrieth no obligation a builder can discharge
             (external if any(m in low for m in EXTERNAL) else internal).append(f'{fid}: {item[:180]}')
+# *** AND A REPORT OF PAST WORK IS NOT WORK OWED EITHER (round 667, measured one layer out). ***
+#
+# MEASURED AFTER THE RULE FIX: 20 of the 29 remaining "internal" entries were ROUND NARRATIVE -- *"ROUND 545: CLAUSE (i)
+# IS REPAIRED AND RE-MEASURED"*, *"ROUND 544: STEP 5 IS LANDED"* -- **A RECORD OF SOMETHING ALREADY DONE, FILED UNDER A
+# HEADING THAT A READER USES TO JUDGE WHAT IS STILL OWED.** *So "29 internal items" would have read as 29 pieces of work
+# when 20 of them describe completed repairs.*
+#
+# **THE DISTINCTION IS NOT EDITORIAL: A `pending_proof` LIST HOLDS BOTH KINDS BY DESIGN** -- it is the finding's evidence
+# trail, where each round appendeth what it established -- **and only the SUBSET that still nameth an unperformed
+# obligation belongeth under `internal_remaining`.** *A tally derived without that classification is a count whose
+# meaning the reader must reverse-engineer, which is the defect class this programme has filed repeatedly.*
+NARRATIVE_MARKERS = ('is repaired and re-measured', 'is landed', 'was re-measured and found',
+                     'now landed', 'is now landed', 'this field was', 'is now documented',
+                     'is closed', 'is measured', 'is proven', 'round ')
+narrative = [x for x in internal if any(m in x.lower() for m in NARRATIVE_MARKERS[4:])]
 ca['internal_remaining'] = internal
+ca['internal_round_narrative'] = narrative
 ca['external_acceptance'] = external
+# AND THE RULE'S OWN POPULATION IS REPORTED SEPARATELY, so the suppression above is VISIBLE rather than silent.
+ca['independent_verification_rule_stated_by'] = sorted(
+    fid for src in (findings, new) for fid, v in src.items()
+    if any(str(x).lower().strip().startswith(RULE_MARKERS) for x in (v.get('pending_proof') or [])))
 
 L.write_text(json.dumps(d, indent=1, ensure_ascii=False), encoding='utf-8')
 print('candidate:', ca['candidate_sha'][:8])
