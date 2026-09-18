@@ -369,4 +369,74 @@ class ReadinessT72Test {
         Assert.assertTrue("a real owner that retained nothing must NOT be accused: " + clear.failures,
             clear.failures.none { it.contains("REAL owner") })
     }
+    // ================================================================================================
+    // *** GS-STRESS-001 step 3 (round 643): THE SECOND OWNER, AND THE OWNER THAT CANNOT BE MEASURED. ***
+    //
+    // The card's remaining-work line: *"THE OTHER OWNERS THE CARD NAMETH ARE UNREAD ON BOTH ISLES -- timers,
+    // observers, inventory leases, ACK work, database rows."* `liveSessionSlots` could only ever ask ONE of them.
+    // **A SEAM WHOSE ONLY VERB COVERS ONE OWNER SILENTLY LIMITS EVERY FUTURE CALLER TO THAT OWNER** -- the same shape
+    // as a gate carried but not consulted, one layer out.
+    // ================================================================================================
+
+    /** *** THE SECOND OWNER IS REALLY ASKED, AND A LEAK IN IT IS REALLY REPORTED. *** */
+    @Test
+    fun testGSSTRESS001theSecondOwnerIsCensusedAndAccused() {
+        // A leak in the RESERVATIONS kind -- an owner the card names by name and whose hook already exists
+        // (`RecordWriter.reservedCountForTest()`, the hook whose own arm found the failed()-leaves-reservations defect).
+        val leaking = object : ResourceCensusSource {
+            override val ownerName: String = "RecordWriter"
+            override fun liveSessionSlots(): Int = 0            // THIS KIND IS CLEAN ...
+            override fun liveReservations(): Int = 3            // ... AND THIS ONE LEAKED
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(leaking)).run()
+        Assert.assertTrue(
+            "*** A LEAK IN THE SECOND OWNER MUST BE REPORTED, AND THE FAILURE MUST NAME IT -- otherwise the seam " +
+                "promiseth a census it cannot take. Observed: ${result.failures} ***",
+            result.failures.any { it.contains(Invariants.NO_LEAKED_SESSIONS) && it.contains("RecordWriter") },
+        )
+    }
+
+    /** *** AND AN OWNER WHOSE KIND THIS SEAM CANNOT CENSUS IS NAMED, NOT SILENTLY TREATED AS CLEAN. *** */
+    @Test
+    fun testGSSTRESS001anUnmeasurableOwnerIsNamedRatherThanAssumedClean() {
+        // THE DEFAULT IS THE HONEST ONE: an implementor that overrides NEITHER reservation hook is NOT_MEASURED.
+        val unmeasurable = object : ResourceCensusSource {
+            override val ownerName: String = "TimerWheel"
+            override fun liveSessionSlots(): Int = 0
+            // liveReservations() LEFT AT ITS DEFAULT -- this owner's kind is not censusable here.
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(unmeasurable)).run()
+
+        Assert.assertTrue(
+            "*** THE OWNER MUST BE NAMED AS UNMEASURED: \"nothing is leaking\" and \"nobody asked my kind of owner\" " +
+                "are DIFFERENT ANSWERS, and a result that collapsed them would be the self-agreeing number this seam " +
+                "existeth to replace. Observed: ${result.unmeasuredOwners} ***",
+            result.unmeasuredOwners.any { it.contains("TimerWheel") },
+        )
+        Assert.assertTrue(
+            "*** AND IT MUST NOT BE ACCUSED OF A LEAK IT WAS NEVER ASKED ABOUT -- an unmeasured owner is not a guilty " +
+                "one, and the two must not be conflated in either direction. Observed: ${result.failures} ***",
+            result.failures.none { it.contains("TimerWheel") },
+        )
+    }
+
+    /** *** THE POSITIVE CONTROL: A FULLY-CENSUSED CLEAN OWNER IS NEITHER ACCUSED NOR REPORTED UNMEASURED. *** */
+    @Test
+    fun testGSSTRESS001aMeasuredCleanOwnerIsNeitherAccusedNorUnmeasured() {
+        val clean = object : ResourceCensusSource {
+            override val ownerName: String = "RecordWriter"
+            override fun liveSessionSlots(): Int = 0
+            override fun liveReservations(): Int = 0     // MEASURED, AND CLEAN
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(clean)).run()
+        Assert.assertTrue("a measured clean owner must not be accused: ${result.failures}",
+            result.failures.none { it.contains("RecordWriter") })
+        Assert.assertTrue(
+            "*** AND MUST NOT BE LISTED AS UNMEASURED EITHER -- otherwise the two arms above could be satisfied by " +
+                "a seam that reported EVERY owner as unmeasured, which is the cheapest possible way to pass. " +
+                "Observed: ${result.unmeasuredOwners} ***",
+            result.unmeasuredOwners.none { it.contains("RecordWriter") },
+        )
+    }
+
 }

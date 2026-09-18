@@ -33,6 +33,31 @@ interface ResourceCensusSource {
 
     /** How many live session slots the REAL owner holdeth RIGHT NOW, read through its own evidence hook. */
     fun liveSessionSlots(): Int
+
+    /**
+     * *** GS-STRESS-001 step 3 (round 643): THE OTHER OWNERS THE CARD NAMETH BY NAME -- $RESERVATIONS$. ***
+     *
+     * THE CARD'S OWN REMAINING-WORK LINE SAYETH: *"THE OTHER OWNERS THE CARD NAMETH ARE UNREAD ON BOTH ISLES --
+     * timers, observers, inventory leases, ACK work, database rows."* **`liveSessionSlots` COULD ONLY EVER ASK ONE OF
+     * THEM**, so the seam's NAME promised a census it could not take. **A SEAM WHOSE ONLY VERB COVERS ONE OWNER IS A
+     * SEAM THAT SILENTLY LIMITS EVERY FUTURE CALLER TO THAT OWNER** -- the same shape as a gate carried but not
+     * consulted, one layer out.
+     *
+     * `liveReservations` ASKETH THE SECOND OWNER THE PROJECT ALREADY MADE ASKABLE (`RecordWriter
+     * .reservedCountForTest()`, the hook whose arm found the `failed()`-leaves-reservations-standing defect).
+     *
+     * **AND ITS DEFAULT IS THE HONEST ONE RATHER THAN A CONVENIENT ZERO**: an owner that carrieth no reservations
+     * answereth `NOT_MEASURED`, **NOT 0** -- because *"nothing is leaking"* and *"nobody asked my kind of owner"* are
+     * DIFFERENT ANSWERS, and collapsing them would make this seam into the very thing it was built to replace: **a
+     * number that agrees with itself.** A caller that cannot measure an owner excludes it BY NAME rather than by
+     * silence.
+     */
+    fun liveReservations(): Int = NOT_MEASURED
+
+    companion object {
+        /** The sentinel for an owner whose kind this seam cannot yet census. NEVER counted as zero. */
+        const val NOT_MEASURED: Int = -1
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +159,15 @@ data class CampaignResult(
     val leasesAfterShutdown: Int,
     val timersAfterShutdown: Int,
     val sessionsAfterShutdown: Int,
+    /**
+     * *** GS-STRESS-001 step 3 (round 643): THE OWNERS THIS CENSUS COULD NOT MEASURE, NAMED. ***
+     *
+     * *"Nothing is leaking"* and *"nobody asked my kind of owner"* are DIFFERENT ANSWERS. **A RESULT THAT SILENTLY
+     * TREATED AN UNMEASURABLE OWNER AS CLEAN WOULD BE THE SELF-AGREEING NUMBER THIS SEAM EXISTETH TO REPLACE** -- so
+     * the unmeasured owners are CARRIED IN THE RESULT rather than dropped, and a reader can see the difference between
+     * a census that found nothing and one that could not look.
+     */
+    val unmeasuredOwners: List<String> = emptyList(),
 ) {
     val passed: Boolean get() = failures.isEmpty()
 
@@ -226,6 +260,7 @@ class StressCampaign(
 
     fun run(): CampaignResult {
         val failures = ArrayList<String>()
+        val unmeasuredOwners = ArrayList<String>()
         var censusHigh = 0
         var step = 0
         while (step < cycles) {
@@ -257,6 +292,19 @@ class StressCampaign(
                 failures.add("${Invariants.NO_LEAKED_SESSIONS}: $live session slot(s) still live in the REAL owner " +
                     "'${owner.ownerName}' after shutdown")
             }
+            // *** GS-STRESS-001 step 3 (round 643): THE SAME INVARIANT, ASKED OF THE OTHER OWNER THE PROJECT MADE
+            // ASKABLE. *** One owner census is not a resource model; **THIS IS THE SECOND, AND IT IS THE CARD'S OWN
+            // NAMED OWNER (`reservations`).** AN OWNER THAT CANNOT BE MEASURED IS **NAMED IN THE RESULT, NOT SILENTLY
+            // TREATED AS CLEAN** -- *"nothing is leaking"* and *"nobody asked my kind of owner"* are different answers,
+            // and a census that collapsed them would be the self-agreeing number this seam existeth to replace.
+            val reservations = owner.liveReservations()
+            when {
+                reservations == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
+                    "${owner.ownerName} (reservations)")
+                reservations != 0 -> failures.add(
+                    "${Invariants.NO_LEAKED_SESSIONS}: $reservations writer reservation(s) still live in the REAL " +
+                        "owner '${owner.ownerName}' after shutdown")
+            }
         }
         inbox.entries.firstOrNull { it.value != 1 }?.let {
             failures.add("${Invariants.NO_DUPLICATE_INBOX}: msg_id ${it.key} entered the inbox ${it.value} times")
@@ -268,7 +316,7 @@ class StressCampaign(
             failures.add("${Invariants.BOUNDED_CENSUS}: the census reached $censusHigh, over the plateau $bound")
         }
         return CampaignResult(seed, cycles, failures, censusHigh, inbox.values.sum(),
-            delivery.values.sum(), refusals, leases, timers, sessions)
+            delivery.values.sum(), refusals, leases, timers, sessions, unmeasuredOwners)
     }
 
     companion object {
