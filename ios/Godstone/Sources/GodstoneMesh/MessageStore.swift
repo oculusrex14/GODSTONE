@@ -861,8 +861,60 @@ internal struct StoreRow {
 /// key). On the macOS host this attribute is accepted but not enforced, so the
 /// SQL invariants run in CI while the encryption is device-verified -- the same
 /// split as Android's SQLCipher.
+/// *** GS-FINAL-004 CLAUSE (c): "RETURN TYPED OPEN ERRORS INSTEAD OF A NOMINAL STORE WITH A NIL HANDLE." ***
+///
+/// THE MEASURED GAP, EXACTLY: `SqliteMessageStore.init(url:maxBytes:fileProtection:)` is **NON-FAILABLE**, and on a
+/// failed `sqlite3_open_v2` or a failed migration it setteth `handle = nil` and **RETURNS A STORE THAT LOOKS LIKE ANY
+/// OTHER**. Every operation on it then fails closed -- *which is the right runtime behaviour* -- **BUT NO CALLER CAN
+/// ASK WHETHER IT OPENED, OR WHY IT DID NOT.** *A caller that cannot distinguish "ready" from "never opened" cannot
+/// decide anything; it can only discover the truth one failed operation at a time.*
+///
+/// **WHY THIS IS THE CLAUSE THAT NEEDED NO SQLCIPHER BINDING:** the open path, the migration path and the handle are
+/// all in this repository already; what was missing was a WORD for the outcome. Clauses (a) and (b) -- the owned
+/// verified connection, and the store accepting it -- remain blocked because no production `EncryptedStoreEngine`
+/// exists to produce one.
+public enum StoreOpenOutcome: Equatable, Sendable {
+    /// The database opened and its schema is at the expected revision.
+    case opened
+    /// The database could not be opened or migrated; the fault NAMES itself rather than being silence.
+    ///
+    /// *** NOTE THE DISTINCT TYPE, AND WHY IT IS NOT THE FACTORY'S `StoreOpenFault`: THAT ONE IS THE **ENGINE'S**
+    /// VOCABULARY (wrongKey / corruptHeader / cipherVersionMismatch / io), thrown by an `EncryptedStoreEngine`. THIS
+    /// ONE IS **THE STORE'S OWN OPEN PATH** -- it existeth where there is no engine at all, which is precisely the
+    /// situation GS-FINAL-004's clauses (a)(b) describe. Collapsing them would have made the store's fault report
+    /// claim knowledge of a cipher it never spoke to. ***
+    case failed(StoreOpenFailure)
+
+    /// A caller's own `isOpen`-style question, answered without unwrapping.
+    public var isOpen: Bool { if case .opened = self { return true }; return false }
+}
+
+/// The typed reasons a store may fail to open. **THE VOCABULARY IS THE POINT OF CLAUSE (c): a caller must be able to
+/// tell an unopenable FILE from a REFUSED SCHEMA**, which a bare nil handle cannot express.
+public enum StoreOpenFailure: Equatable, Sendable {
+    /// `sqlite3_open_v2` returned non-OK, or handed back no handle.
+    case cannotOpenDatabase
+    /// The file opened but its schema is not at the expected revision and could not be migrated.
+    case schemaMigrationFailed
+    /// The file opened but is unusable for another reason the store could classify.
+    case unusable(String)
+
+    /// A short, non-empty name so a failure message can never be the empty string.
+    public var description: String {
+        switch self {
+        case .cannotOpenDatabase: return "the database could not be opened"
+        case .schemaMigrationFailed: return "the schema could not be migrated to the expected revision"
+        case .unusable(let why): return why.isEmpty ? "the store is unusable" : why
+        }
+    }
+}
+
 public final class SqliteMessageStore: MessageStore {
     private var handle: OpaquePointer?
+    /// *** GS-FINAL-004 clause (c): THE TYPED ANSWER A CALLER MAY ASK FOR. *** Set on EVERY path that decideth the
+    /// handle, so it can never disagree with whether the store is in fact usable. Initialised to a FAILURE rather
+    /// than to `.opened`, because a store that never reached its assignment must not claim readiness.
+    public private(set) var openOutcome: StoreOpenOutcome = .failed(.unusable("the store was never opened"))
     private let lock = NSLock()
     private let maxBytes: Int64
     /// GS-STORE-005 STEP TWO: THE REGISTRATIONS ARE THE CONTRACT'S OWN LEASE, not an append-only array. Every
@@ -920,11 +972,15 @@ public final class SqliteMessageStore: MessageStore {
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
         guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK else {
             sqlite3_close_v2(db)
+            openOutcome = .failed(.cannotOpenDatabase)
             return
         }
         // `sqlite3_open_v2` returns SQLITE_OK with a non-nil handle on success;
         // unwrap once so the migration helpers receive a non-optional `OpaquePointer`.
-        guard let db = db else { return }
+        guard let db = db else {
+            openOutcome = .failed(.cannotOpenDatabase)
+            return
+        }
         handle = db
         // C6.4-E / C6.4.1-B/C/D/E + GS-STORE-003: PRAGMA user_version schema
         // versioning -- the iOS twin of Android's `SQLiteOpenHelper.onUpgrade`. The
@@ -944,8 +1000,10 @@ public final class SqliteMessageStore: MessageStore {
         } catch {
             sqlite3_close_v2(db)
             handle = nil
+            openOutcome = .failed(.schemaMigrationFailed)
             return
         }
+        openOutcome = .opened
         // At-rest encryption: mark the file complete-protection. Best-effort --
         // on the macOS host this is accepted but not enforced (device concern).
         try? FileManager.default.setAttributes(

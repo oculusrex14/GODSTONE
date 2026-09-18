@@ -282,6 +282,11 @@ public final class MeshRuntime {
     enum MeshRuntimeError: Error, Equatable {
         /// GS-STORE-002: a private store that is not encrypted at rest is never composed.
         case privateStoreNotEncrypted(String)
+        /// *** GS-FINAL-004 clause (c): THE MESSAGE STORE COULD NOT BE OPENED, AND ITS OWN TYPED FAULT IS CARRIED. ***
+        /// A runtime constructed over an unopened store would fail CLOSED on every operation -- *which is the right
+        /// runtime behaviour and the wrong diagnostic one:* the failure would surface later, elsewhere, and without
+        /// its cause. The store's own words are carried rather than replaced.
+        case messageStoreUnavailable(String)
     }
 
     public static func create(
@@ -502,6 +507,24 @@ public final class MeshRuntime {
             }
         }
         let messageStore = SqliteMessageStore(url: messageStoreUrl, maxBytes: maxStoreBytes)
+        // *** GS-FINAL-004 CLAUSE (c): THE TYPED OPEN OUTCOME IS NOW CONSUMED, NOT MERELY AVAILABLE. ***
+        //
+        // *"Return typed open errors instead of a nominal store with a nil handle."* **A TYPED ANSWER THAT NO
+        // PRODUCTION CALLER ASKS FOR IS DECORATION** -- the same defect the iOS ACK round named when it found a gate
+        // consulted at only two of six seams. **MEASURED BEFORE THIS EDIT: the composition built the store and
+        // carried on regardless of whether it had opened**, which the card's own sentence describeth as *"a nominal
+        // store with a nil handle."*
+        //
+        // **AND IT THROWETH RATHER THAN LOGGING, BECAUSE THE COMPOSITION CANNOT DO ANYTHING USEFUL WITH A STORE THAT
+        // NEVER OPENED:** every subsequent operation would fail closed one at a time, so the failure would surface
+        // LATER, ELSEWHERE, AND WITHOUT ITS CAUSE. *A runtime constructed over an unopened store is a runtime that
+        // will fail in a place that cannot name why.*
+        guard case .opened = messageStore.openOutcome else {
+            if case .failed(let fault) = messageStore.openOutcome {
+                throw MeshRuntimeError.messageStoreUnavailable(fault.description)
+            }
+            throw MeshRuntimeError.messageStoreUnavailable("the store was never opened")
+        }
         let peerStore = try SqlitePeerIdentityStore(url: peerStoreUrl)
         let runtime = MeshRuntime(
             identity: identity,

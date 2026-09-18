@@ -258,4 +258,59 @@ final class ReadinessStore002Tests: XCTestCase {
                       "*** AND THE CONTAINING DIRECTORY: it governs what may be created beside the store "
                       + "(GS-STORE-002 step 5) ***")
     }
+    // ================================================================================================
+    // *** GS-FINAL-004 CLAUSE (c): TYPED OPEN ERRORS RATHER THAN A NOMINAL STORE WITH A NIL HANDLE. ***
+    //
+    // THE CARD'S OWN WORDS: *"Return typed open errors instead of a nominal store with a nil handle."* **AND THE
+    // MEASURED GAP WAS EXACTLY THAT AND NOTHING MORE:** `SqliteMessageStore.init(url:maxBytes:fileProtection:)` is
+    // **NON-FAILABLE**, and on a failed `sqlite3_open_v2` or a failed migration it setteth `handle = nil` and
+    // **RETURNS A STORE THAT LOOKS LIKE ANY OTHER**. Every operation on it then fails closed -- *which is the right
+    // runtime behaviour* -- **BUT NO CALLER CAN ASK WHETHER IT OPENED, OR WHY IT DID NOT.** *A caller that cannot
+    // distinguish "ready" from "never opened" cannot decide anything; it can only discover the truth one failed
+    // operation at a time.*
+    //
+    // *** THIS CLAUSE NEEDED NO SQLCIPHER BINDING, WHICH IS WHY IT IS THE ONE TAKEN: the open path, the migration
+    // path and the handle are ALL in this repository already; what was missing was a WORD for the outcome. ***
+    // ================================================================================================
+
+    /** *** AN OPEN STORE REPORTETH ITSELF OPEN, AND NAMES NO FAULT. *** (The positive control.) */
+    func testGFFinal004AnOpenedStoreReportethItselfOpen() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf004_open_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+        XCTAssertEqual(
+            store.openOutcome, .opened,
+            "*** A STORE THAT OPENED MUST SAY SO -- otherwise the typed outcome is a constant and the whole clause " +
+                "is decoration. Observed: \(store.openOutcome) ***")
+    }
+
+    /** *** A STORE THAT COULD NOT OPEN REPORTETH A TYPED FAULT RATHER THAN SILENCE. *** */
+    func testGFFinal004AnUnopenableStoreReportethATypedFault() throws {
+        // A path whose PARENT is a FILE, not a directory: `createDirectory` fails and `sqlite3_open_v2` cannot
+        // create the database. **THIS IS A REAL FAILURE MODE AND NOT A SYNTHETIC ONE** -- the store's own
+        // `try? FileManager.default.createDirectory(...)` swalloweth the first error, which is precisely why the
+        // caller needs a typed answer at the end.
+        let blocker = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf004_blocker_\(UUID().uuidString)")
+        try Data("not a directory".utf8).write(to: blocker)
+        defer { try? FileManager.default.removeItem(at: blocker) }
+        let url = blocker.appendingPathComponent("nested").appendingPathComponent("store.db")
+
+        let store = SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+
+        XCTAssertNotEqual(
+            store.openOutcome, .opened,
+            "*** A STORE THAT COULD NOT OPEN MUST NOT REPORT ITSELF OPEN. Observed: \(store.openOutcome) ***")
+        guard case .failed(let fault) = store.openOutcome else {
+            XCTFail("*** THE OUTCOME MUST CARRY A TYPED FAULT, NOT A BARE BOOLEAN -- the card asketh for TYPED OPEN " +
+                "ERRORS so a caller can tell an unopenable FILE from a refused SCHEMA. Observed: \(store.openOutcome) ***")
+            return
+        }
+        XCTAssertFalse(
+            fault.description.isEmpty,
+            "*** AND THE FAULT MUST NAME ITSELF: an empty reason is the nil-handle silence with a new type around it. " +
+                "Observed: \(fault) ***")
+    }
+
 }
