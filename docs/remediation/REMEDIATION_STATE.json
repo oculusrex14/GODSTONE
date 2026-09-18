@@ -13510,6 +13510,11 @@
    "round": 594,
    "finding": "PHASE-4-EXIT",
    "correction": "THE 40 `UNABLE_TO_VERIFY` ENTRIES ARE ASSESSED AGAINST DISK, NOT AGAINST THEIR STATUS FIELD. **388 LOG FILES, ALL PRESENT, ALL DIGEST-VERIFIED** -- every one of the 40 resolves to real evidence whose bytes are proven unchanged. SO THEY ARE NOT \"LEDGER STATUS ONLY\". A SUBSTANCE SPLIT: 30 are INTERNAL (their text names no signing/hardware/package/supply/approval input); **10 ARE EXTERNAL-TOUCHED** (GS-ARCHIVE-001/002, GS-CONTENT-001/002/003, GS-MODEL-001, GS-PACKAGE-001/002, GS-SUPPLY-001) and their external halves CANNOT be closed by anything this session runs -- recorded, not papered over. **OWED: the clause \"a shared fixture cannot be the sole source of expected semantics\" is NOT assessed** (it needs a per-finding census of fixture-only arms). AND MY FIRST TEST FOR \"lacking direct assessment\" REPORTED 15 FALSE NEGATIVES, because it demanded a log field named `outcome` and a commit lacking `PENDING` -- both wrong instruments, since the schema varies by round."
+  },
+  {
+   "round": 597,
+   "finding": "PHASE-7-EXIT",
+   "correction": "THE \"NO PROHIBITED BINARY PAYLOAD\" CLAUSE IS MEASURED, BY THE AUDIT'S OWN INSTRUMENT: `tools/readiness/audit_probes/test_audit_artifacts.py` -- its 12 cases ALL PASS on this tree, including the two arms that measure the clause directly (`test_arm64_macos_binary_fails_ios_inspection` -> verdict FAIL for a macOS arm64 binary; `test_forbidden_actual_entitlements_fail` -> verdict FAIL for a forbidden signed entitlement) and the four positive controls that keep the suite from being one that refuses everything. THE README RECORDETH THAT SEVEN OF THESE TWELVE ARMS WERE RED ON THE AUDITED TREE. **STILL OWED, AND NOT CLAIMED: a clean reproducible candidate (needs a from-scratch build at one SHA), the exact profile manifest, and the pinned-version advisory review (an external lane).** THE TEST-MEMBERSHIP CLAUSE WAS CLOSED IN ROUND 592."
   }
  ],
  "phase_one": {
