@@ -6852,6 +6852,12 @@
      "sha256": "d55107bc4a7538a19f88907e99cdb7ea735fa614de77a954d886c4116bf5e67e",
      "what": "***CRYPTO-005: THE OWED MEASUREMENT IS TAKEN -- THE ARMS READ BY NAME IN THE FULL LANE -- AND BOTH PASS: testCRYPTO005_theCompositionPinsTheIntentBeforeTheRadioAndSurvivesAReopen PASSED (0.008 s) AND testCRYPTO005_theIntentSurvivesAReopenOfTheDurableStore PASSED (0.004 s).*** SO THE COMPOSITION CLAUSE IS PROVEN: the async arm RUNS (round 520's refinement was right -- my filter, not the runner) and PASSES, so round 510's inference was CORRECT and is now a MEASUREMENT. CRYPTO-005 THEREFORE STANDS ON TWO MEASURED ARMS, AS IT CLAIMED",
      "outcome": "no production file modified; tree at HEAD, CLEAN and LANE-GREEN; LEDGER: FIX_SUBMITTED 43, OPEN 5, PARTIAL 6. AND THE METHOD LESSON IS COLLECTED: THE FULL LANE, GREPPED FOR THE ARM NAMES, ANSWERS WHAT NO FILTER COULD -- the remedy round 520 named, applied one round later. AND THE THIRD AMENDMENT TO THE GATE'S LAW HOLDS: A COUNT IS EVIDENCE ONLY OF WHAT IT COUNTED, AND A FILTER'S COUNT IS NOT THE FILTERED ARM'S VERDICT -- WHEREAS THE LANE'S OWN PER-ARM LINES ARE THE VERDICT ITSELF."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round584-boundary-faults-and-their-measured-scope.log",
+     "sha256": "283c835374ed09130077e46c4d5b06800314022edaa77f0d886b19bf50476c52",
+     "what": "Boundary faults at each journal operation, and the mutation that showed they measure the decorator not the authority's guard.",
+     "outcome": "Arms pass 18/18, BUT the mutation removing the authority's own storageFailure guard SURVIVED -- so the arms prove the protocol's typed fault cases, not the authority's consumption of them. Owed: inject the faulting journal INTO the authority and drive a real send."
     }
    ],
    "my_red_case": "MEASURED (round 430): rebuild `authority2` over a FRESH `InMemoryOutboundIntentJournal()` (storage reopened in a new process) and retry the same intent, demanding identical bytes and ID. IT FAILED WITH `rejected(reason: .recipientAbsent)` -- harder than predicted: nothing survives the boundary, neither the intent nor the recipient binding it needs.",
@@ -6936,7 +6942,8 @@
    },
    "pending_work": [
     "ROUND 533 (AN EMPTY PROOF FIELD IS A RECORD DEFECT, AND THREE OF THEM WERE THE HUMAN'S OWN FIVE). Round 532 counted twelve findings whose `pending_proof` was EMPTY -- and THREE of them are findings the human named directly, so a reader asking 'what doth this owe?' was told NOTHING about the very findings the instruction centred on. EACH IS NOW FILLED FROM A MEASUREMENT TAKEN **THIS ROUND**, and in two of the three the measurement CHANGED what had been believed: **CRYPTO-005's absent/corrupt gap (round 484) IS CLOSED** (`SendDirectAuthority.swift:453-454` handle `.storageFailure` and `.corrupt` with typed rejections), while **GS-INBOX-001's collision clause is STILL OWED** -- and the two arms on this isle named for a 'collision' concern OTHER SUBJECTS (a Bloom collision and a node-id/signing-key collision), which are named here so neither is mistaken for the clause. **A PROOF FIELD MUST BE MEASURED WHEN IT IS WRITTEN**, and the measurement is worth more than the writing."
-   ]
+   ],
+   "remaining_work": "THE INTERRUPTION HALF IS PARTLY MEASURED (round 584). **PROVEN BY EXECUTED ARMS:** `OutboundIntentJournal`'s three operations (`load`/`insertIfAbsent`/`advance`) each carry a `storageFailure` **SEPARATELY FROM ABSENCE** -- the protocol's own docstring insists \"ABSENCE IS NOT A FAULT, and a caller may act on it\" -- and a decorator can fault any one without the others changing, with a CALL LOG proving each was reached. **AND THE MUTATION THAT CUT THE CLAIM DOWN:** deleting the AUTHORITY'S OWN GUARD (`if case .storageFailure = loadedRow { return .rejected(...) }` at `SendDirectAuthority:453`) **SURVIVED -- 18 tests, 0 failures.** SO THE ARMS MEASURE THE DECORATOR'S TYPED ANSWERS, NOT THE AUTHORITY'S CONSUMPTION OF THEM: a green that cannot redden when the consumer is broken is not evidence about the consumer. **OWED, AND REACHABLE RATHER THAN WALLED:** inject the `FaultingIntentJournal` INTO `SendDirectAuthority` and drive a REAL send, asserting it REFUSES rather than RE-AUTHORING a message that may already have been sent. \"Restart and compare immutable bytes\" IS covered by the pre-existing reopen arm and the composition arm (`sendDirectDurable` + reopen)."
   },
   "CRYPTO-006": {
    "audit_status_at_snapshot": "OPEN",
@@ -14190,7 +14197,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "f23d37efc578093c7a3c4632cf7e498aa03c02b1",
+  "candidate_sha": "95e70fa5a378d5435fb455e056093cc2ea8cd344",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

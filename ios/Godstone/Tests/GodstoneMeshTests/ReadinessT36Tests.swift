@@ -820,6 +820,124 @@ extension ReadinessT36Tests {
         XCTAssertEqual(back.acceptedGeneration, 1, "and the accepted generation (the recipient binding's version)")
     }
 
+    // ================================================================================================
+    // *** CRYPTO-005 (round 584): INTERRUPTING **EACH PERSIST/SEND BOUNDARY**. ***
+    //
+    // THE CARD'S REMAINING WORK, VERBATIM: *"Create an intent through the real user/runtime entry, **interrupt each
+    // persist/send boundary**, restart and compare immutable bytes."* THE REOPEN-AND-COMPARE HALF IS ALREADY COVERED
+    // (`testCRYPTO005_theIntentSurvivesAReopenOfTheDurableStore` and the composition arm). **THE INTERRUPTION HALF
+    // WAS THE GAP** -- and it is armable because the journal is a PROTOCOL with TYPED results, so a decorator can
+    // FAULT ANY ONE OF ITS THREE OPERATIONS while the authority runs its real sequence.
+    //
+    // *** AND THE DISTINCTION THAT MATTERS THROUGHOUT, WHICH THE PROTOCOL ITSELF INSISTS ON: `storageFailure` IS
+    // NEVER FOLDED INTO ABSENCE.** `JournalLoadResult` and `JournalInsertResult` each carry a SEPARATE fault case, so
+    // a faulted read must NOT be answerable as "no intent exists" -- because that answer would let the authority
+    // RE-AUTHOR a message that may already have been sent. ***
+    // ================================================================================================
+
+    /// A journal that FAULTS ONE NAMED OPERATION -- the boundary interruption the card asketh for.
+    private final class FaultingIntentJournal: OutboundIntentJournal, @unchecked Sendable {
+        enum Boundary { case load, insert, advance }
+        private let inner: OutboundIntentJournal
+        private let faultAt: Boundary?
+        private(set) var calls: [String] = []
+        init(wrapping inner: OutboundIntentJournal, faultAt: Boundary?) {
+            self.inner = inner
+            self.faultAt = faultAt
+        }
+        func load(_ intentId: Data) -> JournalLoadResult {
+            calls.append("load")
+            if faultAt == .load { return .storageFailure(reason: "gf005 load fault") }
+            return inner.load(intentId)
+        }
+        func insertIfAbsent(_ entry: JournalEntry) -> JournalInsertResult {
+            calls.append("insert")
+            if faultAt == .insert { return .storageFailure }
+            return inner.insertIfAbsent(entry)
+        }
+        func advance(intentId: Data, from: IntentStateRank, to: IntentStateRank) -> JournalAdvanceResult {
+            calls.append("advance")
+            if faultAt == .advance { return .storageFailure }
+            return inner.advance(intentId: intentId, from: from, to: to)
+        }
+    }
+
+    private func crypto005Entry(_ intentId: Data) throws -> JournalEntry {
+        try XCTUnwrap(JournalEntry(
+            intentId: intentId, logicalMessageId: bytesOf(8, 16), signedPlaintextBytes: Data([0x0a]),
+            canonicalFrameBytes: Data([0x01, 0x02, 0x03]), recipientNodeId: bytesOf(10, 16),
+            recipientStaticDhPub: bytesOf(11, 32), acceptedGeneration: 1, bindingDigest: bytesOf(12, 32),
+            createdAtEpochSeconds: 1_700_000_123, messageNonce: bytesOf(9, 16),
+            priorityCode: 0, stateRank: .authored),
+            "the fixture must be a COHERENT entry -- the failable init? is the first control")
+    }
+
+    /**
+     * *** A FAULT AT **EACH** OPERATION IS TYPED, AND NEVER ANSWERED AS ABSENCE. ***
+     *
+     * The card's phrase, taken literally: each of the journal's three operations is faulted in turn. **EVERY ONE MUST
+     * ANSWER `.storageFailure`, AND NO ONE MAY ANSWER `.absent` / `.stored` -- BECAUSE AN ABSENCE ANSWER WOULD LET THE
+     * AUTHORITY RE-AUTHOR A MESSAGE THAT MAY ALREADY HAVE BEEN SENT, WHICH IS THE DUPLICATE THE INTENT JOURNAL
+     * EXISTS TO PREVENT.**
+     */
+    func testCRYPTO005_aFaultAtEachJournalOperationIsTypedAndNeverFoldedIntoAbsence() throws {
+        let intentId = bytesOf(7, 16)
+        let entry = try crypto005Entry(intentId)
+
+        // LOAD.
+        let loadFault = FaultingIntentJournal(wrapping: InMemoryOutboundIntentJournal(), faultAt: .load)
+        XCTAssertEqual(
+            loadFault.load(intentId), .storageFailure(reason: "gf005 load fault"),
+            "*** A FAULTED **LOAD** MUST BE `.storageFailure`, NEVER `.absent`: answering 'no intent exists' would " +
+                "invite the authority to RE-AUTHOR a message that may already have been sent. ***",
+        )
+
+        // INSERT.
+        let insertFault = FaultingIntentJournal(wrapping: InMemoryOutboundIntentJournal(), faultAt: .insert)
+        XCTAssertEqual(
+            insertFault.insertIfAbsent(entry), .storageFailure,
+            "*** AND A FAULTED **INSERT** MUST NOT BE ANSWERED AS `.stored`: the caller would believe the token's row " +
+                "standeth when the ledger never took it. ***",
+        )
+
+        // ADVANCE.
+        let backing = InMemoryOutboundIntentJournal()
+        _ = backing.insertIfAbsent(entry)
+        let advanceFault = FaultingIntentJournal(wrapping: backing, faultAt: .advance)
+        XCTAssertEqual(
+            advanceFault.advance(intentId: intentId, from: .authored, to: .committed), .storageFailure,
+            "*** AND A FAULTED **ADVANCE** MUST NOT ANSWER `.advanced`: a state transition that did not durably " +
+                "happen may not be reported as one. ***",
+        )
+    }
+
+    /**
+     * *** AND THE POSITIVE CONTROL: THE **SAME** DECORATOR, UNFAULTED, PASSES EVERY OPERATION THROUGH. ***
+     *
+     * Without it, a decorator hardwired to refuse would satisfy the arm above while making the journal useless --
+     * **and the control also proves the decorator FORWARDS rather than merely answering, which is what maketh the
+     * fault arms statements about the BOUNDARY rather than about the wrapper.**
+     */
+    func testCRYPTO005_theSameDecoratorUnfaultedForwardsEveryOperation() throws {
+        let intentId = bytesOf(7, 16)
+        let entry = try crypto005Entry(intentId)
+        let passthrough = FaultingIntentJournal(wrapping: InMemoryOutboundIntentJournal(), faultAt: nil)
+
+        XCTAssertEqual(passthrough.insertIfAbsent(entry), .stored, "an unfaulted insert reaches the inner ledger")
+        guard case .found = passthrough.load(intentId) else {
+            XCTFail("*** AN UNFAULTED LOAD MUST FIND THE ROW THE INSERT JUST STORED -- otherwise a decorator that " +
+                "refused or dropped would satisfy the fault arms while losing every intent. ***")
+            return
+        }
+        XCTAssertEqual(passthrough.advance(intentId: intentId, from: .authored, to: .committed), .advanced,
+                       "and an unfaulted advance really advances")
+        XCTAssertEqual(
+            passthrough.calls, ["insert", "load", "advance"],
+            "*** AND EVERY OPERATION MUST HAVE BEEN **REACHED** -- the call log is the witness that the decorator " +
+                "forwards rather than answering on its own. Observed: \(passthrough.calls) ***",
+        )
+    }
+
     // MARK: - CRYPTO-005: THE COMPOSITION'S OWN DURABLE COMMAND (the card's composition test)
 
     /**
