@@ -18,6 +18,7 @@ import io.godstone.app.mesh.MeshCommand
 import io.godstone.app.mesh.MeshPort
 import io.godstone.app.mesh.MeshUiState
 import io.godstone.app.mesh.MeshViewModel
+import io.godstone.app.mesh.ProtectedDataGate
 import io.godstone.app.mesh.MessageProjection
 import io.godstone.app.mesh.MessageStatus
 import io.godstone.app.mesh.RecipientProjection
@@ -589,5 +590,49 @@ class ReadinessT57Test {
             "*** THE SEND MUST GO TO THE RECIPIENT THE SELECTOR CHOSE: a selector whose choice never reaches the " +
                 "send is decoration (GS-UX-001 step 4) ***",
             "Aunt", row!!.peerLabel)
+    }
+
+    // ================================================================ GS-UX-001 step 6: THE PLATFORM'S ANSWER
+
+    /**
+     * *** GS-UX-001 STEP 6: *'Apply protected-data unavailability ... FROM ACTUAL PLATFORM STATE.'* ***
+     *
+     * MEASURED BEFORE ROUND 542: the iOS isle hath carried `ProtectedDataGate` since its model was written, and **THE
+     * ANDROID ISLE CARRIED NOTHING** -- a grep for any protected-data concept across `android/app/src/main` returned
+     * NOTHING. **A CONTRACT THE HUMAN'S LAW REQUIREth ON BOTH ISLES WAS MET ON ONE.** (Round 535 found the same
+     * asymmetry in GS-STRESS-001's owner census; THIS IS THE SECOND INSTANCE OF THAT SHAPE THIS SPAN, WHICH IS WHY
+     * IT IS RECORDED AS A SHAPE RATHER THAN AS AN ANECDOTE.)
+     *
+     * *** AND THE INVARIANT IS THE ONE THAT MATTERS TO AN OPERATOR: AN UNAVAILABLE STORE MUST NOT READ AS AN EMPTY
+     * ONE. *** Without it, a locked device would show 'no messages' and the operator would conclude their messages
+     * were LOST. THE DISCRIMINATOR IS THE POINT: the SAME port, read TWICE, must project DIFFERENTLY according to
+     * the platform alone -- so the arm proveth the gate is CONSULTED rather than merely carried.
+     */
+    @Test
+    fun test_ux044_the_platform_state_reaches_the_projection_and_is_consulted() {
+        val port = MeshDouble()
+        port.seedRecipient(0x41, "Aunt", ContactTrustLabel.USER_VERIFIED)
+
+        // (1) THE PLATFORM SAYETH AVAILABLE: the estate is read, and the notice is NOT raised.
+        val open = MeshViewModel(port = port, protectedData = object : ProtectedDataGate {
+            override fun isProtectedDataAvailable(): Boolean = true
+        })
+        open.refresh()
+        Assert.assertTrue("*** an available platform must project as available ***",
+            open.uiState().protectedDataAvailable)
+
+        // (2) *** THE DISCRIMINATOR -- THE SAME PORT, THE SAME STORE, A LOCKED PLATFORM: the projection must SAY SO.
+        // If the gate were carried but never consulted, this reading would be indistinguishable from (1). ***
+        val locked = MeshViewModel(port = port, protectedData = object : ProtectedDataGate {
+            override fun isProtectedDataAvailable(): Boolean = false
+        })
+        locked.refresh()
+        Assert.assertFalse("*** AN UNAVAILABLE STORE MUST NOT READ AS AN EMPTY ONE: a locked platform must " +
+            "project as unavailable, from ACTUAL PLATFORM STATE (GS-UX-001 step 6) ***",
+            locked.uiState().protectedDataAvailable)
+
+        // AND THE DEFAULT GATE KEEPS EVERY EXISTING CALLER UNCHANGED (the no-behaviour-change law of this repair).
+        Assert.assertTrue("the default gate must answer available, so nothing that stood before changeth",
+            MeshViewModel(port = port).refresh().protectedDataAvailable)
     }
 }

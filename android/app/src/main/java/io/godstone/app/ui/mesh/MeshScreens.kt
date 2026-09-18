@@ -46,6 +46,8 @@ const val SOS_CONTROL_TAG = "mesh-sos"
 const val COMPOSE_TAG = "mesh-compose"
 /// GS-UX-001 step 4 (round 541): the recipient selector's own address, so a court can name a choice.
 const val RECIPIENT_CHOICE_TAG = "mesh-recipient"
+/// GS-UX-001 step 6 (round 542): the platform-availability notice's own address.
+const val PROTECTED_DATA_TAG = "mesh-protected-data"
 
 @Composable
 fun MeshScreen(viewModel: MeshViewModel, modifier: Modifier = Modifier) {
@@ -68,6 +70,18 @@ fun MeshScreen(viewModel: MeshViewModel, modifier: Modifier = Modifier) {
 fun MeshContent(state: MeshUiState, modifier: Modifier = Modifier,
                 onCommand: (MeshCommand) -> Unit = {}) {
     Column(modifier = modifier.padding(16.dp)) {
+        // *** GS-UX-001 STEP 6 (round 542): THE PLATFORM'S ANSWER, SAID OUT LOUD. *** An estate that cannot be read
+        // because protected storage is unavailable MUST NOT LOOK LIKE AN EMPTY ONE: the operator would otherwise
+        // conclude their messages were lost. **THE EXPLANATION COMES FROM ACTUAL PLATFORM STATE** (the gate the app
+        // injecteth readeth the real device), not from a promise written into the UI.
+        if (!state.protectedDataAvailable) {
+            Card(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(PROTECTED_DATA_TAG)) {
+                Text(
+                    "Your messages are locked while the screen is locked. Unlock to see them.",
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
+        }
         LinkBanner(state)
         SecurityChip(state)
         state.error?.let { message ->

@@ -197,6 +197,29 @@ sealed class MeshCommand {
 }
 
 /** The immutable projection the Compose layer rendereth. */
+// ---------------------------------------------------------------------------
+// *** GS-UX-001 STEP 6 (round 542): *'Apply protected-data unavailability and permission explanations FROM ACTUAL
+// PLATFORM STATE.'* ***
+//
+// MEASURED BEFORE THIS EDIT: the iOS isle hath carried `ProtectedDataGate` (in `TrustUXModel`) since the model was
+// written, and **THE ANDROID ISLE CARRIED NOTHING** -- a grep for any protected-data concept across
+// `android/app/src/main` returned NOTHING. **A CONTRACT THE HUMAN'S LAW REQUIREth ON BOTH ISLES WAS MET ON ONE.**
+//
+// AND THE GATE IS A SEAM RATHER THAN A CALL INTO THE FRAMEWORK, FOR THE SAME REASON THE iOS ONE IS: the model
+// stayeth HOST-TESTABLE, and the app injecteth a gate that readeth the REAL platform state
+// (`KeyguardManager.isDeviceLocked` / the credential-encrypted storage state). A model that called the framework
+// directly could not be driven in a court at all.
+// ---------------------------------------------------------------------------
+interface ProtectedDataGate {
+    /** Whether the platform's protected storage is readable RIGHT NOW. */
+    fun isProtectedDataAvailable(): Boolean
+}
+
+/** The always-available gate: the default, so nothing that stood before changeth behaviour. */
+object AlwaysAvailableProtectedData : ProtectedDataGate {
+    override fun isProtectedDataAvailable(): Boolean = true
+}
+
 data class MeshUiState(
     val link: LinkState,
     val recipients: List<RecipientProjection>,
@@ -206,6 +229,12 @@ data class MeshUiState(
     val messages: List<MessageProjection>,
     val sos: SosProjection?,
     val sosArmed: Boolean,
+    /**
+     * *** GS-UX-001 STEP 6: WHETHER PROTECTED DATA IS AVAILABLE, AS THE PLATFORM ANSWERETH. *** The screen sayeth so
+     * rather than showing an empty estate that looketh like an empty archive -- **AN UNAVAILABLE STORE AND AN EMPTY
+     * ONE MUST NOT READ THE SAME.**
+     */
+    val protectedDataAvailable: Boolean,
     val error: String?,
     val lastOutcome: String?,
     val revision: Long,
@@ -214,6 +243,7 @@ data class MeshUiState(
         val EMPTY = MeshUiState(
             link = LinkState.Offline, recipients = emptyList(), selectedRecipient = null,
             draft = "", draftBytes = 0, messages = emptyList(), sos = null, sosArmed = false,
+            protectedDataAvailable = true,
             error = null, lastOutcome = null, revision = 0,
         )
     }

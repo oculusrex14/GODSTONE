@@ -28,6 +28,10 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class MeshViewModel(
     private val port: MeshPort = UnavailableMeshPort,
+    /// *** GS-UX-001 STEP 6 (round 542): THE PLATFORM'S OWN ANSWER, AS A SEAM. *** Defaulted to the
+    /// always-available gate, **so nothing that stood before changeth behaviour** and every court that buildeth this
+    /// model without a gate keepeth compiling and keepeth its expectations.
+    private val protectedData: ProtectedDataGate = AlwaysAvailableProtectedData,
 ) {
     // --------------------------------------------------------------------------------------
     // *** GS-UX-001 STEP 3 (round 540): OBSERVABLE STATE. ***
@@ -208,7 +212,11 @@ class MeshViewModel(
         val selected = state.selectedRecipient?.let { previous ->
             recipients.firstOrNull { it.nodeIdCopy().contentEquals(previous.nodeIdCopy()) }
         }
+        // *** AND THE PLATFORM IS ASKED BEFORE THE ESTATE IS PROJECTED: an unavailable protected store must NOT be
+        // read as an empty one, so the projection carrieth the answer AND the screen sayeth it. ***
+        val available = protectedData.isProtectedDataAvailable()
         val next = MeshUiState(
+            protectedDataAvailable = available,
             link = port.linkState(),
             recipients = recipients,
             selectedRecipient = selected,

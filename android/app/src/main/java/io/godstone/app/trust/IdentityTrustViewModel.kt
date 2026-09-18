@@ -1,5 +1,8 @@
 package io.godstone.app.trust
 
+import io.godstone.app.mesh.AlwaysAvailableProtectedData
+import io.godstone.app.mesh.ProtectedDataGate
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -87,6 +90,8 @@ data class TrustUiState(
     val lastOutcome: String?,
     /** True iff the current screen carrieth secret-bearing material. */
     val redacted: Boolean,
+    /** *** GS-UX-001 STEP 6: whether protected data is available, AS THE PLATFORM ANSWERETH. *** */
+    val protectedDataAvailable: Boolean,
     val revision: Long,
 ) {
     companion object {
@@ -98,6 +103,7 @@ data class TrustUiState(
             error = null,
             lastOutcome = null,
             redacted = false,
+            protectedDataAvailable = true,
             revision = 0,
         )
     }
@@ -123,6 +129,9 @@ data class TrustUiState(
  */
 class IdentityTrustViewModel(
     private val port: TrustPort = UnavailableTrustPort,
+    /// *** GS-UX-001 STEP 6 (round 542): THE PLATFORM'S OWN ANSWER -- the trust side of the same gate, defaulted so
+    /// nothing that stood before changeth behaviour. ***
+    private val protectedData: ProtectedDataGate = AlwaysAvailableProtectedData,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000L },
 ) {
     // --------------------------------------------------------------------------------------
@@ -284,6 +293,7 @@ class IdentityTrustViewModel(
         val contacts = (census as? TrustCensus.Readable)?.contacts ?: emptyList()
         val own = port.ownIdentity()
         val next = TrustUiState(
+            protectedDataAvailable = protectedData.isProtectedDataAvailable(),
             own = own,
             contacts = contacts,
             census = census,
