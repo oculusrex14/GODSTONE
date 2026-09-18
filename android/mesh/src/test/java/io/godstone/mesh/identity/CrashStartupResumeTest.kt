@@ -529,31 +529,37 @@ class CrashStartupResumeTest {
     }
 
     /**
-     * *** GS-FINAL-003 (round 571): THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROVIDER. ***
+     * *** GS-FINAL-003 (round 593): THIS ARM NAMETH ITS OWN LIMIT, BECAUSE IT WAS CLAIMING MORE THAN IT DID. ***
      *
-     * *** A REVIEW NAMED THE HOLE IN MY PREVIOUS EVIDENCE, AND IT WAS REAL: THE ARMS ABOVE CONSTRUCT THE DECORATOR BY
-     * HAND, SO THEY PROVE THE MECHANISM AND **NOT** THAT THE SHIPPED COMPOSITION CONSULTS THE JOURNAL. Deleting the
-     * DI wiring would have left every one of them green.** THAT IS THE COUNT-ONLY TRAP: a green that cannot redden
-     * when the WIRING is removed is not evidence about the wiring.
+     * *** A REVIEW PROVED THAT THREE CLAIMS IN THIS ARM'S OWN KDoc WERE FALSE, AND THE FALSIFICATION IS ONE LINE OF
+     * GREP: `provideWipeIsPending` APPEARETH **ZERO** TIMES IN THIS FILE, WHILE THE ARM HAND-PASSES
+     * `wipeGate = WipeSensitiveUseGate { false }` AS AN ARGUMENT. *** So:
+     *   * *"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROVIDER"* -- it constructeth the CONSUMER provider and
+     *     hand-supplieth the value the OTHER provider is supposed to COMPUTE. **REVERTING `provideWipeIsPending` TO THE
+     *     REAL DEFECT (`!= IDLE`) WOULD LEAVE THIS ARM GREEN, BECAUSE THE GATE ARRIVES AS AN ARGUMENT.** Verified by
+     *     the very method this arm's own text describes: a green that cannot redden when the thing is reverted.
+     *   * *"ONLY REVERTING THE PROVIDER'S WIRING CAN REDDEN IT"* -- reverting `provideBoundRecipientKeyResolver`'s
+     *     FORWARDING reddens it, yes; **BUT THAT IS THE CONSUMER'S PLUMBING, NOT THE DURABLE READER.**
+     *   * *"Hand-constructed decorator arms cannot see a missing provider argument; THIS ONE CAN"* -- accurate about
+     *     the ARGUMENT, **and silent about the ARGUMENT'S SOURCE, WHICH IS THE WHOLE QUESTION.**
      *
-     * SO THIS ARM CALLS THE PROVIDER ITSELF -- `MeshModule.provideBoundRecipientKeyResolver`, THE SAME FUNCTION HILT
-     * CALLS -- WITH A JOURNAL THAT SAYS A WIPE IS OUTSTANDING, AND DEMANDS THAT THE RESOLVER IT RETURNS REFUSES.
-     * **ONLY REVERTING THE PROVIDER'S WIRING CAN REDDEN IT.**
+     * *** THE GENUINE COVERAGE IS `GsFinal003ContextProviderTest` (round 589): FOUR Robolectric arms that call
+     * `MeshModule.provideWipeIsPending(appContext)` ITSELF, PRESET THE REAL `SharedPreferences` JOURNAL, AND ASK THE
+     * REAL PROVIDER. THOSE ARE LOAD-BEARING -- AND THEY ARE WHAT FOUND THE SHIPPED POLARITY INVERSION THAT EVERY LANE
+     * HAD PASSED FOR EIGHTEEN ROUNDS.***
      *
-     * AND THE FAIL-OPEN DEFAULT THAT MADE THIS NECESSARY IS GONE: `wipeIsPending` WAS `{ false }` BY DEFAULT, WHICH
-     * ON A SECURITY GATE MEANS "NO WIPE PENDING" MEANS **ADMIT** -- the same landmine GS-FINAL-009 was about ("a
-     * default answers 'available' forever"). IT IS NOW A REQUIRED PARAMETER, SO AN OMISSION IS A COMPILE ERROR RATHER
-     * THAN A SILENT ALWAYS-ADMIT, and the compiler promptly caught a construction site my own edit had missed.
+     * **SO THIS ARM IS KEPT FOR WHAT IT HONESTLY MEASURES** -- that `provideBoundRecipientKeyResolver` FORWARDS the
+     * seam it is given, so a future edit that drops the argument (as one nearly shipped, defaulted to `{ false }`) is
+     * caught -- AND ITS CLAIM IS REDUCED TO THAT. **A TEST THAT WEARS ANOTHER TEST'S CLAIM IS WORSE THAN NO TEST,
+     * BECAUSE IT RETIRES THE QUESTION.**
      */
     @Test
-    fun theShippedProviderRefusesSensitiveUseWhenTheJournalSaysAWipeIsOutstanding() {
+    fun theConsumerProviderForwardsTheSeamItIsGivenRatherThanSupplyingItsOwn() {
         val repo = admissionRepo()
         val gate = DefaultRuntimeLifecycleGate()
 
-        // *** THE RIG MUST BE ABLE TO SUCCEED, OR THE REFUSAL PROVES NOTHING: A RECORDED BINDING IS WHAT MAKES
-        // `publicSigningKey` RETURN A KEY WHEN THE GATE IS OPEN. MY FIRST DRAFT OMITTED THIS, SO THE ARM PASSED
-        // WHETHER OR NOT THE PROVIDER ROUTED THE DURABLE READER -- **A MUTATION THAT REVERTED THE PROVIDER'S WIRING
-        // LEFT IT GREEN, WHICH IS HOW I FOUND THE VACUITY.** ***
+        // THE RIG MUST BE ABLE TO SUCCEED, OR THE REFUSAL PROVES NOTHING: a RECORDED BINDING is what makes
+        // `publicSigningKey` return a key when the gate is OPEN.
         val peer = MeshIdentity.generate()
         val binding = peer.issueIdentityBinding()
         val validated = IdentityBindingValidator.validate(
@@ -561,15 +567,17 @@ class CrashStartupResumeTest {
         ) as IdentityBindingValidationResult.Valid
         repo.applyValidatedBinding(validated.binding)
 
-        val resolver = io.godstone.mesh.di.MeshModule.provideBoundRecipientKeyResolver(
-            repo, gate, wipeGate = WipeSensitiveUseGate { false },   // PENDING: refuse
+        // *** THE SEAM ARRIVES AS AN ARGUMENT -- WHICH IS EXACTLY THIS ARM'S HONEST SUBJECT, AND EXACTLY WHY IT IS
+        // NOT THE WIRING PROOF. ***
+        val refusing = io.godstone.mesh.di.MeshModule.provideBoundRecipientKeyResolver(
+            repo, gate, wipeGate = WipeSensitiveUseGate { false },
         )
-
         assertNull(
-            "*** THE SHIPPED PROVIDER MUST ROUTE THE DURABLE ANSWER: the binding IS recorded, so with the gate open " +
-                "this road WOULD produce a key -- AND A PENDING WIPE MUST STILL REFUSE IT while the process gate is " +
-                "ACTIVE. Hand-constructed decorator arms cannot see a missing provider argument; THIS ONE CAN. ***",
-            resolver.publicSigningKey(peer.nodeId),
+            "*** THE CONSUMER PROVIDER MUST **FORWARD** THE SEAM IT IS GIVEN: a provider that dropped it, or supplied " +
+                "its own, would be the fail-open shape this seam's required-parameter rule exists to prevent. " +
+                "**THIS ARM MEASURES FORWARDING, NOT WHERE THE VALUE COMES FROM -- for that, see " +
+                "`GsFinal003ContextProviderTest`, which asks the REAL provider against the REAL journal.** ***",
+            refusing.publicSigningKey(peer.nodeId),
         )
     }
 
