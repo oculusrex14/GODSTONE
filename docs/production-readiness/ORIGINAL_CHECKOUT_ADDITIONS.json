@@ -22,6 +22,28 @@
         "??"
       ],
       "why_declared_instead_of_ignored": "The alternative repairs are all forbidden: deleting it would destroy audit evidence, extending .gitignore would hide new files, and weakening the status comparison would let a builder edit the original checkout unnoticed. Declaring it keeps the comparison byte-exact for everything else."
+    },
+    {
+      "added_by": "independent audit (2026-09-18), not by this builder",
+      "builder_action": "READ ONLY. This work has not edited, moved or deleted it, and does not copy it into the T01 evidence (it is not builder work-in-progress). It is the audit bundle the remediation objective NAMES.",
+      "copied_into_evidence": false,
+      "disclosed_by": [
+        "godstone-audit/README.md",
+        "godstone-audit/GODSTONE_INDEPENDENT_AUDIT.md"
+      ],
+      "entries": 45,
+      "entries_floor_note": "measured 45 at the first declaration; the folder is written by the AUDIT's own process and the floor may only RISE",
+      "grows": true,
+      "grows_note": "Same rule as AUDIT_FINAL_2026-09-15: the folder is written by the AUDIT's own process, not by this builder, and a frozen count would fail the suite every time the audit produceth another output -- A CONTROL THAT PUNISHETH THE WRONG PARTY. The requirement is that the folder EXISTETH, its count never FALLETH below the declared floor, and the live tree MINUS it (and the other declared additions) stayeth byte-identical to the saved baseline.",
+      "kind": "read_only_audit_bundle",
+      "path": "godstone-audit",
+      "provenance": "The 2026-09-18 independent audit package named by the remediation objective. It arrived UNTRACKED and was never declared, so the T01 court correctly counted all 45 entries as an UNDECLARED difference (round 660 measured: extra=45, ALL of them this folder).",
+      "read_only": true,
+      "status_codes": [
+        "??"
+      ],
+      "why_declared_instead_of_ignored": "The alternative repairs are all forbidden: deleting it would destroy audit evidence, extending .gitignore would hide new files, and weakening the status comparison would let a builder edit the original checkout unnoticed. Declaring it keeps the comparison byte-exact for everything else.",
+      "declared_at_round": 661
     }
   ],
   "baseline": {
@@ -32,7 +54,8 @@
   },
   "consequences": {
     "earlier_failures": "The four T01 failures are preserved as a retained fact in the remediation evidence (red/readiness-suite-RED.log) rather than deleted.",
-    "gs_ctrl_002": "This is the workspace-inventory sub-item of GS-CTRL-002 (the controls must not fail on the audited task sequence): the inventory becomes EXPLICIT and CORRECT without weakening any assertion."
+    "gs_ctrl_002": "This is the workspace-inventory sub-item of GS-CTRL-002 (the controls must not fail on the audited task sequence): the inventory becomes EXPLICIT and CORRECT without weakening any assertion.",
+    "round_661": "godstone-audit/ declared. AND THIS DECLARATION IS THE FIRST THAT COULD TAKE EFFECT: preserve.py previously read ONLY the inventory's frozen copy (falling back to this file only when the key was ABSENT, which it never is), so edits here were silently ignored -- measured before the fix: appending an addition changed verify()'s verdict by nothing. The precedence is now three-case: a non-empty inventory declaration wins, an ABSENT key falls back to this file, and an EMPTY list means none."
   },
   "kind": "REVIEWED_EXTERNAL_ADDITIONS_TO_THE_ORIGINAL_CHECKOUT",
   "rule": "The live porcelain inventory MUST equal the saved baseline PLUS exactly these declared additions, line for line. EVERY undeclared difference still fails verification. An addition whose live entry count differs from its declared count also fails: the declaration is a MEASURED fact, not a blanket exemption.",

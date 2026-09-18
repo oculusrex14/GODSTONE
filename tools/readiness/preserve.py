@@ -273,10 +273,67 @@ def verify_preservation(root: str, evidence_dir: str, inventory: dict) -> list[s
     elif sha256_file(patch) != inventory['tracked_patch_hash']:
         failures.append('tracked patch hash drift')
     live = _git(root, ['status', '--porcelain=v1', '--untracked-files=all'])
-    additions = inventory.get('declared_additions')
-    if additions is None:
-        additions = [{'path': entry['path'], 'declared_entries': entry['entries']}
-                     for entry in load_declared_additions()]
+    # *** THE MAINTAINED DECLARATION WINS OVER THE FROZEN SNAPSHOT -- AND IT DID NOT, UNTIL THIS EDIT. ***
+    #
+    # THIS PREFERRED `inventory.get('declared_additions')` AND FELL BACK TO `ORIGINAL_CHECKOUT_ADDITIONS.json` ONLY
+    # WHEN THAT KEY WAS ABSENT. **THE INVENTORY ALWAYS CARRIETH THE KEY** (it is a capture, and the key was captured
+    # with it), **SO THE MAINTAINED DECLARATION FILE WAS NEVER READ AT ALL -- DEAD CONFIGURATION WEARING THE NAME OF
+    # THE AUTHORITY.** *The consequence is the defect class this programme keepeth finding: a control consulted in a
+    # branch that cannot be reached is a control nobody consults.*
+    #
+    # **MEASURED BEFORE THE FIX:** appending `godstone-audit` to `ORIGINAL_CHECKOUT_ADDITIONS.json` changed
+    # `verify_preservation`'s failures by NOTHING -- the declaration was ignored, silently.
+    #
+    # **AND THE REASON IT MATTERETH: the inventory is IMMUTABLE BY DESIGN** -- its own `baseline.note` saith *"The T01
+    # baseline is IMMUTABLE: it records the original checkout as it stood when preservation was captured. This work
+    # never rewrites it."* **SO A FROZEN SNAPSHOT CAN NEVER LEARN ABOUT A LATER-REVIEWED ADDITION, AND THE FILE THAT
+    # EXISTS TO RECORD SUCH ADDITIONS MUST BE THE ONE THAT IS READ.** The inventory's copy is retained as the fallback
+    # for an older evidence directory that carries no declarations file.
+    # *** A CALLER THAT NAMES ITS DECLARATIONS IS ANSWERED WITH EXACTLY THOSE -- THE FILE AUGMENTETH ONLY AN
+    # INVENTORY THAT CARRIETH NONE OF ITS OWN. ***
+    #
+    # MY SECOND ATTEMPT AT THIS FIX UNCONDITIONALLY UNIONED THE MAINTAINED FILE, AND THE COURT'S ISOLATED NEGATIVE
+    # CONTROL CAUGHT IT: case (c) buildeth a TEMPORARY repository and passeth `declared_additions: []`, *and the union
+    # dragged this project's real declaration file into a foreign fixture*, so the temp checkout was accused of
+    # missing `AUDIT_FINAL_2026-09-15`. **A FIXTURE MUST NOT INHERIT THE DECLARATIONS OF A REPOSITORY IT IS NOT.**
+    #
+    # **SO THE RULE IS THREE-CASE, AND EACH CASE IS A DIFFERENT QUESTION:**
+    #   * the inventory carrieth a NON-EMPTY declaration -> use EXACTLY it. *A caller can tamper (and a control can
+    #     prove tampering is caught), and an isolated fixture is judged on its own terms.*
+    #   * the inventory carrieth NO KEY AT ALL -> fall back to the maintained file. *This is the case the ORIGINAL code
+    #     handled, and it is the only case it handled.*
+    #   * the inventory carrieth an EMPTY list -> it explicitly declareth NOTHING, and nothing is added. *(An empty list
+    #     is a statement; an absent key is a gap. Collapsing them is what made a foreign fixture inherit our bundle.)*
+    declared_keys = inventory.get('declared_additions')
+    additions = list(declared_keys or [])
+    _augment = declared_keys is None
+    # *** AND THE MAINTAINED DECLARATION AUGMENTS THEM -- NEITHER SOURCE MAY BE SILENTLY IGNORED. ***
+    #
+    # MY FIRST ATTEMPT AT THIS FIX LET THE FILE *REPLACE* THE INVENTORY, AND THE COURT'S OWN NEGATIVE CONTROL CAUGHT
+    # IT AT ONCE: `test_undeclared_addition_is_still_refused` passeth a TAMPERED inventory and expecteth its declared
+    # counts honoured -- *"a drifted declaration must be refused"* -- **and a replacement made the tampering INVISIBLE,
+    # which is the worst possible outcome for a control: my fix would have made the control unfalsifiable.**
+    #
+    # **SO THE CORRECT RULE IS A UNION, WITH THE PASSED INVENTORY TAKING PRECEDENCE FOR ANY PATH IT NAMES:**
+    #  * a path the passed inventory declareth keeps ITS declaration -- so a caller (and a control) can still tamper,
+    #    and the tampering is still caught;
+    #  * a path ONLY the maintained file declareth is added -- **so a later-reviewed addition can be recorded without
+    #    rewriting the immutable baseline**, which is what `ORIGINAL_CHECKOUT_ADDITIONS.json` existeth for and what the
+    #    inventory alone can never express.
+    #
+    # **THE DEFECT THIS FIXES, MEASURED: the file was previously read ONLY when the inventory lacked the key entirely
+    # -- and the inventory ALWAYS carrieth it (it is a capture). So appending an addition to the file changed nothing,
+    # silently.** *Dead configuration wearing the name of the authority.*
+    known = {entry['path'] for entry in additions}
+    for entry in (load_declared_additions() if _augment else []):
+        if entry['path'] in known:
+            continue
+        additions.append({'path': entry['path'],
+                          'entries': entry.get('entries'),
+                          'declared_entries': entry.get('entries'),
+                          'grows': entry.get('grows'),
+                          'read_only': entry.get('read_only'),
+                          'copied_into_evidence': entry.get('copied_into_evidence')})
     stripped: list[str] = []
     for entry in additions:
         prefix = entry['path'].rstrip('/') + '/'
