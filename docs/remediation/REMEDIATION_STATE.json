@@ -13807,13 +13807,19 @@
       "sha256": "9203220f5845d8460fb60a2fdba098c12503b549871f8445372e825a6a91d39e",
       "what": "The key(...): three answers, a nondeterministic court under mutation, and an arm written then deleted for being a rig.",
       "outcome": "Under mutation C the rendered court is NONDETERMINISTIC (2 red, 1 green); on the clean tree it is stable across 6 consecutive runs. The isolating arm passed with AND without the key, so it was deleted. The key is recorded UNPROVEN."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-006/round568-determinism-and-refuted-premises.log",
+      "sha256": "a74f8f0df7fbee0e9cdabedb67fd909a5581f121bafbcb7ab85a42c0f347d9c9",
+      "what": "Determinism restored; the effect-restart premise refuted by isolation; the key settled; my own parser corrected.",
+      "outcome": "Key removed: 7/7 green deterministically (3 full-suite runs + 3 isolated). Mutation B and E: the same three recovery arms. Mutation M1: five. Lanes app 92, core 21, mesh 1869, all 0 failures."
      }
     ],
     "my_red_case": "THE AUDIT'S MEASUREMENT, REPRODUCED DIRECTLY AT SOURCE: `grep -rn \"scene.open(\" ios/Godstone/Sources/App/` returns NOTHING but a comment -- so `NavigationLink(value:)` pushed onto `path` while NOTHING EVER TOLD THE SCENE. That is the parallel-owners defect as a grep, which is a stronger red than an arm here because no arm can run against Sources/App (see pending_proof).",
     "pending_proof": [
      "THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendereth the composition but is not a device, and the audit's own distinction applies (\"automation distinguishes internal model proof from real OS/device proof\"). The iOS App layer still cannot be compiled here at all (NATIVE_MODELS).",
      "GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET NOW EXISTETH (it did not before this round) and it really renders, lays out and scrolls. THE PHYSICAL GATES REMAIN OPEN and are external.",
-     "THE `key(state.openedDocumentId)` IS UNPROVEN, AND THE REASON IS NOW ITSELF A MEASUREMENT (round 567): UNDER MUTATION C THE RENDERED COURT IS NONDETERMINISTIC -- RED TWICE, GREEN ONCE WITH NOTHING RELEVANT CHANGED -- WHILE ON THE CLEAN TREE IT WAS GREEN IN SIX CONSECUTIVE RUNS. So the arms are reliable on the shipped wiring and the nondeterminism appeareth only when the mechanism is broken, WHICH MAKES THE COURT UNABLE TO CERTIFY THIS PARTICULAR CLAIM EITHER WAY. An arm written to isolate it (feeding `readingTargetPassageId = null` so the consume-effect could not mask the inherited offset) PASSED WITH AND WITHOUT THE KEY and was DELETED as a rig. HYPOTHESIS, NOT MEASURED: `rememberLazyListState` is a `rememberSaveable`, so what surviveth dependeth on saveable-state restoration, whose timing `waitForIdle` does not control. THE KEY IS KEPT, RECORDED AS UNCOVERED, AND NOT COUNTED AS VERIFIED. This is also the third distinct answer I have given about one line of code, each earlier one measured against a rig that could not answer the question."
+     "THE `key(state.openedDocumentId)` IS UNEXERCISED AND THE MATTER IS CLOSED AS AN EXPLANATION (round 568). MEASURED with the court made deterministic: removing the key leaves ALL SEVEN rendered arms green -- 3 consecutive full-suite runs AND 3 isolated arm runs. THE REASON IS DOMINANCE, NOT UNREACHABILITY: a fresh open clears the cross-document anchor, `ArchiveReadingAnchor.target(ids, null)` returneth the FIRST passage, and the consume-effect's `scrollToItem(0)` forceth the top whatever offset was inherited. MY EARLIER \"UNREACHABLE\" CLAIM WAS FALSE (`openPassage` swaps A for B with `mode` still DOCUMENT). The key is KEPT as correct and independently needed the moment target resolution can yield a non-zero index, RECORDED AS UNEXERCISED, NOT COUNTED AS COVERED. AND THE FLAKINESS THAT ONCE MASKED THIS WAS THE COURT'S OWN (`waitForIdle` racing a `LaunchedEffect` coroutine), now fixed with `waitUntil` on a UI condition -- the earlier \"the court is nondeterministic under mutation\" conclusion was TRUE OF THE RIG AND SAYS NOTHING ABOUT THE CODE. AND A REVIEW'S PREMISE WAS REFUTED BY ISOLATION: `LaunchedEffect` keys compare by STRUCTURAL EQUALITY, so a content-equal fresh `List` does NOT restart the effect; the predicted self-restart feedback loop does not exist, though the two-scroll arm it prompted was added anyway and is a real control."
     ]
    },
    "GS-FINAL-007": {
@@ -14079,7 +14085,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "ce7281280a3d13f30ef0d589a8d50d58bc9a42a9",
+  "candidate_sha": "97f477ea5c8083cbc1e45a95a477494193633d84",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14155,7 +14161,7 @@
    "GS-FINAL-004: THE CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. The central defect -- the factory's verified connection is discarded and `SqliteMessageStore(url:)` perfor",
    "GS-FINAL-004: TWO FALSE ARMS WERE WRITTEN AND BOTH WERE DELETED RATHER THAN KEPT GREEN: (1) one asserted only that the engine was ASKED for a keyed open -- TRUE ON THE UNREPAIRED TREE, because t",
    "GS-FINAL-004: DONE AND EVIDENCED: the archive-only SPLIT. `createArchiveOnlyHostComposition` no longer takes an `encryptedStores` parameter at all, so a composition that cannot be given a key ca",
-   "GS-FINAL-006: THE `key(state.openedDocumentId)` IS UNPROVEN, AND THE REASON IS NOW ITSELF A MEASUREMENT (round 567): UNDER MUTATION C THE RENDERED COURT IS NONDETERMINISTIC -- RED TWICE, GREEN O"
+   "GS-FINAL-006: THE `key(state.openedDocumentId)` IS UNEXERCISED AND THE MATTER IS CLOSED AS AN EXPLANATION (round 568). MEASURED with the court made deterministic: removing the key leaves ALL SEV"
   ],
   "external_acceptance": [
    "ANDROID-05: *** AND CLOSURE 4 IS **UNREACHABLE ON THE HOST**, MEASURED IN TWO INDEPENDENT LAYERS -- so it is OWED as an INSTRUMENTATION ROAD and NOT counted as met: *** (i) THE START HALF is g",

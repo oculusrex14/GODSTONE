@@ -1,6 +1,7 @@
 package io.godstone.app.ui.browse
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollToIndex
@@ -108,9 +109,7 @@ class GsFinal006RenderedReadingListTest {
         val vm = placedReader(25L)
 
         compose.setContent { RealReadingList(vm) }
-        compose.waitForIdle()
-
-        compose.onNodeWithText("passage 25").assertIsDisplayed()
+        awaitDisplayed("passage 25")
         // AND THE TOP IS **GONE** -- the "marched back to the top" defect, asserted from the other side: a `LazyColumn`
         // composes only what is visible, so `passage 1` being ABSENT is the layout's OWN WITNESS that the list really
         // moved. Without the `ReadingList` this court gathereth, the reader would be at `passage 1`.
@@ -157,9 +156,7 @@ class GsFinal006RenderedReadingListTest {
         val vm = placedReader(999_999L)          // an identity THIS document doth not carrieth
 
         compose.setContent { RealReadingList(vm) }
-        compose.waitForIdle()
-
-        compose.onNodeWithText("passage 1").assertIsDisplayed()
+        awaitDisplayed("passage 1")
         assertEquals(
             "*** THE FALLBACK PLACEMENT MUST NOT BE RECORDED: an anchor that no longer stands is placed at the " +
                 "FIRST passage, but the asked-for anchor must be REMEMBERED AS ASKED FOR rather than replaced by the " +
@@ -206,36 +203,92 @@ class GsFinal006RenderedReadingListTest {
     }
 
     /**
-     * *** THE `key(...)`: A MEASURED NONDETERMINISM, RECORDED RATHER THAN CLAIMED EITHER WAY. ***
+     * *** THE SECOND SCROLL: A SELF-INFLICTED RESTART, MEASURED. ***
      *
-     * THIS IS THE THIRD ANSWER I HAVE GIVEN ABOUT ONE `key(...)`, AND THE THIRD WAS "MY COURT IS NOT RELIABLE HERE":
+     * THE HYPOTHESIS, FROM REVIEW, AND IT IS A FEEDBACK LOOP RATHER THAN AN "UNRELATED RECOMPOSITION":
+     * `val ids = state.passages.map { it.chunkId }` BUILDETH A NEW `List` ON EVERY RECOMPOSITION, and
+     * `LaunchedEffect` KEYS COMPARE LISTS BY REFERENCE -- SO EQUAL CONTENTS STILL RE-FIRE. And the report effect
+     * CALLETH `vm.noteScroll(...)`, WHICH WRITETH `_state` -> RECOMPOSES -> REBUILDS `ids` -> **THE EFFECT RESTARTS
+     * ITSELF**: `previous = null` and `placementLanded = false` are reset, THE GATE RE-LOCKS, and the consume-effect
+     * ALSO RE-FIRES `scrollToItem(target)` -- WHICH CAN JUMP THE READER BACK TO THE RESTORED TARGET AFTER THEY
+     * SCROLLED AWAY.
      *
-     *   1. I CLAIMED THE KEY GUARDED AN INHERITED OFFSET. MEASURED (mutation C, on a court that read `state.value`
-     *      ONCE and never recomposed): ALL GREEN -- so I concluded the key was NOT load-bearing. **THE COURT COULD NOT
-     *      HAVE SEEN IT: A COMPOSABLE THAT NEVER RECOMPOSES NEVER EVALUATES `key(...)` AT ALL.**
-     *   2. AFTER THE FLOW-OBSERVATION FIX: mutation C REDDENED `aResolvedTargetReallyPlacesTheReader`, TWICE IN A ROW.
-     *   3. AND THEN, ON A LATER RUN OF THE SAME MUTATION WITH NOTHING RELEVANT CHANGED: ALL GREEN AGAIN.
+     * **SO THE VERY ACT OF RECORDING A SCROLL TEARS DOWN THE GATE THAT AUTHORISED IT.** A single-scroll arm cannot
+     * see it: the first report lands before the restart interferes. THIS ARM DRIVES TWO SCROLLS, WHICH CAN.
+     */
+    @Test
+    fun aSecondScrollIsAlsoRecorded() {
+        val vm = placedReader(25L)
+
+        compose.setContent { RealReadingList(vm) }
+        compose.waitForIdle()
+
+        compose.onNodeWithTag(READING_LIST_TAG).performScrollToIndex(20)
+        awaitDisplayed("passage 21")
+        val afterFirst = vm.state.value.anchorPassageId
+
+        compose.onNodeWithTag(READING_LIST_TAG).performScrollToIndex(32)
+        awaitDisplayed("passage 33")
+        val afterSecond = vm.state.value.anchorPassageId
+
+        assertEquals(
+            "*** A SECOND SCROLL MUST ALSO BE RECORDED. IF IT IS NOT, THE REPORT EFFECT RESTARTED ITSELF: its own " +
+                "`vm.noteScroll` write recomposed the composable, rebuilt `ids` as a NEW List, re-fired the effect " +
+                "(keys compare Lists by reference), and RESET `placementLanded` -- RE-LOCKING THE GATE. The reader " +
+                "would keep scrolling and the place would never be persisted again. " +
+                "after first scroll: $afterFirst, after second: $afterSecond ***",
+            33L, afterSecond,
+        )
+    }
+
+    /**
+     * *** AND THE READER IS NOT YANKED BACK TO THE RESTORED TARGET BY THEIR OWN REPORT. ***
      *
-     * A THIRD RUN WAS NOT ATTEMPTED TO BREAK THE TIE, BECAUSE THE TIE IS THE FINDING: **REMOVING THE KEY SOMETIMES
-     * FAILS A RENDERED ARM AND SOMETIMES DOES NOT, WHICH MAKES THIS COURT NONDETERMINISTIC UNDER MUTATION. A FLAKY
-     * COURT IS WORSE THAN NO COURT, because when it passes it sayeth nothing and when it fails it sayeth "flaky"
-     * rather than "broken".** The clean tree, by contrast, was GREEN IN SIX CONSECUTIVE RUNS -- so the arms are
-     * reliable on the shipped wiring and the nondeterminism APPEARETH ONLY UNDER MUTATION.
+     * THE OTHER HALF OF THE SAME LOOP: if the consume-effect re-fires, it re-runneth `scrollToItem(target)` AND
+     * `target` IS STILL THE RESTORED PLACEMENT -- so the reader is thrown BACK to where they were restored, undoing
+     * the scroll they just made. THIS IS THE VISIBLE SYMPTOM: "init works but the post-interaction state breaks."
+     */
+    @Test
+    fun theReaderIsNotYankedBackToTheRestoredTargetByTheirOwnScroll() {
+        val vm = placedReader(25L)
+
+        compose.setContent { RealReadingList(vm) }
+        compose.waitForIdle()
+
+        compose.onNodeWithTag(READING_LIST_TAG).performScrollToIndex(32)   // the reader moves far away
+        compose.waitForIdle()
+
+        // THE READER MUST STILL BE WHERE THEY SCROLLED, not back at the restored placement.
+        compose.onNodeWithText("passage 33").assertIsDisplayed()
+        assertEquals(
+            "*** AND THE RECORDED PLACE MUST BE THE READER'S, NOT THE RESTORED ONE -- the consume-effect re-firing " +
+                "would have dragged them back to the target. Observed anchor: ${vm.state.value.anchorPassageId} ***",
+            33L, vm.state.value.anchorPassageId,
+        )
+    }
+
+    /**
+     * *** THE `key(...)`: UNEXERCISED -- AND THE "FLAKINESS" THAT HID IT WAS A HARNESS DEFECT, NOW FIXED. ***
      *
-     * THE LIKELY CAUSE, OFFERED AS A HYPOTHESIS AND NOT AS A MEASUREMENT: `rememberLazyListState` is a
-     * `rememberSaveable`, so what surviveth a recomposition or a document change can depend on SAVEABLE-STATE
-     * RESTORATION, whose timing this court does not control -- `waitForIdle` waiteth for the composition and the
-     * frame clock, not for a saveable registry.
+     * FOUR ANSWERS I GAVE ABOUT ONE LINE, EACH EARLIER ONE WRONG IN A DIFFERENT WAY:
+     *   1. "THE KEY GUARDS AN INHERITED OFFSET." Measured: green -- but the court read `state.value` ONCE and NEVER
+     *      RECOMPOSED, **SO `key(...)` WAS NEVER EVALUATED AT ALL.** I measured a rig that could not answer.
+     *   2. "THE TRANSITION IS UNREACHABLE." FALSE: `openPassage` swaps A for B with `mode` still DOCUMENT.
+     *   3. "THE COURT IS FLAKY; THE KEY IS UNPROVEN EITHER WAY." The flakiness was REAL but it was **MINE, NOT THE
+     *      CODE'S**: `waitForIdle` waiteth for the composition and the frame clock, while the placement arriveth from a
+     *      `LaunchedEffect` COROUTINE -- so an assertion could run before or after `scrollToItem`. THE SAME MUTATION
+     *      ON THE SAME CODE WENT RED, THEN GREEN, THEN GREEN. **A COURT THAT CANNOT BE TRUSTED UNDER MUTATION CANNOT
+     *      CERTIFY ANYTHING -- INCLUDING ITS OWN PASSES.**
+     *   4. THE ANSWER, WITH THE WAITS FIXED (`waitUntil` ON A UI CONDITION): **REMOVING THE KEY LEAVES ALL SEVEN ARMS
+     *      GREEN, DETERMINISTICALLY -- 3/3 FULL-SUITE RUNS AND 3/3 WITH THE ARM ISOLATED.** The key is genuinely
+     *      unexercised, and the reason is DOMINANCE rather than unreachability: a fresh open resolves the target to
+     *      the new document's FIRST passage, so the consume-effect's `scrollToItem(0)` forceth the top regardless.
      *
-     * AND I WROTE AN ARM SPECIFICALLY TO SETTLE IT, THEN DELETED IT: feeding a state with
-     * `readingTargetPassageId = null` so the consume-effect could not mask the inheritance -- **IT PASSED WITH AND
-     * WITHOUT THE KEY, SO IT WAS NOT A CONTROL EITHER. A TEST THAT PASSES WHICHEVER WAY THE MECHANISM IS WIRED
-     * MEASURES ITS OWN RIG**, the antipattern this programme keeps paying for, and I had just written another one.
+     * AND AN ARM I WROTE TO SETTLE IT WAS DELETED: feeding `readingTargetPassageId = null` so the consume-effect could
+     * not mask the inheritance -- IT PASSED WITH AND WITHOUT THE KEY, SO IT MEASURED ITS OWN RIG.
      *
-     * **THE HONEST STATE OF THE `key(...)`: UNPROVEN. Kept (correct, cheap, and it would matter the moment a "next
-     * document" affordance is added), recorded as uncovered, and NOT counted as verified.** What would settle it is a
-     * court that controls saveable-state restoration explicitly, or a `LazyListState` injected as a parameter rather
-     * than remembered -- neither of which is in this round.
+     * **THE KEY IS KEPT** (correct, cheap, and it becomes load-bearing the moment target resolution can yield a
+     * non-zero index), **RECORDED AS UNEXERCISED, AND NOT COUNTED AS COVERED.**
      */
     /**
      * *** AND AFTER THE PLACEMENT LANDS, THE READER'S OWN SCROLL **IS** RECORDED. ***
@@ -259,12 +312,12 @@ class GsFinal006RenderedReadingListTest {
         val vm = placedReader(25L)
 
         compose.setContent { RealReadingList(vm) }
-        compose.waitForIdle()
+        awaitDisplayed("passage 25")
         assertEquals("the rig must really have placed the reader first", 25L, vm.state.value.readingTargetPassageId)
 
         // THE READER MOVES -- A REAL GESTURE AGAINST THE PRODUCTION LIST.
         compose.onNodeWithTag(READING_LIST_TAG).performScrollToIndex(32)
-        compose.waitForIdle()
+        awaitDisplayed("passage 33")
 
         assertEquals(
             "*** THE READER'S OWN SCROLL AFTER A PLACEMENT MUST BE RECORDED. `targetIndex` stayeth pinned for the " +
@@ -274,4 +327,22 @@ class GsFinal006RenderedReadingListTest {
             33L, vm.state.value.anchorPassageId,
         )
     }
+    /**
+     * *** A DETERMINISTIC WAIT FOR A UI CONDITION -- BECAUSE `waitForIdle()` MEASURES THE WRONG THING HERE. ***
+     *
+     * THE COURT WAS NONDETERMINISTIC IN FULL-SUITE RUNS AND DETERMINISTIC ALONE, WHICH IS THE SIGNATURE OF TIMING
+     * LUCK RATHER THAN A REAL DEPENDENCY: `waitForIdle` waiteth for the composition and the frame clock, but the
+     * PLACEMENT arriveth from a `LaunchedEffect` that calleth `scrollToItem` and from a `snapshotFlow` collector --
+     * COROUTINES WHOSE LANDING IS NOT "IDLE". So an assertion could run before or after the scroll depending on
+     * scheduling.
+     *
+     * `waitUntil { ... }` POLLS A CONDITION INSTEAD, which is the idiom for asynchronous UI state and removeth the
+     * timing from the assertion.
+     */
+    private fun awaitDisplayed(text: String) {
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
 }

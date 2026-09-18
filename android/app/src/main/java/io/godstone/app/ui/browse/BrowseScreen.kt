@@ -233,29 +233,48 @@ internal fun reportedAnchorPassageId(
 // REPLICA of this wiring would be asserting an architecture rather than observing the runtime, which is worse than
 // no court at all. The evidence is the real thing or it is nothing.
 internal fun ReadingList(state: BrowseUiState, vm: BrowseViewModel) {
-    // *** KEYED TO THE DOCUMENT -- AND IT **IS** NOW, BUT THE KEY IS DEFENSIVE AND IS **NOT** EXERCISED. ***
+    // *** KEYED TO THE DOCUMENT -- CORRECT, AND DOMINATED TODAY BY THE CONSUME-EFFECT's `scrollTo(0)`. ***
     //
     // MY FIRST DRAFT SAID "KEYED TO THE DOCUMENT" WHILE CALLING `rememberLazyListState()` WITH NO KEY AT ALL:
     // `rememberLazyListState(initialFirstVisibleItemIndex, initialFirstVisibleItemScrollOffset)` TAKES NO `vararg`
-    // KEYS, so the comment described an intention the code did not implement. `key(...)` is what actually discardeth
-    // the state when the document changes. **A COMMENT THAT CLAIMS BEHAVIOUR THE CALL DOES NOT HAVE IS THE SAME
-    // DEFECT AS A GATE NOBODY CONSULTS.**
+    // KEYS, so the comment described an intention the code did not implement. **A COMMENT THAT CLAIMS BEHAVIOUR THE
+    // CALL DOES NOT HAVE IS THE SAME DEFECT AS A GATE NOBODY CONSULTS.**
     //
-    // *** AND A REVIEW ASKED ME TO PROVE THE KEY WAS LOAD-BEARING, WHICH MADE ME MEASURE IT -- AND IT IS NOT. ***
-    // REMOVING `key(...)` LEAVES EVERY ARM GREEN, AND THE REASON IS STRUCTURAL RATHER THAN A COURT DEFECT:
-    //   * `ReadingList` IS COMPOSED ONLY IN `BrowseMode.DOCUMENT`, so leaving that mode for the document list
-    //     UNCOMPOSES it and `remember` is discarded anyway;
-    //   * AND THE SHIPPED NAVIGATION CANNOT PRODUCE A DIRECT DOCUMENT-TO-DOCUMENT TRANSITION (the reader must pass
-    //     through the list, which is DOCUMENTS mode);
-    //   * AND WHERE A NEW DOCUMENT IS OPENED, `ArchiveReadingAnchor.target` returneth THE FIRST PASSAGE (a cleared
-    //     anchor resolveth to `first`), so the consume-effect scrolls to index 0 REGARDLESS of the inherited offset.
-    //   AND IT WAS RE-RUN ON THE FINAL TREE, AFTER THE ARM AND THE FLOW-OBSERVATION FIX EXISTED, BECAUSE THE EARLIER
-    //   GREEN PREDATED BOTH AND WOULD HAVE BEEN A STALE VERDICT: STILL GREEN, 5/5.
-    // THE KEY THEREFORE GUARDETH A TRANSITION THE CURRENT NAVIGATION CANNOT PRODUCE. It is kept because it is correct
-    // and cheap and would matter the moment a "next document" affordance existeth -- **AND IT IS RECORDED AS
-    // UNEXERCISED RATHER THAN COUNTED AS COVERED.**
+    // *** AND MY SECOND EXPLANATION WAS ALSO WRONG, AND THIS ONE MATTERS MORE BECAUSE A WRONG RATIONALE MISLEADS THE
+    // NEXT MAINTAINER: I WROTE THAT THE TRANSITION WAS *UNREACHABLE*. IT IS NOT. *** `openPassage`/`openHit` (a
+    // passage card tapped while already in DOCUMENT mode) DO SWAP DOCUMENT A FOR B WITH `mode` STAYING DOCUMENT, so
+    // `ReadingList` STAYETH MOUNTED ACROSS THE SWAP AND THE TRANSITION IS REACHABLE.
+    //
+    // THE ACCURATE REASON, FROM THE SOURCE TRACE: on a fresh open of a DIFFERENT document the cross-document anchor is
+    // cleared by `openDocumentInternal`'s ownership guard -> `ArchiveReadingAnchor.target(ids, null)`RETURNETH THE
+    // FIRST PASSAGE -> `readingTargetPassageId` IS B'S FIRST PASSAGE -> **THE CONSUME-EFFECT RUNNETH `scrollToItem(0)`,
+    // WHICH FORCETH THE TOP WHATEVER OFFSET WAS INHERITED.** So the key is MASKED BY DOMINANCE, NOT BY UNREACHABILITY.
+    // **IT IS THE CORRECT FIX AND IT IS INDEPENDENTLY NEEDED: if a future change makes a same-document re-entry or a
+    // "next/previous chapter" affordance resolve the target to a NON-ZERO index, the consume-effect no longer masketh
+    // the inherited offset AND THIS KEY BECOMES LOAD-BEARING.**
+    //
+    // AND THE MEASUREMENT, RUN TWICE BECAUSE THE FIRST RUN WAS UNRELIABLE: removing this key LEAVES ALL SEVEN RENDERED
+    // ARMS GREEN -- deterministically, THREE CONSECUTIVE FULL-SUITE RUNS, and ALSO 3/3 WITH THE ARM ISOLATED. Early
+    // "reds" under this mutation were HARNESS NONDETERMINISM (the court's `waitForIdle` was racing the
+    // `LaunchedEffect`'s coroutine), NOT a real dependency: THE SAME MUTATION WITH THE SAME CODE WENT RED, THEN GREEN,
+    // THEN GREEN. The court's waits are now condition-based (`waitUntil`), and under them the result is stable.
+    // **RECORDED AS UNEXERCISED BY ANY ARM, AND NOT COUNTED AS COVERED.**
     val listState = key(state.openedDocumentId) { rememberLazyListState() }
 
+    // *** A REVIEW WARNED THAT THIS INLINE MAP FEEDS A FRESH `List` INTO BOTH EFFECTS' KEYS ON EVERY RECOMPOSITION,
+    // AND THAT `LaunchedEffect` KEYS COMPARE LISTS BY REFERENCE -- SO EQUAL CONTENTS WOULD STILL RE-FIRE, THE REPORT
+    // EFFECT WOULD RESTART ITSELF THROUGH ITS OWN `vm.noteScroll` WRITE, `previous`/`placementLanded` WOULD RESET,
+    // AND THE READER'S LATER SCROLLS WOULD SILENTLY STOP BEING RECORDED. ***
+    //
+    // **MEASURED IN ISOLATION, AND THE PREMISE IS FALSE: `LaunchedEffect` KEYS COMPARE WITH STRUCTURAL EQUALITY, NOT
+    // BY REFERENCE.** A composable that built `val ids = listOf(1L, 2L, 3L)` fresh on every composition, keyed an
+    // effect on it, and then FORCED a real recomposition (a click writing state) observed the effect start **EXACTLY
+    // ONCE**. (The probe was a throwaway and is deleted; the finding is here so the next maintainer does not re-derive
+    // it or "fix" a non-problem. The two-scroll arm below is what would catch a real restart, and it passeth.)
+    //
+    // (AND IT IS `state.passages` -- a STABLE model-state reference assigned once per successful load -- that the map
+    // deriveth from, so even under reference comparison this would not churn: the input is stable and the output is
+    // content-equal.)
     val ids = state.passages.map { it.chunkId }
     val target = state.readingTargetPassageId
 
