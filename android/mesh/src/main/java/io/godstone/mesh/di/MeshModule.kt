@@ -34,6 +34,7 @@ import io.godstone.mesh.identity.WipeStepResult
 import io.godstone.mesh.identity.PeerIdentityRepository
 import io.godstone.mesh.identity.RuntimeAwareWipeArtifacts
 import io.godstone.mesh.identity.RuntimeGatedPeerBindingTrustAuthority
+import io.godstone.mesh.identity.WipeSensitiveUseGate
 import io.godstone.mesh.identity.RuntimeGatedPeerIdentityLookupSource
 import io.godstone.mesh.identity.SqlcipherPeerIdentityStore
 import io.godstone.mesh.store.MessageStore
@@ -310,7 +311,7 @@ internal object MeshModule {
      * complete, and sensitive USE is refused until it has.
      */
     @Provides @Singleton
-    fun provideWipeIsPending(@ApplicationContext ctx: Context): () -> Boolean = {
+    fun provideWipeIsPending(@ApplicationContext ctx: Context): WipeSensitiveUseGate = WipeSensitiveUseGate {
         // READ, NEVER CACHED: the coordinator's own rule is that this question must be answered from the durable
         // record each time, because the answer CHANGES when the wipe completes.
         FileWipeJournal(ctx).read() != PanicWipe.WipeState.IDLE
@@ -320,10 +321,10 @@ internal object MeshModule {
     fun provideBoundRecipientKeyResolver(
         repo: PeerIdentityRepository,
         gate: DefaultRuntimeLifecycleGate,
-        wipeIsPending: () -> Boolean
+        wipeGate: WipeSensitiveUseGate
     ): BoundRecipientKeyResolver {
         val source = RuntimeGatedPeerIdentityLookupSource(
-            RepositoryPeerIdentityLookupSource(repo), gate, wipeIsPending,
+            RepositoryPeerIdentityLookupSource(repo), gate, wipeGate,
         )
         return BoundRecipientKeyResolver(source)
     }
@@ -347,10 +348,10 @@ internal object MeshModule {
         identity: Identity,
         repo: PeerIdentityRepository,
         gate: DefaultRuntimeLifecycleGate,
-        wipeIsPending: () -> Boolean
+        wipeGate: WipeSensitiveUseGate
     ): SessionManager {
         val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(
-            RepositoryPeerBindingTrustAuthority(repo), gate, wipeIsPending,
+            RepositoryPeerBindingTrustAuthority(repo), gate, wipeGate,
         )
         return SessionManager(identity, trustAuthority, lifecycleGate = gate)
     }

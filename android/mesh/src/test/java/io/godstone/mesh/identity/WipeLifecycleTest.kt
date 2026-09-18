@@ -20,6 +20,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Rule
+import io.godstone.mesh.identity.WipeSensitiveUseGate
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
@@ -181,7 +182,7 @@ class WipeLifecycleTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate) { false }
+        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate, WipeSensitiveUseGate { true })
         val resolver = BoundRecipientKeyResolver(lookup)
 
         val peer = MeshIdentity.generate()
@@ -201,7 +202,7 @@ class WipeLifecycleTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate) { false }
+        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate, WipeSensitiveUseGate { true })
 
         val peer = MeshIdentity.generate()
         val binding = peer.issueIdentityBinding()

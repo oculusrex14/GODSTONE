@@ -20,6 +20,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Rule
+import io.godstone.mesh.identity.WipeSensitiveUseGate
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
@@ -391,10 +392,10 @@ class CrashStartupResumeTest {
         val peerStore = JdbcPeerIdentityStore(peerFile)
         val peerRepo = PeerIdentityRepository(peerStore)
 
-        val gatedLookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(peerRepo), gate) { false }
+        val gatedLookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(peerRepo), gate, WipeSensitiveUseGate { true })
         val resolver = BoundRecipientKeyResolver(gatedLookup)
 
-        val gatedTrust = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(peerRepo), gate) { false }
+        val gatedTrust = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(peerRepo), gate, WipeSensitiveUseGate { true })
         val sm = SessionManager(
             identity = MeshIdentity.generate(),
             trustAuthority = gatedTrust,
@@ -481,7 +482,7 @@ class CrashStartupResumeTest {
 
         // THE DURABLE RECORD: a wipe that outlived a crash.
         val lookup = RuntimeGatedPeerIdentityLookupSource(
-            RepositoryPeerIdentityLookupSource(repo), gate, wipeIsPending = { true },
+            RepositoryPeerIdentityLookupSource(repo), gate, wipeGate = WipeSensitiveUseGate { false },   // PENDING: refuse
         )
         val result = lookup.lookup(someNodeId())
 
@@ -499,7 +500,7 @@ class CrashStartupResumeTest {
         val repo = admissionRepo()
         val gate = DefaultRuntimeLifecycleGate()
         val authority = RuntimeGatedPeerBindingTrustAuthority(
-            RepositoryPeerBindingTrustAuthority(repo), gate, wipeIsPending = { true },
+            RepositoryPeerBindingTrustAuthority(repo), gate, wipeGate = WipeSensitiveUseGate { false },   // PENDING: refuse
         )
         assertTrue(
             "a pending wipe must refuse the binding write while the process gate is active",
@@ -518,7 +519,7 @@ class CrashStartupResumeTest {
         val gate = DefaultRuntimeLifecycleGate()
 
         val lookup = RuntimeGatedPeerIdentityLookupSource(
-            RepositoryPeerIdentityLookupSource(repo), gate, wipeIsPending = { false },
+            RepositoryPeerIdentityLookupSource(repo), gate, wipeGate = WipeSensitiveUseGate { true },    // NO WIPE PENDING: allow
         )
         assertFalse(
             "with no wipe pending and the gate active, the lookup must REACH THE DELEGATE -- a seam that always " +
@@ -561,7 +562,7 @@ class CrashStartupResumeTest {
         repo.applyValidatedBinding(validated.binding)
 
         val resolver = io.godstone.mesh.di.MeshModule.provideBoundRecipientKeyResolver(
-            repo, gate, wipeIsPending = { true },
+            repo, gate, wipeGate = WipeSensitiveUseGate { false },   // PENDING: refuse
         )
 
         assertNull(
@@ -585,7 +586,7 @@ class CrashStartupResumeTest {
         repo.applyValidatedBinding(validated.binding)
 
         val resolver = io.godstone.mesh.di.MeshModule.provideBoundRecipientKeyResolver(
-            repo, gate, wipeIsPending = { false },
+            repo, gate, wipeGate = WipeSensitiveUseGate { true },    // NO WIPE PENDING: allow
         )
 
         assertNotNull(

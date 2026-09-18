@@ -23,6 +23,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import io.godstone.mesh.identity.WipeSensitiveUseGate
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.security.SecureRandom
@@ -71,7 +72,7 @@ class CompositionResolverAckTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate) { false }
+        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate, WipeSensitiveUseGate { true })
         val resolver = BoundRecipientKeyResolver(lookup)
         return Triple(repo, resolver, store)
     }
@@ -248,9 +249,9 @@ class CompositionResolverAckTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate) { false }
+        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate, WipeSensitiveUseGate { true })
         val resolver = BoundRecipientKeyResolver(lookup)
-        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate) { false }
+        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate, WipeSensitiveUseGate { true })
 
         val binding = makeBinding(seedA, 0L, staticPrivA)
 

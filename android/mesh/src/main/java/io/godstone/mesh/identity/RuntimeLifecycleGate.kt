@@ -89,6 +89,36 @@ class MeshRuntimeInvalidator internal constructor(
  * Adapter ensuring [PeerIdentityLookupSource] fails closed (returns StorageFailure)
  * when the runtime lifecycle gate has been invalidated.
  */
+/**
+ * *** GS-FINAL-003 (round 573): A NAMED SEAM INSTEAD OF A RAW LAMBDA -- BETTER SHAPE, AND IT MIRRORS iOS. ***
+ *
+ * A REVIEW RAISED THE RAW `() -> Boolean` BINDING, SO IT WAS ASSESSED AND REPLACED. **THE ASSESSMENT, STATED
+ * HONESTLY BECAUSE THE FIRST VERSION OF THIS COMMENT ASSERTED A DAGGER RULE THAT IS NOT ONE:**
+ *
+ *   * MY CLAIM WAS "Dagger does not support bindings for generic types, and it surfaces at the app's component
+ *     validation." **BOTH HALVES WERE WRONG.** Dagger rejects RAW types, type VARIABLES and WILDCARD-parameterised
+ *     keys -- a CONCRETE `Function0<Boolean>` IS A LEGAL KEY -- and `:mesh` is on NO `:app` classpath edge at all
+ *     (measured, and GATE-ENFORCED: `ci/check_lab_isolation.py`'s own mutation battery requires "a :mesh shipping
+ *     edge on LIGHT android" to FAIL). **SO THE APP COMPONENT COULD NEVER OBSERVE THESE BINDINGS EITHER WAY.**
+ *   * **A COMMENT EXPLAINING WHY SOMETHING IS DANGEROUS IS NOT A MEASUREMENT THAT IT IS** -- this programme's own
+ *     standing lesson, and the first draft of this very comment broke it.
+ *
+ * THE NAMED TYPE IS KEPT ON ITS OWN MERITS, WHICH ARE REAL AND DO NOT DEPEND ON THAT CLAIM:
+ *   * a CONCRETE NAMED SEAM cannot be silently repointed to `{ false }`, and an omitted or misspelled edge is a
+ *     TYPE ERROR rather than a silent always-admit -- the same no-safe-default discipline that earned its keep when
+ *     the compiler caught a construction site an edit had missed;
+ *   * **IT MIRRORS THE iOS ISLE, WHICH ALREADY HAS EXACTLY THIS TYPE** (`WipeSensitiveUseGate.allowsSensitiveUse()`),
+ *     so the two isles name the same concept the same way.
+ *
+ * AND THE HONEST LIMIT: this binding is validated by KSP/COMPILATION only, NOT by a Dagger component, because this
+ * isle has no composition root that reaches `:mesh`. That is a structural fact of the composition, not a defect
+ * introduced here.
+ */
+fun interface WipeSensitiveUseGate {
+    /** Whether the durable record says no wipe is outstanding -- asked PER CALL, never cached. */
+    fun allowsSensitiveUse(): Boolean
+}
+
 internal class RuntimeGatedPeerIdentityLookupSource(
     private val delegate: PeerIdentityLookupSource,
     private val lifecycleGate: RuntimeLifecycleGate,
@@ -117,11 +147,11 @@ internal class RuntimeGatedPeerIdentityLookupSource(
      * programme already proved compiler-enforced for GS-FINAL-009's exhaustive `when`. A default here is the defect,
      * not a convenience.
      */
-    private val wipeIsPending: () -> Boolean
+    private val wipeGate: WipeSensitiveUseGate
 ) : PeerIdentityLookupSource {
     override fun lookup(nodeId: ByteArray): PeerIdentityLookup {
         // THE DURABLE ANSWER FIRST: a wipe that outlived a crash is the condition the in-process flag cannot express.
-        if (wipeIsPending()) return PeerIdentityLookup.StorageFailure()
+        if (!wipeGate.allowsSensitiveUse()) return PeerIdentityLookup.StorageFailure()
         if (!lifecycleGate.isActive) return PeerIdentityLookup.StorageFailure()
         return delegate.lookup(nodeId)
     }
@@ -135,11 +165,11 @@ internal class RuntimeGatedPeerBindingTrustAuthority(
     private val delegate: PeerBindingTrustAuthority,
     private val lifecycleGate: RuntimeLifecycleGate,
     /** The durable half of the same question -- see [RuntimeGatedPeerIdentityLookupSource] for the full reasoning. */
-    private val wipeIsPending: () -> Boolean
+    private val wipeGate: WipeSensitiveUseGate
 ) : PeerBindingTrustAuthority {
     override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult {
         // A BINDING WRITTEN INTO A STORE THAT IS MID-WIPE IS EXACTLY THE WRITE THAT MUST NOT HAPPEN.
-        if (wipeIsPending()) return PeerTrustApplyResult.StorageFailure()
+        if (!wipeGate.allowsSensitiveUse()) return PeerTrustApplyResult.StorageFailure()
         if (!lifecycleGate.isActive) return PeerTrustApplyResult.StorageFailure()
         return delegate.applyValidatedBinding(binding)
     }
