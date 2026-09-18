@@ -820,6 +820,27 @@ FIX_SUBMITTED 48 · OPEN 0 · PARTIAL 6 · VERIFIED_FIXED 0        (54 findings 
 false half first (round 532) — *and a field that contradicts itself is worse than one that is merely old*; and nine
 `impact` sentences in round 533. **A twelve-finding sweep for empty proof fields closed the class at zero.**
 
+### ROUND 546 — A THIRD STALE CLAIM, AND THE SPAN'S OWN PATTERN NAMED
+
+**The ledger said GS-ARCHIVE-005's step 2 staleness clause was *"not witnessed on the scene road."* Measured clause by
+clause this round, it is fully landed:** the epoch gate is on the scene road (`epoch &+= 1; let mine = epoch` … `if
+epoch != mine { return }` **after the await**), **and its arm passes** — with a clause that reads *"the elder's stale
+tale, late wakened, may not supplant the younger's published truth"*. The prior metadata **is** cleared at **both**
+replacement sites (`:188-190`, `:288-289`), and the provenance display landed at round 524. **The claim was false when
+it was written.**
+
+> **THIS IS THE FOURTH RECORD CORRECTION OF THE SAME SPECIES, AND THE PATTERN IS NOW NAMED RATHER THAN COUNTED:** a
+> ledger written *in the same breath as a repair* describes what the repair **intended**, and three rounds later the
+> intention has been met **and the sentence has not been re-read.**
+
+**The remedy is the one this span has now applied four times: read the claim against the tree.** `GS-STORE-002`
+(steps 4 and 7 bundled with untouched ones, round 544), `GS-RUNTIME-001` (an empty proof field, round 532),
+`GS-ARCHIVE-005` (a field carrying both a claim and its own refutation, round 532), and now this one. **Twelve empty
+proof fields were cured and the class closed at zero; the stale-claim class is now closed four times by measurement.**
+
+**GS-ARCHIVE-005 now stands `PARTIAL` on step 7 alone** — *the one step the card itself forbids this span from counting
+without an OS lifecycle harness that does not exist here.*
+
 ### ROUND 545 — GS-RUNTIME-001: THE MISSING ASSIGNMENT, AND A LAW ABOUT DEPENDENCY INJECTION
 
 **Measured:** `provisionAckPump` was **injected into `provideMeshNode` and never assigned** — so `MeshNode.ackPump`
