@@ -13515,6 +13515,11 @@
    "round": 593,
    "finding": "PHASE-5-INTERMITTENT-ARM",
    "correction": "AN INTERMITTENT ARM FOUND BY THE NEW LANE-RESULT CONTROL, RECORDED RATHER THAN DISMISSED. `ReadinessT23Test#testTheDuplicateSecondTaleRunnethNotTheControllerTwice` FAILED in a full three-lane run (\"no second third goeth forth for a tale twice told expected:<1> but was:<2>\"), PASSED in isolation, and PASSED in a second full mesh run -- **TWO OF THREE, SO IT IS ORDER- OR TIMING-SENSITIVE.** The arm compares a write count on a SHARED OUTLET across a re-presentation, which inherently depends on whether the outlet has settled; THE LAW IS RIGHT AND THE INSTRUMENT IS FRAGILE. **NOT ATTRIBUTABLE TO THIS ROUND is an INFERENCE FROM THE SUBJECT MATTER (the BLE duplicate path is untouched here), NOT A MEASUREMENT, and it is recorded as an inference.** The durable repair is a wait-for-settle or an order-independent observation -- NOT a weakened count -- and is left for a round with a mandate over that court."
+  },
+  {
+   "round": 594,
+   "finding": "PHASE-4-EXIT",
+   "correction": "THE 40 `UNABLE_TO_VERIFY` ENTRIES ARE ASSESSED AGAINST DISK, NOT AGAINST THEIR STATUS FIELD. **388 LOG FILES, ALL PRESENT, ALL DIGEST-VERIFIED** -- every one of the 40 resolves to real evidence whose bytes are proven unchanged. SO THEY ARE NOT \"LEDGER STATUS ONLY\". A SUBSTANCE SPLIT: 30 are INTERNAL (their text names no signing/hardware/package/supply/approval input); **10 ARE EXTERNAL-TOUCHED** (GS-ARCHIVE-001/002, GS-CONTENT-001/002/003, GS-MODEL-001, GS-PACKAGE-001/002, GS-SUPPLY-001) and their external halves CANNOT be closed by anything this session runs -- recorded, not papered over. **OWED: the clause \"a shared fixture cannot be the sole source of expected semantics\" is NOT assessed** (it needs a per-finding census of fixture-only arms). AND MY FIRST TEST FOR \"lacking direct assessment\" REPORTED 15 FALSE NEGATIVES, because it demanded a log field named `outcome` and a commit lacking `PENDING` -- both wrong instruments, since the schema varies by round."
   }
  ],
  "phase_one": {
