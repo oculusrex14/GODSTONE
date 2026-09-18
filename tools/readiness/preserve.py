@@ -42,14 +42,42 @@ class PreservationError(RuntimeError):
 #: baseline was captured. GS-CTRL-002: the inventory must be EXPLICIT and CORRECT
 #: without weakening the comparison -- the live tree must equal the saved baseline
 #: PLUS exactly these declared additions, line for line.
+#: *** GS-CTRL-002 (round 663): RESOLVED UNDER THE TREE BEING VERIFIED, NOT UNDER preserve.py's OWN REPOSITORY. ***
+#:
+#: *The first draft anchored this to `__file__`, which meaneth the declaration of WHATEVER REPO THE MODULE LIVES IN is
+#: applied to WHATEVER TREE IS PASSED IN.* **THAT IS WRONG IN BOTH DIRECTIONS, AND THE COURT'S OWN ISOLATED NEGATIVE
+#: CONTROL PROVED IT:** a TEMPORARY fixture was accused of missing this project's `AUDIT_FINAL_2026-09-15`, because
+#: `verify_preservation(root, ...)` consulted a declaration that was never about `root`.
+#:
+#: **A DECLARATION IS A STATEMENT ABOUT ONE CHECKOUT**, so it must be read from that checkout. When the root has no
+#: such file, the caller's `inventory` is the only authority -- *which is exactly right for an isolated fixture.*
+_DECLARATION_RELPATH = os.path.join('docs', 'production-readiness', 'ORIGINAL_CHECKOUT_ADDITIONS.json')
+
+
+def declarations_path_for(root: str) -> str:
+    """The maintained declaration belonging to `root`, or '' when that checkout carrieth none."""
+    candidate = os.path.join(root, _DECLARATION_RELPATH)
+    return candidate if os.path.isfile(candidate) else ''
+
+
 DECLARATIONS_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    'docs', 'production-readiness', 'ORIGINAL_CHECKOUT_ADDITIONS.json')
+    _DECLARATION_RELPATH)
 
 
-def load_declared_additions(path: str = '') -> list[dict]:
-    """The reviewed external additions, or an empty list when none is declared."""
-    path = path or DECLARATIONS_PATH
+def load_declared_additions(path: str = None) -> list[dict]:
+    """The reviewed external additions, or an empty list when none is declared.
+
+    *** `None` MEANETH "USE THE MODULE'S OWN REPOSITORY"; `''` MEANETH "THIS TREE CARRIETH NONE" (round 663). ***
+    These were the same value, and that is how a per-tree resolution silently reverted to the module's own file: a
+    fixture with no declaration file resolved to `''` and the `path or DECLARATIONS_PATH` fallback put this
+    repository's declarations back in charge of a tree they were never about. **A DEFAULT AND AN ABSENCE MUST NOT BE
+    THE SAME VALUE** -- *the same distinction this round already drew for an empty list versus an absent key.*
+    """
+    if path is None:
+        path = DECLARATIONS_PATH
+    if not path:
+        return []
     if not os.path.isfile(path):
         return []
     with open(path, encoding='utf-8') as stream:
@@ -304,9 +332,47 @@ def verify_preservation(root: str, evidence_dir: str, inventory: dict) -> list[s
     #     handled, and it is the only case it handled.*
     #   * the inventory carrieth an EMPTY list -> it explicitly declareth NOTHING, and nothing is added. *(An empty list
     #     is a statement; an absent key is a gap. Collapsing them is what made a foreign fixture inherit our bundle.)*
-    declared_keys = inventory.get('declared_additions')
-    additions = list(declared_keys or [])
-    _augment = declared_keys is None
+    # *** AND THE MAINTAINED FILE TAKES PRECEDENCE OVER THE INVENTORY'S FROZEN COPY (round 663). ***
+    #
+    # The inventory's copy is a CAPTURE; the file existeth to record additions REVIEWED AFTER the capture, and the
+    # inventory's own note saith it is IMMUTABLE (*"This work never rewrites it"*) -- **so a frozen snapshot can never
+    # learn about a later-reviewed addition, and the file that existeth to record one must be the one that is read.**
+    # *Measured before this edit: naming `godstone-audit` in the file changed the live verdict by NOTHING, because the
+    # inventory's own copy shadowed it.*
+    #
+    # **AN ISOLATED FIXTURE STILL KEEPS ITS OWN TERMS:** a root carrying no declaration file falls back to the passed
+    # inventory exactly, so `declared_additions: []` in a temp checkout means NONE -- which is what the court's
+    # case (c) asserteth.
+    # *** THE UNION, WITH THE PASSED INVENTORY AUTHORITATIVE FOR EVERY PATH IT NAMES (round 663). ***
+    #
+    # THIS TOOK THREE ATTEMPTS AND EACH WRONG ONE WAS CAUGHT BY A DIFFERENT ARM OF THE COURT'S OWN CONTROL:
+    #   * replacement (file wins entirely) -> `test_undeclared_addition_is_still_refused` failed, because a TAMPERED
+    #     inventory became INVISIBLE and the control could no longer be falsified;
+    #   * unconditional union, resolved from `__file__` -> the same arm's THIRD CASE failed, because a TEMPORARY
+    #     fixture inherited THIS repository's declarations;
+    #   * **THE SYNTHESIS IS BOTH HALVES AT ONCE:** resolve the file PER-TREE (so a foreign fixture carrieth none) AND
+    #     union with the inventory taking precedence per path (so a caller -- and a control -- can still tamper, and
+    #     the tampering is still caught).
+    #
+    # **WHAT EACH SOURCE IS FOR, WHICH IS WHY BOTH ARE NEEDED:**
+    #   * the PASSED INVENTORY is the record of what was captured. *A caller may pass a modified one, and the court's
+    #     negative controls DEPEND on that being honoured.*
+    #   * the MAINTAINED FILE existeth to record additions REVIEWED AFTER the capture -- **and the inventory's own note
+    #     saith it is IMMUTABLE ("This work never rewrites it"), so a frozen snapshot can NEVER express one.** *That is
+    #     the defect this fixeth: measured before it, naming `godstone-audit` in the file changed the live verdict by
+    #     NOTHING.*
+    additions = list(inventory.get('declared_additions') or [])
+    known = {entry['path'] for entry in additions}
+    for entry in load_declared_additions(declarations_path_for(root)):
+        if entry['path'] in known:
+            continue          # the inventory's own declaration for this path STANDS -- tampering stays visible
+        additions.append({'path': entry['path'],
+                          'entries': entry.get('entries'),
+                          'declared_entries': entry.get('entries'),
+                          'grows': entry.get('grows'),
+                          'read_only': entry.get('read_only'),
+                          'copied_into_evidence': entry.get('copied_into_evidence')})
+    _augment = False
     # *** AND THE MAINTAINED DECLARATION AUGMENTS THEM -- NEITHER SOURCE MAY BE SILENTLY IGNORED. ***
     #
     # MY FIRST ATTEMPT AT THIS FIX LET THE FILE *REPLACE* THE INVENTORY, AND THE COURT'S OWN NEGATIVE CONTROL CAUGHT

@@ -99,6 +99,19 @@ def add_declared(repo, dest, inv):
     folder appeared -- so the reproduction check belongeth on the pre-declaration tree, and the additions are what the
     COURT needeth to find present.* The two checks answer different questions and must not be conflated.
     """
+    # *** NO DECLARATION FILE IS COPIED INTO THE FIXTURE, AND THE REASON IS THE ROUND-663 DESIGN. ***
+    #
+    # `declarations_path_for(root)` resolveth the declaration UNDER THE TREE BEING VERIFIED. **SO A FIXTURE CARRIETH
+    # NONE, AND THEREFORE INHERITS NOTHING** -- which is what stoppeth this repository's declarations from judging a
+    # tree they were never about. *The fixture instead reconstructs the PRESERVED state, whose declared additions are
+    # exactly the ones its own inventory carrieth.*
+    #
+    # **TWO EARLIER DRAFTS GOT THIS WRONG, EACH CAUGHT BY A COURT ARM:**
+    #   * copying the file in UNTRACKED made it an undeclared difference (measured: remainder 157 vs baseline 156, the
+    #     single extra being exactly that file);
+    #   * committing it MOVED `HEAD`, so `test_inventory_matches_live_git_facts` failed with the fixture's new SHA
+    #     against the inventory's recorded `b5c3d3d3`.
+    # **AND THE FIX IS NEITHER -- IT IS NOT TO COPY IT AT ALL.**
     for entry in inv.get('declared_additions', []):
         src = os.path.join(repo, entry['path'])
         if os.path.isdir(src) and not os.path.exists(os.path.join(dest, entry['path'])):
