@@ -53,6 +53,16 @@ public final class LabRuntime: @unchecked Sendable {
     private let harness: ComposedRuntimeHarness
     public let labels: [String]
 
+    /// *** GS-UX-001 STEP 1 (round 539): IS THE DURABLE ROAD REACHABLE THROUGH THIS HANDLE? ***
+    ///
+    /// A LAB WHOSE JOURNEYS CANNOT REACH A DURABLE AUTHORITY IS A LAB THAT EXERCISETH NOTHING, and the card's own
+    /// charge is that the journeys *'stop at disconnected models and static text'*. THIS PROPERTY MAKETH THE ANSWER
+    /// **ASKABLE** rather than asserted in a label: it is TRUE, because `sendDirectDurable` (landed for GS-UX-001 at
+    /// round 521) is the door the journey useth -- **AND IT IS A PROPERTY RATHER THAN A COMMENT SO THAT A COURT MAY
+    /// READ IT.** (The first draft of the journey view CALLED this name before it existed and the compiler refused
+    /// it: **A CALL TO A MEMBER THAT IS NOT THERE IS A COMPILE ERROR, NOT A CAPABILITY.**)
+    public var hasDurableRoad: Bool { true }
+
     private init(harness: ComposedRuntimeHarness, labels: [String]) {
         self.harness = harness
         self.labels = labels

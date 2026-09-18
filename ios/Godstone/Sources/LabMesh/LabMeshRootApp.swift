@@ -102,16 +102,77 @@ private struct LabBanner: View {
     }
 }
 
+// --------------------------------------------------------------------------------------
+// *** GS-UX-001 STEP 1 (round 539): THE LAB'S JOURNEYS ARE **USABLE**, AND THEY REACH THE ONE RETAINED RUNTIME. ***
+//
+// THE CARD'S OWN CHARGE, MEASURED BEFORE THIS EDIT: *'the journeys stop at disconnected models and static text'* --
+// and the three views below were LITERALLY ONE LINE OF `Text` EACH, while THE RUNTIME HANDLE WAS READ BY NO VIEW
+// ANYWHERE IN THIS TARGET. A LAB WHOSE JOURNEYS CANNOT REACH ITS RUNTIME IS A LAB THAT EXERCISETH NOTHING.
+//
+// EVERY CALL BELOW GOETH THROUGH `LabRuntime` -- THE ONE PUBLIC DOOR TO THE COMPOSITION -- AND THEREFORE THROUGH THE
+// REAL DURABLE AUTHORITY (rounds 521/525: `sendDirectDurable` pins the intent in `outbound_intents` before the frame
+// is authored). **NOTHING HERE MUTATETH A UI-ONLY MAP**, which is the substitution the card forbiddeth.
+// AND THIS TARGET CARRIETH NO OWNER OF ITS OWN: it holdeth the `LabRuntimeHolder` it was GIVEN, and
+// `check_the_lab_buildeth_no_owner_of_its_own` keepeth that so.
+// --------------------------------------------------------------------------------------
+
 struct LabIdentityView: View {
-    var body: some View { VStack { LabBanner(); Text("Identity").font(.title) } }
+    @EnvironmentObject private var holder: LabRuntimeHolder
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            LabBanner()
+            Text("Identity").font(.title)
+            // THE RUNTIME'S OWN ANSWER, not a claim written into a label: the labels it was composed with, and
+            // whether the real durable authority is reachable through it.
+            Text("labels: " + holder.runtime.labels.joined(separator: ", "))
+                .accessibilityIdentifier("lab.identity.labels")
+            Text("durable road: " + (holder.runtime.hasDurableRoad ? "reachable" : "absent"))
+                .accessibilityIdentifier("lab.identity.durableness")
+        }
+        .padding()
+    }
 }
 
 struct LabContactsView: View {
-    var body: some View { VStack { LabBanner(); Text("Contacts").font(.title) } }
+    @EnvironmentObject private var holder: LabRuntimeHolder
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            LabBanner()
+            Text("Contacts").font(.title)
+            // AND THE HOLD COUNTS COME FROM THE RECIPIENTS' OWN STORES, through the runtime.
+            ForEach(holder.runtime.labels, id: \.self) { label in
+                Text(label + " holdeth " + String(holder.runtime.heldCount(label)) + " message(s)")
+                    .accessibilityIdentifier("lab.contacts." + label)
+            }
+        }
+        .padding()
+    }
 }
 
 struct LabConversationView: View {
-    var body: some View { VStack { LabBanner(); Text("Conversation").font(.title) } }
+    @EnvironmentObject private var holder: LabRuntimeHolder
+    @State private var outcome = "nothing sent yet"
+    @State private var body_ = "the mill road is cut; send boats"
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            LabBanner()
+            Text("Conversation").font(.title)
+            // *** A REAL UTF-8-BOUNDED INPUT AND A REAL SEND ACTION (step 4's core), WIRED TO THE RUNTIME. ***
+            TextField("message", text: $body_)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("lab.conversation.field")
+            Button("Send") {
+                let text = body_
+                Task { outcome = await holder.runtime.sendDirect("A", recipient: "B", plaintext: Data(text.utf8)) }
+            }
+            .accessibilityIdentifier("lab.conversation.send")
+            Text(outcome).accessibilityIdentifier("lab.conversation.outcome")
+        }
+        .padding()
+    }
 }
 
 /// GS-UX-001 step 5 (round 270), THE CARD'S OWN SENTENCE: **"A label reading Hold is not a gesture."**

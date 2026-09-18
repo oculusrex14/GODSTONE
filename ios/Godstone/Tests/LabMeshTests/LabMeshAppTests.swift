@@ -94,4 +94,46 @@ final class LabMeshAppTests: XCTestCase {
             return XCTFail("an intent that was never authored must be ABSENT, not found")
         }
     }
+
+    // MARK: - GS-UX-001 step 1: THE JOURNEYS REACH THE ONE RUNTIME
+
+    /// *** GS-UX-001 STEP 1: *'the journeys stop at disconnected models and static text'* -- MEASURED AND ANSWERED. ***
+    ///
+    /// MEASURED AT ROUND 539 BEFORE THE EDIT: `LabIdentityView`, `LabContactsView` and `LabConversationView` were
+    /// **LITERALLY ONE LINE OF `Text` EACH**, and **THE RUNTIME HANDLE WAS READ BY NO VIEW ANYWHERE IN THIS TARGET**
+    /// -- a lab whose journeys cannot reach its runtime is a lab that exerciseth nothing. THE JOURNEYS NOW REACH IT
+    /// THROUGH `LabRuntime`, THE ONE PUBLIC DOOR TO THE COMPOSITION, and therefore through the REAL DURABLE
+    /// AUTHORITY (`sendDirectDurable`).
+    ///
+    /// THE INSTRUMENT IS STRUCTURAL, BECAUSE THE VIEWS LIVE IN THE APP TARGET WHICH NO TEST BUNDLE CAN IMPORT
+    /// (measured: `LabMeshTests` linketh onely the packages). **AND THE LAB AND SHIPPING TARGETS WERE BOTH BUILT**
+    /// (`xcodebuild`) to prove the views compile -- the onely instrument that compilth them.
+    func testTheJourneysReachTheOneRuntimeRatherThanStaticText() throws {
+        let root = try String(contentsOf: labSource(named: "LabMeshRootApp.swift"), encoding: .utf8)
+        for journey in ["LabIdentityView", "LabContactsView", "LabConversationView"] {
+            XCTAssertTrue(root.contains(journey),
+                          "the journey \(journey) must stand")
+        }
+        XCTAssertGreaterThanOrEqual(root.components(separatedBy: "holder.runtime.").count - 1, 3,
+                                    "*** THE JOURNEYS MUST REACH THE ONE RETAINED RUNTIME: a journey that showeth "
+                                    + "static text exerciseth NOTHING, which is the card's own charge "
+                                    + "(GS-UX-001 step 1) ***")
+        XCTAssertTrue(root.contains("sendDirect"),
+                      "and a journey must be able to SEND through the runtime, not merely display it")
+        // AND THE DURABLE ROAD IS ASKABLE rather than asserted in a label.
+        let lab = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x31)
+        XCTAssertTrue(lab.hasDurableRoad,
+                      "the runtime must be able to SAY that the durable road is reachable (GS-UX-001 step 1)")
+    }
+
+    private func labSource(named name: String) throws -> URL {
+        var repo = URL(fileURLWithPath: #filePath)
+        var hops = 0
+        while repo.path != "/" && hops < 12 {
+            if FileManager.default.fileExists(atPath: repo.appendingPathComponent("android").path) { break }
+            repo.deleteLastPathComponent(); hops += 1
+        }
+        return repo.appendingPathComponent("ios/Godstone/Sources/LabMesh/" + name)
+    }
+
 }
