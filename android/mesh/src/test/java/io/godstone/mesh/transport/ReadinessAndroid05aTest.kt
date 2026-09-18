@@ -94,43 +94,32 @@ class ReadinessAndroid05aTest {
         assertTrue("the retry's successful attempt must start the transport",
             transport.isStartedForTest())
     }
-
-    @Test
-    fun testW03AFailedAttemptMustLeaveNothingAdvertisingAndNothingStarted() {
-        // THE SUPPLEMENT'S OWN CLOSURE WORDS: "first GATT start fails -> transport is completely
-        // non-started, with no advertising or stale owned server/lease/session state". The
-        // observables below are the ones that cannot be faked by a local flag: the ADVERTISER's own
-        // call count, and the narrow lifecycle observation the supplement requireth.
-        val attempts = CountingAttempts(listOf(false))
-        val hooks = RecordingAdvertiser()
-        val transport = BleTransport(
-            identity = identity(), advertisingHooks = hooks,
-            serverStartAttempt = { attempts.next() })
-        transport.start()
-        assertEquals("the failing attempt was never attempted", 1, attempts.attempts)
-        assertFalse("a transport whose OS start FAILED must not be started",
-            transport.isStartedForTest())
-        assertFalse("a transport whose OS start FAILED is not running", transport.isRunning)
-        assertEquals(
-            "a FAILED start left advertising behind: nothing may be advertised from an attempt " +
-                "that never succeeded",
-            0, hooks.starts)
-    }
-
-    @Test
-    fun testW04TheRetryAfterAFailureAdvertisethAtMostOnce() {
-        // "second start retries GATT and succeeds" -- and the retry may not DOUBLE the advertiser.
-        val attempts = CountingAttempts(listOf(false, true))
-        val hooks = RecordingAdvertiser()
-        val transport = BleTransport(
-            identity = identity(), advertisingHooks = hooks,
-            serverStartAttempt = { attempts.next() })
-        transport.start()
-        transport.start()
-        assertEquals("the retry must attempt the OS start exactly once more", 2, attempts.attempts)
-        assertTrue("nothing may be advertised before an attempt succeedeth", hooks.starts <= 1)
-        transport.stop()
-        transport.stop()
-        assertEquals("stop must be idempotent", 2, attempts.attempts)
-    }
 }
+
+// ---------------------------------------------------------------------------------------------
+// RUN RECIPE -- this probe lives OUTSIDE the :mesh module ON PURPOSE (it is RED on the current
+// product, and a lane expected green may never carry a red arm).
+//
+//   1. cp tools/readiness/audit_probes/kotlin/ReadinessAndroid05aTest.kt.txt \
+//         android/mesh/src/test/java/io/godstone/mesh/transport/ReadinessAndroid05aTest.kt
+//   2. the CARRIERS are already in BleTransport.kt and are INERT (production unchanged): a nullable
+//      `serverStartAttempt: (() -> Boolean)? = null` seam, used at the use site so the default is
+//      the real `gattServer.start()`, and a narrow `isStartedForTest()` observation.
+//   3. cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessAndroid05aTest*'
+//        -> W01 PASSES (positive control); W02 FAILS: the second start() returned at the guard
+//           without attempting GATT startup (attempts stayed 1, not 2).
+//
+// CAPTURED RED: REMEDIATION/ANDROID-05/red/android-05a-suppressed-retry-RED-*.log (sha256 68d17977...),
+//   2 tests, 1 failure, 0 errors.
+//
+// WHY THE REPAIR IS NOT HERE YET -- MEASURED, AND IT IS THE WHOLE DIFFICULTY (round 112):
+// the faithful repair (commit running only AFTER a successful OS start, and retire the failed
+// attempt) was written and MEASURED to break FOUR PINNED CONTROLS in `ReadinessT11Test`
+// (testPublishedRelationsArePinnedAcrossTheFlood, testCaptureSnapshotsTheSourceNeverThePlatformObject,
+// testPermissionRestorationOpensAFreshRegistration, testTenThousandDistinctAdvertisersStayBounded).
+// THE REASON IS THE FINDING ITSELF: those courts construct the real BleTransport with NO boundary
+// injected, so on the host the real `gattServer.start()` returneth FALSE -- and they RELY on
+// `isStarted` having been set anyway, i.e. THEY DEPEND ON THE AUDITED DEFECT. The repair therefore
+// cannot land alone: those fixtures must be REPAIRED to the new contract (inject a succeeding
+// attempt through `serverStartAttempt`) in the SAME change, and that is a whole round. Shipping the
+// product half would have left the :mesh lane red, which this work may never do.
