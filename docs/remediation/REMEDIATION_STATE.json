@@ -13577,6 +13577,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-5/round613-the-android-lineage-kills-a-rod-for-the-first-time.log",
    "sha256": "1b6b632668d174e626de707c6d0f00a5056992bddfd72db5c78752099d177fe8",
    "correction": "THE ANDROID LINEAGE HAS NOW BEEN OBSERVED TO KILL A ROD, WHICH IS WHAT ROUND 603 OWED. Round 603 measured that every Android rod returned `INVALID` because the harness ran gradle with NO `env=` -- the worktree inherited no `ANDROID_HOME`, could not configure, the mutant never built, and NO ANDROID ROD COULD EVER BE KILLED WHILE THE HARNESS REPORTED A VERDICT ABOUT THE CODE. Post-fix, two rods are OBSERVED KILLING on that isle: `T24-SM1-android-swallow-offer-verdict` (run=6 failed=1, witness `testAFullChannelAnswerethWithBackpressureAndIsNotSilentlyDropt`) and `T33-RC1-android-fabricate-zero-heldbytes` (run=8 failed=2, witness `testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission`). **AND THE EVIDENCE IS THE ROD'S OWN LOG, NOT THE VERDICT LINE: it carrieth `6 tests completed, 1 failed` and `Execution failed for task :mesh:testDebugUnitTest`, and the sentence that made every previous Android rod `INVALID` (`SDK location not found`) APPEARETH NOWHERE.** A kill verdict alone would not have been enough -- round 603 is the proof, because forty-odd rods carried a verdict while nothing ran. THE FULL POST-FIX LINEAGE WAS STILL IN PROGRESS WHEN THIS WAS RECORDED: **two Android kills observed, the rest NOT yet read, no aggregate summed, and the earlier `INVALID` verdicts are NOT retroactively upgraded** -- they came from an instrument that could not run them."
+  },
+  {
+   "round": 619,
+   "finding": "PHASE-8-AUDIT-PROCEDURE",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-012/round619-the-audits-named-verifications-executed.log",
+   "sha256": "9a8709c7dfe789b404daa380f037234e5adb5e584c177eeb0b0b8d10a8348f91",
+   "correction": "THE AUDIT'S OWN NAMED VERIFICATIONS WERE EXECUTED RATHER THAN ASSUMED. `NEXT_EXECUTION.md` names commands nobody had put against this candidate. FOUR EXECUTABLE ONES WERE RUN: (1) `sync_ios_foundation_package.py --check` -> rc 0, THE GENERATED MIRROR IS VERIFIED AGAINST CANONICAL rather than merely re-generated -- which mattereth because the mirror is rmtree'd, and this repository's history recordeth three mutation rounds invalidated by that trap; (2) the audit's DIGEST CONTRACT both ways -- the audited revision FAILS 4 of 6, OURS PASSES 6 of 6 (round 617), so the filed defect is repaired and the proof is the auditor's own arms; (3) EVERY LEDGER-CITED REMEDIATION SHA resolved and ancestry-checked -- 9 distinct commits, EVERY ONE `cat-file`-resolves and EVERY ONE is an ancestor of HEAD, no phantoms; (4) THE AUDIT'S CLASSIFICATION read from its own data -- 54 original rows (40 UNABLE_TO_VERIFY, 7 FIX_SUBMITTED_BUT_NOT_VERIFIED, 6 PARTIAL_MISCLASSIFIED, 1 NOT_FIXED, all closure_blocked), 13 new findings EVERY ID MATCHING THE LEDGER, and 18 residual uncertainties. THE ONE `NOT_FIXED` ROW IS GS-STORE-006, whose stated remaining work is the three clauses the round-574 record addresseth by name -- a repaired candidate now exists, which is what that row required, but ONLY AN INDEPENDENT AUDIT MAY MOVE ITS STATUS. AND MY FIRST SHA-EXTRACTION WAS WRONG: it scraped hex-looking tokens from status prose and produced a \"SHA\" that was a paragraph -- **a field named `submitted_at_sha` does not always contain a SHA, and a checker that cannot tell a SHA from a sentence will eventually report on a sentence.** NOT DONE AND NOT CLAIMED: T01's preservation fixture, the six controls from a disposable clone, the forty per-finding implementation reviews, and the external cards (no artifact has arrived)."
   }
  ],
  "phase_one": {
@@ -14351,7 +14358,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "99711faa6164acf820f40b8574380f41fd55d824",
+  "candidate_sha": "2b502788f5b08553037caab2cc016f6ee38e3021",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
