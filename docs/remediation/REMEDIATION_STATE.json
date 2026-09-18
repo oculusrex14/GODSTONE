@@ -13891,6 +13891,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-011/round723-red-proven-by-mutation.log",
    "sha256": "bc2c632e9339e5ff301a7508bb856055dbc58d1af31c5b107d5262cce2826fb3",
    "correction": "THE CITED \"RED\" WAS NOT A RED. An independent sweep flagged that the log this entry named as its red shows the arm PASSING; **I ENUMERATED EVERY OCCURRENCE RATHER THAN READING THE FIRST MATCH, BECAUSE ONE \"passed\" LINE IS CONSISTENT WITH BOTH STORIES** (an earlier attempt failing and re-running later; or the arm never reddening) -- `grep -n testGSFINAL011` returns EXACTLY TWO LINES, started and passed, and the journal print the red_case quotes is ABSENT from that file (`grep -c` = 0). **So the file is GREEN evidence and is retained as such.** *Per this work's own standing rule the cited run is the authority, so I corrected the fields rather than reasoned from the narrative -- and PROVED THE RED MYSELF BY MUTATION ON THE CURRENT TREE: the audited defect reintroduced (fresh wipe routed through the old ladder that cannot write `runtimeDrained`) produced \"Observed journal: []\" and the arm FAILED; restored, it passes.* **`Observed journal: []` is a better red than the narrative it replaces, because the arm keys on the DURABLE RECORD and cannot be satisfied by a returned string.** *A FIX_SUBMITTED resting on a named artifact that denieth it poisoneth belief in the whole block, not just the line.*"
+  },
+  {
+   "round": 725,
+   "finding": "GS-FINAL-010",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-010/round725-failed-start-retry-arm.log",
+   "sha256": "1e56fec6a53d226d28fecb860c09174ac32152edecbda33c038b5680c59e7dd1",
+   "correction": "THE AUDIT'S FAILED-START-RETRY ARM ADDED, AFTER TWO DRAFTS THAT COULD NOT DISCRIMINATE. Draft 1 had a wrong premise (the latch starts false, so the first stop always closes once); draft 2 PASSED THE MUTATION it was built for, because an unconditional re-arm is a no-op while the latch is already false -- *a draft that passes its own mutation is a test of nothing.* The discriminating sequence runs the latch to TRUE first: activate+stop, then a REFUSING owner, then the stop that must close nothing. With the unconditional re-arm re-applied: \"(2) is not equal to (1)\"; restored, 7/7."
   }
  ],
  "phase_one": {
@@ -14603,6 +14610,9 @@
      "THE AUDIT'S RESTART CONTRACT IS SATISFIED FOR THE case IT POSED -- a reusable node now closes again -- and the terminal case is measured (a power loss is not undone). What is NOT done is the audit's other prescribed option: a TYPED REFUSAL from `start()` after a terminal stop. `MeshNode.start()` still returns Bool and its guard is `canStart(linkReady:)`; a typed activation outcome that a caller must consume is a larger change to a public signature and is named here rather than claimed.",
      "NO DEVICE EVIDENCE: the radio effects are measured through a recording `TransportSeam`, so \"the platform really began advertising\" is a recording of the CALL, not an observation of the radio. That is the device gate.",
      "AND ONE OF MY OWN ARMS WAS FALSE AND IS RECORDED: its first draft called `startInOrder(attach:open:)` with its own closure, so `openAdapters()` never ran and `adaptersOpenedThroughTheOwner` stayed 0 -- THE ARM COULD NOT SEE THE DEFECT IT NAMED. `openAdapters()` was private; it is now internal so the arm drives the real road."
+    ],
+    "evidence": [
+     "ROUND 725 -- THE AUDIT'S \"TEST FAILED START FOLLOWED BY RETRY\" CLAUSE, WHICH NO ARM EXERCISED. An independent sweep reported the court bypasses a failed owner activation; MEASURED, the premise was narrow -- every existing arm built its lifecycle with `adapterPresent: true, permissionGranted: true`, so no arm ever drove an activation the owner REFUSED, *which is precisely the road the fix's own comment describes (\"ONLY AN ACTIVATION THAT REALLY TOOK RE-ARMS THE CLOSE\").* **AND MY FIRST TWO DRAFTS COULD NOT DISCRIMINATE, WHICH THE MUTATION SAID BOTH TIMES:** draft 1 asserted a stop after a refused activation closes NOTHING and failed `\"1\" is not equal to \"0\"` (*the latch starts FALSE, so the first-ever stop always closes once -- the documented closed-before-open guarantee, not a re-arm*); draft 2 corrected that and then **PASSED THE MUTATION WHILE THE RE-ARM WAS MADE UNCONDITIONAL** (*an unconditional assignment is a no-op while the latch is already false*). *** A draft that passes the mutation it was built for is not a weak arm; it is a test of nothing. *** **THE SEQUENCE THAT DISCRIMINATES runs the latch to TRUE FIRST:** activate+stop, then a REFUSING owner, then the stop that must close nothing, then a retry whose own stop must close. MEASURED with the unconditional re-arm re-applied: `(\"2\") is not equal to (\"1\")`; restored, 7/7."
     ]
    },
    "GS-FINAL-011": {
@@ -14721,7 +14731,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "915b6ad08b8b6322a28d3b6313ef0b922f69fbe2",
+  "candidate_sha": "8ba87af1e2c3715383884c417b5dc371583b6bbd",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

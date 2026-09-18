@@ -258,6 +258,76 @@ final class GsFinal010ShutdownLatchTests: XCTestCase {
             "a terminal owner must NOT be resurrected by a later activation -- `start()` refuseth on its own contract",
         )
     }
+    /**
+     * *** GS-FINAL-010 (round 725): "TEST FAILED START FOLLOWED BY RETRY" -- THE AUDIT'S OWN REGRESSION CLAUSE. ***
+     *
+     * An independent sweep reported: *"the court bypasses `start()` itself, so its unconditional `return true` on failed
+     * owner activation is unobserved and the audit's failed-start-retry clause is untested."*
+     * **THE AUDIT'S `Regression test`, VERBATIM: "Proposed StartStopStartStopThroughComposition: observe actual transport
+     * start/stop calls, returned states, callback generations and resource census; TEST FAILED START FOLLOWED BY RETRY."**
+     *
+     * *** AND THE SIBLING COURT'S PREMISE WAS INDEED NARROW: every existing arm built its lifecycle with
+     * `adapterPresent: true, permissionGranted: true`, SO NO ARM EVER DROVE AN ACTIVATION THE OWNER REFUSED. *** *That is
+     * exactly the road the fix's own comment describeth -- "ONLY AN ACTIVATION THAT REALLY TOOK RE-ARMS THE CLOSE" -- and
+     * the road nothing measured.* **THIS ARM DRIVES IT: an owner that REFUSETH, and then a retry that SUCCEEDETH.**
+     */
+    func testGSFINAL010_aRefusedActivationRearmsNothingAndARetryStillOpens() throws {
+        let (node, seam) = try makeNode()
+
+        // *** THE SEQUENCE MATTERS, AND MY FIRST TWO DRAFTS GOT IT WRONG: ***
+        //   * the latch STARTETH FALSE, so the first-ever stop always closes once (*the documented closed-before-open
+        //     guarantee, not a re-arm*);
+        //   * and an unconditional re-arm is a NO-OP while the latch is already false.
+        // **MEASURED: with `adaptersClosed = false` made UNCONDITIONAL, my first draft's arms PASSED -- the mutation did
+        // not redden, which meaneth the arm could not discriminate.** *The observable difference existeth ONLY once the
+        // latch is TRUE: a SUCCESSFUL activation+stop sets it, and THEN a refused activation must leave it ALONE.*
+        // **So the arm runneth that order, and the last stop is the discriminator.**
+
+        // (1) A SUCCESSFUL ACTIVATION AND ITS STOP -- this SETS the latch.
+        let first = UnifiedRuntimeLifecycle(seam: seam, nowMillis: { 0 },
+                                            adapterPresent: true, permissionGranted: true)
+        node.lifecycleOwner = first
+        node.startInOrder(attach: {}, open: { node.openAdapters() })
+        XCTAssertTrue(first.isStarted(), "the first activation must really start")
+        node.stop()
+        let afterFirstCycle = node.adaptersClosedThroughTheOwner
+        XCTAssertEqual(afterFirstCycle, 1, "the first cycle must close exactly once")
+
+        // (2) *** A REFUSED ACTIVATION, WITH THE LATCH NOW TRUE: IT MUST RE-ARM NOTHING. ***
+        let refusing = UnifiedRuntimeLifecycle(seam: seam, nowMillis: { 0 },
+                                               adapterPresent: false, permissionGranted: true)
+        node.lifecycleOwner = refusing
+        node.startInOrder(attach: {}, open: { node.openAdapters() })
+        XCTAssertFalse(refusing.isStarted(), "*** the owner must really have REFUSED the activation ***")
+
+        // (3) *** THE DISCRIMINATOR. *** *Were the re-arm unconditional, `adaptersClosed` would now be FALSE and this
+        // stop would close a SECOND time -- counting a teardown for a radio that never opened.*
+        node.stop()
+        XCTAssertEqual(
+            node.adaptersClosedThroughTheOwner, afterFirstCycle,
+            "*** GS-FINAL-010: A REFUSED ACTIVATION MUST NOT RE-ARM THE CLOSE. The repair re-arms `adaptersClosed` ONLY "
+                + "when the owner really became started (`if !wasStarted && lifecycleOwner.isStarted()`); were that "
+                + "condition dropped, THIS stop would close a second time for a radio that never opened. Observed "
+                + "closes: \(node.adaptersClosedThroughTheOwner) (was \(afterFirstCycle) after the first cycle). ***",
+        )
+
+        // (4) AND THE RETRY: A SUCCESSFUL ACTIVATION AFTER A REFUSED ONE MUST BE CLOSED BY ITS OWN STOP.
+        let retry = UnifiedRuntimeLifecycle(seam: seam, nowMillis: { 0 },
+                                            adapterPresent: true, permissionGranted: true)
+        node.lifecycleOwner = retry
+        node.startInOrder(attach: {}, open: { node.openAdapters() })
+        XCTAssertTrue(retry.isStarted(), "the retry must really activate")
+        let beforeRetryStop = node.adaptersClosedThroughTheOwner
+        node.stop()
+        XCTAssertEqual(
+            node.adaptersClosedThroughTheOwner, beforeRetryStop + 1,
+            "*** AND THE RETRY'S OWN STOP MUST CLOSE THROUGH THE OWNER -- a failed start followed by a successful retry "
+                + "is the cycle the audit named, and it must end in a matched teardown. ***",
+        )
+        XCTAssertFalse(retry.isStarted(), "and the owner must stand stopped")
+    }
+
+
 }
 
 // MARK: - this court's own doubles (the ones elsewhere are private to their files)
