@@ -13541,6 +13541,11 @@
    "round": 597,
    "finding": "PHASE-7-EXIT",
    "correction": "THE \"NO PROHIBITED BINARY PAYLOAD\" CLAUSE IS MEASURED, BY THE AUDIT'S OWN INSTRUMENT: `tools/readiness/audit_probes/test_audit_artifacts.py` -- its 12 cases ALL PASS on this tree, including the two arms that measure the clause directly (`test_arm64_macos_binary_fails_ios_inspection` -> verdict FAIL for a macOS arm64 binary; `test_forbidden_actual_entitlements_fail` -> verdict FAIL for a forbidden signed entitlement) and the four positive controls that keep the suite from being one that refuses everything. THE README RECORDETH THAT SEVEN OF THESE TWELVE ARMS WERE RED ON THE AUDITED TREE. **STILL OWED, AND NOT CLAIMED: a clean reproducible candidate (needs a from-scratch build at one SHA), the exact profile manifest, and the pinned-version advisory review (an external lane).** THE TEST-MEMBERSHIP CLAUSE WAS CLOSED IN ROUND 592."
+  },
+  {
+   "round": 602,
+   "finding": "PHASE-5-ESCAPED-ROD",
+   "correction": "THE ONE ESCAPED MUTATION ROD WAS A **MISNAMED WITNESS**, NOT AN UNGUARDED LAW. `T39-RC1-ios-cancel-is-ui-only` mutates the CANCEL road, and SIX CASES DID FAIL UNDER IT (the harness named them: `testCancelOfARelayedCallTellsTheRelayedTruth`, `testCancelVersusQueuedWriter...`) -- **BUT THE ROD DECLARED `witness: testRestartRevealsTheActiveSosFromTheDurableRow`, AN ARM ABOUT THE **DISPATCH** ROAD WHICH A CANCEL MUTATION CANNOT REACH.** That arm stayed green, as it should, and the rod read ESCAPED. **THE DEFECT WAS IN THE ROD, AND IT IS THE SAME SPECIES AS EVERY FINDING THIS PROGRAMME HAS CHASED: A NAME ASSERTING COVERAGE THE MECHANISM DOES NOT PROVIDE.** Corrected to the arm that actually fails, and its `gradle_filter` (which named the ANDROID court for an iOS mutant) replaced by `swift_filter`. **NOT YET CLAIMED: the corrected rod has not been re-run to watch it read KILLED** (the lineage takes ~50 minutes); the direct evidence is the six arms the harness already listed. AND EVERY ANDROID ROD IS `INVALID` on \"the baseline itself did not pass unmutated\" -- an INSTRUMENT problem in that lineage, still OWED."
   }
  ],
  "phase_one": {
