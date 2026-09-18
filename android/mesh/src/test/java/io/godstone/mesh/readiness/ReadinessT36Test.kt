@@ -218,7 +218,7 @@ class ReadinessT36Test {
         val signing = SigningKeysAdapter(ed.priv, ed.pub)
         val base = InMemoryMessageStore()
         val store = FaultStore(base)
-        val router = Router(store, snd.nodeId)
+        val router = Router(store, snd.nodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val journal = InMemoryOutboundIntentJournal()
         val trust = TrustSource()
         val factory = RecordingIdentityFactory()
@@ -556,7 +556,7 @@ class ReadinessT36Test {
         Assert.assertArrayEquals("the offered frame is the handed logical send", enq.logicalMessageId, frame.msgId)
         // the trusted link hands it to the recipient's router, which persists it in the inbox
         val bobStore = InMemoryMessageStore()
-        val bobRouter = Router(bobStore, bob.nodeId)
+        val bobRouter = Router(bobStore, bob.nodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         Assert.assertTrue("the inbox admitted the frame", bobRouter.onFrameReceived(frame, f.snd.nodeId))
         Assert.assertEquals("the inbox holds exactly the one frame", 1, bobStore.allHeldMsgIds().size)
         // the recipient opens the sealed envelope with its OWN static private key (section 15 prefix)

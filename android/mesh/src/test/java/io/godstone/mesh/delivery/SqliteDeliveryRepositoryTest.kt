@@ -2971,7 +2971,7 @@ class SqliteDeliveryRepositoryTest {
             val repo = SqliteDeliveryRepository(db)
             val (pubA, _) = realKeypair()
             val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
-            val router = Router(store, localNode(1))
+            val router = Router(store, localNode(1), wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
             val midExpire = msgId(191)
             val frameExpire = directFrame(13, payloadSize = 64, msgIdOverride = midExpire)

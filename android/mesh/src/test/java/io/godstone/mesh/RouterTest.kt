@@ -61,7 +61,7 @@ class RouterTest {
     @Test
     fun `duplicate message is not relayed twice`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val id = msgId(1)
         val f = frame(id)
 
@@ -75,14 +75,14 @@ class RouterTest {
     @Test
     fun `frame with exhausted ttl is dropped`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         assertFalse(router.onFrameReceived(frame(msgId(2), ttl = 0), fromPeer = peerC))
     }
 
     @Test
     fun `ttl above one is relayed and decremented on the forward copy`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val f = frame(msgId(3), ttl = 5)
 
         assertTrue(router.onFrameReceived(f, fromPeer = peerC))
@@ -94,7 +94,7 @@ class RouterTest {
     @Test
     fun `forwardCopy throws IllegalArgumentException on ttl one or zero`() {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val f1 = frame(msgId(101), ttl = 1)
         try {
@@ -116,7 +116,7 @@ class RouterTest {
     @Test
     fun `forwardCopy with ttl two produces ttl one and increments hopCount`() {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val f = frame(msgId(103), ttl = 2).copy(hopCount = 0)
         val fwd = router.forwardCopy(f)
         assertEquals(1, fwd.ttl)
@@ -126,7 +126,7 @@ class RouterTest {
     @Test
     fun `framesPeerLacks default limit is 32 and limit zero returns empty without scanning`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val empty = BloomDigest()
 
         // Populate store with 40 frames
@@ -147,7 +147,7 @@ class RouterTest {
     @Test
     fun `bloomDigest alias returns exact currentDigest`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val f = frame(msgId(301))
         store.persist(f, peerC)
 
@@ -160,7 +160,7 @@ class RouterTest {
     @Test
     fun `group priority is accepted by the relay - PoW is recipient-side not a relay gate`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         // GMP/2.1 (ADR-001 §3): the PoW nonce lives inside the sealed payload, so a
         // relay cannot verify it and does not gate on it. GROUP traffic is relayed;
         // the recipient verifies the stamp after SealedSender.open. The GMP/1
@@ -172,14 +172,14 @@ class RouterTest {
     @Test
     fun `direct priority is accepted`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         assertTrue(router.onFrameReceived(frame(msgId(6), priority = Priority.DIRECT), fromPeer = peerC))
     }
 
     @Test
     fun `buildSos produces a max-ttl structurally-valid SOS frame with a 16-byte content-derived msg_id`() {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val sos = router.buildSos("help".toByteArray())
 
         assertEquals(TypeV2.SOS, sos.type)
@@ -197,7 +197,7 @@ class RouterTest {
     @Test
     fun `buildSos msg_id is content-derived - distinct payloads get distinct ids`() {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val a = router.buildSos("help".toByteArray())
         val b = router.buildSos("fire".toByteArray())
         assertNotEquals(a.msgId.toList(), b.msgId.toList())
@@ -206,7 +206,7 @@ class RouterTest {
     @Test
     fun `framesPeerLack returns held frames absent from the peer digest`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val id = msgId(7)
         assertTrue(router.onFrameReceived(frame(id), fromPeer = peerC))
 
@@ -224,7 +224,7 @@ class RouterTest {
     @Test
     fun `current digest advertises every held msg_id`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val id = msgId(8)
         assertTrue(router.onFrameReceived(frame(id), fromPeer = peerC))
 
@@ -243,7 +243,7 @@ class RouterTest {
         // persist-before-forward gate: a frame this node cannot durably hold is
         // NOT relayed (false) and NOT emitted to inbound -- forwarding what this
         // node cannot itself carry would let the only copy be dropped.
-        val router = Router(FailingMessageStore(), selfNodeId)
+        val router = Router(FailingMessageStore(), selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val f = frame(msgId(11), ttl = 5)
 
         assertFalse(router.onFrameReceived(f, fromPeer = peerC))
@@ -265,7 +265,7 @@ class RouterTest {
         // and emitted exactly once, and a third (now-duplicate) arrival must be
         // suppressed.
         val store = FailThenSucceedStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val received = ArrayList<FrameV2>()
         // UnconfinedTestDispatcher: the collector runs eagerly, so each `emit`
         // inside onFrameReceived is delivered to `received` synchronously (no
@@ -303,7 +303,7 @@ class RouterTest {
         // re-forwarded. Uses a tiny seen cache so the id evicts without 16384
         // frames.
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId, seenCacheSize = 2)
+        val router = Router(store, selfNodeId, seenCacheSize = 2, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val id = msgId(31)
         val f = frame(id, ttl = 5)
 
@@ -334,7 +334,7 @@ class RouterTest {
         // (r1 completes its non-suspending body before r2 starts) while still
         // exercising the mutex gate that would serialise truly concurrent arrivals.
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val received = ArrayList<FrameV2>()
         val collector = launch { router.inbound.collect { received.add(it) } }
         val id = msgId(22)
@@ -352,7 +352,7 @@ class RouterTest {
     @Test
     fun `buildSealedMessage with LogicalMessageIdentity and openSealedMessage returns Accepted with PolicyCheckedOpenedMessage`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
@@ -395,7 +395,7 @@ class RouterTest {
     @Test
     fun `group message with HAS_POW mines pow with message_nonce and verifies on open`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
@@ -426,7 +426,7 @@ class RouterTest {
     @Test
     fun `broadcast message with HAS_POW mines pow and verifies on open`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
@@ -460,7 +460,7 @@ class RouterTest {
     @Test
     fun `downgrade attack on GROUP message to DIRECT header is rejected with PolicyMismatch`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
@@ -497,7 +497,7 @@ class RouterTest {
     @Test
     fun `GROUP to DIRECT header downgrade retaining HAS_POW is rejected with PolicyMismatch`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientNodeId = ByteArray(16) { 0x77 }
         val original = router.authorSealedMessage("test".toByteArray(), recipientNodeId, recipientKeys.pub, priority = Priority.GROUP)
@@ -512,7 +512,7 @@ class RouterTest {
     @Test
     fun `GROUP message with stripped HAS_POW flag is rejected with PolicyMismatch`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientNodeId = ByteArray(16) { 0x77 }
         val original = router.authorSealedMessage("test".toByteArray(), recipientNodeId, recipientKeys.pub, priority = Priority.GROUP)
@@ -527,7 +527,7 @@ class RouterTest {
     @Test
     fun `DIRECT message with HAS_POW flag injected is rejected with PolicyMismatch`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientNodeId = ByteArray(16) { 0x55 }
         val original = router.authorSealedMessage("test".toByteArray(), recipientNodeId, recipientKeys.pub, priority = Priority.DIRECT)
@@ -542,7 +542,7 @@ class RouterTest {
     @Test
     fun `GROUP header changed to BROADCAST while sealed priority is GROUP is rejected with PolicyMismatch`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientNodeId = ByteArray(16) { 0x77 }
         val original = router.authorSealedMessage("test".toByteArray(), recipientNodeId, recipientKeys.pub, priority = Priority.GROUP)
@@ -557,7 +557,7 @@ class RouterTest {
     @Test
     fun `missing SEALED flag is rejected with MissingSealedFlag`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
@@ -574,7 +574,7 @@ class RouterTest {
     @Test
     fun `wrong frame type is rejected with WrongFrameType`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
@@ -591,7 +591,7 @@ class RouterTest {
     @Test
     fun `direct message with non-zero powNonce is rejected with PolicyMismatch`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
@@ -623,7 +623,7 @@ class RouterTest {
     fun `unknown header priority codes 5, 6, 7 are rejected with PolicyMismatch and dropped at relay ingress`() = runTest {
         for (code in listOf(5, 6, 7)) {
             val store = InMemoryMessageStore()
-            val router = Router(store, selfNodeId)
+            val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
             val recipientKeys = X25519Keys.generate(SecureRandom())
             val recipientNodeId = ByteArray(16) { 0x55 }
 
@@ -648,7 +648,7 @@ class RouterTest {
     fun `invalid sealed priority codes 0, 4, 5, 6, 7 are rejected with PolicyMismatch after AEAD open`() = runTest {
         for (code in listOf(0, 4, 5, 6, 7)) {
             val store = InMemoryMessageStore()
-            val router = Router(store, selfNodeId)
+            val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
             val recipientKeys = X25519Keys.generate(SecureRandom())
             val identity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
             val powNonce = ByteArray(8)
@@ -675,7 +675,7 @@ class RouterTest {
     @Test
     fun `exact old 28-byte sealed inner prefix without priority byte is rejected with Malformed`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val identity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
         val powNonce = ByteArray(8)
@@ -701,7 +701,7 @@ class RouterTest {
     @Test
     fun `truncated sealed inner payload is rejected with Malformed`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
@@ -727,7 +727,7 @@ class RouterTest {
     @Test
     fun `PolicyCheckedOpenedMessage provides deep immutability against mutations`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val plaintext = "immutable verified payload".toByteArray()
         val frame = router.authorSealedMessage(plaintext, ByteArray(16) { 0x55 }, recipientKeys.pub)
@@ -796,7 +796,7 @@ class RouterTest {
     fun `router constructor defensively copies selfNodeId`() = runTest {
         val mutableNodeId = ByteArray(16) { 0x44 }
         val store = InMemoryMessageStore()
-        val router = Router(store, mutableNodeId)
+        val router = Router(store, mutableNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         // Mutate original array
         mutableNodeId.fill(0xFF.toByte())
@@ -813,7 +813,7 @@ class RouterTest {
     @Test
     fun `concurrent authorSealedMessage to alice and bob produce distinct msg_ids and both are Accepted`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val aliceKeys = X25519Keys.generate(SecureRandom())
         val alicePriv = aliceKeys.priv
@@ -841,7 +841,7 @@ class RouterTest {
     @Test
     fun `retry semantics retransmit the exact persisted FrameV2 without altering msg_id`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
 
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPub = recipientKeys.pub
@@ -971,7 +971,7 @@ class RouterTest {
     @Test
     fun `frame with hopCount equal to MAX_TTL is durably held but not advertised for relay`() = runTest {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val frameMaxHop = FrameV2(
             type = TypeV2.MESSAGE,
             msgId = ByteArray(16) { (it + 1).toByte() },
@@ -994,7 +994,7 @@ class RouterTest {
     @Test
     fun `forwardCopy rejects frame with hopCount equal to or exceeding MAX_TTL`() {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val frameMaxHop = FrameV2(
             type = TypeV2.MESSAGE,
             msgId = ByteArray(16) { 0x01 },
@@ -1013,7 +1013,7 @@ class RouterTest {
     @Test
     fun `forwardCopy on frame at MAX_TTL minus 1 produces frame at MAX_TTL which encodes successfully`() {
         val store = InMemoryMessageStore()
-        val router = Router(store, selfNodeId)
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val frameNearMax = FrameV2(
             type = TypeV2.MESSAGE,
             msgId = ByteArray(16) { 0x01 },
@@ -1032,6 +1032,45 @@ class RouterTest {
         val decoded = FrameV2.decode(encoded)
         assertNotNull(decoded)
         assertEquals(forwarded, decoded)
+    }
+
+    /**
+     * *** GS-FINAL-003 (round 574): THE STORE'S OWN DIRECT WRITE ROAD -- WHICH HAD NO ADMISSION POINT. ***
+     *
+     * THE SAME DEFECT CLASS THE iOS ISLE WAS FOUND TO HAVE, ONE LAYER BELOW THE DECORATORS: the Android admission
+     * decorators gate the PEER-IDENTITY and BINDING roads, **WHILE `Router.ingest` CALLETH `store.persist` DIRECTLY
+     * -- AND `persist` IS WHAT WRITES THE HELD ROW.** A decorator gates an interface; this is a call to the store
+     * itself, and no decorator stood on it.
+     *
+     * **AND THE ASSERTION IS ON THE STORE, NOT ON A RETURN CODE** -- a refusal that still wrote would satisfy a
+     * weaker check while corrupting the store the wipe exists to erase. `persistCalls` counts the REAL writes.
+     */
+    @Test
+    fun `a pending wipe stops the router from writing the store`() = runTest {
+        val store = CountingMessageStore()
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { false })
+
+        val accepted = router.onFrameReceived(frame(msgId(0x41)), fromPeer = peerC)
+
+        assertEquals(
+            0, store.persistCalls,
+            "*** A PENDING WIPE MUST STOP THE WRITE: `Router.ingest` reached `store.persist` before this repair, so " +
+                "a held row landed in a store that stood MID-WIPE. Observed persists: ${store.persistCalls} ***")
+        assertFalse(accepted, "and nothing may be reported as relayed either")
+    }
+
+    /** *** AND THE POSITIVE CONTROL: WITH NOTHING PENDING THE SAME ROAD REALLY WRITES. *** */
+    @Test
+    fun `with no pending wipe the router writes the store`() = runTest {
+        val store = CountingMessageStore()
+        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
+
+        router.onFrameReceived(frame(msgId(0x51)), fromPeer = peerC)
+
+        assertTrue(
+            store.persistCalls > 0,
+            "*** WITH NO WIPE PENDING THE ROAD MUST REALLY REACH THE STORE -- otherwise a router hardwired to refuse " +
+                "would satisfy the arm above while making the node useless. Observed persists: ${store.persistCalls} ***")
     }
 }
 
@@ -1101,4 +1140,13 @@ private class FailThenSucceedStore : MessageStore {
         backing.forEachHeldOrderedByPriority(visit)
     override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) =
         backing.forEachHeldMsgId(visit)
+}
+
+/** A store that counts the REAL writes -- so the arm measures THE STORE, not a returned code. */
+private class CountingMessageStore : MessageStore by InMemoryMessageStore() {
+    var persistCalls = 0
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult {
+        persistCalls++
+        return PersistResult.HELD_NEW
+    }
 }

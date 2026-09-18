@@ -111,6 +111,11 @@ class MeshNode(
      * evidence -- A-03 / ADR-005 stay OPEN.
      */
     internal val deliveryTracker: DeliveryTracker,
+    /**
+     * *** GS-FINAL-003 (round 574): THE NODE'S WRITE ROADS TAKE THE SAME ADMISSION SEAM AS THE DECORATORS. ***
+     * Required, no default -- an omitted edge is a compile error rather than a silent always-admit.
+     */
+    internal val wipeGate: io.godstone.mesh.identity.WipeSensitiveUseGate,
     val sessions: io.godstone.mesh.crypto.SessionManager,
 ) {
     /**
@@ -417,7 +422,17 @@ class MeshNode(
      * Pure JVM test convenience constructor: builds a fail-closed SessionManager from the SAME [identity].
      */
     internal constructor(ctx: Context?, identity: Identity, store: MessageStore, deliveryTracker: DeliveryTracker)
-        : this(ctx, identity, store, deliveryTracker, io.godstone.mesh.crypto.SessionManager(
+        // *** AND THIS CONVENIENCE CONSTRUCTOR OPENS THE ROAD, DELIBERATELY AND WITH ITS REASON STATED. ***
+        //
+        // MY FIRST DRAFT MADE IT FAIL CLOSED, AND THE LANE SAID NO AT ONCE: this constructor exists for PURE JVM
+        // TESTS that never touch a journal ("Pure JVM test convenience constructor" is its own docstring), and
+        // refusing every persist made their inbound roads silently drop frames -- NINE FAILURES, each a test that
+        // had nothing to do with wipes. **A CONVENIENCE CONSTRUCTOR THAT BREAKS ITS CALLERS IS NOT MORE SECURE; IT
+        // IS JUST BROKEN.** The PRODUCTION provider (`MeshModule.provideMeshNode`) REQUIRES the seam and passes the
+        // real journal reader, so the shipped road is gated; a caller that wants a gate here passeth one.
+        : this(ctx, identity, store, deliveryTracker,
+               io.godstone.mesh.identity.WipeSensitiveUseGate { true },
+               io.godstone.mesh.crypto.SessionManager(
             identity = identity,
             trustAuthority = object : io.godstone.mesh.crypto.PeerBindingTrustAuthority {
                 override fun applyValidatedBinding(binding: io.godstone.mesh.identity.ValidatedPeerBinding): io.godstone.mesh.identity.PeerTrustApplyResult =
@@ -425,7 +440,7 @@ class MeshNode(
             }
         ))
 
-    internal val router: Router by lazy { Router(store, identity.nodeId) }
+    internal val router: Router by lazy { Router(store, identity.nodeId, wipeGate = wipeGate) }
     /**
      * GS-STORE-006: **THE LIVE TRANSPORT, HANDED OUT FOR THE WIPE'S OWN SEAM.**
      *

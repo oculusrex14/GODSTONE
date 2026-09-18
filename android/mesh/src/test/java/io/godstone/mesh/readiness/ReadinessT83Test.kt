@@ -128,7 +128,7 @@ class ReadinessT83Test {
         val me = newLocal()
         val origin = nodeOf(tag, 0x11)
         val base = InMemoryMessageStore()
-        val router = Router(base, origin)
+        val router = Router(base, origin, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val keys = KeyTable()
         return Rig(me, origin, base, router, keys, Ed25519AckAuthenticator(keys))
     }

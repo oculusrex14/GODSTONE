@@ -427,8 +427,9 @@ internal object MeshModule {
         ackStore: SqliteAckStore,
         authenticator: Ed25519AckAuthenticator,
         resolver: RecipientKeyResolver,
+        wipeGate: WipeSensitiveUseGate,
     ): MeshNode {
-        val node = MeshNode(ctx, identity, sqliteStore, deliveryTracker, sessions)
+        val node = MeshNode(ctx, identity, sqliteStore, deliveryTracker, wipeGate, sessions)
         // GS-RUNTIME-001 step 2: **THE DISPATCHER IS BOUND TO THE NODE**, answering the delivery tracker exactly
         // as the harness's twin doth. (The recipient inbox's own wiring followeth the T83 commit road and is the
         // NEXT slice; it is NOT claimed here.)

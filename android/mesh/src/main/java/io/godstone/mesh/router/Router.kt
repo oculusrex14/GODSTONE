@@ -1,5 +1,6 @@
 package io.godstone.mesh.router
 
+import io.godstone.mesh.identity.WipeSensitiveUseGate
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
@@ -42,6 +43,26 @@ class Router(
      * -- a path unreachable at the production cache size without 16384+ frames.
      */
     private val seenCacheSize: Int = SEEN_CACHE_SIZE,
+    /**
+     * *** GS-FINAL-003 (round 574): THE STORE'S OWN DIRECT WRITE ROAD, WHICH HAD NO ADMISSION POINT. ***
+     *
+     * THE SAME DEFECT THE iOS ISLE WAS FOUND TO HAVE, ONE LAYER BELOW THE DECORATORS: the Android admission
+     * decorators gate the PEER-IDENTITY and BINDING roads, while **THIS ROUTE CALLETH `store.persist(frame, ...)`
+     * DIRECTLY -- AND `persist` IS THE METHOD THAT WRITES THE HELD ROW.** *"A decorator gates an INTERFACE; this is a
+     * call to the store itself, and no decorator stands on it."*
+     *
+     * THE iOS ISLE'S TWIN WAS MEASURED, NOT ASSUMED (round 572): `MeshNode.ingestInbound` calls `router.ingest(...)`
+     * BEFORE the inbox, so gating the inbox's commit closure still left a held row written into a store that stood
+     * MID-WIPE. **AND THIS IS THE SAME ROAD ON THIS ISLE** -- `MeshNode:933` also call it for the node's own persist.
+     *
+     * AND IT FAILS CLOSED WITH THE STORE'S OWN TYPED REFUSAL: `PersistResult.FAILED_STORAGE` is already the answer
+     * the caller treateth as "not durably held", so a refusal needs no new vocabulary and cannot be mistaken for a
+     * held frame. **A PLAUSIBLE-LOOKING `HELD_NEW` WOULD BE A LIE THAT LOOKS LIKE A STATE.**
+     *
+     * NO DEFAULT, FOR THE REASON THE OTHER SEAM LEARNED: on a security gate a defaulted "no wipe pending" means
+     * ADMIT, and this programme has already shipped that mistake once.
+     */
+    private val wipeGate: WipeSensitiveUseGate,
 ) {
 
     private val selfNodeId = selfNodeId.copyOf().also {
@@ -100,6 +121,8 @@ class Router(
         //    Storage exceptions are converted to FAILED_STORAGE at the store
         //    boundary (not thrown here), so one bad DB operation cannot kill the
         //    inbound receive collector.
+        // *** THE ADMISSION POINT: ASKED BEFORE THE STORE, ON THE SAME SHARED AUTHORITY. ***
+        if (!wipeGate.allowsSensitiveUse()) return false
         when (store.persist(frame, receivedFrom = fromPeer)) {
             PersistResult.HELD_NEW -> {
                 // Durably held: mark seen (cache hint for future arrivals), reward

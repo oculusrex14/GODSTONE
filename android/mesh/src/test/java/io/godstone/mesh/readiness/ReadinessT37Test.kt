@@ -149,7 +149,7 @@ class ReadinessT37Test {
         keys.put(me.id, me.pub) // own key resolvable: the self-check walks this pin
         val signer = TestSigner(me)
         val repo = RecipientInboxRepository(
-            router = Router(base, me.id),
+            router = Router(base, me.id, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true }),
             ourNodeId = me.id,
             localDhPrivate = { me.dhPriv.copyOf() },
             signer = signer,
@@ -205,7 +205,7 @@ class ReadinessT37Test {
      *  never to the tag). */
     private suspend fun inboundFrame(r: Rig, sender: Local, nonceSeed: Int): FrameV2 {
         val container = signedContainer(sender, r.me.id, nonceSeed, t37Created, "t37-body-$nonceSeed")
-        val author = Router(r.base, sender.id)
+        val author = Router(r.base, sender.id, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val built = author.buildSealedMessage(
             plaintext = container,
             recipientNodeId = r.me.id,
@@ -323,7 +323,7 @@ class ReadinessT37Test {
         r.keys.put(sender.id, sender.pub)
         val container = signedContainer(sender, r.me.id, 23, t37Created, "t37-tampered")
         container[container.size - 1] = (container[container.size - 1].toInt() xor 0x01).toByte()
-        val author = Router(r.base, sender.id)
+        val author = Router(r.base, sender.id, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val frame = author.buildSealedMessage(
             plaintext = container,
             recipientNodeId = r.me.id,
@@ -384,7 +384,7 @@ class ReadinessT37Test {
         r.keys.put(sender.id, sender.pub)
         val other = newLocal() // the container names this other node instead
         val container = signedContainer(sender, other.id, 25, t37Created, "t37-other")
-        val author = Router(r.base, sender.id)
+        val author = Router(r.base, sender.id, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
         val frame = author.buildSealedMessage(
             plaintext = container,
             recipientNodeId = r.me.id, // the envelope still rotates under our tag
@@ -545,7 +545,7 @@ class ReadinessT37Test {
         r2.keys.put(s2.id, s2.pub)
         val container = signedContainer(s2, r2.me.id, 129, t37Created, "t37-forged-under-honest-tag")
         container[container.size - 10] = (container[container.size - 10].toInt() xor 0x40).toByte()
-        val forged = Router(r2.base, s2.id).buildSealedMessage(
+        val forged = Router(r2.base, s2.id, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true }).buildSealedMessage(
             plaintext = container,
             recipientNodeId = r2.me.id,
             recipientStaticPub = r2.me.dhPub,

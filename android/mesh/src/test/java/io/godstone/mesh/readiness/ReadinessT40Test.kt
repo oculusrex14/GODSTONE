@@ -740,7 +740,7 @@ class ReadinessT40Test {
             // a false positive, suppresses the offering -- the digest-only
             // exchange would conceal the frame forever.
             storeB.persist(messageFrame(foreign, 24), peerA)
-            val routerB = Router(storeB, peerOf(2))
+            val routerB = Router(storeB, peerOf(2), wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { true })
             val suppressed = routerB.framesPeerLacks(digestA, 32)
             Assert.assertEquals("the digest-only exchange suppresses the colliding id", 0, suppressed.size)
 
