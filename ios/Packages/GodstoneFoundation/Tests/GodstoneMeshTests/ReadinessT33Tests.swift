@@ -32,6 +32,120 @@ private func mixedRowsArr() -> [HeldRow] {
 final class ReadinessT33Tests: XCTestCase {
 
     // (1) an all-SOS store still holds the hard cap INCLUDING SOS
+    // ================================================================================================
+    // *** GS-STORE-005 (round 583): RELEASE UNDER THE CLOSE PATH, AND REGISTRATION UNDER CONCURRENCY. ***
+    //
+    // THE CARD'S REMAINING WORK, VERBATIM: *"Inspect all quota namespaces, reserve-before-admit limits, postcommit
+    // notifications and **release under every close path**."* THE T33 ARMS ABOVE COVER THE QUOTA NAMESPACES,
+    // RESERVE-BEFORE-ADMIT AND THE POST-COMMIT DEFERRAL. **RELEASE UNDER THE CLOSE PATH HAD NO ARM AT ALL** -- a grep
+    // of this file for `close()` returned NOTHING.
+    //
+    // *** AND THE PROPERTY IS NOT DECORATIVE: A CLOSED STORE THAT STILL HOLDS CALLBACKS WOULD FIRE THEM AGAINST A
+    // DATABASE HANDLE IT HAS ALREADY RELEASED (`sqlite3_close_v2` runneth in the same method). ***
+    // ================================================================================================
+
+    /**
+     * *** CLOSING RELEASETH EVERY REGISTRATION -- AND THE CENSUS SAITH SO. ***
+     *
+     * `ObservationLease.registrationCount` IS the observable truth (registrations PLUS deferred), so this arm readeth
+     * a NUMBER rather than trusting that `releaseAll()` was called. **AND IT EXERCISES BOTH KINDS OF REGISTRATION:
+     * the IMMEDIATE one and the DEFERRED one taken during a transaction** -- because `releaseAll()` must clear both
+     * arrays, and an implementation that cleared only `registrations` would leak every registration made inside a
+     * transaction, which is precisely where the store's own notifications are taken.
+     */
+    func testGSSTORE005ClosingReleasesEveryRegistrationIncludingDeferredOnes() throws {
+        let lease = ObservationLease()
+
+        lease.register { }
+        lease.register { }
+        XCTAssertEqual(lease.registrationCount, 2, "two immediate registrations must be visible in the census")
+
+        // AND THE DEFERRED KIND: taken DURING a transaction, so it sitteth in the OTHER array.
+        lease.beginTransaction()
+        lease.register { }
+        lease.register { }
+        XCTAssertEqual(
+            lease.registrationCount, 4,
+            "*** A REGISTRATION MADE DURING A TRANSACTION IS DEFERRED, AND THE CENSUS COUNTS BOTH ARRAYS -- " +
+                "otherwise an implementation clearing only one would look correct here. Observed: " +
+                "\(lease.registrationCount) ***",
+        )
+
+        lease.releaseAll()
+        XCTAssertEqual(
+            lease.registrationCount, 0,
+            "*** CLOSING MUST RELEASE **EVERY** REGISTRATION, DEFERRED ONES INCLUDED: a closed store that still " +
+                "holdeth callbacks would fire them against a database handle it has already released. " +
+                "Observed: \(lease.registrationCount) ***",
+        )
+    }
+
+    /**
+     * *** AND A RELEASED TOKEN IS INERT -- THE OTHER HALF OF "RELEASE", MEASURED BY EFFECT RATHER THAN BY COUNT. ***
+     *
+     * The census falling to zero proveth the arrays were cleared; **THIS ARM PROVETH THE CALLBACK CANNOT FIRE
+     * AFTERWARDS**, which is the property that actually protecteth against the use-after-close. The counter is the
+     * witness: it must stay put across a dispatch that would otherwise fire the released observer.
+     */
+    func testGSSTORE005AReleasedObserverNeverFiresAgain() throws {
+        let lease = ObservationLease()
+        var fired = 0
+
+        let doomed = lease.register { fired += 1 }
+        let survivor = lease.register { fired += 1 }
+
+        lease.unregisterBy(doomed)
+        lease.afterCommit()                      // WOULD FIRE EVERY LIVE OBSERVER
+
+        XCTAssertEqual(
+            fired, 1,
+            "*** ONLY THE SURVIVING OBSERVER MAY FIRE: the released one must be INERT, or a released observer would " +
+                "keep firing against a store that no longer standeth. Observed firings: \(fired) ***",
+        )
+
+        lease.unregisterBy(survivor)
+        lease.afterCommit()
+        XCTAssertEqual(
+            fired, 1,
+            "*** AND WITH EVERY TOKEN RELEASED, A DISPATCH MUST FIRE NOTHING AT ALL. Observed: \(fired) ***",
+        )
+    }
+
+    /**
+     * *** REGISTRATION DURING A DISPATCH IS DEFERRED, NOT REENTRANT -- THE CARD'S "POSTCOMMIT NOTIFICATIONS". ***
+     *
+     * A callback that registereth ANOTHER observer while the dispatch loop is walking the list must NOT have it fire
+     * in the SAME round: the loop walketh a SNAPSHOT, and a reentrant append would either fire it immediately
+     * (surprising the caller) or mutate the list under the walk. **THE OBSERVABLE CLAIM: THE SECOND OBSERVER FIRES
+     * ONLY ON THE NEXT DISPATCH.**
+     */
+    func testGSSTORE005ARegistrationDuringDispatchFiresOnTheNextRoundOnly() throws {
+        let lease = ObservationLease()
+        var innerFired = 0
+        var outerFired = 0
+
+        lease.register {
+            outerFired += 1
+            lease.register { innerFired += 1 }        // REGISTERED WHILE DISPATCHING
+        }
+        lease.afterCommit()
+
+        XCTAssertEqual(outerFired, 1, "the outer observer fires on this round")
+        XCTAssertEqual(
+            innerFired, 0,
+            "*** AN OBSERVER REGISTERED **DURING** A DISPATCH MUST NOT FIRE IN THE SAME ROUND: the loop walketh a " +
+                "snapshot, and firing into it mid-walk is the reentrancy the lease existeth to prevent. Observed: " +
+                "\(innerFired) ***",
+        )
+
+        lease.afterCommit()
+        XCTAssertEqual(
+            innerFired, 1,
+            "*** AND IT MUST FIRE ON THE NEXT ROUND -- otherwise a registration made during a dispatch would never " +
+                "fire at all, which would be a silent loss rather than a deferral. Observed: \(innerFired) ***",
+        )
+    }
+
     func testAllSosStoreStillHoldsTheHardCapIncludingSos() throws {
         let rows = allSosRows(400)
         let total = StoreQuota.heldFrameHardCap + 32
