@@ -317,21 +317,41 @@ def check_controls(
     # recovery capability. DI sequencing is mistaken for successful state transition."
     #
     # SO THIS CONTROL WAS SATISFIED BY THE DEFECT. It now demands what the finding demands: each sensitive provider must
-    # TAKE the barrier (any parameter name, because a name is not a measurement) AND MUST CONSULT ITS PERMIT before it
-    # opens anything private.
+    # ── R17: Android MeshModule startup wipe barrier precedes sensitive opens ──
+    #
+    # GS-FINAL-003 (the independent audit, 2026-09-18): THIS CONTROL REQUIRED THE LITERAL STRING
+    # `_barrier: MeshStartupWipeBarrier`, WHICH IS AN UNUSED PARAMETER -- the underscore is Kotlin's own convention for
+    # "ignored". THE AUDIT'S CHARGE AGAINST EXACTLY THAT SHAPE: "providers require the barrier object, not a successful
+    # recovery capability. DI sequencing is mistaken for successful state transition."
+    #
+    # SO THIS CONTROL WAS SATISFIED BY THE DEFECT. What it demands now is what is TRUE and MEASURABLE: each sensitive
+    # provider TAKES the barrier under a real name, and the barrier RETAINS the coordinator's typed answer so a consumer
+    # can ask it (`outcome`, `permitsStartup`).
+    #
+    # *** AND IT DELIBERATELY DOES NOT CLAIM ENFORCEMENT, BECAUSE THERE IS NONE TO CLAIM YET -- AND A CONTROL THAT
+    # ASSERTED IT WOULD BE THE VERY FALSE WITNESS THIS FINDING IS ABOUT. *** An earlier form of this check counted
+    # `requireStartupPermit(barrier)` call sites, and MY REPAIR SATISFIED IT BY THROWING FROM THE THREE PROVIDERS --
+    # WHICH MADE `provideMeshNode` UNBUILDABLE, THEN `provideMeshPanicWipe`, SO THE LIVE TRANSPORT THE WIPE MUST DRAIN
+    # COULD NEVER EXIST AND ANY MID-WIPE CRASH WOULD BRICK THE APP. A CONTROL THAT DEMANDS A THROW WHERE A THROW
+    # DEADLOCKS IS DEMANDING THE WRONG LAW. A later form counted log-only consults, which assert safety while blocking
+    # nothing. BOTH ARE RECORDED HERE SO NEITHER IS RE-INVENTED.
+    #
+    # THE ENFORCEMENT THE AUDIT ACTUALLY ASKS FOR -- "block private opens while a wipe is pending" -- REQUIRES THE
+    # COORDINATOR TO BE REACHABLE FROM AN ADMISSION POINT. It is not today: the runtime-side authority is constructed
+    # inside `MeshPanicWipe.begin` and needs the `MeshNode`, which is itself built from these providers. That is the
+    # architectural prerequisite recorded in the ledger for BOTH isles, and until it exists this control asserts the
+    # DEPENDENCY AND THE RETAINED ANSWER, not a gate.
     if "MeshStartupWipeBarrier" not in kt_mesh_mod:
         errors.append("Android MeshModule must define MeshStartupWipeBarrier (R17)")
     if not re.search(r"\bbarrier: MeshStartupWipeBarrier\b", kt_mesh_mod):
         errors.append("Android MeshModule sensitive providers must depend on MeshStartupWipeBarrier (R17)")
-    # AND THEY MUST ACTUALLY ASK IT. The mutation harness proved this check's first draft insufficient: grepping for
-    # `requireStartupPermit(` was satisfied by the FUNCTION'S OWN DEFINITION, so a provider that never called it passed.
-    # A CHECK SATISFIED BY A DEFINITION IS THE SAME SPECIES AS A CHECK SATISFIED BY A NAME. The permit must be consumed
-    # AT LEAST AS MANY TIMES AS THERE ARE SENSITIVE PROVIDERS THAT TAKE THE BARRIER.
-    _r17_permits = len(re.findall(r"requireStartupPermit\(\s*barrier\s*\)", kt_mesh_mod))
-    if "permitsStartup" not in kt_mesh_mod or _r17_permits < 3:
-        errors.append("Android MeshModule sensitive providers must CONSULT the startup permit, not merely hold the "
-                      "barrier object: construction of a barrier says nothing about the returned coordinator result. "
-                      "Observed %d permit consumption(s), expected at least 3 (R17)" % _r17_permits)
+    if "val outcome: WipeStepResult" not in kt_mesh_mod or "permitsStartup" not in kt_mesh_mod:
+        errors.append("Android MeshStartupWipeBarrier must RETAIN the coordinator's typed answer (outcome) and expose "
+                      "a readable permit, so a consumer can ask rather than assume (R17)")
+    if "requireStartupPermit(" in kt_mesh_mod:
+        errors.append("Android MeshModule must NOT refuse CONSTRUCTION on a blocked permit: the barrier's own inputs "
+                      "feed provideMeshNode, and provideMeshPanicWipe needs the node for the live transport, so a "
+                      "throwing gate makes the wipe's only remedy unreachable (R17)")
 
     # ── R18: iOS MeshRuntime binds default startup artifacts to exact store URLs ──
     if "storeUrl: messageStoreUrl" not in swift_mesh_runtime or "peerStoreUrl: peerStoreUrl" not in swift_mesh_runtime:
@@ -762,9 +782,16 @@ def selftest() -> int:
         # GS-FINAL-003: the mutation formerly deleted the `_barrier` parameter, so a control satisfied by an UNUSED
         # parameter -- the defect itself -- was the only thing it could catch. THE MUTATION NOW BREAKS THE LAW: the
         # providers keep the dependency and stop asking it anything.
-        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("requireStartupPermit(barrier)", "// permit not consulted"), encoding="utf-8")
+        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("val outcome: WipeStepResult", "val outcomeNotRetained: WipeStepResult"), encoding="utf-8")
         if any("R17" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R17 was NOT caught")
+        reset_all()
+
+        # Mutation R17b (round 549): THE DEADLOCK ITSELF IS NOW ITS OWN MUTATION. A gate that refuses CONSTRUCTION on a
+        # blocked permit would make the wipe's only remedy unreachable, so the control must redden on it.
+        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("recordStartupPermit(barrier)", "requireStartupPermit(barrier)"), encoding="utf-8")
+        if any("R17" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R17b (a construction-refusing gate) was NOT caught")
         reset_all()
 
         # Mutation R18: iOS MeshRuntime.create does not bind exact URLs

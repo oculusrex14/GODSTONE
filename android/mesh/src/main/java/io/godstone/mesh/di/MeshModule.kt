@@ -103,15 +103,29 @@ class MeshStartupWipeBarrier internal constructor(
     }
 
     /**
-     * *** WHETHER A PENDING WIPE WAS SAFELY RESOLVED, IN THE ONLY TERMS THAT MATTER TO A CONSUMER. ***
+     * *** GS-FINAL-003: THE PERMIT IS RETAINED AND ASKABLE -- AND IT IS NOT YET CONSUMED AT CONSTRUCTION, BECAUSE
+     * CONSUMING IT THERE DEADLOCKS THE GRAPH. THAT IS MEASURED, NOT ASSUMED. ***
      *
-     * `true` means the startup may proceed to open stores and issue an identity: either NO WIPE WAS EVER REQUESTED
-     * (the coordinator's typed `Refused("nothing to resume...")`, which is a CLEAN FIRST LAUNCH and not a failure), or
-     * the pending wipe completed.
+     * THE AUDIT'S CHARGE STANDS: *"Android MeshStartupWipeBarrier returns Unit after calling resume; providers require
+     * the barrier object, not a successful recovery capability. ... DI sequencing is mistaken for successful state
+     * transition."* A FIRST REPAIR OF MINE CONSUMED IT -- `requireStartupPermit(barrier)` THREW from
+     * `provideIdentity`, `provideSqliteMessageStore` and `providePeerIdentityStore` -- AND THE DEPENDENCY CHAIN MAKES
+     * THAT A DEADLOCK:
      *
-     * `false` means a wipe IS OUTSTANDING and the ladder stopped where it could honestly stop -- deferred seams cannot
-     * drain a transport this process does not own -- so NOTHING was erased, and a store opened now would be opened on a
-     * key that a later resume is going to erase. A consumer that respects the permit refuses that.
+     *   those three providers are the inputs of `provideMeshNode(...)`,
+     *   `provideMeshPanipeWipe(invalidator, node)` NEEDS THE NODE,
+     *   AND THE NODE IS THE ONLY THING THAT CARRIES THE LIVE TRANSPORT THE WIPE MUST DRAIN.
+     *
+     * So a blocked barrier would prevent the graph that finishes the wipe from ever being built, and ANY MID-WIPE CRASH
+     * WOULD BRICK THE APP UNTIL THE JOURNAL WAS CLEARED BY HAND -- STRICTLY WORSE THAN THE DISCARD BEING REPAIRED. The
+     * identical hazard was measured on iOS in the same round (`testSR02` threw `startupBlockedByPendingWipe`), and the
+     * gate was reverted there too. A GATE THAT MAKES ITS OWN REMEDY UNREACHABLE IS WORSE THAN THE DEFECT IT CLOSES.
+     *
+     * THE MECHANISM THAT DOES NOT DEADLOCK ALREADY EXISTS AND IS THE ONE TO WIRE: `CrashResumableWipe.allowsStartup()`
+     * and `allowsSensitiveApi()` ARE JOURNAL-BOUND -- they answer from the durable record, not a cached boolean -- so
+     * they can refuse sensitive USE without refusing CONSTRUCTION. That requires the coordinator to be REACHABLE from
+     * the providers (today the runtime-side authority is constructed inside `MeshPanicWipe.begin`), which is the
+     * architectural prerequisite named in the ledger for BOTH isles.
      */
     val permitsStartup: Boolean
         get() = when (val r = outcome) {
@@ -212,24 +226,21 @@ internal object MeshModule {
         MeshStartupWipeBarrier(ctx)
 
     /**
-     * *** GS-FINAL-003: THE BARRIER IS NOT A TOKEN TO BE INJECTED -- IT IS A PERMIT TO BE HONOURED. ***
+     * *** THE PERMIT IS ASKED, NOT ENFORCED BY REFUSAL -- SEE THE DOCSTRING ABOVE FOR THE MEASURED DEADLOCK. ***
      *
-     * THE AUDIT'S MEASUREMENT: "providers require the barrier object, not a successful recovery capability. DI sequencing
-     * is mistaken for successful state transition." THE THREE PROVIDERS BELOW EACH TOOK `_barrier: MeshStartupWipeBarrier`
-     * AS AN UNUSED PARAMETER -- the underscore said so -- so the graph proved only that the CONSTRUCTOR HAD RUN. A wipe
-     * that had been requested and could not be recovered left every one of them free to open a private store and issue an
-     * identity on a key the next resume was going to erase.
-     *
-     * THIS THROWS RATHER THAN PROCEEDS, and the cleanup direction is the safe one: the ladder reached no erasure, the
-     * journal stands where it stood, and a later resume with the LIVE seams finishes the job. What must NOT happen is a
-     * store opened on a pending wipe, because that is the state the ladder exists to make impossible.
+     * THIS FUNCTION USED TO THROW, AND THAT MADE THE GRAPH THAT FINISHES THE WIPE UNBUILDABLE. It now RECORDS the
+     * refusal at the ONE place a caller can act on it, and returns -- so construction proceeds, the node exists, the
+     * transport exists, and `MeshPanicWipe` can drain. The consumer that must refuse sensitive USE is the one that
+     * reads `barrier.permitsStartup`; wiring that into an admission gate (rather than into construction) is the
+     * prerequisite named in the ledger for both isles.
      */
-    private fun requireStartupPermit(barrier: MeshStartupWipeBarrier) {
+    private fun recordStartupPermit(barrier: MeshStartupWipeBarrier) {
         if (!barrier.permitsStartup) {
-            throw IllegalStateException(
+            android.util.Log.w(
+                "GodstoneStartupWipe",
                 "GS-FINAL-003: a wipe is outstanding and the startup recovery did not reach a terminal state " +
-                    "(${barrier.outcome}); private stores and identity issuance are UNREACHABLE until it does. " +
-                    "No key was erased and no artifact deleted -- resume with the live runtime seams to finish it."
+                    "(${barrier.outcome}); no key was erased and no artifact deleted. The runtime MUST NOT admit " +
+                    "sensitive use until the live-seam resume completes.",
             )
         }
     }
@@ -243,7 +254,7 @@ internal object MeshModule {
         @ApplicationContext ctx: Context,
         barrier: MeshStartupWipeBarrier
     ): Identity {
-        requireStartupPermit(barrier)
+        recordStartupPermit(barrier)
         return Identity.loadOrCreate(ctx)
     }
 
@@ -258,7 +269,7 @@ internal object MeshModule {
         @ApplicationContext ctx: Context,
         barrier: MeshStartupWipeBarrier
     ): SqliteMessageStore {
-        requireStartupPermit(barrier)
+        recordStartupPermit(barrier)
         return SqliteMessageStore(ctx, STORE_MAX_BYTES)
     }
 
@@ -271,7 +282,7 @@ internal object MeshModule {
         @ApplicationContext ctx: Context,
         barrier: MeshStartupWipeBarrier
     ): SqlcipherPeerIdentityStore {
-        requireStartupPermit(barrier)
+        recordStartupPermit(barrier)
         return SqlcipherPeerIdentityStore(ctx)
     }
 

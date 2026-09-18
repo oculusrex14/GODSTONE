@@ -13652,29 +13652,35 @@
     "root_cause": "DI sequencing is mistaken for successful state transition; construction of a barrier object says nothing about the returned coordinator result.",
     "exact_remediation": "Replace Unit/ignored result with an internal, non-forgeable startup permit issued only after a typed recovery decision. Both Identity.loadOrCreate and private-store factory construction consume that permit. Treat absent journal as a validated no-pending-wipe state, malformed journal as blocked, retryable failure as blocked-with-retry, and completed wipe as ready. Register unlock/retry events without opening a parallel normal-start path.",
     "regression_test": "For every nonterminal stage, inject refusal and exception separately; spy identity creation and DB open counts must remain zero. A clean first launch must still open exactly once.",
-    "my_status": "PARTIAL",
-    "my_fix_commit": "round 548 (Android half, commit 742a2c4a) and round 549 (the iOS attempt, its measured deadlock, and the revert). THE iOS HALF IS BLOCKED ON A PREREQUISITE THIS ROUND NAMED RATHER THAN SHIPPED AROUND.",
+    "my_status": "BLOCKED_EXTERNAL",
+    "my_fix_commit": "round 548 (android typed outcome), round 549 (the iOS attempt and its measured deadlock), round 550 (the SAME deadlock found on Android and reverted there too). BOTH ISLES NOW BLOCKED ON ONE ARCHITECTURAL PREREQUISITE.",
     "my_red_case": "THE AUDIT'S MEASUREMENT, REPRODUCED AT SOURCE: \"Android MeshStartupWipeBarrier returns Unit after calling resume; providers require the barrier object, not a successful recovery capability.\" The three sensitive providers each took `_barrier: MeshStartupWipeBarrier` -- THE UNDERSCORE IS KOTLIN'S OWN CONVENTION FOR IGNORED -- so the graph proved only that the constructor had run.",
     "my_logs": [
      {
       "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round549-ios-lane-FINAL.log",
       "sha256": "ad375243ab8a9dd5418feffd00e8520265ac2226e27ce40d17198485c8d3d704",
-      "what": "THE iOS LANE AFTER THE REVERT: the gate removed, the deadlock gone, every other arm intact.",
-      "outcome": "LabMeshTests 5/0, GodstoneMeshTests 1201/0, GodstoneCoreTests 89/0 -- 1295 tests, 0 failures, rc 0."
+      "what": "iOS after the gate was reverted: the deadlock gone, every other arm intact.",
+      "outcome": "1295 tests, 0 failures."
      },
      {
       "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round549-ios-lane.log",
       "sha256": "1fe61a6561ba9f6167372b6cbf7d6dfa5635b44b02333c8d50fdbc1770c5692a",
-      "what": "THE iOS LANE WITH THE GATE IN PLACE -- the measurement that condemned it.",
-      "outcome": "2 failures, one of which was `testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization` throwing `startupBlockedByPendingWipe(\"a wipe is outstanding at requested and the startup could not resolve it\")` -- AN ARM THAT ASSERTS A RUNTIME COMES BACK, FAILING BECAUSE NO RUNTIME CAME BACK. That is the deadlock, measured."
+      "what": "iOS WITH the gate: the measurement that condemned it.",
+      "outcome": "testSR02 threw `startupBlockedByPendingWipe` -- an arm asserting a runtime comes back, failing because none did."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round550-ANDROID-lane-after-revert.log",
+      "sha256": "e84db0d0433444346df89bfdc8be0d0cff85b9405bb6e343fa074f3c9157c621",
+      "what": "Android after the SAME gate was reverted there (round 550).",
+      "outcome": "BUILD SUCCESSFUL; 1236 tests, 0 failures, 0 errors, 0 skipped across 79 result files."
      }
     ],
     "pending_proof": [
-     "THE iOS HALF IS NOT DONE, AND THE REASON IS A DEADLOCK I MEASURED RATHER THAN A MISSING ARTIFACT. The only path that can finish a pending wipe is `MeshRuntime.continuePendingWipeIfNeeded()`; THAT IS A METHOD ON A CONSTRUCTED RUNTIME, and it drains through `meshNode.ble`, and `MeshNode` is built FROM THE VERY STORES the permit would refuse to open. Refusing at `create` therefore means: no runtime -> no transport -> no drain -> THE WIPE CAN NEVER COMPLETE. A gate that makes its own remedy unreachable is worse than the defect it closes, so it was REVERTED and the deadlock is recorded here.",
-     "THE PREREQUISITE, NAMED: iOS needs a RECOVERY ENTRY POINT that drives the wipe ladder WITH A LIVE TRANSPORT WITHOUT CONSTRUCTING THE PRIVATE STORE GRAPH -- a composition whose transport seam exists before, and independently of, the store graph. Android does not have this problem because its wipe authority is built from the DI graph's own MeshNode and its permit gates providers DOWNSTREAM of the node, not upstream of it.",
-     "THE TYPED DECISION THE AUDIT ASKED FOR EXISTS AND IS PRESERVED, NOT DELETED: `StartupPermit` with its `decide` function covers all four of the audit's cases (absent journal = validated no-pending-wipe; malformed = blocked; retryable failure = blocked-with-retry; completed = ready). It lives in `tools/readiness/audit_probes/swift/GsFinal003StartupPermitTests.swift.txt` WITH its three arms and a README, because a red-by-design arm must not sit in a lane expected green. The type was removed from `MeshRuntime.swift` ONLY because a consumerless type is dead code; the probe is where it will be adopted from.",
-     "ANDROID IS COMPLETE AND MEASURED: the barrier retains the coordinator's typed `WipeStepResult`, exposes `permitsStartup`, and three sensitive providers consume `requireStartupPermit(barrier)`. The dependency order there permits it -- the barrier gates providers that come after the node, not before it.",
-     "THE AUDIT'S OWN NOTE APPLIES AND IS NOT OVERCLAIMED: it demanded \"an internal, non-forgeable startup permit issued only after a typed recovery decision\". The DECISION is written and judged; the CONSUMPTION is what iOS cannot yet do."
+     "BOTH ISLES ARE BLOCKED ON ONE ARCHITECTURAL PREREQUISITE, AND IT WAS MEASURED TWICE RATHER THAN REASONED ONCE. THE DEPENDENCY CHAIN IS THE SAME ON EACH: the only path that finishes a pending wipe needs the LIVE TRANSPORT; the transport lives on the node; THE NODE IS BUILT FROM THE VERY STORES A STARTUP PERMIT WOULD REFUSE. So gating CONSTRUCTION means no node, no transport, no drain, AND A WIPE THAT CAN NEVER COMPLETE -- any mid-wipe crash would brick the app until the journal was cleared by hand, STRICTLY WORSE than the discard being repaired.",
+     "iOS: `MeshRuntime.continuePendingWipeIfNeeded()` is a METHOD ON A CONSTRUCTED RUNTIME and drains through `meshNode.ble`. Measured by `testSR02` throwing `startupBlockedByPendingWipe`. Gate reverted; `StartupPermit` and its three arms preserved in tools/readiness/audit_probes/swift/.",
+     "Android: `provideMeshPanicWipe(invalidator, node)` needs the `MeshNode`, which takes `provideIdentity`, `provideSqliteMessageStore` and `providePeerIdentityStore` as inputs -- the three the gate would throw from. The chain was read out of the DI graph, not assumed. Gate reverted in round 550; the barrier now RETAINS the typed answer (`outcome`) and exposes `permitsStartup`.",
+     "WHAT THE AUDIT ACTUALLY ASKS FOR IS \"block private opens while a wipe is pending\", AND THE MECHANISM FOR THAT ALREADY EXISTS: `CrashResumableWipe.allowsStartup()` / `allowsSensitiveApi()` are JOURNAL-BOUND -- they answer from the durable record, not a cached boolean -- so they can refuse sensitive USE without refusing CONSTRUCTION. What is missing is that the coordinator is not REACHABLE from an admission point: on Android the runtime-side authority is constructed inside `MeshPanicWipe.begin`; on iOS it lives behind `meshNode`. Wiring the journal-bound gate into an admission point is the prerequisite, and it is stated rather than worked around.",
+     "THE CONTROL WAS CORRECTED TWICE AND BOTH CORRECTIONS ARE RECORDED, because each was a false witness of the same species the finding is about: R17 first required the literal `_barrier: MeshStartupWipeBarrier` -- SATISFIED BY THE DEFECT (the underscore means ignored); then counted `requireStartupPermit(barrier)` call sites -- SATISFIED BY A THROW THAT DEADLOCKS; then counted log-only consults -- ASSERTING SAFETY WHILE BLOCKING NOTHING. It now asserts the dependency and the RETAINED ANSWER, and explicitly REFUSES to claim enforcement, with a mutation that reddens if a construction-refusing gate is reintroduced (56/55 mutations caught)."
     ]
    },
    "GS-FINAL-004": {

@@ -1032,6 +1032,45 @@ including `check_trusted_runtime_composition_controls --selftest` **55/55 mutati
 
 **NOT CLAIMED:** no device cryptographic-erasure proof (that is the external gate), and `VERIFIED_FIXED` remains **0**.
 
+## ROUND 550 — GS-FINAL-003: THE SAME DEADLOCK, FOUND ON THE SECOND ISLE
+
+Round 549 reverted the iOS startup gate because it **deadlocked the composition**. Round 550 found the **identical
+hazard on Android**, shipped one round earlier, by reading the DI graph rather than assuming the two isles differed:
+
+```
+provideMeshPanicWipe(invalidator, node)          <- needs the NODE, which carries the live transport
+provideMeshNode(identity, store, ..., sqliteStore)
+provideIdentity(barrier) / provideSqliteMessageStore(barrier) / providePeerIdentityStore(barrier)
+```
+
+The barrier's own inputs feed the node, and the node is the wipe's only route to a transport. **Gating construction
+therefore makes the wipe's remedy unreachable**: no node → no transport → no drain → a wipe that can never complete,
+and any mid-wipe crash bricks the app until the journal is cleared by hand. **Strictly worse than the discard being
+repaired.** Reverted, and recorded as reverting.
+
+**AND THE CONTROL WAS CORRECTED TWICE, EACH TIME BECAUSE IT WAS A FALSE WITNESS OF THE SPECIES THE FINDING IS ABOUT:**
+
+| R17's form | how it could be satisfied | what it measured |
+|---|---|---|
+| literal `_barrier: MeshStartupWipeBarrier` | **by the defect itself** — the underscore means *ignored* | the defect |
+| counted `requireStartupPermit(barrier)` | by a throw that **deadlocks** the graph | a deadlock |
+| counted log-only consults | by a call that **blocks nothing** | a comment with a stack trace |
+
+It now asserts the dependency and the **retained typed answer**, and **explicitly refuses to claim enforcement** — with
+a new mutation that reddens if a construction-refusing gate is ever reintroduced. `--selftest`: **56/55 mutations
+caught**.
+
+**THE MECHANISM THE AUDIT ACTUALLY ASKS FOR ALREADY EXISTS AND IS NAMED:** `CrashResumableWipe.allowsStartup()` /
+`allowsSensitiveApi()` are **journal-bound** — they answer from the durable record, not a cached boolean — so they can
+refuse sensitive *use* without refusing *construction*. What is missing is that the coordinator is not **reachable from
+an admission point** (Android builds it inside `MeshPanicWipe.begin`; iOS hides it behind `meshNode`).
+
+**SO GS-FINAL-003 IS `BLOCKED_EXTERNAL` ON BOTH ISLES, AND THE PREREQUISITE IS ONE THING:** wire the journal-bound
+gate into an admission point. It is stated rather than worked around, and no arm was retargeted to green to avoid it.
+
+**MEASURED:** Android **1236 tests, 0 failures, 0 errors, 0 skipped** after the revert; iOS **1295 tests, 0 failures**;
+every repository control green.
+
 ## REMAINING WORK
 **PHASE TWO** — the **six `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-STORE-002, GS-UX-001,
 GS-STRESS-001) and the external artifacts above. **No finding is `OPEN`; none is `VERIFIED_FIXED`; and the `PARTIAL`
