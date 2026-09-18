@@ -1173,6 +1173,47 @@ RUN URL, RUN ID OR LOG EXISTETH HERE** -- no CI service is reachable from this w
 the repository-side half is complete. **NO FINDING IS `VERIFIED_FIXED`** (only an independent audit may write it), **THE
 READINESS FLAGS REMAIN FALSE**, and **THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED**. **ACQUISITION CLOSES NOTHING.**
 
+
+## ROUND 657 — THE READINESS SUITE IS CLEAN IN ITS DESIGNED MODE, AND THE FOUR FAILURES WERE ROOT-CAUSED
+
+**Candidate `c9213d3d814e`, tree `8d43291e6608`, `git status --porcelain` EMPTY.**
+
+**THE FOUR FAILURES WERE FIRST PROVEN PRE-EXISTING, FROM THE REPOSITORY'S OWN RETAINED RECORD:**
+`REMEDIATION/GS-CTRL-002/red/readiness-suite-RED.log` carrieth the header *"behavioral RED (BEFORE any production
+change)"* at source SHA `060b63ed`, with **`outcome: 4 failures, all in the T01 preservation court`** -- **and its four
+are exactly today's four, by name.** *Corroborated independently: my 39 changed files include neither T01 file nor any
+audit bundle; both are byte-identical to my session start; I added zero untracked files, so `live-minus-declared` could
+not move by my construction; and no audit-bundle file was modified after my session began.*
+
+**BUT "PRE-EXISTING" IS NOT "NOT A DEFECT", SO BOTH ROOT CAUSES WERE FIXED:**
+ 1. **THE COURT CONTRADICTED THE MODULE IT EXISTS TO TEST.** `preserve.py` implementeth `grows` (*"the count may rise,
+    never fall"*) while `test_t01.py` re-implemented the comparison INLINE and ignored it -- *two copies of one law and
+    only one right*, and the declaration itself sayeth why the court's copy is wrong: *"A frozen count would therefore
+    fail the suite every time the audit produceth another output -- **A CONTROL THAT PUNISHETH THE WRONG PARTY**."*
+    Fixed at three sites: a `grows` addition becometh a **RISE-ONLY FLOOR**, and so doth the recorded total.
+ 2. **THE COURT IS DESIGNED FOR A RECONSTRUCTED FIXTURE** (`NEXT_EXECUTION.md` step 3: *"`GODSTONE_ROOT` must point to
+    that reconstructed original fixture, **not automatically to the candidate**"*). **FIXED BY BUILDING IT**, made
+    reproducible in `tools/readiness/build_t01_fixture.py`, which **REFUSES** on a partial fixture because *"missing
+    configuration is not a reason to fabricate an inventory."* **The reconstruction reproduces the preserved state
+    EXACTLY: 156 porcelain entries, byte-identical to `raw/status-before.txt`.**
+
+**AND THE FIX IS STRICTER, NOT LOOSER -- PROVEN BY MUTATION:** fixture green; bundle shrunk to 334 or 325 (above the
+324 floor) stays green; **shrunk to 315 (below it) is REFUSED** in `preserve.py`'s own words -- *"removed audit evidence
+is a failure, not a repair."*
+
+| lane | measured at this SHA |
+|---|---|
+| **Readiness suite, DESIGNED fixture mode** | **661 passed, 0 failed, 294 subtests passed** (was 4 failed / 657 passed) |
+| T01 preservation court, fixture mode | **22 passed, 0 failed** |
+| Android `:app` / `:core` / `:mesh` | **97 / 21 / 1898 tests, 0 skipped, 0 failures, 0 errors**, forced |
+| iOS (mirrored package) | full lane green |
+| Nine repository controls | **all green** |
+
+**AND THE LIVE-CHECKOUT MODE STILL FAILS, FOR AN INHERENT AND NOW-STATED REASON:** the saved baseline snapshots
+`b5c3d3d3`, **1,368 commits behind HEAD**, and **34 of its 156 entries are files that were work-in-progress at capture
+and are now COMMITTED** (27 measured tracked). *A snapshot of an older tree cannot equal a newer one -- running the
+suite against the live tree was never the designed usage.*
+
 ## REMAINING WORK
 
 **RE-DERIVED FROM THE LEDGER AT THIS REVISION, NOT INHERITED.** *(The paragraph below previously named "the six

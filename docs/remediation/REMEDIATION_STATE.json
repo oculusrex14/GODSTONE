@@ -14479,7 +14479,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "eebdea69f8568f6575ccff69dde88a6500366ad5",
+  "candidate_sha": "c9213d3d814ef82506bfb9a01cbb76d3212c0570",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
