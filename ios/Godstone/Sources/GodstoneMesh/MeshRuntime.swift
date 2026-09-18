@@ -294,7 +294,6 @@ public final class MeshRuntime {
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
-        artifacts: WipeArtifacts? = nil,
         encryptedStores: EncryptedStoreFactory? = nil
     ) throws -> MeshRuntime {
         try create(
@@ -302,7 +301,6 @@ public final class MeshRuntime {
             peerStoreUrl: peerStoreUrl,
             maxStoreBytes: maxStoreBytes,
             journal: journal,
-            artifacts: artifacts,
             keychain: DefaultLocalIdentityKeychain(),
             encryptedStores: encryptedStores
         )
@@ -328,7 +326,6 @@ public final class MeshRuntime {
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
-        artifacts: WipeArtifacts? = nil,
         keychain: any LocalIdentityKeychain,
         encryptedStores: EncryptedStoreFactory? = nil
     ) throws -> MeshRuntime {
@@ -343,7 +340,6 @@ public final class MeshRuntime {
             peerStoreUrl: peerStoreUrl,
             maxStoreBytes: maxStoreBytes,
             journal: journal,
-            artifacts: artifacts,
             keychain: keychain,
             encryptedStores: factory
         )
@@ -378,7 +374,6 @@ public final class MeshRuntime {
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
-        artifacts: WipeArtifacts? = nil,
         keychain: any LocalIdentityKeychain
     ) throws -> MeshRuntime {
         try composeRuntimeGraph(
@@ -386,7 +381,6 @@ public final class MeshRuntime {
             peerStoreUrl: peerStoreUrl,
             maxStoreBytes: maxStoreBytes,
             journal: journal,
-            artifacts: artifacts,
             keychain: keychain,
             encryptedStores: nil
         )
@@ -405,7 +399,6 @@ public final class MeshRuntime {
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
-        artifacts: WipeArtifacts? = nil,
         keychain: any LocalIdentityKeychain,
         encryptedStores: EncryptedStoreFactory
     ) throws -> MeshRuntime {
@@ -414,7 +407,6 @@ public final class MeshRuntime {
             peerStoreUrl: peerStoreUrl,
             maxStoreBytes: maxStoreBytes,
             journal: journal,
-            artifacts: artifacts,
             keychain: keychain,
             encryptedStores: encryptedStores
         )
@@ -427,18 +419,26 @@ public final class MeshRuntime {
         peerStoreUrl: URL,
         maxStoreBytes: Int64,
         journal: WipeJournal,
-        artifacts: WipeArtifacts?,
         keychain: any LocalIdentityKeychain,
         encryptedStores: EncryptedStoreFactory?
     ) throws -> MeshRuntime {
-        let effectiveArtifacts =
-            artifacts ??
-            KeychainWipeArtifacts(
-                keychain: keychain,
-                storeUrl: messageStoreUrl,
-                peerStoreUrl: peerStoreUrl
-            )
-
+        // *** GS-STORE-002 / GS-FINAL-011 (round 681): THE UNUSED `effectiveArtifacts` LOCAL IS GONE, AND THE
+        // PARAMETER THAT BUILT IT WITH IT. ***
+        //
+        // `10_dead_code_and_technical_debt_report.md` named this EXACTLY: *"the inspected iOS composition constructs
+        // the injected/default artifact dependency WITHOUT CONSUMING IT. ... either wire that exact object to the owned
+        // wipe transaction and test it, or remove the misleading parameter/local with compatibility review. **Do not
+        // leave an injectable dependency that callers believe controls deletion when it does not.**"*
+        //
+        // **MEASURED BEFORE REMOVING IT:** the local was resolved at this line and used NOWHERE ELSE in the file (the
+        // only other `artifacts` occurrences were the parameter and its forwarding chain); `CrashResumableWipe` takes
+        // SEAMS (`vault`, `filesystem`, `runtime`, `authority`), never a `WipeArtifacts`; the runtime's real deletion
+        // road passeth `WipeArtifactFileSystemSeam` built from the OWNED PATHS at `:637`; and **NO CALLER -- production
+        // or court -- ever passed `artifacts:` to any of the four entry points.**
+        //
+        // **SO `WipeArtifacts` BELONGS TO THE RETIRED `PanicWipe` COMPOSITION, NOT TO THIS ONE**, and carrying it here
+        // meant a caller could inject an object that controlled NOTHING. *Removing it is the honest repair: the type
+        // still existeth for `PanicWipe` and its courts, and this composition no longer offers a knob it never turns.*
         // Startup/Resume barrier: finish any pending wipe BEFORE opening stores or identity -- AND IT IS NOW THE
         // CRASH-RESUMABLE AUTHORITY THAT FINISHETH IT (GS-STORE-006's card, step 1: one runtime-owned authority, and the
         // old `PanicWipe` root retires rather than competing with it).

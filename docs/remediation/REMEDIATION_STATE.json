@@ -9961,6 +9961,12 @@
      "sha256": "f88bb53534495d3a8aa60cd2a69747dc6fe71f2d2871b9247d4367e35a4158ac",
      "what": "GS-STORE-002 round 544: THE FULL iOS LANE",
      "outcome": "SWIFT_RC=0: `GodstoneMeshTests` **1198 tests, 0 failures** (was 1197 -- the +1 IS the arm); `GodstoneCoreTests` 89/0; `LabMeshTests` 5/0."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-002/round681-the-injectable-knob-that-controlled-nothing.log",
+     "sha256": "9abedbd7930e0c7ec84239e32bd78af35fd3b216ea626f00eae4a7915c1c0eeb",
+     "what": "The audit's report-10 item closed: the injectable `artifacts:` knob that controlled nothing is removed.",
+     "outcome": "MEASURED BEFORE TOUCHING: `effectiveArtifacts` was resolved at MeshRuntime.swift:434 and used NOWHERE (the only other `artifacts` occurrences were the parameter and its forwarding chain across four entry points); `CrashResumableWipe` takes SEAMS (vault/filesystem/runtime/authority), never a `WipeArtifacts`, so the type belongs to the RETIRED PanicWipe composition; the runtime's real deletion road already exists at :637 through `WipeArtifactFileSystemSeam` built from the OWNED paths; and ZERO callers -- production or court -- ever passed `artifacts:` to any of the four entry points. SO REPORT 10's SECOND REMEDY APPLIES: wiring it would have INVENTED a consumption the design lacks, while the defect the audit named is the MISLEADING KNOB (\"do not leave an injectable dependency that callers believe controls deletion when it does not\"). REMOVED: the parameter from four entry points and the private signature, the forwarding chain, and the local; `WipeArtifacts` itself STAYS for PanicWipe and its courts. VERIFIED: swift build clean (forced rebuild after touching the file and re-syncing the mirror); the Wipe/Store002/Final011/CrashStartup courts give 79 tests, 0 failures, including the arms that drive the REAL deletion road through the owned paths -- so the road the parameter pretended to control is exercised WITHOUT it."
     }
    ],
    "my_red_case": "*** A BEHAVIOURAL RED, AND THE CARD'S OWN CLOSURE TEST, RUN BEFORE THE REPAIR. *** `ReadinessStore002Tests.testW04APrivateStoreIsNeverReadableByUnkeyedSQLite` -- because W01/W02/W03, the arms that stood, are all SOURCE-substring laws: they read the TEXT of the composition and proveth what it SAYETH, never what it DOTH. The card's closure test is behavioural (\"The independent testPrivateMessageStoreMustNotBeReadableByUnkeyedSQLite must pass with a nonempty private database\"), so W04 COMPOSETH the runtime, WRITETH a private store, and then reads THAT FILE WITH STOCK UNKEYED sqlite3 -- the audit's own reproduction. THE RED, MEASURED: `XCTAssertNotEqual failed: (\"0\") is equal to (\"0\") - *** AN UNKEYED sqlite3 PREPARED A STATEMENT AGAINST THE COMPOSITION'S PRIVATE STORE (rc=0): ORDINARY SQLITE MAY NEVER BE A PRIVATE STORE (GS-STORE-002) ***`, 4 tests executed, 1 failure, SWIFT_RC=1, with the three existing arms passing as the control. rc=0 IS SQLITE_OK. *** ROUND 544: `ReadinessStore002Tests.testGSSTORE002_theProtectionSetCarriesTheSidecarsAndTheDirectory` -- and THE INSTRUMENT IS CHOSEN FOR WHAT IS **HOST-OBSERVABLE** RATHER THAN FOR WHAT IS NOT: the host cannot apply a real Data-Protection class (measured: the provider answereth `.success` unconditionally off-iOS), **SO THE ARM MEASURES THE SET OF PATHS THE FACTORY ASKS FOR** -- which is exactly the clause the repair changed. **A PATH THAT IS NEVER NAMED IS NEVER PROTECTED, AND A SET IS A MEASUREMENT WHERE A CLASS IS NOT.** THE NEGATIVE CASE (the main file alone, landing VERIFIED before the run) FAILED THE ARM ON THE WAL AND SHM CLAUSES BY NAME: *'THE WAL SIDECAR MUST BE PROTECTED: it holds the very rows the main file lacks, so an unprotected `-wal` is an unprotected store'*. ***",
@@ -14546,7 +14552,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "ac3fa2d22d2c34c7f8c513b19e5d32bd8c699f0f",
+  "candidate_sha": "fcdc832ec84e7398cb8286b618795ecc18e58e5c",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

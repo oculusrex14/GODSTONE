@@ -60,7 +60,7 @@
     "Sources/GodstoneMesh/MeshCoordinator.swift": "e6f99eaa75de3b4d758bf9d5bbe0f8b6237f0d2e9b0878a7837eaa08d0d8d5cb",
     "Sources/GodstoneMesh/MeshIdentity.swift": "5a8656c4ed1f5b5050ea0aea4bde27c97d3fed15250aa54e709b87e4d9cecdfb",
     "Sources/GodstoneMesh/MeshNode.swift": "68d00dc56afaaa65f397ce286d1ef0f6b01c664e6c3c2998ed1f1f94ba33e3a2",
-    "Sources/GodstoneMesh/MeshRuntime.swift": "5175cedcfedb01a5a1b83ba1dbaa2be99699a772ee8ac36a566488e4be711652",
+    "Sources/GodstoneMesh/MeshRuntime.swift": "649dcb42192c40066285bf9da9fce400894b5b4729696afa2e0a9767491149fd",
     "Sources/GodstoneMesh/MeshUXModel.swift": "25868973ef4ef61f3e6226a3233e9bb3412f7717cf7ce1005dfe70dd01e1996d",
     "Sources/GodstoneMesh/MessageStore.swift": "d88a70b290cedf52fc8591e8f68320f277c14fe671745643ef8c46286dfca31f",
     "Sources/GodstoneMesh/NoiseSession.swift": "c41d36a980d0c5d53fd68d26445e2e4c683f292de3032223ea52676ebab4f42e",
