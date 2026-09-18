@@ -13584,6 +13584,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-012/round619-the-audits-named-verifications-executed.log",
    "sha256": "9a8709c7dfe789b404daa380f037234e5adb5e584c177eeb0b0b8d10a8348f91",
    "correction": "THE AUDIT'S OWN NAMED VERIFICATIONS WERE EXECUTED RATHER THAN ASSUMED. `NEXT_EXECUTION.md` names commands nobody had put against this candidate. FOUR EXECUTABLE ONES WERE RUN: (1) `sync_ios_foundation_package.py --check` -> rc 0, THE GENERATED MIRROR IS VERIFIED AGAINST CANONICAL rather than merely re-generated -- which mattereth because the mirror is rmtree'd, and this repository's history recordeth three mutation rounds invalidated by that trap; (2) the audit's DIGEST CONTRACT both ways -- the audited revision FAILS 4 of 6, OURS PASSES 6 of 6 (round 617), so the filed defect is repaired and the proof is the auditor's own arms; (3) EVERY LEDGER-CITED REMEDIATION SHA resolved and ancestry-checked -- 9 distinct commits, EVERY ONE `cat-file`-resolves and EVERY ONE is an ancestor of HEAD, no phantoms; (4) THE AUDIT'S CLASSIFICATION read from its own data -- 54 original rows (40 UNABLE_TO_VERIFY, 7 FIX_SUBMITTED_BUT_NOT_VERIFIED, 6 PARTIAL_MISCLASSIFIED, 1 NOT_FIXED, all closure_blocked), 13 new findings EVERY ID MATCHING THE LEDGER, and 18 residual uncertainties. THE ONE `NOT_FIXED` ROW IS GS-STORE-006, whose stated remaining work is the three clauses the round-574 record addresseth by name -- a repaired candidate now exists, which is what that row required, but ONLY AN INDEPENDENT AUDIT MAY MOVE ITS STATUS. AND MY FIRST SHA-EXTRACTION WAS WRONG: it scraped hex-looking tokens from status prose and produced a \"SHA\" that was a paragraph -- **a field named `submitted_at_sha` does not always contain a SHA, and a checker that cannot tell a SHA from a sentence will eventually report on a sentence.** NOT DONE AND NOT CLAIMED: T01's preservation fixture, the six controls from a disposable clone, the forty per-finding implementation reviews, and the external cards (no artifact has arrived)."
+  },
+  {
+   "round": 623,
+   "finding": "PHASE-8-AUDIT-PROCEDURE",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-8/round623-audit-steps-1-2-4-executed.log",
+   "sha256": "0ba76700dcb2028f11b82fb56a7c9a984cae6e54ec0290593f69ac162e68d3a3",
+   "correction": "THE AUDIT'S STEPS 1, 2 (partly) AND 4 WERE EXECUTED AGAINST THIS CANDIDATE. STEP 1: all four pinned refs (CANDIDATE e07e6ca1, BASELINE c683a2bf, SCOPE_A 44100c04, SCOPE_B 430e5ce2) EXIST, and the three ancestry checks pass -- each is an ancestor of the candidate, **AND THE CANDIDATE IS AN ANCESTOR OF HEAD**, so this work descends from the exact revision the audit examined. STEP 4: ALL SIX NAMED CONTROLS GREEN (parity --scope repo; symbols --selftest; lab isolation; store schema 111 controls; trusted runtime composition; release surface), plus `sync_ios_foundation_package.py --check` rc 0 -- THE MIRROR IS VERIFIED AGAINST CANONICAL, not merely re-generated, which matters because it is rmtree'd and this history recordeth three mutation rounds invalidated by that trap. AND `symbols --selftest` RESTORES A DELIBERATELY-BROKEN TREE and confirms 0 unresolved there, so the real tree's \"0 unresolved\" is a MEASUREMENT RATHER THAN A DEFAULT. NOT DONE AND NOT CLAIMED: step 2's isolated clone; STEP 3's T01 preservation fixture, which CANNOT be built here -- it needs the original bundle's inventory, tracked patch, copied WIP and historical records, none of which exists in this checkout, and *\"missing configuration is not a reason to fabricate an inventory\"*; STEP 5's forty per-finding implementation reviews, which the audit itself calls a direct review rather than another ledger read; step 6's prototype patch, explicitly not adopted; and step 7's external half, whose cards are complete but whose artifacts have not arrived."
   }
  ],
  "phase_one": {
@@ -14358,7 +14365,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "2b502788f5b08553037caab2cc016f6ee38e3021",
+  "candidate_sha": "dbcc0ab56f14c23c3cfd1b8201c365e4d247b31e",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
