@@ -120,4 +120,162 @@ final class GsFinal005MandatoryClockTests: XCTestCase {
         store.close()
         try? FileManager.default.removeItem(at: url)
     }
+    // ================================================================================================
+    // *** GS-STORE-004 (round 581): THE FIVE CASES THE AUDIT NAMED, AND THE STORE MUST JUDGE THEM. ***
+    //
+    // THE CARD'S OWN REMAINING WORK, VERBATIM: *"Require a production clock at store creation; **test non-DIRECT
+    // kinds, same-boot reopen, reboot, exhaustion and readmission**."* THE FIRST CLAUSE IS DONE (the clock is
+    // non-optional and defaults to the real platform clock). **THE FIVE CASES ARE THE GAP, AND EACH IS MEASURED
+    // BELOW THROUGH THE STORE'S OWN PREDICATE -- NOT THROUGH THE POLICY ALONE**, because a policy that is right while
+    // the STORE consults it wrongly is the defect the card's own text describes ("inspected runtime creation does not
+    // install it").
+    //
+    // *** AND THE DISTINCTION THAT MATTERS THROUGHOUT: `isForwardable` IS READ FROM THE STORE, WITH THE REAL
+    // PERSISTED BUDGET AND BOOT IDENTITY PASSED IN -- SO THESE ARMS MEASURE THE STORE'S JUDGEMENT, NOT A
+    // REIMPLEMENTATION OF THE POLICY IN THE TEST. ***
+    // ================================================================================================
+
+    /// A store with a clock the arm controls, so the boot identity and the monotonic reading are both pinned.
+    private func storeAt(_ tag: String, monoMs: Int64, boot: String)
+        throws -> (SqliteMessageStore, URL) {
+        let url = tempUrl(tag)
+        let store = SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+        store.receiptTimeProvider = { (monoMs: monoMs, bootIdentity: boot) }
+        return (store, url)
+    }
+
+    /**
+     * *** CASE 1: NON-DIRECT KINDS -- EACH CARRIETH ITS OWN LIFETIME, SO NO TWO MAY ANSWER THE SAME. ***
+     *
+     * The card's own words: *"use non-default SOS/bulk/direct kinds."* And the lifetimes are NOT equal
+     * (`direct` 7 days, `sos`/`group`/`broadcast` 24 h, `bulk` 1 h), so an arm that asked one kind and generalised
+     * would miss a per-kind defect entirely. **THE ROW IS AGED PAST THE SHORTEST LIFETIME BUT WELL INSIDE THE
+     * LONGEST: SO `bulk` MUST BE WITHHELD WHILE `direct` IS STILL FORWARDABLE.** A predicate that answered the same
+     * for both would fail here whichever way it answered.
+     */
+    func testGSSTORE004_nonDirectKindsAreGovernedByTheirOwnLifetimes() throws {
+        let (store, url) = try storeAt("kinds2", monoMs: 10_000_000, boot: "boot-A")
+        defer { store.close(); try? FileManager.default.removeItem(at: url) }
+
+        // TWO HOURS AGO: past `bulk`'s one hour, comfortably inside `direct`'s 7 days.
+        let twoHoursMs = Int64(2 * 60 * 60 * 1000)
+        let receipt = store.receiptTimeProvider().monoMs - twoHoursMs
+
+        XCTAssertFalse(
+            store.isForwardable(receivedAt: receipt, kind: .bulk),
+            "*** `bulk` LIVETH ONE HOUR, SO A TWO-HOUR-OLD ROW MUST BE WITHHELD. If this passes, PER-KIND RETENTION " +
+                "IS INERT -- which is the card's own scenario ('use non-default SOS/bulk/direct kinds'). ***",
+        )
+        XCTAssertTrue(
+            store.isForwardable(receivedAt: receipt, kind: .direct),
+            "*** AND `direct` LIVETH SEVEN DAYS, SO THE SAME AGE MUST STILL BE FORWARDABLE. THE TWO ANSWERS MUST " +
+                "DIFFER: a predicate answering the same for both is the defect, whichever answer it gives. ***",
+        )
+    }
+
+    /**
+     * *** CASE 2: SAME-BOOT REOPEN -- THE ELAPSED TIME IS DEBITED EXACTLY ONCE. ***
+     *
+     * A crash and a reopen WITHIN ONE BOOT carries the ORIGINAL monotonic anchor, so continuity is PROVEN and the
+     * debit is the real elapsed time. **THE DEFECT THIS GUARDETH AGAINST IS THE OPPOSITE OF REBOOT: A reopen that
+     * wrongly counted a discontinuity would debit a full hour for nothing, expiring rows at 32 opens.**
+     */
+    func testGSSTORE004_aSameBootReopenDebitsElapsedTimeAndCountsNoDiscontinuity() throws {
+        let (store, url) = try storeAt("sameboot", monoMs: 5_000_000, boot: "boot-SAME")
+        defer { store.close(); try? FileManager.default.removeItem(at: url) }
+
+        let start = store.receiptTimeProvider().monoMs
+        let budget = Int64(RetentionPolicy.lifetimeMs[.bulk]!)
+        // ONE MINUTE OF REAL ELAPSED MONOTONIC TIME ON THE SAME BOOT.
+        let elapsed: Int64 = 60_000
+        store.receiptTimeProvider = { (monoMs: start + elapsed, bootIdentity: "boot-SAME") }
+
+        XCTAssertTrue(
+            store.isForwardable(receivedAt: start, kind: .bulk, storedBudget: budget - elapsed,
+                                storedCheckpoint: start, storedBoot: "boot-SAME", storedDiscontinuity: Int64(0)),
+            "*** SAME BOOT, ONE MINUTE LATER, BUDGET DEBITED BY THAT MINUTE: THE ROW IS STILL FORWARDABLE. A reopen " +
+                "that wrongly counted a discontinuity would debit a full hour and WITHHOLD it -- the defect the " +
+                "reboot case must not be confused with. ***",
+        )
+    }
+
+    /**
+     * *** CASE 3: REBOOT -- CONTINUITY IS LOST, AND THE CONSERVATIVE RULE APPLIES. ***
+     *
+     * Monotonic readings are comparable ONLY within one boot, so a DIFFERENT boot identity is NOT continuity, and the
+     * policy debiteth AT LEAST ONE HOUR regardless of how small the monotonic delta looketh. **THIS IS THE CASE WHERE
+     * A NAIVE `now - anchor` WOULD BE MOST WRONG: the new boot's monotonic counter STARTETH NEAR ZERO, so the naive
+     * arithmetic would compute A NEGATIVE OR TINY elapsed and EXTEND THE ROW'S LIFE.**
+     */
+    func testGSSTORE004_aRebootAppliesTheConservativeHourRatherThanTheNaiveDelta() throws {
+        let (store, url) = try storeAt("reboot", monoMs: 1_000, boot: "boot-B")   // a FRESH boot: small counter
+        defer { store.close(); try? FileManager.default.removeItem(at: url) }
+
+        // THE ROW WAS ANCHORED IN ANOTHER BOOT, WITH A LARGE MONOTONIC READING AND A SMALL REMAINING BUDGET.
+        let budget = Int64(RetentionPolicy.lifetimeMs[.bulk]!)
+        let anchoredAt: Int64 = 9_000_000                       // the OLD boot's counter -- far larger than this boot's
+        let remaining = budget - Int64(RetentionPolicy.msPerHour) + 1   // just under one hour left
+
+        XCTAssertFalse(
+            store.isForwardable(receivedAt: anchoredAt, kind: .bulk, storedBudget: remaining,
+                                storedCheckpoint: anchoredAt, storedBoot: "boot-A", storedDiscontinuity: Int64(0)),
+            "*** A REBOOT IS NOT CONTINUITY: the policy debiteth at least one hour, so a row with just under an hour " +
+                "left MUST BE WITHHELD. **AND THE NAIVE ARITHMETIC WOULD GET THIS EXACTLY BACKWARDS:** the new boot's " +
+                "counter ($(store.receiptTimeProvider().monoMs)) is SMALLER than the anchor ($(anchoredAt)), so " +
+                "`now - anchor` is NEGATIVE and would have EXTENDED the row's life. ***",
+        )
+    }
+
+    /**
+     * *** CASE 4: EXHAUSTION -- THE BUDGET REACHETH ZERO AND THE ROW IS WITHHELD. ***
+     *
+     * The card: *"never replenished."* A budget spent to exactly zero must withhold, and -- the sharper half -- **A
+     * LATER READ MUST NOT REPLENISH IT.** The store's own comment saith the debit is "FROM ITS OWN CHECKPOINT", so a
+     * second judgement with the SAME exhausted budget must still withhold.
+     */
+    func testGSSTORE004_anExhaustedBudgetIsWithheldAndIsNeverReplenished() throws {
+        let (store, url) = try storeAt("exhaust", monoMs: 7_000_000, boot: "boot-E")
+        defer { store.close(); try? FileManager.default.removeItem(at: url) }
+
+        let now: Int64 = store.receiptTimeProvider().monoMs
+        let withheld = { (remaining: Int64) in
+            store.isForwardable(receivedAt: now, kind: .bulk, storedBudget: remaining,
+                                storedCheckpoint: now, storedBoot: "boot-E", storedDiscontinuity: Int64(0))
+        }
+
+        XCTAssertFalse(withheld(0),
+                       "*** A BUDGET SPENT TO ZERO MUST WITHHOLD. ***")
+        XCTAssertFalse(withheld(0),
+                       "*** AND A SECOND JUDGEMENT MUST NOT REPLENISH IT -- 'remaining lifetime only DECREASES'. " +
+                           "A predicate that resurrected a spent row on re-read would be the replenishment the " +
+                           "finding forbids. ***")
+    }
+
+    /**
+     * *** CASE 5: READMISSION -- A FRESH ROW OF THE SAME KIND IS STILL ADMITTED AFTER AN EXHAUSTION. ***
+     *
+     * The positive control for exhaustion, and it is the one that keepeth the case above from being satisfied by a
+     * predicate that simply refuseth everything. **A NEW ROW CARRIETH A NEW RECEIPT AND A NEW ANCHOR: THE DEAD ROW'S
+     * EXHAUSTION MAY NOT POISON THE KIND.**
+     */
+    func testGSSTORE004_aFreshRowIsReadmittedAfterAnExhaustedOne() throws {
+        let (store, url) = try storeAt("readmit", monoMs: 8_000_000, boot: "boot-R")
+        defer { store.close(); try? FileManager.default.removeItem(at: url) }
+
+        let now: Int64 = store.receiptTimeProvider().monoMs
+        XCTAssertFalse(
+            store.isForwardable(receivedAt: now, kind: .bulk, storedBudget: 0,
+                                storedCheckpoint: now, storedBoot: "boot-R", storedDiscontinuity: Int64(0)),
+            "the rig must first produce a WITHHELD row, or the readmission below proves nothing",
+        )
+        XCTAssertTrue(
+            store.isForwardable(receivedAt: now, kind: .bulk,
+                                storedBudget: Int64(RetentionPolicy.lifetimeMs[.bulk]!),
+                                storedCheckpoint: now, storedBoot: "boot-R", storedDiscontinuity: Int64(0)),
+            "*** READMISSION: A FRESH ROW OF THE SAME KIND, WITH A FULL BUDGET AND THIS BOOT'S ANCHOR, MUST BE " +
+                "ADMITTED -- otherwise a predicate that refused everything would satisfy the exhaustion case while " +
+                "making the store useless. ***",
+        )
+    }
+
 }
