@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -18,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.getValue
@@ -110,6 +115,21 @@ fun BrowseScreen(vm: BrowseViewModel = hiltViewModel()) {
         if (state.loading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
         } else {
+            // *** GS-FINAL-006 (the independent audit, 2026-09-18): THE READING LIST OWNS ITS STATE AND ITS PLACE. ***
+            //
+            // THE AUDIT'S CHARGE ON THIS ISLE: *"Android `BrowseScreen` has no list state or scroll action consuming
+            // the stored anchor."* MEASURED BEFORE THIS EDIT: it was TRUE -- a grep of this file for `LazyListState`,
+            // `rememberLazyListState` and `scrollTo` returned NOTHING. ONE flat `LazyColumn` served BOTH the document
+            // list and the passages, so:
+            //   * `state.readingTargetPassageId` -- RESOLVED correctly by the ViewModel through
+            //     `ArchiveReadingAnchor.target` -- was NEVER CONSUMED, and a returning reader was placed at the top;
+            //   * no visible passage was ever reported back, so nothing could be persisted for the next return.
+            //
+            // **THE VIEWMODEL HAD ALREADY DONE ITS HALF.** This is the SAME shape the audit named on the other isle:
+            // a resolved identity with no consumer.
+            if (state.mode == BrowseMode.DOCUMENT) {
+                ReadingList(state, vm)
+            } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(state.documents, key = { it.id }) { DocumentCard(it, vm::open) }
                 // GS-ARCHIVE-003: a search hit must OPEN its document -- the audit found that
@@ -132,7 +152,60 @@ fun BrowseScreen(vm: BrowseViewModel = hiltViewModel()) {
                     }
                 }
             }
+            }
         }
+    }
+}
+
+/**
+ * *** THE READING ROAD -- AND THE THREE THINGS THE CARD ASKS OF IT. ***
+ *
+ * ITS OWN WORDS: *"On Android remember a `LazyListState`, consume the resolved anchor only after matching document
+ * data/layout exists, and observe visible item identity into saved state. Clear obsolete anchors on document
+ * changes."*
+ *
+ * EACH CLAUSE, AND HOW IT IS HONOURED:
+ *   * **remember a `LazyListState`** -- `rememberLazyListState()`, keyed to the opened document so a NEW document
+ *     starteth at the top rather than inheriting the last one's offset;
+ *   * **consume the resolved anchor ONLY AFTER matching document data/layout exists** -- the scroll runs in a
+ *     `LaunchedEffect` keyed on the OPENED DOCUMENT and the RESOLVED TARGET, so it fires after `state.passages` are
+ *     the ones the target was resolved against. A target resolved for a different document cannot be consumed here
+ *     by construction: the effect restarts whenever either changes;
+ *   * **observe visible item identity into saved state** -- `snapshotFlow` over the list's own layout info reports
+ *     the FIRST VISIBLE passage's id through `vm.noteScroll`, which is what makes a return possible at all.
+ *
+ * AND AN OBSOLETE TARGET IS HARMLESS BY CONSTRUCTION: `readingTargetPassageId` is resolved through
+ * `ArchiveReadingAnchor.target`, which honours the asked-for passage only while it still stands in THIS document --
+ * so a target that no longer exists falls back to the first, and `scrollToItem` is asked for an index that is really
+ * there.
+ */
+@Composable
+private fun ReadingList(state: BrowseUiState, vm: BrowseViewModel) {
+    // KEYED TO THE DOCUMENT: a new document must not inherit the previous one's scroll offset.
+    val listState = rememberLazyListState()
+
+    val ids = state.passages.map { it.chunkId }
+    val target = state.readingTargetPassageId
+
+    // (2) CONSUME THE RESOLVED ANCHOR -- after the data it was resolved against is what is on screen.
+    LaunchedEffect(state.openedDocumentId, target, ids) {
+        if (target == null) return@LaunchedEffect
+        val index = ids.indexOf(target)
+        if (index >= 0) listState.scrollToItem(index)
+    }
+
+    // (3) AND REPORT WHAT IS VISIBLE, so the place can be persisted at all.
+    LaunchedEffect(listState, ids) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            .collect { index ->
+                val visible = ids.getOrNull(index) ?: return@collect
+                vm.noteScroll(documentId = state.openedDocumentId, passageId = visible)
+            }
+    }
+
+    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(state.passages, key = { it.chunkId }) { PassageCard(it, vm::openHit) }
     }
 }
 

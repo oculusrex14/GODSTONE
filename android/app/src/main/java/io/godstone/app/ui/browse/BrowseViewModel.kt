@@ -324,6 +324,35 @@ class BrowseViewModel(
     }
 
     private fun openDocumentInternal(documentId: Long, title: String) {
+        // *** GS-FINAL-006: AN ANCHOR BELONGING TO ANOTHER DOCUMENT IS OBSOLETE, AND IS CLEARED HERE. ***
+        //
+        // THE CARD'S OWN LAST CLAUSE: *"Clear obsolete anchors on document changes."* MEASURED BEFORE THIS EDIT:
+        // NOTHING CLEARED IT -- a grep for `anchorPassageId = null` in this class returned NOTHING.
+        //
+        // WHY IT MATTERS EVEN THOUGH `ArchiveReadingAnchor.target` ALREADY GUARDETH VALIDITY: `target` honoureth the
+        // asked-for passage only while it STANDETH in the document being opened -- so a stale anchor cannot place the
+        // reader wrongly. BUT IT IS STILL CARRIED, AND IT IS STILL PERSISTED: `snapshotTo` would write another
+        // document's passage id into the saved handle, and a LATER return to THAT document would then honour an anchor
+        // the reader never set while reading it. **A PLACE THAT BELONGS TO A DOCUMENT YOU ARE NOT IN IS NOT A PLACE.**
+        //
+        // AND IT IS CLEARED ONLY WHEN THE DOCUMENT REALLY CHANGES: re-opening the SAME document keepeth its anchor, so
+        // a rotation or a return does not lose the reader's place.
+        // *** AND THE CONDITION IS "A DIFFERENT DOCUMENT IS ALREADY OPEN", NOT "THE IDS DIFFER". ***
+        //
+        // MY FIRST DRAFT USED `_state.value.openedDocumentId != documentId`, AND THE LANE NAMED THE DEFECT AT ONCE:
+        // ON A **RESTORE** the anchor arriveth FROM THE HANDLE, written for THE VERY DOCUMENT BEING OPENED, while
+        // `openedDocumentId` is still null -- so `null != 7` WAS TRUE, A LEGITIMATE ANCHOR WAS DISCARDED, and two
+        // T49 arms failed: *"the asked-for anchor is remembered AS ASKED FOR -- it is not silently discarded"* and
+        // *"and it must be RESTORED"*.
+        //
+        // **A RESTORED ANCHOR IS NOT AN OBSOLETE ONE.** The three cases, each now distinguished by its own fact:
+        //   * RESTORE         -- no document is open yet, and the anchor came WITH this document: KEEP;
+        //   * SAME DOCUMENT   -- re-opened (a rotation, a return): KEEP (the clause says "on document CHANGES");
+        //   * A DIFFERENT ONE -- genuinely navigated away from another document: CLEAR.
+        val alreadyOpen = _state.value.openedDocumentId
+        if (alreadyOpen != null && alreadyOpen != documentId) {
+            _state.value = _state.value.copy(anchorPassageId = null)
+        }
         val token = generation.incrementAndGet()
         _state.value = _state.value.copy(
             loading = true, phase = BrowsePhase.Loading, error = null, canRetry = false)
