@@ -290,12 +290,41 @@ internal object MeshModule {
     fun providePeerIdentityRepository(store: SqlcipherPeerIdentityStore): PeerIdentityRepository =
         PeerIdentityRepository(store)
 
+    /**
+     * *** GS-FINAL-003 (round 570): THE DURABLE ANSWER, READ PER CALL, AT THE ADMISSION POINT. ***
+     *
+     * MEASURED BEFORE THIS EDIT: `CrashResumableWipe.allowsSensitiveApi()` -- THE JOURNAL-BOUND ANSWER -- HAD **ZERO
+     * PRODUCTION CALLERS**, and both admission decorators gated only on `DefaultRuntimeLifecycleGate.isActive`, AN
+     * IN-PROCESS FLAG. **THE IOS ISLE ALREADY CONSUMED ITS EQUIVALENT AT TWO ADMISSION POINTS; THIS ONE CONSULTED
+     * NOTHING DURABLE.**
+     *
+     * AND THE GAP IS THE CRASH CASE: a wipe REQUESTED and then INTERRUPTED leaves the JOURNAL pending while the next
+     * process starts with `invalidated = false` -- SO THE PROCESS FLAG SAYS "ACTIVE", THE DURABLE RECORD SAYS "A WIPE
+     * IS OUTSTANDING", AND SENSITIVE USE IS ADMITTED AGAINST A STORE MID-ERASURE. That is precisely the audit's
+     * charge: *"Replace Unit/ignored result with an internal, non-forgeable startup permit issued only after a typed
+     * recovery decision."*
+     *
+     * AND IT DOES NOT DEADLOCK, WHICH IS WHY THIS SHAPE WAS CHOSEN: a gesture that REFUSED CONSTRUCTION was measured
+     * to make the graph that finishes the wipe unbuildable (the node carries the transport the wipe must drain). This
+     * seam is READ AT ADMISSION TIME from the durable journal -- so the graph still builds, the wipe can still
+     * complete, and sensitive USE is refused until it has.
+     */
+    @Provides @Singleton
+    fun provideWipeIsPending(@ApplicationContext ctx: Context): () -> Boolean = {
+        // READ, NEVER CACHED: the coordinator's own rule is that this question must be answered from the durable
+        // record each time, because the answer CHANGES when the wipe completes.
+        FileWipeJournal(ctx).read() != PanicWipe.WipeState.IDLE
+    }
+
     @Provides @Singleton
     fun provideBoundRecipientKeyResolver(
         repo: PeerIdentityRepository,
-        gate: DefaultRuntimeLifecycleGate
+        gate: DefaultRuntimeLifecycleGate,
+        wipeIsPending: () -> Boolean
     ): BoundRecipientKeyResolver {
-        val source = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate)
+        val source = RuntimeGatedPeerIdentityLookupSource(
+            RepositoryPeerIdentityLookupSource(repo), gate, wipeIsPending,
+        )
         return BoundRecipientKeyResolver(source)
     }
 
@@ -317,9 +346,12 @@ internal object MeshModule {
     fun provideSessionManager(
         identity: Identity,
         repo: PeerIdentityRepository,
-        gate: DefaultRuntimeLifecycleGate
+        gate: DefaultRuntimeLifecycleGate,
+        wipeIsPending: () -> Boolean
     ): SessionManager {
-        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate)
+        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(
+            RepositoryPeerBindingTrustAuthority(repo), gate, wipeIsPending,
+        )
         return SessionManager(identity, trustAuthority, lifecycleGate = gate)
     }
 

@@ -44,7 +44,7 @@ class SessionManagerConcurrencyTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate)
+        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate) { false }
         val resolver = BoundRecipientKeyResolver(lookup)
 
         val peer = MeshIdentity.generate()

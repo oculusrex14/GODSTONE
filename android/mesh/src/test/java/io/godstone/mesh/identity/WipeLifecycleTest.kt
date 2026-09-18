@@ -181,7 +181,7 @@ class WipeLifecycleTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate)
+        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate) { false }
         val resolver = BoundRecipientKeyResolver(lookup)
 
         val peer = MeshIdentity.generate()
@@ -201,7 +201,7 @@ class WipeLifecycleTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate)
+        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate) { false }
 
         val peer = MeshIdentity.generate()
         val binding = peer.issueIdentityBinding()

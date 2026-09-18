@@ -391,10 +391,10 @@ class CrashStartupResumeTest {
         val peerStore = JdbcPeerIdentityStore(peerFile)
         val peerRepo = PeerIdentityRepository(peerStore)
 
-        val gatedLookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(peerRepo), gate)
+        val gatedLookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(peerRepo), gate) { false }
         val resolver = BoundRecipientKeyResolver(gatedLookup)
 
-        val gatedTrust = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(peerRepo), gate)
+        val gatedTrust = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(peerRepo), gate) { false }
         val sm = SessionManager(
             identity = MeshIdentity.generate(),
             trustAuthority = gatedTrust,
@@ -440,5 +440,158 @@ class CrashStartupResumeTest {
         } catch (e: Exception) {
             // Expected
         }
+    }
+
+    /**
+     * *** GS-FINAL-003 (round 570): THE DURABLE HALF OF THE ADMISSION QUESTION, WHICH HAD NO CALLER AT ALL. ***
+     *
+     * THE MEASUREMENT THAT PROMPTED THIS, AND IT WAS ONE GREP: `CrashResumableWipe.allowsSensitiveApi()` -- the
+     * JOURNAL-BOUND answer -- HAD **ZERO PRODUCTION CALLERS**, while both admission decorators gated only on
+     * `RuntimeLifecycleGate.isActive`, AN IN-PROCESS FLAG. The iOS isle already consumed its equivalent at two
+     * admission points; the Android isle consulted nothing durable.
+     *
+     * AND THE GAP IS THE CRASH CASE, WHICH IS THE ONLY CASE THAT MATTERS HERE: a wipe REQUESTED and then INTERRUPTED
+     * leaves the JOURNAL pending while the next process starts with `invalidated = false`. **SO THE IN-PROCESS FLAG
+     * SAYS "ACTIVE", THE DURABLE RECORD SAYS "A WIPE IS OUTSTANDING", AND SENSITIVE USE IS ADMITTED AGAINST A STORE
+     * MID-ERASURE.** The audit's own words: *"Replace Unit/ignored result with an internal, non-forgeable startup
+     * permit issued only after a typed recovery decision."*
+     */
+    private fun admissionRepo(): PeerIdentityRepository {
+        val peerFile = tempFolder.newFile("gf003_peer.db").also { it.delete() }
+        return PeerIdentityRepository(JdbcPeerIdentityStore(peerFile))
+    }
+
+    private fun someNodeId(): ByteArray = MeshIdentity.generate().nodeId
+
+    /** A VALID binding, built the way the existing trust court builds one -- so the arm measures the GATE. */
+    private fun peerBindingFor(): ValidatedPeerBinding {
+        val peer = MeshIdentity.generate()
+        val binding = peer.issueIdentityBinding()
+        val validated = IdentityBindingValidator.validate(
+            binding.encode(), peer.staticDhPub, peer.nodeHint,
+        ) as IdentityBindingValidationResult.Valid
+        return validated.binding
+    }
+
+    @Test
+    fun aPendingWipeInTheJournalRefusesSensitiveUseEvenWhenTheProcessGateSaysActive() {
+        val repo = admissionRepo()
+        val gate = DefaultRuntimeLifecycleGate()          // *** ACTIVE: THIS PROCESS NEVER SAW A WIPE. ***
+        assertTrue("the rig must start from an ACTIVE process gate, or this arm proves nothing", gate.isActive)
+
+        // THE DURABLE RECORD: a wipe that outlived a crash.
+        val lookup = RuntimeGatedPeerIdentityLookupSource(
+            RepositoryPeerIdentityLookupSource(repo), gate, wipeIsPending = { true },
+        )
+        val result = lookup.lookup(someNodeId())
+
+        assertTrue(
+            "*** A JOURNAL-PENDING WIPE MUST REFUSE THE LOOKUP EVEN THOUGH THE PROCESS GATE IS ACTIVE. Admitting it " +
+                "would read a store that is MID-ERASURE -- and the in-process flag CANNOT express this condition, " +
+                "because it is only set by a wipe THIS process already reached. Observed: " + result + " ***",
+            result is PeerIdentityLookup.StorageFailure,
+        )
+    }
+
+    /** AND THE BINDING ROAD: a binding written into a store that is mid-wipe is exactly the write that must not happen. */
+    @Test
+    fun aPendingWipeInTheJournalRefusesBindingApplication() {
+        val repo = admissionRepo()
+        val gate = DefaultRuntimeLifecycleGate()
+        val authority = RuntimeGatedPeerBindingTrustAuthority(
+            RepositoryPeerBindingTrustAuthority(repo), gate, wipeIsPending = { true },
+        )
+        assertTrue(
+            "a pending wipe must refuse the binding write while the process gate is active",
+            authority.applyValidatedBinding(peerBindingFor()) is PeerTrustApplyResult.StorageFailure,
+        )
+    }
+
+    /**
+     * *** AND THE POSITIVE CONTROL: NO PENDING WIPE MEANS THE ROADS STAY OPEN. ***
+     *
+     * Without this, a seam hardcoded to refuse would pass the two arms above while breaking every legitimate use.
+     */
+    @Test
+    fun withNoPendingWipeTheAdmissionPointsAdmit() {
+        val repo = admissionRepo()
+        val gate = DefaultRuntimeLifecycleGate()
+
+        val lookup = RuntimeGatedPeerIdentityLookupSource(
+            RepositoryPeerIdentityLookupSource(repo), gate, wipeIsPending = { false },
+        )
+        assertFalse(
+            "with no wipe pending and the gate active, the lookup must REACH THE DELEGATE -- a seam that always " +
+                "refused would satisfy the refusal arms while making the app useless",
+            lookup.lookup(someNodeId()) is PeerIdentityLookup.StorageFailure,
+        )
+    }
+
+    /**
+     * *** GS-FINAL-003 (round 571): THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROVIDER. ***
+     *
+     * *** A REVIEW NAMED THE HOLE IN MY PREVIOUS EVIDENCE, AND IT WAS REAL: THE ARMS ABOVE CONSTRUCT THE DECORATOR BY
+     * HAND, SO THEY PROVE THE MECHANISM AND **NOT** THAT THE SHIPPED COMPOSITION CONSULTS THE JOURNAL. Deleting the
+     * DI wiring would have left every one of them green.** THAT IS THE COUNT-ONLY TRAP: a green that cannot redden
+     * when the WIRING is removed is not evidence about the wiring.
+     *
+     * SO THIS ARM CALLS THE PROVIDER ITSELF -- `MeshModule.provideBoundRecipientKeyResolver`, THE SAME FUNCTION HILT
+     * CALLS -- WITH A JOURNAL THAT SAYS A WIPE IS OUTSTANDING, AND DEMANDS THAT THE RESOLVER IT RETURNS REFUSES.
+     * **ONLY REVERTING THE PROVIDER'S WIRING CAN REDDEN IT.**
+     *
+     * AND THE FAIL-OPEN DEFAULT THAT MADE THIS NECESSARY IS GONE: `wipeIsPending` WAS `{ false }` BY DEFAULT, WHICH
+     * ON A SECURITY GATE MEANS "NO WIPE PENDING" MEANS **ADMIT** -- the same landmine GS-FINAL-009 was about ("a
+     * default answers 'available' forever"). IT IS NOW A REQUIRED PARAMETER, SO AN OMISSION IS A COMPILE ERROR RATHER
+     * THAN A SILENT ALWAYS-ADMIT, and the compiler promptly caught a construction site my own edit had missed.
+     */
+    @Test
+    fun theShippedProviderRefusesSensitiveUseWhenTheJournalSaysAWipeIsOutstanding() {
+        val repo = admissionRepo()
+        val gate = DefaultRuntimeLifecycleGate()
+
+        // *** THE RIG MUST BE ABLE TO SUCCEED, OR THE REFUSAL PROVES NOTHING: A RECORDED BINDING IS WHAT MAKES
+        // `publicSigningKey` RETURN A KEY WHEN THE GATE IS OPEN. MY FIRST DRAFT OMITTED THIS, SO THE ARM PASSED
+        // WHETHER OR NOT THE PROVIDER ROUTED THE DURABLE READER -- **A MUTATION THAT REVERTED THE PROVIDER'S WIRING
+        // LEFT IT GREEN, WHICH IS HOW I FOUND THE VACUITY.** ***
+        val peer = MeshIdentity.generate()
+        val binding = peer.issueIdentityBinding()
+        val validated = IdentityBindingValidator.validate(
+            binding.encode(), peer.staticDhPub, peer.nodeHint,
+        ) as IdentityBindingValidationResult.Valid
+        repo.applyValidatedBinding(validated.binding)
+
+        val resolver = io.godstone.mesh.di.MeshModule.provideBoundRecipientKeyResolver(
+            repo, gate, wipeIsPending = { true },
+        )
+
+        assertNull(
+            "*** THE SHIPPED PROVIDER MUST ROUTE THE DURABLE ANSWER: the binding IS recorded, so with the gate open " +
+                "this road WOULD produce a key -- AND A PENDING WIPE MUST STILL REFUSE IT while the process gate is " +
+                "ACTIVE. Hand-constructed decorator arms cannot see a missing provider argument; THIS ONE CAN. ***",
+            resolver.publicSigningKey(peer.nodeId),
+        )
+    }
+
+    /** AND THE PROVIDER'S POSITIVE CONTROL: with nothing pending, the same road really produces keys. */
+    @Test
+    fun theShippedProviderAdmitsWhenTheJournalSaysNoWipeIsPending() {
+        val repo = admissionRepo()
+        val gate = DefaultRuntimeLifecycleGate()
+        val peer = MeshIdentity.generate()
+        val binding = peer.issueIdentityBinding()
+        val validated = IdentityBindingValidator.validate(
+            binding.encode(), peer.staticDhPub, peer.nodeHint,
+        ) as IdentityBindingValidationResult.Valid
+        repo.applyValidatedBinding(validated.binding)
+
+        val resolver = io.godstone.mesh.di.MeshModule.provideBoundRecipientKeyResolver(
+            repo, gate, wipeIsPending = { false },
+        )
+
+        assertNotNull(
+            "*** WITH NO WIPE PENDING THE PROVIDER'S ROAD MUST REALLY PRODUCE A KEY -- otherwise a provider hardwired " +
+                "to refuse would satisfy the refusal arm while making the app useless. ***",
+            resolver.publicSigningKey(peer.nodeId),
+        )
     }
 }

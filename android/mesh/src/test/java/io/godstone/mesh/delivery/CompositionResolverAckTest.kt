@@ -71,7 +71,7 @@ class CompositionResolverAckTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate)
+        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate) { false }
         val resolver = BoundRecipientKeyResolver(lookup)
         return Triple(repo, resolver, store)
     }
@@ -248,9 +248,9 @@ class CompositionResolverAckTest {
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
-        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate)
+        val lookup = RuntimeGatedPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo), gate) { false }
         val resolver = BoundRecipientKeyResolver(lookup)
-        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate)
+        val trustAuthority = RuntimeGatedPeerBindingTrustAuthority(RepositoryPeerBindingTrustAuthority(repo), gate) { false }
 
         val binding = makeBinding(seedA, 0L, staticPrivA)
 
