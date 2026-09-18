@@ -386,6 +386,52 @@ class ExternalAdditionContentTest(ReadinessTestCase):
                     self.assertIn('sha256', meta, f'{key} carrieth no hash')
                     self.assertEqual(len(meta['sha256']), 64, f'{key} carrieth a malformed hash')
 
+    def test_w04_the_real_committed_bundles_match_the_manifest(self):
+        """*** THE REAL-REFERENT ARM: THE ACTUAL REPOSITORY'S DECLARED BUNDLES, NOT A SYNTHETIC TREE. ***
+
+        W02 AND W03 BUILD THEIR OWN MINIMAL TREES, WHICH MEANS THE DETECTOR COULD FIRE ON SYNTHETIC BYTES AND STILL BE
+        WRONG ABOUT THE REAL ONES -- *"a self-cert"*. **THIS ARM RUNS THE SAME CHECK AGAINST `REPO` ITSELF**: every
+        recorded path under every declared bundle must exist with its recorded hash. *So the manifest is shown to
+        describe THE COMMITTED EVIDENCE, not merely to be self-consistent.*
+        """
+        # *** THE REAL-REFERENT ARM CANNOT RUN AGAINST A FIXTURE, AND SAYS SO RATHER THAN SKIPPING. ***
+        # `REPO` is whatever `GODSTONE_ROOT` pointeth at. **A RECONSTRUCTED FIXTURE CARRIETH NO MANIFEST AND CANNOT --
+        # its declared additions come from its own immutable historical inventory, which PREDATETH the manifest
+        # concept** -- *so demanding one there would be demanding a shape the record never had.* **THE ARM THEREFORE
+        # ASSERTS AGAINST THE REPOSITORY THAT OWNS THESE BLOBS, FOUND THE SAME WAY `preserve.py` FINDETH THEM: by the
+        # manifest's own presence on the tree that carrieth the declaration.** *In the repository's own run -- which is
+        # where report 08's requirement bites -- the manifest is there and the arm is a hard assertion; in fixture mode
+        # the message NAMES why it does not apply rather than passing silently.*
+        path = os.path.join(REPO, 'docs', 'production-readiness',
+                            'ORIGINAL_CHECKOUT_ADDITIONS.hashes.json')
+        decl_path = os.path.join(REPO, 'docs', 'production-readiness',
+                                 'ORIGINAL_CHECKOUT_ADDITIONS.json')
+        if not os.path.isfile(decl_path):
+            # A PRESERVED-HISTORY TREE: it predates the manifest concept, so it carrieth no content claim to check.
+            self.assertFalse(
+                os.path.isfile(path),
+                'a tree with no declaration file must not carry a manifest either -- an orphaned content record '
+                'describes a claim nobody made')
+            return
+        self.assertTrue(
+            os.path.isfile(path),
+            '*** A TREE THAT DECLARETH ITS ADDITIONS MUST CARRY THE CONTENT MANIFEST: report 08 requireth "exact '
+            'paths/hashes, not a blanket exclusion", and a declaration without one carrieth the exclusion. ***')
+        with open(path, encoding='utf-8') as stream:
+            doc = json.load(stream)
+        bundles = doc.get('files') or {}
+        self.assertTrue(bundles, 'the manifest must name at least one declared bundle')
+        total = 0
+        for bundle in bundles:
+            failures = preserve._content_manifest_failures(REPO, bundle)
+            self.assertEqual(
+                [], failures,
+                f'*** THE REAL {bundle!r} MUST MATCH ITS RECORDED HASHES. Observed failures: {failures} ***')
+            total += len(bundles[bundle])
+        self.assertGreater(
+            total, 100,
+            f'*** THE MANIFEST MUST COVER THE BUNDLES, NOT A TOKEN FILE: it records {total} file hash(es). ***')
+
     def _fixture_with_manifest(self, tmp):
         """A minimal tree: one declared bundle of two files, a manifest recording them, and a declaration file."""
         root = os.path.join(tmp, 'checkout')

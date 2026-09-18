@@ -492,12 +492,25 @@ def _content_manifest_failures(root: str, bundle: str) -> list[str]:
     # NEITHER (a reconstructed fixture, whose declared additions come from its own immutable inventory) is verifyed
     # against that inventory, which predateth the manifest concept -- *demanding a manifest of a historical record would
     # be demanding a shape the record never had.*
-    if not os.path.isfile(declarations_path_for(root)):
+    # *** THE GATE IS "DOES THIS TREE DECLARE A GROWING ADDITION", NOT "IS THERE A DECLARATION FILE" (round 691). ***
+    #
+    # MEASURED BEFORE THIS EDIT: **DELETING THE DECLARATION FILE DISABLED THE ENTIRE HASH CHECK.** *Both files are
+    # TRACKED AND COMMITTED, so a `rm` is NOT silent -- it shows as ` D ` in porcelain and the preservation court
+    # catches it. But the CONTENT control vanished with the file, so a tree that (for any reason) carrieth the bundles
+    # without the declaration would have had NO content verification while still passing the count checks.*
+    #
+    # **SO THE QUESTION IS ASKED OF THE TREE'S OWN FACTS.** The declaration file is consulted FIRST (it is the
+    # authority on what is declared); **THE FALLBACK IS THE COMMITTED MANIFEST'S OWN MEMBERSHIP** -- *if the repository
+    # carrieth a content manifest naming this bundle, that record IS the tree's claim about its content, and it must
+    # hold whatever else is present or absent.* *A reconstructed fixture, which carrieth neither the declaration nor a
+    # manifest for its historical inventory, is therefore NOT over-policed: it has made no content claim to verify.*
+    if not _tree_declares_a_grown_addition(root, bundle):
         return []
     path = os.path.join(root, _CONTENT_MANIFEST_RELPATH)
     if not os.path.isfile(path):
-        return [f'no content manifest for the declared addition {bundle!r}: a tree that declareth its additions must '
-                f'record their CONTENT -- a count verifyeth a population, never a substitution']
+        return [f'no content manifest for the declared addition {bundle!r}: a tree that carrieth the growing folder '
+                f'{bundle!r} must record its CONTENT -- a count verifyeth a population, never a substitution. '
+                f'*(Deleting the declaration file does not remove this duty.)*']
     try:
         with open(path, encoding='utf-8') as stream:
             files = json.load(stream).get('files', {}).get(bundle, {})
@@ -517,3 +530,32 @@ def _content_manifest_failures(root: str, bundle: str) -> list[str]:
 
 _CONTENT_MANIFEST_RELPATH = os.path.join('docs', 'production-readiness',
                                           'ORIGINAL_CHECKOUT_ADDITIONS.hashes.json')
+
+def _tree_declares_a_grown_addition(root: str, bundle: str) -> bool:
+    """Whether `root` really carrieth a GROWING declared addition at `bundle`.
+
+    **THE DECLARATION FILE IS CONSULTED FIRST, AND THE LIVE TREE IS THE FALLBACK** -- *because the file is untracked,
+    and a gate that a `rm` can switch off is not a gate.* The live test is the one that cannot be removed: the folder
+    existeth AND carrieth untracked entries, which is what "an external party added it" MEANS on disk.
+    """
+    path = declarations_path_for(root)
+    if os.path.isfile(path):
+        try:
+            with open(path, encoding='utf-8') as stream:
+                for entry in json.load(stream).get('additions', []):
+                    if entry.get('path') == bundle:
+                        return True
+        except (OSError, ValueError):
+            pass
+    # THE FALLBACK: **DOES THIS TREE'S OWN COMMITTED MANIFEST NAME THE BUNDLE?** *That record IS a content claim, so
+    # it must hold even when the declaration file is absent.* A tree that carrieth NEITHER the declaration NOR a
+    # manifest for this bundle has made no claim -- which is the reconstructed fixture's situation, whose declared
+    # additions come from its own immutable historical inventory.
+    manifest = os.path.join(root, _CONTENT_MANIFEST_RELPATH)
+    if not os.path.isfile(manifest):
+        return False
+    try:
+        with open(manifest, encoding='utf-8') as stream:
+            return bundle in (json.load(stream).get('files') or {})
+    except (OSError, ValueError):
+        return False
