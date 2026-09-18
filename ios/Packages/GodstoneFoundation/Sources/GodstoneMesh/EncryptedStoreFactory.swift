@@ -80,6 +80,27 @@ public final class EncryptedStoreFactory: @unchecked Sendable {
     /// PrivateStoreKeyProvider`. A wipe wired without it would reach `IDLE` WITHOUT HAVING ERASED THE DEK.
     internal var keyProviderForWipe: PrivateStoreKeyProvider { provider }
 
+
+    /// *** GS-STORE-002 STEP 5 (round 544): *'Apply complete file protection to created **DB/WAL/SHM AND
+    /// DIRECTORIES** as required.'* ***
+    ///
+    /// MEASURED BEFORE THIS EDIT, AND IT IS THE CARD'S OWN CLAUSE UNSATISFIED: BOTH call sites passed
+    /// `paths: [path]` -- **THE MAIN DATABASE FILE ALONE.** In WAL mode the `-wal` and `-shm` SIDECARS hold the very
+    /// rows the main file lacketh, and **AN UNPROTECTED SIDECAR IS AN UNPROTECTED STORE** whatever protection the
+    /// main file carrieth; the containing DIRECTORY governeth what may be created beside it.
+    ///
+    /// THE PATH SET IS **DERIVED FROM THE STORE'S OWN LOCATION** rather than from a list a caller must remember --
+    /// a caller who must remember the sidecars is a caller who will forget them, which is how this clause came to be
+    /// unmet while the protection call looked correct. **A PATH THAT IS NEVER NAMED IS NEVER PROTECTED.**
+    ///
+    /// IT IS A SEAM (`protectionPaths`) SO THE LAW IS TESTABLE WITHOUT A DEVICE: the host cannot apply a real
+    /// Data-Protection class (measured: the provider answereth `.success` unconditionally off-iOS), **but the SET OF
+    /// PATHS THE FACTORY ASKS FOR is host-observable, and that set is what this repair fixeth.**
+    internal func protectionPaths(forStoreAt path: String) -> [String] {
+        [path, path + "-wal", path + "-shm",
+         (path as NSString).deletingLastPathComponent]
+    }
+
     /// Open (creating if first install) the encrypted store at `path`, keyed by `tag`.
     public func openStore(path: String, tag: String) -> EncryptedStoreOpenResult {
         guard engine.kind == .pinnedSQLCipher else { return .unavailable }   // no plaintext fallback, ever
@@ -92,7 +113,9 @@ public final class EncryptedStoreFactory: @unchecked Sendable {
                 catch let e2 { return mapProviderError(e2) }
             } else { return mapProviderError(e) }
         }
-        let protection = provider.applyFileProtection(paths: [path], protection: .complete)
+        // STEP 5: THE SIDECARS AND THE DIRECTORY TOO -- an unprotected `-wal`/`-shm` is an unprotected store.
+        let protection = provider.applyFileProtection(paths: protectionPaths(forStoreAt: path),
+                                                      protection: .complete)
         guard protection.isSuccess else { return .unavailable }               // never swallow a protection error
         return finalize { try self.engine.openForWriting(path: path, dek: dek) }
     }
@@ -107,7 +130,9 @@ public final class EncryptedStoreFactory: @unchecked Sendable {
         } catch let e {
             return mapProviderError(e)                                         // dekNotFound -> .unavailable (fail-closed)
         }
-        let protection = provider.applyFileProtection(paths: [path], protection: .complete)
+        // STEP 5: THE SIDECARS AND THE DIRECTORY TOO -- an unprotected `-wal`/`-shm` is an unprotected store.
+        let protection = provider.applyFileProtection(paths: protectionPaths(forStoreAt: path),
+                                                      protection: .complete)
         guard protection.isSuccess else { return .unavailable }
         return finalize { try self.engine.reopenRequiringDEK(path: path, dek: dek) }
     }

@@ -227,4 +227,35 @@ final class ReadinessStore002Tests: XCTestCase {
         try String(contentsOf: repoRoot().appendingPathComponent(
             "ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift"), encoding: .utf8)
     }
+
+    // ================================================================ GS-STORE-002 STEP 5: DB/WAL/SHM AND DIRECTORIES
+
+    /**
+     * *** GS-STORE-002 STEP 5: *'Apply complete file protection to created **DB/WAL/SHM AND DIRECTORIES** as
+     * required, propagate errors, and retain the locked-device policy.'* ***
+     *
+     * MEASURED BEFORE THE REPAIR: BOTH protection call sites passed `paths: [path]` -- **THE MAIN DATABASE FILE
+     * ALONE.** In WAL mode the `-wal` and `-shm` sidecars hold the very rows the main file lacks, and **AN
+     * UNPROTECTED SIDECAR IS AN UNPROTECTED STORE** whatever protection the main file carries; the containing
+     * DIRECTORY governs what may be created beside it.
+     *
+     * *** AND THE INSTRUMENT IS CHOSEN FOR WHAT IS HOST-OBSERVABLE RATHER THAN FOR WHAT IS NOT: the host cannot
+     * apply a real Data-Protection class -- measured, the provider answers `.success` unconditionally off-iOS -- SO
+     * THIS ARM MEASURES THE **SET OF PATHS THE FACTORY ASKS FOR**, WHICH IS EXACTLY THE CLAUSE THE REPAIR CHANGED.
+     * *** A path that is never named is never protected, and a set is a measurement where a class is not.
+     */
+    func testGSSTORE002_theProtectionSetCarriesTheSidecarsAndTheDirectory() {
+        let factory = EncryptedStoreFactory(provider: VerifyingProvider(), engine: VerifyingEngine())
+        let paths = factory.protectionPaths(forStoreAt: "/tmp/godstone/store.sqlite")
+
+        XCTAssertTrue(paths.contains("/tmp/godstone/store.sqlite"), "the main file must be protected")
+        XCTAssertTrue(paths.contains("/tmp/godstone/store.sqlite-wal"),
+                      "*** THE WAL SIDECAR MUST BE PROTECTED: it holds the very rows the main file lacks, so an "
+                      + "unprotected `-wal` is an unprotected store (GS-STORE-002 step 5) ***")
+        XCTAssertTrue(paths.contains("/tmp/godstone/store.sqlite-shm"),
+                      "*** AND THE SHM SIDECAR, likewise (GS-STORE-002 step 5) ***")
+        XCTAssertTrue(paths.contains("/tmp/godstone"),
+                      "*** AND THE CONTAINING DIRECTORY: it governs what may be created beside the store "
+                      + "(GS-STORE-002 step 5) ***")
+    }
 }

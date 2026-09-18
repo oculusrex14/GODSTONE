@@ -820,6 +820,27 @@ FIX_SUBMITTED 48 · OPEN 0 · PARTIAL 6 · VERIFIED_FIXED 0        (54 findings 
 false half first (round 532) — *and a field that contradicts itself is worse than one that is merely old*; and nine
 `impact` sentences in round 533. **A twelve-finding sweep for empty proof fields closed the class at zero.**
 
+### ROUND 544 — GS-STORE-002 STEP 5 LANDS, AND THE LEDGER'S OWN CLAIM ABOUT STEPS 4 AND 7 WAS STALE
+
+**Measured:** both protection call sites passed `paths: [path]` — **the main database file alone** — while the card
+demands *"DB/WAL/SHM and directories."* **In WAL mode the sidecars hold the very rows the main file lacks, so an
+unprotected `-wal` is an unprotected store** whatever protection the main file carries. **The path set is now derived
+from the store's own location** — *a path that is never named is never protected*, and **a caller who must remember the
+sidecars is a caller who will forget them, which is how this clause came to be unmet while the protection call looked
+correct.** The arm measures the **set of paths**, because the protection *class* cannot be applied on the host:
+**a set is a measurement where a class is not.** Its negative case failed the **WAL and SHM clauses by name.**
+
+> **AND THE ROUND'S RECORD CORRECTION MATTERS MORE THAN THE REPAIR:** the ledger said *"the card's steps 1, 5 and 6 and
+> its migration clause are untouched"* — and re-measurement shows **step 4 and step 7 were already landed**
+> (`openStore` mints only on first install while `reopenExisting` fetches and fails closed; `MeshRuntime.swift:337/366`
+> wires `keyProviderForWipe` into the crash-resumable wipe's vault seam). **Bundling a landed step with untouched ones
+> is the same class as the four stale claims already corrected this span — and it was found by reading the claim
+> against the tree rather than by trusting it.**
+
+**What remains for GS-STORE-002 is one thing, and the card names it first:** the **pinned SQLCipher engine** — a native
+artifact with a provenance record, i.e. **an acquisition**, with steps 2 and 6 downstream of it. **Nothing in this
+round is evidence that any store is encrypted**, and the device half of step 5 is not claimed.
+
 ### THE LAST UNATTEMPTED ITEM, MEASURED TO ITS BLOCKING OBSTACLE (ROUND 543)
 
 **GS-UX-001's step 2 Swift half — a lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` — was the one
