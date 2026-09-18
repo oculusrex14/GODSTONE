@@ -13758,6 +13758,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-002/round683-a-control-that-was-green-on-dead-code.log",
    "sha256": "36efbd8bc4f317a32896baaa336d3f0c7f258a4d597f65486d97edf3931e081e",
    "correction": "A CONTROL WAS GREEN ON DEAD CODE, AND THE REMOVAL OF THAT CODE IS WHAT REVEALED IT. Round 681 removed the unused `effectiveArtifacts` local (report 10's own item) and `ci/check_trusted_runtime_composition_controls.py` FAILED at R18 -- **and the failure was not a regression but a control revealing what it had been measuring:** R18 asserted the strings `storeUrl: messageStoreUrl` and `peerStoreUrl: peerStoreUrl`, **WHICH WERE SUPPLIED BY THE DEAD LOCAL** (the `KeychainWipeArtifacts` construction that resolved `effectiveArtifacts` and was used nowhere). *So the control was green on a line that did nothing.* **WHAT R18 ACTUALLY MEANS** is that the wipe's DELETION ROAD addresses the files the runtime owns -- the seam's own words: *\"without the mapping every deletion answered `.absent` against the process's working directory and the store survived a 'completed' wipe\"* -- **and THAT binding lives in `WipeArtifactFileSystemSeam`'s `realPaths` at `:637`, already correct** (both stores plus both `-wal` and `-shm` sidecars). **SO THE RUNTIME WAS RIGHT AND THE CHECK WAS WRONG.** REPAIRED: it now asserts FIVE bindings by name, each failure naming what is missing. **AND THE REPAIRED CHECK IS FALSIFIABLE WHERE THE OLD ONE WAS NOT:** removing the peer WAL sidecar mapping -- which the old check would have tolerated, since its strings came from the dead local -- now reddens it by name: *\"must bind the peer store WAL sidecar on the wipe's DELETION ROAD (R18); absent: 'peerStoreUrl.path + \\\"-wal\\\"'\"*. **THE LESSON: A CONTROL THAT NAMES A STRING IS NOT A CONTROL THAT MEASURES A BINDING** -- the same species this session has found five times, here in the instrument itself, found only because a repair of the thing it watched made it fail. **VERIFIED: 9 of 9 controls green after the repair.**"
+  },
+  {
+   "round": 687,
+   "finding": "GS-STORE-002",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-002/round687-the-sweep-for-the-shape-and-its-exhaustion.log",
+   "sha256": "c4fc92dfbb07087af32396865246c64464d313b60940e1f2cb71ef19ac3cc477",
+   "correction": "THE SWEEP FOR THE SHAPE, AND ITS EXHAUSTION. Rounds 683 and 685 found the SAME DEFECT THREE TIMES IN THREE CONTAINERS -- a control asserting strings a DEAD LOCAL supplied (R18); a declared field the open path never read while passing a hardcoded literal (peer store); and an arm that could not see the APPLIED attribute weakened while its own comment claimed it could (message store). **THE SHAPE: A NAME -- A FIELD, A STRING, A CONSTANT -- ASSERTING SOMETHING THE MECHANISM DOES NOT PROVIDE.** SWEPT MECHANICALLY: (1) Swift production single-use `let` bindings -> 4 hits, ALL public struct fields (`peerLabel`, `outgoing`, `authorityNote`, `sendCount`), which callers read; NO DEAD FIELD REMAINS. (2) The narrower signature -- an internal/private field with a literal value, never read, while a same-type literal is passed nearby -> ZERO HITS; the exact shape that produced the peer-store defect is GONE. (3) Android production single-use properties -> 105 hits, inspected as public API and enum members (`bleTransportForWipe`, `statusFlow`, `MESH`, `isReady`, `recordSeq`); **THE ANDROID ISLE DID NOT CARRY THE SHAPE.** AND EXHAUSTION IS STATED PRECISELY: it means no further instance of THIS SHAPE is findable BY THIS METHOD -- not that the tree is clean. A mechanical scan cannot find a comment claiming the wrong thing, a semantic mismatch between two agreeing components, or a control whose ASSERTION is weaker than its name; TWO OF THE THREE INSTANCES WERE OF THAT SECOND KIND, found by MUTATION rather than grep. AND THE THREE REPAIRS STAND, EACH MUTATION-PROVEN, with none claiming an enforcement result: physical enforcement remains a device gate."
   }
  ],
  "phase_one": {
@@ -14565,7 +14572,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "cf4776cbb1e9c1cc28773b0d7311aea74abba8fa",
+  "candidate_sha": "bf043445ba30cc287f727165f12ddff9041ae273",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
