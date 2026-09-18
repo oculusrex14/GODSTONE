@@ -13604,6 +13604,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-8/round627-the-four-t01-failures-diagnosed-and-the-cause-is-the-audit-itself.log",
    "sha256": "bccea9988e76ca307a1246e92763233e933993ff74ef05a20fb8c41134a12415",
    "correction": "THE FOUR T01 FAILURES DIAGNOSED, AND THE CAUSE IS DECLARED BY THE AUDIT ITSELF. The audit's own `inventory.json` -> `declared_additions[0]` sayeth of the `AUDIT_FINAL_2026-09-15` bundle: *\"the audit also discloses (line 40) that THIS ADDITION IS THE SOLE CAUSE OF FOUR T01 INVENTORY FAILURES IN THE READINESS SUITE.\"* The arithmetic decomposeth exactly: recorded = baseline 156 + declared 324 = 480; the declared bundle grew to 340 (+16), AND **`godstone-audit/` -- 45 entries, THE READ-ONLY BUNDLE THIS OBJECTIVE NAMES -- IS NOT DECLARED AT ALL**; and `test_inventory_matches_live_git_facts` pins head `b5c3d3d3` on branch `codex/archive-reliability` while this work is at `ba730d3c` on `codex/production-blueprint`, so A FROZEN SNAPSHOT CANNOT MATCH A MOVING HEAD BY CONSTRUCTION (`b5c3d3d3` IS an ancestor of HEAD, so the snapshot is of a real earlier revision, not a lost one). **NO PRODUCTION SOURCE IS IMPLICATED AND NO INVENTORY FIGURE WAS CHANGED:** re-baselining the snapshot so the suite passeth would be editing the record until the control is satisfied -- the move filed as a law in round 255. **THE AUDIT'S OWN STEP 3 IS THE REPAIR AND IT IS OWED:** reconstruct the preservation fixture in an isolated environment and point `GODSTONE_ROOT` at it; that material does not exist and *\"missing configuration is not a reason to fabricate an inventory.\"* AND ONE GENUINE, ACTIONABLE FACT WAS FOUND RATHER THAN EXPLAINED: **`godstone-audit/` must be DECLARED in the reconstructed fixture exactly as `AUDIT_FINAL_2026-09-15` was** -- with provenance and `read_only: true` -- not absorbed silently."
+  },
+  {
+   "round": 629,
+   "finding": "PHASE-5-ANDROID-LINEAGE",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-5/round629-the-android-lineage-runs-every-rod.postfix-measurement.log",
+   "sha256": "f277f97ea06bf624bd798ed8aceaa0acc98cc4358d66603aacd54fc80fbea0b4",
+   "correction": "THE POST-FIX ANDROID LINEAGE MEASURED FROM THE RODS' OWN LOGS: **24 of 24 android rods written show an ACTUAL TEST RUN (`tests completed`), and `SDK location not found` appears ZERO times in all 49 rod logs written so far.** Before round 603 every android rod failed to configure; after it, every one runs. THE MEASUREMENT IS TAKEN FROM THE LOGS AND NOT FROM VERDICT LINES BECAUSE ROUND 603 PROVED A VERDICT ALONE IS NOT ENOUGH -- the harness printed `INVALID` for forty-odd rods while nothing ran at all, so the count rests on the two things a verdict cannot fake: a `tests completed` line, which only a real gradle run produces, and the ABSENCE of the configure error that used to precede every one. **NO AGGREGATE IS SUMMED: the lineage had not finished (49 of 117) and its summary printeth at the end, and a partial tally presented as a total is a defect class this programme has already filed twice.**"
   }
  ],
  "phase_one": {
@@ -14378,7 +14385,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "ba730d3ca1247b8c1128b1a5535faeea58f78e39",
+  "candidate_sha": "7febb4a2658ba8e1e3779c39488421d663ddce19",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
