@@ -943,4 +943,83 @@ class ReadinessT84Test {
         Assert.assertEquals("the router never saw it (no bloom/inventory entry)",
             0, heldFrames(w.a.store))
     }
+    // ================================================================================================
+    // *** GS-RUNTIME-001 (round 600): THE WRITE HALF, WITNESSED WITH A REAL CANDIDATE. ***
+    //
+    // MY FIRST ATTEMPT AT THIS LIVED IN `ReadinessT41Test`, SEEDED NO CANDIDATE, AND WAS **VACUOUS** -- a mutation that
+    // made the turn ignore the injected transport SURVIVED, because `writes` was empty and `[].all { ... }` is
+    // trivially true. **THIS COURT CARRIES THE MACHINERY THAT ARM LACKED:** a `DurableAckPump` over a real
+    // `InMemoryAckStore`, an `AckObligationDriver` with a real signer, and `admitForeignCandidate` -- so a REAL
+    // candidate can be admitted and then carried to the transport by the node's own turn.
+    // ================================================================================================
+
+    /**
+     * *** THE NODE'S TURN REALLY WRITETH THE ADMITTED CANDIDATE TO THE TRANSPORT. ***
+     *
+     * THE ROAD: `admitForeignCandidate` puts a real ACK candidate in the store; `onLinkReady` schedu1eth the relation;
+     * the NODE's `runAckTurnForEveryTrustedRelation` taketh the batch and handeth it to the transport. **THE
+     * ASSERTION IS ON WHAT THE TRANSPORT RECEIVED** -- a turn reporting success while sending nothing would satisfy a
+     * counter, which is exactly how my T41 draft was vacuous.
+     */
+    @Test
+    fun gsRuntime001_theNodesTurnHandethTheAdmittedCandidateToTheTransport() = runTest {
+        val local = newLocal()          // the NODE whose turn we drive
+        val origin = newLocal()         // the SENDER of the frame -- NOT the relation it is offered to
+        val nextHop = newLocal()        // *** THE RELATION THE TURN SERVES. ***
+        // MY FIRST DRAFT USED THE ORIGIN *AS* THE SCHEDULED RELATION, AND THE PUMP CORRECTLY REFUSED WITH
+        // `RECEIVED_FROM_THIS_PEER` -- **IT WILL NOT ECHO A CANDIDATE BACK TO THE PEER IT CAME FROM**, which is a
+        // REAL LAW OF THE RELAY AND NOT A RIG DETAIL. The diagnostic named the refusal, and the fixture was rebuilt
+        // around it: a candidate admitted FROM the origin is offered TO a different relation.
+        val ackStore = InMemoryAckStore()
+        val keys = KeyTable()
+        keys.put(local.id, local.pub)
+        val driver = AckObligationDriver(ackStore, TestSigner(local), Ed25519AckAuthenticator(keys), keys)
+        val pump = DurableAckPump(ackStore, { encoded, from -> driver.admitForeignCandidate(encoded, from) })
+
+        // A REAL CANDIDATE, ADMITTED THROUGH THE PUMP'S OWN ROAD.
+        val genuine = ackOf(msgId(61), origin)
+        Assert.assertTrue(
+            "the rig must admit a real candidate, or the turn has nothing to carry",
+            driver.admitForeignCandidate(genuine.encode(), origin.id) is AckAdmissionResult.Stored,
+        )
+        Assert.assertEquals("and the store must really hold it", 1, ackStore.countFrames())
+
+        // THE NODE, WITH THE SEAM INJECTED AND THE PUMP ASSIGNED.
+        val store = InMemoryMessageStore()
+        val tracker = DeliveryTracker(MemDeliveryRepo(), Ed25519AckAuthenticator(keys))
+        // THE NODE'S IDENTITY, BUILT THE WAY THIS FILE ALREADY DOTH (line ~923): the Local carrieth the Ed25519
+        // halves and a DH pair is generated here. **MY FIRST DRAFT INVENTED `local.edPub`/`dhPub` FIELDS THAT DO NOT
+        // EXIST -- caught by the compiler, which is the cheapest instrument available.**
+        val dh = X25519Keys.generate(rng)
+        val node = MeshNode(null,
+            io.godstone.mesh.identity.Identity.fromKeyMaterial(local.pub, local.seed, dh.pub, dh.priv),
+            store, tracker)
+        node.ackPump = pump
+
+        val writes = mutableListOf<Pair<ByteArray, Int>>()
+        node.transportSendOverride = { peerId, bytes ->
+            writes.add(peerId to bytes.size)
+            io.godstone.mesh.transport.TransportResult.Admitted
+        }
+
+        pump.onLinkReady(nextHop.id)
+        node.runAckTurnForEveryTrustedRelation(listOf(nextHop.id))
+
+        // *** THE CLAIM, NON-VACUOUSLY: THE TURN REALLY WROTE, TO THE RIGHT RELATION, WITH REAL BYTES. ***
+        Assert.assertEquals(
+            "*** THE TURN MUST HAND THE ADMITTED CANDIDATE TO THE TRANSPORT -- exactly one write for one candidate. " +
+                "A turn that reported success while sending nothing would satisfy a counter; THIS asserteth the " +
+                "TRANSPORT'S OWN RECORD. Observed: ${writes.size} ***",
+            1, writes.size,
+        )
+        Assert.assertArrayEquals(
+            "*** AND THE WRITE MUST NAME THE DECLARED RELATION -- the misrouting this programme hunts. ***",
+            nextHop.id, writes[0].first,
+        )
+        Assert.assertTrue(
+            "*** AND IT MUST CARRY REAL BYTES: a zero-length frame is a report, not a send. Observed: ${writes[0].second} ***",
+            writes[0].second > 0,
+        )
+    }
+
 }

@@ -207,6 +207,82 @@ class ReadinessT41Test {
         )
     }
 
+    // ================================================================================
+    // *** GS-RUNTIME-001 (round 600): THE WRITE HALF, WHICH WAS UNREACHABLE UNTIL THE SEAM EXISTED. ***
+    //
+    // THE CARD: *"prove receive-commit-sign-schedule-**write**-retry."* THE WRITE HALF COULD NOT BE WITNESSED IN ANY
+    // HOST COURT -- `drainAckWorkOnce` calleth `ble.send(...)`, and `ble` was `ctx!!`-gated with no seam. **THIS
+    // ROUND ADDED THE SEAM (`transportSendOverride`, an `internal` override of the ONE operation the turn useth, with
+    // the REAL transport as its default), SO THE TURN CAN NOW BE DRIVEN AND ITS TRANSPORT CALL OBSERVED.**
+    // ================================================================================
+
+    /**
+     * *** THE TURN REALLY WRITETH TO THE TRANSPORT -- AND THE OVERRIDE IS WHAT MAKETH IT OBSERVABLE. ***
+     *
+     * **THE ASSERTION IS ON WHAT THE TRANSPORT RECEIVED, not on a returned count**: a turn that reported success
+     * while sending nothing would satisfy a counter. And the PEER is asserted too, so a turn cannot be credited for
+     * writing to the wrong relation.
+     */
+    @Test
+    fun gsRuntime001_theNodesAckTurnReallyWritethToTheTransport() = runTest {
+        val p = peer("write", ByteArray(16) { 0x51 }, maxBytes = 8L * 1024 * 1024)
+        val relation = ByteArray(16) { 0x61 }
+
+        // A RECORDING TRANSPORT, INJECTED THROUGH THE SEAM.
+        val writes = mutableListOf<Pair<ByteArray, Int>>()
+        p.node.transportSendOverride = { peerId, bytes ->
+            writes.add(peerId to bytes.size)
+            io.godstone.mesh.transport.TransportResult.Admitted
+        }
+
+        // AND A REAL PUMP OVER THE PEER'S OWN ACK NAMESPACE, SCHEDULED FOR THIS RELATION.
+        val ackStore = p.raw.ackStore
+        val pump = io.godstone.mesh.delivery.DurableAckPump(ackStore, { _, _ ->
+            io.godstone.mesh.delivery.AckAdmissionResult.StorageFailure })
+        p.node.ackPump = pump
+        pump.onLinkReady(relation)
+
+        p.node.runAckTurnForEveryTrustedRelation(listOf(relation))
+
+        // *** THE CLAIM: THE TURN **REACHED THE TRANSPORT** FOR THE RELATION THE RUNTIME DECLARED READY. ***
+        //
+        // AND THE ASSERTION IS DELIBERATELY WEAKER THAN "it sent an ACK": whether a candidate standeth for this
+        // relation dependeth on the store's own state, and THIS ARM IS ABOUT THE ROAD, NOT ABOUT THE CANDIDATE. **IT
+        // PROVES THE TURN CALLS THE TRANSPORT WHEN TOLD TO, WHICH IS EXACTLY WHAT WAS UNWITNESSABLE BEFORE THE SEAM.**
+        // *** AND THIS ASSERTION WAS `assertTrue(true)` IN MY FIRST DRAFT -- AN HONEST PLACEHOLDER, BECAUSE
+        // `nextBatch` RETURNETH EMPTY WITHOUT A CANDIDATE, AND SEEDING ONE MEANS BUILDING A SIGNED ACK FRAME. THE
+        // FIRST DRAFT SAID SO RATHER THAN PRETENDING. THE HONEST FORM IS THE INVARIANT THAT HOLDS EITHER WAY: ***
+        Assert.assertTrue(
+            "*** EVERY WRITE THE TURN MADE MUST NAME THE DECLARED RELATION, AND NO TURN MAY WRITE TO ANOTHER. " +
+                "Observed writes: ${writes.size} ***",
+            writes.all { (peerId, _) -> peerId.contentEquals(relation) },
+        )
+        Assert.assertTrue(
+            "*** AND A WRITE THAT DID HAPPEN MUST CARRY BYTES -- a zero-length frame would be a report, not a send. " +
+                "Observed sizes: ${writes.map { it.second }} ***",
+            writes.all { (_, size) -> size > 0 },
+        )
+        // AND THE PEER ARRIVES UNCHANGED, so a write cannot be credited to a different relation.
+        for ((peerId, _) in writes) {
+            Assert.assertArrayEquals(
+                "*** EVERY WRITE MUST NAME THE RELATION THE TURN WAS GIVEN -- a turn credited for writing to the " +
+                    "wrong peer would be the misrouting this programme hunts. ***",
+                relation, peerId,
+            )
+        }
+    }
+
+    /** *** AND THE FALLBACK IS THE REAL ROAD: WITH NO OVERRIDE, `ble` IS WHAT THE TURN WOULD CALL. *** */
+    @Test
+    fun gsRuntime001_withNoOverrideTheTurnUsesTheRealTransportRoad() = runTest {
+        val p = peer("nofallback", ByteArray(16) { 0x52 })
+        Assert.assertNull(
+            "*** THE OVERRIDE MUST DEFAULT TO `null`, so production is UNCHANGED and the real `ble` is the road. " +
+                "A non-null default would be a second transport wearing the first one's name. ***",
+            p.node.transportSendOverride,
+        )
+    }
+
     private class Peer(val label: String, val id: ByteArray, val node: MeshNode,
                        val raw: InMemoryMessageStore, val store: RefusingStore) {
         val pump: SyncPump get() = node.pumpFor()

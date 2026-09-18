@@ -166,7 +166,9 @@ class MeshNode(
         val batch = pump.nextBatch(nodeId)
         var handed = 0
         for (copy in batch.copies) {
-            val verdict = ble.send(nodeId, copy.encodedFrame)
+            // *** THE INSTRUMENTED ROAD: the override when a court supplieth one, the REAL transport otherwise. ***
+            val verdict = transportSendOverride?.invoke(nodeId, copy.encodedFrame)
+                ?: ble.send(nodeId, copy.encodedFrame)
             val accepted = verdict is TransportResult.Admitted
             pump.onForwardOutcome(copy, nodeId, accepted)
             if (accepted) handed++
@@ -450,6 +452,23 @@ class MeshNode(
      * asketh the VERY transport the runtime useth, not a second one.
      */
     internal val bleTransportForWipe: BleTransport get() = ble
+
+    /**
+     * *** GS-RUNTIME-001 (round 600): THE INJECTABLE TRANSPORT SEAM -- THE PREREQUISITE THE LEDGER NAMED. ***
+     *
+     * THE CARD'S REMAINING WORK: *"Build internal instrumented runtime road while shipping flags stay false; prove
+     * receive-commit-sign-schedule-write-retry."* **THE WRITE HALF WAS UNREACHABLE IN ANY HOST COURT, AND THE REASON
+     * WAS STRUCTURAL RATHER THAN A MISSING TEST:** `drainAckWorkOnce` calleth `ble.send(...)`, and `ble` was
+     * `private val ble: BleTransport by lazy { BleTransport(context = ctx!!, ...) }` -- **NO INJECTION SEAM, NO TEST
+     * SETTER, AND `ctx` NULL BY DESIGN IN PURE-JVM TESTS, SO TOUCHING IT NPE'd. A GREEN THAT CANNOT REDDEN WHEN THE
+     * TURN IS BROKEN IS NOT EVIDENCE ABOUT THE TURN, AND NO ARM COULD BE WRITTEN AT ALL.**
+     *
+     * SO THE SEAM IS ADDED, AND IT IS MINIMAL: an `internal` override of the ONE operation the turn useth, defaulting
+     * to `null` so NOTHING CHANGES IN PRODUCTION -- `transportSendOverride ?: ble.send(...)`. **IT IS NOT A SECOND
+     * TRANSPORT AND NOT A PARALLEL ROAD: it is the same call, with the OS layer replaceable, which is exactly what
+     * "instrumented runtime road" meaneth.**
+     */
+    internal var transportSendOverride: (suspend (ByteArray, ByteArray) -> TransportResult)? = null
 
     private val ble: BleTransport by lazy {
         // ctx is non-null in production; null only in pure-JVM tests
