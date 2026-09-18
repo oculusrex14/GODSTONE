@@ -1095,4 +1095,76 @@ final class ReadinessT19Tests: XCTestCase {
         alice.stop(); bob.stop()
     }
 
+    // MARK: case 7 (GS-STRESS-001 step 3 / ANDROID-06): the writer's tickets are ASKABLE, and a closed one holds none
+
+    /**
+     * *** THE OWNER'S CENSUS ON **THIS** ISLE, AND THE DEFECT ITS FIRST QUESTION FOUND -- THE SAME LAW THE OTHER
+     * ISLE'S CARD NAMETH: *'Maintain a bounded pending-ticket table under the writer lock'* and *'DO NOT COUNT ONELY
+     * SEALED FRAGMENTS.'* ***
+     *
+     * MEASURED BEFORE THE REPAIR: `reserve` checked **ONELY `admitted.count`**, while `admitted` holdeth SEAL-TIME
+     * records -- **SO A CALLER COULD RESERVE WITHOUT EVER SEALING AND THE BOUND WAS EVADABLE**, exactly as the audit
+     * sayeth of the Android twin. AND THE OWNER COULD NOT EVEN BE ASKED: this file carried `admitted`, `inFlight` and
+     * the staged state, and **NO HOOK FOR THE RESERVATIONS**, because there WAS no pending-ticket table on this isle.
+     *
+     * THE INVARIANT IS THE ONELY UNAMBIGUOUS ONE: **AN OWNER THAT HATH CLOSED HOLDETH NOTHING** -- asserted in
+     * **BOTH** CLOSE PATHS, because the other isle paid for that lesson at round 534, where `failed()` released the
+     * admitted records and LEFT THE RESERVATIONS STANDING while `shutdown()` released both.
+     */
+    func testGSSTRESS001TheWriterTicketsAreAskableAndAClosedWriterHoldsNone() throws {
+        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 512)
+        conn.markReadyForTesting()
+        let rk = RelationKey(direction: .outboundCentral, peerId: conn.peerId)
+
+        // (1) THE DISCRIMINATOR FIRST: a writer that never reserved holdeth NONE.
+        let idle = RecordWriter(connection: conn, relationKey: rk)
+        XCTAssertEqual(idle.reservedCountForTest(), 0,
+                       "*** a writer that never reserved holds NONE, so the census is no constant ***")
+
+        // (2) A RESERVATION IS A LIVE ALLOCATION THE OWNER NOW ANSWERS FOR.
+        let writer = RecordWriter(connection: conn, relationKey: rk)
+        let answer = writer.reserve(recordType: .data, clearLength: 120, capacity: 512)
+        guard case .admitted(let res) = answer else {
+            return XCTFail("the reservation must be admitted: \(answer)")
+        }
+        XCTAssertEqual(writer.reservedCountForTest(), 1,
+                       "*** AND THE OWNER MUST BE ASKABLE: one pending ticket stands ***")
+
+        // (3) *** AND THE BOUND ACCOUNTETH FOR PENDING TICKETS, NOT ONLY SEALED ONES. *** Four unsealed reservations
+        // must exhaust the four-record bound, or a caller could reserve without ever sealing and evade it.
+        var admittedCount = 1
+        for _ in 0..<8 {
+            if case .admitted = writer.reserve(recordType: .data, clearLength: 120, capacity: 512) {
+                admittedCount += 1
+            }
+        }
+        XCTAssertEqual(admittedCount, RecordWriter.defaultMaxAdmittedRecords,
+                       "*** 'DO NOT COUNT ONELY SEALED FRAGMENTS': UNSEALED TICKETS MUST COUNT AGAINST THE BOUND, "
+                       + "or it is evadable by a caller that never sealeth (GS-STRESS-001 step 3; ANDROID-06) ***")
+
+        // (4) *** A CLOSED WRITER HOLDETH NOTHING -- in BOTH close paths. ***
+        // `failed()` demandeth an operation the writer's OWN pump handed; `shutdown()` is the other close path and
+        // is driven here, while the `failed()` path is asserted on its own writer below.
+        writer.shutdown()
+        XCTAssertEqual(writer.reservedCountForTest(), 0,
+                       "*** A CLOSED WRITER MUST HOLD NO RESERVATION (`shutdown()`): the two close paths must "
+                       + "AGREE about what a closed owner holdeth (GS-STRESS-001 step 3; ANDROID-06) ***")
+
+        // AND THE OTHER PATH: `failed()` must release them too -- the other isle's round-534 defect, asserted here
+        // BEFORE a court had to find it.
+        let other = RecordWriter(connection: conn, relationKey: rk)
+        let sealer: (Data) -> Data? = { p in Data(count: p.count + RecordWriter.sealOverheadBytes) }
+        guard case .admitted(let res2) = other.reserve(recordType: .data, clearLength: 120, capacity: 512) else {
+            return XCTFail("the second reservation must be admitted")
+        }
+        XCTAssertEqual(res2.sealAndQueue(Data(repeating: 0x44, count: 120), sealer: sealer), .queued,
+                       "the seal must hold")
+        guard let handed = other.nextOut() else { return XCTFail("the pump must hand the value") }
+        XCTAssertTrue(other.failed(handed.operation), "the FAILED close must be reached")
+        XCTAssertEqual(other.reservedCountForTest(), 0,
+                       "*** `failed()` MUST RELEASE THE RESERVATIONS TOO: the other isle paid for this at round 534, "
+                       + "where `failed()` left them standing while `shutdown()` released both (GS-STRESS-001 step 3; "
+                       + "ANDROID-06) ***")
+    }
+
 }

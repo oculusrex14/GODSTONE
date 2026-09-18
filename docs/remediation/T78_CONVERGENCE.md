@@ -731,6 +731,44 @@ completed by this span at all, and the reason is measured rather than asserted:*
 EXTERNAL DEPENDENCY STATED — WHICH IS THE ONLY HONEST TERMINAL STATE AVAILABLE TO THIS SPAN. `VERIFIED_FIXED` IS ZERO
 AND ONLY AN INDEPENDENT AUDIT MAY WRITE IT.**
 
+## ROUNDS 536–538, PHASE TWO — THREE MORE SHARED CONTRACTS CARRIED TO BOTH ISLES
+
+**ROUND 536 — GS-ARCHIVE-005 step 1's FIRST option, complete.** `NavigationStack(path: $path)`, with the path
+**driven** from `scene.openedDocumentId` in **both** directions — *restoration puts the path back; a return to the list
+clears it.* **And the round carries this programme's own law as its reason:** *a declared-and-unset door is not a door.*
+A path nobody read would have been **exactly the shape this span has measured six times** — an instrument built,
+witnessed by a court, reached by no path a user travels.
+
+**ROUND 537 — GS-ARCHIVE-005 steps 5 and 6.** *The return-to-search identity* is now persisted and rebuilt (*"restoring
+a document otherwise discards its original back-destination"* — the card's own words), and *the visible passage* is
+recorded by a new overload that **takes the document from the scene's own selection**, *because the view cannot get it
+wrong if it need not say it.*
+
+> **AND THE SHIPPING BUILD CAUGHT AN ERROR OF MINE THAT NO OTHER INSTRUMENT COULD:** my first attempt put the anchor
+> call on the reader's `body`, **where `found` is not in scope** — `cannot find 'found' in scope`. **The SwiftPM lane
+> NEVER compiles `Godstone/Sources/App/`**, so no lane, no arm and no control could have seen it. *The only instrument
+> was the shipping build, and it was run because round 524 committed to running it.* **Put the call where the material
+> already is, not where it reads well.**
+
+**ROUND 538 — the writer-reservation census mirrors to the second isle, and the mirror found a real defect:** the iOS
+`RecordWriter` checked **only `admitted.count`** in `reserve` while `admitted` holds **seal-time** records — **so a
+caller could reserve without ever sealing and the four-record bound was evadable**, which is *the very defect the
+ANDROID-06 card names.* **And it carried the other isle's hard-won lesson BEFORE a court had to find it: the release
+happens in BOTH close paths** — round 534 measured, on Android, that `failed()` left the reservations standing while
+`shutdown()` released both. **That is what a mirror is for: the second isle inherits the first's scars.**
+
+**Measured across the three rounds:** iOS lane `SWIFT_RC=0`, `GodstoneMeshTests` **1197/0** (1195 → 1197),
+`GodstoneCoreTests` **89/0** (86 → 89); Android `:mesh` **1232/0**; the **shipping App build SUCCEEDED** twice; four
+negative cases, each **failing on its own name** with its landing verified first; parity 7/0; symbols 0 unresolved;
+digests PASSED.
+
+**STILL OWED ACROSS THE SIX `PARTIAL`, AND THE REASON IS MEASURED RATHER THAN ASSERTED:** a **Context-bearing
+instrumentation road** (ANDROID-05, GS-RUNTIME-001 — the host cannot supply a `Context`, and both link layers are
+frozen at `false`, *which the objective requires*); a **pinned SQLCipher native artifact** (GS-STORE-002 — an
+acquisition, and **acquisition never closes a gate**); **10,000 real lifecycle cycles, OS-facade fault injection and a
+real guard mutant** (GS-STRESS-001); and a **UI-testing target**, which does not exist on either isle (GS-UX-001,
+GS-ARCHIVE-005's step 7 — whose own text *forbids* counting model-level arms as OS lifecycle wiring).
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is

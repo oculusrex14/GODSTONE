@@ -163,6 +163,19 @@ public final class RecordWriter {
     private var admitted: [AdmittedRecord] = []
     private var inFlight: WriteOperation?
     private var closed = false
+
+    // --------------------------------------------------------------------------------------
+    // *** ANDROID-06's OWN LAW, MIRRORED (round 538): THE PENDING-TICKET TABLE. ***
+    //
+    // MEASURED BEFORE THIS WAS ADDED, AND IT IS THE SAME DEFECT THE OTHER ISLE'S CARD NAMED: `reserve` checked
+    // **ONELY `admitted.count`**, while `admitted` holdeth **SEAL-TIME** records -- **SO A CALLER COULD RESERVE
+    // WITHOUT EVER SEALING AND THE FOUR-RECORD BOUND WAS EVADABLE.** The card's own words for the Android twin:
+    // *'Maintain a bounded pending-ticket table under the writer lock'* and *'DO NOT COUNT ONLY SEALED FRAGMENTS.'*
+    // THE SAME LAW APPLIETH HERE BECAUSE THE CONTRACT IS SHARED.
+    // --------------------------------------------------------------------------------------
+    private var reserved: [UInt64: Reservation] = [:]
+    /// The capacity a reservation was taken under, so a MOVED capacity epoch retireth it without sealing.
+    private var reservationCapacity: [UInt64: Int] = [:]
     private var nextOperationId: UInt64 = 1
     private var operationsIssued: UInt64 = 0
     private var staleCompletions: UInt64 = 0
@@ -197,21 +210,30 @@ public final class RecordWriter {
             return .refused(.notEnoughCapacity(sealedLength: sealedLength, ceiling: ceiling,
                                                fragmentCount: fragmentCount))
         }
-        if admitted.count >= maxAdmittedRecords {
+        // *** THE BOUND ACCOUNTETH FOR BOTH SEALED AND PENDING: 'DO NOT COUNT ONLY SEALED FRAGMENTS.' ***
+        if admitted.count + reserved.count >= maxAdmittedRecords {
             return .refused(.tooManyAdmitted(limit: maxAdmittedRecords))
         }
         let operationId = nextOperationId
         nextOperationId += 1
         operationsIssued += 1
-        return .admitted(Reservation(writer: self, operationId: operationId,
-                                    recordType: recordType, clearLength: clearLength,
-                                    capacity: capacity))
+        let ticket = Reservation(writer: self, operationId: operationId,
+                                recordType: recordType, clearLength: clearLength,
+                                capacity: capacity)
+        // AND THE TICKET IS RECORDED, so that the owner may be ASKED what it holdeth -- and so that a reservation
+        // never sealed can be RELEASED when the relation closeth.
+        reserved[operationId] = ticket
+        reservationCapacity[operationId] = capacity
+        return .admitted(ticket)
     }
 
     /// The one seal, the one fragmentation, the one consumption of the
     /// sequence number. Reached through `Reservation.sealAndQueue` only.
     fileprivate func sealAndQueueOf(_ reservation: Reservation, payload: Data,
                                     sealer: (Data) -> Data?) -> SealAnswer {
+        // A SEALED RESERVATION NO LONGER HOLDETH A TICKET; sealing twice is the sealer's own refusal.
+        reserved.removeValue(forKey: reservation.operationId)
+        reservationCapacity.removeValue(forKey: reservation.operationId)
         if closed || !connection.isActive {
             return .refused("the relation fell before the seal")
         }
@@ -358,6 +380,12 @@ public final class RecordWriter {
     /// released - the durable application data is not the writer's to
     /// touch - and the writer accepts nothing further.
     public func failed(_ operation: WriteOperation) -> Bool {
+        // *** A CLOSED RELATION ACCEPTETH NOTHING FURTHER: WHAT IT HOLDETH MUST BE RELEASED. ***
+        // AND IT IS DONE IN **BOTH** CLOSE PATHS -- the lesson the OTHER isle paid for at round 534, where
+        // `failed()` released the admitted records but LEFT THE RESERVATIONS STANDING while `shutdown()` released
+        // both. TWO CLOSE PATHS THAT DISAGREE ABOUT WHAT THEY RELEASE DISAGREE ABOUT WHAT A CLOSED WRITER IS.
+        reserved.removeAll()
+        reservationCapacity.removeAll()
         guard let standing = inFlight, standing == operation else {
             staleCompletions += 1
             return false
@@ -370,7 +398,20 @@ public final class RecordWriter {
 
     /// The relation fell by other means: release what was staged, accept
     /// nothing further.
+    /// *** GS-STRESS-001 STEP 3 (round 538): THE OWNER'S OWN CENSUS, NOW ASKABLE ON THIS ISLE TOO. ***
+    ///
+    /// THE CARD NAMETH *'writer reservations'* AMONG THE OWNERS WHOSE CENSUS MUST BE READ. AN OWNER NO ONE CAN ASK
+    /// CANNOT BE CENSUSED, CANNOT BE CHECKED FOR A LEAK, AND CANNOT BE **NAMED** IN A FAILURE.
+    internal func reservedCountForTest() -> Int { reserved.count }   // READ DIRECTLY, as every hook beside it doth:
+    // this file carrieth NO lock, and a hook that invented one would not be reading the writer's real state.
+
     public func shutdown() {
+        // *** A CLOSED RELATION ACCEPTETH NOTHING FURTHER: WHAT IT HOLDETH MUST BE RELEASED. ***
+        // AND IT IS DONE IN **BOTH** CLOSE PATHS -- the lesson the OTHER isle paid for at round 534, where
+        // `failed()` released the admitted records but LEFT THE RESERVATIONS STANDING while `shutdown()` released
+        // both. TWO CLOSE PATHS THAT DISAGREE ABOUT WHAT THEY RELEASE DISAGREE ABOUT WHAT A CLOSED WRITER IS.
+        reserved.removeAll()
+        reservationCapacity.removeAll()
         closed = true
         admitted.removeAll { _ in true }
         inFlight = nil
