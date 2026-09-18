@@ -12,6 +12,31 @@ final class CrashStartupResumeTests: XCTestCase {
         func delete(tag: String) throws { storage.removeValue(forKey: tag) }
     }
 
+    // ================================================================================================
+    // *** GS-INTEGRATION-001 (round 590): THE INTERRUPTED WIPE -- ALREADY COVERED, AND BETTER THAN MY ARM. ***
+    //
+    // THE CARD'S REMAINING WORK, VERBATIM: *"Instantiate real composition with only OS facades replaced;
+    // demonstrate **user-entry-to-store-to-ACK** and **interrupted wipe**."*
+    //   * USER-ENTRY-TO-STORE-TO-ACK is covered by `testFullCallPathCommandToSignedAck` plus the composition arms
+    //     that drive `sendDirectDurable` and reopen the store.
+    //   * **AND THE INTERRUPTED WIPE WAS ALREADY COVERED -- BY AN ARM IN THIS VERY FILE THAT IS STRICTLY BETTER THAN
+    //     THE ONE I WROTE: `testGSSTORE006_theRuntimeThatStandsContinuesTheWipeAndErasesNothingWithoutAProvider`
+    //     (line ~960). IT DRIVES THE REAL COMPOSITION, THE REAL `continuePendingWipeIfNeeded()`, AND ASSERTS THE
+    //     **ORDER OF THE RECORDS WRITTEN** THROUGH THE LIVE SEAMS -- while MY ARM ASSERTED ONLY THAT THE JOURNAL "NO
+    //     LONGER STANDS AT REQUESTED".**
+    //
+    // *** AND I FOUND THAT OUT BY MUTATING THE CONTINUATION AND WATCHING MY ARM STAY GREEN WHILE *THAT* ARM
+    // REDDENED. *** The mutation (`if true { return .alreadyAtOrPast(.idle) }` inserted after `wipeAuthority.resume()`,
+    // grep-confirmed on the built copy) produces ONE failure -- **AND IT IS NOT MINE.** **A GREEN THAT CANNOT REDDEN
+    // WHEN THE MECHANISM IS BROKEN IS NOT EVIDENCE FOR THE MECHANISM, AND MY ARM WAS EXACTLY THAT: it was measuring
+    // that SOME journal write occurred, not that the CONTINUATION caused it.**
+    //
+    // SO THE ARM IS DELETED RATHER THAN KEPT GREEN, and the card's clause is answered by pointing at the STRONGER
+    // arm that was already here. **THIS IS THE DUPLICATE-PROBE LESSON FROM ROUND 588 (the parked `.txt` that turned
+    // out to duplicate a live court) IN ANOTHER FORM: AN ARM WRITTEN WITHOUT FIRST GREPPING FOR AN EXISTING ONE
+    // ADDS WEIGHT, NOT COVERAGE.**
+    // ================================================================================================
+
     private final class InMemoryJournal: WipeJournal, @unchecked Sendable {
         var state: WipeState = .idle
         var writes = 0

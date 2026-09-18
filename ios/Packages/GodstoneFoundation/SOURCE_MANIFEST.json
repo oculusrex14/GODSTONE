@@ -120,7 +120,7 @@
     "Tests/GodstoneMeshTests/BloomDigestTests.swift": "540eb898a7540681af3e4964584dc8cf2b08d5127dc922520198bdbe174507e2",
     "Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift": "af3c120826076bb2ce1dc7fc7a2b1d09e766e54669926d4697e622807a3bf13e",
     "Tests/GodstoneMeshTests/CompositionResolverAckTests.swift": "60eaad0d66e4bae3bade76121c20de305d39874333492340f36069e0b7203c51",
-    "Tests/GodstoneMeshTests/CrashStartupResumeTests.swift": "b778888030afb93d1c8247e2aaf774e2d2b5cb9adf0ce2472c871277e3f38197",
+    "Tests/GodstoneMeshTests/CrashStartupResumeTests.swift": "36c74f26938db2cf67bde50f3894a7e08535cbf615531fdaf207c5f90ffe5a2d",
     "Tests/GodstoneMeshTests/DeliveryTrackerTests.swift": "7320a211076c209a9f2929f6e40a8c6ec893ad9c43fdce745a781d88a0db70a8",
     "Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift": "db3470edfad5be4a22a483e7600859217f702b4ab60f852b7f1e54d351403334",
     "Tests/GodstoneMeshTests/GsFinal005MandatoryClockTests.swift": "c98c2ab4ef608964fb049e8b3c136a52be0eca5ad1c4313919f79cb06cbf63dc",

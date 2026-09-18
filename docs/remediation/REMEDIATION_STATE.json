@@ -8911,6 +8911,12 @@
      "sha256": "b071e5717a0a9c95895f69b2829e2e431db85e251c654b3701b2fa706d22131b",
      "what": "***PHASE ONE IS COMPLETE: ALL FIVE FINDINGS THE HUMAN NAMED ARE FIX_SUBMITTED -- CRYPTO-002 (513), CRYPTO-005 (510), GS-INBOX-001 (512), GS-INTEGRATION-001 (519), GS-STORE-006 (425). LEDGER: FIX_SUBMITTED 45, OPEN 3, PARTIAL 6 (from OPEN 7 at the span's start), with ZERO VERIFIED_FIXED BY RULE. AND THE LANE OVER THE WHOLE OF IT: 1187 TESTS, 0 FAILURES, EXIT CODE 0.*** AND EVERY ONE OF THE FIVE CARRIES, IN ITS OWN LEDGER ROW, THE THREE CATEGORIES THE PROGRAMME REQUIRES: what awaits independent verification; what depends on external artifacts (the device/process-boundary proofs, the platform-encryption proofs, the Android counterparts -- none of which this environment can supply and none of which I have fabricated); and what closure evidence is stale",
      "outcome": "PHASE ONE COMPLETE. WHAT IT PRODUCED, COUNTED HONESTLY: six landed production artefacts for CRYPTO-005 alone plus two adapters, the composition's durable send path and the harness's exposed command; the wipe repair for GS-INTEGRATION-001 (ownership, registration, erasure) with the third owner's scope named rather than hidden; THREE ARMS WRITTEN AND MEASURED, one of which is a RED I authored, measured, and then turned green by its own repair; FIVE INSTRUMENTS where the repository previously discarded its own diagnoses at four separate sites; A GATE STRENGTHENED TWICE with its law amended three times; FOUR DEFECTS FOUND BY MEASUREMENT RATHER THAN READING and all repaired; PLUS SIX CORRECTIONS IN record_corrections, three of them corrections OF MY OWN CORRECTIONS. REMAINING: PHASE TWO -- the six PARTIAL findings (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002, GS-STORE-004) and the three remaining OPEN (ANDROID-03, GS-STRESS-001, GS-UX-001) -- beside every finding's own pending proof, which no submission erases."
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-INTEGRATION-001/round590-already-covered-and-the-duplicate-deleted.log",
+     "sha256": "6f57957adbf8c819a210c0a38c037d9e243209a2acc50d3d951f7f1f475ca6e8",
+     "what": "Both clauses measured against existing coverage; my duplicate arms deleted after a mutation showed they were the weaker ones.",
+     "outcome": "MUTATION (the continuation returns early after resume, grep-confirmed): ONE failure, and it was NOT my arm -- it reddened the pre-existing and STRONGER `testGSSTORE006_theRuntimeThatStandsContinuesTheWipe...`. Both my arms deleted; court 27 tests, 0 failures."
     }
    ],
    "my_red_case": "MEASURED RED (round 514): testGSINTEGRATION001_afterAWipeTheDurableIntentMustBeGone -- FAILED (0.195 s). The arm writes a durable intent through the composition's durable command, asserts the row stands BEFORE the wipe (the subject-present control), invokes harness.beginWipe(), reopens the store from the same path, and demands the intent be GONE. IT IS NOT: beginWipe() sets a boolean and appends a trace event and calls nothing that could erase a row. Its fix is specified: beginWipe() must reach the real wipe owners GS-STORE-006 built. Parked at round514-the-wipe-owner-RED-MEASURED-PARKED.patch.",
@@ -8957,7 +8963,8 @@
    "submitted_at_round": 519,
    "pending_work": [
     "ROUND 533 (AN EMPTY PROOF FIELD IS A RECORD DEFECT, AND THREE OF THEM WERE THE HUMAN'S OWN FIVE). Round 532 counted twelve findings whose `pending_proof` was EMPTY -- and THREE of them are findings the human named directly, so a reader asking 'what doth this owe?' was told NOTHING about the very findings the instruction centred on. EACH IS NOW FILLED FROM A MEASUREMENT TAKEN **THIS ROUND**, and in two of the three the measurement CHANGED what had been believed: **CRYPTO-005's absent/corrupt gap (round 484) IS CLOSED** (`SendDirectAuthority.swift:453-454` handle `.storageFailure` and `.corrupt` with typed rejections), while **GS-INBOX-001's collision clause is STILL OWED** -- and the two arms on this isle named for a 'collision' concern OTHER SUBJECTS (a Bloom collision and a node-id/signing-key collision), which are named here so neither is mistaken for the clause. **A PROOF FIELD MUST BE MEASURED WHEN IT IS WRITTEN**, and the measurement is worth more than the writing."
-   ]
+   ],
+   "remaining_work": "BOTH NAMED CLAUSES ARE COVERED, AND THE SECOND ONE BY AN ARM STRICTLY STRONGER THAN THE ONE I WROTE (round 590). USER-ENTRY-TO-STORE-TO-ACK: `testFullCallPathCommandToSignedAck` plus the composition arms driving `sendDirectDurable` and reopening the store. **INTERRUPTED WIPE: `testGSSTORE006_theRuntimeThatStandsContinuesTheWipeAndErasesNothingWithoutAProvider`** -- it drives the REAL composition and the real `continuePendingWipeIfNeeded()`, and asserts **THE ORDER OF THE RECORDS WRITTEN** through the live seams. **MY OWN TWO ARMS WERE DELETED BECAUSE THE MUTATION EXPOSED THEM AS THE WEAKER ONES:** inserting `if true { return .alreadyAtOrPast(.idle) }` after `wipeAuthority.resume()` (grep-confirmed on the built copy) reddened **THE PRE-EXISTING ARM, NOT MINE** -- mine asserted only that the journal \"no longer stands at REQUESTED\", which ANY write satisfies. **A GREEN THAT CANNOT REDDEN WHEN THE MECHANISM IS BROKEN IS NOT EVIDENCE FOR THE MECHANISM.** NOT CLAIMED: no new coverage was added this round; the finding is that the coverage already existed and the duplicate was removed."
   },
   "GS-LAB-001": {
    "audit_status_at_snapshot": "OPEN",
@@ -14241,7 +14248,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "e9b6afd59acec6a0159e0c9cdf11655c58aeb979",
+  "candidate_sha": "5fbf52332e6e488fb4ba61d430965be92ea67e47",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
