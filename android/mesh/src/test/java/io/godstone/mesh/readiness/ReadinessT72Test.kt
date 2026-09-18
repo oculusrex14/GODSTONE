@@ -433,6 +433,8 @@ class ReadinessT72Test {
             // measuring a narrower seam than it claimeth.* ***
             override fun liveReservations(): Int = 0     // MEASURED, AND CLEAN
             override fun liveAdmittedLeases(): Int = 0   // MEASURED, AND CLEAN
+            override fun liveArmedTimers(): Int = 0      // MEASURED, AND CLEAN
+            override fun liveObservers(): Int = 0        // MEASURED, AND CLEAN
         }
         val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(clean)).run()
         Assert.assertTrue("a measured clean owner must not be accused: ${result.failures}",
@@ -477,6 +479,45 @@ class ReadinessT72Test {
             "*** AND THE RESERVATION KIND MUST NOT BE ACCUSED FOR IT -- otherwise the two censuses would be one " +
                 "census wearing two names, and a maintainer sent to the wrong owner. Observed: ${result.failures} ***",
             result.failures.none { it.contains("writer reservation") },
+        )
+    }
+
+    /** *** THE FOURTH OWNER -- `TIMERS` -- IS CENSUSED, AND IT USES THE CARD'S OWN INVARIANT NAME. *** */
+    @Test
+    fun testGSSTRESS001theFourthOwnerTimersIsCensused() {
+        val leaking = object : ResourceCensusSource {
+            override val ownerName: String = "SessionManager"
+            override fun liveSessionSlots(): Int = 0
+            override fun liveReservations(): Int = 0
+            override fun liveAdmittedLeases(): Int = 0
+            override fun liveArmedTimers(): Int = 1      // an ARMED DEADLINE that nobody fired
+            override fun liveObservers(): Int = 0
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(leaking)).run()
+        Assert.assertTrue(
+            "*** A LEAKED TIMER MUST BE REPORTED UNDER THE CARD'S OWN INVARIANT NAME, and the owner NAMED. A timer is " +
+                "the owner MOST LIKELY to outlive a shutdown silently, because NOTHING ELSE OBSERVES IT. Observed: " +
+                "${result.failures} ***",
+            result.failures.any { it.contains(Invariants.NO_LEAKED_TIMERS) && it.contains("SessionManager") },
+        )
+    }
+
+    /** *** AND THE FIFTH -- `OBSERVERS` -- WHOSE LEAK IS A CALLBACK INTO A DEAD OBJECT. *** */
+    @Test
+    fun testGSSTRESS001theFifthOwnerObserversIsCensused() {
+        val leaking = object : ResourceCensusSource {
+            override val ownerName: String = "LinkInfoSnapshotAuthority"
+            override fun liveSessionSlots(): Int = 0
+            override fun liveReservations(): Int = 0
+            override fun liveAdmittedLeases(): Int = 0
+            override fun liveArmedTimers(): Int = 0
+            override fun liveObservers(): Int = 3        // registrations outliving their owner
+        }
+        val result = StressCampaign(seed = 7L, cycles = 64, owners = listOf(leaking)).run()
+        Assert.assertTrue(
+            "*** A LEAKED OBSERVER MUST BE REPORTED AND NAMED -- a registration that outlives its owner is a CALLBACK " +
+                "INTO A DEAD OBJECT. Observed: ${result.failures} ***",
+            result.failures.any { it.contains("observer") && it.contains("LinkInfoSnapshotAuthority") },
         )
     }
 

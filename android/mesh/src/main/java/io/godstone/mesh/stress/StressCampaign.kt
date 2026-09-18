@@ -68,6 +68,25 @@ interface ResourceCensusSource {
      */
     fun liveAdmittedLeases(): Int = NOT_MEASURED
 
+    /**
+     * *** GS-STRESS-001 step 3 (round 653): THE FOURTH OWNER -- `TIMERS`, WHICH THE CARD NAMETH FIRST. ***
+     *
+     * `SessionManager.armedAgeDeadlinesForTest()` IS THE TIMER HOOK AND IT ALREADY EXISTED -- *it is the hook round 534's
+     * sibling used when it found that `failed()` left reservations standing.* **AND A TIMER IS THE OWNER MOST LIKELY TO
+     * OUTLIVE A SHUTDOWN SILENTLY**, because nothing else observeth it: a leaked session slot is countable from the
+     * session map, but an ARMED DEADLINE that nobody fired leaveth no other trace.
+     */
+    fun liveArmedTimers(): Int = NOT_MEASURED
+
+    /**
+     * *** AND THE FIFTH -- `OBSERVERS`, ALSO THE CARD'S OWN WORD. ***
+     *
+     * `LinkInfoSnapshotAuthority.registrationsForTest()` IS THE OBSERVER HOOK AND IT ALREADY EXISTED. **AN OBSERVER
+     * WHOSE REGISTRATION OUTLIVETH ITS OWNER IS A CALLBACK INTO A DEAD OBJECT** -- *which is the failure mode this
+     * programme's earlier rounds named as "stale callbacks".*
+     */
+    fun liveObservers(): Int = NOT_MEASURED
+
     companion object {
         /** The sentinel for an owner whose kind this seam cannot yet census. NEVER counted as zero. */
         const val NOT_MEASURED: Int = -1
@@ -326,6 +345,24 @@ class StressCampaign(
                     "${owner.ownerName} (admitted leases)")
                 admittedLeases != 0 -> failures.add(
                     "${Invariants.NO_LEAKED_SESSIONS}: $admittedLeases admitted lease(s) still live in the REAL " +
+                        "owner '${owner.ownerName}' after shutdown")
+            }
+            // THE FOURTH OWNER: TIMERS -- an armed deadline that nobody fired leaves NO OTHER TRACE.
+            val armedTimers = owner.liveArmedTimers()
+            when {
+                armedTimers == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
+                    "${owner.ownerName} (timers)")
+                armedTimers != 0 -> failures.add(
+                    "${Invariants.NO_LEAKED_TIMERS}: $armedTimers armed timer(s) still live in the REAL owner " +
+                        "'${owner.ownerName}' after shutdown")
+            }
+            // THE FIFTH OWNER: OBSERVERS -- a registration that outlives its owner is a callback into a dead object.
+            val observers = owner.liveObservers()
+            when {
+                observers == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
+                    "${owner.ownerName} (observers)")
+                observers != 0 -> failures.add(
+                    "${Invariants.NO_LEAKED_LEASES}: $observers observer registration(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
             }
         }
