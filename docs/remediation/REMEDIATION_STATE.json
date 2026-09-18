@@ -13902,6 +13902,12 @@
       "sha256": "038174fc18f038dfc1270a9202a341c3dfda0e3187e5f3cfeaf6fbd2e08385c6",
       "what": "A protected read my first repair missed, caught by review; the RED, the fix, and the mechanical rule.",
       "outcome": "RED: selectRecipientIsGatedBecauseItReadsTheProtectedStoreDirectly FAILED. GREEN: 6/6; lanes app 74, core 21, mesh 1869, all 0 failures."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-009/round565-compiler-enforces-classification.log",
+      "sha256": "08d1652da2cc4d76f6d7ed6b1e2c6b226d8e4033123bd56f669155b5100e41a1",
+      "what": "The command classification is compiler-enforced; my ledger claimed otherwise; the probe and its own bug.",
+      "outcome": "PASS: the compiler refused an unclassified 12th command at TWO sites and named it; the tree was restored byte-identical (sha256 before == after). ALSO MEASURED: moving the read ABOVE the gate (the audited defect) is caught by THREE arms, so my claim that \"no arm of mine would see it\" was false too."
      }
     ],
     "my_red_case": "BEHAVIOURAL RED BEFORE THE EDIT: 3 of 5 arms failed -- `anUnavailableGateProjectsWithoutReadingThePortAtAll` (the port WAS read), `theUnavailableProjectionCarriesItsOwnTypedStateAndNotEmptyLists`, and `protectedCommandsAreRefusedAtAdmissionWhenTheGateSaysUnavailable` (protected calls were made). The audit's own instrument: A PORT THAT THROWS ON EVERY PROTECTED READ AND COMMAND, WITH ZERO CALLS DEMANDED -- a throw rather than an empty answer, because an empty list would let an unguarded projection publish \"you have no contacts\".",
@@ -13909,7 +13915,7 @@
      "NO RENDERED-SCREEN WITNESS, AND IT MATTERS MORE HERE THAN ELSEWHERE: the audit's clause is about what the SCREEN sayeth. The arms drive the ViewModel, and `MeshUiState.protectedUnavailable` exists so a screen CAN distinguish unavailable from empty -- but whether the Compose surface actually RENDERS that distinction is unverified, because no `androidTest` target exists (the same gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7).",
      "THE AUDIT ASKS FOR SUBSCRIPTION TO PLATFORM AVAILABILITY TRANSITIONS: *\"Subscribe to platform availability transitions, clear sensitive projections and cancel in-flight operations using generation tokens.\"* THIS IS NOT DONE. This isle's gate is POLLED at each projection and command admission, which closes the reading window and the command window -- but a transition that arrives while no call is made is not observed. The reason it is not claimed: the app has no shipping Mesh composition (`UnavailableMeshPort` is the shipping binding), so there is nothing to subscribe TO yet. Named rather than worked around.",
      "ANDROID FIRST-UNLOCK vs iOS COMPLETE-PROTECTION: the audit warns these must not be confused. This isle's gate is a plain \"may I read protected storage right now\" (`ProtectedDataGate.isProtectedDataAvailable`), with no first-unlock semantics claimed. The iOS clause is NOT addressed by this repair and is not claimed to be.",
-     "THE `isProtectedCommand` LIST IS STILL A JUDGEMENT, BUT THE RULE IS NOW MECHANICAL AND STATED SO THE NEXT COMMAND CAN BE JUDGED AGAINST IT RATHER THAN AGAINST PROSE: **IF THE HANDLER NAMES `port.` AT ALL, IT IS PROTECTED.** AND ONE ENTRY WAS WRONG UNTIL REVIEW CAUGHT IT (round 562): `SelectRecipient` read `port.recipients()` directly and I had listed it as NOT protected, justified by a comment about `project()` that is NEVER REACHED for that command. A FUTURE `MeshCommand` WOULD STILL NOT BE GATED BY DEFAULT -- an exhaustive `when` with no `else` would make the compiler demand a decision, and that remains the durable fix not made here."
+     "CORRECTED TWICE IN ONE ROUND (565), BOTH BY MEASUREMENT RATHER THAN ARGUMENT. (1) MY EARLIER CLAIM THAT \"a future `MeshCommand` would still not be gated by default\" WAS WRONG: `MeshCommand` is SEALED and `isProtectedCommand` is an exhaustive `when` with no `else`, so a twelfth command fails the build at TWO sites until a human classifies it (`ci/probe_mesh_command_exhaustiveness.py` re-runneth the proof). (2) AND MY CORRECTING CLAIM IN THE SAME SENTENCE -- that a read moved ABOVE `project()`'s gate \"would again be a hole, and no arm of mine would see it\" -- WAS ALSO WRONG: that mutation is caught by THREE arms. WHAT GENUINELY REMAINS is only the review's design point: the seam it proposed would make this class of mistake IMPOSSIBLE rather than CAUGHT, where the current shape relies on a judgement (gate-first inside `project()`, classification at the command boundary) that arms and the compiler both police but neither forbids."
     ]
    },
    "GS-FINAL-010": {
@@ -14061,7 +14067,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "2377968de11c5a8d4306c2cbe7e7d58a5ff8736d",
+  "candidate_sha": "e5d1dd221b6ab63f866e669788f5aab6c7341b5e",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
