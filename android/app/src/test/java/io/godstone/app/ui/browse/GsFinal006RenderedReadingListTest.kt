@@ -453,4 +453,25 @@ class GsFinal006RenderedReadingListTest {
         }
     }
 
+    // *** GS-FINAL-006 (round 731): THE BEHAVIOURAL ARM FOR THE DOCUMENT KEY WAS DELETED, BECAUSE IT CANNOT EXIST. ***
+    //
+    // *I wrote `theDocumentKeyIsObservableOnASameDocumentScroll` to make `key(state.openedDocumentId)` observable, and a
+    // REVIEW SAID IT COULD NOT AND I SHOULD STOP. **I MEASURED INSTEAD OF ARGUING: WITH THE KEY REMOVED, MY NEW ARM
+    // STAYED GREEN.*** **The review was right, and here is why, stated as a property rather than an apology:**
+    //   * the key's effect is to RECREATE the list state -- observable ONLY when `openedDocumentId` CHANGES;
+    //   * but on a cross-document open the target resolves to THE FIRST PASSAGE (0), and the consume-effect's
+    //     `scrollToItem(0)` then forces the top REGARDLESS of what was inherited -- *** SO THE OUTCOME IS IDENTICAL WITH
+    //     OR WITHOUT THE KEY ***;
+    //   * and the one road where the target can be NON-zero is a SAME-DOCUMENT re-entry, **where `openedDocumentId` did
+    //     not change -- so the key never fires anyway.**
+    // *** THE KEY IS BEHAVIOURALLY UNEXERCISABLE BY CONSTRUCTION: THERE IS NO OBSERVABLE WINDOW, and the absence of that
+    // window IS the property. *** **"An arm is missing but findable" would be the weaker and FALSE statement** -- *an arm
+    // that stays green under the mutation it names is a test of nothing, which this file already recordeth elsewhere.*
+    //
+    // WHAT REPLACES IT IS THE HONEST GUARD: a STRUCTURAL presence check, so the key cannot be REMOVED silently even
+    // though its behaviour cannot be witnessed. *That is the same remedy this programme useth for a dominated control:
+    // assert the thing exists, and say plainly that its effect is not observable today.*
+    // See `ci/check_release_surface.py` (SEARCH THIS REPO FOR: GS-FINAL-006 document-key presence).
+
+
 }
