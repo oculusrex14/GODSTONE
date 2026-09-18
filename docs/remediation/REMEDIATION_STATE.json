@@ -13725,6 +13725,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-8/round669-the-audits-own-phase-exit-criteria-measured.log",
    "sha256": "c76c72d2837e1f1ca4c205061b5acbf9cb2edd57a58fc6612a9f3e36dcfb8c86",
    "correction": "THE AUDIT'S OWN PHASE EXIT CRITERIA MEASURED. `14_ordered_remediation_plan.md` states an explicit Exit for each of nine phases, and nobody had put them against this candidate. **PHASE 0's three host-reachable clauses ALL PASS:** the audit's OWN six adversarial arms pass (6 passed; *against the audited revision they give 4 failures, so they are not vacuous*); `check_required_runs` PASSED (*no unknown record silently omitted*); and 9 cited SHAs, 0 unresolvable (*exact identities traceable*). **PHASE 7's three host-reachable clauses ALL PASS:** lane-results PASSED and mirror membership PASSED (*no required test omitted by target configuration* -- *and the lane control reads result XML, not stdout*); the supply chain standeth pinned (*no unresolved critical dependency finding*); and `check_release_surface` reports minimized permissions/entitlements/identities (*no prohibited binary payload*). AND THE PHASES THAT CANNOT EXIT HERE ARE NAMED WITH THEIR REASONS: Phase 1 needs a production `EncryptedStoreEngine` for its second clause (its own sentence grants the split and the code/harness half IS done); Phase 2 needs the live-transport device road; **Phase 4 is the INDEPENDENT AUDIT'S OWN remaining programme** (*\"the forty require a direct implementation review, not simply another ledger read\"*); Phase 6's device half is external by the audit's own distinction (*\"Robolectric rendereth the composition but is not a device\"*); and Phases 3/5/8 are recorded in `internal_remaining` (7 genuine) and `external_acceptance` (23). **AND THE VERDICT DOES NOT CHANGE: NO_GO REMAINS** -- five external gates OPEN or BLOCKED, no hosted lane, and no finding `VERIFIED_FIXED`."
+  },
+  {
+   "round": 677,
+   "finding": "PHASE-8-OBJECTIVE-VERIFICATION",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-8/round677-the-objective-verified-against-the-audits-closure-matrix.log",
+   "sha256": "ffebf7d74f7709a04a38e98fb2dd50556dc8d5fde10763adf63d011529b05b52",
+   "correction": "THE OBJECTIVE VERIFIED AGAINST THE AUDIT'S OWN CLOSURE MATRIX, ROW BY ROW. The matrix carries 67 rows (54 original, 13 new), and the THIRTEEN are the audit's own findings against this candidate -- ALL THIRTEEN `NOT_FIXED` (or `UNABLE_TO_VERIFY`) at the audited SHA. **MEASURED NOW: every one carries landed, evidenced work** -- GS-FINAL-001/002/005/007/008/009/010/011/012/013 are `FIX_SUBMITTED` (1-7 evidence logs each), and GS-FINAL-003/004/006 are `PARTIAL` with their remainders named. The derivation is a program: `my_status in (FIX_SUBMITTED, PARTIAL)` over the ledger, printing \"NONE\" for rows without landed work. AND WHAT PARTIAL MEANS ON THE THREE IS STATED RATHER THAN GLOSSED: GS-FINAL-003 -- admission points landed and mutation-proven on both isles (including this session's Android ACK decorator, both isles' SOS read roads, and iOS's Router admission point); what remains is the typed startup permit (measured on both isles to DEADLOCK if consumed at construction) and the Hilt binding's portability. GS-FINAL-004 -- TWO of its four clauses landed and mutation-proven ((c) round 647, (d) round 605); the other two need a production `EncryptedStoreEngine`, which the tree does not contain. GS-FINAL-006 -- the Android half closed with an EXECUTED witness; the platform half is external by the audit's own distinction. AND NOT ONE ROW IS `VERIFIED_FIXED`, BY RULE: only an independent audit may write it. **THE VERDICT REMAINS NO_GO**, the five external gates remain OPEN or BLOCKED, no hosted lane exists, and the readiness flags remain false. What is claimed is narrow: every one of the thirteen carries landed work, and the remainder of each is named in its own `remaining_work` -- which, until this session, SEVEN OF THEM DID NOT STATE AT ALL."
   }
  ],
  "phase_one": {
@@ -14532,7 +14539,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "37b0d76e3adf9908df4f81e6cc4845bd97a78953",
+  "candidate_sha": "40075bd6638da242dc141a27290986c1da9c8135",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
