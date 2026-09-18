@@ -13,6 +13,21 @@ android {
     namespace = "io.godstone.mesh"
     compileSdk = 35
 
+    // *** ANDROID-05 (round 589): ANDROID RESOURCES FOR A REAL `Context` IN THIS MODULE'S COURTS. ***
+    //
+    // THE CARD DEMANDED "a Context-bearing composition harness", AND THE WALL WAS RECORDED AS "no host test can supply
+    // a Context". **MEASURED, THAT IS TRUE ONLY OF THE DI ROOT: `MeshModule`'s providers whose signatures literally
+    // take `@ApplicationContext ctx` need a real Context, WHILE THE REST ARE ORDINARY CALLABLE FUNCTIONS ON AN
+    // `internal object` (round 571 called `provideBoundRecipientKeyResolver` directly and it WORKED).**
+    // THE ROUTE TO THE REST IS ALREADY PROVEN ON THIS REPO: the `:app` module carries Robolectric and a test
+    // `testOptions` block (round 564), with its artifacts pinned in `gradle/verification-metadata.xml`. **THE SAME
+    // MOVE, APPLIED HERE.**
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     defaultConfig {
         minSdk = 26
         consumerProguardFiles("consumer-rules.pro")
@@ -72,4 +87,8 @@ dependencies {
     // Test-only (testImplementation), in a non-shipping module -- never reaches
     // a shipping classpath.
     testImplementation("org.xerial:sqlite-jdbc:3.46.1.3")
+    // THE CONTEXT-BEARING HARNESS'S OWN INSTRUMENTS -- the same pair the `:app` isle carries (round 564), so a court
+    // here can obtain a REAL Android `Context` on the host. Test-only; never reaches a shipping classpath.
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.test.ext:junit:1.2.1")
 }

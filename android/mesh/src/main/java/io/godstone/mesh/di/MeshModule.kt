@@ -314,7 +314,24 @@ internal object MeshModule {
     fun provideWipeIsPending(@ApplicationContext ctx: Context): WipeSensitiveUseGate = WipeSensitiveUseGate {
         // READ, NEVER CACHED: the coordinator's own rule is that this question must be answered from the durable
         // record each time, because the answer CHANGES when the wipe completes.
-        FileWipeJournal(ctx).read() != PanicWipe.WipeState.IDLE
+        //
+        // *** AND THE POLARITY, WHICH WAS INVERTED HERE AND WENT UNNOTICED FOR EIGHTEEN ROUNDS. ***
+        //
+        // THE TYPE SAYETH `allowsSensitiveUse()`, SO **TRUE MEANS ALLOWED** -- and BOTH CONSUMERS act on it exactly so
+        // (`if (!wipeGate.allowsSensitiveUse()) return ...StorageFailure`). MY FIRST VERSION RETURNED
+        // `read() != PanicWipe.WipeState.IDLE` -- TRUE WHEN A WIPE **IS** PENDING -- **SO THE SHIPPED GATE ALLOWED
+        // SENSITIVE USE WHILE A WIPE WAS OUTSTANDING AND REFUSED IT ON A CLEAN DEVICE: EXACTLY BACKWARDS, AND WORSE
+        // THAN NO GATE AT ALL ON THE DEVICE THAT HAD NEVER BEEN WIPED.**
+        //
+        // **AND EVERY LANE WAS GREEN THROUGHOUT, INCLUDING THE ARMS I WROTE FOR THIS VERY PROVIDER.** The reason is
+        // worth keeping: those arms invoked the provider **WITH A HAND-TYPED `WipeSensitiveUseGate { false }`**, so
+        // they measured the DECORATORS' consumption of a value the TEST chose -- never the value this function
+        // produceth. **A PROVIDER'S BODY CANNOT BE MEASURED BY A COURT THAT PASSES ITS OWN LAMBDA.**
+        //
+        // IT WAS FOUND BY THE FIRST COURT THAT COULD BUILD A REAL `Context` AND ASK THE REAL PROVIDER, WHICH IS WHY
+        // THE CARD'S "Context-bearing harness" DEMAND EXISTED. **A GATE THAT ANSWERED BACKWARDS IS PRECISELY THE
+        // DEFECT SUCH A HARNESS IS FOR.**
+        FileWipeJournal(ctx).read() == PanicWipe.WipeState.IDLE
     }
 
     @Provides @Singleton
