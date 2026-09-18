@@ -110,10 +110,23 @@ private final class FakeMigrationEngine: PlaintextMigrationEngine, @unchecked Se
         verifyCalls += 1; order.append("verify")
         return verification
     }
+    /// *** A TORN SWAP: the retirement happens and THEN the operation fails. *** The real atomic-rename seam can
+    /// die between "the encrypted copy is adopted" and "the plaintext is unlinked", and a fake that only ever threw
+    /// BEFORE the retirement could not model the one case where a rollback claim is unsupported.
+    var retireSourceThenThrow: Error?
+    /// Counts the source-presence OBSERVATIONS, so an arm can prove the outcome's claim was MEASURED rather than
+    /// assumed. A claim that is never observed is the defect this court now pins.
+    var sourcePresenceCalls = 0
+    func sourceIsPresent(plaintextPath: String) throws -> Bool {
+        sourcePresenceCalls += 1
+        return sourcePresent
+    }
     func selectEncryptedCopy(plaintextPath: String, encryptedPath: String) throws {
         if let t = throwSelect { throw t }
         if verifyCalls == 0 { throw MigrationTestFault.unverifiedSelect }   // refuse to select an unverified copy
-        selectCalls += 1; order.append("select"); sourcePresent = false
+        selectCalls += 1; order.append("select")
+        if let torn = retireSourceThenThrow { sourcePresent = false; throw torn }   // the swap began and died
+        sourcePresent = false
     }
 }
 
@@ -270,6 +283,65 @@ final class ReadinessT30Tests: XCTestCase {
         XCTAssertEqual(kc.fetchCalls, 1)
         XCTAssertEqual(kc.createCalls, 1, "a missing DEK is minted once on first migration")
         XCTAssertEqual(me.selectCalls, 1)
+    }
+
+    // (14) *** GS-FINAL-004 CLAUSE (d): A TORN SWAP MUST NOT CLAIM A PRESERVED SOURCE. ***
+    //
+    // THE CARD'S SENTENCE IS "...AS A SEPARATE RESUMABLE OPERATION WITH PRESERVED ROLLBACK EVIDENCE". **ROLLBACK
+    // EVIDENCE THAT IS ASSERTED RATHER THAN OBSERVED IS NOT EVIDENCE.** The migration retires the plaintext during
+    // `selectEncryptedCopy`, and THE REAL ATOMIC SWAP CAN DIE AFTER THE ADOPTION AND BEFORE THE UNLINK -- at which
+    // point THE SOURCE IS GONE AND `.sourcePreservedOnFailure` IS A FALSE CLAIM. The old fake could not model this
+    // because it only ever threw BEFORE the retirement.
+    func testTornSwapNeverClaimsAPreservedSource() throws {
+        let kc = FakeKeychain(); dek(kc, tag)
+        let me = FakeMigrationEngine()
+        me.retireSourceThenThrow = MigrationTestFault.unverifiedSelect      // the swap began and died
+        let m = PlaintextToEncryptedMigration(engine: me, provider: kc, gate: FakeGate(), cipherVersion: 4)
+        let out = m.migrate(plaintextPath: "/var/db/plain", encryptedPath: "/var/db/enc", tag: tag)
+        XCTAssertFalse(me.sourcePresent, "the precondition: the torn swap really did retire the source")
+        XCTAssertFalse(
+            out.sourcePreserved,
+            "*** A TORN SWAP MUST NOT CLAIM A PRESERVED SOURCE -- the source is GONE, so any outcome asserting it "
+                + "survives is a rollback claim the mechanism cannot support. Observed outcome: \(out) ***")
+        XCTAssertFalse(out.didMigrate, "and it must NOT report a completed migration")
+    }
+
+    // (15) POSITIVE CONTROL for (14): a PRE-swap failure still reports a preserved source -- AND THE CLAIM IS OBSERVED.
+    //
+    // Without this arm, (14) could be satisfied by an outcome that simply never claims preservation, which would be a
+    // worse bug (a real recoverable source reported as lost). AND the second assertion is the one that makes the pair
+    // mean something: **the true/false must come from ASKING the engine, not from a default.**
+    func testPreSwapFailureClaimsPreservedSourceOnlyAfterObservingIt() throws {
+        let kc = FakeKeychain(); dek(kc, tag)
+        let me = FakeMigrationEngine()
+        me.throwPrepare = MigrationTestFault.unverifiedSelect                  // dies BEFORE the swap
+        let m = PlaintextToEncryptedMigration(engine: me, provider: kc, gate: FakeGate(), cipherVersion: 4)
+        let out = m.migrate(plaintextPath: "/var/db/plain", encryptedPath: "/var/db/enc", tag: tag)
+        XCTAssertTrue(me.sourcePresent, "the precondition: the source really is still on disk")
+        XCTAssertTrue(out.sourcePreserved, "a pre-swap failure preserves the recoverable source")
+        XCTAssertEqual(me.selectCalls, 0, "nothing was ever selected")
+        XCTAssertGreaterThanOrEqual(
+            me.sourcePresenceCalls, 1,
+            "*** THE CLAIM MUST BE MEASURED: the outcome may only say the source survives because the SOURCE WAS "
+                + "OBSERVED. A preservation claim derived from the failure's POSITION is an assumption, and this "
+                + "programme has already paid for counting what should be measured. ***")
+    }
+
+    // (16) THE RESUME'S NO-OP STATE: a source that no longer needs migration is reported as such, and NOTHING is touched.
+    //
+    // NOTE, SO THIS ARM IS NOT OVERREAD: it passes on the pre-repair revision too, because `.alreadyEncrypted` is a
+    // pre-existing branch. **IT WITNESSES AN UNEXERCISED BRANCH, NOT THE REPAIR** -- and it is the state a RESUMED
+    // operation depends on, which is why clause (d) needs it named. Previously no arm ever set `requires = false`, so
+    // the branch had never executed in this court.
+    func testAResumedRunOnAnAlreadyEncryptedSourceIsANoOp() throws {
+        let kc = FakeKeychain()                                               // no DEK: a resume must not need one
+        let me = FakeMigrationEngine(); me.requires = false
+        let m = PlaintextToEncryptedMigration(engine: me, provider: kc, gate: FakeGate(), cipherVersion: 4)
+        let out = m.migrate(plaintextPath: "/var/db/plain", encryptedPath: "/var/db/enc", tag: tag)
+        XCTAssertEqual(out, .alreadyEncrypted, "an already-encrypted source is the resume's terminal no-op")
+        XCTAssertEqual(me.prepareCalls, 0); XCTAssertEqual(me.verifyCalls, 0); XCTAssertEqual(me.selectCalls, 0)
+        XCTAssertEqual(kc.createCalls, 0, "a resume mints no DEK")
+        XCTAssertTrue(me.sourcePresent)
     }
 
     // (13) erasing the DEK cryptographically erases the store: a reopen afterwards is rejected

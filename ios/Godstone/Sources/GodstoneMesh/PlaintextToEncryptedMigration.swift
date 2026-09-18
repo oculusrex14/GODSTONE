@@ -16,8 +16,14 @@ import Foundation
 //   5. the encrypted copy is VERIFIED against the expected row count / header /
 //      cipher version; ONLY a good verification is followed by selectEncryptedCopy
 //      (the atomic swap that retires the plaintext);
-//   6. any failure at any step preserves a recoverable source and refuses to
-//      select -- there is no plaintext fallback and no destroyed original.
+//   6. any failure at any step refuses to select -- there is no plaintext
+//      fallback and no destroyed original -- AND THE "SOURCE IS PRESERVED"
+//      CLAIM IS **MEASURED**, NOT DERIVED FROM WHERE THE FAILURE HAPPENED
+//      (GS-FINAL-004 clause (d): "...a separate RESUMABLE operation with
+//      PRESERVED ROLLBACK EVIDENCE"). A torn swap -- the encrypted copy
+//      adopted, the plaintext retired, the operation then failed -- reports
+//      `sourceRetiredCopyUnselected` with `requiresResume`, because NEITHER
+//      "migrated" NOR "source preserved" is true.
 //
 // The concrete file copy+encrypt and the SQLCipher restore-from-back are the
 // device [PlaintextMigrationEngine]; on the host the injected engine + fake drive
@@ -54,13 +60,25 @@ public enum MigrationOutcome: Equatable, @unchecked Sendable {
     case refusedByGate
     case sourcePreservedOnFailure(MigrationFailureReason)
     case archiveSkipped
+    /// *** GS-FINAL-004 CLAUSE (d): THE SOURCE IS GONE AND THE COPY WAS NEVER SELECTED. ***
+    ///
+    /// THIS IS THE TORN SWAP -- the encrypted copy was prepared (and may even be adoptable), the plaintext source was
+    /// RETIRED, and the operation then failed. **NEITHER `migrated` NOR `sourcePreservedOnFailure` IS TRUE**: nothing
+    /// is selected, and there is no plaintext source left to fall back to. IT IS NOT A DATA LOSS, because the prepared
+    /// encrypted copy remaineth on disk and the operation is RESUMABLE -- but **THE CALLER MUST NOT BE TOLD EITHER OF
+    /// THE TWO COMFORTABLE THINGS, WHICH IS EXACTLY WHAT "PRESERVED ROLLBACK EVIDENCE" MEANS.**
+    case sourceRetiredCopyUnselected(MigrationFailureReason)
     public var didMigrate: Bool { if case .migrated = self { return true }; return false }
     public var sourcePreserved: Bool {
         switch self {
         case .sourcePreservedOnFailure, .refusedByGate, .alreadyEncrypted, .archiveSkipped: return true
-        case .migrated: return false
+        case .migrated, .sourceRetiredCopyUnselected: return false
         }
     }
+    /// True when the operation must be RESUMED rather than repeated -- the source is consumed but nothing was
+    /// selected, so a blind retry would migrate a store that no longer exists. This is the flag a resumable caller
+    /// branches on.
+    public var requiresResume: Bool { if case .sourceRetiredCopyUnselected = self { return true }; return false }
 }
 
 /// The device-side copy/encrypt/verify/select seam. On the device these are real file
@@ -78,6 +96,17 @@ public protocol PlaintextMigrationEngine: AnyObject {
     func verifyEncryptedCopy(encryptedPath: String, dek: StoreDEK, expectedRowCount: Int) throws -> MigrationVerification
     /// The atomic swap that selects the verified encrypted copy and retires the plaintext.
     func selectEncryptedCopy(plaintextPath: String, encryptedPath: String) throws
+    /// *** GS-FINAL-004 CLAUSE (d): IS THE PLAINTEXT SOURCE STILL ON DISK? ***
+    ///
+    /// THE CARD ASKETH FOR *"...A SEPARATE RESUMABLE OPERATION WITH PRESERVED ROLLBACK EVIDENCE"*. **A "PRESERVED"
+    /// CLAIM THAT NOBODY CHECKS IS AN ASSUMPTION, NOT EVIDENCE** -- and the swap it describerth is not atomic in the
+    /// sense the old code assumed: the encrypted copy is ADOPTED, the source is RETIRED, and **A CRASH BETWEEN THOSE
+    /// TWO STEPS LEAVETH THE SOURCE GONE.** The old outcome map derived `sourcePreserved` from WHERE the failure
+    /// happened (anything before the final throw counted as preserved), so THE ONE CASE WHERE THE CLAIM IS FALSE WAS
+    /// THE ONE CASE THE CODE COULD NOT SEE. This query is the observable that settlerh it, and it is ALSO the
+    /// resume's first question: **a resumed migration asketh "does the source still need migrating?" and must be able
+    /// to ask "did my previous attempt already consume it?"**
+    func sourceIsPresent(plaintextPath: String) throws -> Bool
 }
 
 public final class PlaintextToEncryptedMigration: @unchecked Sendable {
@@ -117,16 +146,29 @@ public final class PlaintextToEncryptedMigration: @unchecked Sendable {
         catch { return .sourcePreservedOnFailure(.ioFailure("expectedRowCount")) }
         // (4) Prepare the encrypted copy WITHOUT selecting it.
         do { try engine.prepareEncryptedCopy(plaintextPath: plaintextPath, encryptedPath: encryptedPath, dek: dek) }
-        catch { return .sourcePreservedOnFailure(.ioFailure("prepareEncryptedCopy")) }
+        catch { return failurePreservingSource(plaintextPath: plaintextPath, reason: .ioFailure("prepareEncryptedCopy")) }
         // (5) VERIFY the encrypted copy BEFORE selecting.
         let verification: MigrationVerification
         do { verification = try engine.verifyEncryptedCopy(encryptedPath: encryptedPath, dek: dek, expectedRowCount: expected) }
-        catch { return .sourcePreservedOnFailure(.corruptEncryptedCopy) }
-        guard verification.isGood else { return .sourcePreservedOnFailure(.verificationMismatch) }  // never select an unverified copy
+        catch { return failurePreservingSource(plaintextPath: plaintextPath, reason: .corruptEncryptedCopy) }
+        guard verification.isGood else { return failurePreservingSource(plaintextPath: plaintextPath, reason: .verificationMismatch) }  // never select an unverified copy
         // (6) Select (atomic swap) only after a good verification.
         do { try engine.selectEncryptedCopy(plaintextPath: plaintextPath, encryptedPath: encryptedPath) }
-        catch { return .sourcePreservedOnFailure(.ioFailure("selectEncryptedCopy")) }
+        catch { return failurePreservingSource(plaintextPath: plaintextPath, reason: .ioFailure("selectEncryptedCopy")) }
         return .migrated(verifiedRows: expected)
+    }
+
+    /// *** THE ROLLBACK CLAIM, MEASURED. ***
+    ///
+    /// EVERY FAILURE PATH BEYOND THE DEK GOES THROUGH HERE, AND THE OUTCOME IS DECIDED BY ASKING THE ENGINE **WHERE
+    /// THE SOURCE ACTUALLY IS** -- never by where in this function the failure happened. **THE OLD CODE MADE THE
+    /// POSITIONAL ASSUMPTION AND WAS WRONG IN THE ONE CASE THAT MATTERED: a crash after the encrypted copy was
+    /// adopted but before the source was retired returned `sourcePreservedOnFailure` while the source was gone.** A
+    /// query that throws is treated as the WORSE case (the source cannot be shown to survive), because failing closed
+    /// must never manufacture a comfortable answer.
+    private func failurePreservingSource(plaintextPath: String, reason: MigrationFailureReason) -> MigrationOutcome {
+        let present = (try? engine.sourceIsPresent(plaintextPath: plaintextPath)) ?? false
+        return present ? .sourcePreservedOnFailure(reason) : .sourceRetiredCopyUnselected(reason)
     }
 
     private func mapProvider(_ e: Error) -> MigrationFailureReason {
