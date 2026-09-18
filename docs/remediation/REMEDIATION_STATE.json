@@ -13611,6 +13611,20 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-5/round629-the-android-lineage-runs-every-rod.postfix-measurement.log",
    "sha256": "f277f97ea06bf624bd798ed8aceaa0acc98cc4358d66603aacd54fc80fbea0b4",
    "correction": "THE POST-FIX ANDROID LINEAGE MEASURED FROM THE RODS' OWN LOGS: **24 of 24 android rods written show an ACTUAL TEST RUN (`tests completed`), and `SDK location not found` appears ZERO times in all 49 rod logs written so far.** Before round 603 every android rod failed to configure; after it, every one runs. THE MEASUREMENT IS TAKEN FROM THE LOGS AND NOT FROM VERDICT LINES BECAUSE ROUND 603 PROVED A VERDICT ALONE IS NOT ENOUGH -- the harness printed `INVALID` for forty-odd rods while nothing ran at all, so the count rests on the two things a verdict cannot fake: a `tests completed` line, which only a real gradle run produces, and the ABSENCE of the configure error that used to precede every one. **NO AGGREGATE IS SUMMED: the lineage had not finished (49 of 117) and its summary printeth at the end, and a partial tally presented as a total is a defect class this programme has already filed twice.**"
+  },
+  {
+   "round": 640,
+   "finding": "PHASE-5-LINEAGE-COMPLETED",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-5/round640-the-lineage-completed-and-confirmed-two-prior-repairs.log",
+   "sha256": "7ba1dd221e9d6596cba270e55e133fed1b8d6d604ad7f6debfb415c3b5526179",
+   "correction": "THE SEMANTIC MUTATION LINEAGE RAN TO 160 ROD LOGS AND WAS CUT OFF BY THE HARNESS'S OWN 3600-SECOND CEILING DURING FINAL AGGREGATION -- **so the per-rod verdicts are the runner's OWN PRINTED LINES and NO AGGREGATE IS SUMMED BY ME.** THREE RESULTS: (1) **EVERY ANDROID ROD IN THE PRINTED OUTPUT IS `KILLED`,** dozens of them with REAL test counts (`run=11`/`run=12`/`run=14`) and named witnesses -- *before round 603 every one read `INVALID` while nothing ran at all;* the round-603 instrument fix is now confirmed at scale rather than in a sample. (2) **ROUND 602'S CORRECTION IS CONFIRMED BY THE RUNNER ITSELF:** `T39-RC1-ios-cancel-is-ui-only` now reads `KILLED run=13 failed=6 :: witness testCancelOfARelayedCallTellsTheRelayedTruth failed as intended` -- the corrected witness, named in the same line. (3) **A NEW `ESCAPED` ROD, WHICH IS THE SAME DEFECT ON THE OTHER ISLE:** `T39-RC1-android-cancel-is-ui-only` declared `witness: testRestartRevealsTheActiveSosFromTheDurableRow` -- AGAIN A DISPATCH-ROAD ARM FOR A CANCEL MUTATION -- while the arms that DID fail are the cancel ones the runner named in the very same parenthetical. Repointed to `testCancelOfARelayedCallTellsTheRelayedTruth`. **THE DISTINCTION THAT MAKES THIS A FINDING RATHER THAN A FALSE ALARM: AN `ESCAPED` ROD MEANS THE MUTANT COMPILED AND THE NAMED WITNESS STAYED GREEN, and in both cases the mutation DID redden real arms -- so THE LAW IS GUARDED AND THE ROD'S DECLARATION WAS WRONG.** Filing these as \"witness not strong enough\" would send a maintainer to strengthen a court that already catches the defect. Two rods, two isles, one defect: a name asserting coverage the mechanism provides elsewhere."
+  },
+  {
+   "round": 641,
+   "finding": "PHASE-5-LINEAGE-COMPLETED",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-5/round641-the-lineage-closed-two-rods-one-defect.log",
+   "sha256": "38c9d3debc3b2145643e04cf5a01b43ca767a20c419e36fdf6f96167bce25c3e",
+   "correction": "THE LINEAGE CLOSED WITH THREE RESULTS, AND THE RUN'S BOUNDARY IS STATED FIRST: **160 rod logs were written and the runner was cut off by the harness's own 3600-second ceiling during final aggregation, so every verdict below is THE RUNNER'S OWN PRINTED LINE and NO AGGREGATE IS SUMMED.** (1) **EVERY ANDROID ROD READS `KILLED`,** dozens of them, each with a REAL test count (`run=11`/`run=12`/`run=14`) and a named witness -- before round 603 every one read `INVALID` while nothing ran at all, so the instrument fix is now CONFIRMED ACROSS THE FAMILY rather than in a sample. (2) **ROUND 602'S CORRECTION IS CONFIRMED BY THE INSTRUMENT:** `T39-RC1-ios-cancel-is-ui-only` now reads `KILLED run=13 failed=6 :: witness testCancelOfARelayedCallTellsTheRelayedTruth failed as intended` -- the corrected witness, named in the same line. (3) **ONE NEW `ESCAPED` ROD, THE SAME DEFECT ON THE OTHER ISLE:** `T39-RC1-android-cancel-is-ui-only` declared the DISPATCH-road witness for a CANCEL mutation while the arms that failed are the cancel ones the runner named in the same parenthetical; repointed. **AN `ESCAPED` ROD MEANS THE MUTANT COMPILED AND THE NAMED WITNESS STAYED GREEN -- and in both cases the mutation DID redden real arms, so THE LAW IS GUARDED AND THE ROD'S DECLARATION WAS WRONG.** Filing these as \"witness too weak\" would send a maintainer to strengthen a court that already catches the defect. AND THE CORRECTED ANDROID ROD WAS CHECKED TO THE TWO FACTS A `KILLED` VERDICT REQUIRES: the corrected witness IS ON DISK, and it EXISTS in the Android court (`ReadinessT39Test.kt:324`, a cancel witness that authors a two-relay dispatch and then cancels it). **NOT CLAIMED: a fresh `KILLED` line for that rod -- the re-run was cancelled rather than waited on (~2 hours for one rod), and the two facts above are what is asserted.**"
   }
  ],
  "phase_one": {
@@ -14409,7 +14423,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "a5e74c0d802a7d9b652bf88129c31be4255896c9",
+  "candidate_sha": "7ed3d903749d3bbd2d44677fa2afcf06d4332ac5",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
