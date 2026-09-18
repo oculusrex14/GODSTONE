@@ -13879,7 +13879,28 @@
     "root_cause": "A lifetime-wide Boolean is used where restartable epoch state appears to be required. The complete UnifiedRuntimeLifecycle restart contract was not inspected.",
     "exact_remediation": "First establish the lifecycle contract by inspecting UnifiedRuntimeLifecycle and all callers. For reusable nodes replace the latch with activation/closed epoch state and accept start only after typed owner activation succeeds. For terminal nodes make start-after-stop return a typed refusal and construct a fresh graph for reactivation. Do not blindly reset a flag before proving teardown has drained.",
     "regression_test": "Proposed StartStopStartStopThroughComposition: observe actual transport start/stop calls, returned states, callback generations and resource census; test failed start followed by retry.",
-    "my_status": "OPEN"
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 556 (this commit) -- the close latch is re-armed per activation, after the owner really starts",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-010/round556-RED-GREEN-MUTATION.log",
+      "sha256": "7ebfb4986bee6c3311239db79edd713c89ba71b6aecd91dfd2b1b6e8be05673d",
+      "what": "The defect, the contract, the repair, the false arm of mine and its fix, and the causal mutation.",
+      "outcome": "RED: closes 1 (was 1) with 2 adverts. MUTATION: the defect arm FAILED, both contract arms green. GREEN: 3/3."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-010/round556-ios-lane.log",
+      "sha256": "5aff5608f703bf55cc516b3216cdcd89899a6cec341631e3c34c21e336514661",
+      "what": "The full iOS lane after the repair.",
+      "outcome": "1303 tests, 0 failures, rc 0."
+     }
+    ],
+    "my_red_case": "BEHAVIOURAL RED BEFORE THE EDIT: `aSecondActivationIsTornDownByASecondStop` failed with `Observed closes: 1 (was 1); adverts started: 2` -- the second stop closed NOTHING while two adverts ran. TWO CONTRACT ARMS established the premise the repair rests on (the audit bade me do this first): the owner IS restartable, and a TERMINAL owner is NOT resurrected.",
+    "pending_proof": [
+     "THE AUDIT'S RESTART CONTRACT IS SATISFIED FOR THE case IT POSED -- a reusable node now closes again -- and the terminal case is measured (a power loss is not undone). What is NOT done is the audit's other prescribed option: a TYPED REFUSAL from `start()` after a terminal stop. `MeshNode.start()` still returns Bool and its guard is `canStart(linkReady:)`; a typed activation outcome that a caller must consume is a larger change to a public signature and is named here rather than claimed.",
+     "NO DEVICE EVIDENCE: the radio effects are measured through a recording `TransportSeam`, so \"the platform really began advertising\" is a recording of the CALL, not an observation of the radio. That is the device gate.",
+     "AND ONE OF MY OWN ARMS WAS FALSE AND IS RECORDED: its first draft called `startInOrder(attach:open:)` with its own closure, so `openAdapters()` never ran and `adaptersOpenedThroughTheOwner` stayed 0 -- THE ARM COULD NOT SEE THE DEFECT IT NAMED. `openAdapters()` was private; it is now internal so the arm drives the real road."
+    ]
    },
    "GS-FINAL-011": {
     "severity": "Medium",

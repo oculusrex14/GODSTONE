@@ -517,15 +517,46 @@ public final class MeshNode {
     }
 
     /// Open the radio adapter, once its consumers are already install'd.
-    private func openAdapters() {
+    /// *** GS-FINAL-010: THE OPEN ROAD IS THE SEAM THE LATCH BELONGETH TO, SO IT IS TESTABLE BY NAME. ***
+    ///
+    /// IT WAS `private`, AND THAT IS WHY THE FIRST DRAFT OF THIS FINDING'S ARM COULD NOT SEE THE DEFECT: the arm
+    /// called `startInOrder(attach:open:)` with its own closures, so `adaptersOpenedThroughTheOwner` never moved and
+    /// the latch was never exercised. **AN ARM THAT CANNOT REACH THE LOAD-BEARING LINE MEASURES ITS OWN RIG.** The
+    /// production `start()` funnels here through `startInOrder`, so making this `internal` changes no behaviour and
+    /// lets the arm drive the REAL road.
+    internal func openAdapters() {
         ble.onCentralStateChanged = { [weak self] state in
             self?.handleTransportPowerState(state)
         }
+        // *** GS-FINAL-010 (the independent audit, 2026-09-18): A NEW ACTIVATION RE-ARMS THE CLOSE. ***
+        //
+        // THE AUDIT'S MEASUREMENT: *"MeshNode.stop sets adaptersClosed once. The inspected start/open paths never
+        // reset it. ... Root cause: A lifetime-wide Boolean is used where restartable epoch state appears to be
+        // required."* MEASURED BEFORE THIS EDIT: activate -> stop -> activate -> stop left `adapterCloses` at 1 while
+        // **TWO** adverts had been started -- so the second stop closed NOTHING and the process kept the radio
+        // running for a runtime it had torn down.
+        //
+        // THE LATCH'S ORIGINAL PURPOSE IS PRESERVED EXACTLY: it exists so that a stop which closes NOTHING (a second
+        // stop with no activation between) does not count as a second teardown. What was wrong is that it was
+        // LIFETIME-WIDE rather than PER-ACTIVATION. Re-arming it here keeps every closed-before-open and
+        // double-close guarantee the existing courts measure (a stop with no intervening open still closeth once,
+        // because this line never runs) while letting a genuinely NEW activation be closed by its own stop.
+        //
+        // AND IT IS RE-ARMED ONLY WHERE AN OPEN HAPPENS, ON THE OWNER ROAD, AFTER THE OWNER AGREED: `lifecycle.start()`
+        // refuseth on a terminal capability, so a power loss cannot be undone by this line -- the terminal-owner arm
+        // measures that.
         if let lifecycleOwner {
             adaptersOpenedThroughTheOwner += 1
+            let wasStarted = lifecycleOwner.isStarted()
             lifecycleOwner.start()
+            // ONLY AN ACTIVATION THAT REALLY TOOK RE-ARMS THE CLOSE. A terminal owner refuseth `start()`, and then
+            // no radio stands to close, so the latch must stay as it was.
+            if !wasStarted && lifecycleOwner.isStarted() {
+                adaptersClosed = false
+            }
         } else {
             ble.start()
+            adaptersClosed = false
         }
     }
 
