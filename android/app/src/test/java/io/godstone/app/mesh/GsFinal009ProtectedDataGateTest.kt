@@ -184,6 +184,59 @@ class GsFinal009ProtectedDataGateTest {
     }
 
     /**
+     * *** AND THE GATE THE PRODUCTION WIRING ACTUALLY SUPPLIES IS MEASURED HERE, NOT ONLY MY FAKE. ***
+     *
+     * FOUND BY REVIEW: *"a grep over `android/app/src/main` finds only the gate interface and
+     * `AlwaysAvailableProtectedData`, and every construction site is a test -- no production caller passes a gate, so
+     * the default answers 'available' forever. Your whole court injects a fake gate, so nothing measures the
+     * platform's actual answer."*
+     *
+     * THAT WAS TRUE, AND IT IS THE WORST KIND OF GREEN: every arm above passed while the SHIPPING app could only ever
+     * see `AlwaysAvailableProtectedData` -- a constant. **THE COURT MEASURED MY SEAM; THE PLATFORM WAS NEVER ASKED.**
+     * These arms drive `PlatformProtectedDataGate`, THE CLASS DI NOW PROVIDES, through the two real platform states.
+     */
+    @Test
+    fun theProductionGateAnswersUnavailableBeforeFirstUnlock() {
+        // DIRECT BOOT: after a restart, before the user unlocks. Credential-encrypted storage is NOT readable.
+        val directBoot = PlatformProtectedDataGate(userUnlocked = { false })
+        assertFalse(
+            "*** BEFORE FIRST UNLOCK THE PLATFORM'S ANSWER MUST BE 'UNAVAILABLE'. Answering `true` here would let " +
+                "every protected read fail at the STORAGE layer instead of being REFUSED AT ADMISSION -- which is " +
+                "exactly the difference the audit drew. ***",
+            directBoot.isProtectedDataAvailable(),
+        )
+    }
+
+    @Test
+    fun theProductionGateAnswersAvailableAfterFirstUnlock() {
+        val unlocked = PlatformProtectedDataGate(userUnlocked = { true })
+        assertTrue("after first unlock the credential-encrypted store is readable",
+                   unlocked.isProtectedDataAvailable())
+    }
+
+    /**
+     * *** AND THE PRODUCTION GATE REALLY GATES THE MODEL -- END TO END, NOT MERELY AS AN OBJECT. ***
+     *
+     * A gate that existeth and is never consulted is the defect this whole finding is about, ONE LAYER DOWN. So the
+     * REAL production gate, in its DIRECT BOOT state, is injected into the model and the port must record ZERO calls.
+     */
+    @Test
+    fun theProductionGateInDirectBootRefusesEveryProtectedRead() {
+        val port = RecordingPort()
+        // THE REAL PRODUCTION GATE, in the state a restarted-but-locked device is really in.
+        val vm = MeshViewModel(port = port, protectedData = PlatformProtectedDataGate { false })
+
+        val projected = vm.onCommand(MeshCommand.Refresh)
+
+        assertEquals(
+            "*** THE PRODUCTION GATE IN DIRECT BOOT MUST REFUSE THE READ: the platform itself reporteth the store " +
+                "unreadable, so the port must not be called AT ALL. Observed calls: ${port.recipientCalls} ***",
+            0, port.recipientCalls,
+        )
+        assertFalse("and the unavailable projection is what the reader is shown", projected.protectedDataAvailable)
+    }
+
+    /**
      * *** POSITIVE CONTROL: AN AVAILABLE GATE CHANGES NOTHING. ***
      *
      * The repair must refuse an unavailable store WITHOUT refusing an ordinary one -- otherwise it is a denial of

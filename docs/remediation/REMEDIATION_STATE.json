@@ -13776,7 +13776,7 @@
     "exact_remediation": "Choose one iOS route authority. Replace value-only navigation with actions that open through ArchiveSceneModel, or bind a route model bidirectionally and persist that same route. Render the corresponding scene rather than an independent reading identity. Report stable visible passage IDs during actual scrolling. On Android remember a LazyListState, consume the resolved anchor only after matching document data/layout exists, and observe visible item identity into saved state. Clear obsolete anchors on document changes.",
     "regression_test": "Open a non-first search hit, scroll to a later passage, background/recreate, assert matching document and visible passage; repeat from document browse. Drive actual taps and native back, not direct snapshot/restore calls alone.",
     "my_status": "PARTIAL",
-    "my_fix_commit": "round 555 (iOS navigation authority) + round 563 (Android list state, anchor consumption, clearing clause)",
+    "my_fix_commit": "round 555 (iOS navigation authority) + round 563 (Android list state, anchor consumption, clearing clause) + round 564 (the isle's first real UI test target; the real composable rendered)",
     "my_logs": [
      {
       "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-006/round555-006-repair-and-boundary.log",
@@ -13789,13 +13789,19 @@
       "sha256": "ad80e68ad20220add93adba8d10337f22b95f350a758e85073e80ee9ba8eaf9f",
       "what": "The Android half: the charge reproduced, the four clauses, the lane-caught clearing condition, the mutation.",
       "outcome": "MUTATION: the clearing arm FAILED. RESTORED: 4/4. Lanes app 78, core 21, mesh 1869, all 0 failures."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-006/round564-real-ui-court.log",
+      "sha256": "0225bc86f37b8f77e4a33d7f3141b3c44aff2278e41feea951719bec630fb00a",
+      "what": "The isle's first executed UI witness: Robolectric + Compose, rendering the REAL ReadingList, with two causal mutations.",
+      "outcome": "MUTATION 1 (consume-effect removed) FAILED the placement arm; MUTATION 2 (report gate removed) FAILED the fallback arm. Restored: 4/4. Lanes app 89, core 21, mesh 1869, all 0 failures."
      }
     ],
     "my_red_case": "THE AUDIT'S MEASUREMENT, REPRODUCED DIRECTLY AT SOURCE: `grep -rn \"scene.open(\" ios/Godstone/Sources/App/` returns NOTHING but a comment -- so `NavigationLink(value:)` pushed onto `path` while NOTHING EVER TOLD THE SCENE. That is the parallel-owners defect as a grep, which is a stronger red than an arm here because no arm can run against Sources/App (see pending_proof).",
     "pending_proof": [
-     "THE RENDERING HALF IS NOT MEASURED ON EITHER ISLE. On Android the `LazyListState` and `scrollToItem` are exercised by the COMPILER and by the state half (`readingTargetPassageId`, the clearing clause) -- NOT by a rendered screen, because this isle carrieth NO `androidTest` TARGET. On iOS the App-layer compile is BLOCKED by the `NATIVE_MODELS` gate (`archive_light.db` needs `llama_cpp`). So neither isle has an executed witness that the SCROLL really happens; both have the identity-resolution half proven.",
-     "THE iOS HALF LANDED IN ROUND 555 (the scene is the navigation authority; the path reflects it) and is itself unverified at compile time for the reason above. Its arms are not written.",
-     "AND TWO ARMS OF MINE WERE WRONG IN THIS ROUND, BOTH CAUGHT BY THE LANE RATHER THAN BY READING: the first clearing condition DISCARDED A RESTORED ANCHOR (`openedDocumentId != documentId` is true on every restore, because nothing is open yet), which failed two T49 arms. The condition is now \"a DIFFERENT document is already open\", and the three cases are distinguished by their own facts rather than by one comparison."
+     "THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendereth the composition but is not a device, and the audit's own distinction applies (\"automation distinguishes internal model proof from real OS/device proof\"). The iOS App layer still cannot be compiled here at all (NATIVE_MODELS).",
+     "GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET NOW EXISTETH (it did not before this round) and it really renders, lays out and scrolls. THE PHYSICAL GATES REMAIN OPEN and are external.",
+     "AND THE PROTECTED-DATA GATE IS NOW ASKED THE PLATFORM (round 564): `PlatformProtectedDataGate` reads `UserManager.isUserUnlocked` and DI supplieth it, where before every construction site was a test and `AlwaysAvailableProtectedData` (a constant) was the only gate shipping could see. What is NOT established is whether the Mesh/Trust VMs are reachable at all in the shipped navigation: measured, `GodstoneNavHost` routes ONLY Home and Browse, and `MeshScreen`/`TrustScreen` have NO caller. That is either a deliberate scope decision or a defect, and it is NOT settled here."
     ]
    },
    "GS-FINAL-007": {
@@ -14055,7 +14061,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "c452097e5a38e3119f6df0542e9243bb9a10f446",
+  "candidate_sha": "2377968de11c5a8d4306c2cbe7e7d58a5ff8736d",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14131,8 +14137,7 @@
    "GS-FINAL-004: THE CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. The central defect -- the factory's verified connection is discarded and `SqliteMessageStore(url:)` perfor",
    "GS-FINAL-004: TWO FALSE ARMS WERE WRITTEN AND BOTH WERE DELETED RATHER THAN KEPT GREEN: (1) one asserted only that the engine was ASKED for a keyed open -- TRUE ON THE UNREPAIRED TREE, because t",
    "GS-FINAL-004: DONE AND EVIDENCED: the archive-only SPLIT. `createArchiveOnlyHostComposition` no longer takes an `encryptedStores` parameter at all, so a composition that cannot be given a key ca",
-   "GS-FINAL-006: THE iOS HALF LANDED IN ROUND 555 (the scene is the navigation authority; the path reflects it) and is itself unverified at compile time for the reason above. Its arms are not writt",
-   "GS-FINAL-006: AND TWO ARMS OF MINE WERE WRONG IN THIS ROUND, BOTH CAUGHT BY THE LANE RATHER THAN BY READING: the first clearing condition DISCARDED A RESTORED ANCHOR (`openedDocumentId != docume"
+   "GS-FINAL-006: AND THE PROTECTED-DATA GATE IS NOW ASKED THE PLATFORM (round 564): `PlatformProtectedDataGate` reads `UserManager.isUserUnlocked` and DI supplieth it, where before every constructi"
   ],
   "external_acceptance": [
    "ANDROID-05: *** AND CLOSURE 4 IS **UNREACHABLE ON THE HOST**, MEASURED IN TWO INDEPENDENT LAYERS -- so it is OWED as an INSTRUMENTATION ROAD and NOT counted as met: *** (i) THE START HALF is g",
@@ -14161,7 +14166,8 @@
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO REAL LOCKED-DEVICE READING: the gate is exercised through INJECTED gates in the court, and **THE PLATFORM IMPLEMENTATION THAT READETH A REAL LOCK",
    "GS-FINAL-003: NO DEVICE EVIDENCE: every arm is a host reproduction over the composition the tests build. A real process restart with a genuinely interrupted wipe is the device gate.",
    "GS-FINAL-004: REMAINING, AND IT IS THE BULK OF THE FINDING: (a) `EncryptedStoreFactory` must return an OWNED VERIFIED CONNECTION with restricted construction and explicit close ownership; (b) `S",
-   "GS-FINAL-006: THE RENDERING HALF IS NOT MEASURED ON EITHER ISLE. On Android the `LazyListState` and `scrollToItem` are exercised by the COMPILER and by the state half (`readingTargetPassageId`, "
+   "GS-FINAL-006: THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendere",
+   "GS-FINAL-006: GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET N"
   ],
   "historical_fields": {
    "note": "ORIGINAL TEXT PRESERVED, NOT OVERWRITTEN. The audit's remedy: \"Preserve original impact text under an explicitly historical field.\" Every finding's original `impact`/`proof`/`closure_tests` remains where it was; this block is the CURRENT view and does not replace them.",

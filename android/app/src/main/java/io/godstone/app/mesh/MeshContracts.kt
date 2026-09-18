@@ -220,6 +220,32 @@ object AlwaysAvailableProtectedData : ProtectedDataGate {
     override fun isProtectedDataAvailable(): Boolean = true
 }
 
+/**
+ * *** GS-FINAL-009 (round 564): THE REAL PLATFORM ANSWER, WHICH DID NOT EXIST. ***
+ *
+ * FOUND BY REVIEW, AND THE GREP WAS ONE COMMAND: *"a grep over `android/app/src/main` finds only the
+ * `ProtectedDataGate` interface and `AlwaysAvailableProtectedData`, and every construction site is a test -- no
+ * production caller passes a gate, so the default answers 'available' forever."* MEASURED: TRUE. The interface's own
+ * docstring PROMISED *"the app injecteth a gate that readeth the REAL platform state (`KeyguardManager.isDeviceLocked`
+ * / the credential-encrypted storage state)"* -- **AND NO SUCH GATE WAS EVER WRITTEN.** The promise was prose, and
+ * `AlwaysAvailableProtectedData` answered `true` on every device in every state.
+ *
+ * **A GATE NOBODY CONSULTS IS NOT A GATE; A GATE THAT IS NEVER ASKED THE PLATFORM IS A CONSTANT.** My whole court
+ * injected a fake gate, so it measured MY seam and never the platform's answer -- a rig measuring its own wiring,
+ * which is the failure this programme has already paid for twice.
+ *
+ * THE PLATFORM FACT IS `UserManager.isUserUnlocked`: on Android the credential-encrypted store (which is where this
+ * app's protected data belongeth) is **readable ONLY after the user unlocketh the device for the first time**. Before
+ * that -- Direct Boot, after a restart but before unlock -- the correct answer is *unavailable*, and answering
+ * `true` there would let every protected read fail at the storage layer instead of being refused at admission.
+ *
+ * AND THE PROBE IS A SEAM RATHER THAN A FRAMEWORK CALL, for the reason the interface's docstring giveth: the model
+ * stayeth HOST-TESTABLE. The DI wiring supplieth the real `UserManager`; a court supplieth its own answer.
+ */
+class PlatformProtectedDataGate(private val userUnlocked: () -> Boolean) : ProtectedDataGate {
+    override fun isProtectedDataAvailable(): Boolean = userUnlocked()
+}
+
 data class MeshUiState(
     val link: LinkState,
     val recipients: List<RecipientProjection>,

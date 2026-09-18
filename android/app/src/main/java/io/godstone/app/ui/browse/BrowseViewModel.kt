@@ -58,6 +58,22 @@ data class BrowseUiState(
     // be marched back to the top; a reader whose place did NOT survive must not be placed at whatever passage now
     // happeneth to carry that id.
     val anchorPassageId: Long? = null,
+    // *** GS-FINAL-006: THE ANCHOR'S OWN DOCUMENT -- BECAUSE AN ANCHOR WITHOUT AN OWNER IS NOT AN ANCHOR. ***
+    //
+    // FOUND BY REVIEW, AND IT IS THE ROOT OF TWO FAILURES AND ONE LEAK: the card ALREADY writeth
+    // `handle["anchorDocument"]`, but the state never carried it, and `noteScroll` RECEIVED the owning document id
+    // AND DISCARDED IT. So the only ownership test available was the OPEN document -- WHICH IS ADJACENCY, NOT
+    // OWNERSHIP, and it lieth in two directions:
+    //   * `backToDocuments()` nulls `openedDocumentId` WITHOUT clearing the anchor, so an anchor belonging to A
+    //     survived the list detour into B; `ArchiveReadingAnchor.target` testeth only MEMBERSHIP in B's list, so a
+    //     COLLIDING chunkId would place the reader in B at a passage they never set -- and `snapshotTo` would persist
+    //     it as B's.
+    //   * AND ON A RESTORE the anchor arriveth from the handle while `openedDocumentId` is still null, so my first
+    //     guard ("a different document is already open") could not tell a RESTORED anchor from an OBSOLETE one.
+    //
+    // **THE ANCHOR KNOWS WHERE IT CAME FROM; CARRY IT AND GATE ON IT.** Clearing is now a question about THE ANCHOR'S
+    // OWN identity rather than about whatever document happeneth to be open.
+    val anchorDocumentId: Long? = null,
     val readingTargetPassageId: Long? = null,
     val error: String? = null,
     val canRetry: Boolean = false
@@ -121,7 +137,9 @@ class BrowseViewModel(
      * why it belongeth in a saved-state bundle at all.
      */
     fun noteScroll(documentId: Long? = null, passageId: Long? = null) {
-        _state.value = _state.value.copy(anchorPassageId = passageId)
+        // *** AND IT NO LONGER DISCARDS THE OWNER. *** `documentId` is the document the reader is IN, and it is the
+        // only fact that can tell a later return whether this anchor still belongeth where it is being carried.
+        _state.value = _state.value.copy(anchorPassageId = passageId, anchorDocumentId = documentId)
     }
 
     /**
@@ -142,7 +160,9 @@ class BrowseViewModel(
         // GS-ARCHIVE-005 step 3: "a valid reading anchor" -- the ASKED-FOR identity is what is persisted, NEVER the
         // resolved target, because validity must be judged against the document that standeth WHEN IT IS REOPENED.
         s.anchorPassageId?.let { handle["anchorPassage"] = it }
-        s.openedDocumentId?.let { handle["anchorDocument"] = it }
+        // THE ANCHOR'S OWNER, NOT MERELY THE OPEN DOCUMENT: after `backToDocuments()` they are different facts, and
+        // the persisted handle must name the document the ANCHOR belongeth to.
+        s.anchorDocumentId?.let { handle["anchorDocument"] = it }
     }
 
     private val _state = MutableStateFlow(BrowseUiState())
@@ -337,21 +357,23 @@ class BrowseViewModel(
         //
         // AND IT IS CLEARED ONLY WHEN THE DOCUMENT REALLY CHANGES: re-opening the SAME document keepeth its anchor, so
         // a rotation or a return does not lose the reader's place.
-        // *** AND THE CONDITION IS "A DIFFERENT DOCUMENT IS ALREADY OPEN", NOT "THE IDS DIFFER". ***
+        // *** AND THE CLEARING IS GATED ON THE ANCHOR'S OWN IDENTITY, NOT ON WHATEVER DOCUMENT HAPPENS TO BE OPEN. ***
         //
-        // MY FIRST DRAFT USED `_state.value.openedDocumentId != documentId`, AND THE LANE NAMED THE DEFECT AT ONCE:
-        // ON A **RESTORE** the anchor arriveth FROM THE HANDLE, written for THE VERY DOCUMENT BEING OPENED, while
-        // `openedDocumentId` is still null -- so `null != 7` WAS TRUE, A LEGITIMATE ANCHOR WAS DISCARDED, and two
-        // T49 arms failed: *"the asked-for anchor is remembered AS ASKED FOR -- it is not silently discarded"* and
-        // *"and it must be RESTORED"*.
+        // MY FIRST DRAFT ASKED ABOUT THE OPEN DOCUMENT (`openedDocumentId != documentId`) AND WAS WRONG TWICE, AND
+        // THE LANE NAMED ONE OF THE FAILURES AT ONCE:
+        //   * ON A **RESTORE** the anchor arriveth FROM THE HANDLE for THE VERY DOCUMENT BEING OPENED, while
+        //     `openedDocumentId` is still null -- so `null != 7` was true and A LEGITIMATE ANCHOR WAS DISCARDED;
+        //     two T49 arms failed: *"the asked-for anchor is remembered AS ASKED FOR -- it is not silently
+        //     discarded"* and *"and it must be RESTORED"*.
+        //   * AND ON THE **LIST DETOUR** (`open(A) -> backToDocuments() -> open(B)`) the open document is null when B
+        //     arriveth, so A's anchor SURVIVED into B -- a leak no arm of mine could see.
         //
-        // **A RESTORED ANCHOR IS NOT AN OBSOLETE ONE.** The three cases, each now distinguished by its own fact:
-        //   * RESTORE         -- no document is open yet, and the anchor came WITH this document: KEEP;
-        //   * SAME DOCUMENT   -- re-opened (a rotation, a return): KEEP (the clause says "on document CHANGES");
-        //   * A DIFFERENT ONE -- genuinely navigated away from another document: CLEAR.
-        val alreadyOpen = _state.value.openedDocumentId
-        if (alreadyOpen != null && alreadyOpen != documentId) {
-            _state.value = _state.value.copy(anchorPassageId = null)
+        // **BOTH ARE THE SAME ERROR: ASKING ABOUT ADJACENCY WHEN THE QUESTION IS OWNERSHIP.** An anchor with no
+        // recorded owner is not carried at all (`anchorDocumentId == null` means there is nothing to clear), and an
+        // anchor whose recorded owner IS this document is kept -- WHETHER IT ARRIVED BY RESTORE, BY RE-OPEN, OR BY A
+        // RETURN THROUGH THE LIST.
+        if (_state.value.anchorDocumentId != null && _state.value.anchorDocumentId != documentId) {
+            _state.value = _state.value.copy(anchorPassageId = null, anchorDocumentId = null)
         }
         val token = generation.incrementAndGet()
         _state.value = _state.value.copy(
@@ -471,7 +493,9 @@ class BrowseViewModel(
         // serialization behind the real SavedStateHandle" -- a helper that dropped the anchor would silently lose it
         // for every caller that used the helper rather than the seam.
         s.anchorPassageId?.let { handle["anchorPassage"] = it }
-        s.openedDocumentId?.let { handle["anchorDocument"] = it }
+        // THE ANCHOR'S OWNER, NOT MERELY THE OPEN DOCUMENT: after `backToDocuments()` they are different facts, and
+        // the persisted handle must name the document the ANCHOR belongeth to.
+        s.anchorDocumentId?.let { handle["anchorDocument"] = it }
     }
 
     fun restoreFrom(handle: Map<String, Any?>) {
@@ -490,6 +514,8 @@ class BrowseViewModel(
             // GS-ARCHIVE-005 step 3: the ASKED-FOR anchor standeth from the moment of restoration; the RESOLVED
             // target is computed when the document's passages are known (`openDocumentInternal`).
             anchorPassageId = anchorPassage,
+            // THE OWNER COMES BACK WITH IT -- otherwise the state cannot tell a restored anchor from an obsolete one.
+            anchorDocumentId = handle["anchorDocument"] as? Long,
             phase = BrowsePhase.Loading, loading = true)
         when (mode) {
             BrowseMode.DOCUMENT -> {

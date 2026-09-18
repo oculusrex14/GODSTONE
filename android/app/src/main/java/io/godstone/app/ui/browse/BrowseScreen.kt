@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -179,10 +180,62 @@ fun BrowseScreen(vm: BrowseViewModel = hiltViewModel()) {
  * so a target that no longer exists falls back to the first, and `scrollToItem` is asked for an index that is really
  * there.
  */
+/**
+ * *** THE REPORT DECISION, PURE AND THEREFORE COURT-COVERED -- BECAUSE THE OBVIOUS WIRING IS WRONG. ***
+ *
+ * THE DEFECT THIS PREVENTETH, NAMED BY REVIEW AND REAL: `snapshotFlow { firstVisibleItemIndex }` EMITS THE CURRENT
+ * INDEX IMMEDIATELY ON COLLECTION -- index 0 on a fresh composition -- AND AGAIN EACH TIME `ids` CHANGES AND THE
+ * EFFECT RESTARTS. THAT EMISSION ARRIVES BEFORE THE SIBLING CONSUME-EFFECT'S `scrollToItem` HAS TAKEN LAYOUT EFFECT.
+ * So an unguarded report would `noteScroll(passageId = ids[0])` and OVERWRITE THE JUST-RESTORED ANCHOR WITH THE FIRST
+ * PASSAGE -- **"AN ANCHOR THE READER NEVER SET", REINTRODUCED ONE LAYER ABOVE THE CLAUSE THAT EXISTS TO PREVENT IT.**
+ * The reader returns, is placed correctly, and the act of returning destroys the place.
+ *
+ * AND THE COURT COULD NOT SEE IT: no `androidTest` target existeth on this isle, so the Compose half is never
+ * executed. **THEREFORE THE DECISION IS NOT ALLOWED TO LIVE IN THE EFFECT WHERE NOTHING MEASURES IT.**
+ *
+ * THE RULE: A REPORT IS ONLY THE READER'S OWN MOVEMENT IF THE INDEX THEY ARE AT IS THE INDEX THEY WERE PLACED AT.
+ * While a programmatic placement is still outstanding, the visible index is the APP's doing, not the reader's.
+ *
+ * @param visibleIndex the passage index currently on screen
+ * @param targetIndex  the index the app is placing the reader at, or null when no placement is outstanding
+ * @return the passage id the READER may be said to have chosen, or null while the app's own scroll is in flight
+ */
+internal fun reportedAnchorPassageId(
+    previousVisibleIndex: Int?,
+    visibleIndex: Int,
+    targetIndex: Int?,
+    placementLanded: Boolean,
+    ids: List<Long>,
+): Long? {
+    // (1) *** THE INITIAL EMISSION IS NEVER THE READER'S MOVEMENT. *** `snapshotFlow` EMITS THE CURRENT VALUE ON
+    // COLLECTION, so the first value is wherever the list happened to start -- the reader has not touched anything
+    // yet. Reporting it would RECORD AN ANCHOR THE READER NEVER SET and persist it on the next snapshot. **THE REAL
+    // UI COURT CAUGHT THIS: with no target at all the initial emission still reported `passage 1`.**
+    if (previousVisibleIndex == null) return null
+    // (2) *** AND WHILE A PLACEMENT IS OUTSTANDING, THE POSITION IS THE APP'S DOING, NOT THE READER'S. *** This
+    // covereth the emission that arrives BEFORE `scrollToItem` takes layout effect -- the one that would overwrite
+    // the just-restored anchor with the first passage -- AND the landing emission itself, which must NOT be recorded
+    // either: `readingTargetPassageId` is the RESOLVED target, and when the asked-for anchor fell back (because it no
+    // longer standeth in this document) recording the fallback would REPLACE the reader's asked-for place with the
+    // first passage. The T49 arm nameth this exactly: *"the asked-for anchor is remembered AS ASKED FOR -- it is not
+    // silently discarded."*
+    if (targetIndex != null && !placementLanded) return null
+    // (3) AND ONCE THE PLACEMENT HAS LANDED, A GENUINE CHANGE OF POSITION IS THE READER'S OWN MOVEMENT.
+    return ids.getOrNull(visibleIndex)
+}
+
 @Composable
-private fun ReadingList(state: BrowseUiState, vm: BrowseViewModel) {
-    // KEYED TO THE DOCUMENT: a new document must not inherit the previous one's scroll offset.
-    val listState = rememberLazyListState()
+// `internal` RATHER THAN `private` SO THE REAL COMPOSABLE CAN BE RENDERED BY THE UI COURT: a court that drove a
+// REPLICA of this wiring would be asserting an architecture rather than observing the runtime, which is worse than
+// no court at all. The evidence is the real thing or it is nothing.
+internal fun ReadingList(state: BrowseUiState, vm: BrowseViewModel) {
+    // *** KEYED TO THE DOCUMENT -- AND IT REALLY IS, NOW. *** MY FIRST DRAFT SAID "KEYED TO THE DOCUMENT" WHILE
+    // CALLING `rememberLazyListState()` WITH NO KEY AT ALL: `rememberLazyListState(initialFirstVisibleItemIndex,
+    // initialFirstVisibleItemScrollOffset)` TAKES NO `vararg` KEYS, so the comment described an intention the code did
+    // not implement, and an unkeyed state INHERITS THE PREVIOUS DOCUMENT'S OFFSET -- opening B would land the reader
+    // wherever A was left. `key(...)` is what actually discards the state when the document changes. **A COMMENT THAT
+    // CLAIMS BEHAVIOUR THE CALL DOES NOT HAVE IS THE SAME DEFECT AS A GATE NOBODY CONSULTS.**
+    val listState = key(state.openedDocumentId) { rememberLazyListState() }
 
     val ids = state.passages.map { it.chunkId }
     val target = state.readingTargetPassageId
@@ -194,13 +247,24 @@ private fun ReadingList(state: BrowseUiState, vm: BrowseViewModel) {
         if (index >= 0) listState.scrollToItem(index)
     }
 
-    // (3) AND REPORT WHAT IS VISIBLE, so the place can be persisted at all.
-    LaunchedEffect(listState, ids) {
+    // (3) AND REPORT WHAT IS VISIBLE -- BUT ONLY THE READER'S OWN MOVEMENT. See `reportedAnchorPassageId` above for
+    // the defect this gate preventeth: an unguarded report CLOBBERS THE ANCHOR IT WAS MEANT TO PROTECT, because
+    // `snapshotFlow` emits the current index (0 on a fresh composition) BEFORE `scrollToItem` has taken effect.
+    LaunchedEffect(listState, ids, target) {
+        val targetIndex = target?.let { ids.indexOf(it) }?.takeIf { it >= 0 }
+        var previous: Int? = null
+        var placementLanded = false
         snapshotFlow { listState.firstVisibleItemIndex }
             .distinctUntilChanged()
             .collect { index ->
-                val visible = ids.getOrNull(index) ?: return@collect
-                vm.noteScroll(documentId = state.openedDocumentId, passageId = visible)
+                // NULL MEANS "THE APP'S OWN SCROLL, OR THE INITIAL LAYOUT" -- and nothing may be recorded for either.
+                val chosen = reportedAnchorPassageId(previous, index, targetIndex, placementLanded, ids)
+                // THE PLACEMENT IS MARKED LANDED *AFTER* THE DECISION, so the landing emission itself stayeth
+                // unreported while every LATER move belongeth to the reader again.
+                if (targetIndex != null && index == targetIndex) placementLanded = true
+                previous = index
+                if (chosen == null) return@collect
+                vm.noteScroll(documentId = state.openedDocumentId, passageId = chosen)
             }
     }
 

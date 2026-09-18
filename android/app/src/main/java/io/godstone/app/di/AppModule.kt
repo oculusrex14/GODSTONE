@@ -6,7 +6,10 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
+import android.os.UserManager
 import dagger.hilt.components.SingletonComponent
+import io.godstone.app.mesh.PlatformProtectedDataGate
+import io.godstone.app.mesh.ProtectedDataGate
 import io.godstone.app.BuildConfig
 import io.godstone.core.archive.ArchiveRepository
 import javax.inject.Singleton
@@ -38,4 +41,22 @@ object AppModule {
     @Provides @Singleton
     fun provideArchiveRepository(@ApplicationContext ctx: Context): ArchiveRepository =
         ArchiveRepository(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE)
+
+    /**
+     * *** GS-FINAL-009 (round 564): THE PRODUCTION ANSWER TO "MAY I READ PROTECTED DATA RIGHT NOW". ***
+     *
+     * BEFORE THIS PROVIDER THE ANSWER WAS A CONSTANT: every construction site was a TEST, so
+     * `AlwaysAvailableProtectedData` (which returneth `true` unconditionally) was the only gate the shipping app
+     * could ever see, and the platform was NEVER ASKED.
+     *
+     * THE PLATFORM FACT: this app's protected data live in credential-encrypted storage, WHICH IS READABLE ONLY AFTER
+     * THE USER UNLOCKETH THE DEVICE FOR THE FIRST TIME. `UserManager.isUserUnlocked` is exactly that question. Before
+     * first unlock -- Direct Boot, after a restart -- the answer is FALSE, and every protected read is refused at
+     * admission rather than failing at the storage layer.
+     */
+    @Provides @Singleton
+    fun provideProtectedDataGate(@ApplicationContext ctx: Context): ProtectedDataGate =
+        PlatformProtectedDataGate {
+            (ctx.getSystemService(Context.USER_SERVICE) as? UserManager)?.isUserUnlocked ?: false
+        }
 }
