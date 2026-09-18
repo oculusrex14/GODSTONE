@@ -2,7 +2,19 @@ package io.godstone.mesh.identity
 
 import io.godstone.mesh.crypto.PeerBindingTrustAuthority
 import io.godstone.mesh.crypto.SessionManager
+import io.godstone.mesh.delivery.AckAdmissionResult
+import io.godstone.mesh.delivery.AckFrameRecord
+import io.godstone.mesh.delivery.AckObligation
+import io.godstone.mesh.delivery.AckObligationStore
+import io.godstone.mesh.delivery.CandidateList
+import io.godstone.mesh.delivery.FrameCommitResult
+import io.godstone.mesh.delivery.FrameLookup
+import io.godstone.mesh.delivery.ObligationAdvanceResult
+import io.godstone.mesh.delivery.ObligationInsertResult
+import io.godstone.mesh.delivery.ObligationLookup
+import io.godstone.mesh.delivery.PairList
 import io.godstone.mesh.delivery.PeerIdentityLookupSource
+import io.godstone.mesh.delivery.PendingList
 import io.godstone.mesh.store.SqliteMessageStore
 import java.util.concurrent.atomic.AtomicBoolean
 import io.godstone.mesh.MeshNode
@@ -173,4 +185,106 @@ internal class RuntimeGatedPeerBindingTrustAuthority(
         if (!lifecycleGate.isActive) return PeerTrustApplyResult.StorageFailure()
         return delegate.applyValidatedBinding(binding)
     }
+}
+
+/**
+ * *** GS-FINAL-003 (round 631): THE ANDROID TWIN OF THE iOS `WipeGatedAckObligationStore`. ***
+ *
+ * THE FINDING'S REMAINING HALF, NAMED BY MY OWN EARLIER NOTE AND NEVER CLOSED: *"the ACK surfaces ... are still NOT
+ * wrapped, so a wipe pending during an ACK exchange is not refused there."* **ON iOS THIS WAS CLOSED IN ROUND 572 BY A
+ * DECORATOR OVER THE `AckObligationStore` PROTOCOL; ANDROID HAD NO TWIN AT ALL.**
+ *
+ * WHY A DECORATOR OVER THE PROTOCOL RATHER THAN GUARDS AT CALL SITES: **A DECORATOR GATES AN INTERFACE, AND EVERY
+ * CALLER OF THAT INTERFACE -- THE DRIVER, THE PUMP, THE DISPATCHER, A FUTURE FIFTH CONSUMER -- IS COVERED AT ONCE.**
+ * The iOS round learned this the hard way: an injected closure written straight to the underlying store is not that
+ * interface, and it bypassed the gate entirely. Gating the interface means there is no such closure to forget.
+ *
+ * AND IT IS CONSTRUCTED FROM THE *SAME* `WipeSensitiveUseGate` BINDING THE OTHER ADMISSION POINTS USE -- never a
+ * hand-built lambda. **THAT IS THE ROUND-589 LESSON: a provider's body cannot be measured by a court that passes its
+ * own lambda, and here a court can instead ask the REAL provider what it returns.**
+ *
+ * EACH METHOD ANSWERS WITH ITS OWN TYPE'S EXISTING REFUSAL, NEVER AN INVENTED ERROR AND NEVER A PLAUSIBLE-LOOKING
+ * EMPTY ANSWER: *"you have no pending obligations"* would be A LIE THAT LOOKS LIKE A STATE -- the very distinction the
+ * audit drew for the protected-data projection (GS-FINAL-009). A census read during a wipe answereth 0 for the same
+ * reason its iOS twin doth: nothing may be claimed about a store whose contents are being erased.
+ */
+class WipeGatedAckObligationStore(
+    private val delegate: AckObligationStore,
+    private val wipeGate: WipeSensitiveUseGate,
+) : AckObligationStore {
+
+    // --- the obligation roads ---
+    override fun insertIfAbsent(obligation: AckObligation): ObligationInsertResult =
+        if (!wipeGate.allowsSensitiveUse()) ObligationInsertResult.StorageFailure
+        else delegate.insertIfAbsent(obligation)
+
+    override fun lookupObligation(msgId: ByteArray, recipientNodeId: ByteArray): ObligationLookup =
+        if (!wipeGate.allowsSensitiveUse()) ObligationLookup.StorageFailure
+        else delegate.lookupObligation(msgId, recipientNodeId)
+
+    override fun listPending(bound: Int): PendingList =
+        // THE PROTOCOL'S OWN TYPED REFUSAL, NOT AN INVENTED ERROR: `PendingList` already carrieth `.storageFailure`,
+        // so a refusal answereth IN THE SAME VOCABULARY AS A FAILED READ -- which is exactly what it is.
+        if (!wipeGate.allowsSensitiveUse()) PendingList.StorageFailure
+        else delegate.listPending(bound)
+
+    override fun markSigned(msgId: ByteArray, recipientNodeId: ByteArray): ObligationAdvanceResult =
+        if (!wipeGate.allowsSensitiveUse()) ObligationAdvanceResult.StorageFailure
+        else delegate.markSigned(msgId, recipientNodeId)
+
+    override fun retireObligation(msgId: ByteArray, recipientNodeId: ByteArray): ObligationAdvanceResult =
+        if (!wipeGate.allowsSensitiveUse()) ObligationAdvanceResult.StorageFailure
+        else delegate.retireObligation(msgId, recipientNodeId)
+
+    override fun countObligations(): Int =
+        if (!wipeGate.allowsSensitiveUse()) 0 else delegate.countObligations()
+
+    // --- the ACK-candidate roads (T84's own namespace) ---
+    override fun storeCandidate(record: AckFrameRecord): AckAdmissionResult =
+        if (!wipeGate.allowsSensitiveUse()) AckAdmissionResult.StorageFailure
+        else delegate.storeCandidate(record)
+
+    override fun lookupByAckKey(ackKey: ByteArray): FrameLookup =
+        if (!wipeGate.allowsSensitiveUse()) FrameLookup.StorageFailure
+        else delegate.lookupByAckKey(ackKey)
+
+    override fun candidatesForPair(msgId: ByteArray, recipientNodeId: ByteArray, bound: Int): PairList =
+        if (!wipeGate.allowsSensitiveUse()) PairList.StorageFailure
+        else delegate.candidatesForPair(msgId, recipientNodeId, bound)
+
+    override fun countForPair(msgId: ByteArray, recipientNodeId: ByteArray): Int =
+        if (!wipeGate.allowsSensitiveUse()) 0 else delegate.countForPair(msgId, recipientNodeId)
+
+    override fun countFrames(): Int =
+        if (!wipeGate.allowsSensitiveUse()) 0 else delegate.countFrames()
+
+    override fun deleteAllFrames(): Int =
+        // *** THE ONE METHOD THAT IS *NOT* GATED, AND THE REASON IS THE FINDING ITSELF. *** A WIPE MUST BE ABLE TO
+        // ERASE THE ACK NAMESPACE **WHILE A WIPE IS PENDING** -- gating this would make the eraser refuse to erase,
+        // which is the deadlock this programme measured on both isles for constructor gates. **THE GATE PROTECTS USE,
+        // NOT DESTRUCTION.**
+        delegate.deleteAllFrames()
+
+    override fun commitFrameAndRetireObligation(
+        record: AckFrameRecord,
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+    ): FrameCommitResult =
+        if (!wipeGate.allowsSensitiveUse()) FrameCommitResult.StorageFailure
+        else delegate.commitFrameAndRetireObligation(record, msgId, recipientNodeId)
+
+    // --- T84: the durable ACK pump's faces over the ack_frames namespace ---
+    override fun listCandidates(bound: Int): CandidateList =
+        if (!wipeGate.allowsSensitiveUse()) CandidateList.StorageFailure
+        else delegate.listCandidates(bound)
+
+    override fun debitCandidateLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean =
+        if (!wipeGate.allowsSensitiveUse()) false
+        else delegate.debitCandidateLifetime(ackKey, remainingLifetimeMs)
+
+    override fun expireCandidate(ackKey: ByteArray): Boolean =
+        if (!wipeGate.allowsSensitiveUse()) false else delegate.expireCandidate(ackKey)
+
+    override fun countCandidatesFromPeer(peer: ByteArray): Int =
+        if (!wipeGate.allowsSensitiveUse()) 0 else delegate.countCandidatesFromPeer(peer)
 }

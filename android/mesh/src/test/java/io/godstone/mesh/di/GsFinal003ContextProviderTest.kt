@@ -2,7 +2,12 @@ package io.godstone.mesh.di
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import io.godstone.mesh.delivery.AckAdmissionResult
+import io.godstone.mesh.delivery.AckObligationStore
+import io.godstone.mesh.delivery.InMemoryAckStore
 import io.godstone.mesh.identity.PanicWipe
+import io.godstone.mesh.identity.WipeGatedAckObligationStore
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -128,5 +133,125 @@ class GsFinal003ContextProviderTest {
                 "provider. Observed: ${gate.allowsSensitiveUse()} ***",
             gate.allowsSensitiveUse(),
         )
+    }
+    // ================================================================================================
+    // *** GS-FINAL-003 (round 631): THE ACK NAMESPACE, GATED THROUGH THE *REAL* PROVIDER. ***
+    //
+    // THE FINDING'S REMAINING HALF, IN MY OWN EARLIER WORDS: *"the ACK surfaces ... are still NOT wrapped, so a wipe
+    // pending during an ACK exchange is not refused there."* iOS gained a protocol decorator in round 572; **ANDROID
+    // HAD NO TWIN.** It now does (`WipeGatedAckObligationStore`), and these arms drive it with **THE REAL GATE FROM
+    // THE REAL PROVIDER** -- never a hand-typed lambda, which is the round-589 trap that let an INVERTED provider ship
+    // for eighteen rounds while every arm passed.
+    // ================================================================================================
+
+    /**
+     * *** A PENDING WIPE REFUSES EVERY ACK READ AND WRITE, AND THE REFUSALS ARE TYPED. ***
+     *
+     * THE SUBJECT IS THE **DECORATED** STORE OVER A REAL `InMemoryAckStore`, AND THE GATE COMES FROM
+     * `MeshModule.provideWipeIsPending(ctx())` -- so the journal file, the provider and the decorator are ALL the real
+     * objects, and the only synthetic thing is the in-memory backing store (which the decorator never reaches).
+     */
+    @Test
+    fun testGF003APendingWipeRefusesTheWholeAckSurface() {
+        presetJournal(PanicWipe.WipeState.REQUESTED)
+        val gated: AckObligationStore = WipeGatedAckObligationStore(
+            InMemoryAckStore(), MeshModule.provideWipeIsPending(ctx()),
+        )
+
+        // EVERY ROAD ANSWERS WITH ITS OWN TYPE'S EXISTING REFUSAL -- no invented error, no plausible-looking empty.
+        assertEquals(
+            "an obligation insert must refuse",
+            io.godstone.mesh.delivery.ObligationInsertResult.StorageFailure,
+            gated.insertIfAbsent(ackObligation()),
+        )
+        assertEquals(
+            "an obligation lookup must refuse",
+            io.godstone.mesh.delivery.ObligationLookup.StorageFailure,
+            gated.lookupObligation(ByteArray(16), ByteArray(16)),
+        )
+        assertEquals(
+            "a candidate admission must refuse",
+            AckAdmissionResult.StorageFailure,
+            gated.storeCandidate(ackCandidate()),
+        )
+        assertEquals(
+            "*** A CENSUS MUST ANSWER 0, NOT A STALE COUNT: a number read from a store being erased is A LIE THAT " +
+                "LOOKS LIKE A STATE -- the distinction the audit drew for the protected-data projection. ***",
+            0, gated.countObligations(),
+        )
+        assertEquals(0, gated.countFrames())
+        assertEquals(0, gated.countCandidatesFromPeer(ByteArray(16)))
+    }
+
+    /** AND THE POSITIVE CONTROL: ON A CLEAN DEVICE THE SAME DECORATOR REALLY WORKS -- otherwise a decorator hardwired to refuse would satisfy every arm above. */
+    @Test
+    fun testGF003ACleanDeviceLetsTheWholeAckSurfaceThrough() {
+        presetJournal(PanicWipe.WipeState.IDLE)
+        val backing = InMemoryAckStore()
+        val gated: AckObligationStore = WipeGatedAckObligationStore(
+            backing, MeshModule.provideWipeIsPending(ctx()),
+        )
+        assertEquals(
+            "*** THE CONTROL MUST REALLY ADMIT -- a decorator that refused everything would pass the arm above while " +
+                "making the ACK path useless. ***",
+            io.godstone.mesh.delivery.AckAdmissionResult.Stored::class.java, gated.storeCandidate(ackCandidate())!!::class.java,
+        )
+        assertEquals(
+            "and the write must really have REACHED the backing store, so the admission is not a report with nothing behind it",
+            1, backing.countFrames(),
+        )
+    }
+
+    /**
+     * *** AND IT IS READ PER CALL, NOT CACHED -- THE MUTATION THAT WOULD OTHERWISE PASS. ***
+     *
+     * ONE decorator is built while the wipe standeth pending and then the journal MOVES UNDERNEATH IT. **A DECORATOR
+     * THAT CAPTURED THE GATE'S ANSWER AT CONSTRUCTION WOULD LOOK IDENTICAL IN BOTH ARMS ABOVE**, because each of those
+     * buildeth a fresh one. This is the only observation that can tell a per-call read from a cached one.
+     */
+    @Test
+    fun testGF003TheAckGateIsReadPerCallRatherThanCached() {
+        presetJournal(PanicWipe.WipeState.REQUESTED)
+        val gated = WipeGatedAckObligationStore(InMemoryAckStore(), MeshModule.provideWipeIsPending(ctx()))
+        assertEquals(
+            "the rig must first stand refused, or the re-read below proves nothing",
+            AckAdmissionResult.StorageFailure, gated.storeCandidate(ackCandidate()),
+        )
+
+        presetJournal(PanicWipe.WipeState.IDLE)   // THE WIPE COMPLETES under the SAME decorator
+
+        assertEquals(
+            "*** THE ANSWER MUST BE READ PER CALL: the SAME decorator must now ADMIT, because the durable record " +
+                "changed underneath it. A decorator that cached its answer at construction would still refuse -- and " +
+                "EVERY OTHER ARM HERE WOULD STILL PASS. ***",
+            io.godstone.mesh.delivery.AckAdmissionResult.Stored::class.java, gated.storeCandidate(ackCandidate())!!::class.java,
+        )
+    }
+
+    /** A real obligation fixture -- built through the record's own failable factory, so the decorator sees a coherent row. */
+    private fun ackObligation(): io.godstone.mesh.delivery.AckObligation =
+        io.godstone.mesh.delivery.AckObligation.of(
+            msgId = ByteArray(16) { 0x11 },
+            recipientNodeId = ByteArray(16) { 0x22 },
+            identityGeneration = 1L,
+            remainingLifetimeMs = 60_000L,
+            state = io.godstone.mesh.delivery.AckObligationState.PENDING,
+        )!!
+
+    /** A real candidate fixture, likewise through its own factory. */
+    private fun ackCandidate(): io.godstone.mesh.delivery.AckFrameRecord {
+        val msg = ByteArray(16) { 0x11 }
+        val recipient = ByteArray(16) { 0x22 }
+        val sig = ByteArray(64) { 0x44 }
+        return io.godstone.mesh.delivery.AckFrameRecord.of(
+            ackKey = io.godstone.mesh.delivery.AckCacheKey.compute(msg, recipient, sig)!!,
+            msgId = msg,
+            recipientNodeId = recipient,
+            signature = sig,
+            encodedFrame = ByteArray(200) { 0x55 },
+            receivedFrom = ByteArray(16) { 0x33 },
+            remainingLifetimeMs = 60_000L,
+            verificationClass = io.godstone.mesh.delivery.AckVerificationClass.VERIFIED_RECIPIENT,
+        )!!
     }
 }

@@ -13936,6 +13936,12 @@
       "sha256": "cc5e581b41b0c37917f8f83200a523f66fa4ee5366d27bd7f01079157c14a0cb",
       "what": "An arm that described itself as the wiring proof while hand-supplying the very value the wired provider computes.",
       "outcome": "Three false KDoc claims corrected; the arm renamed to its honest subject (forwarding); the real coverage is GsFinal003ContextProviderTest, whose four Robolectric arms found the shipped polarity inversion. Phrase sweep found no second occurrence."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-003/round631-the-android-ack-namespace-is-now-gated.log",
+      "sha256": "2a8cd0ac64e6cd8a976b9f023c4c1fb8fca8cb45d171cd642fb643e12659588b",
+      "what": "The Android ACK namespace is now gated by a decorator over the AckObligationStore protocol, driven through the REAL provider.",
+      "outcome": "The finding's remaining half on Android is closed: `WipeGatedAckObligationStore` wraps all 17 methods with each method's OWN typed refusal, wired in DI from the same `WipeSensitiveUseGate` binding (never a hand-typed lambda). `deleteAllFrames()` is deliberately NOT gated because the eraser must erase during a pending wipe -- the gate protects USE, not DESTRUCTION. FOUR ARMS drive the real journal file, the real provider and the real decorator. MUTATION (storeCandidate's gate removed, grep-confirmed on disk): the two refusal arms FAILED while the positive control stayed GREEN. MEASURED: app 97/0, core 21/0, mesh 1888/0 (+3). NOT CLAIMED: the Hilt binding's portability to a real component (no :mesh Dagger component exists on LIGHT); nothing cryptographic or at-rest."
      }
     ],
     "pending_proof": [
@@ -14385,7 +14391,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "7febb4a2658ba8e1e3779c39488421d663ddce19",
+  "candidate_sha": "4dfcde78125582060dfadca05620cba3de1d9adb",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

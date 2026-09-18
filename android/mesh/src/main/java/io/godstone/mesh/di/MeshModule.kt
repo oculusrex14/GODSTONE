@@ -22,6 +22,7 @@ import io.godstone.mesh.identity.CrashResumableWipe
 import io.godstone.mesh.identity.MeshRuntimeInvalidator
 import io.godstone.mesh.identity.PanicWipe
 import io.godstone.mesh.identity.WipeArtifactFileSystemSeam
+import io.godstone.mesh.identity.WipeGatedAckObligationStore
 import io.godstone.mesh.identity.WipeDeferredSeams
 import io.godstone.mesh.identity.WipeIdentityAuthoritySeam
 import io.godstone.mesh.identity.WipeJournalDurabilityAdapter
@@ -413,9 +414,27 @@ internal object MeshModule {
     @Provides @Singleton
     fun provideAckStore(store: SqliteMessageStore): SqliteAckStore = SqliteAckStore(store.engine)
 
+    /**
+     * *** GS-FINAL-003 (round 631): THE ACK NAMESPACE IS NOW GATED ON ANDROID, FROM THE SAME BINDING. ***
+     *
+     * *"The ACK surfaces ... are still NOT wrapped, so a wipe pending during an ACK exchange is not refused there"* --
+     * my own earlier note, and the remaining half of this finding on this isle. iOS gained a decorator over the
+     * `AckObligationStore` protocol in round 572; **ANDROID HAD NO TWIN AT ALL.**
+     *
+     * IT IS A `@Provides` FOR THE **DECORATED** STORE, AND EVERY CONSUMER BELOW TAKETH THE DECORATED TYPE -- so the
+     * driver, the pump and any future fifth consumer are covered AT ONCE, rather than each remembering a guard.
+     * **AND IT TAKETH THE REAL `WipeSensitiveUseGate` BINDING, NOT A HAND-TYPED LAMBDA** -- the round-589 lesson, where
+     * a provider whose body was measured only through a court's own lambda shipped INVERTED for eighteen rounds.
+     */
+    @Provides @Singleton
+    fun provideWipeGatedAckStore(
+        ackStore: SqliteAckStore,
+        wipeGate: WipeSensitiveUseGate,
+    ): WipeGatedAckObligationStore = WipeGatedAckObligationStore(ackStore, wipeGate)
+
     @Provides @Singleton
     fun provideAckDriver(
-        ackStore: SqliteAckStore,
+        ackStore: WipeGatedAckObligationStore,
         identity: Identity,
         authenticator: Ed25519AckAuthenticator,
         resolver: RecipientKeyResolver,
@@ -424,7 +443,7 @@ internal object MeshModule {
 
     @Provides @Singleton
     fun provideAckPump(
-        ackStore: SqliteAckStore,
+        ackStore: WipeGatedAckObligationStore,
         driver: AckObligationDriver,
     ): DurableAckPump =
         DurableAckPump(
