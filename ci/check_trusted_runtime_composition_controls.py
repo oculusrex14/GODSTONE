@@ -1011,7 +1011,12 @@ def selftest() -> int:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_trusted_runtime_composition_controls selftest PASSED ({passed}/55 mutations caught deterministically across R01-R30).")
+    # THE DENOMINATOR IS MEASURED, NOT A LITERAL. It read `55` -- a number written when 55 mutations existed, kept while
+    # more were added -- so a run that caught 56 printed "56/55", AN IMPOSSIBLE RATIO THAT MADE THE LINE LOOK WRONG
+    # RATHER THAN THE COUNT LOOK RIGHT. A hard-coded denominator beside a counted numerator is the same species as a
+    # count asserted instead of read; it is now `len(failures) + passed`, which IS the number of mutations attempted.
+    attempted = passed + len(failures)
+    print(f"check_trusted_runtime_composition_controls selftest PASSED ({passed}/{attempted} mutations caught deterministically).")
     return 0
 
 
