@@ -55,12 +55,29 @@ class Router(
      * BEFORE the inbox, so gating the inbox's commit closure still left a held row written into a store that stood
      * MID-WIPE. **AND THIS IS THE SAME ROAD ON THIS ISLE** -- `MeshNode:933` also call it for the node's own persist.
      *
-     * AND IT FAILS CLOSED WITH THE STORE'S OWN TYPED REFUSAL: `PersistResult.FAILED_STORAGE` is already the answer
-     * the caller treateth as "not durably held", so a refusal needs no new vocabulary and cannot be mistaken for a
-     * held frame. **A PLAUSIBLE-LOOKING `HELD_NEW` WOULD BE A LIE THAT LOOKS LIKE A STATE.**
+     * *** AND IT REFUSETH BEFORE THE STORE, SO NO `PersistResult` EXISTS AT ALL. *** MY FIRST DRAFT OF THIS COMMENT
+     * CLAIMED THE REFUSAL USES "the store's own typed refusal, `PersistResult.FAILED_STORAGE`" -- **AND THAT WAS A
+     * FALSE CLAIM ABOUT THIS CODE, CAUGHT BY A REVIEW.** The gate returneth `false` from `onFrameReceived` BEFORE
+     * `store.persist` is ever called, so there is no `PersistResult` to inspect. And the difference is OBSERVABLE,
+     * NOT A WORDING NIT: the path that genuinely meets `REJECTED_CAPACITY`/`FAILED_STORAGE` deliberately does NOT
+     * PENALISE the peer ("a durable failure is not the peer's fault"), whereas this early return is indistinguishable
+     * to callers from the ordinary policy drops ABOVE it -- **so nothing may claim a typed refusal here, and the arm
+     * measureth the STORE and the PEER ACCOUNTING rather than a returned code that this path never produces.**
+     *
+     * AND THE PLACEMENT IS LOAD-BEARING: it sitteth AFTER the LRU/TTL/policy checks and BEFORE the `when`, so a
+     * gated frame CANNOT touch `seen`, `governor.reward(fromPeer)` or `_inbound`. **A GATE PLACED ONE LINE LATER
+     * WOULD HAVE FED THE ABUSE-CONTROL GOVERNOR A FALSE SIGNAL.**
+     *
+     * AND IT IS NOT THE SAME ROAD AS `MeshNode:933`. **MY FIRST DRAFT CLAIMED IT WAS, AND THAT WAS ALSO WRONG:** that
+     * call sitteth inside `dispatchSos`, THE NODE AUTHORING ITS OWN DISTRESS CALL ("Persists BEFORE any transport
+     * operation: a SOS this node cannot durably hold is NOT sent"), which is a DIFFERENT POLICY QUESTION from
+     * refusing to relay a third party's frame, and one GS-SOS-001/002 already legislated. **COPYING THIS GATE THERE
+     * UN-ASKED WOULD MAKE A PENDING WIPE SILENTLY SWALLOW SOS DISPATCH -- NEW, UNREQUESTED BEHAVIOUR ON A
+     * LIFE-SAFETY PATH.** It is therefore MEASURED AND RECORDED as its own finding, not folded in here.
      *
      * NO DEFAULT, FOR THE REASON THE OTHER SEAM LEARNED: on a security gate a defaulted "no wipe pending" means
-     * ADMIT, and this programme has already shipped that mistake once.
+     * ADMIT, and this programme has already shipped that mistake once. **THE ~40 CALL SITES THIS REQUIRED ARE THE
+     * COMPILER DOING THE FEATURE'S WORK.**
      */
     private val wipeGate: WipeSensitiveUseGate,
 ) {

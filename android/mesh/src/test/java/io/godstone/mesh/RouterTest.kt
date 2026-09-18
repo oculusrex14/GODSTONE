@@ -1048,14 +1048,32 @@ class RouterTest {
     @Test
     fun `a pending wipe stops the router from writing the store`() = runTest {
         val store = CountingMessageStore()
-        val router = Router(store, selfNodeId, wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { false })
+        val governor = io.godstone.mesh.abuse.PeerGovernor()
+        val trustBefore = governor.trustOf(peerC)
+        val router = Router(store, selfNodeId, governor,
+            wipeGate = io.godstone.mesh.identity.WipeSensitiveUseGate { false })
 
         val accepted = router.onFrameReceived(frame(msgId(0x41)), fromPeer = peerC)
 
+        // *** THE ASSERTION IS ON THE STORE AND THE PEER ACCOUNTING -- NOT ON A RETURN CODE. ***
+        //
+        // A REVIEW CORRECTED MY FIRST VERSION HERE: I HAD WRITTEN THAT THE REFUSAL USES "the store's own typed
+        // refusal, `PersistResult.FAILED_STORAGE`". **THAT WAS FALSE ABOUT THIS CODE** -- the gate returneth `false`
+        // BEFORE `store.persist` is called, so no `PersistResult` exists, and the arm was asserting a vocabulary this
+        // path never emits. **THE OBSERVABLE DIFFERENCE IS THAT THE `REJECTED_CAPACITY`/`FAILED_STORAGE` PATH
+        // DELIBERATELY DOES NOT PENALISE THE PEER ("a durable failure is not the peer's fault"), WHILE THIS EARLY
+        // RETURN IS INDISTINGUISHABLE FROM AN ORDINARY POLICY DROP** -- so what must be true is that the frame never
+        // reached the store AND never moved the peer's standing, for EITHER reason.
         assertEquals(
             0, store.persistCalls,
             "*** A PENDING WIPE MUST STOP THE WRITE: `Router.ingest` reached `store.persist` before this repair, so " +
                 "a held row landed in a store that stood MID-WIPE. Observed persists: ${store.persistCalls} ***")
+        assertEquals(
+            trustBefore, governor.trustOf(peerC),
+            "*** AND NO PEER ACCOUNTING MAY MOVE: the gate sitteth AFTER the policy checks and BEFORE the `when`, so " +
+                "`governor.reward`/`penalise` are never reachable for a gated frame. A GATE PLACED ONE LINE LATER " +
+                "WOULD HAVE FED THE ABUSE-CONTROL GOVERNOR A FALSE SIGNAL. trust: $trustBefore -> " +
+                "${governor.trustOf(peerC)} ***")
         assertFalse(accepted, "and nothing may be reported as relayed either")
     }
 

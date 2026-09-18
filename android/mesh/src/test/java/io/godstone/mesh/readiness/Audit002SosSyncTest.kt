@@ -154,4 +154,41 @@ class Audit002SosSyncTest {
         assertTrue("65th page must be refused, got $last", last is SyncControlOwner.OwnerDecision.Refused)
         assertTrue(owner.relationFor(peer).pagesReceived <= 64)
     }
+
+    // -----------------------------------------------------------------------
+    // *** GS-FINAL-003 (round 575): THE SOS ROAD, MEASURED RATHER THAN GATED. ***
+    //
+    // A REVIEW CAUGHT A FALSE CLAIM I HAD WRITTEN IN `Router.kt`: I asserted that `MeshNode`'s
+    // `store.persist(...)` call was "THE SAME ROAD ON THIS ISLE" as the router's relay persist, and must therefore be
+    // gated the same way. **IT IS NOT THE SAME ROAD.** That call sitteth inside `dispatchSos` -- THE NODE AUTHORING
+    // ITS OWN DISTRESS CALL ("Persists BEFORE any transport operation: a SOS this node cannot durably hold is NOT
+    // sent") -- which is a DIFFERENT POLICY QUESTION from refusing to relay a third party's frame, and one
+    // GS-SOS-001/002 already legislated. **COPYING THE RELAY GATE THERE UN-ASKED WOULD MAKE A PENDING WIPE SILENTLY
+    // SWALLOW SOS DISPATCH: NEW, UNREQUESTED BEHAVIOUR ON A LIFE-SAFETY PATH.**
+    //
+    // SO IT IS MEASURED INSTEAD: this arm records what the road DOES while a wipe is pending, so the question can be
+    // answered with evidence rather than a guess. **IT PINS TODAY'S BEHAVIOUR, WHICH IS THAT THE SOS ROAD IS NOT
+    // WIPE-GATED -- AND THAT IS A FINDING FOR THE MAINTAINER, NOT A DEFECT INTRODUCED HERE.**
+    // -----------------------------------------------------------------------
+
+    @Test
+    fun theSosRoadIsNotWipeGatedAndThatIsPinnedRatherThanAssumed() = runTest {
+        val (node, store) = rig(true)
+
+        // THE NODE'S OWN WRITE ROAD, DRIVEN DIRECTLY (the seam the class docstring names), WITH A PENDING-GATE NODE.
+        // `rig` builds its node through the pure-JVM convenience constructor, whose gate opens by design -- so the
+        // MEASUREMENT HERE IS ABOUT THE ROAD, NOT ABOUT THAT CONSTRUCTOR: the node holds no gate reference on this
+        // path at all, which is precisely the point being recorded.
+        val result = node.dispatchSos("help".toByteArray()) { _, _ -> false }
+
+        assertEquals(
+            "*** MEASURED: A NODE WITH NO WIPE GATE ON THIS ROAD STILL QUEUES ITS OWN SOS -- and that is pinned so " +
+                "the behaviour is visible rather than latent. Observed: $result ***",
+            SosDispatchResult.QueuedLocally, result)
+        assertTrue(
+            "*** AND THE HELD ROW IS WRITTEN: the SOS road persists WITHOUT consulting a wipe gate. Whether that is " +
+                "RIGHT is a life-safety policy question (GS-SOS-001/002) and is NOT decided here. Observed held: " +
+                "${store.allHeldMsgIds().size} ***",
+            store.allHeldMsgIds().isNotEmpty())
+    }
 }
