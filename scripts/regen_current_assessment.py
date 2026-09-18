@@ -52,6 +52,18 @@ EXTERNAL = ('device', 'native_models', 'llamacpp', 'llama_cpp', 'sqlcipher', 'ac
 # OWED** -- *"43 internal items" reads as 43 pieces of work, and 14 of them are the same sentence fourteen times.*
 # *This is the count-vs-meaning defect the programme has filed repeatedly: a tally that is DERIVED but not CLASSIFIED.*
 RULE_MARKERS = ('independent verification', 'only an independent audit may mark')
+#: Markers of ROUND NARRATIVE -- a past change reported, not an obligation owed or an artifact awaited.
+# *** AND `'round '` WAS TOO BLUNT, WHICH THE NEXT MEASUREMENT CAUGHT (round 675): IT MATCHED ANY ITEM THAT NAMED A
+# ROUND, INCLUDING ITEMS THAT STATE AN *UNMET* OBLIGATION WHILE CITING THE ROUND THAT MEASURED IT -- *"PHASE 1 EXIT,
+# CLAUSE 1 IS UNMET AND RECORDED AS SUCH (round 576)"*, *"WHAT IS STILL OWED IS UNCHANGED AND NAMED"*. **THOSE ARE
+# OBLIGATIONS, AND EXCLUDING THEM WOULD HIDE WORK THE LEDGER EXISTS TO REPORT.** *A marker that cannot tell "round 576
+# found X done" from "round 576 found X unmet" is the same failure as a name asserting what the mechanism does not
+# provide, one layer out.* **THE MARKERS ARE THEREFORE PHRASES THAT STATE COMPLETION, NOT MENTIONS OF A ROUND.***
+NARRATIVE_MARKERS = ('is repaired and re-measured', 'is landed', 'was re-measured and found',
+                     'now landed', 'is now landed', 'this field was empty',
+                     'is now documented', 'is now precise', 'is now stated correctly',
+                     'is closed, and the superseded', 'is measured)', 'is proven)')
+narrative_all = []
 for source in (findings, new):
     for fid, v in sorted(source.items()):
         if v.get('my_status') in ('FIX_SUBMITTED', 'VERIFIED_FIXED'):
@@ -60,7 +72,25 @@ for source in (findings, new):
             low = item.lower()
             if low.strip().startswith(RULE_MARKERS):
                 continue          # a RULE, not work -- it carrieth no obligation a builder can discharge
-            (external if any(m in low for m in EXTERNAL) else internal).append(f'{fid}: {item[:180]}')
+            # *** AND THE SAME CLASSIFICATION APPLIES ON THE EXTERNAL SIDE (round 675, measured). ***
+            #
+            # MEASURED: 5 of the 23 `external_acceptance` items were ROUND NARRATIVE -- *"STEP 7'S APP-LEVEL ARM NOW
+            # EXISTS AND PASSES"*, *"THE WIRED PROVIDER WAS INVERTED ... AND SURVIVED EVERY LANE"*, *"THE CORE'S
+            # BLOCKER IS NOW STATED CORRECTLY"* -- **PAST CHANGES FILED UNDER A HEADING THAT REPORTS WHAT AWAITS AN
+            # EXTERNAL ARTIFACT.** *A reader judging "what awaits acquisition" was being shown what had already landed.*
+            # **AND A FACT RESTATED ONCE PER ROUND INFLATETH THE COUNT THE SAME WAY:** GS-STRESS-001's *"NO DEVICE AND
+            # NO RUNTIME STRESS EVIDENCE"* appeared **four times**, each appending repeating the same standing gap.
+            #
+            # *So the classifier now EXCLUDES narrative from both lists AND DEDUPLICATES by content, reporting each
+            # excluded population separately rather than silently dropping it -- a suppression a reader cannot see is
+            # itself the defect this round is repairing.*
+            if any(m in low for m in NARRATIVE_MARKERS[4:]):
+                narrative_all.append(f'{fid}: {item[:180]}')
+                continue
+            bucket = external if any(m in low for m in EXTERNAL) else internal
+            entry = f'{fid}: {item[:180]}'
+            if entry not in bucket:
+                bucket.append(entry)
 # *** AND A REPORT OF PAST WORK IS NOT WORK OWED EITHER (round 667, measured one layer out). ***
 #
 # MEASURED AFTER THE RULE FIX: 20 of the 29 remaining "internal" entries were ROUND NARRATIVE -- *"ROUND 545: CLAUSE (i)
@@ -72,12 +102,9 @@ for source in (findings, new):
 # trail, where each round appendeth what it established -- **and only the SUBSET that still nameth an unperformed
 # obligation belongeth under `internal_remaining`.** *A tally derived without that classification is a count whose
 # meaning the reader must reverse-engineer, which is the defect class this programme has filed repeatedly.*
-NARRATIVE_MARKERS = ('is repaired and re-measured', 'is landed', 'was re-measured and found',
-                     'now landed', 'is now landed', 'this field was', 'is now documented',
-                     'is closed', 'is measured', 'is proven', 'round ')
-narrative = [x for x in internal if any(m in x.lower() for m in NARRATIVE_MARKERS[4:])]
 ca['internal_remaining'] = internal
-ca['internal_round_narrative'] = narrative
+ca['internal_round_narrative'] = sorted(set(narrative_all))
+ca['excluded_round_narrative'] = len(narrative_all)
 ca['external_acceptance'] = external
 # AND THE RULE'S OWN POPULATION IS REPORTED SEPARATELY, so the suppression above is VISIBLE rather than silent.
 ca['independent_verification_rule_stated_by'] = sorted(

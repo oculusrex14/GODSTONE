@@ -14532,7 +14532,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "1b4a83ff8e6f1e2673accded534d8b7f1843f6be",
+  "candidate_sha": "37b0d76e3adf9908df4f81e6cc4845bd97a78953",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14564,7 +14564,6 @@
    "GS-UX-001: *** ROUND 539: STEP 1 IS LANDED -- THE LAB'S JOURNEYS REACH THE ONE RETAINED RUNTIME, AND THE LAB TARGET IS BUILT. *** Measured: `LabMeshTests` 5/0 (was 4 -- the +1 IS the new arm)",
    "GS-UX-001: *** ROUND 540: STEP 3 IS LANDED ON BOTH ISLES. *** `StateFlow` + `collectAsStateWithLifecycle` on Android (three state owners), `ObservableObject`/`@Published` on iOS (both models)",
    "GS-UX-001: *** ROUND 541: STEP 4 IS LANDED ON THE ANDROID ISLE -- the recipient selector, the UTF-8-bounded input and Send action (round 539's lab work; the app's own compose field already st",
-   "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ",
    "GS-UX-001: ROUND 543 (THE iOS ADAPTER'S BLOCKING OBSTACLE, MEASURED): the lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` is blocked by THREE obstacles -- a synchronous port a",
    "GS-FINAL-003: THE iOS ACK SURFACES ARE NOW GATED (round 572): `WipeGatedAckObligationStore` decorates the `AckObligationStore` PROTOCOL, so one decorator covers the driver, the pump and the inbo",
    "GS-FINAL-003: ANDROID NOW CONSULTS THE DURABLE RECORD AT BOTH EXISTING ADMISSION POINTS, AND THE *WIRING* IS PROVEN (round 571): `allowsSensitiveApi()` had ZERO production callers while both dec",
@@ -14577,8 +14576,6 @@
    "GS-FINAL-003: AN ARM WAS WEARING ANOTHER ARM'S CLAIM, AND A REVIEW PROVED IT (round 593). `CrashStartupResumeTest`'s arm announced itself as *\"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROV",
    "GS-FINAL-004: THE CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. The central defect -- the factory's verified connection is discarded and `SqliteMessageStore(url:)` perfor",
    "GS-FINAL-004: DONE AND EVIDENCED: the archive-only SPLIT. `createArchiveOnlyHostComposition` no longer takes an `encryptedStores` parameter at all, so a composition that cannot be given a key ca",
-   "GS-FINAL-004: *** CLAUSE (c) IS NOW LANDED (round 647), AND IT IS THE SECOND CLAUSE THAT NEEDED NO NATIVE ENGINE. *** The card's \"Return typed open errors instead of a nominal store with a nil h",
-   "GS-FINAL-004: *** CLAUSE (d) IS NOW LANDED (round 605), AND IT IS THE ONE CLAUSE THAT NEEDED NO EXTERNAL ENGINE. *** The card's \"separate RESUMABLE operation with PRESERVED ROLLBACK EVIDENCE\" is",
    "GS-FINAL-006: THE EFFECT-RESTART PREMISE IS REFUTED, VERIFIABLY AND RE-RUNNABLY (round 569). `ProbeEffectKeySemantics` now carries a POSITIVE CONTROL -- an effect keyed on a genuinely changing v"
   ],
   "external_acceptance": [
@@ -14602,7 +14599,6 @@
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO REAL LOCKED-DEVICE READING: the gate is exercised through INJECTED gates in the court, and **THE PLATFORM IMPLEMENTATION THAT READETH A REAL LOCK",
    "GS-UX-001: THE \"EXERCISE THE RENDERED CONTROLS\" CLAUSE IS NOW MET WITH MUTATION-BACKED EVIDENCE (round 598), and it was UNMET before this session built the UI-test target (round 564: Robolect",
    "GS-FINAL-003: THE WIRED PROVIDER WAS INVERTED, AND THE INVERSION SURVIVED EVERY LANE FOR EIGHTEEN ROUNDS (round 589). `provideWipeIsPending` returneth `read() != PanicWipe.WipeState.IDLE` -- TRU",
-   "GS-FINAL-004: THE CORE'S BLOCKER IS NOW STATED CORRECTLY, AND MY EARLIER VERSION OF IT WAS WRONG IN A WAY THAT MATTERED (round 577). I had recorded that \"`EncryptedStoreHandle` cannot carry a co",
    "GS-FINAL-006: THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendere",
    "GS-FINAL-006: GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET N"
   ],
@@ -14678,29 +14674,11 @@
    "IOS-07"
   ],
   "internal_round_narrative": [
-   "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
-   "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
-   "GS-STORE-002: *** ROUND 544: STEP 5 IS LANDED -- AND STEP 7 WAS RE-MEASURED AND FOUND ALREADY LANDED, SO THE RECORD IS CORRECTED RATHER THAN THE CLAIM REPEATED. *** STEP 7 (*'Wire DEK erasure in",
-   "GS-STRESS-001: *** FOUR INVARIANTS STILL READ THE MODEL'S OWN INTEGERS -- RE-MEASURED AND CORRECTED IN ROUND 671: the SIX kinds this sentence named (leases, timers, sessions, inventory leases, re",
-   "GS-STRESS-001: *** ROUND 534: STEP 3 NOW READETH TWO REAL OWNERS, AND THE SECOND ONE'S CENSUS FOUND A REAL DEFECT. *** ONE (round 521): `no_leaked_sessions`, read from a REAL `SessionManager` thr",
-   "GS-STRESS-001: *** ROUND 535: STEP 3 IS NOW CARRIED BY **BOTH** ISLES, WHICH IS WHAT THE HUMAN'S PHASE-TWO LAW REQUIREth ('on BOTH isles where the contract is shared'). *** THE MEASURED ASYMMETRY",
-   "GS-STRESS-001: *** ROUND 538: STEP 3's OWNER CENSUS NOW READS **TWO** OWNERS ON **BOTH** ISLES. *** ONE: `sessions` (Android round 521, mirrored to Swift at round 535). TWO: **`writer reservation",
-   "GS-UX-001: *** ROUND 539: STEP 1 IS LANDED -- THE LAB'S JOURNEYS REACH THE ONE RETAINED RUNTIME, AND THE LAB TARGET IS BUILT. *** Measured: `LabMeshTests` 5/0 (was 4 -- the +1 IS the new arm)",
-   "GS-UX-001: *** ROUND 540: STEP 3 IS LANDED ON BOTH ISLES. *** `StateFlow` + `collectAsStateWithLifecycle` on Android (three state owners), `ObservableObject`/`@Published` on iOS (both models)",
-   "GS-UX-001: *** ROUND 541: STEP 4 IS LANDED ON THE ANDROID ISLE -- the recipient selector, the UTF-8-bounded input and Send action (round 539's lab work; the app's own compose field already st",
-   "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ",
-   "GS-UX-001: ROUND 543 (THE iOS ADAPTER'S BLOCKING OBSTACLE, MEASURED): the lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` is blocked by THREE obstacles -- a synchronous port a",
-   "GS-FINAL-003: THE iOS ACK SURFACES ARE NOW GATED (round 572): `WipeGatedAckObligationStore` decorates the `AckObligationStore` PROTOCOL, so one decorator covers the driver, the pump and the inbo",
-   "GS-FINAL-003: ANDROID NOW CONSULTS THE DURABLE RECORD AT BOTH EXISTING ADMISSION POINTS, AND THE *WIRING* IS PROVEN (round 571): `allowsSensitiveApi()` had ZERO production callers while both dec",
-   "GS-FINAL-003: *** SUPERSEDED AND CLOSED, AND THE SUPERSEDED TEXT IS QUOTED SO THE CORRECTION IS AUDITABLE (round 667). *** THE PASSAGE THAT STOOD HERE SAID: *\"WHAT IS STILL NOT ESTABLISHED: that",
-   "GS-FINAL-003: THE ANDROID BINDING IS VALIDATED BY KSP/COMPILATION ONLY, NOT BY A DAGGER COMPONENT (round 573, measured): `:app:assembleDebug` runs Dagger and passes, and `:mesh:assembleDebug` ru",
-   "GS-FINAL-003: ANDROID'S STORE-WRITE ROAD IS NOW GATED AND CAUSALLY PROVEN (round 574): `Router.ingest` called `store.persist` directly -- the method that writes the held row -- with NOTHING on t",
-   "GS-FINAL-003: TWO FALSE CLAIMS OF MINE WERE CORRECTED THIS ROUND (575), BOTH CAUGHT BY REVIEW. (1) I wrote that the relay refusal uses \"the store's own typed refusal, `PersistResult.FAILED_STORA",
-   "GS-FINAL-003: PHASE 1 EXIT, CLAUSE 1 IS **UNMET AND RECORDED AS SUCH** (round 576, measured line by line): \"every blocked/retryable/corrupt recovery produces zero private opens.\" THE MECHANISM, ",
-   "GS-FINAL-003: AN ARM WAS WEARING ANOTHER ARM'S CLAIM, AND A REVIEW PROVED IT (round 593). `CrashStartupResumeTest`'s arm announced itself as *\"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROV",
    "GS-FINAL-004: *** CLAUSE (c) IS NOW LANDED (round 647), AND IT IS THE SECOND CLAUSE THAT NEEDED NO NATIVE ENGINE. *** The card's \"Return typed open errors instead of a nominal store with a nil h",
    "GS-FINAL-004: *** CLAUSE (d) IS NOW LANDED (round 605), AND IT IS THE ONE CLAUSE THAT NEEDED NO EXTERNAL ENGINE. *** The card's \"separate RESUMABLE operation with PRESERVED ROLLBACK EVIDENCE\" is",
-   "GS-FINAL-006: THE EFFECT-RESTART PREMISE IS REFUTED, VERIFIABLY AND RE-RUNNABLY (round 569). `ProbeEffectKeySemantics` now carries a POSITIVE CONTROL -- an effect keyed on a genuinely changing v"
-  ]
+   "GS-FINAL-004: THE CORE'S BLOCKER IS NOW STATED CORRECTLY, AND MY EARLIER VERSION OF IT WAS WRONG IN A WAY THAT MATTERED (round 577). I had recorded that \"`EncryptedStoreHandle` cannot carry a co",
+   "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ"
+  ],
+  "excluded_round_narrative": 4
  }
 }
