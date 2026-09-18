@@ -234,4 +234,142 @@ internal final class WipeGatedPeerBindingTrustAuthority: PeerBindingTrustAuthori
         guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
         return delegate.applyValidatedBinding(binding)
     }
+
+
+}
+
+/// *** GS-FINAL-003 (round 572): THE ACK SURFACES, WHICH HAD NO ADMISSION POINT AT ALL. ***
+///
+/// MEASURED BEFORE THIS EDIT: the composition consumed `wipeGate.allowsSensitiveUse()` at exactly TWO seams --
+/// `WipeGatedPeerIdentityLookupSource` and `WipeGatedPeerBindingTrustAuthority` -- while **`ackStore`, `ackDriver`,
+/// `ackPump` and the recipient inbox were built DIRECTLY OVER `SqliteAckStore` AND NEVER ASKED.** *"Durable ACK
+/// obligations, admitted ACK candidates and the custody census are all durable protected state, and a wipe in
+/// progress is exactly when they must not be read or written."*
+///
+/// **A GATE THAT COVERETH TWO ROADS OUT OF SIX IS NOT A PRIVILEGE BOUNDARY.** And the ACK roads are not peripheral:
+/// they are where a RELAY's frames are admitted and where custody obligations are retired -- so a wipe pending while
+/// an ACK exchange runs would admit foreign frames into, and retire obligations out of, a store whose contents are
+/// mid-erasure.
+///
+/// THE FIX IS THE SAME SHAPE THE OTHER TWO SEAMS ALREADY USE, WHICH IS WHY IT IS A DECORATOR RATHER THAN A NEW
+/// MECHANISM: `AckObligationStore` IS A PROTOCOL, and BOTH `AckObligationDriver` and `DurableAckPump` are
+/// INITIALISED WITH THAT PROTOCOL RATHER THAN THE CONCRETE `SqliteAckStore`. **SO ONE DECORATOR GATES EVERY ACK ROAD
+/// AT ONCE, AND A FUTURE ROAD CANNOT BYPASS IT WITHOUT DELIBERATELY BYPASSING THE TYPE.**
+///
+/// *** AND IT IS NOT SUFFICIENT BY ITSELF -- A REVIEW PROVED THAT, AND IT WAS MY OWN OVERCLAIM. *** I wrote that
+/// *"a FUTURE ACK ROAD CANNOT BYPASS THIS WITHOUT DELIBERATELY BYPASSING THE TYPE"*. **FALSE, AND THE BYPASS WAS
+/// ALREADY IN USE:** `RecipientInboxRepository` is handed a `commitInbound` CLOSURE that writeth STRAIGHT to
+/// `messageStore.commitInboundWithObligationAtWithFault` -- the method that CREATES the pending obligation and the
+/// held row -- and `wipeGate` appeared NOWHERE in `MessageStore.swift`. **A DECORATOR GATES AN INTERFACE; AN INJECTED
+/// CLOSURE IS NOT THAT INTERFACE.** That road is now gated separately, on the SAME authority, in `MeshRuntime`.
+///
+/// AND IT FAILS CLOSED -- the same rule as `DeferredWipeSensitiveUseGate`: a vanished owner is not permission.
+///
+/// EACH METHOD ANSWERS WITH ITS OWN TYPE'S REFUSAL, NEVER AN INVENTED ERROR AND NEVER A PLAUSIBLE-LOOKING EMPTY ANSWER:
+/// "you have no pending obligations" would be a LIE THAT LOOKS LIKE A STATE, the very distinction the audit drew
+/// for the protected-data projection (GS-FINAL-009).
+internal final class WipeGatedAckObligationStore: AckObligationStore, @unchecked Sendable {
+    private let delegate: any AckObligationStore
+    private let wipeGate: any WipeSensitiveUseGate
+
+    internal init(delegate: any AckObligationStore, wipeGate: any WipeSensitiveUseGate) {
+        self.delegate = delegate
+        self.wipeGate = wipeGate
+    }
+
+    // --- the obligation roads ---
+
+    internal func insertIfAbsent(_ obligation: AckObligation) -> ObligationInsertResult {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.insertIfAbsent(obligation)
+    }
+
+    internal func lookupObligation(_ msgId: Data, recipientNodeId: Data) -> ObligationLookup {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.lookupObligation(msgId, recipientNodeId: recipientNodeId)
+    }
+
+    internal func listPending(_ bound: Int32) throws -> PendingList {
+        // THE PROTOCOL'S OWN TYPED REFUSAL, NOT AN INVENTED ERROR: `PendingList` ALREADY CARRIETH `.storageFailure`,
+        // so a refusal answereth IN THE SAME VOCABULARY AS A FAILED READ -- which is exactly what it is.
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return try delegate.listPending(bound)
+    }
+
+    internal func markSigned(_ msgId: Data, recipientNodeId: Data) -> ObligationAdvanceResult {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.markSigned(msgId, recipientNodeId: recipientNodeId)
+    }
+
+    internal func retireObligation(_ msgId: Data, recipientNodeId: Data) -> ObligationAdvanceResult {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.retireObligation(msgId, recipientNodeId: recipientNodeId)
+    }
+
+    internal func countObligations() -> Int {
+        // A COUNT IS A READ OF PROTECTED STATE TOO: during a wipe the honest answer is 0, because nothing may be
+        // claimed about a store whose contents are being erased -- and 0 is also what the caller must see to keep
+        // from acting on a census it cannot trust.
+        guard wipeGate.allowsSensitiveUse() else { return 0 }
+        return delegate.countObligations()
+    }
+
+    // --- the ACK-candidate roads (T84's own namespace) ---
+
+    internal func storeCandidate(_ record: AckFrameRecord) -> AckAdmissionResult {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.storeCandidate(record)
+    }
+
+    internal func lookupByAckKey(_ ackKey: Data) -> FrameLookup {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.lookupByAckKey(ackKey)
+    }
+
+    internal func candidatesForPair(_ msgId: Data, recipientNodeId: Data, bound: Int32) throws -> PairList {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return try delegate.candidatesForPair(msgId, recipientNodeId: recipientNodeId, bound: bound)
+    }
+
+    internal func countForPair(_ msgId: Data, recipientNodeId: Data) -> Int {
+        guard wipeGate.allowsSensitiveUse() else { return 0 }
+        return delegate.countForPair(msgId, recipientNodeId: recipientNodeId)
+    }
+
+    internal func countFrames() -> Int {
+        guard wipeGate.allowsSensitiveUse() else { return 0 }
+        return delegate.countFrames()
+    }
+
+    internal func deleteAllFrames() -> Int {
+        guard wipeGate.allowsSensitiveUse() else { return 0 }
+        return delegate.deleteAllFrames()
+    }
+
+    internal func commitFrameAndRetireObligation(_ record: AckFrameRecord, msgId: Data,
+                                                 recipientNodeId: Data) -> FrameCommitResult {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.commitFrameAndRetireObligation(record, msgId: msgId, recipientNodeId: recipientNodeId)
+    }
+
+    internal func listCandidates(_ bound: Int32) -> CandidateList {
+        guard wipeGate.allowsSensitiveUse() else { return .storageFailure }
+        return delegate.listCandidates(bound)
+    }
+
+    internal func debitCandidateLifetime(_ ackKey: Data, remainingLifetimeMs: Int64) -> Bool {
+        // A DEBIT THAT MUST NOT HAPPEN: a false answer means "nothing changed", which is TRUE when we refuse.
+        guard wipeGate.allowsSensitiveUse() else { return false }
+        return delegate.debitCandidateLifetime(ackKey, remainingLifetimeMs: remainingLifetimeMs)
+    }
+
+    internal func expireCandidate(_ ackKey: Data) -> Bool {
+        guard wipeGate.allowsSensitiveUse() else { return false }
+        return delegate.expireCandidate(ackKey)
+    }
+
+    internal func countCandidatesFromPeer(_ peer: Data) -> Int {
+        guard wipeGate.allowsSensitiveUse() else { return 0 }
+        return delegate.countCandidatesFromPeer(peer)
+    }
 }

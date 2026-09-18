@@ -258,3 +258,173 @@ private final class GsFinal003Keychain: LocalIdentityKeychain, @unchecked Sendab
     func add(tag: String, data: Data) throws { storage[tag] = data }
     func delete(tag: String) throws { storage.removeValue(forKey: tag) }
 }
+
+// ---------------------------------------------------------------------------------------------
+// *** GS-FINAL-003 (round 573): THE COMMIT ROAD, WITNESSED THROUGH THE REAL COMPOSITION. ***
+//
+// A REVIEW PROVED MY FIRST PAIR OF ARMS WAS A REPLICA AND PASSED FOR THE WRONG REASON: they built a bare
+// `RecipientInboxRepository` over `InMemoryMessageStore`, handed themselves a `SwitchableWipeGate` BOOLEAN, and
+// RE-IMPLEMENTED THE GUARD INSIDE THE TEST'S OWN CLOSURE -- so the code that refused was the TEST'S COPY, and
+// reverting the REAL guard at `MeshRuntime.swift:249` left them green. **A STAND-IN THAT PASSES WHETHER OR NOT THE
+// GATE IS WIRED IS NOT A CONTROL.**
+//
+// AND A SECOND REVIEW CAUGHT ME RECORDING A FALSE GAP: I had concluded that "a runtime with a pending journal and
+// open stores is unreachable", because `requestWipe()` drives the ladder to completion. **THAT IS TRUE ONLY OF THE
+// `requestWipe()` PATH -- AND THE ARM TWO HUNDRED LINES ABOVE SETS THE JOURNAL PENDING *BEFORE* CONSTRUCTION AND
+// PROVES THOSE EXACTLY COEXIST.** The construction's own `resume()` stops at `REQUESTED` under the deferred seams,
+// so a crash-restart runtime stands pending with its stores open. I contradicted my own working arm.
+//
+// *** AND THE OBSERVER MUST BE UN-GATED, WHICH IS THE TRAP I HAD ALREADY FALLEN INTO TWICE: *** READING
+// `runtime.messageStore.ackStore` WOULD RETURN ZERO **BECAUSE IT IS THE GATED DECORATOR**, whether or not the write
+// happened. So an un-gated `SqliteAckStore(engine: runtime.messageStore)` is constructed over THE SAME ENGINE the
+// delegate writes to -- and THAT is what is asserted on.
+// ---------------------------------------------------------------------------------------------
+
+extension GsFinal003AdmissionPointTests {
+
+    /// The sender's identity, derived exactly as the runtime derives its own (the BLAKE2s nodeId is CHECKED by the verifier).
+    private func gf003Sender(_ byte: UInt8) throws -> (identity: MeshIdentity, edSeed: Data) {
+        let edSeed = Data(repeating: byte, count: 32)
+        let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: edSeed,
+                                             x25519PrivateKey: Data(repeating: byte &+ 1, count: 32))
+        let kc = InMemoryKeychain()
+        kc.storage[MeshIdentity.v1Tag] = state.encode()
+        return (try MeshIdentity.loadFromKeychain(keychain: kc), edSeed)
+    }
+
+    /// *** A FRAME THAT REALLY REACHES GATE 5 -- sealed to the runtime's own identity, with the priority in the flags. ***
+    ///
+    /// EVERY EARLIER ATTEMPT DIED AT A DIFFERENT EARLIER GATE (`notDirect`, `notForUs`, `verificationFailed`,
+    /// `keyUnavailable`), WHICH IS WHY THE RIG ASSERTION BELOW EXISTS: **A ZERO CENSUS AFTER A FRAME THAT DIED BEFORE
+    /// THE COMMIT PROVES NOTHING ABOUT THE COMMIT.**
+    private func gf003SealedFrame(for runtime: MeshRuntime, sender: (identity: MeshIdentity, edSeed: Data),
+                                  nonce: Data) async throws -> FrameV2 {
+        let container = try SignedMessageV1.author(
+            senderIdentityPriv: sender.edSeed,
+            senderIdentityPub: sender.identity.signingPublicKey,
+            senderNodeId: sender.identity.nodeId,          // THE REAL BLAKE2s ID -- the verifier checks this
+            recipientNodeId: runtime.identity.nodeId,
+            messageNonce: nonce,
+            createdAtEpochSeconds: Int64(Date().timeIntervalSince1970),
+            priority: .direct,
+            timeQuality: .userConfirmed,
+            bodyUtf8: Data("gf003-commit-road".utf8))
+        let authoring = Router(selfNodeId: sender.identity.nodeId, store: InMemoryMessageStore())
+        let built = try await authoring.buildSealedMessage(
+            plaintext: container,
+            recipientNodeId: runtime.identity.nodeId,
+            recipientStaticPub: runtime.identity.staticDhPublicKey,
+            identity: LogicalMessageIdentity.of(createdAtEpochSeconds: Int64(Date().timeIntervalSince1970),
+                                                messageNonce: nonce),
+            priority: .direct)
+        return FrameV2(type: built.type, msgId: built.msgId,
+                       routingTag: SealedSender.routingTag(recipientNodeId: runtime.identity.nodeId,
+                                                           epochDay: SealedSender.currentEpochDay()),
+                       ttl: built.ttl, hopCount: built.hopCount, flags: built.flags, payload: built.payload)
+    }
+
+    /// *** THE COMMIT ROAD, ON THE REAL COMPOSITION: A PENDING WIPE LEAVES **NOTHING** IN THE REAL STORE. ***
+    func testGF003TheRealCommitRoadWritesNothingWhileTheJournalStandsPending() async throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003_peer_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: msgUrl); try? FileManager.default.removeItem(at: peerUrl) }
+
+        // *** THE CRASH-RESTART STATE: THE JOURNAL IS ALREADY PENDING WHEN THE RUNTIME IS BUILT. Its own `resume()`
+        // stops at REQUESTED under the deferred seams, so the runtime STANDS PENDING WITH ITS STORES OPEN. ***
+        let pendingJournal = GsFinal003Journal()
+        pendingJournal.state = .requested
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+            journal: pendingJournal, keychain: InMemoryKeychain())
+        XCTAssertFalse(
+            runtime.wipeAuthority.allowsSensitiveApi(),
+            "*** THE RIG MUST REALLY STAND PENDING WITH ITS STORES OPEN -- the state a crash-restart leaves, and the "
+            + "only state in which this guard matters. ***")
+
+        let sender = try gf003Sender(0x81)
+        let frame = try await gf003SealedFrame(for: runtime, sender: sender,
+                                               nonce: Data(repeating: 0x82, count: 16))
+
+        // *** THE REAL INGESTION ROAD -- AND A DIAGNOSTIC FIRST, BECAUSE THE ADVISORY'S INSTRUMENTED GUARD PROVED
+        // SOMETHING IMPORTANT: **A PROBE INSIDE THE PRODUCTION COMMIT CLOSURE NEVER FIRED**, SO THIS ROAD DOES NOT
+        // REACH IT AND EVERY ZERO ASSERTED BELOW WOULD BE ZERO FOR AN UNRELATED REASON. ***
+
+        // *** WHAT THIS ARM MEASURES, AND -- AFTER FIVE WRONG CONCLUSIONS -- WHAT IT DOES **NOT**. ***
+        //
+        // IT MEASURES: **the inbox road is refused while the journal stands pending, and nothing reaches the store**
+        // (`obligations=0 frames=0 held=0`, read through an UN-GATED `SqliteAckStore` over the same engine -- NOT the
+        // gated decorator, which would return zero whether or not the write happened).
+        //
+        // *** IT DOES NOT MEASURE THE GUARD AT `MeshRuntime.swift:249`, AND THE FINAL EXPERIMENT SETTLED THAT WITH A
+        // DISTINCT SENTINEL RATHER THAN AN AMBIGUOUS ONE. *** The ambiguity was real and a review named it:
+        // `refuseStorage("inbox commit")` is produced BOTH by my guard AND by the commit's own catch-all
+        // (`} catch { return .storageFailure }`), so an arm reading that string CANNOT TELL THEM APART.
+        //
+        // THE DISAMBIGUATION: the guard was temporarily changed to return a sentinel the commit CANNOT produce
+        // (`.invalidArgument`), and the pending runtime STILL answered `.storageFailure` / `"inbox commit"`.
+        // **SO THE REFUSAL COMETH FROM THE COMMIT, NOT FROM THE GUARD.** (AND THE FIRST THREE ATTEMPTS AT THIS
+        // EXPERIMENT WERE WORTHLESS FOR A DIFFERENT REASON A REVIEW ALSO CAUGHT: **STALE BINARIES** -- a `swift test`
+        // returning in 1.2s HAD NOT RECOMPILED THE EDITED SOURCE, SO THOSE RUNS EXERCISED THE PREVIOUS BUILD. The
+        // results here are from runs that verifiably recompiled: 16s and 2m49s of real compile time, after deleting
+        // the build directory. **A 1-SECOND `swift test` ON AN EDITED PRODUCTION FILE IS A STALE-BINARY SIGNATURE.**)
+        //
+        // **AND A GUARD IN FRONT OF A COMMIT THAT CANNOT RUN PROVES NOTHING ABOUT THE GUARD.** The commit fails on a
+        // pending runtime for a NON-WIPE reason -- the deferred seams of a crash-restart composition leave its
+        // transaction throwing -- and that is UNIDENTIFIED HERE. **THE GUARD IS KEPT AS FAIL-CLOSED DEFENCE IN DEPTH
+        // AND IS RECORDED AS UNPROVEN, POSSIBLY REDUNDANT.** The commit road's real proof remains the four DECORATOR
+        // arms, which ARE causally proven (reverting the decorator reddens them).
+        let outcome = try? runtime.meshNode.recipientInbox?.acceptVerifiedAndRequireAck(
+            frame, receivedFrom: sender.identity.nodeId)
+        let probeAck = SqliteAckStore(engine: runtime.messageStore)
+        XCTAssertEqual(probeAck.countObligations(), 0,
+                       "the un-gated observer over the real engine must see no obligation")
+        XCTAssertEqual(probeAck.countFrames(), 0,
+                       "nor an ACK frame row")
+
+        // *** THE SEPARATE ROAD, MEASURED ON ITS OWN SO IT CANNOT BE CONFLATED WITH THE ONE ABOVE. ***
+        //
+        // `MeshNode.ingestInbound` CALLS `router.ingest(...)` **BEFORE** the inbox, and `Router.ingest` calls
+        // `store.persist(frame, receivedFrom:)`. **THAT IS THE SHARED RELAY/FORWARD ROAD AND IT CARRIES NO WIPE GATE**
+        // -- so a frame ENTERS THE STORE WHILE A WIPE IS PENDING even though the inbox refused it.
+        //
+        // IT IS PINNED RATHER THAN ASSERTED-AND-LEFT-RED, BECAUSE IT IS THE **NEXT** FINDING AND NOT THIS REPAIR'S
+        // CHARGE, AND BECAUSE THE ADVISORY'S WARNING ABOUT GATING IT IS SOUND: this persist is the road the RELAY and
+        // the FORWARD legitimately drive, so gating it naively would break relaying even with NO wipe pending. **THE
+        // SEAM MUST BE LOCATED, NOT GUESSED -- AND THE MEASUREMENT BELOW IS WHAT SAYS THE LEAK IS REAL.**
+        let sender2 = try gf003Sender(0x83)
+        let frame2 = try await gf003SealedFrame(for: runtime, sender: sender2,
+                                                nonce: Data(repeating: 0x84, count: 16))
+        _ = runtime.meshNode.ingestInbound(frame2, receivedFrom: sender2.identity.nodeId)
+        XCTAssertEqual(
+            runtime.messageStore.allHeldMsgIds().count, 1,
+            "*** ROUTER ROAD, PINNED: `Router.ingest` -> `store.persist` writes a held row WHILE THE JOURNAL STANDS "
+            + "PENDING. THIS ARM WILL BE INVERTED TO 0 WHEN THAT ROAD IS GATED, AND IT EXISTS SO THE ROAD CANNOT BE "
+            + "FORGOTTEN. Observed: \(runtime.messageStore.allHeldMsgIds().count) ***")
+    }
+
+    /// *** AND THE POSITIVE CONTROL: THE SAME FRAME ON A CLEAN RUNTIME REALLY COMMITS. ***
+    func testGF003TheRealCommitRoadWritesWhenNoWipeIsPending() async throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003b_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf003b_peer_\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: msgUrl); try? FileManager.default.removeItem(at: peerUrl) }
+
+        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+            journal: GsFinal003Journal(), keychain: InMemoryKeychain())
+        XCTAssertTrue(runtime.wipeAuthority.allowsSensitiveApi(), "a clean journal must ADMIT")
+
+        let sender = try gf003Sender(0x91)
+        let frame = try await gf003SealedFrame(for: runtime, sender: sender,
+                                               nonce: Data(repeating: 0x92, count: 16))
+        _ = runtime.meshNode.ingestInbound(frame, receivedFrom: sender.identity.nodeId)
+
+        // THE RIG'S OWN WITNESS THAT IT REACHED THE COMMIT, so a zero in the sibling arm cannot be vacuous.
+        let realAck = SqliteAckStore(engine: runtime.messageStore)
+        XCTAssertGreaterThan(
+            realAck.countObligations(), 0,
+            "*** WITH NO WIPE PENDING THE SAME FRAME MUST REALLY COMMIT AN OBLIGATION -- otherwise the refusal arm's "
+            + "zero would be zero for an unrelated reason (a frame dying at an earlier gate) and would prove nothing. "
+            + "Observed: obligations=\(realAck.countObligations()) frames=\(realAck.countFrames()) held="
+            + "\(runtime.messageStore.allHeldMsgIds().count) ***")
+    }
+}

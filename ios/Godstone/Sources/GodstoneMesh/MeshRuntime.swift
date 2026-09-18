@@ -39,7 +39,12 @@ public final class MeshRuntime {
     // it". They are built over the SAME opened private store and the SAME pinned identity as everything else here.
     // (INTERNAL, NOT PUBLIC: these types are internal, and `public let` on an internal type doth not compile --
     // the compiler said so, which is how I learned that the runtime's OWN shape needeth no wider surface.)
-    internal let ackStore: SqliteAckStore
+    /// *** GS-FINAL-003 (round 572): TYPED AS THE PROTOCOL, BECAUSE WHAT IS HELD IS THE GATED DECORATOR. ***
+    ///
+    /// It was `SqliteAckStore` -- THE CONCRETE STORE -- which is precisely why every ACK road built from it bypassed
+    /// the wipe gate: the type said "the real store", never "a store that may be asked whether it is admissible". The
+    /// DECORATOR IS THE PROTOCOL'S IMPLEMENTATION NOW, so the held reference cannot be the ungated object.
+    internal let ackStore: any AckObligationStore
     internal let ackDriver: AckObligationDriver
     internal let ackPump: DurableAckPump
     public let lifecycleGate: DefaultRuntimeLifecycleGate
@@ -174,7 +179,21 @@ public final class MeshRuntime {
         // IOS-06 step 1's second half: **THE NODE IS TOLD WHOSE RADIO IT OPENS.** One owner standeth; the graph
         // holdeth no second, unowned path to the transport any more.
         meshNode.lifecycleOwner = lifecycle
-        let ackStore = SqliteAckStore(engine: messageStore)
+        // *** GS-FINAL-003 (round 572): THE ACK SURFACES NOW PASS AN ADMISSION POINT, BECAUSE THEY HAD NONE. ***
+        //
+        // MEASURED BEFORE THIS EDIT: `wipeGate` was consumed at exactly TWO seams -- the peer-identity lookup and the
+        // binding authority -- while EVERY ACK ROAD was built DIRECTLY OVER `SqliteAckStore`. **A GATE THAT COVERETH
+        // TWO ROADS OUT OF SIX IS NOT A PRIVILEGE BOUNDARY**, and these are not peripheral roads: they are where a
+        // RELAY's frames are admitted and where custody obligations are retired -- so a wipe pending during an ACK
+        // exchange would admit foreign frames into, and retire obligations out of, a store MID-ERASURE.
+        //
+        // ONE DECORATOR COVERS EVERY ACK ROAD AT ONCE, WHICH IS WHY IT NEEDS NO NEW MECHANISM: `AckObligationStore`
+        // is a PROTOCOL, and both the driver and the pump are initialised with THAT PROTOCOL rather than the concrete
+        // store -- so a FUTURE ACK ROAD CANNOT BYPASS THIS WITHOUT DELIBERATELY BYPASSING THE TYPE.
+        let ackStore = WipeGatedAckObligationStore(
+            delegate: SqliteAckStore(engine: messageStore),
+            wipeGate: wipeGate,
+        )
         // (b) the driver signeth through the PRODUCTION signer over the pinned identity -- the seam's seed road
         //     is refused BY CONSTRUCTION there, which is the repair of rounds 215/216;
         let ackDriver = AckObligationDriver(store: ackStore,
@@ -206,7 +225,31 @@ public final class MeshRuntime {
             authenticator: ackAuth,
             pairedStore: ackStore,
             commitInbound: { frame, receivedFrom, localRecipient, generation, lifetime, receivedAt, fault in
-                try messageStore.commitInboundWithObligationAtWithFault(
+                // *** GS-FINAL-003 (round 572): THE ROAD AROUND THE TYPE, CLOSED. ***
+                //
+                // *** A REVIEW FOUND THIS AND WAS RIGHT: GATING THE `AckObligationStore` PROTOCOL DOES NOT COVER THIS
+                // CLOSURE. *** `RecipientInboxRepository` is handed `commitInbound` as a SECOND, PARALLEL WRITE ROAD
+                // straight to `messageStore` -- and `commitInboundWithObligationAtWithFault` CREATES THE PENDING ACK
+                // OBLIGATION AND THE HELD ROW. MEASURED: `wipeGate`/`allowsSensitive` appear NOWHERE in
+                // `MessageStore.swift`, so THE ACTUAL WRITE PATH HAD NO GATE IN IT AT ALL -- the gated protocol
+                // covereth the reads and the retires while the COMMIT went under them.
+                //
+                // AND MY OWN COMMENT ABOVE WAS THEREFORE FALSE: *"a FUTURE ACK ROAD CANNOT BYPASS THIS WITHOUT
+                // DELIBERATELY BYPASSING THE TYPE"* -- **THE INJECTED CLOSURE IS PRECISELY A ROAD AROUND THE TYPE, AND
+                // IT WAS ALREADY IN USE.** A decorator gates an INTERFACE; an injected closure is not that interface.
+                //
+                // THE AUTHORITY IS THE SAME ONE THE DECORATORS USE -- `wipeGateBox.authority?.allowsSensitiveApi()`,
+                // READ PER CALL, ONE `CrashResumableWipe` OBJECT, FAIL-CLOSED ON NIL. **A SECOND, HAND-BUILT GATE
+                // WOULD DIVERGE FROM WHAT THE DECORATORS ENFORCE, AND "A WIPE IS PENDING" MUST NOT MEAN TWO DIFFERENT
+                // THINGS IN TWO PLACES.**
+                //
+                // AND THE REFUSAL IS THE TYPED ONE THE CALLER ALREADY HANDLETH (`.storageFailure` -> a storage
+                // refusal), never a plausible-looking success: an inbox that reported "committed" during a wipe would
+                // be a lie that looks like a state.
+                guard wipeGateBox.authority?.allowsSensitiveApi() ?? false else {
+                    return .storageFailure
+                }
+                return try messageStore.commitInboundWithObligationAtWithFault(
                     frame, receivedFrom: receivedFrom, localRecipientNodeId: localRecipient,
                     identityGeneration: generation, obligationLifetimeMs: lifetime,
                     // THE FAULT ROAD IS ADAPTED, NOT DROPPED: the repository carrieth a `(String)` fault and the
