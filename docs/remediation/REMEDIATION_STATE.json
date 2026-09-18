@@ -13920,6 +13920,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-006/round731-key-dominance-guard.log",
    "sha256": "c630e9c458677ab72eb37116cbb1f4b3e73a60702f06839a91508576963b0bb7",
    "correction": "THE DOMINATED KEY: the missing behavioural arm CANNOT exist -- measured, not argued. I wrote one, it passed, and it STAYED GREEN with the key removed. The key recreates the list state but a cross-document open forces the top via scrollToItem(0), so there is NO observable window, and the absence of that window IS the property. Deleted the arm; wrote a comment-stripped PRESENCE guard that also requires the key to wrap rememberLazyListState(). Guard reddens on removal."
+  },
+  {
+   "round": 733,
+   "finding": "GS-CTRL-002",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/round733-stale-rods-census.log",
+   "sha256": "f1c872f14e0909083e889929d60dd37945e175efd9ef7f722a92f5b2917509ae",
+   "correction": "TWENTY-ONE RODS CANNOT MUTATE ANYTHING. Precedent from this session: the R18 selftest mutation replaced a string that no longer existed, so it was a no-op. **I SWEPT THE WHOLE HARNESS FOR THE CLASS** -- computing `file.count(find)` for all 432 rods -- and **21 have an anchor count that is NOT 1 (eighteen are ZERO, three are 2).** *A zero means the `find` string is GONE and the rod can mutate nothing; a 2 means the runner cannot tell which occurrence it changed, which it also refuses.* Twelve of the twenty-one are on the iOS isle and the release controls -- the two surfaces edited hardest, which is where an anchor goes stale unremarked. **AND THE GUARD IS ALREADY IN PLACE, MEASURED RATHER THAN HOPED:** `anchor_count != 1` -> SKIPPED, and SKIPPED is a HARD FAILURE (`bad = [... SKIPPED, INVALID, TIMEOUT ...]; if bad: return 1`). *So `str.replace` returning the string unchanged -- which would have let a rod read ESCAPED, a FALSE FINDING -- is precisely what the guard prevents, and it stands BEFORE the write.* **THE HONEST FINDING IS THE OTHER HALF: the 21 rods are STALE ON DISK, and a stale rod covert nothing while occupying the place where a live one would stand -- so the semantic lineage's coverage on those 21 surfaces is ZERO until the anchors are repointed.** *** AND ALL 21 WERE REPOINTED: every one was stale because the SURROUNDING CODE MOVED, not because the semantics changed -- a renamed receiver (`client` -> `activeClient`), a returned result, a renamed accumulator (`count` -> `handed`), an added sibling case, a moved loop. MEASURED AFTER: rods whose anchor count is NOT exactly 1 = ZERO (was 21). *** **AND THE HARNESS' OWN SELFTEST ALREADY NAMED THIS CLASS -- \"the anchor count left unchecked (a missing anchor (the needle moved): SKIPPED -> ESCAPED)\" and \"only KILLED counteth\" -- WHICH IS WHY THE DEFECT NEVER SHIPPED AS A FALSE FINDING.** *So the instrument was right and the rods were stale: the inversion of the usual finding, where the CONTROL caught the CONFIGURATION.*"
   }
  ],
  "phase_one": {
@@ -14756,7 +14763,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "d07987e9fcd1854841f2f5d84851a46b7d7b1ad5",
+  "candidate_sha": "1bf4620cc230b173c29ec0c4a2f5093e2a1e30e8",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
