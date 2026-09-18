@@ -179,3 +179,119 @@ ENGINE AND IS LANDED (round 605)**, so this gate blocketh three clauses of that 
 
 **WHAT THIS BLOCK IS NOT:** not acquisition, not an approval, not a status change, and not evidence that any gate may
 close. **ACQUISITION CLOSES NOTHING**, and no self-generated fixture may substitute for an approval.
+
+---
+
+# ROUND 621 — THE FIVE CARDS COMPLETED WITH THE AUDIT'S OWN ACCEPTANCE FIELDS
+
+Written because `godstone-audit/reports/13_external_gate_test_book.md` sayeth of itself that it is *"a procedure to
+execute"* and carrieth **per-gate acceptance fields this document did not**: an OBJECTIVE, an explicit WHY-EXTERNAL, a
+PROCEDURE, an EXPECTED, a FAILURE list, a RETAIN list, RELATED findings and a PERMITTED TRANSITION. **THE AUDIT ALSO
+NAMED THIS AS AN OPEN ITEM (`NEXT_EXECUTION.md` step 7: *"Complete the five external acceptance cards"*).** Every field
+below is COPIED FROM THE AUDIT'S BOOK OR THE REPOSITORY'S OWN ARTIFACTS, and where a field is unavailable the document
+sayeth so rather than inventing a threshold. **THE BOOK'S OWN RULE IS REPEATED HERE BECAUSE IT IS THE ONE THAT MATTERS:
+*"This test book is executable preparation guidance; where the original acceptance card or harness is unavailable, that
+missing prerequisite is explicit rather than replaced by an invented acceptance threshold."***
+
+## THE RETAIN CONTRACT, IDENTICAL FOR ALL FIVE (the book's own list, verbatim in substance)
+
+Per-run evidence directory carrying: candidate and source tree IDs; exact profile; toolchain/device/OS identity;
+artifact hashes; commands; test-case identifiers; stdout/stderr; structured outcomes; screenshots/video where relevant;
+and an independent review result. **Synthetic private data only.** `gate-<NAME>/results.json` are PROPOSED OUTPUT
+FILENAMES, NOT FILES CLAIMED TO EXIST.
+
+## A06 — independent contract vectors
+
+| | |
+|---|---|
+| **Objective** | Establish the exact A06 independent-vector acceptance, **not agreement between two implementations sharing fixtures**. |
+| **Why external** | The independent approved vector source/approval is not available here; **the original acceptance text was not recovered.** The vector runner and negative corpus are internal deliverables. |
+| **Prerequisites** | Recover the original A06 card; identify vector authority, algorithm/protocol/version, approved digests, required platforms, all acceptance cases; repair the relevant internal paths first. **Do not guess which fields or units A06 covers from its name.** |
+| **Procedure** | Record approved vector provenance; run the same fixed bytes through each REAL implementation entry, not a helper created for the test; compare canonical output and exact rejection behaviour; substitute one unapproved/tampered vector and one semantic implementation mutant; rerun unmutated. Establish independence of expected outputs from the builder's implementation. |
+| **Expected** | Every specified positive/negative vector has its required outcome **on both platforms**, and the mutant is caught. |
+| **Failure** | Unapproved vectors, regenerated expected values, a skipped case, a helper-only path, mismatch, or unrecorded execution. |
+| **Related** | CRYPTO/ACK/SOS and parity requirements as assigned by the original card. |
+| **Permitted transition** | **A06 alone** may become satisfied after independent acceptance; **no other gate or original finding closes automatically.** |
+| **Closure evidence today** | `None` — NONE. This work never writes one. |
+
+## APPROVED_CONTENT — exact approved archive publication
+
+| | |
+|---|---|
+| **Objective** | Prove the release uses the approved content/manifest/receipts **as one coherent generation**. |
+| **Why external** | Human/content approval and its signing authority are owner-supplied; staging, trust selection and atomic publication must be engineered internally. |
+| **Prerequisites** | Original approval policy; approved exact chunk/archive identities; signer trust roots; fixed internal content/availability paths; the final shipping build. |
+| **Procedure** | Verify approval signatures and exact byte digests; install the release archive; open non-default documents/search hits through the SHIPPING reader; replace one chunk, receipt or manifest independently; interrupt publication between each step and restart; concurrently stage two different approved generations and verify no mixed result is accepted. |
+| **Expected** | **Only a complete approved generation becomes readable**; tampering and stale approvals are rejected **without partial publication**. |
+| **Failure** | Self-nominated signer accepted; unknown status shown Ready; mismatched archive/receipt; stale generation; silent empty success. |
+| **Related** | GS-ARCHIVE-001/002/005, GS-CONTENT-001/002/003, **GS-FINAL-006/007/008**. |
+| **Permitted transition** | Content gate only after the exact final profile passes; **internal findings still require independent closure.** |
+| **Closure evidence today** | `None` — NONE. |
+
+## NATIVE_MODELS — approved model identity and real loading
+
+| | |
+|---|---|
+| **Objective** | Prove approved model/native components are authentic, compatible, bounded, and included only in the intended profile. |
+| **Why external** | Approved model bytes, the required native artifact, and the real memory/performance environment may be unavailable. Provenance checks, loader failure handling and isolation are internal. |
+| **Prerequisites** | Approved artifact/source/licence identity, digests and model format; exact supported ABI/device matrix; **recovered task acceptance thresholds**; a testable loader. |
+| **Procedure** | Load the exact approved bytes via the real application/lab entry appropriate to the profile; capture initialization/result identity, memory and cancellation behaviour; test truncated/corrupt/substituted model and mismatched runtime format; interrupt loading and restart; **inspect the LIGHT payload to ensure excluded native models remain absent.** |
+| **Expected** | Identity matches approval; invalid inputs fail safely; cancellation releases owned resources; **thresholds from the original card are met.** |
+| **Failure** | Fabricated provenance; silent fallback to another model; unsupported ABI; leaked allocation; unbounded load; missing threshold evidence. |
+| **Related** | GS-MODEL-001, package/supply findings, **and — newly identified — `GS-FINAL-004` clauses (a)(b)(c)**, because no production `EncryptedStoreEngine` exists and the SQLCipher binding IS this gate's artifact. |
+| **Permitted transition** | **Native-model gate only. NO THRESHOLD IS INVENTED IN THIS AUDIT; missing acceptance thresholds block the gate.** |
+| **Closure evidence today** | `None` — NONE. |
+
+*(The repository's own measured dependency, restated: `swift build --package-path ios/Godstone` fails at
+`LlamaBridge.mm:3:10: fatal error: 'llama.h' file not found`, and `third_party/llama.cpp` does not exist. **The
+programme may not vendor, stub or synthesize `llama.cpp` to make its own app build**, exactly as it may not manufacture
+an approval.)*
+
+## HARDWARE — real transport, lifecycle and resource behaviour
+
+| | |
+|---|---|
+| **Objective** | Validate the actual bounded authenticated runtime and its OS lifecycle **on supported physical devices**. |
+| **Why external** | Real radios, OS behaviour and resource measurements **cannot be inferred from a host fake.** The runtime road, OS-facade injection, guard mutant and stress driver are internal prerequisites. |
+| **Prerequisites** | All internal wipe/store/runtime defects fixed; a non-shipping instrumented profile with controlled activation and production state machines; shipping readiness flags unchanged; at least the supported Android/iOS pairing matrix; exact accepted packet/latency/resource criteria; real ownership telemetry. **Do not attempt the message path on a binary intentionally unable to activate it and then relabel the empty run a pass.** |
+| **Procedure** | Connect real devices; discovery, GATT-bound identity, D2/key confirmation, authenticated receive, durable inbox/ACK commit, physical ACK return, recipient-verified delivery; each direction and duplicate/interrupted delivery; toggle radio/permission and foreground/background; stop/restart with work pending; **run the required 10000 real lifecycle cycles**, returning to a demonstrably drained runtime after each accepted cycle; inject OS-facade failures at defined boundaries and execute the real resource-guard mutant in the instrumented profile. |
+| **Expected** | No delivery reported before its defined durable/authenticated milestone; old relations cannot affect replacements; bounded resources return to accepted baseline; every cycle's actual transitions are recorded; the guard mutant causes the specified named failure. |
+| **Failure** | Simulated cycle counter; missing drain; stale callback; unbounded growth; substituted helper path; absent mutation confirmation; unauthenticated success; skipped device pairing. |
+| **Related** | runtime, Android/iOS transport/lifecycle, stress, ACK, SOS, and **`GS-FINAL-006`'s Robolectric half is NOT this gate** — *Robolectric rendereth the composition but is not a device*, the audit's own distinction. |
+| **Permitted transition** | Hardware gate only after its own acceptance on the declared matrix. |
+| **Closure evidence today** | `None` — NONE. |
+
+## SIGNING — exact release identity and packaged surface
+
+| | |
+|---|---|
+| **Objective** | Establish final signed distribution identity, entitlements/permissions and profile isolation. |
+| **Why external** | Owner signing authority and the intended distribution environment are not available. Build configuration and package inspectors remain internal engineering. |
+| **Prerequisites** | Exact approved signing identity/provisioning; bundle/application IDs from the real project; intended platform/profile; clean final artifacts. |
+| **Procedure** | Build/archive with the approved configuration; **inspect ALL nested executable identities and native platform/ABI slices**; compare effective signed entitlements and Android permissions to a versioned allowlist; verify no lab/native/model payload prohibited for LIGHT; install and launch the exact signed artifact and repeat critical smoke/regression gates. |
+| **Expected** | Valid intended signature and platform; exact policy-conforming entitlements/permissions/payload; **successful install/launch of that same artifact.** |
+| **Failure** | Debug or wrong signer; unapproved entitlement; wrong platform slice; lab inclusion; a different tested artifact; missing nested verification. |
+| **Read-only verification commands** (the book's own, for a Mac / the pinned SDK — **these alone do not validate the complete package policy**) | `codesign --verify --strict --verbose=4 "$APP_PATH"` ; `codesign -d --entitlements :- "$APP_PATH"` ; `apksigner verify --verbose --print-certs "$APK_PATH"` |
+| **Related** | GS-PACKAGE-001/002, GS-LAB-001, GS-SUPPLY-001. |
+| **Permitted transition** | Signing gate only after its own acceptance; **acquisition of credentials is not a pass.** `ci/check_release_surface.py` PASSES today and is an INTERNAL control, not this gate. |
+| **Closure evidence today** | `None` — NONE. |
+
+## THE TWO SUPPLEMENTAL ACCEPTANCES THE BOOK NAMES, AND WHERE THEY STAND
+
+* **Native-store acceptance — `GS-STORE-001/002`:** *"After repairing connection ownership, use the exact pinned
+  SQLCipher engine on every supported platform... Inspect the actual linked native artifact, not a Boolean
+  classifier."* **THE CONNECTION-OWNERSHIP REPAIR IS EXACTLY `GS-FINAL-004`'s CLAUSES (a)(b)(c), WHICH ARE BLOCKED ON
+  THIS GATE** — measured this round: no production `EncryptedStoreEngine` exists. *"A pass may satisfy the native-engine
+  evidence portion of the store findings, not fresh-wipe composition or all five readiness gates."*
+* **UI/protection acceptance — `GS-UX-001` / `GS-ARCHIVE-005`:** *"Create and execute real UI targets internally
+  first."* **THE ANDROID UI TARGET NOW EXISTS AND REALLY RENDERS, LAYS OUT AND SCROLLS under Robolectric** (round 564),
+  which is the internal half this sentence asks for. On Android the physical half includes **reboot before first unlock
+  when applicable — do not equate ordinary relock with Direct Boot**; on iOS validate the configured protection class
+  and actual app lifecycle/availability notifications **under device conditions**, and note the iOS App layer cannot be
+  compiled here at all. *"These tests close only their applicable acceptance layers."*
+
+## WHAT THIS ROUND IS NOT
+
+Not acquisition, not an approval, not a status transition, not evidence that any gate may close, and not an invented
+threshold. **NO EXTERNAL PARTY HAS BEEN CONTACTED and NO ARTIFACT HAS BEEN RECEIVED.** The readiness flags remain
+**FALSE**. **ACQUISITION CLOSES NOTHING.**
