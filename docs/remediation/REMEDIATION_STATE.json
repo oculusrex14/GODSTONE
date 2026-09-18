@@ -13776,7 +13776,28 @@
     "root_cause": "Persisting only identities was correct, but the restore/back path treats intentionally absent payload as a completed empty payload.",
     "exact_remediation": "Represent restored return routes as unloaded identities, not fully loaded Scene values with empty arrays. In back, detect unloaded search, publish Loading and rerun the saved searchedQuery under a fresh generation before rendering results. Preserve current editable query separately where necessary. Keep the empty-result state exclusive to a successful completed query.",
     "regression_test": "Use a reader returning two hits for a saved query, snapshot a document opened from it, reconstruct and Back; two hits must reappear and NoResults must never precede an executed zero-hit query.",
-    "my_status": "OPEN"
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 553 (this commit) -- Scene.isUnloaded; back() re-executes an unloaded search route",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-007/round553-RED-GREEN-MUTATION.log",
+      "sha256": "f42acf6aead3fa47ec7f405a474bd3c2d43a58c0c28d5c1294a2763ee552fb9e",
+      "what": "The defect, the RED, the repair and the causal mutation.",
+      "outcome": "RED: phase noResults, passages 0, searches 1->1. MUTATION: two defect arms FAILED while both controls stayed green. GREEN: 4/4."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-007/round553-ios-lane.log",
+      "sha256": "0ac91a14677b18f01554673f447fef0ed5be104b750752d9aff4174bccebd50e",
+      "what": "The full iOS lane after the repair.",
+      "outcome": "LabMesh 5/0, GodstoneMesh 1201/0, GodstoneCore 93/0 -- 1299 tests, 0 failures, rc 0."
+     }
+    ],
+    "my_red_case": "BEHAVIOURAL RED TAKEN BEFORE THE EDIT: `backFromRestoredDocumentDoesNotRenderNoResults` failed with `phase: noResults, passages: 0` and `Searches before back(): 1; after: 1` -- THE SECOND NUMBER IS THE PROOF THE QUERY WAS NEVER RE-EXECUTED. Two controls passed and were kept: a genuinely empty search must STILL report NoResults, and the journey must terminate on a second Back.",
+    "pending_proof": [
+     "NO RENDERED-SCREEN WITNESS. The arms drive the scene (the state owner); they do not exercise SwiftUI. Whether `ArchiveView` renders the Loading phase correctly during the re-run is the same UI-target gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7 -- no XCUIApplication target exists.",
+     "THE SCOPE OF `isUnloaded` IS DELIBERATELY NARROW: only `.search` routes are marked unloaded by `restore`, because only a search carries a query that can be RE-RUN. An unloaded `.documents` route already had its own reload road, and an unloaded `.document` route has nothing to re-run (a document is opened from the list).",
+     "AND THE FIRST DRAFT OF THE CONTROLS WAS WRONG AND IS RECORDED: the genuinely-empty arm shared ONE answer for every search, so the re-run returned the same two hits and the arm failed for a rig reason, not a code reason. The rig now returns a QUEUE of answers -- two for the initial search, none for the re-run -- because a single fixed answer could not distinguish 'the re-run found nothing' from 'the re-run never happened', WHICH IS THE ARM'S SUBJECT."
+    ]
    },
    "GS-FINAL-008": {
     "severity": "Medium",

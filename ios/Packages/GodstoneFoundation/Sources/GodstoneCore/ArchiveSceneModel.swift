@@ -91,6 +91,14 @@ private struct Scene {
     let openedDocumentId: Int64?
     let openedTitle: String?
     let openedSource: ArchiveSourceMetadata?
+    /// *** GS-FINAL-007: WHETHER THIS ROUTE'S PAYLOAD WAS EVER LOADED. ***
+    ///
+    /// A route stashed from a LIVE screen carrieth what that screen actually held, so it is loaded and `back()`
+    /// restores it untouched. A route rebuilt by `restore(from:)` carrieth ONLY IDENTITIES -- the mode and the
+    /// queries -- and its empty arrays mean "not fetched yet", NOT "the archive returned nothing". WITHOUT THIS BIT
+    /// THOSE TWO STATES ARE INDISTINGUISHABLE, AND `back()` CHOSE THE WRONG ONE: it read an unloaded search as a
+    /// completed empty search and told the reader "no results" for a query it never ran.
+    var isUnloaded: Bool = false
 }
 
 /// The journey's state owner. @MainActor, as the sealed reader model: the
@@ -265,10 +273,34 @@ public final class ArchiveSceneModel: ObservableObject {
             openedDocumentId = scene.openedDocumentId
             openedTitle = scene.openedTitle
             openedSource = scene.openedSource
-            phase = (scene.mode == .search && (scene.searchedQuery != nil) && scene.passages.isEmpty)
-                ? .noResults : .ready
             error = nil
             canRetry = false
+            // *** GS-FINAL-007 (the independent audit, 2026-09-18): AN UNLOADED ROUTE IS RE-EXECUTED, NOT RENDERED. ***
+            //
+            // THE AUDIT'S MEASUREMENT: *"back publishes that empty scene as NoResults and only triggers reload for an
+            // empty documents-mode scene, not the restored search."* THE CONSEQUENCE: open a hit, let the process be
+            // recreated, press Back -- and the reader is told there are NO RESULTS for a query that was never re-run.
+            //
+            // THE OLD EXPRESSION COULD NOT TELL THE TWO STATES APART, because BOTH were "empty passages":
+            //   * a search that RAN and found nothing  -> `NoResults` is the honest verdict;
+            //   * a search that was never RE-RUN       -> `NoResults` is a FABRICATED verdict about the archive.
+            // `scene.isUnloaded` is the bit that distinguishes them, and the audit's remedy governeth the road:
+            // *"publish Loading and rerun the saved searchedQuery under a fresh generation before rendering results."*
+            if scene.isUnloaded {
+                phase = .loading
+                if scene.mode == .search, let saved = scene.searchedQuery, !saved.isEmpty {
+                    query = saved
+                    Task { await self.search() }
+                } else if scene.mode == .documents {
+                    Task { await self.loadDocuments() }
+                } else {
+                    // AN UNLOADED DOCUMENT ROUTE HAS NOTHING TO RE-RUN; a document is opened from the list.
+                    phase = .ready
+                }
+                return
+            }
+            phase = (scene.mode == .search && (scene.searchedQuery != nil) && scene.passages.isEmpty)
+                ? .noResults : .ready
             if scene.mode == .documents && scene.documents.isEmpty {
                 Task { await self.loadDocuments() }
             }
@@ -368,6 +400,22 @@ public final class ArchiveSceneModel: ObservableObject {
         // that carrieth no return scene (one written before this revision, or a browse that never opened a
         // document) falleth back to the DOCUMENTS scene, which is the honest default rather than a guess: an
         // absent back-destination is the list.
+        //
+        // *** GS-FINAL-007 (the independent audit, 2026-09-18): A RESTORED SEARCH ROUTE IS AN UNLOADED IDENTITY. ***
+        //
+        // THE AUDIT'S MEASUREMENT: *"restore creates a search returnScene with empty passages. back publishes that
+        // empty scene as NoResults and only triggers reload for an empty documents-mode scene, not the restored
+        // search."* AND ITS ROOT CAUSE: *"the restore/back path treats intentionally absent payload as a completed
+        // empty payload."*
+        //
+        // WHAT THAT DOES TO A READER, WHICH IS WHY IT IS A DEFECT AND NOT A MODELLING NICETY: open a hit, have the
+        // process recreated, press Back -- **AND THEY ARE TOLD THERE ARE NO RESULTS FOR A QUERY THAT WAS NEVER
+        // RE-RUN**, on an archive that would have returned them.
+        //
+        // SO THE RETURN ROUTE KEEPS THE IDENTITY IT NEEDS TO RE-RUN AND CARRIES NO PAYLOAD IT DID NOT EARN: the mode,
+        // the query and the searched query stand, and `passages`/`documents` stay EMPTY-AS-UNLOADED. `back()`
+        // below RE-EXECUTES it. The audit's remedy, in its own words: "Represent restored return routes as unloaded
+        // identities, not fully loaded Scene values with empty arrays."
         if let returnModeName = handle["returnMode"] as? String,
            let returnMode = ArchiveSceneMode(rawValue: returnModeName) {
             returnScene = Scene(mode: returnMode,
@@ -376,11 +424,15 @@ public final class ArchiveSceneModel: ObservableObject {
                                 documents: [], passages: [],
                                 openedDocumentId: handle["returnOpenedDocumentId"] as? Int64,
                                 openedTitle: handle["returnOpenedTitle"] as? String,
-                                openedSource: nil)
+                                openedSource: nil,
+                                // *** THE ONE BIT THAT DISTINGUISHES "NOT LOADED" FROM "LOADED AND EMPTY". ***
+                                // A restored route is UNLOADED, so `back()` must re-run it rather than render it.
+                                isUnloaded: returnMode == .search)
         } else {
             returnScene = Scene(mode: .documents, query: query, searchedQuery: searchedQuery,
                                 documents: [], passages: [],
-                                openedDocumentId: nil, openedTitle: nil, openedSource: nil)
+                                openedDocumentId: nil, openedTitle: nil, openedSource: nil,
+                                isUnloaded: false)
         }
         phase = .loading
         error = nil
