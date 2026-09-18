@@ -13505,6 +13505,11 @@
    "round": 591,
    "finding": "PHASE-5-EXIT",
    "correction": "BUILT `ci/check_lane_results.py`, THE CONTROL THE PHASE-5 EXIT CLAUSE IMPLIES (\"no accidental green after a patch abort, skipped test or wrong generated mirror\"). IT REFUSES: a lane with no result files; `tests=\"0\"` (the shape a broken build, a truncated generated mirror AND a wrong filter all produce); any skipped/failed/errored arm, NAMED; and it parses attributes in any order with a SELF-CLOSING-TOLERANT testcase pattern (the round-568 parser bug). ITS SELFTEST CARRIES FOUR ADVERSARIAL MUTATIONS (4/4 caught), AND THE SELFTEST IS ITSELF MUTATION-PROVEN: replacing the tolerant pattern with the naive one yields 3/4, with the ATTRIBUTION arm falling -- so the control catches a regression in its own parser."
+  },
+  {
+   "round": 592,
+   "finding": "PHASE-7-EXIT",
+   "correction": "THE MEMBERSHIP CLAUSE (\"no required test omitted by target configuration\") IS NOW MEASURED AND MUTATION-PROVEN: `ci/check_lane_results.py` asserteth that every canonical file under `ios/Godstone/{Sources,Tests}` is mirrored into the GENERATED `ios/Packages/GodstoneFoundation/` tree and that no generated file is orphaned. ALL FIVE PAIRS ARE EXACT (23/84/7/79/1). MUTATION: removing ONE mirrored test names the omission exactly (`ReadinessT30Tests.swift`) rather than merely moving a count. **THE OTHER FOUR PHASE 7 EXIT CLAUSES ARE NOT CLAIMED**: a from-scratch reproducible candidate at one SHA, the exact profile manifest, a payload-level binary audit, and the pinned-version advisory review each remain OWED."
   }
  ],
  "phase_one": {
@@ -14253,7 +14258,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "1909f578eee85845ed12bd261e9dd453e4d376a5",
+  "candidate_sha": "a522020140164b58a1782019a67ea4532684620e",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",

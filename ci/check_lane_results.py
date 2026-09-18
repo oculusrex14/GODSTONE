@@ -176,6 +176,46 @@ def selftest() -> int:
     return 1 if failures else 0
 
 
+# ================================================================================================
+# *** PHASE 7 EXIT: "NO REQUIRED TEST OMITTED BY TARGET CONFIGURATION". ***
+#
+# `ios/Godstone/` is CANONICAL and `ios/Packages/GodstoneFoundation/` is a GENERATED MIRROR (the sync
+# script rmtree's and recopies it). **A FILE PRESENT IN ONE AND ABSENT FROM THE OTHER IS EXACTLY THE
+# "WRONG GENERATED MIRROR" THIS SESSION PAID THREE ROUNDS FOR** -- so membership is asserted here rather
+# than assumed, and the drift check is run rather than trusted.
+# ================================================================================================
+
+MIRROR_PAIRS = [
+    ("ios/Godstone/Sources/GodstoneCore", "ios/Packages/GodstoneFoundation/Sources/GodstoneCore"),
+    ("ios/Godstone/Sources/GodstoneMesh", "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh"),
+    ("ios/Godstone/Tests/GodstoneCoreTests", "ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests"),
+    ("ios/Godstone/Tests/GodstoneMeshTests", "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests"),
+    ("ios/Godstone/Tests/LabMeshTests", "ios/Packages/GodstoneFoundation/Tests/LabMeshTests"),
+]
+
+
+def check_mirror_membership() -> list[str]:
+    problems: list[str] = []
+    for canonical, mirror in MIRROR_PAIRS:
+        c_path, m_path = REPO / canonical, REPO / mirror
+        if not c_path.is_dir():
+            problems.append(f"mirror: canonical {canonical} is absent -- the rig this control assumes has moved")
+            continue
+        if not m_path.is_dir():
+            problems.append(f"mirror: generated {mirror} is absent -- the mirror was not synced")
+            continue
+        c = {p.name for p in c_path.glob("*.swift")}
+        m = {p.name for p in m_path.glob("*.swift")}
+        missing, extra = sorted(c - m), sorted(m - c)
+        if missing:
+            problems.append(f"mirror: {len(missing)} file(s) present in {canonical} but ABSENT from the generated "
+                            f"mirror (a test omitted by target configuration): {missing[:4]}")
+        if extra:
+            problems.append(f"mirror: {len(extra)} file(s) in {mirror} with NO canonical source (a stale generated "
+                            f"file): {extra[:4]}")
+    return problems
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--selftest", action="store_true")
@@ -209,6 +249,16 @@ def main() -> int:
         return 1
     print("\nlane results: PASSED (every lane ran, executed at least one test, and carried no "
           "skipped/failed/errored arm)")
+
+    # *** PHASE 7 EXIT: "NO REQUIRED TEST OMITTED BY TARGET CONFIGURATION". ***
+    mirror_problems = check_mirror_membership()
+    if mirror_problems:
+        print("\nMIRROR MEMBERSHIP FAIL:")
+        for mp in mirror_problems:
+            print("  - " + mp)
+        return 1
+    counts = ", ".join(f"{Path(c).name}={len(list((REPO / c).glob('*.swift')))}" for c, _ in MIRROR_PAIRS)
+    print(f"mirror membership: PASSED (every canonical file is mirrored, none orphaned) -- {counts}")
     return 0
 
 
