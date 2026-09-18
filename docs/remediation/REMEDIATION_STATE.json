@@ -13747,6 +13747,12 @@
       "sha256": "873ffbc6df875e765952e0f5be8afdda097652a37e8e013521c0b944fa0a92a4",
       "what": "THE REQUIRED-RUN MANIFEST the audit named as the remaining obligation, plus its mutation proof: neutering the population check must fail R02, and restoring must pass it.",
       "outcome": "manifest PASSED on the real ledger (54 of a declared 54, counts derive from the entries); its 7-arm court OK; the mutation failed R02 and the restore passed it."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-001/round617-the-audits-own-adversarial-arms-pass-against-our-checker.log",
+      "sha256": "b1f5cb3c6116fcac7402f9cc20c23544439ac87e2207d1b443996ce839a3aadf",
+      "what": "The audit's own 6 adversarial digest-contract arms run against our checker, with the audited revision measured beside it.",
+      "outcome": "AGAINST THE AUDITED REVISION: 6 tests, 4 FAILURES -- the four false passes the audit claimed are reproduced exactly. AGAINST OURS: 6 passed. The only edit between the runs is the subject and its identity pin. The four arms: a convergence log with no digest silently omitted; a RED-case digest outside my_logs unexamined; a valid parent log hiding a nested invalid one; --json turning a failing control into success. NOT CLAIMED: adoption of the audit's proposed-repair patch (a disposable proposal, not a landed change)."
      }
     ],
     "my_red_case": "BEHAVIOURAL RED TAKEN BEFORE THE PRODUCTION EDIT. The auditor's own suite (godstone-audit/evidence/test_digest_contract.py, six arms, byte-pinned to the ORIGINAL instrument) reproduced 4 failures against the unmodified candidate: `Ran 6 tests -- FAILED (failures=4)`. Those four arms were moved into the CANONICAL suite as W08-W12 (tools/readiness/tests/test_evidence_digests.py) and run RED FIRST: 5 failures + 1 error against blob f87c0694877b6dd42c4638f2962d11dbe8b4c1a2.",
@@ -14345,7 +14351,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "df932078f833416699221d9a06b54c9bd7726284",
+  "candidate_sha": "99711faa6164acf820f40b8574380f41fd55d824",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
