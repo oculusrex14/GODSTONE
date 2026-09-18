@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import os
 import re
 import sys
@@ -68,6 +69,14 @@ LANES = [
 # *so a run that died before the suites finish -- which prints errors and NO such line -- is REFUSED rather than
 # silently passing.*
 IOS_LOG = REPO / "ios-lane.log"
+
+#: The trees whose bytes the iOS lane compiles. **A SOURCE NEWER THAN THE LOG IS A SOURCE THE LOG NEVER SAW.**
+IOS_SOURCE_TREES = (
+    "ios/Godstone/Sources",
+    "ios/Godstone/Tests",
+    "ios/Packages/GodstoneFoundation/Sources",
+    "ios/Packages/GodstoneFoundation/Tests",
+)
 IOS_SUITE = re.compile(r"^Test Suite '(\w+)\.xctest' passed", re.M)
 IOS_TOTAL = re.compile(r"^\s*Executed (\d+) tests?, with (\d+) failures? \(\d+ unexpected\)", re.M)
 
@@ -120,6 +129,35 @@ def check_ios_lane() -> tuple[list[str], dict]:
             problems.append(f"the iOS lane carrieth a failing count: {name} tests, {n} failures")
     if re.search(r"^.*error: ", text, re.M):
         problems.append("the iOS lane log carrieth `error:` lines")
+
+    # *** AND THE LOG MUST BE FRESHER THAN THE SOURCE IT CLAIMS TO HAVE TESTED (round 697). ***
+    #
+    # **MEASURED, THIS WAS THE SAME "GREEN ON STALE EVIDENCE" CLASS THE LANE CONTROL WAS BUILT TO PREVENT: a log dated
+    # 2020 PASSED**, because nothing bound it to the tree. *The three Android lanes read `build/test-results/`, which a
+    # `--rerun-tasks` build REPLACES, so they carry their own recency -- but the iOS log is a file that persisteth
+    # across edits.*
+    #
+    # **THE BINDING IS A CONTENT DIGEST OF THE SOURCES, NOT THEIR MTIMES.** *MTIME WAS THE FIRST ATTEMPT AND IT IS
+    # NOISY: a `git checkout`, a mirror sync or a `touch` moveth an mtime WITHOUT changing a byte, so it would refuse
+    # a genuinely-current lane -- and a control that reddens spuriously getteth switched off.* **A DIGEST CHANGETH ONLY
+    # WHEN THE BYTES DO**, so it is exactly as strong and far less brittle.
+    #
+    # **THE SIDECAR IS WRITTEN BY THE LANE RUNNER** (`<log>.sources.sha256`), which is the honest place for it: *the
+    # runner KNOWETH which tree it compiled, and the control can only CHECK.* **AN ABSENT SIDECAR IS REFUSED**, because
+    # a log with no provenance is a log nobody can date.
+    sidecar = IOS_LOG.with_suffix(IOS_LOG.suffix + ".sources.sha256")
+    current = _ios_source_digest()
+    if not sidecar.is_file():
+        problems.append(
+            f"the iOS lane log carrieth NO SOURCE DIGEST at {sidecar.name} -- *a log with no provenance cannot be "
+            f"dated, and an undatable log is not evidence about the current tree*")
+    else:
+        recorded = sidecar.read_text(encoding="utf-8").strip()
+        if recorded != current:
+            problems.append(
+                f"the iOS lane log is STALE: its source digest {recorded[:16]}… does not match the tree's "
+                f"{current[:16]}… -- *the log never saw these sources, so it is not evidence about them. Re-run the "
+                f"lane.*")
     return problems, totals
 
 # *** SELF-CLOSING-TOLERANT: a passing case is `<testcase ... />`, and the naive pattern swallows what follows. ***
@@ -306,6 +344,14 @@ def main() -> int:
             f"  {label:<14} files={len(files):<3} tests={total['tests']:<5} skipped={total['skipped']} "
             f"failures={total['failures']} errors={total['errors']}")
         all_problems.extend(probs)
+        # *** AND THE ANDROID LANES ARE BOUND TO THEIR SOURCES TOO (round 697). ***
+        #
+        # **MEASURED: 155 Kotlin sources under `android/mesh/src` were NEWER than that lane's result XML** -- *the
+        # mtimed artifact carrieth no provenance, so a stale result file passeth exactly as an iOS stale log did.*
+        # **`--rerun-tasks` REPLACES the XML on a real run, but nothing ASSERTETH that the replacement happened.**
+        # *So the same digest sidecar the iOS lane carrieth is written for each Android lane by
+        # `tools/readiness/run_android_lanes.sh`, and an absent or divergent digest is REFUSED.*
+        all_problems.extend(_android_source_digest_problems(label))
 
     ios_probs, ios_totals = check_ios_lane()
     summary.append(
@@ -334,6 +380,59 @@ def main() -> int:
     print(f"mirror membership: PASSED (every canonical file is mirrored, none orphaned) -- {counts}")
     return 0
 
+
+
+def _ios_source_digest() -> str:
+    """A digest over every byte the iOS lane compiles -- path-sorted, so it is order-stable."""
+    h = hashlib.sha256()
+    for rel in IOS_SOURCE_TREES:
+        base = REPO / rel
+        if not base.is_dir():
+            continue
+        for f in sorted(base.rglob("*.swift")):
+            if f.name.endswith(".swift") is False:
+                continue
+            h.update(str(f.relative_to(REPO)).encode())
+            h.update(b"\0")
+            h.update(f.read_bytes())
+            h.update(b"\0")
+    return h.hexdigest()
+
+#: The production tree each Android lane compiles. *A source newer than the result file is a source the lane never saw.*
+ANDROID_SOURCE_TREES = {
+    "android:app": ("android/app/src",),
+    "android:core": ("android/core/src",),
+    "android:mesh": ("android/mesh/src",),
+}
+
+
+def _android_source_digest(label: str) -> str:
+    h = hashlib.sha256()
+    for rel in ANDROID_SOURCE_TREES.get(label, ()):
+        base = REPO / rel
+        if not base.is_dir():
+            continue
+        for f in sorted(base.rglob("*.kt")):
+            h.update(str(f.relative_to(REPO)).encode())
+            h.update(b"\0")
+            h.update(f.read_bytes())
+            h.update(b"\0")
+    return h.hexdigest()
+
+
+def _android_source_digest_problems(label: str) -> list[str]:
+    """The lane's result files must have been produced from THESE sources, not from a revision nobody can date."""
+    safe = label.replace(":", "-")
+    sidecar = REPO / f"{safe}.sources.sha256"
+    current = _android_source_digest(label)
+    if not sidecar.is_file():
+        return [f"{label}: no source digest at {sidecar.name} -- *a result with no provenance cannot be dated, and an "
+                f"undatable result is not evidence about the current tree. Run tools/readiness/run_android_lanes.sh.*"]
+    recorded = sidecar.read_text(encoding="utf-8").strip()
+    if recorded != current:
+        return [f"{label}: STALE -- its source digest {recorded[:16]}… does not match the tree's {current[:16]}… -- "
+                f"*the results never saw these sources. Re-run the lane.*"]
+    return []
 
 if __name__ == "__main__":
     sys.exit(main())

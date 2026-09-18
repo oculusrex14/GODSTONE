@@ -108,3 +108,17 @@ mirror membership: PASSED (every canonical file is mirrored, none orphaned) -- G
 # rather than by a grep that could only print failures. *Like the Android lanes' , this is RUN
 # OUTPUT and not source; the control REFUSES WHEN IT IS ABSENT, so an unrun lane is never a pass.*
 ios-lane.log
+
+# *** LANE PROVENANCE SIDECARS (round 697). ***
+# Written by iOS lane: rc=0, log=ios-lane.log, digest=6a9407fee00e8f82… and , and CHECKED by
+# LANE RESULTS (parsed from the result files, not grepped from stdout):
+  android:app    files=11  tests=97    skipped=0 failures=0 errors=0
+  android:core   files=2   tests=21    skipped=0 failures=0 errors=0
+  android:mesh   files=108 tests=1900  skipped=0 failures=0 errors=0
+  ios:foundation suites=2   tests=1336  failures=0  <- per bundle: 1242 tests / 0 failures; 94 tests / 0 failures
+
+FAIL:
+  - the iOS lane carrieth no PASSED line for suite LabMeshTests -- a suite that did not run (or did not pass) is not covered by this control: each bindeth a lane's result artifact to the SOURCE DIGEST it compiled, so a stale
+# result cannot pass as current evidence. *Run output, like the Android lanes'  -- and the
+# control REFUSES WHEN ABSENT, so an unprovenanced result is never a pass.*
+*.sources.sha256
