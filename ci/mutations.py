@@ -1739,10 +1739,26 @@ def _run_harness(entry, wt_path, timeout=2400):
         # unit road is testLightDebugUnitTest; sealed rows name no task and
         # keep the plain one byte-identical
         task = entry.get("test_task", "testDebugUnitTest")
+        # *** PHASE 5 (round 603): THE ANDROID LINEAGE'S INSTRUMENT DEFECT, FOUND BY READING A ROD'S OWN LOG. ***
+        #
+        # EVERY ANDROID ROD RETURNED `INVALID :: the baseline itself did not pass unmutated`, WHICH READS LIKE A CODE
+        # PROBLEM AND IS NOT ONE. **THE LOG SAID IT PLAINLY:**
+        #     "A problem occurred configuring project ':llm'. > SDK location not found. Define a valid SDK location
+        #      with an ANDROID_HOME environment variable ..."
+        # **THIS SUBPROCESS WAS RUN WITH NO `env=`, SO THE DISPOSABLE WORKTREE'S GRADLE INHERITED NOTHING AND COULD NOT
+        # EVEN CONFIGURE** -- the mutant never built, so no rod could ever be KILLED on this isle. The macOS shell
+        # that runs the suite exports `JAVA_HOME`/`ANDROID_HOME`; `subprocess.run` does not see them by DEFAULT.
+        #
+        # AND THE ROOT-CAUSE SHAPE IS THE SAME ONE THIS PROGRAMME KEEPS FINDING: **A TOOL REPORTING "INVALID" IS NOT A
+        # RESULT ABOUT THE CODE, AND READING THE LOG RATHER THAN THE VERDICT IS WHAT SETTLED IT.**
+        _gradle_env = dict(os.environ)
+        _gradle_env.setdefault("JAVA_HOME", "/opt/homebrew/opt/openjdk@17")
+        _gradle_env.setdefault("ANDROID_HOME", os.path.expanduser("~/Library/Android/sdk"))
         proc = subprocess.run(
             ["./gradlew", ":" + module + ":" + task, "--no-daemon", "-q",
              "--tests", entry["gradle_filter"]],
             cwd=os.path.join(wt_path, "android"), capture_output=True, text=True,
+            env=_gradle_env,
             timeout=timeout)
         blob = (proc.stdout or "") + (proc.stderr or "")
         build_exit = 1 if KT_COMPILE_RE.search(blob) else 0

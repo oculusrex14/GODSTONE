@@ -13546,6 +13546,13 @@
    "round": 602,
    "finding": "PHASE-5-ESCAPED-ROD",
    "correction": "THE ONE ESCAPED MUTATION ROD WAS A **MISNAMED WITNESS**, NOT AN UNGUARDED LAW. `T39-RC1-ios-cancel-is-ui-only` mutates the CANCEL road, and SIX CASES DID FAIL UNDER IT (the harness named them: `testCancelOfARelayedCallTellsTheRelayedTruth`, `testCancelVersusQueuedWriter...`) -- **BUT THE ROD DECLARED `witness: testRestartRevealsTheActiveSosFromTheDurableRow`, AN ARM ABOUT THE **DISPATCH** ROAD WHICH A CANCEL MUTATION CANNOT REACH.** That arm stayed green, as it should, and the rod read ESCAPED. **THE DEFECT WAS IN THE ROD, AND IT IS THE SAME SPECIES AS EVERY FINDING THIS PROGRAMME HAS CHASED: A NAME ASSERTING COVERAGE THE MECHANISM DOES NOT PROVIDE.** Corrected to the arm that actually fails, and its `gradle_filter` (which named the ANDROID court for an iOS mutant) replaced by `swift_filter`. **NOT YET CLAIMED: the corrected rod has not been re-run to watch it read KILLED** (the lineage takes ~50 minutes); the direct evidence is the six arms the harness already listed. AND EVERY ANDROID ROD IS `INVALID` on \"the baseline itself did not pass unmutated\" -- an INSTRUMENT problem in that lineage, still OWED."
+  },
+  {
+   "round": 603,
+   "finding": "PHASE-5-ANDROID-LINEAGE",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/PHASE-5/round603-android-lineage-instrument-defect.log",
+   "sha256": "e6efef7b452a4569cab14bef8576986faad54620418913d47a43959540bf81ac",
+   "correction": "EVERY ANDROID MUTATION ROD RETURNED INVALID :: \"the baseline itself did not pass unmutated\", WHICH READS LIKE A BROAD CODE PROBLEM ON THAT ISLE AND IS NOT ONE. THE LOG SAID IT PLAINLY: \"A problem occurred configuring project :llm. > SDK location not found. Define a valid SDK location with an ANDROID_HOME environment variable.\" THE HARNESS RAN ITS GRADLE SUBPROCESS WITH NO env=, SO THE DISPOSABLE WORKTREE INHERITED NOTHING AND COULD NOT CONFIGURE -- THE MUTANT NEVER BUILT, SO NO ANDROID ROD COULD EVER BE KILLED, WHILE THE HARNESS REPORTED A VERDICT ABOUT THE CODE. FIXED: the subprocess now carries JAVA_HOME/ANDROID_HOME (defaulted, so an operator values win). BOTH SIDES PROVEN DIRECTLY WITH AN EMPTY ENVIRONMENT: without them \"BUILD FAILED in 6s\"; with them the same command succeeds. OWED: THE ANDROID LINEAGE HAS STILL NOT BEEN OBSERVED TO KILL A ROD -- the ~50-minute run that would produce ANDROID KILLS has not been read, and the corrected T39 rod is in the same queue."
   }
  ],
  "phase_one": {
@@ -14301,7 +14308,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "a522020140164b58a1782019a67ea4532684620e",
+  "candidate_sha": "72f47f143090db967defb4c43c6daad0edc0f5e6",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14322,24 +14329,6 @@
   "internal_remaining": [
    "GS-ARCHIVE-005: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
    "GS-ARCHIVE-005: no hosted run URL/log was available, so hosted convergence remains pending",
-   "GS-ARCHIVE-005: CLAIM 1, MEASURED: THE iOS `NavigationStack` IS STILL **UNBOUND**. `ios/Godstone/Sources/App/ArchiveView.swift:39` openeth `NavigationStack {` WITH NO `path:` ARGUMENT -- and grepp",
-   "GS-ARCHIVE-005: *** SUPERSEDED AT ROUND 532 -- AND THE SUPERSEDING IS MEASURED, THE CLAIM IS NOT DELETED: *** the entry that stood here (round 523) read *'CLAIM 2, MEASURED: `ArchiveSceneModel` HA",
-   "GS-ARCHIVE-005: *** AND WHY THIS ROUND STOPPED AT THE MEASUREMENT RATHER THAN STARTING THE REPAIR: this finding's `candidate_scope` is **Both**, so it carrieth LIGHT-Archive standing AS WELL AS Me",
-   "GS-ARCHIVE-005: *** ROUND 524: STEPS 1 AND 2's FIRST HALF ARE LANDED AND PROVEN. THE PROVENANCE LINE NOW RENDERETH FROM THE DOCUMENT ACTUALLY ON SCREEN. ***",
-   "GS-ARCHIVE-005: STEP 2's REMAINING CLAUSES ARE NOT CLAIMED: \"Load passages and source metadata for the same captured selected document identity\" -- the PROVENANCE half is done, and the reader alre",
-   "GS-ARCHIVE-005: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
-   "GS-ARCHIVE-005: *** ROUND 525: STEP 4's PRODUCTION CALLER IS LANDED AND PROVEN. *** `snapshot`/`restore` now HAVE a production caller, the record liveth in `@SceneStorage`, and restoration precede",
-   "GS-ARCHIVE-005: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
-   "GS-ARCHIVE-005: *** ROUND 525b: STEP 3 IS LANDED ON THE ANDROID ISLE AND PROVEN BEHAVIOURALLY. *** `SavedStateHandle` is injected into the real Hilt constructor, the place is read there, the first",
-   "GS-ARCHIVE-005: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
-   "GS-ARCHIVE-005: *** ROUND 526: THE ANCHOR CLAUSE OF STEP 3 IS LANDED ON THE ANDROID ISLE AND PROVEN -- by a law arm, by two behavioural arms, and by a negative case in which BOTH courts failed on ",
-   "GS-ARCHIVE-005: *** WHAT REMAINS UNCLAIMED, NAMED: *** step 4's \"bind it to `NavigationStack`\" clause (step 1's second option was taken deliberately, so the stack carrieth no `path:`); and NO REND",
-   "GS-ARCHIVE-005: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
-   "GS-ARCHIVE-005: *** ROUND 536: STEP 1 IS NOW **COMPLETE** -- BOTH OF THE CARD'S OPTIONS ARE TAKEN, AND THE ONE LEFT OWED IS DONE. *** The card offereth two: the SECOND (a destination that publishe",
-   "GS-ARCHIVE-005: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
-   "GS-ARCHIVE-005: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
-   "GS-ARCHIVE-005: *** ROUND 546: STEP 2 IS **FULLY LANDED**, AND THE LEDGER'S OWN CLAIM THAT ITS STALENESS CLAUSE WAS UNWITNESSED WAS STALE -- THE THIRD SUCH CLAIM THIS SPAN, FOUND THE SAME WAY (BY ",
-   "GS-ARCHIVE-005: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
    "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
    "GS-RUNTIME-001: INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
    "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
@@ -14375,17 +14364,13 @@
    "GS-FINAL-003: ANDROID'S STORE-WRITE ROAD IS NOW GATED AND CAUSALLY PROVEN (round 574): `Router.ingest` called `store.persist` directly -- the method that writes the held row -- with NOTHING on t",
    "GS-FINAL-003: TWO FALSE CLAIMS OF MINE WERE CORRECTED THIS ROUND (575), BOTH CAUGHT BY REVIEW. (1) I wrote that the relay refusal uses \"the store's own typed refusal, `PersistResult.FAILED_STORA",
    "GS-FINAL-003: PHASE 1 EXIT, CLAUSE 1 IS **UNMET AND RECORDED AS SUCH** (round 576, measured line by line): \"every blocked/retryable/corrupt recovery produces zero private opens.\" THE MECHANISM, ",
+   "GS-FINAL-003: AN ARM WAS WEARING ANOTHER ARM'S CLAIM, AND A REVIEW PROVED IT (round 593). `CrashStartupResumeTest`'s arm announced itself as *\"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROV",
    "GS-FINAL-004: THE CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. The central defect -- the factory's verified connection is discarded and `SqliteMessageStore(url:)` perfor",
    "GS-FINAL-004: DONE AND EVIDENCED: the archive-only SPLIT. `createArchiveOnlyHostComposition` no longer takes an `encryptedStores` parameter at all, so a composition that cannot be given a key ca",
    "GS-FINAL-006: THE EFFECT-RESTART PREMISE IS REFUTED, VERIFIABLY AND RE-RUNNABLY (round 569). `ProbeEffectKeySemantics` now carries a POSITIVE CONTROL -- an effect keyed on a genuinely changing v"
   ],
   "external_acceptance": [
-   "GS-ARCHIVE-005: NO SIMULATOR OR DEVICE RUN EXISTS for this card's interaction closure, and this environment cannot produce one: the remaining work here is SOURCE-LEVEL routing plus host Swift test",
-   "GS-ARCHIVE-005: NO DEVICE, NO UI AUTOMATION AND NO ACCESSIBILITY ACCEPTANCE: nothing in this round is a rendered-screen result. The card's closure test 1 (\"browse -> open document and search -> op",
-   "GS-ARCHIVE-005: NO DEVICE, NO UI AUTOMATION AND NO ACCESSIBILITY ACCEPTANCE: nothing in this round is a rendered-screen result.",
-   "GS-ARCHIVE-005: NO DEVICE AND NO PROCESS IS TERMINATED: the 'recreation' is a fresh model restored from the record, which is what a process recreation giveth to the object graph -- **BUT NO PROCES",
-   "GS-ARCHIVE-005: *** WHAT REMAINS FOR THIS FINDING IS ONE STEP, AND IT IS THE ONE THE CARD ITSELF FORBIDDETH THIS SPAN FROM COUNTING: STEP 7. *** *'Add app-level tests that kill/recreate the screen",
-   "GS-ARCHIVE-005: NO DEVICE, NO RENDERED SCREEN AND NO PROCESS RESTART: everything above is witnessed at the RECORD, the STATE and the WIRING, with the shipping App target BUILT to prove it compiles",
+   "GS-ARCHIVE-005: STEP 7'S APP-LEVEL ARM NOW EXISTS AND PASSES (round 595), through a real `SavedStateHandle` and the recomposed real screen -- the layer the card explicitly refused to accept a mode",
    "GS-RUNTIME-001: *** SO THIS IS THIS PROGRAMME'S RECURRING SHAPE AGAIN, AND IT IS NAMED AS SUCH: THE ACK ROAD IS COMPLETE AND WITNESSED BY COURTS, AND REACHED BY NO RUNTIME A USER'S MESSAGE TRAVELS",
    "GS-RUNTIME-001: *** WHAT IS STILL OWED IS UNCHANGED AND NAMED: THE ACK ROAD IS COMPLETE AND REACHED BY NO LIVE RUNTIME. *** What is needed is not a repair in the ordinary sense but the **LIVE-TRAN",
    "GS-RUNTIME-001: NO DEVICE EVIDENCE AND NO LIVE RUNTIME: the arms here exercise the graph's SOURCE and the node's own contract on the host; **no radio, no device and no instrumented host is witness",
@@ -14403,6 +14388,7 @@
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO HUMAN ACCESSIBILITY ACCEPTANCE: no text-scale, RTL, VoiceOver or TalkBack result is claimed anywhere.",
    "GS-UX-001: *** WHAT REMAINS, NAMED: *** (i) **the iOS app-side wiring of step 4's four actions** (its models carry the commands; its shipping views do not dispatch them -- and its `ProtectedD",
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO REAL LOCKED-DEVICE READING: the gate is exercised through INJECTED gates in the court, and **THE PLATFORM IMPLEMENTATION THAT READETH A REAL LOCK",
+   "GS-UX-001: THE \"EXERCISE THE RENDERED CONTROLS\" CLAUSE IS NOW MET WITH MUTATION-BACKED EVIDENCE (round 598), and it was UNMET before this session built the UI-test target (round 564: Robolect",
    "GS-FINAL-003: THE WIRED PROVIDER WAS INVERTED, AND THE INVERSION SURVIVED EVERY LANE FOR EIGHTEEN ROUNDS (round 589). `provideWipeIsPending` returneth `read() != PanicWipe.WipeState.IDLE` -- TRU",
    "GS-FINAL-004: THE CORE'S BLOCKER IS NOW STATED CORRECTLY, AND MY EARLIER VERSION OF IT WAS WRONG IN A WAY THAT MATTERED (round 577). I had recorded that \"`EncryptedStoreHandle` cannot carry a co",
    "GS-FINAL-004: REMAINING, AND IT IS THE BULK OF THE FINDING: (a) `EncryptedStoreFactory` must return an OWNED VERIFIED CONNECTION with restricted construction and explicit close ownership; (b) `S",
