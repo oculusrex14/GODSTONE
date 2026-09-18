@@ -2,7 +2,7 @@
 
 **CANDIDATE SHAs — ONE CLEAN EXACT CANDIDATE PER DECLARED SCOPE, AT A CLEAN TREE (`git status --porcelain` = 0):**
 * **Scope A — LIGHT Archive (14 findings): `44100c0`** — *unchanged and NOT reopened by this span; see Scope A below.*
-* **Scope B — Mesh/Oracle (40 findings): `CANDIDATE_SHA_PLACEHOLDER`** — **the exact commit at which the final
+* **Scope B — Mesh/Oracle (40 findings): `3eb1904`** — **the exact commit at which the final
   measurement pass ran, with a clean tree.** Every lane cited in the round sections below was run at, or before, this
   SHA on a tree whose diff to it is only this document and the ledger.
 * **The earlier per-isle anchors remain for the round sections that name them** (`44100c0` Android `:mesh`,
