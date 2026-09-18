@@ -112,6 +112,101 @@ class ReadinessT41Test {
     }
 
     /** One production node: real router, real pump, real tracker, real store. */
+    // ================================================================================
+    // *** GS-RUNTIME-001 (round 579): THE NODE'S OWN ACK TURN, DRIVEN THROUGH THE REAL GRAPH. ***
+    //
+    // THE CARD ASKETH TO "prove receive-commit-sign-schedule-write-retry" through the live runtime; its OBSERVED
+    // text is exact: *"ACK owners are constructed and assigned, including Android `node.ackPump`. Live consumption
+    // through a user-message transport remains unproven."*
+    //
+    // *** AND A REVIEW CORRECTED ME BEFORE I RECORDED THE OPPOSITE. *** I had written that the wall is
+    // unsurmountable, citing `ReadinessT60Test`'s SOURCE-TEXT assertion (`code.contains("node.ackPump = pump")`) and
+    // the claim that `provideMeshNode`'s `Context` requirement meaneth no host test can reach this. **BOTH HALVES
+    // WERE WRONG, AND THIS FILE IS THE DISPROOF: it already builds a real `MeshNode(null, identity, store, tracker)`
+    // -- "One production node: real router, real pump, real tracker, real store."** And a source-text assertion is
+    // exactly what I deleted twice today for measuring nothing: `code.contains(...)` IS SATISFIED BY THAT LINE
+    // SITTING IN A COMMENT, IN A DEAD BRANCH, OR ON AN INSTANCE THE RUNTIME NEVER USES.
+    //
+    // *** WHAT THESE ARMS PROVE, STATED NARROWLY, BECAUSE ONE HALF REMAINS BLOCKED: *** `drainAckWorkOnce`
+    // calleth `ble.send(...)`, and `ble` is `private val ble by lazy { BleTransport(context = ctx!!) }` -- with
+    // `ctx` NULL BY DESIGN here, that field NPEs. **SO SCHEDULING AND THE PUMP-READ HALF ARE DRIVEN FOR REAL, WHILE
+    // THE TRANSPORT SEND REMAINS UNREACHABLE UNTIL `MeshNode` CARRIETH AN INJECTABLE TRANSPORT SEAM.**
+    // ================================================================================
+
+    /**
+     * *** SCHEDULE, DRIVEN FOR REAL: ONLY A RELATION THAT DECLARED ITSELF READY IS SERVED. ***
+     *
+     * The pump schedulleth only what the runtime telleth it, so nothing is guessed -- read from the pump's OWN
+     * schedule rather than from a source line describing it.
+     */
+    @Test
+    fun gsRuntime001_onlyARelationThatDeclaredItselfReadyIsScheduled() {
+        val p = peer("sched", ByteArray(16) { 0x31 })
+        val pump = io.godstone.mesh.delivery.DurableAckPump(
+            p.raw.ackStore,
+            { _: ByteArray, _: ByteArray? -> io.godstone.mesh.delivery.AckAdmissionResult.StorageFailure },
+        )
+        p.node.ackPump = pump
+
+        val relation = ByteArray(16) { 0x41 }
+        Assert.assertFalse(
+            "*** AN UNDECLARED RELATION MUST NOT BE SCHEDULED: nothing is guessed. Observed: " +
+                pump.isScheduled(relation) + " ***",
+            pump.isScheduled(relation),
+        )
+
+        pump.onLinkReady(relation)
+        Assert.assertTrue(
+            "*** ONCE THE RUNTIME DECLARES THE LINK READY, THE RELATION IS SCHEDULED -- the mechanism, read from " +
+                "the pump's own state rather than from a source line. Observed: " + pump.isScheduled(relation) + " ***",
+            pump.isScheduled(relation),
+        )
+
+        pump.onLinkGone(relation)
+        Assert.assertFalse(
+            "*** AND A DEPARTED RELATION IS UNSCHEDULED, SO THE DEADLINE NEVER SERVES IT AGAIN. Observed: " +
+                pump.isScheduled(relation) + " ***",
+            pump.isScheduled(relation),
+        )
+    }
+
+    /**
+     * *** AND THE NODE'S OWN TURN RUNS -- SCHEDULED BY THE NODE, COUNTED BY THE NODE. ***
+     *
+     * `runAckTurnForEveryTrustedRelation` IS the deadline's work. **AN EMPTY SCHEDULE MUST STILL COMPLETE AND COUNT
+     * THE TURN** -- an empty relation set is the ORDINARY idle tick, so a turn that hung or threw there would kill
+     * the worker on its first idle tick.
+     */
+    @Test
+    fun gsRuntime001_theNodesAckTurnCompletesAndCounts() = runTest {
+        val p = peer("turn", ByteArray(16) { 0x32 }, maxBytes = 4L * 1024 * 1024)
+
+        val before = p.node.ackTurnsRunForTest()
+        val handed = p.node.runAckTurnForEveryTrustedRelation(emptyList())
+
+        Assert.assertEquals(
+            "*** THE TURN MUST RUN AND BE COUNTED: an empty schedule is the ordinary idle case. before=" + before +
+                " after=" + p.node.ackTurnsRunForTest() + " handed=" + handed + " ***",
+            before + 1, p.node.ackTurnsRunForTest(),
+        )
+        Assert.assertEquals("and an idle turn handeth nothing", 0, handed)
+    }
+
+    /** *** AND WITH NO PUMP INSTALLED, THE NODE SERVES NOTHING AND SAYETH SO -- A TYPED NULL, NOT A SILENT ZERO. *** */
+    @Test
+    fun gsRuntime001_withNoPumpAssignedTheNodeServesNothing() = runTest {
+        val p = peer("nopump", ByteArray(16) { 0x33 })
+
+        val drained = p.node.drainAckWorkOnce(ByteArray(16) { 0x42 })
+
+        Assert.assertNull(
+            "*** WITH NO PUMP THE NODE MUST SERVE NOTHING. `ackPump ?: return null` is a TYPED NULL -- 'no worker " +
+                "is installed' -- which is DISTINGUISHABLE from 'the worker ran and handed nothing' (0). Observed: " +
+                drained + " ***",
+            drained,
+        )
+    }
+
     private class Peer(val label: String, val id: ByteArray, val node: MeshNode,
                        val raw: InMemoryMessageStore, val store: RefusingStore) {
         val pump: SyncPump get() = node.pumpFor()
