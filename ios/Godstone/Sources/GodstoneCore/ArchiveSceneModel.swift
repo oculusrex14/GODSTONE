@@ -308,6 +308,21 @@ public final class ArchiveSceneModel: ObservableObject {
     }
 
     /// Where the reader stood; remembered for the return.
+    /// *** GS-ARCHIVE-005 STEP 6 (round 537): THE ANCHOR MAY BE NOTED BY IDENTITY ALONE. ***
+    ///
+    /// THE CARD'S OWN WORDS: *'Restore only after the matching document and layout exist.'* THE VIEW KNOWETH WHICH
+    /// DOCUMENT IT STANDETH IN, so requiring it to repeat that identity WOULD BE A CHANCE TO GET IT WRONG. THIS
+    /// OVERLOAD NOTETH THE **VISIBLE PASSAGE** and letteth the scene supply the document from its own selection --
+    /// WHICH IS THE DOCUMENT THE VIEW CAN BE SHOWING, because the destination is constructed for exactly it.
+    ///
+    /// THE GUARD IS THE CARD'S OWN CLAUSE MADE TESTABLE: a passage noted for a document OTHER THAN THE ONE THE SCENE
+    /// STANDS IN IS **DISCARDED**, because an anchor restored into the wrong document would place the reader at
+    /// whatever passage happeneth to carrieth that identity there.
+    public func noteScroll(passageId: Int64) {
+        guard let documentId = openedDocumentId else { return }
+        noteScroll(documentId: documentId, passageId: passageId)
+    }
+
     public func noteScroll(documentId: Int64? = nil, passageId: Int64? = nil) {
         scrollAnchor = ArchiveScrollAnchor(documentId: documentId, passageId: passageId)
     }
@@ -320,6 +335,20 @@ public final class ArchiveSceneModel: ObservableObject {
         handle["mode"] = mode.rawValue
         if let openedDocumentId { handle["openedDocumentId"] = openedDocumentId }
         if let openedTitle { handle["openedTitle"] = openedTitle }
+        // *** GS-ARCHIVE-005 STEP 5 (round 537): THE RETURN-TO-SEARCH IDENTITY IS PERSISTED TOO. ***
+        // THE CARD'S OWN WORDS: *'Persist and restore the return-to-search identity when a document was opened
+        // from results. The current restore routines construct an empty DOCUMENTS returnScene, SO RESTORING A
+        // DOCUMENT OTHERWISE DISCARDS ITS ORIGINAL BACK-DESTINATION.'* MEASURED BEFORE THIS EDIT: `restore` built
+        // `Scene(mode: .documents, ...)` UNCONDITIONALLY, while `openDocumentInternal` built the TRUE return scene
+        // (`Scene(mode: mode, query: query, searchedQuery: searchedQuery, ...)`) and NEVER PERSISTED IT -- so a
+        // restored document's Back went to the DOCUMENT LIST even when the reader had arrived from a SEARCH.
+        if let returnScene {
+            handle["returnMode"] = returnScene.mode.rawValue
+            handle["returnQuery"] = returnScene.query
+            if let sq = returnScene.searchedQuery { handle["returnSearchedQuery"] = sq }
+            if let od = returnScene.openedDocumentId { handle["returnOpenedDocumentId"] = od }
+            if let ot = returnScene.openedTitle { handle["returnOpenedTitle"] = ot }
+        }
         if let scrollAnchor {
             if let d = scrollAnchor.documentId { handle["anchorDocument"] = d }
             if let p = scrollAnchor.passageId { handle["anchorPassage"] = p }
@@ -335,9 +364,24 @@ public final class ArchiveSceneModel: ObservableObject {
         let anchorDocument = handle["anchorDocument"] as? Int64
         let anchorPassage = handle["anchorPassage"] as? Int64
         scrollAnchor = ArchiveScrollAnchor(documentId: anchorDocument, passageId: anchorPassage)
-        returnScene = Scene(mode: .documents, query: query, searchedQuery: searchedQuery,
-                             documents: [], passages: [],
-                             openedDocumentId: nil, openedTitle: nil, openedSource: nil)
+        // *** AND THE RETURN SCENE IS REBUILT FROM WHAT WAS PERSISTED, NOT ASSUMED TO BE THE LIST. *** A record
+        // that carrieth no return scene (one written before this revision, or a browse that never opened a
+        // document) falleth back to the DOCUMENTS scene, which is the honest default rather than a guess: an
+        // absent back-destination is the list.
+        if let returnModeName = handle["returnMode"] as? String,
+           let returnMode = ArchiveSceneMode(rawValue: returnModeName) {
+            returnScene = Scene(mode: returnMode,
+                                query: handle["returnQuery"] as? String ?? query,
+                                searchedQuery: handle["returnSearchedQuery"] as? String ?? searchedQuery,
+                                documents: [], passages: [],
+                                openedDocumentId: handle["returnOpenedDocumentId"] as? Int64,
+                                openedTitle: handle["returnOpenedTitle"] as? String,
+                                openedSource: nil)
+        } else {
+            returnScene = Scene(mode: .documents, query: query, searchedQuery: searchedQuery,
+                                documents: [], passages: [],
+                                openedDocumentId: nil, openedTitle: nil, openedSource: nil)
+        }
         phase = .loading
         error = nil
         canRetry = false

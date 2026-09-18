@@ -700,6 +700,84 @@ final class ReadinessT50Tests: XCTestCase {
 
     // MARK: - GS-ARCHIVE-005 step 4: THE PRODUCTION CALLER (the defect, measured)
 
+    /// *** GS-ARCHIVE-005 STEP 5: THE RETURN-TO-SEARCH IDENTITY SURVIVETH A RESTORATION. ***
+    ///
+    /// THE CARD'S OWN WORDS: *'Persist and restore the return-to-search identity when a document was opened from
+    /// results. The current restore routines construct an empty DOCUMENTS returnScene, SO RESTORING A DOCUMENT
+    /// OTHERWISE DISCARDS ITS ORIGINAL BACK-DESTINATION.'* MEASURED BEFORE THIS ROUND: `restore` built
+    /// `Scene(mode: .documents, ...)` UNCONDITIONALLY, while `openDocumentInternal` built the TRUE return scene and
+    /// NEVER PERSISTED IT -- so a restored document's Back went to the DOCUMENT LIST **even when the reader had
+    /// arrived from a SEARCH**.
+    func testW19ARestoredDocumentReturnethToTheSearchItWasOpenedFrom() async throws {
+        _ = try makeArchive()
+        let (archive, library, model, scene) = composeTrio()
+        defer { archive.close() }
+        await scene.loadDocuments()
+        await seat(scene)
+
+        // A SEARCH IS PUBLISHED, and a result of it is opened -- so the TRUE return destination is the SEARCH.
+        scene.onQueryChanged("the")
+        await scene.search()
+        await seat(scene)
+        let searched = try XCTUnwrap(scene.searchedQuery,
+                                     "the search must be PUBLISHED, or this arm testeth another road")
+        guard case .ready = scene.phase else { return XCTFail("the search must come home ready: \(scene.phase)") }
+        let hit = try XCTUnwrap(scene.passages.first, "the search must yield a passage to open")
+        await scene.openPassage(hit)
+        await seat(scene)
+        XCTAssertEqual(scene.mode, .document, "and the scene must stand in the DOCUMENT")
+
+        // THE RECORD, AND A FRESH SCENE -- what a process recreation giveth.
+        var handle: [String: Any] = [:]
+        scene.snapshot(into: &handle)
+        let fresh = ArchiveSceneModel(reading: library, model: model)
+        await fresh.restore(from: handle)
+        await seat(fresh)
+
+        XCTAssertEqual(fresh.mode, .document, "the restored scene must stand in the DOCUMENT")
+        fresh.back()
+        XCTAssertEqual(fresh.mode, .search,
+                       "*** A RESTORED DOCUMENT'S BACK MUST RETURN TO THE SEARCH IT WAS OPENED FROM: an empty "
+                       + "DOCUMENTS return scene DISCARDETH the original back-destination (GS-ARCHIVE-005 step 5) ***")
+        XCTAssertEqual(fresh.searchedQuery, searched,
+                       "and the search's published identity must stand again")
+    }
+
+    /// *** GS-ARCHIVE-005 STEP 6: THE **VISIBLE** PASSAGE IS NOTED, AND AN ANCHOR FOR ANOTHER DOCUMENT IS REFUSED. ***
+    ///
+    /// THE CARD'S OWN WORDS: *'Record actual visible passage anchors from the scroll view; the current
+    /// `noteScroll(documentId:)` records no passage position.'* MEASURED BEFORE THIS ROUND: the app called it WITHOUT
+    /// a passageId, so `scrollAnchor?.passageId` was ALWAYS NIL and a returning reader was put at the TOP.
+    func testW20TheVisiblePassageIsNotedAndAnAnchorForAnotherDocumentIsRefused() async throws {
+        _ = try makeArchive()
+        let (archive, library, _, scene) = composeTrio()
+        defer { archive.close() }
+        await scene.loadDocuments()
+        await seat(scene)
+        let first = try XCTUnwrap(scene.documents.first, "the archive must carry a document")
+        await scene.open(document: first)
+        await seat(scene)
+        XCTAssertEqual(scene.openedDocumentId, first.id, "the scene must stand IN the document")
+
+        // (1) THE VISIBLE PASSAGE IS NOTED BY IDENTITY ALONE -- the app's own new call.
+        scene.noteScroll(passageId: 4242)
+        XCTAssertEqual(scene.scrollAnchor?.passageId, 4242,
+                       "*** THE VISIBLE PASSAGE MUST BE RECORDED: `passageId` was ALWAYS NIL before this repair "
+                       + "(GS-ARCHIVE-005 step 6) ***")
+        XCTAssertEqual(scene.scrollAnchor?.documentId, first.id,
+                       "and the DOCUMENT is the scene's own selection, so the caller cannot get it wrong")
+
+        // (2) *** THE DISCRIMINATOR: AN ANCHOR NOTED WHILE NO DOCUMENT STANDS IS REFUSED, because an anchor for
+        // another document would place the reader at whatever passage happeneth to carrieth that identity. ***
+        await scene.backToDocuments()
+        await seat(scene)
+        let before = scene.scrollAnchor?.passageId
+        scene.noteScroll(passageId: 9999)
+        XCTAssertEqual(scene.scrollAnchor?.passageId, before,
+                       "*** WITH NO DOCUMENT STANDING THE ANCHOR MUST NOT MOVE: an anchor recorded for a document "
+                       + "the scene is not in would be restored into the WRONG document (GS-ARCHIVE-005 step 6) ***")
+    }
+
     /// *** GS-ARCHIVE-005 STEP 1's FIRST OPTION, THE CLAUSE LEFT OWED UNTIL ROUND 536: **THE `NavigationStack` IS
     /// BOUND TO AN EXPLICIT PATH, AND THE PATH IS DRIVEN.** ***
     ///

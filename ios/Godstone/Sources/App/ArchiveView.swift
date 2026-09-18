@@ -295,6 +295,18 @@ private struct ArchiveDocumentReader: View {
                 guard let target = ArchiveReadingAnchor.target(
                     passageIds: found.map(\.id),
                     saved: scene.scrollAnchor?.passageId) else { return }
+                // *** GS-ARCHIVE-005 STEP 6 (round 537): **THE VISIBLE PASSAGE IS RECORDED RIGHT HERE**, WHERE THE
+                // SCROLL ITSELF ALREADY COMPUTED IT. *** MEASURED BEFORE THIS EDIT: the app called
+                // `noteScroll(documentId:)` **without a `passageId`**, so `scrollAnchor?.passageId` was ALWAYS NIL
+                // and a returning reader was put at the TOP of the document -- the card's own charge: *'the current
+                // `noteScroll(documentId:)` records no passage position'*.
+                //
+                // *** AND THE FIRST ATTEMPT OF THIS REPAIR WAS WRONG, WHICH IS WHY IT IS RECORDED HERE: I PUT THE
+                // CALL ON THE READER'S `body`, WHERE `found` IS **NOT IN SCOPE**, AND THE SHIPPING BUILD NAMED IT --
+                // `cannot find 'found' in scope`. THE SWIFTPM LANE NEVER COMPILES THIS FILE, SO **ONELY THE SHIPPING
+                // BUILD COULD HAVE CAUGHT IT**, and it did. THE LESSON IS THIS PROGRAMME'S OWN: PUT THE CALL WHERE
+                // THE MATERIAL ALREADY IS, NOT WHERE IT READS WELL. ***
+                scene.noteScroll(passageId: target)
                 proxy.scrollTo(target, anchor: .top)
             }
         }
@@ -351,7 +363,6 @@ private struct ArchiveDocumentReader: View {
         .navigationTitle(document.title)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: retry) { await model.load(.document(document.id)) }
-        .onAppear { scene.noteScroll(documentId: document.id) }
         .onDisappear { model.cancelInFlight() }   // dismissal striketh out the in-flight petition
     }
 }
