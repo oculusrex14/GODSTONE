@@ -1,5 +1,9 @@
 package io.godstone.app.trust
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 // ---------------------------------------------------------------------------
 // T55 -- the identity, rotation and wipe ViewModel.
 //
@@ -121,9 +125,26 @@ class IdentityTrustViewModel(
     private val port: TrustPort = UnavailableTrustPort,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000L },
 ) {
-    private var state: TrustUiState = TrustUiState.EMPTY
+    // --------------------------------------------------------------------------------------
+    // *** GS-UX-001 STEP 3 (round 540): OBSERVABLE STATE -- THE TRUST SIDE OF THE SAME CONTRACT. ***
+    // MEASURED BEFORE THIS EDIT: a private `state` behind a SNAPSHOT accessor, and the screen read it ONCE -- so a
+    // durable event could not reach the screen. **THE PATTERN ALREADY STOOD IN THIS APP** (`BrowseViewModel`), and
+    // now in its sibling `MeshViewModel` too: this is the LAST of the app's state owners to be wired.
+    // AND THE SEAM IS VALUE-PRESERVING: `state` becometh a PROPERTY OVER the flow, so every existing write still
+    // compileth, still carrieth the value, AND NOW PUBLISHETH.
+    //
+    // (AND THE COMMENT THAT STOOD HERE CLAIMED 'the Compose layer collecteth this in production' -- MEASURED, IT
+    // COLLECTED NOTHING: the screen called `uiState()` ONCE. **A COMMENT CLAIMING A WIRING IS NOT A WIRING.**)
+    // --------------------------------------------------------------------------------------
+    private val _state = MutableStateFlow(TrustUiState.EMPTY)
 
-    /** The current projection (the Compose layer collecteth this in production). */
+    /// The observable state, for a screen that collecteth it WITH LIFECYCLE (the card's own clause).
+    val flow: StateFlow<TrustUiState> = _state.asStateFlow()
+
+    private var state: TrustUiState
+        get() = _state.value
+        set(value) { _state.value = value }
+
     fun uiState(): TrustUiState = state
 
     /** Refresh from the durable authority. */

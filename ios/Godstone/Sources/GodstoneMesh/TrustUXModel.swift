@@ -435,14 +435,29 @@ enum InsecureDigest {
 /// observed by the view; the durable authorities it driveth are ordinary
 /// references, so no blocking work happeneth under a platform reducer lock.
 @MainActor
-public final class TrustUXModel {
+public final class TrustUXModel: ObservableObject {
     private let authority: TrustAuthorityPort
     private let ownNodeId: Data
     private let protectedData: ProtectedDataGate
     private let ownSigningKey: Data
     private let ownStaticDhKey: Data
 
-    private var state: TrustUIState
+    // --------------------------------------------------------------------------------------
+    // *** GS-UX-001 STEP 3 (round 540): **MAINACTOR OBSERVABLE STATE, CONSUMED BY SWIFTUI** -- THE TWIN OF
+    // `MeshUXModel`'s, BECAUSE THE CONTRACT IS SHARED AND BOTH MODELS FEED ONE UI. ***
+    //
+    // MEASURED BEFORE THIS EDIT: `@MainActor` stood (the card's first half) and `ObservableObject` did NOT -- a
+    // private `state` behind a SNAPSHOT accessor, so NOTHING PUBLISHED A CHANGE. The precedent on this isle is
+    // `ArchiveSceneModel: ObservableObject` (`:111`).
+    // *** AND THE SEAM IS VALUE-PRESERVING: `state` becometh a COMPUTED PROPERTY OVER THE PUBLISHED ONE, so every
+    // existing write still compileth, still carrieth the value, AND NOW PUBLISHETH. ***
+    // --------------------------------------------------------------------------------------
+    @Published public private(set) var observableState: TrustUIState
+
+    private var state: TrustUIState {
+        get { observableState }
+        set { observableState = newValue }
+    }
 
     init(authority: TrustAuthorityPort,
          ownNodeId: Data,
@@ -454,6 +469,7 @@ public final class TrustUXModel {
         self.ownSigningKey = ownSigningKey
         self.ownStaticDhKey = ownStaticDhKey
         self.protectedData = protectedData
+        self.observableState = TrustUIState.unavailable
         self.state = TrustUIState.unavailable
         self.state = project(lastOutcome: nil, error: nil)
     }

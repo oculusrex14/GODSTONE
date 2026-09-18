@@ -9,7 +9,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -43,7 +45,11 @@ const val COMPOSE_TAG = "mesh-compose"
 
 @Composable
 fun MeshScreen(viewModel: MeshViewModel, modifier: Modifier = Modifier) {
-    MeshContent(viewModel.uiState(), modifier)
+    // *** GS-UX-001 STEP 3 (round 540): COLLECTED **WITH LIFECYCLE**, WHICH IS THE CARD'S OWN CLAUSE. ***
+    // MEASURED BEFORE THIS EDIT: the screen read `uiState()` ONCE -- a SNAPSHOT -- so a durable event
+    // could not reach it. The idiom is this app's own (`BrowseScreen.kt:37`).
+    val state by viewModel.flow.collectAsStateWithLifecycle()
+    MeshContent(state, modifier)
 }
 
 /** The stateless projection: the court can inspect the SAME state the screen renders. */

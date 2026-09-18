@@ -1,5 +1,9 @@
 package io.godstone.app.mesh
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 // ---------------------------------------------------------------------------
 // T57 -- the messaging ViewModel.
 //
@@ -25,8 +29,34 @@ package io.godstone.app.mesh
 class MeshViewModel(
     private val port: MeshPort = UnavailableMeshPort,
 ) {
-    private var state: MeshUiState = MeshUiState.EMPTY
+    // --------------------------------------------------------------------------------------
+    // *** GS-UX-001 STEP 3 (round 540): OBSERVABLE STATE. ***
+    //
+    // THE CARD'S OWN WORDS: *'Expose observable state: `StateFlow` collected with lifecycle on Compose, and MainActor
+    // observable state consumed by SwiftUI. Refresh after durable events and lifecycle restoration, and unsubscribe
+    // when the owner ends.'*
+    //
+    // MEASURED BEFORE THIS EDIT: this class carried `private var state` and a SNAPSHOT accessor `uiState()`, and the
+    // screen read it ONCE (`MeshContent(viewModel.uiState(), modifier)`) -- **SO A DURABLE EVENT COULD NOT REACH THE
+    // SCREEN AT ALL.** AND THE PATTERN ALREADY STOOD IN THIS VERY APP: `BrowseViewModel` (`:148-149`) carrieth
+    // `MutableStateFlow`/`asStateFlow` and its screen collecteth WITH LIFECYCLE. **A CAPABILITY ITS OWN SIBLING
+    // HATH IS NOT A CAPABILITY THIS MODULE LACKETH -- it is one it never wired.**
+    //
+    // THE SEAM IS VALUE-PRESERVING BY CONSTRUCTION: `state` becometh a PROPERTY OVER the flow, so EVERY existing
+    // write (`state = ...`) still compileth AND still carrieth the value -- `_state.value` IS the state. **A
+    // MIGRATION THAT REWRITETH THIRTEEN CALL SITES IS A MIGRATION THAT CAN SILENTLY DROP ONE.**
+    // --------------------------------------------------------------------------------------
+    private val _state = MutableStateFlow(MeshUiState.EMPTY)
 
+    /// The observable state, for a screen that collecteth it WITH LIFECYCLE (the card's own clause).
+    val flow: StateFlow<MeshUiState> = _state.asStateFlow()
+
+    private var state: MeshUiState
+        get() = _state.value
+        set(value) { _state.value = value }
+
+    /// The snapshot accessor stayeth, so every existing caller and court compiles unchanged; the OBSERVABLE door is
+    /// `flow`, and a screen that reacheth only this one readeth once -- which is what was measured.
     fun uiState(): MeshUiState = state
 
     fun refresh(): MeshUiState = project(lastOutcome = null, error = null)

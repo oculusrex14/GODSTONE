@@ -288,16 +288,38 @@ protocol MeshAuthorityPort: AnyObject {
 // ---------------------------------------------------------------------------
 
 @MainActor
-public final class MeshUXModel {
+public final class MeshUXModel: ObservableObject {
     private let authority: MeshAuthorityPort
     private let protectedData: ProtectedDataGate
 
-    private var state: MeshUIState
+    // --------------------------------------------------------------------------------------
+    // *** GS-UX-001 STEP 3 (round 540): **MAINACTOR OBSERVABLE STATE, CONSUMED BY SWIFTUI.** ***
+    //
+    // THE CARD'S OWN WORDS: *'Expose observable state: ... and MainActor observable state consumed by SwiftUI.
+    // Refresh after durable events and lifecycle restoration, and unsubscribe when the owner ends.'*
+    //
+    // MEASURED BEFORE THIS EDIT: this class was `@MainActor` (so the card's FIRST half already stood) **AND
+    // `ObservableObject` IT WAS NOT** -- it carried a private `state` and a SNAPSHOT accessor `uiState()`, and
+    // NOTHING IN THE MODULE PUBLISHED A CHANGE TO SWIFTUI. **THE PRECEDENT ALREADY STOOD ON THIS ISLE:
+    // `ArchiveSceneModel: ObservableObject` (`:111`) carrieth `@Published` state and IS the shipping Archive's
+    // model. A CAPABILITY THE ISLE'S OWN ARCHIVE MODEL HATH IS ONE THIS MODEL NEVER WIRED.** ***
+    //
+    // THE SEAM IS VALUE-PRESERVING BY CONSTRUCTION: `state` becometh a COMPUTED PROPERTY OVER THE PUBLISHED ONE,
+    // so every existing write (`state = ...`) still compileth, still carrieth the value, AND NOW PUBLISHETH --
+    // **A MIGRATION THAT REWRITETH TWELVE CALL SITES IS ONE THAT CAN SILENTLY DROP ONE.** ***
+    // --------------------------------------------------------------------------------------
+    @Published public private(set) var observableState: MeshUIState
+
+    private var state: MeshUIState {
+        get { observableState }
+        set { observableState = newValue }
+    }
 
     init(authority: MeshAuthorityPort,
          protectedData: ProtectedDataGate = AlwaysAvailableProtectedData()) {
         self.authority = authority
         self.protectedData = protectedData
+        self.observableState = .unavailable
         self.state = .unavailable
         self.state = project(lastOutcome: nil, error: nil)
     }
