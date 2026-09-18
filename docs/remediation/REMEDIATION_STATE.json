@@ -14067,6 +14067,12 @@
       "sha256": "13e62a7aa8c3ba0d341185552e68ebddb4dfda8208d6b1343b3f5fa6897949e7",
       "what": "The probe restored with a positive control; refuted the restart premise verifiably; the decisive unrelated-change arm.",
       "outcome": "Probe 3/3 including the positive control (the rig CAN redden). Decisive arm passes, isolated 3/3, and reddens under mutation B. Lanes app 96, core 21, mesh 1869, 0 failures."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-006/round615-the-key-clause-re-verified-not-overclaimed.log",
+      "sha256": "8a5ca897f0f9cb2ca0c5f3f342f002edf7ba3d6e2de0ed8298cb86c9bb808219",
+      "what": "The `key(...)` clause re-verified from the code rather than carried on trust; disposition restated as UNEXERCISED.",
+      "outcome": "The line EXISTS as production (`BrowseScreen.kt:262`, keyed to the document) and is the correct fix. It is MASKED BY DOMINANCE, not unreachable: the consume-effect runs `scrollToItem(0)`, so removing the key leaves all seven rendered arms green. NO ARM IS WRITTEN, and not for convenience -- an arm that cannot redden without first changing production behaviour would be inventing a product change so a court could pass. Disposition REPEATED as UNEXERCISED rather than quietly dropped, with the note that it becomes load-bearing the moment a same-entry resolves to a non-zero index."
      }
     ],
     "my_red_case": "THE AUDIT'S MEASUREMENT, REPRODUCED DIRECTLY AT SOURCE: `grep -rn \"scene.open(\" ios/Godstone/Sources/App/` returns NOTHING but a comment -- so `NavigationLink(value:)` pushed onto `path` while NOTHING EVER TOLD THE SCENE. That is the parallel-owners defect as a grep, which is a stronger red than an arm here because no arm can run against Sources/App (see pending_proof).",
@@ -14339,7 +14345,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "de57885f7f20e9c2a65c7184149f2f3706757e02",
+  "candidate_sha": "df932078f833416699221d9a06b54c9bd7726284",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
