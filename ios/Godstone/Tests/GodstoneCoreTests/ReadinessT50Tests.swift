@@ -700,6 +700,43 @@ final class ReadinessT50Tests: XCTestCase {
 
     // MARK: - GS-ARCHIVE-005 step 4: THE PRODUCTION CALLER (the defect, measured)
 
+    /// *** GS-ARCHIVE-005 STEP 1's FIRST OPTION, THE CLAUSE LEFT OWED UNTIL ROUND 536: **THE `NavigationStack` IS
+    /// BOUND TO AN EXPLICIT PATH, AND THE PATH IS DRIVEN.** ***
+    ///
+    /// THE CARD OFFERETH TWO OPTIONS FOR STEP 1, AND ROUND 524 TOOK THE SECOND (a destination that publisheth its
+    /// own checked metadata) AND **NAMED THE FIRST AS OWED**: *'Bind `NavigationStack` to an explicit path/document
+    /// identity.'* MEASURED BEFORE ROUND 536's EDIT: `NavigationStack {` carried NO `path:` argument and a grep of
+    /// the whole App source set for `NavigationPath` returned NOTHING -- **SO THE STACK'S OWN PATH WAS THE VIEW'S
+    /// PRIVATE BUSINESS, AND NOTHING OUTSIDE IT COULD PLACE, READ OR RESTORE A DESTINATION.**
+    ///
+    /// THIS ARM ASSERTETH THE WIRING **AND ITS REVIEW'S OWN LAW**: a path nobody readeth is a DECLARED DOOR, and
+    /// *'A DECLARATION IS NOT A CAPABILITY -- THE ACCESS MODIFIER IS PART OF THE CLAIM.'* SO THE ARM DEMANDETH
+    /// BOTH THE BINDING **AND** THE DRIVER, and it asserteth the driver's OWN DIRECTION LAW: restoration must be
+    /// able to PLACE a document, and a return to the list must CLEAR it.
+    ///
+    /// THE INSTRUMENT IS STRUCTURAL, AND ITS LIMIT IS STATED RATHER THAN IMPLIED: the view liveth in the App
+    /// target, which NO TEST BUNDLE CAN IMPORT (measured at round 524: a 5-file allowlist; both bundles link
+    /// onely the packages), so what is checked here is the WIRING and the ORDER, and the SHIPPING TARGET IS BUILT
+    /// (`xcodebuild -scheme Godstone-Light ... build`) TO PROVE IT COMPILES.
+    func testW18TheNavigationPathIsBoundAndDriven() throws {
+        let view = codeOnly(try repoFile(named: "ios/Godstone/Sources/App/ArchiveView.swift"))
+        XCTAssertTrue(view.contains("NavigationStack(path: $path)"),
+                      "*** THE `NavigationStack` MUST BE BOUND TO AN EXPLICIT PATH: an unbound stack carrieth its "
+                      + "own path privately, so NOTHING OUTSIDE IT can place, read or restore a destination "
+                      + "(GS-ARCHIVE-005 step 1) ***")
+        XCTAssertTrue(view.contains("@State private var path: [ArchiveDocument] = []"),
+                      "and the path must be NAMED state, not an anonymous binding")
+        XCTAssertTrue(view.contains("scene.openedDocumentId"),
+                      "and the driver must read the SCENE'S OWN identity: a path driven by a private copy would "
+                      + "diverge from the scene a restoration restores")
+        XCTAssertTrue(view.contains("path.removeAll()"),
+                      "*** AND A RETURN TO THE LIST MUST CLEAR THE PATH: without it the stack would stand AHEAD of "
+                      + "the scene, and Back would land the reader in a document the scene no longer carrieth "
+                      + "(GS-ARCHIVE-005 step 1) ***")
+        XCTAssertTrue(view.contains("private func syncPathWithScene()"),
+                      "and the direction law must live in ONE named function, so a reader can find it")
+    }
+
     /// *** GS-ARCHIVE-005 STEP 4: `snapshot`/`restore` MUST HAVE A PRODUCTION CALLER, AND RESTORATION MUST COME
     /// BEFORE THE FIRST BROWSE. RUN RED BEFORE ITS REPAIR. ***
     ///

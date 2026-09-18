@@ -41,6 +41,23 @@ private struct ArchiveBrowser: View {
     // --------------------------------------------------------------------------------------
     @Environment(\.scenePhase) private var scenePhase
     @SceneStorage("godstone.archive.scene") private var sceneRecord: Data = Data()
+
+    // --------------------------------------------------------------------------------------
+    // *** GS-ARCHIVE-005 STEP 1, THE CLAUSE LEFT OWED UNTIL ROUND 536: **THE `NavigationStack` IS BOUND.** ***
+    //
+    // The card offereth two options for step 1, and round 524 took the SECOND (a destination that publisheth its
+    // own checked metadata). IT NAMED THE FIRST AS OWED, and this is it: *'Bind `NavigationStack` to an explicit
+    // path/document identity.'* MEASURED BEFORE THIS EDIT: `NavigationStack {` carrieth NO `path:` argument, and a
+    // grep of the whole App source set for `NavigationPath` returned NOTHING -- so the stack's own path was THE
+    // VIEW'S PRIVATE BUSINESS and **NOTHING OUTSIDE IT COULD PLACE, READ OR RESTORE A DESTINATION.**
+    // WITH THE PATH NAMED: restoration can PUT the reader back in its document, and that is the difference betwixt a
+    // stack that merely showeth a document and one a process recreation can RETURN TO.
+    // --------------------------------------------------------------------------------------
+    @State private var path: [ArchiveDocument] = []
+    /// The document the path was last synchronised with, so that a change of direction is TOLD APART from a no-op
+    /// -- an unguarded sync would either fight the user's taps or never run at all.
+    @State private var pathSyncTarget: Int64?
+
     /// Restoration happeneth ONCE per scene: the `.task` below re-runneth on every submitted query, and a second
     /// restoration would strike out the reader's own place.
     @State private var restoredOnce = false
@@ -67,6 +84,26 @@ private struct ArchiveBrowser: View {
         }
     }
 
+    /// *** GS-ARCHIVE-005 step 1 (round 536): THE PATH FOLLOWETH THE SCENE, IN BOTH DIRECTIONS. ***
+    ///
+    /// A restoration placeth the SCENE in a document while the STACK's path standeth empty (the process is new), so
+    /// the path must be PUT BACK; and a return to the list must CLEAR it, or the stack would stand ahead of the
+    /// scene and Back would land the reader in a document the scene no longer carrieth. THE GUARD (`pathSyncTarget`)
+    /// telleth a no-op from a change, so this never fighteth the user's own taps.
+    private func syncPathWithScene() {
+        guard scene.openedDocumentId != pathSyncTarget else { return }
+        pathSyncTarget = scene.openedDocumentId
+        guard let id = scene.openedDocumentId else {
+            path.removeAll()
+            return
+        }
+        guard path.last?.id != id else { return }
+        // THE DOCUMENT'S OWN TITLE IS WHAT THE SCENE RESTORED; `ArchiveDocument`'s provenance fields are DERIVED BY
+        // THE DESTINATION from the library (`sourceMetadata(documentId:)`), which is round 524's law and the reason
+        // this reconstruction needeth no more than the identity and the title.
+        path = [ArchiveDocument(id: id, title: scene.openedTitle ?? "", domain: "", isCritical: false)]
+    }
+
     /// A record that will not deserialise is **NO RECORD, not a crash**: a stale or corrupt store must leave the
     /// reader at a first browse rather than refuse to open the Archive.
     private static func decodeSceneRecord(_ data: Data) -> [String: Any]? {
@@ -77,7 +114,7 @@ private struct ArchiveBrowser: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 switch scene.phase {
                 case .loading:
@@ -136,6 +173,18 @@ private struct ArchiveBrowser: View {
                     await scene.search()
                 }
             }
+            // *** GS-ARCHIVE-005 step 1 (round 536): AND THE PATH IS **DRIVEN**, NOT MERELY BOUND. *** A path
+            // nobody readeth is a DECLARED DOOR, and this one carrieth the review's own law: *'a declaration is not
+            // a capability -- THE ACCESS MODIFIER IS PART OF THE CLAIM.'* SO WHEN THE SCENE STANDS IN A DOCUMENT
+            // THE PATH DOTH NOT CARRY -- and that is EXACTLY what a restoration giveth: an `openedDocumentId`
+            // restored from the durable record, with the stack's path empty because the process is new -- THE PATH
+            // IS PUT BACK, SO THE READER RETURNETH TO ITS DOCUMENT RATHER THAN TO A BARE LIST.
+            //
+            // AND IT IS GUARDED AGAINST BOTH WAYS IT COULD GO WRONG: the target is remembered, so a no-op is
+            // TOLD APART from a change (else this would fight every tap the user made), and the path is CLEARED
+            // when the scene returneth to the list (else Back would leave the stack ahead of the scene).
+            .onChange(of: scene.openedDocumentId) { _ in syncPathWithScene() }
+            .onAppear { syncPathWithScene() }
             .onChange(of: scenePhase) { phase in
                 // the standard iOS moment: the place is written before the app may be suspended and killed
                 if phase != .active { persistScenePlace() }

@@ -688,6 +688,49 @@ rows) are unread **on both isles**; **the Swift twin reads a session owner only*
 made askable on Android at round 534 is **not yet mirrored**; and steps 2/4/5/6 need **external artifacts**. The
 finding stays **`PARTIAL`**.
 
+## ROUND 536, PHASE TWO — GS-ARCHIVE-005 STEP 1 COMPLETE: THE PATH IS BOUND *AND DRIVEN*
+
+**The clause round 524 named as owed:** *"Bind `NavigationStack` to an explicit path/document identity."* Measured
+before the edit: `NavigationStack {` carried **no `path:` argument**, and a grep of the whole App source set for
+`NavigationPath` returned **nothing** — so **the stack's path was the view's private business, and nothing outside it
+could place, read or restore a destination.**
+
+**And the fix could not be the binding alone — which is why the round carries this programme's own law as its reason:**
+*a declared-and-unset door is not a door, and a declaration is not a capability.* A path nobody reads would have been
+**exactly the shape this span has measured six times in other findings** — an instrument built, witnessed by a court,
+and reached by no path a user travels. **So the path is DRIVEN:** `syncPathWithScene()` **puts the path back** when the
+scene stands in a document the path does not carry — *which is exactly what a restoration gives* — and **clears it** on
+a return to the list, *else the stack would stand ahead of the scene and Back would land the reader in a document the
+scene no longer carries.* Two directions, **one guard**, so the driver never fights the user's own taps.
+
+**The instrument is structural because it must be, and its limit is stated:** round 524 measured that **no test bundle
+can import the App target**, so the arm asserts the wiring and the direction law — **and the shipping target is built
+(`** BUILD SUCCEEDED **`) to prove it compiles.** The negative case was run **with its landing verified first** and
+failed the arm **on its own name**.
+
+**Measured:** iOS lane `SWIFT_RC=0`, `GodstoneCoreTests` **87/0** (86 → 87), `GodstoneMeshTests` 1196/0; shipping App
+build SUCCEEDED; parity 7/0; symbols 0 unresolved; digests PASSED.
+**Not landed, and named: no rendered-screen witness exists** (no UI-testing target on this isle), no process is
+terminated anywhere, and the Android anchor is persisted but not yet rendered by a Compose screen.
+
+### WHERE THE PROGRAMME NOW STANDS
+
+**`FIX_SUBMITTED 48 · OPEN 0 · PARTIAL 6 · VERIFIED_FIXED 0`** — and the six `PARTIAL` are `ANDROID-05`,
+`GS-ARCHIVE-005`, `GS-RUNTIME-001`, `GS-STORE-002`, `GS-STRESS-001`, `GS-UX-001`. **Three of the six cannot be
+completed by this span at all, and the reason is measured rather than asserted:**
+* **ANDROID-05 and GS-RUNTIME-001** need a **Context-bearing instrumentation road** (the host cannot supply a
+  `Context`, and both link layers are frozen at `false` — *which the objective requires*);
+* **GS-STORE-002** needs a **pinned SQLCipher native artifact** — an acquisition, and **acquisition never closes a
+  gate**;
+* **GS-STRESS-001** needs **10,000 real lifecycle cycles over a drained runtime, OS-facade fault injection and a real
+  guard mutant** — external artifacts;
+* **GS-UX-001** needs **a UI-testing target** that does not exist on either isle (*"exercise the rendered controls"*);
+* **GS-ARCHIVE-005**'s remaining gap is the **same UI-testing absence**.
+
+**EVERY ONE OF THEM IS `PARTIAL` WITH ITS OWED ITEM NAMED, ITS HOST-REACHABLE SLICE LANDED AND MEASURED, AND ITS
+EXTERNAL DEPENDENCY STATED — WHICH IS THE ONLY HONEST TERMINAL STATE AVAILABLE TO THIS SPAN. `VERIFIED_FIXED` IS ZERO
+AND ONLY AN INDEPENDENT AUDIT MAY WRITE IT.**
+
 ## REMAINING WORK
 **PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
 GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
