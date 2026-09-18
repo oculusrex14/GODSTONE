@@ -6221,7 +6221,10 @@
      "what_is_true": "THE CLAIM WAS FALSE AND THE ARM WAS WRONG. messageCount is incremented ONLY by encrypt and checked ONLY by enforceSendBudget; receiveCount is incremented ONLY by the receive path and checked ONLY by enforceReceiveBudget -- the directions NEVER shared a counter. The arm's last loop called smB.seal(peerB, ...) while peerB IS B's OWN NODE ID, so B asked for a session keyed by itself and got null. EACH MANAGER'S KEY IS ITS OWN NAME FOR THE RELATION (peerA for SM-B).",
      "evidence": "NoiseSession.kt:59/:255/:166 (messageCount) and :114/:299/:179 (receiveCount), read after the failure; and SessionManagerTest 17/0 once the arm used each manager's own key.",
      "aggravating_note": "THE SAME MISTAKE WAS MADE ON THE iOS ISLE AT ROUND 345 (a probe returning nil because one manager's key was handed to both) -- SO THE LESSON WAS RECORDED AND NOT APPLIED, the second such repetition in this span.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-002/round364-RECORD_CORRECTION-the-defect-was-my-arm.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-002/round364-RECORD_CORRECTION-the-defect-was-my-arm.log",
+     "log_sha256": [
+      "0d771481c05cfcb62ce286ea42ae83ac9a6a4959e62db7352982f4b7ce59ad1b"
+     ]
     }
    ],
    "card_read_at_round": 511,
@@ -6920,7 +6923,10 @@
      "what_is_true": "The line WAS there: `StoreError.migrationRefused -- repairRequired: migrated schema drifts from the frozen fingerprint`. My grep asked for the ENGINE's wording while the line carries the STORE's.",
      "why_it_was_wrong": "A GREP ANSWERS ONLY THE QUESTION ITS PATTERN ASKS. I searched for the sentence I expected to see rather than the one the code writes.",
      "consequence": "It RETRACTS round 452's conclusion: the store's own guard DOES fire (round 452 read a mis-spelled search as a silence). And it shows a third sentence is printed by a site neither of my two instruments covers.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round458b-CORRECTION-the-line-WAS-there-and-I-grepped-the-wrong-words.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round458b-CORRECTION-the-line-WAS-there-and-I-grepped-the-wrong-words.log",
+     "log_sha256": [
+      "be91d7beb13b844451aa980266236ccbb213a0febf0b29410395dfac1d9552cf"
+     ]
     }
    ],
    "submitted_at_round": 510,
@@ -11020,7 +11026,10 @@
      "what_was_claimed": "That no court anywhere composes a MeshRuntime (stated one command earlier in the same round).",
      "what_is_true": "CrashStartupResumeTests.swift constructs the REAL runtime at lines 60, 92 and 119 -- via MeshRuntime.create(...). The rig the card's step 7 asks for already exists and has a home.",
      "why_it_was_wrong": "A GREP FOR A NAME IS NOT A MEASUREMENT OF CALLERS: I searched for 'MeshRuntime(' while the court calls 'MeshRuntime.create('. This is the ledger's own round-270 lesson, repeated three hundred rounds later -- and caught in the same round this time rather than after a mis-claim had settled.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round367-the-rig-exists-and-my-grep-lied.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round367-the-rig-exists-and-my-grep-lied.log",
+     "log_sha256": [
+      "12233e670111a5ead40d63d8d412e8fc9450a4aa9cc4ebb659066cf77a5e9e86"
+     ]
     },
     {
      "at_round": 382,
@@ -11029,7 +11038,10 @@
      "what_is_true": ":99 is inside the runtime's INIT while :217 is inside the static CREATE -- two different functions whose line numbers say nothing about each other's order. The truth: create performs the resume root BEFORE the runtime object exists at all, so NO TRANSPORT EXISTS THERE.",
      "why_it_was_wrong": "TWO LINE NUMBERS FROM TWO FUNCTIONS ARE NOT AN ORDER -- the sibling of round 367's 'a grep for a name is not a measurement of callers'. Caught one round later, by reading the enclosing function rather than the number.",
      "consequence": "The wiring design changes: the startup resume must resume only the transport-less prefix of the ladder, and the drain (and everything after) must be performed by the runtime that actually stands -- which is exactly what the ladder was designed for (RUNTIME_DRAINED is the first stage requiring a running runtime), and why the missing journal stage mattered so much.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round382-honest-vault-landed-and-a-correction.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round382-honest-vault-landed-and-a-correction.log",
+     "log_sha256": [
+      "36b6d6994eedb82eae0abf47e20539fd77aa75993fd7e39a126e668310e2ec46"
+     ]
     },
     {
      "at_round": 393,
@@ -11037,7 +11049,10 @@
      "what_is_true": "The mirror (ios/Packages/GodstoneFoundation/{Sources,Tests}) was OUT OF STEP with the authoritative tree (ios/Godstone/...): the mirror carried a corrected copy of SR02 while the authoritative tree still carried the old expectation. THE TWO TREES WERE MEASURING DIFFERENT THINGS, AND I READ ONE AS IF IT WERE THE OTHER.",
      "why_it_was_wrong": "The mirror rule is copy-generation from the authoritative tree, and I applied a sources-only park repeatedly while editing the authoritative tests separately -- so the two diverged and a 'green' appeared that the code could not produce.",
      "consequence": "The contradiction is resolved, the ladder is cleared, and the composition is proven correct in the direction that matters. PROCESS FIX, MINE: run the lane before EVERY commit and push, and when a green result appears that the model cannot explain, SUSPECT THE TWO TREES BEFORE BELIEVING THE GREEN.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round393b-THE-MIRROR-WAS-OUT-OF-STEP-and-green-restored.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round393b-THE-MIRROR-WAS-OUT-OF-STEP-and-green-restored.log",
+     "log_sha256": [
+      "83c7d9a8d9e01be56946dac4dc5cd37ccfc8fdd009ab243f96661150ad3b1d49"
+     ]
     },
     {
      "at_round": 401,
@@ -11045,7 +11060,10 @@
      "what_is_true": "The isle ALREADY has `awaitInFlight(boundMillis: Long): Int`, an implemented and measured bounded drain returning zero or the outstanding count, whose own doc comment already states this finding's doctrine about silent seam defaults.",
      "why_it_was_wrong": "I wrote the log from an earlier grep rather than from the print I had requested in the same command -- an instrument (or a reading) answering a question ADJACENT to the one asked. TENTH instrument defect of the span, fifth of the same family.",
      "consequence": "The Android transport adapter needs no new mechanism at all: stop() then awaitInFlight(bound), .Drained only at zero, .NotDrained naming the count otherwise. The truth was better than the record.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round401b-CORRECTION-the-isle-already-HATH-awaitInFlight.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round401b-CORRECTION-the-isle-already-HATH-awaitInFlight.log",
+     "log_sha256": [
+      "2b68fa3ebbede41794ebb658046d4f7ecb3f70f8b9d8a1379a9f82c95c575899"
+     ]
     },
     {
      "at_round": 402,
@@ -11053,7 +11071,10 @@
      "what_is_true": "The isle's coordinator ALREADY requires a Drained RuntimeDrainReceipt (declared at CrashResumableWipe.kt:21) and persists RUNTIME_DRAINED in its ladder (:244). What lacks the rung is PanicWipe's own ladder -- the one the composition actually calls.",
      "why_it_was_wrong": "I generalised from PanicWipe.run() (which indeed has no drain rung) to 'the isle has no rung', without reading the coordinator's own declared laws in the same file I had already opened.",
      "consequence": "Android's case is the card's SECOND option -- replace the implementation behind the existing entry point -- which is cheaper: the isle has the coordinator, the requirement, the typed receipt and the ladder; it lacks a composition that calls them. Two of the five pieces listed at round 399 are already present.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round402-ANDROIDS-COORDINATOR-ALREADY-REQUIRES-THE-DRAIN.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round402-ANDROIDS-COORDINATOR-ALREADY-REQUIRES-THE-DRAIN.log",
+     "log_sha256": [
+      "a7f242799716b61ea125cc14fb7c5aacf0f3fd6563802d36214c4884d14893af"
+     ]
     },
     {
      "at_round": 414,
@@ -11061,7 +11082,10 @@
      "what_is_true": "MeshModule is a @Module internal object whose @Provides @Singleton providers INCLUDE MeshNode -- and MeshNode constructs the BleTransport. So the graph DOES provide the node, hence the transport, and root two can receive it BY CONSTRUCTION, needing no default-nil parameter.",
      "why_it_was_wrong": "I grepped one file's FIELDS and concluded what the GRAPH holds -- an instrument answering a question adjacent to the one asked. ELEVENTH instrument defect of the span, sixth of the same family.",
      "consequence": "The plan improves: root two takes the transport by construction (the card's step 2 as written), and the continuation belongs on runtime/ComposedRuntime.kt -- a composition root I had not seen, rather than the MeshNode guess of round 413.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round414-THE-DI-GRAPH-DOES-PROVIDE-THE-NODE-and-ComposedRuntime-existeth.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round414-THE-DI-GRAPH-DOES-PROVIDE-THE-NODE-and-ComposedRuntime-existeth.log",
+     "log_sha256": [
+      "849a7346d72ac2edbe634407a5589a919958e8bf35b983ab4f0ece09e8c84807"
+     ]
     },
     {
      "at_round": 416,
@@ -11069,7 +11093,10 @@
      "what_is_true": "ComposedRuntime.kt contains `internal class ComposedRuntimeHarness` -- a TEST HARNESS whose only MeshNode uses the 'pure JVM test convenience constructor'. MeshModule is the production composition root, and it provides the node.",
      "why_it_was_wrong": "THE PREMISE CAME FROM THE NAME -- 'ComposedRuntime' sounded like a composition root. The same species as every name-assumed error this span has recorded (round 367's grep, round 379's literal ladder, round 401's unread print, round 414's file-fields-for-graph).",
      "consequence": "The Android continuation is NOT a missing method: `MeshPanicWipe.begin()` already IS it, running the coordinator over the live seams including `WipeTransportDrainSeam(node.bleTransportForWipe)`. THE FOUR-STAGE LIFECYCLE IS COMPLETE IN ANDROID PRODUCTION CODE, and what remains on that isle is proof rather than wiring.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round416-ComposedRuntime-is-a-HARNESS-not-a-root-and-the-Android-lifecycle-is-COMPLETE.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round416-ComposedRuntime-is-a-HARNESS-not-a-root-and-the-Android-lifecycle-is-COMPLETE.log",
+     "log_sha256": [
+      "649a8a881224f29fcc4a84174653893d9a2c418283a1ab73f49f644751ed1a55"
+     ]
     },
     {
      "at_round": 419,
@@ -11077,7 +11104,10 @@
      "what_is_true": "`git apply` failed; because I had written `2>/dev/null` on it, the failure was invisible; the script aborted on its assertion and the tree was left unchanged. The court's 23 tests are ROUND 396'S arm (which took that court from 22 to 23), and my seam was never in the tree.",
      "why_it_was_wrong": "I SILENCED THE INSTRUMENT WHOSE FAILURE I NEEDED TO SEE. Twelfth instrument defect of the span and a new variant: not an instrument answering an adjacent question, but an instrument suppressed by me. THE LAW: NEVER SUPPRESS A TOOL'S DIAGNOSTICS; A SILENCED FAILURE IS INDISTINGUISHABLE FROM A SILENT SUCCESS.",
      "consequence": "Nothing landed; the tree remains green at HEAD. The next round's four steps are named precisely, and the apply will run WITH its stderr visible.",
-     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round419-NOTHING-LANDED-and-the-cause-was-my-own-suppressed-stderr.log"
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STORE-006/round419-NOTHING-LANDED-and-the-cause-was-my-own-suppressed-stderr.log",
+     "log_sha256": [
+      "9c8e9d2bd3e65787e6a13e2854f54b914ea6f77c92a2c59a0fb4fa8cf1f0f1f5"
+     ]
     }
    ],
    "submitted_at_round": 425
@@ -13305,7 +13335,10 @@
    "what_is_true": "`withDbThrowing` is `private`. The field stays private and so does the door; the journal's three verbs must therefore be METHODS OF SqliteMessageStore, exactly as round 478 concluded.",
    "why_it_was_wrong": "A DECLARATION IS NOT A CAPABILITY: I read the method's NAME and concluded the adapter could use it, WITHOUT NOTICING THE ACCESS MODIFIER on its first line.",
    "consequence": "Round 478's conclusion stands and round 479's correction is withdrawn -- the second time in two rounds that my own correction needed correcting. The ledger carries both, because a corrected correction is more useful than a silent one.",
-   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round479b-A-DOUBLE-CORRECTION-the-door-is-PRIVATE-so-round-478-was-right.log"
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round479b-A-DOUBLE-CORRECTION-the-door-is-PRIVATE-so-round-478-was-right.log",
+   "log_sha256": [
+    "002e31c1d2c179fed9277c9dc9c03dcc6fabb7a642202174ec538f16961e2ee9"
+   ]
   },
   {
    "at_round": 493,
@@ -13313,7 +13346,10 @@
    "what_is_true": "MeshNode.swift:435 builds Router(selfNodeId: identity.nodeId, store: store) in PRODUCTION (with its own T42 comment: 'a router without one could report a frame accepted on memory alone'), public let router: Router is a production field, and SigningKeysAdapter is a production class in the authority's own file.",
    "why_it_was_wrong": "MY INSTRUMENT WAS TOO NARROW: I grepped a narrow pattern IN ONE FILE (MeshRuntime.swift) and then concluded about THE TREE. Round 458's law -- a grep answers only the question its pattern asks -- paid for a fourth time.",
    "consequence": "The item shrinks back: the router exists on the node (which the runtime already holds). What remains is to read where SigningKeysAdapter is constructed. The surface remains true and unwritten: nothing in production names SendDirectAuthority.",
-   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round493-CORRECTION-OF-MY-CORRECTION-the-substrate-IS-there-and-my-grep-was-too-narrow.log"
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round493-CORRECTION-OF-MY-CORRECTION-the-substrate-IS-there-and-my-grep-was-too-narrow.log",
+   "log_sha256": [
+    "b3960ef43a939f0d2259f1d0be5cc73724cb8aa3a44ca979780692286137213e"
+   ]
   },
   {
    "at_round": 519,
@@ -13321,7 +13357,10 @@
    "what_is_true": "The composition arm is `async` and this lane's runner executes ZERO of it. The `tests: 15` count came from `--filter 'ReadinessT36Tests'`, which runs that class's SYNCHRONOUS arms; the async arm was never in the count.",
    "why_it_was_wrong": "I INFERRED a passing arm from a count that did not include it. A COUNT IS EVIDENCE ONLY OF WHAT IT COUNTED -- and my gate, built at round 471 to catch empty runs, verified 'a non-zero count' without verifying THAT THE ARM WAS IN IT.",
    "consequence": "CRYPTO-005's submission rests on ONE measured arm (the synchronous medium arm, round 489), not two; and EVERY async arm in the canonical suite is silently non-executing, so an unknown number of the suite's arms have never run.",
-   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round519-CORRECTION-my-own-async-arm-never-ran-so-round-510s-PASS-was-inferred-not-measured.log"
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round519-CORRECTION-my-own-async-arm-never-ran-so-round-510s-PASS-was-inferred-not-measured.log",
+   "log_sha256": [
+    "30d4f76ce2e8b25d8a5d680a040fad9c359a7560bb25f7228ce87d8f7e86b63a"
+   ]
   },
   {
    "at_round": 520,
@@ -13329,7 +13368,10 @@
    "what_is_true": "The full lane executes 1184 tests against 1182 DECLARED arms (73 of them async), so the async arms DO run. What cannot reach them is MY `--filter`: every filtered run of an async arm reports 'Executed 0 tests'.",
    "why_it_was_wrong": "I READ A PROPERTY OF MY INSTRUMENT AS A PROPERTY OF THE SUBJECT: 'Executed 0 tests' meant 'my filter did not reach the arm', and I wrote 'the arm does not run'. Two different sentences.",
    "consequence": "Round 519's lane-wide alarm is withdrawn; but round 510's PASS remains UNMEASURED, because the arm's own verdict was never read -- only a class filter's count. The remedy is to run the full lane and read the aggregate lines AND the arm names together.",
-   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round520-REFINEMENT-the-async-arms-DO-run-the-FILTER-is-what-cannot-reach-them.log"
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CRYPTO-005/round520-REFINEMENT-the-async-arms-DO-run-the-FILTER-is-what-cannot-reach-them.log",
+   "log_sha256": [
+    "3a68354ca2eba7d57ce4ac5ef42d4da72a7c6c030a3d384492286541da1f7ec4"
+   ]
   },
   {
    "at_round": 521,
@@ -13460,5 +13502,306 @@
   "readiness_flags": "FALSE",
   "external_gates": "FIVE, OPEN. ACQUISITION NEVER CLOSES A GATE."
  },
- "my_logs_note_at_round_521": "ROUND 521 ADDED SEVEN IMMUTABLE LOGS ACROSS THREE FINDINGS, EVERY PRIOR FAILURE KEPT SEPARATE: ANDROID-03 (a re-captured clean RED, a negative case, the full lane, and the round record); GS-UX-001 (the full lane, the corrected negative case, and a TRANSCRIPT of a run whose log I overwrote); GS-STRESS-001 (the negative case and the full lane)."
+ "my_logs_note_at_round_521": "ROUND 521 ADDED SEVEN IMMUTABLE LOGS ACROSS THREE FINDINGS, EVERY PRIOR FAILURE KEPT SEPARATE: ANDROID-03 (a re-captured clean RED, a negative case, the full lane, and the round record); GS-UX-001 (the full lane, the corrected negative case, and a TRANSCRIPT of a run whose log I overwrote); GS-STRESS-001 (the negative case and the full lane).",
+ "independent_audit_new_findings": {
+  "source": "godstone-audit/data/new_findings.json",
+  "source_sha256": "42afa83254e3ac243e39efac2c10531d04dc62783dd52901a10fefae8eb1393b",
+  "candidate": "e07e6ca119284eac72cfe7ed82c539209f085715",
+  "audit_date": "2026-09-18",
+  "note": "THESE ARE NOT THE ORIGINAL 54. The original registry carrieth 54 findings and the ledger enforces that count; these are the independent audit's NEW findings, kept in their own block so neither population can inflate the other. A repair against one of them is recorded here and in T78_CONVERGENCE.md, never by editing the 54.",
+  "counts": {
+   "total": 13,
+   "by_severity": {
+    "High": 3,
+    "Low": 1,
+    "Medium": 9
+   }
+  },
+  "findings": {
+   "GS-FINAL-001": {
+    "severity": "Medium",
+    "confidence": "Confirmed",
+    "title": "Evidence-digest checker can pass while required log records are not examined",
+    "affected_files": [
+     "ci/check_evidence_digests.py",
+     "tools/readiness/tests/test_evidence_digests.py"
+    ],
+    "related_original_findings": [
+     "GS-CTRL-001",
+     "GS-CTRL-002"
+    ],
+    "observed_behavior": "An exact-blob candidate copy passes when a convergence log has no digest, a RED-case digest outside my_logs is wrong, or a parent log hides a nested invalid log. JSON mode succeeds on a missing root when text mode fails. Six independent arms produced four failures and two valid controls.",
+    "root_cause": "Population is selected from findings.my_logs plus a filtered convergence walker; that walker returns after a valid parent and omits malformed records. The root failure check occurs after the JSON early return.",
+    "exact_remediation": "Apply and review proposed-repair/evidence-digests.patch in a disposable checkout. Enumerate records before checking fields, continue into children, walk all finding log fields and other log populations, and compute one verdict before output. Then add a versioned schema and a separately reviewed required-run manifest, explicit portable path mapping and malformed-I/O diagnostics. Update the existing W02 test to compare the complete expected inventory, not only my_logs.",
+    "regression_test": "evidence/test_digest_contract.py contains the six executed arms. Proposed repair passes all six; the existing actual-ledger suite still must run with the broadened population.",
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 547 (this commit) -- repair of the evidence-digest instrument and the required-run manifest it named as owed",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-001/round547-RED-arms-vs-original.log",
+      "sha256": "57dec279f5b9270e36770225b881122c0ec9438fcfad1eecae31a3cf87cd3e37",
+      "what": "THE RED: the six new arms (W02, W08, W09, W10, W11, W12) against the ORIGINAL instrument blob f87c0694877b6dd42c4638f2962d11dbe8b4c1a2 -- 5 failures and 1 error. Each arm fails on its own name; none of them is a setup or compile error.",
+      "outcome": "FAILED (failures=5, errors=1) -- the instrument was blind in four distinct ways, and ONE of them (the 70-log RED-case and convergence blind spot) had never been measured before by anything."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-001/round547-GREEN-arms-vs-repaired.log",
+      "sha256": "2941d265e6bbd901fe60c69adada4ceb0247a73bc67af592d0836c3585d978e0",
+      "what": "THE GREEN: the same twelve arms against the repaired instrument.",
+      "outcome": "Ran 12 tests -- OK, rc 0."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-001/round547-GREEN-instrument-on-real-ledger.log",
+      "sha256": "d47370af4ef70fbe7e36a6f0a316bbe91742b19e85e7e174984199bab837a6a3",
+      "what": "THE CANONICAL CHECK: the repaired instrument on the real 54-finding ledger, in BOTH output modes (the pair that used to disagree).",
+      "outcome": "762 registered | 762 examined | 762 verified | 0 mismatched | 0 unresolved | 0 unnamed | 0 undigested, rc 0 in text AND --json. The audited blob read 692 registered / 692 verified: SEVENTY named logs were invisible to it."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-001/round547-MUTATION-sensitivity.log",
+      "sha256": "5719814318d6be91354e8626e4bfec1c5e858d3cc04fb430564b009db0f7278f",
+      "what": "THE CAUSAL NEGATIVE PROOF, twice. Mutation 1 reinstates the early `return` after a parent log (the GS-FINAL-001(c) defect); mutation 2 reinstates the JSON-mode disagreement (the (d) defect). Each must fail its NAMED arm, and restoring the exact bytes must pass the SAME arm.",
+      "outcome": "both mutants FAILED their named arm; after restoring blob b84e20ff8a4eb064e7b3987413f1c326d32b73f4 both arms were OK -- the arms judge the defect and nothing else."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-001/round547-CONTRACT-auditor-six-arms.log",
+      "sha256": "a3c928b211b2f868052ab13de8ec5201121448cf0a32fb105e2256b2024329e2",
+      "what": "THE AUDITOR'S OWN CONTRACT, unchanged. The audit's six synthetic-ledger arms were run against the repaired instrument (re-pinned to the repaired blob only).",
+      "outcome": "Ran 6 tests -- OK. Against the original blob the same six ran 4 failures; this is the audit's own measurement reproducing in the other direction."
+     },
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-001/round547-GREEN-required-run-manifest.log",
+      "sha256": "873ffbc6df875e765952e0f5be8afdda097652a37e8e013521c0b944fa0a92a4",
+      "what": "THE REQUIRED-RUN MANIFEST the audit named as the remaining obligation, plus its mutation proof: neutering the population check must fail R02, and restoring must pass it.",
+      "outcome": "manifest PASSED on the real ledger (54 of a declared 54, counts derive from the entries); its 7-arm court OK; the mutation failed R02 and the restore passed it."
+     }
+    ],
+    "my_red_case": "BEHAVIOURAL RED TAKEN BEFORE THE PRODUCTION EDIT. The auditor's own suite (godstone-audit/evidence/test_digest_contract.py, six arms, byte-pinned to the ORIGINAL instrument) reproduced 4 failures against the unmodified candidate: `Ran 6 tests -- FAILED (failures=4)`. Those four arms were moved into the CANONICAL suite as W08-W12 (tools/readiness/tests/test_evidence_digests.py) and run RED FIRST: 5 failures + 1 error against blob f87c0694877b6dd42c4638f2962d11dbe8b4c1a2.",
+    "pending_proof": [
+     "A required NUMBER of runs per finding is NOT asserted by any instrument here: the ledger records each finding's runs as a list with no declared denominator, so an invented one would be fabrication. The manifest enforces the populations and the obligations the record actually state; a PARTIALLY deleted evidence list still passes, and that remainder is named in each finding's own pending_proof and in the audit's UNABLE_TO_VERIFY dispositions.",
+     "The audit also asked for \"a versioned schema and ... explicit portable path mapping and malformed-I/O diagnostics\". NOT delivered in this round and stated as owed: the ledger has no versioned schema today, the digests are recorded against absolute paths rooted at the evidence_root, and a malformed I/O error (a directory where a file is expected, an unreadable file) is not yet given its own diagnostic class.",
+     "VERIFIED_FIXED is NOT claimed and may not be written by this work: only an independent audit may set it. GS-FINAL-001 is FIX_SUBMITTED."
+    ]
+   },
+   "GS-FINAL-002": {
+    "severity": "High",
+    "confidence": "Confirmed",
+    "title": "Fresh wipe entry points do not both use the resumable request transaction",
+    "affected_files": [
+     "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift",
+     "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt",
+     "ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift",
+     "android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt"
+    ],
+    "related_original_findings": [
+     "GS-STORE-006"
+    ],
+    "observed_behavior": "Android MeshPanicWipe.begin constructs the coordinator and calls resume; resume refuses an empty journal. iOS MeshRuntime.beginPanicWipe still constructs old PanicWipe instead of requesting through CrashResumableWipe.",
+    "root_cause": "The new coordinator was added beside, rather than made the sole owner of, the public wipe entry contract.",
+    "exact_remediation": "In MeshPanicWipe.begin and MeshRuntime.beginPanicWipe, use one retained CrashResumableWipe authority and call requestWipe for a new operation; reserve resume for startup recovery. Return a typed outcome to the caller and render completion only at durable IDLE. Migrate existing stage journals and route old API aliases to the same owner before removing them. Do not simply rename PanicWipe.",
+    "regression_test": "Proposed FreshWipeStartsRequested: empty journal, live entry method, sequence records REQUESTED before drain/key deletion. Interrupt after each stage; reconstruct through the production root and complete without duplicate identity issuance.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-003": {
+    "severity": "High",
+    "confidence": "Confirmed",
+    "title": "Startup proceeds after wipe recovery returns a non-complete outcome",
+    "affected_files": [
+     "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift",
+     "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt",
+     "ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift",
+     "android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt"
+    ],
+    "related_original_findings": [
+     "GS-STORE-006",
+     "ANDROID-05",
+     "IOS-06"
+    ],
+    "observed_behavior": "iOS discards the result of resume before creating identity/stores. Android MeshStartupWipeBarrier returns Unit after calling resume; providers require the barrier object, not a successful recovery capability.",
+    "root_cause": "DI sequencing is mistaken for successful state transition; construction of a barrier object says nothing about the returned coordinator result.",
+    "exact_remediation": "Replace Unit/ignored result with an internal, non-forgeable startup permit issued only after a typed recovery decision. Both Identity.loadOrCreate and private-store factory construction consume that permit. Treat absent journal as a validated no-pending-wipe state, malformed journal as blocked, retryable failure as blocked-with-retry, and completed wipe as ready. Register unlock/retry events without opening a parallel normal-start path.",
+    "regression_test": "For every nonterminal stage, inject refusal and exception separately; spy identity creation and DB open counts must remain zero. A clean first launch must still open exactly once.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-004": {
+    "severity": "High",
+    "confidence": "Confirmed",
+    "title": "Verified encrypted-store metadata is discarded before an unkeyed private-store open",
+    "affected_files": [
+     "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift",
+     "ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift",
+     "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+    ],
+    "related_original_findings": [
+     "GS-STORE-002"
+    ],
+    "observed_behavior": "MeshRuntime checks an EncryptedStoreFactory result, then creates a new SqliteMessageStore by URL. That constructor calls sqlite3_open_v2 and migrations without receiving a key or the verified connection. The alternate archive-only host composition still constructs private-store objects.",
+    "root_cause": "The factory yields descriptive metadata rather than an owned operational connection/capability, and composition performs a second independent open.",
+    "exact_remediation": "Change EncryptedStoreFactory to return an owned verified connection with restricted construction and explicit close ownership. Make SqliteMessageStore accept that connection, not reopen by path; run migrations only after keying and a real page/schema verification. Return typed open errors instead of a nominal store with a nil handle. Split the archive-only graph from private-store construction; keep plaintext test adapters in a test/lab target. Implement explicit plaintext-to-encrypted migration as a separate resumable operation with preserved rollback evidence.",
+    "regression_test": "Inject an engine recording open, key, first page read, migration and repository queries; all must reference the same handle in that order. Then use the pinned native engine with correct, wrong and missing keys, WAL and restart.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-005": {
+    "severity": "Medium",
+    "confidence": "High",
+    "title": "Required retention clock is optional and inspected production timing seams use wall time",
+    "affected_files": [
+     "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift",
+     "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift",
+     "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+    ],
+    "related_original_findings": [
+     "GS-STORE-004",
+     "GS-SYNC-001",
+     "IOS-06"
+    ],
+    "observed_behavior": "SqliteMessageStore.isForwardable returns true when receiptTimeProvider is nil. Inspected MeshRuntime/Node construction does not install it. InventorySnapshotAuthority and SyncControlOwner receive Date-based closures named monotonicNowMillis.",
+    "root_cause": "Optional mutable dependency and a misleading parameter name allow a locally tested time policy to be bypassed in composition.",
+    "exact_remediation": "Make a single runtime clock protocol mandatory in store, snapshot, sync and lifecycle constructors. Remove the permissive nil branch from production; place deliberate fixed-clock adapters only in tests. Use one captured (monotonic instant, boot identity) sample per transition. Preserve per-kind retention and persisted continuity counters. Audit every read projection and expiry sweep before changing stored timestamp interpretation.",
+    "regression_test": "Construct through the real root without test-side clock mutation; use non-default SOS/bulk/direct kinds, wall-clock jumps, repeated same-boot opens and changed boot IDs. Missing production clock must be a construction error.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-006": {
+    "severity": "Medium",
+    "confidence": "Confirmed",
+    "title": "Shipping archive navigation and scroll restoration are disconnected from their state owners",
+    "affected_files": [
+     "ios/Godstone/Sources/App/ArchiveView.swift",
+     "ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift",
+     "android/app/src/main/java/io/godstone/app/ui/browse/BrowseScreen.kt",
+     "android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt"
+    ],
+    "related_original_findings": [
+     "GS-ARCHIVE-005"
+    ],
+    "observed_behavior": "iOS NavigationLink values update a local navigation stack without calling the scene open operations whose identities are saved. The reader notes only an initial target, not subsequent visible passages. Android BrowseScreen has no list state or scroll action consuming the stored anchor.",
+    "root_cause": "Parallel navigation owners on iOS and an unconsumed state output on Android; model tests exercise APIs the view does not drive.",
+    "exact_remediation": "Choose one iOS route authority. Replace value-only navigation with actions that open through ArchiveSceneModel, or bind a route model bidirectionally and persist that same route. Render the corresponding scene rather than an independent reading identity. Report stable visible passage IDs during actual scrolling. On Android remember a LazyListState, consume the resolved anchor only after matching document data/layout exists, and observe visible item identity into saved state. Clear obsolete anchors on document changes.",
+    "regression_test": "Open a non-first search hit, scroll to a later passage, background/recreate, assert matching document and visible passage; repeat from document browse. Drive actual taps and native back, not direct snapshot/restore calls alone.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-007": {
+    "severity": "Medium",
+    "confidence": "Confirmed",
+    "title": "Restored iOS return-to-search state is rendered as an unsearched empty result",
+    "affected_files": [
+     "ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift"
+    ],
+    "related_original_findings": [
+     "GS-ARCHIVE-005"
+    ],
+    "observed_behavior": "restore creates a search returnScene with empty passages. back publishes that empty scene as NoResults and only triggers reload for an empty documents-mode scene, not the restored search.",
+    "root_cause": "Persisting only identities was correct, but the restore/back path treats intentionally absent payload as a completed empty payload.",
+    "exact_remediation": "Represent restored return routes as unloaded identities, not fully loaded Scene values with empty arrays. In back, detect unloaded search, publish Loading and rerun the saved searchedQuery under a fresh generation before rendering results. Preserve current editable query separately where necessary. Keep the empty-result state exclusive to a successful completed query.",
+    "regression_test": "Use a reader returning two hits for a saved query, snapshot a document opened from it, reconstruct and Back; two hits must reappear and NoResults must never precede an executed zero-hit query.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-008": {
+    "severity": "Medium",
+    "confidence": "Confirmed",
+    "title": "Android archive availability exceptions are converted into Ready",
+    "affected_files": [
+     "android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt"
+    ],
+    "related_original_findings": [
+     "GS-ARCHIVE-002",
+     "GS-UX-001"
+    ],
+    "observed_behavior": "search and openDocumentInternal use getOrDefault(ArchiveState.Ready(origin=\"assumed\", sha256=\"\")) when reader.status throws. refreshArchiveStatus treats the same exception as Unavailable.",
+    "root_cause": "An optimistic fallback collapses unknown/error into success and disagrees with another path using the same status API.",
+    "exact_remediation": "Remove the Ready fallback. Map status exceptions through one typed archive-status/error mapper used by refresh, search and open. Publish success only when both content read and required status validation succeed for the same generation. Do not manufacture a digest or origin. Decide whether metadata absence is optional based on the content contract rather than getOrNull.",
+    "regression_test": "Fake the reader so content read succeeds but status throws; assert a typed error/unavailable phase and no fabricated Ready. Include cancellation and a later successful retry.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-009": {
+    "severity": "Medium",
+    "confidence": "High",
+    "title": "Android protected-data projection does not enforce protected-data access",
+    "affected_files": [
+     "android/app/src/main/java/io/godstone/app/mesh/MeshContracts.kt",
+     "android/app/src/main/java/io/godstone/app/mesh/MeshViewModel.kt"
+    ],
+    "related_original_findings": [
+     "GS-UX-001"
+    ],
+    "observed_behavior": "The inspected projection reads recipients before checking the protected-data gate, and send/retry/SOS command methods are not guarded by that gate.",
+    "root_cause": "Availability is represented as presentation metadata rather than a prerequisite capability for data access and side effects.",
+    "exact_remediation": "Check availability before projecting protected fields; expose an explicit unavailable projection without invoking the port. Enforce the same gate atomically at command/repository admission, not only in buttons. Subscribe to platform availability transitions, clear sensitive projections and cancel in-flight operations using generation tokens. Android first-unlock semantics must not be confused with iOS complete-protection lock semantics.",
+    "regression_test": "Inject an unavailable gate and a port that records/throws on any protected read or command; zero calls must occur. Flip availability during an in-flight operation and verify stale completion cannot publish.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-010": {
+    "severity": "Medium",
+    "confidence": "Moderate",
+    "title": "Node shutdown latch may suppress teardown after a subsequent activation",
+    "affected_files": [
+     "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+    ],
+    "related_original_findings": [
+     "IOS-06",
+     "GS-STRESS-001"
+    ],
+    "observed_behavior": "MeshNode.stop sets adaptersClosed once. The inspected start/open paths never reset it, while start sets isStarted before invoking the lifecycle owner and does not consume an activation outcome.",
+    "root_cause": "A lifetime-wide Boolean is used where restartable epoch state appears to be required. The complete UnifiedRuntimeLifecycle restart contract was not inspected.",
+    "exact_remediation": "First establish the lifecycle contract by inspecting UnifiedRuntimeLifecycle and all callers. For reusable nodes replace the latch with activation/closed epoch state and accept start only after typed owner activation succeeds. For terminal nodes make start-after-stop return a typed refusal and construct a fresh graph for reactivation. Do not blindly reset a flag before proving teardown has drained.",
+    "regression_test": "Proposed StartStopStartStopThroughComposition: observe actual transport start/stop calls, returned states, callback generations and resource census; test failed start followed by retry.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-011": {
+    "severity": "Medium",
+    "confidence": "Confirmed",
+    "title": "Wipe proof hook reports hardcoded authority properties",
+    "affected_files": [
+     "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift"
+    ],
+    "related_original_findings": [
+     "GS-STORE-006",
+     "GS-INTEGRATION-001"
+    ],
+    "observed_behavior": "MeshRuntime.wipeAuthorityForTest returns a literal authority name and true flags, even though the fresh public wipe path still constructs PanicWipe.",
+    "root_cause": "A test seam describes intended architecture without reading or exercising the runtime graph.",
+    "exact_remediation": "Remove the literal architectural assertion. Inject or observe real coordinator dependencies at the composition boundary and run the public begin path. Record actual journal/drain/key/file operations in a deterministic test adapter with no production truth flags. Keep production telemetry descriptive, never authoritative for safety state.",
+    "regression_test": "Call begin through the real runtime with a recording wipe engine; verify REQUESTED, drain, deletion and IDLE outcomes. Do not assert an authority-name tuple.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-012": {
+    "severity": "Medium",
+    "confidence": "Confirmed",
+    "title": "Current remediation narrative overstates external blockers and mixes historical/current state",
+    "affected_files": [
+     "docs/remediation/REMEDIATION_STATE.json",
+     "docs/remediation/T78_CONVERGENCE.md",
+     "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift",
+     "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt",
+     "ios/Godstone/Sources/App/ArchiveView.swift",
+     "ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift",
+     "android/app/src/main/java/io/godstone/app/ui/browse/BrowseScreen.kt",
+     "tools/readiness/tests/test_t01.py"
+    ],
+    "related_original_findings": [
+     "GS-STORE-002",
+     "GS-STORE-006",
+     "GS-ARCHIVE-005",
+     "GS-UX-001",
+     "GS-STRESS-001",
+     "GS-CTRL-002"
+    ],
+    "observed_behavior": "External-only descriptions conflict with internally missing connection ownership, fresh-wipe routing, navigation consumers and constructible test harnesses. Historical status/impact text coexists with newer conclusions; selected aggregate narrative still refers to eight partial findings.",
+    "root_cause": "Append-only progress prose is serving simultaneously as history, current state and completion authority.",
+    "exact_remediation": "After owner approval add a structured current_assessment with candidate, verified source references, internal_remaining, external_acceptance and independently derived status counts. Preserve original impact text under an explicitly historical field. Replace terminal external-only sentences with the corrections in report 09; do not alter original evidence. Derive summary counts from entries.",
+    "regression_test": "Validate all 54 IDs exactly once, schema/status legality, candidate identity and explicit internal/external split. Reject a current assessment referring to an uninspected or mismatched candidate.",
+    "my_status": "OPEN"
+   },
+   "GS-FINAL-013": {
+    "severity": "Low",
+    "confidence": "Confirmed",
+    "title": "Pushed convergence commit contains shell/Python debris in its message",
+    "affected_files": [],
+    "related_original_findings": [],
+    "observed_behavior": "Commit 3eb1904b133c26137f68da6c0b82a0424d0095e1 contains a Python script and heredoc/shell text in its message. The retrieved diff changes the convergence document, not executable product source.",
+    "root_cause": "A malformed heredoc/commit-message construction, consistent with the disclosed accident.",
+    "exact_remediation": "Do not amend or rebase. Add an owner-approved provenance annotation mapping the immutable SHA to its intended documentation change and the bounded diff review. Use a prepared message file and inspect it before future git commit invocations.",
+    "regression_test": "Check the annotation references the exact immutable commit and does not change historical SHA references.",
+    "my_status": "OPEN"
+   }
+  }
+ }
 }

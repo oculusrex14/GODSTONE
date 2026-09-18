@@ -938,9 +938,54 @@ re-read.** `GS-RUNTIME-001`'s empty proof field and `GS-ARCHIVE-005`'s self-cont
 546). **The remedy is one act, applied four times: read the claim against the tree.** With the twelve empty proof fields
 cured at zero, **both record classes are now closed by measurement rather than by intention.**
 
+## ROUND 547 — THE INDEPENDENT AUDIT LANDED, AND ITS FIRST FINDING IS REPAIRED
+
+The independent audit this span asked for **has run**, against exactly `e07e6ca` — the candidate this document
+ends on. Its verdict is **NO_GO**, recorded in `godstone-audit/`, and it names **13 new findings** (`GS-FINAL-001`
+..`013`) that the original 54 do not contain. Those thirteen are now transcribed into the ledger's own
+`independent_audit_new_findings` block — **their own block, so neither population can inflate the other**, and the
+original registry's equality control is untouched.
+
+**`GS-FINAL-001` IS REPAIRED (`FIX_SUBMITTED`).** The audit found the evidence-digest control could pass while
+required records went unexamined, and proved it with six synthetic-ledger arms: four failed. Reproduced here at the
+top of the round, byte-identical. The instrument was blind in **four** ways, and — measured, not asserted — the
+blind spot was **far larger than the audit itself reported**:
+
+| defect | what it hid |
+|---|---|
+| yielded only on a complete `(log, digest)` pair | a record that NAMED a log with no digest was never registered — *the record it could not verify was also the record it never counted* |
+| read SCALARS only | `my_red_case` carrieth `log` + a PARALLEL `log_sha256` **list**; the list became `""` |
+| `return`ed after a parent log | children were never visited: a valid parent HID a nested invalid child |
+| `--json` returned before the root check | a missing evidence root: **rc 1 in text mode, rc 0 in JSON** — two verdicts, and automation reads the lenient one |
+
+**The audited blob registered 692 entries. The record NAMES 762.** Seventy named logs — every RED case and several
+convergence records — had never been digest-checked by anything. The repaired instrument: **768 registered / 768
+examined / 768 verified / 0 mismatched / 0 unresolved / 0 unnamed / 0 undigested**, rc 0 in **both** output modes.
+
+**THE AUDITOR'S OWN SIX ARMS NOW PASS** — unchanged, re-pinned to the repaired blob only: `Ran 6 tests — OK`
+(against the original: 4 failures).
+
+**AND THE GAP THE AUDIT NAMED IS CLOSED RATHER THAN QUOTED.** The audit's own spec ended *"A required-run manifest
+must independently forbid wholesale deletion of a required record or population."* That manifest now existeth
+(`ci/check_required_runs.py`): it forbids a finding removed whole, an empty claim, an illegal status — and
+`VERIFIED_FIXED` above all, which **this work may not write** — and a summary that disagreeth with its entries. It
+**records** 22 findings whose RED is prose rather than a log path, because **a manifest must not demand a shape the
+record never promised**; one finding states outright that no pre-repair red was constructible, and an arm demanding
+one would be demanding a fabrication.
+
+**What is NOT claimed:** the audit also asked for *"a versioned schema and … explicit portable path mapping and
+malformed-I/O diagnostics."* **Not delivered, and stated as owed.** `VERIFIED_FIXED` remains **0**, and only an
+independent audit may write it. GS-FINAL-002..013 remain **OPEN**.
+
 ## REMAINING WORK
-**PHASE TWO** — the **eight `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-SOS-001, GS-STORE-002,
-GS-STORE-004, **GS-UX-001**, **GS-STRESS-001**) and the external artifacts above. **No finding is `OPEN`; none is
-`VERIFIED_FIXED`; and the two newly `PARTIAL` ones carrieth a slice, not a fix.**
+**PHASE TWO** — the **six `PARTIAL`** (ANDROID-05, GS-ARCHIVE-005, GS-RUNTIME-001, GS-STORE-002, GS-UX-001,
+GS-STRESS-001) and the external artifacts above. **No finding is `OPEN`; none is `VERIFIED_FIXED`; and the `PARTIAL`
+carrieth a slice, not a fix.**
+
+*(A correction, recorded rather than quietly edited: this section previously said "the **eight** `PARTIAL`" and named
+GS-SOS-001 and GS-STORE-004 among them. The ledger carrieth **six**, and the block above at `:785` always named the
+correct six. THIS SENTENCE WAS ITSELF THE DEFECT CLASS THE AUDIT FILED AS `GS-FINAL-012` — narrative prose serving as
+current state after the state had moved. The audit's own report 09 had already flagged "selected aggregate narrative
+still refers to eight partial findings"; it was right, and this is its repair.)*
 
 **Readiness flags remain FALSE and the five external gates remain OPEN. Acquisition never closes a gate.**

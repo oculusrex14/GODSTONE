@@ -60,26 +60,59 @@ def resolve(path_text: str, root: Path):
     return None
 
 
-def _registered_digests(obj, label: str):
-    """Every `log`-with-digest pair ANYWHERE in the record -- not only in `my_logs`.
+def _scalar(value):
+    """A record's field is a scalar OR a parallel list. BOTH SHAPES ARE THE RECORD'S OWN.
 
-    ROUND 279: the first version of this instrument read `findings[*].my_logs` ONLY, and the round-278
-    candidate verification registered five fresh logs under `convergence` -- which would have been a NEW
-    BLIND SPOT CREATED IN THE SAME ROUND THAT CONDEMNED ONE. An instrument that carrieth a population it
-    silently ignores is the ninth species over again, so the walker is generic and the denominator
-    reporteth the two populations separately.
+    GS-FINAL-001(b): `findings[*].my_red_case` carrieth `log` as a LIST and `log_sha256` as a
+    PARALLEL LIST. The first instrument read a scalar, so a list became the empty string -- and
+    fourteen real RED logs were neither verified nor NAMED. A parallel list is not a scalar.
+    """
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    if isinstance(value, list):
+        return [v.strip() for v in value if isinstance(v, str) and v.strip()]
+    return []
+
+
+def _registered_digests(obj, label: str, force_log_record: bool = False):
+    """EVERY record that NAMETH a log, in EVERY shape the ledger useth -- enumerated BEFORE judgement.
+
+    GS-FINAL-001 (the independent audit, 2026-09-18) found this walker blind in three ways, and each
+    one is now closed by construction rather than by a comment:
+
+      (a) IT YIELDED ONLY ON A COMPLETE PAIR. `path_text and digest` were required together, so a
+          record that NAMED a log and carrieth no digest was never registered -- THE RECORD IT COULD
+          NOT VERIFY WAS ALSO THE RECORD IT NEVER COUNTED. Enumeration now happeneth FIRST and
+          judgement second, so a malformed record stays INSIDE the denominator and is NAMED.
+
+      (b) IT READ SCALARS ONLY, while the RED-case schema useth parallel lists (see `_scalar`).
+
+      (c) IT `return`ed UPON YIELDING A PARENT, so children were never visited and a valid parent log
+          HID a nested invalid one. Children are now always walked.
+
+    `force_log_record` carrieth the `my_logs` list's own guarantee: every element of it IS a run-log
+    record, so an element that carrieth no `log` key at all is still registered -- and reported as
+    UNNAMED rather than dropped. Other log-bearing dictionaries (RED cases, convergence records,
+    record corrections) are registered because they NAMED a log.
     """
     if isinstance(obj, dict):
-        path_text = obj.get("log")
-        digest = obj.get("sha256") or obj.get("log_sha256")
-        if isinstance(path_text, str) and path_text.strip() and isinstance(digest, str) and digest.strip():
-            yield (label, path_text.strip(), digest.strip())
-            return
+        if force_log_record or "log" in obj:
+            paths = _scalar(obj.get("log"))
+            digests = _scalar(obj.get("sha256")) or _scalar(obj.get("log_sha256"))
+            if not paths:
+                yield (label, "", digests[0] if digests else "")
+            else:
+                for index, path_text in enumerate(paths):
+                    yield (label, path_text, digests[index] if index < len(digests) else "")
         for key, value in obj.items():
-            yield from _registered_digests(value, "%s.%s" % (label, key))
+            yield from _registered_digests(value, "%s.%s" % (label, key),
+                                           force_log_record=(key == "my_logs"))
     elif isinstance(obj, list):
         for index, value in enumerate(obj):
-            yield from _registered_digests(value, "%s[%d]" % (label, index))
+            yield from _registered_digests(value, "%s[%d]" % (label, index),
+                                           force_log_record=force_log_record)
+    elif force_log_record:
+        yield (label, "", "")
 
 
 def audit(ledger_path: Path, root_override=None) -> dict:
@@ -89,8 +122,9 @@ def audit(ledger_path: Path, root_override=None) -> dict:
 
     registered = examined = verified = 0
     per_population = {"findings": {"registered": 0, "examined": 0, "verified": 0},
-                      "convergence": {"registered": 0, "examined": 0, "verified": 0}}
-    unresolved, mismatched, unnamed = [], [], []
+                      "convergence": {"registered": 0, "examined": 0, "verified": 0},
+                      "other": {"registered": 0, "examined": 0, "verified": 0}}
+    unresolved, mismatched, unnamed, undigested = [], [], [], []
 
     def examine(label, name, path_text, digest):
         """One registered entry: resolved, hashed, and COUNTED -- or NAMED as a defect."""
@@ -110,33 +144,54 @@ def audit(ledger_path: Path, root_override=None) -> dict:
         examined += 1
         per_population[label]["examined"] += 1
         actual = hashlib.sha256(found.read_bytes()).hexdigest()
+        if not digest:
+            # A LOG THE RECORD NAMETH BUT NEITHER REGISTERETH NOR CLAIMETH. The file existeth and is
+            # hashed here, but the record carrieth no expectation to compare it against -- so it is
+            # UNVERIFIED EVIDENCE, named as such. (GS-FINAL-001(c): these fourteen population members
+            # were previously neither verified nor mentioned.)
+            undigested.append((name, path_text, actual))
+            return
         if actual == digest:
             verified += 1
             per_population[label]["verified"] += 1
         else:
             mismatched.append((name, path_text, digest, actual))
 
+    # THE WHOLE DECLARED RUN-LOG SURFACE, ENUMERATED BEFORE ANY JUDGEMENT.
+    #
+    # GS-FINAL-001(a): the finding population was read from `my_logs` ALONE, so a finding's RED case --
+    # a log the ledger NAMETH -- was invisible. Every finding entry is now walked generically, and the
+    # remaining top-level populations (convergence, record corrections, the evidence audit's own
+    # records) with it. A MALFORMED RECORD STAYS INSIDE THE DENOMINATOR: it is NAMED, never dropped.
+    #
+    # A required-run manifest is a SEPARATE contract and is NOT pretended here: this instrument
+    # verifies the digests of the logs the record NAMES, and can therefore redden on a wrong digest or
+    # a missing file, but it cannot by itself detect that a required record was never written. That
+    # remains owed, and it is stated rather than implied.
     for fid, entry in state.get("findings", {}).items():
-        for index, ev in enumerate(entry.get("my_logs") or []):
-            examine("findings", "%s[%d]" % (fid, index), (ev.get("log") or "").strip(), ev.get("sha256") or "")
-
-    # THE SECOND POPULATION: every log registered anywhere else in the record (convergence candidate
-    # verifications, the evidence audit's own records).
-    for label, path_text, digest in _registered_digests(state.get("convergence") or {}, "convergence"):
-        examine("convergence", label, path_text, digest)
+        for label, path_text, digest in _registered_digests(entry, str(fid)):
+            examine("findings", label, path_text, digest)
+    for key, value in state.items():
+        if key == "findings":
+            continue
+        population = "convergence" if key == "convergence" else "other"
+        for label, path_text, digest in _registered_digests(value, str(key)):
+            examine(population, label, path_text, digest)
 
     return {
         "ledger": str(ledger_path),
         "root": declared_root,
-        "root_exists": bool(declared_root) and root.exists(),
+        "root_exists": bool(declared_root) and root.is_dir(),
         "registered": registered,
         "examined": examined,
         "verified": verified,
         "findings": per_population["findings"],
         "convergence": per_population["convergence"],
+        "other": per_population["other"],
         "mismatched": [{"finding": f, "log": p, "registered": r, "actual": a} for f, p, r, a in mismatched],
         "unresolved": [{"finding": f, "log": p, "why": w} for f, p, w in unresolved],
         "unnamed": unnamed,
+        "undigested": [{"finding": f, "log": p, "actual": a} for f, p, a in undigested],
     }
 
 
@@ -164,20 +219,34 @@ def main(argv=None) -> int:
     for item in r["mismatched"]:
         print("::error::digest MISMATCH for %s: %s (recorded %s..., actual %s...)"
               % (item["finding"], item["log"], item["registered"][:12], item["actual"][:12]))
+    for item in r["undigested"]:
+        print("::error::UNVERIFIED EVIDENCE: %s NAMES %s and carrieth NO digest (actual %s...)"
+              % (item["finding"], item["log"], item["actual"][:12]))
+
+    # ONE VERDICT, COMPUTED ONCE, DELIVERED IDENTICALLY BY BOTH OUTPUT MODES.
+    #
+    # GS-FINAL-001(d): the root-existence check sat ONLY on the text path, so a missing evidence root
+    # returned 1 in text mode and 0 under `--json`. Automation reads the machine's answer -- a report
+    # that disagreeth with itself is two verdicts, and the lenient one is the one that ships.
+    defects = (len(r["mismatched"]) + len(r["unresolved"]) + len(r["unnamed"])
+               + len(r["undigested"]))
+    failed = bool(defects or not r["root_exists"] or r["registered"] == 0)
 
     if args.json:
         print(json.dumps(r, indent=1, ensure_ascii=False))
-        return 1 if (r["mismatched"] or r["unresolved"] or r["unnamed"]) else 0
+        return 1 if failed else 0
 
-    print("evidence digests: %d registered | %d examined | %d verified | %d mismatched | %d unresolved | %d unnamed"
+    print("evidence digests: %d registered | %d examined | %d verified | %d mismatched | %d unresolved "
+          "| %d unnamed | %d undigested"
           % (r["registered"], r["examined"], r["verified"], len(r["mismatched"]),
-             len(r["unresolved"]), len(r["unnamed"])))
-    print("  populations: findings %d registered / %d examined | convergence %d registered / %d examined"
+             len(r["unresolved"]), len(r["unnamed"]), len(r["undigested"])))
+    print("  populations: findings %d registered / %d examined | convergence %d registered / %d examined "
+          "| other %d registered / %d examined"
           % (r["findings"]["registered"], r["findings"]["examined"],
-             r["convergence"]["registered"], r["convergence"]["examined"]))
+             r["convergence"]["registered"], r["convergence"]["examined"],
+             r["other"]["registered"], r["other"]["examined"]))
     print("  root: %s%s" % (r["root"] or "<none recorded>", "" if r["root_exists"] else "  (MISSING)"))
-    defects = len(r["mismatched"]) + len(r["unresolved"]) + len(r["unnamed"])
-    if defects or not r["root_exists"]:
+    if failed:
         print("evidence digests: FAILED (%d defect(s)); UNEXAMINED EVIDENCE IS NOT VERIFIED EVIDENCE" % defects)
         return 1
     print("evidence digests: PASSED (every registered entry examined, every digest matching)")
