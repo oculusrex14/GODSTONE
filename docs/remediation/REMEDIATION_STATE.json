@@ -4463,8 +4463,8 @@
    "PARTIAL": 6
   },
   "by_status_derived_at_round_608": {
-   "FIX_SUBMITTED": 49,
-   "PARTIAL": 5
+   "FIX_SUBMITTED": 48,
+   "PARTIAL": 6
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -8515,7 +8515,7 @@
     "source_sha_at_red": "3bc1a31"
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "PARTIAL, and precisely so: the two exact-SHA control failures the audit reproduced are REPAIRED (resolver 26 -> 0 with its negative controls intact and the compiler green; the T77 rehearsal residue now refused in-tree with the workflow writing into RUNNER_TEMP and the following provenance check green in a clean checkout), the mandatory invariants lane reporteth passed=7 failed=0, and the workspace inventory is explicit. ONE CARD ITEM REMAINS UNREPAIRED -- the MeshNode blob-drift classification (pending_work) -- together with the hosted-lane evidence and the independent verification (pending_proof). Only an independent audit may write VERIFIED_FIXED. ROUND 86 -- A REPOSITORY-CONTROL REPAIR RECORDED HERE BECAUSE THIS ENTRY IS THE CONTROL-INTEGRITY ONE (it is NOT an extension of the audit's charge against this finding, and the finding's own limbs are unaffected): the android lane's intermittent FIXTURE flake 'no ascending hint pair within 64 draws' is ROOT-CAUSED and FIXED. The earlier reading -- 65 non-ascending draws being 'statistically impossible', therefore shared RNG state -- was WRONG, and the correction is the point: the fixture in ReadinessT17Test and ReadinessT18Test redrew `b` ALONE against a FIXED `a`, so a draw was accepted with probability (255 - a.hint[0])/256, NOT one half. With a.hint[0] = 254 (1 call in 256) each redraw needed the 1/256 case b.hint[0] == 255, so sixty-five draws failed with probability ~78%. MEASURED, not guessed: the two loops were instrumented in a DETACHED WORKTREE of 5e87add (production byte-identical to it) and the filtered courts were run repeatedly, catching 'FLAKE-PROBE FAILED draws=65 a=254,25,59,239 b=67,174,80,195 identical=false aIdEqBId=false' in testAttestTwentyTwentyCarriesTheFullDigest, with NINE of THIRTY runs failing, all in FIXTURE SETUP. The other five courts (T20, T21, T22 x2, T23) redraw BOTH identities, so their acceptance probability is ~1/2 per draw and their 65-draw failure is genuinely impossible -- which is exactly why only these two courts ever flaked, and why they alone were changed. The repair ORDERS the drawn pair by hint instead of fishing on the coin (and fails with a message naming the two hints only if they are equal, a 2^-32 collision). Evidence, kept immutable and NOT entered in my_logs because it belongs to the lane rather than to this finding's own fix: GS-CTRL-002/red/lane-flake-REPRODUCED.log (sha256 bb6bca35e84113b8d288bc624ce75343d7efa1093e4b0b0ce188e77ed2cea077 -- nine failures in thirty runs plus the caught diagnostic), GS-CTRL-002/green/lane-flake-FIXED-30runs.log (sha256 c217117cb218ba4c9f3c5818d17a6e1e16fef3de7b416c97617de9a546f272a2 -- THIRTY of THIRTY green under the same protocol), GS-CTRL-002/green/lane-flake-ANDROID-FULL.log (sha256 b1bc4c849d19aea5fd3fe633827da46b4174b122820c5f9e59570b393f95481a -- whole :mesh lane rc=0, XML testcases=1152 failures=0) and GS-CTRL-002/green/lane-flake-LANES.log (sha256 983a1e5923133048ffb260c9fac8490264cd13bec9d591da97eaa06ca7fa6ead -- nine repository lanes, nine rc=0). Every lane stays MANDATORY: nothing was skipped, filtered out, retried, exempted or renamed, and no court was weakened. What this does NOT do: it does not make any previously logged run retroactively valid, and it proves nothing about a device or a hosted lane -- every result is a LOCAL host reproduction. ROUND 97 (AUDIT-004 limb, 7c04539): the review found that the content lane uploaded only provenance-*.json and never the rehearsal's external report, so the whole rehearsal left no retrievable artifact. The canonical court now DERIVES the expected upload path from the lane's own env and the rehearsal's own --report argument, and the workflow upload carrieth `if: always()` so a LATER red stage cannot destroy the report. The T77 sequence was rerun verbatim at this SHA with the report outside the tree: 12/12 agreed and NO residue; the gate checker stayeth green with every mandatory lane mandatory.",
+   "notes": "PARTIAL, and precisely so: the two exact-SHA control failures the audit reproduced are REPAIRED (resolver 26 -> 0 with its negative controls intact and the compiler green; the T77 rehearsal residue now refused in-tree with the workflow writing into RUNNER_TEMP and the following provenance check green in a clean checkout), the mandatory invariants lane reporteth passed=7 failed=0, and the workspace inventory is explicit. *** CORRECTED (round 713): THIS SENTENCE WAS STALE, AND AN INDEPENDENT SWEEP FLAGGED THE CONTRADICTION IT MADE WITH ITS OWN STATUS. *** IT SAID: \"ONE CARD ITEM REMAINS UNREPAIRED -- the MeshNode blob-drift classification (pending_work)\". **MEASURED, THE BLOB-DRIFT ITEM IS REPAIRED AND ITS EVIDENCE IS IN THIS ENTRY'S OWN `my_logs`: \"the blob classification: 14 NORMATIVE + 4 BASELINE authority paths\" with a sha256-verified log at `GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/blob-classification.log` (present on disk).** *The `pending_work` field it pointed at holdeth a ROUND-165 narrative about a different control, not this item -- so the sentence was reading a stale pointer and calling it unrepaired work.* **AND THE REMAINING PENDING ITEMS ARE GENUINELY EXTERNAL** (*the hosted lane, and independent verification which by rule only an independent audit may write*) -- *which is exactly what FIX_SUBMITTED meaneth: every reachable item repaired, the external ones named.* **A STATUS AND ITS OWN NOTES DISAGREEING IS A DEFECT IN THE LEDGER, WHICHEVER WAY IT IS RESOLVED** -- *so the note is corrected rather than left to be re-flagged.* Only an independent audit may write VERIFIED_FIXED. ROUND 86 -- A REPOSITORY-CONTROL REPAIR RECORDED HERE BECAUSE THIS ENTRY IS THE CONTROL-INTEGRITY ONE (it is NOT an extension of the audit's charge against this finding, and the finding's own limbs are unaffected): the android lane's intermittent FIXTURE flake 'no ascending hint pair within 64 draws' is ROOT-CAUSED and FIXED. The earlier reading -- 65 non-ascending draws being 'statistically impossible', therefore shared RNG state -- was WRONG, and the correction is the point: the fixture in ReadinessT17Test and ReadinessT18Test redrew `b` ALONE against a FIXED `a`, so a draw was accepted with probability (255 - a.hint[0])/256, NOT one half. With a.hint[0] = 254 (1 call in 256) each redraw needed the 1/256 case b.hint[0] == 255, so sixty-five draws failed with probability ~78%. MEASURED, not guessed: the two loops were instrumented in a DETACHED WORKTREE of 5e87add (production byte-identical to it) and the filtered courts were run repeatedly, catching 'FLAKE-PROBE FAILED draws=65 a=254,25,59,239 b=67,174,80,195 identical=false aIdEqBId=false' in testAttestTwentyTwentyCarriesTheFullDigest, with NINE of THIRTY runs failing, all in FIXTURE SETUP. The other five courts (T20, T21, T22 x2, T23) redraw BOTH identities, so their acceptance probability is ~1/2 per draw and their 65-draw failure is genuinely impossible -- which is exactly why only these two courts ever flaked, and why they alone were changed. The repair ORDERS the drawn pair by hint instead of fishing on the coin (and fails with a message naming the two hints only if they are equal, a 2^-32 collision). Evidence, kept immutable and NOT entered in my_logs because it belongs to the lane rather than to this finding's own fix: GS-CTRL-002/red/lane-flake-REPRODUCED.log (sha256 bb6bca35e84113b8d288bc624ce75343d7efa1093e4b0b0ce188e77ed2cea077 -- nine failures in thirty runs plus the caught diagnostic), GS-CTRL-002/green/lane-flake-FIXED-30runs.log (sha256 c217117cb218ba4c9f3c5818d17a6e1e16fef3de7b416c97617de9a546f272a2 -- THIRTY of THIRTY green under the same protocol), GS-CTRL-002/green/lane-flake-ANDROID-FULL.log (sha256 b1bc4c849d19aea5fd3fe633827da46b4174b122820c5f9e59570b393f95481a -- whole :mesh lane rc=0, XML testcases=1152 failures=0) and GS-CTRL-002/green/lane-flake-LANES.log (sha256 983a1e5923133048ffb260c9fac8490264cd13bec9d591da97eaa06ca7fa6ead -- nine repository lanes, nine rc=0). Every lane stays MANDATORY: nothing was skipped, filtered out, retried, exempted or renamed, and no court was weakened. What this does NOT do: it does not make any previously logged run retroactively valid, and it proves nothing about a device or a hosted lane -- every result is a LOCAL host reproduction. ROUND 97 (AUDIT-004 limb, 7c04539): the review found that the content lane uploaded only provenance-*.json and never the rehearsal's external report, so the whole rehearsal left no retrievable artifact. The canonical court now DERIVES the expected upload path from the lane's own env and the rehearsal's own --report argument, and the workflow upload carrieth `if: always()` so a LATER red stage cannot destroy the report. The T77 sequence was rerun verbatim at this SHA with the report outside the tree: 12/12 agreed and NO residue; the gate checker stayeth green with every mandatory lane mandatory.",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
     "the hosted lane: no hosted run URL/log was available to this work, so every result here is a LOCAL reproduction of the constituent commands; the R1 supplement requireth enabled/executed/green hosted jobs at the candidate SHA, which remains pending",
@@ -8563,7 +8563,7 @@
    "final_review": null,
    "impact": "Even with a bounded output ring, diagnostics memory grows with every distinct relation key for the process lifetime. It can retain identifiers long after their corresponding output was evicted.",
    "invalidated_dependents": [],
-   "my_fix_commit": "PENDING",
+   "my_fix_commit": "27527a2a (recovered from git history, round 713): this field read 'PENDING' while the commit existed in the repository. Subject: GS-DIAG-001: the relation-key map is bounded exactly as the ring is, on all three lanes",
    "my_logs": [
     {
      "outcome": "the T71 court 14/14; the whole suite 474 OK; the android twin BUILD SUCCESSFUL; the probes down to four reds",
@@ -8928,8 +8928,8 @@
     }
    ],
    "my_red_case": "MEASURED RED (round 514): testGSINTEGRATION001_afterAWipeTheDurableIntentMustBeGone -- FAILED (0.195 s). The arm writes a durable intent through the composition's durable command, asserts the row stands BEFORE the wipe (the subject-present control), invokes harness.beginWipe(), reopens the store from the same path, and demands the intent be GONE. IT IS NOT: beginWipe() sets a boolean and appends a trace event and calls nothing that could erase a row. Its fix is specified: beginWipe() must reach the real wipe owners GS-STORE-006 built. Parked at round514-the-wipe-owner-RED-MEASURED-PARKED.patch.",
-   "my_status": "FIX_SUBMITTED",
-   "notes": null,
+   "my_status": "PARTIAL",
+   "notes": "*** STATUS CORRECTED TO `PARTIAL` IN ROUND 713, AND THE ENTRY'S OWN TEXT IS WHY. *** An independent sweep reported that this finding was \"submitted with its third owner (radio/handshake) explicitly 'NOT TAKEN'\", under a FIX_SUBMITTED status. **MEASURED, THE ENTRY AGREES WITH THE SWEEP AGAINST ITS OWN STATUS:** its `my_owner_assessment.handshake` readeth *\"the harness must drive the REAL handshake statute over its radio seam -- a SUBSTANTIAL change ... AND IT IS NOT TAKEN\"*, and `.persistence` readeth *\"the OLD in-memory path remains beside it, WHICH IS WHY THIS IS PART-REPAIRED RATHER THAN REPAIRED.\"* **AND `PARTIAL` IS THIS LEDGER'S ESTABLISHED WORD FOR EXACTLY THAT** (*the five existing PARTIAL entries each name a repair step left untaken: GS-ARCHIVE-005 \"one step of six\"; GS-STORE-002 with its composition-refusal clause; GS-UX-001*). **SO `FIX_SUBMITTED` OVERSTATED WHAT THE ENTRY ITSELF RECORDS.** *The repairs that DID land are not diminished by this: the persistence bypass was measured (rounds 498-500) and repaired through a real `SqliteMessageStore`, `SqliteOutboundIntentJournal` and `SendDirectAuthority` (rounds 507-511), and the delivery layer was measured NOT to be a bypass (round 518) -- it reacheth the receiving node's own dispatch statute. What remaineth untaken is the HARNESS's radio seam, and the audit's own review of this finding was `UNABLE_TO_VERIFY`.* ",
    "pending_proof": [
     "*** ROUND 533: THIS FIELD WAS EMPTY -- and this finding is one of the FIVE the human named directly. WRITTEN FROM A RE-MEASUREMENT TAKEN THIS ROUND. ***",
     "TWO OF THE THREE OWNERS ARE REPAIRED AND PROVEN: the WIPE owner (the round-514 RED measured that `beginWipe()` erased no row; `59c72ab` turned it green) and the PERSISTENCE owner; the submission at `9c169cf` recordeth both.",
@@ -9136,7 +9136,7 @@
     "android/llm ModelStaging + ModelManager (every caller: RagPipeline, the DI graph, the T61 court)",
     "android/llm/src/test/.../ReadinessT61Test.kt (its arm ONCE required the manager to default its artifact to NULL -- it protected the bypass; it now requyreth the opposite)"
    ],
-   "my_fix_commit": "PENDING",
+   "my_fix_commit": "32d62bfd (Android production half: `ModelManager.kt`, `ModelStaging.kt`) and baf19c7b (the iOS half READ, SPECIFIED AND REVERTED -- `GodstoneLLM` is not in the mirrored package, so the change was reverted rather than left unverifiable). RECOVERED FROM GIT HISTORY (round 713): this field read \"PENDING\" while BOTH commits existed in the repository. *Note the pairing: a ledger-only commit is NOT the fix, and my first recovery picked exactly that one -- so the pointer names the production commit, and the reverted half is named as reverted rather than counted as done.*",
    "my_logs": [
     {
      "outcome": "BUILD SUCCESSFUL; the :llm suite green; the two arms now the module's permanent controls",
@@ -9208,7 +9208,7 @@
    "final_review": null,
    "impact": "The artifact policy may report PASS for a bundle violating its own platform or entitlement restrictions. A successful inspector result therefore cannot establish the claimed release surface.",
    "invalidated_dependents": [],
-   "my_fix_commit": "PENDING",
+   "my_fix_commit": "1e68cbed (recovered from git history, round 713): this field read 'PENDING' while the commit existed in the repository. Subject: GS-PACKAGE-001: the iOS inspector refuseth prohibited SIGNED entitlements and non-iOS binaries",
    "my_logs": [
     {
      "outcome": "6 tests OK (the three arms plus the fixture's own); the readiness suite 480 OK; the probes 12 tests, 2 failures",
@@ -9271,7 +9271,7 @@
    "invalidated_dependents": [
     "tools/readiness/tests/test_t70.py (its AAB fixture now carrieth the SAME library pair the APK proveth, with real ELF images -- the arm's own subject is untouched)"
    ],
-   "my_fix_commit": "PENDING",
+   "my_fix_commit": "15b103e7 (recovered from git history, round 713): this field read 'PENDING' while the commit existed in the repository. Subject: GS-PACKAGE-002: the AAB's native payload is INSPECTED -- and the adopted probe suite, which began with seven reds, is now FULLY GREEN",
    "my_logs": [
     {
      "outcome": "the probes 12 tests, 0 failures; the canonical courts green; the readiness suite 486 OK",
@@ -9841,7 +9841,7 @@
    },
    "impact": "The required Android wrong-key, corruption, disk-full, and backup behavior remains unproved. Production opens SqliteMessageStore directly; the new RawStoreOpener/CipherNativeBinding path is not the runtime path. No conclusion that Android storage is plaintext is made: the existing adapter imports real SQLCipher.",
    "invalidated_dependents": [],
-   "my_fix_commit": "PENDING",
+   "my_fix_commit": "0791d0e1 (recovered from git history, round 713): this field read 'PENDING' while the commit existed in the repository. Subject: GS-STORE-001: T29 proveth its classifier over REAL BYTES and SAYETH what it cannot prove -- and the court-quality arms move into the canonical lane",
    "my_logs": [
     {
      "outcome": "the store001 court 4/4; :mesh BUILD SUCCESSFUL",
@@ -11444,7 +11444,7 @@
    "final_review": null,
    "impact": "A manifest can direct restoration outside dest_dir despite correct file hashes. Byte verification does not establish path authorization; restore also accepts a source symlink that bypasses the cache directory boundary.",
    "invalidated_dependents": [],
-   "my_fix_commit": "PENDING-COMMIT",
+   "my_fix_commit": "ba730d3c (recovered from git history, round 713): this field read 'PENDING-COMMIT' while the commit existed in the repository. Subject: GS-SUPPLY-001: the supply-chain control had drifted, and the audit's Phase 7 clause is now measured",
    "my_logs": [
     {
      "outcome": "8 tests OK (four arms + the shared fixture's own suite); the probes 12 tests, 5 failures (was 7)",
@@ -13849,6 +13849,13 @@
    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-005/round711-control-clock-monotonic-red-green.log",
    "sha256": "c5a3072b8031c673c68750526a1cb72fe14370be04bacf99a50b6a8c4eb5bdf6",
    "correction": "THE CONTROL CLOCK: wall time wearing a monotonic name, repaired AT THE ROOT. The two seams the audit named were not the extent -- `MeshNode.controlClock` was the root and four OTHER call sites read through it, so my first repair (a local `let` in `init`) SHADOWED the root and moved the defect rather than removing it. Android already used `System.nanoTime()`, so this is parity with a correct twin. The arm asserts the MAGNITUDE (wall ~1.7e12 ms vs bounded uptime), which is the property that discriminates; red proven with the wall clock restored."
+  },
+  {
+   "round": 713,
+   "finding": "GS-CTRL-002",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/LEDGER_ACCURACY/round713-four-ledger-accuracy-corrections.log",
+   "sha256": "f2d04de2a4f1536b22ba0406057d4bb1ab313c8f7860eb0a9bc25548dc00cd87",
+   "correction": "FOUR LEDGER-ACCURACY DEFECTS, EACH FOUND BY AN INDEPENDENT SWEEP AND EACH MEASURED. **(1) SIX FINDINGS CARRIED A COMMIT POINTER OF \"PENDING\" WHILE THEIR COMMITS EXISTED** (GS-SUPPLY-001, GS-DIAG-001, GS-MODEL-001, GS-PACKAGE-001/002, GS-STORE-001) -- every one already carried sha256-verified logs, so the POINTER was missing, not the evidence; all six recovered and verified to touch their own code, and *my first GS-MODEL-001 pick was a ledger-only commit, caught by `git show --stat`.* **(2) GS-CTRL-002's notes said \"PARTIAL ... ONE CARD ITEM REMAINS UNREPAIRED\" under FIX_SUBMITTED** -- measured stale: the blob-drift item is repaired with a sha256-verified log on disk, and the `pending_work` field the sentence pointed at holds a round-165 narrative about a different control. *A status and its own notes disagreeing is a ledger defect whichever way it is resolved.* **(3) GS-INTEGRATION-001 MOVED FIX_SUBMITTED -> PARTIAL, BECAUSE THE ENTRY DISPROVES ITS OWN STATUS:** its `my_owner_assessment` reads \"the harness must drive the REAL handshake statute ... AND IT IS NOT TAKEN\" and \"the OLD in-memory path remains beside it, WHICH IS WHY THIS IS PART-REPAIRED RATHER THAN REPAIRED\" -- *and `PARTIAL` is this ledger's established word for a named step left untaken.* Census: 48/6, derived not typed. **(4) AND ONE FLAG MEASURED AS NOT A DEFECT:** the four findings resting on fixture evidence each name that limitation in their own `pending_proof`, which is what `FIX_SUBMITTED` means by the protocol -- *a ledger that names its own limits is the opposite of one that overstates them.*"
   }
  ],
  "phase_one": {
@@ -14667,7 +14674,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "f5da15cd707d203246737ef165a8d3228ac1d996",
+  "candidate_sha": "9c5b46276d7ee30e1ba4e200f0bec7a17bd74b80",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14675,8 +14682,8 @@
   "verified_fixed_note": "ZERO BY RULE: only an independent audit may write VERIFIED_FIXED, and none has since the audit at e07e6ca. An empty internal_remaining would NOT itself be a proof, and this block therefore carrieth the remaining work rather than claiming its absence.",
   "derived_status_counts": {
    "original_54": {
-    "FIX_SUBMITTED": 49,
-    "PARTIAL": 5
+    "FIX_SUBMITTED": 48,
+    "PARTIAL": 6
    },
    "audit_13_new": {
     "FIX_SUBMITTED": 10,
@@ -14687,6 +14694,7 @@
   "independent_audit_dispositions_at_e07e6ca": {},
   "internal_remaining": [
    "GS-ARCHIVE-005: no hosted run URL/log was available, so hosted convergence remains pending",
+   "GS-INTEGRATION-001: TWO OF THE THREE OWNERS ARE REPAIRED AND PROVEN: the WIPE owner (the round-514 RED measured that `beginWipe()` erased no row; `59c72ab` turned it green) and the PERSISTENCE owner; ",
    "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
    "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
    "GS-STORE-002: *** ROUND 544: STEP 5 IS LANDED -- AND STEP 7 WAS RE-MEASURED AND FOUND ALREADY LANDED, SO THE RECORD IS CORRECTED RATHER THAN THE CLAIM REPEATED. *** STEP 7 (*'Wire DEK erasure in",
@@ -14715,6 +14723,8 @@
   ],
   "external_acceptance": [
    "GS-ARCHIVE-005: STEP 7'S APP-LEVEL ARM NOW EXISTS AND PASSES (round 595), through a real `SavedStateHandle` and the recomposed real screen -- the layer the card explicitly refused to accept a mode",
+   "GS-INTEGRATION-001: *** AND THE THIRD OWNER IS MEASURED AND SIZED, RE-MEASURED THIS ROUND: **THE COMPOSITION'S RADIO IS NOT THE REAL TRANSPORT.** `ComposedRuntime.swift:309 self.link = link ?? LinkFac",
+   "GS-INTEGRATION-001: AND THE HONEST BOUNDARY ON WHAT *IS* PROVEN: the durable intent, the wipe and the persistence are witnessed on the HOST through the composition's own entries; **NO DEVICE, NO RADIO",
    "GS-RUNTIME-001: *** SO THIS IS THIS PROGRAMME'S RECURRING SHAPE AGAIN, AND IT IS NAMED AS SUCH: THE ACK ROAD IS COMPLETE AND WITNESSED BY COURTS, AND REACHED BY NO RUNTIME A USER'S MESSAGE TRAVELS",
    "GS-RUNTIME-001: *** WHAT IS STILL OWED IS UNCHANGED AND NAMED: THE ACK ROAD IS COMPLETE AND REACHED BY NO LIVE RUNTIME. *** What is needed is not a repair in the ordinary sense but the **LIVE-TRAN",
    "GS-RUNTIME-001: NO DEVICE EVIDENCE AND NO LIVE RUNTIME: the arms here exercise the graph's SOURCE and the node's own contract on the host; **no radio, no device and no instrumented host is witness",
@@ -14812,8 +14822,9 @@
    "GS-FINAL-004: *** CLAUSE (c) IS NOW LANDED (round 647), AND IT IS THE SECOND CLAUSE THAT NEEDED NO NATIVE ENGINE. *** The card's \"Return typed open errors instead of a nominal store with a nil h",
    "GS-FINAL-004: *** CLAUSE (d) IS NOW LANDED (round 605), AND IT IS THE ONE CLAUSE THAT NEEDED NO EXTERNAL ENGINE. *** The card's \"separate RESUMABLE operation with PRESERVED ROLLBACK EVIDENCE\" is",
    "GS-FINAL-004: THE CORE'S BLOCKER IS NOW STATED CORRECTLY, AND MY EARLIER VERSION OF IT WAS WRONG IN A WAY THAT MATTERED (round 577). I had recorded that \"`EncryptedStoreHandle` cannot carry a co",
+   "GS-INTEGRATION-001: *** ROUND 533: THIS FIELD WAS EMPTY -- and this finding is one of the FIVE the human named directly. WRITTEN FROM A RE-MEASUREMENT TAKEN THIS ROUND. ***",
    "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ"
   ],
-  "excluded_round_narrative": 4
+  "excluded_round_narrative": 5
  }
 }

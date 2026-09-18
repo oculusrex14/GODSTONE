@@ -278,16 +278,33 @@ def check_controls(
         errors.append("iOS RuntimeAwareWipeArtifacts must invalidate before delegate.eraseKeys (R14)")
     if "func beginPanicWipe()" not in swift_mesh_runtime:
         errors.append("iOS MeshRuntime must provide beginPanicWipe (R14)")
-    _r14_old = "RuntimeAwareWipeArtifacts" in swift_mesh_runtime
-    # THE CRASH-RESUMABLE ROAD: the vault seam performeth the invalidation, INSIDE the retained authority, before any
-    # key is erased -- the same order, carried by the coordinator the audit's finding is about.
+    # *** R14 WAS STRENGTHENED (round 709) BECAUSE AN INDEPENDENT SWEEP FOUND IT MEASURING PROSE. ***
+    #
+    # *The old arm read `_r14_old = "RuntimeAwareWipeArtifacts" in swift_mesh_runtime` -- AND THAT STRING WAS PRESENT
+    # ONLY INSIDE TWO DOC COMMENTS* (`MeshRuntime.swift:547` and the "really performed through
+    # `RuntimeAwareWipeArtifacts`" sentence at `:615`), *with NO code use anywhere: `grep "RuntimeAwareWipeArtifacts("`
+    # returneth NOTHING on this file.* **SO THE CONTROL WAS SATISFIED BY A COMMENT, WHICH IS THE "A CONTROL THAT NAMES A
+    # STRING IS NOT A CONTROL THAT MEASURES A BINDING" LAW THIS REPOSITORY ALREADY PAID FOR.**
+    #
+    # *The sweep's consequence:* "a regression restoring the audited verb would still keep the nine-control green."
+    # **THE STRENGTHENED FORM DEMANDS A CALLABLE ROAD, NOT A MENTION:** the crash-resumable vault seam is constructed
+    # (`WipeKeyVaultSeam(`), performeth the invalidation (`invalidateRuntime:` + `invalidateForWipe()`), and the ENTRY
+    # VERB is the resumable one (`requestWipe()`). *A comment cannot satisfy a call.*
     _r14_new = ("WipeKeyVaultSeam(" in swift_mesh_runtime
                 and "invalidateRuntime:" in swift_mesh_runtime
                 and "invalidateForWipe()" in swift_mesh_runtime
                 and "requestWipe()" in swift_mesh_runtime)
-    if not (_r14_old or _r14_new):
+    # THE OLD ROAD COUNTS ONLY IF IT IS **CALLED** -- a constructor invocation, never a bare mention.
+    _r14_old = "RuntimeAwareWipeArtifacts(" in swift_mesh_runtime
+    if not _r14_new and not _r14_old:
         errors.append("iOS MeshRuntime's active wipe must invalidate the runtime before erasing keys -- either through "
-                      "RuntimeAwareWipeArtifacts or through the crash-resumable vault seam (R14)")
+                      "a RuntimeAwareWipeArtifacts CONSTRUCTION or through the crash-resumable vault seam (R14). "
+                      "*A mention in a comment is not a road.*")
+    # AND THE ENTRY VERB ITSELF: the fresh path must REQUEST, not merely have `requestWipe` reachable from a helper.
+    if "func beginPanicWipe() throws -> WipeStepResult" not in swift_mesh_runtime:
+        errors.append("iOS MeshRuntime's public beginPanicWipe must RETURN the typed outcome (R14). *GS-FINAL-002's "
+                      "exact_remediation: 'Return a typed outcome to the caller and render completion only at durable "
+                      "IDLE' -- a Void entry cannot render it.*")
 
     # ── R15: Android MeshModule wires BoundRecipientKeyResolver and SessionManager ──
     if "BoundRecipientKeyResolver" not in kt_mesh_mod:
