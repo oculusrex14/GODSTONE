@@ -13793,7 +13793,21 @@
     "root_cause": "An optimistic fallback collapses unknown/error into success and disagrees with another path using the same status API.",
     "exact_remediation": "Remove the Ready fallback. Map status exceptions through one typed archive-status/error mapper used by refresh, search and open. Publish success only when both content read and required status validation succeed for the same generation. Do not manufacture a digest or origin. Decide whether metadata absence is optional based on the content contract rather than getOrNull.",
     "regression_test": "Fake the reader so content read succeeds but status throws; assert a typed error/unavailable phase and no fabricated Ready. Include cancellation and a later successful retry.",
-    "my_status": "OPEN"
+    "my_status": "FIX_SUBMITTED",
+    "my_fix_commit": "round 552 (this commit) -- one typed status mapper; the interface default is fail-closed",
+    "my_logs": [
+     {
+      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-FINAL-008/round552-RED-GREEN.log",
+      "sha256": "f95db6cbbb12c3cec7be3d9a8cf705517aaf53b1cae4d21c12f6e90e93c4c421",
+      "what": "The defect, the RED, the repair, and all three Android lanes.",
+      "outcome": "RED: BrowsePhase$Ready where Unavailable was required. GREEN: 3/3 arms; app 68/0, core 21/0, mesh 1869/0."
+     }
+    ],
+    "my_red_case": "BEHAVIOURAL RED TAKEN BEFORE THE EDIT: `aStatusThrowDuringSearchDoesNotBecomeReady` failed with `observed phase: io.godstone.app.ui.browse.BrowsePhase$Ready` on a reader whose status() throws -- the defect itself. Two positive controls (a healthy reader still reaches Ready with ITS OWN metadata; no assumed-origin or empty-digest is ever published) PASSED and were kept.",
+    "pending_proof": [
+     "NO RENDERED-SCREEN WITNESS. The arms drive the ViewModel, which is the state owner; they do not exercise the Compose surface (`BrowseScreen.kt`), so whether the Unavailable phase is DISPLAYED correctly remains the same UI-target gap the audit records for GS-UX-001 and GS-ARCHIVE-005 step 7 (no `androidTest` target exists).",
+     "THE `origin = \"assumed\"` STRING SURVIVES IN ONE PLACE: the docstring recording this finding, not in any verdict the code can publish. Verified by grep."
+    ]
    },
    "GS-FINAL-009": {
     "severity": "Medium",

@@ -155,10 +155,8 @@ class BrowseViewModel(
 
     fun refreshArchiveStatus() {
         viewModelScope.launch(dispatcher) {
-            val verdict = runCatching { reader.status() }
-                .getOrElse { exc ->
-                    ArchiveState.Unavailable("status probe threw: " + (exc.message ?: exc::class.simpleName))
-                }
+            // GS-FINAL-008: THE SAME MAPPER EVERY OTHER ROAD USETH -- one status probe, one verdict.
+            val verdict = archiveVerdict()
             _archiveStatus.value = verdict
             if (verdict !is ArchiveState.Ready) {
                 val reason = when (verdict) {
@@ -222,6 +220,30 @@ class BrowseViewModel(
         _state.value = _state.value.copy(query = value.take(SearchQuery.MAX_PHRASE_CHARS))
     }
 
+    /**
+     * *** GS-FINAL-008 (the independent audit, 2026-09-18): ONE STATUS PROBE, ONE VERDICT. ***
+     *
+     * THE AUDIT'S MEASUREMENT: *"search and openDocumentInternal use
+     * `getOrDefault(ArchiveState.Ready(origin=\"assumed\", sha256=\"\"))` when reader.status throws.
+     * refreshArchiveStatus treats the same exception as Unavailable."* AND ITS ROOT CAUSE: *"An optimistic fallback
+     * collapses unknown/error into success and disagrees with another path using the same status API."*
+     *
+     * TWO DEFECTS IN ONE EXPRESSION, AND THE SECOND IS THE ONE THAT TRAVELS:
+     *   1. A THROWING PROBE BECAME SUCCESS. The same exception was `Unavailable` in one road and `Ready` in three --
+     *      so which verdict a user saw depended on WHICH SCREEN ROUTE they took, not on the archive's state.
+     *   2. IT MANUFACTURED METADATA. `origin = "assumed"` with `sha256 = ""` is a digest nobody computed, published
+     *      where a real one belongs. The audit's own words: *"Do not manufacture a digest or origin."*
+     *
+     * THE REMEDY IS THE ONE PLACE THIS DECISION MAY BE TAKEN. Every road that needs the archive's availability calls
+     * THIS, so there is no second opinion to disagree with, and a throw can only ever become `Unavailable` carrying
+     * its own cause.
+     */
+    private fun archiveVerdict(): ArchiveState =
+        runCatching { reader.status() }
+            .getOrElse { exc ->
+                ArchiveState.Unavailable("status probe threw: " + (exc.message ?: exc::class.simpleName))
+            }
+
     fun search() {
         val query = _state.value.query.trim()
         if (query.isEmpty()) {
@@ -240,8 +262,7 @@ class BrowseViewModel(
             if (generation.get() != token) return@launch          // stale after the road
             outcome.fold(
                 onSuccess = { hits ->
-                    when (val verdict = runCatching { reader.status() }
-                              .getOrDefault(ArchiveState.Ready(origin = "assumed", sha256 = ""))) {
+                    when (val verdict = archiveVerdict()) {
                         is ArchiveState.Ready ->
                             _state.value = _state.value.copy(
                                 loading = false,
@@ -318,8 +339,7 @@ class BrowseViewModel(
             if (generation.get() != token) return@launch
             outcome.fold(
                 onSuccess = { (found, source) ->
-                    when (val verdict = runCatching { reader.status() }
-                              .getOrDefault(ArchiveState.Ready(origin = "assumed", sha256 = ""))) {
+                    when (val verdict = archiveVerdict()) {
                         is ArchiveState.Ready ->
                             _state.value = _state.value.copy(
                                 loading = false,
@@ -477,8 +497,7 @@ class BrowseViewModel(
             if (generation.get() != token) return@launch
             outcome.fold(
                 onSuccess = { found ->
-                    when (val verdict = runCatching { reader.status() }
-                              .getOrDefault(ArchiveState.Ready(origin = "assumed", sha256 = ""))) {
+                    when (val verdict = archiveVerdict()) {
                         is ArchiveState.Ready ->
                             _state.value = _state.value.copy(
                                 loading = false,

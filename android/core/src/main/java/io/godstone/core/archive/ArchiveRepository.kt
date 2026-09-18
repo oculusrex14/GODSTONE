@@ -101,12 +101,22 @@ interface ArchiveReader {
     fun passages(documentId: Long): List<ArchivePassage>
     fun search(query: String, limit: Int = 40): List<ArchivePassage>
 
-    /** T49 (s17): the typed availability of the read path. The default
-     *  sayeth ready, that the sealed fakes compile unchanged; the real
-     *  repository answereth with its arm's verdict and a court may make a
-     *  fake report otherwise. An unavailable archive must never masquerade
-     *  as an honest empty result -- the caller consulteth this first. */
-    fun status(): ArchiveState = ArchiveState.Ready(origin = "assumed", sha256 = "")
+    /** T49 (s17): the typed availability of the read path. An unavailable archive must never masquerade as an honest
+     *  empty result -- the caller consulteth this first.
+     *
+     *  *** GS-FINAL-008 (the independent audit, 2026-09-18): THE DEFAULT IS FAIL-CLOSED, AND IT USED TO BE THE
+     *  OPPOSITE. ***
+     *
+     *  IT READ `Ready(origin = "assumed", sha256 = "")` -- A FABRICATED VERDICT CARRYING A FABRICATED DIGEST, as a
+     *  convenience so that fakes would compile. THE AUDIT'S WORD FOR IT: *"Do not manufacture a digest or origin."*
+     *  A default that answers "ready, origin assumed, digest empty" tellth a caller nothing true: it inventeth an
+     *  origin string, publishes an empty hash where a real one belongs, AND COLLAPSES "I WAS NEVER ASKED" INTO
+     *  "EVERYTHING IS FINE" -- the precise shape the audit named.
+     *
+     *  THE HONEST DEFAULT FOR AN IMPLEMENTER THAT SAYETH NOTHING IS `Unavailable`, BECAUSE NOTHING IS KNOWN.
+     *  The real repository answereth with its arm's verdict, and a court may make a fake report otherwise. */
+    fun status(): ArchiveState =
+        ArchiveState.Unavailable("this reader carrieth no availability verdict; it was never given one")
 
     /** T49 (s17): the source/revision projection of one document, or null
      *  when the reader cannot speak of provenance. */
