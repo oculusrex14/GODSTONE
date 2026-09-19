@@ -1212,6 +1212,17 @@ class ReadinessT23Test {
             rig.completeHandshake()
             awaitBothReady(rig)
             val conn = rig.initiatorConnection()
+            // *** THE CHALLENGE IS ISSUED ASYNCHRONOUSLY, SO THE ARM MUST AWAIT IT -- IT IS THE ARM'S OWN CLAIM. ***
+            // *The application issueth the sealed challenge from a coroutine on `Dispatchers.IO`, launched at the
+            // trusted hour. `awaitBothReady` waiteth for the two registries and the two connection STATES, which is
+            // a DIFFERENT event: the challenge is a later write, and on a loaded runner it had not yet been
+            // recorded when the assertion looked. MEASURED: this arm failed intermittently (one of three
+            // consecutive full-suite runs) with `the trusted hour must ISSUE the challenge itself` while every
+            // other T23 arm passed.* **AWAITING AN ASYNCHRONOUS EVENT IS NOT WEAKENING THE CLAIM -- IT IS WHAT
+            // MAKES THE CLAIM MEANINGFUL: the arm asserteth that the challenge IS ISSUED, and an instantaneous
+            // read can only report whether it HAPPENED TO HAVE been issued yet.**
+            awaitUntil("the trusted hour must ISSUE the challenge itself; ring: " + ringDump(rig.alice),
+                       { conn.keyConfirmation.outstanding() != null })
             assertTrue(
                 "the trusted hour must ISSUE the challenge itself; ring: " + ringDump(rig.alice),
                 conn.keyConfirmation.outstanding() != null)

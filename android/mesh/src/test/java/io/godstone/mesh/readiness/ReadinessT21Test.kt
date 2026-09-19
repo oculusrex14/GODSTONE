@@ -746,32 +746,38 @@ class ReadinessT21Test {
             // `fragCount = ceil(32 / capacity)` giveth ONE fragment at att 247 but THREE at the 20-byte default.
             // **AND THE 20-BYTE DEFAULT IS WHAT PRODUCTION ACTUALLY RUNS:** `GattClient.requestMtu` hath ZERO
             // CALLERS, so this isle never negotiates a larger MTU (ADR-002 section 7.2 lists that under its own
-            // deferred phase). The arm was therefore asserting a property that is TRUE ONLY OF THE COURT'S OWN
-            // SIMULATED NEGOTIATION, and satisfiable only when that simulation won a race against the very
-            // dispatch that arms the door -- which is why the android job failed ONE T(2)x arm per run on a
-            // 2-core runner (measured: "expected:<1> but was:<3>") and never on a 10-core host.*
+            // deferred phase). The arm was therefore asserting a property TRUE ONLY OF THE COURT'S OWN
+            // SIMULATED NEGOTIATION, satisfiable only when that simulation won a race against the very dispatch
+            // that arms the door -- which is why the android job failed ONE T(2)x arm per run on a 2-core runner
+            // (measured: "expected:<1> but was:<3>") and never on a 10-core host.*
             //
-            // **WHAT PRODUCTION GENUINELY GUARANTEES IS MTU-INDEPENDENT: the counsel is a WELL-FORMED record
-            // that REASSEMBLES to the canonical profile.** *And that is already proven at a non-default MTU by
-            // `BleLinkSubstrateTest.testHandshakeRecordDelivery_AcrossConnectionSeam`, which fragments an HS1 at
-            // att=50 into two records and asserts the reassembler returns the payload intact -- so a
-            // multi-fragment counsel is a SUPPORTED case, not a degraded one.* So this arm now asserts the
-            // record's OWN well-formedness and the reassembled payload, and reads the fragment count only to
-            // confirm the header agrees with the number of records actually emitted.
+            // **SO THIS ARM NOW ASSERTS WHAT IS GENUINELY MTU-INDEPENDENT: the counsel REASSEMBLES.** *An earlier
+            // draft of this fix was itself MTU-DEPENDENT AND WAS CAUGHT BEFORE COMMIT: it asserted
+            // `payloadOfFragment(captured[0]).size == 32`, which holdeth ONLY at one fragment -- `payloadOfFragment`
+            // is `copyOfRange(8, size)`, so at THREE fragments the first fragment carrieth 11 payload octets, not
+            // 32. IT ALSO READ `captured.take(declaredFragments)`, which at one fragment is `take(1)`: **the
+            // reassembler was never given more than one fragment, so "reassembly" was never exercised at all.**
+            // THAT GREEN WOULD HAVE BEEN THE WORSE KIND -- DETERMINISTIC, BUT OF A PATH THE TEST NEVER RAN.*
+            //
+            // The properties asserted here hold at EVERY MTU: every emitted fragment is a well-formed HS1
+            // fragment, their declared count matches the records emitted, and **the WHOLE assembly reassembles to
+            // the canonical thirty-two-octet counsel.** *Multi-fragment reassembly at a non-default MTU is
+            // independently proven by `BleLinkSubstrateTest.testHandshakeRecordDelivery_AcrossConnectionSeam`
+            // (att=50, two fragments, payload intact).*
             val declaredFragments = fragmentCountOf(captured[0])
-            assertTrue("the fragment count the header declares must match the records emitted",
-                       declaredFragments >= 1 && captured.size >= declaredFragments)
-            assertEquals("the HS1 message is thirty-two octets of the canonical profile",
-                         32, payloadOfFragment(captured[0]).size)
+            assertEquals("the header must declare the number of records actually emitted",
+                         captured.size, declaredFragments)
+            assertTrue("every emitted fragment must be an HS1 fragment",
+                       captured.all { isType(it, BleRecordType.HS1) })
             val reassembler = BleRecordReassembler()
             var whole: BleReassembledRecord? = null
-            for (f in captured.take(declaredFragments)) {
+            for (f in captured) {
                 reassembler.receiveFragmentBytes(f)?.let { whole = it }
             }
             assertNotNull("the emitted fragments must reassemble into the counsel", whole)
             assertEquals("and the reassembled record must BE the HS1",
                          BleRecordType.HS1, whole!!.recordType)
-            assertEquals("and reassemble to the whole thirty-two octets",
+            assertEquals("and reassemble to the whole thirty-two octets -- AT ANY FRAGMENT COUNT",
                          32, whole.payload.size)
             assertEquals("the state must progress to the handshake in progress",
                          BleConnectionState.HANDSHAKE_IN_PROGRESS, rig.initiatorConnection().state)
