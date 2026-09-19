@@ -407,8 +407,23 @@ def _models_lock_pins(repo: Path) -> dict[str, Any]:
     return {"toolchains": tools, "lock_status": document.get("status")}
 
 
-def measure_toolchain(repo: Path = ROOT, *, probe: Callable[[Sequence[str]], str | None] | None = None) -> dict[str, Any]:
-    """Measure the host. Nothing here is inferred from a document."""
+def measure_toolchain(repo: Path = ROOT, *,
+                      probe: Callable[[Sequence[str]], str | None] | None = None,
+                      ndk_versions: Sequence[str] | None = None) -> dict[str, Any]:
+    """Measure the host. Nothing here is inferred from a document.
+
+    *** THE NDK WAS THE ONE MEASUREMENT THAT COULD NOT BE INJECTED, AND THAT IS A
+    TESTABILITY GAP, NOT A PROPERTY OF THE PROBLEM. *** Every other tool reacheth
+    the host through `probe`, so a court can drive it with a deterministic fake and
+    no toolchain installed. The NDK alone was read straight off the filesystem
+    (`ANDROID_HOME/ndk`, else a Homebrew default), which meant the arm asserting a
+    MEASURED NDK could not run anywhere the SDK happeneth to be absent -- **i.e. on
+    every hosted runner, which is where the arm matters most.**
+
+    `ndk_versions` is the seam: a caller who NAMES the installed versions getteth
+    exactly those, and the default still readeth the real filesystem. The
+    measurement is unchanged for production callers; it is merely reachable now.
+    """
     probe = probe or _probe
     wrapper = _wrapper_pins(repo)
     llm = _llm_pins(repo)
@@ -417,7 +432,10 @@ def measure_toolchain(repo: Path = ROOT, *, probe: Callable[[Sequence[str]], str
     ndk_root = Path(os.environ.get("ANDROID_HOME") or
                     os.environ.get("ANDROID_SDK_ROOT") or
                     "/opt/homebrew/share/android-commandlinetools") / "ndk"
-    ndk_present = sorted(p.name for p in ndk_root.iterdir()) if ndk_root.is_dir() else []
+    if ndk_versions is not None:
+        ndk_present = sorted(str(v) for v in ndk_versions)
+    else:
+        ndk_present = sorted(p.name for p in ndk_root.iterdir()) if ndk_root.is_dir() else []
 
     def tool(name: str, measured: str | None, expected: str | None, *,
              probe_argv: Sequence[str], note: str = "") -> dict[str, Any]:
@@ -552,8 +570,9 @@ def measure_toolchain(repo: Path = ROOT, *, probe: Callable[[Sequence[str]], str
 
 def capture_toolchain(repo: Path = ROOT, *, clock: Callable[[], str] | None = None,
                       probe: Callable[[Sequence[str]], str | None] | None = None,
+                      ndk_versions: Sequence[str] | None = None,
                       out: Path | None = None) -> dict[str, Any]:
-    measured = measure_toolchain(repo, probe=probe)
+    measured = measure_toolchain(repo, probe=probe, ndk_versions=ndk_versions)
     document = {
         "schema": SCHEMA,
         "captured_utc": (clock or _clock_default)(),

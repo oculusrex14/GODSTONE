@@ -173,16 +173,18 @@ jobs:
             echo "::error::historical arms cannot be accounted for"
             exit 1
           fi
-          if [ "$skipped" -gt 25 ]; then
-            echo "::error::${skipped} arms were skipped; only the T01 historical arms may"
-            echo "::error::defer, so something else is not running"
+          if [ "$skipped" -gt 40 ]; then
+            echo "::error::${skipped} arms were skipped; only the capture-dependent arms"
+            echo "::error::(T01 historical 20, evidence digests 8, remediation 6) may defer,"
+            echo "::error::so a larger number means something else stopped running"
             exit 1
           fi
           if [ "$skipped" -gt 0 ]; then
-            echo "::notice::${skipped} T01 historical arm(s) deferred: they need the"
-            echo "::notice::preservation capture, which is not in the repository. Their"
-            echo "::notice::questions are NOT answered here, and this step does not claim"
-            echo "::notice::they were."
+            echo "::notice::${skipped} capture-dependent arm(s) deferred: they assert the"
+            echo "::notice::REAL preservation capture and the REAL registered evidence, and"
+            echo "::notice::that root lives outside the repository (untracked, by design)."
+            echo "::notice::Their questions are NOT answered here, and this step does not"
+            echo "::notice::claim they were."
           fi
           # the courts this mission authored must be PRESENT, not merely counted: a
           # suite that dropped one would still clear a total-count floor.
@@ -274,6 +276,28 @@ jobs:
         run: |
           python ci/check_ble_link_substrate_controls.py --selftest
           python ci/check_ble_link_substrate_controls.py
+      - name: evidence digests, required runs, current assessment, commit provenance
+        run: |
+          # THESE FOUR WERE CALLED "GREEN" BY THE CLOSURE WHILE HAVING **NO CI
+          # INVOCATION AT ALL** -- they passed only on the builder's machine, where
+          # the out-of-repository evidence root existeth. A control that never runs
+          # in the canonical workflow is not a control the candidate can cite.
+          #
+          # Each handles an absent evidence root as a VALUE rather than a crash, so
+          # they are safe on a runner; where a root is genuinely required and absent,
+          # the control NAMES it instead of passing.
+          # *** `check_evidence_digests` IS DELIBERATELY NOT HERE, AND THE REASON IS
+          # ITS OWN LAW: "UNEXAMINED EVIDENCE IS NOT VERIFIED EVIDENCE". It asserts
+          # the REAL registered evidence verifies, which needs the out-of-repository
+          # evidence root -- absent on a runner, where it correctly returneth rc 1.
+          # Wiring it in would redden every runner for a reason that says nothing
+          # about the candidate, and suppressing it would be the false all-clear. So
+          # its POPULATION is covered here by the evidence-digest COURT, which
+          # defers visibly (skip) where the root is absent, and the CONTROL runs
+          # wherever the root existeth.
+          python ci/check_required_runs.py
+          python ci/check_current_assessment.py
+          python ci/check_commit_provenance.py
       - name: production-readiness status consistency (Stage 4E0)
         run: |
           python ci/check_status_consistency.py --selftest

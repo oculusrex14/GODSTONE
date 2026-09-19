@@ -31,6 +31,42 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 LEDGER = ROOT / "docs" / "remediation" / "REMEDIATION_STATE.json"
+
+
+def _evidence_capture_present() -> bool:
+    """True when the OUT-OF-REPOSITORY evidence root existeth beside this tree.
+
+    THE EVIDENCE ROOT IS NOT IN THE REPOSITORY BY DESIGN -- it holds the audit
+    bundles and remediation logs, untracked, on the builder's machine. Courts that
+    assert the REAL registered evidence verifies therefore cannot be put on a
+    hosted runner, where that root is absent.
+
+    *** THEY DEFER VISIBLY, AND A DEFERRAL IS NOT A PASS. *** *An unconditional
+    `return` maketh unittest record PASS and print `ok`, which is the false green
+    this programme keepth finding; `raise unittest.SkipTest` gives
+    `OK (skipped=N)`, so the verdict itselft sayeth which happened. The hosted step
+    COUNTS the skips and refuses to claim they were answered.*
+    """
+    import json as _json
+    try:
+        recorded = _json.loads(LEDGER.read_text(encoding="utf-8")).get("evidence_root")
+    except Exception:
+        return False
+    return bool(recorded) and Path(recorded).is_dir()
+
+
+def requires_capture(func):
+    """Defer an evidence-dependent arm VISIBLY when the capture is absent."""
+    def wrapper(self, *args, **kwargs):
+        if not _evidence_capture_present():
+            raise unittest.SkipTest(
+                "deferred: the out-of-repository evidence root is absent, so this arm "
+                "cannot be put here. It asserts the REAL registered evidence verifies, "
+                "which requires the audit bundles and remediation logs. THIS IS NOT A PASS.")
+        return func(self, *args, **kwargs)
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
 AUDIT = Path("/Users/oculus/Projects/GODSTONE/AUDIT_FINAL_2026-09-15")
 sys.path.insert(0, str(ROOT / "tools" / "readiness"))
 
@@ -57,6 +93,7 @@ def _findings(entry):
 
 
 class RemediationLedgerTest(unittest.TestCase):
+    @requires_capture
     def test_w01_the_ledger_carrieth_every_finding_and_no_stranger(self):
         state = ledger()
         registry = {f["id"] for f in json.loads((AUDIT / "FINDINGS.json").read_text())["findings"]}
@@ -72,6 +109,7 @@ class RemediationLedgerTest(unittest.TestCase):
             self.assertEqual("OPEN", entry["audit_status_at_snapshot"], fid)
             self.assertIn(entry["my_status"], STATUSES_I_MAY_SET, fid)
 
+    @requires_capture
     def test_w01b_every_referenced_card_exists_in_the_read_only_bundle(self):
         """A repair must start by READING its card: the ledger's card references must
         resolve inside the audit bundle."""
@@ -88,6 +126,7 @@ class RemediationLedgerTest(unittest.TestCase):
             checked += 1
         self.assertGreaterEqual(checked, 20, "the ledger must carry the cards it cites")
 
+    @requires_capture
     def test_w02_every_finding_is_assigned_exactly_once(self):
         state = ledger()
         plan = json.loads((AUDIT / "REPAIR_PLAN.json").read_text())
@@ -98,6 +137,7 @@ class RemediationLedgerTest(unittest.TestCase):
         for fid, entry in state["findings"].items():
             self.assertIn(entry["wave"], {str(w["order"]) for w in plan["waves"]}, fid)
 
+    @requires_capture
     def test_w03_the_waves_match_the_plan(self):
         state = ledger()
         plan = json.loads((AUDIT / "REPAIR_PLAN.json").read_text())
@@ -123,6 +163,7 @@ class RemediationLedgerTest(unittest.TestCase):
                           "no run-specific evidence"], _findings(bare))
         self.assertEqual([], _findings({"my_status": "OPEN"}))
 
+    @requires_capture
     def test_w05_the_counts_agree_with_the_audit(self):
         state = ledger()
         registry = json.loads((AUDIT / "FINDINGS.json").read_text())["findings"]
@@ -159,6 +200,7 @@ class RemediationLedgerTest(unittest.TestCase):
         self.assertIn("BLOCKED_EXTERNAL", " ".join(state["rules"]["frozen"]))
         self.assertEqual("c683a2bf0b5bcdd4a662d98f7542351501b57b7c", state["audited_sha"])
 
+    @requires_capture
     def test_w08_the_audit_bundle_is_read_only(self):
         state = ledger()
         self.assertTrue(state["audit_bundle_sha256"], "the bundle digests must be recorded")

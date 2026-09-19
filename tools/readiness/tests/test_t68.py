@@ -551,14 +551,25 @@ class SupplyChainCourt(unittest.TestCase):
         return fake
 
     def test_w19_a_measured_tool_that_disagrees_with_its_pin_is_refused(self):
-        document = S.capture_toolchain(self.repo, clock=CLOCK, probe=self.probe())
+        """The premise is ESTABLISHED via the injected seam, not inherited from the host.
+
+        THE NDK IS ANNOUNCED RATHER THAN DISCOVERED: `ndk_versions` names the
+        installed versions, so this arm asserts a MEASURED NDK on a machine with no
+        Android SDK at all. Before that seam the arm silently required the host to
+        carry an SDK, which no runner does -- so the one place it mattered most was
+        the one place it could not run."""
+        NDK = ("27.0.12077973",)
+
+        document = S.capture_toolchain(self.repo, clock=CLOCK,
+                                       probe=self.probe(), ndk_versions=NDK)
         by_name = {tool["name"]: tool for tool in document["tools"]}
         self.assertEqual("MEASURED", by_name["ndk"]["status"])
         self.assertEqual("MEASURED", by_name["gradle-wrapper"]["status"])
         self.assertEqual("MEASURED", by_name["jdk-target"]["status"])
         self.assertEqual([], S.verify_toolchain(document, self.repo))
         other = S.capture_toolchain(self.repo, clock=CLOCK,
-                                    probe=self.probe(cmake="cmake version 3.30.0"))
+                                    probe=self.probe(cmake="cmake version 3.30.0"),
+                                    ndk_versions=NDK)
         by_name = {tool["name"]: tool for tool in other["tools"]}
         self.assertEqual("MISMATCH", by_name["cmake"]["status"])
         errors = S.verify_toolchain(other, self.repo)
