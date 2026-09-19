@@ -140,7 +140,18 @@ final class ReadinessT06Tests: XCTestCase {
         ]
         let data = try JSONSerialization.data(
             withJSONObject: manifest, options: [.sortedKeys, .prettyPrinted])
-        let url = repoWireURL()
+        // *** THE EXPORT WRITETH INTO THE TEMPORARY DIRECTORY, NOT INTO THE SOURCE TREE -- MEASURED. ***
+        // *This test used to write `transport_vectors_swift.json` THROUGH `repoWireURL()`, i.e. INTO the
+        // repository beside the canonical vectors. On a developer's writable checkout that succeeds; **ON A
+        // READ-ONLY CI CHECKOUT IT HANGED the whole `xcodebuild test` lane** -- the suite reached
+        // `ReadinessT06Tests` and never left it (MEASURED: 1816 tests passed, then the log froze at this suite
+        // for 8+ minutes until the job was cancelled).* **A TEST THAT WRITES INTO ITS OWN SOURCE TREE IS NOT
+        // A TEST; it is a side effect that happens to be observed.** *The CROSS-ENGINE check that consumes this
+        // file (`testSwiftEngineVerifiesAndroidTransportVectors`) reads `transport_vectors_android.json`, which
+        // is a CHECKED-IN artifact produced by the Android lane -- this export is the mirror-image artifact for
+        // a human to diff, and nothing in the suite reads it back. Writing it to the temporary directory keeps
+        // the export available without mutating the tree the tests are validating.*
+        let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("transport_vectors_swift.json")
         try data.write(to: url, options: .atomic)
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
