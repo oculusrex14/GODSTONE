@@ -138,21 +138,31 @@ jobs:
           # floor below, because a failing run still prints its count. The step
           # whose ONLY purpose is the hosted witness for these courts could not
           # fail. That is the exact defect class this mission exists to remove.
+          # *** THE LOG LIVES OUTSIDE THE TREE. ***
+          #
+          # THIS WROTE `readiness.log` INTO THE REPOSITORY, AND THE PROVENANCE STEP
+          # BELOW -- correctly -- REFUSED: "working tree is dirty (git status
+          # --porcelain non-empty) -- evidence from a dirty tree is diagnostic only".
+          # *A stray log is residue, and the remedy is never to teach the provenance
+          # check to ignore it.* The T77 rehearsal step in this same workflow already
+          # writes its report to `RUNNER_TEMP` for exactly this reason, and the
+          # convention is followed rather than re-argued.
           set -euo pipefail
-          python -m unittest discover -s tools/readiness/tests -v 2>&1 | tee readiness.log
+          READINESS_LOG="${RUNNER_TEMP:-/tmp}/readiness.log"
+          python -m unittest discover -s tools/readiness/tests -v 2>&1 | tee "$READINESS_LOG"
           # the verdict is read from the log EXPLICITLY: the floor and the presence
           # checks below both pass on a FAILED run, so this is the guard that matters.
-          if grep -qE '^(FAILED|ERROR)' readiness.log; then
+          if grep -qE '^(FAILED|ERROR)' "$READINESS_LOG"; then
             echo "::error::the readiness suite reported failures"
-            tail -40 readiness.log
+            tail -40 "$READINESS_LOG"
             exit 1
           fi
-          grep -qE '^OK' readiness.log || {
+          grep -qE '^OK' "$READINESS_LOG" || {
             echo "::error::the readiness suite printed no OK verdict"
-            tail -20 readiness.log
+            tail -20 "$READINESS_LOG"
             exit 1
           }
-          executed=$(grep -oE "^Ran [0-9]+ tests" readiness.log | grep -oE "[0-9]+" | head -1)
+          executed=$(grep -oE "^Ran [0-9]+ tests" "$READINESS_LOG" | grep -oE "[0-9]+" | head -1)
           echo "readiness suite executed ${executed:-0} tests"
           if [ -z "$executed" ] || [ "$executed" -lt 700 ]; then
             echo "::error::the readiness suite executed ${executed:-0} tests; the floor is 700"
@@ -166,7 +176,7 @@ jobs:
           # -- which is the whole point -- but a step that silently accepted N skips
           # would still be claiming a witness it did not have. The count is therefore
           # REPORTED and bounded: the reusable arms must all have run.
-          skipped=$(grep -oE "skipped=[0-9]+" readiness.log | grep -oE "[0-9]+" | head -1)
+          skipped=$(grep -oE "skipped=[0-9]+" "$READINESS_LOG" | grep -oE "[0-9]+" | head -1)
           echo "readiness suite skipped ${skipped:-0} historical arm(s)"
           if [ -z "$skipped" ]; then
             echo "::error::the readiness suite reported no skip count at all; the T01 "
@@ -192,7 +202,7 @@ jobs:
             case "$court" in
               test_t62|test_t64|test_t65) continue ;;   # native courts: Kotlin/Swift lanes
             esac
-            grep -q "$court" readiness.log || { echo "::error::$court did NOT run"; exit 1; }
+            grep -q "$court" "$READINESS_LOG" || { echo "::error::$court did NOT run"; exit 1; }
           done
       - name: Board 1 blocker frontier (the classification court)
         run: |
