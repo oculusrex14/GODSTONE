@@ -211,5 +211,12 @@
     "tasks": 12,
     "internal_work_complete": 12,
     "not_complete": 0
+  },
+  "subsystem_stage_condition": {
+    "observed": "For the python-court tasks (T73/T74/T75/T76/T78), the `subsystem` stage runs `python3 -m unittest discover -s tools/readiness/tests`, i.e. the WHOLE readiness suite, and reports 752/748 -- four failures, all in the T01 preservation court.",
+    "why": "T01's court asserts that a FROZEN inventory snapshot equals the LIVE git HEAD. In live mode that is unsatisfiable by construction: the snapshot pinNETH head b5c3d3d3 while the work is elsewhere. It requires its fixture environment (GODSTONE_ROOT / GODSTONE_EVIDENCE), in which the same suite readeth 752/752 PASSED.",
+    "pre_existing_evidence": "Verified at the superseded candidate 1e0ca3a7 in a clean worktree: the same four arms fail by name. The ledger root-caused them at rounds 655-663 and recorded the live-mode failure as inherent.",
+    "does_CI_run_it": "NO. The canonical workflow runs test_t77.py directly plus the gradle lanes; this python aggregate is a local tool and is not a CI gate.",
+    "what_the_NARROW_stage_reports": "Each court's own narrow stage reports POSITIVE counts and PASSES: T73 11/11, T74 11/11, T75 11/11, T76 13/13, T78 11/11, T79 8/8, T80 8/8. No required court returneth 0/0."
   }
 }

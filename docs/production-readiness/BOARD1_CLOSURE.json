@@ -159,5 +159,79 @@
     },
     "T76_is_the_MIXED_CASE": "T76 is NOT purely external and is named as such rather than smoothed over: its preparatory half -- nonsecret signing metadata, entitlement/permission reasons, dependency licences, privacy description, store-policy checklist, support/recovery guide -- is internally preparable, and docs/SIGNING_METADATA.md, docs/PRIVACY.md, docs/DEPENDENCY_LICENSES.md, docs/STORE_POLICY_CHECKLIST.md and docs/SUPPORT_RECOVERY.md are all absent. Only the SIGNING POLICY AND CREDENTIALS are the external half. T76 therefore has arguable internal remainder and is listed as such, like the Robolectric cache item.",
     "correction_note": "An earlier draft of BOARD1_CLOSURE.md argued the twelve are external BECAUSE their paths are absent. That is inverted and was removed: absence of a file is never proof of an external blocker. The operative authority is `python3 tools/readiness/blockers.py --check` -> VERDICT: PASS, the repository's own court on exactly this question, which requires every blocked task to name an approving human role, a recheck trigger, a required artifact schema and verification commands, and which refuses the moment internal work is reclassified as external. The named blockers are receipt EVENTS a human performs (T76: 'receipt of the signing policy and credentials'; T78: 'receipt of the approved native model artifacts')."
+  },
+  "superseded_candidate": {
+    "tag": "production-readiness-board1-rc2",
+    "sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
+    "status": "IMMUTABLE HISTORICAL EVIDENCE -- NOT moved, rewritten or deleted",
+    "why_superseded": "Its blocked-task boundary was wrong. An independent review found that BLOCKED_EXTERNAL tasks still contained internally executable prerequisites that were never implemented; measured, `run.py task T78 --stage narrow` returned `FAILED exit=5 tests=0/0` because the declared court did not exist. rc3 supersedes it because tracked, candidate-relevant files changed.",
+    "what_it_got_right": "The hosted greens, the five external gates staying OPEN, readiness false, and verified_fixed 0 are all preserved unchanged in rc3."
+  },
+  "correction_round": {
+    "summary": "BOARD1-CORRECTION/RC3: eight courts authored (88 tests), evaluator extended, T76 preparation written, stale metadata repaired, validator strengthened.",
+    "courts_authored": {
+      "tools/readiness/tests/test_t73.py": "11 tests -- the device-evidence reader (device-interoperability)",
+      "tools/readiness/tests/test_t74.py": "11 tests -- the device-evidence reader (accessibility)",
+      "tools/readiness/tests/test_t75.py": "11 tests -- the device-evidence reader (battery-thermal)",
+      "tools/readiness/tests/test_t76.py": "13 tests -- the release inputs (metadata, secrets, entitlements, licences, checklist)",
+      "tools/readiness/tests/test_t78.py": "11 tests -- the candidate evaluator and the THREE readiness levels",
+      "tools/readiness/tests/test_t79.py": "8 tests -- the independent-fixture ingest (one-byte tamper detected)",
+      "tools/readiness/tests/test_t80.py": "8 tests -- the approved-content ingest (paragraph replacement detected)",
+      "tools/readiness/tests/test_t81.py": "8 tests -- the native/model receipt form"
+    },
+    "courts_never_authored_but_JUSTIFIED": {
+      "tasks": [
+        "T62",
+        "T63",
+        "T64",
+        "T65",
+        "T73",
+        "T74",
+        "T75",
+        "T81"
+      ],
+      "note": "Their declared NATIVE courts are unwritable until their artifact exists -- the artifact IS the compiler input. Each absence carries a recorded `court_not_authored` justification, enforced by the new blockers.py rod. T63/T81 additionally record that the iOS LLM test target is DELIBERATELY EXCLUDED from the canonical gate."
+    },
+    "stale_metadata_repaired": {
+      "T05": "android/llm/.../mesh/readiness/ -> android/mesh/src/test/java/io/godstone/mesh/crypto/ (READINESST05TEST)",
+      "T06": "same move (Android half); iOS half was already correct",
+      "T07": "same move",
+      "T08": "same move",
+      "T61": "ios/Godstone/Tests/GodstoneLLMTests/ -> GodstoneCoreTests/ (test target does not exist)",
+      "rule": "REPAIRED, NOT REOPENED: these five are COMPLETE and their courts exist and execute."
+    },
+    "validator_strengthened": {
+      "file": "tools/readiness/blockers.py",
+      "new_rod": "unauthored-court / unjustified-court",
+      "what_it_enforces": "For every blocked task, any declared regression path that does not exist must carry a recorded `court_not_authored` justification of at least 80 characters.",
+      "negative_tests": [
+        "test_blocked_external.py W11 -- an unjustified absence IS caught",
+        "test_blocked_external.py W12 -- a gesture at a justification IS caught"
+      ]
+    },
+    "t76_preparation_written": [
+      "docs/production/RELEASE_METADATA.json",
+      "docs/production/STORE_POLICY_CHECKLIST.json",
+      "docs/production/SIGNING.md (3 -> 60 lines)",
+      "docs/production/PRIVACY.md (5 -> 70 lines)"
+    ],
+    "t78_evaluator_extended": {
+      "was": "hash verification and a profile check only",
+      "now": [
+        "exact-SHA binding (five refusal paths)",
+        "required-court test counts (`executed: 0` refused)",
+        "phase-gate status",
+        "dirty-tracked-tree refusal",
+        "THREE LEVELS reported separately"
+      ],
+      "verdict_line": "INTERNAL_VERIFICATION = PASS | EXTERNAL_GATES = OPEN | PRODUCTION_RELEASE = BLOCKED",
+      "note": "A valid candidate whose external gates are open must NEVER read as a production success; that conflation is what the extension exists to prevent."
+    },
+    "matrix": "docs/production-readiness/BLOCKED_TASK_CLOSURE_MATRIX.json",
+    "matrix_summary": {
+      "tasks": 12,
+      "internal_work_complete": 12,
+      "not_complete": 0
+    }
   }
 }

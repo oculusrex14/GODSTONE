@@ -1,5 +1,71 @@
 # BOARD 1 — INTERNAL PRODUCTION-READINESS CLOSURE
 
+## A00. CORRECTION — rc2 was superseded because its blocked-task boundary was wrong
+
+**THE PREVIOUS DECLARATION WAS `BOARD 1 COMPLETE` AT `1e0ca3a7` (tag
+`production-readiness-board1-rc2`). AN INDEPENDENT REVIEW DISPUTED THE
+CLASSIFICATION, AND THE REVIEW WAS RIGHT.** This section does not pretend the
+previous declaration did not happen, and it does not defend it.
+
+### What the review found
+
+> Some tasks classified `BLOCKED_EXTERNAL` still appear to contain internally
+> executable prerequisites, harnesses, documentation, negative controls, or
+> blocked-state evaluators that were never implemented.
+
+**THAT WAS TRUE, AND THIS DOCUMENT ALREADY CONCEDED IT WHILE STILL READING
+`COMPLETE`** — §F named seven missing courts and §G2 recorded T76's absent
+preparatory documents, then treated both as consequences of the external block.
+They were not. A missing court is missing INTERNAL work, and `BLOCKED_EXTERNAL`
+answers only "the final acceptance needs an input nobody here can produce".
+
+### The measurement that settled it
+
+```
+python3 -m tools.readiness.run task T78 --stage narrow
+T78-narrow-python3: FAILED exit=5 tests=0/0
+```
+
+`0/0` was being read as "internally complete, externally blocked". It is not: the
+declared court did not exist, so the stage **could never pass, whatever arrived**.
+
+### What was corrected
+
+| class | tasks | what was wrong | remedy |
+|---|---|---|---|
+| **Unwritten courts** | T73, T74, T75, T76, T78, T79, T80 | a declared pure-python court was never authored; its narrow stage returned `tests=0/0` | **eight courts authored, 88 tests, all green** — and a validator rod added so absence can never again pass in silence |
+| **Native courts** | T62, T63, T64, T65, T81 | declared native courts whose subject is the absent artifact | internal receipt machinery authored (`test_t81.py`); each absence carries a recorded `court_not_authored` justification, one of which records that the iOS LLM test target is **deliberately excluded** from the canonical gate (`ios/project.yml:126`) |
+| **Stale metadata** | T05, T06, T07, T08, T61 | declared paths that do not resolve | **repaired, NOT reopened**: the courts exist and execute at `…/mesh/crypto/` and `GodstoneCoreTests/`; these tasks are COMPLETE and stay COMPLETE |
+
+### The rod whose absence caused this
+
+`tools/readiness/blockers.py` now enforces: for every blocked task, any declared
+regression path that does not exist must carry a recorded `court_not_authored`
+justification of real substance. Two negative tests (`test_blocked_external.py`
+W11, W12) were added and both were falsified against the rod — one proves an
+unjustified absence is caught, the other proves a gesture at a justification is
+caught. **This is the invariant whose absence let a missing court masquerade as an
+external blocker.**
+
+### Why rc3 supersedes rc2
+
+rc2 remains immutable historical evidence and **is not moved, rewritten or
+deleted**. It is superseded because tracked, candidate-relevant files changed:
+eight new courts, an extended candidate evaluator, two rewritten production
+documents, two new production records, a strengthened validator, and a repaired
+task catalogue. A candidate whose tree differs from the one that was verified
+cannot carry the same tag.
+
+### What did NOT change
+
+**The twelve tasks remain `BLOCKED_EXTERNAL`.** The missing inputs are receipt
+EVENTS a human performs — T76's trigger is *"receipt of the signing policy and
+credentials"*, T78's *"receipt of the approved native model artifacts"*. No
+rehearsal, fixture or stub closes them, `verified_fixed` stays **0**, and every
+readiness flag stays false. What changed is that each of the twelve now has its
+**internal work complete**, recorded row by row in
+`BLOCKED_TASK_CLOSURE_MATRIX.json` (12/12 read `internal_work_complete = YES`).
+
 ## A0. What is machine-checked here, and what is not
 
 **STATED SO THIS DOCUMENT IS NOT READ AS MORE VALIDATED THAN IT IS.** Nothing in `ci/`, `tools/` or
