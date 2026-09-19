@@ -29,9 +29,9 @@ The five external gates remain **OPEN**, no readiness flag was flipped, and `VER
 | item | value |
 |---|---|
 | branch | `board1/production-readiness-closure` |
-| candidate commit | `fd2d47a6` (full SHA recorded in the tag annotation and the JSON) |
-| candidate tree | `8a536097cee1ddedee371db2bca841b1c0d9cc6f` |
-| repository-verification run | [`35438444513`](https://github.com/oculusrex14/GODSTONE/actions/runs/35438444513) |
+| candidate commit | `aca93d35c193c213cb34fef742511c9256d1006c` |
+| candidate tree | `dd2ab375277e7568170a87020b69b634541b0dbe` |
+| repository-verification run | [`35442512683`](https://github.com/oculusrex14/GODSTONE/actions/runs/35442512683) |
 | tag | `production-readiness-board1-rc1` |
 | merge into `main` | recorded in §H |
 
@@ -40,7 +40,7 @@ The audited baseline `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` and the previous
 
 ## C. Verification
 
-### Hosted — repository-verification, run `35438444513`, SHA `fd2d47a6` — **conclusion: success**
+### Hosted — repository-verification, run `35442512683`, SHA `aca93d35` — **conclusion: success**
 
 | job | result |
 |---|---|

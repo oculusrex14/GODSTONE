@@ -1,12 +1,12 @@
 {
   "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
   "status": "COMPLETE",
-  "candidate_sha": "fd2d47a6",
-  "candidate_tree_sha": "8a536097cee1ddedee371db2bca841b1c0d9cc6f",
+  "candidate_sha": "aca93d35c193c213cb34fef742511c9256d1006c",
+  "candidate_tree_sha": "dd2ab375277e7568170a87020b69b634541b0dbe",
   "tag": "production-readiness-board1-rc1",
   "main_sha": null,
   "repository_verification": {
-    "run_id": "35438444513",
+    "run_id": "35442512683",
     "conclusion": "success",
     "jobs": {
       "constraint audit": "success",
