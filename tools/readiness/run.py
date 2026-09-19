@@ -168,6 +168,16 @@ class Repo:
             return None
         return proc.stdout.strip()
 
+    def is_dirty(self):
+        """True when the TRACKED tree carrieth uncommitted changes.
+
+        Untracked files are deliberately NOT dirt: this repository's evidence
+        directories live untracked by design, and a candidate is judged on
+        whether its TRACKED source matches the commit it claimeth."""
+        proc = subprocess.run(['git', 'status', '--porcelain', '--untracked-files=no'],
+                              cwd=self.root, capture_output=True, text=True)
+        return bool(proc.stdout.strip())
+
 
 class Executor:
     """One executor contract from EXECUTORS.json; only local transport runs."""
@@ -1080,9 +1090,32 @@ def _expand_levels(spec):
     return [f'L{int(part)}' for part in text.split(',') if part != '']
 
 
-def evaluate_candidate(repo, profile, manifest_path):
+def evaluate_candidate(repo, profile, manifest_path, *, head=None, dirty=None):
+    """The candidate evaluator (T78).
+
+    It answers ONE question in three separable parts, and it must never conflate
+    them:
+
+        INTERNAL_VERIFICATION   is this candidate's repository-owned evidence
+                                genuinely valid and bound to the exact source?
+        EXTERNAL_GATES          have the external inputs arrived and been verified?
+        PRODUCTION_RELEASE      is this an approved production release?
+
+    A valid candidate whose external gates are open readeth
+    `INTERNAL_VERIFICATION = PASS`, `EXTERNAL_GATES = OPEN`,
+    `PRODUCTION_RELEASE = BLOCKED` -- which is NOT a production success and must
+    never be reported as one. Keeping the three apart is the whole point: the
+    old evaluator checked hashes and stopped, so it could not distinguish "the
+    evidence is sound but the artefacts are absent" from "this is ready to ship".
+
+    Returns a dict whose `problems` list is empty exactly when the INTERNAL
+    verification passes. External gates being OPEN is NOT a problem -- it is the
+    expected state, recorded in `external_gates` rather than raised as a fault.
+    """
     problems = []
     manifest = load_json_strict(manifest_path)
+
+    # -- evidence files: presence and exact bytes ---------------------------
     for record in manifest.get('files', []):
         path = os.path.join(repo.evidence, record.get('path', ''))
         if not os.path.isfile(path):
@@ -1090,10 +1123,93 @@ def evaluate_candidate(repo, profile, manifest_path):
             continue
         if preserve.sha256_file(path) != record.get('sha256'):
             problems.append(f'hash mismatch for {record.get("path")!r}')
+
+    # -- the manifest's own identity ----------------------------------------
     if manifest.get('profile') not in (None, profile):
         problems.append(f'manifest is for profile '
                         f'{manifest.get("profile")!r}, not {profile!r}')
-    return problems
+
+    # -- exact-SHA binding: the evidence must name THIS source --------------
+    declared_sha = manifest.get('candidate_sha')
+    declared_tree = manifest.get('candidate_tree_sha')
+    if declared_sha:
+        sha_text = str(declared_sha)
+        if not re.fullmatch(r'[0-9a-f]{40}', sha_text):
+            problems.append(f'candidate_sha {sha_text[:12]!r} is not a 40-character '
+                            'lower-case hex commit')
+        elif repo.object_type(sha_text) != 'commit':
+            problems.append(f'candidate_sha {sha_text[:12]!r} is not a commit object '
+                            'in this repository')
+        elif declared_tree and repo.object_type(sha_text) == 'commit':
+            actual = repo.tree_of(sha_text)
+            if actual != declared_tree:
+                problems.append(
+                    f'candidate_tree_sha {str(declared_tree)[:12]!r} is not the tree of '
+                    f'{sha_text[:12]!r} (that commit carrieth {actual[:12]!r}) -- '
+                    'evidence bound to another SHA')
+        elif head and sha_text != head:
+            problems.append(f'candidate_sha {sha_text[:12]!r} is not the head '
+                            f'{str(head)[:12]!r}: evidence from another commit')
+
+    # -- test counts: a required court that ran NOTHING proved nothing ------
+    for court in manifest.get('required_courts', []):
+        executed = court.get('executed')
+        failed = court.get('failed')
+        if executed is None:
+            problems.append(f'court {court.get("name")!r} carrieth no executed count')
+            continue
+        if int(executed) <= 0:
+            problems.append(f'court {court.get("name")!r} executed 0 tests; a required '
+                            'court that ran nothing is not evidence')
+        if failed is None:
+            problems.append(f'court {court.get("name")!r} carrieth no failed count')
+        elif int(failed) != 0:
+            problems.append(f'court {court.get("name")!r} recorded {failed} failure(s)')
+
+    # -- phase gates: a gate that is not PASS is not a pass -----------------
+    for gate in manifest.get('phase_gates', []):
+        state = str(gate.get('status', ''))
+        if state != 'PASS':
+            problems.append(f'phase gate {gate.get("id")!r} statuseth {state!r}')
+
+    # -- the source must be clean: a dirty tree cannot be a candidate -------
+    if dirty is None:
+        dirty = repo.is_dirty() if hasattr(repo, 'is_dirty') else None
+    if dirty:
+        problems.append('the working tree is dirty: a candidate must be assembled from '
+                        'a clean checkout')
+
+    # -- the three levels, stated separately --------------------------------
+    external_gates = _external_gate_states(repo)
+    external_open = sorted(k for k, v in external_gates.items() if v != 'CLOSED')
+    internal = 'PASS' if not problems else 'FAIL'
+    return {
+        'problems': problems,
+        'internal_verification': internal,
+        'external_gates': external_gates,
+        'external_gates_open': external_open,
+        'production_release': 'BLOCKED' if external_open else 'ELIGIBLE_FOR_FINAL_AUDIT',
+        'verdict_line': ('INTERNAL_VERIFICATION = %s | EXTERNAL_GATES = %s | '
+                         'PRODUCTION_RELEASE = %s'
+                         % (internal,
+                            'OPEN' if external_open else 'COMPLETE',
+                            'BLOCKED' if external_open else 'ELIGIBLE_FOR_FINAL_AUDIT')),
+    }
+
+
+#: The five registers whose closure is not this repository's to write.
+EXTERNAL_GATE_REGISTER = 'docs/production-readiness/EXTERNAL_BLOCKERS.json'
+MANIFEST_PINNED_GATE = 'manifest-signed-suite'
+
+
+def _external_gate_states(repo):
+    """Read the external gate register. Returns {gate_id: status}."""
+    path = os.path.join(repo.root, EXTERNAL_GATE_REGISTER)
+    if not os.path.isfile(path):
+        return {'register': 'ABSENT'}
+    with open(path, encoding='utf-8') as stream:
+        register = json.load(stream)
+    return {b.get('id'): b.get('status') for b in register.get('blockers', [])}
 
 
 # ---------------------------------------------------------------- selftest --
@@ -1309,7 +1425,14 @@ def main(argv=None):
                 print(f'{level}: {value}')
             return EXIT_OK
         if args.command == 'evaluate-candidate':
-            problems = evaluate_candidate(repo, args.profile, args.manifest)
+            result = evaluate_candidate(repo, args.profile, args.manifest,
+                                        head=repo.head())
+            problems = result['problems']
+            print(result['verdict_line'])
+            for gate, state in sorted(result['external_gates'].items()):
+                print(f'  external gate {gate}: {state}')
+            for problem in problems:
+                print(f'  PROBLEM {problem}')
             for problem in problems:
                 print(f'INVALID: {problem}', file=sys.stderr)
             return EXIT_FAILED if problems else EXIT_OK

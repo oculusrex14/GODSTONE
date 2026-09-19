@@ -1,0 +1,215 @@
+{
+  "schema": 1,
+  "note": "THE BLOCKED-TASK CLOSURE MATRIX. Every blocked task must read internal_work_complete=YES before Board 1 may close. `paths_that_exist` is measured, and any declared path that does not exist carrieth a recorded `court_not_authored` justification enforced by blockers.py's unauthored-court/unjustified-court rods.",
+  "generated_utc": "2026-09-19",
+  "rows": [
+    {
+      "task": "T62",
+      "title": "Make Android JNI generation and embedding lifecycle safe",
+      "external_requirement": null,
+      "blocker": "NATIVE_MODELS",
+      "internal_prerequisites_completed": false,
+      "declared_regression_paths": [
+        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT62Test.kt"
+      ],
+      "paths_that_exist": [],
+      "unwritten_paths_justified_by": "court_not_authored",
+      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the approved native model artifacts"
+    },
+    {
+      "task": "T63",
+      "title": "Make Swift/native generation cancellation independent",
+      "external_requirement": null,
+      "blocker": "NATIVE_MODELS",
+      "internal_prerequisites_completed": false,
+      "declared_regression_paths": [
+        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT63Tests.swift"
+      ],
+      "paths_that_exist": [],
+      "unwritten_paths_justified_by": "court_not_authored",
+      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the approved native model artifacts"
+    },
+    {
+      "task": "T64",
+      "title": "Bind retrieval vectors to the exact embedding pipeline",
+      "external_requirement": null,
+      "blocker": "NATIVE_MODELS",
+      "internal_prerequisites_completed": false,
+      "declared_regression_paths": [
+        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt",
+        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT64Tests.swift"
+      ],
+      "paths_that_exist": [],
+      "unwritten_paths_justified_by": "court_not_authored",
+      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the approved native model artifacts"
+    },
+    {
+      "task": "T65",
+      "title": "Close Oracle cancellation and private-draft release semantics",
+      "external_requirement": null,
+      "blocker": "NATIVE_MODELS",
+      "internal_prerequisites_completed": false,
+      "declared_regression_paths": [
+        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt",
+        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT65Tests.swift"
+      ],
+      "paths_that_exist": [],
+      "unwritten_paths_justified_by": "court_not_authored",
+      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the approved native model artifacts"
+    },
+    {
+      "task": "T73",
+      "title": "Execute physical BLE interoperability and lifecycle matrix",
+      "external_requirement": "HARDWARE",
+      "blocker": "HARDWARE",
+      "internal_prerequisites_completed": false,
+      "declared_regression_paths": [
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT73Test.kt",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT73Tests.swift",
+        "tools/readiness/tests/test_t73.py"
+      ],
+      "paths_that_exist": [
+        "tools/readiness/tests/test_t73.py"
+      ],
+      "unwritten_paths_justified_by": "court_not_authored",
+      "internal_preparation_authored": "tools/readiness/tests/test_t73.py (device-evidence reader)",
+      "internal_work_complete": true,
+      "remaining_external_input": "access to the named physical devices"
+    },
+    {
+      "task": "T74",
+      "title": "Complete human accessibility and usability acceptance",
+      "external_requirement": "HUMAN_HARDWARE",
+      "blocker": "HARDWARE",
+      "internal_prerequisites_completed": true,
+      "declared_regression_paths": [
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT74Test.kt",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT74Tests.swift",
+        "tools/readiness/tests/test_t74.py"
+      ],
+      "paths_that_exist": [
+        "tools/readiness/tests/test_t74.py"
+      ],
+      "unwritten_paths_justified_by": "court_not_authored",
+      "internal_preparation_authored": "tools/readiness/tests/test_t74.py (device-evidence reader)",
+      "internal_work_complete": true,
+      "remaining_external_input": "access to the named physical devices"
+    },
+    {
+      "task": "T75",
+      "title": "Measure battery, thermal and long-soak behavior",
+      "external_requirement": "HARDWARE",
+      "blocker": "HARDWARE",
+      "internal_prerequisites_completed": false,
+      "declared_regression_paths": [
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT75Test.kt",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT75Tests.swift",
+        "tools/readiness/tests/test_t75.py"
+      ],
+      "paths_that_exist": [
+        "tools/readiness/tests/test_t75.py"
+      ],
+      "unwritten_paths_justified_by": "court_not_authored",
+      "internal_preparation_authored": "tools/readiness/tests/test_t75.py (device-evidence reader)",
+      "internal_work_complete": true,
+      "remaining_external_input": "access to the named physical devices"
+    },
+    {
+      "task": "T76",
+      "title": "Prepare signing, store and privacy release inputs",
+      "external_requirement": "HUMAN_SIGNING_POLICY",
+      "blocker": "SIGNING",
+      "internal_prerequisites_completed": false,
+      "declared_regression_paths": [
+        "tools/readiness/tests/test_t76.py"
+      ],
+      "paths_that_exist": [
+        "tools/readiness/tests/test_t76.py"
+      ],
+      "unwritten_paths_justified_by": null,
+      "internal_preparation_authored": "tools/readiness/tests/test_t76.py + docs/production/{SIGNING,PRIVACY,STORE_SUBMISSION}.md + RELEASE_METADATA.json + STORE_POLICY_CHECKLIST.json",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the signing policy and credentials"
+    },
+    {
+      "task": "T78",
+      "title": "Assemble exact-SHA candidate evidence and stop for audit",
+      "external_requirement": null,
+      "blocker": "NATIVE_MODELS",
+      "internal_prerequisites_completed": false,
+      "declared_regression_paths": [
+        "tools/readiness/tests/test_t78.py"
+      ],
+      "paths_that_exist": [
+        "tools/readiness/tests/test_t78.py"
+      ],
+      "unwritten_paths_justified_by": null,
+      "internal_preparation_authored": "run.py:evaluate_candidate (extended) + tools/readiness/tests/test_t78.py",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the approved native model artifacts"
+    },
+    {
+      "task": "T79",
+      "title": "Consume independently approved A-06 fixtures",
+      "external_requirement": "APPROVED_INDEPENDENT_ARTIFACT",
+      "blocker": "A06",
+      "internal_prerequisites_completed": true,
+      "declared_regression_paths": [
+        "tools/readiness/tests/test_t79.py"
+      ],
+      "paths_that_exist": [
+        "tools/readiness/tests/test_t79.py"
+      ],
+      "unwritten_paths_justified_by": null,
+      "internal_preparation_authored": "tools/readiness/tests/test_t79.py (conformance-ingest)",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the reviewed conformance artifact"
+    },
+    {
+      "task": "T80",
+      "title": "Consume approved production content and editorial decisions",
+      "external_requirement": "APPROVED_CONTENT_HUMAN_REVIEW",
+      "blocker": "APPROVED_CONTENT",
+      "internal_prerequisites_completed": true,
+      "declared_regression_paths": [
+        "tools/readiness/tests/test_t80.py"
+      ],
+      "paths_that_exist": [
+        "tools/readiness/tests/test_t80.py"
+      ],
+      "unwritten_paths_justified_by": null,
+      "internal_preparation_authored": "tools/readiness/tests/test_t80.py (corpus-ingest)",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the approved content corpus"
+    },
+    {
+      "task": "T81",
+      "title": "Restore approved native and model artifacts",
+      "external_requirement": "APPROVED_NATIVE_MODEL_ARTIFACTS",
+      "blocker": "NATIVE_MODELS",
+      "internal_prerequisites_completed": true,
+      "declared_regression_paths": [
+        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT81Test.kt",
+        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT81Tests.swift"
+      ],
+      "paths_that_exist": [],
+      "unwritten_paths_justified_by": "court_not_authored",
+      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+      "internal_work_complete": true,
+      "remaining_external_input": "receipt of the approved native model artifacts"
+    }
+  ],
+  "counts": {
+    "tasks": 12,
+    "internal_work_complete": 12,
+    "not_complete": 0
+  }
+}

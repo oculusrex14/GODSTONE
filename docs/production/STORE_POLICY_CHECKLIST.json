@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "note": "T76's store-policy checklist. EVERY row starts OPEN or PENDING_REVIEW. This repository may not mark a row APPROVED: store acceptance is a human, external decision and any APPROVED row here that no human wrote would be fabricated external approval, which the project forbids. The structure is what is owed now; the verdicts arrive with the reviewer.",
+  "claim_set": "archive-only",
+  "rows": [
+    {
+      "id": "SP-01",
+      "area": "data-safety",
+      "requirement": "Data-safety form answers match the exact signed binary's actual behaviour",
+      "evidence_required": "derived from the signed artifact plus the aggregated manifests, not from intent",
+      "status": "OPEN",
+      "owner": "release owner",
+      "blocked_by": "signing (T76 external half)"
+    },
+    {
+      "id": "SP-02",
+      "area": "permissions",
+      "requirement": "Every declared permission/entitlement is justified, and no debug-only capability ships",
+      "evidence_required": "manifest + entitlements inspection at the signed build; ci/check_release_surface.py green",
+      "status": "OPEN",
+      "owner": "release owner",
+      "blocked_by": "signing (T76 external half)"
+    },
+    {
+      "id": "SP-03",
+      "area": "privacy-labels",
+      "requirement": "Privacy labels declare no tracking and no collected data for this target",
+      "evidence_required": "PrivacyInfo.xcprivacy and the Play data-safety form, read from the signed build",
+      "status": "OPEN",
+      "owner": "release owner",
+      "blocked_by": "signing (T76 external half)"
+    },
+    {
+      "id": "SP-04",
+      "area": "account-and-deletion",
+      "requirement": "Account/deletion obligations do not apply, or are satisfied",
+      "evidence_required": "a statement of whether the target creates an account at all",
+      "status": "OPEN",
+      "owner": "release owner",
+      "blocked_by": "human review"
+    },
+    {
+      "id": "SP-05",
+      "area": "content-rights",
+      "requirement": "Redistribution rights cover the bundled Archive",
+      "evidence_required": "the approved production corpus and its rights evidence",
+      "status": "OPEN",
+      "owner": "legal / content owner",
+      "blocked_by": "APPROVED_CONTENT (T80)"
+    },
+    {
+      "id": "SP-06",
+      "area": "claims",
+      "requirement": "Store listing, screenshots and in-app copy mention no prohibited claim",
+      "evidence_required": "the prohibited-claim list in docs/production/RELEASE_METADATA.json matched against the listing",
+      "status": "OPEN",
+      "owner": "release owner",
+      "blocked_by": "human review"
+    },
+    {
+      "id": "SP-07",
+      "area": "licences",
+      "requirement": "Dependency licences are compatible with distribution",
+      "evidence_required": "docs/supplychain/SBOM.json licence_census, including its UNKNOWN rows resolved or accepted",
+      "status": "OPEN",
+      "owner": "legal",
+      "blocked_by": "human review; native/model licences arrive with T62-T65/T81"
+    },
+    {
+      "id": "SP-08",
+      "area": "crypto-export",
+      "requirement": "Export/encryption declarations match the shipped cryptography",
+      "evidence_required": "the shipped primitive inventory, read from the signed binary",
+      "status": "OPEN",
+      "owner": "legal / privacy",
+      "blocked_by": "human review"
+    },
+    {
+      "id": "SP-09",
+      "area": "content-rating",
+      "requirement": "Content rating questionnaire matches the bundled Archive",
+      "evidence_required": "the approved corpus",
+      "status": "OPEN",
+      "owner": "release owner",
+      "blocked_by": "APPROVED_CONTENT (T80)"
+    },
+    {
+      "id": "SP-10",
+      "area": "store-acceptance",
+      "requirement": "The store accepts the submitted build",
+      "evidence_required": "the store's own acceptance record",
+      "status": "PENDING_REVIEW",
+      "owner": "store",
+      "blocked_by": "SIGNING, then store submission -- external by definition"
+    }
+  ],
+  "prohibited_status_values": ["APPROVED", "PASSED", "COMPLIANT"],
+  "why_prohibited": "A status this repository can write is not an external approval. If a future change needs to record a real store verdict, it records the store's artifact (a URL, an id and a hash) rather than a self-assigned word."
+}

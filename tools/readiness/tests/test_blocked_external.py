@@ -170,6 +170,54 @@ class BlockedFrontierTest(unittest.TestCase):
         self.assertEqual([], findings(ROOT))
 
 
+class UnauthoredCourtTest(unittest.TestCase):
+    """W11-W12 -- the invariant the FIRST closure lacked.
+
+    `BLOCKED_EXTERNAL` answereth "the final acceptance needs an input nobody here
+    can produce". It doth NOT answer "and therefore nothing internally executable
+    was owed". T78's narrow stage measured `tests=0/0` while the register called
+    the task honestly blocked, and no rod caught it. These two witnesses prove the
+    new rod striketh -- one for an UNJUSTIFIED absence, one for an empty gesture
+    at a justification."""
+
+    def test_w11_an_unjustified_absent_court_is_caught(self):
+        fixture = _Fixture()
+        try:
+            def excuse_nothing(d):
+                entry = d["completed_tasks"]["T81"]
+                entry.pop("court_not_authored", None)
+                entry["required_regression_paths"] = ["tools/readiness/tests/test_t81.py"]
+            fixture.edit("docs/production-readiness/BUILD_STATE.json", excuse_nothing)
+            problems = findings(fixture.root)
+            self.assertTrue(any(p.startswith("unauthored-court") for p in problems),
+                            problems)
+        finally:
+            fixture.close()
+        # ... and the real repository carrieth no such finding
+        self.assertEqual([], [p for p in findings(ROOT)
+                              if p.startswith("unauthored-court")])
+
+    def test_w12_a_gesture_at_a_justification_is_caught(self):
+        fixture = _Fixture()
+        try:
+            def gesture(d):
+                d["completed_tasks"]["T73"].update({"court_not_authored": "todo"})
+            fixture.edit("docs/production-readiness/BUILD_STATE.json", gesture)
+            problems = findings(fixture.root)
+            self.assertTrue(any(p.startswith("unjustified-court") for p in problems),
+                            problems)
+        finally:
+            fixture.close()
+        # ... and every real justification is substantive
+        state, catalogue, _register, _m = load(ROOT)
+        for tid in blocked_records(state):
+            entry = state["completed_tasks"][tid]
+            excuse = str(entry.get("court_not_authored") or "")
+            if excuse:
+                self.assertGreaterEqual(len(excuse), 80,
+                                        f"{tid}: a justification must NAME the reason")
+
+
 class BlockedDeclarationsTest(unittest.TestCase):
     """W05-W09 -- the gates, the mapping, the register's own fields."""
 

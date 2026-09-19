@@ -552,7 +552,7 @@
       "external_requirement": null,
       "phase": "P1",
       "required_regression_paths": [
-        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT05Test.kt"
+        "android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT05Test.kt"
       ],
       "specification": {
         "TASK ID": "T05",
@@ -575,7 +575,7 @@
           "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
           "android/mesh/src/main/java/io/godstone/mesh/crypto/TrustedHandshakeController.kt",
           "android/mesh/src/test/java/io/godstone/mesh/NoiseSessionTest.kt",
-          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT05Test.kt"
+          "android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT05Test.kt"
         ],
         "Production call path affected": "BLE record \u2192 trusted handshake/session \u2192 authenticated FrameV2. This is a nonshipping runtime path; T54 composes it in the lab and the shipping graph remains excluded.",
         "State owner": "Relation-scoped SessionSlot",
@@ -674,7 +674,7 @@
       "external_requirement": null,
       "phase": "P1",
       "required_regression_paths": [
-        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT06Test.kt",
+        "android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT06Test.kt",
         "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT06Tests.swift"
       ],
       "specification": {
@@ -700,7 +700,7 @@
           "crypto/noise_ref.py",
           "crypto/test_conformance.py",
           "ios/Godstone/Tests/GodstoneMeshTests/NoiseSessionTests.swift",
-          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT06Test.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT06Test.kt",
           "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT06Tests.swift"
         ],
         "Production call path affected": "BLE record \u2192 trusted handshake/session \u2192 authenticated FrameV2. This is a nonshipping runtime path; T54 composes it in the lab and the shipping graph remains excluded.",
@@ -833,7 +833,7 @@
       "external_requirement": null,
       "phase": "P1",
       "required_regression_paths": [
-        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT07Test.kt",
+        "android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT07Test.kt",
         "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT07Tests.swift"
       ],
       "specification": {
@@ -853,7 +853,7 @@
           "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt",
           "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift",
           "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
-          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT07Test.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT07Test.kt",
           "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT07Tests.swift"
         ],
         "Production call path affected": "BLE record \u2192 trusted handshake/session \u2192 authenticated FrameV2. This is a nonshipping runtime path; T54 composes it in the lab and the shipping graph remains excluded.",
@@ -986,7 +986,7 @@
       "external_requirement": null,
       "phase": "P1",
       "required_regression_paths": [
-        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT08Test.kt",
+        "android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT08Test.kt",
         "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT08Tests.swift"
       ],
       "specification": {
@@ -1010,7 +1010,7 @@
           "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
           "android/mesh/src/main/java/io/godstone/mesh/crypto/TrustedHandshakeController.kt",
           "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift",
-          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT08Test.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT08Test.kt",
           "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT08Tests.swift"
         ],
         "Production call path affected": "BLE record \u2192 trusted handshake/session \u2192 authenticated FrameV2. This is a nonshipping runtime path; T54 composes it in the lab and the shipping graph remains excluded.",
@@ -8635,7 +8635,7 @@
       "phase": "P7",
       "required_regression_paths": [
         "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT61Test.kt",
-        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT61Tests.swift"
+        "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT61Tests.swift"
       ],
       "specification": {
         "TASK ID": "T61",
@@ -8665,7 +8665,7 @@
           "android/llm/src/main/cpp/CMakeLists.txt",
           "ios/Godstone/Package.swift",
           "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT61Test.kt",
-          "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT61Tests.swift"
+          "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT61Tests.swift"
         ],
         "Production call path affected": "Oracle request \u2192 retrieval \u2192 private generation \u2192 answer validation \u2192 presentation. This is a nonshipping runtime path; T54 composes it in the lab and the shipping graph remains excluded.",
         "State owner": "One native inference worker per model; cancellation token independent of worker queue",

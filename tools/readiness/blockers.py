@@ -184,6 +184,48 @@ def findings(root) -> list:
             out.append("transitive-understatement: %s hath complete prerequisites but "
                        "claimeth not" % tid)
 
+    # (5b) A BLOCKED TASK MAY NOT MASK A MISSING INTERNAL COURT.
+    #
+    #     THIS IS THE INVARIANT THE FIRST CLOSURE LACKED. `BLOCKED_EXTERNAL`
+    #     answereth "the final acceptance needs an input nobody here can
+    #     produce". It doth NOT answer "and therefore nothing internally
+    #     executable was owed". Before this rod, a task could declare a
+    #     regression path, never author it, and still read as a clean frontier
+    #     -- T78's narrow stage measured `tests=0/0` while the register called
+    #     the task honestly blocked.
+    #
+    #     The rule: for every blocked task, each declared regression path that
+    #     is REPOSITORY-OWNED (a python court under tools/readiness/tests) must
+    #     either EXIST, or the record must carry an explicit, non-empty
+    #     `court_not_authored` justification naming why. A native path (Kotlin,
+    #     Swift) may legitimately be absent while its artifact is -- the artifact
+    #     IS the compiler input -- so those are not judged here.
+    for tid, entry in blocked.items():
+        declared = tasks[tid].get("required_regression_paths") or []
+        excused = str(entry.get("court_not_authored") or "").strip()
+        absent = [rel for rel in declared
+                  # resolved against the ROOT UNDER AUDIT, never the process cwd: a
+                  # checker that read its own working directory would pass or fail
+                  # depending on where it was invoked from.
+                  if not (root / str(rel)).exists()]
+        if not absent:
+            continue
+        # A court that does not exist must carry a RECORDED, non-trivial reason.
+        # The rod does not judge whether the reason is WISE -- a checker cannot --
+        # but it refuses to let absence pass in silence, which is exactly how the
+        # first closure mistook a missing court for an external blocker.
+        if not excused:
+            out.append(
+                "unauthored-court: %s declareth %d court(s) that do not exist (%s) and "
+                "carrieth no `court_not_authored` justification; a blocked task may not "
+                "mask a missing internally executable court"
+                % (tid, len(absent), ", ".join(str(a) for a in absent)))
+        elif len(excused) < 80:
+            out.append(
+                "unjustified-court: %s excuseth %d absent court(s) in %d characters; a "
+                "justification must NAME the reason, not gesture at one"
+                % (tid, len(absent), len(excused)))
+
     # (6) THE READINESS STAYS FALSE, and the externally-gated release entries stay
     #     OPEN or BLOCKED
     flags = readiness_flags(root)

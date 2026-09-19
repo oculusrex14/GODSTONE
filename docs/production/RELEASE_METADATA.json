@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "note": "T76's unsigned-candidate and signing metadata. NON-SECRET BY CONSTRUCTION: a key, certificate, profile, password, token or store credential may never be recorded here. The signing fingerprint is recorded only AFTER the owner signs the exact tested payload -- until then `signing.state` is `unsigned` and `signing.fingerprint` is null. This file prepares the human step; it does not perform it and it closes no gate.",
+  "candidate": {
+    "application_id": "io.godstone.app",
+    "bundle_id": "io.godstone.app",
+    "display_name": "Godstone",
+    "version_name": "1.0.0",
+    "version_code": 1,
+    "build_profile": "LIGHT",
+    "claim_set": "archive-only",
+    "candidate_sha": null,
+    "candidate_tree_sha": null,
+    "artifact_identity": null,
+    "identity_rule": "candidate_sha, candidate_tree_sha and artifact_identity are populated ONLY by the release-measurement step against an exact clean checkout. A null here means the values have not been measured yet; it never means 'unspecified'. No reading of this file may treat a null as a wildcard."
+  },
+  "signing": {
+    "state": "unsigned",
+    "allowed_states": ["unsigned", "signed"],
+    "expected_authority": "release owner, on a designated signing workstation outside this repository",
+    "fingerprint": null,
+    "fingerprint_algo": null,
+    "payload_equivalence_required": true,
+    "equivalence_rule": "the signed artifact's non-signature payload must be byte-identical to the tested unsigned artifact; the check is recorded by the release owner as SignatureVerificationReport, which lives outside builder authority",
+    "prohibited_in_repository": [
+      "keystore or keychain material",
+      "signing certificates or provisioning profiles",
+      "passwords, API keys or store credentials",
+      "private Archive signing keys",
+      "any secret whose disclosure would let a third party sign or publish"
+    ]
+  },
+  "platform": {
+    "android": {
+      "min_sdk": 26,
+      "target_sdk": 35,
+      "internet_permission": "explicitly removed via tools:node=\"remove\"",
+      "ble_feature": "declared required=false (capability advertised, feature not active in this claim set)",
+      "allow_backup": false,
+      "cleartext_traffic": false
+    },
+    "ios": {
+      "entitlements": "empty dict -- no capability is claimed",
+      "tracking": false,
+      "collected_data": "none declared for this target"
+    }
+  },
+  "claims": {
+    "permitted": [
+      "reads an immutable local Archive",
+      "works offline with no network request"
+    ],
+    "prohibited_until_their_gates_pass": [
+      "active Mesh",
+      "SOS delivery or help arriving",
+      "clinically reviewed content",
+      "anonymity",
+      "sealed sender",
+      "complete wipe guarantee",
+      "background discovery",
+      "guaranteed rescue or medical correctness"
+    ],
+    "prohibition_rule": "a prohibited claim appearing in store listing, screenshots, privacy answers or in-app copy is a release blocker; the claim set must be derived from the exact signed binary and the aggregated dependency manifests, never from intent"
+  },
+  "entitlements_and_permissions": {
+    "android": [
+      {
+        "name": "android.hardware.bluetooth_le",
+        "kind": "uses-feature",
+        "required": false,
+        "reason": "the Archive-only claim set activates no radio path; the feature is declared optional so the manifest does not exclude devices, and no BLUETOOTH_* permission is requested"
+      },
+      {
+        "name": "android.permission.INTERNET",
+        "kind": "uses-permission",
+        "required": false,
+        "reason": "EXPLICITLY REMOVED. The target makes no network request; the removal is enforced so a transitive library manifest cannot reintroduce it"
+      }
+    ],
+    "ios": [
+      {
+        "name": "(none)",
+        "kind": "entitlement",
+        "required": false,
+        "reason": "Godstone.entitlements is an empty dict: no capability is claimed for this target"
+      }
+    ],
+    "enforcement": "ci/check_release_surface.py fails on any forbidden Android permission, iOS usage-description key or disabled capability reappearing in the shipping manifest, entitlements or privacy manifest"
+  },
+  "dependency_licences": {
+    "inventory": "docs/supplychain/SBOM.json",
+    "inventory_rule": "the inventory is the SBOM's licence_census, read as-is. A component whose licence is UNKNOWN is recorded UNKNOWN and never omitted: 'nobody recorded it' is a fact about the inventory, not a blank to fill in.",
+    "known_unknowns_are_expected": true,
+    "external_remainder": [
+      "Licences for the approved native/model artifacts (T62-T65, T81) cannot be inventoried until those artifacts are supplied; their rows stay explicitly PENDING rather than being guessed."
+    ],
+    "no_fabrication": "no licence text is transcribed for an artifact that is not present in this checkout"
+  },
+  "privacy": {
+    "document": "docs/production/PRIVACY.md",
+    "describes_actual_behaviour_only": true,
+    "external_review": "PENDING -- legal/privacy/export review is a human gate (see docs/production/EXTERNAL_RELEASE_GATES.md)"
+  },
+  "support_and_recovery": {
+    "document": "docs/production/RECOVERY.md",
+    "offline_required": true,
+    "external_review": "PENDING"
+  },
+  "store_policy": {
+    "document": "docs/production/STORE_SUBMISSION.md",
+    "checklist": "docs/production/STORE_POLICY_CHECKLIST.json",
+    "status": "PREPARED_NOT_APPROVED",
+    "approval_rule": "no row in the checklist may be marked APPROVED by this repository. Store acceptance is external and is recorded only by the release owner."
+  }
+}
