@@ -32,7 +32,7 @@ The five external gates remain **OPEN**, no readiness flag was flipped, and `VER
 | candidate commit | `1e0ca3a70edb55580df8c3949ef1b510d78e22c2` |
 | candidate tree | `e791877b1fdcb6c3359846f54b64c03922d7a975` |
 | repository-verification run | [`35446805693`](https://github.com/oculusrex14/GODSTONE/actions/runs/35446805693) **attempt 1 -- ALL SIX JOBS SUCCESS**. *Attempt 2 of the same run failed `:app:testLightDebugUnitTest` on a TRANSIENT NETWORK ERROR fetching `org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` (`SocketException: Connection reset`); that test passes locally and passed on attempt 1 of this same SHA. GitHub reports the LATEST attempt, so this run's aggregate conclusion reads `failure` -- the citation is to attempt 1, which is the run that exercised the candidate.* |
-| tag | `production-readiness-board1-rc1` |
+| tag | `production-readiness-board1-rc2` (rc1 was deleted: it named a superseded SHA) |
 | merge into `main` | \`bd139c0a4ae3865112782c95151873c77dcfe457\` (the frozen candidate \`1e0ca3a7\` merged; this is a post-merge DOCS-ONLY commit on main, which does not move the tag) |
 
 The audited baseline `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` and the previous candidate

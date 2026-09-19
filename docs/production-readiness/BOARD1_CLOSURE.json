@@ -3,8 +3,8 @@
   "status": "COMPLETE",
   "candidate_sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
   "candidate_tree_sha": "e791877b1fdcb6c3359846f54b64c03922d7a975",
-  "tag": "production-readiness-board1-rc1",
-  "main_sha": "bd139c0a4ae3865112782c95151873c77dcfe457",
+  "tag": "production-readiness-board1-rc2",
+  "main_sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
   "repository_verification": {
     "run_id": "35446805693",
     "conclusion": "success",
@@ -89,5 +89,6 @@
   "verified_fixed": 0,
   "record_corrections": 64,
   "board2_branch": "board2/device-release-validation",
-  "board2_sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2"
+  "board2_sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
+  "main_docs_commit": "3ad771604466cd0bb63a962330817cb1acc6a3d5"
 }
