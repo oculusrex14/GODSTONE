@@ -275,7 +275,21 @@ class ReadinessT18Test {
             driver.onMtuChanged(bobAddress, mtu)
             aliceOutlet.clientConnected = bobAddress
             val conn = initiatorConnection()
-            assertEquals("the initiator stands role bound", BleConnectionState.ROLE_BOUND, conn.state)
+            // The ladder's claim is "a role-bound initiator with the duplex up", NOT "still exactly
+            // ROLE_BOUND at the instant the test thread looks". The transport's OWN ANDROID-01 door
+            // (`maybeBeginTrustedHandshake`, DEFAULT-ON because it is the production road) is reachable at
+            // the PublishFound dispatch this ladder triggers, and it launches a coroutine that advances
+            // ROLE_BOUND -> HANDSHAKE_IN_PROGRESS. Asserting instantaneous equality therefore made the court
+            // a race against production: MEASURED, the 2-core runner failed 24 arms across T20-T23 with
+            // "expected:<ROLE_BOUND> but was:<HANDSHAKE_IN_PROGRESS>" while a 10-core host ran 3/3 green.
+            // It cannot SKIP the bound state -- `maybeBeginTrustedHandshake` returneth early unless the state
+            // IS ROLE_BOUND -- so the successor is only reachable THROUGH the state this arm asserts.
+            assertTrue(
+                "the initiator stands role bound (or has legitimately advanced past it into the handshake, "
+                    + "which only the role-bound state can reach), was " + conn.state.toString(),
+                conn.state == BleConnectionState.ROLE_BOUND ||
+                    conn.state == BleConnectionState.HANDSHAKE_IN_PROGRESS
+            )
             assertEquals("the election made the initiator", BleRole.INITIATOR, conn.localRole)
             assertTrue("the duplex is up", conn.isHandshakeTransportReady)
         }

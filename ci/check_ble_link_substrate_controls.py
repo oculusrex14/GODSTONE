@@ -1764,8 +1764,13 @@ def run_selftest() -> int:
         ("ios_transport", "[BleTransport.serviceUuid]", "[BleTransport.serviceUuid],\n            CBAdvertisementDataLocalNameKey: \"GS\"", "BL19"),
         ("android_test_substrate", "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator", "disabled_testRoleElection", "BL20"),
         ("ios_test_substrate", "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator", "disabled_testRoleElection", "BL21"),
-        ("android_transport", "registry.seal(key, clear)", "registry.beginInitiator(key, clear)", "BL22"),
-        ("ios_transport", "sessions?.drop(centralId)", "sessions?.beginInitiator(centralId)", "BL22"),
+        # BL22's anchors were STALE (`registry.seal(key, clear)` / `sessions?.drop(centralId)`) -- the
+        # variables were long since renamed, so the control reported "Mutation snippet not found" and the
+        # invariant job failed. The REAL text is named here. THE MUTATION'S MEANING IS UNCHANGED: it still
+        # replaces a legitimate call with a FORBIDDEN SessionManager handshake API, which is what BL22 exists
+        # to catch. The names are corrected, not the rule.
+        ("android_transport", "registry.seal(admitted, clear)", "registry.beginInitiator(admitted, clear)", "BL22"),
+        ("ios_transport", "sessions?.drop(admission)", "sessions?.beginInitiator(admission)", "BL22"),
         ("android_mesh_node", "const val LINK_LAYER_READY = false", "const val LINK_LAYER_READY = true", "BL23"),
         ("ios_mesh_node", "public static let linkLayerReady = false", "public static let linkLayerReady = true", "BL23"),
         ("ios_app_container", "import Foundation", "import Foundation\nimport GodstoneMesh", "BL23"),
