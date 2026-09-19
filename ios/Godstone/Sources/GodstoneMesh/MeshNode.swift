@@ -83,6 +83,80 @@ public final class MeshNode {
     private struct AckRelationBinding { let handle: UUID; let generation: UInt64 }
     private var relationForNodeId: [Data: AckRelationBinding] = [:]
     private var handleForNodeId: [Data: UUID] = [:]
+
+    /// *** THESE MAPPINGS ARE WRITTEN FROM THE CALLER'S THREAD AND READ FROM THE
+    /// ACK-TURN QUEUE. *** `armAckTurnDeadline` schedules
+    /// `runAckTurnForEveryTrustedRelation` on `ackTurnQueue` -- a GCD worker -- and that
+    /// turn iterates `handleForNodeId` while `trustedPeerDidConnect`,
+    /// `trustedPeerDidDisconnect` and `handleNodeMappingsForget` mutate the same two
+    /// dictionaries. NOTHING synchronized them, so a relation established or torn down
+    /// while a periodic turn ran was a genuine data race on shared mutable state --
+    /// ThreadSanitizer reported it as a Swift access race between the timer's GCD
+    /// worker and the main thread. Every access now goeth through these accessors.
+    private let ackStateLock = NSLock()
+
+    /// Set the relation mapping for `nodeId` under the lock.
+    private func setMapping(_ nodeId: Data, handle: UUID, generation: UInt64?) {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        if let generation {
+            relationForNodeId[nodeId] = AckRelationBinding(handle: handle, generation: generation)
+        }
+        handleForNodeId[nodeId] = handle
+    }
+
+    /// Remove the relation mapping for `nodeId` under the lock.
+    ///
+    /// *** THIS MUST NOT CALL ITSELF. *** *A bulk edit that introduced the lock also
+    /// rewrote this body's dictionary removals into a call to this same function --
+    /// and `NSLock` is NOT reentrant, so the first disconnect would re-acquire a held
+    /// lock and hang forever. It is the single owner of both removals; callers go
+    /// through it rather than touching the dictionaries directly.*
+    private func clearMapping(_ nodeId: Data) {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        handleForNodeId.removeValue(forKey: nodeId)
+        relationForNodeId.removeValue(forKey: nodeId)
+    }
+
+    /// Forget EVERY relation mapping under the lock.
+    private func forgetAllMappings() {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        handleForNodeId.removeAll()
+        relationForNodeId.removeAll()
+    }
+
+    /// Is a trusted relation mapped for `nodeId`? Read under the lock.
+    private func hasMapping(_ nodeId: Data) -> Bool {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        return handleForNodeId[nodeId] != nil
+    }
+
+    /// The mapped node ids, snapshotted under the lock so a turn iterates a STABLE set
+    /// and a concurrent connect/disconnect cannot mutate the collection mid-loop.
+    private func mappingSnapshot() -> [Data] {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        return Array(handleForNodeId.keys)
+    }
+
+    /// The handle AND generation for `nodeId`, read TOGETHER under the lock so the two
+    /// cannot be observed from different relations.
+    private func mapping(for nodeId: Data) -> (handle: UUID, generation: UInt64?)? {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        guard let handle = handleForNodeId[nodeId] else { return nil }
+        return (handle, relationForNodeId[nodeId]?.generation)
+    }
+
+    /// Bump the completed-turn count under the lock (read by tests from the main thread).
+    private func recordAckTurnCompleted() {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        ackTurnsRun += 1
+    }
+
+    /// Bump the event-wake count under the lock: `handleReceive`'s inbound road (the
+    /// caller's thread) increments it while tests read it from the main thread.
+    private func recordAckEventWake() {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        ackEventWakes += 1
+    }
     /// GS-RUNTIME-001 step 4: **THE MONOTONIC PERIODIC DEADLINE, OWNED.** The worker must be WOKEN for the
     /// periodic turn; until this landed nothing woke it but the trusted event itself. The deadline is armed
     /// ONLY from the trusted readiness and CANCELLED with the node, so it can never outlive the runtime that
@@ -90,11 +164,17 @@ public final class MeshNode {
     private var ackTurnSource: DispatchSourceTimer?
     private let ackTurnQueue = DispatchQueue(label: "io.godstone.mesh.ackturn")
     private var ackTurnsRun = 0
-    internal func ackTurnsRunForTest() -> Int { ackTurnsRun }
+    internal func ackTurnsRunForTest() -> Int {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        return ackTurnsRun
+    }
     /// GS-RUNTIME-001 step 4: the EVENT wakes (readiness, inbound request), counted apart from the DEADLINE's
     /// turns so that a witness can tell which wake it is judging.
     private var ackEventWakes = 0
-    internal func ackEventWakesForTest() -> Int { ackEventWakes }
+    internal func ackEventWakesForTest() -> Int {
+        ackStateLock.lock(); defer { ackStateLock.unlock() }
+        return ackEventWakes
+    }
 
     /// T42: the per-TrustedPeer bounded sync pump and the typed dispatcher. Both
     /// are ACTIVE by default (the default pump is built lazily from this node's
@@ -163,8 +243,7 @@ public final class MeshNode {
     /// scheduled here, and the DIGEST becomes due at once.
     @discardableResult
     internal func trustedPeerDidConnect(nodeId: Data, peerId: UUID? = nil, generation: UInt64? = nil) -> Bool {
-        if let peerId, let generation { relationForNodeId[nodeId] = AckRelationBinding(handle: peerId, generation: generation) }
-        if let peerId { handleForNodeId[nodeId] = peerId }
+        if let peerId { setMapping(nodeId, handle: peerId, generation: generation) }
         // IOS-02 step 5: THE TRUSTED EVENT IS WHAT ADMITTETH A PEER TO THE ROUTE. The handle is optional
         // so that every existing caller (whose business is the SYNC PUMP alone) keepeth its meaning: a
         // caller with a handle to hand getteth route eligibility WITH the trust that just came up.
@@ -179,8 +258,7 @@ public final class MeshNode {
     /// resumes.
     @discardableResult
     internal func trustedPeerDidDisconnect(nodeId: Data, peerId: UUID? = nil) -> Bool {
-        handleForNodeId.removeValue(forKey: nodeId)
-        relationForNodeId.removeValue(forKey: nodeId)
+        clearMapping(nodeId)
         if let peerId {
             peerLock.lock(); peers.remove(peerId); peerLock.unlock()
         }
@@ -654,7 +732,7 @@ public final class MeshNode {
 
     /// GS-RUNTIME-001 step 4: the relation mapping is forgotten on BOTH roads (the early return and the full
     /// stop), so no elder relation surviveth a stop in the mapping even when the node was never started.
-    private func handleNodeMappingsForget() { handleForNodeId.removeAll(); relationForNodeId.removeAll() }
+    private func handleNodeMappingsForget() { forgetAllMappings() }
 
     private func currentPeers() -> [UUID] {
         peerLock.lock(); defer { peerLock.unlock() }
@@ -1178,8 +1256,8 @@ public final class MeshNode {
             // RELATION.** An accepted ACK candidate IS new forward work -- it may have to travel onward -- and
             // the wake is gated on the TRUSTED RELATION MAPPING, so an untrusted sender is not served and
             // nothing is guessed.
-            if dispatch.accepted, handleForNodeId[receivedFrom] != nil {
-                ackEventWakes += 1
+            if dispatch.accepted, hasMapping(receivedFrom) {
+                recordAckEventWake()
                 _ = drainAckWorkOnce(nodeId: receivedFrom)
             }
             return dispatch.accepted
@@ -1192,8 +1270,8 @@ public final class MeshNode {
         // reacheth the generic durable road is a message from a peer; a peer that requesteth or awaiteth an ACK
         // must have the worker woken FOR THAT EXACT NODE ID -- and the wake is gated on the TRUSTED RELATION
         // MAPPING, so A SENDER WITH NO TRUSTED RELATION IS NOT SERVED AND NOTHING IS GUESSED.
-        if handleForNodeId[receivedFrom] != nil {
-            ackEventWakes += 1
+        if hasMapping(receivedFrom) {
+            recordAckEventWake()
             _ = drainAckWorkOnce(nodeId: receivedFrom)
         }
         let relay = router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
@@ -1259,11 +1337,12 @@ extension MeshNode: TransportDelegate {
     /// would be exactly the misrouting this programme hunteth.
     @discardableResult
     internal func drainAckWorkOnce(nodeId: Data, generation: UInt64? = nil) -> Int? {
-        guard let pump = ackPump, let handle = handleForNodeId[nodeId] else { return nil }
+        guard let pump = ackPump, let bound = mapping(for: nodeId) else { return nil }
+        let handle = bound.handle
         // GS-RUNTIME-001 step 5: **RECHECK THE CAPTURED RELATION.** A caller that nameth the generation it was
         // admitted under is REFUSED when the relation hath moved since -- the handle and the node id are the
         // SAME across a replacement, and only the generation telleth them apart.
-        if let generation, relationForNodeId[nodeId]?.generation != generation { return nil }
+        if let generation, bound.generation != generation { return nil }
         let batch = pump.nextBatch(nodeId)
         var handed = 0
         for copy in batch.copies {
@@ -1285,8 +1364,8 @@ extension MeshNode: TransportDelegate {
     @discardableResult
     internal func runAckTurnForEveryTrustedRelation() -> Int {
         var handed = 0
-        for nodeId in Array(handleForNodeId.keys) { handed += (drainAckWorkOnce(nodeId: nodeId) ?? 0) }
-        ackTurnsRun += 1
+        for nodeId in mappingSnapshot() { handed += (drainAckWorkOnce(nodeId: nodeId) ?? 0) }
+        recordAckTurnCompleted()
         return handed
     }
 

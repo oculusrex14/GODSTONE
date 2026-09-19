@@ -88,8 +88,16 @@ public final class BloomDigest {
         input.append(UInt8((round >> 8) & 0xFF))
         input.append(UInt8(round & 0xFF))
         let digest = Blake2s.hash(input, digestLength: 8)
+        // *** `loadUnaligned`, NOT `load`. *** `Data.withUnsafeBytes` promises ONE-byte
+        // alignment, but `load(as: UInt64.self)` REQUIRES EIGHT: reading an
+        // under-aligned digest traps the Swift runtime ("load from misaligned raw
+        // pointer"), it does not merely misbehave. It read correctly for as long as
+        // the allocator happened to hand back an aligned buffer and aborted the
+        // moment the layout changed -- TSan's allocator is exactly such a change,
+        // which is how this surfaced. `loadUnaligned` is the API for this situation
+        // and is available on the package's declared floor (iOS 16 / macOS 13).
         let value = digest.withUnsafeBytes { ptr -> UInt64 in
-            ptr.load(as: UInt64.self).bigEndian
+            ptr.loadUnaligned(as: UInt64.self).bigEndian
         }
         return Int((value >> 1) & UInt64(Int32.max)) % sizeBits
     }
