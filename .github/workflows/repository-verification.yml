@@ -12,6 +12,11 @@ on:
       - main
       - 'remediation/**'
       - 'codex/**'
+      # BOARD 1's closure branch. The canonical workflow triggers on `main`, `remediation/**` and
+      # `codex/**`, so the Board 1 branch was pushed and ran NOTHING -- its first push produced no run at
+      # all. A green candidate cannot be evidenced by a workflow that never woke up for it.
+      - 'board1/**'
+      - 'board2/**'
   pull_request:
 
 permissions:
