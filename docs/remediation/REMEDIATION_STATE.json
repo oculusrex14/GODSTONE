@@ -13974,7 +13974,8 @@
    "round": 749,
    "finding": "GS-RUNTIME-001",
    "correction": "TWO STALE CLAIMS IN THIS BLOCK'S STATUS FIELDS, EACH MEASURED. **(1) THE \"CONTEXT WALL\" WAS ALREADY DISPROVEN BY THE BLOCK'S OWN round-731 EVIDENCE** -- which found `AndroidKeyStore not found` one layer further in -- yet `pending_proof` still called the Context-bearing Android test \"AN EXTERNAL ARTIFACT\". The remainder now splits explicitly: the Context-bearing court is INTERNAL AND WRITABLE; only the platform keystore is external. *(2) `subscribeToReadiness` STILL HATH ZERO PRODUCTION CALLERS AT THIS HEAD* -- the declaration existeth at `MeshNode.kt:192` and a whole-source grep returneth that line alone, which is the \"code added but never called\" class. It is recorded here as OWED INTERNAL WORK rather than as part of the external remainder.",
-   "log": "(see the correction text; the measurements are the block's own round-731 entry and a grep of android/ at HEAD)"
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-RUNTIME-001/round749-stale-status-field-correction.log",
+   "sha256": "5e93bc671533a2cd411fd39f567a6f7b53c3f752d99d9b91dc1246e9bab22132"
   }
  ],
  "phase_one": {
@@ -14812,7 +14813,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "b860e662a9846cf347b19c89b5754ab8ab4e4ef1",
+  "candidate_sha": "e94d8e1865bf091ccc05c745b8e3b178c298edec",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
