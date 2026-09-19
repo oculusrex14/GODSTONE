@@ -56,43 +56,52 @@ def declared_paths() -> list[str]:
     return [e['path'] for e in doc.get('additions', [])]
 
 
+NON_CONTENT_BASENAMES = ('.DS_Store',)
+"""*** THE OPERATING SYSTEM'S OWN METADATA, NAMED -- NOT "WHATEVER `.gitignore` SAYS". ***
+
+*MEASURED RISK, AND WHY THE OBVIOUS RULE IS THE WRONG ONE: a filter derived from `.gitignore` would apply `*.db`,
+`*.apk`, `build/`, `__pycache__/` and more INSIDE the audit bundles -- and this repository's declared bundles DO
+carry real content whose names those patterns cover. Five recorded paths are `*.db`:*
+    AUDIT_FINAL_2026-09-15/.../swift-build/archive_light.db
+    AUDIT_FINAL_2026-09-15/.../android-build/fixtures/{valid,malformed}.db
+    AUDIT_FINAL_2026-09-15/.../fixtures/cache-valid/current/archive.db
+*** EXCLUDING THEM WOULD CONVERT A RED CONTROL INTO A QUIET BLIND SPOT -- WORSE THAN THE FLAKE IT REPAIRS, because a
+substitution inside audit evidence is exactly what this manifest existeth to catch. *** **So the rule is a NAMED
+SET, not a derived one: the capture machine's own metadata, whose bytes belong to the Finder and not to the audit.**
+*Justified by evidence already held: the audit's OWN `MANIFEST.sha256` recordeth zero `.DS_Store`; the repository
+declareth it non-content at `.gitignore:89`; and the two recorded blobs were rewritten by macOS at an IDENTICAL
+6148-byte size, which is the Finder's signature rather than any audit process's.*
+"""
+
+
 def ignored_paths(root: str) -> set:
-    """The paths `root`'s own repository declareth NON-CONTENT.
+    """The OPERATING SYSTEM'S metadata inside `root`, per `NON_CONTENT_BASENAMES`.
 
-    *** THE CONTENT MANIFEST MUST ENUMERATE CONTENT. *** *A recorded sha256 over an IGNORED file can never be kept:
-    the operating system rewriteth it at will (macOS rewrote both recorded `.DS_Store` blobs with an identical
-    6148-byte size), and a fresh clone carrieth it not at all -- so the court would redden over a clean checkout of
-    its own commit AND over a meaningless substitution alike.* **MEASURED: `declare_external_addition.py --check`
-    reported `2 failure(s)` for exactly this, two Finder artefacts the repository had already declared non-content.**
-
-    *The answer is the repository's OWN ruling, not a hand-kept list: ASK GIT.* **A path `.gitignore`d is, by the
-    record's own definition, not evidence.** *If git is unavailable the set is empty and behaviour is unchanged
-    -- a control that cannot ask the question must not silently invent an answer, so it falls back to recording
-    everything exactly as before.*
+    **THE REPOSITORY IS STILL CONSULTED, BUT ONLY AS A SECOND OPINION** -- *the named basename must ALSO be one the
+    repository declareth non-content, so the set can never silently widen past the declared rule and the repository
+    stays the authority on what its own history considers noise.* **If git is unavailable the NAMED SET ALONE IS
+    USED**, because a control that cannot ask the second question must not fall through to recording the Finder.
     """
+    named = set(NON_CONTENT_BASENAMES)
     try:
         proc = subprocess.run(['git', 'ls-files', '--others', '--ignored', '--exclude-standard',
-                               '--directory', '--no-empty-directory'],
+                               '--no-empty-directory'],
                               cwd=root, capture_output=True, text=True)
     except OSError:
-        return set()
+        return named
     if proc.returncode != 0:
-        return set()
-    return {ln.strip().rstrip('/') for ln in proc.stdout.splitlines() if ln.strip()}
+        return named
+    declared = {ln.strip() for ln in proc.stdout.splitlines() if ln.strip()}
+    return {name for name in named if name in declared}
 
 
-def is_non_content(key: str, ignored: set) -> bool:
-    """Whether `key` (a repository-relative path) is declared non-content.
+def is_non_content(key: str, non_content: set) -> bool:
+    """Whether `key` (a repository-relative path) is the operating system's metadata.
 
-    **MATCHED AT ANY DEPTH**, because git reporteth a whole ignored DIRECTORY as one entry: a `.DS_Store` inside a
-    bundle whose parent is ignored must be excluded the same way a bare `.DS_Store` is.
+    **MATCHED BY BASENAME AT ANY DEPTH:** *a `.DS_Store` inside a *bundle* directory is the same Finder artefact as one
+    at the root, and the Finder writeth it wherever a window is opened.*
     """
-    normalized = key.replace(os.sep, '/').strip('/')
-    if not ignored:
-        return False
-    parts = normalized.split('/')
-    return any('/'.join(parts[:i + 1]) in ignored or parts[i] in ignored
-               for i in range(len(parts)))
+    return os.path.basename(key.replace(os.sep, '/')) in non_content
 
 
 def build(root: str = ROOT) -> dict:

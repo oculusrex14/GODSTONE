@@ -238,7 +238,7 @@ class EvidenceDigestTest(unittest.TestCase):
         base = Path(tempfile.mkdtemp(prefix="gs-final-001-w08-"))
         (base / "REMEDIATION" / "GS-TEST-001").mkdir(parents=True, exist_ok=True)
         (base / "REMEDIATION" / "GS-TEST-001" / "valid.log").write_text("synthetic\n")
-        state = {"evidence_root": str(base), "findings": {}, "convergence": {}}
+        state = {"schema_version": 1, "evidence_root": str(base), "findings": {}, "convergence": {}}
         state["findings"]["GS-TEST-001"] = {
             "my_red_case": {"log": "GS-TEST-001/valid.log", "case": "synthetic"}
         }
@@ -284,7 +284,7 @@ class EvidenceDigestTest(unittest.TestCase):
         """GS-FINAL-001(c). The walker `return`ed the moment it yielded a parent, so children were
         NEVER VISITED: a nested invalid log was hidden by a valid parent. The arm nests one INSIDE the
         parent dict, so a walker that stops at the parent cannot see it."""
-        state = {"evidence_root": "", "findings": {}, "convergence": {}}
+        state = {"schema_version": 1, "evidence_root": "", "findings": {}, "convergence": {}}
         base = Path(tempfile.mkdtemp(prefix="gs-final-001-w10-"))
         (base / "valid.log").write_text("a valid parent log\n")
         valid = hashlib.sha256((base / "valid.log").read_bytes()).hexdigest()
@@ -363,7 +363,7 @@ class EvidenceDigestTest(unittest.TestCase):
                     if os.geteuid() == 0:
                         continue  # root readeth everything; the shape cannot be produced
                     unreadable.chmod(0)
-                led = {"evidence_root": str(root),
+                led = {"schema_version": 1, "evidence_root": str(root),
                        "findings": {"GS-X": {"my_logs": [{"log": name, "sha256": "0" * 64}]}},
                        "convergence": {}}
                 ledp = root / "l.json"
@@ -376,6 +376,40 @@ class EvidenceDigestTest(unittest.TestCase):
                               "the diagnostic must NAME the finding whose evidence is unreadable:\n" + out)
                 if label.startswith("unreadable"):
                     unreadable.chmod(_stat.S_IRUSR | _stat.S_IWUSR)
+
+    def test_w15_the_ledger_s_version_is_a_GATE_not_a_label(self):
+        """*** GS-FINAL-001's LAST NAMED SUB-ITEM: "a versioned schema". ***
+
+        *The ledger carrieth `schema_version: 1` -- and **NOTHING READ IT.** `ci/check_evidence_digests.py` and
+        `ci/check_required_runs.py` both return ZERO hits for the name, so the field was a LABEL: a record could be
+        rewritten under a new interpretation and every instrument would keep reading it by the old rules and
+        report PASS.* **The session's own law is that A GATE NOBODY CONSULTS IS NOT A GATE, so this arm demandeth that
+        the instrument REFUSE a record whose version it was not written to interpret.**
+
+        *Both directions are exercised, because a gate that only refuseth is indistinguishable from one that
+        refuseth everything: an UNKNOWN version is a NAMED defect, and the KNOWN one still verifieth.*
+        """
+        base = ledger()
+        with tempfile.TemporaryDirectory(prefix="gs-final-001-w15-") as tmp:
+            for label, version, expect_ok in (("the known version", 1, True),
+                                              ("an unknown future version", 99, False),
+                                              ("no version at all", None, False)):
+                state = json.loads(json.dumps(base))
+                if version is None:
+                    state.pop('schema_version', None)
+                else:
+                    state['schema_version'] = version
+                path = Path(tmp) / ("ledger-%s.json" % (version if version is not None else "absent"))
+                path.write_text(json.dumps(state), encoding="utf-8")
+                rc, out, _parsed = run_instrument(path)
+                if expect_ok:
+                    self.assertEqual(0, rc, "%s must still be accepted:\n%s" % (label, out))
+                else:
+                    self.assertEqual(1, rc, "*** %s MUST BE REFUSED: an instrument that readeth a record by "
+                                            "rules it was not written for reporteth PASS about the WRONG "
+                                            "DOCUMENT. ***\n%s" % (label, out))
+                    self.assertIn("schema", out.lower(),
+                                  "%s must be NAMED, not refused anonymously:\n%s" % (label, out))
 
     def test_w12_the_court_counteth_the_population_with_its_own_walker(self):
         """THE COURT MUST NOT SHARE THE INSTRUMENT'S BLIND SPOT. This arm derives the population here,

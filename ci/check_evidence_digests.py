@@ -131,6 +131,18 @@ def _registered_digests(obj, label: str, force_log_record: bool = False):
         yield (label, "", "", "")
 
 
+LEDGER_SCHEMA_VERSION = 1
+"""*** THE ONLY RECORD VERSION THIS INSTRUMENT WAS WRITTEN TO INTERPRET. ***
+
+*GS-FINAL-001's last named sub-item was "a versioned schema".* **The ledger carrieth `schema_version` -- and NOTHING
+READ IT: this module and `check_required_runs.py` both returned ZERO hits for the name, so the field was a LABEL.**
+*A record could be rewritten under a new interpretation and every instrument would keep reading it by the old rules
+and report PASS about the wrong document.* **THIS IS THE GATE. It is checked ONCE, in `load_ledger`'s caller, so the
+text and `--json` modes deliver the SAME verdict -- which is the whole lesson of GS-FINAL-001(d), where a per-mode
+check let a failing control ship a success.**
+"""
+
+
 def load_ledger(ledger_path: Path):
     """READ THE LEDGER, OR SAY IN THIS INSTRUMENT'S OWN VOCABULARY WHY IT COULD NOT BE READ.
 
@@ -158,6 +170,17 @@ def load_ledger(ledger_path: Path):
     if not isinstance(state, dict):
         print("::error::the ledger is not a JSON object: %s (found %s)"
               % (ledger_path, type(state).__name__))
+        return None
+    # *** THE VERSION GATE. *** *An instrument that readeth a record by rules it was not written for reporteth PASS
+    # about the WRONG DOCUMENT -- which is worse than a red, because nobody investigates a green.* **The version is
+    # REQUIRED, not defaulted: a record that nameth no version cannot be known to be one this instrument understandeth,
+    # and silence must not be read as consent.** *Refused ONCE, here, so both output modes give one verdict.*
+    version = state.get("schema_version")
+    if version != LEDGER_SCHEMA_VERSION:
+        detail = ("nameth no schema_version" if version is None
+                  else "declareth schema_version %r" % (version,))
+        print("::error::the ledger %s, and this instrument interpreteth only version %d: %s"
+              % (detail, LEDGER_SCHEMA_VERSION, ledger_path))
         return None
     return state
 
