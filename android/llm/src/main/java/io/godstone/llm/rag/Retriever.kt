@@ -158,12 +158,23 @@ class Retriever(
             while (cur.moveToNext()) {
                 val id = cur.getLong(0)
                 val blob = cur.getBlob(1)
-                results.add(id to cosineInt8(qvec, blob))
+                // ONE IMPLEMENTATION: the pure arithmetic lives in VectorRanking so a
+                // court can drive the very code this loop calls. A copy retyped in the
+                // test would prove nothing about production.
+                val score = VectorRanking.cosineInt8(qvec, blob)
+                // a non-finite score is EXCLUDED, never ranked
+                if (score.isFinite()) results.add(id to score)
             }
         }
 
-        val top = results.sortedByDescending { it.second }.take(limit)
-        return top.mapNotNull { (id, score) -> loadChunk(id, score) }
+        // *** DETERMINISTIC TIE-BREAK (T64), WHICH PRODUCTION DID NOT HAVE. ***
+        //
+        // THIS WAS `sortedByDescending { it.second }.take(limit)`. Kotlin's sort is
+        // STABLE, so equal scores kept whatever order the SQLite cursor happened to
+        // return -- not guaranteed, and not the same twice. The tie-break now lives
+        // in VectorRanking.topK, invoked here so there is ONE implementation.
+        return VectorRanking.topK(results, limit)
+            .mapNotNull { (id, score) -> loadChunk(id, score) }
     }
 
     /**
@@ -190,9 +201,10 @@ class Retriever(
         // Normalise to roughly 0..1 so the confidence gate is interpretable.
         val maxPossible = 2.0 / (RRF_K + 1)
 
-        return scores.entries
-            .sortedByDescending { it.value }
-            .take(topK)
+        // the same deterministic tie-break as the vector pass, from the same place:
+        // equal fused scores fall back to ascending chunk id, so the ranking never
+        // dependeth on the order a HashMap happened to iterate in.
+        return VectorRanking.fusedTopK(scores, topK)
             .mapNotNull { (id, s) -> byId[id]?.copy(score = s / maxPossible) }
     }
 
@@ -210,25 +222,6 @@ class Retriever(
                 cur.getString(3), cur.getString(4), score
             )
         }
-    }
-
-    private fun cosineInt8(query: FloatArray, blob: ByteArray): Double {
-        // Comparing only a shared prefix silently mixes incompatible embedding
-        // spaces. A dimension mismatch is archive/model corruption, so this
-        // candidate receives the lowest possible score and semantic retrieval
-        // degrades to the lexical path.
-        if (query.isEmpty() || blob.size != query.size) return 0.0
-        var dot = 0.0
-        var normB = 0.0
-        for (i in query.indices) {
-            val b = blob[i].toDouble() / 127.0
-            dot += query[i] * b
-            normB += b * b
-        }
-        var normA = 0.0
-        for (v in query) normA += v * v
-        val denom = sqrt(normA) * sqrt(normB)
-        return if (denom == 0.0) 0.0 else dot / denom
     }
 
     /** Strip FTS5 operators so a user's plain question cannot become a syntax error. */

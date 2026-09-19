@@ -60,6 +60,7 @@ class _Fixture:
     def __init__(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
+        self._mirror_court_existence()
         for rel in FILES:
             destination = self.root / rel
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -70,6 +71,37 @@ class _Fixture:
         document = json.loads(path.read_text(encoding="utf-8"))
         mutate(document)
         path.write_text(json.dumps(document, indent=2), encoding="utf-8")
+
+    def _mirror_court_existence(self):
+        """Create empty placeholders mirroring which court files EXIST.
+
+        The rods resolve a witness path against the sandbox root, so a sandbox
+        that carried no test files would make every witness look missing -- and
+        the negative arms would pass for the wrong reason. The mirror is about
+        EXISTENCE, which is exactly what the rod checks: content is not read."""
+        # EVERY path any real blocked-task classification names, whatever the
+        # language: python courts under tools/readiness/tests, Kotlin courts under
+        # android/, Swift courts under ios/, and metadata like ios/project.yml.
+        # Mirroring only *.py would have made every native witness look absent, and
+        # the positive control would then have failed for a reason that has nothing
+        # to do with the rod.
+        state, catalogue, _register, _m = load(ROOT)
+        wanted: set[str] = set()
+        for tid in blocked_records(state):
+            entry = next(t for t in catalogue["tasks"] if t["id"] == tid)
+            for rel in (entry.get("required_regression_paths") or []):
+                wanted.add(str(rel))
+            for case in (state["completed_tasks"][tid].get("case_classification") or []):
+                if isinstance(case, dict) and case.get("implemented_by"):
+                    wanted.add(str(case["implemented_by"]))
+        for rel in wanted:
+            if "/" not in rel or rel.endswith("/"):
+                continue
+            dest = self.root / rel
+            if dest.exists():
+                continue
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text("", encoding="utf-8")
 
     def close(self):
         self.tmp.cleanup()
@@ -184,10 +216,17 @@ class UnauthoredCourtTest(unittest.TestCase):
         fixture = _Fixture()
         try:
             def excuse_nothing(d):
-                entry = d["completed_tasks"]["T81"]
-                entry.pop("court_not_authored", None)
-                entry["required_regression_paths"] = ["tools/readiness/tests/test_t81.py"]
+                d["completed_tasks"]["T81"].pop("court_not_authored", None)
             fixture.edit("docs/production-readiness/BUILD_STATE.json", excuse_nothing)
+
+            def declare_an_absent_court(d):
+                # the rod reads DECLARED PATHS from the CATALOGUE, so the mutation
+                # must land there; the mirror did not create this name.
+                for task in d["tasks"]:
+                    if task["id"] == "T81":
+                        task["required_regression_paths"] = [
+                            "tools/readiness/tests/test_w11_absent_court_fixture.py"]
+            fixture.edit("docs/production-readiness/TASKS.json", declare_an_absent_court)
             problems = findings(fixture.root)
             self.assertTrue(any(p.startswith("unauthored-court") for p in problems),
                             problems)
@@ -203,6 +242,13 @@ class UnauthoredCourtTest(unittest.TestCase):
             def gesture(d):
                 d["completed_tasks"]["T73"].update({"court_not_authored": "todo"})
             fixture.edit("docs/production-readiness/BUILD_STATE.json", gesture)
+
+            def absent_court(d):
+                for task in d["tasks"]:
+                    if task["id"] == "T73":
+                        task["required_regression_paths"] = [
+                            "tools/readiness/tests/test_w12_absent_court_fixture.py"]
+            fixture.edit("docs/production-readiness/TASKS.json", absent_court)
             problems = findings(fixture.root)
             self.assertTrue(any(p.startswith("unjustified-court") for p in problems),
                             problems)
@@ -216,6 +262,133 @@ class UnauthoredCourtTest(unittest.TestCase):
             if excuse:
                 self.assertGreaterEqual(len(excuse), 80,
                                         f"{tid}: a justification must NAME the reason")
+
+
+class CaseClassificationTest(unittest.TestCase):
+    """W17-W23 -- the case-level rods, and the rc3 escape hatch they close.
+
+    A PROSE JUSTIFICATION MAY NOT EXCUSE A HOST-TESTABLE CASE. rc3 accepted any
+    `court_not_authored` of sufficient LENGTH, and length is not proof: T64 and
+    T65 sat behind one while their cards named cases needing no model at all.
+    These witnesses drive the rods that closed it.
+
+    EACH MUTATION IS ALSO CHECKED IN BOTH DIRECTIONS: the mutated sandbox must
+    produce the finding, and the unmutated repository must stay clean. A rod that
+    merely fires proves nothing about what it distinguishes."""
+
+    #: a witness path that really exists, for the positive and fabricated arms
+    REAL_WITNESS = "tools/readiness/tests/test_t78.py"
+
+    def _mutate(self, fn):
+        """Run `fn` against a sandboxed copy and return the findings."""
+        fixture = _Fixture()
+        try:
+            fixture.edit("docs/production-readiness/BUILD_STATE.json", fn)
+            return findings(fixture.root)
+        finally:
+            fixture.close()
+
+    def test_w17_a_host_case_with_no_witness_is_caught(self):
+        """Mutation A -- the card's own example: T64 names a host-testable case
+        with nothing implementing it."""
+        def strip_witness(d):
+            d["completed_tasks"]["T64"]["case_classification"] = [
+                {"case": "same dimension, different model", "classification":
+                 "HOST_TESTABLE_PURE_LOGIC", "implemented_by": None}]
+        problems = self._mutate(strip_witness)
+        self.assertTrue(any(p.startswith("unimplemented-case") for p in problems),
+                        problems)
+        # ... and the real repository carrieth no such finding
+        self.assertEqual([], [p for p in findings(ROOT)
+                              if p.startswith("unimplemented-case")])
+
+    def test_w18_prose_length_cannot_buy_an_exemption(self):
+        """Mutation B -- THE rc3 ESCAPE HATCH SPECIFICALLY. A long justification
+        beside a host-testable case with no witness must still be refused."""
+        def excuse_with_prose(d):
+            entry = d["completed_tasks"]["T65"]
+            entry["court_not_authored"] = (
+                "This justification is deliberately WELL OVER the eighty-character "
+                "substance floor, and it is nonetheless insufficient: length is not "
+                "proof, and a host-testable case without a witness is unimplemented "
+                "however eloquently the absence is described.")
+            entry["case_classification"] = [
+                {"case": "deterministic test-double edge cases",
+                 "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+                 "implemented_by": None}]
+        problems = self._mutate(excuse_with_prose)
+        self.assertTrue(any(p.startswith("unimplemented-case") for p in problems),
+                        "a long justification bought the exemption: %s" % problems)
+        self.assertFalse(any(p.startswith("unjustified-court") for p in problems),
+                         "the prose was long enough, so `unjustified-court` should not "
+                         "be the rod that fired: %s" % problems)
+
+    def test_w19_a_witness_that_does_not_exist_is_caught(self):
+        """Mutation C -- the `implemented_by` NAMES a file, so a non-existent path
+        must be refused; this reaches the branch Mutation A cannot."""
+        def name_a_ghost(d):
+            d["completed_tasks"]["T64"]["case_classification"] = [
+                {"case": "same dimension, different model",
+                 "classification": "HOST_TESTABLE_PURE_LOGIC",
+                 "implemented_by": "tools/readiness/tests/test_does_not_exist.py"}]
+        problems = self._mutate(name_a_ghost)
+        self.assertTrue(any(p.startswith("unimplemented-case") for p in problems),
+                        problems)
+
+    def test_w20_an_external_case_may_not_claim_a_witness(self):
+        """Mutation D -- a REQUIRES_*/DEVICE_ONLY case pointing at a real file is
+        fabricated internal coverage."""
+        def claim_internal(d):
+            d["completed_tasks"]["T81"]["case_classification"] = [
+                {"case": "real approved native/model binaries",
+                 "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+                 "implemented_by": self.REAL_WITNESS}]
+        problems = self._mutate(claim_internal)
+        self.assertTrue(any(p.startswith("fabricated-case") for p in problems),
+                        problems)
+
+    def test_w21_an_unknown_classification_is_caught(self):
+        def invent_a_class(d):
+            d["completed_tasks"]["T64"]["case_classification"] = [
+                {"case": "something", "classification": "PROBABLY_FINE",
+                 "implemented_by": None}]
+        problems = self._mutate(invent_a_class)
+        self.assertTrue(any(p.startswith("malformed-cases") for p in problems),
+                        problems)
+
+    def test_w22_a_blocked_task_with_an_absent_court_and_no_cases_is_caught(self):
+        """The omission itself is visible: without a classification a reader
+        cannot tell host-testable from external, so the absence is unjudgeable."""
+        def drop_cases(d):
+            d["completed_tasks"]["T64"].pop("case_classification", None)
+        problems = self._mutate(drop_cases)
+        fixture = _Fixture()
+        try:
+            def absent_court(d):
+                for task in d["tasks"]:
+                    if task["id"] == "T64":
+                        task["required_regression_paths"] = [
+                            "tools/readiness/tests/test_w22_absent_court_fixture.py"]
+            fixture.edit("docs/production-readiness/TASKS.json", absent_court)
+            fixture.edit("docs/production-readiness/BUILD_STATE.json", drop_cases)
+            problems = findings(fixture.root)
+        finally:
+            fixture.close()
+        self.assertTrue(any(p.startswith("unclassified-cases") for p in problems),
+                        problems)
+
+    def test_w23_a_well_formed_host_case_keeps_the_tree_clean(self):
+        """THE POSITIVE CONTROL: the rods must DISCRIMINATE, not merely fire."""
+        def well_formed(d):
+            d["completed_tasks"]["T64"]["case_classification"] = [
+                {"case": "a host-testable case with a real witness",
+                 "classification": "HOST_TESTABLE_PURE_LOGIC",
+                 "implemented_by": self.REAL_WITNESS}]
+        problems = self._mutate(well_formed)
+        self.assertEqual([], [p for p in problems
+                              if p.startswith(("unimplemented-case", "fabricated-case",
+                                               "malformed-cases"))],
+                         "a well-formed classification was refused: %s" % problems)
 
 
 class BlockedDeclarationsTest(unittest.TestCase):

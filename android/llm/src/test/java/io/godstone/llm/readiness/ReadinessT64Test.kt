@@ -4,6 +4,7 @@ import io.godstone.llm.rag.AnswerValidator
 import io.godstone.llm.rag.Chunk
 import io.godstone.llm.rag.Citation
 import io.godstone.llm.rag.RetrievalResult
+import io.godstone.llm.rag.VectorRanking
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -104,22 +105,24 @@ class ReadinessT64Test {
     // ---------------------------------------------------------------- vectors --
 
     /**
-     * THE VECTOR ADMISSION GATE, mirroring `Embedder.embed`'s fail-closed rule:
-     * a vector that is not finite, or whose dimension disagrees, is never ranked.
-     * Returns null for a refused vector, exactly as production does.
+     * THE VECTOR ADMISSION GATE, DRIVEN THROUGH PRODUCTION.
+     *
+     * THIS USED TO BE A PRIVATE COPY of the rule, and a private copy proves
+     * nothing: mutate the production cosine and the copy stays green. It now
+     * calls [VectorRanking.cosineInt8] -- the very function `Retriever` calls --
+     * and reads its EXCLUSION signal (NaN) as the refusal.
+     *
+     * A candidate is admitted iff production returns a finite score for a
+     * same-dimension blob.
      */
     private fun admissible(raw: FloatArray?, expectedDim: Int): FloatArray? {
         if (raw == null) return null
+        // the dimension guard production also applies
         if (raw.size != expectedDim) return null
-        for (v in raw) {
-            if (v.isNaN() || v.isInfinite()) return null
-        }
-        var norm = 0.0
-        for (v in raw) norm += v.toDouble() * v
-        // a zero vector carries no direction; normalising it would divide by zero
-        if (norm <= 0.0) return null
-        val n = Math.sqrt(norm).toFloat()
-        return FloatArray(raw.size) { raw[it] / n }
+        // AND THE REAL NORMALISER, which is where the non-finite and zero-vector
+        // refusals live in production. Driving it here means mutating its guard
+        // reddens this court.
+        return VectorRanking.l2Normalised(raw)
     }
 
     private fun unit(dim: Int, seed: Int): FloatArray =
@@ -229,7 +232,7 @@ class ReadinessT64Test {
         assertNull(queryVector, "no model => no query vector")
 
         val selection = selectRetrieval(queryVector)
-        assertEquals(RetrievalMode.LEXICAL, selection.first,
+        assertEquals(VectorRanking.Mode.LEXICAL, selection.first,
             "no model must select lexical retrieval, not semantic")
         // THE REASON IS THE POINT: "semantic did not run" must never be
         // indistinguishable from "semantic ran and found nothing".
@@ -241,23 +244,15 @@ class ReadinessT64Test {
     @Test
     fun w09bWithAVectorSemanticIsEligible() {
         val selection = selectRetrieval(unit(archiveFp.dimension, 9))
-        assertEquals(RetrievalMode.SEMANTIC, selection.first)
+        assertEquals(VectorRanking.Mode.SEMANTIC, selection.first)
     }
 
-    private enum class RetrievalMode { LEXICAL, SEMANTIC }
-
     /**
-     * The capability decision the card requires: an EXPLICIT reason accompanies
-     * the fallback, so "semantic did not run" can never be mistaken for
-     * "semantic ran and found nothing".
+     * The capability decision, FROM PRODUCTION. `VectorRanking.selectMode` is the
+     * shipping rule; a copy here would let the real decision drift unnoticed.
      */
-    private fun selectRetrieval(queryVector: FloatArray?): Pair<RetrievalMode, String> =
-        if (queryVector == null) {
-            RetrievalMode.LEXICAL to
-                "semantic retrieval UNAVAILABLE: no embedding model; lexical selected"
-        } else {
-            RetrievalMode.SEMANTIC to "semantic retrieval eligible"
-        }
+    private fun selectRetrieval(queryVector: FloatArray?): Pair<VectorRanking.Mode, String> =
+        VectorRanking.selectMode(queryVector)
 
     // ---------------------------------------------------------------------- W10 --
 
@@ -290,13 +285,12 @@ class ReadinessT64Test {
     private fun rankFixture(id: Long, score: Double) = id to score
 
     /**
-     * Deterministic top-k: descending score, then ascending chunk id. The id
-     * tie-break is the card's "deterministic ranking" requirement -- without it a
-     * tie is resolved by whatever order the query returned, which varies.
+     * Deterministic top-k, FROM PRODUCTION. `VectorRanking.topK` is what
+     * `Retriever.vectorSearch` and the RRF pass both call, so the id tie-break
+     * asserted below is the one the shipping retriever actually uses.
      */
     private fun rank(rows: List<Pair<Long, Double>>): List<Long> =
-        rows.sortedWith(compareByDescending<Pair<Long, Double>> { it.second }.thenBy { it.first })
-            .map { it.first }
+        VectorRanking.topK(rows, rows.size).map { it.first }
 
     // ---------------------------------------------------------------------- W11 --
 

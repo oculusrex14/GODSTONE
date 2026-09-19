@@ -56,10 +56,13 @@ class Embedder(
             // exactly defect 2. Fail closed rather than compare noise.
             return null
         }
-        var norm = 0.0
-        for (v in raw) norm += v.toDouble() * v
-        val n = if (norm > 0) Math.sqrt(norm).toFloat() else 1f
-        return FloatArray(raw.size) { raw[it] / n }
+        // ONE NORMALISER, AND IT SCREENS. This was an inline loop that mapped a
+        // zero-or-negative norm to a divisor of 1f -- which returned the vector
+        // UNNORMALISED while callers assumed unit length -- and it did not screen
+        // for non-finite components, so a NaN from the native bridge passed
+        // straight through. Both cases now fail closed by name, through the same
+        // function a court can drive without a model.
+        return VectorRanking.l2Normalised(raw)
     }
 
     fun release() = bridge.release()

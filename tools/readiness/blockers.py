@@ -254,10 +254,16 @@ def findings(root) -> list:
     #     visible rather than silently exempt.
     for tid, entry in blocked.items():
         cases = entry.get("case_classification")
+        # `absent` WAS A LOOP-LOCAL LEFTOVER FROM THE ROD ABOVE. The name survived
+        # the earlier `for` loop, so it held the LAST task's value and the
+        # per-task question "is THIS task's court absent?" was never actually
+        # asked. A negative control is what exposed it. Recompute it here.
+        absent_here = [rel for rel in (tasks[tid].get("required_regression_paths") or [])
+                       if not (root / str(rel)).exists()]
         if cases is None:
             # Only tasks whose declared courts are ABSENT need case accounting:
             # an authored court already carries its own witnesses.
-            if absent:
+            if absent_here:
                 out.append(
                     "unclassified-cases: %s carrieth an absent declared court and no "
                     "`case_classification`; without it a reader cannot tell which required "
