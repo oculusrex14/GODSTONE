@@ -698,6 +698,20 @@ class ReadinessT17Test {
     fun testBackpressureIsReportedNotSilentlyDropped() {
         val rig = rig()
         try {
+            // *** THIS ARM TURNETH THE ANDROID-01 SEAM OFF, IN ITS OWN NAME, BECAUSE ITS SUBJECT IS THE
+            // WRITER'S BOUND AND NOT THE APPLICATION'S BEGIN. *** *The arm setheth `floodingAddress`, which
+            // maketh EVERY outlet write return false -- INCLUDING the application's own HS1, which D2 emits
+            // concurrently from `Dispatchers.IO`. That HS1 then saturates the writer's four-record bound and
+            // is charged `queue full`, so the arm's own `send` inheriteth a window the APPLICATION filled and
+            // the measured verdict flippeth between Backpressured and Admitted run to run. MEASURED on the
+            // 2-core runner: `expected:<Backpressured> but was:<Admitted>`, with the census showing
+            // `init-writes=1 ring-init=hs.write.initiator|queue full; hs.read.initiator|hs3 reservation refused`
+            // -- the interference is D2's, named in the ring.*
+            // The seam existeth for exactly this and sayeth so: "a court that turneth it off sayeth so in its
+            // own name and in its own arm". The application-begins behaviour is NOT thereby unwitnessed --
+            // ReadinessT21Test.testAndroid01_theApplicationBeginnethD2ItselfUponThePhysicallyReadyRelation
+            // witnesseth it on the DEFAULT road, and disabling the production door reddeneth eight arms.
+            rig.alice.applicationBeginsD2ForTest = false
             rig.completeTrust()
             rig.aliceOutlet.floodingAddress = rig.bobAddress
             val frame = ByteArray(8) { (it * 13 % 251).toByte() }
