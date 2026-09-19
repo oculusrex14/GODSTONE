@@ -681,7 +681,16 @@ class ReadinessT22Test {
      *  door, and brings the pair to the trusted READY. The HS2 fragments
      *  as they travelled are handed back for the trials that reuse them. */
     private fun driveToReady(rig: Rig): List<ByteArray> {
-        rig.aliceOutlet.clear()
+        // *** ALICE'S OUTLET IS NOT CLEARED, AND THAT IS THE FIX (measured on the runner). ***
+        // D2 -- the transport's own ANDROID-01 door, which IS the production road -- emits HS1 from the
+        // physically-ready relation, and that emission can land BEFORE this helper is entered (the ladder
+        // dispatches PublishFound, which is where the begin launches). Clearing here therefore DISCARDED
+        // the very counsel the `awaitNonEmpty` below waits for, and the arm died on its own message:
+        // "the application's own HS1 at the initiator outlet; ring: " with an EMPTY ring, because nothing
+        // was ever refused -- the bytes had simply been thrown away a line earlier.
+        // The claim this helper makes is "the APPLICATION's own first counsel travelled", so it must
+        // witness that counsel WHEREVER the application produced it, not only after a clean slate.
+        // (The responder side has no such auto-begin, so its clear stays.)
         rig.bobOutlet.clear()
         // ANDROID-01: THE APPLICATION BEGINS D2 ITSELF now, from the physically-ready relation, so this
         // court no longer BEGINNETH -- it WAITETH for the first counsel the APPLICATION sent, and the WAIT

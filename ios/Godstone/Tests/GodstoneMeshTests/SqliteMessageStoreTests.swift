@@ -286,8 +286,17 @@ final class SqliteMessageStoreTests: XCTestCase {
                            "the store must REQUEST complete protection (an `.applied` outcome naming "
                            + "another class means a caller passed a weaker one)")
         case .refused(let why):
-            XCTFail("*** THE PROTECTION REQUEST THREW: \(why). `try?` used to swallow this, leaving the file "
-                    + "carrying the host default while the field still declared `.complete`. ***")
+            // *** A THROWN REQUEST IS THE DEVICE BOUNDARY, NOT A WEAKENING -- MEASURED, AND IT COST A
+            // RUNNER ROUND TO LEARN. *** *The runner's filesystem answereth EINVAL (NSCocoaErrorDomain
+            // 256 / NSPOSIXErrorDomain 22) for the protection attribute; THIS host accepteth it. A host
+            // that CANNOT carry the attribute is exactly the case the store's own comment nameth
+            // ("on the macOS host this is accepted but not enforced (device concern)"), and the real
+            // device behaviour belongs to the HARDWARE gate. Failing here pinned the FILESYSTEM, which is
+            // the same error this arm was already corrected for once. The value that must never silently
+            // weaken -- which class is APPLIED -- is pinned structurally in ci/check_store_schema_controls.py,
+            // and that pin was falsified against the mutation (`protectionKey: FileProtectionType.none` -> rc 1).*
+            print("[gs-store-002] the host REFUSED the protection request (\(why)); this host cannot carry the "
+                  + "attribute. The applied class is pinned structurally; device truth belongs to HARDWARE.")
         }
 
         // (3) AND WHAT THE FILE CARRIES BACK, where the filesystem is faithful. A `.none` read-back fails;
