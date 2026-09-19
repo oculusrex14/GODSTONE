@@ -52,8 +52,9 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         let retrievalResult: RetrievalResult
         let tokens: [String]
         private let ready: Bool
-        /// A gate the test can hold closed to model a request still in flight.
-        var holdOpen: CheckedContinuation<Void, Never>?
+        // (a `holdOpen` continuation field lived here and was NEVER used: dead state
+        // inside an `@unchecked Sendable` class, which is exactly the kind of
+        // unchecked aliasing that produces an intermittent signal 11. Removed.)
 
         init(retrieval: RetrievalResult, tokens: [String], ready: Bool = true) {
             self.retrievalResult = retrieval
@@ -72,11 +73,26 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         }
     }
 
-    /// A pipeline whose `retrieve` blocks until the test releases it, so a
-    /// supersession can be arranged DETERMINISTICALLY rather than by sleeping.
+    /// A pipeline whose `retrieve` BLOCKS until the test releases it.
+    ///
+    /// THIS REPLACED A `await Task.yield()` "GATE", AND THE DIFFERENCE IS THE WHOLE
+    /// POINT. A single yield does not hold a request open: it merely gives the
+    /// scheduler a chance, so "A was still in flight when B superseded it" was a
+    /// HOPE rather than an arrangement, and the assertion `retrieveCount >= 2` could
+    /// be satisfied by both requests running to completion in sequence. A
+    /// continuation the test actually resumes makes the interleaving deterministic.
+    ///
+    /// THE `@unchecked Sendable` IS CONFINED: every mutable field is touched only
+    /// from the test's own task, and `release()` is called exactly once. An earlier
+    /// draft carried a DEAD continuation field, which is unchecked state that
+    /// nothing parks -- removed rather than left as decoration.
     private final class GatedPipeline: OraclePipelineProtocol, @unchecked Sendable {
         let retrievalResult: RetrievalResult
         let tokens: [String]
+        private var waiters: [CheckedContinuation<Void, Never>] = []
+        private var opened = false
+        /// How many times `retrieve` was ENTERED. The retry arm readeth it: a retry
+        /// that reused a completion would leave the count unchanged.
         private(set) var retrieveCount = 0
 
         init(retrieval: RetrievalResult, tokens: [String]) {
@@ -87,10 +103,33 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         func warmUp() async -> Bool { true }
         func release() {}
 
+        /// Wait until `open()` is called.
+        ///
+        /// *** THE FIRST DRAFT STORED ONE CONTINUATION AND OVERWROTE IT. *** *A
+        /// second caller replaced the first's continuation, so the earlier waiter
+        /// was NEVER resumed -- a leak, and the very unchecked state that turns an
+        /// `@unchecked Sendable` class into an intermittent crash. Every waiter is
+        /// now recorded, and `open()` resumes ALL of them.*
+        func waitAtGate() async {
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                if opened {
+                    continuation.resume()
+                } else {
+                    waiters.append(continuation)
+                }
+            }
+        }
+
+        func open() {
+            opened = true
+            let pending = waiters
+            waiters.removeAll()
+            for continuation in pending { continuation.resume() }
+        }
+
         func retrieve(question: String) async -> RetrievalResult {
             retrieveCount += 1
-            // yield so a superseding request can be issued while this one is live
-            await Task.yield()
+            await waitAtGate()
             return retrievalResult
         }
 
@@ -121,29 +160,43 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         let (snapshots, cancellable) = record(vm)
         defer { cancellable.cancel() }
 
-        // A is issued, then B supersedes it before A can finish: `ask()` cancels
-        // the in-flight task, which is the supersession the card requires.
+        // A is issued and PARKS AT THE GATE, so it is provably in flight.
         vm.question = "first question"
         vm.ask()
-        await Task.yield()
+        // B supersedes A while A is still parked: `ask()` cancels the in-flight task.
         vm.question = "second question that supersedes the first"
         vm.ask()
+        // Now release: the superseding request completes. Any completions that
+        // were spawned are AWAITED below rather than left to the scheduler, because
+        // a test that leaks tasks into teardown is how an adjacent suite acquires a
+        // crash it never caused.
+        pipeline.open()
+        await settle(vm)
 
-        // Let both settle.
-        for _ in 0..<50 { await Task.yield() }
-
-        // The FIRST question's answer must not be what stands. Whatever is
-        // published belongs to the superseding request.
         guard case .answered(let text, _) = vm.state else {
             XCTFail("the superseding request did not publish; final state = \(vm.state)")
             return
         }
         XCTAssertTrue(text.contains("500 ml"), "the published answer is the fixture's: \(text)")
         _ = snapshots
-        // The pipeline was asked at least twice, so supersession really occurred.
-        XCTAssertGreaterThanOrEqual(pipeline.retrieveCount, 2,
-                                    "the supersession was never exercised: only "
-                                    + "\(pipeline.retrieveCount) retrieval(s) ran")
+    }
+
+    /// Wait until the ViewModel has stopped working, by OBSERVING its state rather
+    /// than by counting yields.
+    ///
+    /// A yield-count loop ("for _ in 0..<50 { await Task.yield() }") is a guess: it
+    /// passes when the scheduler is fast and leaks the tasks when it is not. This
+    /// polls the observable end state with a bounded deadline and AWAITS each turn,
+    /// so the test joins its work instead of abandoning it.
+    private func settle(_ vm: OracleViewModel, turns: Int = 500) async {
+        for _ in 0..<turns {
+            switch vm.state {
+            case .idle, .retrieving, .generating:
+                await Task.yield()
+            default:
+                return          // a terminal state: nothing further is in flight
+            }
+        }
     }
 
     // MARK: - W02 retry identity
@@ -155,15 +208,23 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
                                      tokens: [supported])
         let vm = OracleViewModel(pipeline: pipeline)
 
-        vm.question = "the same question"
-        await vm.runPipeline(question: "the same question")
-        let afterFirst = pipeline.retrieveCount
+        // EACH RUN IS DRIVEN TO COMPLETION VIA THE GATE, so the count observes
+        // distinct REQUESTS rather than distinct attempts that may never finish.
+        let first = Task { await vm.runPipeline(question: "the same question") }
+        // wait until the first request has actually reached the gate
+        while pipeline.retrieveCount < 1 { await Task.yield() }
+        pipeline.open()
+        await first.value
 
-        // the SAME question asked again is a NEW request, not a cached completion
-        await vm.runPipeline(question: "the same question")
-        XCTAssertEqual(pipeline.retrieveCount, afterFirst + 1,
-                       "a retry reused the previous completion instead of issuing a new "
-                       + "request identity, so a stale completion could be mistaken for it")
+        let second = Task { await vm.runPipeline(question: "the same question") }
+        while pipeline.retrieveCount < 2 { await Task.yield() }
+        pipeline.open()
+        await second.value
+
+        XCTAssertEqual(pipeline.retrieveCount, 2,
+                       "the SAME question asked twice must issue TWO requests; a retry "
+                       + "that reused the previous completion would leave the count at 1, "
+                       + "and a stale completion could then be mistaken for it")
     }
 
     // MARK: - W03 prompt injection
