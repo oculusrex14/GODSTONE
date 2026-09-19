@@ -1129,7 +1129,17 @@ class ReadinessT23Test {
     @Test
     fun testOneSidedReadinessPublishethNoMatter() {
         val rig = standDoor()
-        rig.aliceOutlet.clear(); rig.bobOutlet.clear()
+        // *** ALICE'S OUTLET IS NOT CLEARED HERE, AND THAT IS THE FIX (measured on the runner). ***
+        // *This arm cleared BOTH outlets and then awaited `awaitUntilCount("hs1") { aliceOutlet.writesTo(bob) }` --
+        // the APPLICATION's own first counsel. The transport's ANDROID-01 door emits HS1 from the physically-ready
+        // relation on `Dispatchers.IO`, so that emission can land BEFORE this arm is entered, and the clear threw
+        // the bytes away one line before the wait began. It then died on its own message ("hs1") with NOTHING in
+        // the ring, because nothing had been refused -- the counsel had been discarded.* **The arm's claim is that
+        // the APPLICATION's first counsel travelled, so it must witness it WHEREVER the application produced it.**
+        // (Bob's outlet is still cleared: the responder has no auto-begin, so nothing of its own can be lost.)
+        // This is the same defect BOARD1/I fixed in the sibling courts; this arm was missed because it useth
+        // `awaitUntilCount` rather than `awaitNonEmpty`.
+        rig.bobOutlet.clear()
         // ANDROID-01: the APPLICATION beginneth; this arm waiteth for the first counsel IT sent.
         val hs1 = awaitUntilCount("hs1") { rig.aliceOutlet.writesTo(rig.bobAddress) }
         rig.aliceOutlet.clear()
