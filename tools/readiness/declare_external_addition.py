@@ -75,38 +75,70 @@ declareth it non-content at `.gitignore:89`; and the two recorded blobs were rew
 
 
 def ignored_paths(root: str) -> set:
-    """The OPERATING SYSTEM'S metadata inside `root`, per `NON_CONTENT_BASENAMES`.
+    """The OPERATING SYSTEM'S metadata, per `NON_CONTENT_BASENAMES` -- **THE NAMED SET IS AUTHORITATIVE.**
 
-    **THE REPOSITORY IS STILL CONSULTED, BUT ONLY AS A SECOND OPINION** -- *the named basename must ALSO be one the
-    repository declareth non-content, so the set can never silently widen past the declared rule and the repository
-    stays the authority on what its own history considers noise.* **If git is unavailable the NAMED SET ALONE IS
-    USED**, because a control that cannot ask the second question must not fall through to recording the Finder.
+    *** AND MY FIRST VERSION OF THIS WAS NON-DETERMINISTIC, WHICH IS THE VERY OBJECTION THAT MADE `.DS_Store`
+    ILLEGITIMATE TO RECORD. *** *It intersected the named set with what `git ls-files --others --ignored` emitted,
+    exact-string. But git emitteth paths RELATIVE TO CWD -- `godstone-audit/.DS_Store`, never the bare `.DS_Store` --
+    so the intersection was non-empty ONLY because a lone root-level `.DS_Store` happened to exist on the capture
+    machine. On a clean clone it VANISHES, so the exclusion would silently stop and the next `--write` would
+    re-record the Finder blobs and bring the red back -- DIFFERENTLY ON DIFFERENT MACHINES. Same defect one level
+    down as the one being repaired.*
+
+    **So git is now REPORT-ONLY: it is consulted to PROVE the named set is not overreaching, never to decide what the
+    set containeth.** *A named constant behaves identically everywhere; a query against the local filesystem cannot.*
     """
     named = set(NON_CONTENT_BASENAMES)
+    declared = _declared_ignored_basenames(root)
+    for name in named:
+        if declared is not None and name not in declared:
+            # THE NAMED SET MUST NOT REACH PAST THE REPOSITORY'S OWN RULING. *If the repository ever STOPPED
+            # declaring a name we exclude, that is a widening we did not intend, and it is reported rather than
+            # silently applied.*
+            print("::warning::NON_CONTENT_BASENAMES nameth %r, which this repository no longer declareth "
+                  "non-content; the exclusion is narrower than the rule" % name)
+    return named
+
+
+def _declared_ignored_basenames(root: str):
+    """The BASENAMES git reporteth as ignored -- normalised, so nesting cannot hide them.
+
+    *Returns None (not an empty set) when git cannot be asked, because "git said nothing" and "git could not be
+    asked" must not be collapsed: the first is evidence, the second is silence.*
+    """
     try:
         proc = subprocess.run(['git', 'ls-files', '--others', '--ignored', '--exclude-standard',
                                '--no-empty-directory'],
                               cwd=root, capture_output=True, text=True)
     except OSError:
-        return named
+        return None
     if proc.returncode != 0:
-        return named
-    declared = {ln.strip() for ln in proc.stdout.splitlines() if ln.strip()}
-    return {name for name in named if name in declared}
+        return None
+    return {os.path.basename(ln.strip().replace(os.sep, '/')) for ln in proc.stdout.splitlines() if ln.strip()}
 
 
 def is_non_content(key: str, non_content: set) -> bool:
     """Whether `key` (a repository-relative path) is the operating system's metadata.
 
-    **MATCHED BY BASENAME AT ANY DEPTH:** *a `.DS_Store` inside a *bundle* directory is the same Finder artefact as one
-    at the root, and the Finder writeth it wherever a window is opened.*
+    **MATCHED BY BASENAME AT ANY DEPTH, AND ONLY BY BASENAME.** *A `.DS_Store` inside a bundle directory is the same
+    Finder artefact as one at the root. Matching a PATH SEGMENT at any depth would have been wrong: __a recorded
+    `provenance.json` inside a bundle would be struck by the top-level `provenance.json` rule__ -- measureth it, and
+    every name in the set must be one whose BYTES never come from the audit.*
     """
     return os.path.basename(key.replace(os.sep, '/')) in non_content
 
 
 def build(root: str = ROOT) -> dict:
+    """The declared bundles' content, with non-content skipped AND COUNTED.
+
+    *** THE SKIP IS REPORTED, NOT SILENT. *** *A control that quietly droppeth population members is the defect this
+    whole family of instruments existeth to catch -- "AN INSTRUMENT WITH AN IGNORED POPULATION IS THE NINTH SPECIES
+    OVER AGAIN".* **So `build` returneth the count alongside the entries, and `--write` printeth it, so a future
+    widening of the rule is VISIBLE in the tool's own output rather than inferable only from a falling total.**
+    """
     entries: dict[str, dict] = {}
     ignored = ignored_paths(root)
+    skipped: list[str] = []
     for rel in declared_paths():
         base = os.path.join(root, rel)
         if not os.path.isdir(base):
@@ -117,10 +149,11 @@ def build(root: str = ROOT) -> dict:
                 full = os.path.join(dirpath, name)
                 key = os.path.relpath(full, root)
                 if is_non_content(key, ignored):
-                    continue  # THE CAPTURE MACHINE IS NOT PART OF THE EVIDENCE (see `ignored_paths`)
+                    skipped.append(key)  # THE CAPTURE MACHINE IS NOT PART OF THE EVIDENCE (see `ignored_paths`)
+                    continue
                 files[key] = {'sha256': sha256_file(full), 'size': os.path.getsize(full)}
         entries[rel] = files
-    return entries
+    return entries, skipped
 
 
 def check(root: str = ROOT) -> list[str]:
@@ -151,7 +184,7 @@ def main(argv=None) -> int:
     ap.add_argument('--check', action='store_true')
     a = ap.parse_args(argv)
     if a.write:
-        entries = build(a.root)
+        entries, skipped = build(a.root)
         total = sum(len(v) for v in entries.values())
         with open(MANIFEST, 'w', encoding='utf-8') as fh:
             json.dump({
@@ -164,6 +197,11 @@ def main(argv=None) -> int:
             }, fh, indent=1, sort_keys=True)
             fh.write('\n')
         print(f'wrote {MANIFEST}: {len(entries)} bundle(s), {total} file hash(es)')
+        # *** THE SKIPPED POPULATION IS NAMED, NOT MERELY EXCLUDED. *** *"AN INSTRUMENT WITH AN IGNORED POPULATION
+        # IS THE NINTH SPECIES OVER AGAIN": a total that fell is not the same evidence as a population that was
+        # REPORTED as skipped. MEASURED: file-count 392 -> 390 with exactly the two `.DS_Store` blobs named here.*
+        print(f'  NON-CONTENT SKIPPED: {len(skipped)} '
+              f'({"none" if not skipped else ", ".join(sorted(skipped))})')
         return 0
     if a.check:
         failures = check(a.root)

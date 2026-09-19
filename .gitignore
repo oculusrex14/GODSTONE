@@ -96,29 +96,27 @@ provenance-*.json
 docs/production-readiness/.runtime-state.json
 
 # *** THE iOS LANE'S RESULT ARTIFACT (round 691). ***
-# `swift test` writeth NO xunit file, so its LOG is the only artifact the lane produceth -- and LANE
-# RESULTS (parsed from the result files, not grepped from stdout):
-#   android:app    files=11  tests=97    skipped=0 failures=0 errors=0
-#   android:core   files=2   tests=21    skipped=0 failures=0 errors=0
-#   android:mesh   files=108 tests=1900  skipped=0 failures=0 errors=0
-#   ios:foundation suites=3   tests=4023  failures=0
-# parses it directly rather than by a grep that could only print failures. *Like the Android lanes'
-# `build/test-results/`, this is RUN OUTPUT and not source; the control REFUSES WHEN IT IS ABSENT,
-# so an unrun lane is never a pass.*
+# `swift test` writeth NO xunit file, so its LOG is the only artifact the lane produceth -- the Android
+# lanes' results live under `build/`, already ignored above. So LANE RESULTS parses this log directly
+# rather than by a grep that could only print failures. *Like the Android lanes' `build/test-results/`,
+# this is RUN OUTPUT and not source; the control REFUSES WHEN IT IS ABSENT, so an unrun lane is never a
+# pass.*
+#
+# *THE EXACT COUNTS THIS CONTROL PARSES ARE NOT RESTATED HERE. They were once pasted in beside the rule
+# and became a LIE: the mesh and iOS figures quoted in that paste were the INFLATED pre-correction numbers
+# (sibling task directories summed into one lane), since measured down to the source census. A COMMENT THAT
+# MIRRORS A MEASUREMENT GOES STALE SILENTLY; the control printeth the live figures on every run.*
 ios-lane.log
 
 # *** LANE PROVENANCE SIDECARS (round 697). ***
-# Written by iOS lane: rc=0, log=ios-lane.log, digest=6a9407fee00e8f82… and
-# `android/*/build/*.sources.sha256`, and CHECKED by LANE RESULTS (parsed from the result files, not
-# grepped from stdout):
-#   android:app    files=11  tests=97    skipped=0 failures=0 errors=0
-#   android:core   files=2   tests=21    skipped=0 failures=0 errors=0
-#   android:mesh   files=108 tests=1900  skipped=0 failures=0 errors=0
-#   ios:foundation suites=2   tests=1336  failures=0  <- per bundle: 1242 tests / 0 failures; 94 tests / 0 failures
+# Written by the RUNNERS, beside each artifact: `ios-lane.log.sources.sha256` and
+# `android-*.sources.sha256`. THE RUNNER IS THE ONLY PARTY THAT KNOWETH WHICH TREE IT COMPILED; the control
+# can only CHECK. Each digest is over content, path-sorted, and SHARED between runner and control -- the
+# digest scripts IMPORT the control's own source-list definition rather than restating it, because two
+# copies would drift and a digest over a different list is a different claim.
 #
-# FAIL:
-#   - the iOS lane carrieth no PASSED line for suite LabMeshTests -- a suite that did not run (or did not pass) is not covered by this control
-# Each bindeth a lane's result artifact to the SOURCE DIGEST it compiled, so a stale
-# result cannot pass as current evidence. *Run output, like the Android lanes' `build/test-results/` -- and the
-# control REFUSES WHEN ABSENT, so an unprovenanced result is never a pass.*
+# LANE RESULTS refuseth an ABSENT digest (a result with no provenance cannot be dated, and an undatable
+# result is not evidence about the current tree) and a DIVERGENT one (STALE -- the results never saw these
+# sources). *Run output, like the Android lanes' `build/test-results/` -- and the control REFUSES WHEN
+# ABSENT, so an unprovenanced result is never a pass.*
 *.sources.sha256
