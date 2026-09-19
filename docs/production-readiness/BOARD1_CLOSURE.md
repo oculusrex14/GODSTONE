@@ -168,19 +168,22 @@ The five external gates remain **OPEN**, no readiness flag was flipped, and `VER
 
 | item | value |
 |---|---|
-| branch | `board1/production-readiness-closure` |
-| candidate commit | `1e0ca3a70edb55580df8c3949ef1b510d78e22c2` |
-| candidate tree | `e791877b1fdcb6c3359846f54b64c03922d7a975` |
-| repository-verification run | [`35446805693`](https://github.com/oculusrex14/GODSTONE/actions/runs/35446805693) **attempt 1 -- ALL SIX JOBS SUCCESS**. *Attempt 2 of the same run failed `:app:testLightDebugUnitTest` on a TRANSIENT NETWORK ERROR fetching `org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` (`SocketException: Connection reset`); that test passes locally and passed on attempt 1 of this same SHA. GitHub reports the LATEST attempt, so this run's aggregate conclusion reads `failure` -- the citation is to attempt 1, which is the run that exercised the candidate.* |
-| tag | `production-readiness-board1-rc2` (rc1 was deleted: it named a superseded SHA) |
-| merge into `main` | **fast-forward** onto the frozen candidate `1e0ca3a7` (main's three doc commits were reconciled into the candidate at `f0f7140e`, so `origin/main` was already an ancestor -- no merge commit, no history rewritten). **The `main` TIP is deliberately not written here:** this record itself lands as a docs-only commit on top, so any literal tip SHA would self-invalidate on the next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc2`. |
+| branch | `main` |
+| candidate commit | `962ff442d241af9c87baca5dde42e6422c530da3` |
+| candidate tree | `7ac8bb4b6151bc20a3c01c9c8e82c52da312e05c` |
+| repository-verification run | [`35471507700`](https://github.com/oculusrex14/GODSTONE/actions/runs/35471507700) **ALL SIX JOBS SUCCESS** on the exact frozen candidate, iOS included: the lane executed the REAL suites (mesh 1249 + core 102 + lab 5 = 1356 cases, 0 failures, 0 segfaults) rather than the **0 tests** a `--filter` run silently reports. |
+| tag | `production-readiness-board1-rc4` (supersedes rc3; rc1 was deleted as it named a superseded SHA; **rc2 and rc3 are immutable historical evidence and were NOT moved, rewritten or deleted**) |
+| merge into `main` | **fast-forward** onto the frozen candidate `962ff442` (no merge commit, no history rewritten). Board 2's `board2/device-release-validation` is likewise **fast-forwarded** onto the corrected state. **The `main` TIP is deliberately not written here:** this record itself lands as a docs-only commit on top, so any literal tip SHA would self-invalidate on the next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc4`. |
 
 The audited baseline `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` and the previous candidate
 `e07e6ca119284eac72cfe7ed82c539209f085715` are preserved unchanged in history.
 
 ## C. Verification
 
-### Hosted — repository-verification, run `35446805693`, SHA `1e0ca3a7` — **conclusion: success**
+### Hosted — repository-verification, run `35471507700`, SHA `962ff442` (rc4) — **conclusion: success**
+
+*(The rc2-era heading named run `35446805693` at `1e0ca3a7`; it is retained below in the green
+count as historical, because that run is what verified rc2 and rc2 is not rewritten.)*
 
 | job | result |
 |---|---|
@@ -218,14 +221,16 @@ wrong both times. The verification of the tip is therefore a **query over refs**
 
 ### The green count, stated honestly
 
-**Two clean full greens now exist, and the earlier single-green caveat is RESOLVED rather than
-repeated.** An intermediate draft of this section recorded one green plus a network-reddened second
-run; that was accurate when written and is no longer the whole picture, so it is superseded here
-instead of left standing.
+**FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS exist across the rc2/rc3/rc4 line, and the earlier
+single-green caveat is RESOLVED rather than repeated.** The rc4 green is the first in which the
+repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.
 
 | run | artifact | outcome |
 |---|---|---|
-| `35446805693` **attempt 1** | candidate `1e0ca3a7` | **ALL SIX JOBS SUCCESS** -- the run that exercised the frozen candidate |
+| `35471507700` | **rc4 candidate `962ff442`** | **ALL SIX JOBS SUCCESS** -- the run bound to the tag. The iOS lane executed the REAL suites: 1356 cases, 0 failures, 0 segfaults |
+| `35472751951` **attempt 2** | tip `46866f02` (the candidate + the closure record; **docs only**) | **ALL SIX JOBS SUCCESS**. *Attempt 1 hung and attempt 2 did not, on a byte-identical tree: attempt 1's log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so it stalled in COMPILATION, where no runtime lock can deadlock. `git diff --name-only 962ff442 46866f02` is two documentation files and nothing else. Recorded as runner infrastructure, and NOT as a reason to change a check.* |
+| `35461098423` | rc3 candidate `b98780a7` | **ALL SIX JOBS SUCCESS** (historical; rc3 is not rewritten) |
+| `35446805693` **attempt 1** | rc2 candidate `1e0ca3a7` | **ALL SIX JOBS SUCCESS** (historical; rc2 is not rewritten) |
 | `35446805693` attempt 2 | candidate `1e0ca3a7` | android red -- **INFRASTRUCTURE**: `Failed to fetch maven artifact org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` / `SocketException: Connection reset` |
 | **newest `push` run on `main`** (cited positionally) | `main`, fast-forwarded onto `1e0ca3a7` | **ALL SIX JOBS SUCCESS** -- `** TEST SUCCEEDED **`, `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, android green |
 
@@ -450,8 +455,9 @@ is logged as a watch-item instead.
 
 ## H. Board 2 starting point
 
-Branch `board2/device-release-validation`, created from the green `main` HEAD after the merge:
-`1e0ca3a70edb55580df8c3949ef1b510d78e22c2`.
+Branch `board2/device-release-validation`, **fast-forwarded** onto the corrected `main`, whose frozen
+candidate is `962ff442d241af9c87baca5dde42e6422c530da3` (rc4). It previously stood at rc3
+(`b98780a7`); the advance was a fast-forward, so shared history was never rewritten.
 
 Board 2 covers: physical Android/iPhone testing, real BLE interoperability, lifecycle and
 process-death testing, locked-device/private-data tests, accessibility, battery/thermal,
