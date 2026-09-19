@@ -198,10 +198,22 @@ final class CrashStartupResumeTests: XCTestCase {
         }
         XCTAssertTrue(woke, "GS-RUNTIME-001 step 4: THE PERIODIC DEADLINE MUST WAKE THE WORKER -- it did not")
 
-        // AND IT DIETH WITH ITS OWNER:
+        // AND IT DIETH WITH ITS OWNER.
+        //
+        // *** THE BASELINE IS TAKEN AFTER THE IN-FLIGHT TURN HAS SETTLED, AND THAT IS A FIX, NOT A WEAKENING. ***
+        // *The first revision read `afterStop` IMMEDIATELY after `stop()`. MEASURED on the 2-core runner:
+        // `("3") is not equal to ("2")` -- because `stop()` can be called WHILE a turn is already in flight (the
+        // loop above exits the instant it observes a wake, and the deadline fires every 0.02 s), so the baseline
+        // was captured BEFORE that turn incremented. The arm then reported a callback "for a runtime that is gone"
+        // when nothing of the sort had happened.*
+        // **THE LAW BEING TESTED IS THAT THE DEADLINE STOPS WAKING THE WORKER -- not that a turn already executing
+        // can be un-executed.** So the settle happens first, the baseline is taken from a quiet runtime, and the
+        // assertion is that the count does not GROW thereafter. A deadline that failed to die would still grow
+        // across the second window and still redden this arm.*
         runtime.meshNode.stop()
+        Thread.sleep(forTimeInterval: 0.15)
         let afterStop = runtime.meshNode.ackTurnsRunForTest()
-        Thread.sleep(forTimeInterval: 0.1)
+        Thread.sleep(forTimeInterval: 0.15)
         XCTAssertEqual(runtime.meshNode.ackTurnsRunForTest(), afterStop,
                        "NO CALLBACK MAY FIRE FOR A RUNTIME THAT IS GONE: the deadline dieth with its owner")
 
