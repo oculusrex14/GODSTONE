@@ -12689,6 +12689,48 @@
       ]
     },
     "T62": {
+      "case_classification": [
+        {
+          "case": "JNI interface shape and declared-method parity",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": null
+        },
+        {
+          "case": "Kotlin lifecycle state machine (load/close/drain transitions)",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": null
+        },
+        {
+          "case": "worker ownership: one worker per context, released on close",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": null
+        },
+        {
+          "case": "unavailable native dependency fails closed",
+          "classification": "HOST_TESTABLE_FAILURE_PATH",
+          "implemented_by": null
+        },
+        {
+          "case": "invalid/unparseable GGUF is refused",
+          "classification": "REQUIRES_NATIVE_COMPILER_INPUT",
+          "implemented_by": null
+        },
+        {
+          "case": "real JNI load/generate/embed against approved llama.cpp",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        },
+        {
+          "case": "sanitizer runs over the approved native implementation",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        },
+        {
+          "case": "native backend-refcount race against the real runtime",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        }
+      ],
       "court_not_authored": "The card names an Android JNI/embedding lifecycle court under android/llm/src/test/.../readiness/. The JNI lifecycle it witnesseth is the loading and release of the llama.cpp native library, which is absent from this checkout (NATIVE_MODELS). A court here could only assert against a stub library, which is precisely the placeholder fallback the NATIVE_MODELS register forbids. The internals that CAN be prepared are prepared and witnessed by tools/readiness/tests/test_t81.py (the artifact receipt form).",
       "approved_source_or_human_role": "the model's publisher plus an internal approver",
       "blocker": "NATIVE_MODELS",
@@ -12709,6 +12751,48 @@
       ]
     },
     "T63": {
+      "case_classification": [
+        {
+          "case": "Swift cancellation-token semantics",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": null
+        },
+        {
+          "case": "stale completion suppression after cancellation",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": null
+        },
+        {
+          "case": "bounded buffer behaviour",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": null
+        },
+        {
+          "case": "unavailable-native failure path",
+          "classification": "HOST_TESTABLE_FAILURE_PATH",
+          "implemented_by": null
+        },
+        {
+          "case": "target linkage contract (which target links the native engine)",
+          "classification": "HOST_TESTABLE_METADATA",
+          "implemented_by": null
+        },
+        {
+          "case": "actual llama.cpp invocation and unload",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        },
+        {
+          "case": "Metal/CPU pressure and real cancellation latency",
+          "classification": "REQUIRES_REAL_MODEL_BYTES",
+          "implemented_by": null
+        },
+        {
+          "case": "the Swift court itself at ios/Godstone/Tests/GodstoneLLMTests/",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        }
+      ],
       "court_not_authored": "The card names a Swift cancellation court under ios/Godstone/Tests/GodstoneLLMTests/, a test target that DOES NOT EXIST and is DELIBERATELY EXCLUDED from the canonical gate: ios/project.yml:126 records that the iOS test bundle 'deliberately depends ONLY on GodstoneCore + GodstoneMesh (never GodstoneLLM / the llama.cpp C++ bridge), so the gate runs without any model binary'. Creating the target would add a native dependency to the gate that the project removed on purpose. The receipt machinery is witnessed by tools/readiness/tests/test_t81.py.",
       "approved_source_or_human_role": "the model's publisher plus an internal approver",
       "blocker": "NATIVE_MODELS",
@@ -12729,7 +12813,69 @@
       ]
     },
     "T64": {
-      "court_not_authored": "The card names an Android court for embedding-pipeline binding plus a Swift twin. The embedding pipeline is bound to the absent native runtime (NATIVE_MODELS); a court here would assert retrieval vectors against a fixture model, which asserts nothing about the real pipeline. The artifact receipt form is witnessed by tools/readiness/tests/test_t81.py.",
+      "case_classification": [
+        {
+          "case": "complete fingerprint admits semantic retrieval",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "same dimension, different model -> refused",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "tokenizer mismatch -> refused",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "normalization mismatch -> refused",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "pooling mismatch -> refused",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "native revision mismatch -> refused",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "NaN / +Inf / -Inf / zero vector refused before ranking",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "malformed dimensions refused",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "no native model -> semantic unavailable, lexical selected, explicit reason",
+          "classification": "HOST_TESTABLE_WITH_NO_MODEL",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "deterministic top-k with a stable tie-break",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+        },
+        {
+          "case": "actual query/corpus similarity against the approved model",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        },
+        {
+          "case": "the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        }
+      ],
+      "court_not_authored": "The Android court IS AUTHORED AND GREEN (android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt, 16 tests): complete-fingerprint admission; same-dimension-different-model, tokenizer, normalization, pooling and native-revision mismatches each refused; NaN/+Inf/-Inf/zero vectors and malformed dimensions refused before ranking; L2 normalisation; no-model => lexical with an explicit reason; deterministic top-k with a stable id tie-break. STILL EXTERNAL: (a) the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/ -- that test target DOES NOT EXIST and is deliberately excluded from the canonical gate (ios/project.yml:126); (b) actual query/corpus similarity against the approved production embedding artefact, which requires the real model bytes (NATIVE_MODELS).",
       "approved_source_or_human_role": "the model's publisher plus an internal approver",
       "blocker": "NATIVE_MODELS",
       "closure_evidence": null,
@@ -12750,7 +12896,74 @@
       ]
     },
     "T65": {
-      "court_not_authored": "The card names Oracle cancellation/private-draft courts on both isles. Their subject is the native generation pipeline, absent from this checkout (NATIVE_MODELS). The receipt form is witnessed by tools/readiness/tests/test_t81.py.",
+      "case_classification": [
+        {
+          "case": "draft stays private until validation passes",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "invalid citation rejected entirely",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "quantity/unit alteration rejected",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "required warning omission rejected",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "corpus prompt injection does not override system constraints",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "cancel after generation starts publishes nothing",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "stale request completion may not publish",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "retry obtains a new request identity",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "model loss leaves Archive usable and Oracle explicitly unavailable",
+          "classification": "HOST_TESTABLE_WITH_NO_MODEL",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "tier bounds on context, tokens and draft",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "confidence gate is fail-closed",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+        },
+        {
+          "case": "the ACTUAL production model pipeline under real cancellation latency",
+          "classification": "REQUIRES_REAL_MODEL_BYTES",
+          "implemented_by": null
+        },
+        {
+          "case": "the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        }
+      ],
+      "court_not_authored": "The Android court IS AUTHORED AND GREEN (android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt, 16 tests): a draft stays private until validation passes; invalid citation, quantity/unit alteration, warning omission and corpus prompt-injection each refused; cancellation and stale-request completion publish nothing; a retry obtains a new request identity; model loss reads UNAVAILABLE rather than empty success; tier bounds hold; the confidence gate is fail-closed; and the mutation rods fire. STILL EXTERNAL: (a) the iOS twin, absent by the same deliberate exclusion; (b) the ACTUAL production model pipeline (real retrieval and generation latency under cancellation), which needs the approved native artefact (NATIVE_MODELS).",
       "approved_source_or_human_role": "the model's publisher plus an internal approver",
       "blocker": "NATIVE_MODELS",
       "closure_evidence": null,
@@ -14718,6 +14931,18 @@
       ]
     },
     "T73": {
+      "case_classification": [
+        {
+          "case": "physical BLE interoperability on real devices",
+          "classification": "DEVICE_ONLY",
+          "implemented_by": null
+        },
+        {
+          "case": "device-result schema accepted/refused by the reader",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "tools/readiness/tests/test_t73.py"
+        }
+      ],
       "court_not_authored": "The card names an Android court (ReadinessT73Test.kt) and a Swift twin (ReadinessT73Tests.swift) for the PHYSICAL BLE interoperability matrix. Their subject is a real radio and a real peer device; neither exists in this checkout, and a fixture cannot substitute for a radio without fabricating device evidence, which the HARDWARE register forbids. The repository-owned preparation IS witnessed: tools/readiness/tests/test_t73.py drives ci/check_release_gates_status.py's own device-evidence reader and proves it refuses an empty device matrix, a null or empty placeholder, a malformed and an unresolvable source_commit, a non-positive byte count and a malformed run_id -- while ACCEPTING a well-formed result.",
       "approved_source_or_human_role": "human operator with the named devices",
       "blocker": "HARDWARE",
@@ -14738,6 +14963,18 @@
       ]
     },
     "T74": {
+      "case_classification": [
+        {
+          "case": "human accessibility journey on shipping binaries",
+          "classification": "EXTERNAL_APPROVAL_ONLY",
+          "implemented_by": null
+        },
+        {
+          "case": "accessibility-result schema accepted/refused",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "tools/readiness/tests/test_t74.py"
+        }
+      ],
       "court_not_authored": "The card names an Android court and a Swift twin for the HUMAN accessibility acceptance. Their subject is a human reviewer driving TalkBack/VoiceOver on shipping binaries; no reviewer and no device exist here, and a fixture cannot stand in for a human journey. The result schema IS prepared and witnessed: tools/readiness/tests/test_t74.py proves the accessibility gate's declared result schema and its reader refuse every malformed result while accepting a well-formed one.",
       "approved_source_or_human_role": "human operator with the named devices",
       "blocker": "HARDWARE",
@@ -14756,6 +14993,18 @@
       ]
     },
     "T75": {
+      "case_classification": [
+        {
+          "case": "battery/thermal soak on real devices",
+          "classification": "DEVICE_ONLY",
+          "implemented_by": null
+        },
+        {
+          "case": "battery-thermal-result schema accepted/refused",
+          "classification": "HOST_TESTABLE_PURE_LOGIC",
+          "implemented_by": "tools/readiness/tests/test_t75.py"
+        }
+      ],
       "court_not_authored": "The card names an Android court and a Swift twin for the battery/thermal SOAK. Their subject is hours of real-device measurement; no device exists here and a simulated counter may not be relabelled as a device result (section 27 of the blueprint forbids exactly that). The result schema IS prepared and witnessed: tools/readiness/tests/test_t75.py proves the battery-thermal gate's declared schema and its reader refuse malformed results while accepting a well-formed one.",
       "approved_source_or_human_role": "human operator with the named devices",
       "blocker": "HARDWARE",
@@ -14776,6 +15025,18 @@
       ]
     },
     "T76": {
+      "case_classification": [
+        {
+          "case": "signing metadata, entitlements, licences, privacy, checklist prepared",
+          "classification": "HOST_TESTABLE_METADATA",
+          "implemented_by": "tools/readiness/tests/test_t76.py"
+        },
+        {
+          "case": "the actual signing and store approval",
+          "classification": "EXTERNAL_APPROVAL_ONLY",
+          "implemented_by": null
+        }
+      ],
       "approved_source_or_human_role": "human release owner",
       "blocker": "SIGNING",
       "closure_evidence": null,
@@ -14990,6 +15251,18 @@
       ]
     },
     "T78": {
+      "case_classification": [
+        {
+          "case": "candidate evaluator: hashes, SHAs, test counts, phase gates, dirty tree, three levels",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "tools/readiness/tests/test_t78.py"
+        },
+        {
+          "case": "final L0-L10 evaluation over approved external artefacts",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        }
+      ],
       "approved_source_or_human_role": "the model's publisher plus an internal approver",
       "blocker": "NATIVE_MODELS",
       "closure_evidence": null,
@@ -15019,6 +15292,18 @@
       ]
     },
     "T79": {
+      "case_classification": [
+        {
+          "case": "independent-fixture ingest: tamper/stale/mismatched-case refusal",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "tools/readiness/tests/test_t79.py"
+        },
+        {
+          "case": "the independent auditor's own pinned vector source",
+          "classification": "EXTERNAL_APPROVAL_ONLY",
+          "implemented_by": null
+        }
+      ],
       "approved_source_or_human_role": "external auditor",
       "blocker": "A06",
       "closure_evidence": null,
@@ -15036,6 +15321,18 @@
       ]
     },
     "T80": {
+      "case_classification": [
+        {
+          "case": "approved-content ingest: manifest, approvals, duplicate/unsafe ids, paragraph substitution",
+          "classification": "HOST_TESTABLE_WITH_TEST_DOUBLE",
+          "implemented_by": "tools/readiness/tests/test_t80.py"
+        },
+        {
+          "case": "the licensed human-reviewed production corpus",
+          "classification": "EXTERNAL_APPROVAL_ONLY",
+          "implemented_by": null
+        }
+      ],
       "approved_source_or_human_role": "human content reviewer",
       "blocker": "APPROVED_CONTENT",
       "closure_evidence": null,
@@ -15053,6 +15350,18 @@
       ]
     },
     "T81": {
+      "case_classification": [
+        {
+          "case": "artifact receipt form: schema, unpinned honesty, no invented licence, no stub substitution",
+          "classification": "HOST_TESTABLE_METADATA",
+          "implemented_by": "tools/readiness/tests/test_t81.py"
+        },
+        {
+          "case": "real approved native/model binaries and their licences",
+          "classification": "REQUIRES_APPROVED_NATIVE_ARTIFACT",
+          "implemented_by": null
+        }
+      ],
       "court_not_authored": "STALE_TASK_METADATA for the iOS half: the card declares ios/Godstone/Tests/GodstoneLLMTests/ReadinessT81Tests.swift, and that target does not exist by design (ios/project.yml:126). The Android half (android/llm/src/test/.../readiness/ReadinessT81Test.kt) has no subject until the approved binaries arrive. T81's INTERNAL preparation IS witnessed -- by tools/readiness/tests/test_t81.py, which proves the model register's receipt schema is complete, that every artifact stands UNPINNED with no invented digest or licence, and that three real mechanisms forbid a stub substitution.",
       "approved_source_or_human_role": "the model's publisher plus an internal approver",
       "blocker": "NATIVE_MODELS",

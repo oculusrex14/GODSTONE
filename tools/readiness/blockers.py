@@ -96,6 +96,17 @@ def readiness_flags(root) -> dict:
     return invariants.get("readiness", {})
 
 
+#: The case-level vocabulary. A `HOST_*` class means the case can be executed on
+#: this machine without the external artefact; anything else genuinely cannot.
+CASE_CLASSES = frozenset({
+    "HOST_TESTABLE_PURE_LOGIC", "HOST_TESTABLE_WITH_TEST_DOUBLE",
+    "HOST_TESTABLE_WITH_NO_MODEL", "HOST_TESTABLE_METADATA",
+    "HOST_TESTABLE_FAILURE_PATH", "HOST_TESTABLE_WITH_TEST_DOUBLE_PURE_LOGIC",
+    "REQUIRES_APPROVED_NATIVE_ARTIFACT", "REQUIRES_REAL_MODEL_BYTES",
+    "REQUIRES_NATIVE_COMPILER_INPUT", "DEVICE_ONLY", "EXTERNAL_APPROVAL_ONLY",
+})
+
+
 def findings(root) -> list:
     """Every disagreement between the state, the catalogue, the register and the
     release manifest. An empty list is the only honest frontier."""
@@ -225,6 +236,69 @@ def findings(root) -> list:
                 "unjustified-court: %s excuseth %d absent court(s) in %d characters; a "
                 "justification must NAME the reason, not gesture at one"
                 % (tid, len(absent), len(excused)))
+
+    # (5c) A PROSE JUSTIFICATION MAY NOT EXCUSE A HOST-TESTABLE CASE.
+    #
+    #     THIS IS THE INVARIANT THAT CLOSED THE rc3 LOOPHOLE. The rod above
+    #     accepted any `court_not_authored` of sufficient LENGTH -- and LENGTH IS
+    #     NOT PROOF. T64 and T65 sat behind exactly such a justification while
+    #     their cards name cases that need no model at all ("same dimension
+    #     different model", "corrupt NaN vectors", "no native model",
+    #     "deterministic ranking", "deterministic test-double edge cases").
+    #
+    #     The rule: where a task carrieth a case-level classification, EVERY case
+    #     classified HOST_TESTABLE (any host_* class) must name the witness that
+    #     implements it. A case whose witness field is empty, or names a file
+    #     that does not exist, is UNIMPLEMENTED -- and no prose may excuse it.
+    #     A task with no classification at all is reported, so the omission is
+    #     visible rather than silently exempt.
+    for tid, entry in blocked.items():
+        cases = entry.get("case_classification")
+        if cases is None:
+            # Only tasks whose declared courts are ABSENT need case accounting:
+            # an authored court already carries its own witnesses.
+            if absent:
+                out.append(
+                    "unclassified-cases: %s carrieth an absent declared court and no "
+                    "`case_classification`; without it a reader cannot tell which required "
+                    "cases are host-testable and which genuinely need the external "
+                    "artefact, so the absence cannot be judged" % tid)
+            continue
+        if not isinstance(cases, list) or not cases:
+            out.append("malformed-cases: %s carrieth a `case_classification` that is "
+                       "empty or not a list" % tid)
+            continue
+        for item in cases:
+            if not isinstance(item, dict):
+                out.append("malformed-cases: %s carrieth a non-object case entry" % tid)
+                continue
+            name = str(item.get("case") or "").strip()
+            klass = str(item.get("classification") or "").strip()
+            witness = item.get("implemented_by")
+            if not name:
+                out.append("malformed-cases: %s carrieth a case with no name" % tid)
+                continue
+            if klass not in CASE_CLASSES:
+                out.append("malformed-cases: %s case %r carrieth the unknown "
+                           "classification %r (known: %s)"
+                           % (tid, name, klass, ", ".join(sorted(CASE_CLASSES))))
+                continue
+            host_testable = klass.startswith("HOST_")
+            if host_testable:
+                if not witness:
+                    out.append(
+                        "unimplemented-case: %s case %r is classified %s and nameth NO "
+                        "witness; a prose justification may not excuse a case that can "
+                        "run on this host" % (tid, name, klass))
+                elif not (root / str(witness)).exists():
+                    out.append(
+                        "unimplemented-case: %s case %r nameth the witness %r, which does "
+                        "not exist" % (tid, name, witness))
+            elif witness:
+                out.append(
+                    "fabricated-case: %s case %r is classified %s (external) yet nameth a "
+                    "witness %r; an external case may not claim internal coverage"
+                    % (tid, name, klass, witness))
 
     # (6) THE READINESS STAYS FALSE, and the externally-gated release entries stay
     #     OPEN or BLOCKED
