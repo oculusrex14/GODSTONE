@@ -11,12 +11,14 @@
   "conclusion": "success",
   "jobs": "6/6 success: content pipeline, repo-owned parity + safety invariants (A,B,C,E,F,G,H), mesh simulation, constraint audit, android source compile + unit tests, ios core + mesh tests + Archive-only xcodebuild",
   "second_green": {
-   "scope": "the docs-only tip of `main` (fast-forwarded onto candidate_sha)",
+   "sha": "46866f024066840406896e17aeb4ed36dacf38c3",
+   "scope": "the docs-only tip of `main` (rc4 candidate + the closure record), fast-forwarded onto board2",
    "workflow": "repository-verification",
    "event": "push",
+   "run": "35472751951 (attempt 2 -- 6/6 success)",
    "conclusion": "success -- ALL SIX JOBS",
-   "ios": "'** TEST SUCCEEDED **'; 'GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)'",
-   "note": "Cited POSITIONALLY (newest push run on the `main` ref), not by literal id: the tip advances with each docs commit, so a literal run id or SHA here would self-invalidate."
+   "ios": "the iOS lane executed the REAL suites: GodstoneMeshTests 1249 + GodstoneCoreTests 102 + LabMeshTests 5 = 1356 cases, 0 failures, 0 segfaults; the simulator lane 1356 cases, 0 failures; ReadinessT15's raw-advertisement arm passed",
+   "attempt_note": "ATTEMPT 1 HUNG AND ATTEMPT 2 DID NOT, ON A BYTE-IDENTICAL TREE. The hang was located precisely: the job log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so the process never reached TEST EXECUTION -- it stalled in COMPILATION, where no runtime lock can deadlock. The two commits differ by TWO DOCUMENTATION FILES ONLY (`git diff --name-only 962ff442 46866f02`), so the source under test is byte-identical to the candidate that had already passed 6/6 in run 35471507700. Attempt 2's `swift test` step completed in 5m17s, in line with the green runs' 8m05s and 6m53s. Recorded as runner infrastructure, NOT as a code change -- and NOT as a reason to alter a check."
   },
   "run_pointer_note": "CITED POSITIONALLY FOR THE TIP. This entry binds the run that exercised the FROZEN CANDIDATE (attempt 1 of 35446805693, all six jobs). GitHub reports the LATEST attempt, so that run's aggregate conclusion now reads 'failure' from attempt 2's transient Robolectric network error -- which is why the binding names ATTEMPT 1 and why `second_green` exists. For the main TIP, read the newest `push` run of `repository-verification` on the `main` ref; a literal run id here would go stale with each docs commit.",
   "greens": [
