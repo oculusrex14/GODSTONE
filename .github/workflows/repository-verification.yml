@@ -125,7 +125,33 @@ jobs:
           #
           # THE COUNT IS ENFORCED, because this repository has repeatedly met tests that
           # existed but executed ZERO cases. A population that runs nothing is not a pass.
+          # *** `pipefail` IS LOAD-BEARING, NOT DECORATION. ***
+          #
+          # THIS WAS `python -m unittest ... | tee readiness.log` UNDER THE DEFAULT
+          # `bash -e`, WHICH HAS **NO `pipefail`**: a pipeline's status is its LAST
+          # element, so the step's exit code was `tee`'s zero no matter what the
+          # suite reported, and errexit does not fire for a non-final element.
+          #
+          # MEASURED, NOT REASONED: a test was planted to fail, the step was run in
+          # this exact pipeline form, and it reported **exit=0** while the log
+          # carried a `FAILED` line and `Ran 760 tests` -- which also satisfied the
+          # floor below, because a failing run still prints its count. The step
+          # whose ONLY purpose is the hosted witness for these courts could not
+          # fail. That is the exact defect class this mission exists to remove.
+          set -euo pipefail
           python -m unittest discover -s tools/readiness/tests -v 2>&1 | tee readiness.log
+          # the verdict is read from the log EXPLICITLY: the floor and the presence
+          # checks below both pass on a FAILED run, so this is the guard that matters.
+          if grep -qE '^(FAILED|ERROR)' readiness.log; then
+            echo "::error::the readiness suite reported failures"
+            tail -40 readiness.log
+            exit 1
+          fi
+          grep -qE '^OK' readiness.log || {
+            echo "::error::the readiness suite printed no OK verdict"
+            tail -20 readiness.log
+            exit 1
+          }
           executed=$(grep -oE "^Ran [0-9]+ tests" readiness.log | grep -oE "[0-9]+" | head -1)
           echo "readiness suite executed ${executed:-0} tests"
           if [ -z "$executed" ] || [ "$executed" -lt 700 ]; then

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "THE BLOCKED-TASK CLOSURE MATRIX. Every blocked task must read internal_work_complete=YES before Board 1 may close. `paths_that_exist` is measured, and any declared path that does not exist carrieth a recorded `court_not_authored` justification enforced by blockers.py's unauthored-court/unjustified-court rods.",
+  "note": "CASE-LEVEL ACCOUNTING. For every blocked task, each required case is classified HOST_TESTABLE (executable here without the external artefact) or external. Every HOST case must name a witness that EXISTS -- enforced by blockers.py's `unimplemented-case` and `fabricated-case` rods, which are themselves falsified by test_blocked_external.py w17-w23. A row reads internal_work_complete=YES only when no host-testable case lacks a witness.",
   "generated_utc": "2026-09-19",
   "rows": [
     {
@@ -16,7 +16,31 @@
       "unwritten_paths_justified_by": "court_not_authored",
       "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts"
+      "remaining_external_input": "receipt of the approved native model artifacts",
+      "internal_cases": 4,
+      "external_cases": 4,
+      "internal_witnesses": [
+        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT62Test.kt"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "invalid/unparseable GGUF is refused",
+          "class": "REQUIRES_NATIVE_COMPILER_INPUT"
+        },
+        {
+          "case": "real JNI load/generate/embed against approved llama.cpp",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        },
+        {
+          "case": "sanitizer runs over the approved native implementation",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        },
+        {
+          "case": "native backend-refcount race against the real runtime",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        }
+      ]
     },
     {
       "task": "T63",
@@ -31,7 +55,29 @@
       "unwritten_paths_justified_by": "court_not_authored",
       "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts"
+      "remaining_external_input": "receipt of the approved native model artifacts",
+      "internal_cases": 5,
+      "external_cases": 3,
+      "internal_witnesses": [
+        "ios/Godstone/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift",
+        "ios/Godstone/Tests/GodstoneCoreTests/OracleViewModelRuntimeTests.swift",
+        "ios/project.yml"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "actual llama.cpp invocation and unload",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        },
+        {
+          "case": "Metal/CPU pressure and real cancellation latency",
+          "class": "REQUIRES_REAL_MODEL_BYTES"
+        },
+        {
+          "case": "the Swift court itself at ios/Godstone/Tests/GodstoneLLMTests/",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        }
+      ]
     },
     {
       "task": "T64",
@@ -47,7 +93,23 @@
       "unwritten_paths_justified_by": "court_not_authored",
       "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts"
+      "remaining_external_input": "receipt of the approved native model artifacts",
+      "internal_cases": 10,
+      "external_cases": 2,
+      "internal_witnesses": [
+        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "actual query/corpus similarity against the approved model",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        },
+        {
+          "case": "the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        }
+      ]
     },
     {
       "task": "T65",
@@ -63,7 +125,23 @@
       "unwritten_paths_justified_by": "court_not_authored",
       "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts"
+      "remaining_external_input": "receipt of the approved native model artifacts",
+      "internal_cases": 11,
+      "external_cases": 2,
+      "internal_witnesses": [
+        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "the ACTUAL production model pipeline under real cancellation latency",
+          "class": "REQUIRES_REAL_MODEL_BYTES"
+        },
+        {
+          "case": "the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        }
+      ]
     },
     {
       "task": "T73",
@@ -82,7 +160,19 @@
       "unwritten_paths_justified_by": "court_not_authored",
       "internal_preparation_authored": "tools/readiness/tests/test_t73.py (device-evidence reader)",
       "internal_work_complete": true,
-      "remaining_external_input": "access to the named physical devices"
+      "remaining_external_input": "access to the named physical devices",
+      "internal_cases": 1,
+      "external_cases": 1,
+      "internal_witnesses": [
+        "tools/readiness/tests/test_t73.py"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "physical BLE interoperability on real devices",
+          "class": "DEVICE_ONLY"
+        }
+      ]
     },
     {
       "task": "T74",
@@ -101,7 +191,19 @@
       "unwritten_paths_justified_by": "court_not_authored",
       "internal_preparation_authored": "tools/readiness/tests/test_t74.py (device-evidence reader)",
       "internal_work_complete": true,
-      "remaining_external_input": "access to the named physical devices"
+      "remaining_external_input": "access to the named physical devices",
+      "internal_cases": 1,
+      "external_cases": 1,
+      "internal_witnesses": [
+        "tools/readiness/tests/test_t74.py"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "human accessibility journey on shipping binaries",
+          "class": "EXTERNAL_APPROVAL_ONLY"
+        }
+      ]
     },
     {
       "task": "T75",
@@ -120,7 +222,19 @@
       "unwritten_paths_justified_by": "court_not_authored",
       "internal_preparation_authored": "tools/readiness/tests/test_t75.py (device-evidence reader)",
       "internal_work_complete": true,
-      "remaining_external_input": "access to the named physical devices"
+      "remaining_external_input": "access to the named physical devices",
+      "internal_cases": 1,
+      "external_cases": 1,
+      "internal_witnesses": [
+        "tools/readiness/tests/test_t75.py"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "battery/thermal soak on real devices",
+          "class": "DEVICE_ONLY"
+        }
+      ]
     },
     {
       "task": "T76",
@@ -137,7 +251,19 @@
       "unwritten_paths_justified_by": null,
       "internal_preparation_authored": "tools/readiness/tests/test_t76.py + docs/production/{SIGNING,PRIVACY,STORE_SUBMISSION}.md + RELEASE_METADATA.json + STORE_POLICY_CHECKLIST.json",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the signing policy and credentials"
+      "remaining_external_input": "receipt of the signing policy and credentials",
+      "internal_cases": 1,
+      "external_cases": 1,
+      "internal_witnesses": [
+        "tools/readiness/tests/test_t76.py"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "the actual signing and store approval",
+          "class": "EXTERNAL_APPROVAL_ONLY"
+        }
+      ]
     },
     {
       "task": "T78",
@@ -154,7 +280,19 @@
       "unwritten_paths_justified_by": null,
       "internal_preparation_authored": "run.py:evaluate_candidate (extended) + tools/readiness/tests/test_t78.py",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts"
+      "remaining_external_input": "receipt of the approved native model artifacts",
+      "internal_cases": 1,
+      "external_cases": 1,
+      "internal_witnesses": [
+        "tools/readiness/tests/test_t78.py"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "final L0-L10 evaluation over approved external artefacts",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        }
+      ]
     },
     {
       "task": "T79",
@@ -171,7 +309,19 @@
       "unwritten_paths_justified_by": null,
       "internal_preparation_authored": "tools/readiness/tests/test_t79.py (conformance-ingest)",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the reviewed conformance artifact"
+      "remaining_external_input": "receipt of the reviewed conformance artifact",
+      "internal_cases": 1,
+      "external_cases": 1,
+      "internal_witnesses": [
+        "tools/readiness/tests/test_t79.py"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "the independent auditor's own pinned vector source",
+          "class": "EXTERNAL_APPROVAL_ONLY"
+        }
+      ]
     },
     {
       "task": "T80",
@@ -188,7 +338,19 @@
       "unwritten_paths_justified_by": null,
       "internal_preparation_authored": "tools/readiness/tests/test_t80.py (corpus-ingest)",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved content corpus"
+      "remaining_external_input": "receipt of the approved content corpus",
+      "internal_cases": 1,
+      "external_cases": 1,
+      "internal_witnesses": [
+        "tools/readiness/tests/test_t80.py"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "the licensed human-reviewed production corpus",
+          "class": "EXTERNAL_APPROVAL_ONLY"
+        }
+      ]
     },
     {
       "task": "T81",
@@ -204,13 +366,27 @@
       "unwritten_paths_justified_by": "court_not_authored",
       "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
       "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts"
+      "remaining_external_input": "receipt of the approved native model artifacts",
+      "internal_cases": 1,
+      "external_cases": 1,
+      "internal_witnesses": [
+        "tools/readiness/tests/test_t81.py"
+      ],
+      "internal_cases_without_witness": [],
+      "external_case_list": [
+        {
+          "case": "real approved native/model binaries and their licences",
+          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+        }
+      ]
     }
   ],
   "counts": {
     "tasks": 12,
     "internal_work_complete": 12,
-    "not_complete": 0
+    "not_complete": 0,
+    "internal_cases": 38,
+    "external_cases": 19
   },
   "subsystem_stage_condition": {
     "observed": "For the python-court tasks (T73/T74/T75/T76/T78), the `subsystem` stage runs `python3 -m unittest discover -s tools/readiness/tests`, i.e. the WHOLE readiness suite, and reports 752/748 -- four failures, all in the T01 preservation court.",
