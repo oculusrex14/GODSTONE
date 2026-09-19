@@ -98,12 +98,52 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          # *** fetch-depth: 0 IS REQUIRED BY THE BOARD 1 READINESS SUITE. *** The T01
+          # preservation court asserts ANCESTRY facts (`git merge-base --is-ancestor`)
+          # and the evidence digests resolve commits, and actions/checkout defaults to
+          # fetch-depth: 1 -- a shallow clone resolves every historical SHA to "not a
+          # commit". This is the same defect that once made check_release_gates_status.py
+          # resolve every evidence pointer to a non-commit; the remedy is the checkout,
+          # never a relaxed assertion.
+          fetch-depth: 0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
       - name: provenance (start -- clean checkout)
         run: python ci/provenance.py --out provenance-start.json
       - run: pip install -r content/requirements-dev.txt
+      - name: Board 1 readiness courts (the whole internally executable population)
+        run: |
+          # ONE CANONICAL HOSTED WITNESS for the Board 1 readiness suite. Before this
+          # step the eight rc3 courts ran only locally, so the closure's green rested on
+          # a developer's machine rather than on the runner -- and the mission requires
+          # the canonical workflow to execute them.
+          #
+          # NO EXTERNAL ARTEFACT IS NEEDED and none is fetched: the suite runs with no
+          # model, no device and no approval, which is precisely why these courts are
+          # Board 1 work rather than external gates.
+          #
+          # THE COUNT IS ENFORCED, because this repository has repeatedly met tests that
+          # existed but executed ZERO cases. A population that runs nothing is not a pass.
+          python -m unittest discover -s tools/readiness/tests -v 2>&1 | tee readiness.log
+          executed=$(grep -oE "^Ran [0-9]+ tests" readiness.log | grep -oE "[0-9]+" | head -1)
+          echo "readiness suite executed ${executed:-0} tests"
+          if [ -z "$executed" ] || [ "$executed" -lt 700 ]; then
+            echo "::error::the readiness suite executed ${executed:-0} tests; the floor is 700"
+            exit 1
+          fi
+          # the courts this mission authored must be PRESENT, not merely counted: a
+          # suite that dropped one would still clear a total-count floor.
+          for court in test_t62 test_t64 test_t65 test_t73 test_t74 test_t75 test_t76 test_t78 test_t79 test_t80 test_t81; do
+            case "$court" in
+              test_t62|test_t64|test_t65) continue ;;   # native courts: Kotlin/Swift lanes
+            esac
+            grep -q "$court" readiness.log || { echo "::error::$court did NOT run"; exit 1; }
+          done
+      - name: Board 1 blocker frontier (the classification court)
+        run: |
+          python tools/readiness/blockers.py --check
+          python -m unittest discover -s tools/readiness/tests -p test_blocked_external.py -v
       - name: build archive for the gate (no embeddings -- repo-owned)
         run: |
           python -m content.ingest.build_archive \

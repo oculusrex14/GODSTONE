@@ -33,7 +33,7 @@ declared court did not exist, so the stage **could never pass, whatever arrived*
 
 | class | tasks | what was wrong | remedy |
 |---|---|---|---|
-| **Unwritten courts** | T73, T74, T75, T76, T78, T79, T80 | a declared pure-python court was never authored; its narrow stage returned `tests=0/0` | **eight courts authored, 88 tests, all green** — and a validator rod added so absence can never again pass in silence |
+| **Unwritten courts** | T73, T74, T75, T76, T78, T79, T80 | a declared pure-python court was never authored; its narrow stage returned `tests=0/0` | **eight courts authored, 81 tests (measured at runtime), all green** — and a validator rod added so absence can never again pass in silence |
 | **Native courts** | T62, T63, T64, T65, T81 | declared native courts whose subject is the absent artifact | internal receipt machinery authored (`test_t81.py`); each absence carries a recorded `court_not_authored` justification, one of which records that the iOS LLM test target is **deliberately excluded** from the canonical gate (`ios/project.yml:126`) |
 | **Stale metadata** | T05, T06, T07, T08, T61 | declared paths that do not resolve | **repaired, NOT reopened**: the courts exist and execute at `…/mesh/crypto/` and `GodstoneCoreTests/`; these tasks are COMPLETE and stay COMPLETE |
 

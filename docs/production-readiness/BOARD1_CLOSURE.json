@@ -65,13 +65,15 @@
     "total": 54,
     "internally_complete_candidate": 48,
     "external_acceptance_remaining": 6,
-    "internal_work_remaining": 0
+    "internal_work_remaining": null,
+    "internal_work_remaining_note": "NOT ZERO, AND THE EARLIER ZERO WAS AN OVERCLAIM. The ledger's own DERIVED `current_assessment.internal_remaining` carrieth 27 entries, of which several name live obligations this repository still owes: GS-STRESS-001's card step 6 ('STILL NOT SATISFIED AND IS NOT CLAIMED'), GS-UX-001's Swift `internal` ports blocked on a public-surface decision and its iOS adapter obstacles, GS-FINAL-003's typed startup permit and its PHASE 1 EXIT clause 1 recorded UNMET, GS-RUNTIME-001's context court, GS-ARCHIVE-005's hosted convergence. See `internal_work_by_finding` below. A summary field may not contradict the register it summarizes."
   },
   "independent_audit_findings": {
     "total": 13,
     "internally_complete_candidate": 10,
     "external_acceptance_remaining": 3,
-    "internal_work_remaining": 0
+    "internal_work_remaining": null,
+    "internal_work_remaining_note": "NOT ZERO, AND THE EARLIER ZERO WAS AN OVERCLAIM. The ledger's own DERIVED `current_assessment.internal_remaining` carrieth 27 entries, of which several name live obligations this repository still owes: GS-STRESS-001's card step 6 ('STILL NOT SATISFIED AND IS NOT CLAIMED'), GS-UX-001's Swift `internal` ports blocked on a public-surface decision and its iOS adapter obstacles, GS-FINAL-003's typed startup permit and its PHASE 1 EXIT clause 1 recorded UNMET, GS-RUNTIME-001's context court, GS-ARCHIVE-005's hosted convergence. See `internal_work_by_finding` below. A summary field may not contradict the register it summarizes."
   },
   "external_gates": [
     {
@@ -169,7 +171,7 @@
     "what_it_got_right": "The hosted greens, the five external gates staying OPEN, readiness false, and verified_fixed 0 are all preserved unchanged in rc3."
   },
   "correction_round": {
-    "summary": "BOARD1-CORRECTION/RC3: eight courts authored (88 tests), evaluator extended, T76 preparation written, stale metadata repaired, validator strengthened.",
+    "summary": "BOARD1-CORRECTION/RC3: eight courts authored (81 tests, MEASURED at runtime; the rc3 note said 88, which was a hand count and was WRONG), evaluator extended, T76 preparation written, stale metadata repaired, validator strengthened.",
     "courts_authored": {
       "tools/readiness/tests/test_t73.py": "11 tests -- the device-evidence reader (device-interoperability)",
       "tools/readiness/tests/test_t74.py": "11 tests -- the device-evidence reader (accessibility)",
@@ -233,6 +235,82 @@
       "tasks": 12,
       "internal_work_complete": 12,
       "not_complete": 0
+    },
+    "court_test_count": {
+      "measured_runtime_total": 81,
+      "per_court": {
+        "test_t73": 11,
+        "test_t74": 11,
+        "test_t75": 11,
+        "test_t76": 13,
+        "test_t78": 11,
+        "test_t79": 8,
+        "test_t80": 8,
+        "test_t81": 8
+      },
+      "method": "MEASURED, not counted by eye: each court's own narrow stage was run and its reported `tests=N/N` read. 11+11+11+13+11+8+8+8 = 81.",
+      "correction": "The rc3 summary and the rc3 tag annotation both said 88 tests. That was a hand count and it was wrong. The immutable tag is NOT rewritten; the correction is recorded here, in rc4's own records, as the mission requires."
     }
+  },
+  "count_correction_rc3_to_rc4": {
+    "field": "correction-court test count",
+    "rc3_said": 88,
+    "actual": 81,
+    "authority": "runtime execution, per court, via each court's own narrow stage",
+    "where_rc3_said_it": [
+      "docs/production-readiness/BOARD1_CLOSURE.json correction_round.summary",
+      "docs/production-readiness/BOARD1_CLOSURE.md section A00",
+      "the production-readiness-board1-rc3 tag annotation"
+    ],
+    "tag_policy": "the rc3 tag is IMMUTABLE and is NOT rewritten; this correction is recorded forward"
+  },
+  "internal_work_by_finding": {
+    "source": "docs/remediation/REMEDIATION_STATE.json -> current_assessment.internal_remaining (DERIVED)",
+    "count": 27,
+    "by_finding": {
+      "GS-FINAL-003": 9,
+      "GS-STRESS-001": 5,
+      "GS-UX-001": 5,
+      "GS-RUNTIME-001": 2,
+      "GS-FINAL-004": 2,
+      "GS-ARCHIVE-005": 1,
+      "GS-INTEGRATION-001": 1,
+      "GS-STORE-002": 1,
+      "GS-FINAL-006": 1
+    },
+    "note": "These are the FINDINGS' remainders, which are a SEPARATE population from the T01-T84 task catalogue. Board 1's task frontier being clean (72/12/0) does not make the findings clean, and the earlier `internal_work_remaining: 0` conflated the two by asserting a zero the register contradicts.",
+    "board_2_carries_them": true
+  },
+  "release_gates_classification": {
+    "workflow": "release-gates.yml",
+    "note": "This workflow is EXPECTED to fail while the external gates are open: its jobs are fail-closed by design. The question the mission asks is whether each failure is an EXTERNAL BLOCK or an INTERNAL FAILURE, and the answer must come from the job's own output, not from the job name.",
+    "observed_run": "35462090695 (main)",
+    "jobs": [
+      {
+        "name": "Android Archive-only LIGHT release (repo-owned; green without llama.cpp/model/Oracle)",
+        "conclusion": "success",
+        "classification": "N/A -- it passes"
+      },
+      {
+        "name": "A-06 independent Noise conformance (fail-closed until pinned)",
+        "conclusion": "failure",
+        "classification": "EXPECTED_EXTERNAL_BLOCK",
+        "evidence": "##[error]Invariant D: independent vectors unavailable or unapproved: crypto/cacophony_vectors.json holds no approved EXTERNAL Noise fixture."
+      },
+      {
+        "name": "LLM native stack (:llm release; fail-closed until pinned llama.cpp restored)",
+        "conclusion": "failure",
+        "classification": "EXPECTED_EXTERNAL_BLOCK",
+        "evidence": "no error/traceback/ModuleNotFound/SyntaxError pattern in the job log; the job refuses because the approved native artefacts are absent (NATIVE_MODELS)"
+      },
+      {
+        "name": "production corpus + embedded archive (fail-closed until model pinned)",
+        "conclusion": "failure",
+        "classification": "EXPECTED_EXTERNAL_BLOCK",
+        "evidence": "no internal failure pattern; the corpus gate refuses because no approved production corpus exists (APPROVED_CONTENT)"
+      }
+    ],
+    "internal_failures": 0,
+    "method": "For each failing job the log was searched for INTERNAL failure signatures -- Traceback, SyntaxError, ModuleNotFoundError, 'No such file', unhandled exceptions -- and none was found; the A-06 job states its external cause by name in a ##[error] line."
   }
 }
