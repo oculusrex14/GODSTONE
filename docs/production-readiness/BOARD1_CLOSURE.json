@@ -1,0 +1,93 @@
+{
+  "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
+  "status": "COMPLETE",
+  "candidate_sha": "0d5913b5554829c97f9594e0e9c410771d80d260",
+  "candidate_tree_sha": "5d0a246c3338c4c0233d1078bc3fde424cb4129b",
+  "tag": "production-readiness-board1-rc1",
+  "main_sha": null,
+  "repository_verification": {
+    "run_id": "35434015106",
+    "conclusion": "success",
+    "jobs": {
+      "constraint audit": "success",
+      "repo-owned parity + safety invariants": "success",
+      "content pipeline": "success",
+      "mesh simulation": "success",
+      "android source compile + unit tests": "success",
+      "ios core + mesh tests + Archive-only xcodebuild": "success"
+    }
+  },
+  "tasks": {
+    "total": 84,
+    "complete": 72,
+    "blocked_external": 12,
+    "other": 0
+  },
+  "original_findings": {
+    "total": 54,
+    "internally_complete_candidate": 48,
+    "external_acceptance_remaining": 6,
+    "internal_work_remaining": 0
+  },
+  "independent_audit_findings": {
+    "total": 13,
+    "internally_complete_candidate": 10,
+    "external_acceptance_remaining": 3,
+    "internal_work_remaining": 0
+  },
+  "external_gates": [
+    {
+      "id": "A06",
+      "class": "independent-review",
+      "tasks": [
+        "T73",
+        "T75",
+        "T78",
+        "T79"
+      ]
+    },
+    {
+      "id": "APPROVED_CONTENT",
+      "class": "content",
+      "tasks": [
+        "T78",
+        "T80"
+      ]
+    },
+    {
+      "id": "NATIVE_MODELS",
+      "class": "native",
+      "tasks": [
+        "T62",
+        "T63",
+        "T64",
+        "T65",
+        "T78",
+        "T81"
+      ]
+    },
+    {
+      "id": "HARDWARE",
+      "class": "device",
+      "tasks": [
+        "T73",
+        "T74",
+        "T75",
+        "T76",
+        "T78"
+      ]
+    },
+    {
+      "id": "SIGNING",
+      "class": "release",
+      "tasks": [
+        "T76",
+        "T78"
+      ]
+    }
+  ],
+  "verified_fixed": 0,
+  "record_corrections": 64,
+  "board2_branch": "board2/device-release-validation",
+  "board2_sha": null
+}
