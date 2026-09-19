@@ -119,18 +119,36 @@ def check(root: Path) -> list[str]:
 
     # A seal path with no way to REACH an established session is not encryption,
     # it is a permanently failing send. V3 had exactly this and G3 was green.
-    for rel, label in (
-        ("android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt", "android"),
-        ("ios/Godstone/Sources/GodstoneMesh/SessionManager.swift", "ios"),
-    ):
+    #
+    # *** THE BARE VERB NAME WAS NOT A CHECK (measured, 2026-09-19). *** *The rule used to be
+    # `fun\s+beginInitiator|func\s+beginInitiator`, and BOTH SessionManagers declare the handshake
+    # vocabulary TWICE -- once in the PRODUCTION keyed voice (`admission: RelationKey` /
+    # `_ admission: RelationAdmission`) and once in a documented HOST-COURT-ONLY voice keyed by
+    # `peerId`, whose delegate block sayeth "PRODUCTION SPEAKETH THE KEYED SURFACE ABOVE ONLY".
+    # A regex over a bare verb name is satisfied by EITHER, so it was satisfied by the test-only one.*
+    # MEASURED: deleting the PRODUCTION overload outright produced **zero new findings** -- the check
+    # stayed silent while the production handshake voice was gone. **A CHECK THAT A TEST-ONLY
+    # DECLARATION CAN SATISFY IS NOT A CHECK ON PRODUCTION.** The production voice is therefore
+    # asserted BY ITS DISTINGUISHING PARAMETER TYPE, which the host voice cannot supply.
+    _PRODUCTION_VOICE = {
+        "android": ("android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt",
+                    r"fun\s+beginInitiator\s*\(\s*admission\s*:\s*RelationKey",
+                    r"fun\s+beginResponder\s*\(\s*admission\s*:\s*RelationKey"),
+        "ios": ("ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
+                r"func\s+beginInitiator\s*\(\s*_\s+admission\s*:\s*RelationAdmission",
+                r"func\s+beginResponder\s*\(\s*_\s+admission\s*:\s*RelationAdmission"),
+    }
+    for label, (rel, pat_ini, pat_resp) in _PRODUCTION_VOICE.items():
         p = root / rel
         if not p.exists():
             bad.append(f"G3 {label}: no SessionManager -- NoiseSession is constructed by nothing")
             continue
         s = code(p)
-        for verb in ("beginInitiator", "beginResponder"):
-            if not re.search(r"fun\s+" + verb + r"|func\s+" + verb, s):
-                bad.append(f"G3 {label}: SessionManager declares no {verb}")
+        for verb, pat in (("beginInitiator", pat_ini), ("beginResponder", pat_resp)):
+            if not re.search(pat, s):
+                bad.append(f"G3 {label}: SessionManager declares no {verb} in the PRODUCTION keyed "
+                           f"voice -- the only {verb} present is the host-court-only `peerId` "
+                           f"overload, which production never calleth")
 
     # -- G4: the apps must RUN the gate -- a mention is not a call ------------
     kr = code(kt_retr)

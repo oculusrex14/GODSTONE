@@ -125,14 +125,27 @@ G_STRUCTURAL = [
 
     ("M3-handshake-removed",
      "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt",
-     # re-anchored at the T20 reform: the T-era registry had been silently
-     # counting this entry while its anchor had drifted (the function's
-     # return type moved on to ByteArray?). The old ledger called that
-     # "caught"; the reform's SKIPPED verdict is what honesty looks like.
-     "fun beginInitiator(peerId: ByteArray, remoteHint: ByteArray): ByteArray? =",
-     "// fun beginInitiator REMOVED\n    private fun _unused_beginInitiator(peerId: ByteArray, remoteHint: ByteArray): ByteArray? =",
+     # *** RE-ANCHORED 2026-09-19: THE OLD ANCHOR WAS THE TEST-ONLY OVERLOAD. *** *The rod used to mutate
+     # `internal fun beginInitiator(peerId: ...)`, which liveth in the documented HOST-COURT vocabulary
+     # ("PRODUCTION SPEAKETH THE KEYED SURFACE ABOVE ONLY"). G3 was a bare-verb regex, so deleting the
+     # PRODUCTION overload left it silent -- MEASURED: the production voice vanished and the check reported
+     # NOTHING. The rod was therefore ESCAPING (recorded as a "known ceiling" it never was) while testing a
+     # surface production cannot even reach. It now removeth the PRODUCTION keyed voice, which G3 asserteth.*
+     "    fun beginInitiator(admission: RelationKey, remoteHint: ByteArray): ByteArray? =",
+     "    // fun beginInitiator(admission) REMOVED by M3\n"
+     "    private fun _unused_beginInitiator(admission: RelationKey, remoteHint: ByteArray): ByteArray? =",
      "G3",
-     "sessions.seal survives; nothing can establish a session", False),
+     "the production keyed handshake voice is gone; nothing can establish a session", False),
+
+    ("M7-ios-handshake-removed",
+     "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
+     # The shared contract, asserted on BOTH platforms. The iOS SessionManager carrieth the same two voices,
+     # so the Android anchor alone would leave the iOS production door unguarded.
+     "    public func beginInitiator(_ admission: RelationAdmission, remoteHint: Data) -> Data? {",
+     "    // public func beginInitiator(_ admission) REMOVED by M7\n"
+     "    private func _unusedBeginInitiator(_ admission: RelationAdmission, remoteHint: Data) -> Data? {",
+     "G3",
+     "the iOS production keyed handshake voice is gone", False),
 
     ("M4-wrong-sqlcipher-package",
      "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt",

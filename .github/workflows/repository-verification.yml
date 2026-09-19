@@ -35,9 +35,17 @@ jobs:
     name: constraint audit (C1/C2 + tiers + release-gate status)
     runs-on: ubuntu-latest
     steps:
+      # *** fetch-depth: 0 IS REQUIRED, NOT AN OPTIMISATION. *** *`ci/check_release_gates_status.py` refuseth
+      # evidence whose `evidence_commit` doth not resolve in the repository history, and the default checkout
+      # depth is 1 -- so on the runner EVERY recorded evidence pointer resolveth to "not a commit in the
+      # repository history" and the job faileth, green locally only because a full clone happeneth to carry it.
+      # MEASURED: "android-archive-only-release: stale evidence -- the evidence_commit 3ddb6f68368a3877afacc189d348b0dde8a9941e
+      # doth not resolve", while that very commit IS an ancestor of HEAD. THE DEFECT WAS IN THE CHECKOUT, NOT THE EVIDENCE:
+      # the honest repair is to give the checker the history it audits, NEVER to relax the staleness refusal.*
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: provenance (start -- clean checkout)
         run: python ci/provenance.py --out provenance-start.json
       - name: no network permission on Android

@@ -90,8 +90,12 @@ final class ReadinessT83Tests: XCTestCase {
         })
     }
 
+    // The closure's parameter is given an EXPLICIT `Int` type because the bare `$0` form made the body a single
+    // inference unit: the runner's Xcode refused it with "the compiler is unable to type-check this expression in
+    // reasonable time" (the same file already used the explicit form at `nodeOf`). The arithmetic is IDENTICAL --
+    // same bytes, same fixtures -- so no assertion or vector moveth.
     private func nonceOf(_ seed: Int) -> Data {
-        Data((0..<16).map { UInt8(($0 * 31 + seed * 5 + 3) & 0xFF) })
+        Data((0..<16).map { i -> UInt8 in UInt8((i * 31 + seed * 5 + 3) & 0xFF) })
     }
 
     private func hintOf(_ nodeId: Data) -> Data { Data(nodeId.prefix(4)) }
@@ -290,7 +294,7 @@ final class ReadinessT83Tests: XCTestCase {
         r.keys.dropAll()   // unknown keys -> all variants enter opaquely and must not dedup each other
         var seen: [Data] = []
         for i in 0..<4 {
-            let seed = Data((0..<32).map { UInt8(($0 * 13 + i * 101 + 5) & 0xFF) })
+            let seed = Data((0..<32).map { j -> UInt8 in UInt8((j * 13 + i * 101 + 5) & 0xFF) })
             let v = try AckFrame.build(msgId: frame.msgId, recipientSigningPrivKey: seed,
                                        recipientNodeId: r.me.id.nodeId, routingTag: hintOf(r.me.id.nodeId))
             guard case .stored(let k) = d.admitForeignCandidate(v.encode(), receivedFrom: r.originId) else {
@@ -335,7 +339,7 @@ final class ReadinessT83Tests: XCTestCase {
             let m = nodeOf(p, 0x21)
             let recip = nodeOf(p, 0x5E)
             for k in 0..<4 {
-                let sig = Data((0..<64).map { UInt8(($0 * 7 + p * 3 + k + 1) & 0xFF) })
+                let sig = Data((0..<64).map { j -> UInt8 in UInt8((j * 7 + p * 3 + k + 1) & 0xFF) })
                 guard let key = AckCacheKey.compute(msgId: m, recipientNodeId: recip, signature: sig) else {
                     XCTFail("fixture digest"); return
                 }
