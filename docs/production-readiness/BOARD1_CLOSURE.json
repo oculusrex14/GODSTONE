@@ -125,8 +125,8 @@
  "verified_fixed": 0,
  "record_corrections": 64,
  "board2_branch": "board2/device-release-validation",
- "board2_sha": "b98780a7e755db831d58b5413ca2a5bf9c14370f",
- "main_pointer_note": "POSITIONAL, NOT LITERAL. `main_sha` is the frozen candidate that `main` was fast-forwarded to, and it equals the tag target. The docs record lives in a chain of docs-only commits ON TOP of it, so `main`'s TIP advances with each docs commit and is deliberately not written here: a literal tip SHA self-invalidates on the very next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc2`.",
+ "board2_sha": "962ff442d241af9c87baca5dde42e6422c530da3",
+ "main_pointer_note": "POSITIONAL, NOT LITERAL. `main_sha` is the frozen candidate that `main` was fast-forwarded to, and it equals the tag target. The docs record lives in a chain of docs-only commits ON TOP of it, so `main`'s TIP (and board2, which is fast-forwarded to it) advances with each docs commit and is deliberately not written here: a literal tip SHA self-invalidates on the very next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc4`. Board 2 starts from the corrected state by FAST-FORWARD -- shared history is never rewritten.",
  "catalogue_path_gap": {
   "what_it_is": "A task card's `required_regression_paths` is a repo-relative path, and 12 of them do not resolve. THE 12 SPLIT INTO TWO CLASSES WITH OPPOSITE REMEDIES, and fusing them was my error.",
   "class_1_court_never_authored__SEVEN_OPEN": {
