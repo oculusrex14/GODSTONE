@@ -676,6 +676,7 @@ class FixtureClassificationTest(ReadinessTestCase):
             for index in (0, 1, 2):  # the build-noise samples
                 self.assertIn(self.SAMPLE[index], noise)
             self.assertPathsEqual(len(relevant) + len(noise), len(self.SAMPLE))
+    @historical_arm
     def test_inventory_fixtures_all_marked_as_debug_or_past_run(self):
         inventory = load_inventory()
         for entry in inventory['ignored_fixture_files']:
@@ -696,6 +697,7 @@ class MutationControlTest(ReadinessTestCase):
         shutil.copytree(EVIDENCE, mirror, symlinks=False)
         return mirror
 
+    @historical_arm
     def test_missing_tracked_patch_copy_fails_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
             mirror = self._mirror(tmp)
@@ -705,6 +707,7 @@ class MutationControlTest(ReadinessTestCase):
             self.assertTrue(any('missing tracked patch copy' in f
                                for f in failures), msg=failures)
 
+    @historical_arm
     def test_tracked_patch_tamper_fails_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
             mirror = self._mirror(tmp)
@@ -718,6 +721,7 @@ class MutationControlTest(ReadinessTestCase):
             self.assertTrue(any('tracked patch hash drift' in f
                                for f in failures), msg=failures)
 
+    @historical_arm
     def test_removed_untracked_copy_fails_verification(self):
         victim = self.inventory['untracked_files'][0]['path']
         with tempfile.TemporaryDirectory() as tmp:
@@ -728,6 +732,7 @@ class MutationControlTest(ReadinessTestCase):
             self.assertTrue(any('missing copy' in f and victim in f
                                for f in failures), msg=failures)
 
+    @historical_arm
     def test_tampered_copy_fails_verification(self):
         victim = min(self.inventory['untracked_files'],
                      key=lambda e: e['size'])
@@ -756,6 +761,7 @@ class MutationControlTest(ReadinessTestCase):
 class SchemaGuardTest(ReadinessTestCase):
     """Reject unknown schemas; never turn missing counts into zeros."""
 
+    @historical_arm
     def test_inventory_schema_version_is_known(self):
         self.assertEqual(load_inventory()['schema_version'], 1)
 
@@ -768,6 +774,7 @@ class SchemaGuardTest(ReadinessTestCase):
         }
         self.assertEqual(set(preserve.ALLOWED_STATUSES), documented)
         self.assertPathsEqual(len(preserve.ALLOWED_STATUSES), 7)
+    @historical_arm
     def test_entries_carry_real_sizes_not_placeholders(self):
         inventory = load_inventory()
         for entry in inventory['untracked_files']:
