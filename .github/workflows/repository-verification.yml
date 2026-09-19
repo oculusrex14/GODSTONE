@@ -158,6 +158,32 @@ jobs:
             echo "::error::the readiness suite executed ${executed:-0} tests; the floor is 700"
             exit 1
           fi
+          # *** THE DEFERRALS ARE COUNTED, NOT IGNORED. ***
+          #
+          # The T01 HISTORICAL arms need a preservation capture that lives OUTSIDE
+          # this repository and is absent on a runner, so they raise SkipTest and the
+          # runner prints `OK (skipped=N)`. A skip is now DISTINGUISHABLE from a pass
+          # -- which is the whole point -- but a step that silently accepted N skips
+          # would still be claiming a witness it did not have. The count is therefore
+          # REPORTED and bounded: the reusable arms must all have run.
+          skipped=$(grep -oE "skipped=[0-9]+" readiness.log | grep -oE "[0-9]+" | head -1)
+          echo "readiness suite skipped ${skipped:-0} historical arm(s)"
+          if [ -z "$skipped" ]; then
+            echo "::error::the readiness suite reported no skip count at all; the T01 "
+            echo "::error::historical arms cannot be accounted for"
+            exit 1
+          fi
+          if [ "$skipped" -gt 25 ]; then
+            echo "::error::${skipped} arms were skipped; only the T01 historical arms may"
+            echo "::error::defer, so something else is not running"
+            exit 1
+          fi
+          if [ "$skipped" -gt 0 ]; then
+            echo "::notice::${skipped} T01 historical arm(s) deferred: they need the"
+            echo "::notice::preservation capture, which is not in the repository. Their"
+            echo "::notice::questions are NOT answered here, and this step does not claim"
+            echo "::notice::they were."
+          fi
           # the courts this mission authored must be PRESENT, not merely counted: a
           # suite that dropped one would still clear a total-count floor.
           for court in test_t62 test_t64 test_t65 test_t73 test_t74 test_t75 test_t76 test_t78 test_t79 test_t80 test_t81; do

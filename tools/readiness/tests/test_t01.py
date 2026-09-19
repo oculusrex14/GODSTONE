@@ -115,18 +115,32 @@ def load_inventory():
 
 
 def historical_arm(func):
-    """Run a HISTORICAL arm only where the capture existeth; otherwise RECORD the
-    deferral and return.
+    """Run a HISTORICAL arm only where the capture existeth; otherwise DEFER IT
+    VISIBLY, so a deferral can never be read as a pass.
 
-    It is deliberately not `unittest.skip`: a skip is silence, and this suite
-    exists to refuse silence. The arm appendeth its name to the deferral ledger,
-    which `HistoricalVerificationTest.test_w15` asserteth is consistent with
-    whether a capture is present -- so a deferral is VISIBLE, COUNTED, and can
-    never be mistaken for a pass."""
+    *** THE FIRST VERSION OF THIS RETURNED NORMALLY, AND THAT WAS A FALSE GREEN. ***
+    An unconditional `return` makes unittest record **PASS and print `ok`** --
+    indistinguishable from an arm that ran and passed, which is precisely what
+    this module's own comment says it must refuse. On a runner, where the capture
+    is untracked and absent, EVERY gated arm would have reported `ok` having
+    executed zero assertions.
+
+    IT NOW RAISES `unittest.SkipTest`, WHICH IS VISIBLE IN THE VERDICT: the runner
+    prints `OK (skipped=N)` and the executed-vs-skipped split is IN THE RESULT
+    OBJECT, not merely in a side list a reader has to go looking for. The name is
+    still appended to the deferral ledger, because a count alone does not say
+    WHICH questions could not be put.
+
+    A skip and a pass are different facts, and the runner is made to say which
+    one happened."""
     def wrapper(self, *args, **kwargs):
         if not evidence_available():
             ReadinessTestCase.historical_arms.append(func.__name__)
-            return
+            raise unittest.SkipTest(
+                "deferred: no preservation capture beside this checkout, so this "
+                "HISTORICAL arm could not be put here. Set GODSTONE_EVIDENCE to a "
+                "capture directory, or run tools/readiness/build_t01_fixture.py to "
+                "reconstruct one. THIS IS NOT A PASS.")
         return func(self, *args, **kwargs)
     wrapper.__name__ = func.__name__
     wrapper.__doc__ = func.__doc__
