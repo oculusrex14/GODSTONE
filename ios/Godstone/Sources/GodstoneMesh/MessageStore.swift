@@ -927,6 +927,21 @@ public final class SqliteMessageStore: MessageStore {
     /// test failure, not a silent weakening of at-rest encryption.
     public let fileProtection: FileProtectionType
 
+    /// *** GS-STORE-002: WHAT BECAME OF THE PROTECTION REQUEST -- WHICH `try?` HAD DISCARDED. ***
+    /// *The `setAttributes` call below used to be `try?`, so a **thrown error was invisible** and the
+    /// file would silently carry whatever the host defaulted to while the store's own `fileProtection`
+    /// field still declared `.complete`. That is the exact silent weakening this family of controls
+    /// exists to catch, sitting inside the mechanism.* Recording the outcome makes both a refusal AND
+    /// the class actually requested observable, so an arm can assert them without depending on whether
+    /// the host filesystem preserves the attribute.
+    public enum ProtectionApplication: Equatable {
+        /// The request was accepted; `carried` is what the filesystem reported back, when readable.
+        case applied(FileProtectionType, carried: FileProtectionType?)
+        /// The request THREW. The file carries whatever the host defaulted to.
+        case refused(String)
+    }
+    public private(set) var protectionApplication: ProtectionApplication = .refused("not attempted")
+
     /// GS-STORE-005 STEP ONE: the lease is minted and the registration is still APPEND-ONLY, so the arm that
     /// counteth lifetimes and the arm that releaseth both FAIL here. STEP TWO giveth the lease its meaning.
     private var nextLeaseId = 0
@@ -1006,8 +1021,20 @@ public final class SqliteMessageStore: MessageStore {
         openOutcome = .opened
         // At-rest encryption: mark the file complete-protection. Best-effort --
         // on the macOS host this is accepted but not enforced (device concern).
-        try? FileManager.default.setAttributes(
-            [.protectionKey: fileProtection], ofItemAtPath: path)
+        //
+        // GS-STORE-002: THE OUTCOME IS RECORDED, NOT DISCARDED. `try?` here meant a THROWN error was
+        // invisible -- the file would carry the host's default while `fileProtection` still declared
+        // `.complete`, and no arm could tell. Both the refusal and the class actually requested are
+        // now readable through `protectionApplication`.
+        do {
+            try FileManager.default.setAttributes(
+                [.protectionKey: fileProtection], ofItemAtPath: path)
+            let carried = (try? FileManager.default.attributesOfItem(atPath: path))?[.protectionKey]
+                as? FileProtectionType
+            protectionApplication = .applied(fileProtection, carried: carried)
+        } catch {
+            protectionApplication = .refused(String(describing: error))
+        }
     }
 
     deinit { if let db = handle { sqlite3_close_v2(db) } }

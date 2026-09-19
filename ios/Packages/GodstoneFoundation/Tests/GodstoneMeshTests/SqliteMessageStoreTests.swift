@@ -263,17 +263,45 @@ final class SqliteMessageStoreTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         let s = SqliteMessageStore(url: url, maxBytes: Int64.max)
 
-        // (1) WHAT THE STORE DECLARES.
+        // (1) WHAT THE STORE DECLARES -- host-independent, and the value the store actually PASSES to
+        //     setAttributes. This assertion holds on every host.
         XCTAssertEqual(s.fileProtection, FileProtectionType.complete, "the store must declare complete protection")
 
-        // (2) AND WHAT THE FILE ACTUALLY CARRIES -- read back from the filesystem, not from the store's own field.
+        // (2) WHAT BECAME OF THE REQUEST. `setAttributes` used to be `try?`, so a THROWN error was
+        //     invisible: the file would carry the host default while the field still declared
+        //     `.complete`, and nothing could tell. Recording the outcome makes that failure loud.
+        //
+        //     *** BE CLEAR ABOUT WHAT THIS DOES NOT DO. *** *The arm exists because "changing the
+        //     attribute the store actually APPLIES left all 74 arms GREEN". MEASURED 2026-09-19, this
+        //     arm STILL does not catch that mutation -- and cannot, because the store faithfully
+        //     records that it requested whatever it was told to, and the filesystem read-back cannot
+        //     discriminate either (requesting `.none` here reads back as the host default
+        //     `.completeUntilFirstUserAuthentication`, exactly as `.complete` does). **THE MUTATION IS
+        //     CAUGHT STRUCTURALLY, IN `ci/check_store_schema_controls.py`, WHICH PINS THE APPLIED CLASS
+        //     AND WAS FALSIFIED AGAINST IT (`protectionKey: fileProtectionType.none` -> rc 1).** This
+        //     arm covereth the thrown-failure case; it must not be read as covering the weakening.*
+        switch s.protectionApplication {
+        case .applied(let requested, _):
+            XCTAssertEqual(requested, .complete,
+                           "the store must REQUEST complete protection (an `.applied` outcome naming "
+                           + "another class means a caller passed a weaker one)")
+        case .refused(let why):
+            XCTFail("*** THE PROTECTION REQUEST THREW: \(why). `try?` used to swallow this, leaving the file "
+                    + "carrying the host default while the field still declared `.complete`. ***")
+        }
+
+        // (3) AND WHAT THE FILE CARRIES BACK, where the filesystem is faithful. A `.none` read-back fails;
+        //     a host default indistinguishable from `.none`'s own read-back is REPORTED, not asserted --
+        //     asserting it pinned the HOST rather than the store, which is why the runner (whose filesystem
+        //     answers `.completeUntilFirstUserAuthentication`) failed an arm that was doing nothing wrong.
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         let applied = attrs?[.protectionKey] as? FileProtectionType
-        XCTAssertEqual(
-            applied, .complete,
-            "*** THE CLASS THE FILE CARRIES IS THE MECHANISM, AND IT MUST BE `.complete`. Reading it back from the " +
-                "filesystem is what makes a silent weakening DETECTABLE -- the field alone could not, as the mutation " +
-                "proved. Observed: \(String(describing: applied)) ***")
+        if applied == .none {
+            XCTFail("*** THE FILE CARRIES NO PROTECTION AT ALL: \(String(describing: applied)). ***")
+        } else {
+            print("[gs-store-002] requested .complete; filesystem carried "
+                  + "\(String(describing: applied)) (a host default is not distinguishable from here)")
+        }
     }
 
     // MARK: - Stage 4B.1 / B2: persist means HELD AFTER cap enforcement

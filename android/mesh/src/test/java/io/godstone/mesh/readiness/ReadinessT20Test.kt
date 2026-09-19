@@ -287,6 +287,17 @@ class ReadinessT20Test {
             driver.onServicesDiscovered(bobAddress, true, 1L, 1L)
             driver.onLinkInfoReadResult(bobAddress, linkInfoOf(pair.bob), 1L, 1L)
             driver.onLinkInfoWriteAcknowledged(bobAddress, true, pair.bob.nodeHint, 1L, 1L)
+            // *** THE OUTLET IS WIRED BEFORE THE PUBLICATION, AS PRODUCTION'S IS. ***
+            // The CCCD ack below returns PublishFound, and dispatching it is where the transport's
+            // OWN ANDROID-01 door (`maybeBeginTrustedHandshake`) launches its begin coroutine --
+            // which READS this outlet's connected state. Setting it afterwards made the harness race
+            // that coroutine: on a loaded runner D2 won, the begin was refused with
+            // "no outlet: client absent or disconnected", and because a refused begin is FINAL
+            // (`handleTerminalSessionRetirement` retires the relation and publishes nothing more)
+            // the court's awaitNonEmpty consumed its whole budget and failed. Production's
+            // `isClientConnected` is backed by the live platform connection, which IS connected at
+            // this point; the fake merely lagged it. No assertion is weakened.
+            aliceOutlet.clientConnected = bobAddress
             val cccdAck = driver.onCccdWriteAcknowledged(bobAddress, true, 1L, 1L)
             if (cccdAck is BleCentralAction.PublishFound) {
                 // the platform's boundary posts the found event; the one
@@ -294,7 +305,6 @@ class ReadinessT20Test {
                 alice.dispatchCentralActionForTest(bobAddress, cccdAck)
             }
             driver.onMtuChanged(bobAddress, mtu)
-            aliceOutlet.clientConnected = bobAddress
             val conn = initiatorConnection()
             // The ladder's claim is "a role-bound initiator with the duplex up", NOT "still exactly
             // ROLE_BOUND at the instant the test thread looks". The transport's OWN ANDROID-01 door

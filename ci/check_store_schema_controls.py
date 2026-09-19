@@ -627,6 +627,48 @@ def scan(root: Path) -> list[str]:
                     if not (pos_upd < pos_del):
                         missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire operations out of order (require execDeliveryUpdate before deleteHeld inside inTransaction closure)")
 
+    # 4b. GS-STORE-002 structural check: the iOS store's at-rest protection request is PINNED.
+    #
+    #     *** THIS IS THE ONLY PLACE THE WEAKENING IS ACTUALLY CATCHABLE, AND THAT WAS MEASURED. ***
+    #     The behavioural arm in SqliteMessageStoreTests reads the attribute BACK from the filesystem --
+    #     and MEASURED 2026-09-19, that read-back CANNOT discriminate: requesting `.none` on this host
+    #     returns `.completeUntilFirstUserAuthentication`, the filesystem's own default, exactly as a
+    #     `.complete` request does. So the arm's documented mutation ("changing the attribute the store
+    #     applied left all 74 arms green") stayed GREEN even after the arm was strengthened to check the
+    #     application outcome -- because the store faithfully recorded that it had requested whatever it
+    #     was told to. The production VALUE is what must be pinned, and only a structural check can pin it.
+    ios_message_store = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+    if not ios_message_store.is_file():
+        missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: file MISSING")
+    else:
+        text = ios_message_store.read_text(encoding="utf-8", errors="replace")
+        # The declaration must still default to `.complete`: a weaker DEFAULT is the silent weakening.
+        #
+        # *** THE A WORD BOUNDARY IS REQUIRED, AND ITS ABSENCE WAS A REAL HOLE IN THIS CHECK. *** *A plain
+        # substring test for `.complete` PASSETH on `.completeUntilFirstUserAuthentication`, because the
+        # strong name is a PREFIX of the weaker one -- MEASURED: the weakened-default mutation escaped this
+        # check entirely until the boundary was added (`= .complete\b` no longer matcheth
+        # `= .completeUntilFirstUserAuthentication`, since `e` and `U` are both word characters).*
+        if not re.search(r"fileProtection\s*:\s*FileProtectionType\s*=\s*\.complete\b", text):
+            missing.append(
+                "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: the store's fileProtection "
+                "parameter must still DEFAULT to `.complete` -- a weaker default silently weakens "
+                "at-rest protection for every caller that does not pass one (C6.4.1-BCDEFGH)")
+        # And what is APPLIED must be the protection type, not a literal or a weaker class.
+        applied_fn = extract_braced_function(text, "public init(url: URL, maxBytes: Int64,")
+        if applied_fn is None:
+            missing.append(
+                "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: the store's init missing or "
+                "unextractable -- cannot confirm which protection class is APPLIED")
+        else:
+            clean_init = strip_comments(applied_fn)
+            if "protectionKey: fileProtection" not in clean_init:
+                missing.append(
+                    "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: the init must APPLY the "
+                    "`fileProtection` it was given (`protectionKey: fileProtection`) -- applying a "
+                    "literal or another class is the weakening the behavioural arm cannot see "
+                    "(C6.4.1-BCDEFGH)")
+
     # 5. Structural check: iOS SqliteDeliveryRepository acknowledgeBoundAndRetire region routes to atomicAcknowledgeAndRetire
     ios_sqlite_repo = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
     if not ios_sqlite_repo.is_file():
@@ -978,6 +1020,13 @@ def _build_synthetic_positive_tree(root: Path) -> None:
     ios_ms.parent.mkdir(parents=True, exist_ok=True)
     ios_ms.write_text(
         "public class SqliteMessageStore {\n"
+        # GS-STORE-002: the at-rest protection pin needs a faithful synthetic shape, or the clean
+        # positive tree would report a false positive against the new structural check.
+        "    public init(url: URL, maxBytes: Int64,\n"
+        "                fileProtection: FileProtectionType = .complete) {\n"
+        "        try FileManager.default.setAttributes(\n"
+        "            [.protectionKey: fileProtection], ofItemAtPath: path)\n"
+        "    }\n"
         "    internal func atomicAcknowledgeAndRetireWithFault(\n"
         "        guardedAckSql: String,\n"
         "        msgId: Data,\n"
@@ -2118,6 +2167,41 @@ def selftest() -> int:
         else:
             print("  ok    [Mutation H12] iOS transitionSpec .markHanded mutation detected")
 
+    # GS-STORE-002: the at-rest protection weakening -- the mutation the BEHAVIOURAL arm provably cannot
+    # catch (the filesystem read-back reports its own default). It must be caught structurally.
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_ms = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+        txt = ios_ms.read_text(encoding="utf-8")
+        ios_ms.write_text(
+            txt.replace("[.protectionKey: fileProtection]",
+                        "[.protectionKey: FileProtectionType.none]"),
+            encoding="utf-8")
+        res = scan(root)
+        if not any("must APPLY the `fileProtection` it was given" in m for m in res):
+            failures.append(
+                f"GS-STORE-002 (iOS store applies .none while declaring .complete) NOT detected; got {res}")
+        else:
+            print("  ok    [GS-STORE-002] iOS at-rest protection weakening detected")
+
+    # GS-STORE-002: and a weaker DEFAULT is the same weakening for every caller that passes none.
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_ms = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+        txt = ios_ms.read_text(encoding="utf-8")
+        ios_ms.write_text(
+            txt.replace("fileProtection: FileProtectionType = .complete",
+                        "fileProtection: FileProtectionType = .completeUntilFirstUserAuthentication"),
+            encoding="utf-8")
+        res = scan(root)
+        if not any("must still DEFAULT to `.complete`" in m for m in res):
+            failures.append(
+                f"GS-STORE-002 (iOS store default weakened) NOT detected; got {res}")
+        else:
+            print("  ok    [GS-STORE-002] iOS weakened protection DEFAULT detected")
+
     # Missing file detection test
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
@@ -2162,6 +2246,8 @@ def selftest() -> int:
           "  - Mutation H10 (iOS retain without execDeliveryUpdate) detected.\n"
           "  - Mutation H11 (Android transitionSpec MARK_HANDED mutation) detected.\n"
           "  - Mutation H12 (iOS transitionSpec .markHanded mutation) detected.\n"
+          "  - GS-STORE-002 (iOS at-rest protection weakening) detected.\n"
+          "  - GS-STORE-002 (iOS weakened protection DEFAULT) detected.\n"
           "  - Missing files reported.")
     return 0
 
