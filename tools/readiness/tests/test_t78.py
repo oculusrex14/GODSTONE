@@ -229,9 +229,15 @@ class CandidateEvaluatorCourt(unittest.TestCase):
         self.assertTrue(all_files.count("\n") >= tracked.count("\n"),
                         "the untracked view must include at least everything the "
                         "tracked view does")
-        # ... and the evidence directories really are untracked by design
-        self.assertIn("?? ", all_files,
-                      "this repository is expected to carry untracked evidence roots")
+        # ... and WHETHER untracked evidence roots are present is an ENVIRONMENT
+        # fact, not a property of the code. On the builder's machine they exist; on
+        # a clean runner there are none, and asserting their presence here made this
+        # arm fail for a reason that says nothing about `is_dirty`. The RULE under
+        # test is that untracked files are not dirt, and it is proven above by the
+        # agreement with git's own tracked-only view -- which holds either way.
+        self.assertEqual(probe.is_dirty(), bool(tracked),
+                         "is_dirty() must agree with the tracked-only porcelain view "
+                         "on any machine, whether or not untracked roots are present")
 
     @staticmethod
     def _write(world, document):
