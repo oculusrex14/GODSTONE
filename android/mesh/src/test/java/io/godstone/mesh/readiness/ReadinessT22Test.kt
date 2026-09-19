@@ -24,6 +24,8 @@ import io.godstone.mesh.transport.BleLinkInfoCodec
 import io.godstone.mesh.transport.BleLinkInfoV1
 import io.godstone.mesh.transport.BleOutletHooks
 import io.godstone.mesh.transport.BleRecordFragmenter
+import io.godstone.mesh.transport.BleRecordReassembler
+import io.godstone.mesh.transport.BleReassembledRecord
 import io.godstone.mesh.transport.BleRecordCodec
 import io.godstone.mesh.transport.BleRecordType
 import io.godstone.mesh.transport.BleServerAction
@@ -640,6 +642,24 @@ class ReadinessT22Test {
 
     private fun payloadOfFragment(value: ByteArray): ByteArray = value.copyOfRange(8, value.size)
 
+    /**
+     * *** THE WHOLE RECORD, REASSEMBLED FROM ITS FRAGMENTS -- MTU-INDEPENDENT BY CONSTRUCTION. ***
+     *
+     * *`payloadOfFragment(list.first())` returneth the FIRST FRAGMENT'S payload, which equalleth the whole record
+     * ONLY when the record travelleth in ONE fragment -- i.e. only at an agreed ATT length large enough. At the
+     * 20-byte default a thirty-two-octet counsel is THREE fragments whose first carrieth eleven octets. **ARMS THAT
+     * RE-FORGE A CAPTURED RECORD MUST THEREFORE REASSEMBLE IT FIRST**, or they re-forge a TRUNCATED record and the
+     * responder rightly refuseth it (`hs.read.responder|hs1 rejected`) -- MEASURED on the runner, run 35446070927.*
+     */
+    private fun wholeRecordOf(fragments: List<ByteArray>): ByteArray {
+        val reassembler = BleRecordReassembler()
+        var whole: BleReassembledRecord? = null
+        for (f in fragments) {
+            reassembler.receiveFragmentBytes(f)?.let { whole = it }
+        }
+        return whole?.payload ?: error("the fragments did not reassemble into a whole record")
+    }
+
     private fun forge(type: BleRecordType, seq: Int, payload: ByteArray): List<ByteArray> =
         BleRecordFragmenter.fragment(type, seq, payload, 247)
 
@@ -789,7 +809,7 @@ class ReadinessT22Test {
         val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
-        val hs1 = payloadOfFragment(hs1Frags.first())
+        val hs1 = wholeRecordOf(hs1Frags)
         assertNotNull("the application\'s first counsel must have travelled", hs1)
         rig.pushToResponder(hs1Frags.toList())
         awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
@@ -838,7 +858,7 @@ class ReadinessT22Test {
         val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
-        val hs1 = payloadOfFragment(hs1Frags.first())
+        val hs1 = wholeRecordOf(hs1Frags)
         assertNotNull("the application\'s first counsel must have travelled", hs1)
         rig.pushToResponder(hs1Frags.toList())
         val answer = awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
@@ -848,7 +868,7 @@ class ReadinessT22Test {
         val third = awaitNonEmpty("the third must come forth; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
-        val tampered = payloadOfFragment(third.first()).copyOf()
+        val tampered = wholeRecordOf(third).copyOf()
         tampered[tampered.size / 2] = (tampered[tampered.size / 2].toInt() xor 0x5A).toByte()
         rig.pushToResponder(forge(BleRecordType.HS3, seqOfFragment(third.first()), tampered))
         awaitUntil("the false seal must be refused; ring: " + ringDump(rig.bob),
@@ -868,7 +888,7 @@ class ReadinessT22Test {
         val bPeer = rig.responderConnection().peerId.copyOf()
         val hs2 = driveToReady(rig)
         assertTrue("the exchange must have trusted the pair", rig.pair.smB.isReady(bPeer))
-        val liars = forge(BleRecordType.HS2, 0x3F, payloadOfFragment(hs2.first()).copyOf())
+        val liars = forge(BleRecordType.HS2, 0x3F, wholeRecordOf(hs2).copyOf())
         rig.pushToResponder(liars)
         awaitUntil("the own voice come again must be refused; ring: " + ringDump(rig.bob),
                    { ringDump(rig.bob).contains("unexpected") })
@@ -911,18 +931,22 @@ class ReadinessT22Test {
 
         // application\'s begin is not.
 
-        // *** THIS ARM RE-FORGES ON PURPOSE -- IT TESTETH A DUPLICATE SEQUENCE, not the counsel's bytes. ***
-        // *So it needs a COMPLETE payload to re-stamp with seq 0 and then seq 1. `awaitNonEmpty` returneth as soon
-        // as ANY write existeth, so a MULTI-FRAGMENT HS1 used to be captured half-formed and the responder's
-        // reassembler refused it (`hs.read.responder|hs1 rejected`), which CLOSETH the relation before the duplicate
-        // could ever be tested. MEASURED on the 2-core runner. The arm now WAITETH FOR THE WHOLE RECORD -- the
-        // fragment count is the low nibble of byte 4 -- exactly as `awaitUntilCount` doeth elsewhere in this
-        // court, and THEN re-forges.*
+        // *** THE WHOLE COUNSEL IS REASSEMBLED FROM THE FRAGMENTS -- `payloadOfFragment(first())` IS NOT IT. ***
+        // *This arm re-forges the counsel ON PURPOSE (it testeth a DUPLICATE SEQUENCE, not the counsel's bytes),
+        // so it needs the COMPLETE thirty-two-octet payload to re-stamp with seq 0 and then seq 1.*
+        // **AND `payloadOfFragment(hs1Frags.first())` ONLY EQUALS THAT AT ONE FRAGMENT.** *`payloadOfFragment` is
+        // `copyOfRange(8, size)`, so at the 20-byte default MTU the counsel arriveth in THREE fragments and the
+        // first carrieth ELEVEN payload octets. THIS ARM WAS THEREFORE STILL MTU-DEPENDENT EVEN AFTER ITS FIRST
+        // REPAIR, and it failed again on the runner exactly as the truncated counsel it re-forged was refused
+        // (`hs.read.responder|hs1 rejected`) -- MEASURED, run 35446070927. The fragments are now REASSEMBLED, which
+        // is MTU-INDEPENDENT by construction: one fragment or three, the payload comes out whole.*
         val hs1Frags = awaitUntilCount("the application's first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
         assertTrue("the application's first counsel must have travelled", hs1Frags.isNotEmpty())
-        val trueHs1 = payloadOfFragment(hs1Frags.first())
+        val trueHs1 = wholeRecordOf(hs1Frags)
+        assertEquals("and the counsel is thirty-two octets, at ANY fragment count",
+                     32, trueHs1.size)
         rig.pushToResponder(forge(BleRecordType.HS1, 0, trueHs1))
         awaitNonEmpty("the first answer must be queued; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
@@ -1228,7 +1252,7 @@ class ReadinessT22Test {
         val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
-        val hs1 = payloadOfFragment(hs1Frags.first())
+        val hs1 = wholeRecordOf(hs1Frags)
         assertNotNull("the application\'s first counsel must have travelled", hs1)
         rig.pushToResponder(hs1Frags.toList())
         val answer = awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
@@ -1238,7 +1262,7 @@ class ReadinessT22Test {
         val third = awaitNonEmpty("the third must come forth; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
         }
-        val thirdPayload = payloadOfFragment(third.first()).copyOf()
+        val thirdPayload = wholeRecordOf(third).copyOf()
         val thirdSeq = seqOfFragment(third.first())
         rig.pushToResponder(third.toList())
         awaitUntil("the pair must stand trusted", { rig.pair.smB.isReady(bPeer) })
