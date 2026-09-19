@@ -698,20 +698,39 @@ class ReadinessT17Test {
     fun testBackpressureIsReportedNotSilentlyDropped() {
         val rig = rig()
         try {
-            // *** THIS ARM TURNETH THE ANDROID-01 SEAM OFF, IN ITS OWN NAME, BECAUSE ITS SUBJECT IS THE
-            // WRITER'S BOUND AND NOT THE APPLICATION'S BEGIN. *** *The arm setheth `floodingAddress`, which
-            // maketh EVERY outlet write return false -- INCLUDING the application's own HS1, which D2 emits
-            // concurrently from `Dispatchers.IO`. That HS1 then saturates the writer's four-record bound and
-            // is charged `queue full`, so the arm's own `send` inheriteth a window the APPLICATION filled and
-            // the measured verdict flippeth between Backpressured and Admitted run to run. MEASURED on the
-            // 2-core runner: `expected:<Backpressured> but was:<Admitted>`, with the census showing
-            // `init-writes=1 ring-init=hs.write.initiator|queue full; hs.read.initiator|hs3 reservation refused`
-            // -- the interference is D2's, named in the ring.*
-            // The seam existeth for exactly this and sayeth so: "a court that turneth it off sayeth so in its
-            // own name and in its own arm". The application-begins behaviour is NOT thereby unwitnessed --
-            // ReadinessT21Test.testAndroid01_theApplicationBeginnethD2ItselfUponThePhysicallyReadyRelation
-            // witnesseth it on the DEFAULT road, and disabling the production door reddeneth eight arms.
-            rig.alice.applicationBeginsD2ForTest = false
+            // *** THE ANDROID-01 SEAM STAYS ON HERE -- THE APPLICATION'S OWN BEGIN IS THE PRODUCTION ROAD,
+            // AND IT KEEPS ITS WITNESS IN THIS ARM. ONLY THE KEY-CONFIRMATION SEAM IS TURNED OFF, BY THE
+            // CODE'S OWN DOCUMENTED CRITERION AND ON MEASURED EVIDENCE. ***
+            //
+            // THE CRITERION IS THE SEAM'S OWN WORDS. It nameth its population exactly: "the courts which DRIVE
+            // the trusted hour BY HAND and then do ARITHMETIC UPON THE RELATION'S WRITER ... they turn this off
+            // and say so in their own name, while the DEFAULT state (on) is what the ANDROID-01 arms witness."
+            // THIS ARM HAND-DRIVETH (`completeTrust()`) AND THEN JUDGETH THE WRITER, asserting the DATA send's
+            // verdict -- so it is in that population by the seam's own description.
+            //
+            // AND THE EVIDENCE IS A CONTROLLED COMPARISON, NOT A THEORY: FOUR SIBLING COURTS OF THE SAME
+            // FAMILY (T18, T20, T21, T22) ALREADY TURN THIS SEAM OFF FOR EXACTLY THIS REASON, and T23 --
+            // fourteen arms of it -- is the court whose SUBJECT the key-confirmation road is. T17 was the only
+            // court that hand-drove the hour while leaving the seam on, and the only one that failed
+            // intermittently.
+            //
+            // WHY IT INTERFERES (source-verified): the application's sealed challenge is a legitimate
+            // DATA-plane user of the SAME `RecordWriter`, and `RecordWriter.nextOut()` returneth null at
+            // `if (inFlight != null)` (RecordWriter.kt:321) as well as at the head-of-queue test one line
+            // below. EITHER sends `sendThrough`'s `while (true) { nextOut() ?: break }` straight to `Admitted`
+            // WITHOUT EVER CONSULTING `writePeerTyped`, so the arm would measure a leftover write rather than
+            // the bound it names.
+            //
+            // MEASURED, D2 ON AND ONLY THIS SEAM OFF: five consecutive full-suite runs
+            // (`:mesh:testDebugUnitTest --rerun-tasks`, 1273 tests) BUILD SUCCESSFUL. D2's own road is thereby
+            // exercised by this very arm at the same time.
+            //
+            // WHAT THE ARM STILL PROVES, UNCHANGED: `floodingAddress` makes `writePeerTyped` answer
+            // `WriteCompletion.QueueFull`, and the `Backpressured` must still come from the REAL mapping
+            // inside `sendThrough` (BleTransport.kt:1550-1557) -- the `send.initiator`/`queue full` rejection
+            // record witnesses that the pump genuinely tried to write. FALSIFIED AGAINST THAT DECISION:
+            // forcing `WriteCompletion.QueueFull ->` to return `Admitted` makes this arm RED.
+            rig.alice.applicationIssuesKeyConfirmationForTest = false
             rig.completeTrust()
             rig.aliceOutlet.floodingAddress = rig.bobAddress
             val frame = ByteArray(8) { (it * 13 % 251).toByte() }
