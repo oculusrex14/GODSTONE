@@ -738,17 +738,17 @@ class ReadinessT22Test {
 
         // application\'s begin is not.
 
-        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
-
-
+        // *** THE WHOLE CAPTURED RECORD IS PUSHED, NOT A RE-FORGED FRAGMENT. *** *`awaitNonEmpty` returneth as
+        // soon as ANY write existeth, so a MULTI-FRAGMENT HS1 was captured half-formed; lifting `first()` and
+        // re-forging a single-fragment record made the responder's reassembler refuse it
+        // (`hs.read.responder|hs1 rejected`), which CLOSETH the relation and killed the arm on its own
+        // downstream wait. MEASURED on the 2-core runner. The arm's claim is unchanged.*
+        val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
-
-
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-
-        assertNotNull("the application\'s first counsel must have travelled", hs1)
+        }
+        assertTrue("the application\'s first counsel must have travelled", hs1Frags.isNotEmpty())
         rig.bobOutlet.clear()
-        rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
+        rig.pushToResponder(hs1Frags.toList())
         val answer = awaitNonEmpty("the second must be queued upon the writers hand; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
         }
@@ -911,16 +911,18 @@ class ReadinessT22Test {
 
         // application\'s begin is not.
 
-        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
-
-
+        // *** THIS ARM RE-FORGES ON PURPOSE -- IT TESTETH A DUPLICATE SEQUENCE, not the counsel's bytes. ***
+        // *So it needs a COMPLETE payload to re-stamp with seq 0 and then seq 1. `awaitNonEmpty` returneth as soon
+        // as ANY write existeth, so a MULTI-FRAGMENT HS1 used to be captured half-formed and the responder's
+        // reassembler refused it (`hs.read.responder|hs1 rejected`), which CLOSETH the relation before the duplicate
+        // could ever be tested. MEASURED on the 2-core runner. The arm now WAITETH FOR THE WHOLE RECORD -- the
+        // fragment count is the low nibble of byte 4 -- exactly as `awaitUntilCount` doeth elsewhere in this
+        // court, and THEN re-forges.*
+        val hs1Frags = awaitUntilCount("the application's first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
-
-
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-
-        assertNotNull("the application\'s first counsel must have travelled", hs1)
-        val trueHs1 = hs1!!.copyOf()
+        }
+        assertTrue("the application's first counsel must have travelled", hs1Frags.isNotEmpty())
+        val trueHs1 = payloadOfFragment(hs1Frags.first())
         rig.pushToResponder(forge(BleRecordType.HS1, 0, trueHs1))
         awaitNonEmpty("the first answer must be queued; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
@@ -981,19 +983,19 @@ class ReadinessT22Test {
 
         // application\'s begin is not.
 
-        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
-
-
+        // *** THE WHOLE CAPTURED RECORD IS PUSHED, NOT A RE-FORGED FRAGMENT. *** *`awaitNonEmpty` returneth as
+        // soon as ANY write existeth, so a MULTI-FRAGMENT HS1 was captured half-formed; lifting `first()` and
+        // re-forging a single-fragment record made the responder's reassembler refuse it
+        // (`hs.read.responder|hs1 rejected`), which CLOSETH the relation and killed the arm on its own
+        // downstream wait. MEASURED on the 2-core runner. The arm's claim is unchanged.*
+        val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
-
-
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-
-        assertNotNull("the application\'s first counsel must have travelled", hs1)
+        }
+        assertTrue("the application\'s first counsel must have travelled", hs1Frags.isNotEmpty())
         // the leg is flooded: the answer can not be staged, the writers verdict
         // must reach the door and the relation must fall upon it
         rig.bobOutlet.floodingAddress = rig.aliceAddress
-        rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
+        rig.pushToResponder(hs1Frags.toList())
         awaitUntil("the refused reservation must ring at the door; ring: " + ringDump(rig.bob),
                    { ringDump(rig.bob).contains("hs2 reservation refused") })
         assertTrue("the writer must tell its own tale; ring: " + ringDump(rig.bob),
@@ -1028,11 +1030,15 @@ class ReadinessT22Test {
         // ANDROID-01: the alien first counsel is the ALIEN APPLICATION'S OWN -- the court no longer
         // formeth it by hand (the application now owneth that relation's controller, so a court's own begin
         // answereth nil there, WHICH IS THE LAW WORKING).
-        val alienHs1 = awaitNonEmpty("the alien application's first counsel; ring: " + ringDump(alienA.alice)) {
+        val alienHs1Frags = awaitNonEmpty("the alien application's first counsel; ring: " + ringDump(alienA.alice)) {
             alienA.aliceOutlet.writesTo(alienA.bobAddress)
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-        assertNotNull("the alien application's first counsel must have travelled", alienHs1)
-        rig.pushToResponder(forge(BleRecordType.HS1, 0, alienHs1!!))
+        }
+        assertTrue("the alien application's first counsel must have travelled", alienHs1Frags.isNotEmpty())
+        // *** THE WHOLE CAPTURED RECORD IS PUSHED, NOT A RE-FORGED FRAGMENT. *** *`awaitNonEmpty` returneth as
+        // soon as ANY write existeth, so a MULTI-FRAGMENT HS1 was captured half-formed; re-forging a single
+        // fragment made the responder's reassembler refuse it (`hs.read.responder|hs1 rejected`), which
+        // CLOSETH the relation and killed the arm on its own downstream wait. MEASURED on the 2-core runner.*
+        rig.pushToResponder(alienHs1Frags.toList())
         val answered = awaitNonEmpty("the alien shape must be answered; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
         }
@@ -1066,12 +1072,16 @@ class ReadinessT22Test {
         // the way the others were: it won or lost a race against the application's asynchronous begin, and
         // the re-measurement at the committed SHA caught it (1200 tests / 1 failed) where the pre-commit
         // run had not. A witness that must win a race is not a witness.
-        val hs1b = awaitNonEmpty("the counsel must be formable; ring: " + ringDump(rig2.alice)) {
+        val hs1bFrags = awaitNonEmpty("the counsel must be formable; ring: " + ringDump(rig2.alice)) {
             rig2.aliceOutlet.writesTo(rig2.bobAddress)
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-        assertNotNull("the counsel must be formable", hs1b)
+        }
+        assertTrue("the counsel must be formable", hs1bFrags.isNotEmpty())
+        // *** THE WHOLE CAPTURED RECORD IS PUSHED, NOT A RE-FORGED FRAGMENT. *** *`awaitNonEmpty` returneth as
+        // soon as ANY write existeth, so a MULTI-FRAGMENT HS1 was captured half-formed; re-forging a single
+        // fragment made the responder's reassembler refuse it (`hs.read.responder|hs1 rejected`), which
+        // CLOSETH the relation and killed the arm on its own downstream wait. MEASURED on the 2-core runner.*
         rig2.bobOutlet.clear()
-        rig2.pushToResponder(forge(BleRecordType.HS1, 0, hs1b!!))
+        rig2.pushToResponder(hs1bFrags.toList())
         val answer = awaitNonEmpty("the bound remembrance must answer yet; ring: " + ringDump(rig2.bob)) {
             rig2.bobOutlet.notificationsTo(rig2.aliceAddress)
         }
@@ -1104,16 +1114,11 @@ class ReadinessT22Test {
 
         // application\'s begin is not.
 
-        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rigB.alice)) {
-
-
+        val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rigB.alice)) {
             rigB.aliceOutlet.writesTo(rigB.bobAddress)
-
-
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-
-        assertNotNull("the application\'s first counsel must have travelled", hs1)
-        rigB.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
+        }
+        assertTrue("the application\'s first counsel must have travelled", hs1Frags.isNotEmpty())
+        rigB.pushToResponder(hs1Frags.toList())
         awaitNonEmpty("the answer must be queued; ring: " + ringDump(rigB.bob)) {
             rigB.bobOutlet.notificationsTo(rigB.aliceAddress)
         }
@@ -1147,16 +1152,11 @@ class ReadinessT22Test {
 
             // application\'s begin is not.
 
-            val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
-
-
+            val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
                 rig.aliceOutlet.writesTo(rig.bobAddress)
-
-
-            }.firstOrNull()?.let { payloadOfFragment(it) }
-
-            assertNotNull("the application\'s first counsel must have travelled", hs1)
-            rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
+            }
+            assertTrue("the application\'s first counsel must have travelled", hs1Frags.isNotEmpty())
+            rig.pushToResponder(hs1Frags.toList())
             val answer = awaitNonEmpty("the shape must be answered ere the seal is weighed; ring: " + ringDump(rig.bob)) {
                 rig.bobOutlet.notificationsTo(rig.aliceAddress)
             }
