@@ -33,7 +33,7 @@ The five external gates remain **OPEN**, no readiness flag was flipped, and `VER
 | candidate tree | `e791877b1fdcb6c3359846f54b64c03922d7a975` |
 | repository-verification run | [`35446805693`](https://github.com/oculusrex14/GODSTONE/actions/runs/35446805693) **attempt 1 -- ALL SIX JOBS SUCCESS**. *Attempt 2 of the same run failed `:app:testLightDebugUnitTest` on a TRANSIENT NETWORK ERROR fetching `org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` (`SocketException: Connection reset`); that test passes locally and passed on attempt 1 of this same SHA. GitHub reports the LATEST attempt, so this run's aggregate conclusion reads `failure` -- the citation is to attempt 1, which is the run that exercised the candidate.* |
 | tag | `production-readiness-board1-rc2` (rc1 was deleted: it named a superseded SHA) |
-| merge into `main` | \`bd139c0a4ae3865112782c95151873c77dcfe457\` (the frozen candidate \`1e0ca3a7\` merged; this is a post-merge DOCS-ONLY commit on main, which does not move the tag) |
+| merge into `main` | `1e0ca3a70edb55580df8c3949ef1b510d78e22c2` -- the frozen candidate. The merge was a **fast-forward** (main's three doc commits were reconciled into the candidate at `f0f7140e`, so `origin/main` was already an ancestor; no merge commit, no history rewritten). The current `main` tip is `537c7ddd441ebb3106aca977467363bc4e9a2afc`, a **docs-only** commit carrying this record, which does not move the tag. |
 
 The audited baseline `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` and the previous candidate
 `e07e6ca119284eac72cfe7ed82c539209f085715` are preserved unchanged in history.
@@ -62,6 +62,29 @@ GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)
 **This workflow had never passed.** Eight consecutive pushes to this branch failed, and the later
 iOS steps had *never executed at all* — the step above them died first. Four independent causes were
 found and fixed (§D).
+
+### The green count, stated honestly
+
+**The candidate has ONE full green run (attempt 1).** The mission's 2-consecutive-greens rule was
+written for the ANDROID `:mesh` courts, and it is satisfied **on those courts by five consecutive
+local `:mesh` runs plus the hosted green** -- but it is NOT satisfied for the workflow as a whole, and
+that is stated rather than glossed:
+
+| run | SHA | outcome | what it proves |
+|---|---|---|---|
+| `35446805693` **attempt 1** | `1e0ca3a7` | **all six jobs success** | the full green; every lane exercised |
+| `35446805693` **attempt 2** | `1e0ca3a7` | android red | **INFRASTRUCTURE, not code**: `Failed to fetch maven artifact org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` / `SocketException: Connection reset`. The test passes locally in 26s and passed in attempt 1 |
+
+So the workflow's second run did not confirm the first: it failed on a network fetch. **The flake
+family this session spent its effort on is not implicated in that failure** -- but the honest summary
+is that the candidate has one clean green plus a second run reddened by the runner's network, not two
+clean greens. A corroborating green was also produced on `main`'s docs-only tip, which confirms the
+toolchain but is *not* a second green on `candidate_sha`.
+
+Recorded because "two greens" would have been the wrong claim, and because the `:app` Robolectric
+fetch is a **real hermeticity gap** in this CI (no cache, no prefetch) that will keep producing
+red-on-network-blip runs until it is cached. It is internally addressable and outside the Board 1
+exit criteria -- written down here rather than fixed in the freeze window.
 
 ### Local
 
