@@ -1383,10 +1383,6 @@
    }
   },
   "godstone-audit": {
-   "godstone-audit/.DS_Store": {
-    "sha256": "6d068b198ad2205a2c21c9d08a5b271fc405dbed79e951f8d0ea7e75025c2d60",
-    "size": 6148
-   },
    "godstone-audit/GODSTONE_INDEPENDENT_AUDIT.md": {
     "sha256": "23f35130de0f963c52002d050b2b391ce3a1a45ba6a791793253895b57868931",
     "size": 326266
@@ -1474,10 +1470,6 @@
    "godstone-audit/observed-source/ci/check_evidence_digests.py": {
     "sha256": "fd61427c417d13f330177ec4d855c0e92217338f725f93f1171ed816d4143325",
     "size": 9312
-   },
-   "godstone-audit/proposed-repair/.DS_Store": {
-    "sha256": "df239a2b7c496986e791eb3d244389796d992a1b28e3e1047aeb57627ad7532c",
-    "size": 6148
    },
    "godstone-audit/proposed-repair/ci/check_evidence_digests.py": {
     "sha256": "764c42593bb0d3a83c57d14562a3ed566b62c9dd63effe9f346e8b5259a3c74f",

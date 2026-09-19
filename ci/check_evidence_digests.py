@@ -131,8 +131,46 @@ def _registered_digests(obj, label: str, force_log_record: bool = False):
         yield (label, "", "", "")
 
 
+def load_ledger(ledger_path: Path):
+    """READ THE LEDGER, OR SAY IN THIS INSTRUMENT'S OWN VOCABULARY WHY IT COULD NOT BE READ.
+
+    *GS-FINAL-001(c), the last clause of the card: "malformed-I/O diagnostics".* **Clause 5 of this
+    instrument's docstring claimeth "IT FAILETH LOUDLY: rc 1 with every defect listed, each as a
+    `::error::` line" -- and a raw `json.JSONDecodeError` traceback is NOT one of its lines: it is the
+    interpreter reporting, in a shape no log parser was written for, that the program died before it
+    began.** *Measured before this function existed: a non-JSON ledger returned rc 1 WITH a traceback
+    and ZERO `::error::` lines -- failing closed, but reporting nothing the contract promiseth.*
+    A control that cannot SAY what it could not read cannot be triaged by whoever finds it red at 3am.
+    """
+    try:
+        text = Path(ledger_path).read_text(encoding="utf-8")
+    except OSError as exc:
+        print("::error::the ledger could not be read: %s (%s)" % (ledger_path, exc))
+        return None
+    except UnicodeDecodeError as exc:
+        print("::error::the ledger is not valid UTF-8: %s (%s)" % (ledger_path, exc))
+        return None
+    try:
+        state = json.loads(text)
+    except json.JSONDecodeError as exc:
+        print("::error::the ledger is not valid JSON: %s (%s)" % (ledger_path, exc))
+        return None
+    if not isinstance(state, dict):
+        print("::error::the ledger is not a JSON object: %s (found %s)"
+              % (ledger_path, type(state).__name__))
+        return None
+    return state
+
+
 def audit(ledger_path: Path, root_override=None) -> dict:
-    state = json.loads(Path(ledger_path).read_text(encoding="utf-8"))
+    state = load_ledger(ledger_path)
+    if state is None:
+        return {"ledger": str(ledger_path), "unreadable": True, "registered": 0, "examined": 0,
+                "verified": 0, "mismatched": [], "unresolved": [], "unnamed": [], "undigested": [],
+                "superseded": [], "root": "", "root_exists": False,
+                "findings": {"registered": 0, "examined": 0, "verified": 0},
+                "convergence": {"registered": 0, "examined": 0, "verified": 0},
+                "other": {"registered": 0, "examined": 0, "verified": 0}}
     declared_root = root_override or state.get("evidence_root") or ""
     root = Path(declared_root)
 
@@ -157,9 +195,23 @@ def audit(ledger_path: Path, root_override=None) -> dict:
         if found is None:
             unresolved.append((name, path_text, "resolveth nowhere under the recorded root"))
             return
+        try:
+            actual = hashlib.sha256(found.read_bytes()).hexdigest()
+        except OSError as exc:
+            # *** GS-FINAL-001(c): "A DIRECTORY WHERE A FILE IS EXPECTED, AN UNREADABLE FILE." ***
+            #
+            # *The ledger's own assessment named these two shapes as owed, and BOTH were raw tracebacks
+            # when this branch was written -- the program died in `read_bytes` before it could count or
+            # name anything.* **The entry resolveth, so it is INSIDE the denominator and must stay
+            # inside it (clause 3); it simply cannot be hashed. `unresolved` is precisely that bucket:
+            # counted among the examined population's remainder and NAMED WITH ITS FINDING ID, exactly
+            # as the irrecoverable-execution entries are.** *An instrument that dies on one bad entry
+            # reporteth nothing about the other 890.*
+            unresolved.append((name, path_text, "cannot be read (%s)"
+                               % (exc.strerror or exc.__class__.__name__)))
+            return
         examined += 1
         per_population[label]["examined"] += 1
-        actual = hashlib.sha256(found.read_bytes()).hexdigest()
         if not digest:
             # A LOG THE RECORD NAMETH BUT NEITHER REGISTERETH NOR CLAIMETH. The file existeth and is
             # hashed here, but the record carrieth no expectation to compare it against -- so it is

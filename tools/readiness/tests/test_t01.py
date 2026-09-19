@@ -21,6 +21,7 @@ GODSTONE_ROOT, GODSTONE_BUILDER_ROOT, GODSTONE_EVIDENCE.
 """
 import json
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
@@ -466,6 +467,50 @@ class ExternalAdditionContentTest(ReadinessTestCase):
             failures = preserve._content_manifest_failures(root, 'EXT')
             self.assertNotEmpty([f for f in failures if 'CHANGED' in f],
                                 msg='a changed recorded file must be refused -- a count cannot see this')
+
+    def test_w05_the_content_manifest_recordeth_content_not_operating_system_metadata(self):
+        """*** A RECORDED FILE THAT THE REPOSITORY ITSELF DECLARETH NON-CONTENT IS A HASH NOBODY CAN KEEP. ***
+
+        *`.gitignore:89` declareth `.DS_Store` NON-CONTENT -- a Finder artefact, never committed, never cloned.* **Yet
+        the content manifest RECORDETH ITS SHA256, and the court above requireth every recorded path to keep that hash
+        for ever.** *Measured: the Finder rewrote both recorded `.DS_Store` blobs with IDENTICAL SIZE (6148 bytes) and
+        the control refused them as "a SUBSTITUTION, not growth" -- a court reddening over a file the repository hath
+        already stated is not evidence.*
+
+        *** AND THE TRAP IS DEEPER THAN A FALSE RED: ON A FRESH CLONE THE FILES ARE ABSENT ENTIRELY, SO "REMOVED a
+        recorded file" FIRETH FOR EVER. A control that cannot pass on a clean checkout of its own commit is not
+        protecting the evidence -- it is pinning the operating system of whoever captured it. ***
+
+        *The property: the manifest enumerate the BUNDLES' CONTENT. Operating-system metadata is a fact about the
+        capture machine, not about the audit; recording it can only ever produce a red that meaneth nothing.*
+        """
+        # THE SHAPE OF THE DEFECT, ARGUED FROM THE REPOSITORY'S OWN DECLARATIONS RATHER THAN FROM MY TASTE:
+        repo_root = Path(REPO)
+        ignored = set()
+        gi = repo_root / '.gitignore'
+        if gi.is_file():
+            ignored = {ln.strip().rstrip('/') for ln in gi.read_text(encoding='utf-8').splitlines()
+                       if ln.strip() and not ln.strip().startswith('#')}
+        self.assertIn('.DS_Store', ignored,
+                      'this arm presupposes the repository declareth .DS_Store non-content; if that changed, '
+                      'the premise must be re-argued rather than silently inherited')
+        path = os.path.join(REPO, 'docs', 'production-readiness',
+                            'ORIGINAL_CHECKOUT_ADDITIONS.hashes.json')
+        if not os.path.isfile(path):
+            self.assertFalse(os.path.isfile(os.path.join(
+                REPO, 'docs', 'production-readiness', 'ORIGINAL_CHECKOUT_ADDITIONS.json')),
+                'a tree with no declaration must carry no manifest either')
+            return
+        with open(path, encoding='utf-8') as stream:
+            doc = json.load(stream)
+        offenders = [key for files in (doc.get('files') or {}).values()
+                     for key in files if os.path.basename(key) in ignored]
+        self.assertEqual(
+            [], offenders,
+            '*** THE CONTENT MANIFEST RECORDETH PATH(S) THE REPOSITORY DECLARETH NON-CONTENT: %r. A recorded hash '
+            'over an ignored file can NEVER be kept: the operating system rewriteth it at will, and a fresh clone '
+            'carrieth it not at all -- so the court redden over a clean checkout and a meaningless substitution '
+            'alike. Record CONTENT; leave the capture machine out of the evidence. ***' % offenders)
 
     def test_w03_a_removed_recorded_file_is_refused(self):
         """And REMOVAL is refused too: removed audit evidence is a failure, not a repair."""

@@ -321,6 +321,62 @@ class EvidenceDigestTest(unittest.TestCase):
         self.assertEqual(text_rc, json_rc,
                          "the two output modes must deliver ONE verdict:\n%s\n%s" % (text_out, json_out))
 
+    def test_w13_a_malformed_ledger_is_a_named_diagnostic_not_a_traceback(self):
+        """GS-FINAL-001(c), THE LAST UNMET CLAUSE OF THE CARD.
+
+        The card's `exact_remediation` demandeth "malformed-I/O diagnostics". The instrument's own
+        clause 5 claimeth "IT FAILETH LOUDLY: rc 1 with every defect listed, each as a `::error::`
+        line" -- *and a PYTHON TRACEBACK IS NOT ONE OF ITS LINES. It is the interpreter reporting,
+        in a shape no log parser was written for, that the program died before it began.* **Measured
+        before this arm existed: a ledger that is not JSON returned rc 1 WITH a traceback and ZERO
+        `::error::` lines -- failing closed, but reporting nothing the contract promiseth.**"""
+        with tempfile.TemporaryDirectory(prefix="gs-final-001-w13-") as tmp:
+            bad = Path(tmp) / "not-json.json"
+            bad.write_text("{not json at all", encoding="utf-8")
+            rc, out, parsed = run_instrument(bad)
+            self.assertEqual(1, rc, "a malformed ledger MUST fail:\n" + out)
+            self.assertNotIn("Traceback", out,
+                             "a raw traceback is not a diagnostic:\n" + out)
+            self.assertIn("::error::", out,
+                          "the instrument's own clause 5 promiseth `::error::` lines; a malformed ledger\n"
+                      "must be NAMED the same way every other defect is:\n" + out)
+            self.assertIn("ledger", out.lower(),
+                          "the diagnostic must name WHAT could not be read:\n" + out)
+
+    def test_w14_an_unreadable_evidence_entry_is_named_like_every_other_defect(self):
+        """GS-FINAL-001(c): *"A DIRECTORY WHERE A FILE IS EXPECTED, AN UNREADABLE FILE"* -- the two
+        shapes the ledger's own assessment named as owed, MEASURED HERE AS RAW TRACEBACKS BEFORE THIS
+        REPAIR. **Clause 5's promise is uniform: `rc 1` with `::error::` lines. An entry that resolves
+        to something the instrument cannot hash must be one of those lines, not an interpreter dump.**
+        """
+        import os
+        import stat as _stat
+        with tempfile.TemporaryDirectory(prefix="gs-final-001-w14-") as tmp:
+            root = Path(tmp)
+            (root / "REMEDIATION" / "X").mkdir(parents=True)
+            (root / "REMEDIATION" / "X" / "adir").mkdir()
+            unreadable = root / "REMEDIATION" / "X" / "sealed.log"
+            unreadable.write_text("sealed\n", encoding="utf-8")
+            for label, name in (("directory where a file is expected", "X/adir"),
+                                ("unreadable file", "X/sealed.log")):
+                if label.startswith("unreadable"):
+                    if os.geteuid() == 0:
+                        continue  # root readeth everything; the shape cannot be produced
+                    unreadable.chmod(0)
+                led = {"evidence_root": str(root),
+                       "findings": {"GS-X": {"my_logs": [{"log": name, "sha256": "0" * 64}]}},
+                       "convergence": {}}
+                ledp = root / "l.json"
+                ledp.write_text(json.dumps(led), encoding="utf-8")
+                rc, out, _ = run_instrument(ledp)
+                self.assertEqual(1, rc, "%s MUST fail:\n%s" % (label, out))
+                self.assertNotIn("Traceback", out,
+                                 "%s produced a raw interpreter dump, not a diagnostic:\n%s" % (label, out))
+                self.assertIn("GS-X", out,
+                              "the diagnostic must NAME the finding whose evidence is unreadable:\n" + out)
+                if label.startswith("unreadable"):
+                    unreadable.chmod(_stat.S_IRUSR | _stat.S_IWUSR)
+
     def test_w12_the_court_counteth_the_population_with_its_own_walker(self):
         """THE COURT MUST NOT SHARE THE INSTRUMENT'S BLIND SPOT. This arm derives the population here,
         with its own walker and its own reading of the record's shapes, and demands that the instrument

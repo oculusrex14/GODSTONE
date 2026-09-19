@@ -34,6 +34,7 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 
 ROOT = '/Users/oculus/Projects/GODSTONE'
@@ -55,8 +56,48 @@ def declared_paths() -> list[str]:
     return [e['path'] for e in doc.get('additions', [])]
 
 
+def ignored_paths(root: str) -> set:
+    """The paths `root`'s own repository declareth NON-CONTENT.
+
+    *** THE CONTENT MANIFEST MUST ENUMERATE CONTENT. *** *A recorded sha256 over an IGNORED file can never be kept:
+    the operating system rewriteth it at will (macOS rewrote both recorded `.DS_Store` blobs with an identical
+    6148-byte size), and a fresh clone carrieth it not at all -- so the court would redden over a clean checkout of
+    its own commit AND over a meaningless substitution alike.* **MEASURED: `declare_external_addition.py --check`
+    reported `2 failure(s)` for exactly this, two Finder artefacts the repository had already declared non-content.**
+
+    *The answer is the repository's OWN ruling, not a hand-kept list: ASK GIT.* **A path `.gitignore`d is, by the
+    record's own definition, not evidence.** *If git is unavailable the set is empty and behaviour is unchanged
+    -- a control that cannot ask the question must not silently invent an answer, so it falls back to recording
+    everything exactly as before.*
+    """
+    try:
+        proc = subprocess.run(['git', 'ls-files', '--others', '--ignored', '--exclude-standard',
+                               '--directory', '--no-empty-directory'],
+                              cwd=root, capture_output=True, text=True)
+    except OSError:
+        return set()
+    if proc.returncode != 0:
+        return set()
+    return {ln.strip().rstrip('/') for ln in proc.stdout.splitlines() if ln.strip()}
+
+
+def is_non_content(key: str, ignored: set) -> bool:
+    """Whether `key` (a repository-relative path) is declared non-content.
+
+    **MATCHED AT ANY DEPTH**, because git reporteth a whole ignored DIRECTORY as one entry: a `.DS_Store` inside a
+    bundle whose parent is ignored must be excluded the same way a bare `.DS_Store` is.
+    """
+    normalized = key.replace(os.sep, '/').strip('/')
+    if not ignored:
+        return False
+    parts = normalized.split('/')
+    return any('/'.join(parts[:i + 1]) in ignored or parts[i] in ignored
+               for i in range(len(parts)))
+
+
 def build(root: str = ROOT) -> dict:
     entries: dict[str, dict] = {}
+    ignored = ignored_paths(root)
     for rel in declared_paths():
         base = os.path.join(root, rel)
         if not os.path.isdir(base):
@@ -66,6 +107,8 @@ def build(root: str = ROOT) -> dict:
             for name in sorted(filenames):
                 full = os.path.join(dirpath, name)
                 key = os.path.relpath(full, root)
+                if is_non_content(key, ignored):
+                    continue  # THE CAPTURE MACHINE IS NOT PART OF THE EVIDENCE (see `ignored_paths`)
                 files[key] = {'sha256': sha256_file(full), 'size': os.path.getsize(full)}
         entries[rel] = files
     return entries
