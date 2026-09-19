@@ -99,5 +99,13 @@
   "record_corrections": 64,
   "board2_branch": "board2/device-release-validation",
   "board2_sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
-  "main_pointer_note": "POSITIONAL, NOT LITERAL. `main_sha` is the frozen candidate that `main` was fast-forwarded to, and it equals the tag target. The docs record lives in a chain of docs-only commits ON TOP of it, so `main`'s TIP advances with each docs commit and is deliberately not written here: a literal tip SHA self-invalidates on the very next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc2`."
+  "main_pointer_note": "POSITIONAL, NOT LITERAL. `main_sha` is the frozen candidate that `main` was fast-forwarded to, and it equals the tag target. The docs record lives in a chain of docs-only commits ON TOP of it, so `main`'s TIP advances with each docs commit and is deliberately not written here: a literal tip SHA self-invalidates on the very next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc2`.",
+  "catalogue_declaration_gap": {
+    "severity": "RECORDED, NOT CLOSED (catalogue defect, not an external blocker)",
+    "what": "Seven BLOCKED_EXTERNAL tasks declare a PURE-PYTHON narrow-stage regression path that does not exist in the tree: tools/readiness/tests/test_t73.py, test_t74.py, test_t75.py, test_t76.py, test_t78.py, test_t79.py, test_t80.py.",
+    "consequence": "Those narrow stages cannot pass as written, whatever arrives: `python3 -m tools.readiness.run task T78 --stage narrow` -> 'FAILED exit=5 tests=0/0'. The declaration is a task-catalogue defect, independent of the external blocker.",
+    "why_not_closed_here": "Writing these courts as fixtures would witness the shape of the machinery rather than the task's real deliverable (a full L0-L10 candidate evaluation bound to approved external artifacts); the blueprint forbids closing a gate with a self-generated fixture, and section 27 forbids placeholder libraries.",
+    "NOT_a_claim_that_the_behaviour_is_unwitnessed": "T78's card negative -- 'substitute an old SHA: candidate evaluator must fail' -- IS already witnessed, by the candidate evaluator's own selftest: ci/check_release_gates_status.py --selftest refuses 12/12 malformed/false-closure controls and 15/15 evidence controls, including 'unresolvable evidence commit', 'non-ancestor remote commit' and 'substituted executor (fixture green)'.",
+    "correction_note": "An earlier draft of BOARD1_CLOSURE.md argued the twelve are external BECAUSE their declared paths are absent. That inference does not hold for these seven pure-python paths and was removed; the classification is carried by the audit's adjudication plus the machine-checked frontier court (tools/readiness/tests/test_blocked_external.py, 10/10 arms), which does not depend on file absence."
+  }
 }

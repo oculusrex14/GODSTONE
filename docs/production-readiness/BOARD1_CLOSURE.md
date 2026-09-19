@@ -208,11 +208,43 @@ Ten, listed in §D above. All are repaired; none is deferred.
 
 The twelve: T62, T63, T64, T65, T73, T74, T75, T76, T78, T79, T80, T81.
 
-**Every one of the twelve was re-evaluated against source rather than inherited.** All twelve are
-gated by the five external registers, and each task's own `required_regression_paths` (e.g.
-`ReadinessT62Test.kt`, `ReadinessT73Tests.swift`, `test_t78.py`) **do not exist in the tree** —
-their internal prerequisites are the external artifact itself, which is why the register records
-`internal_prerequisites_completed` honestly and why none may be reclassified.
+**THE CLASSIFICATION RESTS ON EVIDENCE THAT IS NOT THE MISSING FILES, AND AN EARLIER DRAFT OF THIS
+SECTION GOT THAT WRONG.** That draft argued the twelve are external *because* their declared
+`required_regression_paths` do not exist in the tree. **That inference does not hold, and for seven of
+them it is simply false.** Measured: `tools/readiness/tests/test_t73.py`, `test_t74.py`, `test_t75.py`,
+`test_t76.py`, `test_t78.py`, `test_t79.py` and `test_t80.py` are all declared, all absent, and all
+**pure-python** — so the absence of a python file cannot be evidence that an *external artifact* is
+missing. Running the declared stage proves it: `python3 -m tools.readiness.run task T78 --stage narrow`
+returns `FAILED exit=5 tests=0/0`, i.e. **the stage cannot pass as written, whatever arrives.**
+
+The classification is instead carried by two things that do not depend on file absence:
+
+- **The independent audit's own adjudication**, preserved read-only in the bundle: *"T78's builder
+  ledger still records BLOCKED_EXTERNAL; that is preserved as a historical fact. The audit classifies
+  it as dependency-blocked final convergence."* The audit also states the lane logic directly: T62–65
+  and T73–76 acceptance executes against the repaired candidate and pinned inputs, and *"T78 is absent
+  from this lane because it is final convergence and evidence handoff."*
+- **The machine-checked frontier law**, `tools/readiness/tests/test_blocked_external.py`, **10/10 arms
+  green**, which asserts the counts *from the records* and asserts that *"no internally-runnable task
+  remaineth"* — and which **refuses** the moment anyone tries to close a gate with a fixture, claim
+  COMPLETE on a blocker, or overstate transitive prerequisites (W02–W04 are falsified against those
+  mutations).
+
+**THE SEVEN MISSING PYTHON COURTS ARE RECORDED HERE AS A REAL GAP, NOT BURIED UNDER THE
+CLASSIFICATION.** They are a catalogue-declaration defect: a task declares a regression path that was
+never authored, so its narrow stage is unpassable by construction. It is *not* evidence of external
+gating, and it is *not* a claim that the behaviour is unwitnessed — **for T78 the refusals its card's
+semantic negative names are already witnessed**, by the candidate evaluator's own selftest:
+`ci/check_release_gates_status.py --selftest` refuses 12/12 malformed/false-closure controls and 15/15
+evidence controls, including *"unresolvable evidence commit"*, *"non-ancestor remote commit"* and
+*"substituted executor (fixture green)"* — which is precisely *"substitute an old SHA: candidate
+evaluator must fail"*. The witness exists in the evaluator's court rather than in the file the
+catalogue names.
+
+The gap is left OPEN and named rather than closed, because authoring `test_t78.py` as a fixture-shaped
+court would witness the evaluator's *shape* instead of T78's actual deliverable (a full L0–L10
+candidate evaluation across declared profiles), which is what the external artifacts gate — and the
+blueprint forbids closing a gate with a self-generated fixture.
 
 **No internally repairable task is labelled external.** The three findings whose *status fields*
 claimed otherwise (GS-STRESS-001, GS-UX-001, and GS-RUNTIME-001's "Context wall") were corrected —
@@ -227,8 +259,7 @@ includes the externally-blocked tasks above:
   discharges is discharged, and this document is the exact-SHA candidate evidence T78 assembles.
 - **Full production convergence: WAITING on the five external gates.** It cannot be issued from
   this machine.
-T78's `required_regression_paths` entry `tools/readiness/tests/test_t78.py` does not exist, so the
-task's own evidence assembly is part of what the external audit consumes.
+The absence of `tools/readiness/tests/test_t78.py` is **not** why T78 is blocked -- that is the catalogue-declaration gap named above. T78 is blocked because its dependency set (T01-T77) includes T62-T65 and T73-T76/T79-T81, whose inputs are the five external registers; the audit adjudicates it as *dependency-blocked final convergence*, and both halves of that phrase are load-bearing: **dependency-blocked** (not merely external) and **final convergence** (not internal convergence, which IS green and is what this document is).
 
 ## G. External-only remainder
 
