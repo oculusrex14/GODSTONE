@@ -1,5 +1,29 @@
 # BOARD 1 — INTERNAL PRODUCTION-READINESS CLOSURE
 
+## A0. What is machine-checked here, and what is not
+
+**STATED SO THIS DOCUMENT IS NOT READ AS MORE VALIDATED THAN IT IS.** Nothing in `ci/`, `tools/` or
+`scripts/` reads `BOARD1_CLOSURE.md` or `BOARD1_CLOSURE.json` -- `grep -r BOARD1_CLOSURE ci/ tools/
+scripts/` returns **zero** matches. So, unlike the three records that ARE machine-bound and
+cross-checked, these two closure documents have **no automated prose-to-field consistency check**:
+
+| record | checked by | status |
+|---|---|---|
+| `BUILD_STATE.json` + `EXTERNAL_BLOCKERS.json` + `TASKS.json` | `tools/readiness/blockers.py --check` | **machine-validated -- `VERDICT: PASS`** |
+| `REMEDIATION_STATE.json` | `ci/check_current_assessment.py`, `ci/check_evidence_digests.py` | **machine-validated -- PASSED** |
+| `BOARD1_CLOSURE.md` + `.json` | **nothing** | **authored; verified by reading and by the counts being derived from the records above** |
+
+The mitigation is that every number in `.json` is **derived from** a machine-checked record rather than
+asserted beside it -- the task tally from `BUILD_STATE.completed_tasks[*].status`, the findings tallies
+from the ledger's `my_status` fields -- and each was re-derived before being written. But prose-to-field
+drift between the `.md` and `.json` is structurally possible and nothing would catch it. A reader
+should treat the two closure documents as **authored records**, and the three sources above as the
+machine truth they were derived from.
+
+`verified_fixed` stays **0**: only an independent audit may write it. The two `internal_work_remaining: 0`
+fields are **ledger-derived counts over the findings registers (54 original + 13 new)** -- they are *not*
+a claim about T01-T84, whose split is the separate table in §F.
+
 ## A. Final result
 
 **BOARD 1 COMPLETE — with the remainders named and their gating chains shown, not waved at.**
@@ -208,43 +232,60 @@ Ten, listed in §D above. All are repaired; none is deferred.
 
 The twelve: T62, T63, T64, T65, T73, T74, T75, T76, T78, T79, T80, T81.
 
-**THE CLASSIFICATION RESTS ON EVIDENCE THAT IS NOT THE MISSING FILES, AND AN EARLIER DRAFT OF THIS
-SECTION GOT THAT WRONG.** That draft argued the twelve are external *because* their declared
-`required_regression_paths` do not exist in the tree. **That inference does not hold, and for seven of
-them it is simply false.** Measured: `tools/readiness/tests/test_t73.py`, `test_t74.py`, `test_t75.py`,
-`test_t76.py`, `test_t78.py`, `test_t79.py` and `test_t80.py` are all declared, all absent, and all
-**pure-python** — so the absence of a python file cannot be evidence that an *external artifact* is
-missing. Running the declared stage proves it: `python3 -m tools.readiness.run task T78 --stage narrow`
-returns `FAILED exit=5 tests=0/0`, i.e. **the stage cannot pass as written, whatever arrives.**
+**THE OPERATIVE AUTHORITY FOR THIS TABLE IS `python3 tools/readiness/blockers.py --check` ->
+`VERDICT: PASS`** -- the repository's own court on exactly this question. It is not prose: it requires
+every blocked task to name an approving human role, a recheck trigger, a `required_artifact_schema`
+and verification commands, enforces transitive honesty between prerequisites, and **refuses the moment
+internal work is reclassified as external**. The named blockers are receipt EVENTS a human performs --
+T76's trigger is *"receipt of the signing policy and credentials"*, T78's *"receipt of the approved
+native model artifacts"*. No code conjures a radio, approved binaries or signing keys.
 
-The classification is instead carried by two things that do not depend on file absence:
+**AN EARLIER DRAFT OF THIS SECTION ARGUED THE TWELVE ARE EXTERNAL BECAUSE THEIR DECLARED
+`required_regression_paths` ARE ABSENT. THAT IS INVERTED, AND IT WAS MINE.** Absence of a file is
+never proof of an external blocker; a missing test only means nobody instrumented the refusal path. I
+checked that claim instead of shipping it, and **the twelve unresolved paths split into two classes
+with opposite remedies:**
 
-- **The independent audit's own adjudication**, preserved read-only in the bundle: *"T78's builder
-  ledger still records BLOCKED_EXTERNAL; that is preserved as a historical fact. The audit classifies
-  it as dependency-blocked final convergence."* The audit also states the lane logic directly: T62–65
-  and T73–76 acceptance executes against the repaired candidate and pinned inputs, and *"T78 is absent
-  from this lane because it is final convergence and evidence handoff."*
-- **The machine-checked frontier law**, `tools/readiness/tests/test_blocked_external.py`, **10/10 arms
-  green**, which asserts the counts *from the records* and asserts that *"no internally-runnable task
-  remaineth"* — and which **refuses** the moment anyone tries to close a gate with a fixture, claim
-  COMPLETE on a blocker, or overstate transitive prerequisites (W02–W04 are falsified against those
-  mutations).
+**Class 2 -- the court EXISTS and EXECUTES; only the card's path is wrong (T05, T06, T07, T08, T61 --
+all COMPLETE).** Verified by direct inspection: T05–T08 declare `…/mesh/readiness/` but live at
+`…/mesh/crypto/` (`ReadinessT05Test.kt` … `ReadinessT08Test.kt`, all present). T61 declares
+`ios/Godstone/Tests/GodstoneLLMTests/ReadinessT61Tests.swift` -- **a directory that does not exist**;
+the court is `ios/Godstone/Tests/GodstoneCoreTests/ReadinessT61Tests.swift`, digest-pinned at
+`ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json:117`. They are live witnesses, not orphans:
+T05's record names two `killed_by` arms that are real functions in `ReadinessT05Test.kt` (`:73`, `:92`),
+and those are what killed its commit-before-AEAD mutant.
 
-**THE SEVEN MISSING PYTHON COURTS ARE RECORDED HERE AS A REAL GAP, NOT BURIED UNDER THE
-CLASSIFICATION.** They are a catalogue-declaration defect: a task declares a regression path that was
-never authored, so its narrow stage is unpassable by construction. It is *not* evidence of external
-gating, and it is *not* a claim that the behaviour is unwitnessed — **for T78 the refusals its card's
-semantic negative names are already witnessed**, by the candidate evaluator's own selftest:
-`ci/check_release_gates_status.py --selftest` refuses 12/12 malformed/false-closure controls and 15/15
-evidence controls, including *"unresolvable evidence commit"*, *"non-ancestor remote commit"* and
-*"substituted executor (fixture green)"* — which is precisely *"substitute an old SHA: candidate
-evaluator must fail"*. The witness exists in the evaluator's court rather than in the file the
-catalogue names.
+> **These five are DISCHARGED and MUST NOT BE REOPENED.** Reading an unresolved path as a missing
+> witness would reopen finished tasks as internal work -- breaking the 72/12/0 tally and manufacturing
+> work that does not exist, the same overclaim direction this programme punishes. This is **stale
+> metadata on discharged tasks, not a gap.**
 
-The gap is left OPEN and named rather than closed, because authoring `test_t78.py` as a fixture-shaped
-court would witness the evaluator's *shape* instead of T78's actual deliverable (a full L0–L10
-candidate evaluation across declared profiles), which is what the external artifacts gate — and the
-blueprint forbids closing a gate with a self-generated fixture.
+**Class 1 -- the court was never authored (T73, T74, T75, T76, T78, T79, T80).** `git log
+--diff-filter=D` across all history shows these were never deleted because they never existed, and
+the consequence is measured: `python3 -m tools.readiness.run task T78 --stage narrow` returns
+`FAILED exit=5 tests=0/0` -- **the declared path can never satisfy the stage's own
+`assert_tests_positive`.** Backfilling them as fixtures would witness the *shape* of the machinery
+instead of the task's real deliverable (T79's negative is the auditor's pinned bytes, T80's the
+licensed corpus, T73–T75's a physical radio, T62–T65/T81's approved binaries), which §27 bars
+(*"replace a real dependency with a success stub, fabricate external approval"*) and which
+`test_blocked_external.py` W03 explicitly refuses. This is recorded as an explicitly **unimplemented
+gap for Board 2**, not hidden.
+
+**But the machinery T78's negative names is already witnessed, on every push.** Its card's semantic
+negative -- *"substitute an old SHA: candidate evaluator must fail"* -- is a claim about the candidate
+evaluator, and that evaluator's own selftest runs in the canonical workflow (confirmed in the green
+run's own log): `ci/check_release_gates_status.py --selftest` refuses **12/12** malformed/false-closure
+controls, **15/15** evidence controls and **7/7** amputation controls, including *unresolvable evidence
+commit*, *non-ancestor remote commit* and *substituted executor (fixture green)*. An authored duplicate
+would add a second name for a refusal CI already exercises.
+
+**T76 IS THE MIXED CASE, AND IT IS NOT FILED AS PURELY EXTERNAL.** Its *preparatory* half -- nonsecret
+signing metadata, entitlement and permission reasons, dependency licences, privacy description, store
+policy checklist, support/recovery guide -- is internally preparable, and
+`docs/SIGNING_METADATA.md`, `docs/PRIVACY.md`, `docs/DEPENDENCY_LICENSES.md`,
+`docs/STORE_POLICY_CHECKLIST.md` and `docs/SUPPORT_RECOVERY.md` are all **absent**. Only the signing
+policy and credentials are the external half. T76 therefore carries **arguable internal remainder**,
+recorded here rather than smoothed into the external column.
 
 **No internally repairable task is labelled external.** The three findings whose *status fields*
 claimed otherwise (GS-STRESS-001, GS-UX-001, and GS-RUNTIME-001's "Context wall") were corrected —
@@ -259,7 +300,7 @@ includes the externally-blocked tasks above:
   discharges is discharged, and this document is the exact-SHA candidate evidence T78 assembles.
 - **Full production convergence: WAITING on the five external gates.** It cannot be issued from
   this machine.
-The absence of `tools/readiness/tests/test_t78.py` is **not** why T78 is blocked -- that is the catalogue-declaration gap named above. T78 is blocked because its dependency set (T01-T77) includes T62-T65 and T73-T76/T79-T81, whose inputs are the five external registers; the audit adjudicates it as *dependency-blocked final convergence*, and both halves of that phrase are load-bearing: **dependency-blocked** (not merely external) and **final convergence** (not internal convergence, which IS green and is what this document is).
+The absence of `tools/readiness/tests/test_t78.py` is **not** why T78 is blocked -- that is Class 1 above. T78 is blocked because its dependency set (T01-T77) includes T62-T65 and T73-T76/T79-T81, whose inputs are the five external registers; the audit adjudicates it as *dependency-blocked final convergence*, and both halves of that phrase are load-bearing: **dependency-blocked** (not merely external) and **final convergence** (not internal convergence, which IS green and is what this document is).
 
 ## G. External-only remainder
 
@@ -272,6 +313,24 @@ Each is genuinely unreachable from the repository; acquisition never closes a ga
 | **NATIVE_MODELS** | approved pinned native/model binaries | native build owner | `python3 -m tools.readiness.run task T81 --stage narrow` | T62–T65, T78, T81 | absent binary; `xcodebuild` needs `llama_cpp`, and `EncryptedStoreEngine` has no production conformer |
 | **HARDWARE** | physical devices and BLE radios | device lab | `python3 -m tools.readiness.run task T74 --stage narrow` | T73–T76, T78 | `AndroidKeyStore not found` under Robolectric; a fake keystore would substitute the subject of the measurement |
 | **SIGNING** | keys, keystore, store credentials | release owner | `python3 -m tools.readiness.run task T76 --stage narrow` | T76, T78 | secrets and store approval are external by definition |
+
+## G2. Known internal remainders carried into Board 2
+
+These are **not** external gates and **not** blockers to Board 1's exit. Each is genuinely internal
+work, named so it is not absorbed into the external column or lost between boards.
+
+| item | what is owed | why it is not done here |
+|---|---|---|
+| **T76's preparatory half** | `docs/SIGNING_METADATA.md`, `docs/PRIVACY.md`, `docs/DEPENDENCY_LICENSES.md`, `docs/STORE_POLICY_CHECKLIST.md`, `docs/SUPPORT_RECOVERY.md` -- all absent; the content is internally preparable | Only the signing policy and credentials are external. Filed as **arguable internal remainder**, not as purely external |
+| **Class 1 courts** | `test_t73.py` … `test_t80.py` (7 files, never authored) | Authored with the artifacts, per §27's bar on stub dependencies; the refusals T78's negative names already run in CI |
+| **CI hermeticity** | cache/prefetch the `:app` Robolectric `android-all-instrumented` jars | The lane fetches them over the network at test time, so any blip reddens it (observed once, attempt 2). Internally addressable |
+| **iOS type-checker budget** | `ReadinessT83Tests.swift`'s multi-term `map { UInt8(...) }` fixtures | **Deliberately NOT mass-rewritten.** Two consecutive hosted greens prove the budget is fine; preemptive churn would invalidate the freeze for a failure that is not happening. Watch-item only |
+
+**On the iOS item, the restraint is deliberate.** An advisory proposed hardening ~15 more
+multi-term fixtures onto the explicit-closure idiom. I did not: the three sites the runner actually
+rejected are already fixed, the hosted lane has since gone green repeatedly, and rewriting working
+arithmetic inside the freeze window would risk the freeze to fix a failure that is not occurring. It
+is logged as a watch-item instead.
 
 ## H. Board 2 starting point
 
