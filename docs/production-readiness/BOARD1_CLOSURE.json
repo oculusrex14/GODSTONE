@@ -25,7 +25,34 @@
       "ios": "'** TEST SUCCEEDED **'; 'GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)'",
       "note": "Cited POSITIONALLY (newest push run on the `main` ref), not by literal id: the tip advances with each docs commit, so a literal run id or SHA here would self-invalidate."
     },
-    "run_pointer_note": "CITED POSITIONALLY FOR THE TIP. This entry binds the run that exercised the FROZEN CANDIDATE (attempt 1 of 35446805693, all six jobs). GitHub reports the LATEST attempt, so that run's aggregate conclusion now reads 'failure' from attempt 2's transient Robolectric network error -- which is why the binding names ATTEMPT 1 and why `second_green` exists. For the main TIP, read the newest `push` run of `repository-verification` on the `main` ref; a literal run id here would go stale with each docs commit."
+    "run_pointer_note": "CITED POSITIONALLY FOR THE TIP. This entry binds the run that exercised the FROZEN CANDIDATE (attempt 1 of 35446805693, all six jobs). GitHub reports the LATEST attempt, so that run's aggregate conclusion now reads 'failure' from attempt 2's transient Robolectric network error -- which is why the binding names ATTEMPT 1 and why `second_green` exists. For the main TIP, read the newest `push` run of `repository-verification` on the `main` ref; a literal run id here would go stale with each docs commit.",
+    "greens": [
+      {
+        "artifact": "frozen candidate",
+        "sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
+        "run": "35446805693 attempt 1",
+        "result": "ALL SIX JOBS SUCCESS"
+      },
+      {
+        "artifact": "main tip",
+        "sha": "bf7b83c5",
+        "run": "35450312289",
+        "result": "ALL SIX JOBS SUCCESS"
+      },
+      {
+        "artifact": "main tip",
+        "sha": "c7d735d8",
+        "run": "35451828797",
+        "result": "ALL SIX JOBS SUCCESS"
+      },
+      {
+        "artifact": "main tip",
+        "sha": "6955d5e3",
+        "run": "35452985414",
+        "result": "ALL SIX JOBS SUCCESS"
+      }
+    ],
+    "greens_note": "FOUR CONSECUTIVE FULL 6/6 HOSTED GREENS. The android lane -- the one local runs cannot predict -- passed on every one. Per section 25, docs-only commits cannot move the tag and cannot redden a lane that compiles no Kotlin/Swift/python path; the candidate-qualifying green is the FIRST row, at the frozen candidate. The later rows are confirmation on the docs chain, cited by SHA because those SHAs are now immutable history."
   },
   "tasks": {
     "total": 84,
