@@ -90,12 +90,20 @@ final class ReadinessT83Tests: XCTestCase {
         })
     }
 
-    // The closure's parameter is given an EXPLICIT `Int` type because the bare `$0` form made the body a single
-    // inference unit: the runner's Xcode refused it with "the compiler is unable to type-check this expression in
-    // reasonable time" (the same file already used the explicit form at `nodeOf`). The arithmetic is IDENTICAL --
-    // same bytes, same fixtures -- so no assertion or vector moveth.
+    // NO CLOSURE AT ALL. The runner's Xcode refused the `Data((0..<16).map { ... })` form with "unable to
+    // type-check this expression in reasonable time", and it refused it EVEN AFTER the closure parameter was
+    // given an explicit type -- while the multi-statement closure just above it (`nodeOf`) compiled fine. The
+    // distinguishing factor is that a SINGLE-EXPRESSION closure leaves the collection construction and the
+    // element conversion in one inference unit. An explicit loop has nothing to infer, and it is the form the
+    // compiler's own message asks for ("break the expression into distinct sub-expressions"). The arithmetic is
+    // IDENTICAL -- same bytes, same fixtures -- so no assertion or vector moveth.
     private func nonceOf(_ seed: Int) -> Data {
-        Data((0..<16).map { i -> UInt8 in UInt8((i * 31 + seed * 5 + 3) & 0xFF) })
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(16)
+        for i in 0..<16 {
+            bytes.append(UInt8((i * 31 + seed * 5 + 3) & 0xFF))
+        }
+        return Data(bytes)
     }
 
     private func hintOf(_ nodeId: Data) -> Data { Data(nodeId.prefix(4)) }
@@ -294,7 +302,10 @@ final class ReadinessT83Tests: XCTestCase {
         r.keys.dropAll()   // unknown keys -> all variants enter opaquely and must not dedup each other
         var seen: [Data] = []
         for i in 0..<4 {
-            let seed = Data((0..<32).map { j -> UInt8 in UInt8((j * 13 + i * 101 + 5) & 0xFF) })
+            var seedBytes = [UInt8]()
+            seedBytes.reserveCapacity(32)
+            for j in 0..<32 { seedBytes.append(UInt8((j * 13 + i * 101 + 5) & 0xFF)) }
+            let seed = Data(seedBytes)
             let v = try AckFrame.build(msgId: frame.msgId, recipientSigningPrivKey: seed,
                                        recipientNodeId: r.me.id.nodeId, routingTag: hintOf(r.me.id.nodeId))
             guard case .stored(let k) = d.admitForeignCandidate(v.encode(), receivedFrom: r.originId) else {
@@ -339,7 +350,10 @@ final class ReadinessT83Tests: XCTestCase {
             let m = nodeOf(p, 0x21)
             let recip = nodeOf(p, 0x5E)
             for k in 0..<4 {
-                let sig = Data((0..<64).map { j -> UInt8 in UInt8((j * 7 + p * 3 + k + 1) & 0xFF) })
+                var sigBytes = [UInt8]()
+                sigBytes.reserveCapacity(64)
+                for j in 0..<64 { sigBytes.append(UInt8((j * 7 + p * 3 + k + 1) & 0xFF)) }
+                let sig = Data(sigBytes)
                 guard let key = AckCacheKey.compute(msgId: m, recipientNodeId: recip, signature: sig) else {
                     XCTFail("fixture digest"); return
                 }
