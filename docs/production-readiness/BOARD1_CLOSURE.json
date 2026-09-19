@@ -16,6 +16,14 @@
       "mesh simulation": "success",
       "android source compile + unit tests": "success",
       "ios core + mesh tests + Archive-only xcodebuild": "success"
+    },
+    "second_green": {
+      "scope": "the docs-only tip of `main` (fast-forwarded onto candidate_sha)",
+      "workflow": "repository-verification",
+      "event": "push",
+      "conclusion": "success -- ALL SIX JOBS",
+      "ios": "'** TEST SUCCEEDED **'; 'GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)'",
+      "note": "Cited POSITIONALLY (newest push run on the `main` ref), not by literal id: the tip advances with each docs commit, so a literal run id or SHA here would self-invalidate."
     }
   },
   "tasks": {

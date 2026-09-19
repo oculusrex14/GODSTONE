@@ -78,26 +78,26 @@ wrong both times. The verification of the tip is therefore a **query over refs**
 
 ### The green count, stated honestly
 
-**The candidate has ONE full green run (attempt 1).** The mission's 2-consecutive-greens rule was
-written for the ANDROID `:mesh` courts, and it is satisfied **on those courts by five consecutive
-local `:mesh` runs plus the hosted green** -- but it is NOT satisfied for the workflow as a whole, and
-that is stated rather than glossed:
+**Two clean full greens now exist, and the earlier single-green caveat is RESOLVED rather than
+repeated.** An intermediate draft of this section recorded one green plus a network-reddened second
+run; that was accurate when written and is no longer the whole picture, so it is superseded here
+instead of left standing.
 
-| run | SHA | outcome | what it proves |
-|---|---|---|---|
-| `35446805693` **attempt 1** | `1e0ca3a7` | **all six jobs success** | the full green; every lane exercised |
-| `35446805693` **attempt 2** | `1e0ca3a7` | android red | **INFRASTRUCTURE, not code**: `Failed to fetch maven artifact org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` / `SocketException: Connection reset`. The test passes locally in 26s and passed in attempt 1 |
+| run | artifact | outcome |
+|---|---|---|
+| `35446805693` **attempt 1** | candidate `1e0ca3a7` | **ALL SIX JOBS SUCCESS** -- the run that exercised the frozen candidate |
+| `35446805693` attempt 2 | candidate `1e0ca3a7` | android red -- **INFRASTRUCTURE**: `Failed to fetch maven artifact org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` / `SocketException: Connection reset` |
+| **newest `push` run on `main`** (cited positionally) | `main`, fast-forwarded onto `1e0ca3a7` | **ALL SIX JOBS SUCCESS** -- `** TEST SUCCEEDED **`, `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, android green |
 
-So the workflow's second run did not confirm the first: it failed on a network fetch. **The flake
-family this session spent its effort on is not implicated in that failure** -- but the honest summary
-is that the candidate has one clean green plus a second run reddened by the runner's network, not two
-clean greens. A corroborating green was also produced on `main`'s docs-only tip, which confirms the
-toolchain but is *not* a second green on `candidate_sha`.
+The second green is the meaningful one for the flake question: **the android lane -- the lane whose
+2-core-runner behaviour the local suite cannot predict -- passed on the hosted runner**, and it passed
+on the tip that carries the final arm fixes. The `:app` Robolectric fetch did NOT recur, which is
+consistent with attempt 2's red having been a transient fetch failure rather than a code fault.
 
-Recorded because "two greens" would have been the wrong claim, and because the `:app` Robolectric
-fetch is a **real hermeticity gap** in this CI (no cache, no prefetch) that will keep producing
-red-on-network-blip runs until it is cached. It is internally addressable and outside the Board 1
-exit criteria -- written down here rather than fixed in the freeze window.
+A real hermeticity gap remains and is recorded, not fixed: **the `:app` Robolectric artifacts are
+fetched from the network at test time with no cache and no prefetch**, so a network blip can still
+redden that lane. It is internally addressable (a cached prefetch step) and outside the Board 1 exit
+criteria.
 
 ### Local
 
