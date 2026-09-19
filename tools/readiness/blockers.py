@@ -235,10 +235,21 @@ def report(root) -> str:
     for blocker in register.get("blockers", []):
         lines.append("  %-18s %-20s tasks=%s"
                      % (blocker["id"], blocker["class"], ",".join(blocker["dependent_tasks"])))
-    for problem in findings(root):
+    # *** THE VERDICT IS COMPUTED ONCE AND PRINTED FROM THAT ONE RESULT. *** *This function used to call
+    # `findings(root)` TWICE -- once for the printed FINDING lines and again for the verdict -- which ran two
+    # full audits of the same run. Any nondeterminism between them would let the printed findings DISAGREE
+    # with the verdict that summariseth them: the split-verdict defect this repository hunteth everywhere
+    # else. One audit, one verdict, printed from the same value.*
+    problems = findings(root)
+    for problem in problems:
         lines.append("  FINDING " + problem)
-    verdict = findings(root)
-    lines.append("VERDICT: " + ("PASS" if not verdict else "FAIL (%d)" % len(verdict)))
+    # The legend is REQUIRED, not decoration: this line sits under five unmet gate names, so a bare PASS
+    # readeth as "the gates are satisfied" when it means the opposite. See the module docstring item (6).
+    lines.append("VERDICT: " + ("PASS" if not problems else "FAIL (%d)" % len(problems)))
+    lines.append("  (PASS = the register is INTERNALLY HONEST about what is owed: every externally-blocked "
+                 "task is recorded OPEN/BLOCKED and every readiness flag is false. It is NOT a statement "
+                 "that any obligation is met -- an unmet external gate is SUPPOSED to read PASS here, and "
+                 "this refuses the moment someone flips a flag true to satisfy it.)")
     return "\n".join(lines)
 
 

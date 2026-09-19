@@ -95,7 +95,11 @@ provenance-*.json
 # clean-tree provenance checks.
 docs/production-readiness/.runtime-state.json
 
-# *** THE iOS LANE'S RESULT ARTIFACT (round 691). ***
+# *** THE iOS LANE'S RESULT ARTIFACT (introduced in f4c864d5). ***
+# (wording RECONSTRUCTED 2026-09-19: the commit that introduced this rule also ATE its own prose -- the
+#  heredoc swallowed the backticks and the text -- so no commit ever carried the original wording. THIS IS
+#  A PARAPHRASE FROM f4c864d5's COMMIT MESSAGE, NOT A RECOVERY. The commit SHA is cited rather than a round
+#  number because the SHA is verifiable and the round label was not.)
 # `swift test` writeth NO xunit file, so its LOG is the only artifact the lane produceth -- the Android
 # lanes' results live under `build/`, already ignored above. So LANE RESULTS parses this log directly
 # rather than by a grep that could only print failures. *Like the Android lanes' `build/test-results/`,
@@ -108,7 +112,10 @@ docs/production-readiness/.runtime-state.json
 # MIRRORS A MEASUREMENT GOES STALE SILENTLY; the control printeth the live figures on every run.*
 ios-lane.log
 
-# *** LANE PROVENANCE SIDECARS (round 697). ***
+# *** LANE PROVENANCE SIDECARS (introduced in 74155b42). ***
+# (wording RECONSTRUCTED 2026-09-19, on the same terms as the block above: paraphrase from 74155b42's own
+#  commit message, because the introducing heredoc ate the original. Earlier revisions of this comment said
+#  "round 697"; the measured introducer is 74155b42, so the unverifiable round label is replaced by the SHA.)
 # Written by the RUNNERS, beside each artifact: `ios-lane.log.sources.sha256` and
 # `android-*.sources.sha256`. THE RUNNER IS THE ONLY PARTY THAT KNOWETH WHICH TREE IT COMPILED; the control
 # can only CHECK. Each digest is over content, path-sorted, and SHARED between runner and control -- the
