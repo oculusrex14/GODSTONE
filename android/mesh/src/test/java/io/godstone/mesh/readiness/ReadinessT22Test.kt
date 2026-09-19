@@ -776,16 +776,22 @@ class ReadinessT22Test {
 
         // application\'s begin is not.
 
-        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
-
-
+        // *** THE WHOLE CAPTURED RECORD IS PUSHED, NOT A RE-FORGED SINGLE FRAGMENT. ***
+        // *This site used to take `.firstOrNull()` of the captured writes, lift its payload, and RE-FORGE it as
+        // `forge(HS1, seq=0, payload)`. MEASURED on the 2-core runner: the responder refused it --
+        // `hs.read.responder|hs1 rejected` -- because that counsel is NOT always one fragment: `awaitNonEmpty`
+        // returneth as soon as ANY write existeth, so a MULTI-FRAGMENT HS1 was captured half-formed and the
+        // responder's reassembler rightly rejected the truncated record. And because a rejected hs1 CLOSETH the
+        // relation, the arm then died on its own "the second must be queued" wait with no way to recover.*
+        // **The sibling helper in T23 pushToResponder's the WHOLE LIST (`hs1.toList()`), which is why it never
+        // showed this. The arm's claim -- "the application's first counsel travelled" -- is unchanged; only the
+        // assembly is corrected.**
+        val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
-
-
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-
+        }
+        val hs1 = payloadOfFragment(hs1Frags.first())
         assertNotNull("the application\'s first counsel must have travelled", hs1)
-        rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
+        rig.pushToResponder(hs1Frags.toList())
         awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
         }
@@ -819,16 +825,22 @@ class ReadinessT22Test {
 
         // application\'s begin is not.
 
-        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
-
-
+        // *** THE WHOLE CAPTURED RECORD IS PUSHED, NOT A RE-FORGED SINGLE FRAGMENT. ***
+        // *This site used to take `.firstOrNull()` of the captured writes, lift its payload, and RE-FORGE it as
+        // `forge(HS1, seq=0, payload)`. MEASURED on the 2-core runner: the responder refused it --
+        // `hs.read.responder|hs1 rejected` -- because that counsel is NOT always one fragment: `awaitNonEmpty`
+        // returneth as soon as ANY write existeth, so a MULTI-FRAGMENT HS1 was captured half-formed and the
+        // responder's reassembler rightly rejected the truncated record. And because a rejected hs1 CLOSETH the
+        // relation, the arm then died on its own "the second must be queued" wait with no way to recover.*
+        // **The sibling helper in T23 pushToResponder's the WHOLE LIST (`hs1.toList()`), which is why it never
+        // showed this. The arm's claim -- "the application's first counsel travelled" -- is unchanged; only the
+        // assembly is corrected.**
+        val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
-
-
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-
+        }
+        val hs1 = payloadOfFragment(hs1Frags.first())
         assertNotNull("the application\'s first counsel must have travelled", hs1)
-        rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
+        rig.pushToResponder(hs1Frags.toList())
         val answer = awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
         }
@@ -1203,16 +1215,22 @@ class ReadinessT22Test {
 
         // application\'s begin is not.
 
-        val hs1 = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
-
-
+        // *** THE WHOLE CAPTURED RECORD IS PUSHED, NOT A RE-FORGED SINGLE FRAGMENT. ***
+        // *This site used to take `.firstOrNull()` of the captured writes, lift its payload, and RE-FORGE it as
+        // `forge(HS1, seq=0, payload)`. MEASURED on the 2-core runner: the responder refused it --
+        // `hs.read.responder|hs1 rejected` -- because that counsel is NOT always one fragment: `awaitNonEmpty`
+        // returneth as soon as ANY write existeth, so a MULTI-FRAGMENT HS1 was captured half-formed and the
+        // responder's reassembler rightly rejected the truncated record. And because a rejected hs1 CLOSETH the
+        // relation, the arm then died on its own "the second must be queued" wait with no way to recover.*
+        // **The sibling helper in T23 pushToResponder's the WHOLE LIST (`hs1.toList()`), which is why it never
+        // showed this. The arm's claim -- "the application's first counsel travelled" -- is unchanged; only the
+        // assembly is corrected.**
+        val hs1Frags = awaitNonEmpty("the application\'s first counsel; ring: " + ringDump(rig.alice)) {
             rig.aliceOutlet.writesTo(rig.bobAddress)
-
-
-        }.firstOrNull()?.let { payloadOfFragment(it) }
-
+        }
+        val hs1 = payloadOfFragment(hs1Frags.first())
         assertNotNull("the application\'s first counsel must have travelled", hs1)
-        rig.pushToResponder(forge(BleRecordType.HS1, 0, hs1!!))
+        rig.pushToResponder(hs1Frags.toList())
         val answer = awaitNonEmpty("the second must be queued; ring: " + ringDump(rig.bob)) {
             rig.bobOutlet.notificationsTo(rig.aliceAddress)
         }
