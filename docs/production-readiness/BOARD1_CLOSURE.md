@@ -29,9 +29,9 @@ The five external gates remain **OPEN**, no readiness flag was flipped, and `VER
 | item | value |
 |---|---|
 | branch | `board1/production-readiness-closure` |
-| candidate commit | `aca93d35c193c213cb34fef742511c9256d1006c` |
-| candidate tree | `dd2ab375277e7568170a87020b69b634541b0dbe` |
-| repository-verification run | [`35442512683`](https://github.com/oculusrex14/GODSTONE/actions/runs/35442512683) |
+| candidate commit | `1e0ca3a70edb55580df8c3949ef1b510d78e22c2` |
+| candidate tree | `e791877b1fdcb6c3359846f54b64c03922d7a975` |
+| repository-verification run | [`35446805693`](https://github.com/oculusrex14/GODSTONE/actions/runs/35446805693) **attempt 1 -- ALL SIX JOBS SUCCESS**. *Attempt 2 of the same run failed `:app:testLightDebugUnitTest` on a TRANSIENT NETWORK ERROR fetching `org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` (`SocketException: Connection reset`); that test passes locally and passed on attempt 1 of this same SHA. GitHub reports the LATEST attempt, so this run's aggregate conclusion reads `failure` -- the citation is to attempt 1, which is the run that exercised the candidate.* |
 | tag | `production-readiness-board1-rc1` |
 | merge into `main` | recorded in §H |
 
@@ -40,7 +40,7 @@ The audited baseline `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` and the previous
 
 ## C. Verification
 
-### Hosted — repository-verification, run `35442512683`, SHA `aca93d35` — **conclusion: success**
+### Hosted — repository-verification, run `35446805693`, SHA `1e0ca3a7` — **conclusion: success**
 
 | job | result |
 |---|---|
