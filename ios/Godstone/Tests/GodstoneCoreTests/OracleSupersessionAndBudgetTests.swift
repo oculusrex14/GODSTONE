@@ -88,17 +88,34 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
     /// nothing parks -- removed rather than left as decoration.
     private final class GatedPipeline: OraclePipelineProtocol, @unchecked Sendable {
         let retrievalResult: RetrievalResult
-        let tokens: [String]
+        /// THE ANSWER IS DERIVED FROM THE QUESTION, so two requests are
+        /// DISTINGUISHABLE and the court can tell WHICH ONE published.
+        ///
+        /// *** THIS REPLACED A SINGLE SHARED `tokens: [supported]`. *** *With both
+        /// requests answering "…500 ml… [1]", the only assertion available was
+        /// `text.contains("500 ml")` -- true whether B won, A won, BOTH published,
+        /// or supersession never fired at all. A court that cannot distinguish the
+        /// behaviour from its opposite is not a witness, and it would have passed
+        /// against exactly the regression it exists to catch.*
+        let answerForQuestion: @Sendable (String) -> String
         private var waiters: [CheckedContinuation<Void, Never>] = []
         private var opened = false
         /// How many times `retrieve` was ENTERED. The retry arm readeth it: a retry
         /// that reused a completion would leave the count unchanged.
         private(set) var retrieveCount = 0
 
-        init(retrieval: RetrievalResult, tokens: [String]) {
+        init(retrieval: RetrievalResult,
+             answerForQuestion: @escaping @Sendable (String) -> String) {
             self.retrievalResult = retrieval
-            self.tokens = tokens
+            self.answerForQuestion = answerForQuestion
         }
+
+        /// The question the LAST `generate` was called with, so the court can prove
+        /// which request reached generation.
+        private(set) var lastGeneratedQuestion: String?
+        /// How many times `generate` was ENTERED: a retry that reused a completion
+        /// would retrieve twice and generate once.
+        private(set) var generateCount = 0
 
         func warmUp() async -> Bool { true }
         func release() {}
@@ -134,17 +151,36 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         }
 
         func generate(question: String, retrieval: RetrievalResult) -> AsyncThrowingStream<String, Error> {
-            AsyncThrowingStream { continuation in
-                for token in tokens { continuation.yield(token) }
+            generateCount += 1
+            lastGeneratedQuestion = question
+            let answer = answerForQuestion(question)
+            return AsyncThrowingStream { continuation in
+                continuation.yield(answer)
                 continuation.finish()
             }
         }
     }
 
-    private func record(_ vm: OracleViewModel) -> ([OracleViewModel.State], AnyCancellable) {
+    /// A REFERENCE-TYPE recorder, because a returned Array is a COPY.
+    ///
+    /// *** THE FIRST VERSION RETURNED `([State], AnyCancellable)` AND WAS BROKEN. ***
+    /// *It read a local `var snapshots` by value at return time -- BEFORE `ask()` ever
+    /// ran -- so the test held a frozen, empty copy while the sink's later appends
+    /// went into storage nobody read. Every assertion built on it would have passed
+    /// against an empty array, which is the false-green this court exists to refuse.*
+    ///
+    /// This is the SAME idiom the sibling `OracleViewModelRuntimeTests` already uses
+    /// (`StateRecorder`, a `final class`), and the convention is followed rather than
+    /// re-invented.
+    private final class StateRecorder {
         var snapshots: [OracleViewModel.State] = []
-        let cancellable = vm.$state.sink { snapshots.append($0) }
-        return (snapshots, cancellable)
+        func append(_ state: OracleViewModel.State) { snapshots.append(state) }
+    }
+
+    private func record(_ vm: OracleViewModel) -> (StateRecorder, AnyCancellable) {
+        let recorder = StateRecorder()
+        let cancellable = vm.$state.sink { recorder.append($0) }
+        return (recorder, cancellable)
     }
 
     private let supported = "Rinse the container with 500 ml of clean water [1]."
@@ -154,10 +190,22 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
 
     /// A superseded request must never publish, even though it completes later.
     func testSupersedingRequestPreventsTheEarlierOneFromPublishing() async {
-        let pipeline = GatedPipeline(retrieval: retrieval(evidence),
-                                     tokens: [supported])
+        // DISTINGUISHABLE ANSWERS: A and B carry their own marker, so "which one
+        // published?" is answerable. The retrieval supports BOTH quantities, so a
+        // marker appearing in the published set is evidence of the SUPERSESSION
+        // path, not of a validator preference.
+        let firstMarker = "FIRST"
+        let secondMarker = "SECOND"
+        let evidenceText = "The dose is 500 ml first, and 500 ml second."
+        let pipeline = GatedPipeline(
+            retrieval: retrieval([chunk(evidenceText)]),
+            answerForQuestion: { question in
+                question.hasPrefix("first")
+                    ? "The \(firstMarker) dose is 500 ml [1]."
+                    : "The \(secondMarker) dose is 500 ml [1]."
+            })
         let vm = OracleViewModel(pipeline: pipeline)
-        let (snapshots, cancellable) = record(vm)
+        let (recorder, cancellable) = record(vm)
         defer { cancellable.cancel() }
 
         // A is issued and PARKS AT THE GATE, so it is provably in flight.
@@ -166,19 +214,29 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         // B supersedes A while A is still parked: `ask()` cancels the in-flight task.
         vm.question = "second question that supersedes the first"
         vm.ask()
-        // Now release: the superseding request completes. Any completions that
-        // were spawned are AWAITED below rather than left to the scheduler, because
-        // a test that leaks tasks into teardown is how an adjacent suite acquires a
-        // crash it never caused.
         pipeline.open()
         await settle(vm)
 
-        guard case .answered(let text, _) = vm.state else {
-            XCTFail("the superseding request did not publish; final state = \(vm.state)")
+        // *** THE ASSERTION IS ON THE RECORDED SEQUENCE, NOT THE FINAL STRING. ***
+        // The end state alone cannot distinguish "B won" from "B won after A also
+        // published", which is the defect this arm exists to catch.
+        let published = recorder.snapshots.compactMap { state -> String? in
+            if case .answered(let text, _) = state { return text }
+            return nil
+        }
+        XCTAssertFalse(published.isEmpty,
+                       "no answer was published at all; state = \(vm.state)")
+        XCTAssertTrue(published.allSatisfy { $0.contains(secondMarker) },
+                      "a SUPERSEDED request reached the visible state: published = "
+                      + "\(published)")
+        XCTAssertFalse(published.contains { $0.contains(firstMarker) },
+                       "the FIRST request's marker appeared in the published set, so a "
+                       + "superseded completion was published: \(published)")
+        guard case .answered(let final, _) = vm.state else {
+            XCTFail("the superseding request did not publish; state = \(vm.state)")
             return
         }
-        XCTAssertTrue(text.contains("500 ml"), "the published answer is the fixture's: \(text)")
-        _ = snapshots
+        XCTAssertTrue(final.contains(secondMarker), "final answer = \(final)")
     }
 
     /// Wait until the ViewModel has stopped working, by OBSERVING its state rather
@@ -204,8 +262,9 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
     /// A retry is a NEW request, so a stale completion cannot be mistaken for it.
     /// The observable form: asking twice runs the pipeline twice.
     func testARetryObtainsANewRequestIdentity() async {
-        let pipeline = GatedPipeline(retrieval: retrieval(evidence),
-                                     tokens: [supported])
+        let pipeline = GatedPipeline(
+            retrieval: retrieval(evidence),
+            answerForQuestion: { _ in "Rinse the container with 500 ml of clean water [1]." })
         let vm = OracleViewModel(pipeline: pipeline)
 
         // EACH RUN IS DRIVEN TO COMPLETION VIA THE GATE, so the count observes
@@ -225,6 +284,12 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
                        "the SAME question asked twice must issue TWO requests; a retry "
                        + "that reused the previous completion would leave the count at 1, "
                        + "and a stale completion could then be mistaken for it")
+        // ... and TWO DISTINCT GENERATIONS happened, so the count is not one run the
+        // harness replayed. Each `runPipeline` reached `generate` for its own request.
+        XCTAssertEqual(pipeline.generateCount, 2,
+                       "only \(pipeline.generateCount) generation(s) ran; two retrievals "
+                       + "with one generation means the second request never reached the "
+                       + "model")
     }
 
     // MARK: - W03 prompt injection
@@ -247,7 +312,7 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         let pipeline = FakePipeline(retrieval: injected,
                                     tokens: ["The dose is 50 ml [1]."])
         let vm = OracleViewModel(pipeline: pipeline)
-        let (snapshots, cancellable) = record(vm)
+        let (recorder, cancellable) = record(vm)
         defer { cancellable.cancel() }
 
         await vm.runPipeline(question: "what is the dose?")
@@ -257,7 +322,6 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
                     + "state = \(vm.state). The corpus must be evidence, never instruction.")
             return
         }
-        _ = snapshots
     }
 
     // MARK: - W04/W05 budgets
@@ -282,7 +346,7 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         let pipeline = FakePipeline(retrieval: retrieval(evidence),
                                     tokens: [oversized])
         let vm = OracleViewModel(pipeline: pipeline, budget: budget)
-        let (snapshots, cancellable) = record(vm)
+        let (recorder, cancellable) = record(vm)
         defer { cancellable.cancel() }
 
         await vm.runPipeline(question: "q")
@@ -301,7 +365,7 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         let pipeline = FakePipeline(retrieval: retrieval(evidence),
                                     tokens: supported.map(String.init), ready: false)
         let vm = OracleViewModel(pipeline: pipeline)
-        let (snapshots, cancellable) = record(vm)
+        let (recorder, cancellable) = record(vm)
         defer { cancellable.cancel() }
 
         await vm.runPipeline(question: "q")
@@ -312,7 +376,6 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         }
         XCTAssertTrue(reason.lowercased().contains("archive"),
                       "the degradation must point the user at the Archive: \(reason)")
-        _ = snapshots
     }
 
     // MARK: - W07 mutation rods
