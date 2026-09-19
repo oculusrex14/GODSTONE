@@ -56,6 +56,56 @@ documents, two new production records, a strengthened validator, and a repaired
 task catalogue. A candidate whose tree differs from the one that was verified
 cannot carry the same tag.
 
+## A01. CORRECTION — rc4
+
+**rc4 = `962ff442` (tree `7ac8bb4b`), tag `production-readiness-board1-rc4`,
+hosted run `35471507700`, 6/6 success.** rc2 and rc3 are both immutable
+historical evidence and **neither is moved, rewritten or deleted**.
+
+### What the review found, and what was done
+
+| Defect | Correction |
+|---|---|
+| **T01 was a red aggregate** in an ordinary checkout | Three root causes fixed, **none by weakening a check**: `REPO` was hardcoded to the builder's absolute path (now derived from `__file__`, `GODSTONE_ROOT` still overrides); the historical arms compared a FROZEN CAPTURE to a MOVING HEAD (now `expect_historical=False`, where a deferral is **recorded** and an *unrelated* captured head is still a hard **FAILURE**); and a defensive `return` recorded PASS silently (now `raise unittest.SkipTest`, so the runner prints `OK (skipped=N)`). `759 tests OK` in an ordinary checkout; `OK (skipped=20)` in a clean clone. |
+| **T62–T65/T81 over-classified as external** | Native courts authored and driven against real production: Kotlin `ReadinessT62Test` (8), `ReadinessT64Test` (16), `ReadinessT65Test` (16); Swift `OracleSupersessionAndBudgetTests` (8). |
+| **Three courts excused by PROSE** | Now excused by a **witness** or not at all. `blockers.py` gained case-level classification (`HOST_*` / `REQUIRES_*` / `DEVICE_ONLY` / `EXTERNAL_APPROVAL_ONLY`) and rods `unauthored-court`, `unjustified-court`, `unclosed-cases`, `unimplemented-case`, `fabricated-case`, `malformed-cases`. |
+| **Count reported as 81 vs 88** | 81 is what is **MEASURED at runtime**; the 88 was wrong. Recorded as `count_correction_rc3_to_rc4`. |
+
+### Two REAL production defects, found by a completed `--sanitize=thread` run
+
+A completed instrumented run — which had never before been obtained — found what
+every plain green could not:
+
+1. **`BloomDigest.index` read a `UInt64` from a `Data` buffer that promises only
+   ONE-byte alignment.** `load(as: UInt64.self)` requires **eight** and *traps the
+   Swift runtime* ("load from misaligned raw pointer"); it read correctly only for as
+   long as the allocator happened to hand back an aligned buffer. Now
+   `loadUnaligned`. Android's `ByteBuffer.getLong()` was already alignment-safe, so
+   parity is **preserved** rather than created.
+2. **`MeshNode` mutated two relation dictionaries from one thread while the periodic
+   ack-turn timer iterated them on a GCD worker**, with **nothing** synchronizing
+   them — eight ThreadSanitizer Swift access races. Every access now goes through
+   accessors under `ackStateLock`; the turn iterates a **snapshot**, and
+   `mapping(for:)` reads the handle and generation **together**.
+
+### Self-falsification before freezing
+
+- The T65 supersession arm was **vacuous** (both requests produced byte-identical
+  output, so `text.contains("500 ml")` held whether supersession fired or not). It now
+  carries **distinguishable** markers and asserts on the **recorded sequence**.
+  Removing `task?.cancel()` from `ask()` reddens it with the diagnosis
+  `published = ["The FIRST dose is 500 ml [1].", "The SECOND dose is 500 ml [1]."]`.
+- `swift test --filter BloomDigestTests` **executed 0 tests** and was therefore
+  **discarded, not cited**. The unfiltered suite is the authority: **1356 cases, 0
+  failures, 0 segfaults**, mesh 1249 + core 102 + lab 5.
+
+### Overclaims removed
+
+`internal_work_remaining: 0` is replaced by `null` plus per-finding counts (derived
+**27**); the release-gate classification records **0 INTERNAL_FAILURE**, with A-06
+**stating its cause** rather than being waved through.
+
+
 ### What did NOT change
 
 **The twelve tasks remain `BLOCKED_EXTERNAL`.** The missing inputs are receipt
