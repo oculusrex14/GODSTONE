@@ -49,7 +49,15 @@
   ],
   "greens_note": "FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line (35446805693, 35450312289, 35451828797, 35461098423, 35471507700). The rc4 green is the first in which the repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.",
   "candidate_note": "This run is bound to the rc4 candidate 962ff442. It is a FULL 6/6 green on the exact frozen candidate, including the iOS lane, which executed the real suites (GodstoneMeshTests 1249 + GodstoneCoreTests 102 + LabMeshTests 5 = 1356 cases, 0 failures, 0 segfaults) rather than 0 tests. rc3's run 35461098423 is retained as historical.",
-  "previous_run_id": "35461098423"
+  "previous_run_id": "35461098423",
+  "third_green": {
+   "sha": "52a285f77a4cd124a8efa3672f4fc9d1f7c86ad4",
+   "scope": "the tip of `main` carrying the final rc4 record edits (also board2's tip)",
+   "workflow": "repository-verification",
+   "run": "35475740485 -- 6/6 success",
+   "evidence_required_and_met": "THE LANE'S OWN AFFIRMATIVE MARKERS, not the absence of a red: `ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed `passed (0.453 seconds)`; `** TEST SUCCEEDED **` x3; and `Executed 1356 tests, with 0 failures`. A grep for zero failures proves nothing on its own -- it reads 0 whether the arm passed, had not run, or never ran at all, which is the same trap that made a `--filter` isolation worthless.",
+   "note": "This is the third consecutive full 6/6 green on the rc4 line and the second on the tip's own tree, so the tip is verified rather than merely asserted. The T15 arm, which reddened once earlier on a loaded runner, passes here with a healthy duration."
+  }
  },
  "tasks": {
   "total": 84,
