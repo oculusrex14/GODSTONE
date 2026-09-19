@@ -33,7 +33,7 @@ The five external gates remain **OPEN**, no readiness flag was flipped, and `VER
 | candidate tree | `e791877b1fdcb6c3359846f54b64c03922d7a975` |
 | repository-verification run | [`35446805693`](https://github.com/oculusrex14/GODSTONE/actions/runs/35446805693) **attempt 1 -- ALL SIX JOBS SUCCESS**. *Attempt 2 of the same run failed `:app:testLightDebugUnitTest` on a TRANSIENT NETWORK ERROR fetching `org.robolectric:android-all-instrumented:13-robolectric-9030017-i6` (`SocketException: Connection reset`); that test passes locally and passed on attempt 1 of this same SHA. GitHub reports the LATEST attempt, so this run's aggregate conclusion reads `failure` -- the citation is to attempt 1, which is the run that exercised the candidate.* |
 | tag | `production-readiness-board1-rc2` (rc1 was deleted: it named a superseded SHA) |
-| merge into `main` | `1e0ca3a70edb55580df8c3949ef1b510d78e22c2` -- the frozen candidate. The merge was a **fast-forward** (main's three doc commits were reconciled into the candidate at `f0f7140e`, so `origin/main` was already an ancestor; no merge commit, no history rewritten). The current `main` tip is `537c7ddd441ebb3106aca977467363bc4e9a2afc`, a **docs-only** commit carrying this record, which does not move the tag. |
+| merge into `main` | **fast-forward** onto the frozen candidate `1e0ca3a7` (main's three doc commits were reconciled into the candidate at `f0f7140e`, so `origin/main` was already an ancestor -- no merge commit, no history rewritten). **The `main` TIP is deliberately not written here:** this record itself lands as a docs-only commit on top, so any literal tip SHA would self-invalidate on the next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc2`. |
 
 The audited baseline `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` and the previous candidate
 `e07e6ca119284eac72cfe7ed82c539209f085715` are preserved unchanged in history.
@@ -62,6 +62,19 @@ GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)
 **This workflow had never passed.** Eight consecutive pushes to this branch failed, and the later
 iOS steps had *never executed at all* — the step above them died first. Four independent causes were
 found and fixed (§D).
+
+### Verification of the tip, cited positionally
+
+The **artifact that was verified is the tagged candidate**, so the citation above is to that SHA's run
+and stays valid. For the `main` TIP, the correct citation is positional, because the tip advances with
+every docs commit and any SHA written here would be stale by the time it is read:
+
+> every `push` event on the `main` ref runs `repository-verification`; read the newest such run's
+> per-job results for the tip in question.
+
+This is stated that way on purpose. Hard-coding a tip SHA into a document that itself lands as a
+commit on that tip is self-defeating -- the earlier draft of this very row did it, twice, and was
+wrong both times. The verification of the tip is therefore a **query over refs**, not a literal.
 
 ### The green count, stated honestly
 

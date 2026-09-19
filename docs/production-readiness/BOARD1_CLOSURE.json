@@ -91,5 +91,5 @@
   "record_corrections": 64,
   "board2_branch": "board2/device-release-validation",
   "board2_sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
-  "main_docs_commit": "3ad771604466cd0bb63a962330817cb1acc6a3d5"
+  "main_pointer_note": "POSITIONAL, NOT LITERAL. `main_sha` is the frozen candidate that `main` was fast-forwarded to, and it equals the tag target. The docs record lives in a chain of docs-only commits ON TOP of it, so `main`'s TIP advances with each docs commit and is deliberately not written here: a literal tip SHA self-invalidates on the very next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc2`."
 }
