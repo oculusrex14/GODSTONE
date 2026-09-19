@@ -141,14 +141,34 @@ final class ReadinessT07Tests: XCTestCase {
         XCTAssertFalse(alice.isEstablished)
     }
 
+    /// The repo's Swift sources, located by WALKING UP from this file's own path.
+    ///
+    /// *** THE HARD-CODED `../../Godstone/...` WAS CORRECT FOR EXACTLY ONE TEST RUNNER, AND THE OTHER ONE IS
+    /// THE SIMULATOR. *** *`#filePath` is not the same string under `swift test` and under `xcodebuild test`:
+    /// the package runner reports `.../ios/Godstone/Tests/GodstoneMeshTests/X.swift`, while the simulator
+    /// reports `.../ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/X.swift` (the generated mirror).
+    /// The fixed substitution therefore resolved to `.../ios/Godstone/../../Godstone/Sources/...` -- a path
+    /// with a DOUBLED `ios/`, and NSCocoaErrorDomain 260. MEASURED on the simulator, which is the first run in
+    /// which this arm executed at all.* **Walking up to the first ancestor that actually CARRIES the tree is
+    /// correct under either layout, and if no ancestor carries it the arm FAILS rather than skipping -- a skip
+    /// would be a silent exemption.**
+    private func godstoneSource(_ relative: String) throws -> String {
+        var dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        for _ in 0..<8 {
+            let candidate = dir.appendingPathComponent(relative)
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                return try String(contentsOf: candidate, encoding: .utf8)
+            }
+            dir = dir.deletingLastPathComponent()
+        }
+        XCTFail("the Swift source tree is not reachable from \(#filePath); looked for \(relative)")
+        throw NSError(domain: "ReadinessT07", code: 1)
+    }
+
     func testRekeyInPlaceApiRemoved() throws {
         // L0 source-integrity: the ad hoc rehashing API is gone; the
         // retirement budget replaced it.
-        let session = try String(contentsOf: URL(fileURLWithPath:
-            String(#filePath).replacingOccurrences(
-                of: "Tests/GodstoneMeshTests/ReadinessT07Tests.swift",
-                with: "../../Godstone/Sources/GodstoneMesh/NoiseSession.swift")),
-            encoding: .utf8)
+        let session = try godstoneSource("Sources/GodstoneMesh/NoiseSession.swift")
         XCTAssertFalse(session.contains("rekeyIfNeeded"),
                        "no rekey-in-place API remains")
         XCTAssertFalse(session.contains("rekeyMessageLimit"),

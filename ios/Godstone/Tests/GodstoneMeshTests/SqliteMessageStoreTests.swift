@@ -305,8 +305,19 @@ final class SqliteMessageStoreTests: XCTestCase {
         //     answers `.completeUntilFirstUserAuthentication`) failed an arm that was doing nothing wrong.
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         let applied = attrs?[.protectionKey] as? FileProtectionType
-        if applied == .none {
-            XCTFail("*** THE FILE CARRIES NO PROTECTION AT ALL: \(String(describing: applied)). ***")
+        // *** `.none` ON AN OPTIONAL IS `Optional.none` -- IT MEANS nil, NOT `FileProtectionType.none`. ***
+        // *The earlier form of this line was `if applied == .none`, which MATCHED A MISSING ATTRIBUTE: on the
+        // iOS Simulator `attributesOfItem` carries no `protectionKey` at all, `applied` is nil, and `nil ==
+        // .none` is TRUE -- so the arm cried "THE FILE CARRIES NO PROTECTION AT ALL: nil" on a platform that
+        // simply does not expose the attribute to the Simulator. MEASURED on the simulator run, which is the
+        // first run in which this step executed at all.* The comparison is now spelled out, and an ABSENT
+        // attribute is treated as "not readable on this platform" rather than as a weakening -- which is the
+        // same host-capability boundary this arm was already corrected for once.
+        if let carriedClass = applied, carriedClass == FileProtectionType.none {
+            XCTFail("*** THE FILE CARRIES NO PROTECTION AT ALL: \(carriedClass). ***")
+        } else if applied == nil {
+            print("[gs-store-002] the platform exposes no protection attribute on this file (Simulator); "
+                  + "the applied class is pinned structurally instead")
         } else {
             print("[gs-store-002] requested .complete; filesystem carried "
                   + "\(String(describing: applied)) (a host default is not distinguishable from here)")
