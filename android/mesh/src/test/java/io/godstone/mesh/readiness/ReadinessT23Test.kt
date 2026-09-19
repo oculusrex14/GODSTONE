@@ -857,6 +857,19 @@ class ReadinessT23Test {
     @Test
     fun testTheDuplicateSecondTaleRunnethNotTheControllerTwice() {
         val rig = standDoor()
+        // *** SET BEFORE `driveToReady`, WHICH REACHETH THE TRUSTED HOUR AND THEREFORE ISSUES THE CHALLENGE. ***
+        // *The arm snapshots `writesBefore` and then asserts NO NEW WRITE was emitted for a duplicate counsel. But
+        // at the trusted hour the application ALSO issueth its sealed key-confirmation challenge -- from a
+        // coroutine on `Dispatchers.IO` -- which IS a new write to the same outlet. MEASURED: this arm failed
+        // intermittently (`no second third goeth forth for a tale twice told`) on about one run in five while every
+        // other arm passed, and it PASSES in isolation because the timing then favours the court.*
+        // **THE TWIN SEAM'S OWN DOCUMENTATION NAMETH THIS CASE EXACTLY: it existeth for courts that "DRIVE the
+        // trusted hour BY HAND and then do ARITHMETIC UPON THE RELATION'S WRITER ... they turn this off and say so
+        // in their own name". COUNTING WRITES IS THAT ARITHMETIC.** *Turning it off changes what this arm measures
+        // -- a duplicate counsel emits nothing -- from a race into a measurement. The challenge's own issuance is
+        // witnessed by `testAndroid01_theApplicationIssuethTheKeyConfirmationAtTheTrustedHour` and
+        // `testAndroid01_theWholeConfirmationRoundRunnethItself`, which await it on the DEFAULT road.*
+        rig.alice.applicationIssuesKeyConfirmationForTest = false
         val hs2 = driveToReady(rig)                            // initiator READY, the second remembred
         val conn = rig.initiatorConnection()
         assertEquals("the initiator standeth ready", BleConnectionState.READY, conn.state)
