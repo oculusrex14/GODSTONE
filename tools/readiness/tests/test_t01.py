@@ -515,6 +515,7 @@ class ExternalAdditionContentTest(ReadinessTestCase):
                     self.assertIn('sha256', meta, f'{key} carrieth no hash')
                     self.assertEqual(len(meta['sha256']), 64, f'{key} carrieth a malformed hash')
 
+    @historical_arm
     def test_w04_the_real_committed_bundles_match_the_manifest(self):
         """*** THE REAL-REFERENT ARM: THE ACTUAL REPOSITORY'S DECLARED BUNDLES, NOT A SYNTHETIC TREE. ***
 
