@@ -1,6 +1,7 @@
 {
   "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
   "status": "COMPLETE",
+  "status_scope": "INTERNAL production readiness ONLY. COMPLETE means every internally executable obligation is discharged and the repository-owned verification is green on candidate_sha. It is NOT a statement that production readiness is achieved: 12 tasks remain BLOCKED_EXTERNAL, the five external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) are OPEN, and verified_fixed is 0 because only an independent audit may set it.",
   "candidate_sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
   "candidate_tree_sha": "e791877b1fdcb6c3359846f54b64c03922d7a975",
   "tag": "production-readiness-board1-rc2",
