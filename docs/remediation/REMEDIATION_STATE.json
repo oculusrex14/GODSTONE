@@ -15747,6 +15747,43 @@
     "GS-ARCHIVE-005: the iOS archive navigation witness",
     "GS-FINAL-006: the iOS restore/scroll witness"
    ]
+  },
+  "commit_message_corrections": {
+   "why": "A commit message is immutable once pushed, so a FALSE CLAIM IN ONE CANNOT BE EDITED -- IT CAN ONLY BE SUPERSEDED AND NAMED. These are recorded so an auditor reading the history finds the correction where the claim is, rather than discovering the discrepancy themselves.",
+   "corrections": [
+    {
+     "commit": "926f0741",
+     "claimed": "'GS-UX-001 step 7: a REAL UI test target in CI'",
+     "status": "FALSE WHEN WRITTEN",
+     "measured": "`grep -rn 'LabMeshUI|ui-testing' .github/workflows/repository-verification.yml` returned NO matches. The `LabMeshUI` scheme existed but NO GATE INVOKED IT, and `check_lane_results.py` requires only GodstoneMeshTests/GodstoneCoreTests/LabMeshTests. So the bundle executed only where a hand command ran it.",
+     "superseded_by": "fdb95915",
+     "now_true": "The `ios` job's step 'ios lane (swift test) + the rendered-control UI courts' runs `xcodebuild -scheme LabMeshUI`, verified by parsing the workflow: the step's `run` contains `LabMeshUI`."
+    },
+    {
+     "commit": "9f0a44d9 -> c9f97b0d",
+     "claimed": "a contention run cited as post-fix green",
+     "status": "WRONG ARTIFACT WHEN WRITTEN",
+     "measured": "The `EXIT=0` first cited came from a run launched right after the `Task.sleep` edit -- *the masking change* -- and contained no `NSLock` and no `awaitTask`. That green was evidence about the sleep, not about the fix.",
+     "superseded_by": "c9f97b0d (amended before push)",
+     "now_true": "The correct artifact is the contention run launched AFTER the lock fix, on a clean tree whose file carries the lock (5 markers): `Executed 1257 tests, with 0 failures`, 1364 cases passed, 0 failed, EXIT=0."
+    },
+    {
+     "commit": "540b05c0",
+     "claimed": "'10,000 real lifecycle cycles' completed",
+     "status": "THE CLAIM HAD NO WITNESS WHEN WRITTEN",
+     "measured": "Its completion check was `private func step0Completion(_ cycles: Int) -> Int { cycles }` -- `assert(10_000 == 10_000)`, constant-fed. A truncated loop at step 1 passed every other assertion.",
+     "superseded_by": "d4b543e3",
+     "now_true": "A `stepsRun` counter the loop increments is asserted against `cycles`, and `admitted + refused == cycles`. Mutation: truncating the loop now REDDENS the arm."
+    },
+    {
+     "commit": "086b3fc0",
+     "claimed": "fingerprint/rotation/revoke was a 'RUNTIME SURFACE gap'",
+     "status": "FALSE WHEN WRITTEN",
+     "measured": "`TrustUXModel` declares the full surface over the REAL `PeerIdentityRepository` CAS: `approvePendingRotation`, `revokePeer`, `confirmVerified`, `applyBinding`, the wipe intents, and `TrustCommand.compareAndConfirmFingerprint`. The gap was REACH (an internal init and no production `TrustAuthorityPort` conformer), not a missing surface.",
+     "superseded_by": "fdb95915",
+     "now_true": "The ledger states the precise in-repo gap: an internal init plus no production port conformer."
+    }
+   ]
   }
  }
 }
