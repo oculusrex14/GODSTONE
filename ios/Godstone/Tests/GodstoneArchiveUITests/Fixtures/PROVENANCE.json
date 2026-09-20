@@ -1,0 +1,12 @@
+{
+ "archive_sha256": "7cc11fe7920bf1737d0cd7b9d9b17945cb7693113dcdfd79bdfa7bd816849bea",
+ "bytes": 118784,
+ "built_by": "python3 -m content.ingest.build_archive --tier LIGHT --no-embed --out archive_light.db",
+ "corpus_sha256": "0a9ccb713c7cb01769669f83325f9ccebbbd16c1c5a548a7171c148be47bf277",
+ "why_committed": "A UI witness that SKIPS is not a witness. The archive is gitignored under build/, so a fresh clone would have no fixture and the two arms would XCTSkip -- reading as green while measuring nothing. The bytes are committed WITH their sha and the exact command that made them, and the arms verify the sha, so drift or tampering FAILS rather than silently changing what was witnessed.",
+ "inputs_tracked": [
+  "content/seed/taxonomy.yaml",
+  "content/seed/sources.yaml",
+  "content/seed/docs/*.md"
+ ]
+}

@@ -149,6 +149,21 @@ targets:
         TEST_TARGET_NAME: LabMesh
         TARGETED_DEVICE_FAMILY: "1,2"
 
+  GodstoneArchiveUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Godstone/Tests/GodstoneArchiveUITests
+    dependencies:
+      - target: Godstone
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.godstone.godstonearchiveuitests
+        PRODUCT_NAME: GodstoneArchiveUITests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_TARGET_NAME: Godstone
+        TARGETED_DEVICE_FAMILY: "1,2"
+
   GodstoneMeshTests:
     type: bundle.unit-test
     platform: iOS
@@ -184,6 +199,20 @@ schemes:
       config: LightDebug
 
   # *** GS-UX-001 STEP 7: THE UI SCHEME, SO THE CONTROLS ARE DRIVEN IN CI. ***
+  GodstoneArchiveUI:
+    build:
+      targets:
+        Godstone: all
+        GodstoneArchiveUITests: [test]
+    run:
+      config: LightDebug
+    test:
+      config: LightDebug
+      # THE APPARENT DESTINATION, so a UI test cannot resolve to the host. MEASURED: without this the
+      # destination specifier matched "My Mac" and xcodebuild refused with exit 70 because the app's
+      # supported platforms are iOS -- a UI-testing bundle CANNOT run on the host.
+      targets:
+        - GodstoneArchiveUITests
   LabMeshUI:
     build:
       targets:

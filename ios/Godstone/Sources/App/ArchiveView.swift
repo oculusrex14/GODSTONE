@@ -167,6 +167,9 @@ private struct ArchiveBrowser: View {
             .toolbar {
                 if scene.mode != .documents {
                     Button(scene.mode == .document ? "Back" : "Documents") { scene.back() }
+                        // GS-FINAL-006: an identifier so an EXECUTED app test can ADDRESS the control proving Back
+                        // leaves the document, rather than inferring it from a label that may be localized.
+                        .accessibilityIdentifier("archive.back")
                 }
                 if scene.mode == .search || scene.mode == .document {
                     Button("All documents") { scene.backToDocuments() }
@@ -263,6 +266,12 @@ private struct ArchiveBrowser: View {
                 }
                 .frame(minHeight: GodstoneTheme.minimumTapTarget, alignment: .leading)
             }
+            // GS-FINAL-006: addressable BY DOCUMENT, so an executed app test opens a NAMED document. IT SITS ON THE
+            // LINK, NOT INSIDE ITS LABEL: placing it on the label's VStack pushed an already-heavy SwiftUI
+            // expression past the type-checker's budget and the app stopped compiling ("unable to type-check this
+            // expression in reasonable time"). A modifier on the link is also the more honest place for it -- the
+            // identity belongs to the CONTROL, not to the text it draws.
+            .accessibilityIdentifier("archive.document." + String(document.id))
             // THE SCENE IS TOLD IN THE SAME TAP THAT PUSHES THE PATH (GS-FINAL-006).
             .simultaneousGesture(TapGesture().onEnded { openFromPath(document) })
         }
@@ -288,6 +297,14 @@ private struct ArchiveBrowser: View {
                     }
                     .padding(.vertical, 8)
                 }
+                // *** AND THE SEARCH ROAD MUST BE ADDRESSABLE TOO -- THE COMMENT BELOW CLAIMED "THE SAME
+                // TREATMENT" WHILE THE ROW CARRIED NO IDENTIFIER AT ALL. ***
+                // *A search result and a list row are the SAME KIND of control to a user and to assistive
+                // technology, so an identifier that exists on one and not the other is an inconsistency the
+                // comment concealed. **MEASURED: a UI test could address every browse row and NO search hit** --
+                // which reads as "the search rendered nothing" when the truth is "the search rendered rows nobody
+                // can name."*
+                .accessibilityIdentifier("archive.document." + String(passage.documentId))
                 // AND THE SEARCH ROAD GETTETH THE SAME TREATMENT, so a hit and a list row cannot disagree about
                 // whether the scene was told (GS-FINAL-006).
                 .simultaneousGesture(TapGesture().onEnded {
@@ -361,6 +378,33 @@ private struct ArchiveDocumentReader: View {
                 scene.noteScroll(passageId: target)
                 proxy.scrollTo(target, anchor: .top)
             }
+        }
+        // *** GS-FINAL-006 / GS-ARCHIVE-005: THE READER CARRIES ITS OWN RENDERED WAY BACK. ***
+        //
+        // *MEASURED WITH THE EXECUTED APP TEST, AND IT FOUND A REAL GAP: the toolbar that declares
+        // `archive.back` sits on the ROOT view, so a PUSHED reader never renders it -- the ONLY back
+        // control on screen was SwiftUI's system `BackButton`, which four separate tap strategies
+        // (plain tap, coordinate tap, `element(boundBy: 0)`, and after dismissing every presentation)
+        // all failed to operate. **TWO taps left the reader still on the stack, `navid` still the
+        // document title.**
+        //
+        // SO THE AFFORDANCE THE CARD NAMES DID NOT EXIST ON THIS ROAD: "Back returns to the submitted
+        // query" is not performable if the only way out is chrome the app does not own. THIS BUTTON IS
+        // IN THE READER'S OWN CONTENT, carries the identifier the witness addresses, and calls the SAME
+        // `scene.back()` the toolbar's control does -- **one scene owner, two rendered affordances, no
+        // second navigator.***
+        .safeAreaInset(edge: .top) {
+            HStack {
+                Button { scene.back() } label: {
+                    Label("Back", systemImage: "chevron.backward")
+                }
+                .accessibilityIdentifier("archive.back")
+                .accessibilityHint("Returns to the search results or the document list you came from")
+                .padding(.vertical, 8)
+                Spacer()
+            }
+            .padding(.horizontal)
+            .background(.bar)
         }
     }
 
