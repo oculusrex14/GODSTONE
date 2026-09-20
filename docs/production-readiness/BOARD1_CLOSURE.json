@@ -413,5 +413,15 @@
   "fix": "Both are now bounded and FAIL LOUDLY with the observed count, via a `waitUntil(_:)` helper -- the shape `settle(turns:)` already used in this file. `XCTFail` with the observed `retrieveCount`, then `return`: a test that cannot observe its state must SAY SO, because a hang answers nothing at all.",
   "verified": "Hosted run 35488733474 on 05fd430d: 6/6 success, `** TEST SUCCEEDED **`, `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, `Executed 1356 tests, with 0 failures`, and the fixed arm printing `passed`.",
   "same_class": "the MeshNode ack-turn races and the BloomDigest misaligned load: an unbounded or unchecked wait where the contract promises a bound."
+ },
+ "post_tag_changes": {
+  "statement": "*** rc5 REMAINS THE FROZEN CANDIDATE. NOTHING THAT SHIPS CHANGED AFTER IT. ***",
+  "evidence": "`git diff --stat production-readiness-board1-rc5 05fd430d -- 'ios/Godstone/Sources' 'android/llm/src/main' 'tools/readiness/*.py' 'ci/'` is EMPTY: every PRODUCTION source, the repo-owned Python tooling, and the controls are byte-identical between rc5 and the fix commit. The only differences are TEST files and this record.",
+  "what_changed_after_the_tag": [
+   "`OracleSupersessionAndBudgetTests.swift`: two unbounded `while ... { await Task.yield() }` loops replaced with a bounded, loudly-failing `waitUntil(_:)`. A TEST-ONLY hardening -- it makes an arm that could HANG fail instead. It does not alter behaviour under test.",
+   "this closure record (documentation)."
+  ],
+  "why_no_new_tag": "A tag names a SHIPPABLE ARTIFACT, and rc5's shippable artifact is unchanged. Minting rc6 for a test hardening would imply the product moved when it did not, and would repeat the very confusion rc5 exists to correct. The hardening is recorded here, verified by run 35488733474 on 05fd430d (6/6), and reaches rc6+ whenever a real production change earns one. `main` carries it; the tag's tree is the artifact.",
+  "verification_of_the_hardening": "run 35488733474 on 05fd430d -- 6/6 success, with the fixed arm printing `passed`."
  }
 }
