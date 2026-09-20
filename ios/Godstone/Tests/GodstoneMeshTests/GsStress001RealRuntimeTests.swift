@@ -16,7 +16,14 @@ import SQLite3
 ///   3. read the resource census **FROM THE OWNERS THAT ALLOCATE** -- **THIS FILE**, through the owners' own hooks;
 ///   4. real OS-facade fault injection -- **still owed** (needs the instrumented boundary);
 ///   5. **10,000 real lifecycle cycles over a DRAINED runtime** -- **THIS FILE**;
-///   6. a real resource-guard mutant -- **THIS FILE** (mutation below).
+///   6. a real resource-guard mutant -- *** STILL OWED, AND THE LINE THAT STOOD HERE CLAIMED OTHERWISE. ***
+///      *It read "**THIS FILE** (mutation below)". **THERE IS NO MUTATION BELOW, AND THERE NEVER WAS** -- this file
+///      carrieth three arms and none of them is a mutant. A proof document that claims a mutation it does not
+///      contain is worse than one that admits the gap, because **IT STOPS THE NEXT READER FROM LOOKING.** The
+///      honest state is that the mutation the card asks for is still owed: a rod that strikes a REAL production
+///      resource guard (`SessionManager`, `BleTransport`'s quarantine, the ACK outbox) and reddens THIS court.
+///      `ci/mutations.py`'s T72 rods all strike the MODEL's bookkeeping, which is precisely the class the card
+///      says cannot falsify a runtime invariant.*
 ///
 /// *** WHY THIS IS NOT THE CAMPAIGN AGAIN. *** *`StressCampaign` drives ITS OWN integers: `leases += 1`,
 /// `sessions += 1`, `inbox[msg] = ...`. **A MUTATION OF THAT BOOKKEEPING CANNOT FALSIFY AN INVARIANT ABOUT A

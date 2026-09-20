@@ -415,11 +415,21 @@ public final class MeshRuntime {
     /// *** THE PRIVATE COMPOSITION: THE ONLY ROAD TO A KEYED PRIVATE STORE (GS-FINAL-004). ***
     ///
     /// It reacheth the shared graph WITH a factory, so the two stores it opens are the ones a verifying
-    /// `EncryptedStoreFactory` has already judged. **GS-FINAL-004'S REMAINING WORK IS NAMED HERE RATHER THAN IMPLIED:**
-    /// the factory still returns METADATA (`path`, `kind`, `encryptedAtRest`, `cipherVersion`) and NOT an owned
-    /// connection, so this function checks the verdict and then opens the stores by URL -- a second, independent open.
-    /// *"Acquiring SQLCipher cannot repair a discarded handle."* Closing that needs the factory's return type to carry
-    /// the connection, which is the probe's subject (`tools/readiness/audit_probes/swift/GsFinal004*`).
+    /// `EncryptedStoreFactory` has already judged.
+    ///
+    /// *** THE PARAGRAPH THAT STOOD HERE WAS STALE AND ACTIVELY FALSE, AND IT IS CORRECTED RATHER THAN DELETED. ***
+    /// *It read: "the factory STILL RETURNS METADATA (`path`, `kind`, `encryptedAtRest`, `cipherVersion`) and NOT an
+    /// owned connection, so this function checks the verdict and then opens the stores by URL -- a second, independent
+    /// open. Closing that needs the factory's return type to carry the connection."* **EVERY CLAUSE OF THAT IS NOW
+    /// WRONG.** `EncryptedStoreFactory.reopenOwnedRequiringDEK(path:tag:)` returns an `OwnedConnectionResult` carrying
+    /// an `OwnedConnection`; this composition ADOPTS it through `SqliteMessageStore(verifiedConnection:)` and
+    /// `SqlitePeerIdentityStore(verifiedConnection:)`; and **THE `url:` OPENS BELOW ARE UNREACHABLE WHEN A FACTORY IS
+    /// SUPPLIED** -- they are the legacy road, which has no key and so cannot key a connection.*
+    ///
+    /// *A comment that names work as OWED after the work landed is the same defect class as a status field that reads
+    /// OPEN over a closed finding: **it misleads an auditor in the direction of thinking less is done than is.** The
+    /// distinction it drew -- "acquiring SQLCipher cannot repair a discarded handle" -- remains the right reason the
+    /// work was done, so it is kept as the HISTORY of the correction rather than left as a live claim.*
     internal static func createPrivateComposition(
         messageStoreUrl: URL,
         peerStoreUrl: URL,
