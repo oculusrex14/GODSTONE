@@ -136,6 +136,57 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
         XCTAssertTrue(outcome.contains("differ"), "Expected mismatch explanation: \(outcome)")
         XCTAssertFalse(facade.isVerified(label: "Alice"), "Contact must NOT be verified after mismatch")
         XCTAssertNotNil(facade.lastError())
+
+        // *** AND THE DURABLE DISCRIMINATOR -- `test04`'s OWN STANDARD APPLIED HERE. ***
+        //
+        // *`test04` reads `repo.lookup` directly because **THE PROJECTION IS A CLAIM AND THE STORE IS THE SOURCE**;
+        // these two arms asserted ONLY `facade.*` projections, which an adapter that promoted locally could move
+        // without touching the row. **AN EXTERNAL REVIEW POINTED OUT THAT INCONSISTENCY AND WAS RIGHT.***
+        //
+        // *`PeerIdentityLookup.verified` + `PeerTrustLevel.tofuPinned` is the UNCHANGED state a REFUSED confirm must
+        // leave behind: a bound peer sits at `.tofuPinned`, and `.userVerified` is what only a durable CAS may
+        // produce (`PeerTrustModels.swift:11`: tofuPinned=1, userVerified=2, revoked=3).*
+        //
+        // *** HONEST SCOPE: `TrustAuthorityAdapter.confirmVerified` returns `.refused(...)` UNCONDITIONALLY today --
+        // THERE IS NO DURABLE CAS -- so this cannot catch a live bug. IT GUARDS THE FUTURE CAS: when one is written,
+        // an implementation that projects success WITHOUT the durable write reddens here rather than shipping.*** *Stated
+        // so the arm is not read as proving more than it does.*
+        guard case .verified(let unchanged) = repo.lookup(binding.nodeId) else {
+            XCTFail("*** a refused confirm must leave the row verified/tofuPinned; got \(repo.lookup(binding.nodeId)) ***")
+            return
+        }
+        XCTAssertEqual(
+            unchanged.trustLevel, .tofuPinned,
+            "*** THE DURABLE STATE: a refused confirm must leave the row where it was. ***",
+        )
+
+        // *** AND THE DISCRIMINATOR THAT ACTUALLY CATCHES FORGING -- WHICH TOOK TWO WRONG VERSIONS TO FIND. ***
+        //
+        // *MY FIRST VERSION stopped at the store assertion above, and **THE MUTATION PROVED IT INSUFFICIENT**:
+        // with `confirmVerified` mutated to project success without a durable write, the row genuinely stayed
+        // `tofuPinned`, so that check PASSED. **A CHECK THAT ONLY READS THE STORE CANNOT SEE A PROJECTION THAT
+        // DISAGREES WITH IT.***
+        //
+        // *MY SECOND VERSION asserted the model and the store AGREE on verification -- and it STILL did not fire,
+        // because of something the mutation revealed about the model itself: `.confirmed` sets
+        // `lastOutcome: "fingerprint confirmed for Alice"` and then `project()` RE-READS THE STORE, so
+        // `isVerified` stays FALSE. **THE MODEL CONTRADICTS ITSELF: IT REPORTS SUCCESS AND NON-VERIFICATION AT
+        // ONCE**, and both sides of my comparison said "not verified".*
+        //
+        // **SO THE FORGERY'S ACTUAL SIGNATURE IS A SUCCESS CLAIM WITHOUT A DURABLE PROMOTION**, and that is what is
+        // asserted here: the outcome string may report a confirmation ONLY IF THE ROW WAS PROMOTED. *This is the
+        // model's own law 2 -- "USER_VERIFIED APPEARETH ONLY AFTER THE DURABLE CAS SUCCEEDETH" -- checked from the
+        // OUTSIDE, where a local-only implementation cannot satisfy it.*
+        let projectedOutcome = facade.lastOutcome() ?? ""
+        let claimsConfirmation = projectedOutcome.contains("confirmed")
+        let rowWasPromoted = (unchanged.trustLevel == .userVerified)
+        XCTAssertFalse(
+            claimsConfirmation && !rowWasPromoted,
+            "*** A SUCCESS CLAIM WITHOUT A DURABLE PROMOTION IS THE FORGERY: the model reported "
+                + "\"\(projectedOutcome)\" while the row still says \(unchanged.trustLevel). **THE PROJECTION IS A CLAIM AND "
+                + "THE STORE IS THE SOURCE** -- their disagreement is the defect, and no single-source assertion "
+                + "(neither the store alone nor the model alone) can see it. ***",
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -171,6 +222,57 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
             "Expected port refusal reason regarding unclaimed promotion: \(outcome)"
         )
         XCTAssertFalse(facade.isVerified(label: "Alice"), "Contact must remain unverified")
+
+        // *** AND THE DURABLE DISCRIMINATOR -- `test04`'s OWN STANDARD APPLIED HERE. ***
+        //
+        // *`test04` reads `repo.lookup` directly because **THE PROJECTION IS A CLAIM AND THE STORE IS THE SOURCE**;
+        // these two arms asserted ONLY `facade.*` projections, which an adapter that promoted locally could move
+        // without touching the row. **AN EXTERNAL REVIEW POINTED OUT THAT INCONSISTENCY AND WAS RIGHT.***
+        //
+        // *`PeerIdentityLookup.verified` + `PeerTrustLevel.tofuPinned` is the UNCHANGED state a REFUSED confirm must
+        // leave behind: a bound peer sits at `.tofuPinned`, and `.userVerified` is what only a durable CAS may
+        // produce (`PeerTrustModels.swift:11`: tofuPinned=1, userVerified=2, revoked=3).*
+        //
+        // *** HONEST SCOPE: `TrustAuthorityAdapter.confirmVerified` returns `.refused(...)` UNCONDITIONALLY today --
+        // THERE IS NO DURABLE CAS -- so this cannot catch a live bug. IT GUARDS THE FUTURE CAS: when one is written,
+        // an implementation that projects success WITHOUT the durable write reddens here rather than shipping.*** *Stated
+        // so the arm is not read as proving more than it does.*
+        guard case .verified(let unchanged) = repo.lookup(binding.nodeId) else {
+            XCTFail("*** a refused confirm must leave the row verified/tofuPinned; got \(repo.lookup(binding.nodeId)) ***")
+            return
+        }
+        XCTAssertEqual(
+            unchanged.trustLevel, .tofuPinned,
+            "*** THE DURABLE STATE: a refused confirm must leave the row where it was. ***",
+        )
+
+        // *** AND THE DISCRIMINATOR THAT ACTUALLY CATCHES FORGING -- WHICH TOOK TWO WRONG VERSIONS TO FIND. ***
+        //
+        // *MY FIRST VERSION stopped at the store assertion above, and **THE MUTATION PROVED IT INSUFFICIENT**:
+        // with `confirmVerified` mutated to project success without a durable write, the row genuinely stayed
+        // `tofuPinned`, so that check PASSED. **A CHECK THAT ONLY READS THE STORE CANNOT SEE A PROJECTION THAT
+        // DISAGREES WITH IT.***
+        //
+        // *MY SECOND VERSION asserted the model and the store AGREE on verification -- and it STILL did not fire,
+        // because of something the mutation revealed about the model itself: `.confirmed` sets
+        // `lastOutcome: "fingerprint confirmed for Alice"` and then `project()` RE-READS THE STORE, so
+        // `isVerified` stays FALSE. **THE MODEL CONTRADICTS ITSELF: IT REPORTS SUCCESS AND NON-VERIFICATION AT
+        // ONCE**, and both sides of my comparison said "not verified".*
+        //
+        // **SO THE FORGERY'S ACTUAL SIGNATURE IS A SUCCESS CLAIM WITHOUT A DURABLE PROMOTION**, and that is what is
+        // asserted here: the outcome string may report a confirmation ONLY IF THE ROW WAS PROMOTED. *This is the
+        // model's own law 2 -- "USER_VERIFIED APPEARETH ONLY AFTER THE DURABLE CAS SUCCEEDETH" -- checked from the
+        // OUTSIDE, where a local-only implementation cannot satisfy it.*
+        let projectedOutcome = facade.lastOutcome() ?? ""
+        let claimsConfirmation = projectedOutcome.contains("confirmed")
+        let rowWasPromoted = (unchanged.trustLevel == .userVerified)
+        XCTAssertFalse(
+            claimsConfirmation && !rowWasPromoted,
+            "*** A SUCCESS CLAIM WITHOUT A DURABLE PROMOTION IS THE FORGERY: the model reported "
+                + "\"\(projectedOutcome)\" while the row still says \(unchanged.trustLevel). **THE PROJECTION IS A CLAIM AND "
+                + "THE STORE IS THE SOURCE** -- their disagreement is the defect, and no single-source assertion "
+                + "(neither the store alone nor the model alone) can see it. ***",
+        )
     }
 
     // -------------------------------------------------------------------------
