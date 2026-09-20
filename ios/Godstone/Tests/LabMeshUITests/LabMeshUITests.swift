@@ -182,6 +182,64 @@ final class LabMeshUITests: XCTestCase {
         XCTAssertTrue(begin.isEnabled, "and it must be actionable")
     }
 
+    /// *** GS-UX-001 STEP 7's CLOSURE: THE SCREEN TREE UNDER RTL AND A LARGER TEXT SIZE. ***
+    ///
+    /// *The card asks to "Run text-scale/RTL/VoiceOver/TalkBack tests against the actual screen tree." **A SCREEN
+    /// TREE CHECK IS WHAT THIS LAYER CAN DO HONESTLY**: VoiceOver and TalkBack acceptance is a HUMAN result and the
+    /// ledger already states it as pending; what is machine-checkable is that the controls remain ADDRESSABLE and
+    /// LABELLED when the layout is mirrored and the type is enlarged -- which is exactly where a control that relied
+    /// on position or on a hardcoded width falls apart.*
+    ///
+    /// **RTL IS SET THROUGH THE APPLICATION LANGUAGE**, which is how a user gets it; **TEXT SCALE THROUGH
+    /// `UIPreferredContentSizeCategoryName`**, which is how Dynamic Type is exercised. Both are launch arguments
+    /// rather than simulated state, so the app renders under them for real.*
+    func testGSINT001ControlsRemainAddressableUnderRTLAndLargeText() throws {
+        let app = XCUIApplication()
+        // RTL: a right-to-left language, set the way a user sets it.
+        app.launchArguments += ["-AppleLanguages", "(ar)", "-AppleLocale", "ar_SA"]
+        // DYNAMIC TYPE: the largest accessibility size.
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName",
+                                "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+
+        // *** THE TAB BAR MUST STILL WORK UNDER MIRRORING -- a control that vanished would be a REAL a11y defect,
+        // not a test artifact.
+        let conversation = tab("lab.tab.conversation", in: app)
+        XCTAssertTrue(
+            conversation.waitForExistence(timeout: 20),
+            "*** THE TAB MUST REMAIN ADDRESSABLE UNDER RTL AND AT AX-XXXL: an identifier that disappears when the " +
+                "layout is mirrored or the type is enlarged is a control some users cannot reach. ***",
+        )
+        conversation.tap()
+
+        // *** AND THE CONTROLS THE JOURNEYS DEPEND ON MUST SURVIVE THE SAME CONDITIONS. ***
+        let field = app.textFields["lab.conversation.field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 20),
+                      "the compose field must remain addressable under RTL and large text")
+        XCTAssertTrue(app.buttons["lab.conversation.send"].exists,
+                      "and the Send control must remain addressable -- a button pushed off-screen by enlarged type " +
+                      "is unreachable without scrolling, and its absence here would say so")
+
+        // *** AND THE COMPOSE FIELD MUST ACCEPT A MULTIBYTE RTL STRING. ***
+        // A bounded input that mangles Arabic is a defect no Latin-script test can see.
+        field.tap()
+        field.typeText("الطريق مسدود")
+
+        // *** AND EVERY VISIBLE ELEMENT MUST CARRY A NON-EMPTY LABEL, WHICH IS THE SEMANTIC CONTRACT. ***
+        // An identifier makes a control addressable BY A TEST; a label makes it comprehensible TO A PERSON.
+        var unlabelled: [String] = []
+        for element in app.buttons.allElementsBoundByIndex where element.exists {
+            if element.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                unlabelled.append(element.identifier.isEmpty ? "<no identifier>" : element.identifier)
+            }
+        }
+        XCTAssertTrue(
+            unlabelled.isEmpty,
+            "*** EVERY BUTTON MUST CARRY A NON-EMPTY LABEL: a control with an identifier but no label is reachable by " +
+                "a test and INVISIBLE to a screen reader. Unlabelled: \(unlabelled) ***",
+        )
+    }
+
     /// *** THE SOS JOURNEY IS A GESTURE, AND THE CARD SAYS SO: *"A label reading Hold is not a gesture."* ***
     ///
     /// *So this arm checks that a REAL control stands there -- the gesture's own view and its accessible

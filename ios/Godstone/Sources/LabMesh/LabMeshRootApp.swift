@@ -179,18 +179,24 @@ struct LabContactsView: View {
                     trustOutcome = holder.runtime.compareAndConfirmFingerprint(for: contact, displayedFingerprint: currentFp)
                 }
                 .accessibilityIdentifier("lab.trust.confirm")
+                .accessibilityLabel("Compare and confirm fingerprint")
+                .accessibilityHint("Confirms the fingerprint shown for \(selectedContact)")
 
                 Button("Approve Rotation") {
                     let contact = selectedContact
                     trustOutcome = holder.runtime.approveRotation(for: contact)
                 }
                 .accessibilityIdentifier("lab.trust.approve")
+                .accessibilityLabel("Approve rotation")
+                .accessibilityHint("Approves the exact rotation candidate shown for \(selectedContact)")
 
                 Button("Revoke") {
                     let contact = selectedContact
                     trustOutcome = holder.runtime.revokeContact(for: contact)
                 }
                 .accessibilityIdentifier("lab.trust.revoke")
+                .accessibilityLabel("Revoke contact")
+                .accessibilityHint("Revokes \(selectedContact); this cannot be undone from here")
             }
 
             Text(trustOutcome)
