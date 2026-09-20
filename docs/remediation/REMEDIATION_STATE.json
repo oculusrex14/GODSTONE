@@ -15799,6 +15799,20 @@
     "the_instrument": "`sample <pid> 4` distinguishes 'spinning productively' from 'blocked forever' in SECONDS. I ran it on the third occurrence rather than the first; it should have been the first.",
     "current_lane_verdict": "`run_ios_lane.sh` rc=0; GodstoneMeshTests 1282/0, GodstoneCoreTests 102/0, LabMeshTests 5/0 = 1389 tests; `check_lane_results.py` lane results PASSED, mirror membership PASSED."
    }
+  },
+  "verification_pass_2026_09_20": {
+   "note": "EVERY LANE RUN ON THE COMMITTED TREE, EACH THROUGH THE REPO'S OWN RUNNER SO ITS DIGEST CO-DERIVES FROM THE SOURCES IT COMPILED.",
+   "python_readiness": "759 tests OK",
+   "ci_controls": "8/8 rc=0 -- check_current_assessment, check_required_runs, check_commit_provenance, check_store_schema_controls, check_trusted_runtime_composition_controls, check_parity (--scope repo), check_lab_isolation, check_lane_results",
+   "ios_lane": "run_ios_lane.sh rc=0; GodstoneMeshTests 1285/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1395 tests, 0 failures; check_lane_results: lane results PASSED, mirror membership PASSED",
+   "android_lanes": "run_android_lanes.sh rc=0; app 97/0, core 21/0, mesh 1296/0 = 1414 tests, 0 failures; digests written by the runner",
+   "tree": "clean; `git diff --check` rc=0 with ZERO conflict markers; the three untracked evidence directories (AUDIT_FINAL_2026-09-15, GODSTONE_BLUEPRINT_HANDOFF, godstone-audit) all PRESENT",
+   "closure_and_supply": "closure law rc=0; blockers rc=0; supply-chain verify --all: 0 refusals",
+   "mission_constraints_rechecked": {
+    "ports_unpublished": "`TrustAuthorityPort` and `MeshAuthorityPort` carry NO `public` prefix -- verified by reading their declarations.",
+    "light_has_no_mesh_edge": "`Godstone` (Light) declares exactly one dependency: GodstonePackages/GodstoneCore. There is no GodstoneMesh edge, so the shipping app gains no trust surface."
+   },
+   "operation_note": "The Android runner's first attempt was KILLED BY MY OWN `pkill -f gradle`, issued seconds before it started -- the third time this session that my interference produced a false signal. The re-run, left alone, returned rc=0."
   }
  }
 }
