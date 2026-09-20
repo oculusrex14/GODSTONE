@@ -19,6 +19,7 @@ Scenarios:
 Environment variables configure the locations (defaults suit the deployment):
 GODSTONE_ROOT, GODSTONE_BUILDER_ROOT, GODSTONE_EVIDENCE.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -712,58 +713,92 @@ class MutationControlTest(ReadinessTestCase):
         shutil.copytree(EVIDENCE, mirror, symlinks=False)
         return mirror
 
-    @historical_arm
+    # *** THESE FOUR ARMS CARRY THEIR OWN MINIMAL CAPTURE, SO THEY RUN IN BOTH MODES. ***
+    #
+    # *THEY WERE DECORATED `@historical_arm`, WHICH MEANT THAT ON A CLEAN CHECKOUT OR A HOSTED
+    # RUNNER -- PRECISELY THE MODE THAT IS THE CANONICAL WITNESS -- THEY DEFERRED AND EXECUTED
+    # NOTHING.* These are the card-mandated proof that the verifier still DETECTS corruption of
+    # the original evidence: the anti-vacuity control. With them deferred, the mode that skips
+    # the historical comparison was also the mode that skipped the control, and the suite read
+    # all-green while the rod never fell.
+    #
+    # They do not need the REAL capture: they need SELF-CONSISTENCY. `_synthetic_capture` authors
+    # an inventory, a `tracked-patch.bin` and a `wip/<victim>` whose recorded sha256 matches, all
+    # in a TemporaryDirectory, and drives the same `preserve.verify_preservation` the real arms
+    # drive. `@historical_arm` is kept for the arms that genuinely require the real capture
+    # (`CopyIntegrityTest`, `PatchReconstructionTest`, the inventory readers).
+    #
+    # THE ORDERING TRAP the fixture builder documents in `add_declared` applies here too: the
+    # declaration must be authored so the baseline check runs on the PRE-declaration tree, or a
+    # correct control reddens for the wrong reason.
+    def _synthetic_capture(self, tmp, victim_name='victim.txt', victim_bytes=b'original'):
+        """A minimal, self-consistent capture: inventory + patch + one untracked copy."""
+        mirror = os.path.join(tmp, 'evidence-mirror')
+        os.makedirs(os.path.join(mirror, 'wip'))
+        patch_bytes = b'\x00tracked-patch\x01'
+        with open(os.path.join(mirror, 'tracked-patch.bin'), 'wb') as fh:
+            fh.write(patch_bytes)
+        victim_path = os.path.join(mirror, 'wip', victim_name)
+        with open(victim_path, 'wb') as fh:
+            fh.write(victim_bytes)
+        inventory = {
+            'untracked_files': [{
+                'path': victim_name,
+                'size': len(victim_bytes),
+                'sha256': hashlib.sha256(victim_bytes).hexdigest(),
+                'classification': 'debug_or_past_run_fixture',
+            }],
+            'ignored_fixture_files': [],
+            'tracked_patch_hash': hashlib.sha256(patch_bytes).hexdigest(),
+            'declared_additions': [],
+        }
+        return mirror, inventory, victim_name, victim_path
+
     def test_missing_tracked_patch_copy_fails_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
-            mirror = self._mirror(tmp)
+            mirror, inventory, _, _ = self._synthetic_capture(tmp)
             os.remove(os.path.join(mirror, 'tracked-patch.bin'))
-            failures = preserve.verify_preservation(REPO, mirror, self.inventory)
+            failures = preserve.verify_preservation(REPO, mirror, inventory)
             self.assertNotEmpty(failures)
             self.assertTrue(any('missing tracked patch copy' in f
                                for f in failures), msg=failures)
 
-    @historical_arm
     def test_tracked_patch_tamper_fails_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
-            mirror = self._mirror(tmp)
+            mirror, inventory, _, _ = self._synthetic_capture(tmp)
             target = os.path.join(mirror, 'tracked-patch.bin')
             with open(target, 'rb+') as stream:
                 first = stream.read(1)
                 stream.seek(0)
                 stream.write(bytes([(first[0] + 1) % 256]))
-            failures = preserve.verify_preservation(REPO, mirror, self.inventory)
+            failures = preserve.verify_preservation(REPO, mirror, inventory)
             self.assertNotEmpty(failures)
             self.assertTrue(any('tracked patch hash drift' in f
                                for f in failures), msg=failures)
 
-    @historical_arm
     def test_removed_untracked_copy_fails_verification(self):
-        victim = self.inventory['untracked_files'][0]['path']
         with tempfile.TemporaryDirectory() as tmp:
-            mirror = self._mirror(tmp)
+            mirror, inventory, victim, _ = self._synthetic_capture(tmp)
             os.remove(os.path.join(mirror, 'wip', victim))
-            failures = preserve.verify_preservation(REPO, mirror, self.inventory)
+            failures = preserve.verify_preservation(REPO, mirror, inventory)
             self.assertNotEmpty(failures)
             self.assertTrue(any('missing copy' in f and victim in f
                                for f in failures), msg=failures)
 
-    @historical_arm
     def test_tampered_copy_fails_verification(self):
-        victim = min(self.inventory['untracked_files'],
-                     key=lambda e: e['size'])
-        self.assertGreater(victim['size'], 0)
         with tempfile.TemporaryDirectory() as tmp:
-            mirror = self._mirror(tmp)
-            target = os.path.join(mirror, 'wip', victim['path'])
+            mirror, inventory, victim_name, target = self._synthetic_capture(tmp)
+            victim = inventory['untracked_files'][0]
+            self.assertGreater(victim['size'], 0)
             with open(target, 'rb+') as stream:
                 first = stream.read(1)
                 stream.seek(0)
                 stream.write(bytes([(first[0] + 1) % 256]))
             self.assertPathsEqual(os.path.getsize(target), victim['size'],
                                  msg='tamper must preserve the size byte')
-            failures = preserve.verify_preservation(REPO, mirror, self.inventory)
+            failures = preserve.verify_preservation(REPO, mirror, inventory)
             self.assertNotEmpty(failures)
-            self.assertTrue(any('hash mismatch' in f and victim['path'] in f
+            self.assertTrue(any('hash mismatch' in f and victim_name in f
                                for f in failures), msg=failures)
     @historical_arm
     def test_original_evidence_still_intact_after_mutations(self):
