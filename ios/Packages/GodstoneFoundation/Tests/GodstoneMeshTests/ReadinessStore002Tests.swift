@@ -51,7 +51,17 @@ final class ReadinessStore002Tests: XCTestCase {
     /// *** A FAKE ENGINE THAT ANSWERETH ON ITS OWN WORD -- WHICH IS EXACTLY WHAT THE CARD FORBIDDETH A CALLER FROM
     /// BELIEVING: "an enum value called pinnedSQLCipher is not engine verification." It is used ONELY as the positive
     /// control for the SHAPE of the refusal, and NOTHING in this court is evidence that any store is encrypted. ***
-    private final class VerifyingEngine: EncryptedStoreEngine, @unchecked Sendable {
+    ///
+    /// *** AND IT NOW CONFORMS TO `OwnedConnectionStoreEngine` -- WHICH IS GS-FINAL-004 CLAUSE (a) MADE VISIBLE IN
+    /// THIS COURT. *** *The audit requires the factory to "return an owned verified connection"; an engine that can
+    /// only describe a store cannot do that, and the composition now REFUSES such an engine rather than quietly
+    /// reopening by path. So this fixture HAD to be upgraded for W05's "the keyed composition still STANDS" claim to
+    /// be sayable -- and that refusal is the honest behaviour, not a regression: an engine that cannot supply a
+    /// connection cannot make a private store, which is precisely what the clause exists to ensure.*
+    ///
+    /// THE CONNECTION IT HANDS OVER IS REAL (a genuine `sqlite3_open_v2` handle), because the store performs its
+    /// migrations on it -- a fabricated pointer would crash rather than prove anything.*
+    private final class VerifyingEngine: OwnedConnectionStoreEngine, @unchecked Sendable {
         var kind: StoreEngineKind { .pinnedSQLCipher }
         var supportedCipherVersion: Int { 4 }
         private func handle(_ path: String) -> EncryptedStoreHandle {
@@ -59,6 +69,24 @@ final class ReadinessStore002Tests: XCTestCase {
         }
         func openForWriting(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle { handle(path) }
         func reopenRequiringDEK(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle { handle(path) }
+
+        /// THE HANDOVER: a real connection, verified and keyed before it leaves -- the contract the protocol states.
+        private func owned(_ path: String) throws -> OwnedConnection {
+            var db: OpaquePointer?
+            let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
+            guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK, let h = db else {
+                throw StoreOpenFault.io("the control engine could not open \(path)")
+            }
+            return OwnedConnection(
+                connection: OwnedVerifiedConnection(
+                    rawHandle: h, engineKind: .pinnedSQLCipher,
+                    cipherVersion: 4, encryptedAtRest: true, path: path,
+                ),
+                close: { sqlite3_close($0) },
+            )
+        }
+        func openOwnedForWriting(path: String, dek: StoreDEK) throws -> OwnedConnection { try owned(path) }
+        func reopenOwnedRequiringDEK(path: String, dek: StoreDEK) throws -> OwnedConnection { try owned(path) }
     }
 
     /// The audit's own probe, exactly: **STOCK UNKEYED sqlite3** preparing against the file the composition wrote.
@@ -92,8 +120,40 @@ final class ReadinessStore002Tests: XCTestCase {
         XCTAssertTrue(source.contains("encryptedStores"),
                       "and the factory must be a SEAM the composition carrieth, so a caller cannot "
                       + "compose private stores without saying how they are encrypted")
-        XCTAssertTrue(source.contains("reopenExisting("),
-                      "the runtime must ASK the factory for the at-rest verdict before opening a store")
+        // *** THE THIRD PIN IS UPGRADED, NOT SWAPPED FOR WHATEVER STRING IS GREEN. ***
+        //
+        // It asserted `source.contains("reopenExisting(")`. My GS-FINAL-004 rewire replaced that call with
+        // `reopenOwnedRequiringDEK`, which asks for the at-rest verdict AND the owned connection IN ONE CALL -- so
+        // the property this pin existed for now holds MORE STRONGLY than the old needle could express. **THE PIN IS
+        // THEREFORE STRENGTHENED TO THE FACT THE CLAUSE ACTUALLY REQUIRES: ONE VERIFIED CONNECTION, AND NO SECOND
+        // UNKEYED OPEN ON THAT ROAD.**
+        //
+        // *A swap to the new substring would prove only that the code SAYETH the verb -- one step above a comment,
+        // which this court's own W04 docstring warneth about. Asserting that the `url:` opens are CONFINED TO THE
+        // NO-FACTORY ROAD is the negative half, and it is the half the audit's charge is about: "composition performs
+        // a second independent open."*
+        XCTAssertTrue(source.contains("reopenOwnedRequiringDEK"),
+                      "*** THE RUNTIME MUST ASK THE FACTORY FOR THE OWNED, VERIFIED CONNECTION -- not merely for "
+                      + "metadata it then discards. `reopenOwnedRequiringDEK` is the verb that makes the second open "
+                      + "impossible rather than absent (GS-FINAL-004 clause (a)). ***")
+        // THE NEGATIVE HALF: each `url:` open survives EXACTLY ONCE, on the road that has no factory and therefore
+        // no key to apply. **A COUNT IS THE HONEST FORM OF THIS ASSERTION:** "does not contain" would be satisfied by
+        // a composition that opened three stores by path in a helper elsewhere, while the count pins that the ONLY
+        // remaining path opens are the legacy road's own.
+        XCTAssertEqual(source.components(separatedBy: "SqliteMessageStore(url:").count - 1, 1,
+                       "*** EXACTLY ONE `SqliteMessageStore(url:` MAY REMAIN, AND IT BELONGS TO THE NO-FACTORY ROAD. "
+                       + "More than one means the factory road reopened by path, WHICH IS THE SECOND INDEPENDENT "
+                       + "UNKEYED OPEN THE AUDIT MEASURED (GS-FINAL-004). ***")
+        XCTAssertEqual(source.components(separatedBy: "SqlitePeerIdentityStore(url:").count - 1, 1,
+                       "*** AND THE PEER STORE LIKEWISE. Fixing the message store alone would leave the second open "
+                       + "alive on this one -- which is why the composition could not be rewired with a single "
+                       + "change. ***")
+        // *** AND THE BEHAVIOURAL WITNESS, NAMED SO THIS SOURCE LAW IS NEVER MISTAKEN FOR THE PROOF. ***
+        // `GsFinal004OwnedConnectionTests.testGF004TheCompositionRunsItsStoresOnTheEnginesConnections` DRIVES the real
+        // `MeshRuntime` and compares each store's `adoptedConnectionIdentity` against the engine's own handle for that
+        // tag; the mutation restoring `SqliteMessageStore(url:)` on that road REDDENS it. An observation of the
+        // shipped path cannot be satisfied by a comment or broken by a rename -- which is what these source pins,
+        // by their own admission in W04, cannot claim.
     }
 
     /// W02 -- the seam REFUSETH a plain database: a store opened without its DEK is not a private store.

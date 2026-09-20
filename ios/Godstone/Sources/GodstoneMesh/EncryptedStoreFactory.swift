@@ -137,6 +137,73 @@ public final class EncryptedStoreFactory: @unchecked Sendable {
         return finalize { try self.engine.reopenRequiringDEK(path: path, dek: dek) }
     }
 
+    // ================================================================================================
+    // *** GS-FINAL-004 CLAUSE (a): THE FACTORY HANDS OVER AN OWNED, OPERATIONAL CONNECTION. ***
+    //
+    // THE AUDIT'S CHARGE, VERBATIM: *"The factory yields descriptive metadata rather than an owned
+    // operational connection/capability, and composition performs a second independent open."* AND ITS
+    // REMEDIATION: *"Change EncryptedStoreFactory to return an owned verified connection with restricted
+    // construction and explicit close ownership."*
+    //
+    // **THIS IS THE VERB THAT MAKES THE SECOND OPEN IMPOSSIBLE RATHER THAN MERELY ABSENT.** *`reopenExisting`
+    // answers with `EncryptedStoreHandle` -- path, kind, `encryptedAtRest`, `cipherVersion` AND NO CONNECTION
+    // -- so a caller could only ever CHECK it and then open a store by URL, which is what the composition
+    // did. A handle that CARRIES the connection leaves the caller nothing to reopen with.*
+    //
+    // **TWO VERBS FOR TWO QUESTIONS**, rather than one verb whose answer depends on which fields the caller
+    // happens to read: the metadata road answers the at-rest verdict BEFORE a private store existeth; this
+    // road is for a caller that means to USE the connection.
+    //
+    // **IT IS GUARDED ON `OwnedConnectionStoreEngine`, SO AN ENGINE THAT CANNOT HAND ONE OVER IS NOT ASKED
+    // TO.** *The ledger's blocker is re-verified here: no PRODUCTION `EncryptedStoreEngine` exists in this
+    // tree -- the real SQLCipher binding IS the injected seam the NATIVE_MODELS gate owns, and the only
+    // implementors are courts' `FakeEngine`s. So `engineUnavailable` is the TRUTHFUL answer for a
+    // metadata-only engine, and it is TYPED rather than a fabricated connection. Nothing here claims an
+    // at-rest result: the handover is what is proven, and the engine that supplies it is the seam's.*
+    public func reopenOwnedRequiringDEK(path: String, tag: String) -> OwnedConnectionResult {
+        guard engine.kind == .pinnedSQLCipher else { return .engineUnavailable }
+        guard let owner = engine as? OwnedConnectionStoreEngine else {
+            // THE ENGINE CANNOT SUPPLY A CONNECTION, so refusing is the honest answer: a caller that asked for
+            // an owned connection must not receive a nominal one, which is the "nominal store with a nil
+            // handle" the same card clause forbids.
+            return .engineUnavailable
+        }
+        let dek: StoreDEK
+        do { dek = try provider.fetchDEK(tag: tag) }              // MUST exist; no create-on-reopen
+        catch let e { return mapOwnedProviderError(e) }
+
+        // STEP 5, AS ON THE METADATA ROAD: an unprotected `-wal`/`-shm` is an unprotected store.
+        let protection = provider.applyFileProtection(paths: protectionPaths(forStoreAt: path),
+                                                      protection: .complete)
+        guard protection.isSuccess else { return .engineUnavailable }
+        do {
+            let connection = try owner.reopenOwnedRequiringDEK(path: path, dek: dek)
+            // THE VERIFIED CONNECTION KNOWS ITS OWN CIPHER VERSION; the DEK's LENGTH does not. My first version
+            // reported the key width (32) under a parameter named `cipherVersion`, which is a different quantity
+            // wearing the same word -- the comparison `found == supported` would then never hold.
+            return .opened(connection, cipherVersion: connection.connection.cipherVersion)
+        }
+        catch let f { return ownedRefusal(classifyEngineFault(f)) }
+    }
+
+    /// The provider's classification, expressed in the OWNED road's own vocabulary.
+    private func mapOwnedProviderError(_ e: Error) -> OwnedConnectionResult {
+        if let k = e as? StoreKeyError, case .decodingFailure = k { return .refused(.corruptHeader) }
+        return .engineUnavailable
+    }
+
+    /// Translate the factory's existing typed classification into the owned road's refusal vocabulary.
+    private func ownedRefusal(_ r: EncryptedStoreOpenResult) -> OwnedConnectionResult {
+        switch r {
+        case .available: return .engineUnavailable          // unreachable: the owned road never returns a handle
+        case .locked: return .refused(.wrongKey)
+        case .corrupt: return .refused(.corruptHeader)
+        case .unavailable: return .engineUnavailable
+        case .unsupportedVersion(let found, let supported):
+            return .refused(.cipherVersionMismatch(found: found, supported: supported))
+        }
+    }
+
     /// Classify a provider (Keychain / DEK / protection) error to a typed result -- fail-closed.
     private func mapProviderError(_ e: Error) -> EncryptedStoreOpenResult {
         if let k = e as? StoreKeyError {

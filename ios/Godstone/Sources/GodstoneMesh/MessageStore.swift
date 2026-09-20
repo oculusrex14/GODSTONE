@@ -993,8 +993,14 @@ public final class SqliteMessageStore: MessageStore {
                 fileProtection: FileProtectionType = .complete) {
         self.maxBytes = maxBytes
         self.fileProtection = fileProtection
-        self.adoptedConnectionIdentity = owned.connection.connectionIdentity
         self.ownsConnection = false        // the OWNER closes it, not the store
+        // *** THE IDENTITY IS PUBLISHED ONLY AFTER THE CONNECTION IS ACCEPTED -- MY OWN COURT CAUGHT THIS. ***
+        //
+        // *My first version assigned `adoptedConnectionIdentity` HERE, before the at-rest guard below. Measured
+        // consequence: a store handed an UNVERIFIED connection REFUSED to use it and STILL reported an adopted
+        // connection -- an observation that claims a handover which never happened. That is worse than the Boolean the
+        // audit forbids, because a Boolean merely asserts the architecture while a false OBSERVATION misreports what
+        // the store is actually running on. The assignment now sits after the guard, next to the handle it describes.*
 
         // THE ENGINE'S OWN VERDICT IS RE-CHECKED HERE, because a caller could otherwise hand over
         // a connection whose at-rest assertion failed and the store would run on it regardless.
@@ -1007,6 +1013,8 @@ public final class SqliteMessageStore: MessageStore {
 
         let db = owned.connection.rawHandle
         handle = db
+        // PUBLISHED ONLY NOW, BESIDE THE HANDLE IT NAMES: the connection is accepted, so the observation is true.
+        adoptedConnectionIdentity = owned.connection.connectionIdentity
         // MIGRATIONS RUN ON THE SUPPLIED CONNECTION -- the audit's "migrations run on that exact
         // verified/keyed connection". A migration failure closes nothing: the OWNER closes.
         do {

@@ -257,6 +257,19 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     private let lock = NSLock()
     internal let fileProtection: FileProtectionType = .complete
 
+    /// Whether this store owns the handle it runs on (true) or merely ADOPTED a verified one (false).
+    private var ownsConnection = true
+
+    /// *** THE OBSERVATION THE AUDIT REQUIRES IN PLACE OF A BOOLEAN. ***
+    ///
+    /// *The identity of the connection this store was HANDED, or nil when it opened its own. A court asks the store
+    /// which connection it is running on and compares that BY IDENTITY against what the engine returned.
+    /// `peerStoreWasBuiltFromVerifiedHandle` would assert the architecture; this reports what the store uses.*
+    ///
+    /// **PUBLISHED ONLY AFTER THE CONNECTION IS ACCEPTED**, beside the handle it names -- a store that refused a
+    /// connection must not report adopting one.*
+    internal private(set) var adoptedConnectionIdentity: UInt?
+
     /// Open (or create) the peer store at `url` with fixed Complete file protection.
     convenience init(url: URL) throws {
         try self.init(url: url, protectionSetter: { path, protection in
@@ -264,6 +277,41 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
             try FileManager.default.setAttributes([.protectionKey: protection], ofItemAtPath: path)
             #endif
         })
+    }
+
+    /// *** GS-FINAL-004 CLAUSE (b) FOR THE PEER STORE: ADOPT A VERIFIED CONNECTION INSTEAD OF REOPENING. ***
+    ///
+    /// *THE AUDIT'S CHARGE NAMES BOTH STORES: "MeshRuntime ... creates a new SqliteMessageStore by URL ... The
+    /// alternate archive-only host composition still constructs private-store objects." Fixing the message store alone
+    /// would leave THE SECOND OPEN ALIVE ON THIS ONE -- which is why the composition cannot be rewired with a single
+    /// change.*
+    ///
+    /// **IT PERFORMS NO `sqlite3_open_v2` OF ITS OWN**: migrations run on the supplied connection, which is the
+    /// audit's requirement ("run migrations only after keying and a real page/schema verification").
+    ///
+    /// **AND IT RE-CHECKS THE ENGINE'S OWN VERDICT**, so a caller cannot hand over a connection whose at-rest
+    /// assertion failed and have the store run on it regardless. A parameter named `verified` would be an assertion;
+    /// checking `encryptedAtRest` on the value actually handed over is an observation.
+    internal init(verifiedConnection owned: OwnedConnection) throws {
+        guard owned.connection.encryptedAtRest else {
+            throw PeerStoreError.handleMissing
+        }
+        let db = owned.connection.rawHandle
+        handle = db
+        // The OWNER closes it, never this store: the same explicit close ownership the message store records.
+        ownsConnection = false
+        adoptedConnectionIdentity = owned.connection.connectionIdentity
+
+        sqlite3_busy_timeout(db, 5000)
+
+        do {
+            try runMigrations(db)
+        } catch {
+            // A migration failure closes NOTHING -- the owner owns the handle.
+            handle = nil
+            adoptedConnectionIdentity = nil
+            throw error
+        }
     }
 
     /// Internal/test-only designated initializer with injected protection setter seam.
@@ -326,6 +374,15 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     public func close() {
         lock.lock()
         defer { lock.unlock() }
+        // *** GS-FINAL-004: EXPLICIT CLOSE OWNERSHIP. ***
+        // *An ADOPTED connection belongs to whoever handed it over. Closing it here would free a handle the engine
+        // still owns -- and the wipe path calls `close()` on both stores, so this is reachable in production, not a
+        // theoretical double-free.*
+        if !ownsConnection {
+            handle = nil
+            adoptedConnectionIdentity = nil
+            return
+        }
         if let db = handle {
             sqlite3_close_v2(db)
             handle = nil
