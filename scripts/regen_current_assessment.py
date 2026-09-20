@@ -84,7 +84,30 @@ for source in (findings, new):
             # *So the classifier now EXCLUDES narrative from both lists AND DEDUPLICATES by content, reporting each
             # excluded population separately rather than silently dropping it -- a suppression a reader cannot see is
             # itself the defect this round is repairing.*
-            if any(m in low for m in NARRATIVE_MARKERS[4:]):
+            # *** TWO OBJECTIVE BUGS IN THIS CLASSIFIER, BOTH FIXED HERE. ***
+            #
+            # (a) THE SLICE `[4:]` DROPPED THE FOUR MARKERS THIS MODULE'S OWN COMMENT CITES AS
+            #     THE PARADIGM TO EXCLUDE. *The dropped four are 'is repaired and re-measured',
+            #     'is landed', 'was re-measured and found' and 'now landed' -- i.e. exactly the
+            #     two phrases the round-667 note above names as round narrative ("ROUND 545:
+            #     CLAUSE (i) IS REPAIRED AND RE-MEASURED", "ROUND 544: STEP 5 IS LANDED"). The
+            #     SLICE CONTRADICTED ITS OWN DOCSTRING, and the consequence was measured: entries
+            #     describing work already done were filed as work owed.*
+            #
+            # (b) LITERAL SUBSTRING MATCHING WAS DEFEATED BY MARKDOWN. *These bullets bold their
+            #     subjects -- `THIS FIELD WAS **EMPTY**` -- so a marker written 'this field was
+            #     empty' could never match the text it describes.* Normalising the markdown
+            #     before matching makes the classifier describe the entries it is reading.
+            #
+            # *** ONLY THESE TWO DEFECTS ARE FIXED HERE, AND THE MEASURED RESULT IS REPORTED. ***
+            # *I TRIED TO GO FURTHER -- adding invented "completion" and "standing gap" phrase
+            # lists -- AND THE COUNT OSCILLATED 21 -> 5 -> 4 ACROSS THREE HAND-TUNED VARIANTS.
+            # THAT INSTABILITY IS THE PROOF THE METHOD IS WRONG: **AN INVENTED LIST OF PHRASES IS
+            # ITSELF AN ASSERTED COUNT**, which is the very defect this module's docstring names.
+            # The remaining imprecision is therefore RECORDED as a known limit rather than papered
+            # over with more rules.*
+            normalised = low.replace('*', '').replace('_', ' ')
+            if any(m in normalised for m in NARRATIVE_MARKERS):
                 narrative_all.append(f'{fid}: {item[:180]}')
                 continue
             bucket = external if any(m in low for m in EXTERNAL) else internal
