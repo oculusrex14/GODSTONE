@@ -56,6 +56,25 @@ documents, two new production records, a strengthened validator, and a repaired
 task catalogue. A candidate whose tree differs from the one that was verified
 cannot carry the same tag.
 
+## A02. CORRECTION — rc5: rc4's ARTIFACT DID NOT CONTAIN ITS OWN CORRECTIONS
+
+**THE FREEZE ITSELF WAS THE LAST DEFECT, AND ONLY A TAG CHANGE COULD REACH IT.**
+
+`rc4` (`962ff442`) was tagged BEFORE the round that found three further real defects, so its
+TREE still held them while its RECORD described them as repaired. Checked rather than assumed:
+`git merge-base --is-ancestor 7c982762 production-readiness-board1-rc4` is **FALSE**, and rc4's
+own `OracleViewModel.swift` still read `contextTokens: 128` — the value that disagrees with
+`Tier` by **16x** — and still carried the two rods that could not fail and the injection arm
+that measured quantity.
+
+A reader shipping rc4 would ship the oversized budget and the checks that never fired, while
+reading on the same page that both were fixed. **THE ARTIFACT AND THE ACCOUNT DISAGREED, AND
+ONLY THE ARTIFACT IS WHAT ANYONE BUILDS.**
+
+`rc5` = `4c724e85`, tree `af4ec77f`, is the commit that CARRIES those corrections **and** passed
+the full six jobs (run `35484529801`). **rc4 is retained, unmoved and named** — as is rc3 and
+rc2 — so the history shows which candidate to build and which to read.
+
 ## A01. CORRECTION — rc4
 
 **rc4 = `962ff442` (tree `7ac8bb4b`), tag `production-readiness-board1-rc4`,
@@ -169,11 +188,11 @@ The five external gates remain **OPEN**, no readiness flag was flipped, and `VER
 | item | value |
 |---|---|
 | branch | `main` |
-| candidate commit | `962ff442d241af9c87baca5dde42e6422c530da3` |
-| candidate tree | `7ac8bb4b6151bc20a3c01c9c8e82c52da312e05c` |
-| repository-verification run | [`35471507700`](https://github.com/oculusrex14/GODSTONE/actions/runs/35471507700) **ALL SIX JOBS SUCCESS** on the exact frozen candidate, iOS included: the lane executed the REAL suites (mesh 1249 + core 102 + lab 5 = 1356 cases, 0 failures, 0 segfaults) rather than the **0 tests** a `--filter` run silently reports. |
-| tag | `production-readiness-board1-rc4` (supersedes rc3; rc1 was deleted as it named a superseded SHA; **rc2 and rc3 are immutable historical evidence and were NOT moved, rewritten or deleted**) |
-| merge into `main` | **fast-forward** onto the frozen candidate `962ff442` (no merge commit, no history rewritten). Board 2's `board2/device-release-validation` is likewise **fast-forwarded** onto the corrected state. **The `main` TIP is deliberately not written here:** this record itself lands as a docs-only commit on top, so any literal tip SHA would self-invalidate on the next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc4`. |
+| candidate commit | `4c724e85b71ada4a9122ca769662a25655b48ed9` |
+| candidate tree | `af4ec77f15dd9772f5d0415769092f254e1d2cf2` |
+| repository-verification run | [`35484529801`](https://github.com/oculusrex14/GODSTONE/actions/runs/35484529801) **ALL SIX JOBS SUCCESS** on the exact frozen candidate, iOS included: the lane executed the REAL suites (mesh 1249 + core 102 + lab 5 = 1356 cases, 0 failures, 0 segfaults) rather than the **0 tests** a `--filter` run silently reports. |
+| tag | `production-readiness-board1-rc5` (supersedes rc4, whose TREE did not carry its record's corrections; rc1 was deleted as it named a superseded SHA; **rc2 and rc3 are immutable historical evidence and were NOT moved, rewritten or deleted**) |
+| merge into `main` | **fast-forward** onto the frozen candidate `962ff442` (no merge commit, no history rewritten). Board 2's `board2/device-release-validation` is likewise **fast-forwarded** onto the corrected state. **The `main` TIP is deliberately not written here:** this record itself lands as a docs-only commit on top, so any literal tip SHA would self-invalidate on the next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc5`. |
 
 The audited baseline `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` and the previous candidate
 `e07e6ca119284eac72cfe7ed82c539209f085715` are preserved unchanged in history.

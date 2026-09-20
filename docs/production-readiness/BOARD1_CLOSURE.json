@@ -2,10 +2,10 @@
  "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
  "status": "COMPLETE",
  "status_scope": "INTERNAL production readiness ONLY. COMPLETE means every internally executable obligation is discharged and the repository-owned verification is green on candidate_sha. It is NOT a statement that production readiness is achieved: 12 tasks remain BLOCKED_EXTERNAL, the five external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) are OPEN, and verified_fixed is 0 because only an independent audit may set it.",
- "candidate_sha": "962ff442d241af9c87baca5dde42e6422c530da3",
- "candidate_tree_sha": "7ac8bb4b6151bc20a3c01c9c8e82c52da312e05c",
- "tag": "production-readiness-board1-rc4",
- "main_sha": "962ff442d241af9c87baca5dde42e6422c530da3",
+ "candidate_sha": "4c724e85b71ada4a9122ca769662a25655b48ed9",
+ "candidate_tree_sha": "af4ec77f15dd9772f5d0415769092f254e1d2cf2",
+ "tag": "production-readiness-board1-rc5",
+ "main_sha": "4c724e85b71ada4a9122ca769662a25655b48ed9",
  "repository_verification": {
   "run_id": 35471507700,
   "conclusion": "success",
@@ -74,7 +74,7 @@
    }
   ],
   "greens_note": "FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line (35446805693, 35450312289, 35451828797, 35461098423, 35471507700). The rc4 green is the first in which the repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.",
-  "candidate_note": "This run is bound to the rc4 candidate 962ff442. It is a FULL 6/6 green on the exact frozen candidate, including the iOS lane, which executed the real suites (GodstoneMeshTests 1249 + GodstoneCoreTests 102 + LabMeshTests 5 = 1356 cases, 0 failures, 0 segfaults) rather than 0 tests. rc3's run 35461098423 is retained as historical.",
+  "candidate_note": "TWO RUNS BIND THIS RECORD, and the distinction matters. Run 35484529801 on 4c724e85 is the run that exercised THE FROZEN CANDIDATE (rc5's tree), 6/6 success. Run 35471507700 on 962ff442 is retained as the run bound to the now-superseded rc4.",
   "previous_run_id": "35461098423",
   "third_green": {
    "sha": "52a285f77a4cd124a8efa3672f4fc9d1f7c86ad4",
@@ -191,7 +191,7 @@
  "verified_fixed": 0,
  "record_corrections": 64,
  "board2_branch": "board2/device-release-validation",
- "board2_sha": "962ff442d241af9c87baca5dde42e6422c530da3",
+ "board2_sha": "4c724e85b71ada4a9122ca769662a25655b48ed9",
  "main_pointer_note": "POSITIONAL, NOT LITERAL. `main_sha` is the frozen candidate that `main` was fast-forwarded to, and it equals the tag target. The docs record lives in a chain of docs-only commits ON TOP of it, so `main`'s TIP (and board2, which is fast-forwarded to it) advances with each docs commit and is deliberately not written here: a literal tip SHA self-invalidates on the very next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc4`. Board 2 starts from the corrected state by FAST-FORWARD -- shared history is never rewritten.",
  "catalogue_path_gap": {
   "what_it_is": "A task card's `required_regression_paths` is a repo-relative path, and 12 of them do not resolve. THE 12 SPLIT INTO TWO CLASSES WITH OPPOSITE REMEDIES, and fusing them was my error.",
@@ -395,5 +395,10 @@
  "internal_work_remaining": {
   "value": null,
   "why_not_a_number": "NOT WRITTEN AS A SCALAR. Only an independent audit may assert a closure count, and a scalar here would be exactly the hand-asserted figure that sat at 0 while the ledger derived otherwise. The derived number lives in `internal_work_by_finding`."
+ },
+ "superseded_candidate_rc4": {
+  "tag": "production-readiness-board1-rc4",
+  "sha": "962ff442d241af9c87baca5dde42e6422c530da3",
+  "status": "RETAINED, NOT MOVED OR DELETED -- named here as the candidate whose RECORD DESCRIBED CORRECTIONS ITS OWN TREE DID NOT CARRY. `git merge-base --is-ancestor 7c982762 production-readiness-board1-rc4` is FALSE, so its source still read `contextTokens: 128` (16x off `Tier`) and still carried the vacuous rods and the quantity-misnamed injection arm, while the record declared them repaired. THE ARTIFACT AND THE ACCOUNT DISAGREED, and only the artifact is what anyone builds -- which is why rc5 exists rather than rc4 being edited."
  }
 }
