@@ -15822,6 +15822,19 @@
     "light_has_no_mesh_edge": "`Godstone` (Light) declares exactly one dependency: GodstonePackages/GodstoneCore. There is no GodstoneMesh edge, so the shipping app gains no trust surface."
    },
    "operation_note": "The Android runner's first attempt was KILLED BY MY OWN `pkill -f gradle`, issued seconds before it started -- the third time this session that my interference produced a false signal. The re-run, left alone, returned rc=0."
+  },
+  "external_boundary_split_2026_09_20": {
+   "note": "RE-APPLIED AFTER A MEASURED OVERSTATEMENT. Two items had been drifting toward a blanket `BLOCKED_EXTERNAL`, which OVERSTATES external dependence and UNDERCOUNTS open INTERNAL work -- the same correction this ledger already carries from round 749, where such a status was written and then RETRACTED for exactly this reason.",
+   "gs_runtime_001_android": {
+    "internal_and_writable": "The Context-bearing court. `provideMeshNode` needs an `@ApplicationContext`, which a Robolectric test CAN supply -- `GsFinal003GraphComponentTest` already constructs the real Dagger component with `applicationContext(ctx())`. So the pump-identity comparison and the `subscribeToReadiness` half are INTERNAL work, not blocked.",
+    "external": "ONLY the platform keystore/provider half: `meshNode()` resolves `identity()` -> `Identity.loadOrCreate(ctx)` -> `AndroidKeyStore`, and execution stops there on a host (`java.security.KeyStoreException: AndroidKeyStore not found`). Reaching it needs a real device or an instrumented host.",
+    "status": "the internal halves stay OPEN; only the keystore half is the external boundary"
+   },
+   "gs_archive_005_restore": {
+    "classification": "INTERNAL, NOT EXTERNAL -- DELIBERATELY NOT ROUTED TO BLOCKED_EXTERNAL",
+    "reason": "Five other arms in the SAME XCUITest target drive real app lifecycle today, so 'the simulator cannot do process restoration' is NOT an external-artifact boundary. The red is an internal gap -- either a real defect (restore genuinely does not occur after a clean process death) or a harness-versus-production-interface question not yet separated. Classifying it BLOCKED_EXTERNAL would convert an internally executable obligation into a counted-complete one purely to move the gate, which is the false-green the closure law exists to catch.",
+    "status": "OPEN/PARTIAL with its measured outcome distribution recorded"
+   }
   }
  }
 }

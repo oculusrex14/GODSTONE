@@ -231,16 +231,16 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "Structured per-finding closure: `internal_status`, `internal_obligations` and "
                  "`external_obligations` for every nonterminal finding, with `internal_remaining` "
                  "DERIVED from them rather than NLP-classified from prose.",
-         "status": "OPEN", "evidence": []},
+"status": "DISCHARGED", "evidence": ["py:scripts/build_structured_closure.py --write wrote `finding_closure` (68 entries, every one carrying `internal_status`) + `structured_counts` into the ledger; `internal_remaining_prose_classifier_retired` records the NLP classifier as RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision, so `internal_remaining` is DERIVED from explicit obligation statuses"]},
         {"id": "audit-b1-ctrl-001.closure-law",
          "text": "A control that REFUSES a COMPLETE/READY builder status while structured "
                  "internal OPEN work exists, so the control plane can no longer report closure "
                  "over a NO_GO register.",
-         "status": "OPEN", "evidence": []},
+"status": "DISCHARGED", "evidence": ["MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"]},
         {"id": "audit-b1-ctrl-001.missed-partials",
          "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which "
                  "the prose classifier missed entirely.",
-         "status": "OPEN", "evidence": []},
+"status": "DISCHARGED", "evidence": ["`build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), the two the prose classifier missed entirely; and the law REFUSES an OPEN finding with NO obligations authored, so a finding cannot be silently obligationless"]},
     ],
 }
 
