@@ -559,6 +559,18 @@ final class GsStress001RealRuntimeTests: XCTestCase {
 
         var admitted = 0
         var refused = 0
+        /// *** THE STEP WITNESS. MY FIRST VERSION HAD NONE, AND ITS NAMED "COMPLETION WITNESS" WAS A TAUTOLOGY. ***
+        ///
+        /// *`private func step0Completion(_ cycles: Int) -> Int { cycles }` made the assertion
+        /// `assert(10_000 == 10_000)` -- CONSTANT-FED, so it passed identically whether the loop ran 10,000 times or
+        /// broke at step 0. Its own comment claimed it "can only be reached by running every cycle", WHICH WAS FALSE.
+        /// **AND NOTHING ELSE OBSERVED THE COUNT EITHER:** with an early break at step 1, `admitted > 0` passes,
+        /// `held.count == 0` passes, `maxDepthSeen <= 1` passes and the owner censuses pass -- so A TRUNCATED LOOP
+        /// WAS FULLY GREEN while the clause rests on "10,000 real ingests". That is the "green that cannot redden when
+        /// the mechanism is broken" shape this ledger condemns.*
+        ///
+        /// **THE FIX IS A COUNTER THE LOOP ITSELF INCREMENTS, asserted against `cycles`.** An early break now fails.
+        var stepsRun = 0
         var maxHeld = 0
         var maxDepthSeen = 0
 
@@ -579,7 +591,6 @@ final class GsStress001RealRuntimeTests: XCTestCase {
         //
         // The census bound is therefore asserted on the TRAJECTORY: no cycle may leave the store deeper than the
         // frames in flight for that cycle.
-        let drainEachCycle = true
 
         // *** THE 10,000 CYCLES THEMSELVES. ***
         for step in 0..<cycles {
@@ -607,7 +618,10 @@ final class GsStress001RealRuntimeTests: XCTestCase {
             }
             // *** THE RELEASE HALF OF THE CYCLE: `removeHeld` is the STORE'S OWN drain verb, so the resource is
             // released by the owner -- which is what makes "shutdown releaseth everything" askable 10,000 times. ***
-            if drainEachCycle { _ = rig.bobStore.removeHeld(mid) }
+            // THE RELEASE HALF OF THE CYCLE: `removeHeld` is the STORE'S OWN drain verb, so one of the owners
+            // releases it. (A `let drainEachCycle = true` toggle stood here; it was dead -- always true, never read
+            // for a branch -- and a toggle that cannot be off is a comment wearing a variable's name.)
+            _ = rig.bobStore.removeHeld(mid)
 
             // *** THE BOUNDED-CENSUS INVARIANT, CHECKED INSIDE THE LOOP RATHER THAN ONLY AT THE END. ***
             //
@@ -631,6 +645,7 @@ final class GsStress001RealRuntimeTests: XCTestCase {
                         "where the depth is small, is what makes the leak NAME ITSELF rather than merely slow the run. ***",
                 )
             }
+            stepsRun += 1
         }
 
         // *** THE INVARIANT THAT MAKES THIS A STRESS RUN RATHER THAN A LOOP: NO DUPLICATE INBOX. ***
@@ -658,13 +673,27 @@ final class GsStress001RealRuntimeTests: XCTestCase {
         )
 
         // *** AND NO UNCAUGHT MALFORMED: the loop completed all 10,000 cycles without escaping. ***
-        XCTAssertEqual(step0Completion(cycles), cycles,
-                       "the driver must have run every cycle; a malformed record escaping would have stopped it")
+        XCTAssertEqual(
+            stepsRun, cycles,
+            "*** THE LOOP MUST HAVE RUN EVERY CYCLE. My first version asserted this through a constant-returning " +
+                "helper, so it could not see a truncated loop at all -- **a green that cannot redden when the " +
+                "mechanism is broken.** This counts the iterations the loop itself performed. Observed: \(stepsRun) ***",
+        )
+        XCTAssertEqual(
+            admitted + refused, cycles,
+            "*** AND EVERY CYCLE MUST HAVE REACHED THE RUNTIME'S ADMISSION ROAD: each iteration admits or refuses, so " +
+                "the two must sum to the cycle count. A loop that broke early, or an ingest that silently stopped " +
+                "being called, reddens here. Observed: \(admitted) + \(refused) ***",
+        )
 
         // *** AND THE CENSUS IS BOUNDED -- ASKED OF THE REAL OWNERS, THROUGH THEIR OWN HOOKS. ***
+        // *** THE VACUOUS BOUND IS GONE. *** *`held.count <= cycles` was `0 <= 10_000` on a drained runtime -- TRUE
+        // BY CONSTRUCTION and therefore no check at all. What matters after a DRAINED run is asserted instead: the
+        // store is EMPTY (stated above) and the depth never exceeded one (stated below).*
         XCTAssertLessThanOrEqual(
-            held.count, cycles,
-            "the durable census must not exceed the frames delivered",
+            held.count, 1,
+            "*** A DRAINED RUNTIME HOLDS AT MOST ONE FRAME IN FLIGHT. The old bound was `<= cycles`, which on a " +
+                "drained store is `0 <= 10_000` -- true by construction and measuring nothing. Observed: \(held.count) ***",
         )
         XCTAssertEqual(
             0, sessions.liveSessionSlots(),
@@ -752,7 +781,4 @@ final class GsStress001RealRuntimeTests: XCTestCase {
     // ================================================================================================
     // MARK: - helpers
     // ================================================================================================
-
-    /// The completion witness for the 10,000-cycle loop: it can only be reached by running every step.
-    private func step0Completion(_ cycles: Int) -> Int { cycles }
 }
