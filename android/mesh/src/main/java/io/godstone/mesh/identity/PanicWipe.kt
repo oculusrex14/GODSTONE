@@ -155,6 +155,29 @@ interface WipeJournal {
     fun clear()
 }
 
+/**
+ * *** GS-FINAL-003: WHETHER THE DURABLE RECORD COULD BE READ AT ALL. ***
+ *
+ * **THE DISTINCTION `WipeJournal.read()` CANNOT EXPRESS, AND THE REASON THIS INTERFACE EXISTS.** `read()` returns a
+ * TYPED `WipeState`, so an unreadable durable value has NO REPRESENTATION in it and arrives as `IDLE`. A caller asking
+ * only `read()` therefore sees *"nothing was ever requested"* where the truth may be *"the record cannot be parsed"* --
+ * and those two must permit OPPOSITE things, because one is a clean first launch and the other is material that may be
+ * mid-erasure.
+ *
+ * *** A STORE THAT CANNOT ANSWER MUST FAIL CLOSED. *** *An external review found this exact defect in this isle: the
+ * production `FileWipeJournal.read()` maps an out-of-range ordinal to `IDLE`, the adapter maps `IDLE` to an EMPTY
+ * ladder, the coordinator reports `NOTHING_TO_RESUME`, and the startup barrier PERMITS startup -- the same fail-open
+ * that was just repaired on iOS (`UserDefaultsWipeJournal.read() ?? .idle`). A coordinator-side check that derives from
+ * ALREADY-COERCED lines cannot see it: the coercion happened further down.*
+ */
+interface WipeReadabilityReporting {
+    /**
+     * True iff the durable record EXISTS AND PARSES. **A journal that cannot answer the question has NOT answered it**,
+     * so a conformer omitting this property must not be read as readable -- see the coordinator's fail-closed default.
+     */
+    val isReadable: Boolean
+}
+
 /** The three idempotent destroy/rebuild steps, injectable for host tests. */
 interface WipeArtifacts {
     /** Destroy the KEK. After this, encrypted artifacts are unrecoverable. */
@@ -172,14 +195,34 @@ interface WipeArtifacts {
  * marker is harmless. A non-IDLE marker after a reboot is exactly the signal
  * [PanicWipe.resumeIfPending] acts on.
  */
-internal class FileWipeJournal(ctx: Context) : WipeJournal {
+internal class FileWipeJournal(ctx: Context) : WipeJournal, WipeReadabilityReporting {
     private val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     override fun read(): PanicWipe.WipeState {
-        val ord = prefs.getInt(KEY, -1)
-        return if (ord < 0 || ord >= PanicWipe.WipeState.entries.size) PanicWipe.WipeState.IDLE
+        val ord = prefs.getInt(KEY, ABSENT)
+        return if (!isOrdinal(ord)) PanicWipe.WipeState.IDLE
         else PanicWipe.WipeState.entries[ord]
     }
+
+    /**
+     * *** GS-FINAL-003: ABSENT IS A CLEAN START; PRESENT-BUT-UNPARSEABLE IS NOT. ***
+     *
+     * **THE DEFECT THIS REPLACES**: `read()` collapses BOTH to `IDLE`, so a garbage ordinal read as *"no wipe was ever
+     * requested"* and the startup barrier PERMITTED construction over it. THE COERCION HAPPENED HERE, which is why a
+     * check derived from `read()`'s output could never have caught it -- the information was already gone by then.
+     *
+     * **IT IS DERIVED FROM THE STORED VALUE ON EVERY CALL, NEVER A CACHED FLAG**: a mutable recorder on a store read by
+     * more than one component is the T65 `StateRecorder` defect class, and it is also how two readers come to disagree.
+     */
+    override val isReadable: Boolean
+        get() {
+            // An ABSENT key is a genuine first launch: nothing was ever requested, which is a PROVEN clean estate.
+            if (!prefs.contains(KEY)) return true
+            // Present must mean PARSEABLE. An out-of-range ordinal is material we cannot read: NOT clean.
+            return isOrdinal(prefs.getInt(KEY, ABSENT))
+        }
+
+    private fun isOrdinal(ord: Int) = ord >= 0 && ord < PanicWipe.WipeState.entries.size
 
     override fun write(state: PanicWipe.WipeState) {
         prefs.edit().putInt(KEY, state.ordinal).commit()
@@ -192,6 +235,8 @@ internal class FileWipeJournal(ctx: Context) : WipeJournal {
     private companion object {
         const val PREFS = "godstone_wipe_journal"
         const val KEY = "state"
+        /** The sentinel for "no durable value at all", distinct from any real ordinal. */
+        const val ABSENT = -1
     }
 }
 

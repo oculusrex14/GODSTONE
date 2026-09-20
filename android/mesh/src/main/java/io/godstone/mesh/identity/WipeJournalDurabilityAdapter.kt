@@ -20,7 +20,20 @@ package io.godstone.mesh.identity
  * dropped checkpoint is a wipe that restarts LATER than it should: the failure is closed, and the caller's step stays
  * pending.
  */
-class WipeJournalDurabilityAdapter(private val journal: WipeJournal) : WipeDurabilityStore {
+class WipeJournalDurabilityAdapter(
+    private val journal: WipeJournal,
+) : WipeDurabilityStore, WipeReadabilityReporting {
+
+    /**
+     * *** GS-FINAL-003: THE ADAPTER MUST NOT INVENT A READABILITY IT CANNOT SEE. ***
+     *
+     * A `WipeJournal` that cannot answer the question (no `WipeReadabilityReporting`) has NOT answered it, so this
+     * returns `false` -- FAIL CLOSED, matching iOS. *An earlier version of this class had no such property at all, so
+     * a store mid-erasure was indistinguishable from an empty one.*
+     */
+    override val isReadable: Boolean
+        get() = (journal as? WipeReadabilityReporting)?.isReadable ?: false
+
 
     private val lock = Any()
 

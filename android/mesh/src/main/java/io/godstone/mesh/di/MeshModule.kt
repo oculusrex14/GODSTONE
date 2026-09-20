@@ -32,6 +32,7 @@ import io.godstone.mesh.identity.WipeArtifacts
 import io.godstone.mesh.identity.WipeJournal
 import io.godstone.mesh.identity.WipeJournalState
 import io.godstone.mesh.identity.WipeStepResult
+import io.godstone.mesh.identity.WipeRefusalCause
 import io.godstone.mesh.identity.PeerIdentityRepository
 import io.godstone.mesh.identity.RuntimeAwareWipeArtifacts
 import io.godstone.mesh.identity.RuntimeGatedPeerBindingTrustAuthority
@@ -92,16 +93,27 @@ class MeshStartupWipeBarrier internal constructor(
      */
     val outcome: WipeStepResult
 
+    /**
+     * *** GS-FINAL-003: THE COORDINATOR IS RETAINED, NOT DISCARDED, SO READABILITY CAN BE ASKED AT DECISION TIME. ***
+     *
+     * *An external review measured the consequence of NOT retaining it: `FileWipeJournal.read()` coerces an
+     * out-of-range ordinal to `IDLE`, the adapter maps `IDLE` to an EMPTY ladder, `resume()` therefore answers
+     * `Refused(NOTHING_TO_RESUME)`, and the barrier PERMITTED startup -- THE SAME FAIL-OPEN REPAIRED ON IOS, one layer
+     * down and reachable in production. The outcome alone cannot expose it: by the time the result exists, the coercion
+     * has already happened.* **THE READABILITY MUST BE ASKED OF THE STORE, WHICH IS WHY THE COORDINATOR SURVIVES HERE.**
+     */
+    internal val authority: CrashResumableWipe
+
     init {
-        outcome = runStartupWipeBarrier {
-            CrashResumableWipe(
-                store = WipeJournalDurabilityAdapter(FileWipeJournal(ctx)),
-                vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
-                filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
-                runtime = WipeDeferredSeams.DeferredTransportRuntimeSeam(),
-                authority = WipeDeferredSeams.DeferredIdentityAuthoritySeam(),
-            ).resume()
-        }
+        val coordinator = CrashResumableWipe(
+            store = WipeJournalDurabilityAdapter(FileWipeJournal(ctx)),
+            vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
+            filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
+            runtime = WipeDeferredSeams.DeferredTransportRuntimeSeam(),
+            authority = WipeDeferredSeams.DeferredIdentityAuthoritySeam(),
+        )
+        authority = coordinator
+        outcome = runStartupWipeBarrier { coordinator.resume() }
     }
 
     /**
@@ -129,16 +141,91 @@ class MeshStartupWipeBarrier internal constructor(
      * the providers (today the runtime-side authority is constructed inside `MeshPanicWipe.begin`), which is the
      * architectural prerequisite named in the ledger for BOTH isles.
      */
-    val permitsStartup: Boolean
-        get() = when (val r = outcome) {
-            // NO WIPE WAS EVER REQUESTED -- the clean first launch. Distinguished from a pending wipe by the REASON,
-            // because `Refused` is also used for a malformed journal, and treating THAT as clean would be unsound.
-            is WipeStepResult.Refused -> r.reason.contains("nothing to resume")
-            is WipeStepResult.AlreadyAtOrPast -> true
-            is WipeStepResult.Advanced -> r.to == WipeJournalState.IDLE
-            // A PENDING WIPE THAT COULD NOT ADVANCE: blocked, and the safe answer is to say so.
-            is WipeStepResult.RetryLater -> false
+    /**
+     * *** GS-FINAL-003: THE TYPED STARTUP DECISION -- WHAT THE GATE ACTS ON. ***
+     *
+     * **THE AUDIT'S CLAUSE NAMES A BARE BOOLEAN AS FORBIDDEN, AND FOR THIS REASON: A BOOLEAN RECORDS NO CAUSE, SO A
+     * COURT ASSERTING `permitsStartup == false` CANNOT TELL A CORRECT REFUSAL FROM THE WRONG ONE.** *That is how the
+     * INVERTED `provideWipeIsPending` gate survived eighteen rounds.* A decision that carries WHY it decided is
+     * falsifiable; a Boolean is only observed.
+     */
+    val decision: StartupWipeDecision
+        get() = decide(outcome, authority.isReadableJournal)
+
+    /**
+     * *** DERIVED, NEVER STORED -- SO IT CANNOT DRIFT FROM [decision]. ***
+     *
+     * *Retained because existing gates and courts read it. It is a PROJECTION of the typed decision, not a parallel
+     * answer: a second, independently-computed Boolean is exactly how two sources of truth diverge.*
+     */
+    val permitsStartup: Boolean get() = decision.allowsPrivateConstruction
+}
+
+/**
+ * *** GS-FINAL-003: THE MAP FROM THE LADDER'S ANSWER TO THE STARTUP DECISION. ***
+ *
+ * **THIS FUNCTION LIVES IN PRODUCTION, AND THE COURTS CALL IT -- WHICH IS THE POINT.** *My first version of the court
+ * REPLICATED this mapping inside the test file. A mutation that reintroduced `reason.contains(...)` in the production
+ * `decision` property then left the court GREEN, because the court was measuring its own copy: the exact "a provider's
+ * body cannot be measured by a court that passes its own lambda" defect this repository already paid for once. The
+ * mapping is now callable, so the court judges the shipped code and the mutation DIES.*
+ *
+ * [readable] IS CONSULTED FIRST AND IS NOT OPTIONAL: a durable record that could not be read is CORRUPT whatever the
+ * ladder's coerced answer says. *That is the Android face of the iOS lossy-coercion defect.*
+ */
+internal fun decide(outcome: WipeStepResult, readable: Boolean): StartupWipeDecision {
+    // *** AN UNREADABLE RECORD OVERRIDES EVERYTHING: its `Refused(NOTHING_TO_RESUME)` is an ARTEFACT of coercion. ***
+    if (!readable) return StartupWipeDecision.CORRUPT_JOURNAL
+    return when (outcome) {
+        // *** A REFUSAL IS BRANCHED ON ITS TYPED CAUSE, NEVER ON ITS PROSE. ***
+        // `contains("nothing to resume")` used to stand here: ONE MESSAGE REWORDING WOULD HAVE MADE A MALFORMED
+        // JOURNAL READ AS A CLEAN FIRST LAUNCH, opening stores over material mid-erasure. Only `NOTHING_TO_RESUME`
+        // is a PROVEN clean estate; every other cause is NOT.
+        is WipeStepResult.Refused -> when (outcome.cause) {
+            WipeRefusalCause.NOTHING_TO_RESUME -> StartupWipeDecision.CLEAN_START
+            WipeRefusalCause.MALFORMED_JOURNAL -> StartupWipeDecision.CORRUPT_JOURNAL
+            WipeRefusalCause.WIPE_ALREADY_PENDING -> StartupWipeDecision.RECOVERY_PENDING
+            WipeRefusalCause.TERMINAL_STEP_FAILURE -> StartupWipeDecision.TERMINAL_FAILURE
+            WipeRefusalCause.JOURNAL_LOST -> StartupWipeDecision.CORRUPT_JOURNAL
         }
+        // *** AND THE STATE IS CHECKED, BECAUSE `AlreadyAtOrPast` IS NOT SYNONYMOUS WITH CLEAN. ***
+        // It answers at ANY rung already passed -- INCLUDING a mid-ladder one when the journal's last durable entry
+        // is a rung reached before a crash. The shipped arm returned `true` UNCONDITIONALLY, permitting private
+        // stores over an OUTSTANDING WIPE on the strength of the result's TYPE alone. Only a terminal IDLE rank is clean.
+        is WipeStepResult.AlreadyAtOrPast ->
+            if (outcome.state == WipeJournalState.IDLE) StartupWipeDecision.CLEAN_START
+            else StartupWipeDecision.RECOVERY_PENDING
+        // An advance is clean ONLY if it landed on the terminal rung; otherwise a wipe is still outstanding.
+        is WipeStepResult.Advanced ->
+            if (outcome.to == WipeJournalState.IDLE) StartupWipeDecision.CLEAN_START
+            else StartupWipeDecision.RECOVERY_PENDING
+        // A PENDING WIPE THAT COULD NOT ADVANCE: blocked, and the safe answer is to say so.
+        is WipeStepResult.RetryLater -> StartupWipeDecision.RETRYABLE_FAILURE
+    }
+}
+
+/**
+ * *** GS-FINAL-003: THE TYPED STARTUP OUTCOME, THE ANDROID TWIN OF THE iOS `StartupRecoveryDecision`. ***
+ *
+ * **THE SIX CASES MIRROR THE iOS ISLE ON PURPOSE, SO THE TWO ISLES CANNOT DRIFT INTO DIFFERENT ANSWERS TO THE SAME
+ * QUESTION.** *A bare `Boolean` was rejected by the audit because it records no cause; the cause is what makes the
+ * refusal FALSIFIABLE and what tells an operator whether a human is needed.*
+ */
+enum class StartupWipeDecision(val allowsPrivateConstruction: Boolean, val requiresOperator: Boolean) {
+    /** Nothing was ever requested. The ONLY case that may open private stores. */
+    CLEAN_START(allowsPrivateConstruction = true, requiresOperator = false),
+
+    /** A wipe is outstanding and did not reach a terminal state. Not corrupt, not clean: refuse both. */
+    RECOVERY_PENDING(allowsPrivateConstruction = false, requiresOperator = false),
+
+    /** The durable record cannot be read as a ladder. Material may be mid-erasure; a human must decide. */
+    CORRUPT_JOURNAL(allowsPrivateConstruction = false, requiresOperator = true),
+
+    /** A step failed retryably. A later composition with live seams may finish it. */
+    RETRYABLE_FAILURE(allowsPrivateConstruction = false, requiresOperator = false),
+
+    /** A key or artifact could not be destroyed non-retryably. Not recoverable by retrying. */
+    TERMINAL_FAILURE(allowsPrivateConstruction = false, requiresOperator = true),
 }
 
 /**
@@ -251,12 +338,13 @@ internal object MeshModule {
      * prerequisite named in the ledger for both isles.
      */
     private fun recordStartupPermit(barrier: MeshStartupWipeBarrier) {
-        if (!barrier.permitsStartup) {
+        if (!barrier.decision.allowsPrivateConstruction) {
             android.util.Log.w(
                 "GodstoneStartupWipe",
-                "GS-FINAL-003: a wipe is outstanding and the startup recovery did not reach a terminal state " +
-                    "(${barrier.outcome}); no key was erased and no artifact deleted. The runtime MUST NOT admit " +
-                    "sensitive use until the live-seam resume completes.",
+                "GS-FINAL-003: startup decided ${barrier.decision} (${barrier.outcome}); no key was erased and no " +
+                    "artifact deleted. THE TYPED CASE, NOT A BOOLEAN, is recorded here so that an operator can tell a " +
+                    "recoverable refusal from a corrupt journal. The runtime MUST NOT admit sensitive use until the " +
+                    "live-seam resume completes.",
             )
         }
     }

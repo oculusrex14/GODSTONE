@@ -61,8 +61,14 @@ class WipeStartupHalfTest {
         val result = startupCoordinator(journal).resume()
         assertTrue("an EMPTY journal must be REFUSED -- nothing was ever requested -- its answer was $result",
             result is WipeStepResult.Refused)
-        assertTrue("and the refusal must SAY why: '${(result as WipeStepResult.Refused).reason}'",
-            (result as WipeStepResult.Refused).reason.contains("nothing to resume"))
+        // *** ASSERTED BY TYPED CAUSE, NOT BY PROSE. *** An earlier version matched `reason.contains("nothing to
+        // resume")`, so REWORDING THAT MESSAGE WOULD HAVE BROKEN THIS ARM WITHOUT ANY BEHAVIOUR CHANGING -- and,
+        // worse, the same pattern in the startup gate would have let a malformed journal read as a clean launch.
+        assertEquals(
+            "the refusal must carry the TYPED cause, not merely prose that mentions it",
+            WipeRefusalCause.NOTHING_TO_RESUME,
+            (result as WipeStepResult.Refused).cause,
+        )
         assertEquals(PanicWipe.WipeState.IDLE, journal.current())
     }
 

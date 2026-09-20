@@ -83,12 +83,51 @@ sealed class FileDeletionResult {
     val satisfiesCleanup: Boolean get() = this is Absent || this is Deleted
 }
 
+/**
+ * *** GS-FINAL-003: WHY A STEP WAS REFUSED, AS A TYPE RATHER THAN A SENTENCE. ***
+ *
+ * A STARTUP GATE DECIDES WHETHER PRIVATE STORES MAY BE OPENED. When that decision is made by matching a SUBSTRING OF
+ * PROSE -- `reason.contains("nothing to resume")` -- then RENAMING THE REASON TEXT SILENTLY CHANGES WHAT THE GATE
+ * PERMITS. One message rewording and a MALFORMED JOURNAL reads as a CLEAN FIRST LAUNCH, opening stores over material
+ * that may be mid-erasure. A count that moves with the vocabulary of its input measures the classifier, not the
+ * repository; that is the exact defect `AUDIT-B1-CTRL-001` retired on the control plane.
+ *
+ * **THE IOS ISLE ALREADY REJECTS THIS MOVE AND SAYS WHY**: its `StartupRecoveryDecision` treats an ambiguous refusal
+ * as `corruptJournal` rather than guessing clean, naming guessing-clean as "the unsound direction". Porting a Boolean
+ * and a prose match here would ship, on the second isle, the precise asymmetry this mission keeps catching -- one
+ * isle has the control, the other only appears to.
+ *
+ * THE CONTRAST THAT MAKES THE CASES NECESSARY: [NOTHING_TO_RESUME] and [MALFORMED_JOURNAL] both produce a refusal,
+ * and they must permit OPPOSITE things. Only the first is a proven clean estate.
+ */
+enum class WipeRefusalCause {
+    /** NO WIPE WAS EVER REQUESTED -- a journal that is EMPTY, not one that is UNREADABLE. A proven clean estate. */
+    NOTHING_TO_RESUME,
+
+    /** THE DURABLE RECORD CANNOT BE PARSED AS A LADDER. Material may be mid-erasure: the UNSOUND case to call clean. */
+    MALFORMED_JOURNAL,
+
+    /** A WIPE IS ALREADY OUTSTANDING. Refuse to start a second: one composition root drives the ladder. */
+    WIPE_ALREADY_PENDING,
+
+    /** A KEY OR ARTIFACT COULD NOT BE DESTROYED, NON-RETRYABLY. The estate is neither clean nor resumable. */
+    TERMINAL_STEP_FAILURE,
+
+    /** THE JOURNAL VANISHED MID-LADDER. It was readable and then was not; treat as unsound, never as clean. */
+    JOURNAL_LOST,
+}
+
 /** Idempotent step result: a repeat call on a passed state reports AlreadyAtOrPast, never re-effects. */
 sealed class WipeStepResult {
     class Advanced(val from: WipeJournalState, val to: WipeJournalState) : WipeStepResult()
     class AlreadyAtOrPast(val state: WipeJournalState) : WipeStepResult()
     class RetryLater(val at: WipeJournalState, val reason: String) : WipeStepResult()
-    class Refused(val reason: String) : WipeStepResult()
+
+    /**
+     * A REFUSAL CARRIES ITS CAUSE, and [reason] is for HUMANS ONLY -- **BRANCH ON [cause], NEVER ON [reason]**.
+     * The text is free to change; the cause is what a gate may act on.
+     */
+    class Refused(val cause: WipeRefusalCause, val reason: String) : WipeStepResult()
 }
 
 /** The append-only durable journal. */
@@ -228,26 +267,70 @@ class CrashResumableWipe(
     /** The normalized view of the journal for assertions (legacy spellings mapped, never mutated). */
     fun journalView(): List<WipeJournalState?> = journal.map { WipeJournalState.fromWire(it) }
 
+    /**
+     * *** GS-FINAL-003: DID THE DURABLE RECORD PARSE AT ALL? ***
+     *
+     * **THE DISTINCTION THE LADDER CANNOT EXPRESS**: an UNREADABLE record and a record that says "nothing was ever
+     * requested" both leave the ladder EMPTY -- so a caller asking only "is a wipe pending?" sees a clean estate for
+     * both. THEY MUST PERMIT OPPOSITE THINGS. This is the iOS `WipeJournal.isReadable` distinction, ported.
+     *
+     * *** THE STORE IS ASKED DIRECTLY, AND THAT IS THE CORRECTION AN EXTERNAL REVIEW FORCED. ***
+     * *My first version derived readability from `journal` -- THE ALREADY-COERCED LINES. It therefore could NOT SEE the
+     * defect it was written for: production `FileWipeJournal.read()` coerces an out-of-range ordinal to `IDLE`, the
+     * adapter maps `IDLE` to an EMPTY list, and by the time this property ran, THE INFORMATION WAS ALREADY GONE. A
+     * check derived from coerced output cannot detect a lossy coercion upstream of it.*
+     *
+     * **AND THE FAIL-CLOSED DEFAULT MATTERS HERE MOST**: a `WipeDurabilityStore` that has not adopted
+     * `WipeReadabilityReporting` has not answered the question, and the permissive reading of an unanswerable question
+     * is the one that opens private stores over material nobody managed to read.
+     */
+    val isReadableJournal: Boolean
+        get() {
+            // 1. THE STORE'S OWN ANSWER FIRST -- the only one that can see a lossy read.
+            if (!((store as? WipeReadabilityReporting)?.isReadable ?: false)) return false
+            // 2. AND the parsed lines must form a legal ladder: a well-formed prefix that is not a legal sequence is
+            //    equally unreadable to us. `isSupportedJournal()` is that same question asked structurally.
+            return isSupportedJournal()
+        }
+
     /** Begin a wipe. From IDLE/empty this records REQUESTED and drives the ladder as far as it can. */
     fun requestWipe(): WipeStepResult {
-        if (!isSupportedJournal()) return WipeStepResult.Refused("journal carries an unsupported state; refusing to guess")
-        if (isWipePending) return WipeStepResult.Refused("a wipe is already outstanding; one composition root drives the ladder")
+        if (!isSupportedJournal()) return WipeStepResult.Refused(
+                WipeRefusalCause.MALFORMED_JOURNAL,
+                "journal carries an unsupported state; refusing to guess",
+            )
+        if (isWipePending) return WipeStepResult.Refused(
+                WipeRefusalCause.WIPE_ALREADY_PENDING,
+                "a wipe is already outstanding; one composition root drives the ladder",
+            )
         persistRequest()
         return runLadder()
     }
 
     /** Resume after death: drive strictly from the durable journal. */
     fun resume(): WipeStepResult {
-        if (!isSupportedJournal()) return WipeStepResult.Refused("journal carries an unsupported state; refusing to guess")
-        val c = current() ?: return WipeStepResult.Refused("nothing to resume; no wipe was ever requested")
+        if (!isSupportedJournal()) return WipeStepResult.Refused(
+                WipeRefusalCause.MALFORMED_JOURNAL,
+                "journal carries an unsupported state; refusing to guess",
+            )
+        val c = current() ?: return WipeStepResult.Refused(
+                WipeRefusalCause.NOTHING_TO_RESUME,
+                "nothing to resume; no wipe was ever requested",
+            )
         if (c == WipeJournalState.IDLE) return WipeStepResult.AlreadyAtOrPast(c)
         return runLadder()
     }
 
     /** Drive the ladder one call, advancing as far as the seams allow. */
     fun step(): WipeStepResult {
-        if (!isSupportedJournal()) return WipeStepResult.Refused("journal carries an unsupported state; refusing to guess")
-        val c = current() ?: return WipeStepResult.Refused("no journal entry")
+        if (!isSupportedJournal()) return WipeStepResult.Refused(
+                WipeRefusalCause.MALFORMED_JOURNAL,
+                "journal carries an unsupported state; refusing to guess",
+            )
+        val c = current() ?: return WipeStepResult.Refused(
+                WipeRefusalCause.NOTHING_TO_RESUME,
+                "no journal entry",
+            )
         if (c == WipeJournalState.IDLE) return WipeStepResult.AlreadyAtOrPast(c)
         return runLadder()
     }
@@ -266,7 +349,10 @@ class CrashResumableWipe(
     }
 
     private fun runLadder(): WipeStepResult {
-        var from = current() ?: return WipeStepResult.Refused("no journal entry")
+        var from = current() ?: return WipeStepResult.Refused(
+                WipeRefusalCause.NOTHING_TO_RESUME,
+                "no journal entry",
+            )
         while (true) {
             when (from) {
                 WipeJournalState.REQUESTED -> {
@@ -289,7 +375,10 @@ class CrashResumableWipe(
                         .mapNotNull { it as? KeyDeletionResult.Failed }
                     val permanent = failed.firstOrNull { !it.retryable }
                     if (permanent != null) {
-                        return WipeStepResult.Refused("key ${permanent.keyName} not erasable: ${permanent.reason}")
+                        return WipeStepResult.Refused(
+                            WipeRefusalCause.TERMINAL_STEP_FAILURE,
+                            "key ${permanent.keyName} not erasable: ${permanent.reason}",
+                        )
                     }
                     if (failed.isNotEmpty()) {
                         return WipeStepResult.RetryLater(from, failed.joinToString(",") { it.keyName })
@@ -321,7 +410,10 @@ class CrashResumableWipe(
                 }
                 WipeJournalState.IDLE -> return WipeStepResult.AlreadyAtOrPast(from)
             }
-            from = current() ?: return WipeStepResult.Refused("journal lost mid-ladder")
+            from = current() ?: return WipeStepResult.Refused(
+                WipeRefusalCause.JOURNAL_LOST,
+                "journal lost mid-ladder",
+            )
         }
     }
 

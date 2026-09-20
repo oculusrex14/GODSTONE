@@ -137,9 +137,11 @@ class GsFinal002FreshWipeRequestsTest {
         val result = coordinator(journal).resume()
 
         assertTrue("resume on an empty journal must stay Refused: $result", result is WipeStepResult.Refused)
-        assertTrue(
-            "and the refusal must SAY why: ${(result as WipeStepResult.Refused).reason}",
-            result.reason.contains("nothing to resume"),
+        // ASSERTED BY TYPED CAUSE. The prose is for humans; the cause is what a caller may branch on.
+        assertEquals(
+            "and the refusal must carry the TYPED cause: ${(result as WipeStepResult.Refused).reason}",
+            WipeRefusalCause.NOTHING_TO_RESUME,
+            (result as WipeStepResult.Refused).cause,
         )
         assertEquals("and nothing may have been written", emptyList<String>(), journal.writes)
     }

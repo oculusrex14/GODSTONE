@@ -328,7 +328,7 @@ class GsFinal003ContextProviderTest {
             is WipeStepResult.Advanced -> "Advanced(${outcome.from} -> ${outcome.to})"
             is WipeStepResult.AlreadyAtOrPast -> "AlreadyAtOrPast(${outcome.state})"
             is WipeStepResult.RetryLater -> "RetryLater(at=${outcome.at}, reason=${outcome.reason})"
-            is WipeStepResult.Refused -> "Refused(${outcome.reason})"
+            is WipeStepResult.Refused -> "Refused(${outcome.cause}: ${outcome.reason})"
         }
         org.junit.Assert.assertTrue(
             "*** GS-FINAL-002: `begin()` MUST HAND ITS CALLER A TYPED LADDER ANSWER. A `Unit` entry makes 'the wipe " +
