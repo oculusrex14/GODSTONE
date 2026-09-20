@@ -246,6 +246,23 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
     /// passes when the scheduler is fast and leaks the tasks when it is not. This
     /// polls the observable end state with a bounded deadline and AWAITS each turn,
     /// so the test joins its work instead of abandoning it.
+    /// A BOUNDED wait for a condition, so a test that cannot observe its state FAILS with the
+    /// observed value rather than HANGING the bundle.
+    ///
+    /// *** AN UNBOUNDED `while { await Task.yield() }` IS A TEST DEFECT, NOT A TIMEOUT. *** *It
+    /// has no failure path, so when the condition never becomes true the arm never returns: the
+    /// suite cannot print its totals, every later result becomes unreachable, and the symptom
+    /// looks like an infrastructure stall. `Task.yield()` is also not a guarantee of progress --
+    /// on a non-preemptive executor the yielding task can starve the one that would satisfy it.
+    /// Bounded spins with a reported observation are the discipline the rest of this board uses.*
+    private func waitUntil(_ condition: () -> Bool, turns: Int = 10_000) async -> Bool {
+        for _ in 0..<turns {
+            if condition() { return true }
+            await Task.yield()
+        }
+        return condition()
+    }
+
     private func settle(_ vm: OracleViewModel, turns: Int = 500) async {
         for _ in 0..<turns {
             switch vm.state {
@@ -270,13 +287,35 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         // EACH RUN IS DRIVEN TO COMPLETION VIA THE GATE, so the count observes
         // distinct REQUESTS rather than distinct attempts that may never finish.
         let first = Task { await vm.runPipeline(question: "the same question") }
-        // wait until the first request has actually reached the gate
-        while pipeline.retrieveCount < 1 { await Task.yield() }
+        // *** A BOUNDED WAIT THAT FAILS LOUDLY, NOT AN UNBOUNDED SPIN. ***
+        //
+        // *THIS WAS `while pipeline.retrieveCount < 1 { await Task.yield() }` -- AN UNBOUNDED
+        // LOOP WITH NO TIMEOUT AND NO FAILURE PATH, IN A TEST WHOSE ENTIRE JOB IS TO PROVE A
+        // BOUND. If the counter never reached its target the arm did not FAIL, it HUNG, taking
+        // the whole bundle with it before the suite could print its total -- which is how a
+        // defect in an arm can masquerade as an infrastructure stall and make every other
+        // result unreachable. `await Task.yield()` is also not a scheduling guarantee: a
+        // non-preemptive yield can starve the very task that would bump the counter.
+        //
+        // The correct shape is the one `settle(turns:)` above already uses: bounded, and when
+        // the bound is exhausted it REPORTS WHAT IT OBSERVED instead of spinning. A test that
+        // cannot answer must say so, because a hang answers nothing at all.*
+        guard await waitUntil({ pipeline.retrieveCount >= 1 }) else {
+            XCTFail("the first request never reached the gate; retrieveCount = "
+                    + "\(pipeline.retrieveCount). The arm cannot observe distinct requests, so "
+                    + "it fails rather than hanging.")
+            return
+        }
         pipeline.open()
         await first.value
 
         let second = Task { await vm.runPipeline(question: "the same question") }
-        while pipeline.retrieveCount < 2 { await Task.yield() }
+        guard await waitUntil({ pipeline.retrieveCount >= 2 }) else {
+            XCTFail("the second request never reached the gate; retrieveCount = "
+                    + "\(pipeline.retrieveCount). A retry must issue a NEW request, and this "
+                    + "arm fails rather than hanging when it cannot see one.")
+            return
+        }
         pipeline.open()
         await second.value
 
