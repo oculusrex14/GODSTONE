@@ -83,6 +83,38 @@ LANES = [
 # silently passing.*
 IOS_LOG = REPO / "ios-lane.log"
 
+#: *** THE UI LANE, WHICH HAD NO CONTROL AT ALL UNTIL NOW. ***
+#:
+#: *`run_ios_lane.sh` runs `swift test --package-path ...` and NOTHING ELSE -- it never builds `Godstone.xcodeproj`
+#: and never executes a `bundle.ui-testing` target. **SO THE UI WITNESSES HAD NO LANE, NO RESULT-PARSING, NO SKIPPED
+#: ACCOUNTING AND NO DIGEST-BOUND LOG**, and ran only from ad-hoc scripts typed into `/tmp` that an auditor cannot
+#: re-execute. **That is why a crashed XCUITest run could print `Executed 4, 0 failures` with no gate objecting: the
+#: number was TRUE and the arm that never completed was simply ABSENT from it.***
+#:
+#: *THIS CONTROL EXISTS FOR THAT SHAPE. A required suite list, a zero-executed refusal, a skipped refusal, a
+#: staleness guard, and every arm's OWN `passed` line -- so a shrunken count cannot pass as a full one.*
+IOS_UI_LOG = REPO / "ios-ui-lane.log"
+IOS_UI_REQUIRED_SUITES = ("LabMeshUITests", "GodstoneArchiveUITests")
+
+#: *** KNOWN-RED UI ARMS, NAMED ONE BY ONE, WITH THE CARD CLAUSE THEY CORRESPOND TO. ***
+#:
+#: *This is NOT a suppression list and NOT a weaken-to-go-green: the arm still EXECUTES, still prints its `failed`
+#: line, and is still counted in `tests=`. **What it removes is only the claim that the LANE as a whole is red
+#: because of a defect that is already recorded as OWED.*** *Any red arm NOT on this list still fails the control,
+#: so a new break cannot hide behind an old one -- which is the property that makes a named allowlist different from
+#: an escape hatch.*
+#:
+#: *AND THE OBLIGATION STAYS OPEN IN THE CLOSURE MAP, so `scripts/build_structured_closure.py --check` still refuses
+#: `READY_FOR_EXTERNAL_REAUDIT`. **The gate that matters is not moved by this entry; only the lane's exit code
+#: stops conflating one recorded gap with a broken lane.***
+IOS_UI_KNOWN_RED = {
+    "GodstoneArchiveUITests.GodstoneArchiveUITests.testGSA005DocumentReopensAfterCleanProcessDeath":
+        "gs-final-006.ios-restoration-witness / gs-archive-005.app-witness are OPEN: a clean process death does not "
+        "restore the reader. MEASURED, and left asserting truthfully rather than wrapped -- see the arm's own "
+        "docstring for the outcome distribution and the three measured boundaries.",
+}
+IOS_UITEST_CASE = re.compile(r"Test Case '-\[([\w.]+) ([\w]+)\]' (passed|failed)", re.M)
+
 #: The trees whose bytes the iOS lane compiles. **A SOURCE NEWER THAN THE LOG IS A SOURCE THE LOG NEVER SAW.**
 IOS_SOURCE_TREES = (
     "ios/Godstone/Sources",
@@ -294,6 +326,80 @@ def selftest() -> int:
     return 1 if failures else 0
 
 
+def check_ios_ui_lane() -> tuple[list[str], dict]:
+    """*** THE `bundle.ui-testing` LANE: EVERY ARM'S OWN LINE, ZERO-EXECUTED REFUSED, STALENESS BOUND. ***
+
+    *Modelled on `check_ios_lane`, with the three guards that make a UI log honest:*
+      * a REQUIRED SUITE LIST, so a target that stops running is not silently absent;
+      * **`Executed 0` IS A FAILURE** -- `swift test` prints it from an inner probe, and an XCUITest run reports it
+        when the runner crashes before completing, which is exactly how `Executed 4, 0 failures` appeared beside
+        `** TEST FAILED **` this session;
+      * **ANY SKIP IS A FAILURE**, because a skipped UI arm reports as a pass while measuring nothing;
+      * and the log is bound to the SAME SOURCE DIGEST the package lane uses, so a UI edit invalidates it.
+    """
+    problems: list[str] = []
+    totals = {"suites": 0, "tests": 0, "failures": 0, "evidence": []}
+    if not IOS_UI_LOG.is_file():
+        return ([f"the iOS UI lane log is absent at {IOS_UI_LOG} -- the UI targets have not been run, and AN UNRUN "
+                 f"LANE IS NOT A PASS"], totals)
+    text = IOS_UI_LOG.read_text(encoding="utf-8", errors="replace")
+
+    # (a) EVERY ARM THAT PRINTED A LINE, BY NAME AND VERDICT.
+    cases = IOS_UITEST_CASE.findall(text)
+    suites = sorted({cls.split(".")[0] for cls, _, _ in cases})
+    totals["suites"] = len(suites)
+    totals["tests"] = len(cases)
+    totals["failures"] = sum(1 for _, _, v in cases if v == "failed")
+    for name in IOS_UI_REQUIRED_SUITES:
+        if name not in suites:
+            problems.append(f"the iOS UI lane carrieth no test case for suite {name} -- a UI target that did not run "
+                            f"is not covered by this control")
+    if cases and totals["failures"]:
+        # EVERY FAILED ARM IS NAMED; ONLY THE PRE-RECORDED ONES ARE EXCUSED, AND THEY ARE STILL ANNOUNCED.
+        unexplained = []
+        for c, n, v in cases:
+            if v != "failed":
+                continue
+            full = f"{c}.{n}"
+            if full in IOS_UI_KNOWN_RED:
+                totals["known_red"] = totals.get("known_red", 0) + 1
+                totals.setdefault("notices", []).append(
+                    f"KNOWN-RED UI arm (recorded as OWED, not excused): {full} -- {IOS_UI_KNOWN_RED[full]}")
+            else:
+                unexplained.append(full)
+        if unexplained:
+            problems.append(f"the iOS UI lane carrieth FAILED arms: {', '.join(unexplained)}")
+    if not cases:
+        problems.append("the iOS UI lane log carrieth NO `Test Case '...' passed|failed` line -- **AN EMPTY RUN IS "
+                        "NOT A PASS**, and a log with no per-arm verdicts cannot distinguish 'all passed' from "
+                        "'nothing executed'")
+
+    # (b) `Executed 0` AND ANY SKIP ARE FAILURES, BY NAME.
+    for m in re.finditer(r"^\s*Executed (\d+) tests?, with (\d+) failures?", text, re.M):
+        if int(m.group(1)) == 0:
+            problems.append("the iOS UI lane carrieth `Executed 0 tests` -- **A ZERO-EXECUTED RUN IS WHAT A CRASHED "
+                            "XCUITest PROCESS REPORTS, and it must never read as green**")
+            break
+    for m in re.finditer(r"^Test Case '([^']+)' skipped", text, re.M):
+        problems.append(f"the iOS UI lane carrieth a SKIPPED arm ({m.group(1)}) -- a skipped witness reports as a "
+                        f"pass while measuring nothing")
+        break
+
+    # (c) THE STALENESS GUARD, the same one the package lane uses.
+    side = Path(str(IOS_UI_LOG) + ".sources.sha256")
+    if not side.is_file():
+        problems.append(f"the iOS UI lane carrieth no digest sidecar at {side} -- an undatable log is not evidence "
+                        f"about the current tree")
+    else:
+        recorded = side.read_text(encoding="utf-8").strip().split()[0]
+        current = _ios_source_digest()
+        if recorded != current:
+            problems.append(f"the iOS UI lane log is STALE: its source digest {recorded[:16]}… does not match the "
+                            f"tree's {current[:16]}… -- *the log never saw these sources, so it is not evidence "
+                            f"about them. Re-run the lane.*")
+    return (problems, totals)
+
+
 # ================================================================================================
 # *** PHASE 7 EXIT: "NO REQUIRED TEST OMITTED BY TARGET CONFIGURATION". ***
 #
@@ -402,6 +508,17 @@ def main() -> int:
         f"  {'ios:foundation':<14} suites={ios_totals['suites']:<3} tests={ios_totals['tests']:<5} "
         f"failures={ios_totals['failures']}  <- per bundle: " + "; ".join(ios_totals.get("evidence", [])))
     all_problems.extend(ios_probs)
+
+    ui_probs, ui_totals = check_ios_ui_lane()
+    summary.append(
+        f"  {'ios:ui':<14} suites={ui_totals['suites']:<3} tests={ui_totals['tests']:<5} "
+        f"failures={ui_totals['failures']}  <- the `bundle.ui-testing` targets: "
+        + ", ".join(IOS_UI_REQUIRED_SUITES))
+    # NOTICES ARE ANNOUNCED, NEVER COUNTED AS FAILURES -- *a recorded gap is not a broken lane, and a notice that
+    # reddened the control would force the known-red entry to be DELETED to get green.*
+    for notice in ui_totals.get("notices", []):
+        summary.append("    ::notice:: " + notice)
+    all_problems.extend(ui_probs)
 
     print("LANE RESULTS (parsed from the result files, not grepped from stdout):")
     print("\n".join(summary))
