@@ -110,6 +110,7 @@ docs/production-readiness/.runtime-state.json
 # and became a LIE: the mesh and iOS figures quoted in that paste were the INFLATED pre-correction numbers
 # (sibling task directories summed into one lane), since measured down to the source census. A COMMENT THAT
 # MIRRORS A MEASUREMENT GOES STALE SILENTLY; the control printeth the live figures on every run.*
+ios-ui-lane.log
 ios-lane.log
 
 # *** LANE PROVENANCE SIDECARS (introduced in 74155b42). ***
