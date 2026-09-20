@@ -624,6 +624,12 @@ jobs:
           sim=$(xcrun simctl list devices available 2>/dev/null \
                 | grep -oE 'iPhone [0-9]+( Pro Max| Pro| Plus)?' | sort -u | tail -1)
           echo "UI courts on simulator: ${sim}"
+          # *** ORDERING, WHICH MY FIRST VERSION GOT WRONG: `ios/Godstone.xcodeproj` IS GITIGNORED AND GENERATED
+          # FROM `ios/project.yml` BY XCODEGEN. *** *MEASURED: `git ls-files ios/Godstone.xcodeproj` returns NOTHING,
+          # and this step sits BEFORE the later `xcodegen generate` step -- so as first written IT WOULD HAVE FOUND NO
+          # PROJECT AND FAILED.* Regenerating here makes the step self-sufficient rather than dependent on a
+          # position in the file, which is the difference between correct-by-luck and correct-by-construction.*
+          xcodegen generate --spec ios/project.yml
           xcodebuild -project ios/Godstone.xcodeproj -scheme LabMeshUI \
             -configuration LightDebug -destination "platform=iOS Simulator,name=${sim}" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee /tmp/xcb-ui.log
