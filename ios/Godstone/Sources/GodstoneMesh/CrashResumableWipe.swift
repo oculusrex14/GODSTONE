@@ -263,7 +263,12 @@ public final class CrashResumableWipe {
     /// adapter is asked directly, and a store with no such notion answers `true` rather than
     /// pretending to know.
     public func isReadableJournal() -> Bool {
-        (store as? WipeReadabilityReporting)?.isReadable ?? true
+        // FAIL-CLOSED, matching `WipeJournal.isReadable`'s own default and for the same reason:
+        // a store that has not been asked the question has not answered it, and the permissive
+        // reading of an unanswerable question is the one that opens private stores over material
+        // nobody managed to read. `WipeJournalDurabilityAdapter` answers explicitly, so this
+        // default is reached only by a conformer that has not considered it.
+        (store as? WipeReadabilityReporting)?.isReadable ?? false
     }
 
     public func isSupportedJournal() -> Bool {

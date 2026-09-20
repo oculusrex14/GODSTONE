@@ -42,6 +42,13 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         func read() -> WipeState { state }
         func write(_ s: WipeState) { state = s; writeLog.append(s.rawValue) }
         func clear() { state = .idle }
+
+        /// *** STATED EXPLICITLY, BECAUSE THE PROTOCOL DEFAULT NOW FAILS CLOSED. ***
+        /// *This journal keeps typed `WipeState` values, so it cannot hold an unparseable one -- it
+        /// is readable BY CONSTRUCTION. An earlier draft omitted this and inherited the new
+        /// `false` default, which turned three arms red: the default working exactly as intended on
+        /// a conformer that had not answered the question.*
+        var isReadable: Bool { true }
     }
 
     /// A journal whose DURABLE VALUE cannot be parsed -- the real `UserDefaultsWipeJournal` case.
@@ -264,6 +271,139 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                        + decision.name)
         XCTAssertTrue(decision.requiresOperator,
                       "a corrupt journal needs a human: retrying cannot make it parse")
+    }
+
+    // MARK: - the REAL journal, not a fake
+
+    /// *** THE ARM THAT MAKES THE CORRUPT-JOURNAL GUARD FALSIFIABLE. ***
+    ///
+    /// *AN EXTERNAL REVIEW FOUND THE GAP AND WAS RIGHT: every corrupt assertion in this file routed
+    /// through the `UnreadableJournal` FAKE, so the REAL `UserDefaultsWipeJournal.isReadable` was
+    /// exercised by ZERO executed test. Measured consequence: hardcoding it to `return true`
+    /// reddened nothing -- THE ONE MUTATION THAT RE-INTRODUCES THE DEFECT JUST FOUND (an unreadable
+    /// record silently read as a clean start) SURVIVED GREEN. A court that cannot redden on the
+    /// defect it exists for is the "green that cannot redden" class this round is remediating.*
+    ///
+    /// This drives the PRODUCTION parser through a real `UserDefaults` suite: a durable value that
+    /// is not a state this build understands must yield `.corruptJournal`, not `.cleanStart`.*
+    func testGSFINAL003_theRealJournalRefusesAnUnparseableDurableValue() throws {
+        let suite = "gf003.corrupt.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        // A REAL durable value the parser cannot resolve. This is not a fake: it is the same
+        // UserDefaults road production uses, carrying a value no `WipeState` case matches.
+        defaults.set("NOT_A_REAL_STATE", forKey: "io.godstone.wipe.state")
+
+        let journal = UserDefaultsWipeJournal(defaults: defaults)
+        XCTAssertFalse(journal.isReadable,
+                       "the REAL journal must report an unparseable durable value as unreadable -- "
+                       + "with a `?? true` default this is the assertion that reddens")
+
+        let decision = MeshRuntime.startupRecoveryDecision(journal: journal)
+        XCTAssertEqual(decision, .corruptJournal(reason: decision.refusalReason ?? ""),
+                       "an unparseable record must be CORRUPT, and it answered: \(decision.name)")
+        XCTAssertFalse(decision.allowsPrivateConstruction,
+                       "and it must NOT permit private construction: a store opened over a record "
+                       + "nobody can read is the defect this clause exists for")
+        XCTAssertTrue(decision.requiresOperator, "a malformed record needs a human")
+    }
+
+    /// *** THE POSITIVE CONTROL FOR THE ARM ABOVE. ***
+    ///
+    /// *Without this, the corrupt arm would pass trivially if the real journal answered
+    /// "unreadable" for EVERY input -- which is the mirror-image defect. An ABSENT durable value is
+    /// a clean first launch and must be reported READABLE.*
+    ///
+    /// This also proves the `guard let raw ... else { return true }` path: absent is not unreadable.
+    func testGSFINAL003_theRealJournalTreatsAnAbsentValueAsACleanStart() throws {
+        let suite = "gf003.clean.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        // NOTHING was ever written -- a genuine first launch.
+        let journal = UserDefaultsWipeJournal(defaults: defaults)
+        XCTAssertTrue(journal.isReadable,
+                      "an ABSENT value is a clean start, not a corrupt record: the two must not "
+                      + "collapse into one answer")
+
+        let decision = MeshRuntime.startupRecoveryDecision(journal: journal)
+        XCTAssertEqual(decision, .cleanStart,
+                       "a first launch must be permitted, and it answered: \(decision.name)")
+        XCTAssertTrue(decision.allowsPrivateConstruction)
+    }
+
+    /// *** AND A REAL, WELL-FORMED DURABLE VALUE IS READABLE AND NOT CORRUPT. ***
+    ///
+    /// *The third case: a value this build DOES understand must not be reported unreadable -- so the
+    /// fail-closed default cannot have made the real journal refuse everything.*
+    func testGSFINAL003_theRealJournalReadsAWellFormedValue() throws {
+        let suite = "gf003.wellformed.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let journal = UserDefaultsWipeJournal(defaults: defaults)
+        journal.write(.requested)          // a REAL durable write through the production road
+        XCTAssertTrue(journal.isReadable, "a well-formed value must read as readable")
+
+        let decision = MeshRuntime.startupRecoveryDecision(journal: journal)
+        // *** THE ASSERTION IS THE SAFETY PROPERTY, NOT A PARTICULAR REFUSAL KIND. ***
+        // *At REQUESTED with a deferred transport seam the ladder answers `retryLater`, and "a
+        // later composition with a live transport may finish it" IS the retryable case -- so
+        // pinning `.recoveryPending` here would have been my expectation, not the ladder's
+        // contract. What must hold either way: the record is READABLE (not corrupt) and private
+        // construction is REFUSED. Both refusing outcomes are accepted; a clean start is not.*
+        XCTAssertNotEqual(decision, .cleanStart,
+                          "a journal that really carries a pending wipe is not a clean start")
+        XCTAssertTrue(decision == .recoveryPending(reason: decision.refusalReason ?? "")
+                      || decision == .retryableFailure(reason: decision.refusalReason ?? ""),
+                      "an outstanding wipe must refuse as pending or retryable, and it answered: "
+                      + decision.name)
+        XCTAssertFalse(decision.allowsPrivateConstruction,
+                       "and it must NOT permit private construction")
+    }
+
+    /// *** AND A STORE THAT CANNOT ANSWER IS TREATED AS CORRUPT, NOT AS CLEAN. ***
+    ///
+    /// *This is the mutation target for the `?? false` default: a `WipeDurabilityStore` that does
+    /// NOT adopt `WipeReadabilityReporting` has not answered the question, and the permissive
+    /// reading of an unanswerable question is the one that opens private stores over material
+    /// nobody managed to read. \`ReadinessT34Tests\`'s \`T34Store\` is exactly such a conformer.*
+    func testGSFINAL003_aStoreThatCannotAnswerIsTreatedAsCorrupt() {
+        final class SilentStore: WipeDurabilityStore {
+            func readJournal() -> [String] { [] }        // an EMPTY ladder -- looks like a clean start
+            func appendJournal(_ stateName: String) {}
+        }
+        let authority = CrashResumableWipe(
+            store: SilentStore(),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        XCTAssertFalse(authority.isReadableJournal(),
+                       "a store that has not adopted WipeReadabilityReporting has NOT answered, and "
+                       + "with `?? true` this reported it readable -- the exact silent coercion the "
+                       + "corrupt-journal clause exists to prevent")
+
+        let decision = StartupRecoveryBootstrap(wipe: authority).decideAndDrive()
+        XCTAssertEqual(decision, .corruptJournal(reason: decision.refusalReason ?? ""),
+                       "and the decision must be corrupt, not clean: it answered \(decision.name)")
+    }
+
+    /// *** AND A NEW CONFORMER THAT FORGETS THE PROPERTY FAILS CLOSED. ***
+    ///
+    /// *The `WipeJournal` protocol extension's default is the other half of the same guard. A
+    /// conformer that omits `isReadable` must not read as clean.*
+    func testGSFINAL003_aJournalConformerThatOmitsReadabilityFailsClosed() {
+        final class BareJournal: WipeJournal, @unchecked Sendable {
+            func read() -> WipeState { .idle }
+            func write(_ s: WipeState) {}
+            func clear() {}
+            // deliberately NO `isReadable` -- the protocol extension supplies the default
+        }
+        XCTAssertFalse(BareJournal().isReadable,
+                       "the protocol default must be FALSE: a conformer that has not thought about "
+                       + "the question must fail closed, not report an unreadable record as clean")
     }
 
     /// *** MUTATION CONTROL: THE PERMIT IS THE GATE, NOT A DECORATION. ***

@@ -35,16 +35,32 @@ public protocol WipeJournal: AnyObject {
 
     /// *** GS-FINAL-003: WHETHER THE DURABLE RECORD COULD BE READ AT ALL. ***
     ///
-    /// *Defaulted to `true`, because a journal that carries no notion of unreadability must not
-    /// pretend it has one -- an in-memory court journal is always readable by construction.* The
-    /// real `UserDefaults` journal OVERRIDES it, and that override is the one that matters: it is
-    /// the difference between "nothing was ever requested" and "the record cannot be parsed", two
-    /// situations that must permit opposite things.
+    /// *The difference this answers is the one the ladder cannot express: `read()` returns a typed
+    /// `WipeState`, so an unreadable durable value has NO representation in it and arrives as an
+    /// empty ladder. A caller asking only `read()` therefore sees "nothing was ever requested"
+    /// where the truth may be "the record cannot be parsed" -- and those two must permit OPPOSITE
+    /// things, because one is a clean first launch and the other is material that may be mid-erasure.*
+    ///
+    /// *** THE DEFAULT IS `false` -- UNREADABLE -- AND THAT IS THE WHOLE POINT. ***
+    ///
+    /// *My first version defaulted it to `true` and claimed in the comment that "a journal that
+    /// cannot answer is treated as corrupt, which is the safe direction". THE CODE DID THE OPPOSITE
+    /// OF ITS OWN COMMENT: a conformer that omitted this property fell through to `true`, reporting
+    /// an unreadable record as READABLE -- the same silent coercion the corrupt-journal clause
+    /// exists to prevent, reintroduced one layer up.*
+    ///
+    /// **THE SAFE READING OF A QUESTION YOU CANNOT ANSWER IS NOT THE PERMISSIVE ONE.** A new
+    /// journal implementation that forgets this property now fails CLOSED rather than opening
+    /// private stores over material it never managed to read. Measured: the real
+    /// `UserDefaultsWipeJournal` and the production adapter both answer explicitly, so this default
+    /// is only ever reached by a conformer that has not thought about the question -- which is
+    /// exactly the case that must not be assumed harmless.
     var isReadable: Bool { get }
 }
 
 public extension WipeJournal {
-    var isReadable: Bool { true }
+    /// FAIL-CLOSED DEFAULT. See the declaration above for why this is `false` and not `true`.
+    var isReadable: Bool { false }
 }
 
 /// The three idempotent destroy/rebuild steps, injectable so the state machine
@@ -202,24 +218,20 @@ public final class UserDefaultsWipeJournal: WipeJournal {
         // so the honest move is to REPORT the unreadability rather than invent a rung. `requested` is
         // deliberately NOT used (it would assert a wipe the record does not say was requested).
         // Callers that must distinguish "unreadable" from "pending" ask `isReadable()`, below.
-        if WipeState(rawValue: raw) == nil {
-            lastReadWasUnparseable = true
-            return .idle
-        }
-        lastReadWasUnparseable = false
-        return WipeState(rawValue: raw)!
+        return WipeState(rawValue: raw) ?? .idle
     }
 
-    /// *** THE DISTINCTION THE LADDER COULD NOT PREVIOUSLY EXPRESS: IDLE BECAUSE NOTHING HAPPENED,
-    /// VERSUS IDLE BECAUSE THE RECORD COULD NOT BE READ. ***
+    /// *** GS-FINAL-003: IS THE DURABLE VALUE A STATE THIS BUILD UNDERSTANDS? ***
     ///
-    /// *Both return `.idle` from `read()`, so a caller that only reads the state cannot tell them
-    /// apart -- and one of those two situations must permit private construction while the other
-    /// must refuse it. `GS-FINAL-003` needs exactly this distinction: a corrupt journal is one of
-    /// the six outcomes the audit requires the caller not to confuse.*
-    public private(set) var lastReadWasUnparseable = false
-
-    /// True when the durable value exists but is not a state this build understands.
+    /// *DERIVED FROM THE STORED VALUE ON EVERY CALL, deliberately. An earlier version also kept a
+    /// `lastReadWasUnparseable` flag -- MUTABLE STATE ON THE PROCESS-WIDE `.standard` SINGLETON,
+    /// written by `read()` and read by whoever asked last. Two runtimes or two tests reading
+    /// concurrently would observe each other's flag, so an arm could pass on a value another test
+    /// set. That is the same shared-recorder defect the T65 arm was repaired for, and the flag was
+    /// also REDUNDANT: this property derives the answer directly, and the direct derivation is the
+    /// thread-safe one.*
+    ///
+    /// The distinction it answers (see `WipeJournal.isReadable`) is real; the recorder was not.
     public var isReadable: Bool {
         guard let raw = defaults.string(forKey: key) else { return true }  // absent is a clean start
         return WipeState(rawValue: raw) != nil
