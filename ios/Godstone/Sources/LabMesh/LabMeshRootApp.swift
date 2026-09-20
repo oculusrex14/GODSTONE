@@ -237,7 +237,12 @@ struct LabSosView: View {
             Text("SOS").font(.title)
             Text(armed ? "ARMED -- release to send" : "hold to arm")
             // THE GESTURE: a real hold, cancellable, with the monotonic threshold above.
+            // *** GS-UX-001 STEP 7: A STABLE IDENTITY, SO THE GESTURE IS ADDRESSABLE BY ASSISTIVE TECHNOLOGY AND
+            // BY A UI TEST ALIKE. *** *The card's sentence is that "a label reading Hold is not a gesture" -- and a
+            // gesture the accessibility tree cannot name is also unreachable. The identifier is what makes the
+            // control ADDRESSABLE; the gesture below is what makes it REAL.*
             Text("HOLD TO ARM")
+                .accessibilityIdentifier("lab.sos.hold")
                 .padding()
                 .background(armed ? Color.red.opacity(0.3) : Color.gray.opacity(0.2))
                 .onLongPressGesture(minimumDuration: 0, pressing: { pressing in

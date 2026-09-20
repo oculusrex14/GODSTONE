@@ -125,6 +125,30 @@ targets:
   # that never ships. It deliberately depends ONLY on GodstoneCore + GodstoneMesh
   # (never GodstoneLLM / the llama.cpp C++ bridge), so the gate runs without any
   # model binary or third-party native dependency.
+  # *** GS-UX-001 STEP 7: A REAL UI TEST BUNDLE, SO THE CONTROLS ARE DRIVEN RATHER THAN GREPPED. ***
+  #
+  # THE CARD'S OWN WORDS: *"exercise the rendered controls rather than setting model state directly."*
+  # **THE MEASURED GAP: `LabMeshAppTests` asserted `root.contains("sendDirect")` -- A SUBSTRING OF THE SOURCE --
+  # which proveth what the code SAYETH and never what a user can DO.** A `bundle.ui-testing` target launches the
+  # LabMesh APPLICATION and drives its accessibility identifiers, so a control that is not really wired fails.
+  #
+  # IT DEPENDS ONLY ON THE APP TARGET, no packages: a UI test drives the accessibility tree and links neither
+  # GodstoneMesh nor GodstoneCore, so nothing internal crosses this seam.
+  LabMeshUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Godstone/Tests/LabMeshUITests
+    dependencies:
+      - target: LabMesh
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.godstone.labmeshuitests
+        PRODUCT_NAME: LabMeshUITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: LabMesh
+        TARGETED_DEVICE_FAMILY: "1,2"
+
   GodstoneMeshTests:
     type: bundle.unit-test
     platform: iOS
@@ -146,6 +170,18 @@ targets:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
 
 schemes:
+  # *** GS-UX-001 STEP 7: THE UI SCHEME, SO THE CONTROLS ARE DRIVEN IN CI. ***
+  LabMeshUI:
+    build:
+      targets:
+        LabMesh: all
+    run:
+      config: LightDebug
+    test:
+      config: LightDebug
+      targets:
+        - LabMeshUITests
+
   Godstone-Light:
     build:
       targets:
