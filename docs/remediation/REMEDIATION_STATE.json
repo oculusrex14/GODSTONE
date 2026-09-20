@@ -14813,7 +14813,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "2609fe771ecfa656a52782df771cdc472b17c57d",
+  "candidate_sha": "5e9e1e8779c3cf4fdd0c6b93033d95397db922a0",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14834,18 +14834,12 @@
   "internal_remaining": [
    "GS-ARCHIVE-005: no hosted run URL/log was available, so hosted convergence remains pending",
    "GS-INTEGRATION-001: TWO OF THE THREE OWNERS ARE REPAIRED AND PROVEN: the WIPE owner (the round-514 RED measured that `beginWipe()` erased no row; `59c72ab` turned it green) and the PERSISTENCE owner; ",
-   "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
-   "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
-   "GS-STORE-002: *** ROUND 544: STEP 5 IS LANDED -- AND STEP 7 WAS RE-MEASURED AND FOUND ALREADY LANDED, SO THE RECORD IS CORRECTED RATHER THAN THE CLAIM REPEATED. *** STEP 7 (*'Wire DEK erasure in",
    "GS-STRESS-001: *** FOUR INVARIANTS STILL READ THE MODEL'S OWN INTEGERS -- RE-MEASURED AND CORRECTED IN ROUND 671: the SIX kinds this sentence named (leases, timers, sessions, inventory leases, re",
    "GS-STRESS-001: THE CARD'S STEP 6 IS STILL NOT SATISFIED AND IS NOT CLAIMED: a mutation confined to `StressCampaign`'s local bookkeeping remaineth the onely mutation the campaign lane carrieth (me",
    "GS-STRESS-001: *** ROUND 534: STEP 3 NOW READETH TWO REAL OWNERS, AND THE SECOND ONE'S CENSUS FOUND A REAL DEFECT. *** ONE (round 521): `no_leaked_sessions`, read from a REAL `SessionManager` thr",
    "GS-STRESS-001: *** ROUND 535: STEP 3 IS NOW CARRIED BY **BOTH** ISLES, WHICH IS WHAT THE HUMAN'S PHASE-TWO LAW REQUIREth ('on BOTH isles where the contract is shared'). *** THE MEASURED ASYMMETRY",
    "GS-STRESS-001: *** ROUND 538: STEP 3's OWNER CENSUS NOW READS **TWO** OWNERS ON **BOTH** ISLES. *** ONE: `sessions` (Android round 521, mirrored to Swift at round 535). TWO: **`writer reservation",
    "GS-UX-001: THE SWIFT PORTS REMAIN `internal` (`MeshUXModel.swift:275`, `TrustUXModel.swift:329`), so the TrustPort/MeshPort adapter clause is blocked on a PUBLIC-SURFACE DECISION, which is de",
-   "GS-UX-001: *** ROUND 539: STEP 1 IS LANDED -- THE LAB'S JOURNEYS REACH THE ONE RETAINED RUNTIME, AND THE LAB TARGET IS BUILT. *** Measured: `LabMeshTests` 5/0 (was 4 -- the +1 IS the new arm)",
-   "GS-UX-001: *** ROUND 540: STEP 3 IS LANDED ON BOTH ISLES. *** `StateFlow` + `collectAsStateWithLifecycle` on Android (three state owners), `ObservableObject`/`@Published` on iOS (both models)",
-   "GS-UX-001: *** ROUND 541: STEP 4 IS LANDED ON THE ANDROID ISLE -- the recipient selector, the UTF-8-bounded input and Send action (round 539's lab work; the app's own compose field already st",
    "GS-UX-001: ROUND 543 (THE iOS ADAPTER'S BLOCKING OBSTACLE, MEASURED): the lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` is blocked by THREE obstacles -- a synchronous port a",
    "GS-FINAL-003: THE iOS ACK SURFACES ARE NOW GATED (round 572): `WipeGatedAckObligationStore` decorates the `AckObligationStore` PROTOCOL, so one decorator covers the driver, the pump and the inbo",
    "GS-FINAL-003: ANDROID NOW CONSULTS THE DURABLE RECORD AT BOTH EXISTING ADMISSION POINTS, AND THE *WIRING* IS PROVEN (round 571): `allowsSensitiveApi()` had ZERO production callers while both dec",
@@ -14962,8 +14956,15 @@
    "GS-FINAL-004: *** CLAUSE (d) IS NOW LANDED (round 605), AND IT IS THE ONE CLAUSE THAT NEEDED NO EXTERNAL ENGINE. *** The card's \"separate RESUMABLE operation with PRESERVED ROLLBACK EVIDENCE\" is",
    "GS-FINAL-004: THE CORE'S BLOCKER IS NOW STATED CORRECTLY, AND MY EARLIER VERSION OF IT WAS WRONG IN A WAY THAT MATTERED (round 577). I had recorded that \"`EncryptedStoreHandle` cannot carry a co",
    "GS-INTEGRATION-001: *** ROUND 533: THIS FIELD WAS EMPTY -- and this finding is one of the FIVE the human named directly. WRITTEN FROM A RE-MEASUREMENT TAKEN THIS ROUND. ***",
+   "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
+   "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
+   "GS-STORE-002: *** ROUND 544: STEP 5 IS LANDED -- AND STEP 7 WAS RE-MEASURED AND FOUND ALREADY LANDED, SO THE RECORD IS CORRECTED RATHER THAN THE CLAIM REPEATED. *** STEP 7 (*'Wire DEK erasure in",
+   "GS-UX-001: *** ROUND 539: STEP 1 IS LANDED -- THE LAB'S JOURNEYS REACH THE ONE RETAINED RUNTIME, AND THE LAB TARGET IS BUILT. *** Measured: `LabMeshTests` 5/0 (was 4 -- the +1 IS the new arm)",
+   "GS-UX-001: *** ROUND 540: STEP 3 IS LANDED ON BOTH ISLES. *** `StateFlow` + `collectAsStateWithLifecycle` on Android (three state owners), `ObservableObject`/`@Published` on iOS (both models)",
+   "GS-UX-001: *** ROUND 541: STEP 4 IS LANDED ON THE ANDROID ISLE -- the recipient selector, the UTF-8-bounded input and Send action (round 539's lab work; the app's own compose field already st",
    "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ"
   ],
-  "excluded_round_narrative": 5
+  "excluded_round_narrative": 11,
+  "internal_neither_narrative_nor_gap": []
  }
 }
