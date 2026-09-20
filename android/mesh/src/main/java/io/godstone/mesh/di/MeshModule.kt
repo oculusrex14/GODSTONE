@@ -509,6 +509,26 @@ internal object MeshModule {
     // everything else in this module, and the signer is the PRODUCTION signer (round 230), whose seed road
     // refuseth by construction.
 
+    /**
+     * *** GS-FINAL-003 (ii): THIS PROVIDER TAKES THE INTERFACE, AND NOTHING SAID THE CONCRETE ONE SATISFIED IT. ***
+     *
+     * *`provideEd25519AckAuthenticator`, `provideAckDriver` and `provideMeshNode` all take `RecipientKeyResolver` --
+     * THE INTERFACE -- while the only `@Provides` in this module returns the CONCRETE `BoundRecipientKeyResolver`.
+     * THERE WAS NO `@Binds` ANYWHERE IN THIS MODULE, so nothing connected the two.*
+     *
+     * **THIS SHIPPED BECAUSE NO COMPONENT EVER ASSEMBLED THIS MODULE.** A binding chain is validated only when a
+     * component RESOLVES it; with no `:mesh` component the build could not see the hole, and no court could either --
+     * the courts HAND-CALL the providers, passing their own arguments. *The first `@Component` in this module reported
+     * it immediately: `[Dagger/MissingBinding] io.godstone.mesh.delivery.RecipientKeyResolver cannot be provided
+     * without an @Provides-annotated method.`*
+     *
+     * *** AND THE BINDING LIVES IN `MeshGraphMeshModule`, NOT HERE, FOR A REASON THE CODEGEN FORCED. *** *A `@Binds`
+     * method must be ABSTRACT, and this module is an `object` -- so the mapping cannot be declared in it. It is
+     * declared in the abstract class beside the component, under the same `@Singleton` scope this `@Provides`
+     * carries, so THE SAME scoped resolver serves the authenticator, the driver and the node. **A SECOND `@Provides`
+     * WOULD HAVE MINTED A RIVAL RESOLVER** -- a different object reading the same repository, which is the
+     * "two authorities" defect this module's own docstring forbids.*
+     */
     @Provides @Singleton
     fun provideEd25519AckAuthenticator(resolver: RecipientKeyResolver): Ed25519AckAuthenticator =
         Ed25519AckAuthenticator(resolver)

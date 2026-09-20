@@ -50,6 +50,10 @@ dependencies {
     // arrives transitively via dagger). Versions match :app (Hilt 2.52).
     implementation("com.google.dagger:hilt-android:2.52")
     ksp("com.google.dagger:hilt-compiler:2.52")
+    // GS-FINAL-003 (ii): the DAGGER COMPONENT PROCESSOR, so `@Component` interfaces in this module are actually
+    // generated and their graphs VALIDATED at compile time. Hilt's processor alone does not process bare
+    // `@Component` -- `HiltWrapper_MeshModule` made the module includable, but nothing assembled it until now.
+    ksp("com.google.dagger:dagger-compiler:2.52")
 
     // Noise Protocol Framework, Java reference implementation (Rhys Weatherley,
     // Southern Storm Software; MIT). The original coordinate
