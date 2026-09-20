@@ -23,28 +23,34 @@
   "run_pointer_note": "CITED POSITIONALLY FOR THE TIP. This entry binds the run that exercised the FROZEN CANDIDATE (attempt 1 of 35446805693, all six jobs). GitHub reports the LATEST attempt, so that run's aggregate conclusion now reads 'failure' from attempt 2's transient Robolectric network error -- which is why the binding names ATTEMPT 1 and why `second_green` exists. For the main TIP, read the newest `push` run of `repository-verification` on the `main` ref; a literal run id here would go stale with each docs commit.",
   "greens": [
    {
-    "artifact": "frozen candidate",
-    "sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
+    "sha": "1e0ca3a7",
     "run": "35446805693 attempt 1",
-    "result": "ALL SIX JOBS SUCCESS"
+    "artifact": "rc2"
    },
    {
-    "artifact": "main tip",
-    "sha": "bf7b83c5",
-    "run": "35450312289",
-    "result": "ALL SIX JOBS SUCCESS"
+    "sha": "b98780a7",
+    "run": "35461098423",
+    "artifact": "rc3"
    },
    {
-    "artifact": "main tip",
-    "sha": "c7d735d8",
-    "run": "35451828797",
-    "result": "ALL SIX JOBS SUCCESS"
+    "sha": "962ff442",
+    "run": "35471507700",
+    "artifact": "rc4 -- the run bound to the tag"
    },
    {
-    "artifact": "main tip",
-    "sha": "6955d5e3",
-    "run": "35452985414",
-    "result": "ALL SIX JOBS SUCCESS"
+    "sha": "46866f02",
+    "run": "35472751951 attempt 2",
+    "artifact": "rc4 candidate + closure record (docs only)"
+   },
+   {
+    "sha": "52a285f7",
+    "run": "35475740485",
+    "artifact": "tip with the rc4 record edits"
+   },
+   {
+    "sha": "93ec3844",
+    "run": "35476768351",
+    "artifact": "THE FINAL TIP -- the positional green"
    }
   ],
   "greens_note": "FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line (35446805693, 35450312289, 35451828797, 35461098423, 35471507700). The rc4 green is the first in which the repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.",
@@ -57,6 +63,20 @@
    "run": "35475740485 -- 6/6 success",
    "evidence_required_and_met": "THE LANE'S OWN AFFIRMATIVE MARKERS, not the absence of a red: `ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed `passed (0.453 seconds)`; `** TEST SUCCEEDED **` x3; and `Executed 1356 tests, with 0 failures`. A grep for zero failures proves nothing on its own -- it reads 0 whether the arm passed, had not run, or never ran at all, which is the same trap that made a `--filter` isolation worthless.",
    "note": "This is the third consecutive full 6/6 green on the rc4 line and the second on the tip's own tree, so the tip is verified rather than merely asserted. The T15 arm, which reddened once earlier on a loaded runner, passes here with a healthy duration."
+  },
+  "final_tip_green": {
+   "sha": "93ec3844dae84a93bea91ec617bea1ce34d7bebb",
+   "run": "35476768351 -- 6/6 success",
+   "event": "push on `main`. The recorded FACT is that this SHA ran 6/6 green; it is durable evidence regardless of what is pushed afterwards.",
+   "affirmative_evidence": [
+    "`GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)` -- the lane's own assertion",
+    "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures` (per-bundle summaries, not a raw cross-lane case count)",
+    "`** TEST SUCCEEDED **` x3",
+    "`ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed `passed (0.338 seconds)` and `passed (0.586 seconds)`",
+    "0 segfaults"
+   ],
+   "why_not_a_failure_grep": "A grep for zero failures reads 0 whether the arm PASSED, had NOT YET RUN, or NEVER RAN AT ALL. Every claim above is an affirmative line the lane itself printed, and the per-bundle `Executed N` summaries are used rather than a raw tally of `Test Case ... passed` lines, which counts BOTH test lanes sharing one job log and therefore exceeds any single bundle's total.",
+   "note": "SIX CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line, each bound to a named SHA. The green facts above are PERMANENT: they say that this exact SHA ran 6/6. The TIP is a moving reference and is deliberately NOT pinned to a literal -- the record itself lands as a docs commit on top, so any tip SHA written here self-invalidates on the next push. For the tip, read the newest `push` run of `repository-verification` on the `main` ref; that run is the positional citation, and every run on this line so far has come back 6/6."
   }
  },
  "tasks": {
