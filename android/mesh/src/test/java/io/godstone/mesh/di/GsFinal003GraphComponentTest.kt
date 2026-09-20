@@ -247,6 +247,37 @@ class GsFinal003GraphComponentTest {
      * failure the module's docstring names. **`@Singleton` is the only thing preventing that, and scope is exactly
      * what a hand-calling court cannot observe.***
      */
+    /**
+     * *** GS-RUNTIME-001: THE PUMP IDENTITY THE GRAPH WOULD RESOLVE -- AND THE WALL THAT STOPS IT HERE. ***
+     *
+     * *`ReadinessT60Test` asserts this by READING THE SOURCE -- it opens `MeshModule.kt` and greps for the literal
+     * `node.ackPump = pump`, comments stripped. **THAT IS AN ASSERTION ABOUT A FILE, NOT ABOUT A RUNTIME**: the
+     * matched assignment could sit on a dead branch, run only in a variant that never ships, or be undone one line
+     * later, and the arm would still pass.*
+     *
+     * **I WROTE THE BEHAVIOURAL REPLACEMENT -- `assertSame(component.durableAckPump(), component.meshNode().ackPump)`
+     * -- AND IT THREW: `java.security.KeyStoreException: AndroidKeyStore not found`.** *The component's `meshNode()`
+     * resolves `identity()`, which resolves `Identity.loadOrCreate(ctx)` over `EncryptedSharedPreferences` and the
+     * REAL keystore. **THE WALL IS THE PLATFORM, NOT THE WIRING** -- the same explicit external boundary
+     * `theDeviceBoundProvidersAreTheRealPlatformOnes` names above, reached from a different direction.*
+     *
+     * **SO THIS ARM RECORDS WHAT IT MEASURED RATHER THAN ASSERTING SOMETHING IT CANNOT REACH:** the identity
+     * comparison is the right instrument and it is **UNAVAILABLE ON A HOST**, which is why the only witness for this
+     * clause today is the source-text matcher -- and why the obligation stays PARTIAL rather than being talked up.
+     * *** AN ARM THAT SWALLOWED THE KEYSTORE EXCEPTION AND PASSED WOULD BE WORSE THAN NO ARM: it would report the
+     * clause witnessed while measuring nothing. ***
+     */
+    @Test fun theComponentsPumpIdentityIsUnreachableOnAHostAndSaysSo() {
+        val thrown = runCatching { graph().meshNode() }.exceptionOrNull()
+        assertTrue(
+            "*** REACHING THE NODE ON A HOST MUST FAIL AT THE PLATFORM KEYSTORE -- if it succeeded, this arm's own " +
+                "premise is stale and the identity comparison above should be restored. Observed: $thrown ***",
+            thrown is java.security.KeyStoreException
+                || (thrown?.cause is java.security.KeyStoreException)
+                || (thrown?.message?.contains("AndroidKeyStore") == true),
+        )
+    }
+
     @Test
     fun theLifecycleGateIsOneAuthority() {
         presetJournal(PanicWipe.WipeState.IDLE)
