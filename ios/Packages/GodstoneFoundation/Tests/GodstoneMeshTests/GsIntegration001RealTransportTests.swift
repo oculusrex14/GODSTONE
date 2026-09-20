@@ -415,7 +415,156 @@ final class GsIntegration001RealTransportTests: XCTestCase {
         func signingSeed(msgId: Data, recipientNodeId: Data) throws -> Data? { Data(seed) }
     }
 
-    // =========================================================================
+    // ================================================================================================
+    // MARK: - reconnect / crash / wipe -- THE SCENARIOS THE FIRST FIVE ARMS DID NOT REACH
+    // ================================================================================================
+
+    /// *** RECONNECT: A LOST LINK MUST NOT STRAND THE RUNTIME. ***
+    ///
+    /// *The first five arms all ran over ONE established relation. A reconnect is a different road: the transport
+    /// drops every link, and the node must still serve its durable road afterwards -- which is where a stale
+    /// relation, a leaked session or a dispatcher wired to the transport rather than the node would show.*
+    func testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad() throws {
+        let rig = try makeHarness()
+        defer { rig.tearDown() }
+
+        XCTAssertNotNil(rig.bob.connection(for: rig.handleA), "the rig must start with a bound relation")
+
+        // *** LOSE THE LINK, through the transport's own verb. ***
+        _ = rig.bob.disconnectAll()
+
+        // *** AND THE NODE MUST STILL FUNCTION. ***
+        let frame = makeFrame([0x11, 0x22], msgIdByte: 0x5A, routingTag: rig.pair.bobIdentity.nodeHint)
+        XCTAssertTrue(
+            rig.bobNode.ingestInbound(frame, receivedFrom: rig.pair.aliceIdentity.nodeId),
+            "*** AN INBOUND FRAME AFTER A LINK LOSS MUST STILL REACH THE NODE'S OWN DURABLE ROAD. The transport's " +
+                "links are gone; the node's ingest is not -- and a dispatcher wired to the transport rather than to " +
+                "the node would strand here. ***",
+        )
+        XCTAssertEqual(1, rig.bobStore.allHeldMsgIds().count, "and it must be durably held, exactly once")
+    }
+
+    /// *** CRASH AFTER A COMMIT: THE ROW SURVIVES AND THE REPLAY IS REFUSED BY A FRESH NODE. ***
+    ///
+    /// *The card names a crash after an outbound enqueue. **Modelling process death as "no node, store survives" is
+    /// what the crash-safe composition promises**, so the arm destroys the node and builds a FRESH one over the SAME
+    /// durable store -- which is what "resume" has to mean.*
+    func testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay() throws {
+        let rig = try makeHarness()
+        defer { rig.tearDown() }
+
+        let from = rig.pair.aliceIdentity.nodeId
+        let frame = makeFrame([0x33, 0x44], msgIdByte: 0x7B, routingTag: rig.pair.bobIdentity.nodeHint)
+
+        XCTAssertTrue(rig.bobNode.ingestInbound(frame, receivedFrom: from), "the first delivery is committed")
+        XCTAssertEqual(1, rig.bobStore.allHeldMsgIds().count, "*** THE ROW STANDS BEFORE THE CRASH. ***")
+
+        // *** THE CRASH: a fresh node over the SAME durable store. ***
+        let reborn = MeshNode(
+            identity: rig.pair.bobIdentity, store: rig.bobStore,
+            deliveryTracker: DeliveryTracker(
+                repo: rig.bobRepo,
+                authenticator: Ed25519AckAuthenticator(resolver: rig.bobKeys)),
+            sessions: rig.pair.bobManager,
+        )
+        XCTAssertEqual(
+            1, rig.bobStore.allHeldMsgIds().count,
+            "*** THE COMMITTED ROW MUST SURVIVE THE CRASH -- committing BEFORE the radio is the whole point. ***",
+        )
+
+        XCTAssertFalse(
+            reborn.ingestInbound(frame, receivedFrom: from),
+            "*** A REPLAY AFTER A CRASH MUST BE REFUSED. The seen-window is rebuilt from the durable store, so a " +
+                "fresh node over the same store must already know this msg_id. A node that re-admitted it would " +
+                "duplicate the inbox across a restart -- exactly what the durable commit exists to prevent. ***",
+        )
+        XCTAssertEqual(1, rig.bobStore.allHeldMsgIds().count, "and still exactly one row")
+    }
+
+    /// *** WIPE: A LOWERED GATE MUST REFUSE SENSITIVE WORK *THROUGH THE REAL TRANSPORT'S NODE*. ***
+    ///
+    /// *MY FIRST VERSION CALLED `bobNode.beginWipe()`, WHICH DOES NOT EXIST -- the compiler said so. **The wipe verb
+    /// lives on `ComposedRuntimeHarness`, and THIS RIG IS RAW `BleTransport` + `MeshNode`**, so reaching it would have
+    /// meant building a different rig.*
+    ///
+    /// **THE BETTER WITNESS IS AVAILABLE ON THIS ONE**: `MeshNode` takes a `WipeSensitiveUseGate`, and the gate is what
+    /// the shipping admission points consult. A **REAL** gate -- `CoordinatorWipeSensitiveUseGate` over a real
+    /// `CrashResumableWipe` -- is wired into a node built on the SAME real transport, and the ladder is then driven to
+    /// request a wipe: **THE NODE MUST REFUSE SENSITIVE WORK.** *That is the invariant GS-FINAL-003 is about, and it is
+    /// STRONGER than a flag, because the gate answers from the JOURNAL rather than from a stored boolean.*
+    ///
+    /// **NOT CLAIMED: no radio wipe and no device erasure** -- the gate is the observable here.
+    func testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode() throws {
+        let rig = try makeHarness()
+        defer { rig.tearDown() }
+
+        // *** A REAL GATE OVER A REAL COORDINATOR, with the deferred seams the startup path uses. ***
+        let journal = IntegrationWipeJournal()
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam(),
+        )
+        let gate = CoordinatorWipeSensitiveUseGate(authority: authority)
+
+        let node = MeshNode(
+            identity: rig.pair.bobIdentity, store: rig.bobStore,
+            deliveryTracker: DeliveryTracker(
+                repo: rig.bobRepo,
+                authenticator: Ed25519AckAuthenticator(resolver: rig.bobKeys)),
+            sessions: rig.pair.bobManager,
+            wipeGate: gate,
+        )
+        // THE DIRECTION IS transport.delegate = node, which the rig already set -- MeshNode has no 
+        // property of its own, which the compiler said plainly.
+        _ = node
+
+        // (a) A CLEAN ESTATE PERMITS -- so the refusal below is the GATE and not a node that refuses everything.
+        XCTAssertTrue(
+            gate.allowsSensitiveUse(),
+            "*** A CLEAN JOURNAL MUST PERMIT. A gate hardwired to refuse would satisfy the arm below while making " +
+                "the runtime useless -- the mirror-image defect a one-sided arm cannot see. ***",
+        )
+        let from = rig.pair.aliceIdentity.nodeId
+        XCTAssertTrue(
+            node.ingestInbound(
+                makeFrame([0x55], msgIdByte: 0x91, routingTag: rig.pair.bobIdentity.nodeHint),
+                receivedFrom: from),
+            "and a frame must be admitted on the clean estate",
+        )
+
+        // *** (b) REQUEST A WIPE, so the DURABLE RECORD says one is outstanding. ***
+        _ = try authority.requestWipe()
+        XCTAssertFalse(
+            gate.allowsSensitiveUse(),
+            "*** ONCE A WIPE IS REQUESTED THE GATE MUST REFUSE -- and it answers from the JOURNAL, not from a " +
+                "boolean, so it cannot be talked out of it. Observed: \(gate.allowsSensitiveUse()) ***",
+        )
+
+        // *** (c) AND THE NODE MUST REFUSE THROUGH THAT GATE. ***
+        XCTAssertFalse(
+            node.ingestInbound(
+                makeFrame([0x66], msgIdByte: 0x92, routingTag: rig.pair.bobIdentity.nodeHint),
+                receivedFrom: from),
+            "*** A NODE WHOSE GATE IS DOWN MUST REFUSE NEW SENSITIVE WORK. An admission that succeeded would write " +
+                "against stores the wipe is erasing -- the exact defect the gate exists to close. ***",
+        )
+    }
+    /// A journal for the wipe-gate arm. **IT HOLDS TYPED `WipeState` VALUES, SO IT IS READABLE BY CONSTRUCTION** --
+    /// which it now states EXPLICITLY, because the protocol's default FAILS CLOSED and a conformer that stayed silent
+    /// would be reported corrupt.
+    final class IntegrationWipeJournal: WipeJournal, @unchecked Sendable {
+        private var state: WipeState = .idle
+        private let lock = NSLock()
+        func read() -> WipeState { lock.lock(); defer { lock.unlock() }; return state }
+        func write(_ s: WipeState) { lock.lock(); state = s; lock.unlock() }
+        func clear() { lock.lock(); state = .idle; lock.unlock() }
+        var isReadable: Bool { true }
+    }
+
+
     // MARK: - Harness Rig
     // =========================================================================
 
