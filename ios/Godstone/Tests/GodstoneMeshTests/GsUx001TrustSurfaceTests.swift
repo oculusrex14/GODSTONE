@@ -253,6 +253,41 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
         XCTAssertTrue(revokeOutcome.hasPrefix("applied:"), "Revocation must succeed: \(revokeOutcome)")
         XCTAssertTrue(facade.isRevoked(label: "Alice"), "Facade must report Alice is revoked")
 
+        // *** AND THE REPOSITORY ITSELF, WHICH IS THE DISCRIMINATOR -- AN EXTERNAL REVIEW'S POINT. ***
+        //
+        // *`facade.isRevoked` reads the MODEL'S PROJECTION. `TrustUXModel` sets its `lastOutcome` string purely from
+        // the `ConfirmOutcome`/`RevokeResult` the port returned, INDEPENDENT of whether the durable store was
+        // touched -- so **AN ADAPTER THAT REVOKED IN MEMORY AND NEVER WROTE TO THE REPOSITORY WOULD KEEP BOTH THE
+        // OUTCOME STRING AND THE PROJECTION GREEN.** The projection is a claim; the store is the source.*
+        //
+        // **SO THIS READS THE REAL REPOSITORY DIRECTLY.** `PeerIdentityRepository.lookup` is the same source
+        // `TrustAuthorityAdapter.lookup` delegates to, so if the two ever disagree, the adapter is forging.*
+        // *** AND THE REPOSITORY ITSELF, WHICH IS THE DISCRIMINATOR -- AN EXTERNAL REVIEW'S POINT. ***
+        //
+        // *`facade.isRevoked` reads the MODEL'S PROJECTION, and `TrustUXModel` sets its outcome string purely from
+        // the typed result the port returned, INDEPENDENT of whether the durable store was touched. **AN ADAPTER
+        // THAT REVOKED ONLY IN MEMORY WOULD KEEP BOTH THE OUTCOME STRING AND THE PROJECTION GREEN.** The projection
+        // is a claim; the store is the source.*
+        //
+        // **MY FIRST VERSION OF THIS ASSERTION WAS WRONG AND THE FAILURE TAUGHT ME THE REAL VOCABULARY:** I assumed
+        // a revoked peer still answers `.verified` with a different `trustLevel`, and the arm failed saying the peer
+        // was not found as verified. **`PeerIdentityLookup` HAS A DEDICATED `.revoked` CASE**
+        // (`PeerIdentityRepository.swift:31`), so the durable revocation is a DIFFERENT CASE rather than a field
+        // value -- and asserting the case is both correct AND STRONGER than comparing a level.*
+        switch repo.lookup(binding.nodeId) {
+        case .revoked:
+            break   // THE DURABLE REVOCATION, READ FROM THE STORE RATHER THAN THE PROJECTION.
+        case .verified(let identity):
+            XCTFail("*** THE REPOSITORY STILL REPORTS THE PEER VERIFIED (trustLevel \(identity.trustLevel)) AFTER A " +
+                    "REVOKE THAT THE FACADE CALLED APPLIED. **THE PROJECTION WOULD HAVE BEEN FORGED** -- the store " +
+                    "is the source and it says otherwise. ***")
+        case .notFound:
+            XCTFail("*** A REVOKED PEER'S ROW IS UPDATED, NOT DELETED, so `notFound` means the wrong durable " +
+                    "operation ran. ***")
+        case .quarantined, .corrupt, .storageFailure, .invalidArgument:
+            XCTFail("*** THE STORE MUST ANSWER `.revoked` AFTER A REVOKE; it answered \(repo.lookup(binding.nodeId)) ***")
+        }
+
         // Real repository check
         XCTAssertEqual(repo.lookup(binding.nodeId), .revoked, "Repository lookup must return revoked")
 

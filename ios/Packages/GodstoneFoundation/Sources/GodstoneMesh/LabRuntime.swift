@@ -132,19 +132,41 @@ public final class LabRuntime: @unchecked Sendable {
                   //
                   // *`MeshIdentity.nodeHint` is the correct source (`nodeId.prefix(4)`) and already existed. THE
                   // OTHER HALF IS THE `else`: a failed validation must NOT be silent.*
-                  switch IdentityBindingValidator.validate(
-                      serialized: raw,
-                      authenticatedRemoteStaticKey: node.identity.staticDhPublicKey,
-                      advertisedNodeHint: node.identity.nodeHint
-                  ) {
-                  case .valid(let validated):
-                      _ = trustRepo.applyValidatedBinding(validated)
-                  default:
-                      // NAMED RATHER THAN SWALLOWED. The lab still composes -- a trust surface that refused to
-                      // build would be worse -- but the failure is RECORDED, so the next reader does not debug an
-                      // empty fingerprint list and find no cause anywhere.
-                      LabRuntime.trustWiringFailures.append(label)
-                  }
+                    // *** EVALUATED ONCE, SO THE FAILURE MESSAGE CANNOT CONTRADICT THE BRANCH TAKEN. ***
+                    //
+                    // *My first version switched on one call and RE-VALIDATED inside the `default:` to build its
+                    // message -- so a mutation that broke the switch's argument produced the self-contradictory
+                    // line "FAILED validation valid(...)", because the second call used the CORRECT hint. **A
+                    // DIAGNOSTIC THAT DISAGREES WITH THE BRANCH IT EXPLAINS IS WORSE THAN NO DIAGNOSTIC.** One
+                    // evaluation, one result, both the branch and the message read it.*
+                    let validation = IdentityBindingValidator.validate(
+                        serialized: raw,
+                        authenticatedRemoteStaticKey: node.identity.staticDhPublicKey,
+                        advertisedNodeHint: node.identity.nodeHint
+                    )
+                    switch validation {
+                    case .valid(let validated):
+                        _ = trustRepo.applyValidatedBinding(validated)
+                    default:
+                        // *** RECORDED *AND* REFUSED -- A GUARD THAT ONLY RECORDS IS NOT A GUARD. ***
+                        //
+                        // *AN EXTERNAL REVIEW MADE THIS POINT AND WAS RIGHT: making the invalid path merely
+                        // OBSERVABLE is not the same as making it FAIL. My first fix appended to
+                        // `trustWiringFailures`, and **NOTHING IN `Sources` READS IT** -- so a future
+                        // `.invalidContext` regression would go unnoticed again, exactly as this one did. A court
+                        // now asserts the counter is empty, which binds it; but the stronger statement is available
+                        // right here: **EVERY LAB NODE MUST YIELD A VALID BINDING -- A COMPOSE-TIME INVARIANT.** A
+                        // violation means the lab is about to hand its UI a contact with NO IDENTITY, an empty
+                        // fingerprint list indistinguishable from a lab with no contacts, and the honest response
+                        // is to STOP rather than compose a trust surface over nothing and log about it.*
+                        LabRuntime.trustWiringFailures.append("\(label): \(validation)")
+                        preconditionFailure(
+                            "GS-UX-001: the lab node '\(label)' produced a binding that FAILED validation: "
+                            + "\(validation). EVERY LAB NODE MUST YIELD A VALID BINDING -- a contact with no "
+                            + "identity renders an EMPTY fingerprint list, indistinguishable from a lab with no "
+                            + "contacts. This is the invariant whose SILENT violation emptied the durable repository."
+                        )
+                    }
             }
         }
         let ownNodeId = harness.node(labels[0])?.identity.nodeId ?? Data(repeating: 0x01, count: 16)
