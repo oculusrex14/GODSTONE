@@ -155,9 +155,25 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
             XCTFail("*** a refused confirm must leave the row verified/tofuPinned; got \(repo.lookup(binding.nodeId)) ***")
             return
         }
+        // *** WHAT THIS CHECK IS AND IS NOT -- STATED EXACTLY, BECAUSE AN EXTERNAL REVIEW ASKED. ***
+        //
+        // *It catches ONE DIRECTION: **A SPURIOUS PROMOTION.** If the adapter ever wrote `userVerified` on a
+        // refused confirm, the row would no longer be `.tofuPinned` and this reddens.*
+        //
+        // *IT IS **NOT MUTATION-PROVEN TODAY**, AND THAT IS RECORDED RATHER THAN GLOSSED: the adapter has NO write
+        // path -- `confirmVerified` returns `.refused(...)` with no store access -- so there is nothing to mutate to
+        // make it fire. **IT IS A GUARD FOR THE FUTURE CAS, NOT VERIFIED COVERAGE.** The mutation that WAS run
+        // (project success without a write) leaves the row untouched, so THIS check passes under it -- which is
+        // exactly why the forgery check below exists.*
+        //
+        // *THE TWO ARE NOT REDUNDANT AND NEITHER IS A TAUTOLOGY: they cover OPPOSITE DIRECTIONS. This one fires on
+        // "promoted without authority"; the forgery check fires on "claimed without promotion". **A SINGLE-SOURCE
+        // ASSERTION IN EITHER DIRECTION IS BLIND TO THE OTHER'S DEFECT** -- established by measurement across three
+        // versions of this arm, not by argument.*
         XCTAssertEqual(
             unchanged.trustLevel, .tofuPinned,
-            "*** THE DURABLE STATE: a refused confirm must leave the row where it was. ***",
+            "*** THE DURABLE STATE: a refused confirm must leave the row where it was. Fires on a SPURIOUS " +
+                "PROMOTION -- the opposite direction from the forgery check below. ***",
         )
 
         // *** AND THE DISCRIMINATOR THAT ACTUALLY CATCHES FORGING -- WHICH TOOK TWO WRONG VERSIONS TO FIND. ***
@@ -241,9 +257,25 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
             XCTFail("*** a refused confirm must leave the row verified/tofuPinned; got \(repo.lookup(binding.nodeId)) ***")
             return
         }
+        // *** WHAT THIS CHECK IS AND IS NOT -- STATED EXACTLY, BECAUSE AN EXTERNAL REVIEW ASKED. ***
+        //
+        // *It catches ONE DIRECTION: **A SPURIOUS PROMOTION.** If the adapter ever wrote `userVerified` on a
+        // refused confirm, the row would no longer be `.tofuPinned` and this reddens.*
+        //
+        // *IT IS **NOT MUTATION-PROVEN TODAY**, AND THAT IS RECORDED RATHER THAN GLOSSED: the adapter has NO write
+        // path -- `confirmVerified` returns `.refused(...)` with no store access -- so there is nothing to mutate to
+        // make it fire. **IT IS A GUARD FOR THE FUTURE CAS, NOT VERIFIED COVERAGE.** The mutation that WAS run
+        // (project success without a write) leaves the row untouched, so THIS check passes under it -- which is
+        // exactly why the forgery check below exists.*
+        //
+        // *THE TWO ARE NOT REDUNDANT AND NEITHER IS A TAUTOLOGY: they cover OPPOSITE DIRECTIONS. This one fires on
+        // "promoted without authority"; the forgery check fires on "claimed without promotion". **A SINGLE-SOURCE
+        // ASSERTION IN EITHER DIRECTION IS BLIND TO THE OTHER'S DEFECT** -- established by measurement across three
+        // versions of this arm, not by argument.*
         XCTAssertEqual(
             unchanged.trustLevel, .tofuPinned,
-            "*** THE DURABLE STATE: a refused confirm must leave the row where it was. ***",
+            "*** THE DURABLE STATE: a refused confirm must leave the row where it was. Fires on a SPURIOUS " +
+                "PROMOTION -- the opposite direction from the forgery check below. ***",
         )
 
         // *** AND THE DISCRIMINATOR THAT ACTUALLY CATCHES FORGING -- WHICH TOOK TWO WRONG VERSIONS TO FIND. ***
