@@ -426,8 +426,32 @@ def main() -> int:
 
 
 
+#: *** THE RIG THAT DECIDES WHAT THE LANE COMPILES, AND THE BYTES THE WITNESS VERIFIED. ***
+#:
+#: *MEASURED GAP (found by reading this file rather than trusting it): the digest walked ONLY `*.swift` under the four
+#: source trees, so **`ios/project.yml` WAS NOT DIGESTED AT ALL** -- yet that file is precisely what decides which
+#: target and scheme get compiled and executed. Registering OR REMOVING `GodstoneArchiveUITests` / `GodstoneArchiveUI`
+#: there would leave an existing lane log reading "current", which is the control's own Phase-5 clause about no
+#: required test being omitted by target configuration.*
+#:
+#: *AND THE COMMITTED FIXTURE BYTES WERE OUTSIDE THE DIGEST TOO (non-`.swift`).* The executed app witness verifies the
+#: fixture's sha256 at RUN time, so tampering fails the arm -- **but the LANE LOG'S green was not bound to the bytes it
+#: claimed to have verified**, which is the same shape: a log that cannot date itself against what it exercised.*
+IOS_RIG_FILES = (
+    "ios/project.yml",
+)
+IOS_FIXTURE_TREES = (
+    "ios/Godstone/Tests/GodstoneArchiveUITests/Fixtures",
+)
+
+
 def _ios_source_digest() -> str:
-    """A digest over every byte the iOS lane compiles -- path-sorted, so it is order-stable."""
+    """A digest over every byte the iOS lane compiles OR IS CONFIGURED BY, plus the fixture bytes it verifies.
+
+    *Path-sorted, so it is order-stable. `*.swift` under the source trees, plus the project spec that selects which
+    targets run, plus every committed fixture byte -- so a changed rig or a changed fixture INVALIDATES an older log
+    instead of leaving it looking current.*
+    """
     h = hashlib.sha256()
     for rel in IOS_SOURCE_TREES:
         base = REPO / rel
@@ -435,6 +459,27 @@ def _ios_source_digest() -> str:
             continue
         for f in sorted(base.rglob("*.swift")):
             if f.name.endswith(".swift") is False:
+                continue
+            h.update(str(f.relative_to(REPO)).encode())
+            h.update(b"\0")
+            h.update(f.read_bytes())
+            h.update(b"\0")
+    # THE RIG: which target and scheme the lane compiles and runs.
+    for rel in IOS_RIG_FILES:
+        f = REPO / rel
+        if not f.is_file():
+            continue
+        h.update(str(f.relative_to(REPO)).encode())
+        h.update(b"\0")
+        h.update(f.read_bytes())
+        h.update(b"\0")
+    # THE FIXTURE BYTES the executed app witness verifies at run time -- so the log is bound to them too.
+    for rel in IOS_FIXTURE_TREES:
+        base = REPO / rel
+        if not base.is_dir():
+            continue
+        for f in sorted(base.rglob("*")):
+            if not f.is_file():
                 continue
             h.update(str(f.relative_to(REPO)).encode())
             h.update(b"\0")
