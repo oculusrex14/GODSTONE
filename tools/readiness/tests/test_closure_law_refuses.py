@@ -94,14 +94,54 @@ class CitationTokens(unittest.TestCase):
 
 
 class TheLawStillRefuses(unittest.TestCase):
-    """*** RE-PROVED AFTER EVERY BATCH OF DISCHARGES, BECAUSE BULK-DISCHARGING CAN NEUTER THE GUARD. ***"""
+    """*** RE-PROVED AFTER EVERY BATCH OF DISCHARGES, BECAUSE BULK-DISCHARGING CAN NEUTER THE GUARD. ***
+
+    *** THIS TEST NEVER TOUCHES THE LIVE CONTROL-PLANE DOCUMENT, AND THAT IS A CORRECTNESS REQUIREMENT, NOT TIDINESS. ***
+    *MY FIRST VERSION re-serialized `docs/production-readiness/BOARD1_CLOSURE.json` in place and restored it in
+    `tearDown`. **IF IT HAD CRASHED, BEEN INTERRUPTED, OR DIED MID-SUITE, THE REPOSITORY WOULD HAVE BEEN LEFT WITH
+    `status = READY_FOR_EXTERNAL_REAUDIT` WHILE 25 OBLIGATIONS ARE OPEN** -- the AUDIT-B1-CTRL-001 violation the law
+    exists to catch, self-inflicted by the test meant to guard it. It would also churn a supply-chain-digested file.*
+
+    **SO THE GATE IS RUN AGAINST A TEMPORARY REPO**: the real `CLOSURE`/`LEDGER` are copied into a scratch tree, the
+    gate script is copied beside them, and the mutation happens THERE. The live document is only ever READ, and if
+    this process dies the scratch tree dies with it.
+    """
+
+    def _run_gate_against_scratch(self, mutate) -> subprocess.CompletedProcess:
+        with tempfile.TemporaryDirectory() as tmp:
+            scratch = Path(tmp) / "repo"
+            (scratch / "scripts").mkdir(parents=True)
+            (scratch / "docs" / "production-readiness").mkdir(parents=True)
+            (scratch / "docs" / "remediation").mkdir(parents=True)
+            shutil.copy2(GATE, scratch / "scripts" / GATE.name)
+            shutil.copy2(CLOSURE, scratch / "docs" / "production-readiness" / CLOSURE.name)
+            shutil.copy2(self.mod.LEDGER, scratch / "docs" / "remediation" / Path(self.mod.LEDGER).name)
+            # THE MUTATION HAPPENS ON THE COPY. The live document is untouched even if this raises.
+            target = scratch / "docs" / "production-readiness" / CLOSURE.name
+            doc = json.loads(target.read_text(encoding="utf-8"))
+            mutate(doc)
+            target.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+            return subprocess.run(
+                ["python3", str(scratch / "scripts" / GATE.name), "--check"],
+                capture_output=True, text=True, cwd=str(scratch), timeout=600,
+            )
 
     def setUp(self) -> None:
         self.mod = _load()
-        self.backup = CLOSURE.read_bytes()
+        self.live_before = CLOSURE.read_bytes()
 
-    def tearDown(self) -> None:
-        CLOSURE.write_bytes(self.backup)
+    def test_the_live_document_is_never_written(self) -> None:
+        """A guard that mutates the thing it guards is the defect, not the check."""
+        self._run_gate_against_scratch(lambda d: d.update(status="READY_FOR_EXTERNAL_REAUDIT"))
+        self.assertEqual(
+            CLOSURE.read_bytes(), self.live_before,
+            "*** THE LIVE CONTROL-PLANE DOCUMENT MUST BE BYTE-IDENTICAL AFTER THIS TEST. If it is not, an "
+            "interrupted run could hand forward a READY status while obligations are open. ***",
+        )
+        self.assertEqual(
+            json.loads(self.live_before)["status"], "REMEDIATION_IN_PROGRESS",
+            "and it must say what it said before",
+        )
 
     def test_a_forced_ready_status_is_refused_while_gaps_remain(self) -> None:
         ledger = json.loads(self.mod.LEDGER.read_text(encoding="utf-8"))
@@ -114,31 +154,18 @@ class TheLawStillRefuses(unittest.TestCase):
         if open_obligations == 0:
             self.skipTest("no open obligations remain, so there is nothing for the law to refuse over")
 
-        doc = json.loads(CLOSURE.read_text(encoding="utf-8"))
-        doc["status"] = "READY_FOR_EXTERNAL_REAUDIT"
-        CLOSURE.write_text(json.dumps(doc, indent=2), encoding="utf-8")
-
-        proc = subprocess.run(
-            ["python3", str(GATE), "--check"], capture_output=True, text=True, cwd=str(REPO), timeout=600,
-        )
+        proc = self._run_gate_against_scratch(
+            lambda d: d.update(status="READY_FOR_EXTERNAL_REAUDIT"))
         self.assertEqual(
             proc.returncode, 1,
             "*** THE LAW MUST STILL REFUSE. If forcing READY now exits 0 while "
             f"{open_obligations} internal obligation(s) are still OPEN, the gate has been neutered by the very "
             "discharges it was supposed to audit -- and that is the batch that was wrong. ***",
         )
-        self.assertIn(
-            "MAY NOT", proc.stdout,
-            "and the refusal must SAY WHY, naming the open work",
-        )
+        self.assertIn("MAY NOT", proc.stdout, "and the refusal must SAY WHY, naming the open work")
 
     def test_verified_fixed_may_not_be_written_by_this_builder(self) -> None:
-        doc = json.loads(CLOSURE.read_text(encoding="utf-8"))
-        doc["verified_fixed"] = 1
-        CLOSURE.write_text(json.dumps(doc, indent=2), encoding="utf-8")
-        proc = subprocess.run(
-            ["python3", str(GATE), "--check"], capture_output=True, text=True, cwd=str(REPO), timeout=600,
-        )
+        proc = self._run_gate_against_scratch(lambda d: d.update(verified_fixed=1))
         self.assertEqual(
             proc.returncode, 1,
             "only an INDEPENDENT audit may write `verified_fixed`, and this builder must refuse to carry it",
