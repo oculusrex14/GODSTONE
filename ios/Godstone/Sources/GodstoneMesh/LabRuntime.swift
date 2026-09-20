@@ -54,6 +54,14 @@ public final class LabRuntime: @unchecked Sendable {
     public let labels: [String]
     public let trust: MeshTrustFacade
 
+    /// *** GS-UX-001: BINDING-VALIDATION FAILURES, RECORDED RATHER THAN SWALLOWED. ***
+    ///
+    /// *The composition used to skip a failed binding SILENTLY, so a contact with no identity was
+    /// indistinguishable from a lab that registered no contacts at all. **MEASURED BEFORE THIS FIELD EXISTED:
+    /// every fingerprint was nil and every contact read "unknown", with no cause anywhere to find.** This makes
+    /// that state diagnosable from outside -- hence not `private`.*
+    public private(set) static var trustWiringFailures: [String] = []
+
     /// *** GS-UX-001 STEP 1 (round 539): IS THE DURABLE ROAD REACHABLE THROUGH THIS HANDLE? ***
     ///
     /// A LAB WHOSE JOURNEYS CANNOT REACH A DURABLE AUTHORITY IS A LAB THAT EXERCISETH NOTHING, and the card's own
@@ -105,13 +113,35 @@ public final class LabRuntime: @unchecked Sendable {
             if let node = harness.node(label) {
                 contactsList.append((label: label, nodeId: node.identity.nodeId))
                 let raw = try node.identity.issueIdentityBinding().encode()
-                if case .valid(let validated) = IdentityBindingValidator.validate(
-                    serialized: raw,
-                    authenticatedRemoteStaticKey: node.identity.staticDhPublicKey,
-                    advertisedNodeHint: node.identity.nodeId.prefix(2)
-                ) {
-                    _ = trustRepo.applyValidatedBinding(validated)
-                }
+                  // *** GS-UX-001: A REAL, SILENT PRODUCTION DEFECT, FOUND BY MEASUREMENT. ***
+                  //
+                  // *THE LAB PASSED `nodeId.prefix(2)` WHERE THE VALIDATOR REQUIRES
+                  // `identityBindingNodeHintLength == 4` (`IdentityBindingV1.swift:27`), so EVERY validation
+                  // returned `.invalidContext` -- and `if case .valid` HAS NO `else`, SO EVERY BINDING WAS
+                  // SILENTLY SKIPPED.*
+                  //
+                  // **MEASURED CONSEQUENCE, PROBED RATHER THAN ASSUMED:** `trustContactLabels()` returned
+                  // `["A","B","R"]` while `trustFingerprint(for:)` returned **nil for EVERY label** and
+                  // `contactTrustLabel` returned **"unknown" for every label** -- the facade carried LABELS BUT NO
+                  // IDENTITY, because **THE DURABLE REPOSITORY WAS EMPTY.** *A UI rendering an empty fingerprint
+                  // list is indistinguishable from a lab with no contacts, which is the false-green this arm
+                  // exists to prevent -- and confirm/approve/revoke would operate on NOTHING once the page showed.*
+                  //
+                  // *`MeshIdentity.nodeHint` is the correct source (`nodeId.prefix(4)`) and already existed. THE
+                  // OTHER HALF IS THE `else`: a failed validation must NOT be silent.*
+                  switch IdentityBindingValidator.validate(
+                      serialized: raw,
+                      authenticatedRemoteStaticKey: node.identity.staticDhPublicKey,
+                      advertisedNodeHint: node.identity.nodeHint
+                  ) {
+                  case .valid(let validated):
+                      _ = trustRepo.applyValidatedBinding(validated)
+                  default:
+                      // NAMED RATHER THAN SWALLOWED. The lab still composes -- a trust surface that refused to
+                      // build would be worse -- but the failure is RECORDED, so the next reader does not debug an
+                      // empty fingerprint list and find no cause anywhere.
+                      LabRuntime.trustWiringFailures.append(label)
+                  }
             }
         }
         let ownNodeId = harness.node(labels[0])?.identity.nodeId ?? Data(repeating: 0x01, count: 16)

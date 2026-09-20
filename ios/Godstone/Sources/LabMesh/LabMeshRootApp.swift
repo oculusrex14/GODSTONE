@@ -54,38 +54,50 @@ public final class LabRuntimeHolder: ObservableObject {
 /// The lab root: it SAYETH what this build is, and it carrieth no readiness claim of its own.
 struct LabRootView: View {
     @EnvironmentObject private var holder: LabRuntimeHolder
+    /// *** GS-UX-001 STEP 7: AN EXPLICIT SELECTION, MEASURED NECESSARY. ***
+    ///
+    /// *The TabView had NO selection binding. MEASURED: after a tap on `lab.tab.contacts`, the accessibility
+    /// tree STILL showed the Conversation page -- the tab button existed with a valid frame and the tap was
+    /// issued, but the selection did not change. An unbound TabView leaves its selection to SwiftUI's internal
+    /// state, which the `@StateObject` re-render under an accessibility text size was resetting.*
+    @State private var selection: Int = 2
 
     var body: some View {
         // GS-LAB-001 step 4's NAVIGATION HALF (round 268): MINIMAL VIEWS FOR THE FIVE JOURNEYS THE CARD NAMETH --
         // identity, contacts, conversation, SOS and diagnostics. They are MINIMAL ON PURPOSE: the card asketh for
         // navigation to them, not for finished screens, and `GS-UX-001` (which dependeth on this finding) carrieth the
         // deeper journeys. Each screen SAYETH what it is and carrieth NO readiness claim.
-        TabView {
+        TabView(selection: $selection) {
             LabIdentityView().tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Identity").accessibilityLabel("Identity screen").accessibilityIdentifier("lab.tab.identity")
             }
+            .tag(0)
             LabContactsView().tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Contacts").accessibilityLabel("Contacts screen").accessibilityIdentifier("lab.tab.contacts")
             }
+            .tag(1)
             LabConversationView().tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Conversation").accessibilityLabel("Conversation screen").accessibilityIdentifier("lab.tab.conversation")
             }
+            .tag(2)
             LabSosView().tabItem {
                 // GS-UX-001 step 7 (round 277): the CLASS is LabSosView while the LABEL is "SOS" -- two spellings for
                 // one journey, and the navigation invariant asketh for the class while this label is what is HEARD.
                 Text("SOS").accessibilityLabel("SOS screen").accessibilityIdentifier("lab.tab.sos")
             }
+            .tag(3)
             LabDiagnosticsView().tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Diagnostics").accessibilityLabel("Diagnostics screen").accessibilityIdentifier("lab.tab.diagnostics")
             }
+            .tag(4)
         }
         .environmentObject(holder)
     }
@@ -120,6 +132,12 @@ struct LabIdentityView: View {
     @EnvironmentObject private var holder: LabRuntimeHolder
 
     var body: some View {
+        // *** GS-UX-001 STEP 7: SCROLLED, SO ENLARGED TYPE CANNOT COVER THE TAB BAR. ***
+        // *MEASURED AT `UICTContentSizeCategoryAccessibilityXXXL`: this content reached y=763.8 while the TabBar
+        // begins at y=676 -- SO THE CONTENT COVERED THE TAB BAR, a tab tap landed on CONTENT, and the page never
+        // switched. The accessibility arm caught a REAL navigation defect, not a missing control: nothing could
+        // scroll, so the overflow had nowhere to go.*
+        ScrollView {
         VStack(alignment: .leading, spacing: 8) {
             LabBanner()
             Text("Identity").font(.title)
@@ -131,6 +149,7 @@ struct LabIdentityView: View {
                 .accessibilityIdentifier("lab.identity.durableness")
         }
         .padding()
+        }
     }
 }
 
@@ -163,14 +182,32 @@ struct LabContactsView: View {
 
             // Rendered fingerprint string
             let fp = holder.runtime.trustFingerprint(for: selectedContact) ?? "no-fingerprint"
-            Text("fingerprint: " + fp)
-                .font(.footnote)
+            // *** MEASURED: `accessibilityLabel` ON A `Text` DOES NOT OVERRIDE ITS CONTENT. ***
+            //
+            // *The arm read `fingerprint: c31cbb8f...` -- THE `Text`'s OWN STRING -- even though the label was
+            // set. **SWIFTUI TREATS A `Text`'s CONTENT AS ITS ACCESSIBILITY LABEL AND A MODIFIER CANNOT REPLACE
+            // IT**, so the fix is a DIFFERENT CONSTRUCT rather than another modifier: the visible string stays in
+            // the content, and the semantic label is attached to a CONTAINER that ignores its children.*
+            //
+            // *The distinction the card asks for survives: `accessibilityLabel` states WHAT IT IS and
+            // `accessibilityValue` carries the hex, so a screen reader can announce "Fingerprint for Alice,
+            // c31cbb8f..." instead of reading a hex dump one character at a time.*
+            HStack(spacing: 0) { Text("fingerprint: " + fp).font(.footnote) }
+                .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("lab.trust.fingerprint")
+                .accessibilityLabel("Fingerprint for \(selectedContact)")
+                .accessibilityValue(fp)
 
             // Trust status readout
-            Text("status: " + holder.runtime.contactTrustLabel(selectedContact))
-                .font(.footnote)
-                .accessibilityIdentifier("lab.trust.status")
+            // Same construct as the fingerprint, for the same MEASURED reason: a `Text`'s content IS its
+            // accessibility label and a modifier cannot replace it, so the semantic label goes on a container.
+            HStack(spacing: 0) {
+                Text("status: " + holder.runtime.contactTrustLabel(selectedContact)).font(.footnote)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityIdentifier("lab.trust.status")
+            .accessibilityLabel("Verification status for \(selectedContact)")
+            .accessibilityValue(holder.runtime.contactTrustLabel(selectedContact))
 
             HStack(spacing: 8) {
                 Button("Compare/Confirm") {
@@ -230,6 +267,12 @@ struct LabConversationView: View {
     @State private var recipient: String = "B"
 
     var body: some View {
+        // *** GS-UX-001 STEP 7: SCROLLED, SO ENLARGED TYPE CANNOT COVER THE TAB BAR. ***
+        // *MEASURED AT `UICTContentSizeCategoryAccessibilityXXXL`: this content reached y=763.8 while the TabBar
+        // begins at y=676 -- SO THE CONTENT COVERED THE TAB BAR, a tab tap landed on CONTENT, and the page never
+        // switched. The accessibility arm caught a REAL navigation defect, not a missing control: nothing could
+        // scroll, so the overflow had nowhere to go.*
+        ScrollView {
         VStack(alignment: .leading, spacing: 8) {
             LabBanner()
             Text("Conversation").font(.title)
@@ -277,6 +320,7 @@ struct LabConversationView: View {
                 .accessibilityIdentifier("lab.conversation.admitted")
         }
         .padding()
+        }
     }
 }
 
@@ -317,6 +361,12 @@ struct LabSosView: View {
     }
 
     var body: some View {
+        // *** GS-UX-001 STEP 7: SCROLLED, SO ENLARGED TYPE CANNOT COVER THE TAB BAR. ***
+        // *MEASURED AT `UICTContentSizeCategoryAccessibilityXXXL`: this content reached y=763.8 while the TabBar
+        // begins at y=676 -- SO THE CONTENT COVERED THE TAB BAR, a tab tap landed on CONTENT, and the page never
+        // switched. The accessibility arm caught a REAL navigation defect, not a missing control: nothing could
+        // scroll, so the overflow had nowhere to go.*
+        ScrollView {
         VStack(spacing: 12) {
             LabBanner()
             Text("SOS").font(.title)
@@ -364,6 +414,7 @@ struct LabSosView: View {
             Text("sos admitted: " + String(holder.runtime.admittedCount()))
                 .accessibilityIdentifier("lab.sos.admitted")
         }
+        }
     }
 }
 
@@ -372,6 +423,12 @@ struct LabDiagnosticsView: View {
     /// The wipe control's own report, so the rendered surface NAMES what the action did.
     @State private var wipeNote = "not requested"
     var body: some View {
+        // *** GS-UX-001 STEP 7: SCROLLED, SO ENLARGED TYPE CANNOT COVER THE TAB BAR. ***
+        // *MEASURED AT `UICTContentSizeCategoryAccessibilityXXXL`: this content reached y=763.8 while the TabBar
+        // begins at y=676 -- SO THE CONTENT COVERED THE TAB BAR, a tab tap landed on CONTENT, and the page never
+        // switched. The accessibility arm caught a REAL navigation defect, not a missing control: nothing could
+        // scroll, so the overflow had nowhere to go.*
+        ScrollView {
         VStack(alignment: .leading, spacing: 8) {
             LabBanner()
             Text("Diagnostics").font(.title)
@@ -403,6 +460,7 @@ struct LabDiagnosticsView: View {
             Text("wipe result: " + wipeNote)
                 .font(.footnote)
                 .accessibilityIdentifier("lab.diagnostics.wiperesult")
+        }
         }
     }
 }

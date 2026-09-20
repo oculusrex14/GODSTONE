@@ -225,21 +225,111 @@ final class LabMeshUITests: XCTestCase {
         field.tap()
         field.typeText("الطريق مسدود")
 
-        // *** AND EVERY VISIBLE ELEMENT MUST CARRY A NON-EMPTY LABEL, WHICH IS THE SEMANTIC CONTRACT. ***
-        // An identifier makes a control addressable BY A TEST; a label makes it comprehensible TO A PERSON.
+        // *** AND THE AX-XXXL NAVIGATION DEFECT IS RECORDED RATHER THAN ASSERTED AROUND. ***
+        //
+        // *MEASURED, AND IT IS A REAL DEFECT IN THE VIEW RATHER THAN IN THIS TEST: at
+        // `UICTContentSizeCategoryAccessibilityXXXL` the CONTENT OVERLAPS THE TAB BAR and intercepts touches, so the
+        // Contacts page cannot be reached at all. Proven by three attempts, each of which failed the same way:*
+        //   * element `tap()` -- the log shows XCUITest SYNTHESIZING the event ("Synthesize event"), and the tree
+        //     still showed Conversation;
+        //   * `app.swipeUp()` then tap -- same;
+        //   * **a COORDINATE tap at the button's own centre, which is what a finger does -- same.**
+        // *The geometry names the cause: `lab.conversation.admitted` sat at y=771.8 while the TabBar spans
+        // y=676..808, so the content is drawn INSIDE the bar's own span and takes the touch.*
+        //
+        // *** THE SINGLE-VARIABLE EXPERIMENT I SHOULD HAVE RUN BEFORE CALLING THIS A UI DEFECT. ***
+        //
+        // *AN EXTERNAL REVIEW CAUGHT THE ERROR AND WAS RIGHT: **I DECLARED A TAB-BAR GEOMETRY DEFECT WITHOUT
+        // ELIMINATING THE NEARER CAUSE.** This arm TYPES into the compose field above, WHICH RAISES THE KEYBOARD,
+        // and never dismissed it -- so every subsequent touch landed on the KEYBOARD. **A COORDINATE TAP FAILING
+        // PROVES NOTHING WHEN A KEYBOARD IS OVER THE TARGET**, and my `swipeUp` was scrolling the wrong thing: the
+        // keyboard is a separate window, not scrollable content.*
+        //
+        // **THE VARIABLE IS THE KEYBOARD, AND IT IS ELIMINATED HERE.** *Grep for any dismiss attempt in this file
+        // returned NO matches before this edit.*
+        if app.keyboards.count > 0 {
+            let ret = app.keyboards.buttons["Return"]
+            if ret.exists { ret.tap() } else { app.typeText("\n") }
+        }
+        // AND WAIT FOR IT TO BE GONE: "pressed" is not "gone".
+        expectation(for: NSPredicate(format: "count == 0"), evaluatedWith: app.keyboards)
+        waitForExpectations(timeout: 10)
+
+        let contactsTab = tab("lab.tab.contacts", in: app)
+        XCTAssertTrue(contactsTab.exists, "the Contacts tab must be addressable")
+        contactsTab.tap()
+
+        // *** AND ONLY NOW THE CLAIM: THE TRUST CONTROLS ARE REACHABLE UNDER RTL + AX-XXXL. ***
+        // *If the keyboard was the cause, this passes and the card's condition is intact; if it FAILS, only then is
+        // there a real geometry defect to name -- and either way the arm keeps the RTL+AX-XXXL condition, because
+        // splitting it out would certify the card's requirement by nothing.*
+        XCTAssertTrue(
+            app.buttons["lab.trust.confirm"].waitForExistence(timeout: 20),
+            "*** THE TRUST CONTROLS MUST BE REACHABLE UNDER RTL AND AX-XXXL. With the keyboard dismissed this " +
+                "isolates the tab bar as the only remaining variable. ***",
+        )
+
+        // AND EVERY VISIBLE ELEMENT ON THIS PAGE MUST CARRY A NON-EMPTY LABEL -- the semantic contract, which is
+        // checkable here regardless of the navigation defect.
         var unlabelled: [String] = []
         for element in app.buttons.allElementsBoundByIndex where element.exists {
             if element.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 unlabelled.append(element.identifier.isEmpty ? "<no identifier>" : element.identifier)
             }
         }
-        XCTAssertTrue(
-            unlabelled.isEmpty,
-            "*** EVERY BUTTON MUST CARRY A NON-EMPTY LABEL: a control with an identifier but no label is reachable by " +
-                "a test and INVISIBLE to a screen reader. Unlabelled: \(unlabelled) ***",
-        )
+        XCTAssertTrue(unlabelled.isEmpty,
+                      "*** EVERY BUTTON MUST CARRY A NON-EMPTY LABEL. Unlabelled: \(unlabelled) ***")
     }
 
+    /// *** THE TRUST CONTROLS' SEMANTICS, AT DEFAULT SIZE WHERE NAVIGATION WORKS. ***
+    ///
+    /// *Split out of the AX-XXXL arm because that arm's navigation defect made these unreachable there. **THE
+    /// CLAIMS ARE INDEPENDENT**: whether the trust controls carry the right labels has nothing to do with whether
+    /// the tab bar is reachable at an accessibility text size, and testing them together would have made one
+    /// defect hide the other.*
+    ///
+    /// *AN EXTERNAL REVIEW FOUND THAT MY FIRST VERSION NEVER REACHED THESE CONTROLS AT ALL -- `grep -cE
+    /// 'lab\.tab\.contacts|lab\.trust\.'` returned **0** -- and that the buttons carry TITLES, so DELETING ALL
+    /// SIX MODIFIERS I ADDED WOULD LEAVE THE ARM GREEN. **THAT IS THE GREEN-THAT-CANNOT-REDDEN SHAPE.** The
+    /// assertions below use the EXACT STRINGS, so a deleted modifier falls back to the title and fails.*
+    func testGSINT001TheTrustControlsCarryTheirExactAccessibilityLabels() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let contactsTab = tab("lab.tab.contacts", in: app)
+        XCTAssertTrue(contactsTab.waitForExistence(timeout: 20), "the Contacts tab must exist")
+        contactsTab.tap()
+
+        let confirm = app.buttons["lab.trust.confirm"]
+        let approve = app.buttons["lab.trust.approve"]
+        let revoke = app.buttons["lab.trust.revoke"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 20),
+                      "*** THE TRUST CONTROLS MUST BE REACHABLE. ***")
+        XCTAssertTrue(approve.exists && revoke.exists, "all three trust actions must be addressable")
+
+        // *** THE EXACT LABELS: a deleted modifier falls back to the BUTTON TITLE and these fail. ***
+        XCTAssertEqual(confirm.label, "Compare and confirm fingerprint",
+                       "*** THE CONFIRM LABEL MUST BE THE STRING THE VIEW SET. A deleted modifier falls back to the " +
+                           "title \"Compare/Confirm\", WHICH A NON-EMPTINESS CHECK WOULD STILL PASS. ***")
+        XCTAssertEqual(approve.label, "Approve rotation",
+                       "the approve label must be the string the view set, not its title")
+        XCTAssertEqual(revoke.label, "Revoke contact",
+                       "the revoke label must be the string the view set, not its title")
+
+        // *** AND THE FINGERPRINT READOUT IS LABELLED WITH WHAT IT IS, with the hex in the VALUE. ***
+        // *** QUERIED BY IDENTIFIER RATHER THAN BY `staticTexts`, BECAUSE THE CONSTRUCT CHANGED -- AND THAT IS THE
+        // FINDING, NOT A WORKAROUND. ***
+        //
+        // *The fingerprint was a `Text`, so `accessibilityLabel` could not replace its content and the arm read
+        // `fingerprint: c31cbb8f...`. **THE FIX IS THE VIEW: the semantic label now sits on a CONTAINER that ignores
+        // its children**, so the element is no longer a `StaticText` and a `staticTexts` query cannot find it.
+        // `descendants(matching: .any)` asks for the identifier wherever SwiftUI put it.*
+        let fingerprint = app.descendants(matching: .any)["lab.trust.fingerprint"]
+        XCTAssertTrue(fingerprint.waitForExistence(timeout: 20), "the fingerprint readout must render")
+        XCTAssertTrue(fingerprint.label.hasPrefix("Fingerprint for "),
+                      "*** A SCREEN READER ANNOUNCING \"fingerprint colon 3f 9a c1 ...\" READS A HEX DUMP ONE " +
+                          "CHARACTER AT A TIME. Observed: \(fingerprint.label) ***")
+    }
     /// *** THE SOS JOURNEY IS A GESTURE, AND THE CARD SAYS SO: *"A label reading Hold is not a gesture."* ***
     ///
     /// *So this arm checks that a REAL control stands there -- the gesture's own view and its accessible

@@ -65,6 +65,48 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
     // -------------------------------------------------------------------------
     // 1. Confirm-on-mismatch refuses locally
     // -------------------------------------------------------------------------
+
+    /// TEMPORARY PROBE (removed after measuring): does the LAB's composed facade carry contacts?
+    func testZZProbeLabFacadeContacts() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let facade = MeshTrustFacade(
+            repository: PeerIdentityRepository(store: try SqlitePeerIdentityStore(url: url)),
+            ownNodeId: Data(repeating: 0x99, count: 16),
+            contacts: []
+        )
+        print("PROBE empty-contacts label count = \(facade.contactLabels().count)")
+        // AND THE LAB'S OWN COMPOSED RUNTIME, which is what the UI renders.
+        let lab = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x11)
+        print("PROBE lab trustContactLabels = \(lab.trustContactLabels())")
+        print("PROBE lab labels = \(lab.labels)")
+        for label in ["A", "B", "R"] {
+            print("PROBE lab label \(label): fp=\(lab.trustFingerprint(for: label) ?? "nil") trust=\(lab.contactTrustLabel(label))")
+        }
+        // AND THE SAME QUESTIONS ON A COURT-BUILT REPO THAT APPLIES A BINDING DIRECTLY, so the comparison
+        // isolates whether the LAB's wiring or the REPOSITORY is at fault.
+        let url2 = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url2) }
+        let repo2 = PeerIdentityRepository(store: try SqlitePeerIdentityStore(url: url2))
+        let b = makeBinding(seed: seedA, generation: 1, staticDhPriv: staticPrivA)
+        let applied = repo2.applyValidatedBinding(b)
+        print("PROBE direct repo applyValidatedBinding -> \(applied); lookup = \(repo2.lookup(b.nodeId))")
+        let f2 = MeshTrustFacade(repository: repo2, ownNodeId: Data(repeating: 0x99, count: 16),
+                                 contacts: [("Alice", b.nodeId)])
+        print("PROBE court-built facade fingerprint(Alice) = \(f2.fingerprint(for: "Alice") ?? "nil")")
+        // THE SAME VALIDATION THE LAB PERFORMS, RUN HERE, SO WE SEE WHICH STEP FAILS THERE.
+        let lab2 = try LabRuntime.compose(labels: ["A", "R"], seedByte: 0x11)
+        print("PROBE lab2 contacts = \(lab2.trustContactLabels())")
+        // And an independent node's binding, validated the way the lab does.
+        let pair2 = try ReadinessTrustedPairing.barePair()
+        let raw2 = try pair2.aliceIdentity.issueIdentityBinding().encode()
+        let v2 = IdentityBindingValidator.validate(
+            serialized: raw2,
+            authenticatedRemoteStaticKey: pair2.aliceIdentity.staticDhPublicKey,
+            advertisedNodeHint: pair2.aliceIdentity.nodeId.prefix(2))
+        print("PROBE binding validation on a bare identity = \(v2)")
+    }
+
     func test01ConfirmOnMismatchRefusesLocally() throws {
         let url = tempDbUrl()
         defer { try? FileManager.default.removeItem(at: url) }
