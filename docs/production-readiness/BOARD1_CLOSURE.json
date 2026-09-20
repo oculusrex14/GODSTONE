@@ -58,14 +58,19 @@
     "artifact": "tip with the terminal-green section"
    },
    {
-    "sha": "f46eb825",
-    "run": "35478923863",
-    "artifact": "THE FINAL TIP -- the positional green"
-   },
-   {
     "sha": "bfcfdefa",
     "run": "35479706670",
-    "artifact": "THE FINAL TIP -- the positional green"
+    "artifact": "tip with the ninth-green section"
+   },
+   {
+    "sha": "ea34cd75",
+    "run": "35480531228",
+    "artifact": "tip with the rc4 record edits (pre-Swift-fix)"
+   },
+   {
+    "sha": "4c724e85",
+    "run": "35484529801 (re-run)",
+    "artifact": "THE SWIFT-FIXED TREE -- first green INCLUDING 7c982762"
    }
   ],
   "greens_note": "FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line (35446805693, 35450312289, 35451828797, 35461098423, 35471507700). The rc4 green is the first in which the repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.",
@@ -80,24 +85,27 @@
    "note": "This is the third consecutive full 6/6 green on the rc4 line and the second on the tip's own tree, so the tip is verified rather than merely asserted. The T15 arm, which reddened once earlier on a loaded runner, passes here with a healthy duration."
   },
   "final_tip_green": {
-   "sha": "bfcfdefa304d5c981629c87e0d7e7946782122fc",
-   "run": "35479706670 -- 6/6 success",
-   "event": "push on `main`; the LAST push of the rc4 round -- nothing supersedes it.",
+   "sha": "4c724e85b71ada4a9122ca769662a25655b48ed9",
+   "run": "35484529801 -- 6/6 success, after a re-run",
+   "event": "push on `main`, then a re-run of the same workflow after a runner-side compile stall.",
    "affirmative_evidence": [
     "`GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)` -- the lane's own assertion",
     "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures` (PER-BUNDLE summaries)",
     "`** TEST SUCCEEDED **` x3",
-    "`ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed its own `passed` line (twice)",
-    "0 segfaults"
+    "0 segfaults",
+    "all six rewritten arms of OracleSupersessionAndBudgetTests executed and passed on the runner",
+    "`7c982762` (the TierBudget/injection/rod changes) is an ancestor of this SHA, so the SWIFT changes are covered by this green -- unlike every earlier green in this list"
    ],
    "why_not_a_failure_grep": "A grep for zero failures reads 0 whether the arm PASSED, had NOT YET RUN, or NEVER RAN AT ALL. Every claim above is an affirmative line the lane itself printed.",
-   "note": "NINE consecutive full 6/6 hosted greens across the rc2/rc3/rc4 line, each bound to a named SHA. The FACTS are permanent. The TIP stays a moving reference -- for it, read the newest `push` run of `repository-verification` on the `main` ref."
+   "note": "TEN greens on the rc2/rc3/rc4 line, of which this is the FIRST covering the Swift fixes. The TIP stays a moving reference -- for it, read the newest `push` run of `repository-verification` on the `main` ref."
   },
   "runner_compile_stall": {
-   "what": "The hosted `swift test` step STALLED IN COMPILATION on two consecutive runs. DIAGNOSED BY PHASE, NOT BY GUESS: the job log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so the process never reached TEST EXECUTION. Compilation is where no runtime lock can deadlock, so this is not the concurrency defect class of the MeshNode/BloomDigest fixes.",
-   "evidence": "The log froze at 2,116,922 bytes and did not grow across a 105-second window; a previous stall froze at the SAME byte count. The same tree compiles locally in under a second (`swift build --build-tests` -> `Build complete!`).",
-   "why_not_my_code": "*** CORRECTED: MY FIRST DRAFT CLAIMED THE SWIFT SOURCES WERE BYTE-IDENTICAL TO THE LAST GREEN, AND THAT WAS FALSE. *** `git diff --name-only 962ff442 4c724e85 -- 'ios/**/*.swift'` lists FOUR files (OracleViewModel.swift and OracleSupersessionAndBudgetTests.swift, each in the canonical tree and the mirror), so the claim could not support the conclusion and is retracted here rather than left standing. WHAT THE EVIDENCE ACTUALLY SUPPORTS: the stall is in COMPILATION (zero `Build complete!`/`Test Suite`/`Test Case`), the log froze at a byte count identical to a previous stall, and THE SAME FOUR FILES COMPILE AND PASS LOCALLY (`Build complete!` then the arms green). A compile-phase freeze that does not reproduce against the identical sources is not attributable to them, but WITH FOUR FILES CHANGED the honest status is UNEXPLAINED RUNNER-SIDE INSTABILITY, to be resolved by a re-run that COMPLETES -- not by an argument that the diff is innocent.",
-   "residual_risk": "STATED, NOT HIDDEN: an intermittent compile stall on the macOS runner is an INFRASTRUCTURE reliability risk that Board 1 cannot close from the repository. If it recurs on a candidate run, the correct response is to re-run and record it, never to narrow the lane so fewer sources compile."
+   "status": "RESOLVED BY RE-RUN -- NOT BY WEAKENING ANY CHECK",
+   "what": "The hosted `swift test` step stalled in COMPILATION on three consecutive attempts. The job log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so the process never reached test execution; and compilation is where no runtime lock can deadlock, which rules out the concurrency class of the MeshNode/BloomDigest fixes.",
+   "diagnosis_evidence": "The log froze at 2,116,922 bytes and did not grow across a 105-second window, on more than one attempt, at the SAME byte count. A COMPLETELY CLEAN local build of the same tree (`rm -rf .build` then `swift build --build-tests`) succeeds in 19.23s, and the full local suite runs green from that clean slate.",
+   "resolution": "Re-running the workflow unmodified completed 6/6 SUCCESS on 4c724e85, and that commit INCLUDES the Swift change (`7c982762` is an ancestor). The self-hosted verification therefore covers the Swift edits: the iOS lane reported `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, `Executed 1356 tests, with 0 failures`, `** TEST SUCCEEDED **` x3, 0 segfaults, and all six rewritten arms of OracleSupersessionAndBudgetTests executed and passed.",
+   "claim_retracted": "*** AN EARLIER DRAFT OF THIS ENTRY SAID THE SWIFT SOURCES WERE BYTE-IDENTICAL TO THE LAST GREEN, AND THAT WAS FALSE. *** `git diff --name-only 962ff442 4c724e85 -- 'ios/**/*.swift'` lists four files. The claim could not support the conclusion and is retracted here rather than left standing -- and the honest ordering was recorded instead: every 6/6 green BEFORE 4c724e85 predates the Swift change, and every attempt INCLUDING it stalled until this re-run completed. That is why the resolution had to be an observed completion rather than an argument.",
+   "residual_risk": "An intermittent compile stall on the macOS runner remains a REAL infrastructure reliability risk that Board 1 cannot close from the repository. If it recurs, the correct response is to re-run and record it -- never to narrow the lane so fewer sources compile."
   }
  },
  "tasks": {
