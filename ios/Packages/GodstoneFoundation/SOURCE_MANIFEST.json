@@ -51,7 +51,7 @@
     "Sources/GodstoneMesh/IdentityAckSigner.swift": "fb92d5d62907c303fe79b2e530abb4857af5962dae096048f08f430cd45203a5",
     "Sources/GodstoneMesh/IdentityBindingV1.swift": "446cdefc6e9b89fcb58700db2bee1baa4c6aedebfe181925f52a94130bb5b7ba",
     "Sources/GodstoneMesh/KeyTableTrustResolver.swift": "6b407c62aadeb0ee7a8c0c33fa0038830939561605edce2a6ab81d2c345496fa",
-    "Sources/GodstoneMesh/LabRuntime.swift": "2b49ffcb53e3ba35eb02af2624ecc23491fbe64e0aa1f8e4e42dacbbba2cc650",
+    "Sources/GodstoneMesh/LabRuntime.swift": "1cc7e36788c21dfc65c125518af95f14a3a70918cb3faa6f4e3b84235f2a6da8",
     "Sources/GodstoneMesh/LifecycleTransportAdapter.swift": "fc58c3ffd75b4560eabaef13f1ee14b5851f97d3fdc79eafdc6d52b438117847",
     "Sources/GodstoneMesh/LifetimeControl.swift": "daf932e792cc46b195187a69c75f71246bb1a6136c33779d5eb6e4c5f961fd5f",
     "Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift": "af00f9de19464739ff7a52026dd95753fdb563bc5220dcfbafae08c79475fe75",

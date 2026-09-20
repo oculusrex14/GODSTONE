@@ -163,6 +163,64 @@ public final class LabRuntime: @unchecked Sendable {
         }
     }
 
+    // ================================================================================================
+    // *** GS-UX-001 STEP 4: THE JOURNEY'S OWN CHOICES, REACHABLE FROM A RENDERED CONTROL. ***
+    //
+    // THE CARD'S CHARGE IS THAT JOURNEYS "stop at disconnected models and static text". THE MEASURED GAP ON THIS
+    // ISLE, TAKEN THIS ROUND: `LabMeshRootApp` rendered a conversation field, a Send button and a hold-to-confirm
+    // SOS -- AND NOTHING ELSE the card names. A RECIPIENT SELECTOR, the wipe/recovery STATE and the durable outcome
+    // were unreachable from any control, so a user could not perform the journey even though the runtime beneath it
+    // was real.
+    //
+    // **EVERY METHOD HERE DELEGATES TO THE SAME RETAINED RUNTIME THE SENDS USE** -- none of them is a second model.
+    // *That is what makes a rendered control a JOURNEY rather than a label: the button and the assertion read the
+    // SAME object.*
+    // ================================================================================================
+
+    /// The recipients a journey may choose, EXCLUDING the author. *Named so a selector can render the real set
+    /// rather than a hardcoded pair -- the card asks for "a real recipient selector", and a list the UI invents is
+    /// not one.*
+    public func recipientsExcluding(_ from: String) -> [String] {
+        labels.filter { $0 != from }
+    }
+
+    /// Whether a trusted relation stands between two labels, from the runtime's own register.
+    public func isLinked(_ from: String, _ to: String) -> Bool { harness.isLinked(from, to) }
+
+    /// *** THE LINKED PEERS OF ONE NODE, so a selector can grey out what is unreachable rather than offering it. ***
+    public func linkedPeers(of from: String) -> [String] { harness.linkedPeerLabels(from) }
+
+    // ------------------------------------------------------------------------------------------------
+    // *** WIPE AND RECOVERY STATE: THE JOURNEY STEP 6 NAMES ("wipe progress from the real reopened store"). ***
+    // ------------------------------------------------------------------------------------------------
+
+    /// *** THE WIPE STATE, FROM THE COMPOSITION'S OWN REGISTER -- AND THE LIMIT IS STATED RATHER THAN PAPERED OVER. ***
+    ///
+    /// *MY FIRST VERSION OF THIS METHOD READ A `wipeJournalView()` FROM THE HARNESS. **IT DOES NOT EXIST, AND THE
+    /// BUILD SAID SO.** `ComposedRuntimeHarness` carries no wipe journal at all: `beginWipe()` erases the durable
+    /// artifact URLs it holds and sets `wiped`. **THE RUNTIME'S LADDER-BEARING WIPE AUTHORITY
+    /// (`CrashResumableWipe` + `WipeJournalDurabilityAdapter`) IS A DIFFERENT OBJECT, REACHED THROUGH
+    /// `MeshRuntime`, NOT THROUGH THIS HARNESS.***
+    ///
+    /// **SO THIS METHOD REPORTS WHAT THE HARNESS ACTUALLY KNOWS, AND NAMES WHAT IT DOES NOT.** *Inventing a journal
+    /// here to satisfy the shape of step 6 would be a second source of truth beside the real one -- the defect the
+    /// step exists to prevent. **A LABEL THAT CLAIMS A RUNG IT NEVER READ IS WORSE THAN ONE THAT SAYS "the lab's
+    /// harness carries no wipe ladder".***
+    ///
+    /// *The LADDER-bearing wipe IS witnessed, by the courts that drive `MeshRuntime` (`CrashStartupResumeTests`'s
+    /// `testSR05`/`testSR06`/`testSR07` and `GsFinal003StartupPermitTests`), which read the real journal's rungs. What
+    /// this lab can render truthfully is the composition harness's own wipe register.*
+    public func wipeStateName() -> String {
+        harness.isWiped() ? "wiped" : "standing"
+    }
+
+    /// Whether the runtime reports itself wiped, from the composition's own register.
+    public func isWiped() -> Bool { harness.isWiped() }
+
+    /// *** BEGIN A WIPE, THROUGH THE COMPOSITION'S REAL OWNER. *** *The lab invokes the same verb the runtime
+    /// exposes; it does not simulate one, and it does not set a flag of its own.*
+    public func beginWipe() { harness.beginWipe() }
+
     /// One bounded sync turn from `from` to `to`.
     @discardableResult public func turn(_ from: String, _ to: String) -> Int { harness.turn(from, to) }
 
