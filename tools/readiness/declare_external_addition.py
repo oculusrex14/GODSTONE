@@ -37,7 +37,9 @@ import os
 import subprocess
 import sys
 
-ROOT = '/Users/oculus/Projects/GODSTONE'
+# RESOLVED, NOT HARDCODED: the same defect class the review found in T01's `REPO`.
+ROOT = os.environ.get('GODSTONE_ROOT', os.path.abspath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), '..', '..')))
 DECL = os.path.join(ROOT, 'docs', 'production-readiness', 'ORIGINAL_CHECKOUT_ADDITIONS.json')
 MANIFEST = os.path.join(ROOT, 'docs', 'production-readiness', 'ORIGINAL_CHECKOUT_ADDITIONS.hashes.json')
 

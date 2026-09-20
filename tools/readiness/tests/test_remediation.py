@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -67,7 +68,16 @@ def requires_capture(func):
     wrapper.__name__ = func.__name__
     wrapper.__doc__ = func.__doc__
     return wrapper
-AUDIT = Path("/Users/oculus/Projects/GODSTONE/AUDIT_FINAL_2026-09-15")
+# *** THE AUDIT ROOT IS RESOLVED, NOT HARDCODED. *** *It was
+# `Path("/Users/oculus/Projects/GODSTONE/AUDIT_FINAL_2026-09-15")` -- THE SAME DEFECT CLASS THE
+# REVIEW FOUND IN T01's `REPO`, whose hardcoded absolute path made the suite pass only in the
+# builder's checkout. The arms that read it are gated behind `_evidence_capture_present()`, so
+# this could not produce a false green on a runner -- but it WOULD silently read the wrong tree
+# for anyone with an evidence root at a different location, which is the failure a resolved path
+# removes. The convention is the one T01 established: an environment override with the builder's
+# path as the default, so the local run is unchanged and a relocated checkout still works.*
+AUDIT = Path(os.environ.get(
+    'GODSTONE_AUDIT_ROOT', '/Users/oculus/Projects/GODSTONE/AUDIT_FINAL_2026-09-15'))
 sys.path.insert(0, str(ROOT / "tools" / "readiness"))
 
 STATUSES_I_MAY_SET = ("OPEN", "RED_WRITTEN", "FIX_SUBMITTED", "PARTIAL", "BLOCKED_EXTERNAL",

@@ -43,7 +43,10 @@ import shutil
 import subprocess
 import sys
 
-DEFAULT_REPO = '/Users/oculus/Projects/GODSTONE'
+# RESOLVED, NOT HARDCODED: `--repo` still overrides, but the default now follows the tree
+# that carrieth this file rather than a path that exists on exactly one machine.
+DEFAULT_REPO = os.environ.get('GODSTONE_ROOT', os.path.abspath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), '..', '..')))
 DEFAULT_EVIDENCE = os.path.join(os.path.dirname(DEFAULT_REPO), 'GODSTONE_BUILDER_EVIDENCE', 'T01')
 
 

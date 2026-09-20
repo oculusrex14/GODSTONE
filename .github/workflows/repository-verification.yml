@@ -183,21 +183,30 @@ jobs:
             echo "::error::historical arms cannot be accounted for"
             exit 1
           fi
-          # *** THE BOUND IS THE MEASURED POPULATION, NOT A ROUND NUMBER WITH HEADROOM. ***
+          # *** THE BOUND IS THE POPULATION MEASURED ON THIS RUNNER, NOT A LOCAL ESTIMATE. ***
           #
-          # IT WAS 40, DESCRIBED AS "(T01 historical 20, evidence digests 8, remediation 6)";
-          # that is 34, so a SIX-ARM REGRESSION could have slipped through unnoticed. AND
-          # THE T01 SHARE IS NO LONGER 20: four tamper controls that only needed
-          # SELF-CONSISTENCY were moved off `@historical_arm` and now carry their own
-          # minimal capture, so they EXECUTE in this mode instead of deferring. Measured
-          # in a runner simulation: 20 -> 16.
+          # IT WAS 40, DESCRIBED AS "(T01 historical 20, evidence digests 8, remediation 6)" --
+          # WHICH IS 34, so a SIX-ARM REGRESSION could have slipped through unnoticed.
           #
-          # The bound is therefore set to the measured figure. A skip count above it means
-          # a control that should run did not, which is the failure this step exists to
-          # refuse -- not a number to make room for.
-          if [ "$skipped" -gt 16 ]; then
+          # *** AND I FIRST "MEASURED" IT AS 16 IN A LOCAL CLONE, WHICH WAS WRONG. *** *A
+          # clone under-reports: the local working tree carries the out-of-repo evidence root as
+          # a sibling directory, so the evidence-digest and remediation arms EXECUTE here and
+          # DEFER on a runner where that root is absent. The hosted step then FAILED against my
+          # 16. THE ONLY VALID MEASUREMENT OF A RUNNER-SIDE POPULATION IS THE RUNNER'S OWN
+          # OUTPUT -- 30, composed of 16 T01 historical (each naming "no preservation capture
+          # beside this checkout") plus 14 evidence-digest/remediation (each naming "the
+          # out-of-repository evidence root is absent"). Both shares are printed by the arms
+          # themselves, so the composition is auditable rather than inferred.*
+          #
+          # The four TAMPER CONTROLS that needed only self-consistency were moved off
+          # `@historical_arm` in this round and now EXECUTE here, which is why the T01 share is
+          # 16 rather than 20.
+          #
+          # A skip count ABOVE this means a control that should execute did not -- the failure
+          # this step exists to refuse -- and the number is not a budget to make room for.
+          if [ "$skipped" -gt 30 ]; then
             echo "::error::${skipped} arms were skipped; the capture-dependent population is"
-            echo "::error::MEASURED at 16 (T01 historical 16, evidence digests, remediation)."
+            echo "::error::MEASURED at 30 on a runner (16 T01 historical + 14 evidence/remediation)."
             echo "::error::A larger number means a control that should execute did not."
             exit 1
           fi
