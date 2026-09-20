@@ -15787,6 +15787,15 @@
      "now_true": "The ledger states the precise in-repo gap: an internal init plus no production port conformer."
     }
    ]
+  },
+  "operation_notes": {
+   "router_tests_slow_not_wedged": {
+    "what_i_thought": "Twice this session I recorded a `RouterTests` \"stall\" at ~1008 cases as UNEXPLAINED -- first suspecting a `Router` lock inversion, then an environmental wedge.",
+    "what_it_actually_is": "**PROOF-OF-WORK MINING.** A `sample` of the stuck process shows the running test -- `RouterTests.testGroupToDirectHeaderDowngradeRetainingHasPowIsRejectedWithPolicyMismatch` -- spinning in `Router.authorSealedMessage` -> `buildSealedMessage` -> `ProofOfWork.mine` -> `Blake2s.hash` -> `Blake2s.compress`. **NO `__psynch_mutexwait`, NO `NSLock`, NO BLOCKING FRAME ANYWHERE ON THAT THREAD: IT IS SPINNING, NOT BLOCKED.** The test's own verdict is `passed (133.413 seconds)`.",
+    "why_it_matters": "**BOTH EARLIER HYPOTHESES WERE WRONG.** No lock inversion, no lock-ordering defect, no environment problem -- and NOT a candidate for a preemptive production reorder, which I had been advised to consider and correctly declined to make without a failing witness. **A PoW test that takes 133 seconds is the mechanism working.**",
+    "the_instrument": "`sample <pid> 4` distinguishes 'spinning productively' from 'blocked forever' in SECONDS. I ran it on the third occurrence rather than the first; it should have been the first.",
+    "current_lane_verdict": "`run_ios_lane.sh` rc=0; GodstoneMeshTests 1282/0, GodstoneCoreTests 102/0, LabMeshTests 5/0 = 1389 tests; `check_lane_results.py` lane results PASSED, mirror membership PASSED."
+   }
   }
  }
 }
