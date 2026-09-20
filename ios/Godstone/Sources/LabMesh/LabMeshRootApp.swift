@@ -156,17 +156,51 @@ struct LabConversationView: View {
     @State private var outcome = "nothing sent yet"
     @State private var body_ = "the mill road is cut; send boats"
 
+    /// *** GS-UX-001 STEP 4: THE AUTHOR AND THE RECIPIENT ARE THE USER'S CHOICE, NOT CONSTANTS IN THE VIEW. ***
+    ///
+    /// *THE MEASURED GAP: this view hardcoded `sendDirect("A", recipient: "B", ...)` -- so the journey was reachable
+    /// only for a PAIR THE VIEW INVENTED, and "a real recipient selector" (the card's own words) did not exist. **A
+    /// SEND BUTTON WITH A HARDCODED RECIPIENT IS NOT A SELECTOR**, which is why the previous coverage could not see
+    /// this: the arm grepped the SOURCE for `sendDirect` rather than driving a control.*
+    ///
+    /// The list is the RUNTIME'S OWN label set (`recipientsExcluding`), so a label the runtime does not carry cannot
+    /// be offered.
+    @State private var author: String = "A"
+    @State private var recipient: String = "B"
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             LabBanner()
             Text("Conversation").font(.title)
+
+            // *** THE RECIPIENT SELECTOR: A REAL PICKER OVER THE RUNTIME'S OWN LABELS. ***
+            Picker("from", selection: $author) {
+                ForEach(holder.runtime.labels, id: \.self) { label in Text(label).tag(label) }
+            }
+            .accessibilityIdentifier("lab.conversation.author")
+
+            Picker("to", selection: $recipient) {
+                ForEach(holder.runtime.recipientsExcluding(author), id: \.self) { label in
+                    Text(label).tag(label)
+                }
+            }
+            .accessibilityIdentifier("lab.conversation.recipient")
+
+            // *** AND THE LINK STATE, RENDERED: a recipient that cannot be reached must be VISIBLE as such rather
+            // than silently failing an action. The register is the runtime's own. ***
+            Text(holder.runtime.isLinked(author, recipient)
+                 ? "link: up \(author)->\(recipient)"
+                 : "link: down \(author)->\(recipient)")
+                .accessibilityIdentifier("lab.conversation.linkstate")
+
             // *** A REAL UTF-8-BOUNDED INPUT AND A REAL SEND ACTION (step 4's core), WIRED TO THE RUNTIME. ***
             TextField("message", text: $body_)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("lab.conversation.field")
             Button("Send") {
                 let text = body_
-                Task { outcome = await holder.runtime.sendDirect("A", recipient: "B", plaintext: Data(text.utf8)) }
+                let from = author, to = recipient
+                Task { outcome = await holder.runtime.sendDirect(from, recipient: to, plaintext: Data(text.utf8)) }
             }
             .accessibilityIdentifier("lab.conversation.send")
             Text(outcome).accessibilityIdentifier("lab.conversation.outcome")
@@ -226,14 +260,40 @@ struct LabSosView: View {
 
 struct LabDiagnosticsView: View {
     @EnvironmentObject private var holder: LabRuntimeHolder
+    /// The wipe control's own report, so the rendered surface NAMES what the action did.
+    @State private var wipeNote = "not requested"
     var body: some View {
-        VStack {
+        VStack(alignment: .leading, spacing: 8) {
             LabBanner()
             Text("Diagnostics").font(.title)
             // THE ONE PLACE THE LAB SHOWETH THE LIFECYCLE IT HEARETH -- so that 'the lifecycle reacheth the same owner'
             // is VISIBLE to a human and to a reader, not merely assertable in a control.
             Text("last lifecycle phase: " + String(describing: holder.lastLifecyclePhase))
                 .font(.footnote)
+
+            // *** GS-UX-001 STEP 6: THE WIPE JOURNEY, RENDERED AND TRUTHFUL ABOUT ITS OWN LIMIT. ***
+            //
+            // *The card asks for "wipe progress from the real reopened store". What this control renders is THE
+            // COMPOSITION HARNESS'S OWN WIPE REGISTER (`wipeStateName()`), because that is the register this runtime
+            // has -- **AND IT SAYS SO**, rather than showing a rung it never read. The LADDER-bearing wipe authority
+            // is reached through `MeshRuntime`, not through this harness; a ladder label here would be a SECOND
+            // SOURCE OF TRUTH beside the real one.*
+            //
+            // **THE BUTTON IS A REAL ACTION, NOT A DISPLAY:** `beginWipe()` invokes the harness's own owner, which
+            // erases the durable artifacts it holds. A control that only SET a local flag would be the "static text"
+            // shape this finding charges.*
+            Text("wipe: " + holder.runtime.wipeStateName())
+                .accessibilityIdentifier("lab.diagnostics.wipestate")
+
+            Button("Begin wipe") {
+                holder.runtime.beginWipe()
+                wipeNote = holder.runtime.wipeStateName()
+            }
+            .accessibilityIdentifier("lab.diagnostics.beginwipe")
+
+            Text("wipe result: " + wipeNote)
+                .font(.footnote)
+                .accessibilityIdentifier("lab.diagnostics.wiperesult")
         }
     }
 }
