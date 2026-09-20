@@ -111,7 +111,7 @@
     "Sources/GodstoneMesh/WireV2.swift": "bac25e7bda845cdab3aa8c221dd693963be97c8ab313fba103a66b7308e6bf2e",
     "Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift": "670d979089c90585479937d484ba0bd4b96e33903b04c087c486d5a24ea1544d",
     "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",
-    "Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift": "a27e220fd89e6b1ae6f4937ca3741a47399e2257aa237541e4e8905a32c8cdcb",
+    "Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift": "414658b2105a02f0adcd459e23b90524375f629767335ec65e70594409727e6a",
     "Tests/GodstoneCoreTests/OracleViewModelRuntimeTests.swift": "a04c5ac5186c28686c6767e8f3b89bf905bf936d5cb42eebad65bb455b6ddab0",
     "Tests/GodstoneCoreTests/ReadinessT48Tests.swift": "28d5cdac17061f56121755f639b801377d9564ca3a78973813edad37b28acc8d",
     "Tests/GodstoneCoreTests/ReadinessT50Tests.swift": "a7e99d94330fba51700a8a08f2edf3431cf3ed8212257d39a7fcb5fb9b2b6188",

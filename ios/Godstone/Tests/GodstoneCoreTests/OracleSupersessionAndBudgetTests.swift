@@ -98,24 +98,45 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         /// behaviour from its opposite is not a witness, and it would have passed
         /// against exactly the regression it exists to catch.*
         let answerForQuestion: @Sendable (String) -> String
+
+        //  *** GS-FINAL-003 FOLLOW-UP: THE UNCHECKED STATE IS NOW ACTUALLY SYNCHRONIZED. ***
+        //
+        //  *AN EXTERNAL REVIEW FOUND THIS AND WAS RIGHT: `@unchecked Sendable` silenced the
+        //  compiler over four mutable fields -- `waiters`, `opened`, `retrieveCount` and
+        //  `generateCount` -- that `retrieve`/`generate`/`open` read and wrote from CONCURRENT
+        //  Tasks. The protocol requires `Sendable`, which is what the annotation asserted and
+        //  what nothing enforced.*
+        //
+        //  AND MY FIRST RESPONSE TO THE SYMPTOM WAS WRONG IN AN INSTRUCTIVE WAY: I replaced
+        //  `Task.yield()` with `Task.sleep` in the polling helper, which stopped the hang WITHOUT
+        //  fixing the race -- *the sleep merely SPACED THE POLLS, narrowing the window and making
+        //  a false green MORE likely.* Spacing contention is not synchronization.
+        //
+        //  THE FIX IS THE REPOSITORY'S OWN CONVENTION, not a new idea: `NSLock` with private
+        //  accessors, exactly as `MeshNode` guards its relation mappings. `generate` is
+        //  SYNCHRONOUS by protocol, so an `actor` cannot serve here -- the lock is the available
+        //  mechanism, and it is the one already used elsewhere in this codebase.
+        private let lock = NSLock()
         private var waiters: [CheckedContinuation<Void, Never>] = []
         private var opened = false
-        /// How many times `retrieve` was ENTERED. The retry arm readeth it: a retry
-        /// that reused a completion would leave the count unchanged.
-        private(set) var retrieveCount = 0
+        private var _retrieveCount = 0
+        private var _generateCount = 0
+        private var _lastGeneratedQuestion: String?
+
+        /// The number of `retrieve` ENTRIES, read under the lock.
+        var retrieveCount: Int { lock.lock(); defer { lock.unlock() }; return _retrieveCount }
+        /// The number of `generate` ENTRIES, read under the lock.
+        var generateCount: Int { lock.lock(); defer { lock.unlock() }; return _generateCount }
+        /// The last question that reached generation, read under the lock.
+        var lastGeneratedQuestion: String? {
+            lock.lock(); defer { lock.unlock() }; return _lastGeneratedQuestion
+        }
 
         init(retrieval: RetrievalResult,
              answerForQuestion: @escaping @Sendable (String) -> String) {
             self.retrievalResult = retrieval
             self.answerForQuestion = answerForQuestion
         }
-
-        /// The question the LAST `generate` was called with, so the court can prove
-        /// which request reached generation.
-        private(set) var lastGeneratedQuestion: String?
-        /// How many times `generate` was ENTERED: a retry that reused a completion
-        /// would retrieve twice and generate once.
-        private(set) var generateCount = 0
 
         func warmUp() async -> Bool { true }
         func release() {}
@@ -129,30 +150,38 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
         /// now recorded, and `open()` resumes ALL of them.*
         func waitAtGate() async {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                // THE CHECK-AND-ENQUEUE IS ATOMIC: without the lock, `opened` could be set between
+                // the test and the append, and the continuation would be parked forever.
+                lock.lock()
                 if opened {
+                    lock.unlock()
                     continuation.resume()
                 } else {
                     waiters.append(continuation)
+                    lock.unlock()
                 }
             }
         }
 
         func open() {
+            // AND THE DRAIN IS ATOMIC, so a waiter arriving during it is either in `pending` or
+            // sees `opened` -- never neither.
+            lock.lock()
             opened = true
             let pending = waiters
             waiters.removeAll()
+            lock.unlock()
             for continuation in pending { continuation.resume() }
         }
 
         func retrieve(question: String) async -> RetrievalResult {
-            retrieveCount += 1
+            lock.lock(); _retrieveCount += 1; lock.unlock()
             await waitAtGate()
             return retrievalResult
         }
 
         func generate(question: String, retrieval: RetrievalResult) -> AsyncThrowingStream<String, Error> {
-            generateCount += 1
-            lastGeneratedQuestion = question
+            lock.lock(); _generateCount += 1; _lastGeneratedQuestion = question; lock.unlock()
             let answer = answerForQuestion(question)
             return AsyncThrowingStream { continuation in
                 continuation.yield(answer)
@@ -255,12 +284,54 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
     /// looks like an infrastructure stall. `Task.yield()` is also not a guarantee of progress --
     /// on a non-preemptive executor the yielding task can starve the one that would satisfy it.
     /// Bounded spins with a reported observation are the discipline the rest of this board uses.*
-    private func waitUntil(_ condition: () -> Bool, turns: Int = 10_000) async -> Bool {
+    /// *** A BOUNDED WAIT THAT ACTUALLY LETS THE OTHER TASK RUN. ***
+    ///
+    /// *THE FIRST VERSION OF THIS HELPER USED `await Task.yield()` AND STILL HUNG, WHICH IS WORTH
+    /// RECORDING BECAUSE IT IS COUNTER-INTUITIVE: `yield()` offers the scheduler a chance but
+    /// guarantees nothing -- it can resume the SAME task immediately, so a tight loop of yields can
+    /// starve the very task that would satisfy the condition. MEASURED: the arm hung inside
+    /// `testARetryObtainsANewRequestIdentity` even with the bound in place, because the producer
+    /// task never got a turn to bump `retrieveCount`.*
+    ///
+    /// `Task.sleep` is a REAL suspension: it yields to the executor and the task is rescheduled
+    /// after a genuine interval, so the producer runs. The bound is on ITERATIONS, so an arm that
+    /// cannot progress still FAILS with the observed value rather than hanging -- which is the
+    /// property that matters, and the reason this is a wait rather than a spin.
+    private func waitUntil(_ condition: () -> Bool, turns: Int = 2_000) async -> Bool {
         for _ in 0..<turns {
             if condition() { return true }
-            await Task.yield()
+            try? await Task.sleep(nanoseconds: 200_000)   // 0.2 ms -- a real suspension, not a hint
         }
         return condition()
+    }
+
+    /// Await a task with a DEADLINE, failing loudly rather than wedging.
+    ///
+    /// *`await task.value` has no timeout: a lost wakeup would hang the arm forever and deny the
+    /// suite its totals, which is the failure mode this file has been repairing all round. This
+    /// polls with a real suspension and reports if the task never finished.*
+    private func awaitTask(_ task: Task<Void, Never>, label: String,
+                           turns: Int = 2_000) async -> Bool {
+        for _ in 0..<turns {
+            if task.isCancelled { break }
+            if await finished(task) { return true }
+            try? await Task.sleep(nanoseconds: 200_000)
+        }
+        if await finished(task) { return true }
+        XCTFail("\(label) did not complete within the deadline; the arm cannot observe distinct "
+                + "requests, so it fails rather than hanging.")
+        return false
+    }
+
+    /// Whether a `Task<Void, Never>` has finished, WITHOUT awaiting it (awaiting is what wedges).
+    private func finished(_ task: Task<Void, Never>) async -> Bool {
+        await withTaskGroup(of: Bool.self) { group in
+            group.addTask { await task.value; return true }
+            group.addTask { try? await Task.sleep(nanoseconds: 50_000_000); return false }
+            let first = await group.next() ?? false
+            group.cancelAll()
+            return first
+        }
     }
 
     private func settle(_ vm: OracleViewModel, turns: Int = 500) async {
@@ -307,7 +378,11 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
             return
         }
         pipeline.open()
-        await first.value
+        // *** A DEADLINE ON THE JOIN, NOT AN UNBOUNDED AWAIT. ***
+        // *A lost wakeup would otherwise wedge here forever: the gate above is bounded and fails
+        // loudly, but `await first.value` has no such property. `awaitTask` gives it one, so a
+        // stuck join FAILS with a message rather than denying the suite its totals.*
+        guard await awaitTask(first, label: "the first request") else { return }
 
         let second = Task { await vm.runPipeline(question: "the same question") }
         guard await waitUntil({ pipeline.retrieveCount >= 2 }) else {
@@ -317,7 +392,7 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
             return
         }
         pipeline.open()
-        await second.value
+        guard await awaitTask(second, label: "the second request") else { return }
 
         XCTAssertEqual(pipeline.retrieveCount, 2,
                        "the SAME question asked twice must issue TWO requests; a retry "
