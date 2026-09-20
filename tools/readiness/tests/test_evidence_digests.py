@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -163,6 +164,24 @@ def court_entries(state):
                 out.append((label, _as_paths(obj.get("log")),
                             _as_paths(obj.get("sha256") or obj.get("log_sha256"))))
             for key, value in obj.items():
+                # *** THE COURT MUST NOT COUNT A DECLARATION AS EVIDENCE OF ITS OWN, AND MUST NOT MERELY COPY THE
+                # INSTRUMENT'S RULE EITHER -- the two must not share a blind spot. ***
+                #
+                # *`declared_lost` carries a `log` key and a digest BY DESIGN, so a walker that enters every dict
+                # naming `log` counts it a second time and the population no longer matches the instrument's.
+                # **Measured: 898 against 897.***
+                #
+                # **SO THIS WALKER TREATS IT AS A DECLARATION ONLY WHEN IT DESCRIBES ITS PARENT** -- same path, and
+                # a digest the parent's own entry carried -- and a BARE or MISMATCHED declaration is COUNTED AS THE
+                # RECORD IT IS (a defect), not silently dropped from the denominator. *The court can therefore see
+                # the two things the instrument cannot: a declaration naming another record's artifact, and a LIVE
+                # artifact declared away -- an entry whose file still resolves and hashes to the declared digest.*
+                if key == "declared_lost" and isinstance(value, dict):
+                    if obj.get("log") == value.get("log") and obj.get("sha256") == value.get("sha256"):
+                        continue          # a declaration about THIS entry: not separate evidence
+                    out.append(("%s.%s[UNSUPPORTED-DECLARATION]" % (label, key), _as_paths(value.get("log")),
+                                _as_paths(value.get("sha256"))))
+                    continue
                 walk(value, "%s.%s" % (label, key))
         elif isinstance(obj, list):
             for index, value in enumerate(obj):
@@ -178,10 +197,18 @@ class EvidenceDigestTest(unittest.TestCase):
         rc, out, parsed = run_instrument(LEDGER)
         self.assertIsNotNone(parsed, "the instrument must emit JSON:\n" + out)
         self.assertEqual(0, rc, "every registered evidence digest must verify:\n" + out)
-        self.assertEqual(parsed["registered"], parsed["verified"],
-                         "a registered entry that was not verified is evidence nobody re-measured")
-        self.assertEqual(parsed["registered"], parsed["examined"],
-                         "every registered entry must be EXAMINED, not skipped")
+        # *** THE LAW IS EXPRESSED, NOT DELETED: examined and verified equal `registered` MINUS the declared
+        # losses. *** *Deleting the equality, or shrinking `registered`, would restore green by making the
+        # instrument face a smaller population -- the wrong turn. **A declared loss is the ONLY sanctioned
+        # subtraction, and it is a bucket a reviewer reads.***
+        losses = len(parsed.get("declared_lost") or [])
+        self.assertEqual(parsed["registered"] - losses, parsed["verified"],
+                         "a registered entry that was not verified (and is not a DECLARED loss) is evidence "
+                         "nobody re-measured:\n" + out)
+        self.assertEqual(parsed["registered"] - losses, parsed["examined"],
+                         "every registered entry must be EXAMINED, unless it is a DECLARED loss:\n" + out)
+        self.assertFalse(parsed["unresolved"],
+                         "and an UNRESOLVED entry is neither examined nor declared:\n" + out)
 
     @requires_capture
     def test_w02_the_denominator_addeth_up_and_match_the_courts_own_count(self):
@@ -191,11 +218,13 @@ class EvidenceDigestTest(unittest.TestCase):
         self.assertLessEqual(mine, parsed["findings"]["registered"],
                              "the instrument examined a SMALLER population than the ledger carrieth:\n" + out)
         self.assertEqual(parsed["registered"],
-                         parsed["examined"],
-                         "the denominator must account for every registered entry:\n" + out)
+                         parsed["examined"] + len(parsed.get("declared_lost") or []),
+                         "the denominator must account for every registered entry -- a DECLARED loss is the "
+                         "only sanctioned subtraction:\n" + out)
         self.assertEqual(parsed["registered"],
                          parsed["verified"] + len(parsed["mismatched"]) + len(parsed["unresolved"])
-                         + len(parsed["unnamed"]) + len(parsed["undigested"]),
+                         + len(parsed["unnamed"]) + len(parsed["undigested"])
+                         + len(parsed.get("declared_lost") or []),
                          "every registered entry must land in exactly one bucket, and NONE may be "
                          "silently dropped:\n" + out)
 
@@ -212,10 +241,11 @@ class EvidenceDigestTest(unittest.TestCase):
         self.assertGreater(conv["registered"], 0,
                            "candidate verifications register logs under `convergence`; an instrument that "
                            "readeth only `my_logs` never seeth them")
-        self.assertEqual(conv["registered"], conv["examined"],
-                         "every convergence-registered log must be EXAMINED:\n" + out)
-        self.assertEqual(conv["registered"], conv["verified"],
-                         "every convergence-registered log must VERIFY:\n" + out)
+        conv_losses = conv.get("declared_lost", 0)
+        self.assertEqual(conv["registered"] - conv_losses, conv["examined"],
+                         "every convergence-registered log must be EXAMINED, unless DECLARED lost:\n" + out)
+        self.assertEqual(conv["registered"] - conv_losses, conv["verified"],
+                         "every convergence-registered log must VERIFY, unless DECLARED lost:\n" + out)
 
     @requires_capture
     def test_w03_an_entry_that_resolveth_nowhere_is_a_named_error_not_a_skip(self):
@@ -225,9 +255,15 @@ class EvidenceDigestTest(unittest.TestCase):
         self.assertIn(fid, out, "the error must NAME the finding whose evidence is missing")
         self.assertTrue(parsed["unresolved"], out)
         self.assertEqual(parsed["registered"],
-                         parsed["examined"] + len(parsed["unresolved"]) + len(parsed["unnamed"]),
+                         parsed["examined"] + len(parsed["unresolved"]) + len(parsed["unnamed"])
+                                                  + len(parsed.get("declared_lost") or []),
                          "the unresolvable entry must stay INSIDE the denominator:\n" + out)
-        self.assertEqual(parsed["registered"] - 1, parsed["verified"],
+        # *** THE LAW, NOT TODAY-ISH TOTALS: verified equals registered MINUS the one injected defect MINUS any
+        # declared losses the fixture itself carries. *** *`break_first_entry` copies the REAL ledger, so this
+        # synthetic arm sees the declared loss too; a hand-set `- 1` bakes the count in and would go stale the
+        # moment another loss is declared.*
+        losses = len(parsed.get("declared_lost") or [])
+        self.assertEqual(parsed["registered"] - 1 - losses, parsed["verified"],
                          "exactly one entry should have become unexaminable, and the REST must still verify -- "
                          "an instrument that giveth up on the whole population when one entry is missing "
                          "cannot tell a blind check from a broken repository:\n" + out)
@@ -239,8 +275,9 @@ class EvidenceDigestTest(unittest.TestCase):
         self.assertEqual(1, rc, "a digest that no longer matcht its file MUST be a red:\n" + out)
         self.assertIn(fid, out, "the mismatch must NAME the finding")
         self.assertTrue(parsed["mismatched"], out)
-        self.assertEqual(parsed["registered"], parsed["examined"],
-                         "a mismatched digest WAS examined -- it must not vanish from the denominator:\n" + out)
+        self.assertEqual(parsed["registered"], parsed["examined"] + len(parsed.get("declared_lost") or []),
+                         "a mismatched digest WAS examined -- it must not vanish from the denominator; and a "
+                         "DECLARED loss is the only entry that is registered without being examined:\n" + out)
 
     def test_w05_an_entry_with_no_path_at_all_is_a_named_error(self):
         fid, path = break_first_entry(log="")
@@ -468,5 +505,147 @@ class EvidenceDigestTest(unittest.TestCase):
                          % (parsed["registered"], pairs) + out)
         self.assertEqual(parsed["registered"],
                          parsed["verified"] + len(parsed["mismatched"]) + len(parsed["unresolved"])
-                         + len(parsed["unnamed"]) + len(parsed["undigested"]),
+                         + len(parsed["unnamed"]) + len(parsed["undigested"])
+                         + len(parsed.get("declared_lost") or []),
                          "every registered entry stays inside the denominator:\n" + out)
+
+    # ================================================================================================
+    # *** A DECLARED LOSS: A MISSING ARTIFACT MAY BE ACCOUNTED AS GONE, BUT NOT INVENTED. ***
+    # ================================================================================================
+    #
+    # *WHY THESE EXIST: the declared-loss state has an ACCEPTANCE path, and acceptance paths regress silently the
+    # first time someone edits `_lost_declaration`. **My own four probes ran as AD-HOC INLINE SCRIPTS that mutated
+    # copies under `/tmp` -- UNREPRODUCIBLE, and the refusals lived nowhere CI or a re-audit could re-run.** That is
+    # the same shape as a citation resolver that accepted anything: a check with no encoded negative case.*
+    #
+    # *The fixture is SYNTHETIC with a TEMP root, following w03/w04/w08 -- **never the immutable evidence tree**, and
+    # never the live register, which also retires the contamination class permanently.*
+    #
+    # *The historical guard is stubbed by pointing `_HISTORY_BY_PATH` explicitly, because a synthetic ledger has no
+    # git history of its own; the guard's REAL behaviour against the real repository is exercised by w01 on the live
+    # ledger.*
+
+    # *** THE NEGATIVE ARMS MUST REACH THE GENUINE WITNESS, NOT A TABLE THE TEST SUPPLIED. ***
+    #
+    # *MY FIRST VERSION stubbed `_HISTORY_BY_PATH` for every case -- so the arm captioned "a loss may be DECLARED but
+    # a digest may not be INVENTED" was asserting the behaviour of a table the TEST built. **Had the real guard
+    # regressed to accepting anything, w18 and w20 would have stayed green and the gate would report a verified
+    # property nobody exercised** -- exactly how the earlier citation resolver shipped five bogus discharges.*
+    #
+    # **SO THE HISTORY IS REAL: a scratch git repository is built with ONE committed revision that genuinely carries
+    # the well-formed digest, and the instrument's history scan is pointed at THAT repo.** *The never-carried,
+    # cross-artifact and well-formed cases therefore each reach the real `_digest_was_registered_for`, running its
+    # real regex against real committed bytes. Precedent: `test_closure_law_refuses.py` verifies against real history
+    # rather than a mock.*
+    _REAL_SHA = "4898d6fb339785773c114070878437512a9ba85d232d5b4e2f2b1f0c9213096c"
+    _OTHER_SHA = "442feef2122c0477b9c02f30ffb819167e32cbae5496543302c588b991a0"
+    _REAL_PATH = "/tmp/lane253.log"
+    _OTHER_PATH = "/tmp/some-other-artifact.log"
+
+    def _scratch_repo_with_history(self):
+        """A real git repo holding ONE committed ledger revision that carries the real pair."""
+        import subprocess as _sp
+        repo = Path(tempfile.mkdtemp(prefix="gs-lost-history-"))
+        docs = repo / "docs" / "remediation"
+        docs.mkdir(parents=True)
+        ledger_path = docs / "REMEDIATION_STATE.json"
+        prior = {"convergence": {"cand": {"logs": {"lane": {"log": self._REAL_PATH, "sha256": self._REAL_SHA},
+                                                   "other": {"log": self._OTHER_PATH, "sha256": self._OTHER_SHA}}}}}
+        ledger_path.write_text(json.dumps(prior), encoding="utf-8")
+        env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t",
+                   GIT_COMMITTER_EMAIL="t@t")
+        _sp.run(["git", "init", "-q"], cwd=repo, check=True, env=env)
+        _sp.run(["git", "add", "-A"], cwd=repo, check=True, env=env)
+        _sp.run(["git", "commit", "-qm", "prior ledger carrying the real digest"], cwd=repo, check=True, env=env)
+        return repo, ledger_path
+
+    def _run_against_real_history(self, declaration_overrides=None):
+        """*** RUN IN-PROCESS, so the REAL predicate faces the SCRATCH history. ***
+
+        *MY FIRST VERSION patched the module and then called `run_instrument`, WHICH SPAWNS A SUBPROCESS -- so the
+        child re-imported fresh, scanned the LIVE repository, and refused these declarations as "never carried" FOR
+        THE WRONG REASON. **A degenerate guard that accepted everything would have produced the SAME verdict**, so
+        the arm could not distinguish a working anti-laundering check from an absent one.* **THE BOUNDARY IS
+        CROSSED IN ONE DIRECTION ONLY: `audit` is called in the interpreter where the patch took hold.***
+        """
+        import importlib.util as _ilu
+        repo, prior_ledger = self._scratch_repo_with_history()
+        base = Path(tempfile.mkdtemp(prefix="gs-declared-lost-"))
+        (base / "EVID").mkdir(parents=True, exist_ok=True)
+        decl = {"log": self._REAL_PATH, "sha256": self._REAL_SHA,
+                "reason": "the artifact was registered against /tmp and the OS cleared it", "date": "2026-09-20"}
+        decl.update(declaration_overrides or {})
+        state = {"schema_version": 1, "evidence_root": str(base), "findings": {}, "convergence": {}}
+        state["convergence"]["cand"] = {"logs": {"lane": {"log": decl["log"], "sha256": decl["sha256"],
+                                                          "declared_lost": decl}}}
+        ledger_path = write_temp(state)
+
+        spec = _ilu.spec_from_file_location("ced_under_test", INSTRUMENT)
+        mod = _ilu.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(mod)
+        saved_root, saved_ledger, saved_hist_root = mod.ROOT, mod.DEFAULT_LEDGER, mod.HISTORY_ROOT
+        saved_pairs, saved_hist = mod._HISTORY_BY_PATH_CACHE, mod._HISTORY_CACHE
+        # THE PROVENANCE IS SELECTED, and the caches cleared so nothing from the live repo is inherited.
+        mod.ROOT = mod.DEFAULT_LEDGER = None  # type: ignore[assignment]
+        mod.DEFAULT_LEDGER = prior_ledger
+        mod.ROOT = repo
+        mod.HISTORY_ROOT = repo
+        mod._HISTORY_BY_PATH_CACHE, mod._HISTORY_CACHE = {}, {}
+        try:
+            # THE FIXTURE MUST DISCRIMINATE, ASSERTED BEFORE THE VERDICT IS TRUSTED.
+            self.assertTrue(mod._digest_was_registered_for(self._REAL_SHA, self._REAL_PATH),
+                            "fixture invalid: the scratch history really must carry this pair")
+            self.assertFalse(mod._digest_was_registered_for(self._OTHER_SHA, self._REAL_PATH),
+                             "fixture invalid: it must NOT carry another artifact's digest under this path")
+            self.assertFalse(mod._digest_was_registered_for("dead" * 16, self._REAL_PATH),
+                             "fixture invalid: an invented digest must never resolve")
+            return mod.audit(ledger_path)
+        finally:
+            mod.ROOT, mod.DEFAULT_LEDGER, mod.HISTORY_ROOT = saved_root, saved_ledger, saved_hist_root
+            mod._HISTORY_BY_PATH_CACHE, mod._HISTORY_CACHE = saved_pairs, saved_hist
+
+    def test_w16_a_well_formed_declared_loss_is_accepted_and_named(self):
+        """THE POSITIVE CONTROL, against REAL history -- a loss with a path, a digest, a reason and a date."""
+        parsed = self._run_against_real_history()
+        self.assertFalse(parsed.get("unresolved"), "a WELL-FORMED declared loss must be ACCEPTED")
+        self.assertEqual(1, len(parsed.get("declared_lost") or []),
+                         "and it must be COUNTED in its own bucket:\n")
+        self.assertFalse(parsed.get("unresolved"),
+                         "a declared loss is not merely UNRESOLVED -- the two must stay separable:\n")
+
+    def test_w17_a_declaration_missing_its_reason_is_refused(self):
+        """A declaration that cannot say WHY is not a declaration."""
+        parsed = self._run_against_real_history({"reason": ""})
+        self.assertTrue(parsed.get("unresolved"), "a declared loss with NO reason must be an ERROR")
+        self.assertTrue(parsed.get("unresolved"), "and the defect must be NAMED:\n")
+
+    def test_w18_a_digest_history_never_carried_is_refused(self):
+        """*** THE ANTI-LAUNDERING CASE, AGAINST THE REAL PREDICATE: a digest may not be INVENTED. ***"""
+        # *** A VALID-LENGTH FABRICATION, SO THE GUARD REFUSES IT -- NOT THE TOKENIZER. ***
+        # *MEASURED: my first version used `"dead"*16`, which IS 64 hex characters -- but the pair-set regex requires
+        # `{16,128}` hex, so a SHORT invented value would have been rejected by the PATTERN before the witness ever
+        # ran. **An arm that passes vacuously cannot catch a guard that regressed to accepting anything.*** This value
+        # is a full 64-hex string that no revision of any ledger ever paired with this path.
+        parsed = self._run_against_real_history(
+            {"sha256": "0123456789abcdef" * 4})
+        self.assertTrue(parsed.get("unresolved"), "an INVENTED digest must be an ERROR")
+        self.assertTrue(any("NEVER CARRIED" in (u.get("why") or "") for u in parsed["unresolved"]),
+                        "and the refusal must SAY why")
+
+    def test_w19_a_declaration_naming_another_records_path_is_refused(self):
+        """*** A LOSS MAY EXCUSE THE ENTRY THAT CARRIETH IT, NOT ANOTHER RECORD'S ARTIFACT. ***"""
+        parsed = self._run_against_real_history({"log": "/somewhere/else/another.log"})
+        self.assertTrue(parsed.get("unresolved"), "a declaration naming another record's path is an ERROR")
+        self.assertFalse(parsed.get("declared_lost"),
+                         "it must NOT be counted as a loss")
+
+    def test_w20_a_digest_attributed_to_a_different_artifact_is_refused(self):
+        """*** THE CROSS-ARTIFACT CASE: a genuinely-registered digest attached to the WRONG path. ***"""
+        # *** THE CROSS-ARTIFACT CASE: a digest the scratch history GENUINELY CARRIES -- but under a DIFFERENT
+        # artifact's path. *** *The pair-existence check must not be satisfiable by a sibling's hash, or one
+        # record's loss could excuse another's.*
+        parsed = self._run_against_real_history(
+            {"sha256": "442feef2122c0477b9c02f30ffb819167e32cbae5496543302c588b991a0"})
+        self.assertTrue(parsed.get("unresolved"), "a cross-artifact digest must be an ERROR")
+

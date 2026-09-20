@@ -42,6 +42,8 @@ import argparse
 import hashlib
 import json
 import sys
+import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -74,7 +76,190 @@ def _scalar(value):
     return []
 
 
-def _registered_digests(obj, label: str, force_log_record: bool = False):
+def _lost_declaration(obj, ledger_path=None) -> dict:
+    """A DECLARED LOSS, or `{}` -- and a MALFORMED declaration is an ERROR, never a skip.
+
+    *** THE ANTI-LAUNDERING GUARD IS THE POINT. *** *An `unresolved` bucket the author can raise at will turns a
+    missing artifact into a SELF-DECLARED loss. **SO THE DECLARED DIGEST MUST BE ONE THE LEDGER ITSELF COMMITTED
+    EARLIER**, resolved from this file's own git history: an entry can be declared LOST, but the value cannot be
+    INVENTED.*
+    """
+    if not isinstance(obj, dict) or "declared_lost" not in obj:
+        return {}
+    decl = obj.get("declared_lost")
+    if not isinstance(decl, dict):
+        return {"malformed": "declared_lost present but is not a mapping"}
+    missing = [k for k in ("log", "sha256", "reason", "date") if not _scalar(decl.get(k))]
+    if missing:
+        return {"malformed": "declared_lost carrieth no %s" % ", ".join(missing)}
+    declared_sha = _scalar(decl.get("sha256"))[0]
+    if not _digest_was_historically_registered(declared_sha):
+        return {"malformed": ("declared_lost nameth digest %s, which THIS LEDGER NEVER CARRIED in its own history -- a "
+                              "loss may be DECLARED but a digest may not be INVENTED" % declared_sha[:12])}
+    # *** THE IDENTITY CHECK, WITHOUT WHICH THE HISTORICAL GUARD IS A LAUNDERING SEAM. ***
+    #
+    # *Requiring the digest to appear SOMEWHERE in the ledger's history is not enough: **a record whose path is A
+    # could carry a declaration naming B, with B's own genuinely-once-registered hash.** The gate would then read the
+    # loss as evidenced while `examine` recorded the bucket under whatever path it was handed -- so the ledger could
+    # print a mismatch nobody notices, and a real artifact's loss could be used to excuse a different one.*
+    #
+    # **SO THE DECLARATION MUST DESCRIBE THE ENTRY THAT CARRIETH IT:** its `log` must equal this entry's own
+    # registered path, and its digest must be the one THIS entry carried in history. *A mismatch is a NAMED defect,
+    # never a counted loss.*
+    own_path = _scalar(obj.get("log"))
+    decl_path = _scalar(decl.get("log"))[0]
+    if own_path and own_path[0] != decl_path:
+        return {"malformed": ("declared_lost nameth %s but the entry's own registered log IS %s -- a loss may excuse "
+                              "THE ENTRY THAT CARRIETH IT, not another record's artifact"
+                              % (decl_path, own_path[0]))}
+    if not _digest_was_registered_for(declared_sha, decl_path, ledger_path):
+        return {"malformed": ("declared_lost nameth digest %s, which the ledger's history attached to a DIFFERENT "
+                              "artifact than %s" % (declared_sha[:12], decl_path))}
+    return {"log": decl_path, "sha256": declared_sha,
+            "reason": _scalar(decl.get("reason"))[0], "date": _scalar(decl.get("date"))[0]}
+
+
+# *** THE CACHES ARE KEYED BY THE LEDGER THEY WERE BUILT FROM, NOT PROCESS-GLOBAL. ***
+#
+# *Both were plain `None`-until-filled module globals: **the FIRST ledger any call consulted populated the pair-set
+# for the WHOLE PROCESS, so every later register was judged against the wrong repository's history.** Measured as a
+# latent order-dependence -- whether a negative arm reddened depended on WHICH TEST RAN BEFORE IT, not on the code.
+# **An order-sensitive court is the same class of defect as an always-green validator: it attests whatever the
+# sequence happened to produce.***
+_HISTORY_CACHE = {}
+_HISTORY_BY_PATH_CACHE = {}
+
+#: *** THE GIT ROOT WHOSE HISTORY WITNESSES A DECLARED LOSS -- SELECTABLE, NOT HARD-WIRED. ***
+#:
+#: *It defaulted to wherever `ROOT` pointed. **A test that patched `ROOT` in-process was silently ignored by the
+#: instrument's OWN SUBPROCESS**, which re-imports and scans the LIVE repository -- so a negative arm was refused
+#: "as never carried" for the WRONG REASON, and a degenerate guard accepting everything would have produced the same
+#: verdict. **THE PROVENANCE OF THE AUDITED REGISTER MUST BE SELECTABLE, NOT IMPLIED BY WHERE THE CODE LIVES.***
+HISTORY_ROOT = None
+
+
+def _repo_for(ledger_path) -> Path:
+    """The repository containing `ledger_path`, or its parent when it sits outside any repo."""
+    out = subprocess.run(["git", "-C", str(Path(ledger_path).resolve().parent), "rev-parse", "--show-toplevel"],
+                         capture_output=True, text=True)
+    return Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else Path(ledger_path).resolve().parent
+
+
+def _is_within(child, parent) -> bool:
+    """*** BOTH SIDES RESOLVED, INCLUDING SYMLINKS. ***
+    *MEASURED: on macOS `/tmp` is a symlink to `/private/tmp`, so a repo under the temp directory resolves to
+    `/private/var/...` while the repo_root a caller passed resolves to `/var/...` -- `relative_to` then raised and
+    the pathspec silently degraded to a bare filename. **A silent degradation in the WITNESS is the worst shape: the
+    verdict still comes back, produced by a different question.***
+    """
+    try:
+        Path(child).resolve().relative_to(Path(parent).resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _pathspec_for(ledger_path, repo_root) -> str:
+    """The git pathspec for the audited register, with BOTH sides symlink-resolved.
+
+    *Falls back to the bare filename ONLY after resolution, so a degraded pathspec is a last resort rather than a
+    silent consequence of comparing an unresolved path against a resolved one.*
+    """
+    try:
+        return str(Path(ledger_path).resolve().relative_to(Path(repo_root).resolve()))
+    except ValueError:
+        return Path(ledger_path).name
+
+
+def _history_key(ledger_path):
+    """The cache key AND the provenance: the REPO whose history witnesses THIS REGISTER.
+
+    *** BOTH HALVES COME FROM THE AUDITED ARTIFACT. *** *They defaulted to `ROOT`/`DEFAULT_LEDGER` -- constants of
+    the INSTALLED CHECKOUT -- so `--ledger` never reached them: a court auditing a scratch register asked git about
+    the checkout's own file path, and the pair-set came back empty or (worse) from the LIVE repository. **A verdict
+    produced by consulting the wrong file attests nothing**, which is why the register now travels with the call.*
+    """
+    repo = Path(HISTORY_ROOT) if HISTORY_ROOT else Path(ledger_path).resolve().parent
+    return (str(repo), str(ledger_path))
+
+
+def _digest_was_registered_for(sha: str, path_text: str, ledger_path=None) -> bool:
+    """True iff some earlier committed revision paired THIS digest with THIS path.
+
+    *Stronger than mere presence: it ties the declared digest to the artifact the declaration names, so one record's
+    loss cannot be used to excuse another's.*
+    """
+    ledger_path = Path(ledger_path) if ledger_path else DEFAULT_LEDGER
+    repo_root = Path(HISTORY_ROOT) if HISTORY_ROOT else _repo_for(ledger_path)
+    key = _history_key(ledger_path)
+    if key not in _HISTORY_BY_PATH_CACHE:
+        pairs = set()
+        repo = str(repo_root)
+        rel = _pathspec_for(ledger_path, repo_root)
+        try:
+            revs = subprocess.run(["git", "-C", repo, "log", "--format=%H", "--", rel],
+                                  capture_output=True, text=True, timeout=300).stdout.split()
+        except Exception as exc:  # noqa: BLE001
+            # *** AN UNOBTAINABLE WITNESS IS NOT A REFUSAL. ***
+            # *Swallowing this into an empty set makes a LOADED HOST -- a `git` timeout -- report a genuinely carried
+            # loss as INVENTED, the exact opposite of what this gate is for. Raised, so the caller can distinguish
+            # "could not consult" from "never carried".*
+            raise RuntimeError(
+                "the history witness could not be CONSULTED for %s (%s); NOT a finding that the digest was never "
+                "carried" % (ledger_path, exc)) from exc
+        for rev in revs:
+            try:
+                blob = subprocess.run(["git", "-C", repo, "show", "%s:%s" % (rev, rel)],
+                                      capture_output=True, text=True, timeout=120).stdout
+            except Exception:  # noqa: BLE001
+                continue
+            # *** MEASURED BEFORE "FIXING" THIS CLASS: `[0-9a-f]` IS CORRECT AND ALWAYS WAS. ***
+            # *A review claimed the `9a` span sweeps `:;<=>?@` in. **IT DOES NOT** -- `0-9` and `a-f` are two
+            # adjacent ranges with NO hyphen between them, and a probe confirms `':'*64` and `'@'*64` do not match
+            # while `'0'*64` and `'a'*64` do. **I edited it anyway, to a `.replace()` no-op that produced the identical
+            # pattern** -- churn that would have read as a repair. Reverted to the plain literal.*
+            for m in re.finditer(r'"log"\s*:\s*"([^"]+)"[^{}]{0,200}?"sha256"\s*:\s*"([0-9a-f]{16,128})"', blob, re.S):
+                pairs.add((m.group(2), m.group(1)))
+        _HISTORY_BY_PATH_CACHE[key] = pairs
+    return (sha, path_text) in _HISTORY_BY_PATH_CACHE[key]
+
+
+
+def _digest_was_historically_registered(sha: str, ledger_path=None) -> bool:
+    """True iff `sha` appears in some EARLIER committed revision of this ledger.
+
+    *The ledger's own history is the witness, so a declared loss cannot be conjured with a fresh hash.*
+    """
+    ledger_path = Path(ledger_path) if ledger_path else DEFAULT_LEDGER
+    repo_root = Path(HISTORY_ROOT) if HISTORY_ROOT else _repo_for(ledger_path)
+    key = _history_key(ledger_path)
+    if key not in _HISTORY_CACHE:
+        found = set()
+        repo = str(repo_root)
+        rel = _pathspec_for(ledger_path, repo_root)
+        try:
+            revs = subprocess.run(["git", "-C", repo, "log", "--format=%H", "--", rel],
+                                  capture_output=True, text=True, timeout=300).stdout.split()
+        except Exception as exc:  # noqa: BLE001
+            # *** AN UNOBTAINABLE WITNESS IS NOT A REFUSAL. ***
+            # *Swallowing this into an empty set makes a LOADED HOST -- a `git` timeout -- report a genuinely carried
+            # loss as INVENTED, the exact opposite of what this gate is for. Raised, so the caller can distinguish
+            # "could not consult" from "never carried".*
+            raise RuntimeError(
+                "the history witness could not be CONSULTED for %s (%s); NOT a finding that the digest was never "
+                "carried" % (ledger_path, exc)) from exc
+        for rev in revs:
+            try:
+                blob = subprocess.run(["git", "-C", repo, "show", "%s:%s" % (rev, rel)],
+                                      capture_output=True, text=True, timeout=120).stdout
+            except Exception:  # noqa: BLE001
+                continue
+            found.update(re.findall(r"[0-9a-f]{32,128}", blob))
+        _HISTORY_CACHE[key] = found
+    return sha in _HISTORY_CACHE[key]
+
+
+def _registered_digests(obj, label: str, force_log_record: bool = False, ledger_path=None):
     """EVERY record that NAMETH a log, in EVERY shape the ledger useth -- enumerated BEFORE judgement.
 
     GS-FINAL-001 (the independent audit, 2026-09-18) found this walker blind in three ways, and each
@@ -105,6 +290,19 @@ def _registered_digests(obj, label: str, force_log_record: bool = False):
             # hash that matches a human-edited artefact while erasing the fact that it ever read differently.*
             superseded = _scalar(obj.get("sha256_superseded"))
             reason = _scalar(obj.get("repoint_reason"))
+            # *** A DECLARED LOSS: THE ARTIFACT IS GONE AND THE RECORD SAYETH SO. ***
+            #
+            # *A run log was registered against `/tmp/lane253.log`, and `/tmp` is cleared by the OS. THE CHECKER WAS RIGHT
+            # TO REFUSE IT -- "an entry with no path, or a path that resolveth nowhere, is an ERROR NAMED, NOT A SKIP" --
+            # AND THE LOSS IS REAL. But the only remaining options were to refuse forever or to ERASE the entry, and
+            # ERASING IT IS THE BLIND SPOT THIS REGISTRY ALREADY NAMES: "the record it could not verify was also the
+            # record it never counted."*
+            #
+            # *** SO A LOSS IS NOW A DECLARED, COUNTED STATE -- MIRRORING `sha256_superseded`/`repoint_reason`, WHICH DID
+            # NOT LOOSEN THE DIGESTER EITHER BUT ADDED A DECLARATION THE COUNTER RECOGNISES. *** *It requires the original
+            # path, the ORIGINALLY REGISTERED digest, a reason and a date -- and the declared digest MUST be one the ledger
+            # itself carried in its own history, so a loss can be DECLARED but cannot be INVENTED.*
+            lost = _lost_declaration(obj, ledger_path)
             declared = superseded[0] if (superseded and reason) else ""
             # *** A PREFIX IS PERMITTED, WITH A FLOOR, AND THE REASON IS STATED IN THE MECHANISM RATHER THAN ASSUMED. ***
             # *When a re-point is performed BEFORE this mechanism existeth -- which is how this mechanism came to exist --
@@ -114,13 +312,21 @@ def _registered_digests(obj, label: str, force_log_record: bool = False):
             # what was actually observed rather than a precision nobody possesseth. *** **The reason field is still
             # REQUIRED: a short value without one stayeth a mismatch.**
             if not paths:
-                yield (label, "", digests[0] if digests else "", declared)
+                yield (label, "", digests[0] if digests else "", declared, lost)
             else:
                 for index, path_text in enumerate(paths):
                     yield (label, path_text,
                            digests[index] if index < len(digests) else "",
-                           declared if index == 0 else "")
+                           declared if index == 0 else "",
+                             lost)
         for key, value in obj.items():
+            # *** A DECLARATION IS ABOUT ITS PARENT ENTRY, NOT EVIDENCE OF ITS OWN. ***
+            # *`declared_lost` is a mapping that CARRIES a `log` key and a digest -- by design, so it can name the
+            # artifact it declares lost. **Without this skip the walker descends into it and registers ITS OWN `log`
+            # field as a second, separate piece of evidence**, which then resolves nowhere and reports a phantom
+            # unresolved entry. Measured: exactly that, one extra unresolved.*
+            if key == "declared_lost":
+                continue
             yield from _registered_digests(value, "%s.%s" % (label, key),
                                            force_log_record=(key == "my_logs"))
     elif isinstance(obj, list):
@@ -128,7 +334,7 @@ def _registered_digests(obj, label: str, force_log_record: bool = False):
             yield from _registered_digests(value, "%s[%d]" % (label, index),
                                            force_log_record=force_log_record)
     elif force_log_record:
-        yield (label, "", "", "")
+        yield (label, "", "", "", {})
 
 
 LEDGER_SCHEMA_VERSION = 1
@@ -191,19 +397,19 @@ def audit(ledger_path: Path, root_override=None) -> dict:
         return {"ledger": str(ledger_path), "unreadable": True, "registered": 0, "examined": 0,
                 "verified": 0, "mismatched": [], "unresolved": [], "unnamed": [], "undigested": [],
                 "superseded": [], "root": "", "root_exists": False,
-                "findings": {"registered": 0, "examined": 0, "verified": 0},
-                "convergence": {"registered": 0, "examined": 0, "verified": 0},
-                "other": {"registered": 0, "examined": 0, "verified": 0}}
+                "findings": {"registered": 0, "examined": 0, "verified": 0, "declared_lost": 0},
+                "convergence": {"registered": 0, "examined": 0, "verified": 0, "declared_lost": 0},
+                "other": {"registered": 0, "examined": 0, "verified": 0, "declared_lost": 0}}
     declared_root = root_override or state.get("evidence_root") or ""
     root = Path(declared_root)
 
     registered = examined = verified = 0
     per_population = {"findings": {"registered": 0, "examined": 0, "verified": 0},
-                      "convergence": {"registered": 0, "examined": 0, "verified": 0},
-                      "other": {"registered": 0, "examined": 0, "verified": 0}}
-    unresolved, mismatched, unnamed, undigested, superseded = [], [], [], [], []
+                      "convergence": {"registered": 0, "examined": 0, "verified": 0, "declared_lost": 0},
+                      "other": {"registered": 0, "examined": 0, "verified": 0, "declared_lost": 0}}
+    unresolved, mismatched, unnamed, undigested, superseded, declared_lost = [], [], [], [], [], []
 
-    def examine(label, name, path_text, digest, declared_superseded=""):
+    def examine(label, name, path_text, digest, declared_superseded="", lost=None):
         """One registered entry: resolved, hashed, and COUNTED -- or NAMED as a defect."""
         nonlocal registered, examined, verified
         registered += 1
@@ -216,9 +422,29 @@ def audit(ledger_path: Path, root_override=None) -> dict:
             return
         found = resolve(path_text, root)
         if found is None:
-            unresolved.append((name, path_text, "resolveth nowhere under the recorded root"))
+            # *** A DECLARED LOSS IS COUNTED AS LOST, NOT AS MERELY UNRESOLVED -- AND A MALFORMED DECLARATION IS AN
+            # ERROR, NOT A SKIP. *** *The declaration must carry the original path, the ORIGINALLY REGISTERED digest, a
+            # reason and a date, and that digest must appear in THIS LEDGER'S OWN HISTORY, SO A MISSING ARTIFACT CAN BE
+            # DECLARED LOST BUT A DIGEST CANNOT BE INVENTED TO LAUNDER ONE. The entry stays INSIDE `registered`, so the
+            # denominator still closes and a loss cannot be manufactured by shrinking the population.*
+            if (lost or {}).get("malformed"):
+                unresolved.append((name, path_text, "declared_lost is MALFORMED: %s" % lost["malformed"]))
+            elif lost:
+                # *** A DECLARED LOSS IS NOT `examined`. *** THIS INSTRUMENT DEFINES `examined` AS RESOLVED AND HASHED, and
+                # the bytes could not be examined. **IT IS ITS OWN TERM IN THE CLOSING SUM (`declared_lost`), so the five
+                # dispositions -- examined, unresolved, unnamed, undigested, declared_lost -- PARTITION `registered` and each
+                # keeps meaning what it says.** *Folding a loss into `examined` would claim inspection occurred over an
+                # artifact nobody opened, and would drift `examined` away from `verified`'s shared domain.*
+                declared_lost.append((name, path_text, lost["sha256"], lost["reason"], lost["date"]))
+                per_population[label]["declared_lost"] = per_population[label].get("declared_lost", 0) + 1
+            else:
+                unresolved.append((name, path_text, "resolveth nowhere under the recorded root"))
             return
         try:
+            if (lost or {}).get("malformed"):
+                # A declaration that cannot be supported is an error whether or not the file happens to exist.
+                unresolved.append((name, path_text, "declared_lost is MALFORMED: %s" % lost["malformed"]))
+                return
             actual = hashlib.sha256(found.read_bytes()).hexdigest()
         except OSError as exc:
             # *** GS-FINAL-001(c): "A DIRECTORY WHERE A FILE IS EXPECTED, AN UNREADABLE FILE." ***
@@ -291,14 +517,16 @@ def audit(ledger_path: Path, root_override=None) -> dict:
     # a missing file, but it cannot by itself detect that a required record was never written. That
     # remains owed, and it is stated rather than implied.
     for fid, entry in state.get("findings", {}).items():
-        for label, path_text, digest, declared in _registered_digests(entry, str(fid)):
-            examine("findings", label, path_text, digest, declared)
+        for label, path_text, digest, declared, lost in _registered_digests(
+                    entry, str(fid), ledger_path=ledger_path):
+            examine("findings", label, path_text, digest, declared, lost)
     for key, value in state.items():
         if key == "findings":
             continue
         population = "convergence" if key == "convergence" else "other"
-        for label, path_text, digest, declared in _registered_digests(value, str(key)):
-            examine(population, label, path_text, digest, declared)
+        for label, path_text, digest, declared, lost in _registered_digests(
+                    value, str(key), ledger_path=ledger_path):
+            examine(population, label, path_text, digest, declared, lost)
 
     return {
         "ledger": str(ledger_path),
@@ -312,6 +540,8 @@ def audit(ledger_path: Path, root_override=None) -> dict:
         "other": per_population["other"],
         "mismatched": [{"finding": f, "log": p, "registered": r, "actual": a} for f, p, r, a in mismatched],
         "unresolved": [{"finding": f, "log": p, "why": w} for f, p, w in unresolved],
+        "declared_lost": [{"finding": f, "log": p, "sha256": h, "reason": r, "date": d}
+                          for f, p, h, r, d in declared_lost],
         "unnamed": unnamed,
         "undigested": [{"finding": f, "log": p, "actual": a} for f, p, a in undigested],
         "superseded": [{"finding": f, "log": p, "declared": d, "actual": a} for f, p, d, a in superseded],
@@ -322,13 +552,20 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="verify every registered remediation evidence digest")
     ap.add_argument("--ledger", default=str(DEFAULT_LEDGER))
     ap.add_argument("--root", default=None, help="override the ledger's recorded evidence_root")
+    ap.add_argument("--history-root", default=None,
+                    help="the git repository whose history witnesses a declared loss (default: this repo)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
+
+    # THE SELECTABLE PROVENANCE, set before any history is consulted (the caches key on it).
+    global HISTORY_ROOT
+    HISTORY_ROOT = Path(args.history_root) if args.history_root else None
 
     r = audit(Path(args.ledger), args.root)
 
     # THE DENOMINATOR MUST ADD UP. If it doeth not, this instrument is the thing that is broken.
-    accounted = r["examined"] + len(r["unresolved"]) + len(r["unnamed"])
+    accounted = (r["examined"] + len(r["unresolved"]) + len(r["unnamed"])
+                 + len(r.get("declared_lost") or []))
     if accounted != r["registered"]:
         print("::error::the denominator is inconsistent: registered %d, accounted %d"
               % (r["registered"], accounted))
