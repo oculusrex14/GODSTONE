@@ -97,33 +97,47 @@ final class LabMeshUITests: XCTestCase {
         let outcome = app.staticTexts["lab.conversation.outcome"]
         XCTAssertTrue(outcome.waitForExistence(timeout: 20),
                       "*** THE OUTCOME MUST RENDER: it is written by the runtime's own answer. ***")
-        // *** MY FIRST THREE RUNS WAITED FOR THE OUTCOME AND TIMED OUT, AND THE CAUSE IS NOW MEASURED. ***
+        // *** THE ARM BINDS RUNTIME-OWNED STATE, WHICH IS WHAT AN EXTERNAL REVIEW DEMANDED AND WAS RIGHT TO. ***
         //
-        // *The button WAS tapped (the log shows `Tap "lab.conversation.send"`), the field WAS typed into, and the
-        // outcome label NEVER LEFT "nothing sent yet" across a 20s wait. **THE ACTION'S `await` DOES NOT RESOLVE
-        // UNDER XCUITEST**, because the send path reaches `router.buildSealedMessage` -- real sealing work on an
-        // actor -- while this process is holding the accessibility-snapshot queries that XCUITest serialises.*
+        // *TWO DEFECTS IN MY FIRST VERSION, BOTH REAL:*
         //
-        // **THE HONEST CONCLUSION, AND IT IS WHY THIS ARM NO LONGER ASSERTS THE OUTCOME: XCUITest's job here is to
-        // prove THE CONTROLS EXIST, ARE ADDRESSABLE AND ARE ACTIONABLE -- the card's step 7, "exercise the rendered
-        // controls rather than setting model state directly". PROVING THE CRYPTOGRAPHIC JOURNEY COMPLETES IS THE
-        // UNIT TEST'S JOB**, and `LabMeshAppTests.testTheLabDrivethARealHandshake` already does exactly that: it
-        // awaits `sendDirect("A", recipient: "B", ...)` and asserts `applied:`, then turns the links and asserts the
-        // recipient's real inbox committed it.
-        //
-        // *A UI ARM THAT WAITED FOR A CRYPTOGRAPHIC COMPLETION WOULD BE ASSERTING THE WRONG LAYER, and it would be a
-        // FLAKY arm: its pass would depend on simulator scheduling rather than on the control.*
-        XCTAssertTrue(
-            send.isEnabled,
-            "*** THE SEND CONTROL MUST BE ACTIONABLE, which is this layer's claim. The JOURNEY's completion is " +
-                "witnessed where it can be awaited deterministically -- `LabMeshAppTests`, which asserts `applied:` " +
-                "and then that the recipient's real inbox committed the message. ***",
+        //  1. **`expectation(for: NSPredicate("label != %@"), evaluatedWith: swiftUIText)` IS A CLASSIC SILENT FALSE
+        //     NEGATIVE** -- a stale snapshot or KVC miss makes the expectation never fulfil even when the label HAS
+        //     changed. **Polling `outcome.label` in a PLAIN LOOP removes that failure mode entirely and is the
+        //     diagnostic**: if a plain poll sees the change, the send was completing all along and my instrument was
+        //     lying.*
+        //  2. **ASSERTING THE TEXT ONLY PROVES THE VIEW WROTE SOMETHING.** A closure replaced by a local string write
+        //     would satisfy it -- which is *exactly* the defect `LabSosView` had. So the arm now binds
+        //     `lab.conversation.admitted`, **A READOUT OF THE RUNTIME'S OWN `admittedCount()`**. **NO VIEW CAN
+        //     FABRICATE IT**, so an unwired action AND a stuck await both redden.*
+        let admitted = app.staticTexts["lab.conversation.admitted"]
+        XCTAssertTrue(admitted.waitForExistence(timeout: 20), "the runtime's own admittance readout must render")
+        let before = admitted.label
+
+        send.tap()
+
+        // A PLAIN POLL, bounded. No predicate, no KVC, no snapshot caching.
+        var after = before
+        let deadline = Date().addingTimeInterval(20)
+        while Date() < deadline {
+            after = admitted.label
+            if after != before { break }
+            usleep(200_000)
+        }
+
+        XCTAssertNotEqual(
+            before, after,
+            "*** THE RUNTIME'S OWN COUNT MUST MOVE AFTER THE SEND TAP. `lab.conversation.admitted` reads " +
+                "`LabRuntime.admittedCount()` -- **STATE NO VIEW CAN WRITE** -- so this reddens if the button's " +
+                "closure is replaced by a local string write OR if the await never resolves. *Asserting the outcome " +
+                "TEXT alone would not: that is the observation `LabSosView`'s defect slipped past.* " +
+                "Observed before/after: \(before) / \(after) ***",
         )
 
-        // AND THE OUTCOME VIEW STANDS READY TO RENDER IT, so the button's action has somewhere to report to.
-        XCTAssertTrue(
-            outcome.exists,
-            "the outcome view must be present for the action to report into",
+        // AND THE OUTCOME NAMES THE RUNTIME'S ANSWER, which is the human-visible half of the same fact.
+        XCTAssertFalse(
+            outcome.label.isEmpty,
+            "the outcome must name what the runtime said; observed: \(outcome.label)",
         )
     }
 
@@ -182,9 +196,41 @@ final class LabMeshUITests: XCTestCase {
 
         // AND THE ACCESSIBLE ALTERNATIVE STANDS BESIDE IT -- the card requires one, because a gesture that must be
         // held is unreachable for some users and must never be the only road.
+        let alt = app.buttons["lab.sos.send"]
         XCTAssertTrue(
-            app.buttons["Send SOS"].exists || app.buttons["Send SOS (accessible alternative)"].exists,
+            alt.exists || app.buttons["Send SOS"].exists,
             "*** THE ACCESSIBLE ALTERNATIVE MUST EXIST as a real button, so the journey is takeable without a hold. ***",
+        )
+
+        // *** AND IT MUST ACTUALLY SEND -- THE DEFECT THIS ARM COULD NOT SEE BEFORE. ***
+        //
+        // *MEASURED DEFECT, FOUND BY REVIEW: `LabSosView` wrote `outcome = "sos armed by hold"` and
+        // `"sos armed by accessible alternative"` -- **STRINGS THE VIEW ITSELF INVENTED. NOTHING WAS EVER BROADCAST.**
+        // **THE ARM BELOW COULD NOT REDDEN ON THAT**, because it only checked that a control existed: the card's own
+        // "static text" charge, committed by the control the card asked for.*
+        //
+        // **THE BINDING IS NOW THE RUNTIME'S OWN COUNT.** `lab.sos.admitted` reads `admittedCount()`, which only the
+        // runtime moves -- so a closure replaced by a string write reddens here.
+        let sosAdmitted = app.staticTexts["lab.sos.admitted"]
+        XCTAssertTrue(sosAdmitted.waitForExistence(timeout: 20),
+                      "the SOS admittance readout must render")
+        let sosBefore = sosAdmitted.label
+
+        if alt.exists { alt.tap() } else { app.buttons["Send SOS"].tap() }
+
+        var sosAfter = sosBefore
+        let sosDeadline = Date().addingTimeInterval(20)
+        while Date() < sosDeadline {
+            sosAfter = sosAdmitted.label
+            if sosAfter != sosBefore { break }
+            usleep(200_000)
+        }
+        XCTAssertNotEqual(
+            sosBefore, sosAfter,
+            "*** THE SOS MUST REACH THE RUNTIME. `lab.sos.admitted` reads the runtime's OWN counter, so a hold (or an " +
+                "alternative) whose closure merely writes a local string **REDDENS HERE** -- which is precisely the " +
+                "defect the previous version of this view shipped and the previous version of this arm could not " +
+                "see. Observed before/after: \(sosBefore) / \(sosAfter) ***",
         )
     }
 }

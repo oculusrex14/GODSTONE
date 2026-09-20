@@ -170,6 +170,19 @@ targets:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
 
 schemes:
+  # *** GS-UX-001: THE LAB APP'S OWN SCHEME, DECLARED EXPLICITLY. ***
+  #
+  # *MEASURED: after the UI scheme was added, `xcodebuild -list` no longer showed `LabMesh` -- xcodegen's automatic
+  # scheme generation covered `LabMeshTests` but NOT the app once the schemes block was edited. **A SCHEME THAT
+  # DISAPPEARS IS HOW A TARGET STOPS BEING BUILT BY ANYTHING**, which is precisely the class of silent gap this
+  # session keeps finding. Declared here so it cannot go missing again.*
+  LabMesh:
+    build:
+      targets:
+        LabMesh: all
+    run:
+      config: LightDebug
+
   # *** GS-UX-001 STEP 7: THE UI SCHEME, SO THE CONTROLS ARE DRIVEN IN CI. ***
   LabMeshUI:
     build:

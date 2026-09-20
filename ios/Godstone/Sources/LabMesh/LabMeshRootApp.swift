@@ -204,6 +204,16 @@ struct LabConversationView: View {
             }
             .accessibilityIdentifier("lab.conversation.send")
             Text(outcome).accessibilityIdentifier("lab.conversation.outcome")
+
+            // *** GS-UX-001 STEP 7: A READOUT OF THE RUNTIME'S OWN COUNT, SO THE ARM CAN BIND RUNTIME-OWNED STATE. ***
+            //
+            // *AN EXTERNAL REVIEW'S SHARPEST POINT: asserting the outcome TEXT only proves the view wrote something,
+            // and `expectation(for:evaluatedWith:)` with `NSPredicate("label != %@")` is a CLASSIC SILENT FALSE
+            // NEGATIVE on a SwiftUI Text (stale snapshot / KVC). **A CONTROL WHOSE CLOSURE IS REPLACED BY A LOCAL
+            // STRING WRITE WOULD STILL PASS IT.*** This readout is `admittedCount()` -- **THE RUNTIME'S OWN COUNTER,
+            // which no view can fabricate** -- so an unwired action and a stuck await BOTH redden.*
+            Text("admitted: " + String(holder.runtime.admittedCount()))
+                .accessibilityIdentifier("lab.conversation.admitted")
         }
         .padding()
     }
@@ -219,6 +229,10 @@ struct LabSosView: View {
     /// The monotonic confirmation threshold. Named, because a bare number in a gesture is a magic constant.
     static let confirmationThreshold: Duration = .seconds(3)
 
+    /// *** THE RETAINED RUNTIME, WHICH THE SOS MUST REACH. *** *Its ABSENCE here was the defect: the view could
+    /// write a string without one, and did.*
+    @EnvironmentObject private var holder: LabRuntimeHolder
+
     @State private var heldSince: ContinuousClock.Instant?
     @State private var armed = false
     @State private var outcome: String?
@@ -229,6 +243,16 @@ struct LabSosView: View {
     private func thresholdReached() -> Bool {
         guard let start = heldSince else { return false }
         return clock.now - start >= Self.confirmationThreshold
+    }
+
+    /// *** THE SOS REACHES THE RUNTIME, AND THE RENDERED TEXT IS THE RUNTIME'S OWN VERDICT. ***
+    ///
+    /// *`LabRuntime.sendSos` broadcasts through the same retained runtime the direct-send road uses, so the outcome
+    /// string is the authority's answer rather than a phrase this view chose. `@EnvironmentObject` is required to
+    /// reach it -- the previous version needed no environment at all, WHICH WAS ITSELF THE SYMPTOM: a control that
+    /// reaches nothing needs nothing.*
+    private func sendSos() {
+        Task { outcome = await holder.runtime.sendSos("A", plaintext: Data("SOS".utf8)) }
     }
 
     var body: some View {
@@ -250,15 +274,34 @@ struct LabSosView: View {
                         heldSince = clock.now
                         outcome = nil
                     } else {
-                        // RELEASED: armed only if the MONOTONIC threshold was reached; otherwise CANCELLED, and said so.
-                        if thresholdReached() { outcome = "sos armed by hold" } else { outcome = "hold cancelled -- threshold not reached" }
+                        // RELEASED: SEND only if the MONOTONIC threshold was reached; otherwise CANCELLED, and said so.
+                        if thresholdReached() {
+                            // *** GS-UX-001 STEP 5/(iv): THE HOLD MUST REACH THE RUNTIME, NOT A LOCAL STRING. ***
+                            //
+                            // *MEASURED DEFECT, FOUND BY REVIEW AND CONFIRMED HERE: this closure wrote
+                            // `outcome = "sos armed by hold"` -- **A STRING THE VIEW ITSELF INVENTED. NO SOS WAS EVER
+                            // BROADCAST, AND NOTHING WAS JOURNALLED**, so the gesture armed a label. **THAT IS THE
+                            // CARD'S OWN CHARGE ("static text") COMMITTED BY THE CONTROL THE CARD ASKED FOR**, and it
+                            // is the same rig-assignment defect that had already voided two other witnesses.*
+                            //
+                            // The outcome now carries THE RUNTIME'S OWN ANSWER, exactly as `LabConversationView`
+                            // carries Send's -- so a broken send road is visible in the rendered text.
+                            sendSos()
+                        } else {
+                            outcome = "hold cancelled -- threshold not reached"
+                        }
                         heldSince = nil
                     }
                 }, perform: { armed = thresholdReached() })
-            // THE ACCESSIBLE ALTERNATIVE: the same outcome without a hold, because a hold must never be the only road.
-            Button("Send SOS (accessible alternative)") { outcome = "sos armed by accessible alternative" }
+            // THE ACCESSIBLE ALTERNATIVE: the SAME SEND without a hold, because a hold must never be the only road.
+            Button("Send SOS (accessible alternative)") { sendSos() }
                 .accessibilityLabel("Send SOS")
-            if let outcome { Text(outcome).font(.footnote) }
+                .accessibilityIdentifier("lab.sos.send")
+            if let outcome { Text(outcome).font(.footnote).accessibilityIdentifier("lab.sos.outcome") }
+
+            // *** AND THE RUNTIME'S OWN COUNT, SO THE SOS ARM CAN BIND RUNTIME-OWNED STATE TOO. ***
+            Text("sos admitted: " + String(holder.runtime.admittedCount()))
+                .accessibilityIdentifier("lab.sos.admitted")
         }
     }
 }

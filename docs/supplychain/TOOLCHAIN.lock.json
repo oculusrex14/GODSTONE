@@ -1,5 +1,5 @@
 {
-  "captured_utc": "2026-09-18T14:29:33+00:00",
+  "captured_utc": "2026-09-20T12:28:15+00:00",
   "host": {
     "arch": "arm64",
     "build": "25G83",
@@ -37,10 +37,10 @@
       "sha256": "cf898de3869d8e8b6d72f984c3056a93e7a9da952aca17fb37cfdd5f61f099dd"
     },
     {
-      "bytes": 6318,
+      "bytes": 8278,
       "path": "ios/project.yml",
       "role": "the Xcode project specification XcodeGen regenerateth from",
-      "sha256": "9dd06d76a4692fdb6768cfb0c57112f6ed4a8e3262bd49dc0d8f80710ae1f09c"
+      "sha256": "af6664a49644ddfa9ad10841edda8534370a58e4de2850a769db410a2fad7f22"
     },
     {
       "bytes": 916,
