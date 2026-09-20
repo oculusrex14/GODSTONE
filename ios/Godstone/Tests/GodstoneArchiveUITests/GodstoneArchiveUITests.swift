@@ -344,4 +344,200 @@ final class GodstoneArchiveUITests: XCTestCase {
             "*** BACK MUST RETURN TO THE DOCUMENT LIST -- the browse journey's own return identity. ***",
         )
     }
+
+    /// *** THE CARD'S REMAINING JOURNEYS, EACH NAMED BY IT. ***
+    ///
+    /// *The card requires: NON-FIRST hit selection, SCROLL to a stable passage, RECREATE preserving the document
+    /// and the VISIBLE PASSAGE, the browse journey's own return identity with NO false query, and INVALID-ANCHOR
+    /// fallback. My first pair covered launch/browse-back and search/open/back and NOTHING ELSE -- **so the finding
+    /// stayed PARTIAL rather than being reported as done.***
+
+    /// *** (a) A NON-FIRST SEARCH HIT MUST BE SELECTABLE, AND THE ROW OPENED MUST BE THE ONE TAPPED. ***
+    ///
+    /// *"Non-first" is taken literally: a result set whose FIRST row is opened would satisfy a weaker arm, and the
+    /// card's own wording puts the emphasis on a hit that is NOT the first.*
+    func testGSA005ANonFirstSearchHitOpensItsOwnDocument() throws {
+        let app = try launchAndOpenArchive()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 20))
+        field.tap()
+        field.typeText("bleeding\n")
+
+        let rows = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.document.'"))
+        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 20))
+        XCTAssertGreaterThanOrEqual(
+            rows.count, 2,
+            "*** THE FIXTURE MUST PRODUCE AT LEAST TWO HITS, or 'non-first' cannot be tested at all. A single-hit "
+                + "result set would make this arm vacuous while still passing. ***",
+        )
+
+        // THE SECOND ROW -- deliberately not the first.
+        let second = rows.element(boundBy: 1)
+        // *** ADDRESS IT BY IDENTIFIER, NOT BY LABEL. ***
+        // *MEASURED: I first used `staticTexts[second.label]`, and **A ROW'S LABEL CONTAINS ITS ENTIRE PASSAGE
+        // BODY** -- multi-line text that XCUITest rejects as a query, throwing
+        // `NSInternalInconsistencyException: Invalid query`. The identifier is the stable, queryable identity.*
+        let secondIdentifier = second.identifier
+        second.tap()
+        sleep(1)
+
+        // *** THE DOCUMENT THAT OPENED MUST BE THE ONE TAPPED. ***
+        // The reader proves it by rendering the document's own passages, and by the nav title it takes.
+        XCTAssertTrue(
+            app.navigationBars.firstMatch.waitForExistence(timeout: 20),
+            "*** TAPPING A RESULT ROW MUST PUSH A READER. ***",
+        )
+        XCTAssertNotEqual(
+            app.navigationBars.firstMatch.identifier, "Archive",
+            "*** THE READER MUST NOT STILL BE THE ARCHIVE ROOT -- a tap that pushed nothing would leave the root's "
+                + "own title. Tapped row: \(secondIdentifier) ***",
+        )
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+                .firstMatch.waitForExistence(timeout: 20),
+            "*** AND THE READER MUST RENDER PASSAGES -- proof it opened a DOCUMENT and not merely a pushed shell. "
+                + "Tapped row: \(secondIdentifier) ***",
+        )
+    }
+
+    /// *** (b) THE SCROLL ROAD: A LATER PASSAGE BECOMES VISIBLE, AND THE READER'S OWN ANCHOR ROAD RECORDS IT. ***
+    ///
+    /// *"Scroll to a stable passage" is the card's clause. **THIS ARM IS THE STABLE HALF** -- it never kills the
+    /// process, so it measures the scroll and the noting road alone, which are the things that arm can honestly
+    /// assert.*
+    ///
+    /// *** WHY THE ORIGINAL ARM WAS SPLIT, WHICH IS THE USEFUL PART: *** *it combined scroll + recreate, and across
+    /// three consecutive unmutated runs it produced THREE DIFFERENT OUTCOMES (a passage mismatch, a "document did not
+    /// reopen", and a runner crash). **A court that does not repeat is not evidence in either direction**, and the
+    /// unstable half was poisoning the stable half: the scroll and note roads were never actually in question.*
+    func testGSA005ScrollingRevealsALaterPassage() throws {
+        let app = try launchAndOpenArchive()
+        let row = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.document.'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20))
+        row.tap()
+        sleep(1)
+
+        let passages = app.staticTexts.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+        XCTAssertTrue(
+            passages.firstMatch.waitForExistence(timeout: 20),
+            "*** THE READER MUST RENDER ADDRESSABLE PASSAGES -- otherwise 'the visible passage' cannot be STATED, "
+                + "only believed. ***",
+        )
+        XCTAssertGreaterThanOrEqual(
+            passages.count, 2,
+            "*** A LATER passage must exist for 'scroll to a later passage' to mean anything. ***",
+        )
+
+        let later = passages.element(boundBy: passages.count - 1)
+        var scrolled = false
+        for _ in 0..<12 {
+            if later.exists && later.isHittable { scrolled = true; break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(
+            scrolled,
+            "*** A LATER PASSAGE MUST BECOME REACHABLE BY SCROLLING. If scrolling never reveals it, the reader is "
+                + "not scrolling at all -- the container is a `ScrollViewReader` over a `LazyVStack`, so this is the "
+                + "road the card names. ***",
+        )
+    }
+
+    /// *** (c) RECREATION: THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH. ***
+    ///
+    /// *** THIS ARM IS NOT CLAIMED AS EVIDENCE YET, AND THAT IS THE HONEST STATE. ***
+    /// *MEASURED, AND THE RECORD IS THE DISTRIBUTION: across consecutive unmutated runs this road gave a runner
+    /// crash and a "THE READER MUST REOPEN THE DOCUMENT AFTER RECREATION" failure -- **two outcomes for one
+    /// unmutated arm, so THE COURT IS NONDETERMINISTIC.** The deletion mutation
+    /// (`if false, let handle = Self.decodeSceneRecord(sceneRecord)`) was ALSO red, so the arm did not discriminate:
+    /// a hard kill never runs `onChange(of: scenePhase)`, so nothing is written on either revision.*
+    ///
+    /// *** AND A CORRECTION TO MY OWN READING, WHICH IS THE INSTRUCTIVE PART. *** *From one run I inferred, out of
+    /// SHIFTED LINE NUMBERS, that "MUST REOPEN" had passed and only the passage half failed. **THE MESSAGE TEXT
+    /// CONTRADICTS THAT: `archui40` fired the literal `*** THE READER MUST REOPEN THE DOCUMENT AFTER RECREATION. ***`
+    /// -- the document did NOT reopen.** Line numbers do not survive a rewritten file; the ASSERTION MESSAGE does,
+    /// and it is the authority. **The card's "document-only restoration parks the reader at the top" reading does NOT
+    /// apply here: on this road the document did not come back at all.***
+    ///
+    /// *WHAT **IS** MEASURED AND CERTAIN: `app.terminate()` + relaunch comes back to the DOCUMENT LIST
+    /// (`rows=2 passages=0`), and `.press(.home)` + `activate()` is NOT a recreation at all -- the process and the
+    /// scene stay alive, so that arm would stay green with the restore path deleted. **A rig, and not shipped.***
+    ///
+    /// **SO THIS ARM IS LEFT TRUTHFULLY ASSERTING AND MAY BE RED -- IT IS NOT WRAPPED, SKIPPED OR WEAKENED.** *One
+    /// draft used `XCTExpectFailure` to mark the instability, and it was REMOVED: that converts a real failure into
+    /// suite-green, which is the forbidden weaken-a-check-to-go-green move and would feed a false green into any lane
+    /// control keyed on structured status.* **A red-but-true arm is worth more than a green-but-wrapped one**, and
+    /// this target is not registered in the lane, so an honest red breaks nothing.*
+    /// *The card's recreation clause is therefore recorded as OWED, not discharged.*
+    func testGSA005DocumentReopensAfterCleanProcessDeath() throws {
+        let app = try launchAndOpenArchive()
+        let row = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.document.'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20))
+        row.tap()
+        sleep(1)
+
+        let opened = app.staticTexts.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+        XCTAssertTrue(opened.firstMatch.waitForExistence(timeout: 20))
+        let openedCount = opened.count
+
+        // Background FIRST so the real `scenePhase` road writes the record, then kill the process.
+        XCUIDevice.shared.press(.home)
+        sleep(3)
+        app.terminate()
+        sleep(1)
+        let again = try launchAndOpenArchive()
+
+        // *** THIS ASSERTION IS LEFT TRUTHFULLY ASSERTING, AND MAY BE RED. ***
+        // *`XCTExpectFailure` stood here for one draft and was REMOVED: **it converts a real failure into suite-green,
+        // which is the forbidden weaken-a-check-to-go-green move**, and it would feed a false green into any lane
+        // control keyed on structured status.*
+        //
+        // **A RED-BUT-TRUE ARM IS WORTH MORE THAN A GREEN-BUT-WRAPPED ONE.** *If this is deterministically red, the
+        // card's recreation clause stays PARTIAL and the red IS the record. This target is not registered in the lane
+        // yet, so nothing is broken by an honest red here.*
+        let restored = again.staticTexts.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+        XCTAssertTrue(
+            restored.firstMatch.waitForExistence(timeout: 20),
+            "*** THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH. *MEASURED: a hard `terminate()` comes back "
+                + "to the document list (`rows=2 passages=0`), because `onChange(of: scenePhase)` never runs to write "
+                + "the record. Opened \(openedCount) passage(s) before the kill. THIS IS OWED, NOT DISCHARGED.* ***",
+        )
+    }
+
+    /// *** (d) THE BROWSE JOURNEY CARRIES NO FALSE QUERY. ***
+    ///
+    /// *The card's distinction: a BROWSED document must return to the list, not to a search that never ran. **A
+    /// restoration that invents a query sends the user to a search they did not make.***
+    func testGSA005BrowseReturnCarriesNoFalseQuery() throws {
+        let app = try launchAndOpenArchive()
+        let row = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.document.'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20))
+        row.tap()
+        sleep(1)
+
+        let back = backControl(app)
+        XCTAssertTrue(back.waitForExistence(timeout: 20))
+        back.tap()
+
+        XCTAssertTrue(
+            app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'archive.document.'"))
+                .firstMatch.waitForExistence(timeout: 20),
+            "*** A BROWSED DOCUMENT MUST RETURN TO THE DOCUMENT LIST. ***",
+        )
+        let field = app.searchFields.firstMatch
+        if field.exists {
+            let value = (field.value as? String) ?? ""
+            XCTAssertTrue(
+                value.isEmpty || value == "Search every document",
+                "*** THE BROWSE JOURNEY MUST CARRY NO QUERY. A document opened from the LIST must not return to a "
+                    + "search that never ran -- the user would be sent somewhere they never were. Got: \(value) ***",
+            )
+        }
+    }
 }

@@ -432,6 +432,10 @@ private struct ArchiveDocumentReader: View {
                 .lineSpacing(4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // *** GS-FINAL-006: A PASSAGE MUST BE ADDRESSABLE, OR "SCROLL TO A STABLE PASSAGE AND RETURN TO IT"
+        // CANNOT BE WITNESSED -- the card nameth that journey exactly, and an unaddressable block leaves an
+        // executed app test unable to say WHICH passage it reached. ***
+        .accessibilityIdentifier("archive.passage." + String(passage.id))
     }
 
     var body: some View {
