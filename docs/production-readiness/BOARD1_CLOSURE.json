@@ -92,6 +92,12 @@
    ],
    "why_not_a_failure_grep": "A grep for zero failures reads 0 whether the arm PASSED, had NOT YET RUN, or NEVER RAN AT ALL. Every claim above is an affirmative line the lane itself printed.",
    "note": "NINE consecutive full 6/6 hosted greens across the rc2/rc3/rc4 line, each bound to a named SHA. The FACTS are permanent. The TIP stays a moving reference -- for it, read the newest `push` run of `repository-verification` on the `main` ref."
+  },
+  "runner_compile_stall": {
+   "what": "The hosted `swift test` step STALLED IN COMPILATION on two consecutive runs. DIAGNOSED BY PHASE, NOT BY GUESS: the job log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so the process never reached TEST EXECUTION. Compilation is where no runtime lock can deadlock, so this is not the concurrency defect class of the MeshNode/BloomDigest fixes.",
+   "evidence": "The log froze at 2,116,922 bytes and did not grow across a 105-second window; a previous stall froze at the SAME byte count. The same tree compiles locally in under a second (`swift build --build-tests` -> `Build complete!`).",
+   "why_not_my_code": "*** CORRECTED: MY FIRST DRAFT CLAIMED THE SWIFT SOURCES WERE BYTE-IDENTICAL TO THE LAST GREEN, AND THAT WAS FALSE. *** `git diff --name-only 962ff442 4c724e85 -- 'ios/**/*.swift'` lists FOUR files (OracleViewModel.swift and OracleSupersessionAndBudgetTests.swift, each in the canonical tree and the mirror), so the claim could not support the conclusion and is retracted here rather than left standing. WHAT THE EVIDENCE ACTUALLY SUPPORTS: the stall is in COMPILATION (zero `Build complete!`/`Test Suite`/`Test Case`), the log froze at a byte count identical to a previous stall, and THE SAME FOUR FILES COMPILE AND PASS LOCALLY (`Build complete!` then the arms green). A compile-phase freeze that does not reproduce against the identical sources is not attributable to them, but WITH FOUR FILES CHANGED the honest status is UNEXPLAINED RUNNER-SIDE INSTABILITY, to be resolved by a re-run that COMPLETES -- not by an argument that the diff is innocent.",
+   "residual_risk": "STATED, NOT HIDDEN: an intermittent compile stall on the macOS runner is an INFRASTRUCTURE reliability risk that Board 1 cannot close from the repository. If it recurs on a candidate run, the correct response is to re-run and record it, never to narrow the lane so fewer sources compile."
   }
  },
  "tasks": {
