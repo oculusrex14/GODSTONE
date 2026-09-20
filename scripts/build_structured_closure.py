@@ -100,10 +100,9 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "Both platforms: pending / retryable / corrupt recovery causes ZERO identity and "
                  "ZERO private DB opens, proven at the REAL construction seams with counters.",
          "status": "OPEN", "evidence": []},
-        {"id": "gs-final-003.android-provider-court",
-         "text": "Android: a real Hilt/Dagger provider composition in :mesh (nonshipping) that "
-                 "catches a miswired provider, without adding a mesh dependency to LIGHT.",
-         "status": "OPEN", "evidence": []},
+         {"id": "gs-final-003.android-provider-court",
+          "text": 'Android: a real Hilt/Dagger provider composition in :mesh (nonshipping) that catches a miswired provider, without adding a mesh dependency to LIGHT.',
+          "status": "DISCHARGED", "evidence": ['`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshGraphComponent.kt`, `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`, `test:theRealComponentsGateAnswersBothDirections`, `path:ci/check_lab_isolation.py`. A real `@Singleton @Component` in the `:mesh` MAIN source set, delegating every provider to `MeshModule`, constructed by the court through `DaggerMeshGraphComponent.builder()`. **THE MISWIRING MUTATION WAS RUN, NOT ASSERTED: inverting `provideWipeIsPending` polarity (the exact 18-round production defect) REDDENS TWO ARMS** -- `theRealComponentsGateAnswersBothDirections` and `theRealComponentsGateIsReadPerCallNotCached`; restored, 7/7 pass. *** AND LIGHT GAINS NOTHING: `Godstone` declares ONE dependency (GodstoneCore, no mesh edge) and `ci/check_lab_isolation.py` rc=0.***']},
         {"id": "gs-final-003.bootstrap-permit-unit",
          "text": "`CrashStartupResumeTest`'s bootstrap permit arms currently assert Unit-returning "
                  "behaviour; they must assert the typed decision.",
