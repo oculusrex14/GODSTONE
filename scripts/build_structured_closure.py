@@ -114,19 +114,19 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "The encrypted engine must yield an OWNED OPERATIONAL connection/session with "
                  "restricted construction and explicit close ownership -- not descriptive "
                  "metadata that is discarded.",
-         "status": "OPEN", "evidence": []},
+         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift`, `path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift`, `test:testGF004TheStoreRunsOnTheEnginesOwnVerifiedConnection`. The engine yields an OWNED OPERATIONAL connection: `OwnedVerifiedConnection` carries an `internal init(rawHandle:engineKind:...)` (line 68) so ONLY the module can mint one, `OwnedConnection` exposes `public func close() -> Bool` (line 122) as the explicit close owner, and `EncryptedStoreFactory.reopenOwnedRequiringDEK` returns an `OwnedConnectionResult` -- never descriptive metadata that is discarded"]},
         {"id": "gs-final-004.no-second-open",
          "text": "No second independent path-based `sqlite3_open_v2` in the private composition: "
                  "the repository must run on the EXACT connection the engine returned.",
-         "status": "OPEN", "evidence": []},
+         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift`. THE ROAD IS CHOSEN ONCE: the `url:` opens at lines 676-677 sit in the `encryptedStores == nil` branch ALONE, so when a factory is supplied the composition adopts through `SqliteMessageStore(verifiedConnection:)` and `SqlitePeerIdentityStore(verifiedConnection:)` and the path-based opens are UNREACHABLE. The remaining `sqlite3_open_v2` callsites (`MessageStore.swift`, `PeerIdentityStore.swift`, `ArchiveRepository.swift`) sit in the LEGACY/archive roads and the nonshipping lab harness, outside the private composition"]},
         {"id": "gs-final-004.identity-proof",
          "text": "Prove by OBJECT/CAPABILITY IDENTITY -- not a Boolean such as "
                  "`messageStoreWasBuiltFromVerifiedHandle` -- that repository operations use the "
                  "returned connection.",
-         "status": "OPEN", "evidence": []},
+         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift`, `test:testGF004TheCompositionRunsItsStoresOnTheEnginesConnections`. PROVEN BY RAW-HANDLE IDENTITY, NOT A BOOLEAN: `adoptedConnectionIdentity` is a `UInt` (the raw `OpaquePointer` value) published only AFTER the store accepts the connection, and the court compares `identity(of: engine.handover(for: \"message-store\"))` against `runtime.messageStore.adoptedConnectionIdentity`. No `messageStoreWasBuiltFromVerifiedHandle`-style Boolean exists in the tree"]},
         {"id": "gs-final-004.migrations-on-verified",
          "text": "Migrations must run on that exact verified/keyed connection.",
-         "status": "OPEN", "evidence": []},
+         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift`. `init(verifiedConnection:)` performs NO `sqlite3_open_v2` of its own and calls `try runMigrations(db)` on the SUPPLIED handle (MessageStore line 1021, PeerIdentityStore line 308); the legacy `init(url:)` roads run migrations on their own handles (lines 1086 and 336), so each road migrates the connection it actually owns"]},
     ],
     "GS-INTEGRATION-001": [
         {"id": "gs-integration-001.real-adapters",
