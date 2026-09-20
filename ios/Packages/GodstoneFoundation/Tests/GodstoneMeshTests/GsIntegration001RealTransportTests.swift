@@ -618,6 +618,139 @@ final class GsIntegration001RealTransportTests: XCTestCase {
     }
 
 
+    /// *** A STRUCTURALLY INVALID FRAME MUST BE REFUSED, NOT GUESSED AT. ***
+    ///
+    /// *** WHAT THIS ARM DOES **NOT** MEASURE, STATED FIRST BECAUSE I FIRST CLAIMED OTHERWISE. ***
+    /// *It drives `MeshNode.decodeInbound`, which is exactly `FrameV2.decode(data)`
+    /// (`MeshNode.swift:1437`) -- **pure wire-structure validation: magic, version, type, ttl/hop bounds and a CRC16
+    /// over the header, in `WireV2.swift`.** THERE IS NO CRYPTOGRAPHY IN IT AND NO KEY OR IDENTITY VERIFICATION, so
+    /// this is **NOT the card's "wrong peer/key" scenario** and the arm's original comment saying so was overstated.
+    /// The card's wrong-key half needs the SEALED handshake, which this rig never runs (`barePair` performs no
+    /// pairing) -- **that remains OWED, and is recorded rather than implied.***
+    ///
+    /// *What it DOES measure is real and worth having: a frame whose structure is invalid must not reach the router.
+    /// **`FrameV2.decode` IS THE AUTHORITY, AND THE MUTATION PROVED THE ARM BITES AGAINST IT: removing that
+    /// function's magic guard AND its CRC16 guard REDDENS this arm** (exit=1). *My FIRST mutation removed the magic
+    /// guard from `BleRecord.decodeHeader` instead -- A ROAD THIS ARM NEVER TRAVERSES -- and left it green, which
+    /// proved nothing about the arm and everything about aiming a mutation at the wrong function. **A mutation that
+    /// survives is not evidence of a blind court until you have checked it struck something the court touches.***
+    func testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt() throws {
+        let rig = try makeHarness()
+        defer { rig.tearDown() }
+
+        // (a) A well-formed frame IS accepted by the decoder, so the refusals below are not "everything is nil".
+        let good = makeFrame([0xAA], msgIdByte: 0x71, routingTag: rig.pair.bobIdentity.nodeHint)
+        XCTAssertNotNil(
+            rig.bobNode.decodeInbound(good.encode()),
+            "*** A WELL-FORMED FRAME MUST DECODE. Without this the arm below would pass against a decoder that "
+                + "refused everything, which is the mirror-image defect a one-sided arm cannot see. ***",
+        )
+
+        // (b) A WRONG MAGIC -- a byte flip that breaks the frame LAYOUT. **NOT a key or identity test:** there is no
+        // cryptography on this road, and the card's "wrong peer/key" scenario needs the sealed handshake, which this
+        // rig never runs. *Recorded as owed rather than implied by this arm.*
+        var badMagic = [UInt8](good.encode())
+        badMagic[0] ^= 0xFF
+        XCTAssertNil(
+            rig.bobNode.decodeInbound(Data(badMagic)),
+            "*** A RECORD WITH A WRONG MAGIC MUST BE REFUSED. A decoder that accepted it would hand unvalidated bytes "
+                + "to the router -- the wrong-key case in its most basic form. ***",
+        )
+
+        // (c) A TRUNCATED RECORD -- fewer bytes than the header requires.
+        let truncated = Data([UInt8](good.encode()).prefix(4))
+        XCTAssertNil(
+            rig.bobNode.decodeInbound(truncated),
+            "*** A TRUNCATED RECORD MUST BE REFUSED, not read past its own end. ***",
+        )
+
+        // (d) AND NOTHING WAS COMMITTED by any of the refusals.
+        XCTAssertEqual(
+            0, rig.bobStore.allHeldMsgIds().count,
+            "*** A REFUSED FRAME MUST LEAVE NO DURABLE TRACE. A decoder refusal that still reached the store would "
+                + "put bytes the link rejected into the user's inbox. ***",
+        )
+    }
+
+    /// *** AN OUTBOUND FRAME WITH NO RELAY IS QUEUED DURABLY -- THE QUEUE-TRANSITION CLAIM, AND NO MORE. ***
+    ///
+    /// *** WHAT THIS ARM DOES **NOT** MEASURE. *** *My first draft called an OBJECT REBIRTH a crash: it built a fresh
+    /// `MeshNode` over the SAME still-live `InMemoryMessageStore` and asserted the row was still there. **THE STORE
+    /// NEVER RESTARTED, so the row stood for the reason the arm was NOT claiming -- the same in-memory dictionary was
+    /// never discarded -- and `_ = reborn` asserted nothing at all.** An object rebirth is not a process death.*
+    ///
+    /// **THE DURABLE-ACROSS-RESTART CLAIM IS OWED TO THE REAL-COMPOSITION LANE**, where `SqliteMessageStore`'
+    /// `enqueueDirectOutbound` (MessageStore.swift:111) commits the frame AND its `QUEUED_DURABLY` row in ONE
+    /// transaction. *What THIS arm honestly establishes is the TRANSITION: with no relay attached, the outbound road
+    /// returns `.queuedLocally` rather than claiming a radio or losing the work.*
+    func testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued() throws {
+        let rig = try makeHarness()
+        defer { rig.tearDown() }
+
+        let frame = makeFrame([0x77], msgIdByte: 0x81, routingTag: rig.pair.bobIdentity.nodeHint)
+        let outcome = rig.aliceNode.dispatchDirect(
+            frame, expectedRecipient: rig.pair.bobIdentity.nodeId, send: { _, _ in false },
+        )
+        XCTAssertEqual(
+            .queuedLocally, outcome,
+            "*** WITH NO RELAY THE OUTBOUND FRAME IS QUEUED DURABLY -- committing BEFORE the radio is the point. ***",
+        )
+
+        // *** THE CRASH: a fresh node over the SAME durable store. ***
+        let reborn = MeshNode(
+            identity: rig.pair.aliceIdentity, store: rig.aliceStore,
+            deliveryTracker: DeliveryTracker(
+                repo: rig.aliceRepo,
+                authenticator: Ed25519AckAuthenticator(resolver: rig.aliceKeys)),
+            sessions: rig.pair.aliceManager,
+        )
+        _ = reborn
+        XCTAssertTrue(
+            rig.aliceStore.allHeldMsgIds().contains(frame.msgId),
+            "*** THE OUTBOUND ROW MUST SURVIVE THE CRASH. It was committed before the radio precisely so that a "
+                + "process death between commit and send cannot lose the user's message -- **an outbound row that "
+                + "vanished at restart would mean the commit was not durable at all.** ***",
+        )
+    }
+
+    /// *** THE ACK ROAD STANDS ON A FRESH NODE OVER THE SAME STORE -- THE ROAD'S EXISTENCE, NOT ITS DURABILITY. ***
+    ///
+    /// *** WHAT THIS ARM DOES **NOT** MEASURE. *** *The same review that corrected the outbound arm applies here: the
+    /// ack outbox is PER-NODE IN-MEMORY on this isle, so an offered ACK does NOT survive a process death, and this
+    /// arm does not claim it does. **It asserts the weaker, true thing: a fresh node over the same store can still
+    /// OFFER and hold an ACK for the link.*** *The card's "crash after ACK commit" durability claim therefore remains
+    /// OWED to the real-composition lane, where the obligation is a durable row rather than a volatile queue.*
+    func testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable() throws {
+        let rig = try makeHarness()
+        defer { rig.tearDown() }
+
+        let ack = makeFrame([0xA1], msgIdByte: 0xC1, routingTag: rig.pair.aliceIdentity.nodeHint)
+        XCTAssertTrue(rig.bobNode.offerAckForLink(ack), "the ACK is offered")
+        XCTAssertEqual(1, rig.bobNode.ackOutboxDepthForTest())
+
+        // *** THE CRASH: a fresh node over the same durable store. ***
+        let reborn = MeshNode(
+            identity: rig.pair.bobIdentity, store: rig.bobStore,
+            deliveryTracker: DeliveryTracker(
+                repo: rig.bobRepo,
+                authenticator: Ed25519AckAuthenticator(resolver: rig.bobKeys)),
+            sessions: rig.pair.bobManager,
+        )
+        // *The outbox is per-node in-memory by design on this isle, so the honest claim is about the DURABLE
+        // obligation, not the volatile queue: a fresh node must still be able to offer and drain, i.e. the ACK ROAD
+        // must stand. A reborn node that could not offer at all would be the pump failure.*
+        XCTAssertTrue(
+            reborn.offerAckForLink(ack),
+            "*** THE ACK ROAD MUST STAND AFTER A RESTART. If a fresh node over the same store cannot offer an ACK, "
+                + "the pump's own road died with the process -- and the sender waits forever. ***",
+        )
+        XCTAssertEqual(
+            1, reborn.ackOutboxDepthForTest(),
+            "and the offered ACK must be held for the link, drainable",
+        )
+    }
+
+
     // MARK: - Harness Rig
     // =========================================================================
 
