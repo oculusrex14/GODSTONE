@@ -35,7 +35,7 @@
    {
     "sha": "962ff442",
     "run": "35471507700",
-    "artifact": "rc4 -- the run bound to the tag"
+    "artifact": "rc4 -- the run BOUND TO THE TAG"
    },
    {
     "sha": "46866f02",
@@ -50,11 +50,16 @@
    {
     "sha": "93ec3844",
     "run": "35476768351",
-    "artifact": "THE FINAL TIP -- the positional green"
+    "artifact": "tip with the green chain"
    },
    {
     "sha": "3742cea9",
     "run": "35477804052",
+    "artifact": "tip with the terminal-green section"
+   },
+   {
+    "sha": "f46eb825",
+    "run": "35478923863",
     "artifact": "THE FINAL TIP -- the positional green"
    }
   ],
@@ -70,18 +75,19 @@
    "note": "This is the third consecutive full 6/6 green on the rc4 line and the second on the tip's own tree, so the tip is verified rather than merely asserted. The T15 arm, which reddened once earlier on a loaded runner, passes here with a healthy duration."
   },
   "final_tip_green": {
-   "sha": "3742cea9c84123cf1135d0c5bc6f0d8540f03107",
-   "run": "35477804052 -- 6/6 success",
+   "sha": "f46eb825242a42b5b929d861a72c1be7a54e7df6",
+   "run": "35478923863 -- 6/6 success",
    "event": "push on `main`; the last push of the rc4 round.",
    "affirmative_evidence": [
     "`GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)` -- the lane's own assertion",
     "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures` (PER-BUNDLE summaries, not a raw cross-lane case tally)",
     "`** TEST SUCCEEDED **` x3",
-    "`ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed `passed (0.651 seconds)` and `passed (0.459 seconds)` -- the arm that reddened once on a loaded runner, here printing its OWN pass line",
-    "0 segfaults"
+    "`ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed its own `passed` line (twice)",
+    "0 segfaults",
+    "all six jobs: content pipeline, repo-owned parity + safety invariants (A,B,C,E,F,G,H), mesh simulation, constraint audit, android source compile + unit tests, ios core + mesh tests + Archive-only xcodebuild"
    ],
    "why_not_a_failure_grep": "A grep for zero failures reads 0 whether the arm PASSED, had NOT YET RUN, or NEVER RAN AT ALL. Every claim above is an affirmative line the lane itself printed.",
-   "note": "SEVEN CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line, each bound to a named SHA. The FACTS above are permanent -- they say this exact SHA ran 6/6. The TIP is a moving reference and is deliberately NOT pinned to a literal, because the record itself lands as a docs commit on top; for the tip, read the newest `push` run of `repository-verification` on the `main` ref."
+   "note": "EIGHT CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line, each bound to a named SHA. The FACTS are permanent -- each says its own SHA ran 6/6. The TIP stays a moving reference and is deliberately NOT pinned to a literal, because the record lands as a docs commit on top; for the tip, read the newest `push` run of `repository-verification` on the `main` ref."
   }
  },
  "tasks": {
