@@ -121,6 +121,39 @@ def audit(ledger_path: Path) -> dict:
         errors.append("current_assessment.verified_fixed readeth %r; ONLY AN INDEPENDENT AUDIT MAY WRITE A VERIFIED "
                       "CLOSURE, and none has since the audit" % ca.get("verified_fixed"))
 
+    # (7) *** NO CURRENT CLOSURE RECORD MAY UNDERSTATE THE INTERNAL REMAINDER. ***
+    #
+    # THE FIELD HAD NO ROD AT ALL, AND THAT IS HOW A ZERO SAT THERE CONTRADICTING A DERIVED 27.
+    # A repo-wide search found `internal_work_remaining` referenced ONLY inside the two closure
+    # records themselves -- no validator in `ci/` or `tools/readiness/` read it. That is the
+    # dead-control class this repository already caught once in `preserve.py`'s declaration
+    # lookup: *a control consulted in a branch that cannot be reached is a control nobody
+    # consults.* This is the cross-record rod, so a future round cannot silently restore the
+    # overclaim: whenever the ledger carries internal work, no current closure record may state
+    # a zero for it, and any non-zero value must EQUAL the derived count.
+    checks += 1
+    remaining = ca.get("internal_remaining")
+    if isinstance(remaining, list) and remaining:
+        closure = ROOT / "docs" / "production-readiness" / "BOARD1_CLOSURE.json"
+        if closure.exists():
+            try:
+                record = json.loads(closure.read_text(encoding="utf-8"))
+            except (ValueError, OSError) as exc:
+                errors.append("the closure record could not be read for the internal-remainder rod: %s" % exc)
+                record = None
+            if isinstance(record, dict) and "internal_work_remaining" in record:
+                stated = record["internal_work_remaining"]
+                if stated == 0:
+                    errors.append(
+                        "the closure record stateth internal_work_remaining = 0 while the ledger "
+                        "carries %d internal entries; a zero that contradicts a DERIVED count is the "
+                        "overclaim this rod existeth to refuse" % len(remaining))
+                elif isinstance(stated, int) and stated != len(remaining):
+                    errors.append(
+                        "the closure record stateth internal_work_remaining = %r but the ledger DERIVES "
+                        "%d; an asserted count that disagrees with the derived one is the defect itself"
+                        % (stated, len(remaining)))
+
     return {"ledger": str(ledger_path), "checks": checks, "errors": errors, "candidate": ca.get("candidate_sha"),
             "derived_54": derived_54, "derived_13": derived_13}
 

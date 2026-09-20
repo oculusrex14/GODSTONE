@@ -183,10 +183,22 @@ jobs:
             echo "::error::historical arms cannot be accounted for"
             exit 1
           fi
-          if [ "$skipped" -gt 40 ]; then
-            echo "::error::${skipped} arms were skipped; only the capture-dependent arms"
-            echo "::error::(T01 historical 20, evidence digests 8, remediation 6) may defer,"
-            echo "::error::so a larger number means something else stopped running"
+          # *** THE BOUND IS THE MEASURED POPULATION, NOT A ROUND NUMBER WITH HEADROOM. ***
+          #
+          # IT WAS 40, DESCRIBED AS "(T01 historical 20, evidence digests 8, remediation 6)";
+          # that is 34, so a SIX-ARM REGRESSION could have slipped through unnoticed. AND
+          # THE T01 SHARE IS NO LONGER 20: four tamper controls that only needed
+          # SELF-CONSISTENCY were moved off `@historical_arm` and now carry their own
+          # minimal capture, so they EXECUTE in this mode instead of deferring. Measured
+          # in a runner simulation: 20 -> 16.
+          #
+          # The bound is therefore set to the measured figure. A skip count above it means
+          # a control that should run did not, which is the failure this step exists to
+          # refuse -- not a number to make room for.
+          if [ "$skipped" -gt 16 ]; then
+            echo "::error::${skipped} arms were skipped; the capture-dependent population is"
+            echo "::error::MEASURED at 16 (T01 historical 16, evidence digests, remediation)."
+            echo "::error::A larger number means a control that should execute did not."
             exit 1
           fi
           if [ "$skipped" -gt 0 ]; then
