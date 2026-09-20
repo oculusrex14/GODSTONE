@@ -52,6 +52,7 @@ public struct LabReadiness: Sendable, Equatable {
 public final class LabRuntime: @unchecked Sendable {
     private let harness: ComposedRuntimeHarness
     public let labels: [String]
+    public let trust: MeshTrustFacade
 
     /// *** GS-UX-001 STEP 1 (round 539): IS THE DURABLE ROAD REACHABLE THROUGH THIS HANDLE? ***
     ///
@@ -63,11 +64,11 @@ public final class LabRuntime: @unchecked Sendable {
     /// it: **A CALL TO A MEMBER THAT IS NOT THERE IS A COMPILE ERROR, NOT A CAPABILITY.**)
     public var hasDurableRoad: Bool { true }
 
-    private init(harness: ComposedRuntimeHarness, labels: [String]) {
+    private init(harness: ComposedRuntimeHarness, labels: [String], trust: MeshTrustFacade) {
         self.harness = harness
         self.labels = labels
+        self.trust = trust
     }
-
     /// The honest readiness statement. It carrieth no parameter, so no caller can
     /// argue it into saying true.
     public static func readinessStatement() -> LabReadiness {
@@ -95,7 +96,32 @@ public final class LabRuntime: @unchecked Sendable {
         for i in 0..<(labels.count - 1) {
             _ = harness.link(labels[i], labels[i + 1])
         }
-        return LabRuntime(harness: harness, labels: labels)
+        var contactsList: [(label: String, nodeId: Data)] = []
+        let trustDbUrl = FileManager.default.temporaryDirectory
+            .appendingPathComponent("godstone-lab-trust-\(UUID().uuidString).db")
+        let trustStore = try SqlitePeerIdentityStore(url: trustDbUrl)
+        let trustRepo = PeerIdentityRepository(store: trustStore)
+        for label in labels {
+            if let node = harness.node(label) {
+                contactsList.append((label: label, nodeId: node.identity.nodeId))
+                let raw = try node.identity.issueIdentityBinding().encode()
+                if case .valid(let validated) = IdentityBindingValidator.validate(
+                    serialized: raw,
+                    authenticatedRemoteStaticKey: node.identity.staticDhPublicKey,
+                    advertisedNodeHint: node.identity.nodeId.prefix(2)
+                ) {
+                    _ = trustRepo.applyValidatedBinding(validated)
+                }
+            }
+        }
+        let ownNodeId = harness.node(labels[0])?.identity.nodeId ?? Data(repeating: 0x01, count: 16)
+        let trustFacade = MeshTrustFacade(
+            repository: trustRepo,
+            ownNodeId: ownNodeId,
+            contacts: contactsList,
+            wipeHandler: { [weak harness] in harness?.beginWipe() }
+        )
+        return LabRuntime(harness: harness, labels: labels, trust: trustFacade)
     }
 
     /// The durable state of one message, by NAME (a String, so no internal type
@@ -244,6 +270,55 @@ public final class LabRuntime: @unchecked Sendable {
         case .applied(let detail): return "applied:" + detail
         case .refused(let reason, _): return "refused:" + reason.rawValue
         }
+    }
+
+    // ================================================================================================
+    // *** GS-UX-001: TRUST JOURNEY ACCESSORS REACHING THE REAL AUTHORITY FACADE ***
+    // ================================================================================================
+
+    /// The list of known contact labels for trust operations.
+    public func trustContactLabels() -> [String] {
+        trust.contactLabels()
+    }
+
+    /// The rendered hex fingerprint of a contact, or nil if unknown.
+    public func trustFingerprint(for label: String) -> String? {
+        trust.fingerprint(for: label)
+    }
+
+    /// Compare and confirm a fingerprint for a contact.
+    public func compareAndConfirmFingerprint(for label: String, displayedFingerprint: String) -> String {
+        trust.compareAndConfirm(label: label, displayedFingerprintHex: displayedFingerprint)
+    }
+
+    /// Approve an exact rotation candidate for a contact.
+    public func approveRotation(for label: String) -> String {
+        trust.approveRotation(for: label)
+    }
+
+    /// Revoke a contact and invalidate its sessions.
+    public func revokeContact(for label: String) -> String {
+        trust.revoke(label: label)
+    }
+
+    /// The human-readable trust status string for a contact.
+    public func contactTrustLabel(_ label: String) -> String {
+        trust.contactTrust(label: label)
+    }
+
+    /// Whether a contact is verified.
+    public func isContactVerified(_ label: String) -> Bool {
+        trust.isVerified(label: label)
+    }
+
+    /// Whether a contact is revoked.
+    public func isContactRevoked(_ label: String) -> Bool {
+        trust.isRevoked(label: label)
+    }
+
+    /// Whether a rotation candidate is pending for a contact.
+    public func isRotationPending(_ label: String) -> Bool {
+        trust.isRotationPending(label: label)
     }
 }
 

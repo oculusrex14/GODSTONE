@@ -136,6 +136,8 @@ struct LabIdentityView: View {
 
 struct LabContactsView: View {
     @EnvironmentObject private var holder: LabRuntimeHolder
+    @State private var selectedContact: String = "B"
+    @State private var trustOutcome: String = "idle"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -146,8 +148,61 @@ struct LabContactsView: View {
                 Text(label + " holdeth " + String(holder.runtime.heldCount(label)) + " message(s)")
                     .accessibilityIdentifier("lab.contacts." + label)
             }
+
+            Divider()
+
+            Text("Trust Operations").font(.headline)
+
+            // Contact selection picker
+            Picker("contact", selection: $selectedContact) {
+                ForEach(holder.runtime.trustContactLabels(), id: \.self) { label in
+                    Text(label).tag(label)
+                }
+            }
+            .accessibilityIdentifier("lab.trust.recipient")
+
+            // Rendered fingerprint string
+            let fp = holder.runtime.trustFingerprint(for: selectedContact) ?? "no-fingerprint"
+            Text("fingerprint: " + fp)
+                .font(.footnote)
+                .accessibilityIdentifier("lab.trust.fingerprint")
+
+            // Trust status readout
+            Text("status: " + holder.runtime.contactTrustLabel(selectedContact))
+                .font(.footnote)
+                .accessibilityIdentifier("lab.trust.status")
+
+            HStack(spacing: 8) {
+                Button("Compare/Confirm") {
+                    let contact = selectedContact
+                    let currentFp = holder.runtime.trustFingerprint(for: contact) ?? ""
+                    trustOutcome = holder.runtime.compareAndConfirmFingerprint(for: contact, displayedFingerprint: currentFp)
+                }
+                .accessibilityIdentifier("lab.trust.confirm")
+
+                Button("Approve Rotation") {
+                    let contact = selectedContact
+                    trustOutcome = holder.runtime.approveRotation(for: contact)
+                }
+                .accessibilityIdentifier("lab.trust.approve")
+
+                Button("Revoke") {
+                    let contact = selectedContact
+                    trustOutcome = holder.runtime.revokeContact(for: contact)
+                }
+                .accessibilityIdentifier("lab.trust.revoke")
+            }
+
+            Text(trustOutcome)
+                .font(.footnote)
+                .accessibilityIdentifier("lab.trust.outcome")
         }
         .padding()
+        .onAppear {
+            if let first = holder.runtime.trustContactLabels().first {
+                selectedContact = first
+            }
+        }
     }
 }
 
