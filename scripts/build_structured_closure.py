@@ -55,6 +55,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -177,14 +179,14 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
         {"id": "gs-stress-001.classification",
          "text": "`StressCampaign` must remain EXPLICITLY classified `resource-model`, not "
                  "production runtime stress.",
-         "status": "OPEN", "evidence": []},
+         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift`, `path:ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift`, `test:testW14TheCampaignIsANamedResourceModel`. `RESOURCE_MODEL_CATEGORY` is a top-level constant on BOTH isles (`StressCampaign.swift:32`, and its KOTLIN twin), so one grep findeth the contract everywhere; and `ReadinessT72Tests.testW14TheCampaignIsANamedResourceModel` asserts it BOTH WAYS -- `XCTAssertEqual(RESOURCE_MODEL_CATEGORY, \"resource-model\")` AND `XCTAssertNotEqual(RESOURCE_MODEL_CATEGORY, \"production\")` -- so the model cannot be mistaken for, or quietly renamed to, the production runtime it does not measure"]},
     ],
     "GS-UX-001": [
         {"id": "gs-ux-001.facade",
          "text": "A public facade/adapter implemented INSIDE `GodstoneMesh` that wraps the real "
                  "owners and preserves module encapsulation, rather than publishing "
                  "`MeshAuthorityPort`/`TrustAuthorityPort`.",
-         "status": "OPEN", "evidence": []},
+         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MeshTrustFacade.swift`, `path:ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift`, `path:ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift`, `path:ios/project.yml`. `MeshTrustFacade` is `public final class` INSIDE GodstoneMesh (`MeshTrustFacade.swift:9`), carrying plain `String`/`Bool`/`[String]` verbs, with the adapter over the REAL `PeerIdentityRepository` internal to the module; and BOTH ports remain UNPUBLISHED -- `protocol TrustAuthorityPort` (`TrustUXModel.swift:329`) and `protocol MeshAuthorityPort` (`MeshUXModel.swift:275`) carry NO access modifier, so nothing outside the module can name them. **MEASURED that this costs LIGHT nothing: `Godstone` (Shipping/Light) declares exactly ONE dependency, `GodstonePackages/GodstoneCore` -- NO mesh edge -- and `ci/check_lab_isolation.py` passes (rc=0).**"]},
         {"id": "gs-ux-001.rendered-controls",
          "text": "Rendered LabMesh controls for recipient selection, UTF-8 bounded compose, Send, "
                  "fingerprint compare/confirm, exact rotation-candidate approval, revoke, visible "
@@ -231,16 +233,16 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "Structured per-finding closure: `internal_status`, `internal_obligations` and "
                  "`external_obligations` for every nonterminal finding, with `internal_remaining` "
                  "DERIVED from them rather than NLP-classified from prose.",
-"status": "DISCHARGED", "evidence": ["py:scripts/build_structured_closure.py --write wrote `finding_closure` (68 entries, every one carrying `internal_status`) + `structured_counts` into the ledger; `internal_remaining_prose_classifier_retired` records the NLP classifier as RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision, so `internal_remaining` is DERIVED from explicit obligation statuses"]},
+"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py` --write wrote `finding_closure` (68 entries, every one carrying `internal_status`) + `structured_counts` into the ledger; `internal_remaining_prose_classifier_retired` records the NLP classifier as RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision, so `internal_remaining` is DERIVED from explicit obligation statuses"]},
         {"id": "audit-b1-ctrl-001.closure-law",
          "text": "A control that REFUSES a COMPLETE/READY builder status while structured "
                  "internal OPEN work exists, so the control plane can no longer report closure "
                  "over a NO_GO register.",
-"status": "DISCHARGED", "evidence": ["MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"]},
+"status": "DISCHARGED", "evidence": ["`path:docs/production-readiness/BOARD1_CLOSURE.json`, `path:scripts/build_structured_closure.py`. MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"]},
         {"id": "audit-b1-ctrl-001.missed-partials",
          "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which "
                  "the prose classifier missed entirely.",
-"status": "DISCHARGED", "evidence": ["`build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), the two the prose classifier missed entirely; and the law REFUSES an OPEN finding with NO obligations authored, so a finding cannot be silently obligationless"]},
+"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py`. `build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), the two the prose classifier missed entirely; and the law REFUSES an OPEN finding with NO obligations authored, so a finding cannot be silently obligationless"]},
     ],
 }
 
@@ -359,7 +361,128 @@ def main(argv=None) -> int:
         if closure_doc.get("verified_fixed") not in (None, 0):
             print("  ::error:: verified_fixed is non-zero; only an INDEPENDENT audit may write it")
             return 1
+
+        # *** THE INDEPENDENT BACKSTOP, WHICH EXISTS BECAUSE THIS FILE HOLDS BOTH THE COUNTER AND ITS INPUTS. ***
+        #
+        # *The obligation records and their statuses live HERE, in the gate's own source -- so the thing that counts
+        # closures also holds the hand-authored constants it counts.* **A DISCHARGED STATUS IS THEREFORE NOT EVIDENCE
+        # BY ITSELF, AND THIS REFUSES ONE THAT CANNOT POINT AT SOMETHING REAL.** *Bulk-discharging from inside the
+        # gate could otherwise quietly neuter the very guard the programme depends on, and a batch after which the law
+        # stops refusing while cards are still unmet would be the batch that was WRONG.*
+        #
+        # Each DISCHARGED obligation must carry at least one citation, and each citation must RESOLVE: a `file:line`,
+        # a named `test...` / `func test...` symbol that exists in the tree, or a commit SHA that exists in history.
+        problems: list[str] = []
+        for fid, entry in sorted(PARTIAL_OBLIGATIONS.items()):
+            for o in entry:
+                if o.get("status") != "DISCHARGED":
+                    continue
+                cites = [c for c in (o.get("evidence") or []) if isinstance(c, str) and c.strip()]
+                if not cites:
+                    problems.append(
+                        f"{o['id']}: DISCHARGED with NO evidence -- a status this builder may not carry "
+                        f"unsubstantiated, because this file holds both the counter and its inputs")
+                    continue
+                # EVERY citation must carry at least one typed token, and EVERY token must resolve.
+                # *`any(...)` would accept one lucky token in a paragraph of prose -- which is how the first draft
+                # laundered bogus discharges.*
+                tokens: list[tuple[str, str]] = []
+                for c in cites:
+                    tokens.extend(_evidence_tokens(c))
+                if not tokens:
+                    problems.append(
+                        f"{o['id']}: DISCHARGED with evidence that carries NO TYPED TOKEN -- prose is allowed and "
+                        f"ignored, but the CLAIM must be carried by `path:`/`commit:`/`test:` tokens a reader can check")
+                    continue
+                for kind, value in tokens:
+                    if not _citation_token_resolves(kind, value):
+                        problems.append(
+                            f"{o['id']}: DISCHARGED but the citation token `{kind}:{value}` DOES NOT RESOLVE -- "
+                            f"the record points at something that is not there")
+        for msg in problems:
+            print(f"  ::error:: {msg}")
+        if problems:
+            return 1
     return 0
+
+
+# *** A DISCHARGE MUST CITE A TYPED, RESOLVING TOKEN -- NOT MERELY CONTAIN A PLAUSIBLE WORD. ***
+#
+# *MY FIRST VERSION WAS NEAR-ALWAYS GREEN, WHICH IS WORSE THAN HAVING NO BACKSTOP AT ALL: it accepted ANY existing
+# path-like token (so mentioning `REMEDIATION_STATE.json` in prose resolved the whole claim), matched the bare word
+# `tests` as a symbol (so `grep -rql tests ios android` always hit -- any sentence containing "tests" self-certified),
+# and took any 7-hex word as a commit (`deadbeef` included). **A BACKSTOP THAT LAUNDERS A BOGUS DISCHARGE IS WORSE THAN
+# NONE, because the file then carries an attestation nobody checked.***
+#
+# SO A CITATION IS NOW A **TYPED TOKEN**, and EVERY token in an obligation's evidence must resolve:
+#     `path:<repo-relative-file>[:<line>]`   -- the file exists, and the line is within it
+#     `commit:<sha>`                          -- the object exists in this repository
+#     `test:<SymbolName>`                     -- the symbol is DEFINED in a source file under ios/ or android/
+#
+# *Anything else is prose, which is allowed and ignored -- the CLAIM is carried by the tokens, and prose cannot
+# substitute for them. A tooling failure RAISES rather than silently counting as unresolved, so a broken checker can
+# never look like a clean pass.*
+_CITATION_TOKEN = re.compile(r"\b(path|commit|test):([^\s`'\"]+)")
+
+
+def _symbol_is_defined(name: str) -> bool:
+    """True iff `name` is DEFINED (a `func`/`class`/`struct`/`enum`/`fun` declaration) under ios/ or android/.
+
+    *A tree walk, not a bare `grep` for the word: `grep -rl tests` always hits, so matching the WORD proves nothing.
+    The declaration form is what makes a symbol citable.*
+    """
+    pattern = re.compile(
+        r"\b(?:func|class|struct|enum|protocol|fun|def)\s+" + re.escape(name) + r"\b")
+    for root in (ROOT / "ios", ROOT / "android"):
+        if not root.is_dir():
+            continue
+        for f in root.rglob("*"):
+            if not f.is_file() or f.suffix not in (".swift", ".kt", ".py"):
+                continue
+            try:
+                text = f.read_text(encoding="utf-8", errors="ignore")
+            except OSError as exc:
+                raise RuntimeError(f"citation check could not read {f}: {exc}") from exc
+            if pattern.search(text):
+                return True
+    return False
+
+
+def _citation_token_resolves(kind: str, value: str) -> bool:
+    if kind == "path":
+        rel, _, line = value.partition(":")
+        # Reject the traversal/absolute shapes outright rather than resolving them against the filesystem root.
+        if rel.startswith(("/", "~")) or ".." in Path(rel).parts:
+            return False
+        f = ROOT / rel
+        if not f.is_file():
+            return False
+        if line:
+            if not line.isdigit():
+                return False
+            try:
+                with f.open("r", encoding="utf-8", errors="ignore") as fh:
+                    total = sum(1 for _ in fh)
+            except OSError as exc:
+                raise RuntimeError(f"citation check could not read {f}: {exc}") from exc
+            if not (1 <= int(line) <= total):
+                return False
+        return True
+    if kind == "commit":
+        if not re.fullmatch(r"[0-9a-f]{7,40}", value):
+            return False
+        hit = subprocess.run(
+            ["git", "-C", str(ROOT), "cat-file", "-e", f"{value}^{{commit}}"],
+            capture_output=True, timeout=120,
+        )
+        return hit.returncode == 0
+    if kind == "test":
+        return _symbol_is_defined(value)
+    return False
+
+
+def _evidence_tokens(citation: str) -> list[tuple[str, str]]:
+    return [(m.group(1), m.group(2)) for m in _CITATION_TOKEN.finditer(citation)]
 
 
 if __name__ == "__main__":
