@@ -106,6 +106,12 @@ public enum WipeStepResult {
 }
 
 /// The append-only durable journal.
+/// A durability store that can say whether its DURABLE VALUE was readable, as distinct from
+/// whether the rungs it loaded are well-formed. See `CrashResumableWipe.isReadableJournal()`.
+public protocol WipeReadabilityReporting: AnyObject {
+    var isReadable: Bool { get }
+}
+
 public protocol WipeDurabilityStore: AnyObject {
     func readJournal() -> [String]
     func appendJournal(_ stateName: String)
@@ -248,6 +254,18 @@ public final class CrashResumableWipe {
     /// A journal is well-formed when every line parses and, within each completed wipe
     /// segment (a segment ends at IDLE), ranks strictly increase. Segmentation honours the
     /// append-only durability: a second wipe legitimately restarts the ladder at REQUESTED.
+    /// *** GS-FINAL-003: IS THE DURABLE RECORD READABLE AT ALL? ***
+    ///
+    /// *`isSupportedJournal()` answers about the LOADED rungs; this answers about the SOURCE.* The
+    /// difference is measured: a journal whose durable value cannot be parsed loads as an EMPTY
+    /// ladder -- which `isSupportedJournal()` reports as well-formed -- so a caller asking only that
+    /// question would see "no pending wipe" where the truth is "the record is unreadable". The
+    /// adapter is asked directly, and a store with no such notion answers `true` rather than
+    /// pretending to know.
+    public func isReadableJournal() -> Bool {
+        (store as? WipeReadabilityReporting)?.isReadable ?? true
+    }
+
     public func isSupportedJournal() -> Bool {
         var rank = 0
         for line in journal {

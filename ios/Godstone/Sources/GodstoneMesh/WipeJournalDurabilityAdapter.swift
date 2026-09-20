@@ -17,7 +17,7 @@ import Foundation
 /// dropped checkpoint is a wipe that restarteth later than it should; the append is refused and the caller's step
 /// remaineth pending. The READ direction answers the LAST checkpoint the journal standeth at, which is what "resume"
 /// meaneth.
-public final class WipeJournalDurabilityAdapter: WipeDurabilityStore {
+public final class WipeJournalDurabilityAdapter: WipeDurabilityStore, WipeReadabilityReporting {
     private let journal: WipeJournal
     private let lock = NSLock()
 
@@ -63,6 +63,10 @@ public final class WipeJournalDurabilityAdapter: WipeDurabilityStore {
         let state = journal.read()
         return state == .idle ? [] : [Self.stage(forState: state)]
     }
+
+    /// GS-FINAL-003: published forward from the journal, so an unreadable durable value is visible
+    /// to the coordinator rather than collapsed into an empty ladder.
+    public var isReadable: Bool { journal.isReadable }
 
     /// Appending a stage WRITES IT THROUGH, and REFUSETH an unknown name (`WipeJournal.write` taketh a typed state, so
     /// an unmappable stage cannot be recorded and must not be pretended).

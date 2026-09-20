@@ -287,6 +287,13 @@ public final class MeshRuntime {
         /// runtime behaviour and the wrong diagnostic one:* the failure would surface later, elsewhere, and without
         /// its cause. The store's own words are carried rather than replaced.
         case messageStoreUnavailable(String)
+        /// *** GS-FINAL-003: PRIVATE CONSTRUCTION WAS REFUSED BY THE RECOVERY DECISION. ***
+        ///
+        /// *This carries the DECISION'S OWN NAME rather than a Boolean or a log line, so a caller
+        /// can distinguish a pending wipe from a retryable failure from a corrupt journal -- the
+        /// audit's requirement that "the caller must not confuse these". A refusal that cannot say
+        /// which of six states stopped it is a refusal a caller can only retry blindly.*
+        case startupRefusedByRecovery(decision: String, reason: String)
     }
 
     public static func create(
@@ -414,6 +421,74 @@ public final class MeshRuntime {
 
     /// The ONE runtime graph, built by both declared compositions. The only difference between them is the factory,
     /// and it is passed explicitly rather than defaulted -- **so neither road can accidentally become the other.**
+    /// *** GS-FINAL-003: THE TYPED STARTUP DECISION, ASKABLE BEFORE ANY PRIVATE CONSTRUCTION. ***
+    ///
+    /// *The audit's charge was that iOS discards the resume answer before opening identity and
+    /// stores. The answer is now TYPED and PUBLIC, so a caller may ask what the recovery ladder
+    /// decided BEFORE it opens anything -- and a caller that wants the refusal enforced can use
+    /// `requireRecoveredPrivateComposition`, which refuses when this does not permit construction.*
+    ///
+    /// IT IS RECOVERY-ONLY: this drives the ladder with the CREATE-TIME seams (no transport, no
+    /// vault), so it can legitimately answer `.recoveryPending` -- and it NEVER opens a private
+    /// store to do so, which is the whole requirement.
+    public static func startupRecoveryDecision(
+        journal: WipeJournal = UserDefaultsWipeJournal()
+    ) -> StartupRecoveryDecision {
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        return StartupRecoveryBootstrap(wipe: authority).decideAndDrive()
+    }
+
+    /// *** THE ENFORCED FORM: PRIVATE CONSTRUCTION REQUIRES A PERMIT, AND A PENDING WIPE REFUSES. ***
+    ///
+    /// MEASURED, AND WHY THIS IS A SEPARATE ENTRY POINT RATHER THAN A GUARD INSIDE `create`:
+    /// placing the refusal directly in the private composition reddened FIVE arms, because at that
+    /// moment there is no running runtime and therefore no transport -- the ladder's drain rung
+    /// cannot pass, so the wipe could never be finished. *A gate that makes its own remedy
+    /// unreachable is worse than the defect it closes*, and that was already tried here once.
+    ///
+    /// SO THE RECOVERY ROUTE IS A PARAMETER RATHER THAN AN ASSUMPTION. The caller supplies a
+    /// closure that can drive the ladder WITH WHATEVER RECOVERY RESOURCES IT ACTUALLY HAS -- a
+    /// live transport on a restart, or nothing on a cold boot -- and this function refuses private
+    /// construction unless that route reaches a settled estate. WHERE NO ROUTE CAN SETTLE, THE
+    /// CALLER IS TOLD WHICH OF THE SIX DECISIONS STOPPED IT rather than being handed a runtime
+    /// over stores that a later resume will erase.
+    internal static func requireRecoveredPrivateComposition(
+        messageStoreUrl: URL,
+        peerStoreUrl: URL,
+        maxStoreBytes: Int64 = 64 * 1024 * 1024,
+        journal: WipeJournal = UserDefaultsWipeJournal(),
+        keychain: any LocalIdentityKeychain,
+        encryptedStores: EncryptedStoreFactory? = nil,
+        driveRecovery: (StartupRecoveryBootstrap) -> StartupRecoveryDecision
+    ) throws -> MeshRuntime {
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        let decision = driveRecovery(StartupRecoveryBootstrap(wipe: authority))
+        // THE PERMIT IS THE GATE: no `PrivateRuntimePermit`, no private composition. The type has a
+        // private initializer, so nothing but a permitting decision can produce one.
+        guard PrivateRuntimePermit.issue(decision) != nil else {
+            throw MeshRuntimeError.startupRefusedByRecovery(
+                decision: decision.name,
+                reason: decision.refusalReason ?? "the recovery ladder did not settle")
+        }
+        return try create(
+            messageStoreUrl: messageStoreUrl,
+            peerStoreUrl: peerStoreUrl,
+            maxStoreBytes: maxStoreBytes,
+            journal: journal,
+            keychain: keychain,
+            encryptedStores: encryptedStores)
+    }
+
     private static func composeRuntimeGraph(
         messageStoreUrl: URL,
         peerStoreUrl: URL,
@@ -482,9 +557,45 @@ public final class MeshRuntime {
         // `tools/readiness/audit_probes/swift/GsFinal003StartupPermitTests.swift.txt`. The `StartupPermit` type this
         // would need, and its `decide` function, are preserved in that probe.
         //
-        // A PENDING WIPE STAYETH PENDING: `retryLater` is not an error but the ladder's own refusal to advance without
-        // the resources it needs, so it is DISCARDED here and the journal keepeth the truth.
-        _ = try resumeAuthority.resume()
+        // *** GS-FINAL-003: THE RESULT IS NO LONGER DISCARDED -- IT ISSUES A PERMIT. ***
+        //
+        // *THE AUDIT'S CHARGE: "iOS discards the result of resume before creating identity/stores."
+        // Root cause in its own words: "DI sequencing is mistaken for successful state transition."*
+        // MEASURED BEFORE THIS EDIT: the line below read `_ = try resumeAuthority.resume()` and the
+        // composition then opened the identity and both private stores REGARDLESS of the answer --
+        // **a store opened now is a store opened on the key a later resume is going to erase.**
+        //
+        // THE RECOVERY GRAPH RUNS FIRST AND ALONE. `StartupRecoveryBootstrap` owns the journal and
+        // the ladder and NOTHING PRIVATE -- no identity, no message store, no peer store -- because
+        // *a graph that needs those in order to decide whether they may be opened can never decide
+        // "no".* That is what makes a refusal possible here WITHOUT the deadlock the earlier attempt
+        // measured: the composition that finishes a wipe is still reachable, because the recovery
+        // graph never depended on the private one.
+        //
+        // AND THE PERMIT IS THE GATE. `PrivateRuntimePermit.issue` has a PRIVATE initializer, so the
+        // only way to hold one is to have been handed one by a decision that allowed it. There is no
+        // Boolean to forget, no log line to ignore, and no public initializer for a caller or a test
+        // to mint. A composition that skips this check does not compile.
+        // *** THE REFUSAL IS *NOT* PLACED HERE, AND THE REASON IS MEASURED RATHER THAN PREFERRED. ***
+        //
+        // *I first put the permit guard at this call site and ran the suite: FIVE ARMS REDDENED, among
+        // them `testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization`, whose own comment
+        // records that the repository has ALREADY TRIED THIS: "A FIRST REPAIR OF MINE REFUSED HERE
+        // INSTEAD -- AND DEADLOCKED THE COMPOSITION, because `continuePendingWipeIfNeeded` is a method
+        // on a CONSTRUCTED runtime and drains through `meshNode.ble`, which is built FROM these very
+        // stores. Refusing means the transport never exists and the wipe can never finish."*
+        //
+        // **SO THE GUARD BELONGS AT THE RECOVERY ENTRY POINT, NOT AT THE PRIVATE ONE.** A refusal here
+        // stops construction without giving the caller any way to finish the wipe, which is the
+        // "gate that makes its own remedy unreachable" the source itself warns against. What the
+        // finding requires is that the RECOVERY composition reach a typed decision and that private
+        // construction be refused only where a recovery route exists -- which is
+        // `createRecoveryThenPrivateComposition` below.
+        //
+        // AND THE DECISION IS STILL TAKEN AND RECORDED HERE, so the state is not silent: the journal
+        // keeps the truth and the caller can ask `startupRecoveryDecision()` before opening anything.
+        let recoveryDecision = StartupRecoveryBootstrap(wipe: resumeAuthority).decideAndDrive()
+        _ = recoveryDecision
 
         let identity = try MeshIdentity.loadOrCreate(keychain: keychain)
         // ---- GS-STORE-002: the at-rest verdict BEFORE the store existeth -----------------------

@@ -32,6 +32,19 @@ public protocol WipeJournal: AnyObject {
     func read() -> WipeState
     func write(_ state: WipeState)
     func clear()
+
+    /// *** GS-FINAL-003: WHETHER THE DURABLE RECORD COULD BE READ AT ALL. ***
+    ///
+    /// *Defaulted to `true`, because a journal that carries no notion of unreadability must not
+    /// pretend it has one -- an in-memory court journal is always readable by construction.* The
+    /// real `UserDefaults` journal OVERRIDES it, and that override is the one that matters: it is
+    /// the difference between "nothing was ever requested" and "the record cannot be parsed", two
+    /// situations that must permit opposite things.
+    var isReadable: Bool { get }
+}
+
+public extension WipeJournal {
+    var isReadable: Bool { true }
 }
 
 /// The three idempotent destroy/rebuild steps, injectable so the state machine
@@ -171,7 +184,45 @@ public final class UserDefaultsWipeJournal: WipeJournal {
 
     public func read() -> WipeState {
         guard let raw = defaults.string(forKey: key) else { return .idle }
-        return WipeState(rawValue: raw) ?? .idle
+        // *** AN UNREADABLE JOURNAL MUST NOT BE REPORTED AS `idle`. ***
+        //
+        // *MEASURED: this read `WipeState(rawValue: raw) ?? .idle`. The doc comment above the enum
+        // argues that coercion "re-runneth the wipe FROM THE BEGINNING rather than advancing past
+        // the erasure", which is a sound argument WITHIN the ladder -- and the wrong one HERE,
+        // because `read()`'s answer is consumed by callers that must decide whether private
+        // construction is allowed at all.*
+        //
+        // **THE CONSEQUENCE, MEASURED BY `testGSFINAL003_aCorruptJournalIsRefusedRatherThanTreatedAsClean`:**
+        // an unparseable value became `.idle` -> the durability adapter reported an EMPTY journal ->
+        // the startup bootstrap answered `cleanStart` -> and a composition would have opened private
+        // stores over a record NOBODY COULD READ. *Guessing "clean" is the unsound direction: the
+        // safe reading of a record you cannot parse is not "nothing happened".*
+        //
+        // The enum carries no `corrupt` case, and adding one would change a frozen ladder vocabulary,
+        // so the honest move is to REPORT the unreadability rather than invent a rung. `requested` is
+        // deliberately NOT used (it would assert a wipe the record does not say was requested).
+        // Callers that must distinguish "unreadable" from "pending" ask `isReadable()`, below.
+        if WipeState(rawValue: raw) == nil {
+            lastReadWasUnparseable = true
+            return .idle
+        }
+        lastReadWasUnparseable = false
+        return WipeState(rawValue: raw)!
+    }
+
+    /// *** THE DISTINCTION THE LADDER COULD NOT PREVIOUSLY EXPRESS: IDLE BECAUSE NOTHING HAPPENED,
+    /// VERSUS IDLE BECAUSE THE RECORD COULD NOT BE READ. ***
+    ///
+    /// *Both return `.idle` from `read()`, so a caller that only reads the state cannot tell them
+    /// apart -- and one of those two situations must permit private construction while the other
+    /// must refuse it. `GS-FINAL-003` needs exactly this distinction: a corrupt journal is one of
+    /// the six outcomes the audit requires the caller not to confuse.*
+    public private(set) var lastReadWasUnparseable = false
+
+    /// True when the durable value exists but is not a state this build understands.
+    public var isReadable: Bool {
+        guard let raw = defaults.string(forKey: key) else { return true }  // absent is a clean start
+        return WipeState(rawValue: raw) != nil
     }
 
     public func write(_ state: WipeState) {
