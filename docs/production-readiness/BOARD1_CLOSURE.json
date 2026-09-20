@@ -76,6 +76,11 @@
     "sha": "faa436e2",
     "run": "35487214679",
     "artifact": "THE FINAL TIP -- 6/6 success on rc5's record"
+   },
+   {
+    "sha": "05fd430d",
+    "run": "35488733474",
+    "artifact": "the bounded-wait fix -- first tree with NO unbounded spin in the courts"
    }
   ],
   "greens_note": "FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line (35446805693, 35450312289, 35451828797, 35461098423, 35471507700). The rc4 green is the first in which the repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.",
@@ -90,17 +95,15 @@
    "note": "This is the third consecutive full 6/6 green on the rc4 line and the second on the tip's own tree, so the tip is verified rather than merely asserted. The T15 arm, which reddened once earlier on a loaded runner, passes here with a healthy duration."
   },
   "final_tip_green": {
-   "sha": "faa436e241902e17193c5a945279047605856771",
-   "run": "35487214679 -- 6/6 ALL SIX JOBS SUCCESS",
-   "event": "push on `main`; the last push of the round.",
+   "sha": "05fd430dfe2858e522dde83dfed66a3588a515c1",
+   "run": "35488733474 -- 6/6 ALL SIX JOBS SUCCESS",
+   "event": "push on `main`; carries the last defect this round found.",
    "affirmative_evidence": [
-    "`** TEST SUCCEEDED **` = 1 (STRICTLY matched, asterisked -- a loose grep matches the step script's own echo lines and measures the checker, not the result)",
-    "`GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)` -- the lane's own assertion",
-    "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures` (PER-BUNDLE summaries)",
-    "0 segfaults",
-    "ALL SIX rewritten arms of OracleSupersessionAndBudgetTests printed `passed` on the runner"
-   ],
-   "note": "The tip is a moving reference; the FACTS above are permanent for this SHA. Eleven greens now stand on the rc2/rc3/rc4/rc5 line, of which rc5's own (35484529801) and this one cover the Swift fixes."
+    "`** TEST SUCCEEDED **` = 1, matched WITH the asterisks",
+    "`GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`",
+    "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures`",
+    "`testARetryObtainsANewRequestIdentity` -- the arm whose unbounded spin was replaced -- printed `passed`"
+   ]
   },
   "runner_compile_stall": {
    "status": "RESOLVED BY RE-RUN -- NOT BY WEAKENING ANY CHECK",
@@ -403,5 +406,12 @@
   "tag": "production-readiness-board1-rc4",
   "sha": "962ff442d241af9c87baca5dde42e6422c530da3",
   "status": "RETAINED, NOT MOVED OR DELETED -- named here as the candidate whose RECORD DESCRIBED CORRECTIONS ITS OWN TREE DID NOT CARRY. `git merge-base --is-ancestor 7c982762 production-readiness-board1-rc4` is FALSE, so its source still read `contextTokens: 128` (16x off `Tier`) and still carried the vacuous rods and the quantity-misnamed injection arm, while the record declared them repaired. THE ARTIFACT AND THE ACCOUNT DISAGREED, and only the artifact is what anyone builds -- which is why rc5 exists rather than rc4 being edited."
+ },
+ "unbounded_wait_defect": {
+  "what": "`testARetryObtainsANewRequestIdentity` waited for the pipeline gate with TWO UNBOUNDED loops: `while pipeline.retrieveCount < {1,2} { await Task.yield() }`, neither with a timeout or a failure path.",
+  "why_it_matters": "*** A TEST WHOSE ENTIRE JOB IS TO PROVE A BOUND CONTAINED TWO UNBOUNDED LOOPS. *** *If the counter never reached its target the arm did not FAIL -- IT HUNG, taking the bundle with it before the suite could print its totals, which makes every later result unreachable. That is how a defect in one arm masquerades as an infrastructure stall. `await Task.yield()` is also not a scheduling guarantee: a non-preemptive yield can starve the task that would satisfy the condition.*",
+  "fix": "Both are now bounded and FAIL LOUDLY with the observed count, via a `waitUntil(_:)` helper -- the shape `settle(turns:)` already used in this file. `XCTFail` with the observed `retrieveCount`, then `return`: a test that cannot observe its state must SAY SO, because a hang answers nothing at all.",
+  "verified": "Hosted run 35488733474 on 05fd430d: 6/6 success, `** TEST SUCCEEDED **`, `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, `Executed 1356 tests, with 0 failures`, and the fixed arm printing `passed`.",
+  "same_class": "the MeshNode ack-turn races and the BloomDigest misaligned load: an unbounded or unchecked wait where the contract promises a bound."
  }
 }
