@@ -61,6 +61,11 @@
     "sha": "f46eb825",
     "run": "35478923863",
     "artifact": "THE FINAL TIP -- the positional green"
+   },
+   {
+    "sha": "bfcfdefa",
+    "run": "35479706670",
+    "artifact": "THE FINAL TIP -- the positional green"
    }
   ],
   "greens_note": "FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line (35446805693, 35450312289, 35451828797, 35461098423, 35471507700). The rc4 green is the first in which the repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.",
@@ -75,19 +80,18 @@
    "note": "This is the third consecutive full 6/6 green on the rc4 line and the second on the tip's own tree, so the tip is verified rather than merely asserted. The T15 arm, which reddened once earlier on a loaded runner, passes here with a healthy duration."
   },
   "final_tip_green": {
-   "sha": "f46eb825242a42b5b929d861a72c1be7a54e7df6",
-   "run": "35478923863 -- 6/6 success",
-   "event": "push on `main`; the last push of the rc4 round.",
+   "sha": "bfcfdefa304d5c981629c87e0d7e7946782122fc",
+   "run": "35479706670 -- 6/6 success",
+   "event": "push on `main`; the LAST push of the rc4 round -- nothing supersedes it.",
    "affirmative_evidence": [
     "`GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)` -- the lane's own assertion",
-    "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures` (PER-BUNDLE summaries, not a raw cross-lane case tally)",
+    "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures` (PER-BUNDLE summaries)",
     "`** TEST SUCCEEDED **` x3",
     "`ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed its own `passed` line (twice)",
-    "0 segfaults",
-    "all six jobs: content pipeline, repo-owned parity + safety invariants (A,B,C,E,F,G,H), mesh simulation, constraint audit, android source compile + unit tests, ios core + mesh tests + Archive-only xcodebuild"
+    "0 segfaults"
    ],
    "why_not_a_failure_grep": "A grep for zero failures reads 0 whether the arm PASSED, had NOT YET RUN, or NEVER RAN AT ALL. Every claim above is an affirmative line the lane itself printed.",
-   "note": "EIGHT CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line, each bound to a named SHA. The FACTS are permanent -- each says its own SHA ran 6/6. The TIP stays a moving reference and is deliberately NOT pinned to a literal, because the record lands as a docs commit on top; for the tip, read the newest `push` run of `repository-verification` on the `main` ref."
+   "note": "NINE consecutive full 6/6 hosted greens across the rc2/rc3/rc4 line, each bound to a named SHA. The FACTS are permanent. The TIP stays a moving reference -- for it, read the newest `push` run of `repository-verification` on the `main` ref."
   }
  },
  "tasks": {
