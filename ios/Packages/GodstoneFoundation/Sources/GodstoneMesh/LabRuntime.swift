@@ -62,6 +62,9 @@ public final class LabRuntime: @unchecked Sendable {
     /// that state diagnosable from outside -- hence not `private`.*
     public private(set) static var trustWiringFailures: [String] = []
 
+    /// *** A COURT MUST BE ABLE TO START FROM A CLEAN RECORD, or it measures a previous run's failures. ***
+    internal static func resetTrustWiringFailuresForTest() { trustWiringFailures.removeAll() }
+
     /// *** GS-UX-001 STEP 1 (round 539): IS THE DURABLE ROAD REACHABLE THROUGH THIS HANDLE? ***
     ///
     /// A LAB WHOSE JOURNEYS CANNOT REACH A DURABLE AUTHORITY IS A LAB THAT EXERCISETH NOTHING, and the card's own

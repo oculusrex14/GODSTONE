@@ -66,45 +66,52 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
     // 1. Confirm-on-mismatch refuses locally
     // -------------------------------------------------------------------------
 
-    /// TEMPORARY PROBE (removed after measuring): does the LAB's composed facade carry contacts?
-    func testZZProbeLabFacadeContacts() throws {
-        let url = tempDbUrl()
-        defer { try? FileManager.default.removeItem(at: url) }
-        let facade = MeshTrustFacade(
-            repository: PeerIdentityRepository(store: try SqlitePeerIdentityStore(url: url)),
-            ownNodeId: Data(repeating: 0x99, count: 16),
-            contacts: []
-        )
-        print("PROBE empty-contacts label count = \(facade.contactLabels().count)")
-        // AND THE LAB'S OWN COMPOSED RUNTIME, which is what the UI renders.
+    /// *** THE REGRESSION GUARD FOR THE SILENT PRODUCTION DEFECT. ***
+    ///
+    /// *`LabRuntime.compose` passed `nodeId.prefix(2)` where `IdentityBindingValidator` requires
+    /// `identityBindingNodeHintLength == 4`, so EVERY validation returned `.invalidContext` -- and the `if case
+    /// .valid` HAD NO `else`, SO EVERY BINDING WAS SILENTLY SKIPPED. **MEASURED CONSEQUENCE:**
+    /// `trustContactLabels()` returned three labels while `trustFingerprint(for:)` returned nil for EVERY one and
+    /// every contact read "unknown", BECAUSE THE DURABLE REPOSITORY WAS EMPTY.*
+    ///
+    /// *** AN EXTERNAL REVIEW FOUND THAT I COMMITTED THE FIX WITHOUT ITS GUARD: `grep trustWiringFailures` over
+    /// `ios/Godstone/Tests` returned NO MATCHES -- APPEND-ONLY DEAD CODE THAT REDDENS ON NOTHING, AND THE a11y SUITE
+    /// CANNOT SEE THIS AT ALL. *** This is that guard, and it drives the REAL `LabRuntime.compose` path rather than
+    /// a hand-built facade, because the defect lived in the COMPOSITION.
+    func test00TheLabComposesWithNoSilentBindingFailures() throws {
+        // A FRESH COMPOSE, so the counter's state is this test's and not a previous run's.
+        LabRuntime.resetTrustWiringFailuresForTest()
         let lab = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x11)
-        print("PROBE lab trustContactLabels = \(lab.trustContactLabels())")
-        print("PROBE lab labels = \(lab.labels)")
-        for label in ["A", "B", "R"] {
-            print("PROBE lab label \(label): fp=\(lab.trustFingerprint(for: label) ?? "nil") trust=\(lab.contactTrustLabel(label))")
+
+        // *** (i) NOTHING FAILED TO WIRE. *** *This is the observation the counter exists for, and no court read it
+        // until this one.*
+        XCTAssertTrue(
+            LabRuntime.trustWiringFailures.isEmpty,
+            "*** NO BINDING MAY FAIL VALIDATION SILENTLY. Observed failures: \(LabRuntime.trustWiringFailures) -- " +
+                "a non-empty list means the lab composed with contacts that have NO IDENTITY. ***",
+        )
+
+        // *** (ii) AND THE CONTACTS ACTUALLY CARRY IDENTITIES -- THE CONSEQUENCE THE SILENT SKIP HID. ***
+        let labels = lab.trustContactLabels()
+        XCTAssertFalse(labels.isEmpty, "the lab must register its labels as trust contacts")
+        for label in labels {
+            let fp = lab.trustFingerprint(for: label)
+            XCTAssertNotNil(fp, "*** \(label) MUST HAVE A FINGERPRINT: nil here is exactly the symptom of the " +
+                                "silently-skipped binding. ***")
+            XCTAssertEqual(
+                fp?.count, 64,
+                "*** AND IT MUST BE A 64-CHARACTER HEX DIGEST, not a placeholder. Observed: \(fp ?? "nil") ***",
+            )
+            XCTAssertTrue(
+                fp!.allSatisfy { $0.isHexDigit },
+                "and every character must be hex; observed: \(fp!)",
+            )
+            XCTAssertNotEqual(
+                lab.contactTrustLabel(label), "unknown",
+                "*** AND THE TRUST MUST BE KNOWN. \"unknown\" for EVERY label is the exact state the empty " +
+                    "repository produced. ***",
+            )
         }
-        // AND THE SAME QUESTIONS ON A COURT-BUILT REPO THAT APPLIES A BINDING DIRECTLY, so the comparison
-        // isolates whether the LAB's wiring or the REPOSITORY is at fault.
-        let url2 = tempDbUrl()
-        defer { try? FileManager.default.removeItem(at: url2) }
-        let repo2 = PeerIdentityRepository(store: try SqlitePeerIdentityStore(url: url2))
-        let b = makeBinding(seed: seedA, generation: 1, staticDhPriv: staticPrivA)
-        let applied = repo2.applyValidatedBinding(b)
-        print("PROBE direct repo applyValidatedBinding -> \(applied); lookup = \(repo2.lookup(b.nodeId))")
-        let f2 = MeshTrustFacade(repository: repo2, ownNodeId: Data(repeating: 0x99, count: 16),
-                                 contacts: [("Alice", b.nodeId)])
-        print("PROBE court-built facade fingerprint(Alice) = \(f2.fingerprint(for: "Alice") ?? "nil")")
-        // THE SAME VALIDATION THE LAB PERFORMS, RUN HERE, SO WE SEE WHICH STEP FAILS THERE.
-        let lab2 = try LabRuntime.compose(labels: ["A", "R"], seedByte: 0x11)
-        print("PROBE lab2 contacts = \(lab2.trustContactLabels())")
-        // And an independent node's binding, validated the way the lab does.
-        let pair2 = try ReadinessTrustedPairing.barePair()
-        let raw2 = try pair2.aliceIdentity.issueIdentityBinding().encode()
-        let v2 = IdentityBindingValidator.validate(
-            serialized: raw2,
-            authenticatedRemoteStaticKey: pair2.aliceIdentity.staticDhPublicKey,
-            advertisedNodeHint: pair2.aliceIdentity.nodeId.prefix(2))
-        print("PROBE binding validation on a bare identity = \(v2)")
     }
 
     func test01ConfirmOnMismatchRefusesLocally() throws {
