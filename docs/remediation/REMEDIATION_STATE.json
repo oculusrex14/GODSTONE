@@ -15711,6 +15711,29 @@
   "internal_remaining_prose_classifier_retired": {
    "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",
    "last_value": 21
+  },
+  "frontier_measured_this_session": {
+   "measured_at": "2026-09-20",
+   "branch": "board1/external-audit-final-remediation",
+   "note": "THE HONEST FRONTIER, RE-MEASURED RATHER THAN READ FROM THE LEDGER'S PROSE. Nine findings remain PARTIAL. Each is named with WHAT IT STILL NEEDS, and three of the nine are bounded by an EXTERNAL input that no in-repo change can supply.",
+   "partial_findings": {
+    "GS-INTEGRATION-001": "HIGH -- the harness over the REAL transport is being built this round; the ledger's own measurement is that the composition's radio is LinkFacade and BleTransport is referenced ZERO times.",
+    "GS-RUNTIME-001": "HIGH -- both isles' ACK owners are wired and mutation-proven; the remaining half is the device-side witness.",
+    "GS-STRESS-001": "HIGH -- StressCampaign measures a separate resource model; the real-runtime driver over the integration harness is the remaining work and DEPENDS ON GS-INTEGRATION-001.",
+    "GS-UX-001": "HIGH -- journeys stop at disconnected models and static text; the public facade and rendered controls remain.",
+    "GS-STORE-002": "HIGH -- iOS private stores use ordinary SQLite; the SQLCipher engine is an EXTERNAL native artifact (NATIVE_MODELS), so the at-rest result cannot be claimed in-repo.",
+    "GS-ARCHIVE-005": "MEDIUM -- archive navigation bypasses selection metadata and persistence helpers.",
+    "GS-FINAL-003": "High -- the typed decision, the non-forgeable permit, both isles' admission seams and the Android :mesh Dagger component are landed and mutation-proven; clause (i) remains PARTLY UNIMPLEMENTED BY NECESSITY (a construction-time permit was measured twice, on both isles, to make the wipe-completing graph UNBUILDABLE).",
+    "GS-FINAL-004": "High -- clauses (a)+(b) landed and mutation-proven at the seam; the native-engine regression half needs the EXTERNAL SQLCipher artifact.",
+    "GS-FINAL-006": "Medium -- shipping archive navigation and scroll restoration are disconnected from their owners; the iOS witness remains."
+   },
+   "external_boundary_named_once": "NO PRODUCTION EncryptedStoreEngine EXISTS IN THIS TREE, and no approved EXTERNAL Noise fixture is pinned (A-06). Both are the NATIVE_MODELS/external-artifact seam, recorded in EXTERNAL_INPUT_REQUESTS.md and AUDIT-004. ANY claim of an at-rest or conformance result would be a claim about an artifact this repository does not contain.",
+   "green_measured_this_session": {
+    "ios_unfiltered": "Executed 1269 tests, with 0 failures; GodstoneMeshTests.xctest passed; GodstoneCoreTests.xctest passed; EXIT=0",
+    "android_mesh_fresh": "83 suites, 1296 tests, 0 failures, 0 errors (--rerun-tasks, task line not UP-TO-DATE/FROM-CACHE)",
+    "python_readiness": "759 tests OK",
+    "ci_controls_repo_scope": "7 passed, 0 failed, 'all invariants hold' (invariant D reported, not gated: external Noise vectors / A-06)"
+   }
   }
  }
 }
