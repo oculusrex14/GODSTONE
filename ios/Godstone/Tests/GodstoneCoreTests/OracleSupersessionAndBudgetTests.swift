@@ -328,14 +328,33 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
 
     /// The retrieval context given to the model is bounded by tier.
     func testTheRetrievalContextIsBoundedByTier() {
-        // the tier's own declaration, asserted rather than assumed
-        let light = OracleViewModel.TierBudget.light
-        XCTAssertGreaterThan(light.retrievalChunks, 0)
-        XCTAssertGreaterThan(light.draftCharacters, 0)
-        XCTAssertGreaterThan(light.contextTokens, 0)
-        // a healthy tier ordering: a larger tier carries at least as much
-        XCTAssertGreaterThanOrEqual(OracleViewModel.TierBudget.medium.contextTokens, light.contextTokens)
-        XCTAssertGreaterThanOrEqual(OracleViewModel.TierBudget.medium.retrievalChunks, light.retrievalChunks)
+        // *** THIS ARM MUST CONSULT `Tier`, THE AUTHORITY, NOT THE BUDGET'S OWN
+        // CONSTANTS. *** *The first draft asserted only `light.retrievalChunks > 0` and
+        // `medium >= light` over hardcoded literals, so it could not notice that the
+        // budget said 128 context tokens where `Tier` says 2048 -- it was certifying
+        // itself. The numbers are now compared against `Tier` directly, so a second
+        // tier table cannot reappear without reddening this.*
+        let light = OracleViewModel.TierBudget.forTier(.light)
+        XCTAssertEqual(light.contextTokens, Tier.light.contextTokens,
+                       "the budget restated the context window instead of reading Tier")
+        XCTAssertEqual(light.retrievalChunks, Tier.light.retrievalChunks,
+                       "the budget restated retrievalChunks instead of reading Tier")
+        let medium = OracleViewModel.TierBudget.forTier(.medium)
+        XCTAssertEqual(medium.contextTokens, Tier.medium.contextTokens)
+        XCTAssertEqual(medium.retrievalChunks, Tier.medium.retrievalChunks)
+        let large = OracleViewModel.TierBudget.forTier(.large)
+        XCTAssertEqual(large.contextTokens, Tier.large.contextTokens)
+        XCTAssertEqual(large.retrievalChunks, Tier.large.retrievalChunks)
+        // every tier carries a real bound, and the active tier is the default
+        for tier in [Tier.light, .medium, .large] {
+            let b = OracleViewModel.TierBudget.forTier(tier)
+            XCTAssertGreaterThan(b.draftCharacters, 0)
+            XCTAssertEqual(b.draftCharacters, tier.contextTokens * 4,
+                           "the draft bound must scale with the tier's own context window")
+        }
+        XCTAssertEqual(OracleViewModel.TierBudget.current,
+                       OracleViewModel.TierBudget.forTier(Tier.current),
+                       "the default budget must be the ACTIVE tier's, not LIGHT's")
     }
 
     /// An oversized draft must never publish: a half-draft is not a shorter
@@ -380,23 +399,71 @@ final class OracleSupersessionAndBudgetTests: XCTestCase {
 
     // MARK: - W07 mutation rods
 
-    func testTheSupersessionRodFires() {
-        // the rod: an earlier request publishing after a supersession is a violation
-        func violation(publishedByEarlier: Bool, superseded: Bool) -> Bool {
-            publishedByEarlier && superseded
+    func testTheSupersessionRodFires() async {
+        // *** THIS ROD MUST GO THROUGH PRODUCTION, NOT A LOCAL LAMBDA. *** *The first
+        // version declared its own `violation(publishedByEarlier:superseded:)` and
+        // asserted on that -- `<` against a literal wearing the rod's name. Deleting
+        // production's whole supersession guard would not have reddened it. This drives
+        // the real ViewModel and reads the real published sequence.*
+        let firstMarker = "FIRST"
+        let secondMarker = "SECOND"
+        let pipeline = GatedPipeline(
+            retrieval: retrieval([chunk("The dose is 500 ml first, and 500 ml second.")]),
+            answerForQuestion: { q in
+                q.hasPrefix("first")
+                    ? "The \(firstMarker) dose is 500 ml [1]."
+                    : "The \(secondMarker) dose is 500 ml [1]."
+            })
+        let vm = OracleViewModel(pipeline: pipeline)
+        let (recorder, cancellable) = record(vm)
+        defer { cancellable.cancel() }
+
+        vm.question = "first question"
+        vm.ask()
+        vm.question = "second question"
+        vm.ask()
+        pipeline.open()
+        await settle(vm)
+
+        let published = recorder.snapshots.compactMap { st -> String? in
+            if case .answered(let t, _) = st { return t }
+            return nil
         }
-        XCTAssertTrue(violation(publishedByEarlier: true, superseded: true),
-                      "the rod must observe a superseded request publishing")
-        XCTAssertFalse(violation(publishedByEarlier: true, superseded: false),
-                       "an unsuperseded request publishing is not a violation")
+        // the rod's positive half: production published the SUPERSEDING answer
+        XCTAssertTrue(published.contains { $0.contains(secondMarker) },
+                      "the superseding request never published: \(published)")
+        // and its negative half: the superseded one did NOT
+        XCTAssertFalse(published.contains { $0.contains(firstMarker) },
+                       "the superseded request published; the rod did not fire: \(published)")
     }
 
-    func testTheBudgetRodFires() {
+    func testTheBudgetRodFires() async {
+        // *** THIS ROD MUST DRIVE PRODUCTION'S GUARD, NOT A LOCAL PREDICATE. *** *The
+        // first version declared `func exceeds(_:) { n > budget.draftCharacters }` and
+        // asserted on THAT, so removing production's `draft.count + token.count >
+        // budget.draftCharacters` check at OracleViewModel would have left it green. It
+        // was `<` against a literal wearing the rod's name.*
         let budget = OracleViewModel.TierBudget.light
-        func exceeds(_ n: Int) -> Bool { n > budget.draftCharacters }
-        XCTAssertTrue(exceeds(budget.draftCharacters + 1),
-                      "the rod must observe an over-budget draft")
-        XCTAssertFalse(exceeds(budget.draftCharacters),
-                       "a draft exactly at the bound is not over it")
+        let oversized = supported + String(repeating: "x", count: budget.draftCharacters + 512)
+        let vm = OracleViewModel(
+            pipeline: FakePipeline(retrieval: retrieval(evidence), tokens: [oversized]),
+            budget: budget)
+        await vm.runPipeline(question: "q")
+
+        // the rod's positive half: production REFUSED the over-budget draft
+        XCTAssertFalse(
+            { if case .answered = vm.state { return true }; return false }(),
+            "an over-budget draft was published whole; production's guard did not fire")
+        XCTAssertLessThanOrEqual(vm.lastDraftLengthForTest, budget.draftCharacters,
+                                 "the draft buffer exceeded the bound")
+        // and the negative half, through production: a draft WITHIN budget publishes
+        let vm2 = OracleViewModel(
+            pipeline: FakePipeline(retrieval: retrieval(evidence), tokens: [supported]),
+            budget: budget)
+        await vm2.runPipeline(question: "q")
+        guard case .answered = vm2.state else {
+            XCTFail("an in-budget draft must publish; state = \(vm2.state)")
+            return
+        }
     }
 }

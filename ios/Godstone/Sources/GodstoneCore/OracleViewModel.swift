@@ -45,12 +45,33 @@ public final class OracleViewModel: ObservableObject {
             self.draftCharacters = draftCharacters
         }
 
-        /// The LIGHT tier, matching the Android `Tier.LIGHT` bounds.
-        public static let light = TierBudget(retrievalChunks: 4, contextTokens: 128,
-                                             draftCharacters: 512)
-        /// The MEDIUM tier.
-        public static let medium = TierBudget(retrievalChunks: 8, contextTokens: 256,
-                                              draftCharacters: 1024)
+        /// *** DERIVED FROM `Tier`, THE REPOSITORY'S TIER AUTHORITY -- NEVER RESTATED. ***
+        ///
+        /// *THE FIRST DRAFT HARDCODED `contextTokens: 128` / `256` AND CLAIMED IN ITS
+        /// DOC COMMENT TO MATCH "the Android `Tier.LIGHT` bounds". BOTH HALVES WERE
+        /// WRONG. `Tier.contextTokens` is 2048 / 4096 / 8192, so the budget disagreed
+        /// with the authority by 16x; and there is no Android `Tier.LIGHT` in
+        /// production to match -- the only such declaration in the tree is inside the
+        /// test that was certifying it, which is a court agreeing with itself. A
+        /// second tier table is a second source of truth, and this repository has
+        /// exactly one.*
+        ///
+        /// `retrievalChunks` and `contextTokens` now READ `Tier`; only `draftCharacters`
+        /// -- which `Tier` does not define -- is chosen here, sized to the tier's
+        /// context window at four characters per token.
+        public static func forTier(_ tier: Tier) -> TierBudget {
+            TierBudget(retrievalChunks: tier.retrievalChunks,
+                       contextTokens: tier.contextTokens,
+                       draftCharacters: tier.contextTokens * 4)
+        }
+
+        /// The ACTIVE tier's budget -- the default, so no call site can silently
+        /// receive LIGHT's bounds on a device configured LARGE.
+        public static var current: TierBudget { forTier(Tier.current) }
+
+        public static let light = TierBudget.forTier(.light)
+        public static let medium = TierBudget.forTier(.medium)
+        public static let large = TierBudget.forTier(.large)
     }
 
     /// The bound in force for this ViewModel. Defaults to LIGHT.
@@ -70,7 +91,7 @@ public final class OracleViewModel: ObservableObject {
     // instead of leaving an unfinished draft visible.
     private var lastAnswered: State?
 
-    public init(pipeline: OraclePipelineProtocol, budget: TierBudget = .light) {
+    public init(pipeline: OraclePipelineProtocol, budget: TierBudget = .current) {
         self.pipeline = pipeline
         self.budget = budget
     }
