@@ -329,6 +329,27 @@ jobs:
           python ci/check_required_runs.py
           python ci/check_current_assessment.py
           python ci/check_commit_provenance.py
+      - name: closed-loop control plane (AUDIT-B1-CTRL-001)
+        run: |
+          # *** THE INDEPENDENT AUDIT'S CONTROL-PLANE FINDING, MADE UNREPEATABLE. ***
+          #
+          # MEASURED BY THE AUDIT: this repository permitted
+          # `BOARD1_CLOSURE.status = COMPLETE` while the remediation register carried
+          # `independent_status = NO_GO` and live PARTIAL findings. *A control plane that can report
+          # closure over a NO_GO register is worse than having no closure record, because it is
+          # believed.*
+          #
+          # THE AUTHORITY IS NOW STRUCTURED, NOT PROSE. `internal_remaining` was derived by
+          # substring-matching narrative and produced 27, 21, 5 and 4 across four marker lists --
+          # a number that moves with the vocabulary of its own input measures the classifier, not
+          # the repository. `finding_closure` carries an EXPLICIT status per obligation, and the
+          # counts are taken from those statuses.
+          #
+          # THE GATE REFUSES a COMPLETE / READY_FOR_EXTERNAL_REAUDIT builder status while any
+          # structured internal obligation is OPEN, and refuses any non-zero `verified_fixed`
+          # because only an INDEPENDENT audit may write that value.
+          python scripts/build_structured_closure.py
+          python scripts/build_structured_closure.py --check
       - name: production-readiness status consistency (Stage 4E0)
         run: |
           python ci/check_status_consistency.py --selftest

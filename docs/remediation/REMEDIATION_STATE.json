@@ -14965,6 +14965,752 @@
    "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ"
   ],
   "excluded_round_narrative": 11,
-  "internal_neither_narrative_nor_gap": []
+  "internal_neither_narrative_nor_gap": [],
+  "finding_closure": {
+   "ANDROID-01": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "ANDROID-02": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "ANDROID-03": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "ANDROID-04": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "ANDROID-05": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "ANDROID-06": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "ANDROID-07": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "CRYPTO-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "CRYPTO-002": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "CRYPTO-003": {
+    "group": "original",
+    "severity": "MEDIUM",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "CRYPTO-004": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "CRYPTO-005": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "CRYPTO-006": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-ACK-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-ACK-002": {
+    "group": "original",
+    "severity": "MEDIUM",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-ARCHIVE-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-ARCHIVE-002": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-ARCHIVE-003": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-ARCHIVE-004": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-ARCHIVE-005": {
+    "group": "original",
+    "severity": "MEDIUM",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-archive-005.app-witness",
+      "text": "An executed iOS app/simulator witness for Archive recreation/restoration. The ledger's claim that the app layer 'cannot be compiled because of NATIVE_MODELS' is STALE: the canonical hosted workflow builds `Godstone-Light` successfully.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "GS-CONTENT-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-CONTENT-002": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-CONTENT-003": {
+    "group": "original",
+    "severity": "MEDIUM",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-CTRL-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-CTRL-002": {
+    "group": "original",
+    "severity": "MEDIUM",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-DIAG-001": {
+    "group": "original",
+    "severity": "MEDIUM",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-GATE-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-INBOX-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-INTEGRATION-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-integration-001.real-adapters",
+      "text": "A host harness that substitutes ONLY the OS/hardware boundary and drives the REAL transport / orchestration / handshake adapters -- not `LinkFacade` and not an in-memory transport.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-integration-001.scenarios",
+      "text": "Drive from OS-facade callbacks only, covering DIRECT, recipient ACK, no direct link, reconnect, wrong peer/key, replay, refused offer, crash after outbound durable enqueue / inbound commit / ACK commit, resume, wipe interruption.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-integration-001.mutation",
+      "text": "Disconnect one production transport/orchestration call site and confirm the integration court FAILS.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "GS-LAB-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-MODEL-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-PACKAGE-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-PACKAGE-002": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-RUNTIME-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-runtime-001.android-composition-court",
+      "text": "A Robolectric court exercising the ACTUAL production providers up to the real AndroidKeyStore boundary, establishing that composition reaches the real ACK/pump owners and that assignment is not merely textual. If AndroidKeyStore stops execution, that stop is the explicit external boundary.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-runtime-001.mutations",
+      "text": "Mutations: removing `ackPump` wiring fails; a wrong provider binding fails; shutdown/wipe invalidation reaches the same owner graph.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "GS-SOS-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-SOS-002": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-STORE-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-STORE-002": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-store-002.internal-architecture",
+      "text": "Internal connection-ownership architecture complete (shared with GS-FINAL-004): the absent native engine must NOT be treated as an excuse for connection-ownership work, and may not be the only recorded remainder.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "GS-STORE-003": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-STORE-004": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-STORE-005": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-STORE-006": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-STRESS-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-stress-001.real-runtime-driver",
+      "text": "A real-runtime stress driver over the GS-INTEGRATION-001 host composition -- instantiating `MeshRuntime`/`ComposedRuntime`, not only `StressCampaign`.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-stress-001.ten-thousand-cycles",
+      "text": "At least 10,000 deterministic host cycles over start/stop, peer churn, link replacement, sessions, reservations, leases, timers, observers, ACK work, store observers, durable rows, parser refusal and wipe recovery.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-stress-001.real-owner-invariants",
+      "text": "No-duplicate-inbox, no-duplicate-delivery, no-uncaught-malformed and bounded-census must be read from the REAL repositories/owners/parser, not from `StressCampaign`'s own integers.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-stress-001.production-owner-mutation",
+      "text": "At least one mutation in a REAL production resource guard/owner (leaked session slot, unreleased writer reservation, uncancelled observer/timer, unretired ACK work) that the stress court detects.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-stress-001.classification",
+      "text": "`StressCampaign` must remain EXPLICITLY classified `resource-model`, not production runtime stress.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "GS-SUPPLY-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-SYNC-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-SYNC-002": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-UX-001": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-ux-001.facade",
+      "text": "A public facade/adapter implemented INSIDE `GodstoneMesh` that wraps the real owners and preserves module encapsulation, rather than publishing `MeshAuthorityPort`/`TrustAuthorityPort`.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-ux-001.rendered-controls",
+      "text": "Rendered LabMesh controls for recipient selection, UTF-8 bounded compose, Send, fingerprint compare/confirm, exact rotation-candidate approval, revoke, visible durable state after recreation, and visible wipe/recovery state -- every displayed value derived from the real authority/projection.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-ux-001.ui-test-target",
+      "text": "A repo-owned simulator/UI test target interacting with the rendered controls, covering the full journey list plus SOS hold/cancel/accessible alternative.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-ux-001.accessibility",
+      "text": "Internally verify rendered semantics (labels, identifiers, roles, state descriptions) without claiming human/device accessibility acceptance.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "IOS-01": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "IOS-02": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "IOS-03": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "IOS-04": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "IOS-05": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "IOS-06": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "IOS-07": {
+    "group": "original",
+    "severity": "HIGH",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-001": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-002": {
+    "group": "independent",
+    "severity": "High",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-003": {
+    "group": "independent",
+    "severity": "High",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-final-003.ios-recovery-graph",
+      "text": "iOS: a recovery/bootstrap composition whose transport seam exists BEFORE and independently of the store graph, so a pending wipe can be driven to a typed decision without constructing private stores.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-final-003.typed-permit",
+      "text": "Both platforms: a non-forgeable typed startup decision (not a Bool, not a log line, no public initializer) issued only after the typed recovery answer.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-final-003.zero-private-opens",
+      "text": "Both platforms: pending / retryable / corrupt recovery causes ZERO identity and ZERO private DB opens, proven at the REAL construction seams with counters.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-final-003.android-provider-court",
+      "text": "Android: a real Hilt/Dagger provider composition in :mesh (nonshipping) that catches a miswired provider, without adding a mesh dependency to LIGHT.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-final-003.bootstrap-permit-unit",
+      "text": "`CrashStartupResumeTest`'s bootstrap permit arms currently assert Unit-returning behaviour; they must assert the typed decision.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "GS-FINAL-004": {
+    "group": "independent",
+    "severity": "High",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-final-004.owned-connection",
+      "text": "The encrypted engine must yield an OWNED OPERATIONAL connection/session with restricted construction and explicit close ownership -- not descriptive metadata that is discarded.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-final-004.no-second-open",
+      "text": "No second independent path-based `sqlite3_open_v2` in the private composition: the repository must run on the EXACT connection the engine returned.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-final-004.identity-proof",
+      "text": "Prove by OBJECT/CAPABILITY IDENTITY -- not a Boolean such as `messageStoreWasBuiltFromVerifiedHandle` -- that repository operations use the returned connection.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-final-004.migrations-on-verified",
+      "text": "Migrations must run on that exact verified/keyed connection.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "GS-FINAL-005": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-006": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "gs-final-006.ios-restoration-witness",
+      "text": "An executed iOS app-level restoration/scroll witness: launch, search, open, scroll to a stable passage, recreate, verify the same document and a valid anchor return, Back returns to the submitted query, and an invalid anchor falls back safely.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "gs-final-006.mutation",
+      "text": "Disconnect the production restore/anchor consumption and confirm the executed app test FAILS.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   },
+   "GS-FINAL-007": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-008": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-009": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-010": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-011": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-012": {
+    "group": "independent",
+    "severity": "Medium",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "GS-FINAL-013": {
+    "group": "independent",
+    "severity": "Low",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
+    "internal_obligations": [],
+    "external_obligations": []
+   },
+   "AUDIT-B1-CTRL-001": {
+    "group": "external_audit_2026_09_20",
+    "severity": "High",
+    "recorded_status": "PARTIAL",
+    "internal_status": "OPEN",
+    "internal_obligations": [
+     {
+      "id": "audit-b1-ctrl-001.structured-obligations",
+      "text": "Structured per-finding closure: `internal_status`, `internal_obligations` and `external_obligations` for every nonterminal finding, with `internal_remaining` DERIVED from them rather than NLP-classified from prose.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "audit-b1-ctrl-001.closure-law",
+      "text": "A control that REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, so the control plane can no longer report closure over a NO_GO register.",
+      "status": "OPEN",
+      "evidence": []
+     },
+     {
+      "id": "audit-b1-ctrl-001.missed-partials",
+      "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which the prose classifier missed entirely.",
+      "status": "OPEN",
+      "evidence": []
+     }
+    ],
+    "external_obligations": []
+   }
+  },
+  "structured_counts": {
+   "findings_total": 68,
+   "findings_internal_open": 10,
+   "internal_obligations_open": 30,
+   "external_obligations": 0
+  },
+  "internal_remaining_prose_classifier_retired": {
+   "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",
+   "last_value": 21
+  }
  }
 }

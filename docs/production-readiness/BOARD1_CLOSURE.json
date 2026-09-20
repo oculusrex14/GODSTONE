@@ -1,11 +1,10 @@
 {
  "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
- "status": "COMPLETE",
- "status_scope": "INTERNAL production readiness ONLY. COMPLETE means every internally executable obligation is discharged and the repository-owned verification is green on candidate_sha. It is NOT a statement that production readiness is achieved: 12 tasks remain BLOCKED_EXTERNAL, the five external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) are OPEN, and verified_fixed is 0 because only an independent audit may set it.",
+ "status": "REMEDIATION_IN_PROGRESS",
+ "status_scope": "*** REMEDIATION IN PROGRESS -- NOT COMPLETE. *** This record previously read `COMPLETE` while `docs/remediation/REMEDIATION_STATE.json` carried `independent_status = NO_GO` and live PARTIAL findings. A closure record that says COMPLETE over a NO_GO register is the AUDIT-B1-CTRL-001 control-plane defect made literal, so the status now states what is true: an external audit returned NO_GO and this mission repairs its findings. Completion is for the INDEPENDENT auditor to decide; this builder may at most reach READY_FOR_EXTERNAL_REAUDIT.",
  "candidate_sha": "4c724e85b71ada4a9122ca769662a25655b48ed9",
  "candidate_tree_sha": "af4ec77f15dd9772f5d0415769092f254e1d2cf2",
  "tag": "production-readiness-board1-rc5",
- "main_sha": "4c724e85b71ada4a9122ca769662a25655b48ed9",
  "repository_verification": {
   "run_id": 35471507700,
   "conclusion": "success",
@@ -197,7 +196,6 @@
  "verified_fixed": 0,
  "record_corrections": 64,
  "board2_branch": "board2/device-release-validation",
- "board2_sha": "4c724e85b71ada4a9122ca769662a25655b48ed9",
  "main_pointer_note": "POSITIONAL, NOT LITERAL. `main_sha` is the frozen candidate that `main` was fast-forwarded to, and it equals the tag target. The docs record lives in a chain of docs-only commits ON TOP of it, so `main`'s TIP (and board2, which is fast-forwarded to it) advances with each docs commit and is deliberately not written here: a literal tip SHA self-invalidates on the very next commit. For the tip, read the `main` ref; for the verified artifact, read the tag `production-readiness-board1-rc4`. Board 2 starts from the corrected state by FAST-FORWARD -- shared history is never rewritten.",
  "catalogue_path_gap": {
   "what_it_is": "A task card's `required_regression_paths` is a repo-relative path, and 12 of them do not resolve. THE 12 SPLIT INTO TWO CLASSES WITH OPPOSITE REMEDIES, and fusing them was my error.",
@@ -423,5 +421,29 @@
   ],
   "why_no_new_tag": "A tag names a SHIPPABLE ARTIFACT, and rc5's shippable artifact is unchanged. Minting rc6 for a test hardening would imply the product moved when it did not, and would repeat the very confusion rc5 exists to correct. The hardening is recorded here, verified by run 35488733474 on 05fd430d (6/6), and reaches rc6+ whenever a real production change earns one. `main` carries it; the tag's tree is the artifact.",
   "verification_of_the_hardening": "run 35488733474 on 05fd430d -- 6/6 success, with the fixed arm printing `passed`."
- }
+ },
+ "external_audit": {
+  "verdict_received": "NO_GO",
+  "verdict_source": "an independent external Board 1 closure audit",
+  "builder_may_not_write": [
+   "VERIFIED_FIXED",
+   "BOARD 1 EXTERNALLY VERIFIED"
+  ],
+  "strongest_permitted_terminal_state": "READY_FOR_EXTERNAL_REAUDIT"
+ },
+ "candidate_tag": "production-readiness-board1-rc5",
+ "closure_record_sha": null,
+ "main_tip_sha": "35e67340e4706bb8fd38cdbc6768c97205dff399",
+ "board2_tip_sha": "35e67340e4706bb8fd38cdbc6768c97205dff399",
+ "sha_field_semantics": {
+  "candidate_sha": "the commit the frozen candidate tag points at -- what a releaser builds",
+  "candidate_tree_sha": "that commit's tree",
+  "candidate_tag": "the tag name for candidate_sha",
+  "closure_record_sha": "the commit that carries THIS closure record; null until frozen, because a record cannot name the commit that writes it",
+  "main_tip_sha": "the live tip of `main` AT THE TIME OF WRITING; a tip moves, so this is refreshed, never 'positional'",
+  "board2_tip_sha": "the live tip of `board2/device-release-validation` AT THE TIME OF WRITING",
+  "rule": "*** NO FIELD IS 'POSITIONAL'. *** *If a field names a ref, it holds that ref's SHA as measured; if it names the candidate, it holds the candidate. The audit found `main_sha` holding a candidate SHA while main had advanced -- that is what this split removes.*"
+ },
+ "candidate_is_immutable": true,
+ "candidate_superseded_by": null
 }

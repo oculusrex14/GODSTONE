@@ -1,398 +1,624 @@
 {
-  "schema": 1,
-  "note": "CASE-LEVEL ACCOUNTING. For every blocked task, each required case is classified HOST_TESTABLE (executable here without the external artefact) or external. Every HOST case must name a witness that EXISTS -- enforced by blockers.py's `unimplemented-case` and `fabricated-case` rods, which are themselves falsified by test_blocked_external.py w17-w23. A row reads internal_work_complete=YES only when no host-testable case lacks a witness.",
-  "generated_utc": "2026-09-19",
-  "rows": [
+ "schema": 1,
+ "note": "CASE-LEVEL ACCOUNTING. For every blocked task, each required case is classified HOST_TESTABLE (executable here without the external artefact) or external. Every HOST case must name a witness that EXISTS -- enforced by blockers.py's `unimplemented-case` and `fabricated-case` rods, which are themselves falsified by test_blocked_external.py w17-w23. A row reads internal_work_complete=YES only when no host-testable case lacks a witness.",
+ "generated_utc": "2026-09-19",
+ "rows": [
+  {
+   "task": "T62",
+   "title": "Make Android JNI generation and embedding lifecycle safe",
+   "external_requirement": null,
+   "blocker": "NATIVE_MODELS",
+   "internal_prerequisites_completed": true,
+   "declared_regression_paths": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT62Test.kt"
+   ],
+   "paths_that_exist": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT62Test.kt"
+   ],
+   "unwritten_paths_justified_by": null,
+   "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the approved native model artifacts",
+   "internal_cases": 4,
+   "external_cases": 4,
+   "internal_witnesses": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT62Test.kt"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
     {
-      "task": "T62",
-      "title": "Make Android JNI generation and embedding lifecycle safe",
-      "external_requirement": null,
-      "blocker": "NATIVE_MODELS",
-      "internal_prerequisites_completed": false,
-      "declared_regression_paths": [
-        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT62Test.kt"
-      ],
-      "paths_that_exist": [],
-      "unwritten_paths_justified_by": "court_not_authored",
-      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts",
-      "internal_cases": 4,
-      "external_cases": 4,
-      "internal_witnesses": [
-        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT62Test.kt"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "invalid/unparseable GGUF is refused",
-          "class": "REQUIRES_NATIVE_COMPILER_INPUT"
-        },
-        {
-          "case": "real JNI load/generate/embed against approved llama.cpp",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        },
-        {
-          "case": "sanitizer runs over the approved native implementation",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        },
-        {
-          "case": "native backend-refcount race against the real runtime",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        }
-      ]
+     "case": "invalid/unparseable GGUF is refused",
+     "class": "REQUIRES_NATIVE_COMPILER_INPUT"
     },
     {
-      "task": "T63",
-      "title": "Make Swift/native generation cancellation independent",
-      "external_requirement": null,
-      "blocker": "NATIVE_MODELS",
-      "internal_prerequisites_completed": false,
-      "declared_regression_paths": [
-        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT63Tests.swift"
-      ],
-      "paths_that_exist": [],
-      "unwritten_paths_justified_by": "court_not_authored",
-      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts",
-      "internal_cases": 5,
-      "external_cases": 3,
-      "internal_witnesses": [
-        "ios/Godstone/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift",
-        "ios/Godstone/Tests/GodstoneCoreTests/OracleViewModelRuntimeTests.swift",
-        "ios/project.yml"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "actual llama.cpp invocation and unload",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        },
-        {
-          "case": "Metal/CPU pressure and real cancellation latency",
-          "class": "REQUIRES_REAL_MODEL_BYTES"
-        },
-        {
-          "case": "the Swift court itself at ios/Godstone/Tests/GodstoneLLMTests/",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        }
-      ]
+     "case": "real JNI load/generate/embed against approved llama.cpp",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
     },
     {
-      "task": "T64",
-      "title": "Bind retrieval vectors to the exact embedding pipeline",
-      "external_requirement": null,
-      "blocker": "NATIVE_MODELS",
-      "internal_prerequisites_completed": false,
-      "declared_regression_paths": [
-        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt",
-        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT64Tests.swift"
-      ],
-      "paths_that_exist": [],
-      "unwritten_paths_justified_by": "court_not_authored",
-      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts",
-      "internal_cases": 10,
-      "external_cases": 2,
-      "internal_witnesses": [
-        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "actual query/corpus similarity against the approved model",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        },
-        {
-          "case": "the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        }
-      ]
+     "case": "sanitizer runs over the approved native implementation",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
     },
     {
-      "task": "T65",
-      "title": "Close Oracle cancellation and private-draft release semantics",
-      "external_requirement": null,
-      "blocker": "NATIVE_MODELS",
-      "internal_prerequisites_completed": false,
-      "declared_regression_paths": [
-        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt",
-        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT65Tests.swift"
-      ],
-      "paths_that_exist": [],
-      "unwritten_paths_justified_by": "court_not_authored",
-      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts",
-      "internal_cases": 11,
-      "external_cases": 2,
-      "internal_witnesses": [
-        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "the ACTUAL production model pipeline under real cancellation latency",
-          "class": "REQUIRES_REAL_MODEL_BYTES"
-        },
-        {
-          "case": "the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        }
-      ]
-    },
-    {
-      "task": "T73",
-      "title": "Execute physical BLE interoperability and lifecycle matrix",
-      "external_requirement": "HARDWARE",
-      "blocker": "HARDWARE",
-      "internal_prerequisites_completed": false,
-      "declared_regression_paths": [
-        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT73Test.kt",
-        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT73Tests.swift",
-        "tools/readiness/tests/test_t73.py"
-      ],
-      "paths_that_exist": [
-        "tools/readiness/tests/test_t73.py"
-      ],
-      "unwritten_paths_justified_by": "court_not_authored",
-      "internal_preparation_authored": "tools/readiness/tests/test_t73.py (device-evidence reader)",
-      "internal_work_complete": true,
-      "remaining_external_input": "access to the named physical devices",
-      "internal_cases": 1,
-      "external_cases": 1,
-      "internal_witnesses": [
-        "tools/readiness/tests/test_t73.py"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "physical BLE interoperability on real devices",
-          "class": "DEVICE_ONLY"
-        }
-      ]
-    },
-    {
-      "task": "T74",
-      "title": "Complete human accessibility and usability acceptance",
-      "external_requirement": "HUMAN_HARDWARE",
-      "blocker": "HARDWARE",
-      "internal_prerequisites_completed": true,
-      "declared_regression_paths": [
-        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT74Test.kt",
-        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT74Tests.swift",
-        "tools/readiness/tests/test_t74.py"
-      ],
-      "paths_that_exist": [
-        "tools/readiness/tests/test_t74.py"
-      ],
-      "unwritten_paths_justified_by": "court_not_authored",
-      "internal_preparation_authored": "tools/readiness/tests/test_t74.py (device-evidence reader)",
-      "internal_work_complete": true,
-      "remaining_external_input": "access to the named physical devices",
-      "internal_cases": 1,
-      "external_cases": 1,
-      "internal_witnesses": [
-        "tools/readiness/tests/test_t74.py"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "human accessibility journey on shipping binaries",
-          "class": "EXTERNAL_APPROVAL_ONLY"
-        }
-      ]
-    },
-    {
-      "task": "T75",
-      "title": "Measure battery, thermal and long-soak behavior",
-      "external_requirement": "HARDWARE",
-      "blocker": "HARDWARE",
-      "internal_prerequisites_completed": false,
-      "declared_regression_paths": [
-        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT75Test.kt",
-        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT75Tests.swift",
-        "tools/readiness/tests/test_t75.py"
-      ],
-      "paths_that_exist": [
-        "tools/readiness/tests/test_t75.py"
-      ],
-      "unwritten_paths_justified_by": "court_not_authored",
-      "internal_preparation_authored": "tools/readiness/tests/test_t75.py (device-evidence reader)",
-      "internal_work_complete": true,
-      "remaining_external_input": "access to the named physical devices",
-      "internal_cases": 1,
-      "external_cases": 1,
-      "internal_witnesses": [
-        "tools/readiness/tests/test_t75.py"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "battery/thermal soak on real devices",
-          "class": "DEVICE_ONLY"
-        }
-      ]
-    },
-    {
-      "task": "T76",
-      "title": "Prepare signing, store and privacy release inputs",
-      "external_requirement": "HUMAN_SIGNING_POLICY",
-      "blocker": "SIGNING",
-      "internal_prerequisites_completed": false,
-      "declared_regression_paths": [
-        "tools/readiness/tests/test_t76.py"
-      ],
-      "paths_that_exist": [
-        "tools/readiness/tests/test_t76.py"
-      ],
-      "unwritten_paths_justified_by": null,
-      "internal_preparation_authored": "tools/readiness/tests/test_t76.py + docs/production/{SIGNING,PRIVACY,STORE_SUBMISSION}.md + RELEASE_METADATA.json + STORE_POLICY_CHECKLIST.json",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the signing policy and credentials",
-      "internal_cases": 1,
-      "external_cases": 1,
-      "internal_witnesses": [
-        "tools/readiness/tests/test_t76.py"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "the actual signing and store approval",
-          "class": "EXTERNAL_APPROVAL_ONLY"
-        }
-      ]
-    },
-    {
-      "task": "T78",
-      "title": "Assemble exact-SHA candidate evidence and stop for audit",
-      "external_requirement": null,
-      "blocker": "NATIVE_MODELS",
-      "internal_prerequisites_completed": false,
-      "declared_regression_paths": [
-        "tools/readiness/tests/test_t78.py"
-      ],
-      "paths_that_exist": [
-        "tools/readiness/tests/test_t78.py"
-      ],
-      "unwritten_paths_justified_by": null,
-      "internal_preparation_authored": "run.py:evaluate_candidate (extended) + tools/readiness/tests/test_t78.py",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts",
-      "internal_cases": 1,
-      "external_cases": 1,
-      "internal_witnesses": [
-        "tools/readiness/tests/test_t78.py"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "final L0-L10 evaluation over approved external artefacts",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        }
-      ]
-    },
-    {
-      "task": "T79",
-      "title": "Consume independently approved A-06 fixtures",
-      "external_requirement": "APPROVED_INDEPENDENT_ARTIFACT",
-      "blocker": "A06",
-      "internal_prerequisites_completed": true,
-      "declared_regression_paths": [
-        "tools/readiness/tests/test_t79.py"
-      ],
-      "paths_that_exist": [
-        "tools/readiness/tests/test_t79.py"
-      ],
-      "unwritten_paths_justified_by": null,
-      "internal_preparation_authored": "tools/readiness/tests/test_t79.py (conformance-ingest)",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the reviewed conformance artifact",
-      "internal_cases": 1,
-      "external_cases": 1,
-      "internal_witnesses": [
-        "tools/readiness/tests/test_t79.py"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "the independent auditor's own pinned vector source",
-          "class": "EXTERNAL_APPROVAL_ONLY"
-        }
-      ]
-    },
-    {
-      "task": "T80",
-      "title": "Consume approved production content and editorial decisions",
-      "external_requirement": "APPROVED_CONTENT_HUMAN_REVIEW",
-      "blocker": "APPROVED_CONTENT",
-      "internal_prerequisites_completed": true,
-      "declared_regression_paths": [
-        "tools/readiness/tests/test_t80.py"
-      ],
-      "paths_that_exist": [
-        "tools/readiness/tests/test_t80.py"
-      ],
-      "unwritten_paths_justified_by": null,
-      "internal_preparation_authored": "tools/readiness/tests/test_t80.py (corpus-ingest)",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved content corpus",
-      "internal_cases": 1,
-      "external_cases": 1,
-      "internal_witnesses": [
-        "tools/readiness/tests/test_t80.py"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "the licensed human-reviewed production corpus",
-          "class": "EXTERNAL_APPROVAL_ONLY"
-        }
-      ]
-    },
-    {
-      "task": "T81",
-      "title": "Restore approved native and model artifacts",
-      "external_requirement": "APPROVED_NATIVE_MODEL_ARTIFACTS",
-      "blocker": "NATIVE_MODELS",
-      "internal_prerequisites_completed": true,
-      "declared_regression_paths": [
-        "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT81Test.kt",
-        "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT81Tests.swift"
-      ],
-      "paths_that_exist": [],
-      "unwritten_paths_justified_by": "court_not_authored",
-      "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
-      "internal_work_complete": true,
-      "remaining_external_input": "receipt of the approved native model artifacts",
-      "internal_cases": 1,
-      "external_cases": 1,
-      "internal_witnesses": [
-        "tools/readiness/tests/test_t81.py"
-      ],
-      "internal_cases_without_witness": [],
-      "external_case_list": [
-        {
-          "case": "real approved native/model binaries and their licences",
-          "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
-        }
-      ]
+     "case": "native backend-refcount race against the real runtime",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
     }
-  ],
-  "counts": {
-    "tasks": 12,
-    "internal_work_complete": 12,
-    "not_complete": 0,
-    "internal_cases": 38,
-    "external_cases": 19
+   ],
+   "paths_missing": [],
+   "declared_paths_by_platform": {
+    "android": {
+     "exists": [
+      "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT62Test.kt"
+     ],
+     "missing": []
+    }
+   }
   },
-  "subsystem_stage_condition": {
-    "observed": "For the python-court tasks (T73/T74/T75/T76/T78), the `subsystem` stage runs `python3 -m unittest discover -s tools/readiness/tests`, i.e. the WHOLE readiness suite, and reports 752/748 -- four failures, all in the T01 preservation court.",
-    "why": "T01's court asserts that a FROZEN inventory snapshot equals the LIVE git HEAD. In live mode that is unsatisfiable by construction: the snapshot pinNETH head b5c3d3d3 while the work is elsewhere. It requires its fixture environment (GODSTONE_ROOT / GODSTONE_EVIDENCE), in which the same suite readeth 752/752 PASSED.",
-    "pre_existing_evidence": "Verified at the superseded candidate 1e0ca3a7 in a clean worktree: the same four arms fail by name. The ledger root-caused them at rounds 655-663 and recorded the live-mode failure as inherent.",
-    "does_CI_run_it": "NO. The canonical workflow runs test_t77.py directly plus the gradle lanes; this python aggregate is a local tool and is not a CI gate.",
-    "what_the_NARROW_stage_reports": "Each court's own narrow stage reports POSITIVE counts and PASSES: T73 11/11, T74 11/11, T75 11/11, T76 13/13, T78 11/11, T79 8/8, T80 8/8. No required court returneth 0/0."
+  {
+   "task": "T63",
+   "title": "Make Swift/native generation cancellation independent",
+   "external_requirement": null,
+   "blocker": "NATIVE_MODELS",
+   "internal_prerequisites_completed": false,
+   "declared_regression_paths": [
+    "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT63Tests.swift"
+   ],
+   "paths_that_exist": [],
+   "unwritten_paths_justified_by": {
+    "justification": "court_not_authored",
+    "applies_to": [
+     "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT63Tests.swift"
+    ]
+   },
+   "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the approved native model artifacts",
+   "internal_cases": 5,
+   "external_cases": 3,
+   "internal_witnesses": [
+    "ios/Godstone/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift",
+    "ios/Godstone/Tests/GodstoneCoreTests/OracleViewModelRuntimeTests.swift",
+    "ios/project.yml"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "actual llama.cpp invocation and unload",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+    },
+    {
+     "case": "Metal/CPU pressure and real cancellation latency",
+     "class": "REQUIRES_REAL_MODEL_BYTES"
+    },
+    {
+     "case": "the Swift court itself at ios/Godstone/Tests/GodstoneLLMTests/",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+    }
+   ],
+   "paths_missing": [
+    "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT63Tests.swift"
+   ],
+   "declared_paths_by_platform": {
+    "ios": {
+     "exists": [],
+     "missing": [
+      "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT63Tests.swift"
+     ]
+    }
+   }
+  },
+  {
+   "task": "T64",
+   "title": "Bind retrieval vectors to the exact embedding pipeline",
+   "external_requirement": null,
+   "blocker": "NATIVE_MODELS",
+   "internal_prerequisites_completed": false,
+   "declared_regression_paths": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt",
+    "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT64Tests.swift"
+   ],
+   "paths_that_exist": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+   ],
+   "unwritten_paths_justified_by": {
+    "justification": "court_not_authored",
+    "applies_to": [
+     "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT64Tests.swift"
+    ]
+   },
+   "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the approved native model artifacts",
+   "internal_cases": 10,
+   "external_cases": 2,
+   "internal_witnesses": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "actual query/corpus similarity against the approved model",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+    },
+    {
+     "case": "the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+    }
+   ],
+   "paths_missing": [
+    "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT64Tests.swift"
+   ],
+   "declared_paths_by_platform": {
+    "android": {
+     "exists": [
+      "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT64Test.kt"
+     ],
+     "missing": []
+    },
+    "ios": {
+     "exists": [],
+     "missing": [
+      "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT64Tests.swift"
+     ]
+    }
+   }
+  },
+  {
+   "task": "T65",
+   "title": "Close Oracle cancellation and private-draft release semantics",
+   "external_requirement": null,
+   "blocker": "NATIVE_MODELS",
+   "internal_prerequisites_completed": false,
+   "declared_regression_paths": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt",
+    "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT65Tests.swift"
+   ],
+   "paths_that_exist": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+   ],
+   "unwritten_paths_justified_by": {
+    "justification": "court_not_authored",
+    "applies_to": [
+     "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT65Tests.swift"
+    ]
+   },
+   "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the approved native model artifacts",
+   "internal_cases": 11,
+   "external_cases": 2,
+   "internal_witnesses": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "the ACTUAL production model pipeline under real cancellation latency",
+     "class": "REQUIRES_REAL_MODEL_BYTES"
+    },
+    {
+     "case": "the iOS twin at ios/Godstone/Tests/GodstoneLLMTests/",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+    }
+   ],
+   "paths_missing": [
+    "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT65Tests.swift"
+   ],
+   "declared_paths_by_platform": {
+    "android": {
+     "exists": [
+      "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT65Test.kt"
+     ],
+     "missing": []
+    },
+    "ios": {
+     "exists": [],
+     "missing": [
+      "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT65Tests.swift"
+     ]
+    }
+   }
+  },
+  {
+   "task": "T73",
+   "title": "Execute physical BLE interoperability and lifecycle matrix",
+   "external_requirement": "HARDWARE",
+   "blocker": "HARDWARE",
+   "internal_prerequisites_completed": false,
+   "declared_regression_paths": [
+    "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT73Test.kt",
+    "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT73Tests.swift",
+    "tools/readiness/tests/test_t73.py"
+   ],
+   "paths_that_exist": [
+    "tools/readiness/tests/test_t73.py"
+   ],
+   "unwritten_paths_justified_by": {
+    "justification": "court_not_authored",
+    "applies_to": [
+     "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT73Test.kt",
+     "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT73Tests.swift"
+    ]
+   },
+   "internal_preparation_authored": "tools/readiness/tests/test_t73.py (device-evidence reader)",
+   "internal_work_complete": true,
+   "remaining_external_input": "access to the named physical devices",
+   "internal_cases": 1,
+   "external_cases": 1,
+   "internal_witnesses": [
+    "tools/readiness/tests/test_t73.py"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "physical BLE interoperability on real devices",
+     "class": "DEVICE_ONLY"
+    }
+   ],
+   "paths_missing": [
+    "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT73Test.kt",
+    "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT73Tests.swift"
+   ],
+   "declared_paths_by_platform": {
+    "android": {
+     "exists": [],
+     "missing": [
+      "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT73Test.kt"
+     ]
+    },
+    "ios": {
+     "exists": [],
+     "missing": [
+      "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT73Tests.swift"
+     ]
+    },
+    "python": {
+     "exists": [
+      "tools/readiness/tests/test_t73.py"
+     ],
+     "missing": []
+    }
+   }
+  },
+  {
+   "task": "T74",
+   "title": "Complete human accessibility and usability acceptance",
+   "external_requirement": "HUMAN_HARDWARE",
+   "blocker": "HARDWARE",
+   "internal_prerequisites_completed": false,
+   "declared_regression_paths": [
+    "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT74Test.kt",
+    "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT74Tests.swift",
+    "tools/readiness/tests/test_t74.py"
+   ],
+   "paths_that_exist": [
+    "tools/readiness/tests/test_t74.py"
+   ],
+   "unwritten_paths_justified_by": {
+    "justification": "court_not_authored",
+    "applies_to": [
+     "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT74Test.kt",
+     "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT74Tests.swift"
+    ]
+   },
+   "internal_preparation_authored": "tools/readiness/tests/test_t74.py (device-evidence reader)",
+   "internal_work_complete": true,
+   "remaining_external_input": "access to the named physical devices",
+   "internal_cases": 1,
+   "external_cases": 1,
+   "internal_witnesses": [
+    "tools/readiness/tests/test_t74.py"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "human accessibility journey on shipping binaries",
+     "class": "EXTERNAL_APPROVAL_ONLY"
+    }
+   ],
+   "paths_missing": [
+    "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT74Test.kt",
+    "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT74Tests.swift"
+   ],
+   "declared_paths_by_platform": {
+    "android": {
+     "exists": [],
+     "missing": [
+      "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT74Test.kt"
+     ]
+    },
+    "ios": {
+     "exists": [],
+     "missing": [
+      "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT74Tests.swift"
+     ]
+    },
+    "python": {
+     "exists": [
+      "tools/readiness/tests/test_t74.py"
+     ],
+     "missing": []
+    }
+   }
+  },
+  {
+   "task": "T75",
+   "title": "Measure battery, thermal and long-soak behavior",
+   "external_requirement": "HARDWARE",
+   "blocker": "HARDWARE",
+   "internal_prerequisites_completed": false,
+   "declared_regression_paths": [
+    "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT75Test.kt",
+    "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT75Tests.swift",
+    "tools/readiness/tests/test_t75.py"
+   ],
+   "paths_that_exist": [
+    "tools/readiness/tests/test_t75.py"
+   ],
+   "unwritten_paths_justified_by": {
+    "justification": "court_not_authored",
+    "applies_to": [
+     "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT75Test.kt",
+     "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT75Tests.swift"
+    ]
+   },
+   "internal_preparation_authored": "tools/readiness/tests/test_t75.py (device-evidence reader)",
+   "internal_work_complete": true,
+   "remaining_external_input": "access to the named physical devices",
+   "internal_cases": 1,
+   "external_cases": 1,
+   "internal_witnesses": [
+    "tools/readiness/tests/test_t75.py"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "battery/thermal soak on real devices",
+     "class": "DEVICE_ONLY"
+    }
+   ],
+   "paths_missing": [
+    "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT75Test.kt",
+    "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT75Tests.swift"
+   ],
+   "declared_paths_by_platform": {
+    "android": {
+     "exists": [],
+     "missing": [
+      "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT75Test.kt"
+     ]
+    },
+    "ios": {
+     "exists": [],
+     "missing": [
+      "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT75Tests.swift"
+     ]
+    },
+    "python": {
+     "exists": [
+      "tools/readiness/tests/test_t75.py"
+     ],
+     "missing": []
+    }
+   }
+  },
+  {
+   "task": "T76",
+   "title": "Prepare signing, store and privacy release inputs",
+   "external_requirement": "HUMAN_SIGNING_POLICY",
+   "blocker": "SIGNING",
+   "internal_prerequisites_completed": true,
+   "declared_regression_paths": [
+    "tools/readiness/tests/test_t76.py"
+   ],
+   "paths_that_exist": [
+    "tools/readiness/tests/test_t76.py"
+   ],
+   "unwritten_paths_justified_by": null,
+   "internal_preparation_authored": "tools/readiness/tests/test_t76.py + docs/production/{SIGNING,PRIVACY,STORE_SUBMISSION}.md + RELEASE_METADATA.json + STORE_POLICY_CHECKLIST.json",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the signing policy and credentials",
+   "internal_cases": 1,
+   "external_cases": 1,
+   "internal_witnesses": [
+    "tools/readiness/tests/test_t76.py"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "the actual signing and store approval",
+     "class": "EXTERNAL_APPROVAL_ONLY"
+    }
+   ],
+   "paths_missing": [],
+   "declared_paths_by_platform": {
+    "python": {
+     "exists": [
+      "tools/readiness/tests/test_t76.py"
+     ],
+     "missing": []
+    }
+   }
+  },
+  {
+   "task": "T78",
+   "title": "Assemble exact-SHA candidate evidence and stop for audit",
+   "external_requirement": null,
+   "blocker": "NATIVE_MODELS",
+   "internal_prerequisites_completed": true,
+   "declared_regression_paths": [
+    "tools/readiness/tests/test_t78.py"
+   ],
+   "paths_that_exist": [
+    "tools/readiness/tests/test_t78.py"
+   ],
+   "unwritten_paths_justified_by": null,
+   "internal_preparation_authored": "run.py:evaluate_candidate (extended) + tools/readiness/tests/test_t78.py",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the approved native model artifacts",
+   "internal_cases": 1,
+   "external_cases": 1,
+   "internal_witnesses": [
+    "tools/readiness/tests/test_t78.py"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "final L0-L10 evaluation over approved external artefacts",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+    }
+   ],
+   "paths_missing": [],
+   "declared_paths_by_platform": {
+    "python": {
+     "exists": [
+      "tools/readiness/tests/test_t78.py"
+     ],
+     "missing": []
+    }
+   }
+  },
+  {
+   "task": "T79",
+   "title": "Consume independently approved A-06 fixtures",
+   "external_requirement": "APPROVED_INDEPENDENT_ARTIFACT",
+   "blocker": "A06",
+   "internal_prerequisites_completed": true,
+   "declared_regression_paths": [
+    "tools/readiness/tests/test_t79.py"
+   ],
+   "paths_that_exist": [
+    "tools/readiness/tests/test_t79.py"
+   ],
+   "unwritten_paths_justified_by": null,
+   "internal_preparation_authored": "tools/readiness/tests/test_t79.py (conformance-ingest)",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the reviewed conformance artifact",
+   "internal_cases": 1,
+   "external_cases": 1,
+   "internal_witnesses": [
+    "tools/readiness/tests/test_t79.py"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "the independent auditor's own pinned vector source",
+     "class": "EXTERNAL_APPROVAL_ONLY"
+    }
+   ],
+   "paths_missing": [],
+   "declared_paths_by_platform": {
+    "python": {
+     "exists": [
+      "tools/readiness/tests/test_t79.py"
+     ],
+     "missing": []
+    }
+   }
+  },
+  {
+   "task": "T80",
+   "title": "Consume approved production content and editorial decisions",
+   "external_requirement": "APPROVED_CONTENT_HUMAN_REVIEW",
+   "blocker": "APPROVED_CONTENT",
+   "internal_prerequisites_completed": true,
+   "declared_regression_paths": [
+    "tools/readiness/tests/test_t80.py"
+   ],
+   "paths_that_exist": [
+    "tools/readiness/tests/test_t80.py"
+   ],
+   "unwritten_paths_justified_by": null,
+   "internal_preparation_authored": "tools/readiness/tests/test_t80.py (corpus-ingest)",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the approved content corpus",
+   "internal_cases": 1,
+   "external_cases": 1,
+   "internal_witnesses": [
+    "tools/readiness/tests/test_t80.py"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "the licensed human-reviewed production corpus",
+     "class": "EXTERNAL_APPROVAL_ONLY"
+    }
+   ],
+   "paths_missing": [],
+   "declared_paths_by_platform": {
+    "python": {
+     "exists": [
+      "tools/readiness/tests/test_t80.py"
+     ],
+     "missing": []
+    }
+   }
+  },
+  {
+   "task": "T81",
+   "title": "Restore approved native and model artifacts",
+   "external_requirement": "APPROVED_NATIVE_MODEL_ARTIFACTS",
+   "blocker": "NATIVE_MODELS",
+   "internal_prerequisites_completed": false,
+   "declared_regression_paths": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT81Test.kt",
+    "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT81Tests.swift"
+   ],
+   "paths_that_exist": [],
+   "unwritten_paths_justified_by": {
+    "justification": "court_not_authored",
+    "applies_to": [
+     "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT81Test.kt",
+     "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT81Tests.swift"
+    ]
+   },
+   "internal_preparation_authored": "tools/readiness/tests/test_t81.py (receipt form)",
+   "internal_work_complete": true,
+   "remaining_external_input": "receipt of the approved native model artifacts",
+   "internal_cases": 1,
+   "external_cases": 1,
+   "internal_witnesses": [
+    "tools/readiness/tests/test_t81.py"
+   ],
+   "internal_cases_without_witness": [],
+   "external_case_list": [
+    {
+     "case": "real approved native/model binaries and their licences",
+     "class": "REQUIRES_APPROVED_NATIVE_ARTIFACT"
+    }
+   ],
+   "paths_missing": [
+    "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT81Test.kt",
+    "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT81Tests.swift"
+   ],
+   "declared_paths_by_platform": {
+    "android": {
+     "exists": [],
+     "missing": [
+      "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT81Test.kt"
+     ]
+    },
+    "ios": {
+     "exists": [],
+     "missing": [
+      "ios/Godstone/Tests/GodstoneLLMTests/ReadinessT81Tests.swift"
+     ]
+    }
+   }
   }
+ ],
+ "counts": {
+  "rows": 12,
+  "tasks_with_all_declared_courts_present": 5,
+  "tasks_with_a_missing_declared_court": 7,
+  "tasks_declaring_no_paths": []
+ },
+ "subsystem_stage_condition": {
+  "observed": "For the python-court tasks (T73/T74/T75/T76/T78), the `subsystem` stage runs `python3 -m unittest discover -s tools/readiness/tests`, i.e. the WHOLE readiness suite, and reports 752/748 -- four failures, all in the T01 preservation court.",
+  "why": "T01's court asserts that a FROZEN inventory snapshot equals the LIVE git HEAD. In live mode that is unsatisfiable by construction: the snapshot pinNETH head b5c3d3d3 while the work is elsewhere. It requires its fixture environment (GODSTONE_ROOT / GODSTONE_EVIDENCE), in which the same suite readeth 752/752 PASSED.",
+  "pre_existing_evidence": "Verified at the superseded candidate 1e0ca3a7 in a clean worktree: the same four arms fail by name. The ledger root-caused them at rounds 655-663 and recorded the live-mode failure as inherent.",
+  "does_CI_run_it": "NO. The canonical workflow runs test_t77.py directly plus the gradle lanes; this python aggregate is a local tool and is not a CI gate.",
+  "what_the_NARROW_stage_reports": "Each court's own narrow stage reports POSITIVE counts and PASSES: T73 11/11, T74 11/11, T75 11/11, T76 13/13, T78 11/11, T79 8/8, T80 8/8. No required court returneth 0/0."
+ },
+ "recomputed_utc": "2026-09-20T09:40:35Z",
+ "recompute_note": "*** DERIVED FROM THE LIVE FILESYSTEM, NOT REMEMBERED. *** *The `paths_that_exist` and `court_not_authored` fields were a SNAPSHOT that nothing refreshed: the courts were authored in later rounds and these fields went on denying them, so a row named its court twice and denied it once. `scripts/recompute_blocked_matrix.py` measures each declared path per platform, so 'Android done, iOS owed' is expressible instead of collapsed.*"
 }
