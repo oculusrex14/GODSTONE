@@ -565,6 +565,59 @@ final class GsIntegration001RealTransportTests: XCTestCase {
     }
 
 
+    /// *** NO DIRECT LINK: AN OUTBOUND FRAME WITH NO CONNECTED RELAY MUST BE QUEUED DURABLY, NOT DROPPED. ***
+    ///
+    /// *`dispatchDirect` is the OUTBOUND twin of `dispatchSos` -- the same class of road, the same durable write
+    /// (`enqueueDirectOutbound` inserts the frame AND the `QUEUED_DURABLY` row in ONE transaction). With no relay
+    /// attached, `.queuedLocally` is the only honest outcome; a return of `.handedToRelays(0)` or a silent success
+    /// would claim a radio event that never happened.*
+    func testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio() throws {
+        let rig = try makeHarness()
+        defer { rig.tearDown() }
+
+        // *** NO RELAY IS ATTACHED. ***
+        // *No accessor counts links; the transport answers per-peer. Alice knows no relay in this rig, so the
+        // assertion is on the peer she would use.*
+        XCTAssertNotNil(rig.alice.connection(for: rig.handleB), "the rig binds alice to bob for the relay road")
+
+        let frame = makeFrame([0x10], msgIdByte: 0x31, routingTag: rig.pair.bobIdentity.nodeHint)
+        let outcome = rig.aliceNode.dispatchDirect(
+            frame, expectedRecipient: rig.pair.bobIdentity.nodeId, send: { _, _ in false },
+        )
+        XCTAssertEqual(
+            .queuedLocally, outcome,
+            "*** WITH NO DIRECT LINK THE FRAME MUST BE QUEUED DURABLY. `handedToRelays(0)` would be a radio claim " +
+                "with no radio, and a rejection would lose durable work. Observed: \(outcome) ***",
+        )
+    }
+
+    /// *** RECIPIENT ACK: AN ACK OFFERED FOR A LINK MUST BE DRAINED FOR THAT LINK, IN ORDER. ***
+    ///
+    /// *The card names "recipient ACK". The outbox is bounded and FIFO, so the observable is that what was offered
+    /// comes back out, in order, and that the bound is respected -- **an ACK pump that silently dropped the oldest
+    /// would starve exactly the sender waiting the longest.***
+    func testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink() throws {
+        let rig = try makeHarness()
+        defer { rig.tearDown() }
+
+        let first = makeFrame([0xA1], msgIdByte: 0xC1, routingTag: rig.pair.aliceIdentity.nodeHint)
+        let second = makeFrame([0xA2], msgIdByte: 0xC2, routingTag: rig.pair.aliceIdentity.nodeHint)
+
+        XCTAssertTrue(rig.bobNode.offerAckForLink(first), "the first ACK is offered")
+        XCTAssertTrue(rig.bobNode.offerAckForLink(second), "the second ACK is offered")
+        XCTAssertEqual(2, rig.bobNode.ackOutboxDepthForTest(), "*** BOTH OFFERS ARE HELD. ***")
+
+        let drained = rig.bobNode.drainAckOutboxForLink(2)
+        XCTAssertEqual(2, drained.count, "both must come back out")
+        XCTAssertEqual(
+            [first.msgId, second.msgId], drained.map(\.msgId),
+            "*** THE DRAIN MUST PRESERVE ORDER -- the outbox is FIFO, and a pump that reordered would confirm " +
+                "messages out of the order they were earned. ***",
+        )
+        XCTAssertEqual(0, rig.bobNode.ackOutboxDepthForTest(), "and the outbox is emptied by the drain")
+    }
+
+
     // MARK: - Harness Rig
     // =========================================================================
 
