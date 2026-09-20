@@ -15734,6 +15734,17 @@
     "python_readiness": "759 tests OK",
     "ci_controls_repo_scope": "7 passed, 0 failed, 'all invariants hold' (invariant D reported, not gated: external Noise vectors / A-06)"
    }
+  },
+  "stale_blocker_disproved_this_session": {
+   "claim_retired": "THREE FINDINGS RECORDED THAT 'the iOS half cannot be compiled here (NATIVE_MODELS)' -- GS-UX-001 clause (iv), GS-ARCHIVE-005 and GS-FINAL-006. **THAT CLAIM IS STALE AND WAS DISPROVED BY RUNNING THE CANONICAL COMMAND, NOT BY ARGUMENT.**",
+   "measurement": "`xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light -configuration LightRelease -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build` -> **`** BUILD SUCCEEDED **`**. The `Godstone-Light` app target compiles, and it always did: the canonical workflow (.github/workflows/repository-verification.yml, job 'ios core + mesh tests + Archive-only xcodebuild') has built it on every CI run, and its second step runs the scheme's TEST action on a simulator.",
+   "why_it_mattered": "**A STALE BLOCKER IS WORSE THAN AN OPEN ONE**: it reads as an external dependency, so three findings were parked as 'cannot be done here' when the work was available in-repo. The NATIVE_MODELS gate bounds the MODEL/ORACLE stack, not the app target -- conflating the two is what put this claim in the record.",
+   "still_true": "The NATIVE_MODELS boundary DOES bound the SQLCipher engine (GS-STORE-002, GS-FINAL-004's regression half) and the oracle/model stack. THAT is a real external dependency and remains recorded as such. The distinction is now explicit rather than assumed.",
+   "unlocks": [
+    "GS-UX-001 clause (iv): the iOS UI/test target",
+    "GS-ARCHIVE-005: the iOS archive navigation witness",
+    "GS-FINAL-006: the iOS restore/scroll witness"
+   ]
   }
  }
 }
