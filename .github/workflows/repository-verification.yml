@@ -608,7 +608,27 @@ jobs:
       # Drift gate: the committed ios/Packages/GodstoneFoundation tree must be
       # byte-identical to what sync_ios_foundation_package.py would regenerate.
       - run: python scripts/sync_ios_foundation_package.py --check
-      - run: swift test --package-path ios/Packages/GodstoneFoundation
+      - name: ios lane (swift test) + the rendered-control UI courts
+        run: |
+          set -euo pipefail
+          swift test --package-path ios/Packages/GodstoneFoundation
+          # *** GS-UX-001 STEP 7: THE UI COURTS, RUN BY THE JOB THAT ACTUALLY EXISTS. ***
+          #
+          # *AN EXTERNAL REVIEW FOUND THAT `LabMeshUI` WAS INVOKED BY NO GATE ANYWHERE -- `grep -rn LabMeshUI ci/`
+          # `tools/ .github/` returned NOTHING, and `check_lane_results.py` requires only GodstoneMeshTests,
+          # GodstoneCoreTests and LabMeshTests. **SO THE BUNDLE RAN ONLY WHERE A HAND COMMAND RAN IT, AND A FREEZE
+          # CLAIMING CI COVERAGE OF UI COURTS WOULD HAVE BEEN FALSE.***
+          #
+          # *This LAUNCHES the LabMesh application and drives its accessibility tree, so an unwired control, a
+          # missing scheme or a crash on launch fails the job rather than silently reducing coverage.*
+          sim=$(xcrun simctl list devices available 2>/dev/null \
+                | grep -oE 'iPhone [0-9]+( Pro Max| Pro| Plus)?' | sort -u | tail -1)
+          echo "UI courts on simulator: ${sim}"
+          xcodebuild -project ios/Godstone.xcodeproj -scheme LabMeshUI \
+            -configuration LightDebug -destination "platform=iOS Simulator,name=${sim}" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee /tmp/xcb-ui.log
+          grep -q "TEST SUCCEEDED" /tmp/xcb-ui.log \
+            || { echo "::error::the UI courts did not report TEST SUCCEEDED"; exit 1; }
       # xcodegen is a HOST build tool, not a production dependency: it generates
       # the .xcodeproj (gitignored) from ios/project.yml. It is not preinstalled
       # on macos runners, so install it via Homebrew. Unlike the Gradle wrapper
