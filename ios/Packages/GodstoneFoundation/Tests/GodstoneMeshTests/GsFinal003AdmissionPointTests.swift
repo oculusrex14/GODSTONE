@@ -378,7 +378,17 @@ private final class GsFinal003Journal: WipeJournal, @unchecked Sendable {
     func clear() { state = .idle }
 
 
-}
+
+        /// *** GS-FINAL-003: STATED EXPLICITLY, BECAUSE THE PROTOCOL DEFAULT FAILS CLOSED. ***
+        ///
+        /// *This journal stores a TYPED `WipeState`, so it cannot hold an unparseable value -- it is readable BY
+        /// CONSTRUCTION. The protocol's default is `false` (the safe reading of an unanswerable question), and a
+        /// conformer that stays silent would therefore be reported CORRUPT and misdescribed. **AND THAT MATTERS HERE
+        /// RATHER THAN THEORETICALLY:** the composition calls `decideAndDrive`, which consults
+        /// `isReadableJournal()`, so an arm that reaches the startup road would exercise the CORRUPT branch and pass
+        /// or fail for a reason unrelated to what it means to measure.*
+        var isReadable: Bool { true }
+    }
 
 private final class GsFinal003Keychain: LocalIdentityKeychain, @unchecked Sendable {
     var storage: [String: Data] = [:]

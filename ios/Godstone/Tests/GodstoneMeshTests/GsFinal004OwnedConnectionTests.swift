@@ -330,6 +330,65 @@ final class GsFinal004OwnedConnectionTests: XCTestCase {
         )
     }
 
+    /// *** THE DOUBLE-CLOSE ARM: THE WIPE PATH FIRES BOTH CLOSES ON ONE HANDLE. ***
+    ///
+    /// *`invalidateRuntime` calls `messageStore.close()` AND then the retained `OwnedConnection.close()`. If the
+    /// store's `close()` closes the handle UNCONDITIONALLY -- which it did -- then on the factory road THE SAME
+    /// `OpaquePointer` IS CLOSED TWICE, and the second `sqlite3_close_v2` is a use-after-free.*
+    ///
+    /// **THIS ARM MODELS THE WIPE'S OWN SEQUENCE**, so it fails if the store closes what it does not own. The engine
+    /// counts the closes it performs, and the engine is the one that closes the adopted handle -- so the count must be
+    /// EXACTLY ONE for each store, however many times teardown is invoked.
+    func testGF004TheWipeSequenceClosesEachAdoptedHandleExactlyOnce() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let engine = OwningEngine()
+        let provider = CountingProvider()
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
+
+        let runtime = try MeshRuntime.createPrivateComposition(
+            messageStoreUrl: dir.appendingPathComponent("mesh.db"),
+            peerStoreUrl: dir.appendingPathComponent("peer.db"),
+            keychain: InMemoryKeychain(),
+            encryptedStores: factory,
+        )
+
+        // *** THE WIPE'S OWN ORDER: the stores are closed, THEN the owned connections. ***
+        runtime.messageStore.close()
+        runtime.peerIdentityStore.close()
+        runtime.closeAdoptedConnectionsForTest()
+
+        // *** (A) THE OBSERVABLE THAT CAN ACTUALLY SEE THIS: THE STORE'S OWN VIEW. ***
+        // *The store must RELEASE the connection -- after close() it must not reach it again -- while the OWNER does
+        // the freeing. The engine's counter cannot watch the store's raw `sqlite3_close_v2`, which is exactly why my
+        // first version of this arm passed over a real double-close; the store's own published state CAN see it.*
+        XCTAssertNil(
+            runtime.messageStore.adoptedConnectionIdentity,
+            "*** AFTER THE WIPE THE STORE MUST HAVE RELEASED THE CONNECTION -- it may not keep a handle to a " +
+                "connection its owner has closed. A store that still reports one would keep using freed memory. ***",
+        )
+        XCTAssertFalse(
+            runtime.messageStore.canStillUseConnectionForTest,
+            "*** AND IT MUST NOT STILL BE ABLE TO QUERY. This is the observation that distinguishes 'the owner " +
+                "closed it and we let go' from 'we closed a handle we do not own' -- the second is a double-free, " +
+                "and before the fix the store closed the ADOPTED handle itself. ***",
+        )
+
+        // *** (B) AND THE OWNER FREED EACH HANDLE EXACTLY ONCE. ***
+        // *The engine is the owner on this road, so ITS count is the authority for the freeing. `OwnedConnection`
+        // reports whether THIS call was the one that closed it, which is what makes "exactly one" assertable.*
+        XCTAssertEqual(
+            2, engine.closeCount,
+            "*** EACH ADOPTED HANDLE MUST BE FREED EXACTLY ONCE BY ITS OWNER. The wipe closes the STORES and then " +
+                "the OWNED CONNECTIONS; if the stores also closed what they do not own, the `OpaquePointer` would be " +
+                "freed twice -- a use-after-free the identity court cannot see. Observed: \(engine.closeCount) ***",
+        )
+
+        // AND A SECOND TEARDOWN IS HARMLESS: `OwnedConnection.close()` reports whether THIS call closed it.
+        runtime.closeAdoptedConnectionsForTest()
+        XCTAssertEqual(2, engine.closeCount, "a repeated teardown must not close anything again")
+    }
+
     // MARK: - helpers
 
     private func identity(of handle: OpaquePointer?) -> UInt? {

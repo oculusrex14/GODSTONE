@@ -365,8 +365,11 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         }
     }
 
+    // *** GS-FINAL-004: THE SAME OWNERSHIP GUARD AS `close()`. ***
+    // *`close()` dispatches on `ownsConnection`; this did not, so a deallocated store would close an adopted handle
+    // its owner still holds.*
     deinit {
-        if let db = handle {
+        if ownsConnection, let db = handle {
             sqlite3_close_v2(db)
         }
     }

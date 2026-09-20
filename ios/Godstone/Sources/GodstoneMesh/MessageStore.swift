@@ -1035,6 +1035,13 @@ public final class SqliteMessageStore: MessageStore {
     /// reports what the store is actually using.*
     public private(set) var adoptedConnectionIdentity: UInt?
 
+    /// *** GS-FINAL-004: CAN THIS STORE STILL REACH ITS CONNECTION? ***
+    ///
+    /// *The observation that can distinguish "the owner closed it and we let go" from "we closed a handle we do not
+    /// own" -- the second being a double-free. The engine's close counter CANNOT watch the store's own raw
+    /// `sqlite3_close_v2`, so a close-count arm alone passes over a real double-close; this can see it.*
+    internal var canStillUseConnectionForTest: Bool { lock.lock(); defer { lock.unlock() }; return handle != nil }
+
     /// Whether this store owns the handle it runs on (true) or merely adopted one (false).
     private var ownsConnection = true
 
@@ -1102,7 +1109,10 @@ public final class SqliteMessageStore: MessageStore {
         }
     }
 
-    deinit { if let db = handle { sqlite3_close_v2(db) } }
+    // *** GS-FINAL-004: `deinit` MUST NOT CLOSE A CONNECTION THIS STORE DOES NOT OWN. ***
+    // *It closed unconditionally, so on the factory road the store's own deallocation would close a handle the
+    // COMPOSITION owns -- and the wipe path closes both, so the same `OpaquePointer` could be freed twice.*
+    deinit { if ownsConnection, let db = handle { sqlite3_close_v2(db) } }
 
     public func close() {
         // GS-STORE-005: closing releaseth EVERY registration -- a store that no longer standeth must hold no
@@ -1110,6 +1120,21 @@ public final class SqliteMessageStore: MessageStore {
         observations.releaseAll()
         lock.lock()
         defer { lock.unlock() }
+        // *** GS-FINAL-004: EXPLICIT CLOSE OWNERSHIP -- AN ADOPTED CONNECTION IS NOT OURS TO CLOSE. ***
+        //
+        // *MEASURED DEFECT: this closed the handle UNCONDITIONALLY. The wipe path calls `messageStore.close()` and
+        // then the retained `OwnedConnection.close()`, so on the factory road THE SAME `OpaquePointer` WAS CLOSED
+        // TWICE -- a use-after-free. The peer store already dispatched on ownership; this one did not, which is how a
+        // twin fix applied to one store and not the other leaves half the defect standing.*
+        //
+        // **THE HANDLE IS STILL RELEASED FROM THIS STORE'S VIEW EITHER WAY**: after `close()` this store must not
+        // reach the connection again, so the reference is dropped and every operation fails closed -- which is the
+        // behaviour the wipe depends on -- while the CONNECTION ITSELF is freed only by its owner.
+        if !ownsConnection {
+            handle = nil
+            adoptedConnectionIdentity = nil
+            return
+        }
         if let db = handle {
             sqlite3_close_v2(db)
             handle = nil
