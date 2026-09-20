@@ -398,4 +398,59 @@ final class LabMeshUITests: XCTestCase {
                 "see. Observed before/after: \(sosBefore) / \(sosAfter) ***",
         )
     }
+
+    /// *** THE CARD NAMES "SOS hold/cancel": A LIFTED HOLD MUST NOT SEND, AND THE SCREEN MUST SAY SO. ***
+    ///
+    /// *The arm above covers HOLD and the accessible ALTERNATIVE. **CANCEL IS A SEPARATE PROPERTY**: a gesture that
+    /// must be held is only safe if releasing early does NOT fire it, and **the app's own source says the gesture is
+    /// cancellable and that the screen SAYETH so** ("hold cancelled -- threshold not reached"). This drives the
+    /// rendered control through that road and requires the runtime's OWN counter to be UNCHANGED.*
+    func testGSINT001ACancelledSosHoldDoesNotReachTheRuntime() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // ADDRESSED WHERE IT RENDERS, the same idiom the hold arm uses -- a gesture the tree cannot name is
+        // unreachable to assistive technology as well as to this test.
+        // *** THE SOS SURFACE LIVES ON ITS OWN TAB, WHICH THIS ARM MUST REACH FIRST. ***
+        // *MEASURED: my first version omitted this and failed on the very first assertion -- "the SOS gesture must be
+        // addressable in the tree" -- because the control renders on a tab the app had not opened. **A missing
+        // NAVIGATION step reads exactly like a missing CONTROL**, which is the false signal this bundle exists to
+        // avoid.*
+        let sosTab = tab("lab.tab.sos", in: app)
+        XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
+        sosTab.tap()
+
+        let holdText = app.staticTexts["lab.sos.hold"]
+        let holdOther = app.otherElements["lab.sos.hold"]
+        XCTAssertTrue(
+            holdText.waitForExistence(timeout: 20) || holdOther.exists,
+            "*** THE SOS GESTURE MUST BE ADDRESSABLE IN THE TREE. ***",
+        )
+        let sos = holdText.exists ? holdText : holdOther
+
+        let sosAdmitted = app.staticTexts["lab.sos.admitted"]
+        XCTAssertTrue(sosAdmitted.waitForExistence(timeout: 20),
+                      "the SOS counter must render, since the whole point is the RUNTIME's own count")
+        let before = sosAdmitted.label
+
+        // *** A PRESS THAT IS LIFTED BEFORE THE THRESHOLD -- the cancel road. ***
+        sos.press(forDuration: 0.2)
+
+        // The screen must SAY it was cancelled rather than arming.
+        let cancelled = app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS[c] 'cancel'")).firstMatch
+        XCTAssertTrue(
+            cancelled.waitForExistence(timeout: 10),
+            "*** A LIFTED HOLD MUST BE REPORTED AS CANCELLED. An implementation that armed silently would leave the "
+                + "user believing nothing happened while an SOS stood. ***",
+        )
+
+        // *** AND THE RUNTIME COUNTER MUST NOT HAVE MOVED. ***
+        XCTAssertEqual(
+            before, sosAdmitted.label,
+            "*** A CANCELLED HOLD MUST NOT REACH THE RUNTIME. `lab.sos.admitted` reads the runtime's OWN counter, so "
+                + "an implementation that fired on the DOWN edge would redden exactly here. Observed: \(before) -> "
+                + "\(sosAdmitted.label) ***",
+        )
+    }
 }
