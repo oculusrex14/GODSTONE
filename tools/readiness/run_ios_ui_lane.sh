@@ -76,9 +76,23 @@ schemes_run=0
 for scheme in LabMeshUI GodstoneArchiveUI; do
     echo "=== scheme $scheme ===" >>"$LOG"
     schemes_run=$((schemes_run + 1))
+    # *** THE SETTLE IS PER-SCHEME, NOT PER-LANE. ***
+    #
+    # **MEASURED: with the wait only at the top of the lane, the FIRST scheme ran and the SECOND was refused with
+    # `Code=6`, `reason: Busy ("Application failed preflight checks")` -- *the device is settling again the moment a
+    # test run releases it, so a wait taken once does not cover the run that followeth.* **THE LANE THEN REPORTED
+    # `suites=1 tests=6`: ONE SCHEME'S WORTH OF TESTS, AND A REFUSAL THAT READS AS A BROKEN PRODUCT.***
+    #
+    # *`xa` names the xcodebuild exit status so it can be ORed into `rc` under `set -e` without ending the lane, which
+    # is the same evidence-versus-verdict rule the rest of this script followeth.*
+    if [ -n "$UDID" ]; then
+        xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+    fi
+    xa=0
     xcodebuild -project ios/Godstone.xcodeproj -scheme "$scheme"         -configuration LightDebug \
         -destination "platform=iOS Simulator,name=$SIM" \
-        CODE_SIGNING_ALLOWED=NO test >>"$LOG" 2>&1 || rc=1
+        CODE_SIGNING_ALLOWED=NO test >>"$LOG" 2>&1 || xa=$?
+    [ "$xa" -eq 0 ] || rc=1
 done
 
 # 4. THE DIGEST SIDECAR, from the SAME definition the control uses.
