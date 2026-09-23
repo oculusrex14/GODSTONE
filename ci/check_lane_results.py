@@ -673,6 +673,10 @@ def check_mirror_membership() -> list[str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--scope", choices=("all", "ios", "android"), default="all",
+                    help="which lanes this invocation is responsible for -- *a control run inside the iOS job "
+                         "cannot judge the ANDROID lanes, which a different job produces, nor the UI lane, which has "
+                         "not run yet; asking it to would refuse thirteen things that are merely ABSENT*")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--selftest-ui", action="store_true")
     args = ap.parse_args()
@@ -683,7 +687,7 @@ def main() -> int:
 
     all_problems: list[str] = []
     summary: list[str] = []
-    for label, task_dir, pattern in LANES:
+    for label, task_dir, pattern in (LANES if args.scope in ("all", "android") else ()):
         probs = check_lane(label, pattern)
         files = glob.glob(str(REPO / pattern))
         # *** AND AN UNEXPECTED SIBLING UNDER `test-results/` IS REFUSED BY NAME (round 745). ***
@@ -737,13 +741,20 @@ def main() -> int:
                 f"disagreeth with the sources is counting stale result files from a sibling task directory, or did not "
                 f"run them all. Clear `build/test-results/` and re-run the lane.*")
 
-    ios_probs, ios_totals = check_ios_lane()
+    ios_probs, ios_totals = check_ios_lane() if args.scope in ("all", "ios") else ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
     summary.append(
         f"  {'ios:foundation':<14} suites={ios_totals['suites']:<3} tests={ios_totals['tests']:<5} "
         f"failures={ios_totals['failures']}  <- per bundle: " + "; ".join(ios_totals.get("evidence", [])))
     all_problems.extend(ios_probs)
 
-    ui_probs, ui_totals = check_ios_ui_lane()
+    # *** THE UI LANE IS PART OF THE iOS SCOPE, BUT ONLY WHEN IT HAS HAD A CHANCE TO RUN. ***
+    # *`--scope ios` is used by the iOS job BEFORE the UI step, so the UI lane is included only when its log EXISTS;
+    # otherwise the step that is ABOUT to produce it would be refused for not having produced it. The UI step in the
+    # same job runs the control again, by which time the log exists and the arm roster is enforced.*
+    if args.scope in ("all", "ios") and (IOS_UI_LOG.is_file() or args.scope == "all"):
+        ui_probs, ui_totals = check_ios_ui_lane()
+    else:
+        ui_probs, ui_totals = ([], {"suites": 0, "tests": 0, "failures": 0, "known_red": 0})
     summary.append(
         f"  {'ios:ui':<14} suites={ui_totals['suites']:<3} tests={ui_totals['tests']:<5} "
         f"failures={ui_totals['failures']}  <- the `bundle.ui-testing` targets: "

@@ -556,6 +556,20 @@ jobs:
             :app:testLightDebugUnitTest \
             :labmesh:testDebugUnitTest \
             --no-daemon
+      # *** THE ANDROID LANES ARE JUDGED BY THE SAME COMMITTED CONTROL, SCOPED TO THIS JOB. ***
+      #
+      # *THE GAP: the android job ran gradle DIRECTLY and never invoked `check_lane_results.py`, so its lane
+      # artifacts were produced and never judged -- **the same "machinery exists but is not the canonical gate"
+      # shape the UI lane had.** The digests are written here by the same tool the committed runner uses, so the
+      # control can bind each result to the source bytes it tested.
+      - name: android lane control (scoped to this job's lanes)
+        run: |
+          set -euo pipefail
+          python3 tools/readiness/android_source_digest.py >android-app.sources.sha256
+          python3 tools/readiness/android_source_digest.py --lane android:core >android-core.sources.sha256
+          python3 tools/readiness/android_source_digest.py --lane android:mesh >android-mesh.sources.sha256
+          python3 ci/check_lane_results.py --scope android
+
       - name: lab-isolation gate (T54) -- prove the nonshipping LabMesh targets
           # The lab is a SEPARATE application identity (io.godstone.labmesh) that
           # reaches the canonical runtime components; the LIGHT Archive-only
@@ -628,20 +642,34 @@ jobs:
       # `LabMeshUI` xcodebuild INSTEAD, AND RAN THE ARCHIVE SCHEME NOT AT ALL.*** **So the workflow no longer keeps an
       # independent implementation of the same lane: it CALLS the committed runner, which is the only place the
       # schemes, the simulator resolution and the digest sidecar are defined.***
+      # *** ONE OBVIOUS REPOSITORY-OWNED PATH PER LANE, AND ONE CONTROL AFTER BOTH. ***
+      #
+      # *MEASURED FAILURE, MINE, ON RUN `35902192306`: I put `check_lane_results.py` inside the FOUNDATION-LANE step,
+      # where it refused thirteen things that were merely ABSENT -- **the ANDROID lanes, which a different job
+      # produces, and the UI lane, which had not run yet.** The control is whole-repository by design; **asking it to
+      # judge a job's worth of lanes is a category error, not a lane failure.***
+      #
+      # **SO IT IS SCOPED (`--scope ios`) AND IT RUNS ONCE, AFTER BOTH iOS LANES HAVE PRODUCED THEIR ARTIFACTS.** The
+      # android lanes are judged by the android job's own invocation of this same committed control.
       - name: ios foundation lane (swift test)
         run: |
           set -euo pipefail
           tools/readiness/run_ios_lane.sh ios-lane.log
-          python3 ci/check_lane_results.py
 
       - name: ios UI lane (LabMeshUI + GodstoneArchiveUI)
         run: |
           set -euo pipefail
-          # *** THE RUNNER PRODUCES EVIDENCE AND ALWAYS EXITS 0 WHEN IT PRODUCED A LOG; THE CHECKER DECIDES. ***
+          # *** THE RUNNER PRODUCES EVIDENCE AND EXITS 0 WHEN IT PRODUCED A LOG; THE CHECKER DECIDES THE VERDICT. ***
           # *A raw `xcodebuild` non-zero cannot distinguish the RECORDED known-red obligation from a NOVEL break, so
           # aborting on it would either suppress the obligation or force it to be hidden.*
           tools/readiness/run_ios_ui_lane.sh ios-ui-lane.log
-          python3 ci/check_lane_results.py
+
+      - name: ios lane control (scoped to this job's lanes)
+        run: |
+          set -euo pipefail
+          # ONE invocation over both artifacts: required suites, the SOURCE-DERIVED arm roster BY NAME, zero skips,
+          # the exact failed-arm set, the recorded known-red arm announced, and both digests current.
+          python3 ci/check_lane_results.py --scope ios
 
       # xcodegen + xcodebuild Archive-only (LightRelease) is repo-owned green:
       # the app starts with a truthful local "Archive unavailable" state and
