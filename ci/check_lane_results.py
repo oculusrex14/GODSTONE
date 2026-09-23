@@ -183,6 +183,18 @@ IOS_SOURCE_TREES = (
     "ios/Packages/GodstoneFoundation/Sources",
     "ios/Packages/GodstoneFoundation/Tests",
 )
+# **THE LINE KINDS THE PARSERS KEY ON, COUNTED BY THE EVIDENCE CENSUS** -- *not a substitute for the parse, a way to
+# read a refusal without downloading the runner's filesystem.*
+LOG_LINE_KINDS = {
+    "Test Suite '<name>.xctest' passed": re.compile(r"^Test Suite '\w+\.xctest' passed"),
+    "Test Suite '<name>.xctest' (any)": re.compile(r"^Test Suite '\w+\.xctest'"),
+    "Executed N tests, with M failures": re.compile(r"^\s*Executed \d+ tests?, with \d+ failures?"),
+    "Test Case '-[...]' passed": re.compile(r"^Test Case '-\["),
+    "error: lines": re.compile(r"error: "),
+    "swift-testing marks (◇/✔/✘)": re.compile(r"[◇✔✘]"),
+    "** TEST FAILED ** / ** TEST SUCCEEDED **": re.compile(r"\*\* TEST (FAILED|SUCCEEDED) \*\*"),
+    "any 'Testing' / swift-testing run": re.compile(r"Test run with|Testing Library Version"),
+}
 IOS_SUITE = re.compile(r"^Test Suite '(\w+)\.xctest' passed", re.M)
 IOS_TOTAL = re.compile(r"^\s*Executed (\d+) tests?, with (\d+) failures? \(\d+ unexpected\)", re.M)
 
@@ -777,6 +789,34 @@ def main() -> int:
         print("\nFAIL:")
         for p in all_problems:
             print("  - " + p)
+        # *** THE EVIDENCE EXCERPT EXISTS BECAUSE I SPENT A HOSTED RUN GUESSING. ***
+        #
+        # **MEASURED ON RUN `35903873741`: the iOS job's foundation lane passed (rc=0, 6m36s) and the control then read
+        # `ios:foundation suites=1 tests=0` -- and NOTHING IN THE LOG I COULD RETRIEVE SAID WHY.** *The lane's output
+        # goeth to `ios-lane.log`, which the workflow did not upload, so the ONLY record of a 1400-test run was
+        # discarded with the runner. A control whose refusal cannot be diagnosed from its own output forces the next
+        # reader to repeat the entire cycle.*
+        #
+        # **SO A REFUSAL PRINTETH A CENSUS OF THE LOG IT ACTUALLY READ, BOUNDED, STRUCTURAL, AND OF THE LINE KINDS
+        # THE PARSER KEYS ON** -- *counts tell a truncated log from a foreign format, and the tail shows where the
+        # output stopped.* It printeth the log's PATH, its SIZE, a kind-by-kind line census, and a bounded tail.
+        for path in (IOS_LOG, IOS_UI_LOG):
+            if not path.is_file():
+                print(f"\n  [evidence] {path} -- ABSENT")
+                continue
+            raw = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            census = {k: 0 for k in LOG_LINE_KINDS}
+            for line in raw:
+                for kind, rx in LOG_LINE_KINDS.items():
+                    if rx.search(line):
+                        census[kind] += 1
+            print(f"\n  [evidence] {path.name}: {len(raw)} lines, {path.stat().st_size} bytes")
+            for kind in LOG_LINE_KINDS:
+                print(f"      {kind:<34} {census[kind]}")
+            tail = raw[-12:]
+            print(f"      --- last {len(tail)} line(s) verbatim ---")
+            for line in tail:
+                print("      | " + line[:180])
         return 1
     print("\nlane results: PASSED (every lane ran, executed at least one test, and carried no "
           "skipped/failed/errored arm)")

@@ -721,3 +721,21 @@ jobs:
         with:
           name: provenance-ios
           path: provenance-*.json
+
+      # *** THE LANE LOGS ARE THE LANES' EVIDENCE AND CI WAS THROWING THEM AWAY. ***
+      #
+      # **MEASURED ON RUN `35903873741`: the foundation lane passed (rc=0, 6m36s) and the control read
+      # `ios:foundation suites=1 tests=0`.** *The log that would have explained it lived only on the runner and died
+      # with it, so the refusal could not be diagnosed from anything the run retained -- **which for a control whose
+      # whole job is to judge those logs is a hole in the evidence chain, not an inconvenience.***
+      # **`if: always()` because the case that MOST needs the log is the case where the control refused it.**
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ios-lane-evidence
+          path: |
+            ios-lane.log
+            ios-lane.log.sources.sha256
+            ios-ui-lane.log
+            ios-ui-lane.log.sources.sha256
+          if-no-files-found: warn
