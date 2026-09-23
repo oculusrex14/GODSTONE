@@ -157,10 +157,22 @@ def required_ui_arms() -> dict[str, list[str]]:
 #: `READY_FOR_EXTERNAL_REAUDIT`. **The gate that matters is not moved by this entry; only the lane's exit code
 #: stops conflating one recorded gap with a broken lane.***
 IOS_UI_KNOWN_RED = {
-    "GodstoneArchiveUITests.GodstoneArchiveUITests.testGSA005DocumentReopensAfterCleanProcessDeath":
-        "gs-final-006.ios-restoration-witness / gs-archive-005.app-witness are OPEN: a clean process death does not "
-        "restore the reader. MEASURED, and left asserting truthfully rather than wrapped -- see the arm's own "
-        "docstring for the outcome distribution and the three measured boundaries.",
+    "GodstoneArchiveUITests.GodstoneArchiveUITests.testGSA005DocumentReopensAfterCleanProcessDeath": {
+        "obligation": ("gs-final-006.ios-restoration-witness / gs-archive-005.app-witness are OPEN: a clean process "
+                       "death does not restore the reader. MEASURED, and left asserting truthfully rather than "
+                       "wrapped -- see the arm's own docstring for the outcome distribution and the three measured "
+                       "boundaries."),
+        # *** THE EXCUSE IS BOUND TO THE FAILURE SIGNATURE, NOT TO THE ARM'S NAME. ***
+        #
+        # *AN EXCUSE KEYED ON A NAME ALONE WOULD SWALLOW ANY OTHER FAILURE OF THAT ARM -- **and this session hit
+        # several on exactly this arm: the fixture hash-guard tripping, the app failing to launch, a "
+        # "`No matches found for archive.back` selector break, a stale or non-compiling binary.** Each of those is a
+        # NOVEL break wearing a recorded arm's name, and each would have read as the known restore gap.*
+        #
+        # **SO THE LOG MUST CARRY THIS ARM'S OWN ASSERTION MESSAGE**, and the failure line is matched against it:
+        # *a known-red arm failing with a FOREIGN message counts as UNEXPLAINED and reddens the lane.*
+        "signature": "THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH",
+    },
 }
 IOS_UITEST_CASE = re.compile(r"Test Case '-\[([\w.]+) ([\w]+)\]' (passed|failed)", re.M)
 
@@ -491,6 +503,13 @@ def ui_selftest() -> int:
     run_case("11. source-declared arm omitted from the log",
              "\n".join(l for l in base.split("\n") if "testGSA005ScrollingRevealsALaterPassage" not in l),
              real_digest, "red")
+    # (12b) *** THE RECORDED ARM FAILING FOR A FOREIGN REASON MUST NOT BE EXCUSED. ***
+    # *This is the hole a name-only allowlist leaves: the fixture hash-guard tripping, the app not launching, or a
+    # selector break would each wear a recorded arm's name and read as the known restore gap.*
+    stripped = base.replace(
+        "*** THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH", "")
+    run_case("12b. known-red arm fails with a FOREIGN signature", stripped, real_digest, "red")
+
     # (12) an empty log entirely.
     run_case("12. empty log (no arm verdicts at all)", "", real_digest, "red")
 
@@ -565,12 +584,20 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
             if v != "failed":
                 continue
             full = f"{c}.{n}"
-            if full in IOS_UI_KNOWN_RED:
-                totals["known_red"] = totals.get("known_red", 0) + 1
-                totals.setdefault("notices", []).append(
-                    f"KNOWN-RED UI arm (recorded as OWED, not excused): {full} -- {IOS_UI_KNOWN_RED[full]}")
-            else:
+            known = IOS_UI_KNOWN_RED.get(full)
+            if known is None:
                 unexplained.append(full)
+                continue
+            # *** THE SIGNATURE BINDING: the recorded arm must fail FOR THE RECORDED REASON. ***
+            if known.get("signature") and known["signature"] not in text:
+                unexplained.append(
+                    f"{full} -- RECORDED as known-red, **BUT WITHOUT ITS RECORDED SIGNATURE**: the log carrieth no "
+                    f"`{known['signature']}`, so this failure is NOT the obligation that was recorded. A novel break "
+                    f"wearing a recorded arm's name must not be excused by it.")
+                continue
+            totals["known_red"] = totals.get("known_red", 0) + 1
+            totals.setdefault("notices", []).append(
+                f"KNOWN-RED UI arm (recorded as OWED, not excused): {full} -- {known['obligation']}")
         if unexplained:
             problems.append(f"the iOS UI lane carrieth FAILED arms: {', '.join(unexplained)}")
     if not cases:
