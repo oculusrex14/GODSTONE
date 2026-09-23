@@ -747,11 +747,17 @@ def main() -> int:
         f"failures={ios_totals['failures']}  <- per bundle: " + "; ".join(ios_totals.get("evidence", [])))
     all_problems.extend(ios_probs)
 
-    # *** THE UI LANE IS PART OF THE iOS SCOPE, BUT ONLY WHEN IT HAS HAD A CHANCE TO RUN. ***
-    # *`--scope ios` is used by the iOS job BEFORE the UI step, so the UI lane is included only when its log EXISTS;
-    # otherwise the step that is ABOUT to produce it would be refused for not having produced it. The UI step in the
-    # same job runs the control again, by which time the log exists and the arm roster is enforced.*
-    if args.scope in ("all", "ios") and (IOS_UI_LOG.is_file() or args.scope == "all"):
+    # *** THE UI LANE IS MANDATORY UNDER `--scope ios` -- NEVER OPTIONAL-WHEN-PRESENT. ***
+    #
+    # *MY FIRST VERSION INCLUDED IT ONLY WHEN ITS LOG EXISTED, so an absent UI log reported **PASSED** -- **and I
+    # measured that: with the log moved away, `--scope ios` printed `ios:ui suites=0 tests=0` and
+    # `lane results: PASSED`, rc=0.*** **That is "a required test never ran" reading as green, which is precisely
+    # the state this task exists to make impossible.**
+    #
+    # **SO `--scope ios` REQUIRES BOTH iOS LANES, AND THE iOS JOB INVOKES IT ONLY AFTER BOTH HAVE RUN.** *A job that
+    # wants to judge the foundation lane before the UI step does not exist here, and would need its own named scope
+    # rather than a softer meaning of this one.*
+    if args.scope in ("all", "ios"):
         ui_probs, ui_totals = check_ios_ui_lane()
     else:
         ui_probs, ui_totals = ([], {"suites": 0, "tests": 0, "failures": 0, "known_red": 0})
