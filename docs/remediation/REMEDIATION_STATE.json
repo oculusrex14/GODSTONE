@@ -9485,6 +9485,14 @@
    "remaining_work": "THE WRITE HALF IS NOW WITNESSED (round 601), SO THE CARD'S `receive-commit-sign-schedule-write-retry` CHAIN HAS A WITNESS AT THE WRITE LINK: a REAL ACK candidate is admitted through `admitForeignCandidate`, the relation is scheduled, and **THE NODE'S OWN TURN HANDS IT TO THE TRANSPORT** -- asserted on WHAT THE TRANSPORT RECEIVED (one write, the declared relation, real bytes). **THE MUTATION THAT SURVIVED ROUND 600 NOW REDDENS IT** (the turn\\'s seam-use removed, grep-confirmed), so the arm measures the turn rather than its own emptiness. **AND THE FIXTURE TAUGHT A RELAY LAW BY REFUSING: the pump will NOT echo a candidate back to the peer it came from (`RECEIVED_FROM_THIS_PEER`), so a candidate admitted FROM the origin must be offered TO a different relation.** ALSO RECORDED FROM THE MUTATION LINEAGE -- AND THIS PASSAGE IS A CORRECTION OF ITSELF, BECAUSE THE SENTENCE THAT STOOD HERE HAD OUTLIVED THE FACTS IN IT (round 645). THE SUPERSEDED TEXT, QUOTED SO THE CORRECTION IS AUDITABLE: *\"ALSO RECORDED FROM THE MUTATION LINEAGE -- AND THIS PASSAGE IS A CORRECTION OF ITSELF, BECAUSE THE SENTENCE THAT STOOD HERE HAD OUTLIVED THE FACTS IN IT (round 645): it said \"ONE ROD ESCAPED ... and every ANDROID rod is INVALID ... BOTH ARE RECORDED AS OWED.\" BOTH WERE FIXED AND RECORDED ELSEWHERE IN THIS SAME LEDGER, SO A READER TRUSTING THIS FIELD GOT AN OUT-OF-DATE FRONTIER. THE SUPERSE\"* **IT ASSERTED BOTH FACTS \"AS OWED\", AND BOTH WERE FIXED AND RECORDED ELSEWHERE IN THIS SAME LEDGER -- so a reader trusting this field got an OUT-OF-DATE FRONTIER. THE CURRENT STATE, MEASURED:** (1) the escaped rod was repaired in round 602 (its witness moved from a DISPATCH-road arm to `testCancelOfARelayedCallTellsTheRelayedTruth`), and **round 640 observed the runner itself confirm it: `KILLED T39-RC1-ios-cancel-is-ui-only ... witness testCancelOfARelayedCallTellsTheRelayedTruth failed as intended`**; (2) the Android `INVALID` verdicts were an INSTRUMENT defect repaired in round 603 (no `env=`, so the worktree inherited no `ANDROID_HOME` and gradle could not configure), and **round 640 measured EVERY ANDROID ROD READING `KILLED`.** **IT IS THE `GS-FINAL-012` DEFECT CLASS SITTING IN A STATUS FIELD, WHERE IT MISLEADS MORE DIRECTLY THAN IN A DOCUMENT.**",
    "evidence": [
     "ROUND 731 -- THE \"CONTEXT WALL\" WAS TESTED RATHER THAN ASSUMED, AND IT IS A DIFFERENT WALL, NAMED PRECISELY. The ledger said the remaining work needeth *\"a Context-bearing Android test\"* and called the Context itself the artifact. **MEASURED: THE CONTEXT IS NOT THE WALL.** *`:mesh` carrieth Robolectric since round 589, and a probe court obtained a REAL `ApplicationProvider.getApplicationContext()` inside `:mesh` without difficulty.* **THE WALL IS ONE LAYER FURTHER IN, AND THE PROBE NAMED IT:** driving the production chain (`MeshStartupWipeBarrier(ctx)` -> `provideIdentity(ctx, barrier)`) threw *** `java.security.KeyStoreException: AndroidKeyStore not found` at `androidx.security.crypto.MasterKeys.getOrCreate` *** -- *Robolectric rendereth an Android `Context` but NOT the platform keystore the encrypted private store demandeth.* **SO THE LIVE-TRANSPORT ROAD IS BLOCKED BY A PLATFORM KEYSTORE, NOT BY A `Context`** -- *which is a materially different claim: a Context-bearing court is achievable today, while the identity road needs an instrumented device or an emulated keystore provider, and the latter is the external artifact.* **AND IT IS RECORDED RATHER THAN WORKED AROUND: substituting a fake keystore to make the court run would be substituting the subject, since THE KEYSTORE IS WHERE THE PRIVATE STORE'S KEY LIVES.** *The probe court was removed after measurement; this entry carrieth what it found."
+   ],
+   "external_obligations": [
+    {
+     "id": "gs-runtime-001.android-keystore",
+     "text": "The Android platform keystore boundary. *** PROVEN EXTERNAL: execution stops at `KeyStore.getInstance(\"AndroidKeyStore\")` (`PanicWipe.kt`), which does not exist on a host.*** **THE OTHER HALF STAYS INTERNAL: the Context-bearing court is writable** -- a Robolectric test already supplies `@ApplicationContext`, so the pump-identity comparison is NOT moved here merely because it is harder.",
+     "status": "EXTERNAL_BLOCKED",
+     "why_external": "the platform keystore is a device service; only that half is external"
+    }
    ]
   },
   "GS-SOS-001": {
@@ -10034,7 +10042,15 @@
    ],
    "title": "iOS private stores still use ordinary SQLite without a store DEK",
    "wave": "4a",
-   "remaining_work": "**THE CONCRETE SQLCIPHER ENGINE IS AN EXTERNAL ARTIFACT, AND NOTHING IN THIS WORK IS EVIDENCE THAT ANY STORE IS ENCRYPTED.** The composition now REFUSES a private store without a verifying factory, and its own positive control (W05) says so in its scope note: **ITS ENGINE ANSWERS ON ITS OWN WORD**, which is precisely what the card forbids a caller from believing (*\"an enum value called pinnedSQLCipher is not engine verification\"*). **WHAT REMAINS: (i) the card's step 1 needs a vetted PINNED SQLCipher dependency -- an ACQUISITION, and ACQUISITION NEVER CLOSES A GATE; (ii) the card's third clause needs the REAL engine for its behavioural proof (*\"Run device SQLCipher and locked-device evidence before closure\"*).** *And `GS-FINAL-004` clauses (a)(b) -- the owned verified connection and the store accepting it -- are blocked on the SAME absent production `EncryptedStoreEngine`, measured this session.*"
+   "remaining_work": "**THE CONCRETE SQLCIPHER ENGINE IS AN EXTERNAL ARTIFACT, AND NOTHING IN THIS WORK IS EVIDENCE THAT ANY STORE IS ENCRYPTED.** The composition now REFUSES a private store without a verifying factory, and its own positive control (W05) says so in its scope note: **ITS ENGINE ANSWERS ON ITS OWN WORD**, which is precisely what the card forbids a caller from believing (*\"an enum value called pinnedSQLCipher is not engine verification\"*). **WHAT REMAINS: (i) the card's step 1 needs a vetted PINNED SQLCipher dependency -- an ACQUISITION, and ACQUISITION NEVER CLOSES A GATE; (ii) the card's third clause needs the REAL engine for its behavioural proof (*\"Run device SQLCipher and locked-device evidence before closure\"*).** *And `GS-FINAL-004` clauses (a)(b) -- the owned verified connection and the store accepting it -- are blocked on the SAME absent production `EncryptedStoreEngine`, measured this session.*",
+   "external_obligations": [
+    {
+     "id": "gs-store-002.sqlcipher-engine",
+     "text": "A pinned native SQLCipher `EncryptedStoreEngine` implementation. *** PROVEN EXTERNAL FROM THE CODE, NOT CARRIED FORWARD: `EncryptedStoreEngine` is a PROTOCOL and `Sources/` carrieth NO CONCRETE IMPLEMENTOR** -- only the protocol declaration, a stored property and an init parameter. *The court substitutes a fake; the real binding is an artifact this repository does not contain.*",
+     "status": "EXTERNAL_BLOCKED",
+     "why_external": "no production implementor exists in-tree; the pinned SQLCipher binding is an external artifact"
+    }
+   ]
   },
   "GS-STORE-003": {
    "audit_status_at_snapshot": "OPEN",
@@ -11449,6 +11465,14 @@
    "remaining_work": "**STEPS 2, 3, 5 AND 6 ARE NOW LANDED AND MUTATION-PROVEN.** `GsStress001RealRuntimeTests` drives REAL owners (`SessionManager`, `BleTransport`, `BleConnection`, `MeshNode`, the durable store) over the GS-INTEGRATION-001 harness and reads the census THROUGH THE OWNERS' OWN HOOKS (`slotCountForTest()`, `quarantineRecordCountForTest()`), so every number is the OWNER'S -- `SessionCensus` and `QuarantineCensus` are the first PRODUCTION-shaped conformances to `ResourceCensusSource` over a real transport. **10,000 real lifecycle cycles over a DRAINED runtime complete in 6.1s**, with the four invariants read from the REAL repositories. *** THE RESOURCE-GUARD MUTATION EXPOSED A DEFECT IN MY FIRST ARM: *** disabling `InMemoryMessageStore.removeHeld` (the store's own release verb) did NOT fail the arm -- **it stopped it finishing**, because `totalBytesNoLock` is `rows.values.reduce(...)`, an O(n) scan on EVERY insert, so a leak makes each subsequent insert longer (sampled: hot frames `persist` -> `totalBytesNoLock`, still running after 2m17s). **A STRESS ARM THAT HANGS IS A WORSE INSTRUMENT THAN ONE THAT REDDENS -- a hang reads as infrastructure while a failure NAMES the defect.** The census is now asked EVERY cycle, so the leak trips on cycle 2 and the failure names the step and the depth: mutation re-run REDDENS cleanly; restored 3/3. **AND THE CARD'S OWN WORD WAS THE FIX, NOT A WORKAROUND:** *'10,000 real lifecycle cycles over a DRAINED runtime'* -- a cycle is DELIVER, CONSUME, RELEASE, not 10,000 frames held at once; my first version never drained, which was both unfaithful to the clause AND the reason it was O(n^2). The invariants are unchanged. **REMAINING: STEP 4 -- real OS-facade fault injection -- WHICH NEEDS THE INSTRUMENTED BOUNDARY**, plus the device/radio evidence none of this claims. AND BY RULE ONLY AN INDEPENDENT AUDIT MAY WRITE VERIFIED_FIXED.",
    "evidence": [
     "ROUND 727 -- A THREE-WAY CONTRACT THAT WAS ALREADY BROKEN, FOUND WHILE CHECKING WHETHER EVERY CARD-NAMED OWNER IS ASKED. Two defects, neither named by the finding's own prose. **(1) `Invariants.ALL` WAS STALE AND HAD NO CONSUMER AT ALL:** the object defines ELEVEN constants while `ALL` names SEVEN, and `grep -rn \"Invariant.ALL\"` across both isles returns NOTHING -- *a stale list nobody reads is still a landmine: the next reader takes it for the authoritative set, or adds a consumer and silently checks seven of eleven.* It is COMPLETED rather than deleted, and its completeness is now DERIVED (a declared count with a load-time `require`), proven to fire. **(2) A COURT WAS ALREADY FAILING AND NOBODY HAD LOOKED:** rather than reason about the cross-isle contract I RAN the court that enforces it -- `ReadinessT72Test.test_w12` -- and it FAILED on \"the iOS twin must carry no_leaked_reservations\" and \"the conductor must carry no_leaked_reservations\". **MEASURED, THE THREE ARTEFACTS HAD DRIFTED APART: android ELEVEN names (grown across rounds 643/651/671), swift SEVEN, python SEVEN** -- so four owners (`no_leaked_reservations`, `no_leaked_inventory_leases`, `pending_ack_work`, `no_leaked_observers`) were named on ONE artefact and absent from the other TWO. Each list was completed AND given the same derived census check so the three cannot drift again; the Python one is proven to fire (`DEFINED_COUNT = 12` -> \"carries 11 of the 12 defined invariants\"). *** MEASURED: android 11, swift 11, python 11, ALL THREE EQUAL, disagreements none; `ReadinessT72Test` 24/24. ***"
+   ],
+   "external_obligations": [
+    {
+     "id": "gs-stress-001.device-radio",
+     "text": "Device/hardware stress over a real radio. **The resource-model, the real-runtime driver, the 10,000-cycle campaign and the owner invariants are all INTERNAL and recorded; what is external is running that load against real hardware.**",
+     "status": "EXTERNAL_BLOCKED",
+     "why_external": "requires real hardware; the internal drivers are in-tree"
+    }
    ]
   },
   "GS-SUPPLY-001": {
@@ -11917,7 +11941,15 @@
     "ROUND 539 (STEP 1 LANDS: THE LAB'S JOURNEYS REACH THE ONE RUNTIME -- AND THE ROUND'S ERRORS WERE ALL NAMED BY THE COMPILER). (1) THE MEASUREMENT THAT SET IT: *'the journeys stop at disconnected models and static text'* -- and the three views were **LITERALLY ONE LINE OF `Text` EACH**, while **THE RUNTIME HANDLE WAS READ BY NO VIEW ANYWHERE IN THE TARGET**. **A LAB WHOSE JOURNEYS CANNOT REACH ITS RUNTIME IS A LAB THAT EXERCISETH NOTHING.** (2) EVERY CALL NOW GOETH THROUGH `LabRuntime` -- THE ONE PUBLIC DOOR TO THE COMPOSITION -- AND THEREFORE THROUGH THE REAL DURABLE AUTHORITY (rounds 521/525), so the card's prohibition standeth honoured: **NOTHING MUTATETH A UI-ONLY MAP.** (3) AND THE LAB STILL BUILDETH NO OWNER OF ITS OWN: the views hold the `LabRuntimeHolder` they were GIVEN, and `check_the_lab_buildeth_no_owner_of_its_own` answereth PASSED with 14 notes. (4) *** THREE ERRORS OF MINE, EACH NAMED BY COMPILER OR CONTROL: (a) I called `hasDurableRoad` BEFORE IT EXISTED -- **A CALL TO A MEMBER THAT IS NOT THERE IS A COMPILE ERROR, NOT A CAPABILITY** (round 479's law in a new dress); (b) a TUPLE where a sequence belonged (`for journey in (\"a\",\"b\",\"c\")`) -- named in one line as 'requires (String, String, String) to conform to Sequence'; (c) and the arm's first draft counted a PHRASE rather than a CALL, which I corrected to count `holder.runtime.` call sites BEFORE running it. *** (5) THE INSTRUMENT IS STRUCTURAL BECAUSE IT MUST BE, AND IT IS BACKED BY THE STRONGEST AVAILABLE CHECK: the views live in the APP target which NO TEST BUNDLE CAN IMPORT, so **THE LAB TARGET WAS BUILT (`** BUILD SUCCEEDED **`) TO PROVE THEY COMPILE** -- an edit the mandatory lane doth not compile is unverified until that build runneth. (6) MEASURED: `LabMeshTests` 5/0 (4 -> 5); `GodstoneMeshTests` 1197/0; `GodstoneCoreTests` 89/0; the LabMesh AND Godstone-Light targets both BUILT; `check_lab_isolation.py` PASSED; parity `--scope repo` 7/0 all invariants hold; symbols 0 unresolved; evidence digests PASSED. (7) WHAT REMAINS IS NAMED: step 3 (observable state) is UNLANDED ON BOTH ISLES by measurement; step 2's Swift ports are `internal` (a PUBLIC-SURFACE DECISION, not code); step 4's selector/fingerprint/rotation/revoke are unwired; step 6 does not yet SHOW a restored state; and **STEP 7's 'exercise the rendered controls' CANNOT BE MET BY THIS SPAN -- NO UI-TESTING TARGET EXISTETH ON EITHER ISLE** (an external instrumentation artifact; **ACQUISITION NEVER CLOSES A GATE**). THE FINDING STAYETH **PARTIAL**.",
     "ROUND 543 (STEP 2's iOS ADAPTER, MEASURED TO ITS BLOCKING OBSTACLE -- AND THE DECISIVE ONE IS A FINDING, NOT A GAP). I measured what a lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` would need, and the answer is THREE obstacles, so the honest record states all three rather than the convenient one: (1) THE PORT IS SYNCHRONOUS AND THE RUNTIME IS ASYNCHRONOUS -- `MeshAuthorityPort.sendDirect(recipientNodeId:body:) -> SendOutcome` against `LabRuntime.sendDirect(...) async -> String`; (2) THE PORT IS `internal` (`protocol MeshAuthorityPort`, `:275`) AND SO IS THE MODEL'S INITIALISER (`init(authority:)`, `:318`), so a lab-side adapter is blocked on a PUBLIC-SURFACE DECISION rather than on code; (3) *** AND THE DECISIVE ONE: `LabRuntime` EXPOSETH NO `messages()`, NO `recipients()` AND NO `linkState()` -- COUNTED AT ZERO -- SO THE PORT'S OWN THREE READ MEMBERS HAVE NOTHING TO ADAPT. BUILDING THE ADAPTER WOULD MEAN **INVENTING** MESSAGE AND RECIPIENT PROJECTIONS INSIDE THE LAB RUNTIME -- i.e. MANUFACTURING THE VERY DATA THE CARD FORBIDDETH A UI FROM SUBSTITUTING (*'never mutate a UI-only map'*), and exactly what `check_the_lab_buildeth_no_owner_of_its_own` existeth to prevent. *** THE MEASUREMENT THEREFORE CLOSES THE QUESTION RATHER THAN LEAVING IT OPEN: the adapter is not a task this span skipped; IT IS A TASK WHOSE PREREQUISITE (a runtime that projecteth messages, recipients and link state) DOES NOT EXIST, and manufacturing it would be the substitution the finding is ABOUT. **A CAPABILITY MAY NOT BE BOUGHT WITH THE VERY SUBSTITUTION THE FINDING FORBIDDETH.**"
    ],
-   "remaining_work": "**STEPS 4 AND 7 ARE NOW LANDED ON THE iOS ISLE, AND STEP 7 HAS A REAL UI TARGET RATHER THAN A SOURCE GREP.** `LabMeshRootApp` now renders a REAL recipient selector (Pickers over `recipientsExcluding(_:)`, the runtime's own label set), the runtime's own LINK STATE, and the wipe journey (`lab.diagnostics.wipestate` / `beginwipe` / `wiperesult`) -- **the button calls `beginWipe()`, which erases the durable artifacts the harness holds, rather than setting a local flag.** 11 accessibility identifiers became 17, and ALL THREE new ones were verified present in the BUILT app's own `GodstoneLabMesh.debug.dylib` -- *because a source grep is exactly what failed before: the prior arm asserted `root.contains(\"sendDirect\")`, A SUBSTRING OF THE SOURCE FILE.* **A NEW `bundle.ui-testing` TARGET (`LabMeshUITests`) AND A `LabMeshUI` SCHEME THAT RUNS IT** launch the application and drive its accessibility tree: `xcodebuild -scheme LabMeshUI ... test` -> `** TEST SUCCEEDED **`, `Executed 3 tests, with 0 failures`. *** AND THE LAYER BOUNDARY IS STATED RATHER THAN GLOSSED: *** the send arm asserts EXISTS / ADDRESSABLE / ACTIONABLE / OUTCOME-VIEW-PRESENT, NOT the cryptographic completion -- **MEASURED across three runs: the button is tapped and the field typed into, and the outcome never leaves \"nothing sent yet\" because the send reaches `router.buildSealedMessage` while XCUITest holds its serialised accessibility queries. A UI ARM THAT WAITED FOR A CRYPTOGRAPHIC COMPLETION WOULD BE ASSERTING THE WRONG LAYER AND WOULD BE FLAKY.** The journey's completion stays with `LabMeshAppTests.testTheLabDrivethARealHandshake`, which awaits `sendDirect` and asserts `applied:` plus the recipient's real inbox commit. **REMAINING, AND NOT CLAIMED -- AND MY EARLIER WORDING FOR THIS PARAGRAPH WAS FACTUALLY WRONG, WHICH AN EXTERNAL REVIEW CAUGHT. I had written that fingerprint/rotate/revoke was *\"a RUNTIME SURFACE gap ... the lab's facade reaches none of them\"*. **THE SURFACE EXISTS IN-REPO AND I WAS DESCRIBING MY OWN SCOPE DECISION AS A BLOCKER** -- the same class as the NATIVE_MODELS stale-blocker caught earlier this session: *a stale blocker is worse than an open one, because it reads as an external dependency while the work is available.* MEASURED, VERIFIED BEFORE CORRECTING: `ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift` declares `TrustAuthorityPort` with `approvePendingRotation(nodeId:expectedPendingGeneration:expectedPendingStaticDhPublicKey:)`, `revokePeer(_:)`, `wipeState()`, `beginWipe()`, `resumeWipe()`, `confirmVerified(nodeId:fingerprintHex:)` and `applyBinding(...)`, plus the intent `compareAndConfirmFingerprint(nodeId:displayedFingerprintHex:)` and `ExactRotationCandidateRef.sameCandidate(as:)` -- over the REAL `PeerIdentityRepository` compare-and-set, returning typed `RotationApprovalResult` / `RevokeResult` / `ConfirmOutcome`. **THE TRUST SURFACE IS NOW REACHED AND RENDERED, AND THE PROMOTION ROAD'S ABSENCE IS REPORTED HONESTLY RATHER THAN FAKED.** `TrustAuthorityAdapter` (internal) conforms to `TrustAuthorityPort` over the REAL `PeerIdentityRepository` -- `approvePendingRotation` delegates to `approvePendingRotationGuarded(...)`, `revokePeer` to `revokePeerGuarded(...)`; **it delegates the CAS, it does not reimplement it.** `MeshTrustFacade` (public, inside `GodstoneMesh`) owns the adapter and the model and exposes ONLY String/Bool/[String] -- **`TrustAuthorityPort` and `MeshAuthorityPort` ARE NOT PUBLISHED**, verified by their declarations carrying no `public` prefix, so LIGHT gains no trust surface. Seven controls render: `lab.trust.recipient`/`.fingerprint`/`.status`/`.confirm`/`.approve`/`.revoke`/`.outcome`, each calling the runtime, and all seven verified present in the BUILT app's own dylib. *** AND `confirmVerified` HAS NO DURABLE CAS -- WHICH I VERIFIED RATHER THAN ASSUMED: *** *`ReadinessT56Tests:585` deliberately asserts the absence of a promotion road as an open item pending an ADR. I checked the `trust_level = 3` UPDATEs at `PeerIdentityStore.swift:143/157` before accepting that: they are the REVOKE road, not a promotion.* **SO THE ADAPTER RETURNS A TYPED REFUSAL NAMING THE REASON** -- the model's own law 2 is that promotion must never run through a local comparison alone, so an adapter that compared locally and reported success would BREAK that law. The COMPARE half stays real. **COURT: `GsUx001TrustSurfaceTests`** -- 4 arms over a real `SqlitePeerIdentityStore`/`PeerIdentityRepository` (measured: 9 real-authority references, ZERO fakes), including the card's stale-candidate check (pinned at generation 5, candidate arrives at 6, **changes to 8 behind the user's back**, and approving the displayed 6 is REFUSED by the repository CAS). **MUTATION RUN BY ME: `confirmVerified` -> `.mismatch` REDDENS `test02`; restored 4/4.** MEASURED: 1281 + 102 + 5 = 1388 tests, 0 failures, EXIT=0. **(ii) ACCESSIBILITY -- PARTLY CLOSED, AND THE SPLIT IS STATED. MACHINE-CHECKABLE: DONE.** *`testGSINT001ControlsRemainAddressableUnderRTLAndLargeText` runs the SCREEN TREE under RTL (`-AppleLanguages (ar) -AppleLocale ar_SA`) and Dynamic Type (`UIPreferredContentSizeCategoryName = UICTContentSizeCategoryAccessibilityXXXL`) as LAUNCH ARGUMENTS rather than simulated state, and asserts the tab, the compose field and Send all remain addressable, that the field accepts a MULTIBYTE RTL string, and that EVERY VISIBLE BUTTON CARRIES A NON-EMPTY LABEL -- **A CONTROL WITH AN IDENTIFIER BUT NO LABEL IS REACHABLE BY A TEST AND INVISIBLE TO A SCREEN READER**, which is why the arm walks labels. The trust controls gained labels, values and consequence hints (the fingerprint's hex moved to `accessibilityValue` so a screen reader does not read a hex dump one character at a time). `xcodebuild -scheme LabMeshUI ... test` -> `** TEST SUCCEEDED **`, `Executed 4 tests, with 0 failures`. **HUMAN ACCEPTANCE REMAINS EXPLICITLY PENDING:** no VoiceOver or TalkBack session, no assistive-technology user result. *A launch argument is not a screen-reader user, and this entry does not claim one.* *(iii) The ANDROID isle's own rendered-control coverage* -- it has Compose courts (`createComposeRule`, `onNodeWithText`) for the browse surface. **(iv) THE UI COURTS ARE NOW INVOKED BY THE JOB CI ACTUALLY RUNS.** *`LabMeshUI` had been invoked by NO gate -- `grep -rn LabMeshUI ci/ tools/ .github/` returned NOTHING -- so the bundle ran only where a hand command ran it. The iOS job's test step now runs `xcodebuild -scheme LabMeshUI`, so that claim is true rather than asserted.* AND BY RULE ONLY AN INDEPENDENT AUDIT MAY WRITE VERIFIED_FIXED."
+   "remaining_work": "**STEPS 4 AND 7 ARE NOW LANDED ON THE iOS ISLE, AND STEP 7 HAS A REAL UI TARGET RATHER THAN A SOURCE GREP.** `LabMeshRootApp` now renders a REAL recipient selector (Pickers over `recipientsExcluding(_:)`, the runtime's own label set), the runtime's own LINK STATE, and the wipe journey (`lab.diagnostics.wipestate` / `beginwipe` / `wiperesult`) -- **the button calls `beginWipe()`, which erases the durable artifacts the harness holds, rather than setting a local flag.** 11 accessibility identifiers became 17, and ALL THREE new ones were verified present in the BUILT app's own `GodstoneLabMesh.debug.dylib` -- *because a source grep is exactly what failed before: the prior arm asserted `root.contains(\"sendDirect\")`, A SUBSTRING OF THE SOURCE FILE.* **A NEW `bundle.ui-testing` TARGET (`LabMeshUITests`) AND A `LabMeshUI` SCHEME THAT RUNS IT** launch the application and drive its accessibility tree: `xcodebuild -scheme LabMeshUI ... test` -> `** TEST SUCCEEDED **`, `Executed 3 tests, with 0 failures`. *** AND THE LAYER BOUNDARY IS STATED RATHER THAN GLOSSED: *** the send arm asserts EXISTS / ADDRESSABLE / ACTIONABLE / OUTCOME-VIEW-PRESENT, NOT the cryptographic completion -- **MEASURED across three runs: the button is tapped and the field typed into, and the outcome never leaves \"nothing sent yet\" because the send reaches `router.buildSealedMessage` while XCUITest holds its serialised accessibility queries. A UI ARM THAT WAITED FOR A CRYPTOGRAPHIC COMPLETION WOULD BE ASSERTING THE WRONG LAYER AND WOULD BE FLAKY.** The journey's completion stays with `LabMeshAppTests.testTheLabDrivethARealHandshake`, which awaits `sendDirect` and asserts `applied:` plus the recipient's real inbox commit. **REMAINING, AND NOT CLAIMED -- AND MY EARLIER WORDING FOR THIS PARAGRAPH WAS FACTUALLY WRONG, WHICH AN EXTERNAL REVIEW CAUGHT. I had written that fingerprint/rotate/revoke was *\"a RUNTIME SURFACE gap ... the lab's facade reaches none of them\"*. **THE SURFACE EXISTS IN-REPO AND I WAS DESCRIBING MY OWN SCOPE DECISION AS A BLOCKER** -- the same class as the NATIVE_MODELS stale-blocker caught earlier this session: *a stale blocker is worse than an open one, because it reads as an external dependency while the work is available.* MEASURED, VERIFIED BEFORE CORRECTING: `ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift` declares `TrustAuthorityPort` with `approvePendingRotation(nodeId:expectedPendingGeneration:expectedPendingStaticDhPublicKey:)`, `revokePeer(_:)`, `wipeState()`, `beginWipe()`, `resumeWipe()`, `confirmVerified(nodeId:fingerprintHex:)` and `applyBinding(...)`, plus the intent `compareAndConfirmFingerprint(nodeId:displayedFingerprintHex:)` and `ExactRotationCandidateRef.sameCandidate(as:)` -- over the REAL `PeerIdentityRepository` compare-and-set, returning typed `RotationApprovalResult` / `RevokeResult` / `ConfirmOutcome`. **THE TRUST SURFACE IS NOW REACHED AND RENDERED, AND THE PROMOTION ROAD'S ABSENCE IS REPORTED HONESTLY RATHER THAN FAKED.** `TrustAuthorityAdapter` (internal) conforms to `TrustAuthorityPort` over the REAL `PeerIdentityRepository` -- `approvePendingRotation` delegates to `approvePendingRotationGuarded(...)`, `revokePeer` to `revokePeerGuarded(...)`; **it delegates the CAS, it does not reimplement it.** `MeshTrustFacade` (public, inside `GodstoneMesh`) owns the adapter and the model and exposes ONLY String/Bool/[String] -- **`TrustAuthorityPort` and `MeshAuthorityPort` ARE NOT PUBLISHED**, verified by their declarations carrying no `public` prefix, so LIGHT gains no trust surface. Seven controls render: `lab.trust.recipient`/`.fingerprint`/`.status`/`.confirm`/`.approve`/`.revoke`/`.outcome`, each calling the runtime, and all seven verified present in the BUILT app's own dylib. *** AND `confirmVerified` HAS NO DURABLE CAS -- WHICH I VERIFIED RATHER THAN ASSUMED: *** *`ReadinessT56Tests:585` deliberately asserts the absence of a promotion road as an open item pending an ADR. I checked the `trust_level = 3` UPDATEs at `PeerIdentityStore.swift:143/157` before accepting that: they are the REVOKE road, not a promotion.* **SO THE ADAPTER RETURNS A TYPED REFUSAL NAMING THE REASON** -- the model's own law 2 is that promotion must never run through a local comparison alone, so an adapter that compared locally and reported success would BREAK that law. The COMPARE half stays real. **COURT: `GsUx001TrustSurfaceTests`** -- 4 arms over a real `SqlitePeerIdentityStore`/`PeerIdentityRepository` (measured: 9 real-authority references, ZERO fakes), including the card's stale-candidate check (pinned at generation 5, candidate arrives at 6, **changes to 8 behind the user's back**, and approving the displayed 6 is REFUSED by the repository CAS). **MUTATION RUN BY ME: `confirmVerified` -> `.mismatch` REDDENS `test02`; restored 4/4.** MEASURED: 1281 + 102 + 5 = 1388 tests, 0 failures, EXIT=0. **(ii) ACCESSIBILITY -- PARTLY CLOSED, AND THE SPLIT IS STATED. MACHINE-CHECKABLE: DONE.** *`testGSINT001ControlsRemainAddressableUnderRTLAndLargeText` runs the SCREEN TREE under RTL (`-AppleLanguages (ar) -AppleLocale ar_SA`) and Dynamic Type (`UIPreferredContentSizeCategoryName = UICTContentSizeCategoryAccessibilityXXXL`) as LAUNCH ARGUMENTS rather than simulated state, and asserts the tab, the compose field and Send all remain addressable, that the field accepts a MULTIBYTE RTL string, and that EVERY VISIBLE BUTTON CARRIES A NON-EMPTY LABEL -- **A CONTROL WITH AN IDENTIFIER BUT NO LABEL IS REACHABLE BY A TEST AND INVISIBLE TO A SCREEN READER**, which is why the arm walks labels. The trust controls gained labels, values and consequence hints (the fingerprint's hex moved to `accessibilityValue` so a screen reader does not read a hex dump one character at a time). `xcodebuild -scheme LabMeshUI ... test` -> `** TEST SUCCEEDED **`, `Executed 4 tests, with 0 failures`. **HUMAN ACCEPTANCE REMAINS EXPLICITLY PENDING:** no VoiceOver or TalkBack session, no assistive-technology user result. *A launch argument is not a screen-reader user, and this entry does not claim one.* *(iii) The ANDROID isle's own rendered-control coverage* -- it has Compose courts (`createComposeRule`, `onNodeWithText`) for the browse surface. **(iv) THE UI COURTS ARE NOW INVOKED BY THE JOB CI ACTUALLY RUNS.** *`LabMeshUI` had been invoked by NO gate -- `grep -rn LabMeshUI ci/ tools/ .github/` returned NOTHING -- so the bundle ran only where a hand command ran it. The iOS job's test step now runs `xcodebuild -scheme LabMeshUI`, so that claim is true rather than asserted.* AND BY RULE ONLY AN INDEPENDENT AUDIT MAY WRITE VERIFIED_FIXED.",
+   "external_obligations": [
+    {
+     "id": "gs-ux-001.human-accessibility-acceptance",
+     "text": "Human/device accessibility acceptance: a person using VoiceOver or TalkBack on a real device. **The in-tree work -- rendered semantics, identifiers, roles -- IS asserted; this is the acceptance ON TOP of it, which no host test can supply.**",
+     "status": "EXTERNAL_BLOCKED",
+     "why_external": "requires a human and a device"
+    }
+   ]
   },
   "IOS-01": {
    "audit_status_at_snapshot": "OPEN",
@@ -14427,7 +14459,15 @@
      "*** A MEMORY-SAFETY DEFECT WAS INTRODUCED BY (a)+(b) AND FOUND BY REVIEW, THEN REPAIRED AND MUTATION-PROVEN. *** `SqliteMessageStore.close()` and its `deinit` called `sqlite3_close_v2(handle)` UNCONDITIONALLY, with no ownership branch, while the peer store's `close()` DID guard. On the factory road the wipe's `invalidateRuntime` therefore freed the ADOPTED handle in `messageStore.close()` and freed it AGAIN in `adoptedMessageConnection?.close()` -- **the same `OpaquePointer` freed twice, a use-after-free** -- and `OwnedConnection`'s own `closed` flag did not save it, because the store bypassed that flag by closing the raw pointer directly. Both stores now dispatch on `ownsConnection` in `close()` AND `deinit`, with `observations.releaseAll()` still running unconditionally first. MUTATION, RUN AND OBSERVED: restoring the unguarded close reddens `testGF004TheWipeSequenceClosesEachAdoptedHandleExactlyOnce`; restoring the guard gives 7/7. **AND MY FIRST CLOSE ARM COULD NOT SEE IT** -- it counted closes at the ENGINE, which never performs the store's close, so it passed straight over the double-free; the arm now observes the STORE'S OWN released state. NOTE: the SR05/SR06 lane would NOT have caught this, because a double-free of a just-closed sqlite handle frequently does not trap; SR05/SR06/SR07 DO pass on this tree and remain the falsifier for close-BEFORE-delete ordering, which is preserved (the closes stay inside `invalidateRuntime`, ahead of `deleteArtifact`).",
      "*** AND SEVEN IN-MEMORY JOURNALS WERE MISDESCRIBED BY THE FAIL-CLOSED DEFAULT, WHICH IS THE SAME CLASS AS THE DEFECT THE DEFAULT REPAIRS. *** Flipping `WipeJournal.isReadable` to `false` was right for the PRODUCTION journal, but seven test doubles hold a TYPED `WipeState` and inherited it -- so a journal that cannot carry an unparseable value was reported CORRUPT. Measured reach: the composition calls `decideAndDrive`, which consults `isReadableJournal()`, so an arm reaching the startup road exercised the CORRUPT branch for a reason unrelated to what it means to measure (**passing or failing for the wrong reason**). Each now states `isReadable` explicitly, with the reason recorded in-file."
     ],
-    "remaining_work": "**THREE OF THE FOUR CLAUSES ARE NOW LANDED AND EACH IS MUTATION-PROVEN: (a) THE OWNED VERIFIED CONNECTION WITH RESTRICTED CONSTRUCTION** (`reopenOwnedRequiringDEK`, guarded on `OwnedConnectionStoreEngine`; construction of `OwnedVerifiedConnection` stays `internal`, so an engine mints one and a caller cannot); **(b) THE STORE ACCEPTING THAT CONNECTION INSTEAD OF REOPENING BY PATH** (both stores adopt it, run migrations on it, and publish `adoptedConnectionIdentity` as the OBSERVATION the audit requires in place of a Boolean -- assigned only AFTER the connection is accepted, because my first version published it BEFORE the guard and so reported adopting a connection it had refused); **plus (c) the typed open errors** and **(d) the resumable migration with preserved rollback evidence**, both landed in earlier rounds. **WHAT REMAINS IS THE NATIVE-ENGINE REGRESSION HALF** -- *\"the pinned native engine with correct, wrong and missing keys, WAL and restart\"* -- **BLOCKED ON THE SAME STRUCTURAL CONDITION RE-VERIFIED THIS SESSION: NO PRODUCTION `EncryptedStoreEngine` EXISTS AT ALL**, because the real SQLCipher binding IS the injected seam the NATIVE_MODELS gate owns. A handle cannot be asked to carry a connection that no production code produces, and *acquiring SQLCipher cannot repair a discarded handle* -- but the handle is no longer discarded, which was the auditable half. Nothing here claims an at-rest or cryptographic-erasure result."
+    "remaining_work": "**THREE OF THE FOUR CLAUSES ARE NOW LANDED AND EACH IS MUTATION-PROVEN: (a) THE OWNED VERIFIED CONNECTION WITH RESTRICTED CONSTRUCTION** (`reopenOwnedRequiringDEK`, guarded on `OwnedConnectionStoreEngine`; construction of `OwnedVerifiedConnection` stays `internal`, so an engine mints one and a caller cannot); **(b) THE STORE ACCEPTING THAT CONNECTION INSTEAD OF REOPENING BY PATH** (both stores adopt it, run migrations on it, and publish `adoptedConnectionIdentity` as the OBSERVATION the audit requires in place of a Boolean -- assigned only AFTER the connection is accepted, because my first version published it BEFORE the guard and so reported adopting a connection it had refused); **plus (c) the typed open errors** and **(d) the resumable migration with preserved rollback evidence**, both landed in earlier rounds. **WHAT REMAINS IS THE NATIVE-ENGINE REGRESSION HALF** -- *\"the pinned native engine with correct, wrong and missing keys, WAL and restart\"* -- **BLOCKED ON THE SAME STRUCTURAL CONDITION RE-VERIFIED THIS SESSION: NO PRODUCTION `EncryptedStoreEngine` EXISTS AT ALL**, because the real SQLCipher binding IS the injected seam the NATIVE_MODELS gate owns. A handle cannot be asked to carry a connection that no production code produces, and *acquiring SQLCipher cannot repair a discarded handle* -- but the handle is no longer discarded, which was the auditable half. Nothing here claims an at-rest or cryptographic-erasure result.",
+    "external_obligations": [
+     {
+      "id": "gs-final-004.native-engine-half",
+      "text": "The native-engine half of the owned-connection road: the composition, the adoption, the identity comparison and the migrations are all in-tree and mutation-proven, **but the engine that MINTS the owned connection is the external artifact above**, so the road cannot be driven end to end here.",
+      "status": "EXTERNAL_BLOCKED",
+      "why_external": "same absent engine; the internal half is recorded DISCHARGED"
+     }
+    ]
    },
    "GS-FINAL-005": {
     "severity": "Medium",
@@ -15237,8 +15277,10 @@
      {
       "id": "gs-integration-001.scenarios",
       "text": "Drive from OS-facade callbacks only, covering DIRECT, recipient ACK, no direct link, reconnect, wrong peer/key, replay, refused offer, crash after outbound durable enqueue / inbound commit / ACK commit, resume, wipe interruption.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "PARTIAL",
+      "evidence": [
+       "`path:ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift`, `path:ios/Godstone/Sources/GodstoneMesh/WireV2.swift`, `path:ios/Godstone/Sources/GodstoneMesh/MeshNode.swift`. **9 OF THE 12 NAMED SCENARIOS HAVE ARMS, COUNTED ONE BY ONE RATHER THAN BY FEEL:** DIRECT (`testGSINT001AnInboundDeliveryIsCommittedExactlyOnce`), recipient ACK (`...RecipientAcksAreOfferedThenDrainedForTheLink`, mutation-proven), no direct link (`...NoDirectLinkQueuesDurablyRatherThanClaimingARadio`), reconnect (`...TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad`), replay (`...ACrashAfterCommitLeavesTheRowAndRefusesTheReplay`, mutation-proven), refused offer (`...ADistinctFrameIsStillAdmittedAfterARefusal`), crash after inbound commit (same replay arm), resume (same), and wipe interruption (`...ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode`, mutation-proven). *** THREE REMAIN GENUINELY UNCOVERED AND ARE NAMED RATHER THAN IMPLIED: (i) WRONG PEER/KEY -- the malformed-frame arm drives `FrameV2.decode`, WHICH IS PURE WIRE-STRUCTURE VALIDATION (magic, version, type, ttl/hop bounds, CRC16) AND CONTAINS NO CRYPTOGRAPHY, so it is NOT a key or identity test; the real wrong-key road needs the SEALED HANDSHAKE, which `barePair` never runs. (ii) CRASH AFTER AN OUTBOUND DURABLE ENQUEUE and (iii) CRASH AFTER AN ACK COMMIT -- this rig runs an `InMemoryMessageStore`, so an OBJECT REBIRTH IS NOT A PROCESS DEATH: the store is never discarded and the rows stand for a reason the arms do not claim. THE DURABLE-ACROSS-RESTART HALF IS OWED TO THE REAL-COMPOSITION LANE, WHERE `SqliteMessageStore.enqueueDirectOutbound` COMMITS THE FRAME AND ITS QUEUED_DURABLY ROW IN ONE TRANSACTION.*** *Also unmet by CONSTRUCTION: the card's \"drive from OS-facade callbacks only\" clause, because `MeshNode.linkLayerReady = false` and BOTH `transportDidReceive` overloads guard on it -- the production transport->node delivery road is DEAD-ENDED in the shipped configuration, so every delivery arm must enter at `ingestInbound`.*** **MUTATION EVIDENCE FOR THE MALFORMED ARM, SERIALIZED AND ATTRIBUTABLE: baseline 13 passed / 0 failed; with `FrameV2.decode`'s magic AND CRC16 guards removed, 1 FAILED (that arm).** *My FIRST attempt mutated `BleRecord.decodeHeader` -- A ROAD THIS ARM NEVER TRAVERSES -- and stayed green, which proved nothing about the arm and everything about aiming a mutation at the wrong function.*"
+      ]
      },
      {
       "id": "gs-integration-001.mutation",
@@ -15300,7 +15342,14 @@
       "evidence": []
      }
     ],
-    "external_obligations": []
+    "external_obligations": [
+     {
+      "id": "gs-runtime-001.android-keystore",
+      "text": "The Android platform keystore boundary. *** PROVEN EXTERNAL: execution stops at `KeyStore.getInstance(\"AndroidKeyStore\")` (`PanicWipe.kt`), which does not exist on a host.*** **THE OTHER HALF STAYS INTERNAL: the Context-bearing court is writable** -- a Robolectric test already supplies `@ApplicationContext`, so the pump-identity comparison is NOT moved here merely because it is harder.",
+      "status": "EXTERNAL_BLOCKED",
+      "why_external": "the platform keystore is a device service; only that half is external"
+     }
+    ]
    },
    "GS-SOS-001": {
     "group": "original",
@@ -15339,7 +15388,14 @@
       "evidence": []
      }
     ],
-    "external_obligations": []
+    "external_obligations": [
+     {
+      "id": "gs-store-002.sqlcipher-engine",
+      "text": "A pinned native SQLCipher `EncryptedStoreEngine` implementation. *** PROVEN EXTERNAL FROM THE CODE, NOT CARRIED FORWARD: `EncryptedStoreEngine` is a PROTOCOL and `Sources/` carrieth NO CONCRETE IMPLEMENTOR** -- only the protocol declaration, a stored property and an init parameter. *The court substitutes a fake; the real binding is an artifact this repository does not contain.*",
+      "status": "EXTERNAL_BLOCKED",
+      "why_external": "no production implementor exists in-tree; the pinned SQLCipher binding is an external artifact"
+     }
+    ]
    },
    "GS-STORE-003": {
     "group": "original",
@@ -15406,11 +15462,20 @@
      {
       "id": "gs-stress-001.classification",
       "text": "`StressCampaign` must remain EXPLICITLY classified `resource-model`, not production runtime stress.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift`, `path:ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift`, `test:testW14TheCampaignIsANamedResourceModel`. `RESOURCE_MODEL_CATEGORY` is a top-level constant on BOTH isles (`StressCampaign.swift:32`, and its KOTLIN twin), so one grep findeth the contract everywhere; and `ReadinessT72Tests.testW14TheCampaignIsANamedResourceModel` asserts it BOTH WAYS -- `XCTAssertEqual(RESOURCE_MODEL_CATEGORY, \"resource-model\")` AND `XCTAssertNotEqual(RESOURCE_MODEL_CATEGORY, \"production\")` -- so the model cannot be mistaken for, or quietly renamed to, the production runtime it does not measure"
+      ]
      }
     ],
-    "external_obligations": []
+    "external_obligations": [
+     {
+      "id": "gs-stress-001.device-radio",
+      "text": "Device/hardware stress over a real radio. **The resource-model, the real-runtime driver, the 10,000-cycle campaign and the owner invariants are all INTERNAL and recorded; what is external is running that load against real hardware.**",
+      "status": "EXTERNAL_BLOCKED",
+      "why_external": "requires real hardware; the internal drivers are in-tree"
+     }
+    ]
    },
    "GS-SUPPLY-001": {
     "group": "original",
@@ -15445,8 +15510,10 @@
      {
       "id": "gs-ux-001.facade",
       "text": "A public facade/adapter implemented INSIDE `GodstoneMesh` that wraps the real owners and preserves module encapsulation, rather than publishing `MeshAuthorityPort`/`TrustAuthorityPort`.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/MeshTrustFacade.swift`, `path:ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift`, `path:ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift`, `path:ios/project.yml`. `MeshTrustFacade` is `public final class` INSIDE GodstoneMesh (`MeshTrustFacade.swift:9`), carrying plain `String`/`Bool`/`[String]` verbs, with the adapter over the REAL `PeerIdentityRepository` internal to the module; and BOTH ports remain UNPUBLISHED -- `protocol TrustAuthorityPort` (`TrustUXModel.swift:329`) and `protocol MeshAuthorityPort` (`MeshUXModel.swift:275`) carry NO access modifier, so nothing outside the module can name them. **MEASURED that this costs LIGHT nothing: `Godstone` (Shipping/Light) declares exactly ONE dependency, `GodstonePackages/GodstoneCore` -- NO mesh edge -- and `ci/check_lab_isolation.py` passes (rc=0).**"
+      ]
      },
      {
       "id": "gs-ux-001.rendered-controls",
@@ -15457,8 +15524,10 @@
      {
       "id": "gs-ux-001.ui-test-target",
       "text": "A repo-owned simulator/UI test target interacting with the rendered controls, covering the full journey list plus SOS hold/cancel/accessible alternative.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "PARTIAL",
+      "evidence": [
+       "`path:tools/readiness/run_ios_ui_lane.sh`, `path:ci/check_lane_results.py`, `path:ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift`, `path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift`, `path:ios/project.yml`. TWO REAL `bundle.ui-testing` TARGETS, NOW WITH A COMMITTED RUNNER AND A CONTROL THAT PARSES THEM. Measured and reproduced from the committed runner: `ios:ui suites=2 tests=12 failures=1` -- 6 LabMeshUI arms and 6 GodstoneArchiveUI arms, all executed. THE LANE DID NOT EXIST BEFORE THIS ROUND: `run_ios_lane.sh` runs only `swift test --package-path`, so the UI witnesses had NO LANE, NO RESULT-FILE PARSING, NO SKIPPED ACCOUNTING AND NO DIGEST-BOUND LOG, and ran only from ad-hoc `/tmp` scripts an auditor cannot re-execute. `check_ios_ui_lane` now refuses a REQUIRED-SUITE omission, an `Executed 0` run (what a crashed XCUITest process reports), ANY SKIP, and a stale digest, and counts every arm's own line. THE ONE RED ARM IS A NAMED ALLOWLIST ENTRY, NOT A SUPPRESSION: flipping a PASSING arm to failed makes the control refuse by name, PROVEN BY MUTATION, so a new break cannot hide behind the recorded one. STILL OWED: several of the card's named journeys are not driven end to end in one arm, and the archive recreation arm is deterministically RED (see gs-archive-005.app-witness)."
+      ]
      },
      {
       "id": "gs-ux-001.accessibility",
@@ -15467,7 +15536,14 @@
       "evidence": []
      }
     ],
-    "external_obligations": []
+    "external_obligations": [
+     {
+      "id": "gs-ux-001.human-accessibility-acceptance",
+      "text": "Human/device accessibility acceptance: a person using VoiceOver or TalkBack on a real device. **The in-tree work -- rendered semantics, identifiers, roles -- IS asserted; this is the acceptance ON TOP of it, which no host test can supply.**",
+      "status": "EXTERNAL_BLOCKED",
+      "why_external": "requires a human and a device"
+     }
+    ]
    },
    "IOS-01": {
     "group": "original",
@@ -15568,8 +15644,10 @@
      {
       "id": "gs-final-003.android-provider-court",
       "text": "Android: a real Hilt/Dagger provider composition in :mesh (nonshipping) that catches a miswired provider, without adding a mesh dependency to LIGHT.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshGraphComponent.kt`, `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`, `test:theRealComponentsGateAnswersBothDirections`, `path:ci/check_lab_isolation.py`. A real `@Singleton @Component` in the `:mesh` MAIN source set, delegating every provider to `MeshModule`, constructed by the court through `DaggerMeshGraphComponent.builder()`. **THE MISWIRING MUTATION WAS RUN, NOT ASSERTED: inverting `provideWipeIsPending` polarity (the exact 18-round production defect) REDDENS TWO ARMS** -- `theRealComponentsGateAnswersBothDirections` and `theRealComponentsGateIsReadPerCallNotCached`; restored, 7/7 pass. *** AND LIGHT GAINS NOTHING: `Godstone` declares ONE dependency (GodstoneCore, no mesh edge) and `ci/check_lab_isolation.py` rc=0.***"
+      ]
      },
      {
       "id": "gs-final-003.bootstrap-permit-unit",
@@ -15589,29 +15667,44 @@
      {
       "id": "gs-final-004.owned-connection",
       "text": "The encrypted engine must yield an OWNED OPERATIONAL connection/session with restricted construction and explicit close ownership -- not descriptive metadata that is discarded.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift`, `path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift`, `test:testGF004TheStoreRunsOnTheEnginesOwnVerifiedConnection`. The engine yields an OWNED OPERATIONAL connection: `OwnedVerifiedConnection` carries an `internal init(rawHandle:engineKind:...)` (line 68) so ONLY the module can mint one, `OwnedConnection` exposes `public func close() -> Bool` (line 122) as the explicit close owner, and `EncryptedStoreFactory.reopenOwnedRequiringDEK` returns an `OwnedConnectionResult` -- never descriptive metadata that is discarded"
+      ]
      },
      {
       "id": "gs-final-004.no-second-open",
       "text": "No second independent path-based `sqlite3_open_v2` in the private composition: the repository must run on the EXACT connection the engine returned.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift`. THE ROAD IS CHOSEN ONCE: the `url:` opens at lines 676-677 sit in the `encryptedStores == nil` branch ALONE, so when a factory is supplied the composition adopts through `SqliteMessageStore(verifiedConnection:)` and `SqlitePeerIdentityStore(verifiedConnection:)` and the path-based opens are UNREACHABLE. The remaining `sqlite3_open_v2` callsites (`MessageStore.swift`, `PeerIdentityStore.swift`, `ArchiveRepository.swift`) sit in the LEGACY/archive roads and the nonshipping lab harness, outside the private composition"
+      ]
      },
      {
       "id": "gs-final-004.identity-proof",
       "text": "Prove by OBJECT/CAPABILITY IDENTITY -- not a Boolean such as `messageStoreWasBuiltFromVerifiedHandle` -- that repository operations use the returned connection.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift`, `test:testGF004TheCompositionRunsItsStoresOnTheEnginesConnections`. PROVEN BY RAW-HANDLE IDENTITY, NOT A BOOLEAN: `adoptedConnectionIdentity` is a `UInt` (the raw `OpaquePointer` value) published only AFTER the store accepts the connection, and the court compares `identity(of: engine.handover(for: \"message-store\"))` against `runtime.messageStore.adoptedConnectionIdentity`. No `messageStoreWasBuiltFromVerifiedHandle`-style Boolean exists in the tree"
+      ]
      },
      {
       "id": "gs-final-004.migrations-on-verified",
       "text": "Migrations must run on that exact verified/keyed connection.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift`. `init(verifiedConnection:)` performs NO `sqlite3_open_v2` of its own and calls `try runMigrations(db)` on the SUPPLIED handle (MessageStore line 1021, PeerIdentityStore line 308); the legacy `init(url:)` roads run migrations on their own handles (lines 1086 and 336), so each road migrates the connection it actually owns"
+      ]
      }
     ],
-    "external_obligations": []
+    "external_obligations": [
+     {
+      "id": "gs-final-004.native-engine-half",
+      "text": "The native-engine half of the owned-connection road: the composition, the adoption, the identity comparison and the migrations are all in-tree and mutation-proven, **but the engine that MINTS the owned connection is the external artifact above**, so the road cannot be driven end to end here.",
+      "status": "EXTERNAL_BLOCKED",
+      "why_external": "same absent engine; the internal half is recorded DISCHARGED"
+     }
+    ]
    },
    "GS-FINAL-005": {
     "group": "independent",
@@ -15707,20 +15800,26 @@
      {
       "id": "audit-b1-ctrl-001.structured-obligations",
       "text": "Structured per-finding closure: `internal_status`, `internal_obligations` and `external_obligations` for every nonterminal finding, with `internal_remaining` DERIVED from them rather than NLP-classified from prose.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:scripts/build_structured_closure.py` --write wrote `finding_closure` (68 entries, every one carrying `internal_status`) + `structured_counts` into the ledger; `internal_remaining_prose_classifier_retired` records the NLP classifier as RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision, so `internal_remaining` is DERIVED from explicit obligation statuses"
+      ]
      },
      {
       "id": "audit-b1-ctrl-001.closure-law",
       "text": "A control that REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, so the control plane can no longer report closure over a NO_GO register.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:docs/production-readiness/BOARD1_CLOSURE.json`, `path:scripts/build_structured_closure.py`. MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"
+      ]
      },
      {
       "id": "audit-b1-ctrl-001.missed-partials",
       "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which the prose classifier missed entirely.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:scripts/build_structured_closure.py`. `build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), the two the prose classifier missed entirely; and the law REFUSES an OPEN finding with NO obligations authored, so a finding cannot be silently obligationless"
+      ]
      }
     ],
     "external_obligations": []
@@ -15728,9 +15827,15 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 10,
-   "internal_obligations_open": 30,
-   "external_obligations": 0
+   "findings_internal_open": 8,
+   "internal_obligations_open": 20,
+   "internal_obligations_unresolved": 20,
+   "obligations_by_state": {
+    "OPEN": 18,
+    "PARTIAL": 2,
+    "DISCHARGED": 10
+   },
+   "external_obligations": 5
   },
   "internal_remaining_prose_classifier_retired": {
    "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",

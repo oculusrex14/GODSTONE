@@ -96,6 +96,55 @@ IOS_LOG = REPO / "ios-lane.log"
 IOS_UI_LOG = REPO / "ios-ui-lane.log"
 IOS_UI_REQUIRED_SUITES = ("LabMeshUITests", "GodstoneArchiveUITests")
 
+#: *** THE REQUIRED ARM POPULATION, DERIVED FROM SOURCE + THE PROJECT CONFIGURATION -- NOT HAND-MAINTAINED. ***
+#:
+#: *THE DEFECT THIS CLOSES: the checker asserted that each required SUITE appeared, and nothing more. **SO AN ARM
+#: THAT NEVER RAN WAS SIMPLY ABSENT FROM A GREEN COUNT** -- reproduce: 4 of LabMeshUITests' 6 arms execute, both
+#: suite names appear, no skip line, no `Executed 0`, no unexpected failure, **and the parser accepts it.** That is
+#: the original defect ("the arm that never completed was simply absent") reintroduced one level down.*
+#:
+#: **AND A TOTAL IS NOT A POPULATION: pinning `12` would still pass if one expected arm vanished and another
+#: appeared, because the count survives a swap.** *The comparison is therefore BY STABLE IDENTITY.*
+#:
+#: **ONE SOURCE OF TRUTH, TWO CONSUMERS:** the arms come from the `func test...` declarations under the UI targets'
+#: OWN configured source directories, read from `ios/project.yml` -- *so the roster cannot drift from the target it
+#: claims to describe, and there is no second hand-maintained list to fall out of step.*
+IOS_PROJECT_SPEC = REPO / "ios" / "project.yml"
+_UI_TEST_FUNC = re.compile(r"^\s*(?:@\w+\s+)*func\s+(test[A-Za-z0-9_]*)\s*\(", re.M)
+
+
+def _ui_target_source_dirs() -> dict[str, list[str]]:
+    """The `bundle.ui-testing` targets and their configured source directories, from `project.yml`.
+
+    *Read rather than hard-coded, so adding an arm to a UI target automatically becomes a REQUIREMENT here instead
+    of silently widening what the control tolerates.*
+    """
+    import yaml  # noqa: PLC0415 - imported here so a host without PyYAML degrades loudly, not at import time
+    spec = yaml.safe_load(IOS_PROJECT_SPEC.read_text(encoding="utf-8"))
+    out: dict[str, list[str]] = {}
+    for name, target in (spec.get("targets") or {}).items():
+        if target.get("type") == "bundle.ui-testing":
+            out[name] = [s["path"] for s in (target.get("sources") or []) if isinstance(s, dict) and "path" in s]
+    return out
+
+
+def required_ui_arms() -> dict[str, list[str]]:
+    """`{suite: [className.armName, ...]}` for every `bundle.ui-testing` target, derived from its own sources."""
+    roster: dict[str, list[str]] = {}
+    for suite, dirs in sorted(_ui_target_source_dirs().items()):
+        arms: list[str] = []
+        for rel in dirs:
+            for f in sorted((REPO / "ios" / rel).rglob("*.swift")):
+                text = f.read_text(encoding="utf-8", errors="replace")
+                cls = None
+                m = re.search(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase", text, re.M)
+                if m:
+                    cls = m.group(1)
+                for arm in _UI_TEST_FUNC.findall(text):
+                    arms.append(f"{cls}.{arm}" if cls else arm)
+        roster[suite] = sorted(set(arms))
+    return roster
+
 #: *** KNOWN-RED UI ARMS, NAMED ONE BY ONE, WITH THE CARD CLAUSE THEY CORRESPOND TO. ***
 #:
 #: *This is NOT a suppression list and NOT a weaken-to-go-green: the arm still EXECUTES, still prints its `failed`
@@ -326,6 +375,133 @@ def selftest() -> int:
     return 1 if failures else 0
 
 
+def ui_selftest() -> int:
+    """*** ADVERSARIAL MUTATIONS FOR `check_ios_ui_lane` -- TWELVE CASES, EACH MUST BE KILLED. ***
+
+    *A control that has only ever been observed PASSING is not a control -- the lesson this session paid for
+    repeatedly. Each case mutates a REAL log (the committed lane's own text where one exists, else a synthetic
+    fixture) and asserts the checker refuses it, so the guards are exercised rather than described.*
+    """
+
+    global IOS_UI_LOG, REPO
+    import tempfile
+
+    failures = 0
+    cases_run = 0
+    results: list[tuple[str, str, str, str]] = []   # mutation, expected, observed, verdict
+
+    def run_case(name: str, text: str, sidecar: str | None, expect: str) -> None:
+        """`expect` is 'red' when the checker MUST refuse, 'green' when it MUST accept."""
+        # A NESTED FUNCTION NEEDS ITS OWN DECLARATION: the outer `global` does not reach into it.
+        global IOS_UI_LOG
+        nonlocal failures, cases_run
+        cases_run += 1
+        with tempfile.TemporaryDirectory() as td:
+            logp = Path(td) / "ios-ui-lane.log"
+            logp.write_text(text, encoding="utf-8")
+            if sidecar is not None:
+                Path(str(logp) + ".sources.sha256").write_text(sidecar, encoding="utf-8")
+            saved_log, saved_repo = IOS_UI_LOG, REPO
+            IOS_UI_LOG = logp
+            try:
+                probs, _tot = check_ios_ui_lane()
+            finally:
+                IOS_UI_LOG = saved_log
+            # The digest is computed against the REAL tree, so a fixture cannot forge it; cases that do not
+            # exercise the digest pass the real value through.
+            # *** THE VERDICT IS THE CHECKER'S OWN: ANY PROBLEM IS RED, AN EMPTY LIST IS GREEN. ***
+            # *Notices are not problems -- that is the whole point of the known-red allowlist -- so case (6) must
+            # come back with an EMPTY list while still ANNOUNCING the obligation.*
+            got = "red" if probs else "green"
+            verdict = "KILLED" if got == expect else "ESCAPED"
+            if verdict == "ESCAPED":
+                failures += 1
+            results.append((name, expect, got, verdict))
+
+    real_digest = _ios_source_digest()
+
+    def base_text() -> str:
+        if IOS_UI_LOG.is_file():
+            return IOS_UI_LOG.read_text(encoding="utf-8", errors="replace")
+        # A synthetic but shape-faithful log, used when no lane has been run on this host.
+        roster = required_ui_arms()
+        lines = []
+        for suite, arms in roster.items():
+            for arm in arms:
+                lines.append(f"Test Case '-[{suite}.{suite} {arm.split('.')[-1]}]' passed (1.0 seconds).")
+            lines.append(f"Test Suite '{suite}.xctest' passed at 2026-01-01.")
+            lines.append(f"\t Executed {len(arms)} tests, with 0 failures (0 unexpected) in 1.0 (1.0) seconds")
+        return "\n".join(lines) + "\n"
+
+    base = base_text()
+
+    # (1) an entire required suite absent.
+    run_case("1. whole required suite absent",
+             "\n".join(l for l in base.split("\n") if "GodstoneArchiveUITests" not in l),
+             real_digest, "red")
+    # (2) ONE required arm absent, the rest of its suite intact.
+    arm = "testGSINT001TheWipeControlReportsTheRuntimesOwnState"
+    run_case("2. one required arm absent",
+             "\n".join(l for l in base.split("\n") if arm not in l), real_digest, "red")
+    # (3) Executed 0.
+    run_case("3. Executed 0 tests", base + "\n\t Executed 0 tests, with 0 failures\n", real_digest, "red")
+    # (4) one skipped arm.
+    run_case("4. one skipped arm",
+             base + "\nTest Case '-[LabMeshUITests.LabMeshUITests testGSINT001X]' skipped (1.0 seconds).\n",
+             real_digest, "red")
+    # (5) a NEW unexpected failure (not the recorded known-red arm).
+    run_case("5. a new unexpected failed arm",
+             base.replace("testGSINT001TheWipeControlReportsTheRuntimesOwnState]' passed",
+                          "testGSINT001TheWipeControlReportsTheRuntimesOwnState]' failed"),
+             real_digest, "red")
+    # (6) the named known-red arm only -- ACCEPTED **AND ANNOUNCED**. *"Accepted" alone would be satisfied by a
+    # silent pass, which is the failure this case exists to forbid, so the notice is asserted too.*
+    run_case("6. only the recorded known-red arm fails", base, real_digest, "green")
+    with tempfile.TemporaryDirectory() as td:
+        logp = Path(td) / "ios-ui-lane.log"
+        logp.write_text(base, encoding="utf-8")
+        Path(str(logp) + ".sources.sha256").write_text(real_digest, encoding="utf-8")
+        saved = IOS_UI_LOG
+        IOS_UI_LOG = logp
+        try:
+            _p, tot = check_ios_ui_lane()
+        finally:
+            IOS_UI_LOG = saved
+        notices = tot.get("notices") or []
+        cases_run += 1
+        if notices and any("testGSA005DocumentReopensAfterCleanProcessDeath" in n for n in notices):
+            results.append(("6b. known-red arm is ANNOUNCED, not silent", "notice", "notice", "KILLED"))
+        else:
+            failures += 1
+            results.append(("6b. known-red arm is ANNOUNCED, not silent", "notice", f"{notices}", "ESCAPED"))
+    # (7) a different PASSING arm changed to failed -- rejected by exact name (same shape as 5, distinct arm).
+    run_case("7. a different passing arm changed to failed",
+             base.replace("testGSINT001TypeSelectRecipientAndSendReachesARenderedOutcome]' passed",
+                          "testGSINT001TypeSelectRecipientAndSendReachesARenderedOutcome]' failed"),
+             real_digest, "red")
+    # (8) missing digest.
+    run_case("8. missing digest sidecar", base, None, "red")
+    # (9) stale digest.
+    run_case("9. stale digest sidecar", base, "0" * 64, "red")
+    # (10) duplicate verdict for one arm.
+    run_case("10. duplicate verdict for one arm",
+             base + "\nTest Case '-[LabMeshUITests.LabMeshUITests testGSINT001TheWipeControlReportsTheRuntimesOwnState]' passed (1.0 seconds).\n",
+             real_digest, "red")
+    # (11) source declares a required arm the log omits -- same shape as (2) but asserted as its own case.
+    run_case("11. source-declared arm omitted from the log",
+             "\n".join(l for l in base.split("\n") if "testGSA005ScrollingRevealsALaterPassage" not in l),
+             real_digest, "red")
+    # (12) an empty log entirely.
+    run_case("12. empty log (no arm verdicts at all)", "", real_digest, "red")
+
+    print("\n== ui selftest: mutation | expected | observed | verdict ==")
+    for name, exp, got, verdict in results:
+        print(f"   {name:46s} {exp:6s} {got:6s} {verdict}")
+    killed = sum(1 for r in results if r[3] == "KILLED")
+    print(f"\nui selftest: {killed}/{cases_run} mutations killed")
+    return 1 if failures else 0
+
+
 def check_ios_ui_lane() -> tuple[list[str], dict]:
     """*** THE `bundle.ui-testing` LANE: EVERY ARM'S OWN LINE, ZERO-EXECUTED REFUSED, STALENESS BOUND. ***
 
@@ -354,6 +530,34 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
         if name not in suites:
             problems.append(f"the iOS UI lane carrieth no test case for suite {name} -- a UI target that did not run "
                             f"is not covered by this control")
+
+    # *** BY NAME, NOT BY COUNT: every SOURCE-DECLARED arm must be OBSERVED. ***
+    try:
+        roster = required_ui_arms()
+    except Exception as exc:  # noqa: BLE001 - an unobtainable roster must not read as an absent arm
+        problems.append(f"the required UI arm roster could not be derived from {IOS_PROJECT_SPEC}: {exc} -- **AN "
+                        f"UNOBTAINABLE ROSTER IS NOT AN EMPTY ONE**")
+        roster = {}
+    # The log's class token is `<Module>.<Class>`; the roster's is `<Class>`. Compare on `<Class>.<test>`.
+    observed = {(c.split(".")[-1], n): v for c, n, v in cases}
+    totals["required_arms"] = 0
+    for suite in IOS_UI_REQUIRED_SUITES:
+        for arm in roster.get(suite, []):
+            totals["required_arms"] += 1
+            key = arm                      # already "<Class>.<test>"
+            if (arm.split(".")[0], arm.split(".")[1]) not in observed:
+                problems.append(f"*** REQUIRED UI ARM ABSENT: {key} is DECLARED IN SOURCE but the log carrieth NO "
+                                f"verdict for it. *** *An arm that never ran is not a passing arm -- this is the "
+                                f"defect a count cannot see.*")
+    # AND A DUPLICATE VERDICT WOULD DOUBLE-COUNT AN ARM.
+    seen: dict[str, int] = {}
+    for c, n, _v in cases:
+        key = f"{c.split('.')[-1]}.{n}"
+        seen[key] = seen.get(key, 0) + 1
+    for key, times in sorted(seen.items()):
+        if times > 1:
+            problems.append(f"the iOS UI lane carrieth {times} verdicts for {key} -- a duplicated arm would be "
+                            f"double-counted")
     if cases and totals["failures"]:
         # EVERY FAILED ARM IS NAMED; ONLY THE PRE-RECORDED ONES ARE EXCUSED, AND THEY ARE STILL ANNOUNCED.
         unexplained = []
@@ -443,7 +647,10 @@ def check_mirror_membership() -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--selftest-ui", action="store_true")
     args = ap.parse_args()
+    if args.selftest_ui:
+        return ui_selftest()
     if args.selftest:
         return selftest()
 

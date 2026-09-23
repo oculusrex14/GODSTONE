@@ -174,3 +174,153 @@ class TheLawStillRefuses(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ObligationStateMachine(unittest.TestCase):
+    """*** THE STATE MODEL: TERMINALITY COMES FROM AN EXPLICIT SET, NOT FROM `== "OPEN"`. ***
+
+    *THE DEFECT THESE CLOSE, PROVEN BY SIMULATION BEFORE THE FIX: the map held **18 OPEN, 2 PARTIAL, 10
+    DISCHARGED**, and `counts()` summed only `status == "OPEN"` -- so the two `PARTIAL` obligations vanished from the
+    unresolved total. **AND THE FALSE-CLOSURE PATH WAS REAL: with all 18 OPEN discharged and the 2 PARTIALs
+    remaining, the derived count fell to zero and the law PERMITTED `READY_FOR_EXTERNAL_REAUDIT` (rc=0).*** That is
+    AUDIT-B1-CTRL-001's defect class reproducing inside the instrument built to prevent it.*
+
+    *These mutate the REAL structured model -- the actual `PARTIAL_OBLIGATIONS` map and the actual `counts()` -- not
+    a toy predicate, so they cannot pass while production drifts away from them.*
+    """
+
+    def setUp(self) -> None:
+        self.mod = _load()
+        self.closure = self.mod.build(json.loads(self.mod.LEDGER.read_text(encoding="utf-8")))
+
+    def test_the_legal_state_set_is_explicit(self) -> None:
+        self.assertEqual(set(self.mod.OBLIGATION_STATES), {"OPEN", "PARTIAL", "DISCHARGED"})
+        self.assertEqual(set(self.mod.UNRESOLVED_OBLIGATION_STATES), {"OPEN", "PARTIAL"})
+        self.assertEqual(set(self.mod.TERMINAL_OBLIGATION_STATES), {"DISCHARGED"})
+        self.assertFalse(set(self.mod.UNRESOLVED_OBLIGATION_STATES) & set(self.mod.TERMINAL_OBLIGATION_STATES),
+                         "no state may be both unresolved and terminal")
+
+    @staticmethod
+    def _first_with_obligations(closure: dict):
+        """The first finding that actually CARRIES obligations -- many findings carry none."""
+        for f in closure.values():
+            if f.get("internal_obligations"):
+                return f
+        raise AssertionError("the closure carries no obligations at all")
+
+    def _count_with(self, mutate) -> dict:
+        """Counts over the REAL closure with one obligation's status mutated."""
+        closure = json.loads(json.dumps(self.closure))
+        mutate(closure)
+        return self.mod.counts(closure)
+
+    def test_one_open_obligation_prevents_zero(self) -> None:
+        def m(c):
+            for f in c.values():
+                for o in f["internal_obligations"]:
+                    o["status"] = "DISCHARGED"
+            self._first_with_obligations(c)["internal_obligations"][0]["status"] = "OPEN"
+        self.assertEqual(self._count_with(m)["internal_obligations_unresolved"], 1,
+                         "ONE OPEN obligation must keep the unresolved count at ONE")
+
+    def test_one_partial_obligation_prevents_zero(self) -> None:
+        """*** THE CASE THE OLD `== \"OPEN\"` FILTER GOT WRONG. ***"""
+        def m(c):
+            for f in c.values():
+                for o in f["internal_obligations"]:
+                    o["status"] = "DISCHARGED"
+            self._first_with_obligations(c)["internal_obligations"][0]["status"] = "PARTIAL"
+        self.assertEqual(self._count_with(m)["internal_obligations_unresolved"], 1,
+                         "*** ONE PARTIAL obligation MUST keep the unresolved count at ONE -- a filter that honours "
+                         "only the OPEN spelling of 'not finished' under-counts silently. ***")
+
+    def test_only_all_discharged_reaches_zero(self) -> None:
+        def m(c):
+            for f in c.values():
+                for o in f["internal_obligations"]:
+                    o["status"] = "DISCHARGED"
+        got = self._count_with(m)
+        self.assertEqual(got["internal_obligations_unresolved"], 0)
+        self.assertEqual(got["obligations_by_state"]["DISCHARGED"], sum(got["obligations_by_state"].values()))
+
+    def test_an_unknown_status_is_refused(self) -> None:
+        """*A state this instrument does not recognise is neither terminal nor unresolved -- guessing is a false
+        reading, so it is NAMED.*"""
+        for bogus in ("DONE", "FIXED", "PASS", "COMPLETE", "openn", "partial"):
+            with self.subTest(status=bogus):
+                closure = json.loads(json.dumps(self.closure))
+                self._first_with_obligations(closure)["internal_obligations"][0]["status"] = bogus
+                problems = self.mod.obligation_state_problems(closure)
+                self.assertTrue(problems, f"{bogus!r} must be REFUSED by name, not guessed at")
+
+    def test_the_real_map_carries_only_legal_states(self) -> None:
+        self.assertEqual(self.mod.obligation_state_problems(self.closure), [],
+                         "every obligation in the real map must carry a legal state")
+
+
+class PersistedStateAgreesWithDerivation(unittest.TestCase):
+    """*** THE PERSISTED STRUCTURED STATE MUST EQUAL WHAT THE LOGIC DERIVES. ***
+
+    *MEASURED BEFORE THE FIX: the ledger carried `structured_counts.internal_obligations_open = 30` while the
+    derivation produced **18** -- two disagreeing structured representations of the same state, which is exactly the
+    narrative/state drift this control plane exists to eliminate. And `--check` never read them.*
+
+    *These mutate the PERSISTED ledger in a scratch tree and require `--check` to refuse, so the field cannot go
+    stale while the checker stays green.*
+    """
+
+    def _run_check_with_ledger(self, mutate) -> subprocess.CompletedProcess:
+        with tempfile.TemporaryDirectory() as td:
+            scratch = Path(td) / "repo"
+            (scratch / "scripts").mkdir(parents=True)
+            shutil.copy2(GATE, scratch / "scripts" / GATE.name)
+            (scratch / "docs" / "production-readiness").mkdir(parents=True)
+            (scratch / "docs" / "remediation").mkdir(parents=True)
+            shutil.copy2(CLOSURE, scratch / "docs" / "production-readiness" / CLOSURE.name)
+            led = json.loads((REPO / "docs" / "remediation" / "REMEDIATION_STATE.json").read_text(encoding="utf-8"))
+            mutate(led)
+            (scratch / "docs" / "remediation" / "REMEDIATION_STATE.json").write_text(
+                json.dumps(led, indent=1, ensure_ascii=False), encoding="utf-8")
+            return subprocess.run(["python3", str(scratch / "scripts" / GATE.name), "--check"],
+                                  capture_output=True, text=True, cwd=str(scratch), timeout=600)
+
+    def test_a_stale_count_is_refused(self) -> None:
+        def m(led):
+            led["current_assessment"]["structured_counts"]["internal_obligations_open"] += 1
+        proc = self._run_check_with_ledger(m)
+        self.assertEqual(proc.returncode, 1, "an altered persisted COUNT must be refused")
+        self.assertIn("DISAGREES", proc.stdout, "and the refusal must SAY which field disagreed")
+
+    def test_a_stale_obligation_status_is_refused(self) -> None:
+        def m(led):
+            for fid, f in (led["current_assessment"]["finding_closure"] or {}).items():
+                for o in (f.get("internal_obligations") or []):
+                    if o.get("status") == "DISCHARGED":
+                        o["status"] = "OPEN"
+                        return
+        proc = self._run_check_with_ledger(m)
+        self.assertEqual(proc.returncode, 1, "an altered persisted STATUS must be refused")
+
+    def test_a_deleted_obligation_is_refused(self) -> None:
+        def m(led):
+            for fid, f in (led["current_assessment"]["finding_closure"] or {}).items():
+                if f.get("internal_obligations"):
+                    f["internal_obligations"].pop()
+                    return
+        proc = self._run_check_with_ledger(m)
+        self.assertEqual(proc.returncode, 1, "a DELETED persisted obligation must be refused")
+
+    def test_an_orphan_obligation_is_refused(self) -> None:
+        def m(led):
+            for fid, f in (led["current_assessment"]["finding_closure"] or {}).items():
+                f.setdefault("internal_obligations", []).append(
+                    {"id": "orphan.not-in-derivation", "status": "OPEN"})
+                return
+        proc = self._run_check_with_ledger(m)
+        self.assertEqual(proc.returncode, 1, "an ORPHAN persisted obligation must be refused")
+
+    def test_the_real_tree_agrees(self) -> None:
+        proc = subprocess.run(["python3", str(GATE), "--check"], capture_output=True, text=True,
+                              cwd=str(REPO), timeout=600)
+        self.assertEqual(proc.returncode, 0,
+                         "the committed tree's persisted state must equal its derivation:\n" + proc.stdout)

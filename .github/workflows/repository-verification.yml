@@ -608,43 +608,41 @@ jobs:
       # Drift gate: the committed ios/Packages/GodstoneFoundation tree must be
       # byte-identical to what sync_ios_foundation_package.py would regenerate.
       - run: python scripts/sync_ios_foundation_package.py --check
-      - name: ios lane (swift test) + the rendered-control UI courts
-        run: |
-          set -euo pipefail
-          swift test --package-path ios/Packages/GodstoneFoundation
-          # *** GS-UX-001 STEP 7: THE UI COURTS, RUN BY THE JOB THAT ACTUALLY EXISTS. ***
-          #
-          # *AN EXTERNAL REVIEW FOUND THAT `LabMeshUI` WAS INVOKED BY NO GATE ANYWHERE -- `grep -rn LabMeshUI ci/`
-          # `tools/ .github/` returned NOTHING, and `check_lane_results.py` requires only GodstoneMeshTests,
-          # GodstoneCoreTests and LabMeshTests. **SO THE BUNDLE RAN ONLY WHERE A HAND COMMAND RAN IT, AND A FREEZE
-          # CLAIMING CI COVERAGE OF UI COURTS WOULD HAVE BEEN FALSE.***
-          #
-          # *This LAUNCHES the LabMesh application and drives its accessibility tree, so an unwired control, a
-          # missing scheme or a crash on launch fails the job rather than silently reducing coverage.*
-          sim=$(xcrun simctl list devices available 2>/dev/null \
-                | grep -oE 'iPhone [0-9]+( Pro Max| Pro| Plus)?' | sort -u | tail -1)
-          echo "UI courts on simulator: ${sim}"
-          # *** ORDERING, WHICH MY FIRST VERSION GOT WRONG: `ios/Godstone.xcodeproj` IS GITIGNORED AND GENERATED
-          # FROM `ios/project.yml` BY XCODEGEN. *** *MEASURED: `git ls-files ios/Godstone.xcodeproj` returns NOTHING,
-          # and this step sits BEFORE the later `xcodegen generate` step -- so as first written IT WOULD HAVE FOUND NO
-          # PROJECT AND FAILED.* Regenerating here makes the step self-sufficient rather than dependent on a
-          # position in the file, which is the difference between correct-by-luck and correct-by-construction.*
-          xcodegen generate --spec ios/project.yml
-          xcodebuild -project ios/Godstone.xcodeproj -scheme LabMeshUI \
-            -configuration LightDebug -destination "platform=iOS Simulator,name=${sim}" \
-            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee /tmp/xcb-ui.log
-          grep -q "TEST SUCCEEDED" /tmp/xcb-ui.log \
-            || { echo "::error::the UI courts did not report TEST SUCCEEDED"; exit 1; }
-      # xcodegen is a HOST build tool, not a production dependency: it generates
-      # the .xcodeproj (gitignored) from ios/project.yml. It is not preinstalled
-      # on macos runners, so install it via Homebrew. Unlike the Gradle wrapper
-      # (A2: pinned, committed, checksum-verified) this is a regenerator whose
-      # output is drift-gated (sync --check) and never ships; provenance records
-      # the exact version used so the regenerator is identifiable per run.
+      # *** XCODEGEN IS INSTALLED *BEFORE* THE STEP THAT USES IT. ***
+      #
+      # *MEASURED FAILURE: the hosted run `35538113990` failed `ios` with `xcodegen: command not found`, because the
+      # UI step invoked `xcodegen generate` while the install step sat LATER in the file. The comment inside the old
+      # step claimed the ordering was fixed by regenerating locally -- **and it still ran before the install.***
+      # **A STEP THAT REGENERATES THE PROJECT NEEDS THE GENERATOR TO EXIST FIRST; "self-sufficient" meant self-
+      # sufficient with respect to FILE POSITION, not with respect to the TOOLCHAIN.**
       - name: install xcodegen (project regenerator)
         run: |
           brew install xcodegen
           xcodegen --version
+
+      # *** THE iOS FOUNDATION LANE AND THE UI LANE, ONE REPOSITORY-OWNED PATH EACH. ***
+      #
+      # *THE DEFECT THIS CLOSES: `tools/readiness/run_ios_ui_lane.sh` was committed but invoked by NO workflow, and
+      # `GodstoneArchiveUI` appeared NOWHERE in `.github/`. **THE CLAIMED REPAIR -- "committed runner + result parsing
+      # + skip accounting + digest-bound log" -- EXISTED AS MACHINERY WHILE THE CANONICAL HOSTED GATE RAN AN AD-HOC
+      # `LabMeshUI` xcodebuild INSTEAD, AND RAN THE ARCHIVE SCHEME NOT AT ALL.*** **So the workflow no longer keeps an
+      # independent implementation of the same lane: it CALLS the committed runner, which is the only place the
+      # schemes, the simulator resolution and the digest sidecar are defined.***
+      - name: ios foundation lane (swift test)
+        run: |
+          set -euo pipefail
+          tools/readiness/run_ios_lane.sh ios-lane.log
+          python3 ci/check_lane_results.py
+
+      - name: ios UI lane (LabMeshUI + GodstoneArchiveUI)
+        run: |
+          set -euo pipefail
+          # *** THE RUNNER PRODUCES EVIDENCE AND ALWAYS EXITS 0 WHEN IT PRODUCED A LOG; THE CHECKER DECIDES. ***
+          # *A raw `xcodebuild` non-zero cannot distinguish the RECORDED known-red obligation from a NOVEL break, so
+          # aborting on it would either suppress the obligation or force it to be hidden.*
+          tools/readiness/run_ios_ui_lane.sh ios-ui-lane.log
+          python3 ci/check_lane_results.py
+
       # xcodegen + xcodebuild Archive-only (LightRelease) is repo-owned green:
       # the app starts with a truthful local "Archive unavailable" state and
       # needs no model/native stack to build.

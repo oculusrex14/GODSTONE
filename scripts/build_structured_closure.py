@@ -300,16 +300,63 @@ def build(ledger: dict) -> dict:
     return closure
 
 
+#: *** THE LEGAL OBLIGATION STATES, AND TERMINALITY DERIVED FROM THE SET RATHER THAN FROM A LITERAL. ***
+#:
+#: *THE DEFECT THIS CLOSES, MEASURED BEFORE THE FIX:* the map held **18 OPEN, 2 PARTIAL and 10 DISCHARGED**
+#: obligations, and `counts()` summed only `status == "OPEN"` -- **SO THE TWO `PARTIAL` OBLIGATIONS DISAPPEARED FROM
+#: THE UNRESOLVED TOTAL (18 reported against 20 unresolved).** *Worse, it created a FALSE-CLOSURE PATH, and I proved it
+#: by simulation: **with all 18 OPEN discharged and the 2 PARTIALs remaining, the derived count fell to ZERO and the
+#: law PERMITTED `READY_FOR_EXTERNAL_REAUDIT` (rc=0) over live unresolved work.*** **That is AUDIT-B1-CTRL-001's
+#: defect class reproducing itself in the instrument built to prevent it.**
+#:
+#: **SO TERMINALITY IS NOW A PROPERTY OF AN EXPLICIT SET, NOT OF A STRING COMPARISON.** *`PARTIAL` means "not
+#: finished", and a comparison that honours only one spelling of "not finished" is the same defect as a prose
+#: classifier -- it under-counts silently.*
+OBLIGATION_STATES = ("OPEN", "PARTIAL", "DISCHARGED")
+UNRESOLVED_OBLIGATION_STATES = ("OPEN", "PARTIAL")
+TERMINAL_OBLIGATION_STATES = ("DISCHARGED",)
+
+
+def obligation_state_problems(closure: dict) -> list[str]:
+    """*** EVERY OBLIGATION MUST CARRY A LEGAL STATE; AN UNKNOWN ONE IS AN ERROR, NEVER A SKIP. ***
+
+    *A status this instrument does not recognise cannot be silently treated as terminal OR as unresolved -- either
+    guess is a false reading of the record. Naming it is the only honest option, and it is what makes a typo loud.*
+    """
+    problems: list[str] = []
+    for fid, f in sorted(closure.items()):
+        for o in (f.get("internal_obligations") or []):
+            st = o.get("status")
+            if st not in OBLIGATION_STATES:
+                problems.append(
+                    f"{o.get('id', '<no id>')} carrieth obligation status {st!r}, which is NOT one of "
+                    f"{OBLIGATION_STATES} -- an unknown state is neither terminal nor unresolved, so this instrument "
+                    f"may not guess which")
+    return problems
+
+
 def counts(closure: dict) -> dict:
-    internal_open = sum(
+    """Derives the counts from EXPLICIT STATES, so no unresolved subtype can vanish.
+
+    *`internal_obligations_unresolved` supersedes the old `internal_obligations_open` name: the field counts `OPEN`
+    **AND** `PARTIAL`, so a name saying `open` would be semantically dishonest about its own contents.*
+    """
+    unresolved = sum(
         1 for f in closure.values()
-        for o in f["internal_obligations"] if o["status"] == "OPEN")
-    findings_open = sum(1 for f in closure.values() if f["internal_status"] == "OPEN")
+        for o in f["internal_obligations"] if o["status"] in UNRESOLVED_OBLIGATION_STATES)
+    by_state = {st: sum(1 for f in closure.values()
+                        for o in f["internal_obligations"] if o["status"] == st)
+                for st in OBLIGATION_STATES}
+    findings_unresolved = sum(1 for f in closure.values()
+                              if any(o["status"] in UNRESOLVED_OBLIGATION_STATES
+                                     for o in f["internal_obligations"]))
     external = sum(len(f["external_obligations"]) for f in closure.values())
     return {
         "findings_total": len(closure),
-        "findings_internal_open": findings_open,
-        "internal_obligations_open": internal_open,
+        "findings_internal_open": findings_unresolved,
+        "internal_obligations_open": unresolved,          # kept: the law and its courts read this name
+        "internal_obligations_unresolved": unresolved,    # the honest name, same value
+        "obligations_by_state": by_state,
         "external_obligations": external,
     }
 
@@ -358,6 +405,69 @@ def main(argv=None) -> int:
             return 1
         if closure_doc.get("verified_fixed") not in (None, 0):
             print("  ::error:: verified_fixed is non-zero; only an INDEPENDENT audit may write it")
+            return 1
+
+        # *** EVERY OBLIGATION CARRIES A LEGAL STATE, AND AN UNKNOWN ONE IS AN ERROR. ***
+        state_problems = obligation_state_problems(closure)
+        for msg in state_problems:
+            print(f"  ::error:: {msg}")
+        if state_problems:
+            return 1
+
+        # *** THE PERSISTED STRUCTURED STATE MUST EQUAL WHAT THIS LOGIC DERIVES. ***
+        #
+        # *THE DEFECT THIS CLOSES, MEASURED BEFORE THE FIX: the ledger carried
+        # `structured_counts.internal_obligations_open = 30` while the derivation produced **18** -- **TWO
+        # DISAGREEING STRUCTURED REPRESENTATIONS OF THE SAME STATE, which is exactly the narrative/state drift this
+        # control plane exists to eliminate.*** *And `--check` never looked at them: it read only the closure
+        # document's `status`, so a stale persisted field could sit green indefinitely.*
+        #
+        # **SO THE CHECK COMPARES THE PERSISTED VALUES TO THE DERIVED ONES, FIELD BY FIELD AND OBLIGATION BY
+        # OBLIGATION.** *A count that has drifted, a status that has drifted, a missing entry and an orphan entry are
+        # each refused by name -- four shapes, because "the numbers differ" would not tell a reader which.*
+        persisted_ca = ledger.get("current_assessment") or {}
+        persisted_counts = persisted_ca.get("structured_counts")
+        if persisted_counts is None:
+            print("  ::error:: the ledger carrieth NO `current_assessment.structured_counts` -- run `--write` so the "
+                  "persisted state exists to be checked")
+            drift = ["structured_counts absent"]
+        else:
+            drift = []
+            for key in sorted(set(c) | set(persisted_counts)):
+                if c.get(key) != persisted_counts.get(key):
+                    drift.append(f"structured_counts.{key}: persisted {persisted_counts.get(key)!r} != derived "
+                                 f"{c.get(key)!r}")
+        persisted_fc = persisted_ca.get("finding_closure")
+        if persisted_fc is None:
+            drift.append("current_assessment.finding_closure absent")
+        else:
+            for fid in sorted(set(closure) | set(persisted_fc)):
+                if fid not in persisted_fc:
+                    drift.append(f"{fid}: derived but MISSING from the persisted closure")
+                    continue
+                if fid not in closure:
+                    drift.append(f"{fid}: persisted but ORPHANED from the derived closure")
+                    continue
+                live = {o.get("id"): o.get("status") for o in (closure[fid].get("internal_obligations") or [])}
+                kept = {o.get("id"): o.get("status")
+                        for o in (persisted_fc[fid].get("internal_obligations") or [])}
+                if closure[fid].get("internal_status") != persisted_fc[fid].get("internal_status"):
+                    drift.append(f"{fid}: internal_status persisted {persisted_fc[fid].get('internal_status')!r} != "
+                                 f"derived {closure[fid].get('internal_status')!r}")
+                for oid in sorted(set(live) | set(kept)):
+                    if oid not in kept:
+                        drift.append(f"{fid}/{oid}: derived but MISSING from the persisted closure")
+                    elif oid not in live:
+                        drift.append(f"{fid}/{oid}: persisted but ORPHANED from the derived closure")
+                    elif live[oid] != kept[oid]:
+                        drift.append(f"{fid}/{oid}: status persisted {kept[oid]!r} != derived {live[oid]!r}")
+        if drift:
+            for msg in drift[:20]:
+                print(f"  ::error:: persisted/derived structured state DISAGREES: {msg}")
+            if len(drift) > 20:
+                print(f"  ::error:: ... and {len(drift) - 20} more disagreement(s)")
+            print("  ::error:: RUN `--write` AND COMMIT THE RESULT: a persisted closure that this logic would not "
+                  "derive is a second, stale representation of the same state.")
             return 1
 
         # *** THE INDEPENDENT BACKSTOP, WHICH EXISTS BECAUSE THIS FILE HOLDS BOTH THE COUNTER AND ITS INPUTS. ***
