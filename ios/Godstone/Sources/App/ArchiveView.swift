@@ -104,6 +104,30 @@ private struct ArchiveBrowser: View {
         path = [ArchiveDocument(id: id, title: scene.openedTitle ?? "", domain: "", isCritical: false)]
     }
 
+    /// *** THE RENDERED FIELD MUST SHOW THE SUBMITTED QUERY, NOT ONLY THE MODEL. ***
+    ///
+    /// **MEASURED, HOSTED RUN `35903873741`: after opening a hit and pressing Back, the scene stood in `.search` with
+    /// `searchedQuery` intact -- and the RENDERED search field was EMPTY, its value reading the placeholder
+    /// `"Search every document"`.** *`ArchiveSceneModel.back()` restores the MODEL's query; `fieldText` is a separate
+    /// `@State` that NOTHING restored, so wherever SwiftUI resets the search bar's own text across the push/pop the
+    /// reader is shown an empty field over a populated model.*
+    ///
+    /// **THAT IS EXACTLY THE OBSERVABLE THE ARM'S DOCSTRING NAMES** -- *"A model can hold `searchedQuery` while the
+    /// rendered surface shows it empty -- and THIS is the observable a model test cannot reach"* -- **and it is the loss
+    /// the card's "Back returns to the submitted query" clause forbids.**
+    ///
+    /// *THE GUARDS MAKE THIS ADDITIVE: it fires ONLY in `.search` mode, ONLY when the field is EMPTY, and ONLY from a
+    /// non-empty submitted query.* **It cannot overwrite what the reader is typing, and it cannot invent a query the
+    /// scene never submitted.**
+    private func restoreSubmittedQueryIntoField() {
+        guard scene.mode == .search else { return }
+        guard fieldText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard let submitted = scene.searchedQuery?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !submitted.isEmpty
+        else { return }
+        fieldText = submitted
+    }
+
     /// *** GS-FINAL-006 (the independent audit, 2026-09-18): THE OTHER DIRECTION WAS NEVER WIRED, SO THE SCENE WAS
     /// NEVER TOLD. ***
     ///
@@ -214,7 +238,12 @@ private struct ArchiveBrowser: View {
             // AND IT IS GUARDED AGAINST BOTH WAYS IT COULD GO WRONG: the target is remembered, so a no-op is
             // TOLD APART from a change (else this would fight every tap the user made), and the path is CLEARED
             // when the scene returneth to the list (else Back would leave the stack ahead of the scene).
-            .onChange(of: scene.openedDocumentId) { _ in syncPathWithScene() }
+            // *AND THE RENDERED FIELD IS BROUGHT INTO LINE WITH THE SCENE AT THE SAME MOMENT*, so a Back that the
+            // model answered correctly is not nonetheless rendered as an empty search bar.
+            .onChange(of: scene.openedDocumentId) { _ in
+                syncPathWithScene()
+                restoreSubmittedQueryIntoField()
+            }
             // *** GS-FINAL-006: AND THE PATH TELLETH THE SCENE WHEN *IT* MOVES. ***
             // A swipe-back pop removes the last path element WITHOUT `scene.back()` ever running, so the scene would
             // keep `openedDocumentId` set while the reader is back at the list -- the divergence in the other
@@ -227,7 +256,10 @@ private struct ArchiveBrowser: View {
                 }
                 if scene.openedDocumentId != shown.id { openFromPath(shown) }
             }
-            .onAppear { syncPathWithScene() }
+            .onAppear {
+                syncPathWithScene()
+                restoreSubmittedQueryIntoField()
+            }
             .onChange(of: scenePhase) { phase in
                 // the standard iOS moment: the place is written before the app may be suspended and killed
                 if phase != .active { persistScenePlace() }

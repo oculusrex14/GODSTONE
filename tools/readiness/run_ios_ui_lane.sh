@@ -40,6 +40,23 @@ if [ -z "$SIM" ]; then
     exit 2
 fi
 
+# 2b. *** THE DESTINATION MUST BE BOOTED BEFORE A TEST RUN IS ASKED OF IT. ***
+#
+# **MEASURED, REPEATEDLY, ON THIS HOST: running this lane straight after another lane produced
+# `FBSOpenApplicationServiceErrorDomain Code=6`, `reason: Busy ("Application failed preflight checks")`, and the whole
+# lane reported `suites=0 tests=0` -- *A DEVICE THAT WAS STILL SETTLING REFUSED THE TEST RUNNER BEFORE A SINGLE TEST
+# EXECUTED.*
+#
+# **THAT IS A FALSE RED OF THE EXACT CLASS THIS LANE EXISTS TO AVOID: it reads as a broken product and is an artifact
+# of the environment.** *`simctl bootstatus -b` blocketh until the device is booted and settled, so the run is asked of
+# a device that can answer.* **`|| true` because a device already booted is not an error** -- *the requirement is that
+# the wait HAPPENED, not that this command reported a change.*
+UDID="$(xcrun simctl list devices available 2>/dev/null | grep -F "$SIM (" | head -1 | grep -oE '[0-9A-F-]{36}')"
+if [ -n "$UDID" ]; then
+    xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
+    xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+fi
+
 # 3. BOTH UI SCHEMES, EACH WITH ITS OWN LOG SO A FAILURE NAMES ITS TARGET.
 #
 # *** THE RUNNER PRODUCES EVIDENCE; THE CHECKER DECIDES THE VERDICT. ***

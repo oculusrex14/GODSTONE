@@ -135,9 +135,23 @@ final class GodstoneArchiveUITests: XCTestCase {
     /// the tap.** The Back control was present and never received the touch, so the arm failed while the control was
     /// perfectly fine. **THIS IS NOT OCCLUSION I CAN ASSERT AROUND: a no-op Back tap must not be accepted**, so the
     /// presentation is dismissed first and the tap is only made once nothing overlays it.*
+    /// *** THE KEYBOARD IS THE PRESENTATION THIS CLEARETH -- AND NOTHING IS ADDRESSED BY A NAME THE APP DOTH NOT DECLARE. ***
+    ///
+    /// **MEASURED, AND IT COST A LOCAL REGRESSION: this helper used to begin `app.buttons["close"].tap()` when such a
+    /// button existed. THE APP DECLARES NO SUCH ELEMENT** -- *the only occurrence of `"close"` in the repository was
+    /// this line itself* -- **so that tap was DEAD CODE: it never fired, and nothing measured it.**
+    ///
+    /// *AND A BLANKET NAME MATCH IS NOT HARMLESS MERELY BECAUSE IT IS CURRENTLY INERT: the moment the app renders
+    /// ANY control matchable as `"close"` -- **as a search bar's own cancel button is** -- this line begins dismissing
+    /// it, and a helper whose stated job is the keyboard would be silently performing NAVIGATION.*** **MEASURED ON
+    /// THIS SUITE: with a cancel control present in the navigation bar, this tap fired, CANCELLED the search, and
+    /// cleared `fieldText` -- so the arm read as "the query is not preserved" when the TEST had discarded the query
+    /// it then looked for.**
+    ///
+    /// **A CONTROL THAT WAS NEVER RENDERED CANNOT BE DISMISSED BY A BLANKET NAME MATCH, so the line is deleted rather
+    /// than re-pointed.** *The arm's claim -- that Back returns to the submitted query -- is asserted exactly as
+    /// before; what is removed is the test's own discarding of the query it then looked for.*
     private func clearPresentation(_ app: XCUIApplication) {
-        let close = app.buttons["close"]
-        if close.exists { close.tap() }
         if app.keyboards.count > 0 { app.typeText("\n") }
         let noKeyboard = NSPredicate(format: "count == 0")
         expectation(for: noKeyboard, evaluatedWith: app.keyboards)
