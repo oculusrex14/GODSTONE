@@ -629,6 +629,17 @@ jobs:
       # step claimed the ordering was fixed by regenerating locally -- **and it still ran before the install.***
       # **A STEP THAT REGENERATES THE PROJECT NEEDS THE GENERATOR TO EXIST FIRST; "self-sufficient" meant self-
       # sufficient with respect to FILE POSITION, not with respect to the TOOLCHAIN.**
+      # *** THE CONTROLS' PYTHON DEPENDENCIES ARE DECLARED IN THE REPO AND MUST BE INSTALLED. ***
+      #
+      # **MEASURED ON RUN `35903873741`: `ci/check_lane_results.py` refused with `the required UI arm roster could not
+      # be derived from ios/project.yml: No module named 'yaml'`.** *The roster comes from `ios/project.yml`, the repo
+      # DECLARES PyYAML in `content/requirements-dev.txt`, and the ubuntu jobs already install that file -- **this job
+      # never did**, so a control that is correct on this host was UNRUNNABLE on that one.*
+      # **THE REFUSAL ITSELF IS RIGHT** (`AN UNOBTAINABLE ROSTER IS NOT AN EMPTY ONE`): *the repair is to PROVISION the
+      # declared dependency, never to let the control proceed without it.*
+      - name: install the declared Python dependencies for the controls
+        run: pip install -r content/requirements-dev.txt
+
       - name: install xcodegen (project regenerator)
         run: |
           brew install xcodegen

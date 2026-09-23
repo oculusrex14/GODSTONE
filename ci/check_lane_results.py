@@ -567,7 +567,9 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
         roster = required_ui_arms()
     except Exception as exc:  # noqa: BLE001 - an unobtainable roster must not read as an absent arm
         problems.append(f"the required UI arm roster could not be derived from {IOS_PROJECT_SPEC}: {exc} -- **AN "
-                        f"UNOBTAINABLE ROSTER IS NOT AN EMPTY ONE**")
+                        f"UNOBTAINABLE ROSTER IS NOT AN EMPTY ONE**. *If the cause is the missing module, the repair is "
+                          f"`pip install -r content/requirements-dev.txt`, which DECLARES PyYAML -- "
+                          f"NEVER a narrower roster.*")
         roster = {}
     # The log's class token is `<Module>.<Class>`; the roster's is `<Class>`. Compare on `<Class>.<test>`.
     observed = {(c.split(".")[-1], n): v for c, n, v in cases}
