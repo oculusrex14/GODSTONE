@@ -30,7 +30,11 @@ xcodegen generate --spec ios/project.yml
 
 # 2. THE DESTINATION MUST BE AN iOS SIMULATOR. *MEASURED: without this, xcodebuild resolved to "My Mac" and refused
 #    with exit 70 because the app's supported platforms are iOS -- **a UI-testing bundle cannot run on the host.***
-SIM="${GS_SIM:-$(xcrun simctl list devices available | grep -oE "iPhone 1[5-9] Pro" | head -1)}"
+# *THE PATTERN IS DELIBERATELY BROAD: a hosted runner's installed simulator set changes with its Xcode image, and a
+# NARROW PATTERN THAT MATCHES NOTHING WOULD ABORT THE LANE FOR A REASON THAT HAS NOTHING TO DO WITH THE CODE.* **Ask
+# for the newest iPhone the image actually has, preferring a Pro.*** `GS_SIM` overrides.
+SIM="${GS_SIM:-$(xcrun simctl list devices available 2>/dev/null \
+      | grep -oE 'iPhone [0-9]+( Pro Max| Pro| Plus)?' | sort -u -V | tail -1)}"
 if [ -z "$SIM" ]; then
     echo "no iOS simulator found; set GS_SIM" >&2
     exit 2
