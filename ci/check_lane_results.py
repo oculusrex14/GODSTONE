@@ -187,6 +187,7 @@ IOS_SOURCE_TREES = (
 # read a refusal without downloading the runner's filesystem.*
 LOG_LINE_KINDS = {
     "Test Suite '<name>.xctest' passed": re.compile(r"^Test Suite '\w+\.xctest' passed"),
+    "Test Suite '<Class>' passed": re.compile(r"^Test Suite '\w+' passed"),
     "Test Suite '<name>.xctest' (any)": re.compile(r"^Test Suite '\w+\.xctest'"),
     "Executed N tests, with M failures": re.compile(r"^\s*Executed \d+ tests?, with \d+ failures?"),
     "Test Case '-[...]' passed": re.compile(r"^Test Case '-\["),
@@ -196,24 +197,75 @@ LOG_LINE_KINDS = {
     "any 'Testing' / swift-testing run": re.compile(r"Test run with|Testing Library Version"),
 }
 IOS_SUITE = re.compile(r"^Test Suite '(\w+)\.xctest' passed", re.M)
+#: **THE CLASS-LEVEL SUITE LINE -- `Test Suite '<ClassName>' passed` -- IS THE PORTABLE ONE.** *Measured: the BUNDLE
+#: naming differs between toolchains (`<Target>.xctest` per target vs `<Package>PackageTests.xctest` merged), while the
+#: per-class lines are IDENTICAL -- **91 of 91 in both the local and the hosted log.*** *This is what the roster is
+#: compared against.*
+IOS_CLASS_SUITE = re.compile(r"^Test Suite '(\w+)' passed", re.M)
 IOS_TOTAL = re.compile(r"^\s*Executed (\d+) tests?, with (\d+) failures? \(\d+ unexpected\)", re.M)
 
 
+#: *The foundation lane's roster, read from the TEST SOURCES -- the same "one source of truth, two consumers" shape as
+#: the UI arm roster, and for the same reason: a hard-coded list drifteth from the tree it claims to describe.*
+IOS_TEST_SOURCE_ROOT = REPO / "ios" / "Packages" / "GodstoneFoundation" / "Tests"
+#: **An `XCTestCase` subclass DECLARES a suite; `swift test` printeth `Test Suite '<ClassName>' passed` for it in BOTH
+#: measured toolchains** (91 of 91, locally AND hosted), *while the BUNDLE naming differs between them.*
+IOS_TEST_CLASS = re.compile(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase\b", re.M)
+
+
+def foundation_roster() -> tuple[list[str], int]:
+    """`([XCTestCase class names], arm count)` declared by the foundation package's TEST SOURCES.
+
+    *Read rather than hard-coded, so a class or an arm added to the tree automatically becomes a REQUIREMENT here
+    instead of silently widening what the control tolerates.* **AND IT IS READ FROM THE SOURCES SO THAT IT IS THE SAME
+    ROSTER WHATEVER TOOLCHAIN BUILT THE LOG** -- *which is the property a hard-coded bundle name can never have.*
+    """
+    classes: list[str] = []
+    arms = 0
+    for f in sorted(IOS_TEST_SOURCE_ROOT.rglob("*.swift")):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        classes.extend(IOS_TEST_CLASS.findall(text))
+        arms += len(_UI_TEST_FUNC.findall(text))
+    return sorted(set(classes)), arms
+
+
 def check_ios_lane() -> tuple[list[str], dict]:
-    """Parse the iOS log: three suites must PASS and the totals must carry tests with zero failures."""
+    """Parse the iOS log against a SOURCE-DERIVED roster: every declared class must PASS, and the per-bundle
+    totals must EQUAL the number of source-declared `func test...` arms.
+
+    *The contract names no bundle: WHICH BUNDLES THE TOOLCHAIN EMITS IS THE TOOLCHAIN'S CHOICE, and a control that
+    hard-coded the local shape refused a hosted run that executed the same 1400 tests and passed them all.*
+    """
     problems: list[str] = []
     totals = {"suites": 0, "tests": 0, "failures": 0}
     if not IOS_LOG.is_file():
         return ([f"the iOS lane log is absent at {IOS_LOG} -- the lane has not been run, and AN UNRUN LANE IS NOT A "
                  f"PASS"], totals)
     text = IOS_LOG.read_text(encoding="utf-8", errors="replace")
-    # EVERY SUITE THAT PRINTED A RESULT MUST HAVE PASSED.
-    passed = IOS_SUITE.findall(text)
-    totals["suites"] = len(passed)
-    for name in ("GodstoneMeshTests", "GodstoneCoreTests", "LabMeshTests"):
-        if name not in passed:
-            problems.append(f"the iOS lane carrieth no PASSED line for suite {name} -- a suite that did not run "
-                            f"(or did not pass) is not covered by this control")
+    # *** THE CONTRACT IS SOURCE-DERIVED, BECAUSE A HARD-CODED BUNDLE NAME IS A TOOLCHAIN'S PRIVATE CHOICE. ***
+    #
+    # **MEASURED, AND IT COST A HOSTED CYCLE: this used to name three bundles -- `GodstoneMeshTests.xctest`,
+    # `GodstoneCoreTests.xctest`, `LabMeshTests.xctest` -- and REQUIRE EACH BY NAME.** *Apple Swift 6.4 / Xcode 27.0
+    # builds ONE TEST BUNDLE PER TARGET and prints those three; **Swift 6.1.2 / Xcode 16.4 builds ONE MERGED BUNDLE
+    # PER PACKAGE and prints `Test Suite 'GodstoneFoundationPackageTests.xctest' passed`.*** **THE SAME SOURCES, THE
+    # SAME 1400 PASSING TESTS, AND THE CONTROL REFUSED THE HOSTED RUN FOR NAMING ITS BUNDLE DIFFERENTLY** -- *a
+    # control that refuses a green lane is a control that getteth switched off.*
+    #
+    # *** AND THE REPLACEMENT IS STRONGER, NOT LOOSER: the roster cometh from the TEST SOURCES, so an arm that never
+    # ran CANNOT be absent from it.*** *Every `XCTestCase` class declared under the package's Test directory must print
+    # `Test Suite '<Class>' passed` -- **91 of 91 in BOTH logs, measured**; and the summed per-bundle totals must EQUAL
+    # the number of source-declared `func test...` arms -- **1400 in BOTH, measured (1290+105+5 locally, 1400 merged
+    # hosted).*** The class roster is what the three names were reaching for; the arm total is what the sum was.
+    class_roster, arm_count = foundation_roster()
+    got_classes = set(IOS_CLASS_SUITE.findall(text))
+    totals["suites"] = len(got_classes)
+    missing_classes = sorted(set(class_roster) - got_classes)
+    for name in missing_classes[:6]:
+        problems.append(f"the iOS lane carrieth no PASSED line for test class {name} -- a class that did not run "
+                        f"(or did not pass) is not covered by this control")
+    if missing_classes:
+        problems.append(f"and {len(missing_classes)} of {len(class_roster)} source-declared test classes are missing "
+                        f"their PASSED line in total")
     # *** AND THE AGGREGATE LINES ARE COUNTED AT THE OUTERMOST LEVEL ONLY (round 695). ***
     #
     # **MEASURED: THE 90 `Executed` LINES IN THE LOG SUM TO 4023 WHILE THE LANE'S TRUE TOTAL IS 1341** -- *XCTest's
@@ -225,21 +277,31 @@ def check_ios_lane() -> tuple[list[str], dict]:
     #     Test Suite 'LabMeshTests.xctest' passed       ->  Executed    5 tests, with 0 failures
     # **SO THE PARSE TAKES EACH **xctest BUNDLE**'S OWN TOTAL, AND NOTHING ELSE.** *A number that over-counts is the
     # same defect class as one that under-counts: a total nobody can reconcile with the artifact.*
+    # **THE BUNDLE NAMES ARE READ FROM THE LOG, NOT NAMED HERE** -- *whether the toolchain emitted one merged
+    # `<Package>PackageTests.xctest` or one bundle per target, EACH bundle that passed is followed by ITS OWN
+    # outermost total, and the sum of those is the lane's true count in either shape.*
     run: list[tuple[int, int]] = []
-    for name in ("GodstoneMeshTests", "GodstoneCoreTests", "LabMeshTests"):
-        m = re.search(r"^Test Suite '" + name + r"\.xctest' passed.*?^\s*Executed (\d+) tests?, with (\d+) failures?",
-                      text, re.M | re.S)
-        if m:
-            run.append((int(m.group(1)), int(m.group(2))))
+    for m in re.finditer(r"^Test Suite '[\w.]+\.xctest' passed.*?^\s*Executed (\d+) tests?, with (\d+) failures?",
+                         text, re.M | re.S):
+        run.append((int(m.group(1)), int(m.group(2))))
     if not run:
         problems.append("the iOS lane log carrieth NO per-bundle 'Executed N tests, with M failures' total -- the run "
                         "died before its suites finished, which is exactly what a truncated or broken lane looks like")
     for tests, failures in run:
         totals["tests"] += tests
         totals["failures"] += failures
-    # AND THE REAL AGGREGATE LINES ARE CARRIED ALONGSIDE THE PARSE, so a reader can reconcile the two without
-    # re-deriving them -- *the cross-check, not a substitute for it.*
-    totals["evidence"] = [f"{t} tests / {f} failures" for t, f in run]
+    # *** AND THE COUNT MUST RECONCILE WITH THE SOURCES: `1400` declared, `1400` measured, IN EITHER TOOLCHAIN'S SHAPE. ***
+    #
+    # *A total that merely EXCEEDS zero is the count-blind defect this control exists to refuse: the UI lane already
+    # compares its arms BY STABLE IDENTITY rather than pinning a number, and the foundation lane getteth the same
+    # treatment -- **the sum of the per-bundle totals must EQUAL the number of `func test...` arms the test sources
+    # declare.*** **TWO INDEPENDENT MEASUREMENTS OF THE SAME POPULATION, so a swallowed test class, a truncated log or a
+    # stale result file all show up as a mismatch instead of a green.**
+    if run and totals["tests"] != arm_count:
+        problems.append(f"the iOS lane executed {totals['tests']} tests but its SOURCES declare {arm_count} "
+                        f"`func test...` arms -- a count that disagreeth with the sources is a swallowed class, a "
+                        f"truncated log, or a log from a different tree")
+    totals["evidence"] = [f"{t} tests / {f} failures" for t, f in run] + [f"SOURCES declare {arm_count} arms"]
     if totals["tests"] == 0:
         problems.append("the iOS lane executed ZERO tests -- a zero-test run has not measured anything")
     for name, n in re.findall(r"^\s*Executed (\d+) tests?, with (\d+) failures?", text, re.M):
@@ -396,6 +458,93 @@ def selftest() -> int:
         REPO = saved
 
     print(f"\nselftest: {4 - failures}/4 mutations caught")
+    return 1 if failures else 0
+
+
+def foundation_selftest() -> int:
+    """*** ADVERSARIAL MUTATIONS FOR `check_ios_lane` -- EACH MUST BE REFUSED. ***
+
+    *This contract was REWRITTEN because the old one named three bundles the local toolchain happens to emit, and
+    refused a hosted run that executed the same 1400 tests and passed every one. **A rewritten contract that has only
+    ever been observed PASSING is not a control**, so its boundaries are exercised here rather than described.*
+
+    *Each case mutates the REAL committed lane log when one exists on this host, and otherwise a shape-faithful
+    synthetic log built from the source roster -- so the guard is exercised on THIS host either way.*
+    """
+    import tempfile
+
+    global IOS_LOG
+    failures = 0
+    cases: list[tuple[str, str, str, str]] = []   # mutation, expected, observed, verdict
+
+    real_digest = _ios_source_digest()
+    if IOS_LOG.is_file():
+        base = IOS_LOG.read_text(encoding="utf-8", errors="replace")
+    else:
+        roster, _arms = foundation_roster()
+        lines = []
+        for cls in roster:
+            lines.append(f"Test Suite '{cls}' started at 2026-01-01.")
+            lines.append(f"Test Suite '{cls}' passed at 2026-01-01.")
+            lines.append("\t Executed 1 test, with 0 failures (0 unexpected) in 0.0 (0.0) seconds")
+        lines.append("Test Suite 'SyntheticPackageTests.xctest' passed at 2026-01-01.")
+        lines.append(f"\t Executed {_arms} tests, with 0 failures (0 unexpected) in 1.0 (1.0) seconds")
+        base = "\n".join(lines) + "\n"
+
+    def run_case(name: str, text: str, expect: str) -> None:
+        # A NESTED FUNCTION NEEDS ITS OWN DECLARATION: the outer `global` does not reach into it.
+        global IOS_LOG
+        nonlocal failures
+        with tempfile.TemporaryDirectory() as td:
+            logp = Path(td) / "ios-lane.log"
+            logp.write_text(text, encoding="utf-8")
+            Path(str(logp) + ".sources.sha256").write_text(real_digest, encoding="utf-8")
+            saved = IOS_LOG
+            IOS_LOG = logp
+            try:
+                probs, _tot = check_ios_lane()
+            finally:
+                IOS_LOG = saved
+        got = "red" if probs else "green"
+        verdict = "KILLED" if got == expect else "ESCAPED"
+        if verdict == "ESCAPED":
+            failures += 1
+        cases.append((name, expect, got, verdict))
+
+    roster, arms = foundation_roster()
+    first = roster[0] if roster else "SyntheticTests"
+    # The mutation must bite on THIS host's log shape. The local shape sums per-target bundles; the hosted shape is
+    # one merged bundle. *Whichever the log carries, reduce ONE outermost total by one test.*
+    # *** THE MUTATION MUST BITE AN **OUTERMOST BUNDLE TOTAL**, NOT A NESTED SUITE'S. ***
+    #
+    # **MEASURED: decrementing the FIRST `Executed` line ESCAPED, because the first one belongs to a nested suite whose
+    # total is not part of the sum** -- *so the mutation changed nothing the control reads, and an ESCAPED verdict there
+    # would have said "the guard is broken" when the truth was "the mutation missed".* **The line that matters is the
+    # one that FOLLOWS a `Test Suite '<bundle>.xctest' passed`**, which is exactly what the parser sums.
+    bundle_line = re.search(r"(?sm)^Test Suite '[\w.]+\.xctest' passed.*?^(\s*Executed )(\d+)( tests?, with 0 failures)",
+                            base)
+    shrunk = base
+    if bundle_line:
+        shrunk = base[: bundle_line.start(2)] + str(int(bundle_line.group(2)) - 1) + base[bundle_line.end(2):]
+    failed_bundle = base
+    m2 = re.search(r"(?m)^\s*Executed (\d+) tests?, with 0 failures", base)
+    if m2:
+        failed_bundle = base[: m2.start()] + f"\t Executed {m2.group(1)} tests, with 2 failures" + base[m2.end():]
+
+    run_case("1. one test class' PASSED line removed", base.replace(f"Test Suite '{first}' passed", ""), "red")
+    run_case("2. a class reports failed, not passed",
+             base.replace(f"Test Suite '{first}' passed", f"Test Suite '{first}' failed"), "red")
+    run_case("3. an outermost total short by one test (an arm swallowed)", shrunk, "red")
+    run_case("4. a nonzero failure count on an outermost total", failed_bundle, "red")
+    run_case("5. the run truncated to its first third",
+             "\n".join(base.splitlines()[: max(1, len(base.splitlines()) // 3)]), "red")
+    run_case("6. the real log, unmutated -- MUST be accepted",
+             base, "green")
+
+    width = max(len(c[0]) for c in cases)
+    for name, expect, got, verdict in cases:
+        print(f"   {name:<{width}}  expect={expect:<5} got={got:<5} {verdict}")
+    print(f"\nfoundation selftest: {len(cases) - failures}/{len(cases)} mutations caught")
     return 1 if failures else 0
 
 
@@ -693,7 +842,10 @@ def main() -> int:
                          "not run yet; asking it to would refuse thirteen things that are merely ABSENT*")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--selftest-ui", action="store_true")
+    ap.add_argument("--selftest-foundation", action="store_true")
     args = ap.parse_args()
+    if args.selftest_foundation:
+        return foundation_selftest()
     if args.selftest_ui:
         return ui_selftest()
     if args.selftest:
