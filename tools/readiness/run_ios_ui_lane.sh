@@ -40,21 +40,36 @@ if [ -z "$SIM" ]; then
     exit 2
 fi
 
-# 2b. *** THE DESTINATION MUST BE BOOTED BEFORE A TEST RUN IS ASKED OF IT. ***
+# 2b. *** THE DESTINATION MUST BE SETTLED BEFORE A TEST RUN IS ASKED OF IT -- BUT THE WAIT MUST BE BOUNDED. ***
 #
-# **MEASURED, REPEATEDLY, ON THIS HOST: running this lane straight after another lane produced
+# **MEASURED, REPEATEDLY, ON THE LOCAL HOST: running this lane straight after another lane produced
 # `FBSOpenApplicationServiceErrorDomain Code=6`, `reason: Busy ("Application failed preflight checks")`, and the whole
 # lane reported `suites=0 tests=0` -- *A DEVICE THAT WAS STILL SETTLING REFUSED THE TEST RUNNER BEFORE A SINGLE TEST
-# EXECUTED.*
+# EXECUTED.* **THAT IS A FALSE RED OF THE EXACT CLASS THIS LANE EXISTS TO AVOID: it reads as a broken product and is an
+# artifact of the environment.** *So the run is asked of a device that can answer.*
 #
-# **THAT IS A FALSE RED OF THE EXACT CLASS THIS LANE EXISTS TO AVOID: it reads as a broken product and is an artifact
-# of the environment.** *`simctl bootstatus -b` blocketh until the device is booted and settled, so the run is asked of
-# a device that can answer.* **`|| true` because a device already booted is not an error** -- *the requirement is that
-# the wait HAPPENED, not that this command reported a change.*
+# *** AND MY FIRST VERSION OF THIS WAIT WAS UNBOUNDED -- WHICH COST A 2h08m HOSTED RUN AND IS THE WORSE DEFECT OF THE
+# TWO.*** *MEASURED, HOSTED RUN `35962665742`: `simctl bootstatus -b` NEVER RETURNED.* **The UI lane's log stops at
+#
+# ```
+# 06:12:40  Created project at .../ios/Godstone.xcodeproj
+# 08:21:29  ##[error]The operation was canceled.        <- 2h08m of ZERO output
+# ```
+#
+# *-- and the runner's own cleanup terminated `Terminate orphan process: pid (24887) (simctl)`, which nameth the
+# blocked command.* **A LANE THAT HANGS PRODUCETH NO LOG AND NO VERDICT, SO A FALSE RED TURNETH INTO NO SIGNAL AT ALL;
+# A BOUNDED WAIT DEGRADES TO THE OLD BEHAVIOUR INSTEAD.***
+#
+# *`timeout` is spelled through `perl` rather than assumed: macOS ships no GNU `timeout`, and busybox's `-t` flag would
+# silently change the meaning on another host. 120s is generous for a device that is going to settle at all -- the
+# successful hosted runs took ~20 min for the WHOLE lane.*
+_bounded_boot_wait() {
+    local udid="$1"
+    perl -e 'alarm shift; exec @ARGV' 120 xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1 || true
+}
 UDID="$(xcrun simctl list devices available 2>/dev/null | grep -F "$SIM (" | head -1 | grep -oE '[0-9A-F-]{36}')"
 if [ -n "$UDID" ]; then
-    xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
-    xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+    _bounded_boot_wait "$UDID"
 fi
 
 # 3. BOTH UI SCHEMES, EACH WITH ITS OWN LOG SO A FAILURE NAMES ITS TARGET.
@@ -85,8 +100,11 @@ for scheme in LabMeshUI GodstoneArchiveUI; do
     #
     # *`xa` names the xcodebuild exit status so it can be ORed into `rc` under `set -e` without ending the lane, which
     # is the same evidence-versus-verdict rule the rest of this script followeth.*
+    #
+    # *** AND THIS WAIT IS BOUNDED FOR THE SAME MEASURED REASON AS THE ONE ABOVE -- `simctl bootstatus -b` HUNG THE
+    # HOSTED LANE FOR 2h08m IN RUN `35962665742`, AND A HUNG LANE PRODUCETH NO LOG, NO VERDICT AND NO EVIDENCE.***
     if [ -n "$UDID" ]; then
-        xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+        _bounded_boot_wait "$UDID"
     fi
     xa=0
     xcodebuild -project ios/Godstone.xcodeproj -scheme "$scheme"         -configuration LightDebug \
