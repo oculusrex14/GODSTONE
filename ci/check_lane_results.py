@@ -455,9 +455,45 @@ def selftest() -> int:
         else:
             print(f"   FAIL: attribution was shifted -- got {parsed['bad']}"); failures += 1
 
+        # 5. *** A LANE OUTSIDE THE SCOPE MUST NOT BE REPORTED AS A ZERO. ***
+        #
+        # *MEASURED, HOSTED RUN `35955759673`: the android job's control step printed `ios:foundation suites=0 tests=0
+        # failures=0` and `ios:ui suites=0 tests=0 failures=0` beside its own real android counts -- **the zero
+        # defaults were appended unconditionally and rendered as a measurement, so a reader would conclude the iOS
+        # lanes RAN and found nothing.*** *That is the repository's own termination contract violated: "a green build
+        # after a step that never ran is not evidence."*
+        #
+        # **AND THIS CASE CALLS THE SHIPPED `ios_scope_rows` ITSELF.** *A copy of the expression here would test the
+        # copy -- the same vacuous-witness class this file existeth to remove -- so the function is the single
+        # definition and both branches are exercised through it.*
+        real = {"suites": 91, "tests": 1400, "failures": 0, "evidence": ["5 tests / 0 failures"]}
+        unjudged = ios_scope_rows("android", real, real, ["LabMeshUITests"])
+        if unjudged and all("NOT JUDGED HERE" in r for r in unjudged):
+            print("   PASS: a lane outside the scope is marked NOT JUDGED")
+        else:
+            print(f"   FAIL: an unjudged lane was not marked -- got {unjudged}"); failures += 1
+        if not any(re.search(r"tests=\d", r) for r in unjudged):
+            print("   PASS: an unjudged lane carrieth NO COUNT AT ALL")
+        else:
+            print(f"   FAIL: an unjudged lane carrieth a count -- got {unjudged}"); failures += 1
+        # *The mutation is the OLD rendering. It must be distinguishable from the repaired one, or this case would
+        # pass against the defect too.*
+        old_rendering = f"  {'ios:foundation':<14} suites={0:<3} tests={0:<5} failures={0}"
+        if not any(r == old_rendering for r in unjudged):
+            print("   PASS: the old zero-count rendering is gone")
+        else:
+            print("   FAIL: the defective rendering is still emitted"); failures += 1
+        # *And the in-scope branch must still carry REAL counts -- a rule that silenced every lane would be a
+        # different defect wearing this repair's clothes.*
+        judged = ios_scope_rows("ios", real, {"suites": 2, "tests": 12, "failures": 1}, ["LabMeshUITests"])
+        if any("tests=1400" in r for r in judged) and any("tests=12" in r for r in judged):
+            print("   PASS: an in-scope lane still carrieth its real counts")
+        else:
+            print(f"   FAIL: an in-scope lane lost its counts -- got {judged}"); failures += 1
+
         REPO = saved
 
-    print(f"\nselftest: {4 - failures}/4 mutations caught")
+    print(f"\nselftest: {7 - failures}/7 mutations caught")
     return 1 if failures else 0
 
 
@@ -834,6 +870,35 @@ def check_mirror_membership() -> list[str]:
     return problems
 
 
+def ios_scope_rows(scope: str, ios_totals: dict, ui_totals: dict, ui_evidence: list[str]) -> list[str]:
+    """*** THE iOS ROWS OF THE SUMMARY, FOR A GIVEN SCOPE. ONE DEFINITION, SO THE SELFTEST CAN EXERCISE THE REAL ONE. ***
+
+    *MEASURED, HOSTED RUN `35955759673`: the android job's control step printed `ios:foundation suites=0 tests=0
+    failures=0` and `ios:ui suites=0 tests=0 failures=0` beside its own real android counts -- **because these rows were
+    appended unconditionally and the zero defaults rendered as a measurement.*** *A reader of that job's log would
+    conclude the iOS lanes ran and found nothing, which is the opposite of the truth: they are judged by the iOS job.*
+
+    **AND IT IS THE REPOSITORY'S OWN TERMINATION CONTRACT THAT THIS VIOLATED -- "A GREEN BUILD AFTER A STEP THAT NEVER
+    RAN IS NOT EVIDENCE."** *A zero in a lane column is the shape of evidence.*
+
+    *So a lane the scope did not judge sayeth so, and carrieth NO COUNT. **THIS FUNCTION EXISTS SO THAT RULE IS
+    EXERCISED BY `--selftest` RATHER THAN MERELY DESCRIBED** -- a second copy of the expression inside the selftest
+    would test the copy, which is the same vacuous-witness class this file existeth to remove.*
+    """
+    if scope in ("all", "ios"):
+        return [
+            f"  {'ios:foundation':<14} suites={ios_totals['suites']:<3} tests={ios_totals['tests']:<5} "
+            f"failures={ios_totals['failures']}  <- per bundle: " + "; ".join(ios_totals.get("evidence", [])),
+            f"  {'ios:ui':<14} suites={ui_totals['suites']:<3} tests={ui_totals['tests']:<5} "
+            f"failures={ui_totals['failures']}  <- the `bundle.ui-testing` targets: " + ", ".join(ui_evidence),
+        ]
+    return [
+        f"  {'ios:foundation':<14} NOT JUDGED HERE -- the iOS lanes stand outside `--scope {scope}` and are judged by "
+        f"the iOS job",
+        f"  {'ios:ui':<14} NOT JUDGED HERE -- the iOS lanes stand outside `--scope {scope}`",
+    ]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--scope", choices=("all", "ios", "android"), default="all",
@@ -908,9 +973,6 @@ def main() -> int:
                 f"run them all. Clear `build/test-results/` and re-run the lane.*")
 
     ios_probs, ios_totals = check_ios_lane() if args.scope in ("all", "ios") else ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
-    summary.append(
-        f"  {'ios:foundation':<14} suites={ios_totals['suites']:<3} tests={ios_totals['tests']:<5} "
-        f"failures={ios_totals['failures']}  <- per bundle: " + "; ".join(ios_totals.get("evidence", [])))
     all_problems.extend(ios_probs)
 
     # *** THE UI LANE IS MANDATORY UNDER `--scope ios` -- NEVER OPTIONAL-WHEN-PRESENT. ***
@@ -926,11 +988,14 @@ def main() -> int:
     if args.scope in ("all", "ios"):
         ui_probs, ui_totals = check_ios_ui_lane()
     else:
+        # *Same rule as `ios:foundation` above, and for the same measured reason: never a zero for a lane this scope
+        # did not judge.*
         ui_probs, ui_totals = ([], {"suites": 0, "tests": 0, "failures": 0, "known_red": 0})
-    summary.append(
-        f"  {'ios:ui':<14} suites={ui_totals['suites']:<3} tests={ui_totals['tests']:<5} "
-        f"failures={ui_totals['failures']}  <- the `bundle.ui-testing` targets: "
-        + ", ".join(IOS_UI_REQUIRED_SUITES))
+
+    # *** THE iOS ROWS COME FROM ONE DEFINITION (`ios_scope_rows`), WHICH `--selftest` EXERCISETH DIRECTLY. ***
+    # *A lane outside the scope sayeth so and carrieth NO COUNT; a lane inside it carrieth its real counts. **Both
+    # branches are the same call, so the selftest cannot drift from the shipped rendering.***
+    summary.extend(ios_scope_rows(args.scope, ios_totals, ui_totals, list(IOS_UI_REQUIRED_SUITES)))
     # NOTICES ARE ANNOUNCED, NEVER COUNTED AS FAILURES -- *a recorded gap is not a broken lane, and a notice that
     # reddened the control would force the known-red entry to be DELETED to get green.*
     for notice in ui_totals.get("notices", []):
