@@ -14877,7 +14877,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "5e9e1e8779c3cf4fdd0c6b93033d95397db922a0",
+  "candidate_sha": "dfb8298a053d65739cc88c20b894f1aaf6b69b9d",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14897,6 +14897,8 @@
   "independent_audit_dispositions_at_e07e6ca": {},
   "internal_remaining": [
    "GS-ARCHIVE-005: no hosted run URL/log was available, so hosted convergence remains pending",
+   "GS-ARCHIVE-005: *** ROUND 2026-09-20 (ii): FIVE EXECUTED-APP ARMS GREEN, ONE DETERMINISTICALLY RED -- AND THE RED IS THE RECORD. *** *Clean serialized run, fresh derived data, zero concurrency: `E",
+   "GS-ARCHIVE-005: *** ROUND 2026-09-20 (iii): THE iOS LANE IS GREEN AFTER THE APP CHANGES. *** *`run_ios_lane.sh` EXIT=0; GodstoneMeshTests 1287/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1397 t",
    "GS-INTEGRATION-001: TWO OF THE THREE OWNERS ARE REPAIRED AND PROVEN: the WIPE owner (the round-514 RED measured that `beginWipe()` erased no row; `59c72ab` turned it green) and the PERSISTENCE owner; ",
    "GS-STRESS-001: *** FOUR INVARIANTS STILL READ THE MODEL'S OWN INTEGERS -- RE-MEASURED AND CORRECTED IN ROUND 671: the SIX kinds this sentence named (leases, timers, sessions, inventory leases, re",
    "GS-STRESS-001: THE CARD'S STEP 6 IS STILL NOT SATISFIED AND IS NOT CLAIMED: a mutation confined to `StressCampaign`'s local bookkeeping remaineth the onely mutation the campaign lane carrieth (me",
@@ -14905,6 +14907,9 @@
    "GS-STRESS-001: *** ROUND 538: STEP 3's OWNER CENSUS NOW READS **TWO** OWNERS ON **BOTH** ISLES. *** ONE: `sessions` (Android round 521, mirrored to Swift at round 535). TWO: **`writer reservation",
    "GS-UX-001: THE SWIFT PORTS REMAIN `internal` (`MeshUXModel.swift:275`, `TrustUXModel.swift:329`), so the TrustPort/MeshPort adapter clause is blocked on a PUBLIC-SURFACE DECISION, which is de",
    "GS-UX-001: ROUND 543 (THE iOS ADAPTER'S BLOCKING OBSTACLE, MEASURED): the lab-side `MeshAuthorityPort` adapter over the real `LabRuntime` is blocked by THREE obstacles -- a synchronous port a",
+   "GS-UX-001: *** ROUND 2026-09-20: A SILENT PRODUCTION DEFECT, ITS GUARD, AND THREE OF MY OWN WRONG VERDICTS CORRECTED. *** *`LabRuntime.compose` passed `nodeId.prefix(2)` where `IdentityBindin",
+   "GS-UX-001: *** ROUND 2026-09-20 (later): THE ANTI-FORGERY DISCRIMINATOR, AND A GUARD MADE TO REFUSE. *** *An external review observed that `test04` asserted `facade.isRevoked` -- THE MODEL'S ",
+   "GS-UX-001: *** ROUND 2026-09-20 (third): THE ANTI-FORGERY DISCRIMINATOR TOOK THREE VERSIONS. *** *An external review observed that `test01`/`test02` asserted only `facade.*` PROJECTIONS while",
    "GS-FINAL-003: THE iOS ACK SURFACES ARE NOW GATED (round 572): `WipeGatedAckObligationStore` decorates the `AckObligationStore` PROTOCOL, so one decorator covers the driver, the pump and the inbo",
    "GS-FINAL-003: ANDROID NOW CONSULTS THE DURABLE RECORD AT BOTH EXISTING ADMISSION POINTS, AND THE *WIRING* IS PROVEN (round 571): `allowsSensitiveApi()` had ZERO production callers while both dec",
    "GS-FINAL-003: *** SUPERSEDED AND CLOSED, AND THE SUPERSEDED TEXT IS QUOTED SO THE CORRECTION IS AUDITABLE (round 667). *** THE PASSAGE THAT STOOD HERE SAID: *\"WHAT IS STILL NOT ESTABLISHED: that",
@@ -14914,14 +14919,20 @@
    "GS-FINAL-003: TWO FALSE CLAIMS OF MINE WERE CORRECTED THIS ROUND (575), BOTH CAUGHT BY REVIEW. (1) I wrote that the relay refusal uses \"the store's own typed refusal, `PersistResult.FAILED_STORA",
    "GS-FINAL-003: PHASE 1 EXIT, CLAUSE 1 IS **UNMET AND RECORDED AS SUCH** (round 576, measured line by line): \"every blocked/retryable/corrupt recovery produces zero private opens.\" THE MECHANISM, ",
    "GS-FINAL-003: AN ARM WAS WEARING ANOTHER ARM'S CLAIM, AND A REVIEW PROVED IT (round 593). `CrashStartupResumeTest`'s arm announced itself as *\"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROV",
-   "GS-FINAL-004: THE CORE CHARGE HAS NO WORKING ARM, AND THAT IS STATED RATHER THAN FAKED. The central defect -- the factory's verified connection is discarded and `SqliteMessageStore(url:)` perfor",
-   "GS-FINAL-004: DONE AND EVIDENCED: the archive-only SPLIT. `createArchiveOnlyHostComposition` no longer takes an `encryptedStores` parameter at all, so a composition that cannot be given a key ca",
-   "GS-FINAL-006: THE EFFECT-RESTART PREMISE IS REFUTED, VERIFIABLY AND RE-RUNNABLY (round 569). `ProbeEffectKeySemantics` now carries a POSITIVE CONTROL -- an effect keyed on a genuinely changing v"
+   "GS-FINAL-004: *** AND A REAL RESOURCE REGRESSION WAS FOUND IN MY OWN REWIRE AND FIXED. *** The adopted connections were LOCALS; the stores deliberately do not close what they do not own and `Own",
+   "GS-FINAL-004: *** AND SEVEN IN-MEMORY JOURNALS WERE MISDESCRIBED BY THE FAIL-CLOSED DEFAULT, WHICH IS THE SAME CLASS AS THE DEFECT THE DEFAULT REPAIRS. *** Flipping `WipeJournal.isReadable` to `",
+   "GS-FINAL-006: THE EFFECT-RESTART PREMISE IS REFUTED, VERIFIABLY AND RE-RUNNABLY (round 569). `ProbeEffectKeySemantics` now carries a POSITIVE CONTROL -- an effect keyed on a genuinely changing v",
+   "GS-FINAL-006: *** ROUND 2026-09-20 (ii): FIVE EXECUTED-APP ARMS GREEN, ONE DETERMINISTICALLY RED -- AND THE RED IS THE RECORD. *** *Clean serialized run, fresh derived data, zero concurrency: `E",
+   "GS-FINAL-006: *** ROUND 2026-09-20 (iii): THE iOS LANE IS GREEN AFTER THE APP CHANGES. *** *`run_ios_lane.sh` EXIT=0; GodstoneMeshTests 1287/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1397 t"
   ],
   "external_acceptance": [
    "GS-ARCHIVE-005: STEP 7'S APP-LEVEL ARM NOW EXISTS AND PASSES (round 595), through a real `SavedStateHandle` and the recomposed real screen -- the layer the card explicitly refused to accept a mode",
+   "GS-ARCHIVE-005: *** ROUND 2026-09-20: THE iOS WITNESS IS AUTHORED AND MUTATION-PROVEN, AND THE CLAIM THAT BLOCKED IT WAS FALSE. *** *`GsArchive005IOSRestorationTests` (3 arms, `GodstoneCoreTests`)",
+   "GS-ARCHIVE-005: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we",
    "GS-INTEGRATION-001: *** AND THE THIRD OWNER IS MEASURED AND SIZED, RE-MEASURED THIS ROUND: **THE COMPOSITION'S RADIO IS NOT THE REAL TRANSPORT.** `ComposedRuntime.swift:309 self.link = link ?? LinkFac",
    "GS-INTEGRATION-001: AND THE HONEST BOUNDARY ON WHAT *IS* PROVEN: the durable intent, the wipe and the persistence are witnessed on the HOST through the composition's own entries; **NO DEVICE, NO RADIO",
+   "GS-INTEGRATION-001: *** ROUND 2026-09-20: THE THIRD OWNER IS NOW WITNESSED. *** The record above (round 533) said \"THE THIRD OWNER IS MEASURED AND SIZED ... THE COMPOSITION'S RADIO IS NOT THE REAL TRA",
+   "GS-INTEGRATION-001: *** ROUND 2026-09-20: THE THREE SCENARIOS THE CARD NAMES ARE NOW WITNESSED -- RECONNECT, CRASH, WIPE. *** *The first five arms covered direct delivery, replay refusal and third-par",
    "GS-RUNTIME-001: *** SO THIS IS THIS PROGRAMME'S RECURRING SHAPE AGAIN, AND IT IS NAMED AS SUCH: THE ACK ROAD IS COMPLETE AND WITNESSED BY COURTS, AND REACHED BY NO RUNTIME A USER'S MESSAGE TRAVELS",
    "GS-RUNTIME-001: *** WHAT IS STILL OWED IS UNCHANGED AND NAMED: THE ACK ROAD IS COMPLETE AND REACHED BY NO LIVE RUNTIME. *** What is needed is not a repair in the ordinary sense but the **LIVE-TRAN",
    "GS-RUNTIME-001: NO DEVICE EVIDENCE AND NO LIVE RUNTIME: the arms here exercise the graph's SOURCE and the node's own contract on the host; **no radio, no device and no instrumented host is witness",
@@ -14932,6 +14943,7 @@
    "GS-STRESS-001: NO DEVICE AND NO RUNTIME STRESS EVIDENCE: the arms exercise the owners' censuses and their close paths on the HOST; the campaign still measures ITS OWN model, which is what `RESOUR",
    "GS-STRESS-001: *** WHAT IS STILL OWED: THE OTHER OWNERS THE CARD NAMETH ARE UNREAD ON BOTH ISLES -- timers, observers, inventory leases, ACK work, database rows -- AND TWO CANDIDATE COUNTERS WERE",
    "GS-STRESS-001: NO DEVICE AND NO RUNTIME STRESS EVIDENCE: the arms exercise the OWNERS' censuses and their close paths on the HOST; the campaign still measures ITS OWN model, which is what `RESOUR",
+   "GS-STRESS-001: *** ROUND 2026-09-20: THE 10,000-CYCLE CLAIM HAD NO WITNESS, AND AN EXTERNAL REVIEW FOUND IT. *** *My first version checked completion through `private func step0Completion(_ cycle",
    "GS-UX-001: NO DEVICE, NO REAL UI AND NO ACCESSIBILITY ACCEPTANCE: nothing in this round is a device, VoiceOver, TalkBack, text-scale or RTL result. Independent human accessibility acceptance ",
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO HUMAN ACCESSIBILITY ACCEPTANCE: the targets were BUILT; **NO INSTALLED LAB WAS LAUNCHED**, and no VoiceOver, TalkBack, text-scale or RTL result i",
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO HUMAN ACCESSIBILITY ACCEPTANCE: the targets were BUILT; **NO INSTALLED APP WAS LAUNCHED**, and no VoiceOver, TalkBack, text-scale or RTL result i",
@@ -14941,8 +14953,14 @@
    "GS-UX-001: NO DEVICE, NO SIMULATOR RUN AND NO REAL LOCKED-DEVICE READING: the gate is exercised through INJECTED gates in the court, and **THE PLATFORM IMPLEMENTATION THAT READETH A REAL LOCK",
    "GS-UX-001: THE \"EXERCISE THE RENDERED CONTROLS\" CLAUSE IS NOW MET WITH MUTATION-BACKED EVIDENCE (round 598), and it was UNMET before this session built the UI-test target (round 564: Robolect",
    "GS-FINAL-003: THE WIRED PROVIDER WAS INVERTED, AND THE INVERSION SURVIVED EVERY LANE FOR EIGHTEEN ROUNDS (round 589). `provideWipeIsPending` returneth `read() != PanicWipe.WipeState.IDLE` -- TRU",
+   "GS-FINAL-003: *** ROUND 2026-09-20: THE iOS PERMIT WAS DECORATION ON EVERY SHIPPED ROAD, AND THAT IS NOW MEASURED RATHER THAN DESCRIBED. *** *A live grep of `ios/Godstone/` found `requireRecover",
+   "GS-FINAL-003: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we",
+   "GS-FINAL-004: *** WHAT REMAINS IS THE NATIVE-ENGINE HALF, AND IT IS EXTERNAL. *** The card's regression clause is *\"use the pinned native engine with correct, wrong and missing keys, WAL and res",
+   "GS-FINAL-004: *** A MEMORY-SAFETY DEFECT WAS INTRODUCED BY (a)+(b) AND FOUND BY REVIEW, THEN REPAIRED AND MUTATION-PROVEN. *** `SqliteMessageStore.close()` and its `deinit` called `sqlite3_close",
    "GS-FINAL-006: THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendere",
-   "GS-FINAL-006: GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET N"
+   "GS-FINAL-006: GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET N",
+   "GS-FINAL-006: *** ROUND 2026-09-20: THE iOS HALF IS WITNESSED, AND THE \"CANNOT BE COMPILED\" CLAIM WAS FALSE. *** *The same 3-arm court covers this finding's iOS half: the **route authority** is ",
+   "GS-FINAL-006: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we"
   ],
   "historical_fields": {
    "note": "ORIGINAL TEXT PRESERVED, NOT OVERWRITTEN. The audit's remedy: \"Preserve original impact text under an explicitly historical field.\" Every finding's original `impact`/`proof`/`closure_tests` remains where it was; this block is the CURRENT view and does not replace them.",
@@ -15016,9 +15034,7 @@
    "IOS-07"
   ],
   "internal_round_narrative": [
-   "GS-FINAL-004: *** CLAUSE (c) IS NOW LANDED (round 647), AND IT IS THE SECOND CLAUSE THAT NEEDED NO NATIVE ENGINE. *** The card's \"Return typed open errors instead of a nominal store with a nil h",
-   "GS-FINAL-004: *** CLAUSE (d) IS NOW LANDED (round 605), AND IT IS THE ONE CLAUSE THAT NEEDED NO EXTERNAL ENGINE. *** The card's \"separate RESUMABLE operation with PRESERVED ROLLBACK EVIDENCE\" is",
-   "GS-FINAL-004: THE CORE'S BLOCKER IS NOW STATED CORRECTLY, AND MY EARLIER VERSION OF IT WAS WRONG IN A WAY THAT MATTERED (round 577). I had recorded that \"`EncryptedStoreHandle` cannot carry a co",
+   "GS-FINAL-004: *** CLAUSES (a)+(b) ARE NOW LANDED WITH MUTATIONS, WHICH SUPERSEDES THE EARLIER 'CANNOT BE ARMED YET' ENTRY. *** `EncryptedStoreFactory.reopenOwnedRequiringDEK(path:tag:)` returns ",
    "GS-INTEGRATION-001: *** ROUND 533: THIS FIELD WAS EMPTY -- and this finding is one of the FIVE the human named directly. WRITTEN FROM A RE-MEASUREMENT TAKEN THIS ROUND. ***",
    "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
    "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
@@ -15028,7 +15044,7 @@
    "GS-UX-001: *** ROUND 541: STEP 4 IS LANDED ON THE ANDROID ISLE -- the recipient selector, the UTF-8-bounded input and Send action (round 539's lab work; the app's own compose field already st",
    "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ"
   ],
-  "excluded_round_narrative": 11,
+  "excluded_round_narrative": 9,
   "internal_neither_narrative_nor_gap": [],
   "finding_closure": {
    "ANDROID-01": {
