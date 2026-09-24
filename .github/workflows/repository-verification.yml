@@ -507,6 +507,9 @@ jobs:
   android:
     name: android source compile + unit tests (committed wrapper)
     runs-on: ubuntu-latest
+    # *Same rule as the ios job: a step that can hang must have a bound, so a wedge endeth in a red step rather than a
+    # six-hour default. 45 minutes is well beyond the measured ~4 minute gradle lane.*
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -610,6 +613,19 @@ jobs:
   ios:
     name: ios core + mesh tests + Archive-only xcodebuild
     runs-on: macos-15
+    # *** A JOB THAT CAN HANG FOREVER PRODUCETH NO VERDICT. ***
+    #
+    # *MEASURED, RUN `35962665742`: this job sat 2h08m inside `ios UI lane` with ZERO output and was cancelled by hand.
+    # **THE WORKFLOW DECLARED NO `timeout-minutes`, so the DEFAULT (360 minutes) was the only bound** -- six hours of
+    # runner time to reach a non-answer.*
+    #
+    # **THE HANG WAS A WEDGED RUNNER, NOT A SLOW LANE: the same lane on `ea690309` completed in ~20 minutes carrying
+    # the SAME code.** *So this timeout is not the fix for that incident -- it is the durable bound so that ANY
+    # future wedge endeth in a red step in fifteen minutes rather than in a cancelled run nobody can read.*
+    #
+    # *45 minutes is ~2x the measured worst case for this job (foundation lane ~8 min + UI lane ~20 min + the archive
+    # builds). A run that exceedeth it is wedged, not working.*
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
