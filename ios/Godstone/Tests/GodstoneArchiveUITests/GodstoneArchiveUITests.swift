@@ -158,32 +158,45 @@ final class GodstoneArchiveUITests: XCTestCase {
         waitForExpectations(timeout: 10)
     }
 
-    /// *** THE WAY OUT OF A DOCUMENT, ADDRESSED WHERE **SWIFTUI ACTUALLY PUTS IT**. ***
+    /// *** THE WAY OUT OF A DOCUMENT, ADDRESSED BY THE CONTROL THE APP ITSELF RENDERS. ***
     ///
-    /// *MEASURED, AND IT CORRECTED A FALSE ASSUMPTION OF MINE. The post-tap tree of a successfully opened document
-    /// reads:*
-    /// ```
-    /// NavigationBar, identifier: 'Stopping severe bleeding'
-    ///   Button, identifier: 'BackButton', label: 'Stopping severe bleeding'
-    /// ```
-    /// **THE READER OPENS CORRECTLY** -- the title, the source/revision line and every passage are all there -- and
-    /// **THE ONLY BACK CONTROL RENDERED IS THE SYSTEM'S OWN `BackButton`.** My `archive.back` toolbar button is not
-    /// what a user taps on this road: the push came from a `NavigationLink(value:)`, so SwiftUI supplies its own back
-    /// button and my toolbar item does not appear at all.
+    /// **THIS BLOCK USED TO CLAIM THE OPPOSITE, AND THE CLAIM WAS FALSE.** *It recorded a post-tap tree in which the
+    /// only back control was SwiftUI's system `BackButton` (`identifier: 'BackButton'`), and concluded that the
+    /// app-owned `archive.back` "does not appear at all" on the `NavigationLink` road. **On that basis the helper fell
+    /// back to `app.navigationBars.buttons.firstMatch` -- the whole repository's most expensive inference, since it
+    /// was drawn from ONE tree dump and then used to justify a NAME-AGNOSTIC tap.***
     ///
-    /// *So my arm was asserting on **a control no user touches**, which is why it failed against a working reader --
-    /// **the defect was in the assertion, not the app.*** This looks for the identifier the toolbar declares, then
-    /// falls back to the navigation bar's own back control, which is the thing that must exist for the journey the
-    /// card names ("Back returns to the submitted query") to be performable at all.
-    private func backControl(_ app: XCUIApplication) -> XCUIElement {
-        let declared = app.navigationBars.buttons["archive.back"]
-        if declared.exists { return declared }
-        let plain = app.buttons["archive.back"]
-        if plain.exists { return plain }
-        // The system back control SwiftUI renders for a push -- identified by its own name.
-        let system = app.navigationBars.buttons["BackButton"]
-        if system.exists { return system }
-        return app.navigationBars.buttons.firstMatch
+    /// *MEASURED, HOSTED RUN `35914747948`: the trace containeth `t = 18.46s Tap "archive.back" Button`, which
+    /// RESOLVED and ACTIVATED. **So the app-owned control IS rendered on this road, and the tree that said otherwise
+    /// was one state of one moment.*** *The lesson is not "the tree lied" -- it is that a single dump is not a census,
+    /// and the fallback built on it turned a missing control into a tap on WHATEVER ELSE was in the bar.*
+    /// *** THE READER'S OWN BACK CONTROL -- BY ITS DECLARED IDENTITY, AND WITH NO FALLBACK. ***
+    ///
+    /// *MEASURED, HOSTED RUN `35914747948`. This helper used to end in `app.navigationBars.buttons.firstMatch`, and
+    /// the hosted trace shows exactly what that fallback resolved to:*
+    ///
+    /// ```text
+    /// t = 18.46s Tap "archive.back" Button                                   <- the real Back
+    /// t = 22.36s Checking existence of `"archive.back"` Button
+    /// t = 24.11s Checking existence of `"BackButton"` Button
+    /// t = 26.02s Checking existence of `Button (First Match)`
+    /// t = 26.49s Tap Button (First Match)[0.50, 0.50]
+    /// t = 26.76s Check for interrupting elements affecting "Cancel" Button   <- THE SEARCH'S CANCEL BUTTON
+    /// ```
+    ///
+    /// **SO THE ARM TAPPED THE SEARCH'S OWN CANCEL AFTER THE REAL BACK -- AND THEN ASSERTED THAT THE QUERY HAD BEEN
+    /// LOST. THE PROBE WAS THE AUTHOR OF THE LOSS IT REPORTED.** *And the final hierarchy agreed with the cancel, not
+    /// with the product: the field read `Search every document` because the search had just been CALLED OFF.*
+    ///
+    /// *** AND THE FALLBACK WAS ONLY REACHABLE BECAUSE THE SECOND LOOKUP WAS ITSELF WRONG: AFTER ONE BACK THE READER
+    /// IS GONE, so "is there another Back?" is not a question with a safe default answer.*** *A generic first button is
+    /// not a Back control, and the bar holds whatever else the surface put there -- here, the search's cancel.*
+    ///
+    /// *`ArchiveDocumentReader` deliberately renders an app-owned `archive.back`. If that control is absent then the
+    /// journey under test did not happen, and the arm MUST fail -- **NEVER reinterpret an unrelated first
+    /// navigation-bar button as Back.***
+    private func readerBackControl(_ app: XCUIApplication) -> XCUIElement {
+        app.buttons["archive.back"].firstMatch
     }
 
     /// Launch the Shipping (Light) app. **THE ARCHIVE IS THE ROOT -- THERE IS NO TAB TO REACH IT THROUGH.**
@@ -239,18 +252,37 @@ final class GodstoneArchiveUITests: XCTestCase {
         field.tap()
         field.typeText("bleeding\n")
 
-        // *** OPEN A DOCUMENT, by an identifier keyed to the DOCUMENT so this is not "whatever row is first". ***
-        let anyDocument = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'archive.document.'"))
+        // *** A POSITIVE WITNESS THAT THE SEARCH ACTUALLY COMPLETED, BEFORE ANYTHING IS OPENED. ***
+        //
+        // **MEASURED, HOSTED RUN `35914747948`: THIS ARM WAITED ON `archive.document.*` -- AN IDENTIFIER THE BROWSE
+        // LIST CARRIETH TOO (see `documentList`) -- SO IT MATCHED A ROW THAT PREDATED THE SEARCH AND TAPPED IT.**
+        // *The journey under test then never began, and the arm still reported a verdict about the query's fate.*
+        // **A WITNESS THAT CANNOT TELL "AFTER" FROM "BEFORE" CANNOT WITNESS A TRANSITION.**
+        //
+        // *`archive.search.results` is rendered ONLY by `searchHits`, so its existence IS the transition into the
+        // searched surface -- and it is a stronger witness than the query's echo in the field, which a stale value
+        // could also satisfy.*
+        let searchSurface = app.staticTexts["archive.search.results"]
+        XCTAssertTrue(
+            searchSurface.waitForExistence(timeout: 20),
+            "*** SUBMITTING `bleeding` MUST ENTER THE RENDERED SEARCH-RESULTS SURFACE. ITS ABSENCE MEANS NO SEARCH "
+                + "COMPLETED -- and from there every later assertion describeth a state the app was never asked to "
+                + "enter. The term is taken from the fixture's own content: 'procedure' is NOT in the seed corpus, so "
+                + "a witness must search for something its fixture actually holds. ***",
+        )
+
+        // *** AND A HIT IS ADDRESSED IN THE SEARCH'S OWN NAMESPACE, KEYED TO THE PASSAGE. ***
+        // *`archive.search.hit.<passageId>` cannot match a browse row, so the control that is tapped exists ONLY
+        // while the searched surface is rendered -- which is what maketh `stashScene()` reachable from `.search`
+        // BY CONSTRUCTION rather than by hope.*
+        let hit = app.buttons
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'archive.search.hit.'"))
             .firstMatch
         XCTAssertTrue(
-            anyDocument.waitForExistence(timeout: 20),
-            "*** A SEARCH FOR 'bleeding' MUST RENDER AT LEAST ONE ADDRESSABLE DOCUMENT ROW. THE TERM IS TAKEN FROM "
-                + "THE FIXTURE'S OWN CONTENT: my first draft searched 'procedure', WHICH THE SEED CORPUS DOES NOT "
-                + "CONTAIN -- so the arm failed on an empty result set and read as a broken selector, when the defect "
-                + "was MY QUERY. A witness must search for something its fixture actually holds. ***",
+            hit.waitForExistence(timeout: 20),
+            "*** THE SEARCH MUST RENDER AT LEAST ONE ADDRESSABLE HIT. ***",
         )
-        let openedIdentifier = anyDocument.identifier
+        let openedIdentifier = hit.identifier
 
         // Dismiss the keyboard FIRST: a live keyboard occludes the row and XCUITest will report a hit point of
         // {-1,-1}, which reads as a missing control.
@@ -261,10 +293,10 @@ final class GodstoneArchiveUITests: XCTestCase {
         expectation(for: keyboardGone, evaluatedWith: app.keyboards)
         waitForExpectations(timeout: 10)
 
-        anyDocument.tap()
+        hit.tap()
 
         // *** THE DOCUMENT IS OPEN: Back exists and the title is no longer the search results. ***
-        let back = backControl(app)
+        let back = readerBackControl(app)
         XCTAssertTrue(
             back.waitForExistence(timeout: 20),
             "*** OPENING A DOCUMENT MUST RENDER THE BACK CONTROL (`archive.back`). Its absence means the tap did not "
@@ -274,37 +306,53 @@ final class GodstoneArchiveUITests: XCTestCase {
 
         // *** AND BACK RETURNS TO THE SUBMITTED QUERY, NOT TO AN EMPTY ARCHIVE. ***
         clearPresentation(app)
-        // *** THE STANDARD NAV-BAR BACK IDIOM. ***
-        // *MEASURED: a plain `.tap()` and a coordinate tap BOTH left the reader on the stack (`navid` still the
-        // document title after TWO taps), while the element itself resolves. The navigation bar's own first button
-        // is the system back control, and `element(boundBy: 0)` is how XCUITest suites address it -- resolving through
-        // the bar rather than through a name that SwiftUI localises.*
-        // *** TAP THE READER'S OWN RENDERED CONTROL, which the app now provides. ***
+
+        // *** ONE USER BACK OPERATION. NO SECOND TAP -- NEITHER A RECOVERY NOR A VALIDATION. ***
+        //
+        // **MEASURED, HOSTED RUN `35914747948`: THIS ARM USED TO TAP AGAIN HERE, AND THE TRACE SHOWS THE SECOND TAP
+        // LANDING ON THE SEARCH'S OWN CANCEL BUTTON** *(because the re-lookup fell through to
+        // `navigationBars.buttons.firstMatch`, and after one Back the reader -- and therefore any real Back -- is
+        // gone)*:
+        //
+        // ```text
+        // t = 18.46s Tap "archive.back" Button                                   <- the real Back
+        // t = 26.02s Checking existence of `Button (First Match)`
+        // t = 26.49s Tap Button (First Match)[0.50, 0.50]
+        // t = 26.76s Check for interrupting elements affecting "Cancel" Button   <- THE SEARCH WAS CALLED OFF
+        // ```
+        //
+        // *** SO THE ARM CANCELLED ITS OWN SEARCH AND THEN ASSERTED THAT THE QUERY WAS LOST. THE PROBE WAS THE AUTHOR
+        // OF THE LOSS IT REPORTED*** -- and the final hierarchy agreed with the cancel rather than with the product.
+        // **A SECOND TAP CANNOT BE `if exists` EITHER: "if the reader is still here, tap again" is a question whose
+        // only safe answer is to FAIL, not to tap whatever the bar happeneth to hold.**
         back.tap()
-        sleep(1)
-        sleep(2)
-        // SECOND TAP: if one tap works but the scene re-pushes, two taps end at the list. If taps never land, we stay.
-        let back2 = backControl(app)
-        if back2.exists { back2.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap(); sleep(2) }
-        print(app.debugDescription)
+
+        // *** THE RESULTS SURFACE MUST COME BACK -- proof that Back returned to the SEARCH and not to the list. ***
+        XCTAssertTrue(
+            searchSurface.waitForExistence(timeout: 20),
+            "*** BACK MUST LAND ON THE SEARCH-RESULTS SURFACE, not the document list. A reader that drops the query "
+                + "on Back makes the user retype it -- the loss the card's 'returns to the submitted query' clause "
+                + "forbids. ***",
+        )
+
         let returnedField = app.searchFields.firstMatch
         XCTAssertTrue(
             returnedField.waitForExistence(timeout: 20),
-            "*** BACK MUST LAND ON THE SEARCH SURFACE, not the document list. A reader that drops the query on Back "
-                + "makes the user retype it -- the loss the card's 'returns to the submitted query' clause forbids. ***",
+            "*** BACK MUST LAND ON THE SEARCH SURFACE, not the document list. ***",
         )
-        XCTAssertEqual(
-            returnedField.value as? String, "bleeding",
-            "*** THE SUBMITTED QUERY MUST STILL BE IN THE FIELD. A model can hold `searchedQuery` while the rendered "
-                + "surface shows it empty -- and THIS is the observable a model test cannot reach. ***",
-        )
+        // *** WAITED FOR AS AN EXPECTATION, NOT READ ONCE. ***
+        // *The value is restored asynchronously through the view's own hook, so a single read after `tap()` is a race
+        // against the render -- and a race that fails would read as a lost query.*
+        let restoredQuery = NSPredicate(format: "value == %@", "bleeding")
+        expectation(for: restoredQuery, evaluatedWith: returnedField)
+        waitForExpectations(timeout: 20)
 
-        // The same document must still be addressable, so Back did not also lose the result set.
-        let sameRow = app.descendants(matching: .any).matching(identifier: openedIdentifier).firstMatch
+        // The same HIT must still be addressable, so Back did not also lose the result set.
         XCTAssertTrue(
-            sameRow.waitForExistence(timeout: 20),
-            "*** AND THE SAME DOCUMENT ROW MUST STILL BE PRESENT after Back -- a result set dropped on return is the "
-                + "other half of the loss, and it would strand the user with the query but nothing to open. ***",
+            app.buttons[openedIdentifier].waitForExistence(timeout: 20),
+            "*** AND THE SAME SEARCH HIT MUST STILL BE PRESENT after Back -- a result set dropped on return is the "
+                + "other half of the loss, and it would strand the user with the query but nothing to open. "
+                + "Opened hit: \(openedIdentifier) ***",
         )
     }
 
@@ -326,7 +374,7 @@ final class GodstoneArchiveUITests: XCTestCase {
         )
         anyDocument.tap()
 
-        let back = backControl(app)
+        let back = readerBackControl(app)
         XCTAssertTrue(
             back.waitForExistence(timeout: 20),
             "*** A DOCUMENT OPENED BY BROWSE MUST ALSO RENDER BACK. A way out that exists only on the search road "
@@ -377,8 +425,23 @@ final class GodstoneArchiveUITests: XCTestCase {
         field.tap()
         field.typeText("bleeding\n")
 
+        // *** THE SAME POSITIVE WITNESS THE SIBLING ARM NOW USETH: THE SEARCH SURFACE ITSELF. ***
+        // *`archive.search.results` is rendered ONLY by `searchHits`, so this cannot be satisfied by the browse list
+        // that was already on screen.*
+        XCTAssertTrue(
+            app.staticTexts["archive.search.results"].waitForExistence(timeout: 20),
+            "*** SUBMITTING `bleeding` MUST ENTER THE RENDERED SEARCH-RESULTS SURFACE before a 'hit' can mean "
+                + "anything. ***",
+        )
+
+        // *** AND THE HITS LIVE IN THE SEARCH'S OWN NAMESPACE, WHICH IS WHAT MAKETH "NON-FIRST" ADDRESSABLE. ***
+        // *Previously these were `archive.document.*` -- **the browse list's namespace** -- so this arm could have
+        // selected a row that was present BEFORE the search and called it the second search hit.*
+        // **AND KEYING THEM TO THE PASSAGE MATTERS HERE SPECIFICALLY: MANY HITS BELONG TO ONE DOCUMENT, so a
+        // document-keyed identifier cannot even name two distinct hits of the same document.***
         let rows = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'archive.document.'"))
+            NSPredicate(format: "identifier BEGINSWITH 'archive.search.hit.'"),
+        )
         XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 20))
         XCTAssertGreaterThanOrEqual(
             rows.count, 2,
@@ -535,7 +598,7 @@ final class GodstoneArchiveUITests: XCTestCase {
         row.tap()
         sleep(1)
 
-        let back = backControl(app)
+        let back = readerBackControl(app)
         XCTAssertTrue(back.waitForExistence(timeout: 20))
         back.tap()
 

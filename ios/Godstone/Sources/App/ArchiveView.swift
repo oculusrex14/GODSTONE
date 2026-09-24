@@ -315,6 +315,14 @@ private struct ArchiveBrowser: View {
             Text("\(scene.passages.count) passage\(scene.passages.count == 1 ? "" : "s")"
                 + (scene.passages.count == 40 ? " · showing the first 40" : ""))
                 .font(.footnote).foregroundStyle(.secondary)
+                // *** A POSITIVE WITNESS THAT THE SEARCH SURFACE IS RENDERED. ***
+                // *MEASURED, HOSTED RUN `35914747948`: the arm that verifiest "Back returneth to the submitted query"
+                // had **NO OBSERVABLE THAT THE SEARCH EVER COMPLETED** -- it waited on `archive.document.*`, an
+                // identifier that the BROWSE list carrieth too (see `documentList`), so a search that never submitted
+                // satisfied the wait and the arm proceeded to open a row that was there all along.* **A WITNESS THAT
+                // CANNOT DISTINGUISH "AFTER" FROM "BEFORE" CANNOT WITNESS A TRANSITION.** *This summary exists ONLY
+                // in `searchHits`, so its presence IS the transition.*
+                .accessibilityIdentifier("archive.search.results")
             ForEach(scene.passages) { passage in
                 NavigationLink(value: ArchiveDocument(id: passage.documentId,
                     title: passage.documentTitle, domain: passage.domain, isCritical: false)) {
@@ -329,14 +337,22 @@ private struct ArchiveBrowser: View {
                     }
                     .padding(.vertical, 8)
                 }
-                // *** AND THE SEARCH ROAD MUST BE ADDRESSABLE TOO -- THE COMMENT BELOW CLAIMED "THE SAME
-                // TREATMENT" WHILE THE ROW CARRIED NO IDENTIFIER AT ALL. ***
+                // *** AND THE SEARCH ROAD MUST BE ADDRESSABLE -- IN ITS OWN NAMESPACE. ***
                 // *A search result and a list row are the SAME KIND of control to a user and to assistive
-                // technology, so an identifier that exists on one and not the other is an inconsistency the
-                // comment concealed. **MEASURED: a UI test could address every browse row and NO search hit** --
-                // which reads as "the search rendered nothing" when the truth is "the search rendered rows nobody
-                // can name."*
-                .accessibilityIdentifier("archive.document." + String(passage.documentId))
+                // technology, so an identifier that exists on one and not the other is an inconsistency.*
+                //
+                // **BUT A SHARED IDENTIFIER WAS THE WORSE DEFECT: THE ROW BELOW WAS KEYED
+                // `archive.document.<documentId>` -- EXACTLY THE BROWSE LIST'S NAMESPACE -- SO A WITNESS COULD NOT
+                // TELL "THE SEARCH RENDERED THIS" FROM "THE BROWSE LIST WAS STILL ON SCREEN."** *MEASURED, HOSTED RUN
+                // `35914747948`: the arm waited for `archive.document.*`, matched a row that predated the search, and
+                // tapped it -- **so the journey under test never began, while the arm reported a failure about the
+                // query's fate.***
+                //
+                // *** AND IT IS KEYED TO THE PASSAGE, NOT THE DOCUMENT: MANY HITS BELONG TO ONE DOCUMENT, so a
+                // document-keyed identifier cannot name "a hit that is not the first" -- which is precisely what the
+                // sibling arm must address.*** *`passage.id` is the same stable identity the reader's scroll proxy
+                // already useth.*
+                .accessibilityIdentifier("archive.search.hit." + String(passage.id))
                 // AND THE SEARCH ROAD GETTETH THE SAME TREATMENT, so a hit and a list row cannot disagree about
                 // whether the scene was told (GS-FINAL-006).
                 .simultaneousGesture(TapGesture().onEnded {

@@ -112,7 +112,7 @@
     "Sources/GodstoneMesh/WipeKeyVaultSeam.swift": "3f2fa02d70102955b4e071ba9fda3b66685fd7b16b0f2100d5b2408ebe6141ce",
     "Sources/GodstoneMesh/WipeTransportDrainSeam.swift": "70674aa17da5af0eb787f57dd84a0d67cc03cb4d1332b7afe3e37d439ad865df",
     "Sources/GodstoneMesh/WireV2.swift": "bac25e7bda845cdab3aa8c221dd693963be97c8ab313fba103a66b7308e6bf2e",
-    "Tests/GodstoneCoreTests/GsArchive005IOSRestorationTests.swift": "d1298558371fdfea5dc2d748b5f32437634e5c9565475c78445a3b11f0e37d45",
+    "Tests/GodstoneCoreTests/GsArchive005IOSRestorationTests.swift": "b9f5a8f863b7f056ff4865142f9a53a4a763c81244b061ecbaddf462c865de9a",
     "Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift": "670d979089c90585479937d484ba0bd4b96e33903b04c087c486d5a24ea1544d",
     "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",
     "Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift": "414658b2105a02f0adcd459e23b90524375f629767335ec65e70594409727e6a",

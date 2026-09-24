@@ -212,14 +212,58 @@ final class GsArchive005IOSRestorationTests: XCTestCase {
         scene.back()
         await settled()
 
-        XCTAssertNotEqual(
-            scene.mode, .document,
-            "*** BACK MUST LEAVE THE DOCUMENT. If it does not, the return-to-search identity was lost -- the defect " +
-                "the model's `returnScene` exists to prevent. Observed: \(scene.mode) ***",
+        // *** AND BACK MUST RESTORE THE SEARCH *IDENTITY ITSELF* -- NOT MERELY "NOT A DOCUMENT". ***
+        //
+        // *MEASURED, HOSTED RUN `35914747948`: a UI arm reported that Back lost the submitted query, and the render
+        // side was the obvious suspect. **BUT `XCTAssertNotEqual(mode, .document)` -- WHICH IS WHAT THIS COURT USED TO
+        // ASSERT -- IS SATISFIED BY `.search` AND BY `.documents` ALIKE**, so it could not tell "Back returned to the
+        // search" from "Back dropped the user at the list". The arm and its subject could disagree about which of
+        // those happened and BOTH still look green here.*
+        //
+        // **SO THIS NOW PINS THE EXACT IDENTITY, ONE FIELD PER CLAIM** *(`ArchiveSceneModel.back()` restores each of
+        // these from the stashed `returnScene`, so a defect in any single one is now separable).*
+        XCTAssertEqual(
+            scene.mode, .search,
+            "*** BACK FROM A SEARCH-ORIGIN DOCUMENT MUST RETURN TO `.search`, NOT TO THE DOCUMENT LIST. " +
+                "Observed: \(scene.mode) ***",
+        )
+        XCTAssertEqual(
+            scene.searchedQuery, "passage",
+            "*** AND THE SUBMITTED QUERY MUST SURVIVE -- this is the field the card's clause is about. " +
+                "Observed: \(String(describing: scene.searchedQuery)) ***",
+        )
+        XCTAssertEqual(
+            scene.query, "passage",
+            "*** AND THE QUERY MUST BE BACK IN THE FIELD, not only in the model's memory of what was submitted. " +
+                "Observed: \(scene.query) ***",
+        )
+        XCTAssertFalse(
+            scene.passages.isEmpty,
+            "*** AND THE RESULT SET MUST COME BACK TOO -- a query restored over an empty list would strand the user " +
+                "with their words and nothing to open. ***",
         )
         XCTAssertNil(
             scene.openedDocumentId,
             "*** AND NO DOCUMENT REMAINS OPEN: the projection and the scene must not disagree after Back. ***",
+        )
+
+        // *** AND THE BROWSE ROAD MUST NOT BE POLLUTED BY THAT IDENTITY -- THE OTHER HALF OF THE SAME DISTINCTION. ***
+        // *A defect that restored `returnScene` unconditionally would pass every assertion above and STILL send a
+        // browse user to a search they never ran.*
+        let browseScene = ArchiveSceneModel(reading: library, model: ArchiveReaderModel(library: library))
+        await settled()
+        await browseScene.open(document: library.docs[0])
+        await settled()
+        browseScene.back()
+        await settled()
+        XCTAssertEqual(
+            browseScene.mode, .documents,
+            "*** A BROWSED DOCUMENT MUST RETURN TO THE LIST. Observed: \(browseScene.mode) ***",
+        )
+        XCTAssertNil(
+            browseScene.searchedQuery,
+            "*** AND IT MUST CARRY NO QUERY: a browse user must never be returned to a search that never ran. " +
+                "Observed: \(String(describing: browseScene.searchedQuery)) ***",
         )
     }
 }
