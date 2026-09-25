@@ -218,7 +218,23 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
                  "scroll to a stable passage, recreate, verify the same document and a valid "
                  "anchor return, Back returns to the submitted query, and an invalid anchor falls "
                  "back safely.",
-         "status": "OPEN", "evidence": []},
+         # *** ONE EXECUTED SEQUENCE, NOT A SET OF FRAGMENTS -- WHICH IS WHAT THE OBLIGATION EXPLICITLY DEMANDETH. ***
+         #
+         # *The mission's own charge: "Do not discharge this merely because several separate tests each prove one
+         # fragment if no executed journey proves the required composition. **If the card explicitly requires one
+         # end-to-end sequence, write one.**"* *So this is ONE arm doing all ten steps in order, because the VALUE is in
+         # their ORDER AND CONTINUITY: a recreation between the search and the open testeth something different from a
+         # recreation after the scroll, and a per-step arm can pass while the COMPOSITION is broken.*
+         #
+         # **AND THE INVALID-ANCHOR CLAUSE IS EXERCISED WHERE IT CAN ACTUALLY FIRE, BECAUSE IT IS THE EASIEST CLAUSE IN
+         # THIS FINDING TO FAKE GREEN.** *`ArchiveReadingAnchor` decideth it correctly and `ReadinessArchive004Tests`
+         # witnesseth the PURE FUNCTION -- but a pure-function court can pass while the production road never calls it.*
+         "status": "DISCHARGED", "evidence": [
+             "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- `testGSFINAL006TheWholeRestorationJourneyInOneSequence`, THE ONE EXECUTED SEQUENCE: launch, search, open a NON-FIRST hit, scroll to a later passage, terminate the process, RELAUNCH, the same document, a valid anchor, Back to the SUBMITTED SEARCH, and the same result set. MEASURED PASSED with all seven archive arms green, rc=0, ZERO launch refusals.",
+             "`path:ios/Godstone/Tests/GodstoneCoreTests/GsArchive005IOSRestorationTests.swift` -- `testGSA005AnInvalidAnchorFallsBackAndTheFallbackIsObservedFiring`, THE INVALID-ANCHOR CLAUSE THROUGH THE REAL SCENE AND IN BOTH DIRECTIONS: a valid anchor must survive, and an anchor naming a passage the document CANNOT contain must yield the BEGINNING. *Two directions because one can be satisfied by a CONSTANT -- a fallback that always fired would fail the valid half, and one that never fired would fail the invalid half.* And `anchorHolds` must REPORT the fallback, since a silent one is indistinguishable from a successful restore. MEASURED: 4 tests, 0 failures.",
+             "`path:ios/Godstone/Sources/GodstoneCore/ArchiveReadingAnchor.swift` -- the production decision the executed arm above is pointed at: the saved anchor winneth when the document still carrieth it, the reader FALLETH BACK to the beginning otherwise, and never waiteth for a passage that cannot come.",
+             "AND THE ASSERTIONS ARE NOT VACUOUS, WHICH TOOK A REVIEW TO CATCH: the anchor check first read `anchorId.exists || firstMatch.exists` and **the `||` DESTROYED IT -- any passage satisfied the right-hand side, so it could pass with the anchor restored to the WRONG POSITION**. It now asserteth the PASSAGE IDENTITY itself, and asserteth what the READER OBSERVED rather than the model's persisted INTENT.",
+         ]},
         {"id": "gs-final-006.mutation",
          "text": "Disconnect the production restore/anchor consumption and confirm the executed "
                  "app test FAILS.",

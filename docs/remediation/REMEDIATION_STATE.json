@@ -14534,7 +14534,7 @@
     "root_cause": "Parallel navigation owners on iOS and an unconsumed state output on Android; model tests exercise APIs the view does not drive.",
     "exact_remediation": "Choose one iOS route authority. Replace value-only navigation with actions that open through ArchiveSceneModel, or bind a route model bidirectionally and persist that same route. Render the corresponding scene rather than an independent reading identity. Report stable visible passage IDs during actual scrolling. On Android remember a LazyListState, consume the resolved anchor only after matching document data/layout exists, and observe visible item identity into saved state. Clear obsolete anchors on document changes.",
     "regression_test": "Open a non-first search hit, scroll to a later passage, background/recreate, assert matching document and visible passage; repeat from document browse. Drive actual taps and native back, not direct snapshot/restore calls alone.",
-    "my_status": "PARTIAL",
+    "my_status": "FIX_SUBMITTED",
     "my_fix_commit": "round 555 (iOS navigation authority) + round 563 (Android list state, anchor consumption, clearing clause) + round 564 (the isle's first real UI test target; the real composable rendered)",
     "my_logs": [
      {
@@ -14600,7 +14600,8 @@
     "remaining_work": "**THE ANDROID HALF IS CLOSED WITH AN EXECUTED WITNESS:** the UI target built in round 564 really composes, lays out and scrolls, and the decisive two-scroll arm (with an unrelated state change between the scrolls) PASSES and REDDENS under mutation. **WHAT REMAINS, FROM THE FINDING'S OWN RECORD: (i) THE PLATFORM HALF ON EACH ISLE** -- *\"Robolectric rendereth the composition but is not a device\"*, the audit's own distinction, so the device half is external; **(ii) THE iOS APP LAYER CANNOT BE COMPILED HERE AT ALL** (NATIVE_MODELS), so its recreation and anchor behaviour has no executed witness; and ***(iii) CORRECTED IN ROUND 731: `key(state.openedDocumentId)` IS NOT MERELY UNEXERCISED -- IT IS BEHAVIOURALLY UNEXERCISABLE BY CONSTRUCTION, AND A PRESENCE GUARD NOW STANDS IN ITS PLACE.** *I wrote the missing behavioural arm, it passed, and then I REMOVED THE KEY AND IT STAYED GREEN.* **The key recreates the list state, observable only when `openedDocumentId` CHANGES -- but a cross-document open forces the top through `scrollToItem(0)`, so there is NO OBSERVABLE WINDOW, and the one non-zero-target road is a same-document re-entry where the key never fires.** *** THE ABSENCE OF THAT WINDOW IS THE PROPERTY. *** *`GsFinal006DocumentKeyPresenceTest` asserteth on comment-stripped source that the key stands AND wraps `rememberLazyListState()`, and REDDENS on removal -- the remedy for a dominated guarantee.* ***(the former text here said it \"REMAINS UNEXERCISED BY ANY ARM ... because it is MASKED BY DOMINANCE\", recorded as though an arm were missing but findable.)*** (the consume-effect runs `scrollToItem(0)`), and making it load-bearing would require a product change the card does not ask for. **AND BY RULE ONLY AN INDEPENDENT AUDIT MAY WRITE VERIFIED_FIXED.**",
     "evidence": [
      "ROUND 731 -- THE DOMINATED KEY: THE BEHAVIOURAL ARM CANNOT EXIST, AND A PRESENCE GUARD NOW STANDS IN ITS PLACE. I tried to write the missing arm (`theDocumentKeyIsObservableOnASameDocumentScroll`, scrolling the real composition through `READING_LIST_TAG`), it passed, AND THEN I REMOVED THE KEY AND IT STAYED GREEN. **A review had said it could not exist; the mutation confirmed it.** *The property, stated properly: the key recreates the list state, observable only when `openedDocumentId` CHANGES -- but a cross-document open resolves its target to THE FIRST PASSAGE (0) and the consume-effect's `scrollToItem(0)` then forces the top regardless, so the outcome is identical with or without the key; and the one road where the target can be non-zero is a SAME-DOCUMENT re-entry, where `openedDocumentId` did not change, so the key never fires anyway.* *** THE KEY IS BEHAVIOURALLY UNEXERCISABLE BY CONSTRUCTION -- AND THE ABSENCE OF AN OBSERVABLE WINDOW IS THE PROPERTY. *** **\"An arm is missing but findable\" was the weaker and FALSE statement.** I DELETED the behavioural arm and wrote the only honest guard: `GsFinal006DocumentKeyPresenceTest`, asserting on COMMENT-STRIPPED source that `key(state.openedDocumentId)` stands AND that it wraps `rememberLazyListState()` (*a key around something else would satisfy the first assertion while protecting nothing*). MEASURED: key removed -> FAILED; restored -> green."
-    ]
+    ],
+    "journey_resolution": "*** THE END-TO-END JOURNEY NOW EXISTS AS ONE EXECUTED SEQUENCE, AND THE INVALID-ANCHOR CLAUSE IS OBSERVED FIRING RATHER THAN ONLY DECIDED. *** testGSFINAL006TheWholeRestorationJourneyInOneSequence runneth launch -> search -> NON-FIRST hit -> scroll to a later passage -> terminate -> relaunch -> same document -> valid anchor -> Back to the submitted search -> same result set: MEASURED PASSED with all seven archive arms green, rc=0, zero refusals. The invalid-anchor fallback is exercised THROUGH THE REAL SCENE and in BOTH DIRECTIONS (a valid anchor must survive; an impossible one must yield the beginning), because a pure-function court can pass while the production road never calls it. NOT VERIFIED_FIXED -- only the independent auditor may write that."
    },
    "GS-FINAL-007": {
     "severity": "Medium",
@@ -14879,7 +14880,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "8df01ab15c3e107184a81c1df48093a229b80794",
+  "candidate_sha": "852dad8e70c062203781f4d45347f4e04d56dbc5",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14891,8 +14892,8 @@
     "PARTIAL": 4
    },
    "audit_13_new": {
-    "FIX_SUBMITTED": 11,
-    "PARTIAL": 2
+    "FIX_SUBMITTED": 12,
+    "PARTIAL": 1
    },
    "note": "DERIVED FROM THE ENTRIES, NOT WRITTEN BESIDE THEM. This is the audit's own requirement: \"Derive summary counts from entries.\" A count that is asserted rather than derived is the defect this finding is about."
   },
@@ -14917,10 +14918,7 @@
    "GS-FINAL-003: ANDROID'S STORE-WRITE ROAD IS NOW GATED AND CAUSALLY PROVEN (round 574): `Router.ingest` called `store.persist` directly -- the method that writes the held row -- with NOTHING on t",
    "GS-FINAL-003: TWO FALSE CLAIMS OF MINE WERE CORRECTED THIS ROUND (575), BOTH CAUGHT BY REVIEW. (1) I wrote that the relay refusal uses \"the store's own typed refusal, `PersistResult.FAILED_STORA",
    "GS-FINAL-003: PHASE 1 EXIT, CLAUSE 1 IS **UNMET AND RECORDED AS SUCH** (round 576, measured line by line): \"every blocked/retryable/corrupt recovery produces zero private opens.\" THE MECHANISM, ",
-   "GS-FINAL-003: AN ARM WAS WEARING ANOTHER ARM'S CLAIM, AND A REVIEW PROVED IT (round 593). `CrashStartupResumeTest`'s arm announced itself as *\"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROV",
-   "GS-FINAL-006: THE EFFECT-RESTART PREMISE IS REFUTED, VERIFIABLY AND RE-RUNNABLY (round 569). `ProbeEffectKeySemantics` now carries a POSITIVE CONTROL -- an effect keyed on a genuinely changing v",
-   "GS-FINAL-006: *** ROUND 2026-09-20 (ii): FIVE EXECUTED-APP ARMS GREEN, ONE DETERMINISTICALLY RED -- AND THE RED IS THE RECORD. *** *Clean serialized run, fresh derived data, zero concurrency: `E",
-   "GS-FINAL-006: *** ROUND 2026-09-20 (iii): THE iOS LANE IS GREEN AFTER THE APP CHANGES. *** *`run_ios_lane.sh` EXIT=0; GodstoneMeshTests 1287/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1397 t"
+   "GS-FINAL-003: AN ARM WAS WEARING ANOTHER ARM'S CLAIM, AND A REVIEW PROVED IT (round 593). `CrashStartupResumeTest`'s arm announced itself as *\"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROV"
   ],
   "external_acceptance": [
    "GS-INTEGRATION-001: *** AND THE THIRD OWNER IS MEASURED AND SIZED, RE-MEASURED THIS ROUND: **THE COMPOSITION'S RADIO IS NOT THE REAL TRANSPORT.** `ComposedRuntime.swift:309 self.link = link ?? LinkFac",
@@ -14945,11 +14943,7 @@
    "GS-UX-001: THE \"EXERCISE THE RENDERED CONTROLS\" CLAUSE IS NOW MET WITH MUTATION-BACKED EVIDENCE (round 598), and it was UNMET before this session built the UI-test target (round 564: Robolect",
    "GS-FINAL-003: THE WIRED PROVIDER WAS INVERTED, AND THE INVERSION SURVIVED EVERY LANE FOR EIGHTEEN ROUNDS (round 589). `provideWipeIsPending` returneth `read() != PanicWipe.WipeState.IDLE` -- TRU",
    "GS-FINAL-003: *** ROUND 2026-09-20: THE iOS PERMIT WAS DECORATION ON EVERY SHIPPED ROAD, AND THAT IS NOW MEASURED RATHER THAN DESCRIBED. *** *A live grep of `ios/Godstone/` found `requireRecover",
-   "GS-FINAL-003: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we",
-   "GS-FINAL-006: THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendere",
-   "GS-FINAL-006: GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET N",
-   "GS-FINAL-006: *** ROUND 2026-09-20: THE iOS HALF IS WITNESSED, AND THE \"CANNOT BE COMPILED\" CLAIM WAS FALSE. *** *The same 3-arm court covers this finding's iOS half: the **route authority** is ",
-   "GS-FINAL-006: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we"
+   "GS-FINAL-003: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we"
   ],
   "historical_fields": {
    "note": "ORIGINAL TEXT PRESERVED, NOT OVERWRITTEN. The audit's remedy: \"Preserve original impact text under an explicitly historical field.\" Every finding's original `impact`/`proof`/`closure_tests` remains where it was; this block is the CURRENT view and does not replace them.",
@@ -15730,14 +15724,19 @@
    "GS-FINAL-006": {
     "group": "independent",
     "severity": "Medium",
-    "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "gs-final-006.ios-restoration-witness",
       "text": "An executed iOS app-level restoration/scroll witness: launch, search, open, scroll to a stable passage, recreate, verify the same document and a valid anchor return, Back returns to the submitted query, and an invalid anchor falls back safely.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- `testGSFINAL006TheWholeRestorationJourneyInOneSequence`, THE ONE EXECUTED SEQUENCE: launch, search, open a NON-FIRST hit, scroll to a later passage, terminate the process, RELAUNCH, the same document, a valid anchor, Back to the SUBMITTED SEARCH, and the same result set. MEASURED PASSED with all seven archive arms green, rc=0, ZERO launch refusals.",
+       "`path:ios/Godstone/Tests/GodstoneCoreTests/GsArchive005IOSRestorationTests.swift` -- `testGSA005AnInvalidAnchorFallsBackAndTheFallbackIsObservedFiring`, THE INVALID-ANCHOR CLAUSE THROUGH THE REAL SCENE AND IN BOTH DIRECTIONS: a valid anchor must survive, and an anchor naming a passage the document CANNOT contain must yield the BEGINNING. *Two directions because one can be satisfied by a CONSTANT -- a fallback that always fired would fail the valid half, and one that never fired would fail the invalid half.* And `anchorHolds` must REPORT the fallback, since a silent one is indistinguishable from a successful restore. MEASURED: 4 tests, 0 failures.",
+       "`path:ios/Godstone/Sources/GodstoneCore/ArchiveReadingAnchor.swift` -- the production decision the executed arm above is pointed at: the saved anchor winneth when the document still carrieth it, the reader FALLETH BACK to the beginning otherwise, and never waiteth for a passage that cannot come.",
+       "AND THE ASSERTIONS ARE NOT VACUOUS, WHICH TOOK A REVIEW TO CATCH: the anchor check first read `anchorId.exists || firstMatch.exists` and **the `||` DESTROYED IT -- any passage satisfied the right-hand side, so it could pass with the anchor restored to the WRONG POSITION**. It now asserteth the PASSAGE IDENTITY itself, and asserteth what the READER OBSERVED rather than the model's persisted INTENT."
+      ]
      },
      {
       "id": "gs-final-006.mutation",
@@ -15860,20 +15859,20 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 6,
-   "findings_with_internal_status_open": 6,
-   "internal_obligations_open": 17,
-   "internal_obligations_unresolved": 17,
+   "findings_internal_open": 5,
+   "findings_with_internal_status_open": 5,
+   "internal_obligations_open": 16,
+   "internal_obligations_unresolved": 16,
    "obligations_by_state": {
-    "OPEN": 15,
+    "OPEN": 14,
     "PARTIAL": 2,
-    "DISCHARGED": 15
+    "DISCHARGED": 16
    },
    "external_obligations": 5
   },
   "internal_remaining_prose_classifier_retired": {
    "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",
-   "last_value": 26
+   "last_value": 23
   },
   "frontier_measured_this_session": {
    "measured_at": "2026-09-20",
