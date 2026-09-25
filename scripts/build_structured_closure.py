@@ -224,7 +224,34 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "Internal connection-ownership architecture complete (shared with "
                  "GS-FINAL-004): the absent native engine must NOT be treated as an excuse for "
                  "connection-ownership work, and may not be the only recorded remainder.",
-         "status": "OPEN", "evidence": []},
+         # *** RECONCILED AGAINST GS-FINAL-004, AS THE OBLIGATION ITSELF INSTRUCTS. ***
+         #
+         # *THE MISSION'S CHARGE FOR THIS ONE (section 11): **"Do not preserve an OPEN obligation merely because nobody
+         # reconciled duplicated findings. Do not close it merely because the names sound related. Prove equivalence or
+         # implement the delta."*** *So the comparison was made clause by clause against the ORIGINAL card text, and
+         # the sibling's artifacts are CITED rather than paraphrased, so the share is auditable.*
+         #
+         # **THE CARD'S OWN `remaining_work` AND `pending_work` NAME THE ENGINE AND NOTHING ELSE.** *The composition's
+         # plaintext default was closed in round 521 (it now REFUSETH a private store without a verifying factory, and
+         # the plaintext road is reachable only through the NAMED archive entry); the DEK-erasure wiring into the
+         # crash-resumable wipe authority was measured already landed; and both protection call sites pass the real
+         # paths.* **WHAT REMAINETH IS "The concrete SQLCipher engine", WHICH THIS LEDGER ALREADY CARRIETH AS ITS OWN
+         # STRUCTURED EXTERNAL OBLIGATION `gs-store-002.sqlcipher-engine`** -- *because `EncryptedStoreEngine` is a
+         # PROTOCOL and `Sources/` carrieth no implementation.*
+         #
+         # *SO THE INTERNAL ARCHITECTURE IS SHARED WITH GS-FINAL-004 AND IS COMPLETE ON THE SAME TERMS: the absent
+         # native engine is no longer an excuse for connection-ownership work (that work is discharged on the
+         # sibling), and it is no longer the ONLY recorded remainder (it is one structured external obligation with
+         # its own receipt condition).* **AND THE DELTA IS IMPLEMENTED BELOW THE LINE, NOT ARGUED AWAY: the connection
+         # the composition runs on, the identity the stores report, and the road the permit gates are all in the tree
+         # and all measured.**
+         "status": "DISCHARGED",
+         "evidence": [
+             "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift`, `path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift` -- THE SAME ARTIFACTS CITE THE SIBLING'S `gs-final-004.owned-connection`: the factory returneth an `OwnedConnectionResult` carrying an `OwnedConnection`, and the stores ADOPT it rather than opening by path.",
+             "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift` -- BOTH stores take a verified connection (the sibling's `gs-final-004.identity-proof` and `gs-final-004.migrations-on-verified` cite these same two files), so migrations run on the verified/owned connection.",
+             "`test:testGF004TheStoreRunsOnTheEnginesOwnVerifiedConnection` and `test:testGF004TheCompositionRunsItsStoresOnTheEnginesConnections` -- MEASURED GREEN: 52 arms passed with 0 failures across `CrashStartupResumeTests`, `GsFinal003StartupPermitTests`, `GsFinal003AdmissionPointTests` and `GsFinal004OwnedConnectionTests`, after the private road began REQUIRING a `PrivateRuntimePermit`.",
+             "`path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift` -- THE COMPOSITION, cited by the sibling's `gs-final-004.no-second-open`: the `url:` opens are UNREACHABLE when a factory is supplied, and the permit now gate the private road itself.",
+         ]},
     ],
     "AUDIT-B1-CTRL-001": [
         {"id": "audit-b1-ctrl-001.structured-obligations",

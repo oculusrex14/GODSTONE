@@ -34,13 +34,25 @@ private struct ArchiveBrowser: View {
     // recreation LOST the promised query and document place. The card's own words: "Both apps implement
     // snapshot/restore methods but no production caller persists/restores them."
     //
-    // THE VEHICLE IS THE ONE THE CARD NAMETH (`SceneStorage`), and the record is the model's own serialisable place:
-    // W16 (a behavioural arm in GodstoneCoreTests) MEASURABLY PROVETH that the handle surviveth a real
-    // `PropertyListSerialization` round-trip INTO A FRESH SCENE with its identity and metadata intact -- so this
-    // store is backed by a measured semantic and not by a hope about `[String: Any]`.
+    // *** AND THE VEHICLE BELOW WAS WRONG FOR ONE MORE ROUND, WHICH IS WHY THE ARM STAYED RED. ***
+    //
+    // *The record stood in `@SceneStorage`, justified by this note:* ***"W16 (a behavioural arm in GodstoneCoreTests)
+    // MEASURABLY PROVETH that the handle surviveth a real `PropertyListSerialization` round-trip INTO A FRESH SCENE
+    // with its identity and metadata intact."*** **THAT EXPERIMENT MEASURED THE SERIALISATION, NOT THE DURABILITY, AND
+    // THE DIFFERENCE IS THE ENTIRE DEFECT:** *a plist round-trip into a fresh model proveth the handle can be ENCODED
+    // AND DECODED, and saith nothing about whether the STORE surviveth a `terminate()`.* *`@SceneStorage` is
+    // scene-scoped by contract -- iOS discardeth it with the scene, and restoreth it only for an app that OPTS INTO
+    // STATE RESTORATION, which this target does not (no scene manifest, no scene delegate, no restoration
+    // identifier).*
+    //
+    // **MEASURED, LOCAL AND HOSTED: the recreation arm was DETERMINISTICALLY RED, the relaunch landing at the document
+    // list.** *So the write-timing fix (now also in place, at a guaranteed transition) could not have helped: **the
+    // system was throwing the store away.*** **THE VEHICLE IS `UserDefaults` NOW -- process-durable, on disk, requiring
+    // no restoration opt-in -- and the fail-closed rule is preserved from the old code because it was correct: a
+    // half-written place is worse than an old one, so a record that cannot be encoded is NOT written.**
     // --------------------------------------------------------------------------------------
     @Environment(\.scenePhase) private var scenePhase
-    @SceneStorage("godstone.archive.scene") private var sceneRecord: Data = Data()
+    @State private var placeStore = ArchivePlaceStore()
 
     // --------------------------------------------------------------------------------------
     // *** GS-ARCHIVE-005 STEP 1, THE CLAUSE LEFT OWED UNTIL ROUND 536: **THE `NavigationStack` IS BOUND.** ***
@@ -72,16 +84,25 @@ private struct ArchiveBrowser: View {
         self.library = library
     }
 
-    /// *** GS-ARCHIVE-005 STEP 4: THE PLACE, WRITTEN INTO THE SCENE-SCOPED STORE. *** `snapshot(into:)` is the
-    /// model's own serialisable place; the store is `SceneStorage`, which the card nameth by name. A record that
-    /// cannot be written is NOT written and the previous one standeth: A HALF-WRITTEN PLACE IS WORSE THAN AN OLD ONE,
-    /// because it restores something that was never true.
+    /// *** GS-ARCHIVE-005 STEP 4: THE PLACE, WRITTEN INTO A STORE THAT SURVIVETH THE PROCESS. ***
+    ///
+    /// *`snapshot(into:)` is the model's own serialisable place, and `ArchivePlaceStore` is a `UserDefaults` record.*
+    /// **THE COMMENT HERE PREVIOUSLY SAID "THE SCENE-SCOPED STORE ... `SceneStorage`, WHICH THE CARD NAMETH BY NAME",
+    /// AND THE CARD'S NAME WAS THE BUG:** *a scene-scoped store is discarded with the scene, so it cannot survive the
+    /// `terminate()` this step existeth to survive.* ***A COMMENT THAT NAMETH THE DEFECTIVE MECHANISM AS THE INTENDED
+    /// ONE IS HOW THE DEFECT SURVIVED A ROUND -- so the correction is recorded here rather than silently swapped.***
+    ///
+    /// *AND THE FAIL-CLOSED RULE STANDS, BECAUSE IT WAS CORRECT: a record that cannot be written is NOT written and
+    /// the previous one standeth -- **A HALF-WRITTEN PLACE IS WORSE THAN AN OLD ONE**, because it restores something
+    /// that was never true.*
     private func persistScenePlace() {
         var handle: [String: Any] = [:]
         scene.snapshot(into: &handle)
-        if let data = try? PropertyListSerialization.data(fromPropertyList: handle, format: .binary, options: 0) {
-            sceneRecord = data
-        }
+        // *** THE FAIL-CLOSED RULE STANDS: A HALF-WRITTEN PLACE IS WORSE THAN AN OLD ONE. *** *The store returneth
+        // whether the write landed, and a record that cannot be encoded is NOT written -- so the previous place
+        // remaineth rather than being replaced by one that was never true. The return value is deliberately unused
+        // here because there is no useful recovery: the old place is already the correct fallback.*
+        placeStore.write(handle)
     }
 
     /// *** GS-ARCHIVE-005 step 1 (round 536): THE PATH FOLLOWETH THE SCENE. ***
@@ -158,13 +179,6 @@ private struct ArchiveBrowser: View {
 
     /// A record that will not deserialise is **NO RECORD, not a crash**: a stale or corrupt store must leave the
     /// reader at a first browse rather than refuse to open the Archive.
-    private static func decodeSceneRecord(_ data: Data) -> [String: Any]? {
-        guard !data.isEmpty,
-              let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)
-        else { return nil }
-        return plist as? [String: Any]
-    }
-
     var body: some View {
         NavigationStack(path: $path) {
             Group {
@@ -216,7 +230,7 @@ private struct ArchiveBrowser: View {
                 // restored document with the browse's own empty query, which is exactly the loss the finding chargeth.
                 if !restoredOnce {
                     restoredOnce = true
-                    if let handle = Self.decodeSceneRecord(sceneRecord) {
+                    if let handle = placeStore.read() {
                         await scene.restore(from: handle)
                         return
                     }
@@ -243,6 +257,35 @@ private struct ArchiveBrowser: View {
             .onChange(of: scene.openedDocumentId) { _ in
                 syncPathWithScene()
                 restoreSubmittedQueryIntoField()
+                // *** GS-ARCHIVE-005 / GS-FINAL-006: THE PLACE IS WRITTEN **HERE**, AT THE TRANSITION THAT MAKETH IT TRUE. ***
+                //
+                // **MEASURED, HOSTED: `testGSA005DocumentReopensAfterCleanProcessDeath` IS DETERMINISTICALLY RED, `rows=2
+                // passages=0` ON RELAUNCH.** *And the diagnosis was already written in the arm's own message, which is worth
+                // repeating because it was correct:* ***"a hard `terminate()` comes back to the document list, because
+                // `onChange(of: scenePhase)` never runs to write the record."***
+                //
+                // **THE DESIGN DEFECT, NAMED PLAINLY: PERSISTENCE DEPENDED ON A LIFECYCLE CALLBACK THAT A CLEAN PROCESS
+                // TERMINATION CAN BYPASS.** *`scenePhase` going non-`.active` and `onDisappear` are OPPORTUNISTIC -- the
+                // system fireth them when it chooseth to, and a `terminate()` taketh the process away first.* **A PLACE THAT
+                // IS ONLY WRITTEN WHEN THE SYSTEM HAPPENETH TO SUSPEND US IS NOT A DURABLE PLACE; IT IS A HOPE.**
+                //
+                // *** SO THE WRITE MOVETH TO THE MOMENT THE DOCUMENT COMES TO STAND -- A TRANSITION THE APP ITSELF
+                // GUARANTEES, BECAUSE IT IS THE APP'S OWN STATE CHANGE.*** *`openedDocumentId` changing IS that moment:
+                // whenever a reader entereth a document, the place becometh true and is written.*
+                //
+                // *AND THE ANCHOR COMETH WITH IT, which the arm's own clause requireth (step 5: "reach/record a stable
+                // passage"): the reader noteth scroll positions through `noteScroll`, so the write must follow those as
+                // well or a restored document would land at the top instead of the passage the reader left.* **BOTH HOOKS
+                // ARE IDEMPOTENT WRITES OF THE SAME SNAPSHOT**, so overlapping them costeth one small plist and cannot
+                // corrupt the record -- *`persistScenePlace` already refuseth a half-written place, keeping the previous
+                // one, precisely so that a bad write can never restore something that was never true.*
+                persistScenePlace()
+            }
+            // *** AND THE SCROLL ANCHOR IS WRITTEN AT ITS OWN TRANSITION, for the same reason. ***
+            // *`scene.scrollAnchor` is what step 5 of the card's journey nameth ("reach/record a stable passage"), and a
+            // place persisted without it restores the document but not the PLACE WITHIN IT.*
+            .onChange(of: scene.scrollAnchor) { _ in
+                persistScenePlace()
             }
             // *** GS-FINAL-006: AND THE PATH TELLETH THE SCENE WHEN *IT* MOVES. ***
             // A swipe-back pop removes the last path element WITHOUT `scene.back()` ever running, so the scene would

@@ -239,11 +239,21 @@ final class GsFinal004OwnedConnectionTests: XCTestCase {
         let provider = CountingProvider()
         let factory = EncryptedStoreFactory(provider: provider, engine: engine)
 
+        // *** AND THE PERMIT IS SUPPLIED EXPLICITLY HERE, WHICH IS THE GATE WORKING: THE COMPILER IS WHAT ENFORCETH
+        // IT. *** *A court that wanted a private composition could not obtain one without deciding, in writing, that
+        // the startup road permits it -- and `PrivateRuntimePermit.issue` still has a PRIVATE initializer, so a court
+        // cannot mint one either.* **THE ONLY WAY TO SUPPLY THIS ARGUMENT IS TO RUN THE TYPED DECISION AND RECEIVE
+        // WHAT IT ALLOWS**, which is precisely the property the obligation asked for.
+        let permit = try XCTUnwrap(
+            PrivateRuntimePermit.issue(.cleanStart),
+            "a clean start is one of the decisions that ALLOWS private construction",
+        )
         let runtime = try MeshRuntime.createPrivateComposition(
             messageStoreUrl: dir.appendingPathComponent("mesh.db"),
             peerStoreUrl: dir.appendingPathComponent("peer.db"),
             keychain: InMemoryKeychain(),
             encryptedStores: factory,
+            permit: permit,
         )
 
         // *** THE MESSAGE STORE'S OWN OBSERVATION, COMPARED AGAINST THE ENGINE'S HANDED-OVER CONNECTION. ***
@@ -346,11 +356,21 @@ final class GsFinal004OwnedConnectionTests: XCTestCase {
         let provider = CountingProvider()
         let factory = EncryptedStoreFactory(provider: provider, engine: engine)
 
+        // *** AND THE PERMIT IS SUPPLIED EXPLICITLY HERE, WHICH IS THE GATE WORKING: THE COMPILER IS WHAT ENFORCETH
+        // IT. *** *A court that wanted a private composition could not obtain one without deciding, in writing, that
+        // the startup road permits it -- and `PrivateRuntimePermit.issue` still has a PRIVATE initializer, so a court
+        // cannot mint one either.* **THE ONLY WAY TO SUPPLY THIS ARGUMENT IS TO RUN THE TYPED DECISION AND RECEIVE
+        // WHAT IT ALLOWS**, which is precisely the property the obligation asked for.
+        let permit = try XCTUnwrap(
+            PrivateRuntimePermit.issue(.cleanStart),
+            "a clean start is one of the decisions that ALLOWS private construction",
+        )
         let runtime = try MeshRuntime.createPrivateComposition(
             messageStoreUrl: dir.appendingPathComponent("mesh.db"),
             peerStoreUrl: dir.appendingPathComponent("peer.db"),
             keychain: InMemoryKeychain(),
             encryptedStores: factory,
+            permit: permit,
         )
 
         // *** THE WIPE'S OWN ORDER: the stores are closed, THEN the owned connections. ***

@@ -205,11 +205,46 @@ final class GodstoneArchiveUITests: XCTestCase {
     /// launch. **MEASURED, NOT ASSUMED:** my first draft looked for a tab identifier modelled on the LabMesh bundle,
     /// which DOES render a `TabView` -- and a query for a tab that this app never renders reports a MISSING CONTROL,
     /// the shape of a false alarm about a green build. The app's own root decides this, so the helper just launches.*
-    private func launchAndOpenArchive() throws -> XCUIApplication {
+    /// - Parameter preservingPlace: *when `true`, the durable place is NOT cleared at launch, so the app may restore
+    ///   the place a previous launch wrote.*
+    ///
+    /// *** THE PARAMETER EXISTS BECAUSE THE RECREATION ARM AND EVERY OTHER ARM WANT OPPOSITE THINGS, AND A HELPER THAT
+    /// ALWAYS CLEARS MAKETH THE RECREATION JOURNEY UNTESTABLE.*** *MEASURED: adding the unconditional clear turned the
+    /// OTHER five arms green and left the recreation arm red -- **because its OWN relaunch went through this helper and
+    /// wiped the very place it existeth to observe.*** *That is the harness destroying its own evidence, and it is the
+    /// same class as a control that is red while the work is correct.*
+    private func launchAndOpenArchive(preservingPlace: Bool = false) throws -> XCUIApplication {
         let fixture = try fixturePath()
         let app = XCUIApplication()
         // THE APP INSTALLS IT -- the runner cannot reach the app's own container.
         app.launchArguments += ["-gs-archive-fixture", fixture]
+        // *** THE DURABLE PLACE MUST BE CLEARED AT LAUNCH, OR AN ARM WITNESSETH A PREVIOUS RUN'S LEFTOVERS. ***
+        //
+        // *MEASURED, AND IT IS A REGRESSION I INTRODUCED: when the place moved from `@SceneStorage` to a durable
+        // `UserDefaults` record -- correctly, because the scene-scoped store could not survive `terminate()` -- FIVE
+        // ARMS WENT RED, and the messages named the cause exactly:* ***"THE ARCHIVE MUST RENDER A SEARCH FIELD. A
+        // searchable surface that never appears means the app's archive road did not stand at all."***
+        //
+        // **THE ARCHIVE ROAD DID NOT STAND, BECAUSE THE PREVIOUS ARM'S PLACE WAS STILL THERE.** *`UserDefaults`
+        // surviveth the process AND the app's reinstall-by-launch -- which is precisely the property the recreation
+        // arm requireth -- so a place written by an earlier arm was restored by the next one, and the reader stood in a
+        // DOCUMENT instead of at the list.* **`@SceneStorage` hid this by being thrown away between runs: it was
+        // durable nowhere, which is why the recreation arm was red, and it was ALSO stale nowhere, which is why the
+        // other arms were green. THE SAME DEFECT MADE ONE ARM FAIL AND THE OTHERS PASS.**
+        //
+        // *** SO THE PLACE IS CLEARED AT LAUNCH BY A DOCUMENTED ARGUMENT, AND THE APP IS THE ONE THAT CLEARS IT --
+        // the same shape as the fixture, which only the app can install.*** *This addeth no shipping behaviour: without
+        // the argument the app does nothing differently.*
+        //
+        // *AND IT IS DELIBERATELY **NOT** DONE BY UNINSTALLING OR WIPING THE CONTAINER: the recreation arm must be
+        // free to kill and relaunch the process WITHIN one journey, and a harness that destroyed the store on every
+        // launch would make that journey untestable -- it would measure a clean boot no matter what the previous
+        // launch wrote.*
+        // *The DEFAULT is to clear, because an arm that never opened a document must not inherit one; the recreation
+        // arm passeth `preservingPlace: true` on its RELAUNCH, and only there.*
+        if !preservingPlace {
+            app.launchArguments += ["-gs-clear-archive-place", "1"]
+        }
         app.launch()
 
         // *** AND THE APP MUST SAY THE ARCHIVE IS READY -- before any selector is trusted. ***
@@ -566,7 +601,11 @@ final class GodstoneArchiveUITests: XCTestCase {
         sleep(3)
         app.terminate()
         sleep(1)
-        let again = try launchAndOpenArchive()
+        // *** AND THE RELAUNCH PRESERVETH THE PLACE -- THAT IS THE WHOLE ARM. ***
+        // *The place was written by the app's OWN transition (the durable store, at `openedDocumentId`), and this
+        // second launch must be free to RESTORE it. Clearing here would destroy the apparatus and then report that
+        // restoration does not work.*
+        let again = try launchAndOpenArchive(preservingPlace: true)
 
         // *** THIS ASSERTION IS LEFT TRUTHFULLY ASSERTING, AND MAY BE RED. ***
         // *`XCTExpectFailure` stood here for one draft and was REMOVED: **it converts a real failure into suite-green,

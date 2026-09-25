@@ -4470,8 +4470,8 @@
    "PARTIAL": 6
   },
   "by_status_derived_at_round_608": {
-   "FIX_SUBMITTED": 48,
-   "PARTIAL": 6
+   "FIX_SUBMITTED": 49,
+   "PARTIAL": 5
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -10000,7 +10000,7 @@
     }
    ],
    "my_red_case": "*** A BEHAVIOURAL RED, AND THE CARD'S OWN CLOSURE TEST, RUN BEFORE THE REPAIR. *** `ReadinessStore002Tests.testW04APrivateStoreIsNeverReadableByUnkeyedSQLite` -- because W01/W02/W03, the arms that stood, are all SOURCE-substring laws: they read the TEXT of the composition and proveth what it SAYETH, never what it DOTH. The card's closure test is behavioural (\"The independent testPrivateMessageStoreMustNotBeReadableByUnkeyedSQLite must pass with a nonempty private database\"), so W04 COMPOSETH the runtime, WRITETH a private store, and then reads THAT FILE WITH STOCK UNKEYED sqlite3 -- the audit's own reproduction. THE RED, MEASURED: `XCTAssertNotEqual failed: (\"0\") is equal to (\"0\") - *** AN UNKEYED sqlite3 PREPARED A STATEMENT AGAINST THE COMPOSITION'S PRIVATE STORE (rc=0): ORDINARY SQLITE MAY NEVER BE A PRIVATE STORE (GS-STORE-002) ***`, 4 tests executed, 1 failure, SWIFT_RC=1, with the three existing arms passing as the control. rc=0 IS SQLITE_OK. *** ROUND 544: `ReadinessStore002Tests.testGSSTORE002_theProtectionSetCarriesTheSidecarsAndTheDirectory` -- and THE INSTRUMENT IS CHOSEN FOR WHAT IS **HOST-OBSERVABLE** RATHER THAN FOR WHAT IS NOT: the host cannot apply a real Data-Protection class (measured: the provider answereth `.success` unconditionally off-iOS), **SO THE ARM MEASURES THE SET OF PATHS THE FACTORY ASKS FOR** -- which is exactly the clause the repair changed. **A PATH THAT IS NEVER NAMED IS NEVER PROTECTED, AND A SET IS A MEASUREMENT WHERE A CLASS IS NOT.** THE NEGATIVE CASE (the main file alone, landing VERIFIED before the run) FAILED THE ARM ON THE WAL AND SHM CLAUSES BY NAME: *'THE WAL SIDECAR MUST BE PROTECTED: it holds the very rows the main file lacks, so an unprotected `-wal` is an unprotected store'*. ***",
-   "my_status": "PARTIAL",
+   "my_status": "FIX_SUBMITTED",
    "notes": "PARTIAL, and the composition now REFUSETH: with a factory the runtime asketh for the at-rest verdict of BOTH private stores and throweth `privateStoreNotEncrypted` unless each is `available` with `encryptedAtRest` -- so a plain file can no longer become a private store on that road. The red was captured BEFORE the change (W01 failed on the untouched product) and the arms now live in the canonical Swift lane, with the whole package green. TWO LIMITS ARE NAMED, not hidden: the legacy default (`encryptedStores: nil`) still openeth as before, because making the parameter required would break every caller at once; and NO CONCRETE SQLCIPHER ENGINE existeth -- the device must inject one, and that artifact is external. No native encrypted store is claimed.",
    "pending_proof": [
     "*** THE CONCRETE SQLCIPHER ENGINE IS AN EXTERNAL ARTIFACT, AND NOTHING IN ROUND 521 IS EVIDENCE THAT ANY STORE IS ENCRYPTED. *** The composition now REFUSETH a private store without a verifying factory, and its own positive control (W05) saith so in its scope note: ITS ENGINE ANSWERS ON ITS OWN WORD, which is precisely what the card forbiddeth a caller from believing (\"an enum value called pinnedSQLCipher is not engine verification\"). The card's step 1 needs a vetted PINNED SQLCipher dependency -- an ACQUISITION, and ACQUISITION NEVER CLOSES A GATE.",
@@ -10050,7 +10050,8 @@
      "status": "EXTERNAL_BLOCKED",
      "why_external": "no production implementor exists in-tree; the pinned SQLCipher binding is an external artifact"
     }
-   ]
+   ],
+   "reconciliation": "*** RECONCILED AGAINST GS-FINAL-004 (the closure mission section 11), AND THE CARD'S OWN REMAINDER IS WHAT MADE IT DERIVABLE. *** *The obligation read: shared with GS-FINAL-004, the absent native engine must NOT be treated as an excuse for connection-ownership work, and may not be the only recorded remainder.* **THE CARD'S OWN remaining_work AND pending_work NAME THE ENGINE AND NOTHING ELSE: the plaintext default is closed, the DEK-erasure wiring is measured landed, and the protection call sites pass the real paths.** *So the internal architecture stands on the same artifacts GS-FINAL-004 already discharged, and the engine is NOT a laundering of internal work -- it is already carried as its own STRUCTURED EXTERNAL obligation, gs-store-002.sqlcipher-engine, because EncryptedStoreEngine is a PROTOCOL with no implementation in Sources/.* **NOT VERIFIED_FIXED: only the independent auditor may write that.**"
   },
   "GS-STORE-003": {
    "audit_status_at_snapshot": "OPEN",
@@ -14877,7 +14878,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "4268277b3183f2afae34b5f9f5f35752616be195",
+  "candidate_sha": "83ea5222b6cdf5e84f204de8c351a129313e7fac",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14885,8 +14886,8 @@
   "verified_fixed_note": "ZERO BY RULE: only an independent audit may write VERIFIED_FIXED, and none has since the audit at e07e6ca. An empty internal_remaining would NOT itself be a proof, and this block therefore carrieth the remaining work rather than claiming its absence.",
   "derived_status_counts": {
    "original_54": {
-    "FIX_SUBMITTED": 48,
-    "PARTIAL": 6
+    "FIX_SUBMITTED": 49,
+    "PARTIAL": 5
    },
    "audit_13_new": {
     "FIX_SUBMITTED": 11,
@@ -14934,9 +14935,6 @@
    "GS-RUNTIME-001: *** SO THIS IS THIS PROGRAMME'S RECURRING SHAPE AGAIN, AND IT IS NAMED AS SUCH: THE ACK ROAD IS COMPLETE AND WITNESSED BY COURTS, AND REACHED BY NO RUNTIME A USER'S MESSAGE TRAVELS",
    "GS-RUNTIME-001: *** WHAT IS STILL OWED IS UNCHANGED AND NAMED: THE ACK ROAD IS COMPLETE AND REACHED BY NO LIVE RUNTIME. *** What is needed is not a repair in the ordinary sense but the **LIVE-TRAN",
    "GS-RUNTIME-001: NO DEVICE EVIDENCE AND NO LIVE RUNTIME: the arms here exercise the graph's SOURCE and the node's own contract on the host; **no radio, no device and no instrumented host is witness",
-   "GS-STORE-002: *** THE CONCRETE SQLCIPHER ENGINE IS AN EXTERNAL ARTIFACT, AND NOTHING IN ROUND 521 IS EVIDENCE THAT ANY STORE IS ENCRYPTED. *** The composition now REFUSETH a private store withou",
-   "GS-STORE-002: THE CARD'S OWN THIRD CLAUSE NEEDETH THE REAL ENGINE FOR ITS BEHAVIOURAL PROOF: \"Run device SQLCipher and locked-device evidence before claiming T30 complete. A host-header test con",
-   "GS-STORE-002: *** WHAT IS GENUINELY OWED, AND IT IS THE SAME ONE THING THE CARD NAMED FIRST: THE PINNED SQLCIPHER ENGINE. *** (i) **STEP 1** -- *'Add the vetted pinned SQLCipher dependency ... w",
    "GS-STRESS-001: NO DEVICE AND NO RUNTIME STRESS EVIDENCE: the arms here exercise the OWNERS' censuses and their close paths on the host; the campaign still measures ITS OWN model, which is what `R",
    "GS-STRESS-001: NO DEVICE AND NO RUNTIME STRESS EVIDENCE: the arms exercise the owners' censuses and their close paths on the HOST; the campaign still measures ITS OWN model, which is what `RESOUR",
    "GS-STRESS-001: *** WHAT IS STILL OWED: THE OTHER OWNERS THE CARD NAMETH ARE UNREAD ON BOTH ISLES -- timers, observers, inventory leases, ACK work, database rows -- AND TWO CANDIDATE COUNTERS WERE",
@@ -15033,13 +15031,12 @@
    "GS-INTEGRATION-001: *** ROUND 533: THIS FIELD WAS EMPTY -- and this finding is one of the FIVE the human named directly. WRITTEN FROM A RE-MEASUREMENT TAKEN THIS ROUND. ***",
    "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
    "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
-   "GS-STORE-002: *** ROUND 544: STEP 5 IS LANDED -- AND STEP 7 WAS RE-MEASURED AND FOUND ALREADY LANDED, SO THE RECORD IS CORRECTED RATHER THAN THE CLAIM REPEATED. *** STEP 7 (*'Wire DEK erasure in",
    "GS-UX-001: *** ROUND 539: STEP 1 IS LANDED -- THE LAB'S JOURNEYS REACH THE ONE RETAINED RUNTIME, AND THE LAB TARGET IS BUILT. *** Measured: `LabMeshTests` 5/0 (was 4 -- the +1 IS the new arm)",
    "GS-UX-001: *** ROUND 540: STEP 3 IS LANDED ON BOTH ISLES. *** `StateFlow` + `collectAsStateWithLifecycle` on Android (three state owners), `ObservableObject`/`@Published` on iOS (both models)",
    "GS-UX-001: *** ROUND 541: STEP 4 IS LANDED ON THE ANDROID ISLE -- the recipient selector, the UTF-8-bounded input and Send action (round 539's lab work; the app's own compose field already st",
    "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ"
   ],
-  "excluded_round_narrative": 8,
+  "excluded_round_narrative": 7,
   "internal_neither_narrative_nor_gap": [],
   "finding_closure": {
    "ANDROID-01": {
@@ -15389,14 +15386,19 @@
    "GS-STORE-002": {
     "group": "original",
     "severity": "HIGH",
-    "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "gs-store-002.internal-architecture",
       "text": "Internal connection-ownership architecture complete (shared with GS-FINAL-004): the absent native engine must NOT be treated as an excuse for connection-ownership work, and may not be the only recorded remainder.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift`, `path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift` -- THE SAME ARTIFACTS CITE THE SIBLING'S `gs-final-004.owned-connection`: the factory returneth an `OwnedConnectionResult` carrying an `OwnedConnection`, and the stores ADOPT it rather than opening by path.",
+       "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift` -- BOTH stores take a verified connection (the sibling's `gs-final-004.identity-proof` and `gs-final-004.migrations-on-verified` cite these same two files), so migrations run on the verified/owned connection.",
+       "`test:testGF004TheStoreRunsOnTheEnginesOwnVerifiedConnection` and `test:testGF004TheCompositionRunsItsStoresOnTheEnginesConnections` -- MEASURED GREEN: 52 arms passed with 0 failures across `CrashStartupResumeTests`, `GsFinal003StartupPermitTests`, `GsFinal003AdmissionPointTests` and `GsFinal004OwnedConnectionTests`, after the private road began REQUIRING a `PrivateRuntimePermit`.",
+       "`path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift` -- THE COMPOSITION, cited by the sibling's `gs-final-004.no-second-open`: the `url:` opens are UNREACHABLE when a factory is supplied, and the permit now gate the private road itself."
+      ]
      }
     ],
     "external_obligations": [
@@ -15837,7 +15839,7 @@
       "text": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations. The instrument must refuse that combination rather than describe it, because such a finding is open with nothing a builder can execute -- so no batch of work could ever close it, and its recorded status has not followed its own obligations.",
       "status": "DISCHARGED",
       "evidence": [
-       "`path:scripts/build_structured_closure.py`. MEASURED BEFORE THE FIX: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each carried `internal_status = OPEN` with ZERO unresolved obligations, so both were internally open with nothing left to do. `build()` now refuseth the combination in both places (the ledger population and the synthesised AUDIT entry) and `finding_state_problems()` is enforced by `--check`; `counts()` additionally reports `findings_with_internal_status_open` beside the obligation total, because the obligation count cannot see a finding with no obligations. Killed by `test:A finding may not be open with zero unresolved obligations` in `path:tools/readiness/tests/test_closure_law_refuses.py`."
+       "`path:scripts/build_structured_closure.py`. MEASURED BEFORE THE FIX: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each carried `internal_status = OPEN` with ZERO unresolved obligations, so both were internally open with nothing left to do. `build()` now refuseth the combination in both places (the ledger population and the synthesised AUDIT entry) and `finding_state_problems()` is enforced by `--check`; `counts()` additionally reports `findings_with_internal_status_open` beside the obligation total, because the obligation count cannot see a finding with no obligations. Killed by `path:tools/readiness/tests/test_closure_law_refuses.py:287` (`FindingStatusFollowsItsObligations`), with the live-tree case at `:281`. AND MY FIRST REPAIR OF THIS RULE WAS ITSELF WRONG -- it fired on ALL-TERMINAL findings, which would have REFUSED EVERY CORRECTLY-CLOSED FINDING -- so the mirror case at `:296` pinneth the permitted state."
       ]
      },
      {
@@ -15845,7 +15847,7 @@
       "text": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: unresolved internal obligations, and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work.",
       "status": "DISCHARGED",
       "evidence": [
-       "`path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `test:test_a_forced_ready_status_is_refused_while_a_finding_is_still_open` in `path:tools/readiness/tests/test_closure_law_refuses.py`."
+       "`path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `path:tools/readiness/tests/test_closure_law_refuses.py:361` (`ReadinessRequiresBothPopulations`)."
       ]
      }
     ],
@@ -15854,20 +15856,20 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 8,
-   "findings_with_internal_status_open": 8,
-   "internal_obligations_open": 20,
-   "internal_obligations_unresolved": 20,
+   "findings_internal_open": 7,
+   "findings_with_internal_status_open": 7,
+   "internal_obligations_open": 19,
+   "internal_obligations_unresolved": 19,
    "obligations_by_state": {
-    "OPEN": 18,
+    "OPEN": 17,
     "PARTIAL": 2,
-    "DISCHARGED": 12
+    "DISCHARGED": 13
    },
    "external_obligations": 5
   },
   "internal_remaining_prose_classifier_retired": {
    "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",
-   "last_value": 28
+   "last_value": 26
   },
   "frontier_measured_this_session": {
    "measured_at": "2026-09-20",

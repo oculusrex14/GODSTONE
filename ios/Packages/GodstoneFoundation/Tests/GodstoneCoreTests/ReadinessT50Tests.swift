@@ -833,10 +833,31 @@ final class ReadinessT50Tests: XCTestCase {
     /// must appear BEFORE the first browse, or the browse overwriteth the restored place.
     func testW17TheSceneRecordHathAProductionCallerAndRestorationPrecedethTheFirstBrowse() throws {
         let view = codeOnly(try repoFile(named: "ios/Godstone/Sources/App/ArchiveView.swift"))
-        XCTAssertTrue(view.contains("SceneStorage"),
-                      "*** THE SCENE'S PLACE MUST BE PERSISTED: MEASURED, `snapshot(into:)` and `restore(from:)` have "
-                      + "NO production caller, so a process recreation loseth the promised query and document place "
-                      + "(GS-ARCHIVE-005 step 4) ***")
+        // *** THE CLAUSE IS "A PRODUCTION CALLER EXISTS", NOT "THE VEHICLE IS CALLED `SceneStorage`". ***
+        //
+        // *THIS ASSERTION USED TO READ `view.contains("SceneStorage")`, AND THAT WAS A VACUOUS WITNESS WEARING A
+        // CONTRACT'S CLOTHES.* **MEASURED, AND IT IS THE WHOLE GS-ARCHIVE-005 DEFECT: the record WAS written to
+        // `SceneStorage` -- so this arm passed -- AND THE RECREATION ARM WAS RED ANYWAY, because `@SceneStorage` is
+        // scene-scoped and this target carrieth no state-restoration opt-in. The store was thrown away by the system,
+        // and a source-text assertion on its NAME could not see that.***
+        //
+        // **SO NAMING THE VEHICLE IS EXACTLY THE ASSERTION THAT MUST NOT BE MADE: it pinneth an IMPLEMENTATION and
+        // certifieth nothing about the property.** *The card's clause is that `snapshot`/`restore` have a production
+        // caller and that a record is DURABLE -- and the durable vehicle is now `ArchivePlaceStore`, whose
+        // `UserDefaults` record surviveth the process.*
+        //
+        // *WHAT THIS ARM NOW ASKS: that the view REACHES a persisted store, that it CALLS `snapshot`, and that it
+        // CALLS `restore` BEFORE the first browse. The STORE'S DURABILITY is proven where it can be proven -- by the
+        // executed recreation arm in the UI lane, which kill and relaunch the process -- and not by matching a
+        // class name in the source.*
+        XCTAssertTrue(view.contains("placeStore"),
+                      "*** THE SCENE'S PLACE MUST BE PERSISTED THROUGH A DURABLE STORE: MEASURED, `snapshot(into:)` "
+                      + "and `restore(from:)` had NO production caller, so a process recreation loseth the promised "
+                      + "query and document place (GS-ARCHIVE-005 step 4) ***")
+        XCTAssertTrue(view.contains("placeStore.write("),
+                      "and the production view must WRITE the place -- a persist path with no caller persisteth nothing")
+        XCTAssertTrue(view.contains("placeStore.read("),
+                      "and it must READ it back, or the persisted record is never consumed")
         XCTAssertTrue(view.contains("scene.snapshot(into:"),
                       "and the production view must CALL snapshot -- a persist path with no caller persisteth nothing")
         XCTAssertTrue(view.contains("scene.restore(from:"),

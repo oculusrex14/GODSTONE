@@ -361,13 +361,40 @@ public final class MeshRuntime {
                 + "composition that carrieth ordinary SQLite is the ARCHIVE/HOST composition and must SAY so by "
                 + "calling createArchiveOnlyHostComposition -- it may not be reached by saying nothing.")
         }
+        // *** GS-FINAL-003 `typed-permit`: THE DECISION IS NOW AN INPUT, NOT A DISCARDED VALUE. ***
+        //
+        // *THE LINE THAT STOOD HERE WAS `_ = try resumeAuthority.resume()`, and its replacement read
+        // `_ = recoveryDecision` -- THE SAME DEFECT WEARING A TYPED TYPE.* **A decision that is computed and then
+        // discarded is not a gate; it is a witness to the fact that no gate exists.***
+        //
+        // *MEASURED BEFORE THIS EDIT: the ladder ran, the answer was thrown away, and identity plus BOTH private
+        // stores were opened regardless -- so a pending wipe was discovered and then ignored on the shipped road.*
+        //
+        // **THE PERMIT IS THE BRIDGE: the ladder's answer is converted ONCE into a non-forgeable capability, and
+        // `createPrivateComposition` cannot be entered without one. A refusal is therefore not a branch a future
+        // refactor may drop -- it is a missing argument.**
+        //
+        // *AND THE REFUSAL NAMES WHICH OF THE SIX DECISIONS STOPPED IT, because "startup refused" without the reason
+        // is the shape of a defect that takes a day to find and a minute to explain.*
+        let recoveryDecision = StartupRecoveryBootstrap(wipe: CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())).decideAndDrive()
+        guard let permit = PrivateRuntimePermit.issue(recoveryDecision) else {
+            throw MeshRuntimeError.startupRefusedByRecovery(
+                decision: recoveryDecision.name,
+                reason: recoveryDecision.refusalReason ?? "the recovery ladder did not settle")
+        }
         return try createPrivateComposition(
             messageStoreUrl: messageStoreUrl,
             peerStoreUrl: peerStoreUrl,
             maxStoreBytes: maxStoreBytes,
             journal: journal,
             keychain: keychain,
-            encryptedStores: factory
+            encryptedStores: factory,
+            permit: permit
         )
     }
 
@@ -436,7 +463,32 @@ public final class MeshRuntime {
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
         keychain: any LocalIdentityKeychain,
-        encryptedStores: EncryptedStoreFactory
+        encryptedStores: EncryptedStoreFactory,
+        // *** GS-FINAL-003 `typed-permit`: THE PRIVATE ROAD CANNOT BE TRAVELLED WITHOUT A TYPED DECISION. ***
+        //
+        // **THE AUDIT'S CLAUSE, VERBATIM: *"Constructible only after a non-forgeable typed startup decision says
+        // private construction is allowed"* -- AND ITS CHARGE: *"This function has a private initializer, so nothing
+        // but a permitting decision can produce one."*** *The type WAS non-forgeable. **The ROAD was not gated.***
+        //
+        // *** MEASURED BEFORE THIS EDIT, AND IT IS THE WHOLE FINDING: `PrivateRuntimePermit`'s only production
+        // consumer was `requireRecoveredPrivateComposition`, which is `internal` AND WHOSE ONLY CALLERS ARE COURTS;
+        // meanwhile the production entry point drove the ladder, THREW THE ANSWER AWAY (`_ = recoveryDecision`), and
+        // opened identity and both private stores REGARDLESS.*** **So every shipped road to a keyed private store
+        // bypassed the permit entirely -- the type was decoration, and a decoration that an auditor would read as a
+        // gate is worse than an absent one.**
+        //
+        // *** AND IT IS A PARAMETER RATHER THAN A GUARD INSIDE THE BODY, BECAUSE A CHECK CAN BE FORGOTTEN AND A
+        // PARAMETER CANNOT: a caller cannot reach this function at all without having been handed a permit, and the
+        // compiler is what enforceth it.*** *That is exactly the distinction the type's own docstring draws for the
+        // Bool it replaced -- now drawn one level out, at the road.*
+        //
+        // *WHY THIS DOES NOT RE-OPEN THE DEADLOCK THAT FORCED THE EARLIER GUARD OUT OF `create`:* **THE DEADLOCK WAS
+        // MEASURED ON THE ARCHIVE ROAD.** *`testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization`
+        // constructeth through `createArchiveOnlyHostComposition`, which carrieth NO factory and therefore opens NO
+        // private store -- so there is nothing there for a permit to protect, and the archive road keeps its ungated
+        // shape.* ***THE OBLIGATION IS ABOUT PRIVATE CONSTRUCTION, SO IT BITETH EXACTLY WHERE PRIVATE CONSTRUCTION
+        // HAPPENETH.***
+        permit: PrivateRuntimePermit
     ) throws -> MeshRuntime {
         try composeRuntimeGraph(
             messageStoreUrl: messageStoreUrl,
@@ -504,18 +556,27 @@ public final class MeshRuntime {
         let decision = driveRecovery(StartupRecoveryBootstrap(wipe: authority))
         // THE PERMIT IS THE GATE: no `PrivateRuntimePermit`, no private composition. The type has a
         // private initializer, so nothing but a permitting decision can produce one.
-        guard PrivateRuntimePermit.issue(decision) != nil else {
+        guard let permit = PrivateRuntimePermit.issue(decision) else {
             throw MeshRuntimeError.startupRefusedByRecovery(
                 decision: decision.name,
                 reason: decision.refusalReason ?? "the recovery ladder did not settle")
         }
-        return try create(
+        // *IT REACHETH THE PRIVATE ROAD DIRECTLY, because it ALREADY HOLDETH the permit the road requireth: routing
+        // through `create` would derive a SECOND decision from the same journal, and the second one would be a
+        // different answer to the same question -- the two-owners defect in miniature.*
+        guard let factory = encryptedStores else {
+            throw MeshRuntimeError.privateStoreNotEncrypted(
+                "GS-STORE-002: this road is the PRIVATE composition and requireth a verifying EncryptedStoreFactory. "
+                + "The archive/host road is `createArchiveOnlyHostComposition`.")
+        }
+        return try createPrivateComposition(
             messageStoreUrl: messageStoreUrl,
             peerStoreUrl: peerStoreUrl,
             maxStoreBytes: maxStoreBytes,
             journal: journal,
             keychain: keychain,
-            encryptedStores: encryptedStores)
+            encryptedStores: factory,
+            permit: permit)
     }
 
     private static func composeRuntimeGraph(

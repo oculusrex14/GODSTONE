@@ -37,6 +37,11 @@ final class AppContainer: ObservableObject {
         // one; and the copy is deliberately fail-closed: a fixture that cannot be installed leaves the app reporting
         // its honest "missing", which the witness then fails on rather than passing vacuously.*
         #if DEBUG
+        // *** THE PLACE IS CLEARED BEFORE THE FIXTURE IS INSTALLED, AND THE ORDER IS LOAD-BEARING. ***
+        // *A stale place would otherwise be restored into a document, and the arm that expecteth the document LIST
+        // would witness a reader left open by a previous run rather than the archive road.* **Clearing first meaneth
+        // every arm beginneth at the list unless it openeth a document itself.**
+        Self.clearPlaceIfRequested()
         Self.installFixtureIfRequested()
         #endif
 
@@ -66,6 +71,28 @@ final class AppContainer: ObservableObject {
         let dest = dir.appendingPathComponent("archive_light.db")
         try? FileManager.default.removeItem(at: dest)
         try? FileManager.default.copyItem(at: source, to: dest)
+    }
+
+    /// *** CLEAR THE DURABLE ARCHIVE PLACE when launched with `-gs-clear-archive-place 1`. ***
+    ///
+    /// *`ArchivePlaceStore` liveth in `UserDefaults`, so it surviveth the process AND the app's reinstall-by-launch --
+    /// **which is exactly the property the recreation arm requireth, and exactly why an arm that never clears it
+    /// witnesseth the PREVIOUS arm's place.*** *MEASURED: with the durable store in place and no reset, five arms went
+    /// red with "THE ARCHIVE MUST RENDER A SEARCH FIELD ... the app's archive road did not stand at all", because the
+    /// reader was restored into a document the last run had left open.*
+    ///
+    /// *** THE SAME SHAPE AS THE FIXTURE, AND FOR THE SAME REASON: THE APP IS THE ONLY WRITER.*** *The runner cannot
+    /// reach the app's own `UserDefaults` -- a different process with a different container -- so the RESET must be an
+    /// argument the app acts upon.* **Without the argument the app does nothing differently, so this adds no shipping
+    /// behaviour.**
+    ///
+    /// *IT IS NOT AN UNINSTALL, DELIBERATELY: the recreation arm must kill and relaunch the process WITHIN one
+    /// journey, so a harness that destroyed the store on every launch would measure a clean boot regardless of what
+    /// the previous launch wrote -- and the journey it existeth to prove would become untestable.*
+    private static func clearPlaceIfRequested() {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-gs-clear-archive-place") else { return }
+        ArchivePlaceStore().clear()
     }
     #endif
 }

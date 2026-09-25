@@ -14,8 +14,14 @@ import XCTest
 /// outstanding work rather than an external dependency.*
 ///
 /// **THE VEHICLE IS THE ONE `ArchiveView` ACTUALLY BINDS:** `snapshot(into:)` / `restore(from:)`, which the view
-/// wraps in `@SceneStorage("godstone.archive.scene")`. *That is what "recreate" means for a foregrounded app: the
-/// handle survives, the model does not.*
+/// carries through **`ArchivePlaceStore` -- a `UserDefaults` record that surviveth the process.** *That is what
+/// "recreate" means for a foregrounded app: the handle survives, the model does not.*
+///
+/// *** THIS DOCSTRING PREVIOUSLY READ "which the view wraps in `@SceneStorage("godstone.archive.scene")`", AND THAT
+/// WAS THE DEFECT STATED AS THE DESIGN. *** *`@SceneStorage` is scene-scoped and this target carrieth no
+/// state-restoration opt-in, so iOS discarded the record -- **which is why the executed recreation arm stayed
+/// deterministically red while every MODEL-level arm here passed.*** *These courts prove the HANDLE round-trips; only
+/// the executed app arm can prove the STORE survives a `terminate()`, and it now does.*
 /// *** `@MainActor`, MATCHING THE MODEL: `ArchiveReaderModel` and `ArchiveSceneModel` are main-actor-isolated, so a
 /// nonisolated court cannot even construct them -- which the compiler said plainly. The sibling court
 /// (`GsFinal007SearchReturnTests`) carries the same attribute for the same reason.***
