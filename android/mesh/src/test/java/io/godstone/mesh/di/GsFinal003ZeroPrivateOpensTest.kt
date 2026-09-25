@@ -99,6 +99,20 @@ class GsFinal003ZeroPrivateOpensTest {
      * *So this is not a hole in the product: two readers asked at the WRONG MOMENT look like two authorities. Asked
      * after the barrier -- which is when a caller would ask -- they agree on every rung.* **THE ORDER IS THE WHOLE
      * SUBTLETY, AND THE PROBE IS WHY IT IS WRITTEN DOWN RATHER THAN ASSUMED.**
+     *
+     * *** AND "after=0" ALONE WOULD HAVE BEEN AMBIGUOUS, WHICH A SECOND PROBE SETTLED -- BECAUSE `FileWipeJournal.read()`
+     * COERCES AN INVALID ORDINAL TO `IDLE`, SO A LOST RECORD AND A COMPLETED WIPE BOTH READ AS `IDLE`.*** **THAT IS THE
+     * FAIL-OPEN THIS FINDING EXISTETH TO CATCH, SO THE DISCRIMINATION WAS MADE ON THE **RAW** ORDINAL (`isReadable`
+     * readeth it uncoerced):**
+     *
+     * ```
+     *   NEW_IDENTITY  rawBefore=5  rawAfter=0  readable=true  outcome=Advanced
+     * ```
+     *
+     * *** A GENUINE COMPLETION: the raw value MOVED to the terminal ordinal and the record remaineth READABLE, and the
+     * ladder reported `Advanced` -- not `Refused(JOURNAL_LOST)`, which is what a lost record would have produced with
+     * `rawAfter` UNCHANGED.*** *A COERCED DEFAULT WOULD HAVE LEFT THE RAW ORDINAL WHERE IT STOOD. So the permissive
+     * reading at `NEW_IDENTITY` is a completed wipe, and NOT the fail-open.*
      */
     private fun refusingRungs(): List<PanicWipe.WipeState> =
         PanicWipe.WipeState.entries.filter { state ->
