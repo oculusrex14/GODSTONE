@@ -113,6 +113,20 @@ class GsFinal003ZeroPrivateOpensTest {
      * ladder reported `Advanced` -- not `Refused(JOURNAL_LOST)`, which is what a lost record would have produced with
      * `rawAfter` UNCHANGED.*** *A COERCED DEFAULT WOULD HAVE LEFT THE RAW ORDINAL WHERE IT STOOD. So the permissive
      * reading at `NEW_IDENTITY` is a completed wipe, and NOT the fail-open.*
+     *
+     * *** AND `isSupportedJournal` CANNOT BE THE DISCRIMINATOR HERE, WHICH I CHECKED RATHER THAN ASSUMED. *** *On this
+     * isle the durability store carrieth ONE state, and the adapter sayeth so itself: `readJournal()` returneth
+     * `emptyList()` for `IDLE` and **`listOf(stageFor(state))` OTHERWISE -- A LIST OF AT MOST ONE ELEMENT.***
+     *
+     * **SO THE APPEND-ONLY SEGMENT HISTORY THAT `isSupportedJournal` WALKETH CANNOT EXIST HERE:** *a rung at
+     * `NEW_IDENTITY` presenteth `["NEW_IDENTITY"]` (rank 5, accepted) and a completed one presenteth `[]` (the loop
+     * never runs, accepted) -- **BOTH TRUE, AND THEREFORE INDISTINGUISHABLE BY THAT ORACLE.*** *Its terminal-rung rule
+     * ("IDLE may only close a full ladder") would fire only on a list containing a LONE `IDLE`, which this adapter
+     * never produceth -- it produceth an EMPTY list for `IDLE` instead.*
+     *
+     * *So the raw-ordinal read IS the strongest discriminator available on this isle: it observeth the write itself
+     * (`5 -> 0`) and the record's readability, which together separate a completion from a loss. THE LIMIT IS RECORDED
+     * BECAUSE IT IS REAL: `read()` cannot see a lossy read, and on this isle neither can any list-walk.*
      */
     private fun refusingRungs(): List<PanicWipe.WipeState> =
         PanicWipe.WipeState.entries.filter { state ->
