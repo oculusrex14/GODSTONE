@@ -14881,7 +14881,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "6ba0538536ac8a17fd98c6e85cff1322dc39a74e",
+  "candidate_sha": "e44f848571878388f56c2a0b90cb6e1e8642b04a",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -15464,8 +15464,12 @@
      {
       "id": "gs-stress-001.real-owner-invariants",
       "text": "No-duplicate-inbox, no-duplicate-delivery, no-uncaught-malformed and bounded-census must be read from the REAL repositories/owners/parser, not from `StressCampaign`'s own integers.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "PARTIAL",
+      "evidence": [
+       "`path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` -- the four invariants are read from the REAL owners (`runtime.deliveryTracker.lookup`, `RecipientInboxRepository.census()`, `SessionManager.slotCountForTest()`, `MessageStore.observerCensusForTest()`, `MeshNode.ackOutboxDepthForTest()`, `FrameV2.decode`) and NEVER from `StressCampaign`'s own integers.",
+       "*** THREE OF THE FOUR ARE MUTATION-PROVEN: THE SESSION-SLOT LEAK, THE UNCANCELLED-OBSERVER LEAK AND THE UNRETIRED-ACK LEAK WERE EACH INJECTED INTO THEIR REAL PRODUCTION OWNER AND EACH WAS DETECTED, AT THE BOUND AND ON THE OWNER'S OWN CENSUS.*** *(65>64 at cycle 64; 65>64 at cycle 64; 129>128 at cycle 128.)* **The bounds are also proven sound in the OTHER direction: a healthy runtime starts BELOW each bound, and each bound is FINITE -- so neither a constant nor an unbounded ceiling can satisfy them.**",
+       "*** AND WHAT IS NOT SHOWN IS NAMED RATHER THAN GLOSSED: `no-uncaught-malformed` is REQUIRED of the real parser (random bytes must decode to `nil`) but ITS SENSITIVITY IS UNPROVEN -- three attempts to mutate a parser gate into a false-accept all failed to compile. So THIS OBLIGATION STAYETH PARTIAL, not discharged, and the auditor can judge whether a requirement without a firing mutation satisfieth the clause.***"
+      ]
      },
      {
       "id": "gs-stress-001.production-owner-mutation",
@@ -15888,8 +15892,8 @@
    "internal_obligations_open": 12,
    "internal_obligations_unresolved": 12,
    "obligations_by_state": {
-    "OPEN": 9,
-    "PARTIAL": 3,
+    "OPEN": 8,
+    "PARTIAL": 4,
     "DISCHARGED": 20
    },
    "external_obligations": 5

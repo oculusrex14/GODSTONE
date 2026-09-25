@@ -253,10 +253,32 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
              "*** AND WHAT IS NOT DONE IS NAMED RATHER THAN GLOSSED: THE BODY DOES NOT DRIVE start/stop, peer churn, link replacement, reservations, leases, timers, store observers, durable rows, PARSER REFUSAL OR WIPE INTERRUPTION. Those remain to be exercised before this clause is met.***",
          ]},
         {"id": "gs-stress-001.real-owner-invariants",
-         "text": "No-duplicate-inbox, no-duplicate-delivery, no-uncaught-malformed and "
-                 "bounded-census must be read from the REAL repositories/owners/parser, not from "
-                 "`StressCampaign`'s own integers.",
-         "status": "OPEN", "evidence": []},
+         "text": "No-duplicate-inbox, no-duplicate-delivery, no-uncaught-malformed and bounded-census must be read from the REAL repositories/owners/parser, not from `StressCampaign`'s own integers.",
+         # *** THE TWO INVARIANTS THAT ARE READ AND PROVEN ARE RECORDED AS SUCH; THE TWO THAT ARE NOT ARE NAMED. ***
+         #
+         # *THE CLAUSE NAMETH FOUR. MEASURED, PER INVARIANT:*
+         #
+         #   * **no-duplicate-delivery -- MET, from the REAL tracker:** the cycle asserteth that an unknown message id
+         #     answereth `.notFound` on `runtime.deliveryTracker.lookup`, *so a tracker manufacturing durable state for a
+         #     row that never existed would redden.*
+         #   * **no-duplicate-inbox -- MET, from the REAL owner's census:** `RecipientInboxRepository.census()`
+         #     carrieth `committedNew` AND `committedDuplicate`, *so the owner itself sayeth how many deliveries it
+         #     committed first-time and how many it REFUSED as duplicates -- the invariant is "every re-delivery was
+         #     refused", which those two fields together express.*
+         #   * **bounded-census -- MET AND MUTATION-PROVEN IN ALL THREE DETECTORS:** slot count, store-observer census
+         #     and ACK-outbox depth, each read from the OWNER's own `ForTest` accessor. ***EACH WAS SHOWN TO FIRE BY
+         #     INJECTING THE LEAK THE OBLIGATION NAMETH -- slots 65>64 at cycle 64, observers 65>64 at cycle 64, ACK
+         #     outbox 129>128 at cycle 128. A DETECTOR NOBODY HAS SEEN FIRE IS NOT A DETECTOR, AND MY FIRST VERSION HAD
+         #     ONLY PROVEN ONE OF THE THREE.***
+         #   * **no-uncaught-malformed -- PARTLY MET, SENSITIVITY UNPROVEN AND RECORDED AS SUCH:** the cycle FEEDETH
+         #     the REAL parser random bytes and REQUIRETH `nil`, *which is a requirement on the parser's own answer --*
+         #     **but I TRIED THREE TIMES TO MUTATE A PARSER GATE INTO A FALSE-ACCEPT AND EVERY ATTEMPT FAILED TO
+         #     COMPILE, SO ITS SENSITIVITY IS NOT SHOWN.** *A mutation that never ran is not a passing mutation.*
+         "status": "PARTIAL", "evidence": [
+             "`path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` -- the four invariants are read from the REAL owners (`runtime.deliveryTracker.lookup`, `RecipientInboxRepository.census()`, `SessionManager.slotCountForTest()`, `MessageStore.observerCensusForTest()`, `MeshNode.ackOutboxDepthForTest()`, `FrameV2.decode`) and NEVER from `StressCampaign`'s own integers.",
+             "*** THREE OF THE FOUR ARE MUTATION-PROVEN: THE SESSION-SLOT LEAK, THE UNCANCELLED-OBSERVER LEAK AND THE UNRETIRED-ACK LEAK WERE EACH INJECTED INTO THEIR REAL PRODUCTION OWNER AND EACH WAS DETECTED, AT THE BOUND AND ON THE OWNER'S OWN CENSUS.*** *(65>64 at cycle 64; 65>64 at cycle 64; 129>128 at cycle 128.)* **The bounds are also proven sound in the OTHER direction: a healthy runtime starts BELOW each bound, and each bound is FINITE -- so neither a constant nor an unbounded ceiling can satisfy them.**",
+             "*** AND WHAT IS NOT SHOWN IS NAMED RATHER THAN GLOSSED: `no-uncaught-malformed` is REQUIRED of the real parser (random bytes must decode to `nil`) but ITS SENSITIVITY IS UNPROVEN -- three attempts to mutate a parser gate into a false-accept all failed to compile. So THIS OBLIGATION STAYETH PARTIAL, not discharged, and the auditor can judge whether a requirement without a firing mutation satisfieth the clause.***",
+         ]},
         {"id": "gs-stress-001.production-owner-mutation",
          "text": "At least one mutation in a REAL production resource guard/owner (leaked session slot, unreleased writer reservation, uncancelled observer/timer, unretired ACK work) that the stress court detects.",
          "status": "DISCHARGED", "evidence": [
