@@ -297,6 +297,89 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                        "and no private store may stand on a half-erased floor")
     }
 
+    /// *** GS-FINAL-003: THE OTHER TWO REFUSING CASES, COUNTED AT THE SAME SEAMS. ***
+    ///
+    /// *THE OBLIGATION NAMETH THREE: **"pending / retryable / corrupt recovery causes ZERO identity and ZERO private DB
+    /// opens, proven at the REAL construction seams with counters."*** **ONLY THE PENDING CASE CARRIED COUNTERS** --
+    /// *the retryable and corrupt arms asserted the DECISION and nothing about what was constructed, so on those two
+    /// roads the "zero opens" half of the clause was UNWITNESSED.*
+    ///
+    /// *** AND THEY ARE DIFFERENT ROADS, WHICH IS WHY ALL THREE MATTER: `RECOVERY_PENDING` is a wipe outstanding,
+    /// `RETRYABLE_FAILURE` is a step that a later composition with live seams may finish, and `CORRUPT_JOURNAL` is the
+    /// one an operator must decide -- and a malformed record is precisely the case where a careless reader coerces the
+    /// value to a clean start and opens private stores over material that may be mid-erasure.***
+    ///
+    /// *The counters are the SAME ones the pending arm uses -- real counts at the construction seam, a key provider
+    /// that counts DEK requests, and the keychain's write log -- so the three arms measure the same things at the same
+    /// boundaries rather than each inventing its own observables.*
+    func testGSFINAL003_theOtherRefusingCasesAlsoOpenNothing() throws {
+        // (1) *** A RETRYABLE FAILURE: the ladder could not finish with create-time seams. ***
+        //
+        // *`RETRYABLE_FAILURE` is reached when a step failéth in a way a later composition could mend; the create-time
+        // ladder owns no transport, so a pending wipe stops here honestly rather than claiming success.*
+        try assertRefusesAndOpensNothing(
+            tag: "retryable",
+            journal: {
+                // *Kotlin's `also` does not exist in Swift; the journal is built and written explicitly.*
+                let j = InMemoryJournal()
+                j.write(.requested)
+                return j
+            }(),
+            expected: { $0.allowsPrivateConstruction == false },
+        )
+
+        // (2) *** A CORRUPT JOURNAL: the durable record cannot be read as a ladder at all. ***
+        //
+        // *This is the arm the AUDIT called out in its own root cause: treating a malformed record as a clean start is
+        // the one confusion here that would open private stores over material that may be mid-erasure.*
+        try assertRefusesAndOpensNothing(
+            tag: "corrupt",
+            journal: UnreadableJournal(),
+            expected: { $0.allowsPrivateConstruction == false && $0.requiresOperator == true },
+        )
+    }
+
+    /// *The shared body: drive the real composition, require the refusal, and count every boundary.*
+    private func assertRefusesAndOpensNothing(
+        tag: String,
+        journal: WipeJournal,
+        expected: (StartupRecoveryDecision) -> Bool,
+    ) throws {
+        let msg = tempURL("\(tag)_msg")
+        let peer = tempURL("\(tag)_peer")
+        defer { cleanup(msg, peer) }
+
+        let keychain = InMemoryKeychain()
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+        var observed: StartupRecoveryDecision?
+
+        XCTAssertThrowsError(
+            try MeshRuntime.requireRecoveredPrivateComposition(
+                messageStoreUrl: msg, peerStoreUrl: peer, journal: journal,
+                keychain: keychain, encryptedStores: nil,
+                driveRecovery: { b in let d = b.decideAndDrive(); observed = d; return d }),
+            "*** \(tag): private construction must be REFUSED. ***",
+        )
+        XCTAssertNotNil(observed, "the ladder must have answered rather than thrown opaquely")
+        if let observed {
+            XCTAssertTrue(
+                expected(observed),
+                "*** \(tag): the decision must be the refusing one this road produceth. Observed: \(observed) ***",
+            )
+        }
+
+        // *** AND NOTHING WAS CONSTRUCTED, COUNTED AT THREE BOUNDARIES. ***
+        XCTAssertEqual(counter.storesOpened, 0, "*** \(tag): ZERO private-store opens. ***")
+        XCTAssertEqual(counter.sensitiveRuntimesBuilt, 0, "*** \(tag): ZERO sensitive-runtime constructions. ***")
+        XCTAssertEqual(provider.dekRequests, 0,
+                       "*** \(tag): the factory was never asked for a DEK -- it asketh BEFORE touching the engine, "
+                           + "so a refused startup that reached the private composition would have asked. ***")
+        XCTAssertEqual(keychain.writes, [],
+                       "*** \(tag): AND IDENTITY WAS NOT MINted -- `MeshIdentity.loadOrCreate` writeth a key when it "
+                           + "createth one. ***")
+    }
+
     /// *** THE POSITIVE CONTROL: A CLEAN FIRST LAUNCH IS NOT REFUSED. ***
     ///
     /// *Without this, the repair would be a denial of service rather than a gate. The audit's own
