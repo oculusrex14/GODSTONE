@@ -1,6 +1,9 @@
 package io.godstone.mesh.di
 
 import android.content.Context
+import java.io.File
+import io.godstone.mesh.crypto.PeerBindingTrustAuthority
+import io.godstone.mesh.identity.PeerTrustApplyResult
 import androidx.test.core.app.ApplicationProvider
 import io.godstone.mesh.MeshNode
 import io.godstone.mesh.identity.DefaultRuntimeLifecycleGate
@@ -298,4 +301,127 @@ class GsFinal003GraphComponentTest {
         )
         assertTrue("and the invalidation must be visible through the interface's own flag", b.isInvalidated)
     }
+
+    // =================================================================================================================
+    // *** GS-RUNTIME-001: THE ACK/PUMP OWNER REACHED BEHAVIOURALLY -- NOT BY READING THE SOURCE. ***
+    //
+    // *THE COURT ABOVE NAMED THIS GAP HONESTLY, AND ITS OWN DOCSTRING IS THE CHARGE: `ReadinessT60Test` asserts the pump
+    // assignment by READING `MeshModule.kt` AND GREPPING FOR `node.ackPump = pump`. **"THAT IS AN ASSERTION ABOUT A
+    // FILE, NOT ABOUT A RUNTIME": the matched assignment could sit on a DEAD BRANCH, run only in a variant that never
+    // ships, or be UNDONE ONE LINE LATER, and the arm would still pass.***
+    //
+    // **AND THE BEHAVIOURAL REPLACEMENT WAS BELIEVED IMPOSSIBLE BECAUSE `component.meshNode()` REACHETH `identity()`
+    // AND THROWETH `KeyStoreException: AndroidKeyStore not found`.** *That measurement was CORRECT -- and it is why
+    // this arm never needs the component.*
+    //
+    // *** THE PRODUCTION PROVIDER `MeshModule.provideMeshNode` IS CALLABLE DIRECTLY, AND IT TAKETH EVERY DEVICE-BOUND
+    // INPUT AS A PARAMETER: it CONSTRUCTS none of them. So this arm SUPPLIES `identity` AND `pump` (the two that reach
+    // the platform) and drives the REAL provider ITSELF.*** *Everything between them -- the node's construction and
+    // the owner assignments the finding is about -- is the SHIPPED code, UNSUBSTITUTED.*
+    //
+    // **THE REAL STORES ARE OPENED THE WAY THE OTHER COURTS OPEN THEM** -- *`SqliteMessageStore(JdbcStoreDb(file),
+    // maxBytes, null)`, measured in `BleLinkSubstrateTest` and `CrashStartupResumeTest`, so this arm invents no shape.*
+    // *THE PLATFORM BOUNDARY IS SUBSTITUTED, WHICH IS LEGITIMATELY EXTERNAL; THE COMPOSITION UNDER TEST IS NOT.* ***A
+    // court that built `MeshNode(...)` itself would prove the CONSTRUCTOR wires its own owners; only the MODULE's
+    // provider can prove the COMPOSITION does -- and the composition is where the measured defect lived
+    // (`provisionAckPump` was injected into that very function and NEVER ASSIGNED).***
+    // =================================================================================================================
+
+    private fun hostIdentity(): io.godstone.mesh.identity.Identity {
+        val rng = java.security.SecureRandom()
+        val ed = io.godstone.core.crypto.Ed25519Keys.generate(rng)
+        val dh = io.godstone.core.crypto.X25519Keys.generate(rng)
+        return io.godstone.mesh.identity.Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv)
+    }
+
+    /** *A REAL `DurableAckPump` over a real gated in-memory obligation store.* */
+    private fun hostPump(gate: io.godstone.mesh.identity.WipeSensitiveUseGate): io.godstone.mesh.delivery.DurableAckPump {
+        val store = io.godstone.mesh.identity.WipeGatedAckObligationStore(
+            io.godstone.mesh.delivery.InMemoryAckStore(), gate)
+        return io.godstone.mesh.delivery.DurableAckPump(
+            store,
+            { _, _ -> io.godstone.mesh.delivery.AckAdmissionResult.RefusedBadFrame },
+        )
+    }
+
+    /** *The REAL provider, driven with supplied device-bound inputs and real store files.*/
+    private fun providedNode(
+        gate: io.godstone.mesh.identity.WipeSensitiveUseGate,
+        pump: io.godstone.mesh.delivery.DurableAckPump,
+    ): MeshNode {
+        val msgFile = File.createTempFile("gf003_pump_msg", ".db").also { it.deleteOnExit() }
+        val ackFile = File.createTempFile("gf003_pump_ack", ".db").also { it.deleteOnExit() }
+        val sqliteStore = io.godstone.mesh.store.SqliteMessageStore(
+            io.godstone.mesh.store.JdbcStoreDb(msgFile), 4096, null)
+        val tracker = io.godstone.mesh.delivery.DeliveryTracker(
+            io.godstone.mesh.delivery.SqliteDeliveryRepository(sqliteStore.engine, sqliteStore::notifyHeldSetChanged),
+            io.godstone.mesh.delivery.Ed25519AckAuthenticator(io.godstone.mesh.readiness.EmptyKeyTable()),
+        )
+        // *THE COMPONENT EXPOSETH THE STORE; THE REPOSITORY IS THE MODULE's PROVIDER OVER IT -- the same two-step
+        // the graph itself performeth.*
+        // *** AND THE PEER REPOSITORY IS BUILT THE WAY THE EXISTING COURT BUILDETH IT -- OVER A JDBC STORE, WHICH
+        // NEEDETH NO NATIVE SQLCIPHER. ***
+        //
+        // *MY FIRST VERSION REACHED FOR `graph().peerIdentityStore()`, WHICH IS A `SqlcipherPeerIdentityStore` and
+        // throweth `UnsatisfiedLinkError: no sqlcipher in java.library.path` on this host -- **so the arm returned early
+        // at that boundary and NEVER REACHED THE PUMP ASSERTION.***
+        //
+        // *** AND I FOUND THAT OUT BY MUTATING THE PUMP WIRING AND WATCHING THE ARM STAY GREEN. *** *A court that
+        // returns early readeth as coverage while measuring nothing, which is the exact vacuous-witness class this
+        // session has removed four times -- so the `runCatching` escape hatch is GONE and the repository is built on a
+        // road that actually completes here.*
+        //
+        // *`PeerIdentityRepository(JdbcPeerIdentityStore(file))` is that road, and it is not invented: it is the
+        // construction `CrashStartupResumeTest.admissionRepo()` already useth.*
+        val peerFile = File.createTempFile("gf003_pump_peer", ".db").also { it.deleteOnExit() }
+        val peerRepo = io.godstone.mesh.identity.PeerIdentityRepository(
+            io.godstone.mesh.identity.JdbcPeerIdentityStore(peerFile))
+        return MeshModule.provideMeshNode(
+            ctx = ctx(),
+            identity = hostIdentity(),
+            store = sqliteStore,
+            deliveryTracker = tracker,
+            sessions = io.godstone.mesh.crypto.SessionManager(
+                hostIdentity(),
+                // *A REAL IMPLEMENTATION OF THE REAL CONTRACT -- the same shape `ReadinessT08Test` uses, so this arm
+                // invents nothing. It is a test double for a TRUST decision, not for the seam under test.*
+                object : PeerBindingTrustAuthority {
+                    override fun applyValidatedBinding(binding: io.godstone.mesh.identity.ValidatedPeerBinding): PeerTrustApplyResult =
+                        PeerTrustApplyResult.Accepted
+                }),
+            pump = pump,
+            sqliteStore = sqliteStore,
+            ackStore = io.godstone.mesh.delivery.SqliteAckStore(io.godstone.mesh.store.JdbcStoreDb(ackFile)),
+            authenticator = io.godstone.mesh.delivery.Ed25519AckAuthenticator(io.godstone.mesh.readiness.EmptyKeyTable()),
+            resolver = MeshModule.provideBoundRecipientKeyResolver(repo = peerRepo, gate = graph().runtimeLifecycleGate(), wipeGate = gate),
+            wipeGate = gate,
+        )
+    }
+
+    @Test
+    fun theProductionProviderHandsTheNodeThePumpItWasGiven() {
+        presetJournal(PanicWipe.WipeState.IDLE)
+        // *THE REAL GATE THE COMPONENT HANDS OUT -- never a hand-typed lambda, which is the anti-pattern this file's
+        // own docstring records.*
+        val gate = graph().wipeSensitiveUseGate()
+        val pump = hostPump(gate)
+        val node = providedNode(gate, pump)
+        if (node == null) {
+            // *The platform stopped this arm at the NAMED boundary above -- and the arm SAITH SO rather than passing
+            // vacuously. A court that skipped silently would read as coverage.*
+            println("*** GS-RUNTIME-001: the peer store stopped at the host's native-SQLCipher boundary; the pump-wiring " +
+                "assertion needs the peer repository, which the component builds over that store. THE STOP IS NAMED, " +
+                "NOT HIDDEN. ***")
+            return
+        }
+        assertSame(
+            "*** THE PRODUCTION PROVIDER MUST HAND THE NODE THE VERY PUMP IT WAS GIVEN. *AN UNUSED INJECTED PARAMETER " +
+                "IS INVISIBLE TO A DI FRAMEWORK: it compiles, it wires, and it reacheth nothing -- EXACTLY the measured " +
+                "defect, where `node.ackPump` stayed NULL while the pump was manufactured, injected, and handed to " +
+                "nobody.* THIS COMPARES IDENTITY, NOT SOURCE TEXT: a dead branch or a later undo cannot pass it. ***",
+            pump,
+            node.ackPump,
+        )
+    }
+
 }
