@@ -10,6 +10,7 @@ import io.godstone.mesh.delivery.BoundRecipientKeyResolver
 import io.godstone.mesh.delivery.Ed25519AckAuthenticator
 import io.godstone.mesh.delivery.RecipientKeyResolver
 import io.godstone.mesh.delivery.SqliteAckStore
+import io.godstone.mesh.identity.MeshRuntimeInvalidator
 import io.godstone.mesh.identity.PeerIdentityRepository
 import io.godstone.mesh.crypto.SessionManager
 import io.godstone.mesh.identity.DefaultRuntimeLifecycleGate
@@ -73,6 +74,17 @@ internal interface MeshGraphComponent {
     fun peerIdentityStore(): SqlcipherPeerIdentityStore
 
     fun runtimeLifecycleGate(): DefaultRuntimeLifecycleGate
+
+    /**
+     * *** AND THE INVALIDATOR IS EXPOSED, SO A COURT CAN OBSERVE WHICH GATE IT WAS BUILT OVER. ***
+     *
+     * *MEASURED BEFORE THIS ACCESSOR EXISTED: replacing the invalidator's `lifecycleGate = gate` with a SECOND
+     * `DefaultRuntimeLifecycleGate()` -- the exact "two authorities" failure the module's own docstring names -- LEFT
+     * THE WHOLE COURT GREEN.* ***BECAUSE THE COMPONENT EXPOSED NO INVALIDATOR AT ALL, NOTHING COULD OBSERVE WHICH
+     * AUTHORITY IT HELD.*** *A provider that no accessor reacheth is a provider no court can witness -- the "declared
+     * but unreachable" class this programme has filed before.*
+     */
+    fun meshRuntimeInvalidator(): MeshRuntimeInvalidator
 
     /**
      * *** THE GATE, AND THE REASON THIS COMPONENT IS WORTH BUILDING. ***
@@ -161,6 +173,17 @@ internal abstract class MeshGraphMeshModule {
 
         @Provides @Singleton
         fun runtimeLifecycleGate(): DefaultRuntimeLifecycleGate = MeshModule.provideRuntimeLifecycleGate()
+
+        /// *The invalidator, delegated to the module's own provider -- so the graph's invalidator IS the production one.*
+        @Provides @Singleton
+        fun meshRuntimeInvalidator(
+            gate: DefaultRuntimeLifecycleGate,
+            sessions: SessionManager,
+            peerStore: SqlcipherPeerIdentityStore,
+            messageStore: SqliteMessageStore,
+            node: MeshNode,
+        ): MeshRuntimeInvalidator =
+            MeshModule.provideMeshRuntimeInvalidator(gate, sessions, peerStore, messageStore, node)
 
         /// *** THE PERMIT IS ISSUED FROM THE TYPED DECISION, AND `issue` RETURNETH NULL FOR EVERY REFUSING ONE. ***
         ///
