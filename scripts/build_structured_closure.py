@@ -97,10 +97,34 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
                  "line, no public initializer) issued only after the typed recovery answer.",
          "status": "OPEN", "evidence": []},
         {"id": "gs-final-003.zero-private-opens",
-         "text": "Both platforms: pending / retryable / corrupt recovery causes ZERO identity and "
-                 "ZERO private DB opens, proven at the REAL construction seams with counters.",
-         "status": "OPEN", "evidence": []},
-         {"id": "gs-final-003.android-provider-court",
+         "text": "Both platforms: pending / retryable / corrupt recovery causes ZERO identity and ZERO private DB opens, proven at the REAL construction seams with counters.",
+         # *** "Both platforms" IS LOAD-BEARING, AND ANDROID HAD NO CONSTRUCTION COUNTER AT ALL. ***
+         #
+         # *THE ISLE HAD DECISION-LEVEL ARMS AND NOTHING THAT COUNTED A CONSTRUCTION -- **and a correct decision that
+         # nothing consulteth is the decoration this finding is about.*** *So the Android court now counts the
+         # constructions at the seam: the permit IS the seam, because the three private providers require it as a
+         # parameter and `PrivateStorePermit.issue` returneth `null` for every refusing decision.*
+         #
+         # *** AND THE REFUSING SET IS DERIVED BY ASKING THE BARRIER, NOT ASSUMED -- WHICH TOOK TWO RED ARMS TO
+         # LEARN. *** *My first version assumed "every rung other than IDLE refuseth", and `NEW_IDENTITY` REDDENED: the
+         # barrier RESUMES the ladder, and `NEW_IDENTITY -> IDLE` is the ladder's own TERMINAL TRANSITION, so a barrier
+         # meeting it FINISHES THE WIPE and answereth `CLEAN_START` -- the honest result of a completed wipe, not a
+         # fail-open. MEASURED, EVERY RUNG, WITH A THROWAWAY PROBE:*
+         # ```
+         #   IDLE              -> CLEAN_START        permits=true
+         #   REQUESTED         -> RETRYABLE_FAILURE  permits=false
+         #   RUNTIME_DRAINED   -> RETRYABLE_FAILURE  permits=false
+         #   KEY_ERASED        -> RETRYABLE_FAILURE  permits=false
+         #   ARTIFACTS_DELETED -> RETRYABLE_FAILURE  permits=false
+         #   NEW_IDENTITY      -> CLEAN_START        permits=true
+         # ```
+         # *A HAND-WRITTEN LIST WOULD HAVE BAKED MY WRONG ASSUMPTION IN AND GONE GREEN.*
+         "status": "DISCHARGED", "evidence": [
+             "`path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt` -- the ANDROID counter court: `noPermitIsIssuedOnAnyOutstandingRung`, `theCompositionIssuerRefusesOnEveryOutstandingRung`, and the positive controls `theTerminalRungIssuesThePermit` / `theCompositionIssuerPermitsOnTheTerminalRung`. **MEASURED: 5 tests, 0 failures**, with the refusing set DERIVED by asking the barrier. *A gate that always refused would fail the positive controls, and one that never refused would fail the others -- both directions.*",
+             "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- THE SEAM: `PrivateStorePermit` carrieth a PRIVATE constructor and `issue(decision)` returneth `null` for every refusing decision, and the three private providers REQUIRE it as a parameter. So zero opens is not inferred from a later absence -- the authority that construction requireth DOES NOT EXIST on those roads.",
+             "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- THE iOS HALF: `PrivateOpenCounter` (real counts at the construction seam, not the vestigial array nothing read), `CountingKeyProvider` (the factory asketh for a DEK BEFORE it reacheth the engine, so a refused startup that got there would have ASKED), and the keychain write spy for the identity boundary. **MEASURED: 14 tests, 0 failures**, covering pending, retryable AND corrupt -- *the obligation nameth all three, and only pending carried counters before.*",
+             "AND THE MUTATION PROVES THE iOS COUNTERS BITE RATHER THAN MERELY PASSING: *an identity-boundary open placed ABOVE the permit gate on the road the arms drive KILLETH EXACTLY the two counter-bearing arms and no others.* **My first attempt at that mutation ESCAPED, and it was wrong twice -- it landed on the `create` road while the arms drive `requireRecoveredPrivateComposition`, and it used a keychain READ while the spy counteth WRITES.** *A mutation placed wrong is not an escaped mutation; it is an experiment that proved nothing.*",
+         ]},        {"id": "gs-final-003.android-provider-court",
           "text": 'Android: a real Hilt/Dagger provider composition in :mesh (nonshipping) that catches a miswired provider, without adding a mesh dependency to LIGHT.',
           "status": "DISCHARGED", "evidence": ['`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshGraphComponent.kt`, `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`, `test:theRealComponentsGateAnswersBothDirections`, `path:ci/check_lab_isolation.py`. A real `@Singleton @Component` in the `:mesh` MAIN source set, delegating every provider to `MeshModule`, constructed by the court through `DaggerMeshGraphComponent.builder()`. **THE MISWIRING MUTATION WAS RUN, NOT ASSERTED: inverting `provideWipeIsPending` polarity (the exact 18-round production defect) REDDENS TWO ARMS** -- `theRealComponentsGateAnswersBothDirections` and `theRealComponentsGateIsReadPerCallNotCached`; restored, 7/7 pass. *** AND LIGHT GAINS NOTHING: `Godstone` declares ONE dependency (GodstoneCore, no mesh edge) and `ci/check_lab_isolation.py` rc=0.***']},
         {"id": "gs-final-003.bootstrap-permit-unit",

@@ -14402,7 +14402,8 @@
     "evidence": [
      "ROUND 699 -- THE READ-ROAD SWEEP WENT ONE FUNCTION FURTHER ON BOTH ISLES, AND FOUND `deliveryProjection` UNGATED WHILE IT READ A DELIVERY ROW. Round 636 gated `retrySos`/`activeSosSnapshot`; **I did not assume that was the whole set -- I enumerated every function in `MeshNode` touching `store`/`deliveryTracker`** (Android: 10 functions; iOS: 11) and measured which were ungated. The remaining ungated ones are courts-only (0 production callers) or dormant: `broadcastSos`'s sole caller lives in `android/app/src/main/dormant/`, which `build.gradle.kts` EXCLUDES from the shipping source set. **`deliveryProjection` was gated on BOTH isles regardless of reach** -- a read road reporting delivery state from a store being erased is a claim that looks like a state -- using the type's OWN `unavailable` vocabulary. **BEHAVIOURAL RED PROVEN ON BOTH ISLES AGAINST THE PRE-FIX REVISION:** Android `ReadinessT43Test.test_gf003_...` -> \"expected:<UNAVAILABLE> but was:<QUEUED_DURABLY>\"; iOS `ReadinessT39Tests.testGF003APendingWipeHidesTheDeliveryProjection` -> \"(queuedDurably) is not equal to (unavailable)\". **Each arm carries its own positive control FIRST** (the permitting node really reads the row), so neither can pass by refusing everything. Post-fix: Android 14/14, iOS 17/17.",
      "ROUND 747 -- THE SHIPPED iOS COMPOSITION'S GATE, ASSERTED AND FALSIFIED, CLOSING A MEASURED CROSS-ISLE ASYMMETRY. Android makes `wipeGate` a REQUIRED constructor parameter (\"an omitted edge is a compile error rather than a silent always-admit\"); iOS leaves it `optional = nil`, so a future caller omitting the edge compiles away every guard silently. *Production is wired, so the exposure is THE NEXT CALLER.* Rather than re-open the optional (which would force every court to fail closed -- the round-633 lesson), `testGSFINAL003_theShippedCompositionsReadRoadRefusethWhileAWipeIsPending` now asserts that the SHIPPED composition refuses the read road. **AND MY FIRST FOUR DRAFTS WERE ALL VACUOUS, EACH MEASURED BY REMOVING THE GUARD AND WATCHING IT STAY GREEN:** draft 1 probed an absent row (so the body's own corrupt-or-absent branch satisfied it); draft 2 called `beginPanicWipe`, WHICH RUNS THE LADDER TO COMPLETION and re-opens the gate; drafts 3 and 4 wrote `journal.state = .keyErased` after and before construction -- **and `CrashResumableWipe` LOADETH THE JOURNAL INTO MEMORY AT CONSTRUCTION, so mutating the test journal never reaches the coordinator.** *** THE SIBLING ARM HAD ALREADY SOLVED IT IN ITS OWN COMMENT, WHICH I FOUND ONLY AFTER THE FOUR FAILURES: \"request the wipe through the coordinator WHILE ITS VAULT CANNOT ERASE, by composing with a journal whose seam answers pending.\" *** *The arm now uses `CrashResumableWipe` over `WipeDeferredKeyVaultSeam` (the startup road's own seam) and calls `requestWipe()`.* **FALSIFICATION, RUN: with the guard removed, \"queuedDurably is not equal to unavailable\" -- a LIVE delivery state from a wiping store, which is the defect itself.** *The arm carries its positive control first (the permitting node reads the same row), so a node hardwired to refuse cannot satisfy it. Restored: 5/5.*"
-    ]
+    ],
+    "zero_opens_resolution": "*** BOTH ISLES NOW COUNT THEIR OPENS AT THE SEAM, AND THE ANDROID REFUSING SET IS DERIVED RATHER THAN ASSUMED. *** iOS: PrivateOpenCounter (real counts, not the vestigial array nothing read), CountingKeyProvider (the factory asketh for a DEK before it reacheth the engine), and a keychain write spy -- 14 tests green across pending, retryable AND corrupt. Android: PrivateStorePermit with a private constructor and a nullable issue(decision), REQUIRED as a parameter by the three private providers -- 5 tests green, with the refusing set measured by asking the barrier. MEASURED EVERY RUNG WITH A THROWAWAY PROBE: REQUESTED/RUNTIME_DRAINED/KEY_ERASED/ARTIFACTS_DELETED refuse; IDLE and NEW_IDENTITY permit, because the barrier COMPLETES that rung (NEW_IDENTITY -> IDLE is the ladder's own terminal transition). My first version assumed every non-IDLE rung refuses and TWO ARMS REDDENED -- the court corrected me. NOT VERIFIED_FIXED: only the independent auditor may write that."
    },
    "GS-FINAL-004": {
     "severity": "High",
@@ -14880,7 +14881,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "852dad8e70c062203781f4d45347f4e04d56dbc5",
+  "candidate_sha": "8ef4c1c9455a1cba711b84b6d4c1620606709f63",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -15645,8 +15646,13 @@
      {
       "id": "gs-final-003.zero-private-opens",
       "text": "Both platforms: pending / retryable / corrupt recovery causes ZERO identity and ZERO private DB opens, proven at the REAL construction seams with counters.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt` -- the ANDROID counter court: `noPermitIsIssuedOnAnyOutstandingRung`, `theCompositionIssuerRefusesOnEveryOutstandingRung`, and the positive controls `theTerminalRungIssuesThePermit` / `theCompositionIssuerPermitsOnTheTerminalRung`. **MEASURED: 5 tests, 0 failures**, with the refusing set DERIVED by asking the barrier. *A gate that always refused would fail the positive controls, and one that never refused would fail the others -- both directions.*",
+       "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- THE SEAM: `PrivateStorePermit` carrieth a PRIVATE constructor and `issue(decision)` returneth `null` for every refusing decision, and the three private providers REQUIRE it as a parameter. So zero opens is not inferred from a later absence -- the authority that construction requireth DOES NOT EXIST on those roads.",
+       "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- THE iOS HALF: `PrivateOpenCounter` (real counts at the construction seam, not the vestigial array nothing read), `CountingKeyProvider` (the factory asketh for a DEK BEFORE it reacheth the engine, so a refused startup that got there would have ASKED), and the keychain write spy for the identity boundary. **MEASURED: 14 tests, 0 failures**, covering pending, retryable AND corrupt -- *the obligation nameth all three, and only pending carried counters before.*",
+       "AND THE MUTATION PROVES THE iOS COUNTERS BITE RATHER THAN MERELY PASSING: *an identity-boundary open placed ABOVE the permit gate on the road the arms drive KILLETH EXACTLY the two counter-bearing arms and no others.* **My first attempt at that mutation ESCAPED, and it was wrong twice -- it landed on the `create` road while the arms drive `requireRecoveredPrivateComposition`, and it used a keychain READ while the spy counteth WRITES.** *A mutation placed wrong is not an escaped mutation; it is an experiment that proved nothing.*"
+      ]
      },
      {
       "id": "gs-final-003.android-provider-court",
@@ -15861,18 +15867,18 @@
    "findings_total": 68,
    "findings_internal_open": 5,
    "findings_with_internal_status_open": 5,
-   "internal_obligations_open": 16,
-   "internal_obligations_unresolved": 16,
+   "internal_obligations_open": 15,
+   "internal_obligations_unresolved": 15,
    "obligations_by_state": {
-    "OPEN": 14,
+    "OPEN": 13,
     "PARTIAL": 2,
-    "DISCHARGED": 16
+    "DISCHARGED": 17
    },
    "external_obligations": 5
   },
   "internal_remaining_prose_classifier_retired": {
    "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",
-   "last_value": 20
+   "last_value": 11
   },
   "frontier_measured_this_session": {
    "measured_at": "2026-09-20",
