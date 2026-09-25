@@ -205,7 +205,12 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "An executed iOS app/simulator witness for Archive recreation/restoration. The "
                  "ledger's claim that the app layer 'cannot be compiled because of NATIVE_MODELS' "
                  "is STALE: the canonical hosted workflow builds `Godstone-Light` successfully.",
-         "status": "OPEN", "evidence": []},
+         "status": "DISCHARGED", "evidence": [
+             "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- THE EXECUTED ARM `testGSA005DocumentReopensAfterCleanProcessDeath`, which terminate()s the process and RELAUNCHES it, then asserts the reader returned. MEASURED GREEN at 47.011s and 47.131s across two independent runs, with all six archive arms green and the lane control reporting `ios:ui suites=2 tests=12 failures=0`.",
+             "`path:ios/Godstone/Sources/GodstoneCore/ArchivePlaceStore.swift` -- THE DURABLE VEHICLE. *The arm was DETERMINISTICALLY RED for the life of the defect and it was RIGHT: the place stood in @SceneStorage, scene-scoped by contract, discarded with the scene and restorable only for an app that OPTS INTO STATE RESTORATION -- which this target carrieth not.* The record is a UserDefaults record now, written at the app's OWN transitions, so it surviveth the terminate() the arm performeth.",
+             "`path:ios/Godstone/Sources/App/ArchiveView.swift` -- the write call sites at the app's guaranteed transitions (openedDocumentId, scrollAnchor), and the read on launch.",
+             "AND THE ARM IS NOT GREEN BY WEAKENING: `IOS_UI_KNOWN_RED` is now EMPTY. The allowance that permitted this arm's red was retired WITH the cause, and `path:ci/check_lane_results.py` carrieth the negative control proving a failure here now reddeneth the lane.",
+         ]},
     ],
     "GS-FINAL-006": [
         {"id": "gs-final-006.ios-restoration-witness",
@@ -217,7 +222,11 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
         {"id": "gs-final-006.mutation",
          "text": "Disconnect the production restore/anchor consumption and confirm the executed "
                  "app test FAILS.",
-         "status": "OPEN", "evidence": []},
+         "status": "DISCHARGED", "evidence": [
+             "`path:ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift` -- THE MUTATION: restore(from:)'s .document case IGNORED the persisted openedDocumentId and returned to the list instead of reopening the document.",
+             "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- MEASURED, AND THE EXECUTED APP ARM FAILED FOR THE CORRECT REASON: `testGSA005DocumentReopensAfterCleanProcessDeath` FAILED (36.312s) with the message naming THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH, while the other five arms passed unchanged and the run carried ZERO launch refusals. *A MUTATION THAT REDDENETH AN INCIDENTAL FAILURE PROVES NOTHING; THIS ONE REDDENED THE CLAIM ITSELF.*",
+             "AND IT WAS TAKEN ON THE REAL APP ROAD, NOT A MODEL COURT: the arm terminate()s and relaunches the process, so the mutation had to break the ACTUAL restoration to fail it. The source was restored and verified: marker absent, byte-identical to HEAD, `path:scripts/sync_ios_foundation_package.py` --check rc=0, and the six arms green again.",
+         ]},
     ],
     "GS-STORE-002": [
         {"id": "gs-store-002.internal-architecture",

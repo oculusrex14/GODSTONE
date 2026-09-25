@@ -4470,8 +4470,8 @@
    "PARTIAL": 6
   },
   "by_status_derived_at_round_608": {
-   "FIX_SUBMITTED": 49,
-   "PARTIAL": 5
+   "FIX_SUBMITTED": 50,
+   "PARTIAL": 4
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -7876,7 +7876,7 @@
     }
    ],
    "my_red_case": "*** A RED TAKEN BEFORE THE REPAIR, IN THE ARCHIVE'S OWN COURT FAMILY (ReadinessT50Tests, GodstoneCoreTests). *** `testW14TheDocumentDestinationPublishethItsOwnCheckedProvenance` FAILED ON BOTH ITS CLAUSES before the repair (measured: `Executed 18 tests, with 2 failures`, SWIFT_RC=1): the destination did not publish its own provenance, AND it depended on `scene.openedSource`. AND `testW15TheLibrariesProvenanceProbeAnswerethTheDocumentsOwnMetadata` PASSED IN THAT SAME RUN, so the semantic the structural clause rests on was MEASURED rather than hoped for: the library's probe answers the document asked about, and a DIFFERENT identity is never answered with this one's provenance. *** THE INSTRUMENT IS STRUCTURAL AND SAYS SO: the view liveth in the App target, and NO TEST BUNDLE CAN IMPORT IT (measured: `Godstone` carrieth a 5-file allowlist and both test bundles link onely the packages), so the rendered view cannot be driven. THIS IS NOT THE GS-STORE-002 SITUATION, WHERE A BEHAVIOURAL INSTRUMENT WAS AVAILABLE AND UNUSED: here the absence of a behavioural instrument was MEASURED FIRST. *** *** ROUND 525 ADDED TWO MORE ARMS, AND ONE OF THEM REFUTED ITS AUTHOR'S HYPOTHESIS BY MEASUREMENT. *** (a) `testW16TheSceneRecordSurvivethARealPersistenceRoundTrip` was written to test a SUSPECTED round-trip defect -- EVERY EXISTING ARM round-trippeth the handle IN MEMORY ONELY (`:532`, `:549`, `:564`, `:690`) and `PropertyListSerialization` appeared NOWHERE in the repository. IT PASSED (`19 tests, 0 failures`): the handle DOES survive a real serialisation round-trip into a FRESH scene, identity and metadata intact. SO THE HYPOTHESIS WAS WRONG, AND THE MEASUREMENT REPLACED IT: the model was sound and the defect was SOLELY the absent caller. (b) `testW17TheSceneRecordHathAProductionCallerAndRestorationPrecedethTheFirstBrowse` is the RED for that defect, and IT IS THE FOURTH CLAUSE THAT CARRIETH THE CARD'S OWN WORDS: restoration must precede the first browse, 'BEFORE the first browse overwriteth it'. RUN RED: `20 tests, with 4 failures`, all four clauses. *** ROUND 525b ADDED THE BEHAVIOURAL MIRROR ON THE ANDROID ISLE, AND IT FOUND A REAL DEFECT IN PRODUCTION CODE THAT NO STRUCTURAL CHECK COULD HAVE SEEN. *** `testProcessRecreationFindethThePlaceInTheSavedStateHandle` constructeth the view model OVER A `SavedStateHandle`, drives a real OPEN, and then CONSTRUCTS A SECOND VIEW MODEL OVER THE SAME HANDLE -- which is what a process recreation giveth. ITS FIRST RUN FAILED: `NullPointerException: Cannot invoke \"java.util.concurrent.atomic.AtomicLong.incrementAndGet()\" because \"this.generation\" is null`. **THE CAUSE IS THE CARD'S OWN DEMAND MEETING KOTLIN'S INITIALISATION ORDER: restoring FROM THE CONSTRUCTOR is exactly what the card asketh, and `init` blocks run IN DECLARATION ORDER, so a restore placed by the constructor reacheth `generation` while it is still null.** The repair moveth the restoration to the class's EXISTING startup `init` (after `_state`, `generation` and `returnScene`) AND SUPPRESSETH the first browse when it restores -- BOTH halves of the order, each load-bearing. `testAnEmptyHandleIsAFirstRunAndNotARestorationOfNothing` is the DISCRIMINATOR: an empty handle must mean a FIRST BROWSE, not a restoration of nothing. *** ROUND 526 ADDED THE ANCHOR'S LAW ARM AND TWO BEHAVIOURAL ARMS, AND THE NEGATIVE CASE ITSELF CARRIED A DEFECT THAT WAS FOUND BY MEASURING IT. *** MEASURED BEFORE ANY EDIT: the string `anchor` appeared **NOWHERE in the Android browse path** -- so step 3's clause could not be satisfied by persistence alone, THERE WAS NOTHING TO PERSIST. THE LAW ARM (`ReadinessArchive002Test.testTheAnchorIsAValidPlaceAndNotAStaleIdentity`) asserteth THE SAME LAW iOS CARRIETH, in the court where that law liveth. THE BEHAVIOURAL ARMS (`ReadinessT49Test.testAProcessRecreationRestorethTheReadingAnchorAndHonourethIt` and `...testAStaleAnchorFallethBackToTheFirstPassageAndIsNotHonoured`) note a place, RECREATE THE VIEW MODEL OVER THE SAME HANDLE -- which is what process recreation giveth -- and require the place to be honoured WHEN VALID and REFUSED WHEN STALE. **AND THE FIRST NEGATIVE CASE PROVED ONLY HALF OF THAT, WHICH IS THE ROUND'S OWN INSTRUMENT DEFECT AND IS RECORDED: it ran `:core` and `:app` in one Gradle invocation WITHOUT `--continue`, Gradle STOPPED AFTER `:core` FAILED, `:app` NEVER RAN, AND THE APP SUITE'S XML WAS **STALE** -- reporting two arms PASSING that had not executed. THE XML TIMESTAMPS CAUGHT IT (CORE 18:12:23, APP 18:11:36 -- one minute OLDER). Re-run so both tasks executed, BOTH courts then failed on their own clauses. A NEGATIVE CASE THAT RUNNETH ONELY THE FIRST FAILING TASK PROVETH ONELY THE FIRST ARM.** *** ROUND 536: `ReadinessT50Tests.testW18TheNavigationPathIsBoundAndDriven`, WRITTEN AND RUN **AFTER** THE BINDING AND **PROVEN TO JUDGE BY ITS NEGATIVE CASE** -- at the source level, because round 524 MEASURED that no test bundle can import the App target. THE NEGATIVE CASE (the stack UNBOUND again, landing VERIFIED before the run) FAILED THE ARM ON ITS OWN NAME: *'THE `NavigationStack` MUST BE BOUND TO AN EXPLICIT PATH: an unbound stack carrieth its own path privately, so NOTHING OUTSIDE IT can place, read or restore a destination'*. *** THE ARM CARRIETH THE REVIEW'S OWN LAW AS WELL: A DECLARATION IS NOT A CAPABILITY -- SO IT DEMANDETH THE BINDING **AND** THE DRIVER, and asserteth the driver's DIRECTION LAW (`path.removeAll()` on a return to the list). *** *** ROUND 537: TWO ARMS, EACH WITH ITS OWN NEGATIVE CASE. *** `testW19ARestoredDocumentReturnethToTheSearchItWasOpenedFrom` -- a search is published, a result is opened, the record is taken, and a FRESH scene is restored: Back must return to the SEARCH. THE NEGATIVE CASE restored the empty `.documents` return scene and the arm FAILED ON ITS OWN NAME: `(\"documents\") is not equal to (\"search\")`. `testW20TheVisiblePassageIsNotedAndAnAnchorForAnotherDocumentIsRefused` -- the visible passage is noted BY IDENTITY, and the discriminator asserteth that with NO document standing the anchor MUST NOT MOVE. THE NEGATIVE CASE removed the guard and the arm FAILED ON ITS OWN NAME: `(\"Optional(9999)\") is not equal to (\"Optional(4242)\")`. *** AND BOTH NEGATIVE CASES WERE RUN WITH THEIR LANDINGS VERIFIED FIRST (both markers present), which is round 534's law applied. ***",
-   "my_status": "PARTIAL",
+   "my_status": "FIX_SUBMITTED",
    "notes": "PARTIAL, one step of six, and now with a GENUINE RED: the restored return scene no longer starteth EMPTY, proven RED at the pre-repair commit b7f2b4c and GREEN after the repair, by an arm that asserteth the road it taketh. The false first arm is recorded as a finding of its own: a witness green on BOTH revisions proveth nothing, and the ledger court's rule caught the submission that would have relied on it. Only an independent audit may write VERIFIED_FIXED. ROUND 124 (step 1 LOCATED AND BOUNDED, NOT APPLIED): the app view navigateth by SwiftUI's own destination and constructeth the reader directly, BYPASSING `ArchiveSceneModel.open(document:)` and with it the epoch token, the retry token, the loading phase, the staleness gate and the failure publication. The candidate edit and the reason it was not applied blind are both written into the ledger, and the ios lane now has a measured green baseline (1195 XCTest tests, ~138s) so the next round can verify a Swift change. ROUND 125 (step 1 refined by reading the reader): the reader owneth a SECOND loading model while already consuming the scene for anchors and provenance -- so the fix is a rewire (scene owns the load, reader renders scene state), not a one-line redirect, and it must be made and verified in ONE run of the 138s ios lane. Recorded, not guessed; no edit was made.",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
@@ -7937,7 +7937,8 @@
    "title": "Archive navigation bypasses selection metadata and persistence helpers",
    "wave": "2",
    "record_corrections": [],
-   "remaining_work": "THE ANDROID HALF IS CLOSED AND ITS APP-LEVEL ARM PASSES (round 595) through a real `SavedStateHandle` and the recomposed real screen -- the layer the card explicitly refused to accept a model-level `snapshotTo`/`restoreFrom` as proof for. **WHAT REMAINS, FROM THE FINDING'S OWN RECORD: (i) it is NOT a PROCESS KILL** -- Robolectric carries the handle across a DISCARDED MODEL, which is the platform's restoration CONTRACT, while real process death also exercises the OS's own serialization and remains an external lane; **(ii) THE iOS HALF IS UNCHANGED: the `SceneStorage`-based recreation has NO executed witness**, and (iii) *** THE CLAIM THAT STOOD HERE -- \"the iOS App layer cannot be compiled here at all (NATIVE_MODELS)\" -- IS FALSE, AND WAS DISPROVED BY RUNNING THE CANONICAL COMMAND, NOT BY ARGUMENT. *** *`xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light -configuration LightRelease -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build` -> **`** BUILD SUCCEEDED **`**, and the scheme's TEST action -> **`** TEST SUCCEEDED **`, `Executed 1277 tests, with 0 failures`.** The canonical workflow's job \"ios core + mesh tests + Archive-only xcodebuild\" has built this target on EVERY CI run. **THE NATIVE_MODELS GATE BOUNDS THE MODEL/ORACLE STACK AND THE SQLCIPHER ENGINE -- NOT THE APP TARGET**, and conflating the two is what put the claim in the record. So the iOS witness for this finding is REACHABLE IN-REPO and is outstanding work rather than an external dependency.* *A STALE BLOCKER IS WORSE THAN AN OPEN ONE: it reads as settled while being wrong.* **AND, BY RULE, only an independent audit may write VERIFIED_FIXED.**"
+   "remaining_work": "THE ANDROID HALF IS CLOSED AND ITS APP-LEVEL ARM PASSES (round 595) through a real `SavedStateHandle` and the recomposed real screen -- the layer the card explicitly refused to accept a model-level `snapshotTo`/`restoreFrom` as proof for. **WHAT REMAINS, FROM THE FINDING'S OWN RECORD: (i) it is NOT a PROCESS KILL** -- Robolectric carries the handle across a DISCARDED MODEL, which is the platform's restoration CONTRACT, while real process death also exercises the OS's own serialization and remains an external lane; **(ii) THE iOS HALF IS UNCHANGED: the `SceneStorage`-based recreation has NO executed witness**, and (iii) *** THE CLAIM THAT STOOD HERE -- \"the iOS App layer cannot be compiled here at all (NATIVE_MODELS)\" -- IS FALSE, AND WAS DISPROVED BY RUNNING THE CANONICAL COMMAND, NOT BY ARGUMENT. *** *`xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light -configuration LightRelease -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build` -> **`** BUILD SUCCEEDED **`**, and the scheme's TEST action -> **`** TEST SUCCEEDED **`, `Executed 1277 tests, with 0 failures`.** The canonical workflow's job \"ios core + mesh tests + Archive-only xcodebuild\" has built this target on EVERY CI run. **THE NATIVE_MODELS GATE BOUNDS THE MODEL/ORACLE STACK AND THE SQLCIPHER ENGINE -- NOT THE APP TARGET**, and conflating the two is what put the claim in the record. So the iOS witness for this finding is REACHABLE IN-REPO and is outstanding work rather than an external dependency.* *A STALE BLOCKER IS WORSE THAN AN OPEN ONE: it reads as settled while being wrong.* **AND, BY RULE, only an independent audit may write VERIFIED_FIXED.**",
+   "witness_resolution": "*** THE EXECUTED WITNESS NOW EXISTS AND PASSES, AND IT WAS THE STORE THAT WAS WRONG, NOT THE ARM. *** The arm was DETERMINISTICALLY RED and it was RIGHT: the place stood in @SceneStorage, which is scene-scoped and discarded with the scene -- this target carrieth no state-restoration opt-in, so the record never survived the terminate() the arm performeth. It now liveth in ArchivePlaceStore (UserDefaults), written at the app's own transitions. MEASURED: the arm PASSES at 47.011s and 47.131s across two independent runs; all six archive arms green; the lane control reporteth ios:ui suites=2 tests=12 failures=0; and the known-red allowance was retired WITH the cause. NOT VERIFIED_FIXED -- only the independent auditor may write that."
   },
   "GS-CONTENT-001": {
    "audit_status_at_snapshot": "OPEN",
@@ -14878,7 +14879,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "83ea5222b6cdf5e84f204de8c351a129313e7fac",
+  "candidate_sha": "8df01ab15c3e107184a81c1df48093a229b80794",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14886,8 +14887,8 @@
   "verified_fixed_note": "ZERO BY RULE: only an independent audit may write VERIFIED_FIXED, and none has since the audit at e07e6ca. An empty internal_remaining would NOT itself be a proof, and this block therefore carrieth the remaining work rather than claiming its absence.",
   "derived_status_counts": {
    "original_54": {
-    "FIX_SUBMITTED": 49,
-    "PARTIAL": 5
+    "FIX_SUBMITTED": 50,
+    "PARTIAL": 4
    },
    "audit_13_new": {
     "FIX_SUBMITTED": 11,
@@ -14897,9 +14898,6 @@
   },
   "independent_audit_dispositions_at_e07e6ca": {},
   "internal_remaining": [
-   "GS-ARCHIVE-005: no hosted run URL/log was available, so hosted convergence remains pending",
-   "GS-ARCHIVE-005: *** ROUND 2026-09-20 (ii): FIVE EXECUTED-APP ARMS GREEN, ONE DETERMINISTICALLY RED -- AND THE RED IS THE RECORD. *** *Clean serialized run, fresh derived data, zero concurrency: `E",
-   "GS-ARCHIVE-005: *** ROUND 2026-09-20 (iii): THE iOS LANE IS GREEN AFTER THE APP CHANGES. *** *`run_ios_lane.sh` EXIT=0; GodstoneMeshTests 1287/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1397 t",
    "GS-INTEGRATION-001: TWO OF THE THREE OWNERS ARE REPAIRED AND PROVEN: the WIPE owner (the round-514 RED measured that `beginWipe()` erased no row; `59c72ab` turned it green) and the PERSISTENCE owner; ",
    "GS-STRESS-001: *** FOUR INVARIANTS STILL READ THE MODEL'S OWN INTEGERS -- RE-MEASURED AND CORRECTED IN ROUND 671: the SIX kinds this sentence named (leases, timers, sessions, inventory leases, re",
    "GS-STRESS-001: THE CARD'S STEP 6 IS STILL NOT SATISFIED AND IS NOT CLAIMED: a mutation confined to `StressCampaign`'s local bookkeeping remaineth the onely mutation the campaign lane carrieth (me",
@@ -14925,9 +14923,6 @@
    "GS-FINAL-006: *** ROUND 2026-09-20 (iii): THE iOS LANE IS GREEN AFTER THE APP CHANGES. *** *`run_ios_lane.sh` EXIT=0; GodstoneMeshTests 1287/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1397 t"
   ],
   "external_acceptance": [
-   "GS-ARCHIVE-005: STEP 7'S APP-LEVEL ARM NOW EXISTS AND PASSES (round 595), through a real `SavedStateHandle` and the recomposed real screen -- the layer the card explicitly refused to accept a mode",
-   "GS-ARCHIVE-005: *** ROUND 2026-09-20: THE iOS WITNESS IS AUTHORED AND MUTATION-PROVEN, AND THE CLAIM THAT BLOCKED IT WAS FALSE. *** *`GsArchive005IOSRestorationTests` (3 arms, `GodstoneCoreTests`)",
-   "GS-ARCHIVE-005: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we",
    "GS-INTEGRATION-001: *** AND THE THIRD OWNER IS MEASURED AND SIZED, RE-MEASURED THIS ROUND: **THE COMPOSITION'S RADIO IS NOT THE REAL TRANSPORT.** `ComposedRuntime.swift:309 self.link = link ?? LinkFac",
    "GS-INTEGRATION-001: AND THE HONEST BOUNDARY ON WHAT *IS* PROVEN: the durable intent, the wipe and the persistence are witnessed on the HOST through the composition's own entries; **NO DEVICE, NO RADIO",
    "GS-INTEGRATION-001: *** ROUND 2026-09-20: THE THIRD OWNER IS NOW WITNESSED. *** The record above (round 533) said \"THE THIRD OWNER IS MEASURED AND SIZED ... THE COMPOSITION'S RADIO IS NOT THE REAL TRA",
@@ -15194,14 +15189,19 @@
    "GS-ARCHIVE-005": {
     "group": "original",
     "severity": "MEDIUM",
-    "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "gs-archive-005.app-witness",
       "text": "An executed iOS app/simulator witness for Archive recreation/restoration. The ledger's claim that the app layer 'cannot be compiled because of NATIVE_MODELS' is STALE: the canonical hosted workflow builds `Godstone-Light` successfully.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- THE EXECUTED ARM `testGSA005DocumentReopensAfterCleanProcessDeath`, which terminate()s the process and RELAUNCHES it, then asserts the reader returned. MEASURED GREEN at 47.011s and 47.131s across two independent runs, with all six archive arms green and the lane control reporting `ios:ui suites=2 tests=12 failures=0`.",
+       "`path:ios/Godstone/Sources/GodstoneCore/ArchivePlaceStore.swift` -- THE DURABLE VEHICLE. *The arm was DETERMINISTICALLY RED for the life of the defect and it was RIGHT: the place stood in @SceneStorage, scene-scoped by contract, discarded with the scene and restorable only for an app that OPTS INTO STATE RESTORATION -- which this target carrieth not.* The record is a UserDefaults record now, written at the app's OWN transitions, so it surviveth the terminate() the arm performeth.",
+       "`path:ios/Godstone/Sources/App/ArchiveView.swift` -- the write call sites at the app's guaranteed transitions (openedDocumentId, scrollAnchor), and the read on launch.",
+       "AND THE ARM IS NOT GREEN BY WEAKENING: `IOS_UI_KNOWN_RED` is now EMPTY. The allowance that permitted this arm's red was retired WITH the cause, and `path:ci/check_lane_results.py` carrieth the negative control proving a failure here now reddeneth the lane."
+      ]
      }
     ],
     "external_obligations": []
@@ -15742,8 +15742,12 @@
      {
       "id": "gs-final-006.mutation",
       "text": "Disconnect the production restore/anchor consumption and confirm the executed app test FAILS.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift` -- THE MUTATION: restore(from:)'s .document case IGNORED the persisted openedDocumentId and returned to the list instead of reopening the document.",
+       "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- MEASURED, AND THE EXECUTED APP ARM FAILED FOR THE CORRECT REASON: `testGSA005DocumentReopensAfterCleanProcessDeath` FAILED (36.312s) with the message naming THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH, while the other five arms passed unchanged and the run carried ZERO launch refusals. *A MUTATION THAT REDDENETH AN INCIDENTAL FAILURE PROVES NOTHING; THIS ONE REDDENED THE CLAIM ITSELF.*",
+       "AND IT WAS TAKEN ON THE REAL APP ROAD, NOT A MODEL COURT: the arm terminate()s and relaunches the process, so the mutation had to break the ACTUAL restoration to fail it. The source was restored and verified: marker absent, byte-identical to HEAD, `path:scripts/sync_ios_foundation_package.py` --check rc=0, and the six arms green again."
+      ]
      }
     ],
     "external_obligations": []
@@ -15856,14 +15860,14 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 7,
-   "findings_with_internal_status_open": 7,
-   "internal_obligations_open": 19,
-   "internal_obligations_unresolved": 19,
+   "findings_internal_open": 6,
+   "findings_with_internal_status_open": 6,
+   "internal_obligations_open": 17,
+   "internal_obligations_unresolved": 17,
    "obligations_by_state": {
-    "OPEN": 17,
+    "OPEN": 15,
     "PARTIAL": 2,
-    "DISCHARGED": 13
+    "DISCHARGED": 15
    },
    "external_obligations": 5
   },
