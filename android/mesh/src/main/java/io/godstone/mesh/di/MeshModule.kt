@@ -211,6 +211,35 @@ internal fun decide(outcome: WipeStepResult, readable: Boolean): StartupWipeDeci
  * QUESTION.** *A bare `Boolean` was rejected by the audit because it records no cause; the cause is what makes the
  * refusal FALSIFIABLE and what tells an operator whether a human is needed.*
  */
+/**
+ * *** GS-FINAL-003 `typed-permit`: THE PRIVATE-STORE AUTHORITY, SHAPED EXACTLY AS THE iOS ISLE'S `PrivateRuntimePermit`. ***
+ *
+ * *THE AUDIT'S CHARGE, QUOTED IN THIS FILE AT :408: "Replace Unit/ignored result with an internal, **non-forgeable
+ * startup permit** issued only after a typed recovery decision."* **AND ITS ROOT CAUSE, WHICH IS THE PRECISE ONE:
+ * "providers require the barrier OBJECT, not a successful recovery capability."**
+ *
+ * *** WHAT STOOD HERE WAS DECORATION, AND THIS FILE SAID SO ITSELF: the three private providers TAKE the barrier as a
+ * required parameter, and `recordStartupPermit` READ IT ONLY TO EMIT `Log.w` -- construction then proceeded whatever
+ * the decision said. THE CLAUSE FORBIDETH EXACTLY THAT ("not a Bool; not a log marker; not a public freely
+ * constructible value"), SO THE AUTHORITY WAS PRESENT AND UNUSED.***
+ *
+ * **THE SHAPE IS THE iOS ONE, DELIBERATELY, SO THE TWO ISLES CANNOT DRIFT:** *a PRIVATE constructor, and a `issue`
+ * factory that returneth `null` for every decision that doth not permit construction.* **A caller cannot mint one, so a
+ * call site cannot skip the gate by asserting the estate is fine -- it must be HANDED a permit that a typed decision
+ * produced.**
+ */
+class PrivateStorePermit private constructor(val issuedFrom: StartupWipeDecision) {
+    companion object {
+        /**
+         * *The ONLY way to obtain a permit.* **Returneth `null` -- rather than throwing -- for every refusing
+         * decision, so an optional binding is the natural shape at a call site and there is no error a caller might
+         * swallow.**
+         */
+        fun issue(decision: StartupWipeDecision): PrivateStorePermit? =
+            if (decision.allowsPrivateConstruction) PrivateStorePermit(decision) else null
+    }
+}
+
 enum class StartupWipeDecision(val allowsPrivateConstruction: Boolean, val requiresOperator: Boolean) {
     /** Nothing was ever requested. The ONLY case that may open private stores. */
     CLEAN_START(allowsPrivateConstruction = true, requiresOperator = false),
@@ -337,17 +366,34 @@ internal object MeshModule {
      * reads `barrier.permitsStartup`; wiring that into an admission gate (rather than into construction) is the
      * prerequisite named in the ledger for both isles.
      */
-    private fun recordStartupPermit(barrier: MeshStartupWipeBarrier) {
-        if (!barrier.decision.allowsPrivateConstruction) {
-            android.util.Log.w(
-                "GodstoneStartupWipe",
-                "GS-FINAL-003: startup decided ${barrier.decision} (${barrier.outcome}); no key was erased and no " +
-                    "artifact deleted. THE TYPED CASE, NOT A BOOLEAN, is recorded here so that an operator can tell a " +
-                    "recoverable refusal from a corrupt journal. The runtime MUST NOT admit sensitive use until the " +
-                    "live-seam resume completes.",
-            )
-        }
+    private fun recordStartupPermit(barrier: MeshStartupWipeBarrier, permit: PrivateStorePermit) {
+        // *** THE PERMIT IS CONSUMED HERE, WHICH IS THE POINT: A PARAMETER THAT IS NEVER READ IS THE SAME DECORATION
+        // THIS PROVIDER PAIR ALREADY CARRIED. ***
+        //
+        // *The authority is BOUND to the decision it was issued from, so the record proveth that construction happened
+        // under a permitting decision rather than merely asserting it:* **`permit.issuedFrom` is the typed case, and
+        // the compiler ensured a permit could not exist for a refusing one.**
+        android.util.Log.i(
+            "GodstoneStartupWipe",
+            "GS-FINAL-003: private construction authorised by ${permit.issuedFrom} " +
+                "(ladder ${barrier.outcome}); the operator-visible decision is ${barrier.decision} " +
+                "(requiresOperator=${barrier.decision.requiresOperator}).",
+        )
     }
+
+    /**
+     * *** THE ONE PLACE THE PERMIT IS MINTED, AND IT REFUSETH WITHOUT THROWING. ***
+     *
+     * *`PrivateStorePermit.issue` returneth `null` for every decision that doth not permit construction, and the
+     * constructor is private -- so this function is the ONLY road to an authority, and it produceth one only when the
+     * typed ladder said so.* **A caller cannot assert its way past it, because there is nothing to assert with.**
+     */
+    fun issuePrivateStorePermit(barrier: MeshStartupWipeBarrier): PrivateStorePermit =
+        requireNotNull(PrivateStorePermit.issue(barrier.decision)) {
+            "GS-FINAL-003: startup decided ${barrier.decision} (ladder ${barrier.outcome}); NO PRIVATE STORE MAY BE " +
+                "CONSTRUCTED. No permit existeth for a refusing decision, so this provider cannot be satisfied -- which " +
+                "is the gate, stated as a missing binding rather than as a log line."
+        }
 
     @Provides @Singleton
     fun provideRuntimeLifecycleGate(): DefaultRuntimeLifecycleGate =
@@ -356,9 +402,21 @@ internal object MeshModule {
     @Provides @Singleton
     fun provideIdentity(
         @ApplicationContext ctx: Context,
-        barrier: MeshStartupWipeBarrier
+        barrier: MeshStartupWipeBarrier,
+        // *** THE PERMIT IS NOW A PARAMETER, WHICH IS THE DIFFERENCE BETWEEN A GATE AND A COMMENT. ***
+        //
+        // *THIS IS THE iOS PATTERN AND IT IS DELIBERATE: there, `createPrivateComposition` REQUIREth a
+        // `PrivateRuntimePermit`, **so a call site that omiteth it CANNOT COMPILE** -- and that compile-failure was
+        // MEASURED, not asserted (`error: missing argument for parameter 'permit' in call`). Here the same shape
+        // meaneth a caller cannot reach an identity construction without having been handed an authority that a typed
+        // decision produced.*
+        //
+        // **AND THE BARRIER STAYETH BESIDE IT RATHER THAN BEING REPLACED, BECAUSE THEY ARE TWO DIFFERENT THINGS:**
+        // *the permit is the AUTHORITY to construct (non-forgeable, issued once), and the barrier is the TYPED ANSWER
+        // an operator can read -- including `requiresOperator`, which a permit need not carry.*
+        permit: PrivateStorePermit
     ): Identity {
-        recordStartupPermit(barrier)
+        recordStartupPermit(barrier, permit)
         return Identity.loadOrCreate(ctx)
     }
 
@@ -371,9 +429,10 @@ internal object MeshModule {
     @Provides @Singleton
     fun provideSqliteMessageStore(
         @ApplicationContext ctx: Context,
-        barrier: MeshStartupWipeBarrier
+        barrier: MeshStartupWipeBarrier,
+        permit: PrivateStorePermit
     ): SqliteMessageStore {
-        recordStartupPermit(barrier)
+        recordStartupPermit(barrier, permit)
         return SqliteMessageStore(ctx, STORE_MAX_BYTES)
     }
 
@@ -384,9 +443,10 @@ internal object MeshModule {
     @Provides @Singleton
     fun providePeerIdentityStore(
         @ApplicationContext ctx: Context,
-        barrier: MeshStartupWipeBarrier
+        barrier: MeshStartupWipeBarrier,
+        permit: PrivateStorePermit
     ): SqlcipherPeerIdentityStore {
-        recordStartupPermit(barrier)
+        recordStartupPermit(barrier, permit)
         return SqlcipherPeerIdentityStore(ctx)
     }
 

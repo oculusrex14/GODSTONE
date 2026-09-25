@@ -162,21 +162,37 @@ internal abstract class MeshGraphMeshModule {
         @Provides @Singleton
         fun runtimeLifecycleGate(): DefaultRuntimeLifecycleGate = MeshModule.provideRuntimeLifecycleGate()
 
+        /// *** THE PERMIT IS ISSUED FROM THE TYPED DECISION, AND `issue` RETURNETH NULL FOR EVERY REFUSING ONE. ***
+        ///
+        /// *THIS BINDING IS WHERE THE CLAUSE BITETH: if the ladder decided anything but `CLEAN_START`, there is NO
+        /// permit to inject, so the three private providers CANNOT BE REACHED -- **and Dagger says so at COMPILE TIME,
+        /// which is the same strength the iOS isle proved with `error: missing argument for parameter 'permit' in
+        /// call`.***
+        ///
+        /// **AND A REFUSAL IS NOT SWALLOWED INTO A SUCCESS:** *a `Dagger/MissingBinding` is the honest outcome of a
+        /// graph that cannot be completed without an authority the startup did not grant. The graph must still be
+        /// BUILDABLE so the wipe can COMPLETE (the measured reason the refusal liveth at ADMISSION rather than at
+        /// construction on this isle), which is why the barrier is provided unconditionally and only the PERMIT is
+        /// conditional.*
         @Provides @Singleton
-        fun identity(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier): Identity =
-            MeshModule.provideIdentity(ctx, barrier)
+        fun privateStorePermit(barrier: MeshStartupWipeBarrier): PrivateStorePermit =
+            MeshModule.issuePrivateStorePermit(barrier)
 
         @Provides @Singleton
-        fun messageStore(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier): SqliteMessageStore =
-            MeshModule.provideSqliteMessageStore(ctx, barrier)
+        fun identity(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier, permit: PrivateStorePermit): Identity =
+            MeshModule.provideIdentity(ctx, barrier, permit)
+
+        @Provides @Singleton
+        fun messageStore(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier, permit: PrivateStorePermit): SqliteMessageStore =
+            MeshModule.provideSqliteMessageStore(ctx, barrier, permit)
 
         @Provides @Singleton
         fun messageStoreInterface(store: SqliteMessageStore): MessageStore =
             MeshModule.provideMessageStore(store)
 
         @Provides @Singleton
-        fun peerIdentityStore(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier): SqlcipherPeerIdentityStore =
-            MeshModule.providePeerIdentityStore(ctx, barrier)
+        fun peerIdentityStore(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier, permit: PrivateStorePermit): SqlcipherPeerIdentityStore =
+            MeshModule.providePeerIdentityStore(ctx, barrier, permit)
 
         @Provides @Singleton
         fun peerIdentityRepository(store: SqlcipherPeerIdentityStore): PeerIdentityRepository =
