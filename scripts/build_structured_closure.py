@@ -445,6 +445,21 @@ def finding_state_problems(closure: dict) -> list[str]:
                 f"a finding cannot be internally open with nothing left to do, because no batch of work could ever "
                 f"close it. Either discharge is incomplete and an obligation must be reopened with evidence, or the "
                 f"finding's recorded status has not followed its own obligations")
+        # *** AND THE SYMMETRIC DIRECTION, WHICH MY FIRST VERSION OMITTED AND A MUTATION FOUND. ***
+        #
+        # *THE CLOSURE MISSION'S SECTION 19 LISTETH BOTH DIRECTIONS AS REQUIRED KILLS: "3. PARTIAL finding with zero
+        # unresolved obligations -> REFUSE" AND "4. FIX_SUBMITTED finding with an OPEN obligation -> REFUSE".* **MY
+        # FIRST RULE COVERED ONLY THE FIRST, SO MUTATION 4 WOULD HAVE ESCAPED -- a finding declared COMPLETE while its
+        # own obligation set saith otherwise, which is the direction that MATTERS MOST: it is the one that claimeth
+        # work is finished.*** *A rule that refuses "closed but nothing done" while permitting "done but not closed"
+        # guardeth the state nobody reaches and misseth the state a builder is tempted to write.*
+        if f.get("internal_status") != "OPEN" and not obligations_are_terminal(f):
+            live = [o.get("id") for o in obls if o.get("status") in UNRESOLVED_OBLIGATION_STATES]
+            problems.append(
+                f"{fid}: internal_status is {f.get('internal_status')!r} while "
+                f"{len(live)} of its obligations are UNRESOLVED ({', '.join(str(x) for x in live[:3])}"
+                f"{'...' if len(live) > 3 else ''}) -- a finding declared complete over live internal work is the "
+                f"overclaim this control plane existeth to refuse")
     return problems
 
 
