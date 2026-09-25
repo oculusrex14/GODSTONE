@@ -61,11 +61,21 @@ fi
 # A BOUNDED WAIT DEGRADES TO THE OLD BEHAVIOUR INSTEAD.***
 #
 # *`timeout` is spelled through `perl` rather than assumed: macOS ships no GNU `timeout`, and busybox's `-t` flag would
-# silently change the meaning on another host. 120s is generous for a device that is going to settle at all -- the
-# successful hosted runs took ~20 min for the WHOLE lane.*
+# silently change the meaning on another host.*
+#
+# *** AND THE BOUND MUST BE LONGER THAN THE SETTLE IT WAITETH FOR -- MY FIRST NUMBER WAS 120s AND IT WAS WRONG FOR THE
+# VERY CASE THE WAIT EXISTETH TO CURE. *** *MEASURED: with 120s, the local UI lane finished in 150s carrying
+# `ios:ui suites=1 tests=6` -- **ONE SCHEME, WITH THE SIX ARCHIVE ARMS ENTIRELY ABSENT** -- because `bootstatus -b`
+# TAKES A LONG TIME PRECISELY WHEN THE DEVICE IS STILL SETTLING:* ***so a bound shorter than the settle KILLETH THE
+# WAIT EXACTLY WHEN IT IS NEEDED, AND THE SCHEME THEN LAUNCHETH INTO A WEDGED DEVICE.*** **THAT TRADETH A HANG FOR THE
+# FALSE RED -- THE OUTCOME THIS LANE EXISTS TO PREVENT -- AND A `Busy` REFUSAL IN 150s YIELDETH ZERO ARM VERDICTS,
+# WHICH IS THE SAME NON-ANSWER AS A HANG, REACHED FASTER.***
+#
+# *900s (15 min) is past the realistic per-scheme settle -- ~8-10 min is normal, and the whole lane took ~20 min when it
+# worked -- and it remaineth a bound: THE POINT IS "NOT FOREVER", NOT "SHORT".*
 _bounded_boot_wait() {
     local udid="$1"
-    perl -e 'alarm shift; exec @ARGV' 120 xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1 || true
+    perl -e 'alarm shift; exec @ARGV' 900 xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1 || true
 }
 UDID="$(xcrun simctl list devices available 2>/dev/null | grep -F "$SIM (" | head -1 | grep -oE '[0-9A-F-]{36}')"
 if [ -n "$UDID" ]; then
@@ -117,10 +127,39 @@ done
 python3 tools/readiness/ios_source_digest.py >"$LOG.sources.sha256"
 
 # 5. EVIDENCE-PRODUCTION GATE: the script fails only if it could not produce a log to interpret.
-if [ ! -s "$LOG" ]; then
-    echo "::error::the iOS UI lane produced NO log -- nothing for the checker to interpret" >&2
-    exit 2
+#
+# *** AND "A LOG EXISTS" WAS TOO WEAK A TEST FOR THAT, WHICH I MEASURED RATHER THAN REASONED ABOUT. ***
+#
+# *A SCHEME WHOSE RUNNER IS REFUSED AT LAUNCH -- `Code=6`, `reason: Busy ("Application failed preflight checks")` --
+# STILL WRITETH THAT ERROR INTO THE LOG, so `-s "$LOG"` was satisfied and this runner reported success on a lane that
+# produced HALF ITS EVIDENCE.* **MEASURED: the lane echoed `schemes=2` while its own log carried `ios:ui suites=1
+# tests=6` -- ONE SCHEME, AND THE SIX ARCHIVE ARMS ENTIRELY ABSENT.** *The committed checker DID catch it (it requireth
+# every named arm), which is why the verdict was still refused -- **but a runner that reporteth success on a
+# half-empty lane inviteth the next reader to trust the wrong line.***
+#
+# **SO A SCHEME THAT DID NOT LAUNCH IS NOT EVIDENCE, AND THIS SAYETH SO AT THE POINT THE FAILURE HAPPENETH** --
+# *counting the arms each scheme actually produced, from the log, rather than counting loop iterations.*
+#
+# *The arms are keyed exactly as the checker keys them: `suite.Class method` for the UI targets. This is a
+# LAUNCH-EVIDENCE gate, not a verdict -- a scheme that launched and failed an arm still passeth here, because that is
+# the checker's call and a recorded known-red obligation lives among those arms.*
+launched=0
+missing=""
+for s in LabMeshUITests GodstoneArchiveUITests; do
+    if grep -qE "Test Case '-\[[A-Za-z0-9_.]*${s}\." "$LOG"; then
+        launched=$((launched + 1))
+    else
+        missing="$missing $s"
+    fi
+done
+if [ "$launched" -ne "$schemes_run" ]; then
+    echo "::error::only $launched of $schemes_run UI schemes LAUNCHED -- no arm verdict for:$missing" >&2
+    echo "  a scheme refused at launch (typically 'Busy (Application failed preflight checks)') still writeth an error" >&2
+    echo "  into the log, so a non-empty log is NOT evidence that the scheme ran. The wait before each scheme is bounded" >&2
+    echo "  at 900s precisely so a settle is not cut short; if this keeps happening the DEVICE is wedged, which is an" >&2
+    echo "  environment fault and NOT a verdict about the product." >&2
+    exit 3
 fi
-echo "iOS UI lane: schemes=$schemes_run raw-rc=$rc log=$LOG digest=$(cut -c1-16 "$LOG.sources.sha256")…"
+echo "iOS UI lane: attempted=$schemes_run launched=$launched raw-rc=$rc log=$LOG digest=$(cut -c1-16 "$LOG.sources.sha256")…"
 echo "  (*the raw xcodebuild status is EVIDENCE; the verdict comes from \`ci/check_lane_results.py\`*)"
 exit 0
