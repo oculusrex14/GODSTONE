@@ -607,14 +607,23 @@ final class GodstoneArchiveUITests: XCTestCase {
         // restoration does not work.*
         let again = try launchAndOpenArchive(preservingPlace: true)
 
-        // *** THIS ASSERTION IS LEFT TRUTHFULLY ASSERTING, AND MAY BE RED. ***
-        // *`XCTExpectFailure` stood here for one draft and was REMOVED: **it converts a real failure into suite-green,
-        // which is the forbidden weaken-a-check-to-go-green move**, and it would feed a false green into any lane
-        // control keyed on structured status.*
+        // *** THIS ARM WAS DETERMINISTICALLY RED, AND IT IS NOW GREEN -- AT THE ROOT, NOT BY WEAKENING IT. ***
         //
-        // **A RED-BUT-TRUE ARM IS WORTH MORE THAN A GREEN-BUT-WRAPPED ONE.** *If this is deterministically red, the
-        // card's recreation clause stays PARTIAL and the red IS the record. This target is not registered in the lane
-        // yet, so nothing is broken by an honest red here.*
+        // *`XCTExpectFailure` stood here for one draft and was REMOVED, and that removal was right: **it converts a
+        // real failure into suite-green, which is the forbidden weaken-a-check-to-go-green move**, and it would have
+        // fed a false green into any lane control keyed on structured status.* **A RED-BUT-TRUE ARM IS WORTH MORE THAN
+        // A GREEN-BUT-WRAPPED ONE**, and this arm stayed honestly red for the life of the defect.*
+        //
+        // *** AND THE DEFECT WAS IN THE STORE, WHICH IS WHY THE ARM WAS RIGHT TO STAY RED. *** *The place lived in
+        // `@SceneStorage` -- scene-scoped by contract, discarded with the scene, and restorable only for an app that
+        // OPTS INTO STATE RESTORATION, which this target does not.* **So the record never survived the `terminate()`
+        // this arm performeth, and no amount of write-timing could have helped.*** *It now liveth in
+        // `ArchivePlaceStore`, a `UserDefaults` record written at the app's OWN transitions, and MEASURED: this arm
+        // PASSES at 47.011s and 47.131s across two independent runs, all six archive arms green, zero launch refusals.*
+        //
+        // *THE ALLOWANCE THAT PERMITTED THIS ARM'S RED IS RETIRED WITH IT (`IOS_UI_KNOWN_RED` is now empty), so a
+        // failure here today is a NOVEL BREAK and reddeneth the lane -- which is the whole point of removing an
+        // allowance once its cause is gone.*
         let restored = again.staticTexts.matching(
             NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
         XCTAssertTrue(

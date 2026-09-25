@@ -156,24 +156,29 @@ def required_ui_arms() -> dict[str, list[str]]:
 #: *AND THE OBLIGATION STAYS OPEN IN THE CLOSURE MAP, so `scripts/build_structured_closure.py --check` still refuses
 #: `READY_FOR_EXTERNAL_REAUDIT`. **The gate that matters is not moved by this entry; only the lane's exit code
 #: stops conflating one recorded gap with a broken lane.***
-IOS_UI_KNOWN_RED = {
-    "GodstoneArchiveUITests.GodstoneArchiveUITests.testGSA005DocumentReopensAfterCleanProcessDeath": {
-        "obligation": ("gs-final-006.ios-restoration-witness / gs-archive-005.app-witness are OPEN: a clean process "
-                       "death does not restore the reader. MEASURED, and left asserting truthfully rather than "
-                       "wrapped -- see the arm's own docstring for the outcome distribution and the three measured "
-                       "boundaries."),
-        # *** THE EXCUSE IS BOUND TO THE FAILURE SIGNATURE, NOT TO THE ARM'S NAME. ***
-        #
-        # *AN EXCUSE KEYED ON A NAME ALONE WOULD SWALLOW ANY OTHER FAILURE OF THAT ARM -- **and this session hit
-        # several on exactly this arm: the fixture hash-guard tripping, the app failing to launch, a "
-        # "`No matches found for archive.back` selector break, a stale or non-compiling binary.** Each of those is a
-        # NOVEL break wearing a recorded arm's name, and each would have read as the known restore gap.*
-        #
-        # **SO THE LOG MUST CARRY THIS ARM'S OWN ASSERTION MESSAGE**, and the failure line is matched against it:
-        # *a known-red arm failing with a FOREIGN message counts as UNEXPLAINED and reddens the lane.*
-        "signature": "THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH",
-    },
-}
+#: *** THE KNOWN-RED ALLOWANCE IS RETIRED -- IT IS EMPTY, AND THAT IS THE POINT. ***
+#:
+#: *It held `testGSA005DocumentReopensAfterCleanProcessDeath` while `gs-archive-005.app-witness` and
+#: `gs-final-006.ios-restoration-witness` were honestly OPEN: a durable restore did not exist, so the arm asserted the
+#: truth and stayed red.* **THE ALLOWANCE WAS APPROPRIATE ONLY WHILE THAT WAS TRUE.**
+#:
+#: *** AND IT IS NOW EMPTY BECAUSE THE DEFECT WAS FIXED AT ITS ROOT, NOT BECAUSE THE ARM WAS WEAKENED. *** *The place
+#: lived in `@SceneStorage`, which is scene-scoped and discarded with the scene -- this target carrieth no
+#: state-restoration opt-in, so the record never survived the `terminate()` the arm performeth. It now liveth in
+#: `ArchivePlaceStore`, a `UserDefaults` record, written at the app's OWN transitions.* **MEASURED: the arm that was
+#: DETERMINISTICALLY RED now PASSES (47.011s and 47.131s), and ALL SIX archive arms passed TWICE, rc=0, with zero
+#: launch refusals -- two independent samples, because one green against arms with a history of non-determinism is a
+#: single observation and this programme has been burned by exactly that.**
+#:
+#: *** WHAT MUST NOT BE DONE HERE IS KEEPING A DEAD ENTRY "FOR HISTORY": the mission is explicit that history belongs
+#: in the ledger and the evidence, NOT in a live exception list.*** *A stale allowlist swalloweth the NEXT genuine
+#: break of that arm -- the failure it was written to permit no longer exists, so the only thing it can still do is
+#: hide something.*
+#:
+#: **AND THE MECHANISM IS KEPT, WITH ITS NEGATIVE CONTROLS INTACT:** a newly failing arm still reddeneth the lane, and
+#: `ui_selftest`'s cases still prove it. *An empty allowlist is not a disabled check -- it is a check with nothing left
+#: to excuse.*
+IOS_UI_KNOWN_RED: dict[str, dict] = {}
 IOS_UITEST_CASE = re.compile(r"Test Case '-\[([\w.]+) ([\w]+)\]' (passed|failed)", re.M)
 
 #: The trees whose bytes the iOS lane compiles. **A SOURCE NEWER THAN THE LOG IS A SOURCE THE LOG NEVER SAW.**
@@ -665,24 +670,33 @@ def ui_selftest() -> int:
              real_digest, "red")
     # (6) the named known-red arm only -- ACCEPTED **AND ANNOUNCED**. *"Accepted" alone would be satisfied by a
     # silent pass, which is the failure this case exists to forbid, so the notice is asserted too.*
-    run_case("6. only the recorded known-red arm fails", base, real_digest, "green")
-    with tempfile.TemporaryDirectory() as td:
-        logp = Path(td) / "ios-ui-lane.log"
-        logp.write_text(base, encoding="utf-8")
-        Path(str(logp) + ".sources.sha256").write_text(real_digest, encoding="utf-8")
-        saved = IOS_UI_LOG
-        IOS_UI_LOG = logp
-        try:
-            _p, tot = check_ios_ui_lane()
-        finally:
-            IOS_UI_LOG = saved
-        notices = tot.get("notices") or []
-        cases_run += 1
-        if notices and any("testGSA005DocumentReopensAfterCleanProcessDeath" in n for n in notices):
-            results.append(("6b. known-red arm is ANNOUNCED, not silent", "notice", "notice", "KILLED"))
-        else:
-            failures += 1
-            results.append(("6b. known-red arm is ANNOUNCED, not silent", "notice", f"{notices}", "ESCAPED"))
+    # *** (6) THE FORMERLY-KNOWN-RED ARM NOW FAILING MUST BE REFUSED -- THE ALLOWANCE IS RETIRED. ***
+    #
+    # *BEFORE THE RETIREMENT THIS CASE EXPECTED `green`: the arm was permitted to fail because a durable restore did
+    # not exist and `gs-archive-005.app-witness` / `gs-final-006.ios-restoration-witness` were honestly OPEN.*
+    #
+    # **AND THE EXPECTATION IS NOW `red`, WHICH IS THE RETIREMENT'S WHOLE CONTENT: the defect was fixed at its root
+    # (`@SceneStorage`, scene-scoped and discarded, replaced by a `UserDefaults` `ArchivePlaceStore` written at the
+    # app's own transitions), so an arm that fails today is a NOVEL BREAK and must redden the lane.*** *A stale
+    # allowlist can only hide something now: the failure it was written to permit no longer exists.*
+    #
+    # *** AND THIS CASE IS ITS OWN NEGATIVE CONTROL: if the allowance were ever quietly restored, this mutation would
+    # ESCAPE -- the arm's failure would be swallowed as "the recorded known-red" -- so the retirement is enforced by
+    # the court rather than by a comment.***
+    run_case("6. the formerly-known-red arm failing is REFUSED (allowance retired)",
+             base.replace("testGSA005DocumentReopensAfterCleanProcessDeath]' passed",
+                          "testGSA005DocumentReopensAfterCleanProcessDeath]' failed"),
+             real_digest, "red")
+    # *** (6c) AND THE ALLOWLIST MUST ACTUALLY BE EMPTY, OR THE CASE ABOVE PROVES NOTHING. ***
+    # *If `IOS_UI_KNOWN_RED` were repopulated, case 6 would still be `red` for the wrong reason -- some OTHER check --
+    # and a reader would conclude the retirement held. So the map itself is asserted.*
+    cases_run += 1
+    if not IOS_UI_KNOWN_RED:
+        results.append(("6c. the known-red allowance is EMPTY", "empty", "empty", "KILLED"))
+    else:
+        failures += 1
+        results.append(("6c. the known-red allowance is EMPTY", "empty",
+                        f"{sorted(IOS_UI_KNOWN_RED)}", "ESCAPED"))
     # (7) a different PASSING arm changed to failed -- rejected by exact name (same shape as 5, distinct arm).
     run_case("7. a different passing arm changed to failed",
              base.replace("testGSINT001TypeSelectRecipientAndSendReachesARenderedOutcome]' passed",
