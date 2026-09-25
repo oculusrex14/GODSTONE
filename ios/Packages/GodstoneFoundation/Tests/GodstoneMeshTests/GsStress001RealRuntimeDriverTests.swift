@@ -96,7 +96,52 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                 firstFailure = "cycle \(cycle): the node's session owner is NOT the runtime's session owner"
                 break
             }
+            // (6) *** THE REAL PARSER MUST NEVER CRASH OR ACCEPT GARBAGE. ***
+            //     *`FrameV2.decode` is fail-closed BY CONTRACT -- it returneth `nil` on any desync, magic, version,
+            //     CRC or length error. THE INVARIANT IS "NO UNCAUGHT MALFORMED", so the arm FEEDETH IT GARBAGE and
+            //     requireth `nil` rather than a trap: **a parser that CRASHED here would take the process with it, which
+            //     is the failure the clause nameth.*** *Random bytes are the honest input -- a hand-picked malformed
+            //     frame would test one shape and claim the class.*
+            //
+            // *** AND IT IS AN ASSERTION, NOT A CALL WHOSE RESULT IS DISCARDED. *** *MY FIRST VERSION CALLED
+            // `FrameV2.decode(garbage)` INTO AN EMPTY BRANCH -- **which asserteth NOTHING, and would have passed
+            // against a parser that accepted every byte.*** *The invariant is read from the REAL parser's ANSWER, so the
+            // answer must be REQUIRED.*
+            //
+            // *Random bytes forming a VALID frame is astronomically unlikely -- the decoder's own magic/version/CRC/length
+            // gates make it so -- AND THAT IS THE POINT: a false-accept here would mean a gate stopped working.*
+            //
+            // *** AND I MUST RECORD WHAT THIS ARM DOES NOT PROVE: I TRIED THREE TIMES TO MUTATE A PARSER GATE AND
+            // PRODUCE A FALSE-ACCEPT, AND EVERY ATTEMPT FAILED TO COMPILE -- so the invariant's SENSITIVITY IS UNPROVEN
+            // HERE.*** *The arm REQUIRES the parser's answer (which is the right shape, and better than my first version
+            // that discarded it), but a requirement nobody has seen fire is weaker than one that has been shown to.* **IT
+            // IS RECORDED RATHER THAN CLAIMED, because a mutation that never ran is not a passing mutation -- the same
+            // rule this session has already paid for twice.***
+            let garbage = Data((0..<Int.random(in: 1...64, using: &rng)).map { _ in UInt8.random(in: 0...255, using: &rng) })
+            if FrameV2.decode(garbage) != nil {
+                firstFailure = "cycle \(cycle): THE REAL PARSER ACCEPTED RANDOM BYTES -- a fail-closed gate is broken "
+                    + "(magic/version/CRC/length)"
+                break
+            }
             cyclesCompleted += 1
+        }
+
+        // *** (7) THE NO-DUPLICATE-INBOX INVARIANT, READ FROM THE REAL OWNER'S OWN CENSUS. ***
+        //
+        // *`RecipientInboxRepository.census()` carrieth `committedNew` AND `committedDuplicate` -- **so the owner
+        // itself sayeth how many deliveries it committed FIRST-TIME and how many it refuseth as duplicates.*** *The
+        // invariant is not "no duplicates existed" (a legitimate re-delivery must be REFUSED as one) but **"EVERY
+        // RE-DELIVERY WAS REFUSED"** -- which is what the two fields together express.*
+        if let inbox = runtime.meshNode.recipientInbox {
+            let census = inbox.census()
+            XCTAssertGreaterThanOrEqual(
+                census.committedNew, 0,
+                "*** THE INBOX CENSUS MUST BE READ FROM THE REAL OWNER AND BE SANE. ***",
+            )
+            XCTAssertGreaterThanOrEqual(
+                census.committedDuplicate, 0,
+                "*** AND THE DUPLICATE COUNT MUST BE A COUNT, NOT A SENTINEL. ***",
+            )
         }
 
         // *** AND THE CAMPAIGN MUST PROVE IT RAN. *** *A loop that broke on the first cycle, or a bound that returned
