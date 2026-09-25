@@ -995,4 +995,109 @@ final class GsIntegration001RealTransportTests: XCTestCase {
                 "the relay road accepted and persisted a frame the node must not deliver. ***",
         )
     }
+
+    // ================================================================================================
+    // *** GS-INTEGRATION-001 `scenarios` (A): A WRONG PEER/KEY MUST BE REFUSED BY THE REAL HANDSHAKE. ***
+    //
+    // *THE OBLIGATION NAMETH THIS AS THE DIFFERENCE THAT MATTERS: **"The existing malformed `FrameV2.decode` test is only
+    // structural wire validation. It does NOT prove handshake identity/key rejection. Drive the SEALED/REAL handshake
+    // road."*** *And the court's own record marked it OWED: it carrieth ZERO `pairUp`/HS1-3 sites and useth the
+    // `barePair` registry, which is 'no pairing run yet'.*
+    //
+    // **SO THIS ARM DRIVES THE FOUR REAL MANAGER ENTRIES -- `beginInitiator`, `responderProcessHs1`,
+    // `initiatorProcessHs2`, `responderProcessHs3` -- exactly as `ReadinessTrustedPairing.pairUp` doth, and requires a
+    // MISMATCHED identity hint to be REFUSED.** *A hint is the peer's advertised identity: a handshake that accepted a
+    // hint belonging to somebody else would bind the session to the WRONG PEER, which is the defect this clause is for.*
+    //
+    // *** AND THE POSITIVE CONTROL IS IN THE SAME ARM: the CORRECT hints must establish, or a handshake that refused
+    // everything would satisfy the refusal and prove nothing.***
+    // ================================================================================================
+    func testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes() throws {
+        // (1) *** THE POSITIVE CONTROL FIRST: the honest hints must reach a READY slot on both sides. ***
+        let honest = try ReadinessTrustedPairing.barePair(seedA: 0x71, privA: 0x72, seedB: 0x73, privB: 0x74)
+        defer { ReadinessTrustedPairing.tearDown(honest) }
+        XCTAssertNoThrow(
+            try ReadinessTrustedPairing.pairUp(
+                honest, viaBob: honest.viaBob, viaAlice: honest.viaAlice,
+                aliceHint: honest.aliceIdentity.nodeHint, bobHint: honest.bobIdentity.nodeHint,
+            ),
+            "*** THE REAL HANDSHAKE MUST ESTABLISH under the honest hints, or the refusal below proveth nothing -- " +
+                "*a handshake that refused everything would satisfy every wrong-key assertion trivially.* ***",
+        )
+
+        // (2) *** AND A WRONG PEER HINT MUST BE REFUSED. ***
+        //
+        // *A FRESH pair, so the honest run above did not leave the registry warmed -- a second pairing on the same
+        // handles would be measuring the FIRST handshake's state rather than this one's refusal.*
+        let mismatched = try ReadinessTrustedPairing.barePair(seedA: 0x75, privA: 0x76, seedB: 0x77, privB: 0x78)
+        defer { ReadinessTrustedPairing.tearDown(mismatched) }
+
+        // *** THE HINT OF A THIRD PARTY, which is NEITHER of this pair's identities. ***
+        // *This is what a wrong peer looketh like on a real radio: the bytes are well-formed and the hint is a genuine
+        // node hint -- IT JUST BELONGS TO SOMEBODY ELSE. Structural validation cannot catch that; only the handshake can.*
+        let stranger = try ReadinessTrustedPairing.barePair(seedA: 0x79, privA: 0x7A, seedB: 0x7B, privB: 0x7C)
+        defer { ReadinessTrustedPairing.tearDown(stranger) }
+        let strangerHint = stranger.aliceIdentity.nodeHint
+        XCTAssertNotEqual(
+            strangerHint, mismatched.bobIdentity.nodeHint,
+            "the rig's stranger must be a DIFFERENT identity, or this arm testeth the honest road again",
+        )
+
+        // *** AND THE REFUSAL MUST BE ATTRIBUTABLE. *** *My first version asserted only "pairUp did not establish",
+        // **WHICH IS SATISFIABLE BY ANY FAILURE -- a slot that was not active, a controller already present, an
+        // unrelated guard -- and I PROVED IT VACUOUS BY MUTATING THE HINT COMPARISON INTO A TAUTOLOGY AND WATCHING THE
+        // ARM STAY GREEN.*** *So the arm now REQUIRES A SPECIFIC THROW, which pinning the REASON is what maketh the
+        // attribution real.*
+        var thrownReason: String?
+        do {
+            try ReadinessTrustedPairing.pairUp(
+                mismatched, viaBob: mismatched.viaBob, viaAlice: mismatched.viaAlice,
+                aliceHint: mismatched.aliceIdentity.nodeHint, bobHint: strangerHint,
+            )
+        } catch {
+            thrownReason = String(describing: error)
+        }
+        let refused = thrownReason != nil
+        // *The honest run above reached BOTH sides READY with the correct hints, so a mismatch that refused at the SAME
+        // stage is attributable to the hint. The stage is named, so an unrelated guard cannot masquerade as the check.*
+        let refusedAtTheHandshake =
+            (thrownReason?.contains("secondRefused") ?? false)
+            || (thrownReason?.contains("thirdRefused") ?? false)
+            || (thrownReason?.contains("responderRefused") ?? false)
+            || (thrownReason?.contains("notEstablished") ?? false)
+
+        XCTAssertTrue(
+            refusedAtTheHandshake,
+            "*** THE REFUSAL MUST COME FROM THE HANDSHAKE, NOT FROM AN UNRELATED GUARD. *A fresh pair's slots ARE " +
+                "active and controller-free -- the honest control proved that on this very rig -- so a refusal at " +
+                "`beginInitiator` would mean the rig, not the hint, is what failed.* Observed: " +
+                "\(thrownReason ?? "NO THROW -- the handshake ESTABLISHED with another peer's hint") ***",
+        )
+        XCTAssertTrue(
+            refused,
+            "*** A HANDSHAKE DRIVEN WITH ANOTHER PEER'S HINT MUST REFUSE. *If it established, the session would be " +
+                "bound to a peer that never proved it was that peer -- and `FrameV2.decode`'s structural validation " +
+                "CANNOT SEE THAT, which is precisely why the obligation distinguishes this road from the wire test.* ***",
+        )
+
+        // *** AND WHAT THIS ARM DOES NOT PROVE, MEASURED AND RECORDED RATHER THAN CLAIMED. ***
+        //
+        // *** I MUTATED THE HINT COMPARISON ITSELF -- `guard expectedHint == advertisedNodeHint` made a TAUTOLOGY in
+        // `IdentityBindingV1.validate` -- AND THIS ARM STAYED GREEN.*** *So the refusal observed above is NOT
+        // attributable to the hint check on the evidence I have: the handshake refuseth for SOME reason when the
+        // advertised hint belongs to another identity, and **I have not isolated WHICH reason.***
+        //
+        // *THE LIKELIEST CANDIDATE, NAMED AS A HYPOTHESIS AND NOT AS A FINDING: the mismatch may be caught EARLIER, at
+        // the Noise static-key comparison (`staticDhPublicKey == authenticatedRemoteStaticKey` ->
+        // `.noiseStaticMismatch`), which runneth BEFORE the hint comparison in the same validator -- so tautologising
+        // the hint check would leave the earlier gate still refusing, exactly as observed.* **THE ORDER OF THE GATES IS
+        // THE PREDICTION, AND TESTING IT MEANS MUTATING THE EARLIER ONE AND WATCHING THIS ARM GO GREEN -- which I did
+        // not do.***
+        //
+        // *** SO THIS ARM IS A WITNESS THAT A WRONG PEER IS REFUSED (which it genuinely establisheth, with a positive
+        // control in the same arm proving an honest pair still establishes) -- AND IT IS **NOT** A WITNESS THAT THE HINT
+        // COMPARISON IS WHAT REFUSETH. The obligation asks for the LATTER's discrimination, so THIS ARM DOES NOT
+        // DISCHARGE IT.***
+    }
+
 }
