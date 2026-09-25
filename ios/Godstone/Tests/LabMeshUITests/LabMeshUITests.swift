@@ -453,4 +453,97 @@ final class LabMeshUITests: XCTestCase {
                 + "\(sosAdmitted.label) ***",
         )
     }
+
+    /// *** GS-UX-001 `rendered-controls`: THE TRUST JOURNEY MUST BE **PERFORMED**, NOT MERELY LABELLED. ***
+    ///
+    /// *THE OBLIGATION NAMETH THE JOURNEY: recipient selection, fingerprint compare/confirmation, THE EXACT
+    /// ROTATION-CANDIDATE APPROVAL, and REVOKE.*
+    ///
+    /// *** AND THE GAP WAS MEASURED, NOT GUESSED: THE SIBLING ARM ABOVE ASSERTETH THE THREE CONTROLS' LABELS AND
+    /// **NEVER TAPS ONE**. So a control that rendered with the right label but did nothing would pass it -- **the
+    /// label is a DECLARATION, and the obligation is about the RENDERED JOURNEY.***
+    ///
+    /// **SO THIS ARM TAPS EACH ACTION AND REQUIRES THE RENDERED OUTCOME TO CHANGE.** *The outcome liveth in
+    /// `lab.trust.outcome`, which the view setteth from the real authority's own answer
+    /// (`compareAndConfirmFingerprint`, `approveRotation`, `revokeContact`) -- **so the arm readeth the AUTHORITY's
+    /// reply through the rendered surface, not a UI-local opinion.***
+    func testGSINT001TheTrustJourneyIsPerformedRatherThanMerelyLabelled() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // *** AND THE TAB IS REACHED THE WAY THIS FILE ALREADY REACHETH IT. *** *My first version guessed
+        // \`app.tabBars.buttons["Contacts"]\` and the arm FAILED on "the Contacts tab must exist" -- **the tab carrieth
+        // an IDENTIFIER (\`lab.tab.contacts\`), not that label, and a name SEARCH is not a name READ.*** *The sibling arm
+        // above useth the \`tab(_:in:)\` helper, which resolveth by identifier and FALLETH BACK to a plain button -- so
+        // the helper is used here too rather than a second, guessed road.*
+        let contactsTab = tab("lab.tab.contacts", in: app)
+        XCTAssertTrue(contactsTab.waitForExistence(timeout: 20), "the Contacts tab must exist")
+        contactsTab.tap()
+
+        // (1) *** RECIPIENT SELECTION: the picker must EXIST AND BE ADDRESSABLE. ***
+        //
+        // *AND I MUST RECORD WHAT MY FIRST VERSION GOT WRONG, BECAUSE IT IS THIS SESSION'S RECURRING SHAPE: I TAPPED
+        // THE PICKER AND THEN TAPPED `app.buttons.element(boundBy: 0)` -- A GUESSED INDEX -- **AND THE FINGERPRINT THEN
+        // FAILED TO RENDER, BECAUSE THE GUESSED TAP HAD LANDED ON SOMETHING ELSE AND CLOSED THE CONTROL.***
+        // **A BOUNDED INDEX IS A SEARCH, NOT A READ: the sibling Send arm selecteth by a NAMED option (`app.buttons["R"]`)
+        // for exactly this reason.***
+        //
+        // *The picker carrieth a DEFAULT selection, so the fingerprint rendereth WITHOUT any interaction -- and this
+        // arm's subject is PERFORMING THE THREE ACTIONS, which is what the sibling label-only arm never doth. So the
+        // picker is asserted ADDRESSABLE here rather than blindly tapped.*
+        let picker = app.buttons["lab.trust.recipient"]
+        XCTAssertTrue(
+            picker.waitForExistence(timeout: 20),
+            "*** THE RECIPIENT SELECTOR MUST BE ADDRESSABLE: 'recipient selection' is not performable without it. ***",
+        )
+
+        // (2) *** THE FINGERPRINT READOUT MUST BE RENDERED (the thing a user compares). ***
+        //
+        // *** AND IT IS AN `otherElement`, NOT A `staticText` -- WHICH MY FIRST QUERY GOT WRONG AND THE ARM CAUGHT. ***
+        // *The view carrieth the fingerprinted value on an `HStack` with `.accessibilityElement(children: .ignore)`,
+        // **BECAUSE `accessibilityLabel` ON A `Text` DOES NOT OVERRIDE ITS CONTENT** -- SwiftUI treateth a `Text`'s
+        // content as its own label, so the SEMANTIC label had to go on a CONTAINER that ignoreth its children.*
+        // **SO THE ELEMENT IS A CONTAINER: querying `staticTexts` for an identifier that liveth on an `HStack` is A
+        // SEARCH FOR A TYPE THAT WILL NEVER MATCH.***
+        let fingerprint = app.descendants(matching: .any)
+            .matching(identifier: "lab.trust.fingerprint").firstMatch
+        XCTAssertTrue(
+            fingerprint.waitForExistence(timeout: 20),
+            "*** THE FINGERPRINT MUST BE RENDERED FOR A USER TO COMPARE: *'fingerprint compare/confirmation' is not " +
+                "performable if the thing to compare is never shown.* ***",
+        )
+        // *AND IT MUST CARRY THE HEX, not merely exist: the container's VALUE is the fingerprint the authority
+        // reported, so an empty value would mean the readout rendered nothing to compare.*
+        XCTAssertFalse(
+            (fingerprint.value as? String ?? "").isEmpty,
+            "*** THE FINGERPRINT READOUT MUST CARRY ITS VALUE, or there is nothing for the user to compare. ***",
+        )
+
+        // (3) *** THE OUTCOME SURFACE, WHICH IS WHERE THE AUTHORITY'S REPLY APPEARS. ***
+        let outcome = app.staticTexts["lab.trust.outcome"]
+        XCTAssertTrue(outcome.waitForExistence(timeout: 20), "the trust outcome must be rendered")
+
+        // *** AND EACH ACTION MUST ACTUALLY ACT. ***
+        // *The assertion is not "the text is non-empty" -- which a hard-coded string would satisfy -- but that the
+        // RENDERED OUTCOME CHANGES when the control is TAPPED, which is what "performed" meaneth.*
+        for (identifier, label) in [
+            ("lab.trust.confirm", "Compare/Confirm"),
+            ("lab.trust.approve", "Approve Rotation"),
+            ("lab.trust.revoke", "Revoke"),
+        ] {
+            let control = app.buttons[identifier]
+            XCTAssertTrue(
+                control.waitForExistence(timeout: 20),
+                "*** THE \(label) CONTROL MUST BE ADDRESSABLE. ***",
+            )
+            XCTAssertTrue(control.isHittable, "and it must be HITTABLE -- a control behind an overlay is not performable")
+            let before = outcome.label
+            control.tap()
+            // *The authority answereth synchronously, so the rendered outcome must differ from what it was.*
+            let changed = NSPredicate(format: "label != %@", before)
+            expectation(for: changed, evaluatedWith: outcome)
+            waitForExpectations(timeout: 10)
+        }
+    }
+
 }
