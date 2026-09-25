@@ -65,17 +65,58 @@ class GsFinal003ZeroPrivateOpensTest {
      * *So the refusing set is EVERY RUNG WHERE THE LADDER CANNOT COMPLETE -- which is exactly the four the probe
      * showed, and NOT a hand-written list.*
      */
+    /**
+     * *** THE REFUSING ROSTER IS AN **EXPECTATION**, NOT A SELECTION -- OR A RUNG THAT FLIPS LEAVETH COVERAGE SILENTLY. ***
+     *
+     * *MY FIRST VERSION SELECTED the roster with `!barrier.permitsStartup` and THEN asserted `permitsStartup == false`.
+     * **THAT IS TAUTOLOGICAL TWICE OVER:** the selection criterion IS the assertion, and `permitsStartup` IS `issue`'s
+     * gate -- so `assertNull(issue(decision))` merely restateth the criterion that chose the rung.*
+     *
+     * *** WORSE, IT IS NOT FALSIFIABLE: if a future edit made `REQUESTED` report `CLEAN_START`, the roster would simply
+     * DROP that rung, every loop would shrink, and `theRigCarriesRefusingRungsToFault` would still pass because it only
+     * checketh the list is NON-EMPTY -- four rungs becoming three is still non-empty. THE COVERAGE WOULD VANISH WHILE
+     * THE COURT STAYED GREEN.*** *And the flip is LIVE, not hypothetical: the probe showed `NEW_IDENTITY` already
+     * permits.*
+     *
+     * **SO THE ROSTER IS A LITERAL, AND IT IS ASSERTED AGAINST WHAT THE BARRIER ACTUALLY SAYETH.** *A rung that
+     * changed behaviour now REDDENETH instead of disappearing.*
+     */
+    private val expectedRefusingRungsPinned: Set<PanicWipe.WipeState> = setOf(
+        PanicWipe.WipeState.REQUESTED,
+        PanicWipe.WipeState.RUNTIME_DRAINED,
+        PanicWipe.WipeState.KEY_ERASED,
+        PanicWipe.WipeState.ARTIFACTS_DELETED,
+    )
+
+    /**
+     * *The rungs the barrier ACTUALLY refuses, read through the ADMISSION GATE rather than the predicate under test.*
+     *
+     * *** AND THE GATE MUST BE ASKED AFTER THE BARRIER, WHICH A PROBE SETTLED: AT `NEW_IDENTITY` THE BARRIER RESUMES
+     * THE LADDER AND **PERSISTS THE COMPLETION** -- `before=5, after=0` -- SO THE DURABLE JOURNAL REACHETH `IDLE` AND
+     * THE GATE THEN PERMITS. MY FIRST VERSION ASKED THE GATE **BEFORE** BUILDING THE BARRIER, WHICH READ THE STALE
+     * RUNG, AND THE ROSTER DISAGREED WITH `permitsStartup` ON EXACTLY THAT ONE RUNG.***
+     *
+     * *So this is not a hole in the product: two readers asked at the WRONG MOMENT look like two authorities. Asked
+     * after the barrier -- which is when a caller would ask -- they agree on every rung.* **THE ORDER IS THE WHOLE
+     * SUBTLETY, AND THE PROBE IS WHY IT IS WRITTEN DOWN RATHER THAN ASSUMED.**
+     */
     private fun refusingRungs(): List<PanicWipe.WipeState> =
         PanicWipe.WipeState.entries.filter { state ->
             presetJournal(state)
-            !MeshStartupWipeBarrier(ctx()).permitsStartup
+            val barrier = MeshStartupWipeBarrier(ctx())   // THE BARRIER RUNS FIRST: it may COMPLETE the ladder
+            !MeshModule.provideWipeIsPending(ctx()).allowsSensitiveUse()
         }
 
     @Test
-    fun theRigCarriesRefusingRungsToFault() {
-        assertTrue(
-            "*** THE RIG NEEDS REFUSING RUNGS, or every arm below is vacuous. Observed: ${refusingRungs()} ***",
-            refusingRungs().isNotEmpty(),
+    fun theRefusingRosterMatchesItsPinnedExpectation() {
+        // *** THIS IS THE FALSIFIABILITY GATE. *** *If any rung FLIPS to permissive, it leaveth the roster -- and a
+        // non-empty check would not notice. Comparing the SET to a PINNED EXPECTATION means a flip REDDENETH here,
+        // BEFORE the loops below quietly shrink.*
+        assertEquals(
+            "*** THE REFUSING ROSTER MUST EQUAL ITS PINNED EXPECTATION. *A rung that began permitting would SILENTLY " +
+                "LEAVE the roster otherwise, and every loop below would shrink while this court stayed green -- THE " +
+                "COVERAGE WOULD VANISH WITHOUT A RED.* Observed: ${refusingRungs()} ***",
+            expectedRefusingRungsPinned, refusingRungs().toSet(),
         )
     }
 

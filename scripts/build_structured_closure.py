@@ -119,8 +119,24 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          #   NEW_IDENTITY      -> CLEAN_START        permits=true
          # ```
          # *A HAND-WRITTEN LIST WOULD HAVE BAKED MY WRONG ASSUMPTION IN AND GONE GREEN.*
-         "status": "DISCHARGED", "evidence": [
-             "`path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt` -- the ANDROID counter court: `noPermitIsIssuedOnAnyOutstandingRung`, `theCompositionIssuerRefusesOnEveryOutstandingRung`, and the positive controls `theTerminalRungIssuesThePermit` / `theCompositionIssuerPermitsOnTheTerminalRung`. **MEASURED: 5 tests, 0 failures**, with the refusing set DERIVED by asking the barrier. *A gate that always refused would fail the positive controls, and one that never refused would fail the others -- both directions.*",
+         # *** REOPENED: "WITH COUNTERS" IS MET ON iOS AND NOT ON ANDROID, AND SAYING SO IS THE HONEST STATE. ***
+         #
+         # *MY FIRST VERSION OF THIS DISCHARGE CLAIMED BOTH ISLES UNDER THE COUNTER CLAUSE. **A REVIEW ASKED THE
+         # DECISIVE QUESTION -- "if someone edits `provideIdentity` to ignore `permit` and construct anyway, does this
+         # court stay green?" -- AND THE ANSWER WAS YES: NO ARM EVER CALLS THE THREE PROVIDERS.*** *They assert the
+         # permit TOKEN and the composition ISSUER, which is a different claim than counting a construction.*
+         #
+         # **AND THE REASON IS STRUCTURAL, WHICH IS WHY THIS IS NOT MERELY AN UNWRITTEN TEST: ON A REFUSING RUNG NO
+         # PERMIT EXISTS, SO THE PROVIDERS CANNOT BE CALLED AT ALL. THE ZERO-OPENS PROPERTY IS THEREFORE TYPE-LEVEL ON
+         # THIS ISLE -- PROVEN BY THE COMPILE BITE (`error: No value passed for parameter 'permit'`), WHICH PREVENTETH
+         # what a counter would merely OBSERVE -- WHILE THE OBLIGATION ASKETH FOR COUNTERS.*** *That is a real
+         # difference in the strength of the evidence, not a wording quibble, and it is the iOS isle that carrieth the
+         # counters.*
+         #
+         # *SO THE OBLIGATION STAYETH OPEN AND THE iOS HALF IS RECORDED AS DONE BELOW.* **THE AUDITOR CAN JUDGE WHETHER
+         # A TYPE-LEVEL PROOF SATISFIETH A CLAUSE WRITTEN FOR COUNTERS; THE BUILDER MAY NOT DECIDE THAT FOR THEM.**
+         "status": "OPEN", "evidence": [
+             "*** iOS HALF: DONE, WITH COUNTERS. *** `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt` -- the ANDROID court: `noPermitIsIssuedOnAnyOutstandingRung`, `theCompositionIssuerRefusesOnEveryOutstandingRung`, and the positive controls `theTerminalRungIssuesThePermit` / `theCompositionIssuerPermitsOnTheTerminalRung`. **MEASURED: 5 tests, 0 failures**, with the refusing set DERIVED by asking the barrier. *A gate that always refused would fail the positive controls, and one that never refused would fail the others -- both directions.*",
              "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- THE SEAM: `PrivateStorePermit` carrieth a PRIVATE constructor and `issue(decision)` returneth `null` for every refusing decision, and the three private providers REQUIRE it as a parameter. So zero opens is not inferred from a later absence -- the authority that construction requireth DOES NOT EXIST on those roads.",
              "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- THE iOS HALF: `PrivateOpenCounter` (real counts at the construction seam, not the vestigial array nothing read), `CountingKeyProvider` (the factory asketh for a DEK BEFORE it reacheth the engine, so a refused startup that got there would have ASKED), and the keychain write spy for the identity boundary. **MEASURED: 14 tests, 0 failures**, covering pending, retryable AND corrupt -- *the obligation nameth all three, and only pending carried counters before.*",
              "AND THE MUTATION PROVES THE iOS COUNTERS BITE RATHER THAN MERELY PASSING: *an identity-boundary open placed ABOVE the permit gate on the road the arms drive KILLETH EXACTLY the two counter-bearing arms and no others.* **My first attempt at that mutation ESCAPED, and it was wrong twice -- it landed on the `create` road while the arms drive `requireRecoveredPrivateComposition`, and it used a keychain READ while the spy counteth WRITES.** *A mutation placed wrong is not an escaped mutation; it is an experiment that proved nothing.*",
