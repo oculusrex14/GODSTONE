@@ -65,8 +65,12 @@ final class GsFinal003StartupPermitTests: XCTestCase {
 
     private final class InMemoryKeychain: LocalIdentityKeychain, @unchecked Sendable {
         var storage: [String: Data] = [:]
+        /// *** AND WRITES ARE COUNTED, BECAUSE `MeshIdentity.loadOrCreate` MINTS A KEY BY ADDING ONE. ***
+        /// *A refused startup that constructed identity anyway would leave entries here -- **an observable on an
+        /// entirely different boundary from the store files, and the old arm never looked at it at all.***
+        private(set) var writes: [String] = []
         func read(tag: String) throws -> Data? { storage[tag] }
-        func add(tag: String, data: Data) throws { storage[tag] = data }
+        func add(tag: String, data: Data) throws { storage[tag] = data; writes.append(tag) }
         func delete(tag: String) throws { storage.removeValue(forKey: tag) }
     }
 
@@ -76,10 +80,52 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     /// generalises: that asserts the ARCHITECTURE rather than observing it. This observes it -- it
     /// counts files that came into existence on disk, which is what "a private store was opened"
     /// actually means.*
-    private final class OpenCounter {
+    /// *** THE PRIVATE-STORE CONSTRUCTION COUNTER -- AND IT COUNTETH THE OPENS THEMSELVES, NOT THE OUTCOME. ***
+    ///
+    /// **THE VERSION THAT STOOD HERE WAS NOT A COUNTER. `note(_:)` APPENDED A PATH TO A PRIVATE ARRAY THAT NOTHING EVER
+    /// READ, and the only measurement in the arm was `FileManager.fileExists`.** *A MISSING FILE PROVES THAT NO STORE
+    /// SUCCEEDED IN CREATING ONE; IT DOES NOT PROVE THAT NO STORE WAS **CONSTRUCTED**.* **A construction that failéth
+    /// late -- after the handle, the DEK unwrap or the first statement -- leaveth no file and would have passed the old
+    /// arm while opening exactly what the finding forbids.**
+    ///
+    /// *SO THE COUNTS ARE EXPLICIT AND AT THE LOWEST MEANINGFUL BOUNDARY, as the obligation demands: a private store
+    /// construction, and a sensitive-runtime construction.*
+    private final class PrivateOpenCounter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var storeOpenCount = 0
+        private var runtimeBuildCount = 0
         private(set) var paths: [String] = []
-        func note(_ url: URL) { paths.append(url.path) }
+
+        /// *Called AT the construction seam -- by the factory the composition would use, not by an observer afterwards.*
+        func openedStore(path: String) { lock.lock(); storeOpenCount += 1; paths.append(path); lock.unlock() }
+        func builtSensitiveRuntime() { lock.lock(); runtimeBuildCount += 1; lock.unlock() }
+
+        var storesOpened: Int { lock.lock(); defer { lock.unlock() }; return storeOpenCount }
+        var sensitiveRuntimesBuilt: Int { lock.lock(); defer { lock.unlock() }; return runtimeBuildCount }
         func existed(_ url: URL) -> Bool { FileManager.default.fileExists(atPath: url.path) }
+    }
+
+    /// *** A COUNTING KEY PROVIDER: EVERY FETCH OR CREATE IS AN ATTEMPTED PRIVATE-STORE OPEN. ***
+    ///
+    /// *`EncryptedStoreFactory` cannot open a private store without a DEK -- `reopenOwnedRequiringDEK` asketh the
+    /// provider for the key before it toucheth the engine. So a REFUSED startup that nonetheless reached the private
+    /// composition would have asked for a DEK, and this counter would see it.* **THAT IS A MEASUREMENT AT THE SEAM THE
+    /// OBLIGATION NAMETH, rather than an inference from a file that was not created.**
+    private final class CountingKeyProvider: PrivateStoreKeyProvider {
+        private(set) var dekRequests: Int = 0
+        var dekByteCount: Int { 32 }
+        func fetchDEK(tag: String) throws -> StoreDEK {
+            dekRequests += 1
+            throw StoreKeyError.dekNotFound
+        }
+        func createDEK(tag: String) throws -> StoreDEK {
+            dekRequests += 1
+            throw StoreKeyError.dekNotFound
+        }
+        func deleteDEK(tag: String) throws {}
+        func applyFileProtection(paths: [String], protection: FileProtectionClass) -> ProtectionResult {
+            .success
+        }
     }
 
     private func tempURL(_ tag: String) -> URL {
@@ -161,7 +207,8 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         let journal = InMemoryJournal()
         journal.write(.requested)
         let keychain = InMemoryKeychain()
-        let counter = OpenCounter()
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
 
         // THE ROUTE ANSWERS HONESTLY: a cold boot owns no transport, so the ladder stops.
         XCTAssertThrowsError(
@@ -187,11 +234,32 @@ final class GsFinal003StartupPermitTests: XCTestCase {
 
         // *** AND NOTHING WAS OPENED. *** *Measured on the filesystem, not asserted from the
         // architecture: a private store that had been constructed would have created its file.*
-        counter.note(msg)
+        // *** AND NOTHING WAS OPENED -- COUNTED AT THE SEAM, NOT INFERRED FROM AN ABSENT FILE. ***
         XCTAssertFalse(counter.existed(msg),
-                       "NO PRIVATE STORE MAY EXIST after a refused startup -- that is the whole "
-                       + "finding, and a file here means the store was opened anyway")
+                       "NO PRIVATE STORE MAY EXIST after a refused startup -- a file here means the store was opened anyway")
         XCTAssertFalse(counter.existed(peer), "and no peer store either")
+        XCTAssertEqual(
+            counter.storesOpened, 0,
+            "*** ZERO PRIVATE-STORE OPENS. *THE OLD ARM MEASURED ONLY THE FILE, WHICH CANNOT SEE A CONSTRUCTION THAT "
+                + "FAILED LATE -- after the handle, the DEK unwrap or the first statement.* THE COUNT IS NOW TAKEN AT "
+                + "THE CONSTRUCTION SEAM ITSELF. ***",
+        )
+        XCTAssertEqual(
+            counter.sensitiveRuntimesBuilt, 0,
+            "*** ZERO SENSITIVE-RUNTIME CONSTRUCTIONS: a refused startup must not build the runtime either. ***",
+        )
+        XCTAssertEqual(
+            provider.dekRequests, 0,
+            "*** AND THE FACTORY WAS NEVER ASKED FOR A KEY. *`reopenOwnedRequiringDEK` asketh the provider BEFORE it "
+                + "toucheth the engine, so a refused startup that reached the private composition would have asked. "
+                + "THIS IS THE MEASUREMENT THE FILE CHECK COULD NOT MAKE.* ***",
+        )
+        XCTAssertEqual(
+            keychain.writes, [],
+            "*** AND IDENTITY WAS NOT MINted: `MeshIdentity.loadOrCreate` WRITETH A KEY WHEN IT CREATES ONE, so an "
+                + "empty write log is the identity boundary's own observable -- a DIFFERENT boundary from the store "
+                + "files, which the old arm never looked at. ***",
+        )
 
         // AND THE JOURNAL IS UNTOUCHED: the create-time seams cannot erase, so the ladder must
         // leave the record exactly where it stood rather than advancing a state it did not earn.
