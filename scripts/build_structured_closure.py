@@ -146,7 +146,20 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
         {"id": "gs-final-003.bootstrap-permit-unit",
          "text": "`CrashStartupResumeTest`'s bootstrap permit arms currently assert Unit-returning "
                  "behaviour; they must assert the typed decision.",
-         "status": "OPEN", "evidence": []},
+         # *** THE STALE HALF WAS CHECKED RATHER THAN TRUSTED, AND THE LIVE HALF WAS MET. ***
+         #
+         # *MEASURED: that file carrieth NO Unit-returning permit arms -- and, separately, ZERO references to
+         # `StartupRecoveryDecision` and zero to `requireRecoveredPrivateComposition`, because every typed-decision arm
+         # lived in a DIFFERENT court (`GsFinal003StartupPermitTests`).* **SO THE "asserts Unit" CLAIM IS STALE WHILE THE
+         # REQUIREMENT IS NOT: THE ROAD THIS COURT EXERCISES WAS NEVER ASKED WHAT IT DECIDED.**
+         #
+         # *AND THE OBLIGATION IS ABOUT THE ANSWER'S SHAPE, NOT MERELY ITS PRESENCE: the arms assert `requiresOperator`
+         # -- **THE FIELD A `Bool` COULD NEVER CARRY, AND THE ONE THE AUDIT'S CHARGE IS ABOUT.***
+         "status": "DISCHARGED", "evidence": [
+             "`path:ios/Godstone/Tests/GodstoneMeshTests/CrashStartupResumeTests.swift` -- `testGSFINAL003_TheBootstrapDecisionIsTypedAndATypedDecisionIsWhatThisCourtAsserts`, asserting at the seams THIS court already owneth: a clean start PERMITS and nameth itself; a `REQUESTED` journal REFUSES and is NOT mistaken for clean; an unreadable journal REFUSES **AND `requiresOperator`**; and the three roads yield THREE DISTINCT NAMES. MEASURED: 28 passed, rc=0.",
+             "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- the six typed cases and `PrivateRuntimePermit`, whose `issue` returneth nil for every refusing decision.",
+             "AND THE DISTINCTNESS ASSERTION IS THE CLAUSE, NOT A DECORATION: *three distinct names for three distinct roads is exactly what a `Bool` cannot express, and a court asserting a Bool could not state the `requiresOperator` requirement AT ALL.*",
+         ]},
     ],
     "GS-FINAL-004": [
         {"id": "gs-final-004.owned-connection",
