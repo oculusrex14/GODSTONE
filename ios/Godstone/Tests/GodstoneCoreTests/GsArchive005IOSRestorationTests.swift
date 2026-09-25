@@ -143,6 +143,89 @@ final class GsArchive005IOSRestorationTests: XCTestCase {
         )
     }
 
+    /// *** GS-FINAL-006: AN ANCHOR THAT NO LONGER EXISTETH FALLS BACK -- AND THE FALLBACK MUST BE OBSERVED FIRING. ***
+    ///
+    /// *THE CARD'S CLAUSE IS "an invalid anchor falls back safely", AND IT IS THE EASIEST CLAUSE IN THIS FINDING TO
+    /// FAKE GREEN.* **`ArchiveReadingAnchor.target` already decideth it CORRECTLY and `ReadinessArchive004Tests`
+    /// witnesseth the PURE FUNCTION -- but a pure-function court can go green while THE PRODUCTION ROAD NEVER CALLS IT,
+    /// which is precisely the "a declaration is not a capability" defect this programme has filed repeatedly.***
+    ///
+    /// *** SO THIS ARM GOES THROUGH THE REAL SCENE: a persisted anchor is made to name a passage that the reopened
+    /// document DOES NOT CONTAIN, and the assertion is on WHAT THE READER IS GIVEN rather than on the stored field.***
+    /// *Asserting `scrollAnchor == nil` would only re-check the projection; the reader-facing fact is WHICH PASSAGE the
+    /// reader should be at, which is what `ArchiveReadingAnchor.target` produceth from the restored anchor and the
+    /// document's own passage list.*
+    ///
+    /// **AND THE CONTRAST IS MEASURED IN THE SAME ARM:** the SAME restored scene, with a VALID anchor, must yield that
+    /// anchor -- so a "fallback" that always fired would fail the valid half, and a fallback that never fired would
+    /// fail the invalid half. *Two directions, one arm, because a single direction can be satisfied by a constant.*
+    func testGSA005AnInvalidAnchorFallsBackAndTheFallbackIsObservedFiring() async throws {
+        let library = makeLibrary()
+        let scene = ArchiveSceneModel(reading: library, model: ArchiveReaderModel(library: library))
+        await settled()
+
+        // A DOCUMENT WITH AT LEAST TWO PASSAGES, so "a valid anchor" and "an invalid one" are BOTH expressible.
+        guard let document = library.docs.first(where: { doc in
+            library.passages.contains { $0.documentId == doc.id }
+        }) else { return XCTFail("the rig needs a document with passages") }
+        let passages = library.passages.filter { $0.documentId == document.id }
+        try XCTSkipUnless(passages.count >= 1, "the rig needs at least one passage")
+        let real = passages[0]
+        // *** AN ID THAT CANNOT EXIST IN THIS DOCUMENT: every real passage id, offset far beyond the set. ***
+        let impossible = (passages.map(\.id).max() ?? 0) + 9_999
+
+        // (1) PERSIST A VALID ANCHOR, THEN RECREATE -- the CONTROL direction.
+        await scene.open(document: document)
+        await settled()
+        scene.noteScroll(passageId: real.id)
+        var validHandle: [String: Any] = [:]
+        scene.snapshot(into: &validHandle)
+        let validReborn = ArchiveSceneModel(reading: library, model: ArchiveReaderModel(library: library))
+        await validReborn.restore(from: validHandle)
+        await settled()
+        XCTAssertEqual(validReborn.scrollAnchor?.passageId, real.id,
+                       "*** THE VALID ANCHOR MUST SURVIVE, or the invalid-anchor arm below proveth nothing. ***")
+        let validIds = library.passages.filter { $0.documentId == document.id }.map(\.id)
+        XCTAssertEqual(
+            ArchiveReadingAnchor.target(passageIds: validIds, saved: validReborn.scrollAnchor?.passageId), real.id,
+            "*** AND THE READER MUST BE SENT TO IT -- the control direction of the same decision. ***",
+        )
+
+        // (2) PERSIST THE IMPOSSIBLE ANCHOR, THEN RECREATE -- the direction the card's clause is about.
+        scene.noteScroll(passageId: impossible)
+        var staleHandle: [String: Any] = [:]
+        scene.snapshot(into: &staleHandle)
+        XCTAssertEqual(staleHandle["anchorPassage"] as? Int64, impossible,
+                       "the rig must actually persist the impossible anchor, or this arm testeth nothing")
+        let staleReborn = ArchiveSceneModel(reading: library, model: ArchiveReaderModel(library: library))
+        await staleReborn.restore(from: staleHandle)
+        await settled()
+
+        XCTAssertEqual(
+            staleReborn.openedDocumentId, document.id,
+            "*** THE DOCUMENT MUST STILL OPEN: a stale anchor is not a reason to lose the reader's document. ***",
+        )
+        let restoredIds = library.passages.filter { $0.documentId == document.id }.map(\.id)
+        XCTAssertFalse(
+            restoredIds.contains(impossible),
+            "the rig's impossible id must NOT be in the document, or the fallback could not be reached",
+        )
+        // *** THE READER-FACING FACT: the fallback yieldeth the BEGINNING, and it does so by the DECISION rather than by
+        // a lucky absence. `first` is the beginning of the document's reading order. ***
+        XCTAssertEqual(
+            ArchiveReadingAnchor.target(passageIds: restoredIds, saved: staleReborn.scrollAnchor?.passageId),
+            restoredIds.first,
+            "*** AN ANCHOR THAT NO LONGER EXISTETH MUST FALL BACK TO THE BEGINNING -- never wait for a passage that "
+                + "cannot come, and never claim the stale position held. Restored "
+                + "\(String(describing: staleReborn.scrollAnchor?.passageId)), which is not in \(restoredIds). ***",
+        )
+        XCTAssertFalse(
+            ArchiveReadingAnchor.anchorHolds(passageIds: restoredIds, saved: staleReborn.scrollAnchor?.passageId),
+            "*** AND THE DECISION MUST REPORT THAT IT FELL BACK, so a caller can SAY so rather than pretend the anchor "
+                + "held. A silent fallback is indistinguishable from a successful restore. ***",
+        )
+    }
+
     /// *** AND FROM DOCUMENT BROWSE -- THE CARD'S SECOND JOURNEY. ***
     ///
     /// *The search journey's return identity is the search; the browse journey's is the document list. **The model

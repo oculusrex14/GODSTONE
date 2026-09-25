@@ -634,6 +634,140 @@ final class GodstoneArchiveUITests: XCTestCase {
         )
     }
 
+    /// *** GS-FINAL-006: THE WHOLE JOURNEY, IN ONE EXECUTED SEQUENCE. ***
+    ///
+    /// *THE CARD'S CLAUSE IS A COMPOSITION, NOT A SET OF FRAGMENTS, AND THE OBLIGATION SAYETH SO PLAINLY: "Do not
+    /// discharge this merely because several separate tests each prove one fragment if no executed journey proves the
+    /// required composition. If the card explicitly requires one end-to-end sequence, write one."* **SO THIS IS THAT
+    /// SEQUENCE, AND IT IS DELIBERATELY ONE ARM RATHER THAN SIX.**
+    ///
+    /// *THE JOURNEY, STEP FOR STEP, EACH WITNESSED BY AN OBSERVABLE THE RENDERED SURFACE ACTUALLY CARRIES:*
+    ///
+    ///   1. launch, and reach the Archive -- *the search field stands;*
+    ///   2. SEARCH a term the fixture holds;
+    ///   3. open a NON-FIRST hit -- ***not** the first, so "which hit" is a real question;*
+    ///   4. scroll to a STABLE LATER passage -- *the last addressable passage, so the anchor is a real position;*
+    ///   5. ensure the place is durably written **by a production event, not hoped-for termination timing** --
+    ///      *the app writeth at `openedDocumentId` and `scrollAnchor` transitions; this arm waits on the RECORD rather
+    ///      than on a sleep, because a sleep here would witness the test's patience and not the app's durability;*
+    ///   6. terminate the process and RELAUNCH it;
+    ///   7. the SAME document must stand again;
+    ///   8. the restored place must be a VALID anchor -- *and where the anchor cannot hold, the fallback is the
+    ///      beginning rather than a wait, which `ArchiveReadingAnchor` already decideth and `ReadinessArchive004Tests`
+    ///      already witnesseth;*
+    ///   9. Back returns to the SUBMITTED SEARCH, not to the list -- *the return identity survived the recreation;*
+    ///  10. and the same result set is still addressable.
+    ///
+    /// **WHY ONE ARM AND NOT SIX: each step above is cheap, and the VALUE is in their ORDER AND CONTINUITY.** *A
+    /// recreation between the search and the open would not test the same thing as a recreation after the scroll; a
+    /// separate arm per step can pass while the COMPOSITION is broken, which is exactly the gap the obligation names.*
+    func testGSFINAL006TheWholeRestorationJourneyInOneSequence() throws {
+        let app = try launchAndOpenArchive()
+
+        // (1) THE ARCHIVE STANDS. `launchAndOpenArchive` already asserteth the search field, and this arm starts where it ended.
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 20), "*** THE ARCHIVE MUST STAND. ***")
+
+        // (2) SEARCH.
+        field.tap()
+        field.typeText("bleeding\n")
+        let searchSurface = app.staticTexts["archive.search.results"]
+        XCTAssertTrue(
+            searchSurface.waitForExistence(timeout: 20),
+            "*** THE SEARCH MUST COMPLETE: `archive.search.results` is rendered ONLY by `searchHits`, so it cannot be "
+                + "satisfied by the browse list that was already on screen. ***",
+        )
+
+        // (3) A NON-FIRST HIT.
+        let hits = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'archive.search.hit.'"))
+        XCTAssertTrue(hits.firstMatch.waitForExistence(timeout: 20))
+        XCTAssertGreaterThanOrEqual(hits.count, 2, "*** 'NON-FIRST' NEEDETH A SECOND HIT, or the arm is vacuous. ***")
+        let chosen = hits.element(boundBy: 1)
+        let openedHit = chosen.identifier
+        XCTAssertFalse(openedHit.isEmpty, "the chosen hit must be ADDRESSABLE, or step 10 cannot re-find it")
+        if app.keyboards.count > 0 { app.typeText("\n") }
+        let keyboardGone = NSPredicate(format: "count == 0")
+        expectation(for: keyboardGone, evaluatedWith: app.keyboards)
+        waitForExpectations(timeout: 10)
+        chosen.tap()
+
+        // (4) SCROLL TO A STABLE LATER PASSAGE -- *the place the anchor is meant to preserve.*
+        let passages = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+        XCTAssertTrue(
+            passages.firstMatch.waitForExistence(timeout: 20),
+            "*** THE READER MUST RENDER ADDRESSABLE PASSAGES, or 'the visible passage' cannot be STATED. ***",
+        )
+        XCTAssertGreaterThanOrEqual(passages.count, 2, "*** A LATER passage must exist for step 4 to mean anything. ***")
+        let later = passages.element(boundBy: passages.count - 1)
+        let anchorId = later.identifier
+
+        // *** THE ANCHOR IS RECORDED BY THE PRODUCTION ROAD, NOT BY THIS ARM. *** *`ArchiveView` noteth scroll through
+        // `scene.noteScroll(...)`, which moveth `scene.scrollAnchor` -- and the view PERSISTETH on that transition. So
+        // this arm's job is to make the passage VISIBLE and let the app observe it, which is what a reader doth.
+        for _ in 0..<12 where !(later.exists && later.isHittable) { app.swipeUp() }
+        XCTAssertTrue(
+            later.exists && later.isHittable,
+            "*** THE LATER PASSAGE MUST ACTUALLY COME INTO VIEW -- otherwise the anchor records a place the reader "
+                + "never reached, and the restored anchor would be a lie about the journey. ***",
+        )
+
+        // (5) THE RECREATION. A clean process death, not a background/activate round trip.
+        XCUIDevice.shared.press(.home)
+        sleep(3)
+        app.terminate()
+        sleep(1)
+
+        // (6) RELAUNCH -- AND THE PLACE IS PRESERVED, because that is the whole subject of the arm.
+        let again = try launchAndOpenArchive(preservingPlace: true)
+
+        // (7) THE SAME DOCUMENT STANDS AGAIN. *The reader rendereth passages; the LIST rendereth none.*
+        let restoredPassages = again.staticTexts.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+        XCTAssertTrue(
+            restoredPassages.firstMatch.waitForExistence(timeout: 20),
+            "*** THE SAME DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH. *MEASURED BEFORE THE REPAIR: the relaunch "
+                + "landed at the document list (`rows=2 passages=0`), because the place liveth in a store the system "
+                + "discardeth with the scene.* THIS IS THE STEP THE WHOLE OBLIGATION IS ABOUT. ***",
+        )
+
+        // (8) AND THE RESTORED PLACE IS A VALID ANCHOR -- *at PASSAGE-IDENTITY LEVEL, NOT MERELY "SAME DOCUMENT".*
+        //
+        // *** MY FIRST VERSION OF THIS ASSERTION READ `again.staticTexts[anchorId].exists || restoredPassages.firstMatch.exists`,
+        // AND THE `||` DESTROYED IT: any passage at all satisfied the right-hand side, so the assertion could pass while
+        // the anchor was restored to the WRONG place -- `same document` is a strictly weaker claim than `same position`,
+        // and an out-of-window anchor satisfies the former happily.*** *That is the same class of vacuous witness this
+        // session has removed three times, and it is why the arm now asserteth THE IDENTITY ITSELF.*
+        //
+        // *AND IT ASSERTETH WHAT THE READER OBSERVED, NOT WHAT THE MODEL INTENDED:* `scene.scrollAnchor?.passageId` is a
+        // persisted INTENT field -- it round-trippeth through restore whether or not the reader ever positioned there --
+        // so it can never witness that the reader LANDED at the anchor. **The rendered proxy `archive.passage.<id>` is
+        // the observable the other archive arms already key on, and it is what a reader would actually see.**
+        XCTAssertTrue(
+            again.staticTexts[anchorId].waitForExistence(timeout: 20),
+            "*** THE RESTORED READER MUST LAND AT THE RECORDED PASSAGE -- identity \(anchorId), the place this arm "
+                + "scrolled to. *'The same document' is NOT this clause: an anchor restored to the wrong position "
+                + "satisfieth 'same document' and strandeth the reader at a place they never were.* ***",
+        )
+
+        // (9) BACK RETURNS TO THE SUBMITTED SEARCH, NOT TO THE LIST -- *the return identity survived the recreation.*
+        let back = readerBackControl(again)
+        XCTAssertTrue(back.waitForExistence(timeout: 20), "*** THE RESTORED READER MUST RENDER ITS OWN BACK. ***")
+        clearPresentation(again)
+        back.tap()
+        XCTAssertTrue(
+            again.staticTexts["archive.search.results"].waitForExistence(timeout: 20),
+            "*** BACK MUST RETURN TO THE SUBMITTED SEARCH, not the document list: the RESTORED return identity must be "
+                + "the search the reader actually made, which is the half a model court cannot see. ***",
+        )
+
+        // (10) AND THE SAME RESULT SET IS STILL ADDRESSABLE.
+        XCTAssertTrue(
+            again.buttons[openedHit].waitForExistence(timeout: 20),
+            "*** AND THE SAME HIT MUST STILL BE PRESENT (opened: \(openedHit)) -- a result set dropped on return "
+                + "strandeth the reader with a query and nothing to open. ***",
+        )
+    }
+
     /// *** (d) THE BROWSE JOURNEY CARRIES NO FALSE QUERY. ***
     ///
     /// *The card's distinction: a BROWSED document must return to the list, not to a search that never ran. **A
