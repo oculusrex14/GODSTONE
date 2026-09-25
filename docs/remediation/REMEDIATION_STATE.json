@@ -15744,7 +15744,7 @@
       "status": "DISCHARGED",
       "evidence": [
        "`path:ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift` -- THE MUTATION: restore(from:)'s .document case IGNORED the persisted openedDocumentId and returned to the list instead of reopening the document.",
-       "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- MEASURED, AND THE EXECUTED APP ARM FAILED FOR THE CORRECT REASON: `testGSA005DocumentReopensAfterCleanProcessDeath` FAILED (36.312s) with the message naming THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH, while the other five arms passed unchanged and the run carried ZERO launch refusals. *A MUTATION THAT REDDENETH AN INCIDENTAL FAILURE PROVES NOTHING; THIS ONE REDDENED THE CLAIM ITSELF.*",
+       "`path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift` -- *** AND IT WAS RE-TAKEN AS ONE UNINTERRUPTED SEQUENCE ON THE SETTLED TREE, BECAUSE A MUTATION IS ONLY AS STRONG AS THE GREEN THAT PRECEDED IT: green on the current tree (that arm PASSED at 47.107s), THEN the mutation applied, THEN THE SAME RUN MUTATED -- the arm FAILED at 36.149s while the other five passed and the run carried ZERO launch refusals.*** *So on the settled tree the arm had EXACTLY ONE candidate cause, and the failure therefore meaneth what this discharge claimeth.* A MUTATION THAT REDDENETH AN INCIDENTAL FAILURE PROVES NOTHING; THIS ONE REDDENED THE CLAIM ITSELF.",
        "AND IT WAS TAKEN ON THE REAL APP ROAD, NOT A MODEL COURT: the arm terminate()s and relaunches the process, so the mutation had to break the ACTUAL restoration to fail it. The source was restored and verified: marker absent, byte-identical to HEAD, `path:scripts/sync_ios_foundation_package.py` --check rc=0, and the six arms green again."
       ]
      }
@@ -15872,7 +15872,7 @@
   },
   "internal_remaining_prose_classifier_retired": {
    "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",
-   "last_value": 23
+   "last_value": 20
   },
   "frontier_measured_this_session": {
    "measured_at": "2026-09-20",
