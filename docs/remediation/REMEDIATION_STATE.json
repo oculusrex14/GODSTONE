@@ -14881,7 +14881,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "61756bf293da9a663fc4d252305ab37f328703e7",
+  "candidate_sha": "1cdec7fec3ba06394dd0ae4e23731d68496a6739",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -15336,8 +15336,13 @@
      {
       "id": "gs-runtime-001.android-composition-court",
       "text": "A Robolectric court exercising the ACTUAL production providers up to the real AndroidKeyStore boundary, establishing that composition reaches the real ACK/pump owners and that assignment is not merely textual. If AndroidKeyStore stops execution, that stop is the explicit external boundary.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt` -- `theProductionProviderHandsTheNodeThePumpItWasGiven` driveth the REAL `MeshModule.provideMeshNode` with the device-bound inputs supplied, and asserteth `assertSame(pump, node.ackPump)`. *MEASURED: 10 arms, 0 failures, ZERO boundary early-returns (read from the result XML's own system-out).*",
+       "*** MUTATION-KILLED: REMOVING `node.ackPump = pump` REDDENS EXACTLY THAT ARM AND NO OTHER. *** *Precision matters -- a mutation that reddened everything would say nothing about WHICH seam is guarded.*",
+       "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- the composition reached: `provideMeshNode` assigns the dispatcher, the pump and the recipient inbox over the real graph.",
+       "*** AND THE PLATFORM BOUNDARY IS NAMED RATHER THAN AVOIDED: `theDeviceBoundProvidersAreTheRealPlatformOnes` asserteth that resolving identity STOPS at AndroidKeyStore/sqlcipher -- the explicit external boundary the obligation alloweth the obligation alloweth.***"
+      ]
      },
      {
       "id": "gs-runtime-001.mutations",
@@ -15663,8 +15668,12 @@
      {
       "id": "gs-final-003.typed-permit",
       "text": "Both platforms: a non-forgeable typed startup decision (not a Bool, not a log line, no public initializer) issued only after the typed recovery answer.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- iOS: the six typed cases and `PrivateRuntimePermit` (PRIVATE init, nullable `issue(_:)`), and `createPrivateComposition` REQUIREth one as a parameter.",
+       "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- Android: `PrivateStorePermit` with a PRIVATE constructor and `issue(decision)` returning `null` for every refusing decision, REQUIRED as a parameter by all three private providers; `issuePrivateStorePermit` is the ONE minting site, and `recordStartupPermit` now CONSUMETH the permit and recordeth WHICH decision authorised construction.",
+       "*** THE COMPILE BITE WAS EXECUTED ON BOTH ISLES, NOT ASSERTED: iOS produceth `error: missing argument for parameter 'permit' in call`; Android produceth `error: No value passed for parameter 'permit'` at MeshGraphComponent.kt:183. A CHECK CAN BE FORGOTTEN; A PARAMETER CANNOT.***"
+      ]
      },
      {
       "id": "gs-final-003.zero-private-opens",
@@ -15894,12 +15903,12 @@
    "findings_total": 68,
    "findings_internal_open": 5,
    "findings_with_internal_status_open": 5,
-   "internal_obligations_open": 12,
-   "internal_obligations_unresolved": 12,
+   "internal_obligations_open": 10,
+   "internal_obligations_unresolved": 10,
    "obligations_by_state": {
-    "OPEN": 7,
+    "OPEN": 5,
     "PARTIAL": 5,
-    "DISCHARGED": 20
+    "DISCHARGED": 22
    },
    "external_obligations": 5
   },

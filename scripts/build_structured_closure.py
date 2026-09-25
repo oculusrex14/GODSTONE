@@ -110,7 +110,17 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
         {"id": "gs-final-003.typed-permit",
          "text": "Both platforms: a non-forgeable typed startup decision (not a Bool, not a log "
                  "line, no public initializer) issued only after the typed recovery answer.",
-         "status": "OPEN", "evidence": []},
+         # *** "Both platforms" -- AND BOTH HAVE IT, WITH THE COMPILE BITE EXECUTED ON EACH. ***
+         #
+         # *iOS closed first. ANDROID WAS AT THE PRE-FIX STATE AND I PROVED IT FROM BYTES: the three private-state
+         # providers TOOK the barrier, and `recordStartupPermit` READ IT ONLY TO EMIT `Log.w`, then constructed identity
+         # and both stores REGARDLESS -- so the typed authority was PRESENT AND UNUSED, exactly the shape the clause
+         # forbiddeth ("not a Bool; not a log marker; not a public freely constructible value").*
+         "status": "DISCHARGED", "evidence": [
+             "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- iOS: the six typed cases and `PrivateRuntimePermit` (PRIVATE init, nullable `issue(_:)`), and `createPrivateComposition` REQUIREth one as a parameter.",
+             "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- Android: `PrivateStorePermit` with a PRIVATE constructor and `issue(decision)` returning `null` for every refusing decision, REQUIRED as a parameter by all three private providers; `issuePrivateStorePermit` is the ONE minting site, and `recordStartupPermit` now CONSUMETH the permit and recordeth WHICH decision authorised construction.",
+             "*** THE COMPILE BITE WAS EXECUTED ON BOTH ISLES, NOT ASSERTED: iOS produceth `error: missing argument for parameter 'permit' in call`; Android produceth `error: No value passed for parameter 'permit'` at MeshGraphComponent.kt:183. A CHECK CAN BE FORGOTTEN; A PARAMETER CANNOT.***",
+         ]},
         {"id": "gs-final-003.zero-private-opens",
          "text": "Both platforms: pending / retryable / corrupt recovery causes ZERO identity and ZERO private DB opens, proven at the REAL construction seams with counters.",
          # *** "Both platforms" IS LOAD-BEARING, AND ANDROID HAD NO CONSTRUCTION COUNTER AT ALL. ***
@@ -239,7 +249,23 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
                  "AndroidKeyStore boundary, establishing that composition reaches the real "
                  "ACK/pump owners and that assignment is not merely textual. If AndroidKeyStore "
                  "stops execution, that stop is the explicit external boundary.",
-         "status": "OPEN", "evidence": []},
+         # *** "ASSIGNMENT IS NOT MERELY TEXTUAL" WAS THE GAP, AND IT IS NOW BEHAVIOURAL. ***
+         #
+         # *BEFORE: `ReadinessT60Test` asserted the pump assignment by READING `MeshModule.kt` AND GREPPING FOR
+         # `node.ackPump = pump` -- "AN ASSERTION ABOUT A FILE, NOT ABOUT A RUNTIME".* *And the defect it was meant to
+         # catch was real: `provisionAckPump` was injected into that very function and NEVER ASSIGNED.*
+         #
+         # *** AND MY FIRST BEHAVIOURAL ARM MEASURED NOTHING, WHICH I FOUND BY MUTATING IT: it reached
+         # `graph().peerIdentityStore()` -- a `SqlcipherPeerIdentityStore` -- which throweth `UnsatisfiedLinkError: no
+         # sqlcipher` on a host, AND RETURNED EARLY BEFORE THE ASSERTION. REMOVING THE PUMP WIRING LEFT IT GREEN.***
+         # *Repaired over `JdbcPeerIdentityStore` -- not invented, but the construction `CrashStartupResumeTest.admissionRepo()`
+         # already useth -- which needs no native SQLCipher.*
+         "status": "DISCHARGED", "evidence": [
+             "`path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt` -- `theProductionProviderHandsTheNodeThePumpItWasGiven` driveth the REAL `MeshModule.provideMeshNode` with the device-bound inputs supplied, and asserteth `assertSame(pump, node.ackPump)`. *MEASURED: 10 arms, 0 failures, ZERO boundary early-returns (read from the result XML's own system-out).*",
+             "*** MUTATION-KILLED: REMOVING `node.ackPump = pump` REDDENS EXACTLY THAT ARM AND NO OTHER. *** *Precision matters -- a mutation that reddened everything would say nothing about WHICH seam is guarded.*",
+             "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- the composition reached: `provideMeshNode` assigns the dispatcher, the pump and the recipient inbox over the real graph.",
+             "*** AND THE PLATFORM BOUNDARY IS NAMED RATHER THAN AVOIDED: `theDeviceBoundProvidersAreTheRealPlatformOnes` asserteth that resolving identity STOPS at AndroidKeyStore/sqlcipher -- the explicit external boundary the obligation alloweth the obligation alloweth.***",
+         ]},
         {"id": "gs-runtime-001.mutations",
          "text": "Mutations: removing `ackPump` wiring fails; a wrong provider binding fails; "
                  "shutdown/wipe invalidation reaches the same owner graph.",
