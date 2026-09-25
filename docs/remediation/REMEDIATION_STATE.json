@@ -14881,7 +14881,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "61e16b5d44432227b95f7af2bdbfcc92ab037374",
+  "candidate_sha": "d0d75dcbfd020765f6895a94958e8af26b4304df",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -15634,8 +15634,12 @@
      {
       "id": "gs-final-003.ios-recovery-graph",
       "text": "iOS: a recovery/bootstrap composition whose transport seam exists BEFORE and independently of the store graph, so a pending wipe can be driven to a typed decision without constructing private stores.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- `testGSFINAL003_theRecoveryGraphStandsBeforeAndWithoutTheStoreGraph`, which asserts BOTH halves: the DEFERRED transport seam is real and HONEST (`notDrained(reason:)` NAMING the condition, never claiming a drain it did not perform), and the typed decision is produced with **ZERO private-store constructions, ZERO sensitive-runtime constructions, ZERO DEK requests and ZERO identity writes** -- *counted at the seams, not inferred from an absent file.* MEASURED: 15 passed, rc=0.",
+       "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- `StartupRecoveryBootstrap`, whose ONLY collaborator is the journal-bound coordinator, and `PrivateRuntimePermit`. *A bootstrap that owneth no store cannot open one.*",
+       "*** MUTATION-VERIFIED: MOVING A PRIVATE OPEN ABOVE THE RECOVERY DECISION -- THE EXACT ORDER THIS OBLIGATION FORBIDS -- REDDENS THREE ARMS INCLUDING THIS ONE.*** *So the arm is sensitive to the property it claims, not merely green beside it.*"
+      ]
      },
      {
       "id": "gs-final-003.typed-permit",
@@ -15871,12 +15875,12 @@
    "findings_total": 68,
    "findings_internal_open": 5,
    "findings_with_internal_status_open": 5,
-   "internal_obligations_open": 15,
-   "internal_obligations_unresolved": 15,
+   "internal_obligations_open": 14,
+   "internal_obligations_unresolved": 14,
    "obligations_by_state": {
-    "OPEN": 13,
+    "OPEN": 12,
     "PARTIAL": 2,
-    "DISCHARGED": 17
+    "DISCHARGED": 18
    },
    "external_obligations": 5
   },

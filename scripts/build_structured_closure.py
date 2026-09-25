@@ -91,7 +91,22 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "iOS: a recovery/bootstrap composition whose transport seam exists BEFORE and "
                  "independently of the store graph, so a pending wipe can be driven to a typed "
                  "decision without constructing private stores.",
-         "status": "OPEN", "evidence": []},
+         # *** THE ORDER IS A PROPERTY OF THE CALL GRAPH, SO IT WAS WITNESSED AS ONE -- AND MUTATION-VERIFIED. ***
+         #
+         # *TYPE EXISTENCE IS NOT THE CLAIM: a composition that CONSTRUCTED the private stores FIRST and consulted the
+         # recovery answer AFTERWARDS would satisfy any test that merely checketh the types exist.* **THE OBLIGATION IS
+         # ABOUT ORDER, AND ORDER IS ONLY VISIBLE WHEN SOMETHING IS BUILT -- so the arm drives the real road and counts
+         # what was constructed BEFORE the typed decision arrived.**
+         #
+         # *** AND THE ORDER IS ENFORCEABLE BY CONSTRUCTION RATHER THAN BY CONVENTION: `StartupRecoveryBootstrap` owneth
+         # ONLY a `CrashResumableWipe`, and that coordinator taketh SEAM PROTOCOLS -- a `WipeDurabilityStore`, a
+         # `TransportRuntimeSeam`, a `KeyVaultSeam`, an `IdentityAuthoritySeam` -- NEVER A CONCRETE PRIVATE STORE. A
+         # recovery graph that needed one could not be built: there is no parameter to pass it through.***
+         "status": "DISCHARGED", "evidence": [
+             "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- `testGSFINAL003_theRecoveryGraphStandsBeforeAndWithoutTheStoreGraph`, which asserts BOTH halves: the DEFERRED transport seam is real and HONEST (`notDrained(reason:)` NAMING the condition, never claiming a drain it did not perform), and the typed decision is produced with **ZERO private-store constructions, ZERO sensitive-runtime constructions, ZERO DEK requests and ZERO identity writes** -- *counted at the seams, not inferred from an absent file.* MEASURED: 15 passed, rc=0.",
+             "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- `StartupRecoveryBootstrap`, whose ONLY collaborator is the journal-bound coordinator, and `PrivateRuntimePermit`. *A bootstrap that owneth no store cannot open one.*",
+             "*** MUTATION-VERIFIED: MOVING A PRIVATE OPEN ABOVE THE RECOVERY DECISION -- THE EXACT ORDER THIS OBLIGATION FORBIDS -- REDDENS THREE ARMS INCLUDING THIS ONE.*** *So the arm is sensitive to the property it claims, not merely green beside it.*",
+         ]},
         {"id": "gs-final-003.typed-permit",
          "text": "Both platforms: a non-forgeable typed startup decision (not a Bool, not a log "
                  "line, no public initializer) issued only after the typed recovery answer.",

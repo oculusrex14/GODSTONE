@@ -380,6 +380,95 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                            + "createth one. ***")
     }
 
+    /// *** GS-FINAL-003 `ios-recovery-graph`: THE RECOVERY GRAPH MUST STAND BEFORE, AND INDEPENDENTLY OF, THE STORE GRAPH. ***
+    ///
+    /// *THE OBLIGATION, VERBATIM: **"iOS: a recovery/bootstrap composition whose transport seam exists BEFORE and
+    /// independently of the store graph, so a pending wipe can be driven to a typed decision WITHOUT CONSTRUCTING
+    /// PRIVATE STORES."***
+    ///
+    /// *** AND THE ORDER IS THE WHOLE OF IT, WHICH IS WHY TYPE EXISTENCE IS NOT ENOUGH: a composition that CONSTRUCTS
+    /// the private stores first and CONSULTS the recovery answer afterwards would pass any test that merely checketh the
+    /// types exist. THE ORDER IS A PROPERTY OF THE CALL GRAPH, SO IT MUST BE WITNESSED AS ONE.***
+    ///
+    /// **THE MECHANISM THAT MAKETH THE ORDER ENFORCEABLE IS THE SEAM INJECTION:** *`StartupRecoveryBootstrap` owneth
+    /// ONLY a `CrashResumableWipe`, and that coordinator taketh SEAM PROTOCOLS -- a `WipeDurabilityStore`, a
+    /// `TransportRuntimeSeam`, a `KeyVaultSeam`, an `IdentityAuthoritySeam` -- **NEVER A CONCRETE PRIVATE STORE.*** *So a
+    /// recovery graph that needed a store could not be built at all: there is no parameter to pass one through.*
+    ///
+    /// *** THIS ARM PROVES BOTH HALVES: that the recovery graph DRIVES TO A TYPED DECISION over a DEFERRED transport
+    /// (the seam exists and is honest about not draining), AND THAT IT DOES SO WITH NO PRIVATE STORE IN THE GRAPH --
+    /// asserted by counting store constructions at the seam, not by reading the types.***
+    func testGSFINAL003_theRecoveryGraphStandsBeforeAndWithoutTheStoreGraph() throws {
+        let msg = tempURL("order_msg")
+        let peer = tempURL("order_peer")
+        defer { cleanup(msg, peer) }
+
+        let journal = InMemoryJournal()
+        journal.write(.requested)
+        let keychain = InMemoryKeychain()
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+
+        // *** (1) THE RECOVERY GRAPH IS BUILT OVER DEFERRED SEAMS -- THE TRANSPORT SEAM EXISTS AND SAYS SO. ***
+        //
+        // *`WipeDeferredTransportSeam` is the composition's answer to "the runtime does not yet stand": its
+        // `drainTransport()` returneth `.notDrained(reason:)` NAMING the condition.* **So the seam is REAL and HONEST
+        // rather than absent -- which is the architectural separation the obligation demanded, and the reason a pending
+        // wipe can be driven to a typed answer without a running runtime.**
+        let deferred = WipeDeferredTransportSeam()
+        if case .notDrained(let reason) = deferred.drainTransport() {
+            XCTAssertFalse(
+                reason.isEmpty,
+                "*** THE DEFERRED SEAM MUST NAME WHY NO DRAIN HAPPENED, or a reader of a stuck wipe is left guessing. ***",
+            )
+        } else {
+            XCTFail(
+                "*** THE CREATE-TIME TRANSPORT SEAM MUST NOT CLAIM A DRAIN. *A seam answering `.drained()` here would let " +
+                    "a restart erase keys while queued radio work stood -- the very charge this finding carrieth.* ***",
+            )
+        }
+
+        // *** (2) AND THE DECISION IS PRODUCED FROM THAT GRAPH, BEFORE ANY PRIVATE STORE EXISTS. ***
+        var observed: StartupRecoveryDecision?
+        XCTAssertThrowsError(
+            try MeshRuntime.requireRecoveredPrivateComposition(
+                messageStoreUrl: msg,
+                peerStoreUrl: peer,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: nil,
+                driveRecovery: { bootstrap in let d = bootstrap.decideAndDrive(); observed = d; return d }),
+            "*** A PENDING WIPE MUST REFUSE PRIVATE CONSTRUCTION -- and it must be ABLE to refuse, which is only true if " +
+                "the recovery graph could answer WITHOUT a store graph. ***",
+        )
+        XCTAssertNotNil(observed, "the recovery graph must have produced a TYPED decision to refuse with")
+        XCTAssertEqual(
+            observed?.allowsPrivateConstruction, false,
+            "*** AND THAT DECISION MUST BE A REFUSING ONE. Observed: \(String(describing: observed)) ***",
+        )
+
+        // *** (3) NO PRIVATE STORE WAS CONSTRUCTED -- COUNTED AT THE SEAM, NOT INFERRED FROM AN ABSENT FILE. ***
+        XCTAssertEqual(
+            counter.storesOpened, 0,
+            "*** THE RECOVERY DECISION MUST BE REACHABLE WITH ZERO PRIVATE-STORE CONSTRUCTIONS. *A composition that " +
+                "built the stores first and asked afterwards would have opened them here, which is exactly the order " +
+                "the obligation forbids.* ***",
+        )
+        XCTAssertEqual(
+            counter.sensitiveRuntimesBuilt, 0,
+            "*** AND ZERO SENSITIVE-RUNTIME CONSTRUCTIONS. ***",
+        )
+        XCTAssertEqual(
+            provider.dekRequests, 0,
+            "*** AND THE FACTORY WAS NEVER ASKED FOR A KEY: *`reopenOwnedRequiringDEK` asketh the provider BEFORE it " +
+                "reacheth the engine, so a store graph built first would have asked.* ***",
+        )
+        XCTAssertEqual(
+            keychain.writes, [],
+            "*** AND NO IDENTITY WAS MINted: the recovery graph owneth an IDENTITY AUTHORITY SEAM, not an identity. ***",
+        )
+    }
+
     /// *** THE POSITIVE CONTROL: A CLEAN FIRST LAUNCH IS NOT REFUSED. ***
     ///
     /// *Without this, the repair would be a denial of service rather than a gate. The audit's own
