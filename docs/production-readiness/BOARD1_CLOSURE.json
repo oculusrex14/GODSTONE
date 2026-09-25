@@ -2,8 +2,6 @@
  "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
  "status": "REMEDIATION_IN_PROGRESS",
  "status_scope": "*** REMEDIATION IN PROGRESS -- NOT COMPLETE. *** This record previously read `COMPLETE` while `docs/remediation/REMEDIATION_STATE.json` carried `independent_status = NO_GO` and live PARTIAL findings. A closure record that says COMPLETE over a NO_GO register is the AUDIT-B1-CTRL-001 control-plane defect made literal, so the status now states what is true: an external audit returned NO_GO and this mission repairs its findings. Completion is for the INDEPENDENT auditor to decide; this builder may at most reach READY_FOR_EXTERNAL_REAUDIT.",
- "candidate_sha": "4c724e85b71ada4a9122ca769662a25655b48ed9",
- "candidate_tree_sha": "af4ec77f15dd9772f5d0415769092f254e1d2cf2",
  "tag": "production-readiness-board1-rc5",
  "repository_verification": {
   "run_id": 35471507700,
@@ -234,7 +232,8 @@
   "sha": "1e0ca3a70edb55580df8c3949ef1b510d78e22c2",
   "status": "IMMUTABLE HISTORICAL EVIDENCE -- NOT moved, rewritten or deleted",
   "why_superseded": "Its blocked-task boundary was wrong. An independent review found that BLOCKED_EXTERNAL tasks still contained internally executable prerequisites that were never implemented; measured, `run.py task T78 --stage narrow` returned `FAILED exit=5 tests=0/0` because the declared court did not exist. rc3 supersedes it because tracked, candidate-relevant files changed.",
-  "what_it_got_right": "The hosted greens, the five external gates staying OPEN, readiness false, and verified_fixed 0 are all preserved unchanged in rc3."
+  "what_it_got_right": "The hosted greens, the five external gates staying OPEN, readiness false, and verified_fixed 0 are all preserved unchanged in rc3.",
+  "note": "rc5 and earlier are HISTORICAL IMMUTABLE EVIDENCE, not the bound candidate."
  },
  "correction_round": {
   "summary": "BOARD1-CORRECTION/RC3: eight courts authored (81 tests, MEASURED at runtime; the rc3 note said 88, which was a hand count and was WRONG), evaluator extended, T76 preparation written, stale metadata repaired, validator strengthened.",
@@ -431,7 +430,7 @@
   ],
   "strongest_permitted_terminal_state": "READY_FOR_EXTERNAL_REAUDIT"
  },
- "candidate_tag": "production-readiness-board1-rc5",
+ "candidate_tag": "production-readiness-board1-rc7",
  "closure_record_sha": null,
  "main_tip_sha": "35e67340e4706bb8fd38cdbc6768c97205dff399",
  "board2_tip_sha": "35e67340e4706bb8fd38cdbc6768c97205dff399",
@@ -439,11 +438,20 @@
   "candidate_sha": "the commit the frozen candidate tag points at -- what a releaser builds",
   "candidate_tree_sha": "that commit's tree",
   "candidate_tag": "the tag name for candidate_sha",
-  "closure_record_sha": "the commit that carries THIS closure record; null until frozen, because a record cannot name the commit that writes it",
+  "closure_record_sha": "the commit that carries THIS closure record; null until frozen -- A COMMIT CANNOT NAME ITSELF -- validated by ci/check_candidate_binding.py, which comparéth this document to the copy AT the candidate",
   "main_tip_sha": "the live tip of `main` AT THE TIME OF WRITING; a tip moves, so this is refreshed, never 'positional'",
   "board2_tip_sha": "the live tip of `board2/device-release-validation` AT THE TIME OF WRITING",
-  "rule": "*** NO FIELD IS 'POSITIONAL'. *** *If a field names a ref, it holds that ref's SHA as measured; if it names the candidate, it holds the candidate. The audit found `main_sha` holding a candidate SHA while main had advanced -- that is what this split removes.*"
+  "rule": "*** NO FIELD IS 'POSITIONAL'. *** *If a field names a ref, it holds that ref's SHA as measured; if it names the candidate, it holds the candidate. The audit found `main_sha` holding a candidate SHA while main had advanced -- that is what this split removes.*",
+  "candidate_ref": "the tag NAME this record binds; the annotated tag supplies the exact SHA, so the record never has to name the commit that writes it"
  },
  "candidate_is_immutable": true,
- "candidate_superseded_by": null
+ "candidate_superseded_by": null,
+ "candidate_ref": "production-readiness-board1-rc7",
+ "current_binding_note": "*** THE BOUND CANDIDATE IS rc7, THE FIRST CANDIDATE TO CARRY A CLOSURE RECORD THAT NAMES ITSELF. *** *rc6 and earlier remain HISTORICAL IMMUTABLE EVIDENCE. The record previously named rc5 (`4c724e85`) while the repository's candidate stood at rc6 -- stale authority. The record now carries no hand-asserted SHA at all: it nameth the REF, and the annotated tag supplies the commit, because **a commit cannot name the SHA of the commit that writes it.*** *`ci/check_candidate_binding.py --freeze` requireth the tag to exist, to be annotated, to carry THIS record, and the cited hosted run's head_sha to equal the peeled commit.*",
+ "binding_design": {
+  "candidate_ref": "the tag NAME this record binds. THE ANNOTATED TAG IS THE SHA BINDING -- a record cannot name the commit that writes it, so it does not try.",
+  "candidate_sha": "DERIVED from candidate_ref by `ci/check_candidate_binding.py`, never asserted here. A stated value is checked against the tag and refused if it disagrees.",
+  "closure_record_sha": "null until frozen; a commit cannot name itself.",
+  "validator": "ci/check_candidate_binding.py (--freeze additionally requires the tag to exist, to be annotated, to carry THIS record, and the cited hosted run's head_sha to equal the peeled commit)."
+ }
 }

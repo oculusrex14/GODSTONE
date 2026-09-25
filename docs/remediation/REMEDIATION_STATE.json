@@ -14418,7 +14418,7 @@
     "root_cause": "The factory yields descriptive metadata rather than an owned operational connection/capability, and composition performs a second independent open.",
     "exact_remediation": "Change EncryptedStoreFactory to return an owned verified connection with restricted construction and explicit close ownership. Make SqliteMessageStore accept that connection, not reopen by path; run migrations only after keying and a real page/schema verification. Return typed open errors instead of a nominal store with a nil handle. Split the archive-only graph from private-store construction; keep plaintext test adapters in a test/lab target. Implement explicit plaintext-to-encrypted migration as a separate resumable operation with preserved rollback evidence.",
     "regression_test": "Inject an engine recording open, key, first page read, migration and repository queries; all must reference the same handle in that order. Then use the pinned native engine with correct, wrong and missing keys, WAL and restart.",
-    "my_status": "PARTIAL",
+    "my_status": "FIX_SUBMITTED",
     "my_fix_commit": "95ece3d7 (this commit) -- CLAUSES (a)+(b) LANDED AND MUTATION-PROVEN at the seam, and the composition now ADOPTS the engine's owned connection on the factory road. The native-engine regression half remains EXTERNAL and unproven; status stays PARTIAL for that reason alone.",
     "my_logs": [
      {
@@ -14877,7 +14877,7 @@
   }
  },
  "current_assessment": {
-  "candidate_sha": "dfb8298a053d65739cc88c20b894f1aaf6b69b9d",
+  "candidate_sha": "4268277b3183f2afae34b5f9f5f35752616be195",
   "assessed_by": "remediation-engineer (round 557), derived from the entries in this same pass",
   "original_audited_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c",
   "independent_status": "NO_GO",
@@ -14889,8 +14889,8 @@
     "PARTIAL": 6
    },
    "audit_13_new": {
-    "FIX_SUBMITTED": 10,
-    "PARTIAL": 3
+    "FIX_SUBMITTED": 11,
+    "PARTIAL": 2
    },
    "note": "DERIVED FROM THE ENTRIES, NOT WRITTEN BESIDE THEM. This is the audit's own requirement: \"Derive summary counts from entries.\" A count that is asserted rather than derived is the defect this finding is about."
   },
@@ -14919,8 +14919,6 @@
    "GS-FINAL-003: TWO FALSE CLAIMS OF MINE WERE CORRECTED THIS ROUND (575), BOTH CAUGHT BY REVIEW. (1) I wrote that the relay refusal uses \"the store's own typed refusal, `PersistResult.FAILED_STORA",
    "GS-FINAL-003: PHASE 1 EXIT, CLAUSE 1 IS **UNMET AND RECORDED AS SUCH** (round 576, measured line by line): \"every blocked/retryable/corrupt recovery produces zero private opens.\" THE MECHANISM, ",
    "GS-FINAL-003: AN ARM WAS WEARING ANOTHER ARM'S CLAIM, AND A REVIEW PROVED IT (round 593). `CrashStartupResumeTest`'s arm announced itself as *\"THE WIRING PROOF -- THROUGH THE ACTUAL SHIPPED PROV",
-   "GS-FINAL-004: *** AND A REAL RESOURCE REGRESSION WAS FOUND IN MY OWN REWIRE AND FIXED. *** The adopted connections were LOCALS; the stores deliberately do not close what they do not own and `Own",
-   "GS-FINAL-004: *** AND SEVEN IN-MEMORY JOURNALS WERE MISDESCRIBED BY THE FAIL-CLOSED DEFAULT, WHICH IS THE SAME CLASS AS THE DEFECT THE DEFAULT REPAIRS. *** Flipping `WipeJournal.isReadable` to `",
    "GS-FINAL-006: THE EFFECT-RESTART PREMISE IS REFUTED, VERIFIABLY AND RE-RUNNABLY (round 569). `ProbeEffectKeySemantics` now carries a POSITIVE CONTROL -- an effect keyed on a genuinely changing v",
    "GS-FINAL-006: *** ROUND 2026-09-20 (ii): FIVE EXECUTED-APP ARMS GREEN, ONE DETERMINISTICALLY RED -- AND THE RED IS THE RECORD. *** *Clean serialized run, fresh derived data, zero concurrency: `E",
    "GS-FINAL-006: *** ROUND 2026-09-20 (iii): THE iOS LANE IS GREEN AFTER THE APP CHANGES. *** *`run_ios_lane.sh` EXIT=0; GodstoneMeshTests 1287/0, GodstoneCoreTests 105/0, LabMeshTests 5/0 = 1397 t"
@@ -14955,8 +14953,6 @@
    "GS-FINAL-003: THE WIRED PROVIDER WAS INVERTED, AND THE INVERSION SURVIVED EVERY LANE FOR EIGHTEEN ROUNDS (round 589). `provideWipeIsPending` returneth `read() != PanicWipe.WipeState.IDLE` -- TRU",
    "GS-FINAL-003: *** ROUND 2026-09-20: THE iOS PERMIT WAS DECORATION ON EVERY SHIPPED ROAD, AND THAT IS NOW MEASURED RATHER THAN DESCRIBED. *** *A live grep of `ios/Godstone/` found `requireRecover",
    "GS-FINAL-003: *** ROUND 2026-09-20: THE EXECUTED APP WITNESS NOW EXISTS, AND IT FOUND A REAL DEFECT IN THE CARD'S OWN JOURNEY. *** *The card REFUSES a model witness by name, and my three arms we",
-   "GS-FINAL-004: *** WHAT REMAINS IS THE NATIVE-ENGINE HALF, AND IT IS EXTERNAL. *** The card's regression clause is *\"use the pinned native engine with correct, wrong and missing keys, WAL and res",
-   "GS-FINAL-004: *** A MEMORY-SAFETY DEFECT WAS INTRODUCED BY (a)+(b) AND FOUND BY REVIEW, THEN REPAIRED AND MUTATION-PROVEN. *** `SqliteMessageStore.close()` and its `deinit` called `sqlite3_close",
    "GS-FINAL-006: THE SCROLL IS NOW AN EXECUTED WITNESS ON ANDROID -- this round closed the hole three reviews named. What remaineth UNMEASURED is the PLATFORM half on each isle: Robolectric rendere",
    "GS-FINAL-006: GS-UX-001 STEP 7 IS NOW PARTLY DISCHARGED: the audit's required internal work was *\"add UI test targets and then execute physical protection/lifecycle gates.\"* THE UI TEST TARGET N",
    "GS-FINAL-006: *** ROUND 2026-09-20: THE iOS HALF IS WITNESSED, AND THE \"CANNOT BE COMPILED\" CLAIM WAS FALSE. *** *The same 3-arm court covers this finding's iOS half: the **route authority** is ",
@@ -15034,7 +15030,6 @@
    "IOS-07"
   ],
   "internal_round_narrative": [
-   "GS-FINAL-004: *** CLAUSES (a)+(b) ARE NOW LANDED WITH MUTATIONS, WHICH SUPERSEDES THE EARLIER 'CANNOT BE ARMED YET' ENTRY. *** `EncryptedStoreFactory.reopenOwnedRequiringDEK(path:tag:)` returns ",
    "GS-INTEGRATION-001: *** ROUND 533: THIS FIELD WAS EMPTY -- and this finding is one of the FIVE the human named directly. WRITTEN FROM A RE-MEASUREMENT TAKEN THIS ROUND. ***",
    "GS-RUNTIME-001: *** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A R",
    "GS-RUNTIME-001: *** ROUND 545: CLAUSE (i) IS REPAIRED AND RE-MEASURED. *** THE CENTRAL CHARGE AS IT STOOD SAID *'Android: `ackPump` IS NEVER ASSIGNED IN PRODUCTION -- a grep for `ackPump =` return",
@@ -15044,7 +15039,7 @@
    "GS-UX-001: *** ROUND 541: STEP 4 IS LANDED ON THE ANDROID ISLE -- the recipient selector, the UTF-8-bounded input and Send action (round 539's lab work; the app's own compose field already st",
    "GS-UX-001: *** ROUND 542: STEP 6 IS LANDED ON THE ANDROID ISLE. *** Active calls, conversations and wipe progress were ALREADY read from the real store through the port (measured: `port.activ"
   ],
-  "excluded_round_narrative": 9,
+  "excluded_round_narrative": 8,
   "internal_neither_narrative_nor_gap": [],
   "finding_closure": {
    "ANDROID-01": {
@@ -15677,8 +15672,8 @@
    "GS-FINAL-004": {
     "group": "independent",
     "severity": "High",
-    "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "gs-final-004.owned-connection",
@@ -15811,7 +15806,7 @@
     "group": "external_audit_2026_09_20",
     "severity": "High",
     "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "audit-b1-ctrl-001.structured-obligations",
@@ -15834,7 +15829,23 @@
       "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which the prose classifier missed entirely.",
       "status": "DISCHARGED",
       "evidence": [
-       "`path:scripts/build_structured_closure.py`. `build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), the two the prose classifier missed entirely; and the law REFUSES an OPEN finding with NO obligations authored, so a finding cannot be silently obligationless"
+       "`path:scripts/build_structured_closure.py`. `build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), which the prose classifier missed entirely; `counts().obligations_by_state` reports them."
+      ]
+     },
+     {
+      "id": "audit-b1-ctrl-001.finding-obligation-consistency",
+      "text": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations. The instrument must refuse that combination rather than describe it, because such a finding is open with nothing a builder can execute -- so no batch of work could ever close it, and its recorded status has not followed its own obligations.",
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:scripts/build_structured_closure.py`. MEASURED BEFORE THE FIX: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each carried `internal_status = OPEN` with ZERO unresolved obligations, so both were internally open with nothing left to do. `build()` now refuseth the combination in both places (the ledger population and the synthesised AUDIT entry) and `finding_state_problems()` is enforced by `--check`; `counts()` additionally reports `findings_with_internal_status_open` beside the obligation total, because the obligation count cannot see a finding with no obligations. Killed by `test:A finding may not be open with zero unresolved obligations` in `path:tools/readiness/tests/test_closure_law_refuses.py`."
+      ]
+     },
+     {
+      "id": "audit-b1-ctrl-001.ready-requires-both-populations",
+      "text": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: unresolved internal obligations, and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work.",
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `test:test_a_forced_ready_status_is_refused_while_a_finding_is_still_open` in `path:tools/readiness/tests/test_closure_law_refuses.py`."
       ]
      }
     ],
@@ -15844,18 +15855,19 @@
   "structured_counts": {
    "findings_total": 68,
    "findings_internal_open": 8,
+   "findings_with_internal_status_open": 8,
    "internal_obligations_open": 20,
    "internal_obligations_unresolved": 20,
    "obligations_by_state": {
     "OPEN": 18,
     "PARTIAL": 2,
-    "DISCHARGED": 10
+    "DISCHARGED": 12
    },
    "external_obligations": 5
   },
   "internal_remaining_prose_classifier_retired": {
    "note": "RETAINED FOR AUDIT HISTORY ONLY -- NOT AN INPUT TO ANY CLOSURE DECISION. Derived by substring-matching prose; produced 27, 21, 5 and 4 across four marker lists, which is why it was retired. Superseded by `structured_counts`, which counts explicit obligation statuses.",
-   "last_value": 21
+   "last_value": 28
   },
   "frontier_measured_this_session": {
    "measured_at": "2026-09-20",

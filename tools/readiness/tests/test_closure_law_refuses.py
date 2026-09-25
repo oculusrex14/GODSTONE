@@ -26,6 +26,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[3]
 GATE = REPO / "scripts" / "build_structured_closure.py"
@@ -256,6 +257,119 @@ class ObligationStateMachine(unittest.TestCase):
     def test_the_real_map_carries_only_legal_states(self) -> None:
         self.assertEqual(self.mod.obligation_state_problems(self.closure), [],
                          "every obligation in the real map must carry a legal state")
+
+
+class FindingStatusFollowsItsObligations(unittest.TestCase):
+    """*** A FINDING MAY NOT BE INTERNALLY OPEN WHILE CARRYING ZERO UNRESOLVED OBLIGATIONS. ***
+
+    *MEASURED ON THE LIVE TREE BEFORE THE FIX: **`AUDIT-B1-CTRL-001` AND `GS-FINAL-004` EACH STOOD
+    `internal_status = OPEN` WITH EVERY ONE OF THEIR OBLIGATIONS `DISCHARGED`** -- internally open with nothing a
+    builder could execute, so **no batch of work could ever have closed them.*** *Their inconsistency was invisible in
+    `findings_internal_open`, which counteth OBLIGATIONS, so a reader comparing "8 findings internally open" against a
+    status list showing ten OPEN findings had no field explaining the gap.*
+
+    *** AND MY FIRST REPAIR WAS ITSELF WRONG, WHICH THESE TESTS PIN SO IT CANNOT COME BACK: it fired whenever a
+    finding's obligations were ALL terminal -- which would have REFUSED EVERY CORRECTLY-CLOSED FINDING. A guard that
+    refuseth the state it is meant to permit is the mirror defect of one that permitteth the state it is meant to
+    refuse.*** *So the rule is the `OPEN` BESIDE AN ALL-TERMINAL SET, and the positive case is asserted too.*
+    """
+
+    def setUp(self) -> None:
+        self.mod = _load()
+        self.closure = self.mod.build(json.loads(self.mod.LEDGER.read_text(encoding="utf-8")))
+
+    def test_the_live_closure_carries_no_such_inconsistency(self) -> None:
+        self.assertEqual(
+            self.mod.finding_state_problems(self.closure), [],
+            "no finding may stand internally OPEN while all its obligations are terminal",
+        )
+
+    def test_an_open_finding_with_all_obligations_discharged_is_refused(self) -> None:
+        closure = json.loads(json.dumps(self.closure))
+        fid = next(f for f, e in closure.items() if e.get("internal_obligations"))
+        for o in closure[fid]["internal_obligations"]:
+            o["status"] = "DISCHARGED"
+        closure[fid]["internal_status"] = "OPEN"
+        problems = self.mod.finding_state_problems(closure)
+        self.assertTrue(problems, f"{fid}: OPEN beside an all-terminal obligation set must be REFUSED")
+
+    def test_a_complete_finding_with_all_obligations_discharged_is_PERMITTED(self) -> None:
+        """*The mirror defect: a guard that refuses the state it exists to permit is not a guard.*"""
+        closure = json.loads(json.dumps(self.closure))
+        fid = next(f for f, e in closure.items() if e.get("internal_obligations"))
+        for o in closure[fid]["internal_obligations"]:
+            o["status"] = "DISCHARGED"
+        closure[fid]["internal_status"] = "COMPLETE"
+        self.assertEqual(
+            self.mod.finding_state_problems(closure), [],
+            "a COMPLETE finding whose obligations are all DISCHARGED is the CORRECT state, not a defect",
+        )
+
+    def test_a_finding_with_no_obligations_is_not_covered_by_the_rule(self) -> None:
+        """*Terminality cannot be derived from a set that does not exist, so such a finding keeps its status.*"""
+        closure = json.loads(json.dumps(self.closure))
+        fid = next(f for f, e in closure.items() if not e.get("internal_obligations"))
+        closure[fid]["internal_status"] = "OPEN"
+        self.assertEqual(
+            self.mod.finding_state_problems(closure), [],
+            "a finding with no authored obligations is governed by its recorded status, not by an empty set",
+        )
+
+    def test_the_ledger_population_refuses_an_inconsistent_finding(self) -> None:
+        """The rule is enforced where the finding is BUILT, not only by the checker that reads it afterwards."""
+        ledger = json.loads(self.mod.LEDGER.read_text(encoding="utf-8"))
+        # A finding whose obligations are ALL discharged is made internally OPEN in the LEDGER.
+        ledger["findings"]["GS-ARCHIVE-005"]["my_status"] = "PARTIAL"
+        fid = "GS-ARCHIVE-005"
+        with patch.object(self.mod, "PARTIAL_OBLIGATIONS", {
+                **self.mod.PARTIAL_OBLIGATIONS,
+                fid: [{"id": f"{fid}.synthetic", "text": "t", "status": "DISCHARGED",
+                       "evidence": ["`path:scripts/build_structured_closure.py`"]}]}):
+            with self.assertRaises(SystemExit):
+                self.mod.build(ledger)
+
+    def test_both_findings_that_were_inconsistent_now_derive_coherently(self) -> None:
+        """*The two MEASURED offenders -- pinned by name so a return to the old state is loud.*"""
+        for fid in ("AUDIT-B1-CTRL-001", "GS-FINAL-004"):
+            with self.subTest(finding=fid):
+                e = self.closure[fid]
+                if e.get("internal_obligations"):
+                    self.assertTrue(
+                        self.mod.obligations_are_terminal(e),
+                        f"{fid}'s obligations are all terminal, so it must not stand internally OPEN",
+                    )
+                    self.assertNotEqual(e.get("internal_status"), "OPEN")
+
+
+class ReadinessRequiresBothPopulations(unittest.TestCase):
+    """*** A READY STATUS MUST BE EMPTY IN BOTH POPULATIONS, NOT ONE. ***
+
+    *MEASURED: with `AUDIT-B1-CTRL-001` and `GS-FINAL-004` internally OPEN while carrying ZERO obligations, a gate
+    reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while TEN findings
+    still reported themselves internally open. Section 23 nameth `findings with internal_status OPEN = 0` as a
+    readiness condition in its own right.*
+    """
+
+    def setUp(self) -> None:
+        self.mod = _load()
+
+    def test_the_status_population_is_reported_separately(self) -> None:
+        c = self.mod.counts(self.mod.build(json.loads(self.mod.LEDGER.read_text(encoding="utf-8"))))
+        self.assertIn("findings_with_internal_status_open", c,
+                      "the obligation count cannot see a finding with no obligations, so the STATUS must be counted")
+
+    def test_a_finding_status_open_alone_blocks_readiness(self) -> None:
+        """*The mutation: every OBLIGATION discharged, but a finding still OPEN. The law must still refuse.*"""
+        closure = self.mod.build(json.loads(self.mod.LEDGER.read_text(encoding="utf-8")))
+        for f in closure.values():
+            for o in f["internal_obligations"]:
+                o["status"] = "DISCHARGED"
+        fid = next(f for f, e in closure.items() if e.get("internal_obligations"))
+        closure[fid]["internal_status"] = "OPEN"
+        c = self.mod.counts(closure)
+        self.assertEqual(c["internal_obligations_unresolved"], 0, "the obligation population is empty ...")
+        self.assertGreater(c["findings_with_internal_status_open"], 0,
+                           "... while the STATUS population is not -- which is exactly the gap the law must see")
 
 
 class PersistedStateAgreesWithDerivation(unittest.TestCase):

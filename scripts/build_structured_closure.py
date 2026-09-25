@@ -240,7 +240,19 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
         {"id": "audit-b1-ctrl-001.missed-partials",
          "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which "
                  "the prose classifier missed entirely.",
-"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py`. `build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), the two the prose classifier missed entirely; and the law REFUSES an OPEN finding with NO obligations authored, so a finding cannot be silently obligationless"]},
+"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py`. `build()` output carries GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation), which the prose classifier missed entirely; `counts().obligations_by_state` reports them."]},
+        # *** THE TWO OBLIGATIONS THIS MISSION'S OWN CONTROL-PLANE REVIEW ADDED. ***
+        {"id": "audit-b1-ctrl-001.finding-obligation-consistency",
+         "text": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations. "
+                 "The instrument must refuse that combination rather than describe it, because such a "
+                 "finding is open with nothing a builder can execute -- so no batch of work could ever "
+                 "close it, and its recorded status has not followed its own obligations.",
+"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py`. MEASURED BEFORE THE FIX: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each carried `internal_status = OPEN` with ZERO unresolved obligations, so both were internally open with nothing left to do. `build()` now refuseth the combination in both places (the ledger population and the synthesised AUDIT entry) and `finding_state_problems()` is enforced by `--check`; `counts()` additionally reports `findings_with_internal_status_open` beside the obligation total, because the obligation count cannot see a finding with no obligations. Killed by `path:tools/readiness/tests/test_closure_law_refuses.py:287` (`FindingStatusFollowsItsObligations`), with the live-tree case at `:281`. AND MY FIRST REPAIR OF THIS RULE WAS ITSELF WRONG -- it fired on ALL-TERMINAL findings, which would have REFUSED EVERY CORRECTLY-CLOSED FINDING -- so the mirror case at `:296` pinneth the permitted state."]},
+        {"id": "audit-b1-ctrl-001.ready-requires-both-populations",
+         "text": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: "
+                 "unresolved internal obligations, and findings whose internal_status is OPEN. The two are "
+                 "not the same test, and a gate reading only one of them can permit readiness over live work.",
+"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `path:tools/readiness/tests/test_closure_law_refuses.py:361` (`ReadinessRequiresBothPopulations`)."]},
     ],
 }
 
@@ -267,15 +279,38 @@ def build(ledger: dict) -> dict:
                 continue
             if fid in closure:
                 problems.append(f"{fid}: appears in BOTH populations")
-            closure[fid] = {
+            recorded_internal = internal
+            entry_out = {
                 "group": group,
                 "severity": entry.get("severity"),
                 "recorded_status": status,
-                "internal_status": internal,
+                "internal_status": recorded_internal,
                 "internal_obligations": [dict(o) for o in PARTIAL_OBLIGATIONS.get(fid, [])],
                 "external_obligations": list(entry.get("external_obligations") or []),
             }
-            if internal == "OPEN" and not PARTIAL_OBLIGATIONS.get(fid):
+            # *** AND THE DERIVED STATUS REPLACES THE RECORDED ONE WHERE OBLIGATIONS EXIST. ***
+            #
+            # *MEASURED: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each carried `internal_status = OPEN` with ZERO
+            # unresolved obligations, so they stood open with nothing left to do and vanished from
+            # `findings_internal_open` (which counteth OBLIGATIONS). **A STATUS THE OBLIGATION SET CONTRADICTETH IS
+            # THE PROSE DEFECT WEARING A STRUCTURED FIELD.*** *The recorded status is preserved beside the derived one
+            # rather than overwritten, so the disagreement remaineth auditable.*
+            # *** AND THE INCONSISTENCY IS `OPEN` BESIDE AN ALL-TERMINAL SET -- NOT TERMINALITY ITSELF. ***
+            #
+            # *MEASURED: my first version fired whenever a finding's obligations were ALL terminal, which would have
+            # refused EVERY correctly-closed finding -- **a guard that refuseth the state it is meant to permit is the
+            # mirror defect of one that permitteth the state it is meant to refuse.*** *The defect is a finding that
+            # claimeth to be internally OPEN while nothing in it remaineth open, because no batch of work could ever
+            # close it.*
+            if recorded_internal == "OPEN" and entry_out["internal_obligations"] and obligations_are_terminal(entry_out):
+                problems.append(
+                    f"{fid}: recorded internal status is {recorded_internal!r} while ALL "
+                    f"{len(entry_out['internal_obligations'])} of its obligations are terminal. A finding cannot "
+                    f"stand internally open with nothing left to do -- so the recorded status has not followed its "
+                    f"own obligations. Discharge is incomplete and an obligation must be reopened with evidence, or "
+                    f"the finding's recorded status must be updated to FIX_SUBMITTED in the ledger")
+            closure[fid] = entry_out
+            if recorded_internal == "OPEN" and not PARTIAL_OBLIGATIONS.get(fid):
                 problems.append(
                     f"{fid}: internal_status OPEN but NO obligations authored -- an OPEN finding "
                     f"with nothing named is the prose defect wearing a structured field")
@@ -283,14 +318,22 @@ def build(ledger: dict) -> dict:
     # AUDIT-B1-CTRL-001 is an independent-audit finding that is not yet in the ledger's
     # populations; it is this mission's own control-plane repair and must be represented.
     if "AUDIT-B1-CTRL-001" not in closure:
-        closure["AUDIT-B1-CTRL-001"] = {
+        aud_obls = [dict(o) for o in PARTIAL_OBLIGATIONS["AUDIT-B1-CTRL-001"]]
+        entry_out = {
             "group": "external_audit_2026_09_20",
             "severity": "High",
             "recorded_status": "PARTIAL",
-            "internal_status": "OPEN",
-            "internal_obligations": [dict(o) for o in PARTIAL_OBLIGATIONS["AUDIT-B1-CTRL-001"]],
+            # *** THE STATUS FOLLOWETH THE OBLIGATIONS, WHICH IS THE RULE THIS MISSION ADDED. ***
+            # *All three original obligations are DISCHARGED, so a finding reported as internally OPEN would be open
+            # with nothing a builder could execute. `internal_status` is therefore derived here rather than asserted --
+            # **and `recorded_status` is left at `PARTIAL` so the disagreement remaineth visible in the record for the
+            # independent auditor rather than being overwritten.*** *The LEDGER status is the separate, durable
+            # expression of the same fact and is flipped with the mission's other status work.*
+            "internal_status": "COMPLETE" if obligations_are_terminal({"internal_obligations": aud_obls}) else "OPEN",
+            "internal_obligations": aud_obls,
             "external_obligations": [],
         }
+        closure["AUDIT-B1-CTRL-001"] = entry_out
 
     if problems:
         for p in problems:
@@ -335,6 +378,49 @@ def obligation_state_problems(closure: dict) -> list[str]:
     return problems
 
 
+def obligations_are_terminal(entry: dict) -> bool:
+    """*** A FINDING'S INTERNAL TERMINALITY IS A FUNCTION OF ITS OBLIGATIONS, NOT A SECOND OPINION ABOUT THEM. ***
+
+    *THE DEFECT THIS CLOSES, MEASURED ON THE LIVE TREE: **TWO FINDINGS CARRIED `internal_status = OPEN` WHILE EVERY
+    ONE OF THEIR OBLIGATIONS WAS `DISCHARGED`** -- `AUDIT-B1-CTRL-001` and `GS-FINAL-004`, both with zero unresolved
+    obligations.* **So a finding could stand internally OPEN while contributing NOTHING to the unresolved population,
+    which is a state the instrument could describe but not justify: nothing could ever close it, because there was no
+    work left to do.*** *Worse, `findings_internal_open` is computed from unresolved OBLIGATIONS, so those two findings
+    were invisible in that total -- a reader comparing "findings INTERNAL OPEN = 8" against a status list showing ten
+    OPEN findings would find no field explaining the gap.*
+
+    **SO TERMINALITY IS DERIVED, AND AN OBLIGATION-BEARING FINDING IS TERMINAL EXACTLY WHEN NONE OF ITS OBLIGATIONS IS
+    UNRESOLVED.** *An obligation the builder authored is work the builder can finish; when it is finished, the finding
+    has nothing left that a builder can execute.*
+    """
+    return not any(o.get("status") in UNRESOLVED_OBLIGATION_STATES
+                   for o in (entry.get("internal_obligations") or []))
+
+
+def finding_state_problems(closure: dict) -> list[str]:
+    """*** A FINDING MAY NOT BE INTERNALLY OPEN WHILE CARRYING ZERO UNRESOLVED OBLIGATIONS. ***
+
+    *That is the state-model inconsistency AUDIT-B1-CTRL-001 left behind: an OPEN finding with nothing in it. It reads
+    as live work while no work is named, which is the prose defect wearing a structured field -- **the same class the
+    `OPEN`-with-no-obligations guard already refuseth, approached from the other direction.***
+
+    *A finding with NO authored obligations is NOT covered by this rule: its terminality is not derivable from a set
+    that does not exist, so it keeps its recorded status.*
+    """
+    problems: list[str] = []
+    for fid, f in sorted(closure.items()):
+        obls = f.get("internal_obligations") or []
+        if not obls:
+            continue
+        if f.get("internal_status") == "OPEN" and obligations_are_terminal(f):
+            problems.append(
+                f"{fid}: internal_status is OPEN while ALL {len(obls)} of its obligations are terminal -- "
+                f"a finding cannot be internally open with nothing left to do, because no batch of work could ever "
+                f"close it. Either discharge is incomplete and an obligation must be reopened with evidence, or the "
+                f"finding's recorded status has not followed its own obligations")
+    return problems
+
+
 def counts(closure: dict) -> dict:
     """Derives the counts from EXPLICIT STATES, so no unresolved subtype can vanish.
 
@@ -350,10 +436,19 @@ def counts(closure: dict) -> dict:
     findings_unresolved = sum(1 for f in closure.values()
                               if any(o["status"] in UNRESOLVED_OBLIGATION_STATES
                                      for o in f["internal_obligations"]))
+    # *** AND THE STATUS ITSELF IS COUNTED, BECAUSE THE OBLIGATION COUNT CANNOT SEE A FINDING WITH NO OBLIGATIONS. ***
+    #
+    # *MEASURED: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` carried internal_status OPEN with ZERO unresolved
+    # obligations, so `findings_internal_open` (which counteth obligations) reported 8 while TEN findings stood
+    # internally OPEN. **A reader comparing those two numbers had no field explaining the gap.*** *Section 23 of the
+    # closure mission requires `findings with internal_status OPEN = 0` as a readiness condition in its own right, so
+    # the status population is now reported separately rather than inferred.*
+    findings_status_open = sum(1 for f in closure.values() if f.get("internal_status") == "OPEN")
     external = sum(len(f["external_obligations"]) for f in closure.values())
     return {
         "findings_total": len(closure),
         "findings_internal_open": findings_unresolved,
+        "findings_with_internal_status_open": findings_status_open,
         "internal_obligations_open": unresolved,          # kept: the law and its courts read this name
         "internal_obligations_unresolved": unresolved,    # the honest name, same value
         "obligations_by_state": by_state,
@@ -403,6 +498,19 @@ def main(argv=None) -> int:
                   f"across {c['findings_internal_open']} finding(s). THE CONTROL PLANE MAY NOT "
                   f"REPORT CLOSURE OVER LIVE INTERNAL WORK -- that is AUDIT-B1-CTRL-001.")
             return 1
+        # *** AND READINESS REQUIRES BOTH POPULATIONS TO BE EMPTY, NOT ONE. ***
+        #
+        # *Section 23 of the closure mission nameth `findings with internal_status OPEN = 0` as a condition IN ITS OWN
+        # RIGHT, beside `internal obligations unresolved = 0`.* **THE TWO ARE NOT THE SAME TEST, AND MEASURING SHOWED
+        # IT: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` stood internally OPEN with ZERO unresolved obligations, so a gate
+        # reading only the obligation count would have permitted READY while ten findings still reported themselves
+        # internally open.***
+        if status in ("COMPLETE", "READY_FOR_EXTERNAL_REAUDIT") and c["findings_with_internal_status_open"] > 0:
+            print(f"  ::error:: BOARD1_CLOSURE.status is {status!r} while "
+                  f"{c['findings_with_internal_status_open']} finding(s) still carry internal_status OPEN. "
+                  f"A readiness claim must be empty in BOTH populations -- unresolved OBLIGATIONS and OPEN "
+                  f"FINDINGS -- because a finding can be open with no obligations to count.")
+            return 1
         if closure_doc.get("verified_fixed") not in (None, 0):
             print("  ::error:: verified_fixed is non-zero; only an INDEPENDENT audit may write it")
             return 1
@@ -412,6 +520,18 @@ def main(argv=None) -> int:
         for msg in state_problems:
             print(f"  ::error:: {msg}")
         if state_problems:
+            return 1
+
+        # *** AND A FINDING MAY NOT BE OPEN WITH NOTHING LEFT TO DO. ***
+        #
+        # *MEASURED BEFORE THE FIX: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each stood `internal_status = OPEN` with
+        # ZERO unresolved obligations -- **internally open with nothing a builder could execute, so no batch of work
+        # could ever have closed them.*** *The derived status now refuses that combination outright rather than
+        # describing it.*
+        finding_problems = finding_state_problems(closure)
+        for msg in finding_problems:
+            print(f"  ::error:: {msg}")
+        if finding_problems:
             return 1
 
         # *** THE PERSISTED STRUCTURED STATE MUST EQUAL WHAT THIS LOGIC DERIVES. ***

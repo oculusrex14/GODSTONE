@@ -348,8 +348,33 @@ jobs:
           # THE GATE REFUSES a COMPLETE / READY_FOR_EXTERNAL_REAUDIT builder status while any
           # structured internal obligation is OPEN, and refuses any non-zero `verified_fixed`
           # because only an INDEPENDENT audit may write that value.
+          #
+          # *** AND READINESS REQUIRES BOTH POPULATIONS TO BE EMPTY -- unresolved OBLIGATIONS and
+          # findings whose internal_status is OPEN. *** *MEASURED: two findings stood internally
+          # OPEN with ZERO unresolved obligations, so a gate reading only the obligation count
+          # would have permitted READY while ten findings reported themselves internally open.*
           python scripts/build_structured_closure.py
           python scripts/build_structured_closure.py --check
+      - name: candidate binding (the closure record must bind the candidate it nameth)
+        run: |
+          # *** A CLOSURE RECORD THAT NAMETH A SUPERSEDED CANDIDATE IS STALE AUTHORITY. ***
+          #
+          # *MEASURED: `BOARD1_CLOSURE.json` carried `candidate_sha = 4c724e85...` and rc5 while the
+          # repository's actual candidate stood at rc6 (`4268277b`). A reader trusts a closure
+          # record, so naming the wrong candidate is worse than naming none.*
+          #
+          # THE BINDING IS NON-SELF-REFERENTIAL BY CONSTRUCTION: **a commit cannot name the SHA of
+          # the commit that writes it**, so the record carrieth the candidate REF and the ANNOTATED
+          # TAG supplies the commit. This check requireth the ref to be a real, annotated tag, to
+          # peel to any SHA the record states, and -- sharpest of all -- to carry a copy of THIS
+          # record binding the same ref, which is the test for "was this record written about this
+          # candidate, or after it?"
+          #
+          # `--freeze` is NOT passed here: the record is committed BEFORE the tag exists, so a check
+          # that demanded the tag unconditionally would be red for the entire window in which the
+          # record is being written.
+          python ci/check_candidate_binding.py --selftest
+          python ci/check_candidate_binding.py
       - name: production-readiness status consistency (Stage 4E0)
         run: |
           python ci/check_status_consistency.py --selftest
