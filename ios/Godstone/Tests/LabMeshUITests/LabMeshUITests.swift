@@ -32,6 +32,34 @@ final class LabMeshUITests: XCTestCase {
         return app.buttons[identifier]
     }
 
+    /// *** GS-UX-001: A CONTROL BELOW THE FOLD IS REACHABLE, AND THE ARM MUST PROVE IT RATHER THAN ASSUME IT. ***
+    ///
+    /// *MEASURED, FROM THE LANE LOG: `lab.trust.confirm` EXISTED (`waitForExistence` passed) but `isHittable` was
+    /// false. **THE CAUSE IS THE LAYOUT THE ARM ITSELF NOW DRIVES:** the Contacts page was wrapped in a `ScrollView`
+    /// (the same repair its sibling journeys already carry, so enlarged type cannot cover the tab bar), and the trust
+    /// page carrieth more controls than any sibling -- so its action row can sit BELOW THE FOLD, where it is
+    /// ADDRESSABLE but not tappable until the user scrolls.*
+    ///
+    /// **SO THE ARM DOES WHAT THE USER DOES: SCROLL, BOUNDED, AND THEN REQUIRE THE CONTROL TO BE HITTABLE.** *The
+    /// assertion is NOT weakened -- it moveth from "hittable where it happens to be" to "reachable by scrolling", and
+    /// it still FAILS with a named reason if the control cannot be reached at all. A control no amount of scrolling
+    /// revealeth is the real defect this keeps biting on.*
+    @discardableResult
+    private func scrollIntoView(_ element: XCUIElement, in app: XCUIApplication,
+                                attempts: Int = 6) -> Bool {
+        if element.isHittable { return true }
+        for _ in 0..<attempts {
+            let scrollView = app.scrollViews.firstMatch
+            if scrollView.exists {
+                scrollView.swipeUp()
+            } else {
+                app.swipeUp()
+            }
+            if element.isHittable { return true }
+        }
+        return element.isHittable
+    }
+
     /// *** THE CARD'S CLOSURE CHECK: type multibyte text, select a recipient, tap Send. ***
     ///
     /// *"Types multibyte text" is taken literally: the payload is UTF-8 that is NOT ASCII, because a bounded input
@@ -536,7 +564,12 @@ final class LabMeshUITests: XCTestCase {
                 control.waitForExistence(timeout: 20),
                 "*** THE \(label) CONTROL MUST BE ADDRESSABLE. ***",
             )
-            XCTAssertTrue(control.isHittable, "and it must be HITTABLE -- a control behind an overlay is not performable")
+            XCTAssertTrue(
+                scrollIntoView(control, in: app),
+                "*** THE \(label) CONTROL MUST BE REACHABLE BY A USER. It existeth in the tree but is not hittable "
+                    + "after bounded scrolling, which is the real 'a control no user can tap' defect -- measured on "
+                    + "this arm's own ScrollView, where the action row can sit below the fold. ***",
+            )
             let before = outcome.label
             control.tap()
             // *The authority answereth synchronously, so the rendered outcome must differ from what it was.*
@@ -578,6 +611,8 @@ final class LabMeshUITests: XCTestCase {
         XCTAssertTrue(seedRotation.waitForExistence(timeout: 20),
                       "*** THE ROTATION-ARRIVAL CONTROL MUST EXIST: 'a rotation that moved between render and tap' is "
                           + "not performable without a way for it to move. ***")
+        XCTAssertTrue(scrollIntoView(seedRotation, in: app),
+                      "and it must be REACHABLE -- the trust page scrolls, so a control below the fold is revealed")
         seedRotation.tap()
 
         // The displayed candidate is now a real pending rotation -- and the screen captured it when it re-rendered.
@@ -591,9 +626,11 @@ final class LabMeshUITests: XCTestCase {
         //
         // *The displayed ref is NOT re-captured by this control -- that is the point: the screen is still holding the
         // candidate it showed.*
+        XCTAssertTrue(scrollIntoView(seedRotation, in: app), "and the control must remain reachable")
         seedRotation.tap()
 
         // *** (3) THE TAP ON THE STALE CANDIDATE MUST REFUSE WITH THE EXACT STRING. ***
+        XCTAssertTrue(scrollIntoView(approve, in: app), "the Approve control must be reachable before the tap")
         approve.tap()
 
         let refused = NSPredicate(format: "label == %@",
