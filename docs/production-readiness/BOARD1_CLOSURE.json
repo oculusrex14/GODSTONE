@@ -443,7 +443,7 @@
   ],
   "strongest_permitted_terminal_state": "READY_FOR_EXTERNAL_REAUDIT"
  },
- "candidate_tag": "production-readiness-board1-rc7",
+ "candidate_tag": "production-readiness-board1-rc8",
  "closure_record_sha": null,
  "main_tip_sha": "35e67340e4706bb8fd38cdbc6768c97205dff399",
  "board2_tip_sha": "35e67340e4706bb8fd38cdbc6768c97205dff399",
@@ -459,8 +459,8 @@
  },
  "candidate_is_immutable": true,
  "candidate_superseded_by": null,
- "candidate_ref": "production-readiness-board1-rc7",
- "current_binding_note": "*** THE BOUND CANDIDATE IS rc7, THE FIRST CANDIDATE TO CARRY A CLOSURE RECORD THAT NAMES ITSELF. *** *rc6 and earlier remain HISTORICAL IMMUTABLE EVIDENCE. The record previously named rc5 (`4c724e85`) while the repository's candidate stood at rc6 -- stale authority. The record now carries no hand-asserted SHA at all: it nameth the REF, and the annotated tag supplies the commit, because **a commit cannot name the SHA of the commit that writes it.*** *`ci/check_candidate_binding.py --freeze` requireth the tag to exist, to be annotated, to carry THIS record, and the cited hosted run's head_sha to equal the peeled commit.*",
+ "candidate_ref": "production-readiness-board1-rc8",
+ "current_binding_note": "*** THE BOUND CANDIDATE IS rc8. *** *rc7 WAS TAGGED AND THE HOSTED RUN REFUSED IT: the invariants job measured 31 SKIPPED arms against its 30 ceiling and said so -- 'a control that should execute did not' -- because a readiness-law arm had SKIPPED when the live ledger carried no open obligations. THAT IS THE CONTROL WORKING: an intermittently-skipping guard must be fixed, not the ceiling raised.* **The arm now AUTHOReth its open obligation in the scratch gate's own source and never skips (799 tests, ZERO skips). rc7 remaineth an immutable historical tag.**",
  "binding_design": {
   "candidate_ref": "the tag NAME this record binds. THE ANNOTATED TAG IS THE SHA BINDING -- a record cannot name the commit that writes it, so it does not try.",
   "candidate_sha": "DERIVED from candidate_ref by `ci/check_candidate_binding.py`, never asserted here. A stated value is checked against the tag and refused if it disagrees.",
