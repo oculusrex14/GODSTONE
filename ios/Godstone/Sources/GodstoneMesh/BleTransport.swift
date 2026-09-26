@@ -711,6 +711,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     private var activeManagerContext: ManagerContext?
     private var lastRetiredManagerContext: ManagerContext?
     private let managerFactory: TransportManagerFactory
+    /// ``GS-INTEGRATION-001 `real-adapters` / GS-STRESS-001: THE EPOCH'S MANAGER SOURCE, OVERRIDABLE ON A LIVE TRANSPORT.''**
+    ///
+    /// *The composition builds `BleTransport` before any epoch existeth, so a host rig that must substitute ONLY the
+    /// platform's manager pair had no way to reach the `managerFactory` init parameter of a transport the COMPOSITION
+    /// owns (`MeshNode` builds its own `ble` as a `lazy` property, and `MeshRuntime` never takes one).* **THIS IS
+    /// ADDITIVE AND CONSULTED AT EPOCH INSTALL**: `nil` (the default, and every production value) leaveth the road
+    /// byte-identical, and a set value is what `installFreshContextLocked` hands the `ManagerContext` it births -- so
+    /// **THE OVERRIDE IS THE SOURCE OF THE EPOCH'S MANAGERS, NOT A PARALLEL ONE**, and the transport's own reducers,
+    /// drivers, delegates and writers are the production ones throughout.
+    internal var testManagerFactoryOverride: TransportManagerFactory?
     private let leaseSweepInterval: TimeInterval
     private let clock: MonotonicClock
 
@@ -1452,7 +1462,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let context = ManagerContext(
             epoch: currentTransportEpoch,
             transport: self,
-            factory: managerFactory,
+            // GS-INTEGRATION-001 / GS-STRESS-001: the ONE place the epoch's manager source is resolved. A rig that
+            // set the override getteth its pair; every production value is `nil` and the factory is the init's own.
+            factory: testManagerFactoryOverride ?? managerFactory,
             restoresState: restoresState,
             // GS-CTRL-002 / BL126: FRESH epoch delegate proxies, installed by `start()` for the epoch
             // it is starting, bound to THIS transport -- the same pair the context used to build, now

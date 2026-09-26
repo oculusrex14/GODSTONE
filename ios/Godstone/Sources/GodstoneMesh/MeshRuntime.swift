@@ -106,7 +106,9 @@ public final class MeshRuntime {
         // GS-FINAL-004: THE ADOPTED CONNECTIONS, HELD BY THE COMPOSITION THAT OWNED THEM. `nil` on the legacy road,
         // where the stores own their own handles.
         adoptedMessageConnection: OwnedConnection? = nil,
-        adoptedPeerConnection: OwnedConnection? = nil
+        adoptedPeerConnection: OwnedConnection? = nil,
+        /// GS-INTEGRATION-001 `real-adapters`: the composition lane, handed to the node at birth and never moved.
+        compositionLane: CompositionLane = .shipping
     ) {
         self.identity = identity
         self.messageStore = messageStore
@@ -187,7 +189,9 @@ public final class MeshRuntime {
             sessions: sessions,
             // GS-FINAL-003 (round 636): THE COMPOSITION IS WHERE THE GATE IS PASSED -- the same 
             // every other admission point on this isle already receiveth, never a hand-typed lambda.
-            wipeGate: wipeGate
+            wipeGate: wipeGate,
+            // GS-INTEGRATION-001 `real-adapters`: the lane the composition was asked for.
+            compositionLane: compositionLane
         )
 
         // GS-RUNTIME-001 step 2: THE FOUR OWNERS, OVER THE SAME STORE AND THE SAME PINNED IDENTITY.
@@ -422,12 +426,24 @@ public final class MeshRuntime {
     /// claimed a private store -- MEASURED before the rename, so the rename breaketh no production caller, because
     /// THERE IS NO PRODUCTION CALLER: this composition root is archive-only and unreferenced by the shipping target.
     /// (Re-measured this round: no file under `Sources/App/` or `Sources/GodstoneCore/` names either entry.)
+    /// *** GS-INTEGRATION-001 `real-adapters`: THE COMPOSITION ROOT IS THE ONLY ROAD TO A NODE, SO IT IS THE ONLY
+    /// PLACE THE LANE CAN BE CHOSEN. ***
+    ///
+    /// *`MeshNode` carrieth the composition lane so that the four link-layer gates (`start()`, `broadcastSos`, and the
+    /// two `transportDidReceive`) can be opened for a LAB HOST without editing the shipping static* -- and a lane that
+    /// no composition could set would be a parameter no graph could reach: **THE RIG WOULD HAVE HAD TO BUILD ITS OWN
+    /// `MeshNode` AND ITS OWN STORE GRAPH, WHICH IS EXACTLY THE `MeshRuntime.createArchiveOnlyHostComposition`
+    /// DUPLICATION THE CARD FORBIDS.** So the lane travelleth the same three roads the rest of the graph taketh:
+    /// this entry, the shared graph builder, and the runtime initialiser that hands it to the node.
+    ///
+    /// **IT IS `internal` AND DEFAULTS TO `.shipping`, SO NO SHIPPING CALLER CHANGES AND NO PUBLIC SURFACE MOVES.**
     internal static func createArchiveOnlyHostComposition(
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
-        keychain: any LocalIdentityKeychain
+        keychain: any LocalIdentityKeychain,
+        compositionLane: CompositionLane = .shipping
     ) throws -> MeshRuntime {
         try composeRuntimeGraph(
             messageStoreUrl: messageStoreUrl,
@@ -435,7 +451,8 @@ public final class MeshRuntime {
             maxStoreBytes: maxStoreBytes,
             journal: journal,
             keychain: keychain,
-            encryptedStores: nil
+            encryptedStores: nil,
+            compositionLane: compositionLane
         )
     }
 
@@ -488,7 +505,8 @@ public final class MeshRuntime {
         // private store -- so there is nothing there for a permit to protect, and the archive road keeps its ungated
         // shape.* ***THE OBLIGATION IS ABOUT PRIVATE CONSTRUCTION, SO IT BITETH EXACTLY WHERE PRIVATE CONSTRUCTION
         // HAPPENETH.***
-        permit: PrivateRuntimePermit
+        permit: PrivateRuntimePermit,
+        compositionLane: CompositionLane = .shipping
     ) throws -> MeshRuntime {
         try composeRuntimeGraph(
             messageStoreUrl: messageStoreUrl,
@@ -496,7 +514,8 @@ public final class MeshRuntime {
             maxStoreBytes: maxStoreBytes,
             journal: journal,
             keychain: keychain,
-            encryptedStores: encryptedStores
+            encryptedStores: encryptedStores,
+            compositionLane: compositionLane
         )
     }
 
@@ -585,7 +604,8 @@ public final class MeshRuntime {
         maxStoreBytes: Int64,
         journal: WipeJournal,
         keychain: any LocalIdentityKeychain,
-        encryptedStores: EncryptedStoreFactory?
+        encryptedStores: EncryptedStoreFactory?,
+        compositionLane: CompositionLane = .shipping
     ) throws -> MeshRuntime {
         // *** GS-STORE-002 / GS-FINAL-011 (round 681): THE UNUSED `effectiveArtifacts` LOCAL IS GONE, AND THE
         // PARAMETER THAT BUILT IT WITH IT. ***
@@ -767,7 +787,8 @@ public final class MeshRuntime {
             wipeKeyProvider: encryptedStores?.keyProviderForWipe,
             keychain: keychain,
             adoptedMessageConnection: adoptedMessage,
-            adoptedPeerConnection: adoptedPeer
+            adoptedPeerConnection: adoptedPeer,
+            compositionLane: compositionLane
         )
         // *** AND THE BOX IS FILLED ONLY NOW, WITH THE RETIRED AUTHORITY THE WIPE PATHS THEMSELVES USE. ***
         // This is the ONE-AUTHORITY rule made literal: the admission point and the wipe entry points resolve the

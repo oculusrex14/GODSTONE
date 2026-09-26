@@ -3,25 +3,47 @@ import CryptoKit
 import GodstoneCore
 
 // ---------------------------------------------------------------------------
-// T44 -- "Prove crash-safe multihop behavior through composed runtimes".
+// T44 -- COMPONENT-INTEGRATION: "prove crash-safe multihop behavior through composed runtimes".
 // The Swift twin of android/mesh/src/main/java/io/godstone/mesh/runtime/
 // ComposedRuntime.kt, with the SAME laws and the SAME trace format.
 //
-// This harness composes the REAL authorities -- the real MeshNode, the real
-// Router (with its required store), the real durable store, the real
-// DeliveryTracker, the real recipient inbox, the real T84 ACK authority and the
-// real T42 sync pump -- and substitutes ONLY the operating system's facades:
+// *** WHAT THIS HARNESS IS, SAID PLAINLY AFTER AN AUDIT MEASURED IT AND FOUND THE HEADER OVERCLAIMING: IT IS A
+// COMPONENT-INTEGRATION HARNESS WITH **IN-MEMORY STORES** AND A **SYNTHETIC LINK FACADE**, AND IT SUBSTITUTES THE
+// OPERATING SYSTEM'S RADIO AND CLOCK. ***
+//
+// *It composes the real authorities -- the real `MeshNode`, the real `Router` (with its required store), the real
+// `DeliveryTracker`, the real recipient inbox, the real T84 ACK authority and the real T42 sync pump -- and that is
+// what it is FOR: a FAST REGRESSION over the composition's laws, driven by direct method calls.*
+//
+// *** IT DOES NOT RUN A TRANSPORT, AND THEREFORE IT PROVES NOTHING ABOUT ONE. MEASURED, NOT INFERRED: it carrieth no
+// `BleTransport`, no `TransportManagerFactory`, no CoreBluetooth delegate surface, no handshake, no record
+// fragmenter, no sealing at the radio, and no real `SqliteMessageStore`/`SqlitePeerIdentityStore` -- its stores are
+// `InMemoryMessageStore` and its link is `LinkFacade`, which is a dictionary of byte arrays.*** *So:*
+//
+//   * **NO CRASH CLAIM**: `crashAfter(boundary)` interrupts a *composed harness* at a named seam. **An in-memory
+//     store cannot be killed and reopened -- an object discarded and rebuilt over the same dictionary is not a
+//     process death**, and the durable-across-restart claim belongs to the real-composition lane (on-disk URLs,
+//     child process, SIGKILL).
+//   * **NO HANDSHAKE CLAIM**: no Noise session, no HS1/HS2/HS3, no key confirmation, no identity/key rejection is
+//     exercised here. Any "wrong peer/key" claim belongs to the sealed-handshake lane.
+//   * **NO CROSS-PLATFORM CLAIM**: the bytes captured here are this harness's own `FrameV2` encodings handed to a
+//     Swift dictionary. Wire parity with another platform is a claim about a FIXTURE, and there is none in this file.
+//   * **NO RADIO, FRAGMENTATION, BACKPRESSURE, LEASE, TIMER OR ADMISSION-BUDGET CLAIM**: those live on the real
+//     transport, which this harness does not construct.
+//
+// Substituted OS facades, exhaustively (nothing else):
 //
 //   * `HostClock`  -- a deterministic monotonic clock plus the wire calendar's
 //                     seconds, seeded from the real clock once at construction
-//   * `LinkFacade` -- the radio, serialized: every byte handed to a link is
+//   * `LinkFacade` -- a SYNTHETIC link, serialized: every byte handed to a link is
 //                     RECORDED verbatim, so "no relay plaintext" is a fact about
 //                     captured bytes rather than a claim
 //
-// Laws:
+// Laws (all of them laws of the COMPOSITION, none of them of the radio):
 //   1. NO SEND WITHOUT THE DURABLE COMMIT.
-//   2. CRASH CHECKPOINTS ARE REAL: `crashAfter(boundary)` interrupts the
-//      composition at a named seam and leaveth the durable estate as it found it.
+//   2. CRASH CHECKPOINTS ARE NAMED SEAMS IN THE HARNESS: `crashAfter(boundary)` interrupts
+//      the composition at one of them and leaveth the in-memory estate as it found it.
+//      (**A seam, not a process death** -- see above.)
 //   3. A WIPE DURING A SEND IS EXERCISED; no pre-wipe epoch may send afterwards.
 //   4. RESOURCES ARE BOUNDED and the caps are observable.
 //   5. THE SEALED INNER PAYLOAD IS THE FROZEN SignedMessageV1 CONTAINER: sealing
@@ -30,6 +52,11 @@ import GodstoneCore
 //
 // Nonshipping: the lab mesh path. Readiness stays false and no device claim is
 // made; host tests prove no CoreBluetooth behaviour.
+//
+// *** THE REAL-TRANSPORT LANE IS `RealTransportHostRig.swift` IN THIS SAME MODULE *** (nonshipping, labHost lane,
+// real `BleTransport` pairs over a recording `RadioFabric`, real on-disk SQLite stores, `compositionLane: .labHost`),
+// and it is there -- not here -- that the handshake, the radio ingest, the egress census and the cross-platform
+// fixture legs live.
 // ---------------------------------------------------------------------------
 
 /// The OS facade the harness substitutes for time.

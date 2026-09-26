@@ -410,9 +410,6 @@ final class RecipientInboxRepository: @unchecked Sendable {
         guard let theirNode = signer.nodeId, theirNode == ourNodeId else {
             return refuseKey("signer does not name the obligated recipient")
         }
-        guard let seed = try signer.signingSeed(msgId: frame.msgId, recipientNodeId: ourNodeId) else {
-            return refuseKey("signing seed unavailable")
-        }
         switch pairedStore.lookupObligation(frame.msgId, recipientNodeId: ourNodeId) {
         case .found(let ob):
             if signer.generation() < ob.identityGeneration {
@@ -426,9 +423,26 @@ final class RecipientInboxRepository: @unchecked Sendable {
         case .storageFailure:
             return refuseStorage("obligation lookup")
         }
+        // *** GS-RUNTIME-001 step 2's ROAD, TAKEN HERE AT LAST: THE SIGNATURE ROAD, NOT THE SEED ROAD. ***
+        //
+        // **THE DEFECT THIS CLOSETH WAS MEASURED ON THE PRODUCTION COMPOSITION RATHER THAN READ:** the composition
+        // handeth this repository the PRODUCTION signer (`IdentityAckSigner`, `MeshRuntime.swift:241`), whose
+        // `signingSeed` answereth `nil` BY CONSTRUCTION (*"a production identity doth not export its signing seed"*) --
+        // while this body asked for the seed and built the frame from it. So EVERY accept on the composed runtime
+        // committed its held row and its obligation and then answered `.rejected(.keyUnavailable, "signing seed
+        // unavailable")`: **the durable inbox worked and THE ACK ROAD WAS DEAD BY CONSTRUCTION**, `admitArm` was
+        // unreachable, and the owner's own `committedNew`/`committedDuplicate` census could never move. The driver
+        // (`AckObligationDriver`, AckObligationStore.swift:904) and T84 already took this road; this call site was the
+        // one that did not.
+        //
+        // AND IT IS ADDITIVE FOR EVERY HARNESS SIGNER: `AckSignerSeam`'s default `signAck` signeth THROUGH
+        // `signingSeed`, so a court signer that can only release a seed keepeth working and keepeth counting its asks.
+        guard let signedPreimage = try signer.signAck(msgId: frame.msgId, recipientNodeId: ourNodeId) else {
+            return refuseKey("the signer refused to sign the canonical preimage")
+        }
         let built = try AckFrame.build(
             msgId: frame.msgId,
-            recipientSigningPrivKey: seed,
+            signature: signedPreimage,
             recipientNodeId: ourNodeId,
             routingTag: Data(ourNodeId.prefix(4)),
             ttl: ackInitialTtl
