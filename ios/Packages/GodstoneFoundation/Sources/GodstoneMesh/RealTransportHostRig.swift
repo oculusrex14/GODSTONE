@@ -936,8 +936,20 @@ public final class RealTransportHostRig {
     ///
     /// **MEASURED: A FIRST VERSION RETURNED `b`'s HANDLE FOR A RESPONDER-SENDER**, which made every responder-side
     /// send name a handle it did not hold.*
+    /// *** THE HANDLE `a` NAMETH `b` BY, ORDER-INSENSITIVELY BECAUSE BOTH DIRECTIONS ARE LEGITIMATE. ***
+    ///
+    /// *`link(a, b)` records the pair in the CALLER's argument order, but the DELIVERABLE direction is the hint
+    /// ELECTION's -- which may be the reverse.* **MEASURED, AND THE ERROR WAS HIDDEN BEHIND A `CancellationError` THAT
+    /// MASKED IT: a lookup matching only the recorded order refused the responder-to-initiator send with
+    /// `no link from bob to alice` even though the relation stood.** *`aHandle` is the initiator's outbound peripheral
+    /// handle when `a` opened and the responder's inbound central handle otherwise; the RESPONDER can send too
+    /// (`reductionSendClear` pumps `updateValue` when `connection.localRole != .initiator`, which is how HS2 and the
+    /// key-confirmation echo travel), so both directions are real and each side uses its OWN handle.*
     internal func handle(between a: String, and b: String) -> UUID? {
-        return links.first(where: { $0.a == a && $0.b == b })?.aHandle
+        guard let link = links.first(where: { ($0.a == a && $0.b == b) || ($0.a == b && $0.b == a) }) else {
+            return nil
+        }
+        return link.a == a ? link.aHandle : link.bHandle
     }
 
     /// *** WHICH SIDE OPENED THE EXCHANGE (the production hint election), AND WHO IS ITS PEER. ***

@@ -260,10 +260,9 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         // receives the echo and populates `capturedPeers`; the responder-side delivery would take the handle-only
         // overload whose `receivedFrom: Data()` the inbox refuseth at gate 0 -- BEFORE its first counter bump, which
         // is the all-zero census this arm first measured.*
-        let dir = try XCTUnwrap(r.deliverableDirection("relay", "bob"),
-                                "the rig must name a direction that can deliver locally")
-        let sender = dir.sender
-        let receiver = dir.receiver
+        // *** THE SENDER IS THE OPENER AND THE RECEIVER ITS PEER -- THE EARLIER MEASURED-GREEN DIRECTION. ***
+        let sender = try XCTUnwrap(r.opener(of: "relay", "bob"), "the opener of the relay--bob exchange")
+        let receiver = try XCTUnwrap(r.peer(of: "relay", "bob"), "and its peer")
         let body = Data("the a-r-b arm's own body".utf8)
         let sent = try awaitRig { try await r.sendDirect(from: sender, to: receiver, plaintext: body) }
         XCTAssertGreaterThan(
@@ -335,10 +334,8 @@ final class GsIntegration001ScenarioTests: XCTestCase {
             "*** THE INITIATOR'S OWN APPLICATION-LINKREADY ROSTER MUST CONTAIN THE RELATION, because that roster is "
                 + "what maketh the peer route-eligible for `dispatchDirect`. Ring: " + r.ring(initiator) + " ***")
 
-        let dir = try XCTUnwrap(r.deliverableDirection("alice", "bob"),
-                                "the rig must name a direction that can deliver locally")
-        let sender = dir.sender
-        let receiver = dir.receiver
+        let sender = try XCTUnwrap(r.opener(of: "alice", "bob"), "the opener of the alice--bob exchange")
+        let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
         let sent = try awaitRig { try await r.sendDirect(from: sender, to: receiver,
                                                          plaintext: Data("d-route".utf8)) }
         XCTAssertTrue(
@@ -392,10 +389,8 @@ final class GsIntegration001ScenarioTests: XCTestCase {
                 + r.ring(initiator) + " ***")
 
         // ---- (1) A FIRST FRAME COMMITS, SO THE ESTATE HAS SOMETHING TO PROVE AFTERWARDS ----------------
-        let dir = try XCTUnwrap(r.deliverableDirection("alice", "bob"),
-                                "the rig must name a direction that can deliver locally")
-        let sender = dir.sender
-        let receiver = dir.receiver
+        let sender = try XCTUnwrap(r.opener(of: "alice", "bob"), "the opener of the alice--bob exchange")
+        let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
         let first = try awaitRig { try await r.sendDirect(from: sender, to: receiver,
                                                           plaintext: Data("before the gate".utf8)) }
         XCTAssertTrue(r.waitUntil { r.messageStore(receiver).allHeldMsgIds().contains(first.frame.msgId) },
@@ -481,8 +476,20 @@ final class GsIntegration001ScenarioTests: XCTestCase {
                              file: StaticString = #filePath, line: UInt = #line) throws -> T {
         let sem = DispatchSemaphore(value: 0)
         var result: Result<T, Error>?
-        Task {
-            do { result = .success(try await body()) } catch { result = .failure(error) }
+        // *** DETACHED, AND THAT IS THE POINT: AN UNSTRUCTURED `Task {}` SPAWNED FROM A CONTEXT THAT IS OR IS ABOUT TO
+        // BE CANCELLED CAN HAVE ITS `await` POINTS THROW `CancellationError`, WHICH THE ARM THEN REPORTS AS ITS OWN
+        // FAILURE. *MEASURED: the arms were failing in ~50 ms with `CancellationError()` raised at
+        // BleTransport.swift:744 -- the `try? await Task.sleep` inside the transport's own lease-sweep Task, i.e. a
+        // cancellation that belonged to the TRANSPORT's lifecycle and never to the arm.* **A DETACHED TASK CANNOT
+        // INHERIT THAT CANCELLATION, so the arm's async body runs to its own conclusion and reports ITS OWN answer.*
+        Task.detached {
+            do { result = .success(try await body()) }
+            catch {
+                // *** THE OWNER OF THE THROW IS PRINTED, because a red that sayeth only "CancellationError" nameth
+                // neither the frame nor the file that raised it. ***
+                print("GS-RIG-ASYNC-THROW: \(error) | \(Thread.callStackSymbols.prefix(14).joined(separator: " <- "))")
+                result = .failure(error)
+            }
             sem.signal()
         }
         guard sem.wait(timeout: .now() + 30) == .success else {
