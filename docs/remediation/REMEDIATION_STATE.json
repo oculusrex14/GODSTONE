@@ -4470,8 +4470,7 @@
    "PARTIAL": 6
   },
   "by_status_derived_at_round_608": {
-   "FIX_SUBMITTED": 53,
-   "PARTIAL": 1
+   "FIX_SUBMITTED": 54
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -11877,7 +11876,7 @@
     }
    ],
    "my_red_case": "MEASURED, AND STATED RATHER THAN GLOSSED: A PRE-REPAIR BEHAVIOURAL RED WAS **NOT CONSTRUCTIBLE** for these clauses, and the reason is a COMPILE-TIME fact on this isle, not a difficulty -- `LabRuntime.compose()` nameth no medium and `ComposedNode.store` is a CONCRETE `InMemoryMessageStore`, so before the door existed NO EXPRESSION IN THE LANGUAGE could ask the question, and an arm asserting it would have failed the whole target to COMPILE (and a target that cannot compile presenteth itself as \"no failures\", round 471's law). SO THE DOOR LANDED FIRST AND THE ARM'S JUDGING POWER IS PROVEN BY A SEPARATE NEGATIVE CASE -- the durable road replaced by the in-memory one -- WHICH FAILED ON BOTH JUDGING CLAUSES BY NAME: `LabMeshAppTests.swift:80 XCTAssertTrue failed - applied:handedToRelays(1)` and `:88 failed - the reopened store must carry the intent the lab's journey pinned`, `Executed 4 tests, with 2 failures`, SWIFT_RC=1. *** ROUND 539: `LabMeshAppTests.testTheJourneysReachTheOneRuntimeRatherThanStaticText` -- THREE CLAUSES: the three journeys stand; *** THE JOURNEYS REACH THE RUNTIME *** (counted `holder.runtime.` call sites, >= 3); and a journey must be able to SEND through it, not merely display it. PLUS the runtime's own answer: `hasDurableRoad` must be readable. THE INSTRUMENT IS STRUCTURAL BECAUSE THE VIEWS LIVE IN THE APP TARGET WHICH NO TEST BUNDLE CAN IMPORT -- **AND THE LAB TARGET WAS BUILT (`xcodebuild -scheme LabMesh`) TO PROVE THE VIEWS COMPILE**, which is the onely instrument that compilth them. TWO COMPILE ERRORS OF MINE EN ROUTE, EACH NAMED BY THE COMPILER IN ONE LINE: a call to `hasDurableRoad` BEFORE IT EXISTED (**A CALL TO A MEMBER THAT IS NOT THERE IS A COMPILE ERROR, NOT A CAPABILITY**), and a TUPLE where a sequence belonged (`for journey in (\"a\",\"b\",\"c\")`). *** ROUND 540: THE MEASUREMENT THAT SET THE ROUND, AND THE COMPILER THAT KEPT IT HONEST. *** MEASURED BEFORE THE EDIT: the mesh and trust ViewModels carried **NO `StateFlow`** and the screens read `uiState()` **ONCE**; the iOS models carried **NO `ObservableObject`/`@Published`** -- while the SAME APP's `BrowseViewModel` and the SAME ISLE's `ArchiveSceneModel` each already did it right. **A CAPABILITY AN OWNER'S OWN SIBLING HATH IS NOT A CAPABILITY IT LACKETH -- IT IS ONE IT NEVER WIRED.** AND A COMMENT WAS FALSIFIED BY THE MEASUREMENT: `IdentityTrustViewModel`'s sand *'the Compose layer collecteth this in production'* -- **IT COLLECTED NOTHING**; the screen called the snapshot accessor once. **A COMMENT CLAIMING A WIRING IS NOT A WIRING.** THE ERRORS EN ROUTE: THREE, EACH NAMED BY THE COMPILER IN ONE LINE -- a missing `getValue` import (the delegate), a MISSING `flow` on `IdentityTrustViewModel` because MY PATCH'S ANCHOR DID NOT MATCH AND THE ASSERTION ABORTED (**so the file was never edited, which is why the build then said 'Unresolved reference flow'**), and a computed-property syntax slip (`get() { }` instead of `get { }`) in BOTH Swift models. *** ROUND 541: THREE ARMS, EACH DISPATCHING **EXACTLY WHAT A CONTROL DISPATCHETH**. `ReadinessT57Test.test_ux041_the_recipient_selector_dispatches_and_the_send_follows_it` -- **A SELECTOR WHOSE CHOICE NEVER REACHES THE SEND IS DECORATION**, so after the dispatch the arm SENDS and asserteth the row's recipient label. `ReadinessT55Test.test_ux042_the_confirm_carries_the_displayed_fingerprint` -- WITH ITS DISCRIMINATOR: a DIFFERENT code typed for the same contact must NOT verify, or the arm would pass on a control that ignored its own argument. `test_ux043_the_rotation_and_revoke_controls_dispatch_their_existing_commands`. *** MEASURED: the app lane 58/0 (55 -> 58: the +3 ARE these arms), and the arms' names were READ BACK OUT OF THE JUNIT XML rather than inferred from a count. *** *** ROUND 542: `ReadinessT57Test.test_ux044_the_platform_state_reaches_the_projection_and_is_consulted`. THE DISCRIMINATOR IS THE WHOLE ARM: THE SAME PORT, READ TWICE, MUST PROJECT DIFFERENTLY **ACCORDING TO THE PLATFORM ALONE** -- available from one gate, unavailable from another -- so an arm that passeth proveth the gate is **CONSULTED** rather than merely carried. *** If the gate were carried and never consulted, the two readings would be indistinguishable. *** PLUS the no-behaviour-change clause: the DEFAULT gate must answer available, so every court that buildeth the model without a gate keepeth its expectations. ***",
-   "my_status": "PARTIAL",
+   "my_status": "FIX_SUBMITTED",
    "notes": null,
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
@@ -14889,8 +14888,7 @@
   "verified_fixed_note": "ZERO BY RULE: only an independent audit may write VERIFIED_FIXED, and none has since the audit at e07e6ca. An empty internal_remaining would NOT itself be a proof, and this block therefore carrieth the remaining work rather than claiming its absence.",
   "derived_status_counts": {
    "original_54": {
-    "FIX_SUBMITTED": 53,
-    "PARTIAL": 1
+    "FIX_SUBMITTED": 54
    },
    "audit_13_new": {
     "FIX_SUBMITTED": 13
@@ -15302,7 +15300,7 @@
        "*** ROD `T72-RC18-ios-transport-ingest-unwired` DELETETH the responder ingress's delegate hand-off: the opened payload never reacheth the node, so a frame that crossed the real radio reaches NO store -- and `test:testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode` reddens. ***",
        "*** ROD `T72-RC19-ios-egress-is-a-silent-noop` MAKETH the fabric's `writeValue` record a silent no-op, so the egress gate can never show a byte -- and the egress-observing witness reddens. *A silent writer would otherwise be indistinguishable from an honest one.* ***",
        "*** ROD `T72-RC20-ios-ingress-empty-sender-restored` PUTTETH BACK the empty `receivedFrom` -- the exact production defect found above -- and `test:testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck` reddens at the inbox. ***",
-       "*** ROD `T72-RC21-ios-direct-send-ignores-the-wipe-gate` SEETH THE WIPE GATE ASLEEP on the composed send road, so a durable row is written against a store mid-erasure, and `test:testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens` reddens. ***",
+       "*** ROD `T72-RC21-ios-resolver-stopeth-resolving-altogether` STRIKETH THE RESOLVER'S WHOLE RESOLVING ROAD, so a verified pinned peer resolves NO key -- and the E arm's OWN PRE-WIPE POSITIVE CONTROL (`XCTAssertNotNil` on the gated lookup) reddens, 2 cases, with the restored tree green. *** *AND THE PLACEMENT IS ITSELF A MEASUREMENT WORTH RECORDING: THE E ARM'S `publicSigningKey` REFUSAL IS OVER-DETERMINED -- the outer `wipeGate.allowsSensitiveUse()`, the inner `lifecycleGate.isActive` and the wipe's own store drain EACH refuse while a wipe standeth -- so striking any ONE of them leaveth the others refusing and the arm green (TWO refusal-side placements were tried and BOTH escaped).* **The one condition the arm observes BOTH WAYS is the POSITIVE one, so that is where the rod standeth: a gate whose refusal is triply redundant can only be watched from its permit side.** ***",
        "*** AND THE DUrability IS NOT AN IN-MEMORY SUBSTITUTE: every node's stores are `SqliteMessageStore`/`SqlitePeerIdentityStore` over TEMP FILES, and the reopen half proveth the estate on disk rather than in memory. ***"
       ]
      }
@@ -15554,8 +15552,8 @@
    "GS-UX-001": {
     "group": "original",
     "severity": "HIGH",
-    "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "gs-ux-001.facade",
@@ -15568,26 +15566,37 @@
      {
       "id": "gs-ux-001.rendered-controls",
       "text": "The rendered LabMesh UI must exercise the real authority/projection for the complete internally testable journey: recipient selection; UTF-8 bounded compose; Send; fingerprint compare/confirmation; exact rotation-candidate approval; revoke; visible durable state after recreation; visible wipe/recovery state. Displayed state must derive from the real authority/projection.",
-      "status": "PARTIAL",
+      "status": "DISCHARGED",
       "evidence": [
-       "`path:ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift` -- `testGSINT001TheTrustJourneyIsPerformedRatherThanMerelyLabelled`: recipient selector ADDRESSABLE, fingerprint RENDERED WITH ITS VALUE, then **each of `lab.trust.confirm`, `lab.trust.approve` and `lab.trust.revoke` TAPPED with the rendered outcome REQUIRED TO CHANGE.** *MEASURED: all SEVEN LabMesh UI arms pass, rc=0.*",
-       "`path:ios/Godstone/Sources/LabMesh/LabMeshRootApp.swift` -- the three trust controls and their REAL wiring: `compareAndConfirmFingerprint`, `approveRotation`, `revokeContact` on the authority, with the outcome rendered from the authority's own answer rather than a UI-local opinion.",
-       "*** AND THREE OF THE SEVEN NAMED JOURNEYS REMAIN UNWITNESSED: durable state after recreation, visible wipe/recovery state, and the UTF-8 BOUNDED compose. The obligation is PARTIAL for that reason and not for any doubt about what was measured.***"
+       "*** THE DISPLAYED-CANDIDATE APPROVAL (card law 3, 'the displayed candidate is the one approved'): `approveRotation(for:)` IS DELETED from both `MeshTrustFacade` and `LabRuntime` -- measured, `grep -rn approveRotation(for: ios/Godstone` returneth NOTHING -- and the two callers migrated to `displayedRotationCandidate(for:)` + `approveDisplayedRotation(_:)`, which forward the captured generation+key into the existing durable CAS. The screen captures the ref in state beside the fingerprint and re-captures on selection change. ***",
+       "`test:testGSINT001AStaleRotationCandidateIsRefusedWithTheExactString` -- the displayed candidate is approved BY REF, and a rotation that arriveth behind it is REFUSED with the exact string `refused: that rotation is no longer pending: nothing was approved`. *MEASURED IN THE UI LANE: passing.*",
+       "*** THE BOUNDED COMPOSE, IN OCTETS: `test:testGSINT001TheBoundedComposeCountsOctetsAndUpdatesItsReadout` TYPES A MULTIBYTE PAYLOAD and requireth the rendered `lab.conversation.octets` to move and name its unit -- so a bound counted in CHARACTERS would show the wrong number. *** *The cap is MEASURED by probe (seal 1000 octets, overhead = sealed-1000, cap = `FrameV2.maxPayload` - overhead) with a unit arm asserting the probe equality.*",
+       "*** THE DURABLE SEND AND ITS INTENT AFTER A RELAUNCH: `test:testGSINT001TheDurableSendVerdictSurvivesARelaunch` tappeth Send, requireth the rendered `durable:` verdict, TERMINATES AND RELAUNCHES the process, and requireth `.found:` from the SAME file -- *an in-memory medium cannot satisfy it.* The SOS twin `test:testGSINT001TheDistressStateSurvivesARelaunchAndACancelDoesNotUnAuthor` driveth arm and cancel and requireth the state to survive, in the SHARED `stateWords` vocabulary. ***",
+       "*** THE TRUST JOURNEY IS PERFORMED, NOT LABELLED: `test:testGSINT001TheTrustJourneyIsPerformedRatherThanMerelyLabelled` taps each of compare/confirm, approve and revoke and requireth the RENDERED OUTCOME to change, reading the fingerprint readout WITH ITS VALUE (on the container where it really liveth). ***",
+       "*** AND THE WIPE/RECOVERY PROJECTION IS THE RUNTIME'S OWN: `lab.diagnostics.wipestate` and `test:testGSINT001TheWipeControlReportsTheRuntimesOwnState` -- *the lab asserts only these two registers and never a rung it does not read.*"
       ]
      },
      {
       "id": "gs-ux-001.ui-test-target",
       "text": "A repo-owned simulator/UI test target interacting with the rendered controls, covering the full journey list plus SOS hold/cancel/accessible alternative.",
-      "status": "PARTIAL",
+      "status": "DISCHARGED",
       "evidence": [
-       "`path:tools/readiness/run_ios_ui_lane.sh`, `path:ci/check_lane_results.py`, `path:ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift`, `path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift`, `path:ios/project.yml`. TWO REAL `bundle.ui-testing` TARGETS, NOW WITH A COMMITTED RUNNER AND A CONTROL THAT PARSES THEM. Measured and reproduced from the committed runner: `ios:ui suites=2 tests=12 failures=1` -- 6 LabMeshUI arms and 6 GodstoneArchiveUI arms, all executed. THE LANE DID NOT EXIST BEFORE THIS ROUND: `run_ios_lane.sh` runs only `swift test --package-path`, so the UI witnesses had NO LANE, NO RESULT-FILE PARSING, NO SKIPPED ACCOUNTING AND NO DIGEST-BOUND LOG, and ran only from ad-hoc `/tmp` scripts an auditor cannot re-execute. `check_ios_ui_lane` now refuses a REQUIRED-SUITE omission, an `Executed 0` run (what a crashed XCUITest process reports), ANY SKIP, and a stale digest, and counts every arm's own line. THE ONE RED ARM IS A NAMED ALLOWLIST ENTRY, NOT A SUPPRESSION: flipping a PASSING arm to failed makes the control refuse by name, PROVEN BY MUTATION, so a new break cannot hide behind the recorded one. STILL OWED: several of the card's named journeys are not driven end to end in one arm, and the archive recreation arm is deterministically RED (see gs-archive-005.app-witness)."
+       "*** MEASURED, THE LANE: `path:docs/remediation/evidence/gs-integration-001-courts.log` plus `ios-ui-lane.log` -- `ios:ui suites=2 tests=19 failures=0`, raw-rc=0, both `LabMeshUITests` (12 arms) and `GodstoneArchiveUITests` (7 arms) EXECUTED. *** *The runner regenerateth the project from `ios/project.yml` and writeth a pre-run AND post-run source digest, so a mid-run edit cannot leave a current-looking log.*",
+       "`path:ci/check_lane_results.py` -- the arm roster is SOURCE-DERIVED from the `bundle.ui-testing` targets' own source directories, so an arm that never ran is a REFUSAL BY NAME rather than an absence from a count. *MEASURED: `--selftest-ui` 15/15 mutations killed, including the mid-run-edit case.*",
+       "*** AND THE TRUST ARM'S OWN RED WAS FOUND BY THIS LANE AND FIXED AT ITS CAUSE RATHER THAN WEAKENED: `isHittable` was false because the Contacts page carrieth more controls than any sibling and the action row sat BELOW THE FOLD once the page was wrapped in a `ScrollView`. A bounded `scrollIntoView` now proveth the control REACHABLE BY SCROLLING, and still faileth with a named reason when it cannot be reached at all. ***",
+       "*** THE ACCESSIBLE ALTERNATIVE IS RENDERED: `lab.sos.send` is the non-gesture door the SOS arm driveth, so the hold-gesture journey carrieth a control a reader who cannot hold can use. ***"
       ]
      },
      {
       "id": "gs-ux-001.accessibility",
       "text": "Internally verify rendered semantics (labels, identifiers, roles, state descriptions) without claiming human/device accessibility acceptance.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "*** THE LIVE TREE IS ASKED, NOT A MODEL OF IT: `test:testGSINT001TheLiveTreeCarriesTheRenderedSemantics` walks the ACTUAL rendered elements -- every button must carry a NON-EMPTY label, and each readout must carry a non-empty label AND its value -- so an element a screen reader would read blank is a REFUSAL. ***",
+       "*** AND THE HOST-DECIDABLE CONTRACT IS EXERCISED AT BOTH SCALES AND RTL: `test:test08TheHostDecidableAccessibilityContractPassesAtBothScalesAndRtl` runneth all seven checks (essential-control labelling, status-never-clipped, no-colour-only state, touch targets at the iOS 44pt minimum, reading order, RTL meaning, long content) at `default` and `largest_accessibility`, AND includeth the DISCRIMINATOR: a deliberately broken roster must FAIL three of them. *** *Seven passing checks alone would be satisfied by a check that returned `.pass` unconditionally.*",
+       "`path:ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift` -- the shared table (essential controls, `stateWords`, colour tokens, contrast thresholds) that BOTH the screen and the court read, so the screen cannot invent a status word and the two isles cannot drift.",
+       "*** AND WHAT REMAINS EXTERNAL IS NAMED RATHER THAN GLOSSED: `Requirement.humanRequired` checks -- the VoiceOver gesture flow and physical target feel -- stay `gs-ux-001.human-accessibility-acceptance` EXTERNAL_BLOCKED with `closure_evidence: null`. THE INTERNAL OBLIGATION IS DISCHARGED BY RENDERED-SEMANTICS VERIFICATION ONLY. ***"
+      ]
      }
     ],
     "external_obligations": [
@@ -15926,14 +15935,14 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 1,
-   "findings_with_internal_status_open": 1,
-   "internal_obligations_open": 3,
-   "internal_obligations_unresolved": 3,
+   "findings_internal_open": 0,
+   "findings_with_internal_status_open": 0,
+   "internal_obligations_open": 0,
+   "internal_obligations_unresolved": 0,
    "obligations_by_state": {
-    "OPEN": 1,
-    "PARTIAL": 2,
-    "DISCHARGED": 29
+    "OPEN": 0,
+    "PARTIAL": 0,
+    "DISCHARGED": 32
    },
    "external_obligations": 5
   },
@@ -16058,8 +16067,7 @@
    "my_own_fabrication": "I FIRST WROTE A FABRICATED DIGEST HERE, copying it from a TRUNCATED 20-character display and inventing the remaining 44. **The history guard refused it** -- a loss may be declared but a digest may not be invented -- and I then read the full value out of HEAD. Recorded because it is the failure mode the guard exists for."
   },
   "by_status_derived_at_round_608": {
-   "FIX_SUBMITTED": 53,
-   "PARTIAL": 1
+   "FIX_SUBMITTED": 54
   }
  }
 }

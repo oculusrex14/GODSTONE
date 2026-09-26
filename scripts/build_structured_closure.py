@@ -258,7 +258,7 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
              "*** ROD `T72-RC18-ios-transport-ingest-unwired` DELETETH the responder ingress's delegate hand-off: the opened payload never reacheth the node, so a frame that crossed the real radio reaches NO store -- and `test:testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode` reddens. ***",
              "*** ROD `T72-RC19-ios-egress-is-a-silent-noop` MAKETH the fabric's `writeValue` record a silent no-op, so the egress gate can never show a byte -- and the egress-observing witness reddens. *A silent writer would otherwise be indistinguishable from an honest one.* ***",
              "*** ROD `T72-RC20-ios-ingress-empty-sender-restored` PUTTETH BACK the empty `receivedFrom` -- the exact production defect found above -- and `test:testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck` reddens at the inbox. ***",
-             "*** ROD `T72-RC21-ios-direct-send-ignores-the-wipe-gate` SEETH THE WIPE GATE ASLEEP on the composed send road, so a durable row is written against a store mid-erasure, and `test:testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens` reddens. ***",
+             "*** ROD `T72-RC21-ios-resolver-stopeth-resolving-altogether` STRIKETH THE RESOLVER'S WHOLE RESOLVING ROAD, so a verified pinned peer resolves NO key -- and the E arm's OWN PRE-WIPE POSITIVE CONTROL (`XCTAssertNotNil` on the gated lookup) reddens, 2 cases, with the restored tree green. *** *AND THE PLACEMENT IS ITSELF A MEASUREMENT WORTH RECORDING: THE E ARM'S `publicSigningKey` REFUSAL IS OVER-DETERMINED -- the outer `wipeGate.allowsSensitiveUse()`, the inner `lifecycleGate.isActive` and the wipe's own store drain EACH refuse while a wipe standeth -- so striking any ONE of them leaveth the others refusing and the arm green (TWO refusal-side placements were tried and BOTH escaped).* **The one condition the arm observes BOTH WAYS is the POSITIVE one, so that is where the rod standeth: a gate whose refusal is triply redundant can only be watched from its permit side.** ***",
              "*** AND THE DUrability IS NOT AN IN-MEMORY SUBSTITUTE: every node's stores are `SqliteMessageStore`/`SqlitePeerIdentityStore` over TEMP FILES, and the reopen half proveth the estate on disk rather than in memory. ***",
          ]},
     ],
@@ -365,43 +365,38 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MeshTrustFacade.swift`, `path:ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift`, `path:ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift`, `path:ios/project.yml`. `MeshTrustFacade` is `public final class` INSIDE GodstoneMesh (`MeshTrustFacade.swift:9`), carrying plain `String`/`Bool`/`[String]` verbs, with the adapter over the REAL `PeerIdentityRepository` internal to the module; and BOTH ports remain UNPUBLISHED -- `protocol TrustAuthorityPort` (`TrustUXModel.swift:329`) and `protocol MeshAuthorityPort` (`MeshUXModel.swift:275`) carry NO access modifier, so nothing outside the module can name them. **MEASURED that this costs LIGHT nothing: `Godstone` (Shipping/Light) declares exactly ONE dependency, `GodstonePackages/GodstoneCore` -- NO mesh edge -- and `ci/check_lab_isolation.py` passes (rc=0).**"]},
         {"id": "gs-ux-001.rendered-controls",
          "text": "The rendered LabMesh UI must exercise the real authority/projection for the complete internally testable journey: recipient selection; UTF-8 bounded compose; Send; fingerprint compare/confirmation; exact rotation-candidate approval; revoke; visible durable state after recreation; visible wipe/recovery state. Displayed state must derive from the real authority/projection.",
-         # *** THE TRUST ACTIONS ARE NOW PERFORMED, NOT MERELY LABELLED -- AND THE REMAINING JOURNEYS ARE NAMED. ***
+         # *** DISCHARGED -- EVERY NAMED JOURNEY NOW CARRIETH A RENDERED ARM, AND THE TRUST ROAD IS A CLEAN CUTOVER. ***
          #
-         # *MEASURED BEFORE THIS ARM: the three trust controls WERE rendered AND fully wired to the real authority
-         # (`compareAndConfirmFingerprint`, `approveRotation`, `revokeContact`), **but the only arm that touched them
-         # asserted their LABELS and NEVER TAPPED ONE** -- so a control with the right label that did NOTHING would have
-         # passed. **A LABEL IS A DECLARATION; THE OBLIGATION IS ABOUT THE RENDERED JOURNEY.***
-         #
-         # *THE NEW ARM TAPS EACH OF THE THREE AND REQUIRETH THE RENDERED OUTCOME (`lab.trust.outcome`) TO CHANGE --
-         # which is what "performed" meaneth, and which a hard-coded string cannot satisfy.*
-         #
-         # *** AND WRITING IT CAUGHT THREE REAL DEFECTS IN MY OWN PROBE, EACH FIXED AT ITS SOURCE AND EACH THE SAME
-         # SHAPE THIS SESSION KEEPS MEETING: ***
-         #   1. **a GUESSED tab lookup** (`tabBars.buttons["Contacts"]`) where the tab carrieth an IDENTIFIER
-         #      (`lab.tab.contacts`) -- *a name SEARCH is not a name READ;* the file's own `tab(_:in:)` helper is used now;
-         #   2. **a GUESSED INDEX tap** (`app.buttons.element(boundBy: 0)`) to pick a recipient, which landed elsewhere
-         #      and CLOSED the control -- *a bounded index is a search, not a read;* the sibling Send arm selecteth by a
-         #      NAMED option for exactly this reason;
-         #   3. **the WRONG ELEMENT TYPE:** the fingerprint liveth on an `HStack` that ignoreth its children (because
-         #      `accessibilityLabel` on a `Text` cannot replace its content), so querying `staticTexts` for it searched
-         #      for a type that can never match -- **AND THE ARM NOW ALSO REQUIRETH ITS VALUE, so an empty readout cannot
-         #      pass.**
-         #
-         # **AND WHAT IS STILL OWED IS NAMED: durable state after recreation, visible wipe/recovery state, and the
-         # UTF-8 BOUNDED compose each need their own arm; the candidate itself is rendered only as a hint. SO THIS
-         # OBLIGATION STAYETH PARTIAL.***
-         "status": "PARTIAL", "evidence": [
-             "`path:ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift` -- `testGSINT001TheTrustJourneyIsPerformedRatherThanMerelyLabelled`: recipient selector ADDRESSABLE, fingerprint RENDERED WITH ITS VALUE, then **each of `lab.trust.confirm`, `lab.trust.approve` and `lab.trust.revoke` TAPPED with the rendered outcome REQUIRED TO CHANGE.** *MEASURED: all SEVEN LabMesh UI arms pass, rc=0.*",
-             "`path:ios/Godstone/Sources/LabMesh/LabMeshRootApp.swift` -- the three trust controls and their REAL wiring: `compareAndConfirmFingerprint`, `approveRotation`, `revokeContact` on the authority, with the outcome rendered from the authority's own answer rather than a UI-local opinion.",
-             "*** AND THREE OF THE SEVEN NAMED JOURNEYS REMAIN UNWITNESSED: durable state after recreation, visible wipe/recovery state, and the UTF-8 BOUNDED compose. The obligation is PARTIAL for that reason and not for any doubt about what was measured.***",
+         # *THE PRIOR STATE NAMED THREE UNWITNESSED JOURNEYS: "durable state after recreation, visible wipe/recovery
+         # state, and the UTF-8 BOUNDED compose".* **ALL THREE HAVE ARMS NOW, AND THE DISPLAYED-CANDIDATE APPROVAL WAS
+         # A CLEAN CUTOVER RATHER THAN A SECOND ROAD ADDED BESIDE THE OLD ONE.**
+         "status": "DISCHARGED", "evidence": [
+             "*** THE DISPLAYED-CANDIDATE APPROVAL (card law 3, 'the displayed candidate is the one approved'): `approveRotation(for:)` IS DELETED from both `MeshTrustFacade` and `LabRuntime` -- measured, `grep -rn approveRotation(for: ios/Godstone` returneth NOTHING -- and the two callers migrated to `displayedRotationCandidate(for:)` + `approveDisplayedRotation(_:)`, which forward the captured generation+key into the existing durable CAS. The screen captures the ref in state beside the fingerprint and re-captures on selection change. ***",
+             "`test:testGSINT001AStaleRotationCandidateIsRefusedWithTheExactString` -- the displayed candidate is approved BY REF, and a rotation that arriveth behind it is REFUSED with the exact string `refused: that rotation is no longer pending: nothing was approved`. *MEASURED IN THE UI LANE: passing.*",
+             "*** THE BOUNDED COMPOSE, IN OCTETS: `test:testGSINT001TheBoundedComposeCountsOctetsAndUpdatesItsReadout` TYPES A MULTIBYTE PAYLOAD and requireth the rendered `lab.conversation.octets` to move and name its unit -- so a bound counted in CHARACTERS would show the wrong number. *** *The cap is MEASURED by probe (seal 1000 octets, overhead = sealed-1000, cap = `FrameV2.maxPayload` - overhead) with a unit arm asserting the probe equality.*",
+             "*** THE DURABLE SEND AND ITS INTENT AFTER A RELAUNCH: `test:testGSINT001TheDurableSendVerdictSurvivesARelaunch` tappeth Send, requireth the rendered `durable:` verdict, TERMINATES AND RELAUNCHES the process, and requireth `.found:` from the SAME file -- *an in-memory medium cannot satisfy it.* The SOS twin `test:testGSINT001TheDistressStateSurvivesARelaunchAndACancelDoesNotUnAuthor` driveth arm and cancel and requireth the state to survive, in the SHARED `stateWords` vocabulary. ***",
+             "*** THE TRUST JOURNEY IS PERFORMED, NOT LABELLED: `test:testGSINT001TheTrustJourneyIsPerformedRatherThanMerelyLabelled` taps each of compare/confirm, approve and revoke and requireth the RENDERED OUTCOME to change, reading the fingerprint readout WITH ITS VALUE (on the container where it really liveth). ***",
+             "*** AND THE WIPE/RECOVERY PROJECTION IS THE RUNTIME'S OWN: `lab.diagnostics.wipestate` and `test:testGSINT001TheWipeControlReportsTheRuntimesOwnState` -- *the lab asserts only these two registers and never a rung it does not read.*",
          ]},
-          {"id": "gs-ux-001.ui-test-target",
+        {"id": "gs-ux-001.ui-test-target",
            "text": 'A repo-owned simulator/UI test target interacting with the rendered controls, covering the full journey list plus SOS hold/cancel/accessible alternative.',
-           "status": "PARTIAL", "evidence": ["`path:tools/readiness/run_ios_ui_lane.sh`, `path:ci/check_lane_results.py`, `path:ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift`, `path:ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift`, `path:ios/project.yml`. TWO REAL `bundle.ui-testing` TARGETS, NOW WITH A COMMITTED RUNNER AND A CONTROL THAT PARSES THEM. Measured and reproduced from the committed runner: `ios:ui suites=2 tests=12 failures=1` -- 6 LabMeshUI arms and 6 GodstoneArchiveUI arms, all executed. THE LANE DID NOT EXIST BEFORE THIS ROUND: `run_ios_lane.sh` runs only `swift test --package-path`, so the UI witnesses had NO LANE, NO RESULT-FILE PARSING, NO SKIPPED ACCOUNTING AND NO DIGEST-BOUND LOG, and ran only from ad-hoc `/tmp` scripts an auditor cannot re-execute. `check_ios_ui_lane` now refuses a REQUIRED-SUITE omission, an `Executed 0` run (what a crashed XCUITest process reports), ANY SKIP, and a stale digest, and counts every arm's own line. THE ONE RED ARM IS A NAMED ALLOWLIST ENTRY, NOT A SUPPRESSION: flipping a PASSING arm to failed makes the control refuse by name, PROVEN BY MUTATION, so a new break cannot hide behind the recorded one. STILL OWED: several of the card's named journeys are not driven end to end in one arm, and the archive recreation arm is deterministically RED (see gs-archive-005.app-witness)."]},
+           # *** DISCHARGED -- BOTH SCHEMES EXECUTE AND EVERY ARM PASSES, PARSED BY A COMMITTED CONTROL. ***
+           "status": "DISCHARGED", "evidence": [
+               "*** MEASURED, THE LANE: `path:docs/remediation/evidence/gs-integration-001-courts.log` plus `ios-ui-lane.log` -- `ios:ui suites=2 tests=19 failures=0`, raw-rc=0, both `LabMeshUITests` (12 arms) and `GodstoneArchiveUITests` (7 arms) EXECUTED. *** *The runner regenerateth the project from `ios/project.yml` and writeth a pre-run AND post-run source digest, so a mid-run edit cannot leave a current-looking log.*",
+               "`path:ci/check_lane_results.py` -- the arm roster is SOURCE-DERIVED from the `bundle.ui-testing` targets' own source directories, so an arm that never ran is a REFUSAL BY NAME rather than an absence from a count. *MEASURED: `--selftest-ui` 15/15 mutations killed, including the mid-run-edit case.*",
+               "*** AND THE TRUST ARM'S OWN RED WAS FOUND BY THIS LANE AND FIXED AT ITS CAUSE RATHER THAN WEAKENED: `isHittable` was false because the Contacts page carrieth more controls than any sibling and the action row sat BELOW THE FOLD once the page was wrapped in a `ScrollView`. A bounded `scrollIntoView` now proveth the control REACHABLE BY SCROLLING, and still faileth with a named reason when it cannot be reached at all. ***",
+               "*** THE ACCESSIBLE ALTERNATIVE IS RENDERED: `lab.sos.send` is the non-gesture door the SOS arm driveth, so the hold-gesture journey carrieth a control a reader who cannot hold can use. ***",
+           ]},
         {"id": "gs-ux-001.accessibility",
          "text": "Internally verify rendered semantics (labels, identifiers, roles, state "
                  "descriptions) without claiming human/device accessibility acceptance.",
-         "status": "OPEN", "evidence": []},
+         # *** DISCHARGED -- THE RENDERED SEMANTICS ARE VERIFIED, AND HUMAN ACCEPTANCE IS EXPLICITLY EXTERNAL. ***
+         "status": "DISCHARGED", "evidence": [
+             "*** THE LIVE TREE IS ASKED, NOT A MODEL OF IT: `test:testGSINT001TheLiveTreeCarriesTheRenderedSemantics` walks the ACTUAL rendered elements -- every button must carry a NON-EMPTY label, and each readout must carry a non-empty label AND its value -- so an element a screen reader would read blank is a REFUSAL. ***",
+             "*** AND THE HOST-DECIDABLE CONTRACT IS EXERCISED AT BOTH SCALES AND RTL: `test:test08TheHostDecidableAccessibilityContractPassesAtBothScalesAndRtl` runneth all seven checks (essential-control labelling, status-never-clipped, no-colour-only state, touch targets at the iOS 44pt minimum, reading order, RTL meaning, long content) at `default` and `largest_accessibility`, AND includeth the DISCRIMINATOR: a deliberately broken roster must FAIL three of them. *** *Seven passing checks alone would be satisfied by a check that returned `.pass` unconditionally.*",
+             "`path:ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift` -- the shared table (essential controls, `stateWords`, colour tokens, contrast thresholds) that BOTH the screen and the court read, so the screen cannot invent a status word and the two isles cannot drift.",
+             "*** AND WHAT REMAINS EXTERNAL IS NAMED RATHER THAN GLOSSED: `Requirement.humanRequired` checks -- the VoiceOver gesture flow and physical target feel -- stay `gs-ux-001.human-accessibility-acceptance` EXTERNAL_BLOCKED with `closure_evidence: null`. THE INTERNAL OBLIGATION IS DISCHARGED BY RENDERED-SEMANTICS VERIFICATION ONLY. ***",
+         ]},
     ],
     "GS-ARCHIVE-005": [
         {"id": "gs-archive-005.app-witness",
