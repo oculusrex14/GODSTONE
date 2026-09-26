@@ -293,6 +293,41 @@ public final class ArchiveSceneModel: ObservableObject {
     public func back() {
         switch mode {
         case .document:
+            // *** THE RETURN IDENTITY IS DERIVED FROM THE RECORD, NOT ONLY FROM THE STASHED SCENE. ***
+            //
+            // *MEASURED, HOSTED AND INSTRUMENTED (`archive.phase.ready.mode.documents`, reader popped), AND THEN
+            // REPRODUCED EXACTLY IN THE MODEL: a DOCUMENT stood open while the stashed return was a DOCUMENTS route,
+            // and `back()` took the `returnScene.mode == .documents` road -- NILING `searchedQuery` and loading the
+            // list. **THE READER WAS SENT TO THE LIST FOR A QUERY THAT WAS NEVER RE-RUN, WHICH IS EXACTLY THE CARD'S
+            // VIOLATION: "the RESTORED return identity must be the search the reader actually made."** *The model
+            // reproduction printeth `returnMode=documents mode=document searchedQuery=bleeding` and then
+            // `after back: mode=documents passages=0 searchedReRuns=0`.*
+            //
+            // **WHY THE STASH CAN SAY `documents` WHILE A SEARCH WAS MADE: `stashScene()` doeth nothing when the mode
+            // is ALREADY `.document` (round 536's guard, so a re-entrant open cannot overwrite the true return), and
+            // the RESTORE ROAD'S PATH-SYNC can put the scene in a document without ever stashing one.**
+            //
+            // *AND THE RECORD CARRIETH THE TRUE IDENTITY INDEPENDENTLY: `searchedQuery` at the TOP level, which
+            // `snapshot`/`restore` ALWAYS carry.* **So a document whose return resolveth to the LIST while a search
+            // was made is returned to the SEARCH; a genuine BROWSE (`searchedQuery` nil/empty) still returneth to the
+            // list. THE DERIVATION INVENTS NO QUERY -- IT ONLY READS ONE THE READER ACTUALLY MADE.**
+            let savedSearch = searchedQuery?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if (returnScene?.mode ?? .documents) == .documents, let saved = savedSearch, !saved.isEmpty {
+                generationBump()
+                returnScene = nil
+                mode = .search
+                query = saved
+                documents = []
+                passages = []
+                openedDocumentId = nil
+                openedTitle = nil
+                openedSource = nil
+                error = nil
+                canRetry = false
+                phase = .loading
+                Task { await self.search() }
+                return
+            }
             guard let scene = returnScene else { backToDocuments(); return }
             generationBump()
             returnScene = nil
