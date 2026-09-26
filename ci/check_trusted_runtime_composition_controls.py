@@ -855,7 +855,17 @@ def selftest() -> int:
 
         # Mutation R17b (round 549): THE DEADLOCK ITSELF IS NOW ITS OWN MUTATION. A gate that refuses CONSTRUCTION on a
         # blocked permit would make the wipe's only remedy unreachable, so the control must redden on it.
-        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("recordStartupPermit(barrier)", "requireStartupPermit(barrier)"), encoding="utf-8")
+        #
+        # *** AND THE MUTATION WAS A NO-OP, WHICH IS WHY IT READ "NOT CAUGHT" -- THE SAME STALE-MUTATION CLASS THIS
+        # FILE ALREADY RECORDS FOR R18, FOUND RATHER THAN ASSUMED. *** *MEASURED: it replaced
+        # `"recordStartupPermit(barrier)"`, and the file carrieth `recordStartupPermit(barrier, permit)` -- **THE
+        # TRAILING `, permit` IS PART OF THE CALL TEXT, SO NOTHING WAS REPLACED, NOTHING WAS BROKEN, AND THE CHECK
+        # (correctly) STAYED GREEN.*** **It had been stale for rounds without bein' seen, because the invariants job
+        # aborted at an EARLIER step and this selftest never ran; removing that earlier refusal exposed it.**
+        # *The mutation now keys on `recordStartupPermit(` -- the call's own name and open paren, which DO exist --
+        # and rewriteth every call site AND the definition, so the forbidden `requireStartupPermit(` road really
+        # appeareth and the control's own refusal (`:393`) is the thing proven.*
+        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("recordStartupPermit(", "requireStartupPermit("), encoding="utf-8")
         if any("R17" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R17b (a construction-refusing gate) was NOT caught")
         reset_all()

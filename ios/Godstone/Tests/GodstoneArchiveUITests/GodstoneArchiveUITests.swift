@@ -754,10 +754,20 @@ final class GodstoneArchiveUITests: XCTestCase {
         XCTAssertTrue(back.waitForExistence(timeout: 20), "*** THE RESTORED READER MUST RENDER ITS OWN BACK. ***")
         clearPresentation(again)
         back.tap()
+        // *** AND THE PHASE NAMES ITSELF IN THE FAILURE MESSAGE, BECAUSE THE HOSTED RED COULD NOT. ***
+        // *MEASURED, HOSTED RUNS `36243824132`/`36257920130`/`36261958035`: the trace after this tap carried the
+        // right MODE (the query was restored) but no `archive.search.results`, no document-list row and no spinner --
+        // `loading` and `noResults` were INDISTINGUISHABLE from what the arm could see, and they demand opposite
+        // repairs (a road still in flight vs. a road that returned nothing). `ArchiveView` now rendereth the phase as
+        // `archive.phase.<name>` on every road; this arm READETH it so a red run sayeth which one it stood on.*
+        let phaseSurface = again.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.phase.'")).firstMatch
+        let phaseName = phaseSurface.exists ? phaseSurface.identifier : "archive.phase.<NONE RENDERED>"
         XCTAssertTrue(
             again.staticTexts["archive.search.results"].waitForExistence(timeout: 20),
             "*** BACK MUST RETURN TO THE SUBMITTED SEARCH, not the document list: the RESTORED return identity must be "
-                + "the search the reader actually made, which is the half a model court cannot see. ***",
+                + "the search the reader actually made, which is the half a model court cannot see. "
+                + "OBSERVED STATE: \(phaseName) ***",
         )
 
         // (10) AND THE SAME RESULT SET IS STILL ADDRESSABLE.

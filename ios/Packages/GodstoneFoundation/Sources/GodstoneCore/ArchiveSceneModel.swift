@@ -33,6 +33,26 @@ public enum ArchivePhase: Sendable, Equatable {
         if case .unavailable = self { return true }
         return false
     }
+
+    /// *** THE PHASE'S OWN NAME, SO AN EXECUTED WITNESS CAN SAY WHICH ROAD IT STANDS ON. ***
+    ///
+    /// *MEASURED, HOSTED RUNS `36243824132`, `36257920130` AND `36261958035`: the Archive journey arm
+    /// (`GSFINAL006`) waited on `archive.search.results` and, on the hosted runner, THAT IDENTIFIER WAS THE ONLY
+    /// RENDERED THING MISSING -- while the app was demonstrably in `search` mode (`scene.back` had restored it) and
+    /// carried NO document-list row and NO progress spinner. **THE ARM COULD NOT SAY WHETHER IT WAS LOOKING AT
+    /// `loading` OR AT `noResults`, and those two demand OPPOSITE repairs: one is a road still in flight, the other
+    /// is a road that RETURNED NOTHING.***
+    ///
+    /// *So the phase is RENDERED as its own accessibility value on the search surface -- a diagnosis the witness can
+    /// READ rather than infer from an absence. It changeth no behaviour: the same view rendereth what it always did.*
+    public var witnessName: String {
+        switch self {
+        case .loading: return "loading"
+        case .ready: return "ready"
+        case .noResults: return "noResults"
+        case .unavailable: return "unavailable"
+        }
+    }
 }
 
 /// The tale the banner telleth, sanitised. The spoken form is a fixed

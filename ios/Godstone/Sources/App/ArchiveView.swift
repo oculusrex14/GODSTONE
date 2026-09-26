@@ -182,6 +182,11 @@ private struct ArchiveBrowser: View {
     var body: some View {
         NavigationStack(path: $path) {
             Group {
+                // *** AND THE PHASE NAMES ITSELF, ON EVERY ROAD, SO A WITNESS CAN READ WHICH ONE IT STANDS ON. ***
+                // *See `ArchivePhase.witnessName` -- the hosted journey arm could not tell `loading` from `noResults`
+                // by the identifiers it could see, and those two demand opposite repairs.*
+                Color.clear.frame(width: 0, height: 0)
+                    .accessibilityIdentifier("archive.phase." + scene.phase.witnessName)
                 switch scene.phase {
                 case .loading:
                     ProgressView("Opening Archive…")
