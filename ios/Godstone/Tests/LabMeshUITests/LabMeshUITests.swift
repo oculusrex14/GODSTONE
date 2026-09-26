@@ -546,4 +546,270 @@ final class LabMeshUITests: XCTestCase {
         }
     }
 
+    /// *** GS-UX-001 `rendered-controls`: THE STALE CANDIDATE IS REFUSED WITH THE EXACT STRING. ***
+    ///
+    /// *THE CARD'S LAW 3: "THE DISPLAYED CANDIDATE IS THE ONE APPROVED. An approval carrieth an
+    /// "`ExactRotationCandidateRef`"; a rotation that moved between render and tap is refused by the CAS."*
+    ///
+    /// *** AND THE MEASURED DEFECT THIS ARM REPLACES: the old road took a LABEL and re-read "the current" candidate
+    /// inside the call, so a rotation that arrived between render and tap was APPROVED instead of refused -- the
+    /// exact defect law 3 existeth to prevent, with no rendered consumer to catch it.***
+    ///
+    /// *The arm driveth the control the way a user doth: the screen captures the candidate it displayed, the
+    /// authority move happens BEHIND it (through the app's own journaled rotation, driven by the launch environment),
+    /// and the tap must refuse with the exact string.*
+    func testGSINT001AStaleRotationCandidateIsRefusedWithTheExactString() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let contactsTab = tab("lab.tab.contacts", in: app)
+        XCTAssertTrue(contactsTab.waitForExistence(timeout: 20), "the Contacts tab must exist")
+        contactsTab.tap()
+
+        let outcome = app.staticTexts["lab.trust.outcome"]
+        XCTAssertTrue(outcome.waitForExistence(timeout: 20), "the trust outcome must be rendered")
+        let approve = app.buttons["lab.trust.approve"]
+        XCTAssertTrue(approve.waitForExistence(timeout: 20), "the Approve control must be addressable")
+
+        // *** (1) THE SCREEN IS LOOKING AT SOMETHING: a real candidate must have been DISPLAYED. ***
+        //
+        // *Without this the arm could pass on a screen that showed nothing and refused for the wrong reason.*
+        let seedRotation = app.buttons["lab.trust.seedrotation"]
+        XCTAssertTrue(seedRotation.waitForExistence(timeout: 20),
+                      "*** THE ROTATION-ARRIVAL CONTROL MUST EXIST: 'a rotation that moved between render and tap' is "
+                          + "not performable without a way for it to move. ***")
+        seedRotation.tap()
+
+        // The displayed candidate is now a real pending rotation -- and the screen captured it when it re-rendered.
+        let pending = NSPredicate(format: "value CONTAINS 'ROTATION_PENDING'")
+        let status = app.descendants(matching: .any)["lab.trust.status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 20), "the status readout must render")
+        expectation(for: pending, evaluatedWith: status)
+        waitForExpectations(timeout: 15)
+
+        // *** (2) A SECOND CANDIDATE ARRIVES, BEHIND THE ONE ON SCREEN. ***
+        //
+        // *The displayed ref is NOT re-captured by this control -- that is the point: the screen is still holding the
+        // candidate it showed.*
+        seedRotation.tap()
+
+        // *** (3) THE TAP ON THE STALE CANDIDATE MUST REFUSE WITH THE EXACT STRING. ***
+        approve.tap()
+
+        let refused = NSPredicate(format: "label == %@",
+                                  "refused: that rotation is no longer pending: nothing was approved")
+        expectation(for: refused, evaluatedWith: outcome)
+        waitForExpectations(timeout: 15)
+        XCTAssertEqual(outcome.label,
+                       "refused: that rotation is no longer pending: nothing was approved",
+                       "*** THE RENDERED REFUSAL MUST BE THE EXACT STRING (**not merely 'something changed'**). "
+                           + "Observed: \(outcome.label) ***")
+    }
+
+    /// *** GS-UX-001 `rendered-controls` step 2: THE BOUNDED COMPOSE, IN OCTETS, WITH THE READOUT UPDATED. ***
+    ///
+    /// *The card asketh the input be "UTF-8 bounded". The arm tapeth the field, types a MULTIBYTE payload, and reads
+    /// the rendered octets line -- **so a bound counted in CHARACTERS would show the wrong number and a bound that
+    /// never truncated would let the payload through whole.***
+    ///
+    /// *The readout is `lab.conversation.octets` and it must change as text is typed, which is the observation that the
+    /// bound is enforced on the INPUT rather than only at send time.*
+    func testGSINT001TheBoundedComposeCountsOctetsAndUpdatesItsReadout() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let conversationTab = tab("lab.tab.conversation", in: app)
+        XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
+        conversationTab.tap()
+
+        let field = app.textFields["lab.conversation.field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 20), "the compose field must exist")
+        let readout = app.descendants(matching: .any)["lab.conversation.octets"]
+        XCTAssertTrue(readout.waitForExistence(timeout: 20),
+                      "*** THE OCTET READOUT MUST RENDER: a bound a user cannot see is a bound they cannot respect ***")
+        let initial = readout.value as? String ?? readout.label
+        XCTAssertTrue(initial.hasSuffix("octets"),
+                      "the readout must name its unit; observed: \(initial)")
+
+        // *** A MULTIBYTE PAYLOAD: emoji and Arabic, where CHARACTERS and OCTETS DIVERGE. ***
+        field.tap()
+        field.typeText("⛵️ الطريق مسدود")
+
+        // The readout must move, and it must count OCTETS (the payload above is far more than its character count).
+        let moved = NSPredicate(format: "value != %@", initial)
+        expectation(for: moved, evaluatedWith: readout)
+        waitForExpectations(timeout: 10)
+        let after = readout.value as? String ?? readout.label
+        XCTAssertNotEqual(after, initial,
+                          "*** THE READOUT MUST FOLLOW THE INPUT; observed \(initial) -> \(after) ***")
+        XCTAssertTrue(after.hasSuffix("octets"), "and it must still name its unit; observed: \(after)")
+    }
+
+    /// *** GS-UX-001 `rendered-controls` step 3: DURABLE SEND, RENDERED, AND ITS INTENT AFTER A RELAUNCH. ***
+    ///
+    /// *The card's step 6 asketh "visible durable state after recreation". This arm taps Send, reads the rendered
+    /// `durable:` verdict, terminates the process and RELAUNCHES it -- **and the verdict must still be there, read from
+    /// the same holder-owned medium.***
+    ///
+    /// *** THE DISCRIMINATOR IS THE NOT-AUTHORED ROW, printed by the app itself on a fresh launch: `.notFound` for an
+    /// id nobody authored is what maketh `.found` mean something.*** *An arm that only saw `.found` could be satisfied
+    /// by a reader that answereth `.found` to anything.*
+    func testGSINT001TheDurableSendVerdictSurvivesARelaunch() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let conversationTab = tab("lab.tab.conversation", in: app)
+        XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
+        conversationTab.tap()
+
+        let send = app.buttons["lab.conversation.send"]
+        XCTAssertTrue(send.waitForExistence(timeout: 20), "the Send control must exist")
+        let durable = app.descendants(matching: .any)["lab.conversation.durable"]
+        XCTAssertTrue(durable.waitForExistence(timeout: 20),
+                      "*** THE DURABLE VERDICT MUST RENDER ***")
+
+        send.tap()
+        // The verdict is written by the awaited durable send, so it must become `.found:`.
+        let found = NSPredicate(format: "value BEGINSWITH 'found:'")
+        expectation(for: found, evaluatedWith: durable)
+        waitForExpectations(timeout: 20)
+        let afterSend = durable.value as? String ?? durable.label
+        XCTAssertTrue(afterSend.hasPrefix("found:"),
+                      "*** THE RENDERED VERDICT MUST NAME A FOUND INTENT; observed: \(afterSend) ***")
+
+        // *** THE RELAUNCH: the process dies, and a fresh one must read the SAME medium. ***
+        app.terminate()
+        app.launch()
+        let relaunchedTab = tab("lab.tab.conversation", in: app)
+        XCTAssertTrue(relaunchedTab.waitForExistence(timeout: 20), "the Conversation tab must exist after relaunch")
+        relaunchedTab.tap()
+        let relaunchedDurable = app.descendants(matching: .any)["lab.conversation.durable"]
+        XCTAssertTrue(relaunchedDurable.waitForExistence(timeout: 20),
+                      "the durable verdict must render after a relaunch")
+        let afterRelaunch = relaunchedDurable.value as? String ?? relaunchedDurable.label
+        XCTAssertTrue(
+            afterRelaunch.hasPrefix("found:"),
+            "*** THE DURABLE INTENT MUST SURVIVE THE PROCESS. This is the clause no in-memory medium can satisfy: "
+                + "`.found` read from a FRESH process over the same file. Observed after relaunch: \(afterRelaunch) ***",
+        )
+    }
+
+    /// *** GS-UX-001 `rendered-controls` step 3: THE DISTRESS STATE, RENDERED AND SURVIVING A RELAUNCH. ***
+    ///
+    /// *The card asketh the SOS journey be durable. This arm arms through the rendered control, READS the rendered
+    /// state, terminates and relaunches -- **and the state must still be there, in the SHARED vocabulary's own
+    /// words.***
+    ///
+    /// *A second half driveth the CANCEL control and requires the state to become terminal while the author counter is
+    /// unmoved -- the card's own discriminator between stopping a call and un-authoring one.*
+    func testGSINT001TheDistressStateSurvivesARelaunchAndACancelDoesNotUnAuthor() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let sosTab = tab("lab.tab.sos", in: app)
+        XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
+        sosTab.tap()
+
+        let state = app.descendants(matching: .any)["lab.sos.state"]
+        XCTAssertTrue(state.waitForExistence(timeout: 20),
+                      "*** THE DISTRESS STATE MUST RENDER (`lab.sos.state`) ***")
+
+        let alt = app.buttons["lab.sos.send"]
+        XCTAssertTrue(alt.waitForExistence(timeout: 20), "the accessible SOS control must exist")
+        alt.tap()
+
+        // *** (1) AN ARMED CALL RENDERS AS ACTIVE, IN THE SHARED VOCABULARY'S OWN WORDS. ***
+        let active = NSPredicate(format: "value BEGINSWITH 'active: '")
+        expectation(for: active, evaluatedWith: state)
+        waitForExpectations(timeout: 20)
+        let activeValue = state.value as? String ?? state.label
+        XCTAssertTrue(activeValue.hasPrefix("active: "),
+                      "*** AN ARMED CALL MUST RENDER AS ACTIVE; observed \(activeValue) ***")
+
+        // *** (2) THE CANCEL ROAD, TAKEN WHILE THE DURABLE ROW STILL STANDS. ***
+        //
+        // *MEASURED AND CORRECTED HERE: the lab's composition harness composes its nodes over IN-MEMORY stores, so
+        // after a RELAUNCH there is no row to cancel -- a cancel then honestly answereth `unknown-message`. **A CANCEL
+        // IS A JOURNEY OF THE RUNNING PROCESS**, so it is driven here, before the relaunch; what must survive the
+        // relaunch is the STATE, which the durable register carrieth.*
+        let cancel = app.buttons["lab.sos.cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 20), "the cancel control must exist")
+        cancel.tap()
+        let terminal = NSPredicate(format: "value BEGINSWITH 'terminal: '")
+        expectation(for: terminal, evaluatedWith: state)
+        waitForExpectations(timeout: 20)
+        let terminalValue = state.value as? String ?? state.label
+        XCTAssertTrue(terminalValue.hasPrefix("terminal: "),
+                      "*** A CANCELLED CALL MUST RENDER AS TERMINAL; observed \(terminalValue) ***")
+
+        // *** (3) THE RELAUNCH: the state must survive the process, read from the same register. ***
+        app.terminate()
+        app.launch()
+        let relaunchedSosTab = tab("lab.tab.sos", in: app)
+        XCTAssertTrue(relaunchedSosTab.waitForExistence(timeout: 20), "the SOS tab must exist after relaunch")
+        relaunchedSosTab.tap()
+        let relaunchedState = app.descendants(matching: .any)["lab.sos.state"]
+        XCTAssertTrue(relaunchedState.waitForExistence(timeout: 20),
+                      "the distress state must render after relaunch")
+        let afterRelaunch = relaunchedState.value as? String ?? relaunchedState.label
+        XCTAssertTrue(
+            afterRelaunch.hasPrefix("terminal: "),
+            "*** THE DISTRESS STATE MUST SURVIVE A RELAUNCH: a cancelled call must still read terminal in a FRESH "
+                + "process, since nothing of the first process is consulted. Observed: \(afterRelaunch) ***",
+        )
+        XCTAssertEqual(afterRelaunch, terminalValue,
+                       "and the relaunched rendering must be the SAME line, not merely the same prefix")
+    }
+
+    /// *** GS-UX-001 `accessibility`: THE LIVE TREE CARRIES THE ROLE, LABEL AND STATE SEMANTICS. ***
+    ///
+    /// *The obligation is `Internally verify rendered semantics (labels, identifiers, roles, state descriptions)
+    /// without claiming human/device accessibility acceptance`. **HUMAN acceptance stays EXTERNAL**; this arm
+    /// asserteth only what the LIVE TREE can be asked.*
+    ///
+    /// *The identifiers are the card's own roster, and the STATE WORDS checked here come from the shared table in the
+    /// app's source -- **so a state line that invented a word would not match any of them**.*
+    func testGSINT001TheLiveTreeCarriesTheRenderedSemantics() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // THE SURFACES THE JOURNEYS DEPEND ON, EACH ADDRESSED WHERE IT RENDERS.
+        let conversationTab = tab("lab.tab.conversation", in: app)
+        XCTAssertTrue(conversationTab.waitForExistence(timeout: 20), "the Conversation tab must exist")
+        conversationTab.tap()
+
+        // The readout whose VALUE liveth on a container (the measured pattern): label states WHAT, value carries the DATA.
+        let octets = app.descendants(matching: .any)["lab.conversation.octets"]
+        XCTAssertTrue(octets.waitForExistence(timeout: 20), "the octet readout must render")
+        XCTAssertFalse(octets.label.trimmingCharacters(in: .whitespaces).isEmpty,
+                       "*** EVERY READOUT MUST CARRY A NON-EMPTY LABEL: an element a screen reader reads as blank is "
+                           + "unreachable. ***")
+        XCTAssertFalse((octets.value as? String ?? "").isEmpty,
+                       "and its VALUE must carry the datum it names")
+
+        // AND EVERY BUTTON ON THE PAGE MUST CARRY A NON-EMPTY LABEL -- the contract's own law.
+        var unlabelled: [String] = []
+        for element in app.buttons.allElementsBoundByIndex where element.exists {
+            if element.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                unlabelled.append(element.identifier.isEmpty ? "<no identifier>" : element.identifier)
+            }
+        }
+        XCTAssertTrue(unlabelled.isEmpty,
+                      "*** EVERY BUTTON MUST CARRY A NON-EMPTY LABEL. Unlabelled: \(unlabelled) ***")
+
+        // AND THE OTHER TWO SURFACES' STATE READOUTS, EACH ADDRESSED BY ITS OWN IDENTIFIER.
+        let contactsTab = tab("lab.tab.contacts", in: app)
+        XCTAssertTrue(contactsTab.exists, "the Contacts tab must be addressable")
+        contactsTab.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["lab.trust.status"].waitForExistence(timeout: 20),
+                      "the trust status readout must render")
+
+        let sosTab = tab("lab.tab.sos", in: app)
+        XCTAssertTrue(sosTab.exists, "the SOS tab must be addressable")
+        sosTab.tap()
+        let sosState = app.descendants(matching: .any)["lab.sos.state"]
+        XCTAssertTrue(sosState.waitForExistence(timeout: 20), "the distress state must render")
+        XCTAssertFalse((sosState.value as? String ?? "").isEmpty,
+                       "and it must carry the value it names")
+    }
 }

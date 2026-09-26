@@ -224,16 +224,46 @@ public final class MeshTrustFacade: @unchecked Sendable {
         }
     }
 
-    /// Approve an exact rotation candidate for a contact.
-    /// Returns an outcome description string ("applied: ..." or "refused: ...").
-    public func approveRotation(for label: String) -> String {
-        guard let nodeId = resolveNodeId(label) else {
-            return "refused: unknown contact label '\(label)'"
-        }
+    /// *** GS-UX-001 `rendered-controls`: THE CANDIDATE THE SCREEN DISPLAYED, HANDED BACK AS A REF. ***
+    ///
+    /// *THE DEFECT THIS CLOSES, MEASURED BEFORE THE EDIT: the only road to an approval was
+    /// `approveRotation(for label:)`, WHICH TOOK A **LABEL**, RE-READ "the current" pending candidate inside the
+    /// call and approved WHATEVER IT FOUND. So the ref the screen displayed was never the thing approved -- a
+    /// rotation that MOVED BETWEEN RENDER AND TAP was silently approved by the label road, and the model's own law
+    /// 3 ("THE DISPLAYED CANDIDATE IS THE ONE APPROVED", `TrustUXModel.swift:26-30`) had no rendered consumer at
+    /// all.* **A CONTROL THAT NAMES A CONTACT INSTEAD OF THE CANDIDATE IT SHOWED IS A CONTROL THAT CANNOT REFUSE A
+    /// RACE.***
+    ///
+    /// **THE PRODUCTION ROAD IS TWO VERBS NOW, AND THE REF TRAVELS BETWEEN THEM:** the view reads the candidate
+    /// ONCE (this call, which refresheth so what it returneth is what the authority currently standeth on), holds
+    /// it in `@State`, and hands THAT SAME REF to `approveDisplayedRotation(_:)` -- which carries no label, reads
+    /// nothing, and re-resolves nothing. *The durable CAS then bindeth on the node, the generation AND the pending
+    /// key digest, so a candidate that moved is refused rather than substituted.*
+    ///
+    /// Returns nil when the contact is unknown or carrieth no pending rotation (the view renders a refusal; it never
+    /// invents a candidate).
+    public func displayedRotationCandidate(for label: String) -> ExactRotationCandidateRef? {
+        guard let nodeId = resolveNodeId(label) else { return nil }
         return executeOnMain {
-            guard let candidate = self.ensureModelIsolated().uiState().contact(nodeId)?.pendingRotation else {
-                return "refused: no pending rotation candidate for '\(label)'"
-            }
+            let model = self.ensureModelIsolated()
+            // ONE refresh, so what is returned IS what the authority standeth on right now.
+            _ = model.refresh()
+            return model.uiState().contact(nodeId)?.pendingRotation
+        }
+    }
+
+    /// *** APPROVE THE EXACT CANDIDATE THE SCREEN SHOWED -- NO LABEL, NO RESOLVE, NO REFRESH. ***
+    ///
+    /// *The ref carrieth node id, pending generation AND the pending static key, and it is forwarded UNCHANGED into
+    /// the existing durable CAS (`TrustUXModel.handleApprove` -> `TrustAuthorityAdapter.approvePendingRotation` ->
+    /// `PeerIdentityRepository.approvePendingRotation`). **NOTHING HERE RE-READS "the current" candidate**, which is
+    /// the whole difference from the deleted label road.*
+    ///
+    /// `.staleCandidate` maps to the card's own words -- `refused: that rotation is no longer pending: nothing was
+    /// approved` -- so a rendered arm can bind the EXACT string rather than "something changed".
+    public func approveDisplayedRotation(_ candidate: ExactRotationCandidateRef) -> String {
+        executeOnMain {
+            // LAW 3: THE DISPLAYED REF TRAVELS; nothing here re-readeth "the current" one.
             let outcomeState = self.ensureModelIsolated().onCommand(.approveRotation(candidate))
             if let error = outcomeState.error {
                 return "refused: " + error

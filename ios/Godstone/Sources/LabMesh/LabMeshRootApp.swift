@@ -157,8 +157,29 @@ struct LabContactsView: View {
     @EnvironmentObject private var holder: LabRuntimeHolder
     @State private var selectedContact: String = "B"
     @State private var trustOutcome: String = "idle"
+    /// *** GS-UX-001 `rendered-controls`: THE DISPLAYED CANDIDATE, HELD WHERE THE SCREEN CAN HAND IT BACK. ***
+    ///
+    /// *The deleted road took a LABEL and re-read "the current" candidate inside the call, so a rotation that moved
+    /// between render and tap was approved anyway. **THE SCREEN NOW CARRIETH THE EXACT REF IT SHOWED.*** And the
+    /// displayed FINGERPRINT is captured the same way, because `Compare/Confirm` must confirm the string the user
+    /// actually saw rather than a fresh read taken at tap time.
+    @State private var displayedCandidate: ExactRotationCandidateRef?
+    @State private var displayedFingerprint: String = ""
+    /// How many rotations this screen has driven in, so each arrival carrieth a distinct generation and key.
+    @State private var rotationSeedStep: Int = 7
+
+    /// Re-capture what this screen is standing on: one read of the real facade, stored for the taps.
+    private func captureDisplayed() {
+        displayedFingerprint = holder.runtime.trustFingerprint(for: selectedContact) ?? ""
+        displayedCandidate = holder.runtime.displayedRotationCandidate(for: selectedContact)
+    }
 
     var body: some View {
+        // *** GS-UX-001: SCROLLED, SO ENLARGED TYPE CANNOT COVER THE TAB BAR -- the same repair the sibling journeys
+        // already carry. *** *MEASURED AT `UICTContentSizeCategoryAccessibilityXXXL` on those views: content reached
+        // y=763.8 while the TabBar begins at y=676, so a tab tap landed on CONTENT. **THE TRUST PAGE CARRIETH MORE
+        // CONTROLS THAN ANY SIBLING, so it is the LAST surface that may grow without a scroll.***
+        ScrollView {
         VStack(alignment: .leading, spacing: 8) {
             LabBanner()
             Text("Contacts").font(.title)
@@ -179,9 +200,11 @@ struct LabContactsView: View {
                 }
             }
             .accessibilityIdentifier("lab.trust.recipient")
+            // AND A CHANGE OF SELECTION RE-CAPTURES, so the ref always belongeth to the contact on screen.
+            .onChange(of: selectedContact) { _ in captureDisplayed() }
+            .onAppear { captureDisplayed() }
 
-            // Rendered fingerprint string
-            let fp = holder.runtime.trustFingerprint(for: selectedContact) ?? "no-fingerprint"
+            let fp = displayedFingerprint.isEmpty ? "no-fingerprint" : displayedFingerprint
             // *** MEASURED: `accessibilityLabel` ON A `Text` DOES NOT OVERRIDE ITS CONTENT. ***
             //
             // *The arm read `fingerprint: c31cbb8f...` -- THE `Text`'s OWN STRING -- even though the label was
@@ -211,17 +234,24 @@ struct LabContactsView: View {
 
             HStack(spacing: 8) {
                 Button("Compare/Confirm") {
-                    let contact = selectedContact
-                    let currentFp = holder.runtime.trustFingerprint(for: contact) ?? ""
-                    trustOutcome = holder.runtime.compareAndConfirmFingerprint(for: contact, displayedFingerprint: currentFp)
+                    // *** THE CAPTURED STRING, NOT A FRESH READ. *** *The user is confirming what they SAW; a read
+                    // taken here could differ from the rendered value and would confirm a string nobody compared.*
+                    trustOutcome = holder.runtime.compareAndConfirmFingerprint(
+                        for: selectedContact, displayedFingerprint: displayedFingerprint)
                 }
                 .accessibilityIdentifier("lab.trust.confirm")
                 .accessibilityLabel("Compare and confirm fingerprint")
                 .accessibilityHint("Confirms the fingerprint shown for \(selectedContact)")
 
                 Button("Approve Rotation") {
-                    let contact = selectedContact
-                    trustOutcome = holder.runtime.approveRotation(for: contact)
+                    // *** THE DISPLAYED REF TRAVELS -- NO LABEL, NO RE-RESOLVE, NO REFRESH. ***
+                    guard let candidate = displayedCandidate else {
+                        trustOutcome = "refused: no rotation candidate was displayed for '\(selectedContact)'"
+                        return
+                    }
+                    trustOutcome = holder.runtime.approveDisplayedRotation(candidate)
+                    // And the screen re-captures afterwards, so the next tap is about what is now shown.
+                    captureDisplayed()
                 }
                 .accessibilityIdentifier("lab.trust.approve")
                 .accessibilityLabel("Approve rotation")
@@ -236,15 +266,51 @@ struct LabContactsView: View {
                 .accessibilityHint("Revokes \(selectedContact); this cannot be undone from here")
             }
 
+            // *** GS-UX-001 `rendered-controls` law 3: A ROTATION THAT *ARRIVES*, DRIVEN FROM A CONTROL. ***
+            //
+            // *"An approval carrieth an `ExactRotationCandidateRef`; a rotation that moved between render and tap is
+            // refused by the CAS." **THAT JOURNEY CANNOT BE PERFORMED WITHOUT A ROTATION ARRIVING**, and a court cannot
+            // reach the repository from outside -- so the lab carrieth the control. **IT DRIVETH THE SAME PRODUCTION
+            // VERB A REAL HANDSHAKE DRIVETH** (`PeerIdentityRepository.applyValidatedBinding`, over a binding the
+            // node's own signing key issueth and the real validator checks): no second source of truth, no fabricated
+            // row.*
+            //
+            // *** AND IT SNAPSHOTS WHAT THE SCREEN WAS SHOWING *BEFORE* THE ARRIVAL, WHICH IS WHAT MAKETH LAW 3
+            // EXERCISABLE AT ALL. *** *An inbound rotation is exactly the event after which a screen must NOT re-read
+            // "the current" candidate -- it must keep the ref it showed. So this control records the displayed ref
+            // first and drives the arrival second; tapping it twice therefore leaves the SCREEN one generation behind
+            // the AUTHORITY, which is the race under test. **A CONTROL THAT RE-READ AFTERWARD WOULD MAKE THE RACE
+            // UNREACHABLE FROM ANY RENDERED ARM.***
+            Button("A new key arrives") {
+                rotationSeedStep += 1
+                let generation = UInt32(rotationSeedStep)
+                let keyByte = UInt8(0xA0 &+ rotationSeedStep)
+                trustOutcome = holder.runtime.seedRotation(for: selectedContact,
+                                                           generation: generation,
+                                                           staticDhSeedByte: keyByte)
+                // *** RE-READ ONLY WHEN NOTHING IS UNDER REVIEW YET. ***
+                //
+                // *A screen that ALREADY shows a pending candidate the user is reviewing must NOT silently swap it
+                // for a newer arrival -- that swap is precisely the race law 3 existeth to catch. So the caption is
+                // taken on the FIRST arrival (nothing was displayed) and deliberately NOT on a later one, leaving the
+                // screen one generation behind the authority: the state a tap must refuse from.*
+                if displayedCandidate == nil { captureDisplayed() }
+            }
+            .accessibilityIdentifier("lab.trust.seedrotation")
+            .accessibilityLabel("A new key arrives")
+            .accessibilityHint("Drives a real rotation for \(selectedContact); the displayed candidate is not re-read")
+
             Text(trustOutcome)
                 .font(.footnote)
                 .accessibilityIdentifier("lab.trust.outcome")
         }
         .padding()
+        }
         .onAppear {
             if let first = holder.runtime.trustContactLabels().first {
                 selectedContact = first
             }
+            captureDisplayed()
         }
     }
 }
@@ -265,6 +331,26 @@ struct LabConversationView: View {
     /// be offered.
     @State private var author: String = "A"
     @State private var recipient: String = "B"
+
+    /// *** GS-UX-001 STEP 3: THE VIEW-GENERATED INTENT, AND THE VERDICT IT LEFT BEHIND. ***
+    ///
+    /// *Send taketh the DURABLE road now: the intent is pinned in `outbound_intents` under a HOLDER-OWNED STABLE URL
+    /// before the frame is authored, so a relaunch can ask the same medium what became of it -- which no in-memory
+    /// medium can ever answer. The id is minted HERE, in the view, because the view is the thing that must be able to
+    /// ask for it again.*
+    @State private var intentHex: String = ""
+    @State private var durableVerdict: String = "not asked"
+
+    /// *** THE BOUNDED INPUT, IN OCTETS. ***
+    ///
+    /// *`onChange` truncates in UTF-8 OCTETS through the runtime's own measured bound -- **NEVER `Character.count`**,
+    /// because one emoji is one character and four octets, so a character-counting bound accepts a body the authority
+    /// refuses. The bound itself is PROBED at runtime (`LabRuntime.maxComposeBodyOctets`), so this view cannot drift
+    /// from the frame the authority builds.*
+    private func boundTheInput() {
+        let bounded = LabRuntime.truncateToComposeBound(body_)
+        if bounded != body_ { body_ = bounded }
+    }
 
     var body: some View {
         // *** GS-UX-001 STEP 7: SCROLLED, SO ENLARGED TYPE CANNOT COVER THE TAB BAR. ***
@@ -301,13 +387,49 @@ struct LabConversationView: View {
             TextField("message", text: $body_)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("lab.conversation.field")
+                .onChange(of: body_) { _ in boundTheInput() }
+
+            // *** THE OCTET READOUT, BECAUSE A BOUND A USER CANNOT SEE IS A BOUND THEY CANNOT RESPECT. ***
+            //
+            // *It reads `LabRuntime.composeOctetsReadout`, which measures the string in UTF-8 octets against the
+            // PROBED cap -- so the number rendered and the number enforced are the same number.*
+            HStack(spacing: 0) { Text(holder.runtime.composeOctetsReadout(body_)).font(.footnote) }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("lab.conversation.octets")
+                .accessibilityLabel("Conversation size")
+                .accessibilityValue(holder.runtime.composeOctetsReadout(body_))
+
             Button("Send") {
                 let text = body_
                 let from = author, to = recipient
-                Task { outcome = await holder.runtime.sendDirect(from, recipient: to, plaintext: Data(text.utf8)) }
+                // THE INTENT IS MINTED HERE, so the rendered verdict can name the id the send pinned.
+                let intent = LabRuntime.mintIntentId()
+                intentHex = intent.map { String(format: "%02x", $0) }.joined()
+                Task {
+                    outcome = await holder.runtime.sendDirectDurableIntent(
+                        from, recipient: to, plaintext: Data(text.utf8), intentId: intent)
+                    durableVerdict = holder.runtime.durableIntentVerdict(intent)
+                }
             }
             .accessibilityIdentifier("lab.conversation.send")
             Text(outcome).accessibilityIdentifier("lab.conversation.outcome")
+
+            // *** AND THE REOPEN'S OWN ANSWER, RENDERED -- THE CLAUSE THAT SEPARATES A DURABLE ROAD FROM A MEMORY ONE. ***
+            //
+            // *On a FRESH LAUNCH this reads the LAST RECORDED intent from the holder-owned register, so the rendered
+            // line is the RELAUNCH discriminator itself: `.found` survives the process, `.notFound` for a never-authored
+            // id is what maketh `.found` mean something.*
+            HStack(spacing: 0) {
+                Text("durable: " + (durableVerdict == "not asked"
+                                    ? holder.runtime.durableVerdictForLastIntent()
+                                    : durableVerdict)).font(.footnote)
+            }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("lab.conversation.durable")
+                .accessibilityLabel("Durable intent verdict")
+                .accessibilityValue(durableVerdict == "not asked"
+                                    ? holder.runtime.durableVerdictForLastIntent()
+                                    : durableVerdict)
 
             // *** GS-UX-001 STEP 7: A READOUT OF THE RUNTIME'S OWN COUNT, SO THE ARM CAN BIND RUNTIME-OWNED STATE. ***
             //
@@ -318,6 +440,13 @@ struct LabConversationView: View {
             // which no view can fabricate** -- so an unwired action and a stuck await BOTH redden.*
             Text("admitted: " + String(holder.runtime.admittedCount()))
                 .accessibilityIdentifier("lab.conversation.admitted")
+
+            // *** AND THE INTENT THE VIEW MINTED, RENDERED SO A RELAUNCH ARM CAN NAME IT. ***
+            HStack(spacing: 0) { Text("intent: " + (intentHex.isEmpty ? "none" : intentHex)).font(.footnote) }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("lab.conversation.intent")
+                .accessibilityLabel("Last intent id")
+                .accessibilityValue(intentHex.isEmpty ? "none" : intentHex)
         }
         .padding()
         }
@@ -341,6 +470,8 @@ struct LabSosView: View {
     @State private var heldSince: ContinuousClock.Instant?
     @State private var armed = false
     @State private var outcome: String?
+    /// The rendered distress state, read from the delivery row (or the durable register) in the shared vocabulary.
+    @State private var sosState: String = "no active call"
 
     private let clock = ContinuousClock()
 
@@ -350,14 +481,26 @@ struct LabSosView: View {
         return clock.now - start >= Self.confirmationThreshold
     }
 
-    /// *** THE SOS REACHES THE RUNTIME, AND THE RENDERED TEXT IS THE RUNTIME'S OWN VERDICT. ***
+    /// *** THE SOS REACHES THE RUNTIME THROUGH THE NODE'S OWN COMMAND DOOR, AND THE RENDERED TEXT IS THE RUNTIME'S
+    /// OWN VERDICT. ***
     ///
-    /// *`LabRuntime.sendSos` broadcasts through the same retained runtime the direct-send road uses, so the outcome
-    /// string is the authority's answer rather than a phrase this view chose. `@EnvironmentObject` is required to
-    /// reach it -- the previous version needed no environment at all, WHICH WAS ITSELF THE SYMPTOM: a control that
-    /// reaches nothing needs nothing.*
+    /// *`LabRuntime.armSos` forwards to `MeshNode.handleSosCommand(.author(payload))` -- **THE EXISTING COMMAND
+    /// SURFACE**, per the plan's instruction, not a new mechanism. The outcome string is the authority's answer rather
+    /// than a phrase this view chose, and the state line below is read back FROM THE DELIVERY ROW through the shared
+    /// vocabulary.*
     private func sendSos() {
-        Task { outcome = await holder.runtime.sendSos("A", plaintext: Data("SOS".utf8)) }
+        outcome = holder.runtime.armSos(payload: Data("SOS".utf8))
+        sosState = holder.runtime.sosStateNames()
+    }
+
+    /// Cancel the standing call by the DURABLE msg_id -- the node's own `.cancel(msgId)` arm.
+    private func cancelSos() {
+        guard let msgId = holder.runtime.activeSosMsgId() else {
+            outcome = "refused: nothing to cancel"
+            return
+        }
+        outcome = holder.runtime.cancelSos(msgId: msgId)
+        sosState = holder.runtime.sosStateNames()
     }
 
     var body: some View {
@@ -396,7 +539,9 @@ struct LabSosView: View {
                             // is the same rig-assignment defect that had already voided two other witnesses.*
                             //
                             // The outcome now carries THE RUNTIME'S OWN ANSWER, exactly as `LabConversationView`
-                            // carries Send's -- so a broken send road is visible in the rendered text.
+                            // carries Send's -- so a broken send road is visible in the rendered text. **AND IT IS THE
+                            // DURABLE ROAD**: the node's own `.author` arm commits the held frame and its row as one
+                            // pair, which is what a relaunch can read.
                             sendSos()
                         } else {
                             outcome = "hold cancelled -- threshold not reached"
@@ -408,7 +553,25 @@ struct LabSosView: View {
             Button("Send SOS (accessible alternative)") { sendSos() }
                 .accessibilityLabel("Send SOS")
                 .accessibilityIdentifier("lab.sos.send")
+
+            // *** THE CANCELLABLE ROAD THE CARD NAMES ("SOS hold/cancel"), BY ITS OWN DURABLE ID. ***
+            Button("Cancel the call") { cancelSos() }
+                .accessibilityLabel("Cancel the distress call")
+                .accessibilityIdentifier("lab.sos.cancel")
+
             if let outcome { Text(outcome).font(.footnote).accessibilityIdentifier("lab.sos.outcome") }
+
+            // *** AND THE DISTRESS STATE, RENDERED FROM THE DELIVERY ROW IN THE SHARED VOCABULARY. ***
+            //
+            // *The card asketh the SOS state be visible and durable. The LINE is prefixed (`active:`/`terminal:`/none)
+            // so a reader can tell a live call from a retired one, and the WORDS after it come from
+            // `AccessibilityContract.stateWords` -- **never invented**.*
+            HStack(spacing: 0) { Text("call: " + sosState).font(.footnote) }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("lab.sos.state")
+                .accessibilityLabel("Distress call state")
+                .accessibilityValue(sosState)
+                .onAppear { sosState = holder.runtime.sosStateNames() }
 
             // *** AND THE RUNTIME'S OWN COUNT, SO THE SOS ARM CAN BIND RUNTIME-OWNED STATE TOO. ***
             Text("sos admitted: " + String(holder.runtime.admittedCount()))

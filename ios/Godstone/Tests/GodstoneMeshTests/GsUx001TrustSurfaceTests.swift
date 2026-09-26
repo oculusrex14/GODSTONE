@@ -336,14 +336,25 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
 
         XCTAssertTrue(facade.isRotationPending(label: "Alice"), "Alice should have a pending rotation")
 
-        // Step 3: Candidate changes in the repository to generation 8 behind user's back
+        // Step 4: THE VIEW CAPTURES THE CANDIDATE IT DISPLAYED, at the moment the screen showed it (generation 6,
+        // key B). *This is the state the screen held while the user was looking at it.*
+        guard let displayed = facade.displayedRotationCandidate(for: "Alice") else {
+            XCTFail("*** THE SCREEN MUST BE ABLE TO CAPTURE THE CANDIDATE IT DISPLAYED (GS-UX-001 law 3) ***")
+            return
+        }
+        XCTAssertEqual(displayed.pendingGeneration, 6, "the displayed candidate is the one the screen showed")
+
+        // *** AND ONLY NOW DOES THE REPOSITORY MOVE BEHIND THE USER'S BACK -- AFTER the capture, BEFORE the tap. ***
+        //
+        // *THE ORDER IS THE TEST: the previously-issued label-taking approval verb re-read "the current" candidate
+        // inside the call, so it would have approved generation 8 rather than refusing. **THE DISPLAYED REF MUST
+        // TRAVEL, and the CAS must bind on it.***
         let b3 = makeBinding(seed: seedA, generation: 8, staticDhPriv: staticPrivC)
         let res3 = repo.applyValidatedBinding(b3)
         XCTAssertEqual(res3, .keyChangedQuarantined)
 
-        // Step 4: User approves the displayed generation 6 candidate
-        // (the facade's model has candidate generation 6 cached from when it was displayed)
-        let approveOutcome = facade.approveRotation(for: "Alice")
+        // Step 5: THE USER TAPS APPROVE ON THE STALE CANDIDATE THEY WERE SHOWN.
+        let approveOutcome = facade.approveDisplayedRotation(displayed)
 
         // Repository CAS refuses stale candidate
         XCTAssertTrue(approveOutcome.hasPrefix("refused:"), "Stale approval must be refused: \(approveOutcome)")
@@ -351,6 +362,8 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
             approveOutcome.contains("no longer pending"),
             "Expected stale candidate explanation: \(approveOutcome)"
         )
+        // *** AND THE EXACT STRING THE RENDERED ARM BINDS. ***
+        XCTAssertEqual(approveOutcome, "refused: that rotation is no longer pending: nothing was approved")
 
         // Repository accepted generation remains 5
         guard case .quarantined(let current) = repo.lookup(b1.nodeId) else {
@@ -427,5 +440,228 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
 
         // Session invalidation check
         XCTAssertTrue(invalidatedNodes.contains(binding.nodeId), "Session invalidator must have been called")
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. The COMPOSE BOUND is a MEASUREMENT, not a copied constant
+    // -------------------------------------------------------------------------
+
+    /// *** GS-UX-001 `rendered-controls`: THE BOUND THE VIEW ENFORCES IS THE BOUND THE AUTHORITY BUILDS. ***
+    ///
+    /// *THE DEFECT THIS PREVENTS: a view with `maxBody = 512` typed into it while the frame builder refuses at 400 --
+    /// the input would ACCEPT a body the authority REFUSES, and the rendered failure would read as a transport
+    /// problem. **A COPIED CONSTANT IS A CONSTANT THAT DRIFTS.***
+    ///
+    /// **SO THE ARM RE-RUNS THE PROBE AND REQUIRES THE ADVERTISED BOUND TO EQUAL IT.** *That is the mutation-bite: a
+    /// hand-typed constant reddens here, because the probe measures the REAL chain
+    /// (`SignedMessageV1.author` -> `Router.buildSealedMessage`, exactly `ComposedRuntime.authorFrame`'s road) rather
+    /// than a number.*
+    func test05TheComposeBoundIsMeasuredThroughTheRealChain() throws {
+        let measured = LabRuntime.measureMaxComposeBodyOctets()
+        XCTAssertEqual(
+            LabRuntime.maxComposeBodyOctets, measured,
+            "*** THE ADVERTISED BOUND MUST BE THE MEASURED ONE. A constant that disagrees with the probe accepteth a " +
+                "body the authority refuses. ***",
+        )
+        // AND THE MEASUREMENT IS CONSISTENT WITH THE FROZEN CONTAINER: the lab may not author a body the container
+        // would refuse, so the bound can never exceed the container's own budget.
+        XCTAssertLessThanOrEqual(LabRuntime.maxComposeBodyOctets, SignedMessageV1.bodyMax,
+                                 "the compose bound may not exceed the frozen container's body budget")
+
+        // AND THE ENFORCEMENT POINT USES IT, in OCTETS. *The multibyte case is the discriminator: an emoji is ONE
+        // character and FOUR octets, so a `Character.count` implementation would keep it while a correct one drops
+        // it -- which is exactly the defect the card's "UTF-8 bounded" clause names.*
+        let prefix = String(repeating: "a", count: LabRuntime.maxComposeBodyOctets - 1)
+        XCTAssertEqual(LabRuntime.truncateToComposeBound(prefix + "⛵️"), prefix,
+                       "a multibyte character that would overflow the OCTET bound must be dropped WHOLE")
+        XCTAssertEqual(LabRuntime.truncateToComposeBound(prefix).utf8.count, LabRuntime.maxComposeBodyOctets - 1,
+                       "and a body within the bound must be returned untouched")
+        XCTAssertEqual(LabRuntime.truncateToComposeBound(prefix + "a").utf8.count, LabRuntime.maxComposeBodyOctets,
+                       "a body exactly AT the bound must survive")
+
+        // AND THE READOUT THE VIEW RENDERS NAMES THE SAME NUMBER.
+        let lab = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x41)
+        XCTAssertEqual(lab.composeOctetsReadout("abc"),
+                       "3/\(LabRuntime.maxComposeBodyOctets) octets",
+                       "the rendered readout must carry the measured bound, counted in octets")
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. The durable Send's intent SURVIVES the runtime that authored it
+    // -------------------------------------------------------------------------
+
+    /// *** GS-UX-001 `rendered-controls` step 3: THE SEND IS DURABLE, AND THE INTENT OUTLIVES ITS AUTHOR. ***
+    ///
+    /// *The card asketh for `visible durable state after recreation`. The rendered Send now travels the DURABLE road
+    /// (`sendDirectDurableIntent`), which pins the intent in `outbound_intents` BEFORE the frame is authored -- and
+    /// this arm asks the question an in-memory medium can never answer: **a FRESH HANDLE over the same medium, with
+    /// nothing of the authoring runtime consulted.***
+    ///
+    /// **THE DISCRIMINATOR IS THE SECOND CLAUSE.** *An id that was never authored must be ABSENT from the very same
+    /// handle; without it, a reader that answereth `.found` to anything would satisfy clause one.*
+    func test06TheRenderedSendPinsADurableIntentThatOutlivesItsAuthor() async throws {
+        LabRuntime.resetLastIntentForTest()
+        // A CLEAN MEDIUM, so the arm cannot read a previous run's row.
+        let storeURL = LabRuntime.durableStoreURL()
+        for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: storeURL.path + suffix) }
+
+        let lab = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x42)
+        let intentId = LabRuntime.mintIntentId()
+        let verdict = await lab.sendDirectDurableIntent("A", recipient: "B", plaintext: Data("boats".utf8),
+                                                       intentId: intentId)
+        XCTAssertTrue(verdict.hasPrefix("durable:"), "the rendered Send must take the durable road: \(verdict)")
+
+        // CLAUSE 1 -- THE INTENT SURVIVES ITS AUTHOR, read from a fresh handle over the same medium.
+        XCTAssertTrue(lab.durableIntentVerdict(intentId).hasPrefix("found:"),
+                      "*** THE INTENT MUST SURVIVE THE RUNTIME THAT AUTHORED IT (read from a FRESH handle) ***")
+        // AND THE RELAUNCH ROAD (the register a fresh process would read) names the SAME id and gives the SAME answer.
+        XCTAssertEqual(LabRuntime.lastIntentId(), intentId,
+                       "the last-intent register must survive for a relaunch to name")
+        XCTAssertTrue(lab.durableVerdictForLastIntent().hasPrefix("found:"),
+                      "and the RELAUNCH readout must answer from the register rather than from this process's memory")
+
+        // CLAUSE 2 -- THE DISCRIMINATOR: an id that was NEVER authored is ABSENT from the very same handle.
+        XCTAssertEqual(lab.durableIntentVerdict(Data(repeating: 0x00, count: 16)), "notFound",
+                       "*** AN UNAUTHORED ID MUST BE ABSENT, or clause 1's `.found` would mean nothing ***")
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. SOS: durable arm and cancel through the node's own command surface
+    // -------------------------------------------------------------------------
+
+    /// *** GS-UX-001 `rendered-controls` step 3: THE DISTRESS CALL IS DURABLE, CANCELLABLE, AND RELAUNCH-READABLE. ***
+    ///
+    /// *The card's step 3 asketh the SOS journey be durable; the plan's instruction is that it use **THE EXISTING
+    /// COMMAND SURFACE** (`handleSosCommand(.author)` / `.cancel(msgId)`), never a new mechanism. So this arm driveth
+    /// the rendered road and REQUIREth:*
+    ///  1. **an arm ENQUEUES DURABLY** -- the authority's own taxonomy, not a view's string;
+    ///  2. **the state renders in the SHARED VOCABULARY** -- every word must come from
+    ///     `AccessibilityContract.stateWords`, which is the mutation-bite against an invented phrase;
+    ///  3. **a cancel retires the call AND DOES NOT MOVE THE AUTHOR COUNTER** -- the card's own discriminator
+    ///     between stopping a call and un-authoring one;
+    ///  4. **the state survives a relaunch** -- a FRESH `LabRuntime` over the same register renders what the first
+    ///     one left, which is what no view-local `@State` can do.
+    func test07TheDistressCallIsDurableCancellableAndRelaunchReadable() throws {
+        LabRuntime.resetSosRegisterForTest()
+        let first = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x43)
+
+        // (1) ARM, through the node's own command door.
+        let armed = first.armSos(payload: Data("SOS".utf8))
+        XCTAssertTrue(armed.hasPrefix("armed:"),
+                      "*** THE DISTRESS ARM MUST REACH THE DURABLE AUTHORITY (got \(armed)) ***")
+        let authoredAfterArm = first.sosAuthoredCount()
+        XCTAssertEqual(authoredAfterArm, 1, "exactly one call was authored")
+
+        // (2) THE STATE RENDERS IN THE SHARED VOCABULARY, not in invented words.
+        let liveState = first.sosStateNames()
+        XCTAssertTrue(liveState.hasPrefix("active: "), "a live call must render as active: \(liveState)")
+        let spoken = String(liveState.dropFirst("active: ".count))
+        XCTAssertTrue(
+            AccessibilityContract.stateWords.contains { $0.1 == spoken },
+            "*** EVERY RENDERED STATE WORD MUST COME FROM THE SHARED VOCABULARY (`AccessibilityContract.stateWords`); " +
+                "got \(spoken) ***",
+        )
+
+        // (3) CANCEL BY ITS DURABLE ID.
+        guard let msgId = first.activeSosMsgId() else {
+            XCTFail("the standing call must have a durable msg_id to cancel")
+            return
+        }
+        let cancelled = first.cancelSos(msgId: msgId)
+        XCTAssertTrue(cancelled.hasPrefix("cancelled"), "the cancel must report its durable result: \(cancelled)")
+        XCTAssertEqual(first.sosAuthoredCount(), authoredAfterArm,
+                       "*** A CANCEL MUST NOT MOVE THE AUTHOR COUNTER: it stopeth a call, it doth not un-author one ***")
+        // *** AND THE DURABLE ROW ITSELF SAYETH SO -- not merely the rendered string. ***
+        //
+        // *A cancel RETIRES the held frame but LEAVES the delivery row in its terminal state, which is the durable
+        // witness a relaunch reads. Asking the ROW maketh the arm bite on the store rather than on the label.*
+        XCTAssertEqual(first.durableDeliveryState(author: first.author, msgId: msgId), .cancelledLocally,
+                       "*** THE DURABLE ROW MUST BE TERMINAL AFTER A CANCEL, or the rendered state is a claim ***")
+        let terminal = first.sosStateNames()
+        XCTAssertTrue(terminal.hasPrefix("terminal: "), "the retired call must render as terminal: \(terminal)")
+        XCTAssertTrue(AccessibilityContract.stateWords.contains { $0.1 == String(terminal.dropFirst("terminal: ".count)) },
+                      "and the terminal word must come from the same vocabulary")
+
+        // (4) THE STATE SURVIVES A RELAUNCH: a FRESH runtime, nothing of the first consulted.
+        let relaunched = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x43)
+        XCTAssertEqual(relaunched.sosStateNames(), terminal,
+                       "*** THE RENDERED STATE MUST SURVIVE A RELAUNCH (register read, not view memory) ***")
+        XCTAssertEqual(relaunched.sosAuthoredCount(), authoredAfterArm,
+                       "and a cancel must still leave the author counter unmoved after a relaunch")
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. The host-decidable accessibility contract, over the LAB's own roster
+    // -------------------------------------------------------------------------
+
+    /// *** GS-UX-001 `accessibility`: THE CONTRACT CHECKS, RUN OVER THE LAB'S RENDERED ROSTER. ***
+    ///
+    /// *The obligation is `Internally verify rendered semantics (labels, identifiers, roles, state descriptions)
+    /// without claiming human/device accessibility acceptance`. The contract's eight checks are the host-decidable
+    /// half (`AccessibilityContract.swift:58-136`), and **HUMAN acceptance stays EXTERNAL** -- this arm asserteth only
+    /// what a host can decide, and the roster below is built from the SHARED vocabulary so an invented word reddens.*
+    ///
+    /// **EVERY ESSENTIAL CONTROL IS PRESENT, LABELLED AND DESCRIBED, at BOTH scales and under RTL** -- because a
+    /// contract check that only ever saw the default scale would certify nothing about enlarged type.
+    func test08TheHostDecidableAccessibilityContractPassesAtBothScalesAndRtl() throws {
+        // THE ROSTER: the essential controls, with content descriptions and touch sizes from the contract's own
+        // minimum for iOS. The state words come FROM the shared table, never typed here.
+        func roster(scale: TextScale) -> [UiNode] {
+            let queued = AccessibilityContract.stateWords.first { $0.0 == "QUEUED" }!.1
+            let delivered = AccessibilityContract.stateWords.first { $0.0 == "DELIVERED" }!.1
+            let min = A11yPlatform.ios.touchTargetMinDp
+            // At the largest scale the state line stays WHOLE (truncated = false); the point of `checkStatusNeverClipped`
+            // is that a clipped status is refused, and this roster models the correct behaviour and asserts it passes.
+            return [
+                UiNode(controlId: "recipient_select", role: .button, label: "Choose a recipient",
+                       contentDescription: "Choose a recipient", touchWidthDp: min, touchHeightDp: min,
+                       readingOrder: 0),
+                UiNode(controlId: "compose_send", role: .button, label: "Send",
+                       contentDescription: "Send the message", touchWidthDp: min, touchHeightDp: min,
+                       readingOrder: 1, stateWords: queued, colourToken: "outline",
+                       truncated: false, containerWidthDp: 320, contentWidthDp: 120),
+                UiNode(controlId: "sos_arm", role: .button, label: "Distress call",
+                       contentDescription: "Hold to place a distress call", touchWidthDp: min,
+                       touchHeightDp: min, readingOrder: 2),
+                UiNode(controlId: "sos_cancel", role: .button, label: "Cancel the distress call",
+                       contentDescription: "Cancel the distress call", touchWidthDp: min, touchHeightDp: min,
+                       readingOrder: 3, stateWords: delivered, colourToken: "primary",
+                       truncated: false, containerWidthDp: 320, contentWidthDp: 140),
+                UiNode(controlId: "retry", role: .button, label: "Retry",
+                       contentDescription: "Retry the message", touchWidthDp: min, touchHeightDp: min,
+                       readingOrder: 4),
+            ]
+        }
+
+        for scale in [TextScale.defaultSize, .largestAccessibility] {
+            let nodes = roster(scale: scale)
+            for (name, verdict) in [
+                ("essential controls", AccessibilityContract.checkEssentialControlsLabelled(nodes)),
+                ("status never clipped", AccessibilityContract.checkStatusNeverClipped(nodes, scale)),
+                ("no colour-only state", AccessibilityContract.checkNoColourOnlyState(nodes)),
+                ("touch targets", AccessibilityContract.checkTouchTargets(nodes, .ios)),
+                ("reading order", AccessibilityContract.checkReadingOrder(nodes)),
+                ("rtl meaning", AccessibilityContract.checkRtlMeaning(nodes, rtl: scale == .largestAccessibility)),
+                ("long content", AccessibilityContract.checkLongContent(nodes, locale: "en")),
+            ] {
+                XCTAssertTrue(verdict.passed, "*** \(name) at \(scale.rawValue): \(verdict.reason) ***")
+            }
+        }
+
+        // *** AND THE DISCRIMINATOR: A ROSTER THAT DID BREAK THE CONTRACT MUST FAIL. ***
+        //
+        // *Seven passing checks prove only that the checks ran. Without this, a check that `return .pass` unconditionally
+        // would look identical to a working one.*
+        let broken = [
+            UiNode(controlId: "compose_send", role: .button, label: "Send", contentDescription: "",
+                   touchWidthDp: 10, touchHeightDp: 10, readingOrder: 0,
+                   stateWords: AccessibilityContract.stateWords[0].1, colourToken: ""),
+        ]
+        XCTAssertFalse(AccessibilityContract.checkTouchTargets(broken, .ios).passed,
+                       "a 10pt control must FAIL the touch-target check")
+        XCTAssertFalse(AccessibilityContract.checkEssentialControlsLabelled(broken).passed,
+                       "an empty content description must FAIL the labelling check")
+        XCTAssertFalse(AccessibilityContract.checkNoColourOnlyState(broken).passed,
+                       "a state word without a colour token must FAIL the colour-only check")
     }
 }

@@ -38,6 +38,46 @@ public struct LinkOffer: Sendable, Equatable {
     public let atMonoMillis: Int64
 }
 
+/// *** GS-UX-001 `accessibility`: THE DURABLE STATE'S OWN TOKEN -- WHICH IS THE SHARED VOCABULARY'S. ***
+///
+/// *A screen may never INVENT a status word. `AccessibilityContract.stateWords` is the one vocabulary the two isles
+/// share (`AccessibilityContract.swift:146`), and it is keyed by TOKENS (`QUEUED`, `ATTEMPTING`, `DELIVERED`,
+/// `CANCELLED`, `EXPIRED`, `FAILED`). The durable `DeliveryState` carrieth six cases of its own, so until this
+/// mapping existed **every rendered status readout had to choose a word by hand** -- which is precisely how a screen
+/// comes to say something the authority never said.*
+///
+/// **EVERY CASE IS MAPPED, AND THE MAPPING IS TOTAL:** a switch that had a `default:` would silently absorb a future
+/// durable state, so there is none -- a seventh `DeliveryState` would fail to compile here rather than render a
+/// borrowed word.
+public extension DeliveryState {
+    /// The shared vocabulary token this durable state speaketh as.
+    var stateToken: String {
+        switch self {
+        case .unavailable: return "FAILED"
+        case .queuedDurably: return "QUEUED"
+        // A local ATT admission is not delivery: the shared vocabulary sayeth "on its way; no answer yet".
+        case .handedToRelay: return "ATTEMPTING"
+        case .acknowledgedByRecipient: return "DELIVERED"
+        case .expired: return "EXPIRED"
+        case .cancelledLocally: return "CANCELLED"
+        }
+    }
+
+    /// The spoken words for this state, FROM the shared table (nil only if the vocabulary is incomplete).
+    var stateWords: String? {
+        AccessibilityContract.stateWords.first { $0.0 == stateToken }?.1
+    }
+
+    /// *** THE TOKEN'S OWN LOOKUP, FOR A REGISTER THAT CARRIETH A TOKEN ACROSS A PROCESS BOUNDARY. ***
+    ///
+    /// *Built from the closed enum rather than hand-listed, so a seventh durable state cannot be absent from it.*
+    static let allCasesByToken: [String: DeliveryState] = {
+        let states: [DeliveryState] = [.unavailable, .queuedDurably, .handedToRelay,
+                                       .acknowledgedByRecipient, .expired, .cancelledLocally]
+        return Dictionary(uniqueKeysWithValues: states.map { ($0.stateToken, $0) })
+    }()
+}
+
 /// The honest label a consumer may display.
 public enum DeliveryLabel: String, Sendable {
     case unavailable = "UNAVAILABLE"

@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import GodstoneCore
 
 // ---------------------------------------------------------------------------
@@ -51,7 +52,24 @@ public struct LabReadiness: Sendable, Equatable {
 /// The lab runtime handle.
 public final class LabRuntime: @unchecked Sendable {
     private let harness: ComposedRuntimeHarness
+    /// *** THE REAL DURABLE TRUST REPOSITORY, RETAINED SO A LAB ARM CAN DRIVE A ROTATION *ARRIVING*. ***
+    ///
+    /// *The stale-candidate journey is the one the card's law 3 existeth for, and it CANNOT be exercised without a
+    /// rotation that lands BETWEEN render and tap. **A COURT CANNOT REACH IT FROM OUTSIDE** -- the repository is
+    /// internal and the facade deliberately carrieth no mutation verb for it -- so the lab holdeth the instance
+    /// `compose()` already built and driveth the SAME production verb a real handshake driveth
+    /// (`PeerIdentityRepository.applyValidatedBinding`). **NO SECOND SOURCE OF TRUTH, NO FABRICATED ROW.***
+    private let trustRepository: PeerIdentityRepository
+    /// The signing seeds of the composed nodes, so a seeded rotation carrieth the SAME signing key (a differing one
+    /// would be a node-id collision, not a rotation).
+    private let nodeSigningSeeds: [String: Data]
     public let labels: [String]
+
+    /// *** THE AUTHOR THIS LAB'S JOURNEYS SPEAK AS: THE FIRST COMPOSED LABEL. ***
+    ///
+    /// *Every rendered send already nameth its author explicitly, so this is not a hidden default -- it is the ONE name
+    /// the SOS and durable-reopen accessors use, and it is derived from the composition rather than typed in a view.*
+    public var author: String { labels[0] }
     public let trust: MeshTrustFacade
 
     /// *** GS-UX-001: BINDING-VALIDATION FAILURES, RECORDED RATHER THAN SWALLOWED. ***
@@ -75,10 +93,13 @@ public final class LabRuntime: @unchecked Sendable {
     /// it: **A CALL TO A MEMBER THAT IS NOT THERE IS A COMPILE ERROR, NOT A CAPABILITY.**)
     public var hasDurableRoad: Bool { true }
 
-    private init(harness: ComposedRuntimeHarness, labels: [String], trust: MeshTrustFacade) {
+    private init(harness: ComposedRuntimeHarness, labels: [String], trust: MeshTrustFacade,
+                 trustRepository: PeerIdentityRepository, nodeSigningSeeds: [String: Data]) {
         self.harness = harness
         self.labels = labels
         self.trust = trust
+        self.trustRepository = trustRepository
+        self.nodeSigningSeeds = nodeSigningSeeds
     }
     /// The honest readiness statement. It carrieth no parameter, so no caller can
     /// argue it into saying true.
@@ -100,7 +121,14 @@ public final class LabRuntime: @unchecked Sendable {
         let clock = FixedHostClock()
         let harness = ComposedRuntimeHarness(clock: clock, link: LinkFacade(clock: clock))
         var next = seedByte ?? 0x11
+        // *** AND THE SIGNING SEED PER NODE IS REMEMBERED, SO A SEEDED ROTATION CAN CARRY THE SAME SIGNING KEY. ***
+        //
+        // *The harness deriveth a node's Ed25519 seed from the byte it was handed (`addNode`), and a rotation that
+        // kept a DIFFERENT signing key would be a node-id collision rather than a rotation -- so the seed is recorded
+        // here, where it is already decided, rather than re-derived by a caller.*
+        var seeds: [String: Data] = [:]
         for label in labels {
+            seeds[label] = Data((0..<32).map { i -> UInt8 in UInt8((Int(next) + i) & 0xFF) })
             _ = try harness.addNode(label, seedByte: next)
             next = next &+ 0x10
         }
@@ -176,7 +204,67 @@ public final class LabRuntime: @unchecked Sendable {
             contacts: contactsList,
             wipeHandler: { [weak harness] in harness?.beginWipe() }
         )
-        return LabRuntime(harness: harness, labels: labels, trust: trustFacade)
+        return LabRuntime(harness: harness, labels: labels, trust: trustFacade,
+                          trustRepository: trustRepo, nodeSigningSeeds: seeds)
+    }
+
+    /// *** GS-UX-001 `rendered-controls` law 3: SEED A ROTATION THAT ARRIVES *AFTER* THE SCREEN LOOKED. ***
+    ///
+    /// *The stale-candidate journey is what the card's law 3 existeth for ("THE DISPLAYED CANDIDATE IS THE ONE
+    /// APPROVED"), and it cannot be exercised without a real rotation landing BETWEEN render and tap. **THIS DRIVETH
+    /// THE SAME PRODUCTION VERB A REAL HANDSHAKE DRIVETH** -- `PeerIdentityRepository.applyValidatedBinding` over a
+    /// binding the node's OWN signing key issueth, validated by the real validator -- so it createth no second source
+    /// of truth and fabricates no row.*
+    ///
+    /// *The signing key is the node's real one (hence `nodeSigningSeeds`), because a differing key would be a node-id
+    /// collision rather than a rotation. And the result is the authority's OWN taxonomy, which lets a caller tell
+    /// "quarantined as a pending candidate" from "rejected" rather than assuming.*
+    public func seedRotation(for label: String, generation: UInt32, staticDhSeedByte: UInt8) -> String {
+        guard let signingSeed = nodeSigningSeeds[label] else {
+            return "refused: unknown label '\(label)'"
+        }
+        do {
+            let binding = try Self.validatedRotationBinding(
+                signingSeed: signingSeed,
+                generation: generation,
+                staticDhSeedByte: staticDhSeedByte
+            )
+            return "\(trustRepository.applyValidatedBinding(binding))"
+        } catch {
+            return "refused:\(error)"
+        }
+    }
+
+    /// Build a binding for the node's OWN signing key at a new generation, validated by the real validator.
+    static func validatedRotationBinding(signingSeed: Data, generation: UInt32,
+                                         staticDhSeedByte: UInt8) throws -> ValidatedPeerBinding {
+        let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: signingSeed)
+        let agreementKey = try Curve25519.KeyAgreement.PrivateKey(
+            rawRepresentation: Data(repeating: staticDhSeedByte, count: 32))
+        let preimage = IdentityBindingV1.signaturePreimage(
+            generation: generation,
+            signingPublicKey: signingKey.publicKey.rawRepresentation,
+            staticDhPublicKey: agreementKey.publicKey.rawRepresentation
+        )
+        let signature = try signingKey.signature(for: preimage)
+        let binding = try IdentityBindingV1(
+            generation: generation,
+            signingPublicKey: signingKey.publicKey.rawRepresentation,
+            staticDhPublicKey: agreementKey.publicKey.rawRepresentation,
+            signature: signature
+        )
+        let result = IdentityBindingValidator.validate(
+            serialized: binding.encode(),
+            authenticatedRemoteStaticKey: agreementKey.publicKey.rawRepresentation,
+            advertisedNodeHint: IdentityBindingV1.deriveNodeHint(
+                nodeId: IdentityBindingV1.deriveNodeId(signingPublicKey: signingKey.publicKey.rawRepresentation)
+            )
+        )
+        guard case .valid(let validated) = result else {
+            struct RotationSeedRefused: Error { let reason: String }
+            throw RotationSeedRefused(reason: "\(result)")
+        }
+        return validated
     }
 
     /// The durable state of one message, by NAME (a String, so no internal type
@@ -302,6 +390,265 @@ public final class LabRuntime: @unchecked Sendable {
     /// exposes; it does not simulate one, and it does not set a flag of its own.*
     public func beginWipe() { harness.beginWipe() }
 
+    /// *** GS-UX-001 `rendered-controls`: THE DISTRESS STATE, READ FROM THE DELIVERY ROW AND SPOKEN IN THE SHARED
+    /// VOCABULARY. ***
+    ///
+    /// *The card's step 3 asketh the SOS journey be durable and survive a relaunch, and the words rendered must be the
+    /// SHARED ones (`stateWords`, `TrustUXModel.swift:104-113`) -- **never invented**. So the STATE TOKEN this renders
+    /// is read from the delivery row (`MeshNode.activeSosSnapshot`'s own projection, `SosCommand.swift:41-59`) at the
+    /// moment the command completes, and the register below carrieth that token across the process boundary.*
+    ///
+    /// *** WHY A REGISTER AND NOT A SECOND ROW READ, STATED PLAINLY BECAUSE IT IS A REAL BOUNDARY. *** *The lab's
+    /// composition harness composes its nodes over IN-MEMORY stores (`ComposedRuntimeHarness.addNode`), so no row
+    /// surviveth the process -- a claim that the state was re-read from a row after a relaunch would be FALSE. What IS
+    /// true is what this method says: the token was read from the row WHILE the row existed, and it is carried
+    /// verbatim. **A LABEL THAT CLAIMS A RUNG IT NEVER READ IS WORSE THAN ONE THAT NAMES ITS SOURCE** -- the same law
+    /// `wipeStateName()` already obeyeth one screen over.*
+    public func sosStateNames() -> String {
+        // (a) A LIVE call is read from the row, right now, through the node's own projection. **A READ PATH MUST
+        // NOT WRITE**: the register is written by the COMMANDS (`recordSosAfterCommand`), never by this getter.
+        if let active = harness.activeSos(author) {
+            let words = active.state.stateWords ?? "unknown:" + active.state.stateToken
+            return "active: " + words
+        }
+        // (b) Otherwise the durable register carries what the last command left -- including a CANCELLED call, which
+        // is not "active" but IS the durable fact a relaunch must render.
+        guard let register = Self.sosRegister(), let state = register.state else { return "no active call" }
+        return (state.isTerminal ? "terminal: " : "active: ")
+            + (state.stateWords ?? "unknown:" + state.stateToken)
+    }
+
+    /// *** THE DURABLE DELIVERY ROW'S OWN STATE, AS THE STORE HOLDETH IT -- the witness a rendered string is not. ***
+    ///
+    /// *A rendered state line is a CLAIM; the row is the SOURCE. This forwardeth to the composition's own read so an
+    /// arm can assert the store rather than the label.*
+    public func durableDeliveryState(author: String, msgId: Data) -> DeliveryState? {
+        harness.durableDeliveryState(author: author, msgId: msgId)
+    }
+
+    /// The message id of the standing distress call, if any (nil when none is held).
+    ///
+    /// *A CANCEL needs an id, and the id must come from the DURABLE register rather than from a view's memory --
+    /// otherwise a relaunch would cancel a message it can no longer name.*
+    public func activeSosMsgId() -> Data? {
+        if let active = harness.activeSos(author) { return active.msgId }
+        return Self.sosRegister()?.msgId
+    }
+
+    /// *** ARM THE DISTRESS CALL, THROUGH THE NODE'S OWN COMMAND DOOR. ***
+    public func armSos(payload: Data) -> String {
+        guard let result = harness.sosCommand(author, .author(payload)) else {
+            return "refused: no such node '\(author)'"
+        }
+        recordSosAfterCommand(result)
+        return describeSos(result)
+    }
+
+    /// Cancel one distress call by its DURABLE msg_id: the node's own `.cancel` arm.
+    public func cancelSos(msgId: Data) -> String {
+        guard let result = harness.sosCommand(author, .cancel(msgId)) else {
+            return "refused: no such node '\(author)'"
+        }
+        recordSosAfterCommand(result)
+        return describeSos(result)
+    }
+
+    /// *** THE AUTHOR COUNTER: HOW MANY CALLS THIS LAB EVER AUTHORED -- AND IT IS NOT MOVED BY A CANCEL. ***
+    ///
+    /// *The card's discriminator for the cancel road: cancelling must stop a call, never un-author it.*
+    public func sosAuthoredCount() -> Int { Self.sosRegister()?.authoredCount ?? 0 }
+
+    /// Persist what the command left, READ FROM THE ROW rather than from the command's own return value.
+    ///
+    /// *The distinction matters: a CANCEL **RETIRES** the held frame, so `activeSos` answereth nil afterwards -- the
+    /// register is therefore the only surviving witness of the terminal state, and it is written from the command's
+    /// own typed result rather than from a row that no longer stands. **FOR AN ARM, THE ROW IS CONSULTED FIRST** (it
+    /// is the live truth), and the command's result is the fallback.*
+    private func recordSosAfterCommand(_ result: SosCommandResult) {
+        let previous = Self.sosRegister()
+        switch result {
+        case .enqueued(let dispatch):
+            switch dispatch {
+            case .queuedDurably, .handedToRelays:
+                // The ROW decides the token; the command's own taxonomy is the fallback where the row is silent.
+                let state = liveSosState() ?? (dispatch == .queuedDurably ? .queuedDurably : .handedToRelay)
+                let msgId = harness.activeSos(author)?.msgId ?? previous?.msgId
+                Self.writeSosRegister(state: state, msgId: msgId,
+                                      authoredCount: (previous?.authoredCount ?? 0) + 1)
+            case .notPersisted, .unavailable, .failed:
+                // NOTHING WAS AUTHORED: the counter must not move and the register must not claim a call.
+                return
+            }
+        case .cancelled(let cancel):
+            // A CANCEL NEVER INCREMENTETH THE AUTHOR COUNTER: it stopeth a call, it doth not create one.
+            switch cancel {
+            case .cancelled, .alreadyCancelled:
+                Self.writeSosRegister(state: .cancelledLocally, msgId: previous?.msgId,
+                                      authoredCount: previous?.authoredCount ?? 0)
+            case .rejectedTerminal(let state):
+                Self.writeSosRegister(state: state, msgId: previous?.msgId,
+                                      authoredCount: previous?.authoredCount ?? 0)
+            case .notBroadcast, .unknownMessage, .corrupt, .storageFailure, .invalidArgument:
+                return
+            }
+        }
+    }
+
+    /// The live row's state for the standing call, when the node still carrieth it.
+    private func liveSosState() -> DeliveryState? {
+        guard let active = harness.activeSos(author) else { return nil }
+        return active.state
+    }
+
+    private func describeSos(_ result: SosCommandResult) -> String {
+        switch result {
+        case .enqueued(let dispatch):
+            switch dispatch {
+            case .queuedDurably: return "armed:queued"
+            case .handedToRelays(let n): return "armed:handed:\(n)"
+            case .notPersisted: return "refused:not-persisted"
+            case .unavailable(let reason): return "refused:" + reason
+            case .failed(let reason): return "refused:" + reason
+            }
+        case .cancelled(let cancel):
+            switch cancel {
+            case .cancelled(let relayed): return "cancelled:relayed=\(relayed)"
+            case .alreadyCancelled: return "cancelled:already"
+            case .rejectedTerminal(let state): return "refused:terminal=\(state)"
+            case .notBroadcast: return "refused:not-broadcast"
+            case .unknownMessage: return "refused:unknown-message"
+            case .corrupt: return "refused:corrupt"
+            case .storageFailure: return "refused:storage-failure"
+            case .invalidArgument: return "refused:invalid-argument"
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- the durable registers
+
+    /// What the SOS register carrieth: the token read from the row, the row's msg_id, and the author counter.
+    struct SosRegister: Codable, Equatable {
+        let stateToken: String
+        let msgId: Data?
+        let authoredCount: Int
+
+        var state: DeliveryState? { DeliveryState.allCasesByToken[stateToken] }
+    }
+
+    /// *** THE HOLDER-OWNED STABLE REGISTERS, UNDER APPLICATION SUPPORT -- THE SAME DISK ACROSS A RELAUNCH. ***
+    ///
+    /// *Application Support is the durable, holder-owned location the card asketh for, and the names are FIXED (no
+    /// UUID): two processes resolve ONE path, which is the whole property a relaunch arm measureth.*
+    static func sosRegisterURL() -> URL { labSupportDirectory().appendingPathComponent("sos-register.json") }
+
+    static func durableStoreURL() -> URL { labSupportDirectory().appendingPathComponent("durable.sqlite") }
+
+    private static func labSupportDirectory() -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let dir = base.appendingPathComponent("GodstoneLabMesh", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    static func sosRegister() -> SosRegister? {
+        guard let bytes = try? Data(contentsOf: sosRegisterURL()) else { return nil }
+        return try? JSONDecoder().decode(SosRegister.self, from: bytes)
+    }
+
+    static func writeSosRegister(state: DeliveryState, msgId: Data?, authoredCount: Int?) {
+        let register = SosRegister(stateToken: state.stateToken, msgId: msgId,
+                                   authoredCount: authoredCount ?? 0)
+        guard let bytes = try? JSONEncoder().encode(register) else { return }
+        try? bytes.write(to: sosRegisterURL(), options: .atomic)
+    }
+
+    /// A court that must start from a clean register (else it measureth a previous run's call).
+    internal static func resetSosRegisterForTest() {
+        try? FileManager.default.removeItem(at: sosRegisterURL())
+    }
+
+    /// *** GS-UX-001 `rendered-controls`: THE DURABLE SEND WITH A VIEW-GENERATED INTENT. ***
+    ///
+    /// *`sendDirectDurable` already standeth (round 521) and is the door a relaunch arm must travel: the intent is
+    /// pinned in `outbound_intents` BEFORE the frame reacheth the radio, so a FRESH HANDLE over the same medium
+    /// answereth `.found` for the id the view minted. This method is that door with the LAB'S OWN MEDIUM RESOLVED, so
+    /// the view cannot accidentally name a different file on the next launch.*
+    public func sendDirectDurableIntent(_ from: String, recipient: String, plaintext: Data,
+                                        intentId: Data) async -> String {
+        // The id is remembered BEFORE the send, so a crash or a relaunch can still name what was attempted.
+        Self.recordLastIntent(intentId)
+        return await sendDirectDurable(from, recipient: recipient, plaintext: plaintext,
+                                       intentId: intentId, storeURL: Self.durableStoreURL())
+    }
+
+    /// *** DOES THE INTENT SURVIVE THE RUNTIME THAT AUTHORED IT? READ FROM A FRESH HANDLE OVER THE SAME MEDIUM. ***
+    ///
+    /// *Nothing of the authoring runtime is consulted. `.found` is the card's clause; `.notFound` is the arm's own
+    /// discriminator (an id that was never authored must be ABSENT, or `.found` would mean nothing).*
+    public func durableIntentVerdict(_ intentId: Data) -> String {
+        let store = SqliteMessageStore(url: Self.durableStoreURL(), maxBytes: 64 * 1024 * 1024)
+        let journal = SqliteOutboundIntentJournal(store: store)
+        switch journal.load(intentId) {
+        case .found(let entry):
+            return "found:" + entry.logicalMessageId.map { String(format: "%02x", $0) }.joined()
+        case .notFound: return "notFound"
+        case .corrupt(let reason): return "corrupt:" + reason
+        case .storageFailure(let reason): return "storageFailure:" + reason
+        }
+    }
+
+    /// A fresh intent id for one rendered Send, minted where the VIEW can hand it to both the send and the reopen.
+    public static func mintIntentId() -> Data { MessageId.generateNonce() }
+
+    /// *** THE LAST INTENT, REMEMBERED SO A RELAUNCH CAN ASK THE SAME QUESTION. ***
+    ///
+    /// *Without this, the relaunch arm could not name the id it authored: a view's `@State` dieth with the process,
+    /// and an arm that asked a DIFFERENT id would read `.notFound` for a send that succeeded. The record liveth under
+    /// the same holder-owned directory as the durable store, so the id and the medium it names survive together.*
+    public static func recordLastIntent(_ intentId: Data) {
+        let hex = intentId.map { String(format: "%02x", $0) }.joined()
+        try? Data(hex.utf8).write(to: lastIntentURL(), options: .atomic)
+    }
+
+    /// The hex of the last intent this lab authored, or nil when none was ever recorded.
+    public static func lastIntentHex() -> String? {
+        guard let bytes = try? Data(contentsOf: lastIntentURL()) else { return nil }
+        let hex = String(decoding: bytes, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return hex.isEmpty ? nil : hex
+    }
+
+    /// The last intent's id, decoded back from the register.
+    public static func lastIntentId() -> Data? {
+        guard let hex = lastIntentHex() else { return nil }
+        var data = Data()
+        var index = hex.startIndex
+        while index < hex.endIndex {
+            let next = hex.index(index, offsetBy: 2, limitedBy: hex.endIndex) ?? hex.endIndex
+            guard let byte = UInt8(hex[index..<next], radix: 16) else { return nil }
+            data.append(byte)
+            index = next
+        }
+        return data.count == MessageId.messageNonceBytes ? data : nil
+    }
+
+    /// The rendered verdict for the LAST authored intent -- the readout a RELAUNCH arm reads.
+    ///
+    /// *Nothing of the authoring process is consulted: a fresh `SqliteMessageStore` over the same path answereth.*
+    public func durableVerdictForLastIntent() -> String {
+        guard let intentId = Self.lastIntentId() else { return "none recorded" }
+        return durableIntentVerdict(intentId)
+    }
+
+    /// A court that must start from a clean register (else it measureth a previous run's intent).
+    internal static func resetLastIntentForTest() {
+        try? FileManager.default.removeItem(at: lastIntentURL())
+    }
+
+    private static func lastIntentURL() -> URL {
+        labSupportDirectory().appendingPathComponent("last-intent.hex")
+    }
+
     /// One bounded sync turn from `from` to `to`.
     @discardableResult public func turn(_ from: String, _ to: String) -> Int { harness.turn(from, to) }
 
@@ -346,9 +693,167 @@ public final class LabRuntime: @unchecked Sendable {
         trust.compareAndConfirm(label: label, displayedFingerprintHex: displayedFingerprint)
     }
 
-    /// Approve an exact rotation candidate for a contact.
-    public func approveRotation(for label: String) -> String {
-        trust.approveRotation(for: label)
+    /// *** GS-UX-001 `rendered-controls`: THE COMPOSE BOUND, AND THE SAME NUMBER **WITNESSED** FROM THE VIEW. ***
+    ///
+    /// *The card chargeth that the bounded input be "UTF-8 bounded", and the rendered readout must say `N/max`. The
+    /// number therefore cannot be a literal typed into a view: **A CONSTANT COPIED INTO A VIEW IS A CONSTANT THAT
+    /// DRIFTS**, and the defect it would cause (a body the input ACCEPTED but the authority REFUSED) would look like a
+    /// transport failure.*
+    ///
+    /// **SO THE BOUND IS MEASURED ONCE, THROUGH THE REAL AUTHORING PRIMITIVES, AND THE MEASUREMENT IS THE DEFINITION.**
+    /// The probe walketh the exact chain `ComposedRuntimeHarness.authorFrame` walketh -- `SignedMessageV1.author`
+    /// then `Router.buildSealedMessage` -- and measures the sealed payload's OVERHEAD (the difference between what it
+    /// sealed and what it was handed), so the frame bound is derived rather than asserted. The result is the SMALLER
+    /// of that derived bound and the frozen container's own body budget, because the lab may not author a body either
+    /// primitive would refuse.
+    public static let maxComposeBodyOctets: Int = measureMaxComposeBodyOctets()
+
+    /// The measured cap, as a function so a court can re-run the probe (a `static let` cannot be re-asked).
+    public static func measureMaxComposeBodyOctets() -> Int {
+        // A body the container ACCEPTS, so the probe measures the frame overhead and not a rejection.
+        let probeBody = Data(repeating: 0x41, count: SignedMessageV1.bodyMax)
+        guard let sealed = try? sealProbeFrame(body: probeBody) else {
+            // *** A PROBE THAT CANNOT RUN MUST NOT INVENT A BOUND. *** *The honest answer is the container's own
+            // budget, which is the tighter of the two in every measured configuration -- so a probe failure degrades
+            // to the FROZEN law rather than to a guess.*
+            return SignedMessageV1.bodyMax
+        }
+        let overhead = sealed.count - probeBody.count
+        return min(FrameV2.maxPayload - overhead, SignedMessageV1.bodyMax)
+    }
+
+    /// *** THE PROBE ITSELF: seal one body through the REAL chain and hand back the sealed PAYLOAD. ***
+    ///
+    /// *No fakes: a real `MeshIdentity` from the production keychain road, the real `Router` over a real store, the
+    /// real frozen container. It liveth here (inside the module) rather than in a view because the primitives it
+    /// walketh are internal -- and because a measurement belongs beside the bound it defines, not beside the control
+    /// that renders it.*
+    static func sealProbeFrame(body: Data) throws -> Data {
+        let keychain = HarnessIdentityKeychain()
+        keychain.storage[MeshIdentity.v1Tag] = try LocalIdentityStateV1(
+            generation: 0,
+            ed25519Seed: Data(repeating: 0x5A, count: 32),
+            x25519PrivateKey: Data(repeating: 0x3C, count: 32)
+        ).encode()
+        let sender = try MeshIdentity.loadFromKeychain(keychain: keychain)
+        let nonce = Data(repeating: 0x11, count: MessageId.messageNonceBytes)
+        let createdAt: Int64 = 1_700_000_000
+        let container = try SignedMessageV1.author(
+            senderIdentityPriv: Data(repeating: 0x5A, count: 32),
+            senderIdentityPub: sender.signingPublicKey,
+            senderNodeId: sender.nodeId,
+            recipientNodeId: sender.nodeId,
+            messageNonce: nonce,
+            createdAtEpochSeconds: createdAt,
+            priority: .direct,
+            timeQuality: .userConfirmed,
+            bodyUtf8: body
+        )
+        guard let frame = try buildProbeSealedMessage(
+            router: Router(selfNodeId: sender.nodeId, store: InMemoryMessageStore()),
+            container: container,
+            recipientNodeId: sender.nodeId,
+            recipientStaticPub: sender.staticDhPublicKey,
+            createdAt: createdAt,
+            nonce: nonce
+        ) else {
+            throw ProbeTimeout()
+        }
+        return frame.payload
+    }
+
+    /// The probe's bounded wait expired: a typed refusal, so the caller degrades to the frozen container budget.
+    struct ProbeTimeout: Error {}
+
+    /// The sealed-payload measurement: `Router.buildSealedMessage` is `async` and the bound is a `static let`, so the
+    /// frame is built through the SAME production entry point the durable road useth, awaited on a BOUNDED semaphore.
+    ///
+    /// *A `.direct` frame carrieth no proof-of-work (`Priority.requiresProofOfWork` is false for DIRECT, `Priority.swift:27`),
+    /// so no miner can hold this wait open -- and the wait is bounded ANYWAY, because an unbounded wait inside a
+    /// static initialiser would turn a scheduling surprise into a hung process rather than a degraded bound. The
+    /// timeout returns nil, and the caller falls back to the frozen container budget.*
+    private static func buildProbeSealedMessage(
+        router: Router,
+        container: Data,
+        recipientNodeId: Data,
+        recipientStaticPub: Data,
+        createdAt: Int64,
+        nonce: Data
+    ) throws -> FrameV2? {
+        let semaphore = DispatchSemaphore(value: 0)
+        let box = ProbeResultBox()
+        Task {
+            do {
+                box.set(.success(try await router.buildSealedMessage(
+                    plaintext: container,
+                    recipientNodeId: recipientNodeId,
+                    recipientStaticPub: recipientStaticPub,
+                    identity: LogicalMessageIdentity(createdAtEpochSeconds: createdAt, messageNonce: nonce),
+                    priority: .direct
+                )))
+            } catch {
+                box.set(.failure(error))
+            }
+            semaphore.signal()
+        }
+        guard semaphore.wait(timeout: .now() + 10) == .success else { return nil }
+        switch box.result {
+        case .success(let frame): return frame
+        case .failure(let error): throw error
+        case nil: return nil
+        }
+    }
+
+    /// *** THE PROBE'S ANSWER, HANDED ACROSS THE `Task` BOUNDARY UNDER A LOCK -- NOT A CAPTURED `var`. ***
+    ///
+    /// *A `var` captured by the `Task` closure would be a data race the compiler is right to refuse; the box maketh the
+    /// hand-off explicit and the `DispatchSemaphore` below is what orders it.*
+    private final class ProbeResultBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: Result<FrameV2, Error>?
+
+        var result: Result<FrameV2, Error>? {
+            lock.lock(); defer { lock.unlock() }
+            return stored
+        }
+
+        func set(_ value: Result<FrameV2, Error>) {
+            lock.lock(); stored = value; lock.unlock()
+        }
+    }
+
+    /// The longest PREFIX of `text` that fits the bound, cut on a CHARACTER boundary so a multibyte character is never
+    /// split into invalid UTF-8. **IN OCTETS, NEVER `Character.count`**: an emoji is one character and four octets, so
+    /// a character-counting bound accepts a body the authority refuses.
+    public static func truncateToComposeBound(_ text: String) -> String {
+        if text.utf8.count <= maxComposeBodyOctets { return text }
+        var result = ""
+        result.reserveCapacity(maxComposeBodyOctets)
+        for character in text {
+            let candidate = result + String(character)
+            if candidate.utf8.count > maxComposeBodyOctets { break }
+            result = candidate
+        }
+        return result
+    }
+
+    /// The rendered readout the view shows: `N/max octets`.
+    public func composeOctetsReadout(_ text: String) -> String {
+        String(text.utf8.count) + "/" + String(Self.maxComposeBodyOctets) + " octets"
+    }
+
+    /// *** GS-UX-001 `rendered-controls`: THE CANDIDATE THE VIEW DISPLAYED, AS A REF THE VIEW CAN HOLD. ***
+    ///
+    /// *The deleted `approveRotation(for label:)` took a LABEL and re-read the candidate inside the call, so what the
+    /// screen showed was never the thing approved. The rendered journey is now TWO steps: capture here (the view
+    /// stores the ref beside the displayed fingerprint), then hand THE SAME REF back below.*
+    public func displayedRotationCandidate(for label: String) -> ExactRotationCandidateRef? {
+        trust.displayedRotationCandidate(for: label)
+    }
+
+    /// Approve the EXACT candidate the view showed -- no label, no re-resolve, no refresh.
+    public func approveDisplayedRotation(_ candidate: ExactRotationCandidateRef) -> String {
+        trust.approveDisplayedRotation(candidate)
     }
 
     /// Revoke a contact and invalidate its sessions.

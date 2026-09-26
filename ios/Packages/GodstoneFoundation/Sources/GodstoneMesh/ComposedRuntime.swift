@@ -658,6 +658,41 @@ public final class ComposedRuntimeHarness {
 
     public func capturedBytes() -> [Data] { link.deliveries().map { $0.bytes } }
 
+    /// *** GS-UX-001 `rendered-controls`: THE SOS COMMAND SURFACE, DRIVEN THROUGH THE EXISTING DOOR. ***
+    ///
+    /// *The card's step 3 asketh the rendered SOS be durable and relaunch-readable. The plan's instruction is explicit
+    /// that this use **THE EXISTING COMMAND SURFACE** -- `MeshNode.handleSosCommand(.author(payload))` /
+    /// `.cancel(msgId)` (`SosCommand.swift:21-35`) -- rather than a new mechanism, so a lab arm exerciseth the same
+    /// door the courts already seal.* **NO SECOND ROAD IS OPENED HERE:** the harness forwardeth to the node's own verb
+    /// and hands every outbound frame to the SAME `hand` every other send passeth through.
+    @discardableResult
+    public func sosCommand(_ from: String, _ command: SosCommand) -> SosCommandResult? {
+        guard let a = nodes[from] else { return nil }
+        let result = a.node.handleSosCommand(command) { [weak self] frame, peerUUID in
+            guard let self else { return false }
+            return self.hand(a, toLabel: self.transportLabel(peerUUID), bytes: frame.encode())
+        }
+        trace.append(TraceEvent(kind: "sos_command", atMonoMillis: clock.monoMillis(),
+                                fields: ["from": from, "command": "\(command)", "result": "\(result)"]))
+        return result
+    }
+
+    /// The ACTIVE distress projection, re-derived from the tables (never a UI memory).
+    public func activeSos(_ from: String) -> ActiveSos? {
+        nodes[from]?.node.refreshSosStatusAfterScan()
+    }
+
+    /// *** THE DURABLE DELIVERY ROW OF ONE MESSAGE, AS THE STORE HOLDETH IT -- the discriminator a relaunch arm asks. ***
+    ///
+    /// *`activeSos` answereth nil for a CANCELLED call (correctly: it is not active), so "cancelled stays cancelled"
+    /// cannot be read from it. This readeth the ROW the cancellation moved, which is the durable truth the relaunch
+    /// must survive.*
+    public func durableDeliveryState(author: String, msgId: Data) -> DeliveryState? {
+        guard let n = nodes[author] else { return nil }
+        if case .found(let rec) = n.tracker.lookup(msgId) { return rec.state }
+        return nil
+    }
+
     /// Replay a FOREIGN isle's trace document against THIS isle's trace reader.
     public func replay(_ document: [String: Any]) throws -> [TraceEvent] {
         try MeshTrace.parse(document)
