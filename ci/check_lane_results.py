@@ -604,7 +604,8 @@ def ui_selftest() -> int:
     cases_run = 0
     results: list[tuple[str, str, str, str]] = []   # mutation, expected, observed, verdict
 
-    def run_case(name: str, text: str, sidecar: str | None, expect: str) -> None:
+    def run_case(name: str, text: str, sidecar: str | None, expect: str,
+                 pre_sidecar: str | None = None) -> None:
         """`expect` is 'red' when the checker MUST refuse, 'green' when it MUST accept."""
         # A NESTED FUNCTION NEEDS ITS OWN DECLARATION: the outer `global` does not reach into it.
         global IOS_UI_LOG
@@ -615,6 +616,13 @@ def ui_selftest() -> int:
             logp.write_text(text, encoding="utf-8")
             if sidecar is not None:
                 Path(str(logp) + ".sources.sha256").write_text(sidecar, encoding="utf-8")
+            # *** AND THE PRE-RUN DIGEST IS WRITTEN FOR EVERY CASE. *** *The runner now takes a before-reading and the
+            # checker requireth it to EQUAL the post-reading; a case that wrote only the late sidecar would redden for
+            # the absent pre-digest rather than for the defect it provokes -- which is the same vacuous-kill class this
+            # whole campaign existeth to remove.*
+            if sidecar is not None:
+                Path(str(logp) + ".pre.sha256").write_text(
+                    pre_sidecar if pre_sidecar is not None else sidecar, encoding="utf-8")
             saved_log, saved_repo = IOS_UI_LOG, REPO
             IOS_UI_LOG = logp
             try:
@@ -723,6 +731,13 @@ def ui_selftest() -> int:
 
     # (12) an empty log entirely.
     run_case("12. empty log (no arm verdicts at all)", "", real_digest, "red")
+
+    # *** (13) A MID-RUN SOURCE EDIT: the pre-run digest differs from the post-run one. ***
+    #
+    # *This is the case the pre-digest exists for, and its own negative control: if the pre/post equality were ever
+    # dropped, this case would ESCAPE -- the log would look current while describing a tree the tests never compiled.*
+    run_case("13. a source changed while the lane ran (pre != post)", base, real_digest, "red",
+             pre_sidecar="0" * 64)
 
     print("\n== ui selftest: mutation | expected | observed | verdict ==")
     for name, exp, got, verdict in results:
@@ -841,6 +856,29 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
             problems.append(f"the iOS UI lane log is STALE: its source digest {recorded[:16]}… does not match the "
                             f"tree's {current[:16]}… -- *the log never saw these sources, so it is not evidence "
                             f"about them. Re-run the lane.*")
+
+    # *** (d) AND THE PRE-RUN DIGEST MUST EQUAL THE POST-RUN ONE, OR A MID-RUN EDIT STOLE THE LOG'S OWN PROVENANCE. ***
+    #
+    # *THE DEFECT THIS CLOSES: `run_ios_ui_lane.sh` writeth the sidecar AFTER the schemes run, so an edit to a UI
+    # source BETWEEN the schemes and the sidecar produceth a log that DESCRIBETH a tree the tests never compiled --
+    # and the staleness guard above CANNOT see it, because both the late digest and the tree are post-edit.*
+    #
+    # **THE RUNNER NOW WRITETH A PRE-RUN DIGEST BESIDE IT (`<log>.pre.sha256`), AND THIS REQUIREth THE TWO TO AGREE.**
+    # *An ABSENT pre-digest is refused too: a log whose runner did not take the before-reading cannot be shown to have
+    # compiled one revision, and "we did not check" must not read as "it was fine".*
+    pre = Path(str(IOS_UI_LOG) + ".pre.sha256")
+    if not pre.is_file():
+        problems.append(f"the iOS UI lane carrieth no PRE-RUN digest at {pre.name} -- *a log whose source set was "
+                        f"sampled only AFTER the run cannot be shown to describe one revision: a mid-run edit leaves "
+                        f"the late digest and the current tree EQUAL, so the staleness guard is blind to it.*")
+    else:
+        pre_digest = pre.read_text(encoding="utf-8").strip().split()[0]
+        post_digest = side.read_text(encoding="utf-8").strip().split()[0] if side.is_file() else ""
+        if pre_digest != post_digest:
+            problems.append(
+                f"the iOS UI lane's SOURCE SET CHANGED WHILE IT RAN: pre-run {pre_digest[:16]}… does not match "
+                f"post-run {post_digest[:16]}… -- *the tests compiled one tree and the sidecar describeth another, so "
+                f"this log is not evidence about ANY single revision. Revert the concurrent edit and re-run.*")
     return (problems, totals)
 
 

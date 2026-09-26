@@ -25,6 +25,20 @@ set -eu
 cd "$(dirname "$0")/../.."
 LOG="${1:-ios-ui-lane.log}"
 
+# 1b. *** THE PRE-RUN SOURCE DIGEST, SO A MID-RUN EDIT CANNOT DESCRIBE A TREE THE TESTS NEVER RAN. ***
+#
+# *THE DEFECT THIS CLOSES, AND IT IS THE SAME VACUOUS-EVIDENCE CLASS THE OTHER GUARDS REMOVE: the lane writeth ONE
+# digest AFTER the run, so an edit to a UI source BETWEEN the schemes and the sidecar produceth a log that DESCRIBETH
+# a tree the tests never compiled* -- **and `ci/check_lane_results.py` would then compare that late digest to the
+# current tree and find them EQUAL, because both are post-edit.** *The post-run digest is written from the same tree
+# the sidecar is read against, so the staleness guard could never see a mid-run edit.*
+#
+# **SO THE DIGEST IS TAKEN TWICE -- BEFORE the schemes run and AFTER -- and the two must AGREE.** *A mismatch meaneth
+# an input changed while the lane was running, so the log is not evidence about ANY single revision; the lane sayeth
+# so and exiteth 3 rather than leaving a log that looketh current.*
+python3 tools/readiness/ios_source_digest.py >"$LOG.pre.sha256"
+pre_digest="$(cat "$LOG.pre.sha256")"
+
 # 1. THE SPEC IS THE AUTHORITY: regenerate the project rather than consuming whatever is on disk.
 xcodegen generate --spec ios/project.yml
 
@@ -125,6 +139,21 @@ done
 
 # 4. THE DIGEST SIDECAR, from the SAME definition the control uses.
 python3 tools/readiness/ios_source_digest.py >"$LOG.sources.sha256"
+post_digest="$(cat "$LOG.sources.sha256")"
+
+# 4b. *** AND THE PRE-RUN DIGEST MUST EQUAL THE POST-RUN ONE, OR THIS LOG IS NOT EVIDENCE ABOUT ANY REVISION. ***
+#
+# *The named input is printed so the reader knoweth WHICH edit invalidated the lane, rather than being told only that
+# a digest moved. `ios_source_digest.py` carrieth one digest over the whole set of source trees, so the exact file is
+# found by comparing the trees themselves -- which is bounded, and is the honest way to name it.*
+if [ "$pre_digest" != "$post_digest" ]; then
+    echo "::error::A SOURCE CHANGED WHILE THE UI LANE WAS RUNNING." >&2
+    echo "  pre-run  digest: $(printf '%s' "$pre_digest" | cut -c1-16)..." >&2
+    echo "  post-run digest: $(printf '%s' "$post_digest" | cut -c1-16)..." >&2
+    echo "  THE LOG IS NOT EVIDENCE ABOUT ANY SINGLE REVISION: the tests compiled one tree and the sidecar describeth" >&2
+    echo "  another. Revert the concurrent edit and re-run the lane." >&2
+    exit 3
+fi
 
 # 5. EVIDENCE-PRODUCTION GATE: the script fails only if it could not produce a log to interpret.
 #
