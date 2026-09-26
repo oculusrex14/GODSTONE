@@ -164,6 +164,16 @@ public final class ArchiveSceneModel: ObservableObject {
     /// of `back()`, before any mutation, so a red run sayeth `snapshot=set` (chase `back()`) or `snapshot=unset`
     /// (chase persistence).** *Nil meaneth `back()` hath not run.*
     @Published public private(set) var lastBackDecisionHadQuery: Bool?
+    /// *** AND THE RESTORE-TIME TRUTH, SO THE **PAIR** LOCALISETH WHERE A QUERY WAS LOST. ***
+    ///
+    /// *A single end-of-chain read cannot tell "the handle never carried it" from "it was carried and MUTATED
+    /// downstream" -- both render `unset`.* **THIS PAIR CAN: `lastRestoreCarriedQuery` is set the instant the handle
+    /// is read, and `lastPostRestoreHadQuery` once `restore` hath finished its own roads. So `restore=set,
+    /// postrestore=unset` blameth a RESTORE-side road (the open/reopen whose `search()` nil-eth `openedDocumentId`);
+    /// `restore=unset` blameth the PERSISTENCE SOURCE (the snapshot never wrote it); and `restore=set,
+    /// postrestore=set, backquery=unset` blameth `back()`.*** *Each is `nil` until its moment passeth.*
+    @Published public private(set) var lastRestoreCarriedQuery: Bool?
+    @Published public private(set) var lastPostRestoreHadQuery: Bool?
     @Published public private(set) var documents: [ArchiveDocument] = []
     @Published public private(set) var passages: [ArchivePassage] = []
     @Published public private(set) var openedDocumentId: Int64?
@@ -500,6 +510,9 @@ public final class ArchiveSceneModel: ObservableObject {
         mode = ArchiveSceneMode(rawValue: modeName ?? "documents") ?? .documents
         query = handle["query"] as? String ?? ""
         searchedQuery = handle["searchedQuery"] as? String
+        // *THE RESTORE-TIME TRUTH: did the HANDLE carry a query, before this method's own roads run?*
+        let carried = (handle["searchedQuery"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        lastRestoreCarriedQuery = (carried?.isEmpty == false)
         let anchorDocument = handle["anchorDocument"] as? Int64
         let anchorPassage = handle["anchorPassage"] as? Int64
         scrollAnchor = ArchiveScrollAnchor(documentId: anchorDocument, passageId: anchorPassage)
@@ -561,6 +574,8 @@ public final class ArchiveSceneModel: ObservableObject {
         case .documents:
             await loadDocuments()
         }
+        // *AND THE POST-RESTORE TRUTH: did it SURVIVE restore's own roads (the open/search they run)?*
+        lastPostRestoreHadQuery = (searchedQuery?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
     }
 
     /// The root of the journey: the documents list. Public for the first

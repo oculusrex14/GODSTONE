@@ -188,7 +188,9 @@ private struct ArchiveBrowser: View {
                 Color.clear.frame(width: 0, height: 0)
                     .accessibilityIdentifier("archive.phase." + scene.phase.witnessName + ".mode." + scene.mode.witnessName
                         + ".query." + ((scene.searchedQuery?.isEmpty == false) ? "set" : "unset")
-                        + ".backquery." + (scene.lastBackDecisionHadQuery.map { $0 ? "set" : "unset" } ?? "none"))
+                        + ".backquery." + (scene.lastBackDecisionHadQuery.map { $0 ? "set" : "unset" } ?? "none")
+                        + ".restorecarried." + (scene.lastRestoreCarriedQuery.map { $0 ? "set" : "unset" } ?? "none")
+                        + ".postrestore." + (scene.lastPostRestoreHadQuery.map { $0 ? "set" : "unset" } ?? "none"))
                 switch scene.phase {
                 case .loading:
                     ProgressView("Opening Archive…")
