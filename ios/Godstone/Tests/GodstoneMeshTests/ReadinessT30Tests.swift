@@ -354,4 +354,126 @@ final class ReadinessT30Tests: XCTestCase {
         XCTAssertFalse(r.isAvailable, "after the DEK is destroyed the encrypted store must not be reopenable")
         XCTAssertEqual(r, .unavailable)
     }
+
+    // ==========================================================================================================
+    // *** GS-STORE-002 / GS-FINAL-004 `native-engine-half`: THE REAL ENGINE ADAPTER, FAILING CLOSED. ***
+    //
+    // *THE FINDING'S OWN REMEDIATION STEP: "Implement EncryptedStoreEngine using native SQLCipher open, key
+    // application before schema reads, and a verified cipher version/configuration."* **BEFORE THIS FILE THE TREE
+    // HAD NO PRODUCTION IMPLEMENTOR AT ALL** -- only courts' fakes -- so the factory answered `.engineUnavailable`
+    // for every real composition. These arms measure the adapter's OWN behaviour: what it reporteth when the pinned
+    // library is absent, and that it never claims at-rest through an unbound engine.
+    //
+    // *** AND THE POSITIVE PATH IS GATED ON THE PINNED BINARY'S PRESENCE, HONESTLY. *** *The pinned artifact, its
+    // approval and the device at-rest bytes are the EXTERNAL half (`gs-store-002.sqlcipher-engine`), which this
+    // builder may not write. So the arms below assert the fail-closed direction UNCONDITIONALLY, and assert the
+    // positive direction only when a real library is on the host.*
+    // ==========================================================================================================
+
+    /// *The adapter bound to a name that cannot exist, so `dlopen` really fails on every host.*
+    private func unboundEngine() -> SqlCipherDylibEngine {
+        SqlCipherDylibEngine(libraryPath: "libsqlcipher-DOES-NOT-EXIST-\(UUID().uuidString).dylib")
+    }
+
+    // (14) an absent pinned library is NOT an engine: the kind refuseth, so the factory never opens plaintext
+    func testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent() throws {
+        let e = unboundEngine()
+        XCTAssertFalse(e.isBound, "the rig must not be bound, or this arm measures the wrong direction")
+        XCTAssertEqual(
+            e.kind, .plainSQLite,
+            "*** AN ENGINE THAT DID NOT BIND MUST NOT CLAIM `.pinnedSQLCipher`. *The factory refuses a plain "
+                + "engine outright ('no plaintext fallback, ever'), so this single property is the FIRST fail-closed "
+                + "gate -- and an unconditional `.pinnedSQLCipher` would make every refusal arm below vacuous.* ***",
+        )
+        XCTAssertNotNil(e.bindingFailureReason, "the refusal must be NAMED, not merely true")
+    }
+
+    // (15) the factory over the unbound engine answers .unavailable -- TYPED, and touching no file
+    func testTheFactoryRefusethAnUnboundEngineWithoutTouchingDisk() throws {
+        let kc = FakeKeychain(); dek(kc, tag)
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("t30-unbound-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let store = dir.appendingPathComponent("msg.db")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.path))
+
+        let f = EncryptedStoreFactory(provider: kc, engine: unboundEngine())
+        let opened = f.openStore(path: store.path, tag: tag)
+        XCTAssertEqual(
+            opened, .unavailable,
+            "*** AN UNBOUND ENGINE MUST YIELD `.unavailable`, NEVER A PLAINTEXT-OPENED STORE. *This is the clause "
+                + "whose absence let the private stores fall back to ordinary SQLite: the factory must not be able "
+                + "to satisfy a private open without a real engine.* ***",
+        )
+        XCTAssertFalse(opened.isAvailable)
+        // *** AND THE OWNED ROAD REFUSES TYPED TOO -- `.engineUnavailable`, never a fabricated connection. ***
+        let owned = f.reopenOwnedRequiringDEK(path: store.path, tag: tag)
+        if case .engineUnavailable = owned {} else {
+            XCTFail("*** THE OWNED ROAD MUST ANSWER `.engineUnavailable` FOR AN UNBOUND ENGINE. *A `.opened` here "
+                    + "would mean a connection was fabricated -- the exact 'nominal store with a nil handle' the "
+                    + "card forbids.* Observed: \(owned) ***")
+        }
+    }
+
+    // (16) the unbound engine's throws are TYPED, so a caller can act on them rather than guess
+    func testTheUnboundEngineThrowethATypedIoFaultOnEveryOpenRoad() throws {
+        let e = unboundEngine()
+        let dek = StoreDEK(bytes: testDEKBytes())
+        for (label, call) in [
+            ("openOwnedForWriting", { try e.openOwnedForWriting(path: "/tmp/x.db", dek: dek) }),
+            ("reopenOwnedRequiringDEK", { try e.reopenOwnedRequiringDEK(path: "/tmp/x.db", dek: dek) }),
+            ("openForWriting", {
+                _ = try e.openForWriting(path: "/tmp/x.db", dek: dek); return OwnedConnection?.none
+            }),
+            ("reopenRequiringDEK", {
+                _ = try e.reopenRequiringDEK(path: "/tmp/x.db", dek: dek); return OwnedConnection?.none
+            }),
+        ] as [(String, () throws -> OwnedConnection?)] {
+            do {
+                _ = try call()
+                XCTFail("\(label): an unbound engine must not answer a handle")
+            } catch let f as StoreOpenFault {
+                guard case .io(let why) = f else {
+                    XCTFail("\(label): expected a typed `.io` fault, got \(f)"); return
+                }
+                XCTAssertTrue(why.contains("not bound") || why.contains("not present"),
+                              "\(label): the fault must NAME why the engine is absent: \(why)")
+            }
+        }
+    }
+
+    // (17) AND THE POSITIVE PATH, RUN ONLY WHEN THE PINNED BINARY IS REALLY PRESENT ON THIS HOST.
+    func testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent() throws {
+        let e = SqlCipherDylibEngine()
+        guard e.isBound else {
+            // *The honest skip: the pinned artifact is the EXTERNAL half. A host without it cannot exercise the
+            // positive road, and SAYING SO is the difference between a bounded claim and a vacuous green.*
+            print("*** GS-STORE-002: the pinned SQLCipher library '\(SQLCipherPin.libraryName)' is not present on "
+                  + "this host, so the POSITIVE road is not exercised. The fail-closed arms above ran. The pinned "
+                  + "binary and its device at-rest proof remain EXTERNAL. Reason: \(e.bindingFailureReason ?? "?") ***")
+            return
+        }
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("t30-bound-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let store = dir.appendingPathComponent("msg.db")
+        let kc = FakeKeychain(); dek(kc, tag)
+        let f = EncryptedStoreFactory(provider: kc, engine: e)
+        let opened = f.openStore(path: store.path, tag: tag)
+        XCTAssertTrue(opened.isAvailable, "*** A BOUND PINNED ENGINE MUST OPEN THE STORE: \(opened) ***")
+        // *** AND THE SAME KEY RE-OPENS IT WITH THE SAME CIPHER VERSION -- the round trip. ***
+        guard case .available(let h) = f.reopenExisting(path: store.path, tag: tag) else {
+            XCTFail("the keyed store must re-open with its own DEK"); return
+        }
+        XCTAssertEqual(h.cipherVersion, SQLCipherPin.supportedCipherVersion)
+        XCTAssertTrue(h.encryptedAtRest)
+        // *** AND A WRONG KEY IS REFUSED, WHICH IS WHAT PROVES THE KEY WAS REALLY APPLIED. ***
+        kc.stored[tag] = StoreDEK(bytes: Data(repeating: 0x5A, count: 32))
+        let wrong = EncryptedStoreFactory(provider: kc, engine: e).reopenExisting(path: store.path, tag: tag)
+        XCTAssertFalse(
+            wrong.isAvailable,
+            "*** A WRONG DEK MUST BE REFUSED. *If it opened, the key was never really applied and the store is "
+                + "readable by anyone holding the file -- the exact at-rest defect this engine exists to prevent.* ***",
+        )
+    }
 }
