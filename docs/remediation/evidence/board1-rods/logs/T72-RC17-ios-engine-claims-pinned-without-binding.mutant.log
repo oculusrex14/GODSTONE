@@ -1,12 +1,12 @@
-Test Suite 'Selected tests' started at 2026-09-26 17:44:39.840.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-26 17:44:39.846.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-26 17:44:39.846.
+Test Suite 'Selected tests' started at 2026-09-26 18:01:10.310.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-26 18:01:10.315.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-26 18:01:10.315.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-26 17:44:39.846.
+Test Suite 'Selected tests' passed at 2026-09-26 18:01:10.315.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-26 17:44:39.884.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-26 17:44:39.889.
-Test Suite 'ReadinessT30Tests' started at 2026-09-26 17:44:39.889.
+Test Suite 'Selected tests' started at 2026-09-26 18:01:10.353.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-26 18:01:10.359.
+Test Suite 'ReadinessT30Tests' started at 2026-09-26 18:01:10.359.
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testArchiveIsSkippedAndStaysSeparate]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testArchiveIsSkippedAndStaysSeparate]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testAResumedRunOnAnAlreadyEncryptedSourceIsANoOp]' started.
@@ -41,7 +41,7 @@ Test Case '-[GodstoneMeshTests.ReadinessT30Tests testSuccessfulMigrationVerifies
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testSuccessfulMigrationVerifiesBeforeSelecting]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT30Tests.swift:382: error: -[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent] : XCTAssertEqual failed: ("pinnedSQLCipher") is not equal to ("plainSQLite") - *** AN ENGINE THAT DID NOT BIND MUST NOT CLAIM `.pinnedSQLCipher`. *The factory refuses a plain engine outright ('no plaintext fallback, ever'), so this single property is the FIRST fail-closed gate -- and an unconditional `.pinnedSQLCipher` would make every refusal arm below vacuous.* ***
-Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent]' failed (0.032 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent]' failed (0.035 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheFactoryRefusethAnUnboundEngineWithoutTouchingDisk]' started.
@@ -54,18 +54,18 @@ Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTornSwapNeverClaimsAPreserv
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTornSwapNeverClaimsAPreservedSource]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testWrongDEKYieldsLockedNeverEmptyHealthyStore]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testWrongDEKYieldsLockedNeverEmptyHealthyStore]' passed (0.000 seconds).
-Test Suite 'ReadinessT30Tests' failed at 2026-09-26 17:44:39.928.
-	 Executed 22 tests, with 3 failures (0 unexpected) in 0.037 (0.038) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-26 17:44:39.928.
-	 Executed 22 tests, with 3 failures (0 unexpected) in 0.037 (0.038) seconds
-Test Suite 'Selected tests' failed at 2026-09-26 17:44:39.928.
-	 Executed 22 tests, with 3 failures (0 unexpected) in 0.037 (0.044) seconds
+Test Suite 'ReadinessT30Tests' failed at 2026-09-26 18:01:10.401.
+	 Executed 22 tests, with 3 failures (0 unexpected) in 0.040 (0.041) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-26 18:01:10.401.
+	 Executed 22 tests, with 3 failures (0 unexpected) in 0.040 (0.041) seconds
+Test Suite 'Selected tests' failed at 2026-09-26 18:01:10.401.
+	 Executed 22 tests, with 3 failures (0 unexpected) in 0.040 (0.048) seconds
 *** GS-STORE-002: the pinned SQLCipher library 'libsqlcipher.0.dylib' is not present on this host, so the POSITIVE road is not exercised. The fail-closed arms above ran. The pinned binary and its device at-rest proof remain EXTERNAL. Reason: the pinned SQLCipher library 'libsqlcipher.0.dylib' is not present: dlopen(libsqlcipher.0.dylib, 0x0006): tried: '/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/libsqlcipher.0.dylib' (no such file), '/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/libsqlcipher.0.dylib' (no such file), '/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/libsqlcipher.0.dylib' (no such file), '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libsqlcipher.0.dylib' (no such file), 'libsqlcipher.0.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OSlibsqlcipher.0.dylib' (no such file), '/usr/lib/swift/libsqlcipher.0.dylib' (no such file, not in dyld cache), '/System/Volumes/Preboot/Cryptexes/OS/usr/lib/swift/libsqlcipher.0.dylib' (no such file), '/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/GodstoneMeshTests.xctest/Contents/MacOS/libsqlcipher.0.dylib' (no such file), '/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/PackageFrameworks/libsqlcipher.0.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/PackageFrameworks/libsqlcipher.0.dylib' (no such file), '/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/GodstoneMeshTests.xctest/Contents/MacOS/../../../libsqlcipher.0.dylib' (no such file), '/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/GodstoneMeshTests.xctest/Contents/MacOS/Frameworks/libsqlcipher.0.dylib' (no such file), '/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/GodstoneMeshTests.xctest/Contents/MacOS/../Frameworks/libsqlcipher.0.dylib' (no such file), '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-6.2/macosx/libsqlcipher.0.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-6.2/macosx/libsqlcipher.0.dylib' (no such file), '/usr/lib/swift/libsqlcipher.0.dylib' (no such file, not in dyld cache), '/System/Volumes/Preboot/Cryptexes/OS/usr/lib/swift/libsqlcipher.0.dylib' (no such file), '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/libsqlcipher.0.dylib' (no such file), '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/libsqlcipher.0.dylib' (no such file), '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libsqlcipher.0.dylib' (no such file), '/Applications/Xcode.app/Contents/libsqlcipher.0.dylib' (no such file), '/usr/lib/libsqlcipher.0.dylib' (no such file, not in dyld cache), 'libsqlcipher.0.dylib' (no such file) ***
-Test Suite 'Selected tests' started at 2026-09-26 17:44:39.977.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-26 17:44:39.983.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-26 17:44:39.983.
+Test Suite 'Selected tests' started at 2026-09-26 18:01:10.450.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-26 18:01:10.456.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-26 18:01:10.456.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-26 17:44:39.983.
+Test Suite 'Selected tests' passed at 2026-09-26 18:01:10.456.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
@@ -544,7 +544,7 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [34 / 38] GodstoneMesh
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
+[35 / 39] GodstoneMesh/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
    7 |     public let transportEpoch: UInt64
    8 |     public let peripheral: CBPeripheral?
@@ -786,7 +786,7 @@ Building for debugging...
 
 [#AddPreconcurrencyImport]: <https://docs.swift.org/compiler/documentation/diagnostics/add-preconcurrency-import>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[35 / 39] GodstoneMesh
+
 [48 / 52] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  42 |     public let msgId: Data
@@ -1314,16 +1314,25 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [51 / 55] GodstoneMeshTests-product
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 25 |         )
- 26 |         let sig = try signingKey.signature(for: preimage)
- 27 |         let binding = try IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 28 |             generation: generation,
- 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+[62 / 66] GodstoneMeshTests-product
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+501 | 
+502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+503 |         let (pubA, _) = realDhKeypair()
+    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+504 |         let a = nodeA()
+505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
 
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  32 |         )
+  33 |         let sig = try! signingKey.signature(for: preimage)
+  34 |         let binding = try! IdentityBindingV1(
+     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  35 |             generation: generation,
+  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[61 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
  38 |     /// the coordinator (which GS-FINAL-002 already proved).
  39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
@@ -1349,25 +1358,6 @@ Building for debugging...
 166 |                        aliceHint: Data, bobHint: Data,
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[62 / 66] GodstoneMeshTests-product
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-501 | 
-502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-503 |         let (pubA, _) = realDhKeypair()
-    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-504 |         let a = nodeA()
-505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  32 |         )
-  33 |         let sig = try! signingKey.signature(for: preimage)
-  34 |         let binding = try! IdentityBindingV1(
-     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  35 |             generation: generation,
-  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT36Tests.swift:538:13: warning: variable 'f' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
  536 |     /// rejections -- failure distinguished from empty/no-op success, nothing mutated.
  537 |     func testUnapprovedRecipientYieldsTypedDistinctRejections() async throws {
@@ -1725,6 +1715,15 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 25 |         )
+ 26 |         let sig = try signingKey.signature(for: preimage)
+ 27 |         let binding = try IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 28 |             generation: generation,
+ 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift:181:13: warning: variable 'hs3Result' was written to, but never read
 179 |         let hsThreadFinished = expectation(description: "HS thread finished")
 180 |         let invalidationFinished = expectation(description: "Invalidation finished")
@@ -1922,23 +1921,6 @@ Building for debugging...
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 29 |         )
- 30 |         let sig = try! signingKey.signature(for: preimage)
- 31 |         let binding = try! IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 32 |             generation: generation,
- 33 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 38 |     /// the coordinator (which GS-FINAL-002 already proved).
- 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- 40 |         var allows: Bool
-    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 41 |         init(allows: Bool) { self.allows = allows }
- 42 |         func allowsSensitiveUse() -> Bool { allows }
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT39Tests.swift:49:42: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  47 |             x25519PrivateKey: Data(repeating: xByte, count: 32))
  48 |         let kc = InMemoryKeychain()
@@ -1998,6 +1980,23 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 29 |         )
+ 30 |         let sig = try! signingKey.signature(for: preimage)
+ 31 |         let binding = try! IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 32 |             generation: generation,
+ 33 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 38 |     /// the coordinator (which GS-FINAL-002 already proved).
+ 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ 40 |         var allows: Bool
+    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 41 |         init(allows: Bool) { self.allows = allows }
+ 42 |         func allowsSensitiveUse() -> Bool { allows }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
 272 |         )
 273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -2301,6 +2300,7 @@ Building for debugging...
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [67 / 69] GodstoneMeshTests-product
 [70 / 74] LabMeshTests-product
+[72 / 76] LabMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  83 |         // over the caller-named medium still findeth EXACTLY THIS intent. Nothing of the authoring runtime is
  84 |         // consulted -- the medium alone answereth.
@@ -2310,6 +2310,5 @@ Building for debugging...
  87 |         guard case .found = journal.load(intentId) else {
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.61 secs)
+Build complete! (9.88 secs)

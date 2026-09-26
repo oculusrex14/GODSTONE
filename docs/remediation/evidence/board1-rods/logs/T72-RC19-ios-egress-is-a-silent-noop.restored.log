@@ -1,30 +1,30 @@
-Test Suite 'Selected tests' started at 2026-09-26 17:46:12.425.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-26 17:46:12.431.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-26 17:46:12.431.
+Test Suite 'Selected tests' started at 2026-09-26 18:02:43.528.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-26 18:02:43.534.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-26 18:02:43.534.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-26 17:46:12.431.
+Test Suite 'Selected tests' passed at 2026-09-26 18:02:43.534.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-26 17:46:12.467.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-26 17:46:12.473.
-Test Suite 'GsIntegration001ScenarioTests' started at 2026-09-26 17:46:12.473.
+Test Suite 'Selected tests' started at 2026-09-26 18:02:43.571.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-26 18:02:43.577.
+Test Suite 'GsIntegration001ScenarioTests' started at 2026-09-26 18:02:43.577.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.017 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.018 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.041 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.040 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.009 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.009 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.033 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.034 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.039 seconds).
-Test Suite 'GsIntegration001ScenarioTests' passed at 2026-09-26 17:46:12.623.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.149 (0.149) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-26 17:46:12.623.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.149 (0.149) seconds
-Test Suite 'Selected tests' passed at 2026-09-26 17:46:12.623.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.149 (0.155) seconds
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.037 seconds).
+Test Suite 'GsIntegration001ScenarioTests' passed at 2026-09-26 18:02:43.725.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.148 (0.148) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-26 18:02:43.725.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.148 (0.148) seconds
+Test Suite 'Selected tests' passed at 2026-09-26 18:02:43.725.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.148 (0.154) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
@@ -34,11 +34,11 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-09-26 17:46:12.672.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-26 17:46:12.677.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-26 17:46:12.677.
+Test Suite 'Selected tests' started at 2026-09-26 18:02:43.775.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-26 18:02:43.781.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-26 18:02:43.781.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-26 17:46:12.677.
+Test Suite 'Selected tests' passed at 2026-09-26 18:02:43.781.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -197,6 +197,35 @@ Building for debugging...
     | `- note: 'unlock()' declared here
  19 | 
  20 | @end
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 23 | @MainActor
+ 24 | final class ReadinessT48Tests: XCTestCase {
+ 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    |                        `- note: static property declared here
+ 26 | 
+ 27 |     private var fixturesDirectory: URL {
+    :
+132 |     /// Build (or rebuild) the tier's archive under the application-support
+133 |     /// archives directory, where the production resolver looketh.
+134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+136 |         var knobs = FixtureKnobs()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 114 | @MainActor
+ 115 | final class ReadinessT50Tests: XCTestCase {
+ 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+     |                        `- note: static property declared here
+ 117 | 
+ 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
+     :
+ 222 | 
+ 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
+ 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
+     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+ 226 |         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
@@ -254,35 +283,6 @@ Building for debugging...
 535 | 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 23 | @MainActor
- 24 | final class ReadinessT48Tests: XCTestCase {
- 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    |                        `- note: static property declared here
- 26 | 
- 27 |     private var fixturesDirectory: URL {
-    :
-132 |     /// Build (or rebuild) the tier's archive under the application-support
-133 |     /// archives directory, where the production resolver looketh.
-134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
-135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-136 |         var knobs = FixtureKnobs()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 114 | @MainActor
- 115 | final class ReadinessT50Tests: XCTestCase {
- 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-     |                        `- note: static property declared here
- 117 | 
- 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
-     :
- 222 | 
- 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
- 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
-     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
- 226 |         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 170 |             if rc != SQLITE_OK {
@@ -514,6 +514,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[33 / 33] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
@@ -938,108 +939,6 @@ Building for debugging...
 409 |                 continue
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:911:17: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-909 |             invalidateRuntime: { [invalidator, messageStore, peerIdentityStore,
-910 |                                  adoptedMessageConnection, adoptedPeerConnection] in
-911 |                 try invalidator.invalidateForWipe()
-    |                 `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-912 |                 messageStore.close()
-913 |                 peerIdentityStore.close()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:278:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-276 |                     return .storageFailure
-277 |                 }
-278 |                 return try messageStore.commitInboundWithObligationAtWithFault(
-    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-279 |                     frame, receivedFrom: receivedFrom, localRecipientNodeId: localRecipient,
-280 |                     identityGeneration: generation, obligationLifetimeMs: lifetime,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:66:10: warning: associated value 'created' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
-  64 | public enum OutboundEnqueueResult: Sendable, Equatable {
-  65 |     /// A new DIRECT message was atomically persisted in held_frames and delivery_state (QUEUED_DURABLY).
-  66 |     case created(FrameV2)
-     |          `- warning: associated value 'created' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
-  67 |     /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding and exact canonical frame.
-  68 |     case alreadyQueuedSameBinding(FrameV2)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:68:10: warning: associated value 'alreadyQueuedSameBinding' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
-  66 |     case created(FrameV2)
-  67 |     /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding and exact canonical frame.
-  68 |     case alreadyQueuedSameBinding(FrameV2)
-     |          `- warning: associated value 'alreadyQueuedSameBinding' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
-  69 |     /// A held frame exists with matching msg_id but its fields/content differ from requested frame.
-  70 |     case canonicalFrameMismatch
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:633:69: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
- 631 |             if f.columns != o.columns { return "COLUMNS of \(f.name): frozen=\(f.columns) observed=\(o.columns)" }
- 632 |             if f.immutableColumns != o.immutableColumns { return "IMMUTABLE DOMAIN of \(f.name)" }
- 633 |             if f.ddl != o.ddl { return "DDL of \(f.name): frozen=[\(f.ddl)] observed=[\(o.ddl)]" }
-     |                                                                     | |- note: provide a default value to avoid this warning
-     |                                                                     | `- note: use 'String(describing:)' to silence this warning
-     |                                                                     `- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
- 634 |         }
- 635 |         return "no difference found by inspection (ordering?)"
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:633:89: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
- 631 |             if f.columns != o.columns { return "COLUMNS of \(f.name): frozen=\(f.columns) observed=\(o.columns)" }
- 632 |             if f.immutableColumns != o.immutableColumns { return "IMMUTABLE DOMAIN of \(f.name)" }
- 633 |             if f.ddl != o.ddl { return "DDL of \(f.name): frozen=[\(f.ddl)] observed=[\(o.ddl)]" }
-     |                                                                                         | |- note: provide a default value to avoid this warning
-     |                                                                                         | `- note: use 'String(describing:)' to silence this warning
-     |                                                                                         `- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
- 634 |         }
- 635 |         return "no difference found by inspection (ordering?)"
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:1463:30: warning: result of call to 'withCString' is unused [#NoUsage]
-1461 |                         sqlite3_bind_blob(ts, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
-1462 |                         sqlite3_bind_int64(ts, 2, now + Int64(RetentionPolicy.tombstoneMs))
-1463 |                         boot.withCString { sqlite3_bind_text(ts, 3, $0, -1, storeSqliteTransient) }
-     |                              `- warning: result of call to 'withCString' is unused [#NoUsage]
-1464 |                         _ = sqlite3_step(ts)
-1465 |                     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:1558:14: warning: result of call to 'withCString' is unused [#NoUsage]
-1556 |         }
-1557 |         defer { sqlite3_finalize(stmt) }
-1558 |         boot.withCString { sqlite3_bind_text(stmt, 1, $0, -1, storeSqliteTransient) }
-     |              `- warning: result of call to 'withCString' is unused [#NoUsage]
-1559 |         sqlite3_bind_int64(stmt, 2, nowMono)
-1560 |         sqlite3_bind_int(stmt, 3, Int32(max(1, limit)))
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:2328:22: warning: result of call to 'withCString' is unused [#NoUsage]
-2326 |             // exactly that ("" where "boot-A" was due).
-2327 |             if let boot = bootIdentity {
-2328 |                 boot.withCString { sqlite3_bind_text(stmt, 13, $0, -1, storeSqliteTransient) }
-     |                      `- warning: result of call to 'withCString' is unused [#NoUsage]
-2329 |             } else {
-2330 |                 sqlite3_bind_null(stmt, 13)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:350:16: warning: value 'reason' was defined but never used; consider replacing with boolean test [#NoUsage]
-348 |     public func openWithResult(_ ciphertext: Data) throws -> CryptoOpenResult {
-349 |         guard let key = receiveKey else { throw MeshError.handshakeFailed }
-350 |         if let reason = enforceReceiveBudget() {
-    |                `- warning: value 'reason' was defined but never used; consider replacing with boolean test [#NoUsage]
-351 |             return .expired
-352 |         }
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
    7 |     public let transportEpoch: UInt64
@@ -1284,6 +1183,108 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:911:17: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+909 |             invalidateRuntime: { [invalidator, messageStore, peerIdentityStore,
+910 |                                  adoptedMessageConnection, adoptedPeerConnection] in
+911 |                 try invalidator.invalidateForWipe()
+    |                 `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+912 |                 messageStore.close()
+913 |                 peerIdentityStore.close()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift:278:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+276 |                     return .storageFailure
+277 |                 }
+278 |                 return try messageStore.commitInboundWithObligationAtWithFault(
+    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+279 |                     frame, receivedFrom: receivedFrom, localRecipientNodeId: localRecipient,
+280 |                     identityGeneration: generation, obligationLifetimeMs: lifetime,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:66:10: warning: associated value 'created' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+  64 | public enum OutboundEnqueueResult: Sendable, Equatable {
+  65 |     /// A new DIRECT message was atomically persisted in held_frames and delivery_state (QUEUED_DURABLY).
+  66 |     case created(FrameV2)
+     |          `- warning: associated value 'created' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+  67 |     /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding and exact canonical frame.
+  68 |     case alreadyQueuedSameBinding(FrameV2)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:68:10: warning: associated value 'alreadyQueuedSameBinding' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+  66 |     case created(FrameV2)
+  67 |     /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding and exact canonical frame.
+  68 |     case alreadyQueuedSameBinding(FrameV2)
+     |          `- warning: associated value 'alreadyQueuedSameBinding' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+  69 |     /// A held frame exists with matching msg_id but its fields/content differ from requested frame.
+  70 |     case canonicalFrameMismatch
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:633:69: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+ 631 |             if f.columns != o.columns { return "COLUMNS of \(f.name): frozen=\(f.columns) observed=\(o.columns)" }
+ 632 |             if f.immutableColumns != o.immutableColumns { return "IMMUTABLE DOMAIN of \(f.name)" }
+ 633 |             if f.ddl != o.ddl { return "DDL of \(f.name): frozen=[\(f.ddl)] observed=[\(o.ddl)]" }
+     |                                                                     | |- note: provide a default value to avoid this warning
+     |                                                                     | `- note: use 'String(describing:)' to silence this warning
+     |                                                                     `- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+ 634 |         }
+ 635 |         return "no difference found by inspection (ordering?)"
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:633:89: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+ 631 |             if f.columns != o.columns { return "COLUMNS of \(f.name): frozen=\(f.columns) observed=\(o.columns)" }
+ 632 |             if f.immutableColumns != o.immutableColumns { return "IMMUTABLE DOMAIN of \(f.name)" }
+ 633 |             if f.ddl != o.ddl { return "DDL of \(f.name): frozen=[\(f.ddl)] observed=[\(o.ddl)]" }
+     |                                                                                         | |- note: provide a default value to avoid this warning
+     |                                                                                         | `- note: use 'String(describing:)' to silence this warning
+     |                                                                                         `- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+ 634 |         }
+ 635 |         return "no difference found by inspection (ordering?)"
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:1463:30: warning: result of call to 'withCString' is unused [#NoUsage]
+1461 |                         sqlite3_bind_blob(ts, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
+1462 |                         sqlite3_bind_int64(ts, 2, now + Int64(RetentionPolicy.tombstoneMs))
+1463 |                         boot.withCString { sqlite3_bind_text(ts, 3, $0, -1, storeSqliteTransient) }
+     |                              `- warning: result of call to 'withCString' is unused [#NoUsage]
+1464 |                         _ = sqlite3_step(ts)
+1465 |                     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:1558:14: warning: result of call to 'withCString' is unused [#NoUsage]
+1556 |         }
+1557 |         defer { sqlite3_finalize(stmt) }
+1558 |         boot.withCString { sqlite3_bind_text(stmt, 1, $0, -1, storeSqliteTransient) }
+     |              `- warning: result of call to 'withCString' is unused [#NoUsage]
+1559 |         sqlite3_bind_int64(stmt, 2, nowMono)
+1560 |         sqlite3_bind_int(stmt, 3, Int32(max(1, limit)))
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:2328:22: warning: result of call to 'withCString' is unused [#NoUsage]
+2326 |             // exactly that ("" where "boot-A" was due).
+2327 |             if let boot = bootIdentity {
+2328 |                 boot.withCString { sqlite3_bind_text(stmt, 13, $0, -1, storeSqliteTransient) }
+     |                      `- warning: result of call to 'withCString' is unused [#NoUsage]
+2329 |             } else {
+2330 |                 sqlite3_bind_null(stmt, 13)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:350:16: warning: value 'reason' was defined but never used; consider replacing with boolean test [#NoUsage]
+348 |     public func openWithResult(_ ciphertext: Data) throws -> CryptoOpenResult {
+349 |         guard let key = receiveKey else { throw MeshError.handshakeFailed }
+350 |         if let reason = enforceReceiveBudget() {
+    |                `- warning: value 'reason' was defined but never used; consider replacing with boolean test [#NoUsage]
+351 |             return .expired
+352 |         }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [51 / 55] GodstoneMeshTests-product
 [62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
@@ -2282,4 +2283,4 @@ Building for debugging...
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (9.81 secs)
+Build complete! (9.80 secs)
