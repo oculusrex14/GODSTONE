@@ -23,12 +23,44 @@ public enum DirectDispatchResult: Equatable, Sendable {
     case rejected(OutboundEnqueueResult)
 }
 
+/// *** GS-INTEGRATION-001 `real-adapters`: WHICH COMPOSITION THIS NODE BELONGS TO, AS A TYPED LANE. ***
+///
+/// *THE FINDING'S OWN CHARGE IS THAT THE COMPOSITION HARNESS "BYPASSES REAL PERSISTENCE, HANDSHAKE AND WIPE OWNERS",
+/// and its repair asketh for a replacement built from THE SAME RUNTIME FACTORY LabMesh useth, **"after GS-RUNTIME-001
+/// and the private-store findings are repaired".** *The replacement must drive the REAL OS-facade callbacks -- which
+/// means the four `linkLayerReady` gates must open for the LAB lane while staying SHUT for shipping.*
+///
+/// *** WHY THIS IS AN ENUM RATHER THAN A BOOLEAN PARAMETER. *** *A `Bool` at a call site readeth as an assertion --
+/// `MeshNode(..., labMode: true)` sayeth nothing about WHAT that permits, and a value that is `true` in one call and
+/// `false` in the next looketh like a typo rather than a posture.* **A NAMED LANE maketh the posture explicit at every
+/// construction site, and the default is `shipping`.**
+///
+/// **AND IT CANNOT LEAK INTO THE SHIPPED PRODUCT, WHICH IS CHECKED RATHER THAN ARGUED:** *`Godstone-Light` never links
+/// `GodstoneMesh` at all (the lab-isolation control requires `:app` to reach only `:core` on the Android side, and the
+/// iOS shipping target excludes this module the same way), so there is NO composition in the shipped product that could
+/// pass this parameter. `MeshNode.linkLayerReady` stays `false`; `LabProfile.manufacturesReadiness` stays `false`; the
+/// readiness flags stay `false`.* *** The lane changes WHICH GATES a lab node consulteth, and nothing about what a
+/// shipped node may advertise. ***
+public enum CompositionLane: Sendable {
+    /// The product posture: every link-layer gate is closed, exactly as shipped.
+    case shipping
+    /// The nonshipping host rig: the transport's OS-facade callbacks may drive a node that carries real on-disk stores.
+    case labHost
+
+    /// *** THE ONE PROPERTY THE FOUR GATE SITES CONSULT, SO THE POSTURE IS DECIDED IN ONE PLACE. ***
+    var permitsLinkLayer: Bool {
+        switch self {
+        case .shipping: return MeshNode.linkLayerReady
+        case .labHost: return true
+        }
+    }
+}
+
 /// One identity, router, radio stack and session registry for the process.
 public final class MeshNode {
     public static let linkLayerReady = false
     public static let linkLayerOpenReason =
         "BLE record framing is implemented, but cross-platform link discovery, role binding, trusted handshake integration, and on-device validation remain incomplete. Radio transmission is disabled in this pre-alpha build."
-
     public let identity: MeshIdentity
     /// Durable hold, injected before `start()` (ADR-004 / Stage 4B). The router
     /// builds its anti-entropy digest from this store's held msg_ids and
@@ -58,6 +90,21 @@ public final class MeshNode {
     /// The wipe admission seam, or nil for a node that was not wired to one. **Kept, not merely forwarded**, because
     /// this node's OWN SOS read roads consult it (round 638).
     private let wipeGate: (any WipeSensitiveUseGate)?
+
+    /// *** GS-INTEGRATION-001 `real-adapters`: THE COMPOSITION THIS NODE BELONGS TO. ***
+    /// *A `let`, fixed at construction: see the init for why a lane that could move would be a composition whose gates
+    /// disagree with the object they gate.*
+    public let compositionLane: CompositionLane
+
+    /// *** THE ONE PROPERTY EVERY LINK-LAYER GATE CONSULTS. ***
+    ///
+    /// *MEASURED BEFORE THIS EXISTED: the four gates read `Self.linkLayerReady` DIRECTLY, so the only way for a host rig
+    /// to drive the real OS-facade callbacks was to EDIT THE SHIPPING STATIC -- which would have opened the product's
+    /// gate as a side effect of testing.* **This property is `false` for every shipping composition (the static is
+    /// `false` and the lane is `.shipping`), and `true` only for a node explicitly built in `.labHost`.** *The static
+    /// itself is untouched and remains the product posture; the lane is the lab's, and it cannot reach the shipped
+    /// target because that target does not link this module.*
+    internal var linkLayerAdmissible: Bool { compositionLane.permitsLinkLayer }
 
     /// T37 (section 14): the recipient inbox transaction of the authenticated
     /// link -- injectable and absent by default, so the relay/ACK-ingest
@@ -547,11 +594,19 @@ public final class MeshNode {
     /// exactly as it was -- rather than a silent always-allow. **A CALLER THAT HAS A GATE PASSES ONE.**
     public init(identity: MeshIdentity, store: MessageStore,
                 deliveryTracker: DeliveryTracker, sessions: SessionManager,
-                wipeGate: (any WipeSensitiveUseGate)? = nil) {
+                wipeGate: (any WipeSensitiveUseGate)? = nil,
+                compositionLane: CompositionLane = .shipping) {
         self.identity = identity
         self.store = store
         self.deliveryTracker = deliveryTracker
         self.sessions = sessions
+        // *** GS-INTEGRATION-001 `real-adapters`: THE LANE IS FIXED AT CONSTRUCTION AND NEVER MOVES. ***
+        //
+        // *Defaulted, so every existing call site stays byte-identical and SHIPPING.* **The four `linkLayerReady`
+        // gates consult `linkLayerAdmissible` -- the ONE computed property built from this and the static -- so there
+        // is exactly one place where the posture is decided and no second opinion can arise.** *A node that could
+        // change lane mid-life would be a node whose gates disagree with the composition that built it.*
+        self.compositionLane = compositionLane
         // T42: the store is REQUIRED at construction -- a router without one
         // could report a frame accepted on memory alone.
         self.router = Router(selfNodeId: identity.nodeId, store: store, wipeGate: wipeGate)
@@ -589,7 +644,7 @@ public final class MeshNode {
 
     @discardableResult
     public func start() -> Bool {
-        guard canStart(linkReady: Self.linkLayerReady) else { return false }
+        guard canStart(linkReady: linkLayerAdmissible) else { return false }
         guard !isStarted else { return true }
         isStarted = true
         // T24 (section 6, "observers/flow emissions can ... lose authoritative
@@ -788,7 +843,7 @@ public final class MeshNode {
 
     /// V4 does not fabricate a successful SOS while ADR-004 and M2-link remain open.
     public func broadcastSos(payload: Data) -> SosDispatchResult {
-        guard Self.linkLayerReady else { return .unavailable(Self.linkLayerOpenReason) }
+        guard linkLayerAdmissible else { return .unavailable(Self.linkLayerOpenReason) }
         return dispatchSos(payload: payload) { [weak self] frame, peer in
             guard let self else { return false }
             return self.ble.send(frame, to: peer) == .admitted
@@ -1412,12 +1467,12 @@ extension MeshNode: TransportDelegate {
     /// delivereth the authenticated node id it captured at the sealed round, and this override passeth it ONWARD to the
     /// dispatcher -- so the router, the ACK tracker and every durable road downstream learn the SENDER, not a handle.
     public func transportDidReceive(data: Data, peerId: UUID, receivedFrom nodeId16: Data) {
-        guard Self.linkLayerReady, let frame = decodeInbound(data) else { return }
+        guard linkLayerAdmissible, let frame = decodeInbound(data) else { return }
         handleInboundFrame(frame, receivedFrom: nodeId16)
     }
 
     public func transportDidReceive(data: Data, peerId: UUID) {
-        guard Self.linkLayerReady, let frame = decodeInbound(data) else { return }
+        guard linkLayerAdmissible, let frame = decodeInbound(data) else { return }
         // Stage 4C / C7: route ACK frames to the delivery tracker, all other
         // frames to the epidemic router, via the ungated `ingestInbound` seam.
         // T24 (CORRECTED at round 250): THE TRANSPORT NOW DELIVERETH THE AUTHENTICATED NODE ID, so this path's
