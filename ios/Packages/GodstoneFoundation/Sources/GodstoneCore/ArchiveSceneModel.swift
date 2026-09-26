@@ -373,6 +373,36 @@ public final class ArchiveSceneModel: ObservableObject {
         case .search:
             backToDocuments()
         case .documents:
+            // *** A `.documents` ROUTE THAT STILL CARRIETH A SEARCH MUST RETURN TO IT. ***
+            //
+            // *MEASURED, HOSTED, TWICE, WITH THE INSTRUMENTED WITNESS: `archive.phase.ready.mode.documents` with the
+            // reader popped -- UNCHANGED even after the `.document`-case derivation landed, WHICH PROVETH THE REACHED
+            // CASE IS THIS ONE, NOT THAT ONE.* **`restore` sets `mode` from the record and, when the record carrieth no
+            // `openedDocumentId`, its `.documents` branch calleth `loadDocuments()` -- which SETTETH `mode = .documents`
+            // and NILETH `openedDocumentId` but LEAVETH `searchedQuery` STANDING (the top-level identity the record
+            // always carrieth). THEN `back()` REACHED THIS CASE AND `break`-ED: THE READER POPPED AND THE SEARCH THE
+            // READER ACTUALLY MADE WAS NEVER RE-RUN.** *That is the same card violation as the `.document` road, on
+            // the other entry.*
+            //
+            // **THE DISCRIMINATOR IS `searchedQuery`, AND IT IS EXACT: a GENUINE return-to-list (`backToDocuments`)
+            // and a GENUINE browse BOTH have it NIL, so the journey still resteth here for them; a `.documents` route
+            // that STILL CARRIETH a non-empty search is the restored-route inconsistency, and the reader is returned
+            // to the search they made.** *The derivation inventeth no query.*
+            if let saved = searchedQuery?.trimmingCharacters(in: .whitespacesAndNewlines), !saved.isEmpty {
+                generationBump()
+                mode = .search
+                query = saved
+                documents = []
+                passages = []
+                openedDocumentId = nil
+                openedTitle = nil
+                openedSource = nil
+                error = nil
+                canRetry = false
+                phase = .loading
+                Task { await self.search() }
+                return
+            }
             break   // already at the root: the journey resteth
         }
     }

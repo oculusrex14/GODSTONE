@@ -186,7 +186,8 @@ private struct ArchiveBrowser: View {
                 // *See `ArchivePhase.witnessName` -- the hosted journey arm could not tell `loading` from `noResults`
                 // by the identifiers it could see, and those two demand opposite repairs.*
                 Color.clear.frame(width: 0, height: 0)
-                    .accessibilityIdentifier("archive.phase." + scene.phase.witnessName + ".mode." + scene.mode.witnessName)
+                    .accessibilityIdentifier("archive.phase." + scene.phase.witnessName + ".mode." + scene.mode.witnessName
+                        + ".query." + ((scene.searchedQuery?.isEmpty == false) ? "set" : "unset"))
                 switch scene.phase {
                 case .loading:
                     ProgressView("Opening Archive…")
