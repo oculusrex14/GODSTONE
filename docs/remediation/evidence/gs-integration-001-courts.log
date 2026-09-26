@@ -1,0 +1,91 @@
+Building for debugging...
+[1 / 4] GodstoneMesh
+Build complete! (0.23 secs)
+Test Suite 'Selected tests' started at 2026-09-26 16:05:01.177.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-26 16:05:01.183.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-26 16:05:01.183.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-09-26 16:05:01.183.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
+Test Suite 'Selected tests' started at 2026-09-26 16:05:01.219.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-26 16:05:01.225.
+Test Suite 'GsIntegration001RealTransportTests' started at 2026-09-26 16:05:01.225.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' passed (0.008 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.006 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' passed (0.003 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' passed (0.003 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' passed (0.011 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' passed (0.010 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' passed (0.006 seconds).
+Test Suite 'GsIntegration001RealTransportTests' passed at 2026-09-26 16:05:01.336.
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.110 (0.111) seconds
+Test Suite 'GsIntegration001ScenarioTests' started at 2026-09-26 16:05:01.336.
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.015 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.039 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.009 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.009 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.034 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started.
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.035 seconds).
+Test Suite 'GsIntegration001ScenarioTests' passed at 2026-09-26 16:05:01.477.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.140 (0.141) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-26 16:05:01.477.
+	 Executed 24 tests, with 0 failures (0 unexpected) in 0.250 (0.252) seconds
+Test Suite 'Selected tests' passed at 2026-09-26 16:05:01.477.
+	 Executed 24 tests, with 0 failures (0 unexpected) in 0.250 (0.257) seconds
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+Test Suite 'Selected tests' started at 2026-09-26 16:05:01.526.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-26 16:05:01.532.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-26 16:05:01.532.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-09-26 16:05:01.532.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
