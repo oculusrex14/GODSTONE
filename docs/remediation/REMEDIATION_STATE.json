@@ -9409,7 +9409,7 @@
     }
    ],
    "my_red_case": " | GS-RUNTIME-001's RED, TAKEN AND KEPT SEPARATE IN THE SAME ROUND AS ITS REPAIR (round 226): `CrashStartupResumeTests.testSR00i_TheWipeDrainethTheWorkersBeforeTheStoresAreClosed` FAILED BEFORE the repair -- after `invalidateForWipe()` the turn census climbed from **1 to 6**, A WORKER OUTLIVING ITS AUTHORITY AND FIRING FOR KEYS ALREADY GONE, and the relation mapping was not forgotten -- and PASSED AFTER it. THE LOG OF THE FAILING RUN STANDETH SEPARATE from the repaired one (`round226-RED-drain-before-erasure.log`), per the rule that prior failures are kept apart from the evidence of the fix. *** ROUND 545: `ReadinessT60Test.test_gs_runtime_001_the_injected_pump_reacheth_the_node`. THE INSTRUMENT IS STRUCTURAL BECAUSE THE DI GRAPH CANNOT BE INSTANTIATED ON THE HOST (an Android `@ApplicationContext` Context -- the same wall ANDROID-05's closure 4 met), AND THE CLAIM BEING CHECKED IS EXACTLY A SOURCE-LEVEL CLAIM: *an injected parameter that is never assigned.* The arm READETH the file, STRIPS THE COMMENTS -- **A COMMENT MENTIONING AN ASSIGNMENT IS NOT AN ASSIGNMENT** (round 521b's law) -- and ASSERTETH BOTH that the pump is assigned AND that it is still INJECTED, so the claim is located in the DI graph rather than in a node built by hand elsewhere. *** THE NEGATIVE CASE (the assignment removed, landing VERIFIED FIRST) FAILED THE ARM ON ITS OWN NAME: *'THE PUMP MUST BE ASSIGNED: an injected parameter that is never assigned is a pump manufactured, injected, and handed to NOBODY'*. ***",
-   "my_status": "PARTIAL",
+   "my_status": "FIX_SUBMITTED",
    "notes": null,
    "pending_proof": [
     "*** ROUND 532: THIS FIELD WAS **EMPTY** FOR A HIGH FINDING MARKED `PARTIAL` -- SO IT STATED NOTHING IT OWED, WHILE EIGHTEEN OTHER FINDINGS STATED THEIRS. IT IS FILLED HERE FROM A RE-MEASUREMENT TAKEN THIS ROUND, NOT INHERITED FROM ROUND 521. ***",
@@ -14288,7 +14288,7 @@
     "root_cause": "DI sequencing is mistaken for successful state transition; construction of a barrier object says nothing about the returned coordinator result.",
     "exact_remediation": "Replace Unit/ignored result with an internal, non-forgeable startup permit issued only after a typed recovery decision. Both Identity.loadOrCreate and private-store factory construction consume that permit. Treat absent journal as a validated no-pending-wipe state, malformed journal as blocked, retryable failure as blocked-with-retry, and completed wipe as ready. Register unlock/retry events without opening a parallel normal-start path.",
     "regression_test": "For every nonterminal stage, inject refusal and exception separately; spy identity creation and DB open counts must remain zero. A clean first launch must still open exactly once.",
-    "my_status": "PARTIAL",
+    "my_status": "FIX_SUBMITTED",
     "my_fix_commit": "9596d0bc (this commit) -- the FIRST Dagger component in `:mesh` now assembles `MeshModule`, which closed clause (ii) and found three real graph holes the moment it existed. Earlier: 2d585beb (typed decision, non-forgeable permit, 8 courts), 937e2ba4 (Android type discipline + real-store Robolectric court), df486db1 (soundness: the corruption guard fail-open, the seven misdescribed conformers, the double-free).",
     "my_red_case": "BEHAVIOURAL RED VIA THE CAUSAL MUTATION, because the artefact did not exist to fail first: with the gate UNWIRED (the audited state -- the decorators exist and nobody consults them) the end-to-end arm fails with \"THE GATE IS NOT WIRED\", while the three decorator arms stay green. AND TWO OF MY OWN ARMS WERE FALSE AND ARE RECORDED: the first end-to-end draft was VACUOUS (it asserted nil for a peer the store never had, which passes whether or not the gate is wired -- proven by mutation); the second failed on its own precondition because CrashResumableWipe SNAPSHOTS its journal at construction, so mutating the test journal never reached it.",
     "my_logs": [
@@ -15330,8 +15330,8 @@
    "GS-RUNTIME-001": {
     "group": "original",
     "severity": "HIGH",
-    "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "gs-runtime-001.android-composition-court",
@@ -15347,8 +15347,13 @@
      {
       "id": "gs-runtime-001.mutations",
       "text": "Mutations: removing `ackPump` wiring fails; a wrong provider binding fails; shutdown/wipe invalidation reaches the same owner graph.",
-      "status": "OPEN",
-      "evidence": []
+      "status": "DISCHARGED",
+      "evidence": [
+       "*** CLAUSE 1 -- REMOVING THE `ackPump` WIRING FAILS. *** `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`, `test:theProductionProviderHandsTheNodeThePumpItWasGiven`. ROD `T72-RC15-android-ack-pump-not-handed-to-the-node` deleteth `node.ackPump = pump` from `path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` and is **KILLED** -- the pump-identity witness reddens, 2 arms, with the restored tree green.",
+       "*** CLAUSE 2 -- A WRONG PROVIDER BINDING FAILS. *** `test:theDispatcherAdmitsThroughTheGivenPumpOnly` REQUIRES the relay admission and compares its key against the given pump's own answer for the SAME bytes; ROD `T72-RC16-android-ack-dispatcher-admits-elsewhere` handeth the pump `encoded.reversedArray()` and is **KILLED**. *MEASURED ESCAPE, RECORDED: this rod's FIRST form escaped because the arm accepted a `Refused` verdict as well as `OpaqueRelay` -- so the arm now REQUIRES the admission, which is what maketh the rod bite.* **And the invalidator's parameter list is compile-bitten: widening the provider to the interface the invalidator's own constructor takes, plus a `@Binds` for `PeerIdentityStore`, is what let `fun meshRuntimeInvalidator()` resolve through the real component.**",
+       "*** CLAUSE 3 -- SHUTDOWN/WIPE INVALIDATION REACHES THE SAME OWNER GRAPH. *** `test:theWipeInvalidatorReachesEveryOwnerTheCompositionHandedOut` drives the real `MeshRuntimeInvalidator` and observeth EACH owner through a foreign consumer: the gate's own `isActive`/`isInvalidated`, the peer store's closed read, the message store's RE-OPEN with its file intact (close-without-delete), the node's drained peer view, and a resolver over the same repo+gate answering no key.",
+       "*** AND THE ARM FOUND A REAL PRODUCT DEFECT RATHER THAN CONFIRMING THE ONE IT WAS WRITTEN FOR: `path:android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt` RETURNED EARLY FROM `stop()` ON `!isStarted`, WHICH IS FALSE BY CONSTRUCTION IN PRODUCTION, SO `peers.clear()` NEVER RAN AND A WIPE LEFT THE LIVE PEER VIEW STANDING. *** *The drain now standeth above the guard -- the third teardown step reached by the same lesson the two comments above it already recorded.* **MEASURED: mesh + labmesh, 1537 tests, 0 failures.**"
+      ]
      }
     ],
     "external_obligations": [
@@ -15652,8 +15657,8 @@
    "GS-FINAL-003": {
     "group": "independent",
     "severity": "High",
-    "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "gs-final-003.ios-recovery-graph",
@@ -15678,10 +15683,13 @@
      {
       "id": "gs-final-003.zero-private-opens",
       "text": "Both platforms: pending / retryable / corrupt recovery causes ZERO identity and ZERO private DB opens, proven at the REAL construction seams with counters.",
-      "status": "OPEN",
+      "status": "DISCHARGED",
       "evidence": [
        "*** iOS HALF: DONE, WITH COUNTERS. *** `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt` -- the ANDROID court: `noPermitIsIssuedOnAnyOutstandingRung`, `theCompositionIssuerRefusesOnEveryOutstandingRung`, and the positive controls `theTerminalRungIssuesThePermit` / `theCompositionIssuerPermitsOnTheTerminalRung`. **MEASURED: 5 tests, 0 failures**, with the refusing set DERIVED by asking the barrier. *A gate that always refused would fail the positive controls, and one that never refused would fail the others -- both directions.*",
+       "*** ANDROID HALF, WITH COUNTERS COUNTERS AT THE REAL SEAMS: `path:android/mesh/src/main/java/io/godstone/mesh/di/PrivateConstructionCounter.kt`. *** *A plain `object` -- deliberately NOT a Dagger key, because a rebindable counter is a fakenable counter -- with one `AtomicLong` and a `@Volatile` authority per seam.* **The note is taken BEFORE the platform constructor, so on a JVM host the count reacheth 1 and the platform then throweth `KeyStoreException`/`UnsatisfiedLinkError`: the throw proveth the body WALKED TO the platform and the count proveth the ATTEMPT.**",
        "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- THE SEAM: `PrivateStorePermit` carrieth a PRIVATE constructor and `issue(decision)` returneth `null` for every refusing decision, and the three private providers REQUIRE it as a parameter. So zero opens is not inferred from a later absence -- the authority that construction requireth DOES NOT EXIST on those roads.",
+       "*** THREE COUNTER ARMS, DRIVEN THROUGH `DaggerMeshGraphComponent`, ALL MEASURED GREEN (8 tests, 0 failures): `thePermittedRoadCountsOneAttemptPerSeamAtThePlatform` (delta==1 per seam, authority==CLEAN_START, and the failure chain reacheth AndroidKeyStore/SQLCipher), `noRefusingRungMovesAnyConstructionCounter` (every delta==0 AND the resolution carrieth `NO PRIVATE STORE MAY BE CONSTRUCTED`), and `theCounterMovesOnThePermittedRoadAndNowhereOnARefusingOne` (the same-run conjunction). ***",
+       "*** MUTATION-VERIFIED, BOTH DIRECTIONS: ROD `T72-RC13-android-private-construction-uncounted` (delete the `Seam.IDENTITY` note) is KILLED -- the permitted-road counter witness reddens; ROD `T72-RC14-android-private-permit-may-be-bypassed` (mint the permit from `CLEAN_START` instead of the ladder's answer) is KILLED -- the refusal witness reddens on three arms. *** *Each ran in a disposable worktree with a green baseline and an EXECUTED restored-green phase.*",
        "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- THE iOS HALF: `PrivateOpenCounter` (real counts at the construction seam, not the vestigial array nothing read), `CountingKeyProvider` (the factory asketh for a DEK BEFORE it reacheth the engine, so a refused startup that got there would have ASKED), and the keychain write spy for the identity boundary. **MEASURED: 14 tests, 0 failures**, covering pending, retryable AND corrupt -- *the obligation nameth all three, and only pending carried counters before.*",
        "AND THE MUTATION PROVES THE iOS COUNTERS BITE RATHER THAN MERELY PASSING: *an identity-boundary open placed ABOVE the permit gate on the road the arms drive KILLETH EXACTLY the two counter-bearing arms and no others.* **My first attempt at that mutation ESCAPED, and it was wrong twice -- it landed on the `create` road while the arms drive `requireRecoveredPrivateComposition`, and it used a keychain READ while the spy counteth WRITES.** *A mutation placed wrong is not an escaped mutation; it is an experiment that proved nothing.*"
       ]
@@ -15901,14 +15909,14 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 5,
-   "findings_with_internal_status_open": 5,
-   "internal_obligations_open": 10,
-   "internal_obligations_unresolved": 10,
+   "findings_internal_open": 3,
+   "findings_with_internal_status_open": 3,
+   "internal_obligations_open": 8,
+   "internal_obligations_unresolved": 8,
    "obligations_by_state": {
-    "OPEN": 5,
+    "OPEN": 3,
     "PARTIAL": 5,
-    "DISCHARGED": 22
+    "DISCHARGED": 24
    },
    "external_obligations": 5
   },

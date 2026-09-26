@@ -160,9 +160,23 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          #
          # *SO THE OBLIGATION STAYETH OPEN AND THE iOS HALF IS RECORDED AS DONE BELOW.* **THE AUDITOR CAN JUDGE WHETHER
          # A TYPE-LEVEL PROOF SATISFIETH A CLAUSE WRITTEN FOR COUNTERS; THE BUILDER MAY NOT DECIDE THAT FOR THEM.**
-         "status": "OPEN", "evidence": [
+         #
+         # *** DISCHARGED -- THE ANDROID COUNTERS NOW EXIST AND ARE DRIVEN THROUGH THE REAL COMPONENT. ***
+         #
+         # *THE COMPLAINT ABOVE WAS PRECISE AND IT IS ANSWERED IN KIND: "NO ARM EVER CALLS THE THREE PROVIDERS".*
+         # **`PrivateConstructionCounter` is noted INSIDE each of the three providers, BEFORE the platform
+         # constructor, and `GsFinal003ZeroPrivateOpensTest` now RESOLVES EACH ACCESSOR THROUGH
+         # `DaggerMeshGraphComponent` AND COUNTS WHAT WALKED.** *On the permitted road each seam's delta is 1 and the
+         # recorded authority is `CLEAN_START`; on every pinned refusing rung every delta is 0 AND the resolution
+         # faileth with the composition issuer's own `NO PRIVATE STORE MAY BE CONSTRUCTED` -- so the road provably
+         # REACHED the gate rather than being declined by the court.* **A same-run cross-check asserts the conjunction,
+         # so an always-zero counter and an increment-on-refusal counter each fail one direction.**
+         "status": "DISCHARGED", "evidence": [
              "*** iOS HALF: DONE, WITH COUNTERS. *** `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt` -- the ANDROID court: `noPermitIsIssuedOnAnyOutstandingRung`, `theCompositionIssuerRefusesOnEveryOutstandingRung`, and the positive controls `theTerminalRungIssuesThePermit` / `theCompositionIssuerPermitsOnTheTerminalRung`. **MEASURED: 5 tests, 0 failures**, with the refusing set DERIVED by asking the barrier. *A gate that always refused would fail the positive controls, and one that never refused would fail the others -- both directions.*",
+             "*** ANDROID HALF, WITH COUNTERS COUNTERS AT THE REAL SEAMS: `path:android/mesh/src/main/java/io/godstone/mesh/di/PrivateConstructionCounter.kt`. *** *A plain `object` -- deliberately NOT a Dagger key, because a rebindable counter is a fakenable counter -- with one `AtomicLong` and a `@Volatile` authority per seam.* **The note is taken BEFORE the platform constructor, so on a JVM host the count reacheth 1 and the platform then throweth `KeyStoreException`/`UnsatisfiedLinkError`: the throw proveth the body WALKED TO the platform and the count proveth the ATTEMPT.**",
              "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- THE SEAM: `PrivateStorePermit` carrieth a PRIVATE constructor and `issue(decision)` returneth `null` for every refusing decision, and the three private providers REQUIRE it as a parameter. So zero opens is not inferred from a later absence -- the authority that construction requireth DOES NOT EXIST on those roads.",
+             "*** THREE COUNTER ARMS, DRIVEN THROUGH `DaggerMeshGraphComponent`, ALL MEASURED GREEN (8 tests, 0 failures): `thePermittedRoadCountsOneAttemptPerSeamAtThePlatform` (delta==1 per seam, authority==CLEAN_START, and the failure chain reacheth AndroidKeyStore/SQLCipher), `noRefusingRungMovesAnyConstructionCounter` (every delta==0 AND the resolution carrieth `NO PRIVATE STORE MAY BE CONSTRUCTED`), and `theCounterMovesOnThePermittedRoadAndNowhereOnARefusingOne` (the same-run conjunction). ***",
+             "*** MUTATION-VERIFIED, BOTH DIRECTIONS: ROD `T72-RC13-android-private-construction-uncounted` (delete the `Seam.IDENTITY` note) is KILLED -- the permitted-road counter witness reddens; ROD `T72-RC14-android-private-permit-may-be-bypassed` (mint the permit from `CLEAN_START` instead of the ladder's answer) is KILLED -- the refusal witness reddens on three arms. *** *Each ran in a disposable worktree with a green baseline and an EXECUTED restored-green phase.*",
              "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- THE iOS HALF: `PrivateOpenCounter` (real counts at the construction seam, not the vestigial array nothing read), `CountingKeyProvider` (the factory asketh for a DEK BEFORE it reacheth the engine, so a refused startup that got there would have ASKED), and the keychain write spy for the identity boundary. **MEASURED: 14 tests, 0 failures**, covering pending, retryable AND corrupt -- *the obligation nameth all three, and only pending carried counters before.*",
              "AND THE MUTATION PROVES THE iOS COUNTERS BITE RATHER THAN MERELY PASSING: *an identity-boundary open placed ABOVE the permit gate on the road the arms drive KILLETH EXACTLY the two counter-bearing arms and no others.* **My first attempt at that mutation ESCAPED, and it was wrong twice -- it landed on the `create` road while the arms drive `requireRecoveredPrivateComposition`, and it used a keychain READ while the spy counteth WRITES.** *A mutation placed wrong is not an escaped mutation; it is an experiment that proved nothing.*",
          ]},        {"id": "gs-final-003.android-provider-court",
@@ -269,7 +283,18 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
         {"id": "gs-runtime-001.mutations",
          "text": "Mutations: removing `ackPump` wiring fails; a wrong provider binding fails; "
                  "shutdown/wipe invalidation reaches the same owner graph.",
-         "status": "OPEN", "evidence": []},
+         # *** ALL THREE CLAUSES, EACH WITH ITS OWN ROD, OVER THE PRODUCTION COMPOSITION ON DISK. ***
+         #
+         # *THE ARMS WERE REBUILT FIRST: the old ones HAND-BUILT a `MeshNode` and used an `InMemoryAckStore`, which
+         # measured the constructor's wiring rather than the COMPOSITION's and substituted the very durability the
+         # obligation names.* **Now `HostMeshRig` drives `MeshModule.provideMeshNode` itself over on-disk
+         # `JdbcStoreDb` stores, and each owner is read through a FOREIGN consumer.**
+         "status": "DISCHARGED", "evidence": [
+             "*** CLAUSE 1 -- REMOVING THE `ackPump` WIRING FAILS. *** `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`, `test:theProductionProviderHandsTheNodeThePumpItWasGiven`. ROD `T72-RC15-android-ack-pump-not-handed-to-the-node` deleteth `node.ackPump = pump` from `path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` and is **KILLED** -- the pump-identity witness reddens, 2 arms, with the restored tree green.",
+             "*** CLAUSE 2 -- A WRONG PROVIDER BINDING FAILS. *** `test:theDispatcherAdmitsThroughTheGivenPumpOnly` REQUIRES the relay admission and compares its key against the given pump's own answer for the SAME bytes; ROD `T72-RC16-android-ack-dispatcher-admits-elsewhere` handeth the pump `encoded.reversedArray()` and is **KILLED**. *MEASURED ESCAPE, RECORDED: this rod's FIRST form escaped because the arm accepted a `Refused` verdict as well as `OpaqueRelay` -- so the arm now REQUIRES the admission, which is what maketh the rod bite.* **And the invalidator's parameter list is compile-bitten: widening the provider to the interface the invalidator's own constructor takes, plus a `@Binds` for `PeerIdentityStore`, is what let `fun meshRuntimeInvalidator()` resolve through the real component.**",
+             "*** CLAUSE 3 -- SHUTDOWN/WIPE INVALIDATION REACHES THE SAME OWNER GRAPH. *** `test:theWipeInvalidatorReachesEveryOwnerTheCompositionHandedOut` drives the real `MeshRuntimeInvalidator` and observeth EACH owner through a foreign consumer: the gate's own `isActive`/`isInvalidated`, the peer store's closed read, the message store's RE-OPEN with its file intact (close-without-delete), the node's drained peer view, and a resolver over the same repo+gate answering no key.",
+             "*** AND THE ARM FOUND A REAL PRODUCT DEFECT RATHER THAN CONFIRMING THE ONE IT WAS WRITTEN FOR: `path:android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt` RETURNED EARLY FROM `stop()` ON `!isStarted`, WHICH IS FALSE BY CONSTRUCTION IN PRODUCTION, SO `peers.clear()` NEVER RAN AND A WIPE LEFT THE LIVE PEER VIEW STANDING. *** *The drain now standeth above the guard -- the third teardown step reached by the same lesson the two comments above it already recorded.* **MEASURED: mesh + labmesh, 1537 tests, 0 failures.**",
+         ]},
     ],
     "GS-STRESS-001": [
         {"id": "gs-stress-001.real-runtime-driver",
