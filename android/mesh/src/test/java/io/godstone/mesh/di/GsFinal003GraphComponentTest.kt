@@ -440,30 +440,27 @@ class GsFinal003GraphComponentTest {
             payload = ByteArray(80) { (it + 7).toByte() },
         )
         val verdict = r.dispatcher.dispatch(ackFrame, peer)
+        // *** THE FRAME IS WELL-FORMED AND HAS NO LOCAL ROW, SO THE ONLY CORRECT VERDICT IS A RELAY ADMISSION. ***
+        // *This is the assertion a `Refused` branch would have let escape:* **a route that handed the pump DIFFERENT
+        // bytes (or a decoy pump) would refuse the candidate, and an arm that accepted `Refused` as well as
+        // `OpaqueRelay` would read green against it.**
         assertTrue(
-            "*** A WELL-FORMED RELAY ACK MUST REACH THE PUMP'S ADMISSION ROAD. Observed: $verdict ***",
-            verdict is io.godstone.mesh.delivery.AckDispatch.OpaqueRelay
-                || verdict is io.godstone.mesh.delivery.AckDispatch.Refused,
+            "*** A WELL-FORMED ACK WITH NO LOCAL ROW MUST BE ADMITTED AS RELAY CUSTODY THROUGH THE GIVEN PUMP. *A " +
+                "`Refused` here means the closure the provider bound did not see the bytes the node received -- " +
+                "exactly the defect this arm exists to catch.* Observed: $verdict ***",
+            verdict is io.godstone.mesh.delivery.AckDispatch.OpaqueRelay,
         )
-
-        // *** THE GIVEN PUMP'S OWN ANSWER FOR THE IDENTICAL BYTES. ***
-        // *Asked through the SAME object the provider handed the node, so the two admissions are comparable.*
+        val relay = verdict as io.godstone.mesh.delivery.AckDispatch.OpaqueRelay
+        // *** AND THE ADMISSION MUST CARRY THE GIVEN PUMP'S OWN KEY FOR THE VERY BYTES THE NODE RECEIVED. ***
+        // *Asked of the SAME object the provider handed the node, so the two admissions are comparable.*
         val expected = r.pump.admit(ackFrame.encode(), peer)
-        when (verdict) {
-            is io.godstone.mesh.delivery.AckDispatch.OpaqueRelay -> {
-                assertEquals(
-                    "*** THE DISPATCHER MUST HAVE ADMITTED THROUGH THE GIVEN PUMP, WITH THE VERY BYTES THE NODE " +
-                        "RECEIVED. *A route that handed the pump DIFFERENT bytes -- or a decoy pump -- would produce " +
-                        "a different admission key, which is exactly what this compares.* Observed: " +
-                        "${verdict.admission.ackKey?.size} vs expected ${expected.ackKey?.size} ***",
-                    expected.ackKey?.toList(), verdict.admission.ackKey?.toList(),
-                )
-            }
-            else -> assertTrue(
-                "*** AND A REFUSED ROUTE MUST CARRY A TYPED REFUSAL, NEVER A SILENT SUCCESS. Observed: $verdict ***",
-                verdict is io.godstone.mesh.delivery.AckDispatch.Refused,
-            )
-        }
+        assertEquals(
+            "*** THE DISPATCHER MUST HAVE ADMITTED THROUGH THE GIVEN PUMP, WITH THE VERY BYTES THE NODE RECEIVED. " +
+                "*A route that handed the pump DIFFERENT bytes -- or a decoy pump -- would produce a different " +
+                "admission key, which is exactly what this compares.* Observed: " +
+                "${relay.admission.ackKey?.size} vs expected ${expected.ackKey?.size} ***",
+            expected.ackKey?.toList(), relay.admission.ackKey?.toList(),
+        )
         // *** AND THE PUMP IS STILL THE ONE THE PROVIDER HANDED THE NODE. ***
         assertSame(
             "*** AND THE ADMISSION ROAD MUST BELONG TO THE PUMP THE PROVIDER HANDED THE NODE. ***",
