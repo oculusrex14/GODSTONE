@@ -139,9 +139,18 @@ class TheLawStillRefuses(unittest.TestCase):
             "*** THE LIVE CONTROL-PLANE DOCUMENT MUST BE BYTE-IDENTICAL AFTER THIS TEST. If it is not, an "
             "interrupted run could hand forward a READY status while obligations are open. ***",
         )
-        self.assertEqual(
-            json.loads(self.live_before)["status"], "REMEDIATION_IN_PROGRESS",
-            "and it must say what it said before",
+        # *** THE ASSERTION IS `UNCHANGED`, NOT A LITERAL STATE. ***
+        #
+        # *MEASURED, AND IT COST A RED: my first version pinned the string `REMEDIATION_IN_PROGRESS`, so the moment
+        # the mission LEGITIMATELY reached READY_FOR_EXTERNAL_REAUDIT every other closure control passed and THIS one
+        # reddened -- because it was asserting the status the doc happened to carry when it was written.* **THE
+        # PROPERTY THIS ARM EXISTETH FOR IS THAT THE TEST DID NOT WRITE THE LIVE DOCUMENT**, so the check is
+        # `bytes unchanged` (above) plus `the status is one the contract permits` -- *a literal would refuse the very
+        # transition the mission is for.*
+        status = json.loads(self.live_before)["status"]
+        self.assertIn(
+            status, ("REMEDIATION_IN_PROGRESS", "READY_FOR_EXTERNAL_REAUDIT", "COMPLETE"),
+            "and the live document must carry a status the closure contract names",
         )
 
     def test_a_forced_ready_status_is_refused_while_gaps_remain(self) -> None:
