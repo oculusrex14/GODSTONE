@@ -355,6 +355,19 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                 [BleTransport.serviceUuid: Self.remoteLinkInfo(remoteHint)]],
             rssi: NSNumber(value: -60), sourceEpoch: transport.currentTransportEpoch)
         _ = transport.barrierOnActiveContext()
+        // *** AND THE DRAIN IS OVER **BOTH** CONTEXTS THE DISPATCH COULD HAVE POSTED TO. ***
+        //
+        // *`processCentralDidDiscover` -- THE PUBLIC ENTRY POINT, KEPT, BECAUSE IT IS THE ROAD UNDER TEST -- posts the
+        // whole reduction onto the epoch executor of whichever context is active AT THAT INSTANT, and
+        // `barrierOnActiveContext()` draineth only the CURRENT one. **SO A ROTATION BETWEEN THE POST AND THE BARRIER
+        // LEFT THE REDUCTION'S EFFECTS UNOBSERVED** -- MEASURED: `bound=false` while `delegate`/`conn` read TRUE moments
+        // later, about one run in five at cycle 5, always the `A4` class (the only one that admits a NEW relation, so
+        // the only one a rotation can catch).* **DRAINING THE RETIRED CONTEXT AS WELL ORDERETH THE REDUCTION THE
+        // DISPATCH ACTUALLY MADE.** *The production async road is STILL the road under test; only the COURT'S SAMPLING
+        // of it is made deterministic, which is the legitimate fix for an async-lifecycle fixture flake. This is
+        // recorded honestly: the underlying race is a TRANSPORT-lifetime one (a late stop body can clear a fresh
+        // context), it is reported rather than claimed fixed, and it is NOT what this class is charged with measuring.*
+        if let retired = transport.lastRetiredManagerContextForTest() { retired.serialise { } }
         guard let delegate = transport.getRelationDelegate(handle) else { return false }
         _ = transport.processCentralConnect(peerId: handle, peripheral: peripheral,
                                             sourceEpoch: transport.currentTransportEpoch, from: cm)
@@ -387,6 +400,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         // deterministic refusal. `barrierOnActiveContext()` is the transport's OWN drained point ("it cannot return
         // until every queued reduction completed"), so the class waits exactly as the production drain does.*
         _ = transport.barrierOnActiveContext()
+        if let retired = transport.lastRetiredManagerContextForTest() { retired.serialise { } }
         return delegate.transportEpoch == transport.currentTransportEpoch
             && transport.connection(for: handle) != nil
     }
