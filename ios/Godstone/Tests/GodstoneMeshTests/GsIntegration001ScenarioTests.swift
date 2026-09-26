@@ -235,12 +235,19 @@ final class GsIntegration001ScenarioTests: XCTestCase {
 
         // *** BOTH HOPS MUST REACH THE TRUSTED HOUR BY PRODUCTION'S OWN EVENT. ***
         XCTAssertTrue(
-            r.waitUntil { r.trustedHandles("alice").contains(ar.aHandle)
-                          && r.trustedHandles("relay").contains(ar.bHandle)
-                          && r.trustedHandles("bob").contains(rb.bHandle) },
-            "*** A--R AND R--B MUST BOTH REACH THE TRUSTED HOUR THROUGH THE PRODUCTION PATH (the sealed handshake, "
-                + "whose HS1 the transport issueth itself at the notification-state reduction). Alice ring: "
-                + r.ring("alice") + " | Relay ring: " + r.ring("relay") + " | Bob ring: " + r.ring("bob") + " ***")
+            // *** ONLY THE INITIATOR PUBLISHES APPLICATION LINKREADY ON THIS ISLE. *** *MEASURED BY THE PROBE: after
+            // a completed exchange the INITIATOR's roster moveth and the responder's stays 0 -- production publishes
+            // inside `takeInboundKeyConfirmation`'s RESPONSE branch, and the responder (which only ANSWERS the
+            // challenge) never taketh it. So the wait is on the OPENER of each hop, not on every party.*
+            r.waitUntil { let arOpen = r.opener(of: "alice", "relay") ?? ""
+                          let rbOpen = r.opener(of: "relay", "bob") ?? ""
+                          return r.trustedHandles(arOpen).count > 0 && r.trustedHandles(rbOpen).count > 0 },
+            "*** A--R AND R--B MUST BOTH REACH THE TRUSTED HOUR THROUGH THE PRODUCTION PATH. THE PROBE: fabric "
+                + "writes=\(r.fabric.recordCount()) [0 => HS1 NEVER LEFT THE INITIATOR; >0 => it left and the "
+                + "responder did not answer], aliceRoster=\(r.trustedHandles("alice").count) "
+                + "relayRoster=\(r.trustedHandles("relay").count) bobRoster=\(r.trustedHandles("bob").count), "
+                + "aliceRing=" + r.ring("alice") + " | relayRing=" + r.ring("relay")
+                + " | bobRing=" + r.ring("bob") + " ***")
 
         // ---- THE DIRECT FRAME OVER THE R--B LINK, WITH THE EGRESS WINDOW -----------------------------
         //
