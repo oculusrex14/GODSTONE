@@ -636,11 +636,65 @@ public final class RealTransportHostRig {
                        iHandle: UUID, rHandle: UUID,
                        iPM: CBPeripheralManager, rPM: CBPeripheralManager) {
         let fabric = self.fabric
+        // *** THE CROSSING RUNS ON THE DEDICATED DELIVERY QUEUE, ASYNCHRONOUSLY. ***
+        //
+        // *THE DECLARATION ABOVE SAID "every crossing is `async` there" AND THE FIRST VERSION DELIVERED ON THE
+        // CALLER'S THREAD ANYWAY.* **MEASURED CONSEQUENCE: the two transports' non-reentrant epoch queues nested, A
+        // held its queue waiting for B's while B held its waiting for A's, and the A-R-B arm HUNG with no assertion
+        // and no timeout.** *A real radio cannot do this -- the stack delivers on its own queues, never on the
+        // sender's call stack -- so the delivery is hoisted here, where the comment always claimed it was.*
+        //
+        // *** ONLY SENDABLE VALUES ARE CAPTURED. *** *The node/transport objects are not `Sendable`, so they are
+        // reached through a `@unchecked Sendable` box established ONCE, at wiring time, on the queue's own
+        // context -- which is where every delivery then runs.*
+        let relay = DeliveryRelay(initiator: initiator, responder: responder, link: link,
+                                  iHandle: iHandle, rHandle: rHandle, rPM: rPM,
+                                  fabric: fabric, rig: self)
+        let queue = deliveryQueue
         link.peripheral?.onWrite = { bytes, uuid in
-            fabric.record(from: initiator.label, to: responder.label, bytes: bytes,
+            // *The RECORD is taken synchronously -- the egress gate readeth it the moment the sender returns, and an
+            // asynchronous record would make "the bytes left the node" a claim about a later queue hop rather than
+            // about the send.*
+            fabric.record(from: relay.aLabel, to: relay.bLabel, bytes: bytes,
                           characteristic: uuid == BleTransport.linkInfoCharacteristicUuid ? "linkInfo" : "inbox")
+            queue.async { relay.deliverInitiatorToResponder(bytes: bytes, uuid: uuid) }
+        }
+        responder.factory.lastPeripheralManager?.onUpdate = { bytes, _, uuid in
+            // *The onUpdate closure is called DURING the responder's own send; recording here as well would be a
+            // second record for one write, so the inbound leg records inside the relay only.*
+            queue.async { relay.deliverResponderToInitiator(bytes: bytes, uuid: uuid) }
+        }
+        _ = iPM
+    }
+
+    /// *** THE TWO DELIVERY LEGS, IN ONE `@unchecked Sendable` BOX SO THE QUEUE CLOSURE CAPTURETH ONLY SAFE VALUES. ***
+    ///
+    /// *Everything here runs on `deliveryQueue`, one delivery at a time: the receiving transport's own entry points
+    /// are then never re-entered from a sender's stack, which is what removes the crossed `queue.sync`s.*
+    internal final class DeliveryRelay: @unchecked Sendable {
+        private let initiator: Node
+        private let responder: Node
+        private let link: Link
+        private let iHandle: UUID
+        private let rHandle: UUID
+        private let rPM: CBPeripheralManager
+        private let fabric: RadioFabric
+        private unowned let rig: RealTransportHostRig
+        let aLabel: String
+        let bLabel: String
+
+        init(initiator: Node, responder: Node, link: Link, iHandle: UUID, rHandle: UUID,
+             rPM: CBPeripheralManager, fabric: RadioFabric, rig: RealTransportHostRig) {
+            self.initiator = initiator; self.responder = responder; self.link = link
+            self.iHandle = iHandle; self.rHandle = rHandle; self.rPM = rPM
+            self.fabric = fabric; self.rig = rig
+            self.aLabel = initiator.label; self.bLabel = responder.label
+        }
+
+        /// The initiator's peripheral -> the responder's real peripheral-manager entry.
+        func deliverInitiatorToResponder(bytes: Data, uuid: CBUUID) {
             let isLinkInfo = (uuid == BleTransport.linkInfoCharacteristicUuid)
-            let req = HostRequest(pinnedCentral: self.centralPresent(rHandle),
+            let req = HostRequest(pinnedCentral: rig.centralPresent(rHandle),
                                   uuid: isLinkInfo ? BleTransport.linkInfoCharacteristicUuid
                                                    : BleTransport.inboxCharacteristicUuid,
                                   value: bytes)
@@ -649,10 +703,12 @@ public final class RealTransportHostRig {
                 sourceEpoch: responder.ble.currentTransportEpoch)
             if !isLinkInfo {
                 responder.ble.processPeripheralIsReadyToUpdateSubscribers(
-                rPM, sourceEpoch: responder.ble.currentTransportEpoch)
+                    rPM, sourceEpoch: responder.ble.currentTransportEpoch)
             }
         }
-        responder.factory.lastPeripheralManager?.onUpdate = { bytes, _, uuid in
+
+        /// The responder's manager -> the initiator's real peripheral entry.
+        func deliverResponderToInitiator(bytes: Data, uuid: CBUUID) {
             guard let iDelegate = initiator.ble.getRelationDelegate(iHandle) else { return }
             fabric.record(from: responder.label, to: initiator.label, bytes: bytes,
                           characteristic: uuid == BleTransport.linkInfoCharacteristicUuid ? "linkInfo" : "inbox")
@@ -666,7 +722,6 @@ public final class RealTransportHostRig {
             initiator.ble.processPeripheralIsReady(unsafeBitCast(link.peripheral, to: CBPeripheral.self),
                                                    delegate: iDelegate)
         }
-        _ = iPM
     }
 
     /// The pinned central for a handle: **ONE object per identifier**, so the transport's retained-central identity

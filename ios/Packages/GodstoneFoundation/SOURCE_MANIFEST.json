@@ -77,7 +77,7 @@
     "Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift": "1ac39a7995720bea6adf830eea131446f06474b7017bfc8278b910f34c3c804e",
     "Sources/GodstoneMesh/Priority.swift": "c6d739221a893c0551ca4228c30d5d8e82c39179fa559614fcd18d9f81690048",
     "Sources/GodstoneMesh/PrivateStoreKeyProvider.swift": "a54485c2a24255b7df3abddf45fac2eba92836fa7535f8575a42ce7c8a54a46f",
-    "Sources/GodstoneMesh/RealTransportHostRig.swift": "696e143c78b8a95fa626f413abb2b0b6ead847ea27ea7ec36cdf25aae43e6aac",
+    "Sources/GodstoneMesh/RealTransportHostRig.swift": "16369d9e95555a86f778167aafe4d5daa60c69e6d33949e93fcbe69f245a1ffd",
     "Sources/GodstoneMesh/RecipientInboxRepository.swift": "6b7077a32181ee7d1806e381991f8216ff66a253ad85bd009e836fae6564bf52",
     "Sources/GodstoneMesh/RecordWriter.swift": "74d960c964f582b26616a6ef1d3eb35af38bf3640d525b9d7c82bdaa529d3c0c",
     "Sources/GodstoneMesh/ReplayWindow.swift": "9214c6d8fd1b6b8185a28ee197bdf693b6dfabd574867219c9a05511a406fc4c",
