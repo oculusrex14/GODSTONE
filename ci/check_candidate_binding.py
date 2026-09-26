@@ -110,8 +110,66 @@ def _repository() -> str:
     return m.group(1) if m else "oculusrex14/GODSTONE"
 
 
+def _run_facts(run_id: str, *, api=None) -> dict | None:
+    """*** THE RUN'S OWN FACTS -- CONCLUSION, WORKFLOW, EVENT, STATUS, JOBS, ATTEMPT. ***
+
+    *`head_sha` alone cannot tell a SUCCESSFUL run of the right workflow from a failed run of a different one, and it
+    cannot tell a green run from one whose jobs were SKIPPED.* **So the freeze requireth the whole shape: the workflow
+    is `repository-verification`, the event is `push`, the status is `completed`, the conclusion is `success`, all six
+    jobs succeeded, and the attempt number is the one the record pins.** *The job list is checked too because a
+    conclusion of `success` with a SKIPPED job is the shape a partial run wears -- and four jobs succeeding out of six
+    is not the six-job authority the freeze claims.*
+    """
+    fetch = api or _gh_api
+    try:
+        run = fetch(f"repos/{_repository()}/actions/runs/{run_id}")
+        jobs = fetch(f"repos/{_repository()}/actions/runs/{run_id}/jobs?per_page=100")
+    except Exception:  # noqa: BLE001 - an unreadable run must not crash the validator
+        return None
+    if run is None or jobs is None:
+        return None
+    job_rows = jobs.get("jobs") or []
+    return {
+        "head_sha": run.get("head_sha"),
+        "conclusion": run.get("conclusion"),
+        "status": run.get("status"),
+        "event": run.get("event"),
+        "workflow": (run.get("name") or (run.get("workflow") or {}).get("name")),
+        "run_attempt": run.get("run_attempt"),
+        "jobs": [{"name": j.get("name"), "conclusion": j.get("conclusion")} for j in job_rows],
+    }
+
+
+def _gh_api(path: str) -> dict | None:
+    try:
+        proc = subprocess.run(["gh", "api", path], capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    try:
+        return json.loads(proc.stdout)
+    except ValueError:
+        return None
+
+
+def _tree_delta(peeled: str, *, allow: tuple[str, ...] = ()) -> list[str]:
+    """*** TRACKED PATHS THAT CHANGED BETWEEN THE CANDIDATE AND HEAD, MINUS THE ALLOWLIST. ***
+
+    *A post-tag edit outside `docs/remediation/evidence/` invalidateth the candidate: the attestation describeth a tree
+    that no longer standeth.* **THE ALLOWLIST IS NOT A LOOPHOLE -- IT NAMES THE ONE PATH A FREEZE MAY STILL WRITE
+    (the attestation itself), and everything else is refused BY NAME so a reader seeth which path moved.**
+    """
+    proc = _git("diff", "--name-only", f"{peeled}..HEAD")
+    if proc.returncode != 0:
+        return []
+    changed = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+    return [p for p in changed if not any(p.startswith(a) for a in allow)]
+
+
 def binding_problems(record: dict, *, workdir_record: str | None = None,
-                     freeze: bool = False, run_head: callable = None) -> list[str]:
+                     freeze: bool = False, run_head: callable = None,
+                     run_facts: callable = None, tree_delta: callable = None) -> list[str]:
     """*** THE BINDING CHECKS, PURE ENOUGH TO MUTATE. ***
 
     *Each check nameth the thing it refuses, because "the binding is wrong" would not tell a reader WHICH of six
@@ -197,7 +255,7 @@ def binding_problems(record: dict, *, workdir_record: str | None = None,
                         f"saith {tag_ref!r} -- the closure document has been edited since the candidate was frozen, "
                         f"so it describes a tree the candidate never had")
 
-    # (6) THE CITED HOSTED RUN MUST BE THE CANDIDATE'S OWN RUN.
+    # (6) THE CITED HOSTED RUN MUST BE THE CANDIDATE'S OWN RUN -- AND IT MUST BE THE WHOLE GREEN SHAPE.
     if freeze:
         rv = record.get("repository_verification") or {}
         run_id = str(rv.get("run_id") or "").strip()
@@ -205,13 +263,81 @@ def binding_problems(record: dict, *, workdir_record: str | None = None,
             problems.append("no `repository_verification.run_id` is cited -- a freeze claim must name the canonical "
                             "hosted run that exercised the candidate")
         else:
-            sha = (run_head or _run_head_sha)(run_id)
-            if sha is None:
-                problems.append(f"hosted run {run_id} could NOT be read -- a freeze may not cite a run it cannot "
-                                f"verify, because an unread run is indistinguishable from a wrong one")
-            elif peeled and sha != peeled:
-                problems.append(f"hosted run {run_id} reports head_sha {sha} but the candidate {tag!r} peels to "
-                                f"{peeled} -- A GREEN RUN FROM ANOTHER SHA CANNOT BE BORROWED")
+            facts = None
+            if run_facts is not None:
+                facts = run_facts(run_id)
+            else:
+                facts = _run_facts(run_id)
+            if facts is None:
+                # *** A RUN THAT CANNOT BE READ IS REFUSED, NOT SKIPPED. *** *The head_sha road below is kept as a
+                # fallback so the older `run_head` injection still works, but a freeze that cannot read the run's
+                # SHAPE may not claim the six-job authority.*
+                sha = (run_head or _run_head_sha)(run_id)
+                if sha is None:
+                    problems.append(f"hosted run {run_id} could NOT be read -- a freeze may not cite a run it cannot "
+                                    f"verify, because an unread run is indistinguishable from a wrong one")
+                elif peeled and sha != peeled:
+                    problems.append(f"hosted run {run_id} reports head_sha {sha} but the candidate {tag!r} peels to "
+                                    f"{peeled} -- A GREEN RUN FROM ANOTHER SHA CANNOT BE BORROWED")
+            else:
+                sha = facts.get("head_sha")
+                if peeled and sha != peeled:
+                    problems.append(f"hosted run {run_id} reports head_sha {sha} but the candidate {tag!r} peels to "
+                                    f"{peeled} -- A GREEN RUN FROM ANOTHER SHA CANNOT BE BORROWED")
+                # *** THE CONCLUSION, WORKFLOW, EVENT AND STATUS, EACH BY NAME. ***
+                if facts.get("conclusion") != "success":
+                    problems.append(f"hosted run {run_id} concluded {facts.get('conclusion')!r}, not 'success' -- "
+                                    f"a freeze binds a GREEN run")
+                if facts.get("workflow") != "repository-verification":
+                    problems.append(f"hosted run {run_id} belongeth to workflow {facts.get('workflow')!r}, not "
+                                    f"'repository-verification' -- the binding names WHICH workflow must be green")
+                if facts.get("event") != "push":
+                    problems.append(f"hosted run {run_id} was triggered by {facts.get('event')!r}, not 'push' -- a "
+                                    f"candidate freeze binds the push that carried the candidate")
+                if facts.get("status") != "completed":
+                    problems.append(f"hosted run {run_id} carrieth status {facts.get('status')!r}, not 'completed' -- "
+                                    f"a run still in progress cannot be a frozen result")
+                # *** AND ALL SIX JOBS MUST HAVE SUCCEEDED: `success` WITH A SKIPPED JOB IS A PARTIAL RUN. ***
+                jobs = facts.get("jobs") or []
+                if len(jobs) != 6:
+                    problems.append(f"hosted run {run_id} carrieth {len(jobs)} job(s), not the six-job authority "
+                                    f"the closure claims -- a shrunken job set proves less than the one named")
+                bad_jobs = [f"{j.get('name')}={j.get('conclusion')!r}" for j in jobs
+                            if j.get("conclusion") != "success"]
+                if bad_jobs:
+                    problems.append(f"hosted run {run_id} carrieth non-successful job(s): {', '.join(bad_jobs)} -- "
+                                    f"ALL SIX must be success, or the run is not the authority it is cited as")
+                # *** THE ATTEMPT NUMBER, WHEN THE RECORD PINS ONE. *** *A re-run of the same run id carrieth a new
+                # attempt; a record that pinned attempt 1 may not be satisfied by attempt 2's transient red.*
+                pinned_attempt = rv.get("run_attempt")
+                if pinned_attempt is not None and facts.get("run_attempt") != pinned_attempt:
+                    problems.append(f"hosted run {run_id} is at attempt {facts.get('run_attempt')!r} but the record "
+                                    f"pins attempt {pinned_attempt!r} -- an unpinned re-run is a different result")
+
+        # (8) *** NO POST-TAG TRACKED EDIT OUTSIDE THE ALLOWLIST. ***
+        #
+        # *THE ATTESTATION IS WRITTEN AFTER THE TAG, so a freeze must tolerate exactly that path.* **EVERYTHING ELSE
+        # IS REFUSED BY NAME: a candidate whose tree has moved since it was tagged is not the tree the green run
+        # exercised.**
+        if peeled and freeze:
+            allow = tuple(record.get("post_tag_allowlist") or ("docs/remediation/evidence/",))
+            delta = (tree_delta or (lambda p: _tree_delta(p, allow=allow)))(peeled)
+            if delta:
+                problems.append(f"the tree has moved since candidate {tag!r} was tagged: {', '.join(delta[:6])}"
+                                f"{'...' if len(delta) > 6 else ''} -- a candidate whose tree changed after the tag "
+                                f"is not the tree the hosted run exercised (only {list(allow)} may move)")
+
+        # (9) *** `candidate_tree_sha` MUST BE STATED AND EQUAL THE DERIVED TREE. ***
+        #
+        # *An unstaked tree is an unfalsifiable binding: the record would name a tag whose tree nobody stated.*
+        if peeled:
+            actual = _tree_sha(peeled)
+            if not record.get("candidate_tree_sha"):
+                problems.append("the record states NO `candidate_tree_sha` -- a candidate binding must name the tree "
+                                "it froze, or a reader cannot tell which bytes the run exercised")
+            elif actual != record.get("candidate_tree_sha"):
+                problems.append(f"candidate_tree_sha asserteth {record.get('candidate_tree_sha')} but {tag!r}'s "
+                                f"commit carrieth tree {actual}")
 
     # (7) THE RECORD MUST NOT PRESENT A SUPERSEDED CANDIDATE AS ITS OWN.
     superseded_by = record.get("candidate_superseded_by")
@@ -307,7 +433,7 @@ def selftest() -> int:
            "CANNOT BE BORROWED", "a hosted run whose head_sha is a different commit is refused")
 
     # 9. A RUN THAT CANNOT BE READ.
-    expect(binding_problems(real, freeze=True, run_head=lambda _r: None),
+    expect(binding_problems(real, freeze=True, run_facts=lambda _r: None, run_head=lambda _r: None),
            "could NOT be read", "an unreadable cited run is refused rather than assumed green")
 
     # 10. THE POSITIVE CASE -- *a guard that refuseth the correct binding is not a guard.*
@@ -315,15 +441,23 @@ def selftest() -> int:
     #
     # *rc6's committed record names rc5, so rc6 CANNOT be the positive case -- and that is not a flaw in the test, it
     # is THE DEFECT THE VALIDATOR WAS BUILT TO CATCH, caught live. So the positive case is exercised against a
-    # synthetic record written as the freeze commit would write it: the ref it names, and the copy at that ref agreeing
-    # with it.*
-    # *The at-tag copy is patched to agree, so every OTHER check (annotated, peel, tree, run head) still runs against
-    # the REAL rc6 tag -- only the one condition under test is satisfied.*
+    # synthetic record written as the freeze commit would write it: the ref it names, the copy at that ref agreeing
+    # with it, the tree stated, no post-tag delta, and the six-job green run.*
+    # *The at-tag copy is patched to agree, so every OTHER check (annotation, peel, tree, run facts) still runs against
+    # the REAL rc6 tag -- only the conditions under test are satisfied.*
     real_file_at = _file_at
     globals()["_file_at"] = lambda rev, rel: json.dumps({"candidate_ref": tag})
+    green_facts = {
+        "head_sha": peeled, "conclusion": "success", "status": "completed", "event": "push",
+        "workflow": "repository-verification", "run_attempt": 1,
+        "jobs": [{"name": f"job{i}", "conclusion": "success"} for i in range(6)],
+    }
     try:
-        ok = binding_problems({"candidate_ref": tag, "repository_verification": {"run_id": "1"}},
-                              workdir_record="{}", freeze=True, run_head=lambda _r: peeled)
+        ok = binding_problems(
+            {"candidate_ref": tag, "candidate_tree_sha": tree,
+             "repository_verification": {"run_id": "1", "run_attempt": 1}},
+            workdir_record="{}", freeze=True,
+            run_facts=lambda _r: green_facts, tree_delta=lambda _p: [])
     finally:
         globals()["_file_at"] = real_file_at
     if ok:
@@ -332,7 +466,52 @@ def selftest() -> int:
     else:
         print("   PASS: the real record's own binding is accepted")
 
-    print(f"\ncandidate binding selftest: {10 - failures}/10 mutations killed")
+    # 11. *** A BORROWED RUN: THE HEAD SHA BELONGS TO ANOTHER COMMIT. ***
+    run_facts_fake = lambda _r: {**green_facts, "head_sha": "f" * 40}
+    expect(binding_problems({"candidate_ref": tag, "candidate_tree_sha": tree,
+                             "repository_verification": {"run_id": "1"}},
+                            workdir_record="{}", freeze=True,
+                            run_facts=run_facts_fake, tree_delta=lambda _p: []),
+           "CANNOT BE BORROWED", "a run whose head_sha is another commit is refused")
+
+    # 12. *** A SKIPPED JOB: `success` WITH A JOB NOT SUCCESSFUL IS A PARTIAL RUN. ***
+    skipped = lambda _r: {**green_facts, "jobs": [{"name": f"job{i}", "conclusion": "success"} for i in range(5)]
+                          + [{"name": "job5", "conclusion": "skipped"}]}
+    expect(binding_problems({"candidate_ref": tag, "candidate_tree_sha": tree,
+                             "repository_verification": {"run_id": "1"}},
+                            workdir_record="{}", freeze=True,
+                            run_facts=skipped, tree_delta=lambda _p: []),
+           "non-successful job", "a run with a skipped job is refused")
+
+    # 13. *** A POST-TAG EDIT OUTSIDE THE ALLOWLIST. ***
+    expect(binding_problems({"candidate_ref": tag, "candidate_tree_sha": tree,
+                             "repository_verification": {"run_id": "1"}},
+                            workdir_record="{}", freeze=True,
+                            run_facts=lambda _r: green_facts,
+                            tree_delta=lambda _p: ["ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"]),
+           "has moved since candidate", "a post-tag edit outside the allowlist is refused")
+
+    # 14. *** A LIGHTWEIGHT TAG: no tag object, so it can be re-pointed without trace. ***
+    light = "refs/tags/production-readiness-board1-rc6"
+    real_tag_object = _tag_object
+    globals()["_tag_object"] = lambda t: _tag_peel(t)   # simulate a lightweight tag: object == peel
+    try:
+        expect(binding_problems({**real, "candidate_ref": tag}, workdir_record=None),
+               "LIGHTWEIGHT", "a lightweight candidate tag is refused")
+    finally:
+        globals()["_tag_object"] = real_tag_object
+
+    # 15. *** AN UNSTATED candidate_tree_sha AT FREEZE. ***
+    globals()["_file_at"] = lambda rev, rel: json.dumps({"candidate_ref": tag})
+    try:
+        expect(binding_problems({"candidate_ref": tag, "repository_verification": {"run_id": "1"}},
+                                workdir_record="{}", freeze=True,
+                                run_facts=lambda _r: green_facts, tree_delta=lambda _p: []),
+               "states NO `candidate_tree_sha`", "an unstated candidate tree is refused")
+    finally:
+        globals()["_file_at"] = real_file_at
+
+    print(f"\ncandidate binding selftest: {15 - failures}/15 mutations killed")
     return 1 if failures else 0
 
 
@@ -341,14 +520,29 @@ def main(argv=None) -> int:
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--freeze", action="store_true",
                     help="also check the cited hosted run and its head_sha (needs network)")
+    ap.add_argument("--run-id", default=None,
+                    help="the hosted run to bind; CLI OVERRIDES the committed record's run_id, so the attestation "
+                         "may be written against a run the frozen record does not yet carry")
+    ap.add_argument("--attempt", type=int, default=None,
+                    help="pin the run ATTEMPT (a re-run of the same id is a different result)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
     if args.selftest:
         return selftest()
 
-    problems = audit(freeze=args.freeze)
     record = json.loads(CLOSURE.read_text(encoding="utf-8"))
+    if args.run_id:
+        # *** THE CLI OVERRIDES THE COMMITTED NULL, WHICH IS THE NON-CIRCULAR FREEZE'S OWN SHAPE. ***
+        # *The candidate commit carrieth `run_id: null` (it cannot name a run that has not happened), and the freeze
+        # supplies the run the push produced.*
+        rv = dict(record.get("repository_verification") or {})
+        rv["run_id"] = args.run_id
+        if args.attempt is not None:
+            rv["run_attempt"] = args.attempt
+        record = {**record, "repository_verification": rv}
+    problems = binding_problems(record, workdir_record=CLOSURE.read_text(encoding="utf-8"),
+                                freeze=args.freeze)
     if args.json:
         print(json.dumps({"problems": problems, "candidate_ref": record.get("candidate_ref")}, indent=1))
         return 1 if problems else 0

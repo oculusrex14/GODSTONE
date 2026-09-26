@@ -1367,6 +1367,18 @@ def build_parser():
                             help='hash-verify an evidence manifest')
     p_eval.add_argument('--profile', required=True)
     p_eval.add_argument('--manifest', required=True)
+    # *** BOARD 1: THE ONE REPOSITORY-OWNED ROAD TO verify/freeze. ***
+    #
+    # *The ordered gate set and the non-circular freeze sequence live in `tools/readiness/board1.py` rather than in a
+    # document, so a reader CANNOT run a subset and mistake it for the whole.* **This subcommand is the single obvious
+    # path, and it delegates every decision to that module rather than re-implementing one here.**
+    p_board1 = sub.add_parser('board1', help='Board 1: run the internal gate set (verify) or write the freeze attestation (freeze)')
+    p_board1.add_argument('board1_command', choices=('verify', 'freeze'))
+    p_board1.add_argument('--only', action='append', default=None,
+                          help='verify: run only this gate (repeatable)')
+    p_board1.add_argument('--run-id', default=None, help='freeze: the hosted run to bind')
+    p_board1.add_argument('--tag', default=None, help='freeze: the annotated candidate tag')
+    p_board1.add_argument('--attest-out', default=None, help='freeze: where to write the attestation')
     return parser
 
 
@@ -1436,6 +1448,22 @@ def main(argv=None):
             for problem in problems:
                 print(f'INVALID: {problem}', file=sys.stderr)
             return EXIT_FAILED if problems else EXIT_OK
+        if args.command == 'board1':
+            # *** BOARD 1 DELEGATES TO ITS OWN MODULE, WHICH IS IMPORTABLE AND RE-RUNNABLE. ***
+            #
+            # *`verify` printeth ONE verdict over the ordered gate set; `freeze` writeth the attestation.* **Every
+            # decision (the set, the order, the refusal conditions) lives in `board1.py`, so a second caller -- a
+            # court, a workflow -- can run the SAME road rather than a copy of it.**
+            import board1 as _board1  # noqa: PLC0415 - the runner's own directory
+            import pathlib as _pathlib  # noqa: PLC0415
+            if args.board1_command == 'verify':
+                return EXIT_OK if _board1.verify(only=args.only) == 0 else EXIT_FAILED
+            for required in ('run_id', 'tag', 'attest_out'):
+                if not getattr(args, required):
+                    print(f'ERROR: board1 freeze needs --{required.replace("_", "-")}', file=sys.stderr)
+                    return EXIT_USAGE
+            rc = _board1.freeze(args.run_id, args.tag, _pathlib.Path(args.attest_out))
+            return EXIT_OK if rc == 0 else EXIT_FAILED
     except CommandError as exc:
         print(f'ERROR: {exc}', file=sys.stderr)
         return EXIT_USAGE
