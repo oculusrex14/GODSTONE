@@ -336,9 +336,27 @@ private struct ArchiveBrowser: View {
                 // the standard iOS moment: the place is written before the app may be suspended and killed
                 if phase != .active { persistScenePlace() }
             }
+            // *** THE SCENE'S IN-FLIGHT PETITION IS **NOT** STRUCK DOWN HERE. ***
+            //
+            // *THIS CALL WAS THE HOSTED ARM'S DEFECT, REPRODUCED IN A MODEL PROBE: `scene.dismiss()` rotateth the
+            // shared scene's generation, and a POP fires `onDisappear` at the same moment the popping control's
+            // `scene.back()` launches the RESTORED RETURN ROUTE'S re-run. IF THE DISMISSAL LANDED WHILE THAT SEARCH
+            // WAS IN FLIGHT, THE GENERATION MOVED UNDER IT AND IT PUBLISHED NOTHING -- so the reader landed on the
+            // document list with the submitted query discarded, which is exactly
+            // `testGSFINAL006TheWholeJourneyInOneRun`'s red.** *MEASURED with a slow-reader probe: `back()` alone
+            // gave `mode=search passages=2`; `back()` then `dismiss()` after one yield gave `mode=search
+            // passages=0 phase=loading` -- the race, deterministic given the interleaving.*
+            //
+            // **WHY THIS CALL MUST GO, STATED AS THE INVARIANT IT WAS REACHING FOR: the in-flight petition it meaneth
+            // to strike down BELONGETH TO THE PUSHED READER, and that view already striketh down its OWN petition in
+            // ITS OWN `onDisappear` (`model.cancelInFlight()`, `ArchiveDocumentReader`). THE SCENE IS THE
+            // COMPOSITION'S OWN OBJECT -- `AppContainer` buildeth it once and every view observeth it -- so a road
+            // that cancelleth THE SCENE'S roads is cancelling the ROOT'S work from a leaf, and the leaf's job is
+            // already done by the leaf.***
+            //
+            // *THE PLACE IS STILL WRITTEN, which is what this handler was ALSO for, and that half is untouched.*
             .onDisappear {
                 persistScenePlace()
-                scene.dismiss()   // dismissal striketh out the in-flight petition
             }
             .navigationDestination(for: ArchiveDocument.self) { document in
                 // *** THE READER IS HANDED THE ONE ROUTE AUTHORITY'S POP, NOT A SECOND ROAD TO THE SCENE. ***
