@@ -108,13 +108,23 @@ class TheLawStillRefuses(unittest.TestCase):
     this process dies the scratch tree dies with it.
     """
 
-    def _run_gate_against_scratch(self, mutate) -> subprocess.CompletedProcess:
+    def _run_gate_against_scratch(self, mutate, *, inject_open_obligation_into_gate: bool = False) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as tmp:
             scratch = Path(tmp) / "repo"
             (scratch / "scripts").mkdir(parents=True)
             (scratch / "docs" / "production-readiness").mkdir(parents=True)
             (scratch / "docs" / "remediation").mkdir(parents=True)
             shutil.copy2(GATE, scratch / "scripts" / GATE.name)
+            if inject_open_obligation_into_gate:
+                # *** THE OBLIGATION IS AUTHORED IN THE GATE'S OWN SOURCE, WHERE OBLIGATIONS LIVE. ***
+                gt = scratch / "scripts" / GATE.name
+                text = gt.read_text(encoding="utf-8")
+                anchor = '"GS-FINAL-003": ['
+                assert anchor in text, "the gate source carries no GS-FINAL-003 list to insert into"
+                text = text.replace(
+                    anchor, anchor + '\n        {"id": "law-refuses.inserted-open", "text": "an inserted open '
+                    'obligation", "status": "OPEN", "evidence": []},', 1)
+                gt.write_text(text, encoding="utf-8")
             shutil.copy2(CLOSURE, scratch / "docs" / "production-readiness" / CLOSURE.name)
             shutil.copy2(self.mod.LEDGER, scratch / "docs" / "remediation" / Path(self.mod.LEDGER).name)
             # THE MUTATION HAPPENS ON THE COPY. The live document is untouched even if this raises.
@@ -154,23 +164,26 @@ class TheLawStillRefuses(unittest.TestCase):
         )
 
     def test_a_forced_ready_status_is_refused_while_gaps_remain(self) -> None:
-        ledger = json.loads(self.mod.LEDGER.read_text(encoding="utf-8"))
-        closure = self.mod.build(ledger)
-        open_obligations = sum(
-            1 for f in closure.values()
-            if isinstance(f, dict) and f.get("internal_status") == "OPEN"
-            for o in (f.get("internal_obligations") or []) if o.get("status") == "OPEN"
-        )
-        if open_obligations == 0:
-            self.skipTest("no open obligations remain, so there is nothing for the law to refuse over")
+        """*** THE LAW IS EXERCISED ON WORK THE ARM AUTHORS, SO IT KEEPETH BITING AFTER EVERY REAL DISCHARGE. ***
 
+        *MY FIRST VERSION SKIPPED when the live ledger carried no open obligations -- and the hosted invariants job
+        RIGHTLY REFUSED THE LANE for exceeding its 30-skip ceiling ("a control that should execute did not").* **A
+        guard that stops testing the moment the work is done is a guard that disappears exactly when it is next
+        needed.**
+
+        *** AND THE OBLIGATION MUST BE AUTHORED IN THE GATE'S OWN SOURCE, NOT THE LEDGER: the gate DERIVES the
+        obligation set from `PARTIAL_OBLIGATIONS`, so injecting one into the persisted ledger maketh it an ORPHAN and
+        the refusal cometh on the DRIFT ground rather than on the readiness law.*** *So the scratch GATE carries one
+        extra OPEN obligation (the same shape `test_closure_state_mutations.py` useth), and the refusal is required
+        to be the readiness law's own words.*
+        """
         proc = self._run_gate_against_scratch(
-            lambda d: d.update(status="READY_FOR_EXTERNAL_REAUDIT"))
+            lambda d: d.update(status="READY_FOR_EXTERNAL_REAUDIT"),
+            inject_open_obligation_into_gate=True)
         self.assertEqual(
             proc.returncode, 1,
-            "*** THE LAW MUST STILL REFUSE. If forcing READY now exits 0 while "
-            f"{open_obligations} internal obligation(s) are still OPEN, the gate has been neutered by the very "
-            "discharges it was supposed to audit -- and that is the batch that was wrong. ***",
+            "*** THE LAW MUST STILL REFUSE. If forcing READY now exits 0 over an AUTHORED open obligation, the gate "
+            f"has been neutered by the very discharges it was supposed to audit. stdout: {proc.stdout[-500:]} ***",
         )
         self.assertIn("MAY NOT", proc.stdout, "and the refusal must SAY WHY, naming the open work")
 
