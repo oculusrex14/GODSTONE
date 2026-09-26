@@ -248,9 +248,15 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         // unless the local hint is strictly ASCENDANT, so only ONE of the two may open the exchange -- and only the
         // OPENER carrieth the outbound relation, which is the only road `ble.send` can travel. The rig DERIVES it, so
         // the arm asks rather than assumes. ***
-        let sender = try XCTUnwrap(r.opener(of: "relay", "bob"),
-                                   "the rig must name the opener of the relay--bob exchange")
-        let receiver = try XCTUnwrap(r.peer(of: "relay", "bob"), "and its peer")
+        // *** THE HONEST DIRECTION: THE RESPONDER SENDS TO THE INITIATOR, BECAUSE THE INITIATOR IS THE SIDE THAT
+        // CAN DELIVER LOCALLY. *** *Only the initiator issues the key-confirmation challenge, so only the initiator
+        // receives the echo and populates `capturedPeers`; the responder-side delivery would take the handle-only
+        // overload whose `receivedFrom: Data()` the inbox refuseth at gate 0 -- BEFORE its first counter bump, which
+        // is the all-zero census this arm first measured.*
+        let dir = try XCTUnwrap(r.deliverableDirection("relay", "bob"),
+                                "the rig must name a direction that can deliver locally")
+        let sender = dir.sender
+        let receiver = dir.receiver
         let body = Data("the a-r-b arm's own body".utf8)
         let sent = try awaitRig { try await r.sendDirect(from: sender, to: receiver, plaintext: body) }
         XCTAssertGreaterThan(
@@ -316,12 +322,17 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         try r.makeNode(label: "bob", seedByte: 0x31, staticPrivByte: 0x32)
         let link = try r.link("alice", "bob")
 
-        XCTAssertTrue(r.waitUntil { r.trustedHandles("alice").contains(link.aHandle) },
-                      "the relation must be trusted before the frame is offered; ring: " + r.ring("alice"))
+        let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
+        XCTAssertTrue(
+            r.waitUntil { r.trustedHandles(initiator).contains(r.linkHandle(initiator,
+                                                                             r.peer(of: "alice", "bob")!)) },
+            "*** THE INITIATOR'S OWN APPLICATION-LINKREADY ROSTER MUST CONTAIN THE RELATION, because that roster is
+                what maketh the peer route-eligible for `dispatchDirect`. Ring: " + r.ring(initiator) + " ***")
 
-        let sender = try XCTUnwrap(r.opener(of: "alice", "bob"),
-                                   "the rig must name the opener of the alice--bob exchange")
-        let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
+        let dir = try XCTUnwrap(r.deliverableDirection("alice", "bob"),
+                                "the rig must name a direction that can deliver locally")
+        let sender = dir.sender
+        let receiver = dir.receiver
         let sent = try awaitRig { try await r.sendDirect(from: sender, to: receiver,
                                                          plaintext: Data("d-route".utf8)) }
         XCTAssertTrue(
@@ -368,13 +379,18 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         let alice = try r.makeNode(label: "alice", seedByte: 0x51, staticPrivByte: 0x52)
         let bob = try r.makeNode(label: "bob", seedByte: 0x61, staticPrivByte: 0x62)
         _ = try r.link("alice", "bob")
-        XCTAssertTrue(r.waitUntil { r.trustedHandles("alice").contains(r.linkHandle("alice", "bob")!) },
-                      "the relation must stand trusted; ring: " + r.ring("alice"))
+        let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
+        XCTAssertTrue(
+            r.waitUntil { r.trustedHandles(initiator).contains(r.linkHandle(initiator,
+                                                                             r.peer(of: "alice", "bob")!)) },
+            "*** THE INITIATOR'S OWN APPLICATION-LINKREADY ROSTER MUST CONTAIN THE RELATION. Ring: "
+                + r.ring(initiator) + " ***")
 
         // ---- (1) A FIRST FRAME COMMITS, SO THE ESTATE HAS SOMETHING TO PROVE AFTERWARDS ----------------
-        let sender = try XCTUnwrap(r.opener(of: "alice", "bob"),
-                                   "the rig must name the opener of the alice--bob exchange")
-        let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
+        let dir = try XCTUnwrap(r.deliverableDirection("alice", "bob"),
+                                "the rig must name a direction that can deliver locally")
+        let sender = dir.sender
+        let receiver = dir.receiver
         let first = try awaitRig { try await r.sendDirect(from: sender, to: receiver,
                                                           plaintext: Data("before the gate".utf8)) }
         XCTAssertTrue(r.waitUntil { r.messageStore(receiver).allHeldMsgIds().contains(first.frame.msgId) },

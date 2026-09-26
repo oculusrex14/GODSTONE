@@ -316,6 +316,8 @@ public final class RealTransportHostRig {
         public let aHandle: UUID
         /// The handle `b` names `a` by (its inbound central).
         public let bHandle: UUID
+        /// Whether `a` opened the exchange (the production hint election's answer).
+        public let aOpened: Bool
         internal var peripheral: HostPeripheral?
     }
 
@@ -545,7 +547,8 @@ public final class RealTransportHostRig {
         let rHandle = UUID()   // the responder's inbound central handle
         var link = Link(a: aLabel, b: bLabel,
                         aHandle: aAscendant ? iHandle : rHandle,
-                        bHandle: aAscendant ? rHandle : iHandle)
+                        bHandle: aAscendant ? rHandle : iHandle,
+                        aOpened: aAscendant)
         let iPM = initiator.ble.requireContextPeripheralForTest()
         let rPM = responder.ble.requireContextPeripheralForTest()
 
@@ -923,11 +926,18 @@ public final class RealTransportHostRig {
         return egressByLabel[label]?[msgId] ?? 0
     }
 
+    /// *** THE HANDLE `a` NAMETH `b` BY -- WHICH IS ALWAYS `link.aHandle`, BY CONSTRUCTION. ***
+    ///
+    /// *`aHandle` is defined as exactly that: the INITIATOR's outbound peripheral handle when `a` opened, and the
+    /// RESPONDER's inbound central handle when `a` did not. **THE RESPONDER CAN SEND TOO** -- `reductionSendClear`
+    /// resolveth `outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]` and pumps through
+    /// `updateValue` when `connection.localRole != .initiator`, which is how HS2 and the key-confirmation echo
+    /// travel -- so both directions are legitimate and each side uses its OWN handle.*
+    ///
+    /// **MEASURED: A FIRST VERSION RETURNED `b`'s HANDLE FOR A RESPONDER-SENDER**, which made every responder-side
+    /// send name a handle it did not hold.*
     internal func handle(between a: String, and b: String) -> UUID? {
-        // *Whichever side opened the exchange owns the OUTBOUND handle -- so the send road is the opener's.*
-        guard let link = links.first(where: { $0.a == a && $0.b == b }) else { return nil }
-        guard let aOpens = opens(a, b) else { return nil }
-        return aOpens ? link.aHandle : link.bHandle
+        return links.first(where: { $0.a == a && $0.b == b })?.aHandle
     }
 
     /// *** WHICH SIDE OPENED THE EXCHANGE (the production hint election), AND WHO IS ITS PEER. ***
@@ -941,6 +951,22 @@ public final class RealTransportHostRig {
     internal func peer(of a: String, _ b: String) -> String? {
         guard let o = opener(of: a, b) else { return nil }
         return o == a ? b : a
+    }
+
+    /// *** THE DIRECTION THAT CAN LOCALLY DELIVER, AND WHY IT IS NOT ARBITRARY. ***
+    ///
+    /// *The recipient inbox is reached from the transport's RECEIVED road, and that road passeth the authenticated
+    /// sender's node id ONLY when `capturedPeers[handle]` standeth -- populated by `captureTrustedPeerLocked`, called
+    /// from `publishApplicationLinkReadyOnce`, reached (on this isle) **only from `takeInboundKeyConfirmation`'s
+    /// RESPONSE branch.** *The initiator issueth the challenge and therefore receiveth the echo and captures; **the
+    /// responder answereth the challenge and captures NOTHING** (its HS3 handler marks trusted-ready and publishes
+    /// no Application LinkReady).* **SO THE SIDE THAT CAN DELIVER LOCALLY IS THE INITIATOR, AND THE HONEST ARM SENDS
+    /// FROM THE RESPONDER TO IT.** *The alternative -- delivering to the responder -- takes the handle-only overload
+    /// with `receivedFrom: Data()`, which the inbox refuseth at gate 0 (`receivedFrom.count == 16`) BEFORE its first
+    /// counter bump; **that is exactly the all-zero census this rig first measured.***
+    internal func deliverableDirection(_ a: String, _ b: String) -> (sender: String, receiver: String)? {
+        guard let o = opener(of: a, b) else { return nil }
+        return (sender: o == a ? b : a, receiver: o)
     }
 
     internal func links(of label: String) -> [Link] {
