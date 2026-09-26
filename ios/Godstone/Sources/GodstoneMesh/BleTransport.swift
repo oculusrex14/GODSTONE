@@ -3642,9 +3642,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                                  reason: "authenticated admission budget exhausted")
                             return
                         }
-                        if let captured = self.capturedPeers[peerId] {
+                        // *** GS-INTEGRATION-001: THE SAME FALLBACK AS THE RESPONDER'S GATE. ***
+                        // *See the responder-side comment for the measurement: a direction that never captures must
+                        // still hand its delegate the authenticated sender, or the inbox refuseth at gate 0 for lack
+                        // of a sixteen-octet `receivedFrom` while the router happily persisteth the frame.*
+                        let ingressSender = self.capturedPeers[peerId]?.nodeId16
+                            ?? (chargedIdentity.count == 16 ? chargedIdentity : nil)
+                        if let ingressSender {
                             self.delegate?.transportDidReceive(data: clear, peerId: peerId,
-                                                              receivedFrom: captured.nodeId16)
+                                                              receivedFrom: ingressSender)
                         } else {
                             self.delegate?.transportDidReceive(data: clear, peerId: peerId)
                         }
@@ -4709,12 +4715,33 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                                      reason: "authenticated admission budget exhausted")
                                 return
                             }
-                            if let captured = self.capturedPeers[centralId] {
-                            self.delegate?.transportDidReceive(data: clear, peerId: centralId,
-                                                              receivedFrom: captured.nodeId16)
-                        } else {
-                            self.delegate?.transportDidReceive(data: clear, peerId: centralId)
-                        }
+                            // *** GS-INTEGRATION-001: THE RESPONDER-SIDE INGRESS MUST CARRY THE AUTHENTICATED SENDER. ***
+                            //
+                            // *MEASURED, AND IT COST A HOST RIG THREE RED ARMS: `capturedPeers[centralId]` is
+                            // populated ONLY by `captureTrustedPeerLocked`, which is reached ONLY from
+                            // `publishApplicationLinkReadyOnce`, which is reached ONLY from
+                            // `takeInboundKeyConfirmation`'s RESPONSE branch.* **THE RESPONDER ISSUES NO CHALLENGE
+                            // -- IT ANSWERS ONE -- so it NEVER reaches that branch and NEVER captures. Its ingress
+                            // therefore took the handle-only overload, which passeth `receivedFrom: Data()` (ZERO
+                            // bytes), and `RecipientInboxRepository.acceptVerifiedAndRequireAck` gate 0 REFUSES a
+                            // zero-width sender BEFORE ANY COUNTER MOVES.** *So a DIRECT message addressed to the
+                            // responder was persisted by the router and SILENTLY REFUSED BY THE INBOX -- the sender's
+                            // identity was authenticated and then discarded one line above where it was needed.*
+                            //
+                            // **THE IDENTITY IS ALREADY IN HAND: `chargedIdentity` above IS
+                            // `sessions.authenticatedNodeIdOf(admission)`.** *Falling back to it costs no new lookup
+                            // and no new authority -- it stops throwing away an authenticated sixteen-octet node id
+                            // in favour of an empty one.*
+                            let ingressSender = capturedPeers[centralId]?.nodeId16
+                                ?? (chargedIdentity.count == 16 ? chargedIdentity : nil)
+                            if let ingressSender {
+                                self.delegate?.transportDidReceive(data: clear, peerId: centralId,
+                                                                  receivedFrom: ingressSender)
+                            } else {
+                                // *No authenticated identity YET (a relation whose trust was never marked): the
+                                // handle-only overload remaineth the honest answer, exactly as before.*
+                                self.delegate?.transportDidReceive(data: clear, peerId: centralId)
+                            }
                         }
                     case .rejected:
                         recordRejection(peerId: centralId, site: "open.write", reason: "unauthenticated payload")

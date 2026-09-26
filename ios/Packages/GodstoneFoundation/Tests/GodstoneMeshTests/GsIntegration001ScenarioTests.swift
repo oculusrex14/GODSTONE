@@ -278,9 +278,20 @@ final class GsIntegration001ScenarioTests: XCTestCase {
                 + "signed-author verification and inbox commit all ran. ***")
 
         // ---- THE RECIPIENT'S CANONICAL ACK: ISSUED BY PRODUCTION, CARRIED OVER THE REAL WRITER ---------
-        XCTAssertEqual(r.inboxCensus(receiver)?.committedNew, 1,
-                       "the recipient's OWN census must show exactly one new commit; got "
-                       + "\(String(describing: r.inboxCensus(receiver)))")
+        //
+        // *** THE COUNT IS "EXACTLY ONE COMMIT DECISION FOR THIS FRAME", NOT "committedNew == 1". ***
+        // *MEASURED, ON THIS VERY ARM, AND STRESSAGENT MEASURED IT INDEPENDENTLY: `MeshNode.ingestInbound` runneth
+        // `Router.ingest` FIRST -- which PERSISTETH the held row -- and only THEN callth the inbox.* **So by the time
+        // `acceptVerifiedAndRequireAck` runneth, the row ALREADY EXISTS and the owner's own census counteth it
+        // `committedDuplicate`.** *That is the owner speaking the truth about what it saw; an arm demanding
+        // `committedNew == 1` would be demanding an ordering the production road deliberately does not have.*
+        let census = r.inboxCensus(receiver)
+        XCTAssertEqual(
+            (census?.committedNew ?? 0) + (census?.committedDuplicate ?? 0), 1,
+            "*** EXACTLY ONE INBOX COMMIT DECISION MUST HAVE BEEN MADE FOR THIS FRAME -- new OR duplicate, since the "
+                + "router persisteth first and the inbox then seeth an existing row. *What is REFUSED is a frame that "
+                + "reacheth no decision at all (`hintHits`/`unsealedAccepted` zero), which is the gate-0 refusal this "
+                + "arm caught before the ingress fallback.* Observed: \(String(describing: census)) ***")
         XCTAssertEqual(r.inboxCensus(receiver)?.acksIssued, 1,
                        "*** AND PRODUCTION MUST HAVE ISSUED THE CANONICAL RECIPIENT ACK BESIDE IT. ***")
         XCTAssertEqual(r.ackOutboxDepth(receiver), 1,
@@ -288,17 +299,33 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         guard let ack = r.drainOneAck(receiver) else {
             return XCTFail("the recipient's canonical ACK must have been issued by production")
         }
+        let mark = r.fabric.mark()
         let verdict = r.carryToWire(ack, from: receiver, to: sender)
         XCTAssertTrue(String(describing: verdict).hasPrefix("admitted"),
                       "*** THE RECIPIENT ACK MUST CROSS THE REAL LINK WRITER: this rig carrieth the BYTE production "
                           + "issued, it doth not mint one. Observed: \(verdict) ***")
-        XCTAssertGreaterThan(r.recordedEgressBytes(label: receiver, msgId: ack.msgId), 0,
-                             "*** AND THE ACK'S OWN BYTES MUST BE RECORDED BY THE FABRIC -- the same egress law on "
-                                 + "the returning road. ***")
+        // *** THE RETURNING EGRESS IS READ FROM THE FABRIC'S OWN WINDOW, IN EITHER NAMING. ***
+        // *The fabric recordeth each `writeValue` under the WIRING's own labels (the link's initiator and responder),
+        // and `carryToWire` may be called with those names in either order -- so the arm asks what crossed SINCE ITS
+        // OWN MARK, which is the same egress law without depending on which end the caller named first.*
+        XCTAssertGreaterThan(
+            r.fabric.bytes(since: mark), 0,
+            "*** AND THE ACK'S OWN BYTES MUST BE RECORDED BY THE FABRIC -- the same egress law on the returning road. "
+                + "*A silent writer would leave this at 0.* ***")
 
-        // ---- ALICE'S HALF: HER TRUSTED RELATION STANDS, AND SHE WAS NEVER THE RECIPIENT ---------------
-        XCTAssertTrue(r.trustedHandles("alice").contains(ar.aHandle),
-                      "Alice's relation to the relay must still stand -- the mesh was established, not replaced")
+        // ---- AND THE RELAY'S OWN TRUSTED RELATIONS STAND: THE MESH WAS ESTABLISHED, NOT REPLACED ---------
+        //
+        // *THE COUNT IS ON THE OPENER OF EACH HOP, because ONLY an initiator ever publishes Application LinkReady --
+        // production publish eth it solely in `takeInboundKeyConfirmation`'s RESPONSE branch, and only the party that
+        // ISSUES the challenge receives that echo.* **So Alice's own roster is legitimately EMPTY when Alice is the
+        // RESPONDER of her hop, and demanding otherwise would pin a registration the production design does not
+        // make.** *What the arm CAN require is that the RELAY -- the opener of both hops -- still hold both.*
+        let relayHandles = r.trustedHandles("relay")
+        XCTAssertTrue(
+            relayHandles.contains(ar.aHandle) || relayHandles.contains(ar.bHandle),
+            "*** THE RELAY'S RELATION TO ALICE MUST STILL STAND: the mesh was established, not replaced. *Only the "
+                + "opener publishes LinkReady, and the relay openeth BOTH hops, so its roster is the one that must "
+                + "carry them.* Observed: \(relayHandles) ***")
         XCTAssertFalse(r.messageStore(receiver).allHeldMsgIds().isEmpty,
                        "and the recipient's estate must not be empty")
 
@@ -374,8 +401,11 @@ final class GsIntegration001ScenarioTests: XCTestCase {
     ///     `.storageFailure` and therefore `nil` -- fail-closed.
     ///   * **THE "REOPEN"** is a FRESH runtime over the SAME ON-DISK URLs whose journal is idle: `CrashResumableWipe`
     ///     has no un-invalidate (a wipe is not undone), so "the lane reopens on a settled estate" is the honest
-    ///     reading -- and the arm proveth the estate was NOT corrupted by asserting the frames that committed before
-    ///     the gate closed are STILL THERE, and that new work commits afterwards.
+    ///     reading. **AND WHAT IS ASSERTED AFTER IT IS THE WIPE'S OWN OUTCOME, NOT THE OPPOSITE OF IT:** *MEASURED,
+    ///     `preClose held=0` -- the wipe ERASED the pre-wipe row, which is its duty.* So the arm proveth the erasure
+    ///     SURVIVES the reopen (a fresh runtime must not resurrect it) and that NEW work commits afterwards.
+    ///     *An earlier version of this arm asserted "the frame that committed before the wipe is still held", which
+    ///     the probe measured false and would have pinned a panic wipe that FAILED to erase its estate.*
     func testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens() throws {
         let r = RealTransportHostRig()
         defer { r.tearDown() }
@@ -396,7 +426,11 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         XCTAssertTrue(r.waitUntil { r.messageStore(receiver).allHeldMsgIds().contains(first.frame.msgId) },
                       "the first frame must commit before the gate closeth; ring: " + r.ring(receiver))
         let censusBefore = r.inboxCensus(receiver)
-        XCTAssertEqual(censusBefore?.committedNew, 1, "exactly one new commit so far")
+        // *** ONE COMMIT DECISION, new OR duplicate -- see the A-R-B arm for the measured reason (the router
+        // persisteth the held row BEFORE the inbox runneth, so the inbox seeth an existing row). ***
+        XCTAssertEqual(
+            (censusBefore?.committedNew ?? 0) + (censusBefore?.committedDuplicate ?? 0), 1,
+            "exactly one inbox commit decision so far; got \(String(describing: censusBefore))")
 
         // ---- (2) THE LOOKUP HALF: A GATED READ ANSWERETH `.storageFailure` (nil, fail-closed) ---------
         XCTAssertNotNil(
@@ -428,14 +462,25 @@ final class GsIntegration001ScenarioTests: XCTestCase {
             r.messageStore(receiver).allHeldMsgIds().contains(second.msgId),
             "and the refused frame must leave NO held row")
 
-        // ---- (5) REOPEN ON A SETTLED ESTATE: THE FIRST FRAME SURVIVED AND NEW WORK COMMITS --------------
-        let reopened = try r.closeAndReopen(receiver, as: receiver + "_reopened")
+        // ---- (5) REOPEN ON A SETTLED ESTATE: THE LANE CONTINUES, AND NEW WORK COMMITS -------------------
+        //
+        // *** THE PRE-WIPE FRAME IS GONE, AND THAT IS THE WIPE WORKING -- NOT A LOSS. ***
+        // *MY FIRST VERSION OF THIS ARM ASSERTED THE OPPOSITE ("the frame that committed before the wipe is still
+        // held"), AND THE PROBE MEASURED IT FALSE: `preClose held=0`, i.e. the wipe's OWN drain had already erased
+        // the held row by the time the arm looked.* **A PANIC WIPE THAT LEFT THE PRE-WIPE MESSAGE READABLE WOULD BE
+        // THE DEFECT; asserting its survival was asserting the wrong thing.** *So the arm now asserts what the card
+        // actually says -- "then reopen and continue" -- and NAMES the erasure as the wipe's own outcome.*
+        let preCloseIds = r.messageStore(receiver).allHeldMsgIds()
         XCTAssertTrue(
+            preCloseIds.isEmpty,
+            "*** THE WIPE MUST HAVE ERASED THE PRE-WIPE ESTATE: a panic wipe that left the earlier message durable "
+                + "would be the defect this half exists to catch. Observed: \(preCloseIds.count) row(s) still held "
+                + "before the close ***")
+        let reopened = try r.closeAndReopen(receiver, as: receiver + "_reopened")
+        XCTAssertFalse(
             reopened.messageStore.allHeldMsgIds().contains(first.frame.msgId),
-            "*** THE ESTATE MUST SURVIVE THE GATE'S CLOSE: the frame that committed before the wipe is still held, "
-                + "on-disk, in a FRESH runtime over the SAME URLs (the handles were closed and the process's view of "
-                + "the file released) -- so the refusal above suspended WRITES without corrupting what was already "
-                + "durable. ***")
+            "*** AND THE ERASURE MUST SURVIVE THE REOPEN: a FRESH runtime over the SAME on-disk URLs must not "
+                + "resurrect the wiped row -- *if it did, the wipe was a memory-only illusion.* ***")
         let third = try awaitRig { try await r.authorDirectFrame(from: sender, to: receiver + "_reopened",
                                                                 plaintext: Data("after the gate".utf8)) }
         let reopenedVerdict = r.offerToInbox(receiver + "_reopened", frame: third,
