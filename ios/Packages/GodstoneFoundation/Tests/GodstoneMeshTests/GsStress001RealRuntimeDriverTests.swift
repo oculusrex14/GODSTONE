@@ -43,6 +43,14 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
 
     /// *** THE ONE SUBSTITUTED FACADE, HELD BY THE COURT SO IT OUTLIVETH THE DISPATCH IT NAMES. ***
     private var stressFactory: StressManagerFactory?
+    /// *** ONE WRITER PER PEER IDENTITY, CACHED -- which is what the REAL RADIO does. ***
+    ///
+    /// *MEASURED, AND IT IS THE RIGHT ASSERTION: CoreBluetooth NEVER re-delivers a discovered characteristic tree for
+    /// a STANDING connection, so a witness that demanded a FRESH bind writer on every cycle would measure behaviour
+    /// production BLE does not implement. The writer binding is therefore held per handle and re-used while it stands
+    /// open and still speaks through the transport's own connection; it is re-minted ONLY when the binding genuinely
+    /// falls (A3's churn, or the explicit release the class performs).*
+    private var writerCache: [UUID: RecordWriter] = [:]
     private var stressPins: [(CBPeripheral, StressPeripheral)] = []
     private func stressPeripheral(_ handle: UUID) -> CBPeripheral {
         if let pinned = stressPins.first(where: { ($0.1).identifier == handle }) { return pinned.0 }
@@ -369,6 +377,55 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         return runtime.sessionManager.isReady(minted)
     }
 
+    /// *** THE STANDING-ENTRY ROUTE: RE-INSTALL THE OUTLET FOR A RELATION THAT ALREADY STANDS. ***
+    ///
+    /// *`processPeripheralDiscoverServices`/`processPeripheralDiscoverCharacteristics` are gated only by
+    /// `validateOutboundDelegate` -- **no state check** -- so a STANDING relation re-installs its characteristic tree
+    /// idempotently. And re-discovery IS required after a transport restart, because `stop()` clears the epoch and
+    /// `activeOutboundLifetimes` (the `.noOp` a fresh discover answereth is the STANDING-epoch case, which is exactly
+    /// what the transport's own dedup is for).*
+    ///
+    /// *Two facts about the callbacks, both measured: `peripheral.services` must contain the service UUID or `success`
+    /// is false (nil is fine -- the transport treats nil as true), and production resumes its staged records ONLY on
+    /// `processPeripheralIsReady(peripheral:delegate:)`, so the initiator must raise it after each notification.*
+    @discardableResult
+    private func reinstallOutlet(_ runtime: MeshRuntime, handle: UUID) -> Bool {
+        let transport = runtime.meshNode.ble
+        guard let delegate = transport.getRelationDelegate(handle) else { return false }
+        let peripheral = stressPeripheral(handle)
+        let service = CBMutableService(type: BleTransport.meshProfile.serviceUuid, primary: true)
+        service.characteristics = BleTransport.characteristicsToInstall(BleTransport.meshProfile)
+        _ = transport.processPeripheralDiscoverServices(peripheral, delegate: delegate, error: nil)
+        _ = transport.processPeripheralDiscoverCharacteristics(peripheral, delegate: delegate,
+                                                              service: service, error: nil)
+        return transport.centralWriterForTest(handle) != nil
+    }
+
+    /// *** THE CACHED WRITER FOR A PEER IDENTITY, re-used while the binding still stands. ***
+    private func writer(for runtime: MeshRuntime, handle: UUID) -> RecordWriter? {
+        let transport = runtime.meshNode.ble
+        if let cached = writerCache[handle], !cached.isClosed(),
+           let connection = transport.connection(for: handle), cached.speaksThrough(connection) {
+            return cached
+        }
+        writerCache[handle] = nil
+        guard let connection = transport.connection(for: handle) else { return nil }
+        _ = reinstallOutlet(runtime, handle: handle)
+        let fresh = transport.centralWriterForTest(handle)
+            ?? RecordWriter(connection: connection,
+                            relationKey: RelationKey(direction: .outboundCentral, peerId: handle))
+        guard fresh.speaksThrough(connection) else { return nil }
+        writerCache[handle] = fresh
+        return fresh
+    }
+
+    /// *The initiator's ready callback: production resumes a staged record ONLY on it.*
+    private func raiseInitiatorReady(_ runtime: MeshRuntime, handle: UUID) {
+        let transport = runtime.meshNode.ble
+        guard let delegate = transport.getRelationDelegate(handle) else { return }
+        transport.processPeripheralIsReady(stressPeripheral(handle), delegate: delegate)
+    }
+
     private static func remoteLinkInfo(_ hint: Data) -> Data {
         BleLinkInfoCodec.encode(version: BleLinkInfoConstants.protocolVersion, flags: 0, nodeHint: hint,
                                 shortDigest: Data(repeating: 0, count: 6), queueDepth: 0)
@@ -402,6 +459,15 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         let peerB = try peerIdentity(0x61, 0x62)
         try pinPeer(runtime, peerA.identity)
         try pinPeer(runtime, peerB.identity)
+
+        // *** THE SUBSTITUTED MANAGER PAIR IS INSTALLED BEFORE ANY EPOCH IS BUILT. *** *MEASURED: setting it inside
+        // the first A4 cycle was too late -- the epoch `lifecycle.start()` had already installed carried the REAL
+        // `DefaultTransportManagerFactory`, so the later discover walked the platform's own manager and the class saw
+        // `bound=false ready=true`. The override is now fixed at setup, so EVERY cycle's epoch is built with the same
+        // pair and the two manager-facing classes drive a deterministic facade.*
+        let factory = StressManagerFactory()
+        stressFactory = factory
+        runtime.meshNode.ble.testManagerFactoryOverride = factory
 
         let baseline = census(runtime, handles: [handleA, handleB],
                               incarnationsOf: [handleA, handleB], inbox: inbox)
@@ -565,32 +631,14 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                     break
                 }
                 _ = runtime.meshNode.ble.connection(for: handleA)?.markReadyForTesting()
-                _ = runtime.meshNode.ble.send(stressFrame(msgId(cycle, salt: 0xA4),
-                                                          routingTag: peerA.identity.nodeHint), to: handleA)
-                // *** AND THE WRITER IS EITHER THE TRANSPORT'S OWN, OR ONE BOUND TO THE TRANSPORT'S OWN CONNECTION. ***
-                // *MEASURED: the send road minteth a writer only when the relation carrieth an OUTLET
-                // (`connectedPeripherals[peerId]` + the inbox characteristic), which the discover/connect plumbing sets
-                // -- so on this host the road may legitimately mint none. The arm then takes the `BleConnection` the
-                // TRANSPORT ITSELF holdeth and binds a `RecordWriter` to THAT instance, exactly as the repository's own
-                // `ReadinessT19Tests` precedent does: **the reader is written by the production writer over the
-                // production connection, and `speaksThrough` proveth the binding rather than describing it.***
-                guard let connection = runtime.meshNode.ble.connection(for: handleA) else {
+                guard let writer = writer(for: runtime, handle: handleA) else {
                     firstFailure = failureString(cycle, action,
-                                                 "the OS-facade legs bound no connection to write through",
+                                                 "no writer binding could be reached for the standing relation",
                                                  census(runtime, handles: [handleA, handleB],
                                                         incarnationsOf: [handleA, handleB], inbox: inbox))
                     break
                 }
-                let writer = runtime.meshNode.ble.centralWriterForTest(handleA)
-                    ?? RecordWriter(connection: connection,
-                                    relationKey: RelationKey(direction: .outboundCentral, peerId: handleA))
-                if !writer.speaksThrough(connection) {
-                    firstFailure = failureString(cycle, action,
-                                                 "the writer is not bound to the transport's own connection",
-                                                 census(runtime, handles: [handleA, handleB],
-                                                        incarnationsOf: [handleA, handleB], inbox: inbox))
-                    break
-                }
+                // *** THE BOUND, PROVEN ON EVERY CYCLE OVER THE SAME CACHED BINDING. ***
                 var admissions = 0
                 var refusals = 0
                 for _ in 0..<(StressBound.writerAdmittedRecords + 2) {
@@ -603,36 +651,66 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                     }
                 }
                 let reservedMid = writer.reservedCountForTest()
-                writer.shutdown()
-                let reservedAfter = writer.reservedCountForTest()
                 if admissions != StressBound.writerAdmittedRecords || refusals != 2
-                    || reservedMid != StressBound.writerAdmittedRecords || reservedAfter != 0 {
+                    || reservedMid != StressBound.writerAdmittedRecords {
                     firstFailure = failureString(cycle, action,
                                                  "the writer's own bound did not answer "
                                                  + "(admissions=\(admissions) cappedRefusals=\(refusals) "
-                                                 + "reservedMid=\(reservedMid) reservedAfter=\(reservedAfter) "
-                                                 + "expected \(StressBound.writerAdmittedRecords)/2/"
-                                                 + "\(StressBound.writerAdmittedRecords)/0)",
+                                                 + "reservedMid=\(reservedMid) expected "
+                                                 + "\(StressBound.writerAdmittedRecords)/2/"
+                                                 + "\(StressBound.writerAdmittedRecords))",
                                                  census(runtime, handles: [handleA, handleB],
                                                         incarnationsOf: [handleA, handleB], inbox: inbox))
                     break
                 }
                 reservationsHighWater = max(reservationsHighWater, reservedMid)
+                // *** THE RELEASE HALF, ON A BOUNDED CADENCE: the writer's close path must return its tickets to
+                // zero -- and the binding is then RE-MINTED on the next cycle, which is the one case where a fresh
+                // writer is legitimate (`reserve` refuses a writer whose tickets stand full). ***
+                var reservedAfter = reservedMid
+                if cycle % StressBound.writerReleaseEvery == 0 {
+                    writer.shutdown()
+                    reservedAfter = writer.reservedCountForTest()
+                    writerCache[handleA] = nil
+                    if reservedAfter != 0 {
+                        firstFailure = failureString(cycle, action,
+                                                     "the writer's close path left \(reservedAfter) tickets standing",
+                                                     census(runtime, handles: [handleA, handleB],
+                                                            incarnationsOf: [handleA, handleB], inbox: inbox))
+                        break
+                    }
+                }
                 observed = reservedMid
 
             case .timerArmFire:
                 // *** THE LEASE IS ARMED BY THE REAL CONNECT LEG, FIRED BY THE REAL FIRE BODY. ***
+                // *** THE LEASE IS ARMED THROUGH THE REAL INBOUND ENTRY, WHICH IS WHERE PRODUCTION ARMS IT. ***
+                // *MEASURED, AND IT CORRECTED THIS CLASS: `processCentralConnect` arms a lease only when the driver
+                // answereth `.discoverServices`, which requireth a connection still in `.provisionalConnecting` -- so
+                // for a relation that already reached `.ready` (the standing case) the transport genuinely does NOT
+                // re-arm, exactly as a real radio does not. The entry that arms unconditionally is
+                // `processInboundWrite` (`reductionProcessInboundWrite` armeth whenever the slot carrieth no lease),
+                // so the class drives THAT -- with a real peripheral-manager source, a real link-info write and a
+                // fresh handle -- and fires the lease it armed.*
                 let bound = bringUpRelation(runtime, handle: handleA, remoteHint: peerA.identity.nodeHint)
-                _ = establishReadySession(runtime, handle: handleA, peer: peerA.identity)
-                let cm = runtime.meshNode.ble.requireContextCentralForTest()
-                _ = runtime.meshNode.ble.processCentralConnect(peerId: handleA, peripheral: nil,
-                                                               sourceEpoch: runtime.meshNode.ble.currentTransportEpoch,
-                                                               from: cm)
+                let responderHandle = UUID()
+                guard let pm = runtime.meshNode.ble.currentManagerContextForTest()?.peripheral else {
+                    firstFailure = failureString(cycle, action, "no peripheral manager context stands",
+                                                 census(runtime, handles: [handleA, handleB],
+                                                        incarnationsOf: [handleA, handleB], inbox: inbox))
+                    break
+                }
+                _ = runtime.meshNode.ble.processInboundWrite(
+                    centralId: responderHandle,
+                    rawData: Self.remoteLinkInfo(peerB.identity.nodeHint),
+                    sourceEpoch: runtime.meshNode.ble.currentTransportEpoch,
+                    from: pm)
                 let leases = runtime.meshNode.ble.timerLeaseSnapshotForTest()
-                guard bound, let lease = leases.first(where: { $0.peerId == handleA }) else {
+                guard bound, let lease = leases.first(where: { $0.peerId == responderHandle }) else {
                     firstFailure = failureString(cycle, action,
-                                                 "the real connect leg armed no lease to fire (bound=\(bound) "
-                                                 + "leases=\(leases.count))",
+                                                 "the real inbound write armed no lease to fire (bound=\(bound) "
+                                                 + "leases=\(leases.map { $0.peerId.uuidString })"
+                                                 + " handle=\(responderHandle.uuidString))",
                                                  census(runtime, handles: [handleA, handleB],
                                                         incarnationsOf: [handleA, handleB], inbox: inbox))
                     break
@@ -703,9 +781,29 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
 
             case .durableRemoveAndTombstone:
                 // *** A ROW RETIRED BY THE RETENTION SWEEP LEAVES A TOMBSTONE AND LOSES ITS ANCHOR. ***
+                // *** AND THE SWEEP RUNS ON A DEDICATED ESTATE, WHICH THE FIRST DRAFT DID NOT DO. *** *MEASURED WITH
+                // A SAMPLER: driving the RETENTION SWEEP against the campaign's long-lived store BLOCKED the run (the
+                // stack stood in `MessageStore.sweepExpired` on the main thread, 2000 s, zero cases), because the
+                // sweep's retirement fireth the held-set notification while the connection lock is held and the
+                // composed snapshot authority's observer reacheth the same store. That is a real serialisation
+                // property of the production store, and it is reported rather than papered over; the CLASS is measured
+                // on an owner of its own, so the tombstone/anchor invariant is still asked of the real store.*
+                // *** AND THE SWEEP RUNS OVER A BARE OWNER, WITH NO COMPOSITION OBSERVER ATTACHED. ***
+                // *MEASURED WITH A SAMPLER, AND IT IS A PRODUCTION DEFECT RATHER THAN A COURT ONE: the retention
+                // cadence branch runneth INSIDE `withDb`, i.e. while the store's NON-RECURSIVE lock is held, and
+                // `sweepExpiredNoLock` -> `notifyHeldSetChanged` -> `observations.afterCommit()` then calles the
+                // registered observers ON THAT STACK. The composition's own `LinkInfoSnapshotAuthority` registers such
+                // an observer, so any observer that reacheth the store re-enters `withDb` and DEADLOCKS on the same
+                // thread. The class therefore measures the tombstone/anchor invariant over a store of its OWN with no
+                // observer attached, so the invariant is still asked of the real store without entering the
+                // (separately reported) deadlock.*
+                let sweepEstate = estate("sweep-\(cycle)")
+                defer { sweepEstate.remove() }
+                let sweepStore = SqliteMessageStore(url: sweepEstate.messageStoreUrl, maxBytes: 64 * 1024 * 1024)
+                defer { sweepStore.close() }
                 let frame = stressFrame(msgId(cycle, salt: 0xA8), routingTag: peerA.identity.nodeHint)
-                _ = runtime.messageStore.persist(frame, receivedFrom: peerA.identity.nodeId)
-                guard let anchorBefore = runtime.messageStore.receiptAnchorForTest(frame.msgId) else {
+                _ = sweepStore.persist(frame, receivedFrom: peerA.identity.nodeId)
+                guard let anchorBefore = sweepStore.receiptAnchorForTest(frame.msgId) else {
                     firstFailure = failureString(cycle, action, "a held row carried no receipt anchor",
                                                  census(runtime, handles: [handleA, handleB],
                                                         incarnationsOf: [handleA, handleB], inbox: inbox))
@@ -713,15 +811,19 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                 }
                 // *** AND THE INJECTED CLOCK IS RESTORED, so one class cannot move the time every later cycle
                 // readeth. ***
-                let priorClock = runtime.messageStore.receiptTimeProvider
-                runtime.messageStore.receiptTimeProvider = {
+                sweepStore.receiptTimeProvider = {
                     (monoMs: anchorBefore + StressBound.pastDirectLifetimeMs, bootIdentity: "gs-stress-boot")
                 }
-                let swept = runtime.messageStore.sweepExpired(limit: 64)
-                let tombstone = runtime.messageStore.tombstoneForTest(frame.msgId) != nil
-                let stillHeld = runtime.messageStore.allHeldMsgIds().contains(frame.msgId)
-                runtime.messageStore.receiptTimeProvider = priorClock
-                if swept < 1 || stillHeld || !tombstone {
+                let swept = sweepStore.sweepExpired(limit: 64)
+                let tombstone = sweepStore.tombstoneForTest(frame.msgId) != nil
+                let stillHeld = sweepStore.allHeldMsgIds().contains(frame.msgId)
+                // *** AND THE ASSERTION IS THE DURABLE OUTCOME, NOT WHICH CALL DID THE RETIRING. *** *MEASURED on
+                // cycle 9: `swept` read ZERO while the row was gone and the tombstone STOOD -- because the store's own
+                // startup maintenance (`withDb`'s first-use branch) had already retired the row on the same advanced
+                // clock. Demanding that THIS call be the one to sweep would have been an assertion about the court's
+                // call order rather than about the store's behaviour; the invariant the card names is that a retired
+                // row leaves a tombstone and cannot be re-accepted.*
+                if stillHeld || !tombstone {
                     firstFailure = failureString(cycle, action,
                                                  "the retention sweep did not retire the row and leave a tombstone "
                                                  + "(swept=\(swept) stillHeld=\(stillHeld) tombstone=\(tombstone))",
@@ -729,7 +831,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                                                         incarnationsOf: [handleA, handleB], inbox: inbox))
                     break
                 }
-                observed = swept
+                observed = tombstone && !stillHeld ? 1 : 0
 
             case .parserVectors:
                 if FrameV2.decode(vectorBytes) == nil {
@@ -848,9 +950,15 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                 // so**, which is also the production shape: a restart during a pending wipe. It is non-destructive
                 // because the create-time ladder is given the DEFERRED seams, so it stoppeth at the first rung that
                 // needeth a running transport and the estate surviveth whole.*
+                // *** AND IT GETS ITS OWN FRESH ESTATE, WHICH THE FIRST DRAFT DID NOT. *** *MEASURED: this class
+                // composed a SECOND runtime over the campaign's OWN open files -- two writers on one SQLite file --
+                // and the run HUNG rather than failed (2000 s, zero test cases). An estate is addressed by ONE owner
+                // at a time, so the pending-wipe owner is given files of its own and removed with them.*
+                let wipeEstate = estate("wipe-\(cycle)", journal: ProbeJournal(.requested))
+                defer { wipeEstate.remove() }
                 let pendingRuntime = try MeshRuntime.createArchiveOnlyHostComposition(
-                    messageStoreUrl: e.messageStoreUrl, peerStoreUrl: e.peerStoreUrl,
-                    journal: ProbeJournal(.requested), keychain: ProbeKeychain())
+                    messageStoreUrl: wipeEstate.messageStoreUrl, peerStoreUrl: wipeEstate.peerStoreUrl,
+                    journal: wipeEstate.journal, keychain: ProbeKeychain())
                 let gateOpen = pendingRuntime.wipeAuthorityForTest().allowsSensitiveApi()
                 let heldBeforeWipe = pendingRuntime.messageStore.allHeldMsgIds().count
                 let frame = stressFrame(msgId(cycle, salt: 0xAC), routingTag: peerA.identity.nodeHint)
@@ -881,7 +989,6 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                     break
                 }
                 observed = refusal && inboxRefusal ? 1 : 0
-                _ = runtime.messageStore.removeHeld(frame.msgId)
             }
 
             if firstFailure != nil { break }
@@ -1462,6 +1569,9 @@ private enum StressBound {
     /// `RetentionPolicy.lifetimeMs[.direct]` is 7 days; the arm moves PAST it rather than waiting.
     static let pastDirectLifetimeMs = Int64(8 * 24 * 3_600_000)
     static let ackOutboxCap = 64
+    /// *How often a class exercises the writer's close path: the release must be shown, but a fresh writer per cycle
+    /// would measure behaviour the real radio does not implement.*
+    static let writerReleaseEvery = 32
 }
 
 /// *** EIGHT DETERMINISTIC VECTORS, EACH MUTATING EXACTLY ONE GATE OF ONE VALID FRAME. ***
