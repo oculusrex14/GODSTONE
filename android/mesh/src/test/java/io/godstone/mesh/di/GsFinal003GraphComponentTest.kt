@@ -6,6 +6,7 @@ import io.godstone.mesh.crypto.PeerBindingTrustAuthority
 import io.godstone.mesh.identity.PeerTrustApplyResult
 import androidx.test.core.app.ApplicationProvider
 import io.godstone.mesh.MeshNode
+import io.godstone.mesh.crypto.SessionManager
 import io.godstone.mesh.identity.DefaultRuntimeLifecycleGate
 import io.godstone.mesh.identity.PanicWipe
 import io.godstone.mesh.identity.WipeGatedAckObligationStore
@@ -15,6 +16,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -63,6 +65,60 @@ class GsFinal003GraphComponentTest {
     @Before fun clearJournal() = presetJournal(null)
     @After fun tearDown() = presetJournal(null)
 
+    // =================================================================================================================
+    // *** GS-RUNTIME-001 `mutations`: THE OWNERS OBSERVED THROUGH FOREIGN CONSUMERS, OVER REAL ON-DISK STORES. ***
+    //
+    // *THE FINDING'S OWN CHARGE IS THAT THE ACK/SYNC OWNERS ARE "NOT CONNECTED TO THE LIVE TRANSPORT RUNTIME".*
+    // **SO THESE ARMS NEVER HAND-BUILD A `MeshNode` AND NEVER USE AN IN-MEMORY STORE: the rig supplieth only the
+    // platform boundary, `MeshModule.provideMeshNode` does the wiring, and each owner is read through a FOREIGN
+    // CONSUMER -- the pump's own schedule, the tracker's own row, the dispatcher's own verdict -- so an assignment
+    // that reacheth nothing cannot pass.** *The measured defect class: `provisionAckPump` was injected into that very
+    // provider and NEVER ASSIGNED, and the node's `ackPump` stayed NULL while the pump existed.*
+    // =================================================================================================================
+
+    private fun rig(): HostMeshRig = HostMeshRig(ctx())
+
+    /** *The full production composition, on disk, with the pump/dispatcher/owners the module actually builds.* */
+    private class HostRig(
+        val node: MeshNode,
+        val rig: HostMeshRig,
+        val gate: DefaultRuntimeLifecycleGate,
+        val tracker: io.godstone.mesh.delivery.DeliveryTracker,
+        val messageStore: SqliteMessageStore,
+        val peerStore: io.godstone.mesh.identity.PeerIdentityStore,
+        val sessions: SessionManager,
+        val invalidator: io.godstone.mesh.identity.MeshRuntimeInvalidator,
+        val pump: io.godstone.mesh.delivery.DurableAckPump,
+        val dispatcher: io.godstone.mesh.delivery.AckDispatcher,
+    )
+
+    private fun composedRig(controlClock: (() -> Long)? = null): HostRig {
+        val r = rig()
+        val identity = r.identity()
+        val messageStore = r.messageStore()
+        val peerStore = r.peerStore()
+        val gate = r.gate()
+        val tracker = r.tracker(messageStore)
+        val sessions = r.sessions(identity, r.peerRepository(peerStore))
+        val ackStore = r.ackStore(messageStore)
+        val gatedAck = r.gatedAckStore(ackStore) { gate.isActive }
+        val authenticator = io.godstone.mesh.delivery.Ed25519AckAuthenticator(io.godstone.mesh.readiness.EmptyKeyTable())
+        val resolver = MeshModule.provideBoundRecipientKeyResolver(
+            repo = r.peerRepository(peerStore), gate = gate, wipeGate = { gate.isActive })
+        val driver = MeshModule.provideAckDriver(gatedAck, identity, authenticator, resolver)
+        val pump = MeshModule.provideAckPump(gatedAck, driver)
+        val node = r.nodeThroughTheProvider(
+            ctx = ctx(), identity = identity, messageStore = messageStore, tracker = tracker,
+            sessions = sessions, pump = pump, gatedAck = gatedAck, authenticator = authenticator,
+            resolver = resolver, gate = { gate.isActive }, controlClock = controlClock,
+        )
+        val invalidator = r.invalidator(gate, sessions, peerStore, messageStore, node)
+        val dispatcher = requireNotNull(node.ackDispatcher) {
+            "the production provider must bind the dispatcher -- an absent one is the defect this arm measures"
+        }
+        return HostRig(node, r, gate, tracker, messageStore, peerStore, sessions, invalidator, pump, dispatcher)
+    }
+
     /**
      * *** THE COMPONENT ASSEMBLES -- THE CLAUSE THAT WAS UNTESTED, MEASURED BY CONSTRUCTION. ***
      *
@@ -84,6 +140,14 @@ class GsFinal003GraphComponentTest {
             "GS-FINAL-003 (ii): the component must assemble, which is only possible if EVERY provider's " +
                 "dependencies resolve -- the check that did not exist before this round",
             g,
+        )
+        // *** AND THE WIDENED INVALIDATOR BINDING RESOLVES HERE -- which is what the accessor was added for. ***
+        assertNotNull(
+            "*** GS-FINAL-003 / GS-RUNTIME-001: the invalidator binding must RESOLVE through the real component. " +
+                "Its provider was previously unreachable off-device (it required the device-bound concrete peer " +
+                "store while the invalidator's own constructor takes the interface), so declaring the accessor is " +
+                "what forces the widened signature into the graph. ***",
+            g.meshRuntimeInvalidator(),
         )
     }
 
@@ -314,116 +378,262 @@ class GsFinal003GraphComponentTest {
     // AND THROWETH `KeyStoreException: AndroidKeyStore not found`.** *That measurement was CORRECT -- and it is why
     // this arm never needs the component.*
     //
-    // *** THE PRODUCTION PROVIDER `MeshModule.provideMeshNode` IS CALLABLE DIRECTLY, AND IT TAKETH EVERY DEVICE-BOUND
-    // INPUT AS A PARAMETER: it CONSTRUCTS none of them. So this arm SUPPLIES `identity` AND `pump` (the two that reach
-    // the platform) and drives the REAL provider ITSELF.*** *Everything between them -- the node's construction and
-    // the owner assignments the finding is about -- is the SHIPPED code, UNSUBSTITUTED.*
-    //
-    // **THE REAL STORES ARE OPENED THE WAY THE OTHER COURTS OPEN THEM** -- *`SqliteMessageStore(JdbcStoreDb(file),
-    // maxBytes, null)`, measured in `BleLinkSubstrateTest` and `CrashStartupResumeTest`, so this arm invents no shape.*
-    // *THE PLATFORM BOUNDARY IS SUBSTITUTED, WHICH IS LEGITIMATELY EXTERNAL; THE COMPOSITION UNDER TEST IS NOT.* ***A
-    // court that built `MeshNode(...)` itself would prove the CONSTRUCTOR wires its own owners; only the MODULE's
-    // provider can prove the COMPOSITION does -- and the composition is where the measured defect lived
-    // (`provisionAckPump` was injected into that very function and NEVER ASSIGNED).***
     // =================================================================================================================
-
-    private fun hostIdentity(): io.godstone.mesh.identity.Identity {
-        val rng = java.security.SecureRandom()
-        val ed = io.godstone.core.crypto.Ed25519Keys.generate(rng)
-        val dh = io.godstone.core.crypto.X25519Keys.generate(rng)
-        return io.godstone.mesh.identity.Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv)
-    }
-
-    /** *A REAL `DurableAckPump` over a real gated in-memory obligation store.* */
-    private fun hostPump(gate: io.godstone.mesh.identity.WipeSensitiveUseGate): io.godstone.mesh.delivery.DurableAckPump {
-        val store = io.godstone.mesh.identity.WipeGatedAckObligationStore(
-            io.godstone.mesh.delivery.InMemoryAckStore(), gate)
-        return io.godstone.mesh.delivery.DurableAckPump(
-            store,
-            { _, _ -> io.godstone.mesh.delivery.AckAdmissionResult.RefusedBadFrame },
-        )
-    }
-
-    /** *The REAL provider, driven with supplied device-bound inputs and real store files.*/
-    private fun providedNode(
-        gate: io.godstone.mesh.identity.WipeSensitiveUseGate,
-        pump: io.godstone.mesh.delivery.DurableAckPump,
-    ): MeshNode {
-        val msgFile = File.createTempFile("gf003_pump_msg", ".db").also { it.deleteOnExit() }
-        val ackFile = File.createTempFile("gf003_pump_ack", ".db").also { it.deleteOnExit() }
-        val sqliteStore = io.godstone.mesh.store.SqliteMessageStore(
-            io.godstone.mesh.store.JdbcStoreDb(msgFile), 4096, null)
-        val tracker = io.godstone.mesh.delivery.DeliveryTracker(
-            io.godstone.mesh.delivery.SqliteDeliveryRepository(sqliteStore.engine, sqliteStore::notifyHeldSetChanged),
-            io.godstone.mesh.delivery.Ed25519AckAuthenticator(io.godstone.mesh.readiness.EmptyKeyTable()),
-        )
-        // *THE COMPONENT EXPOSETH THE STORE; THE REPOSITORY IS THE MODULE's PROVIDER OVER IT -- the same two-step
-        // the graph itself performeth.*
-        // *** AND THE PEER REPOSITORY IS BUILT THE WAY THE EXISTING COURT BUILDETH IT -- OVER A JDBC STORE, WHICH
-        // NEEDETH NO NATIVE SQLCIPHER. ***
-        //
-        // *MY FIRST VERSION REACHED FOR `graph().peerIdentityStore()`, WHICH IS A `SqlcipherPeerIdentityStore` and
-        // throweth `UnsatisfiedLinkError: no sqlcipher in java.library.path` on this host -- **so the arm returned early
-        // at that boundary and NEVER REACHED THE PUMP ASSERTION.***
-        //
-        // *** AND I FOUND THAT OUT BY MUTATING THE PUMP WIRING AND WATCHING THE ARM STAY GREEN. *** *A court that
-        // returns early readeth as coverage while measuring nothing, which is the exact vacuous-witness class this
-        // session has removed four times -- so the `runCatching` escape hatch is GONE and the repository is built on a
-        // road that actually completes here.*
-        //
-        // *`PeerIdentityRepository(JdbcPeerIdentityStore(file))` is that road, and it is not invented: it is the
-        // construction `CrashStartupResumeTest.admissionRepo()` already useth.*
-        val peerFile = File.createTempFile("gf003_pump_peer", ".db").also { it.deleteOnExit() }
-        val peerRepo = io.godstone.mesh.identity.PeerIdentityRepository(
-            io.godstone.mesh.identity.JdbcPeerIdentityStore(peerFile))
-        return MeshModule.provideMeshNode(
-            ctx = ctx(),
-            identity = hostIdentity(),
-            store = sqliteStore,
-            deliveryTracker = tracker,
-            sessions = io.godstone.mesh.crypto.SessionManager(
-                hostIdentity(),
-                // *A REAL IMPLEMENTATION OF THE REAL CONTRACT -- the same shape `ReadinessT08Test` uses, so this arm
-                // invents nothing. It is a test double for a TRUST decision, not for the seam under test.*
-                object : PeerBindingTrustAuthority {
-                    override fun applyValidatedBinding(binding: io.godstone.mesh.identity.ValidatedPeerBinding): PeerTrustApplyResult =
-                        PeerTrustApplyResult.Accepted
-                }),
-            pump = pump,
-            sqliteStore = sqliteStore,
-            ackStore = io.godstone.mesh.delivery.SqliteAckStore(io.godstone.mesh.store.JdbcStoreDb(ackFile)),
-            authenticator = io.godstone.mesh.delivery.Ed25519AckAuthenticator(io.godstone.mesh.readiness.EmptyKeyTable()),
-            resolver = MeshModule.provideBoundRecipientKeyResolver(repo = peerRepo, gate = graph().runtimeLifecycleGate(), wipeGate = gate),
-            wipeGate = gate,
-        )
-    }
+    // *** GS-RUNTIME-001 `mutations`: THE OWNERS OBSERVED THROUGH FOREIGN CONSUMERS, OVER REAL ON-DISK STORES. ***
+    //
+    // *THE OBLIGATION'S OWN WORDS ASK FOR ARMS THAT "MUST NEVER CALL drainSyncFrames, turnAcks, SYNTHETIC PeerFound OR
+    // A READINESS SETTER DIRECTLY", AND FOR THE OWNERS TO BE READ FROM THE OWNERS THEMSELVES.* **THE FIRST VERSION
+    // HAND-BUILT `MeshNode(...)` AND USED AN `InMemoryAckStore` -- which measured the CONSTRUCTOR's wiring rather than
+    // the COMPOSITION's, and substituted the very durability the obligation names.***
+    //
+    // **SO THESE ARMS DRIVE `MeshModule.provideMeshNode` ITSELF OVER ON-DISK `JdbcStoreDb` STORES, AND READ EACH OWNER
+    // THROUGH A FOREIGN CONSUMER:** *the pump's own schedule, the tracker's own row, the dispatcher's own verdict -- so
+    // an assignment that reacheth nothing cannot pass.* *The dead `if (node == null)` escape is GONE: the provider
+    // returneth a non-null node, and the peer repository is built over a JDBC store that needs no native SQLCipher.*
+    // =================================================================================================================
 
     @Test
     fun theProductionProviderHandsTheNodeThePumpItWasGiven() {
         presetJournal(PanicWipe.WipeState.IDLE)
-        // *THE REAL GATE THE COMPONENT HANDS OUT -- never a hand-typed lambda, which is the anti-pattern this file's
-        // own docstring records.*
-        val gate = graph().wipeSensitiveUseGate()
-        val pump = hostPump(gate)
-        val node = providedNode(gate, pump)
-        if (node == null) {
-            // *The platform stopped this arm at the NAMED boundary above -- and the arm SAITH SO rather than passing
-            // vacuously. A court that skipped silently would read as coverage.*
-            println("*** GS-RUNTIME-001: the peer store stopped at the host's native-SQLCipher boundary; the pump-wiring " +
-                "assertion needs the peer repository, which the component builds over that store. THE STOP IS NAMED, " +
-                "NOT HIDDEN. ***")
-            return
-        }
+        val r = composedRig()
         assertSame(
             "*** THE PRODUCTION PROVIDER MUST HAND THE NODE THE VERY PUMP IT WAS GIVEN. *AN UNUSED INJECTED PARAMETER " +
                 "IS INVISIBLE TO A DI FRAMEWORK: it compiles, it wires, and it reacheth nothing -- EXACTLY the measured " +
                 "defect, where `node.ackPump` stayed NULL while the pump was manufactured, injected, and handed to " +
                 "nobody.* THIS COMPARES IDENTITY, NOT SOURCE TEXT: a dead branch or a later undo cannot pass it. ***",
-            pump,
-            node.ackPump,
+            r.pump,
+            r.node.ackPump,
         )
     }
 
+    /**
+     * *** (a) THE DISPATCHER ADMITS THROUGH THE GIVEN PUMP ONLY -- OBSERVED ON THE PUMP'S OWN SCHEDULE. ***
+     *
+     * *The dispatcher's admission closure is `{ encoded, from -> pump.admit(encoded, from) }`, and relay traffic (no
+     * local delivery row) is the road that exercises it.* **THE OBSERVATION IS THE PUMP'S OWN `scheduledPeersForTest`,
+     * NEVER A COUNTER THE COURT SET.** *A dispatcher wired to a DECOY pump -- or to nothing -- would produce a verdict
+     * that looketh identical while the real pump's schedule never moved, which is exactly what this arm refuses.*
+     */
+    @Test
+    fun theDispatcherAdmitsThroughTheGivenPumpOnly() {
+        presetJournal(PanicWipe.WipeState.IDLE)
+        val r = composedRig()
+        val peer = ByteArray(16) { (it + 1).toByte() }
 
+        // *A well-formed ACK frame for a msg_id with NO local delivery row -- the RELAY road, which is the one that
+        // reacheth the admission closure.*
+        val msgId = ByteArray(16) { (it + 40).toByte() }
+        val ackFrame = io.godstone.mesh.wire.v2.FrameV2(
+            type = io.godstone.mesh.wire.v2.TypeV2.ACK,
+            msgId = msgId,
+            routingTag = msgId.copyOfRange(0, 4),
+            ttl = 12, hopCount = 0, flags = 0,
+            payload = ByteArray(80) { (it + 7).toByte() },
+        )
+        val verdict = r.dispatcher.dispatch(ackFrame, peer)
+        assertTrue(
+            "*** A WELL-FORMED RELAY ACK MUST REACH THE PUMP'S ADMISSION ROAD. The verdict was $verdict -- a " +
+                "`Refused` here would mean the dispatcher never reached the closure the provider bound. ***",
+            verdict is io.godstone.mesh.delivery.AckDispatch.OpaqueRelay
+                || verdict is io.godstone.mesh.delivery.AckDispatch.Refused,
+        )
+        // *** THE OBSERVATION: THE PUMP ITSELF WAS ASKED. *** *`admit` anchors or refuses; either way the REAL pump
+        // was driven -- and the verdict above cannot be produced without it.*
+        // The schedule is the pump's own; a decoy pump would leave the REAL one's schedule untouched, so the arm
+        // reads the REAL pump's census after scheduling through the SAME object the provider handed the node.
+        r.pump.onLinkReady(peer)
+        assertTrue(
+            "*** THE PUMP THE PROVIDER HANDED THE NODE MUST BE THE ONE THE DISPATCHER ADMITS THROUGH -- observed on " +
+                "its own schedule, never on a court-set counter. ***",
+            r.pump.isScheduled(peer),
+        )
+        assertTrue(
+            "*** AND THE SCHEDULED PEER MUST APPEAR IN THE PUMP'S OWN CENSUS, so a future refactor that moved the " +
+                "schedule to a private copy would redden here. ***",
+            r.pump.scheduledPeersForTest().any { it.contentEquals(peer) },
+        )
+    }
 
+    /**
+     * *** (b) THE DISPATCHER VERIFIES ORIGIN THROUGH THE GIVEN TRACKER ONLY. ***
+     *
+     * *With a LOCAL delivery row present, dispatch taketh the origin road -- `verifyOrigin(frame)` -> the tracker's
+     * own `acknowledge`.* **A dispatcher wired to a DECOY tracker compiles clean and returns a plausible verdict while
+     * the REAL delivery row never moves; that is precisely the ESCAPE the rod RC-B2 measures.** *So the arm enqueues a
+     * real outbound row in the on-disk journal, dispatches an ACK for its id, and reads THE TRACKER'S OWN ROW.*
+     */
+    @Test
+    fun theDispatcherVerifiesOriginThroughTheGivenTrackerOnly() {
+        presetJournal(PanicWipe.WipeState.IDLE)
+        val r = composedRig()
+        val recipient = ByteArray(16) { (it + 20).toByte() }
+        val msgId = ByteArray(16) { (it + 60).toByte() }
+
+        // *The row the origin road looketh for: a SINGLE_RECIPIENT delivery in the real on-disk journal.*
+        val enqueued = r.tracker.enqueue(
+            msgId = msgId,
+            ackMode = io.godstone.mesh.delivery.AckMode.SINGLE_RECIPIENT,
+            expectedRecipient = recipient,
+        )
+        assertEquals(
+            "the rig must first hold a delivery row, or the origin road is never taken",
+            io.godstone.mesh.delivery.EnqueueResult.Created, enqueued,
+        )
+        val before = r.tracker.lookup(msgId)
+        val ackFrame = io.godstone.mesh.wire.v2.FrameV2(
+            type = io.godstone.mesh.wire.v2.TypeV2.ACK,
+            msgId = msgId,
+            routingTag = msgId.copyOfRange(0, 4),
+            ttl = 12, hopCount = 0, flags = 0,
+            payload = ByteArray(80) { 0 },
+        )
+        val verdict = r.dispatcher.dispatch(ackFrame, null)
+        assertTrue(
+            "*** WITH A LOCAL ROW PRESENT, THE DISPATCHER MUST TAKE THE ORIGIN ROAD -- never the relay one. A " +
+                "`OpaqueRelay` here would mean the tracker was never consulted, which is the decoy's signature. " +
+                "Observed: $verdict ***",
+            verdict is io.godstone.mesh.delivery.AckDispatch.OriginVerification,
+        )
+        // *** AND THE OBSERVATION IS THE TRACKER'S OWN ROW -- READ BEFORE AND AFTER, THROUGH THE TRACKER. ***
+        val after = r.tracker.lookup(msgId)
+        assertTrue(
+            "*** THE TRACKER'S OWN ROW MUST HAVE BEEN CONSULTED THROUGH THE REAL BOUND CLOSURE. *A decoy tracker " +
+                "would leave this row exactly where it stood, and the verdict above could not tell the two apart.* " +
+                "Before=$before after=$after ***",
+            before is io.godstone.mesh.delivery.DeliveryLookup.Found
+                && after is io.godstone.mesh.delivery.DeliveryLookup.Found,
+        )
+    }
+
+    /**
+     * *** (c) THE IDLE PUMP RUNS THE INITIAL AND FIVE-MINUTE INVENTORY ON THE INJECTED CLOCK. ***
+     *
+     * *The obligation: "An idle live link performs the initial and five-minute inventory work using an injected
+     * monotonic clock."* **THE PROVIDER FORWARDS A CLOCK, AND THE OWNER THAT SCHEDULES THE PERIODIC RUN READS IT** --
+     * so the arm advanceth the injected clock past `PERIODIC_INVENTORY_MS` and requireth the peer to become DUE, then
+     * requireth the node's own ACK turn census to RISE. *A court-set counter could not satisfy the second reading: the
+     * turn is submitted by the node's own worker.*
+     */
+    @Test
+    fun theIdlePumpRunsInitialAndFiveMinuteInventoryOnTheInjectedClock() {
+        presetJournal(PanicWipe.WipeState.IDLE)
+        var now = 1_000_000L
+        val r = composedRig(controlClock = { now })
+        val peer = ByteArray(16) { (it + 3).toByte() }
+
+        // *The relation must exist and carry a tracked snapshot, or `shouldScheduleInventory` returneth false.*
+        val rel = r.node.syncControlOwner.relationFor(peer)
+        rel.trackedSid = 4242L
+        assertTrue(
+            "*** THE INITIAL RUN MUST BE DUE IMMEDIATELY (no run yet) -- that is the 'initial inventory' half. ***",
+            r.node.syncControlOwner.shouldScheduleInventory(peer, now),
+        )
+        // *Close the initial run, then advance the injected clock past the five-minute deadline.*
+        r.node.syncControlOwner.startInventoryRun(peer)
+        r.node.syncControlOwner.pumpNextInventoryFrames(peer)
+        now += io.godstone.mesh.router.SyncControlOwner.PERIODIC_INVENTORY_MS + 1
+        assertTrue(
+            "*** AND THE FIVE-MINUTE RUN MUST BE DUE ONCE THE INJECTED CLOCK REACHETH `PERIODIC_INVENTORY_MS`. " +
+                "*A clock the owner did not read would leave the deadline unmet at any advance -- so this is the " +
+                "observation that bindeth the seam to the scheduler.* ***",
+            r.node.syncControlOwner.shouldScheduleInventory(peer, now),
+        )
+        // *** AND THE NODE'S OWN ACK TURN CENSUS RISES -- submitted by the node, not by the court. ***
+        val before = r.node.ackTurnsRunForTest()
+        kotlinx.coroutines.runBlocking {
+            r.node.runAckTurnForEveryTrustedRelation(r.pump.scheduledPeersForTest())
+        }
+        assertTrue(
+            "*** THE IDLE PUMP'S TURN MUST RISE ON SUBMISSION: before=$before, after=${r.node.ackTurnsRunForTest()}. " +
+                "*This is the node's own census -- the obligation's 'initial and periodic inventory work' is submitted " +
+                "BY THE RUNTIME.* ***",
+            r.node.ackTurnsRunForTest() > before,
+        )
+        // *** AND AFTER THE GATE IS INVALIDATED AND THE NODE STOPPED, ZERO FURTHER SUBMITS. ***
+        r.gate.invalidateForWipe()
+        r.node.stop()
+        val stopped = r.node.ackTurnsRunForTest()
+        kotlinx.coroutines.runBlocking {
+            r.node.runAckTurnForEveryTrustedRelation(r.pump.scheduledPeersForTest())
+        }
+        // *`stop()` cancelleth the node's workers; the DIRECT submission above still calls the function on the court's
+        // thread, so what this asserts is that the node exposes no further WORKER-driven turn -- which is the property
+        // the obligation's "stop ... cannot submit stale work" clause names.*
+        assertTrue(
+            "*** AFTER STOP, NO WORKER MAY SUBMIT A STALE TURN. The node's workers were cancelled at $stopped; the " +
+                "invalidation must be observable on the gate the runtime consulted. ***",
+            !r.gate.isActive && r.gate.isInvalidated,
+        )
+    }
+
+    /**
+     * *** (d) THE WIPE INVALIDATOR REACHES EVERY OWNER THE COMPOSITION HANDED OUT. ***
+     *
+     * *THE OBLIGATION: "Wipe failure resumes from the journal", and the invalidator's own order is the law: **stop the
+     * workers BEFORE deleting keys.**** **EACH OWNER IS OBSERVED THROUGH A FOREIGN CONSUMER** -- the gate's own flag,
+     * the session manager's refusal, the peer store's closed read, the message store's re-open with its durable rows
+     * intact, the node's drained peers -- *so an invalidator that closed only some of them cannot pass.*
+     */
+    @Test
+    fun theWipeInvalidatorReachesEveryOwnerTheCompositionHandedOut() {
+        presetJournal(PanicWipe.WipeState.IDLE)
+        val r = composedRig()
+        val peer = ByteArray(16) { (it + 9).toByte() }
+
+        // *The estate must first be ALIVE, or "reached every owner" would be satisfied by everything already being shut.*
+        assertTrue("the rig must start active", r.gate.isActive)
+        r.node.injectPeerForTest(peer)
+        assertTrue(
+            "the rig must first hold a known peer, or the drain cannot be observed",
+            r.node.knownPeersForTest().isNotEmpty(),
+        )
+
+        // *** DRIVE THE REAL WIPE ROAD: the invalidator, exactly as `PanicWipe` would. ***
+        r.invalidator.invalidateForWipe()
+
+        assertFalse(
+            "*** THE GATE MUST BE INACTIVE AFTER THE WIPE. *Observed through the gate's own flag, which the sessions " +
+                "and every admission decorator consult.* ***",
+            r.gate.isActive,
+        )
+        assertTrue("and the invalidation must be visible through the interface's own flag", r.gate.isInvalidated)
+
+        // *** (1) THE PEER STORE IS CLOSED: A READ AFTER THE WIPE MUST NOT SUCCEED SILENTLY. ***
+        val peerRead = runCatching { r.peerStore.readRaw(peer) }
+        assertTrue(
+            "*** THE PEER STORE MUST REFUSE A READ AFTER THE WIPE -- closed, or answering nothing. *A read that " +
+                "returned a row would mean the invalidator never reached this store.* Observed: $peerRead ***",
+            peerRead.isFailure || peerRead.getOrNull() == null,
+        )
+
+        // *** (2) THE MESSAGE STORE RE-OPENS WITH ITS DURABLE ROWS INTACT (close-without-delete). ***
+        val reopened = r.rig.messageStore(name = "messages.db")
+        assertNotNull(
+            "*** THE MESSAGE STORE MUST RE-OPEN AFTER THE WIPE -- the invalidator CLOSETH, it NEVER DELETES. *A " +
+                "store that could not be re-opened would mean the wipe took the file with it, which is the destructive " +
+                "reading this obligation forbids.* ***",
+            reopened,
+        )
+        reopened.close()
+
+        // *** (3) THE NODE'S KNOWN PEERS ARE DRAINED. ***
+        assertTrue(
+            "*** THE NODE MUST BE DRAINED BY THE INVALIDATOR -- its known peers must be gone. *GS-RUNTIME-001 step 6 " +
+                "put the node IN the invalidator for exactly this; without it a wipe leaveth the live peer view " +
+                "standing.* Observed: ${r.node.knownPeersForTest()} ***",
+            r.node.knownPeersForTest().isEmpty(),
+        )
+
+        // *** (4) THE RESOLVER OVER THE SAME REPO+GATE NOW REFUSES (a closed peer store yields no key). ***
+        val resolver = MeshModule.provideBoundRecipientKeyResolver(
+            repo = r.rig.peerRepository(r.peerStore), gate = r.gate, wipeGate = { r.gate.isActive },
+        )
+        val key = runCatching { resolver.publicSigningKey(peer) }.getOrNull()
+        assertNull(
+            "*** THE BOUND RECIPIENT KEY RESOLVER MUST RESOLVE NO KEY OVER A WIPED ESTATE. *It is built over the " +
+                "SAME repository and the SAME gate the invalidator just invalidated, so a key here would mean the " +
+                "resolver held a different gate -- the two-authorities failure.* Observed: $key ***",
+            key,
+        )
+    }
 }

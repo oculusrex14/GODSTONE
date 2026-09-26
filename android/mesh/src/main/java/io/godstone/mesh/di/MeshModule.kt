@@ -665,8 +665,25 @@ internal object MeshModule {
         authenticator: Ed25519AckAuthenticator,
         resolver: RecipientKeyResolver,
         wipeGate: WipeSensitiveUseGate,
+        // *** GS-RUNTIME-001 step 4: THE CLOCK IS INJECTABLE, MIRRORING `DurableAckPump`'s OWN DEFAULTED PARAMETER. ***
+        //
+        // *The idle-link arm must advance past the FIVE-MINUTE inventory deadline, and a court cannot wait five
+        // minutes -- so the provider forwards a clock whose PRODUCTION DEFAULT is the node's own monotonic reading.*
+        // **Defaulted, so the production call site is byte-identical: the graph binds no clock, the node keeps
+        // `System.nanoTime()/1_000_000`.** *Without the seam the arm would have to sleep, which would make it either
+        // flaky or a lie.*
+        controlClock: (() -> Long)? = null,
     ): MeshNode {
         val node = MeshNode(ctx, identity, sqliteStore, deliveryTracker, wipeGate, sessions)
+        if (controlClock != null) {
+            // *THE INJECTED CLOCK REPLACES THE NODE'S OWN, for this node only -- and the owner that schedulleth the
+            // periodic inventory readeth it, so advancing the injected clock really arriveth at the deadline.*
+            node.controlClock = controlClock
+            node.snapshotAuthority = io.godstone.mesh.router.InventorySnapshotAuthority(sqliteStore, controlClock)
+            node.syncControlOwner = io.godstone.mesh.router.SyncControlOwner(
+                sqliteStore, node.snapshotAuthority, controlClock, identity.nodeId,
+            )
+        }
         // GS-RUNTIME-001 step 2: **THE DISPATCHER IS BOUND TO THE NODE**, answering the delivery tracker exactly
         // as the harness's twin doth. (The recipient inbox's own wiring followeth the T83 commit road and is the
         // NEXT slice; it is NOT claimed here.)
