@@ -51,6 +51,8 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     /// open and still speaks through the transport's own connection; it is re-minted ONLY when the binding genuinely
     /// falls (A3's churn, or the explicit release the class performs).*
     private var writerCache: [UUID: RecordWriter] = [:]
+    /// *The handle the timer class timed and must release, so the lease census returneth.*
+    private var timedHandleRef = UUID()
     private var stressPins: [(CBPeripheral, StressPeripheral)] = []
     private func stressPeripheral(_ handle: UUID) -> CBPeripheral {
         if let pinned = stressPins.first(where: { ($0.1).identifier == handle }) { return pinned.0 }
@@ -73,13 +75,20 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         let messageStoreUrl: URL
         let peerStoreUrl: URL
         let journal: ProbeJournal
+        /// *** AND THE KEYCHAIN BELONGS TO THE ESTATE, WHICH THE FIRST DRAFT GOT WRONG. *** *MEASURED: a FRESH
+        /// `ProbeKeychain` per reopen made `MeshIdentity.loadOrCreate` mint a NEW identity, so the reopen witnessed
+        /// "the identity changed across the reopen" at cycles 1000/5000/9000 -- an artifact of the harness, not a
+        /// runtime defect. An estate is identified by its key material as much as by its files, so the keychain is part
+        /// of it.*
+        let keychain: ProbeKeychain
         func remove() {
             for u in [messageStoreUrl, peerStoreUrl] { try? FileManager.default.removeItem(at: u) }
         }
     }
 
     private func estate(_ tag: String, journal: ProbeJournal = ProbeJournal()) -> Estate {
-        Estate(messageStoreUrl: tempURL("\(tag)_msg"), peerStoreUrl: tempURL("\(tag)_peer"), journal: journal)
+        Estate(messageStoreUrl: tempURL("\(tag)_msg"), peerStoreUrl: tempURL("\(tag)_peer"),
+               journal: journal, keychain: ProbeKeychain())
     }
 
     /// *** THE PRODUCTION COMPOSITION ROOT; AND THE ONE ROAD THIS COURT TAKES THAT THE COMPOSITION DOES NOT. ***
@@ -100,7 +109,14 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
             serialized: serialized,
             authenticatedRemoteStaticKey: identity.staticDhPublicKey,
             advertisedNodeHint: identity.nodeHint) else { throw ProbeError.localBindingRefused }
-        guard case .firstSeenPinned = runtime.peerRepository.applyValidatedBinding(binding) else {
+        // *** AND A SECOND PIN OF THE SAME BINDING IS `acceptedExisting`, NOT A REFUSAL. *** *MEASURED now that the
+        // estate's keychain surviveth a reopen: the reopened owner already carrieth this peer's row, and the
+        // repository's own classifier answers `acceptedExisting` -- which is the owner's correct idempotent answer, not
+        // a failure. Both are accepted here so the pin can be applied once per owner without inventing state.*
+        switch runtime.peerRepository.applyValidatedBinding(binding) {
+        case .firstSeenPinned, .accepted:
+            return
+        default:
             throw ProbeError.localPinRefused
         }
     }
@@ -108,7 +124,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     private func openRuntime(_ e: Estate) throws -> MeshRuntime {
         let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: e.messageStoreUrl, peerStoreUrl: e.peerStoreUrl,
-            journal: e.journal, keychain: ProbeKeychain())
+            journal: e.journal, keychain: e.keychain)
         try pinLocalIdentity(runtime)
         return runtime
     }
@@ -313,7 +329,8 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     /// bytes, the delegate authentication and every reduction are production ones. The answer is whether the TRANSPORT
     /// bindeth the relation -- **a writer is a separate object, minted only by the send road.***
     @discardableResult
-    private func bringUpRelation(_ runtime: MeshRuntime, handle: UUID, remoteHint: Data) -> Bool {
+    private func bringUpRelation(_ runtime: MeshRuntime, handle: UUID, remoteHint: Data,
+                                 fullWalk: Bool = true) -> Bool {
         let transport = runtime.meshNode.ble
         let factory = stressFactory ?? StressManagerFactory()
         stressFactory = factory
@@ -344,8 +361,21 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                                                    characteristic: linkInfo, error: nil)
         _ = transport.processPeripheralWriteValue(peripheral, delegate: delegate,
                                                   characteristic: linkInfo, error: nil)
-        _ = transport.processPeripheralNotificationStateUpdated(
-            peripheral, delegate: delegate, characteristic: Self.notifyingInboxCharacteristic(), error: nil)
+        // *** THE NOTIFY LEG IS OPTIONAL, AND THE TIMER CLASS OMITS IT -- MEASURED, AND IT IS THE TRANSPORT'S OWN
+        // LAW: `processPeripheralNotificationStateUpdated`'s `.physicalDuplexReady` arm CANCELS the slot's lease as it
+        // entereth the handshake ("a duplicate notification callback must not re-open the hour"), so the lease the
+        // connect leg armed standeth only BETWEEN the connect and the notify. A class that fires the lease must
+        // therefore read it in that window, which is exactly where production fires its provisional-outbound timeout.*
+        if fullWalk {
+            _ = transport.processPeripheralNotificationStateUpdated(
+                peripheral, delegate: delegate, characteristic: Self.notifyingInboxCharacteristic(), error: nil)
+        }
+        // *** AND THE EPOCH IS DRAINED BEFORE ANYTHING IS READ. *** *MEASURED: the legs above are dispatched ONTO the
+        // epoch's serial executor asynchronously, so a synchronous read immediately afterwards raced them -- the same
+        // seed halted at cycle 5 on one run and cycle 21 on another, which is the signature of a race rather than a
+        // deterministic refusal. `barrierOnActiveContext()` is the transport's OWN drained point ("it cannot return
+        // until every queued reduction completed"), so the class waits exactly as the production drain does.*
+        _ = transport.barrierOnActiveContext()
         return delegate.transportEpoch == transport.currentTransportEpoch
             && transport.connection(for: handle) != nil
     }
@@ -450,8 +480,8 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
 
         let e = estate("main")
         defer { e.remove() }
-        let runtime = try openRuntime(e)
-        let inbox = try XCTUnwrap(runtime.meshNode.recipientInbox,
+        var runtime = try openRuntime(e)
+        var inbox = try XCTUnwrap(runtime.meshNode.recipientInbox,
                                   "*** THE RECIPIENT INBOX MUST BE BOUND BY THE PRODUCTION COMPOSITION. ***")
 
         let handleA = UUID(), handleB = UUID()
@@ -692,25 +722,22 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                 // `processInboundWrite` (`reductionProcessInboundWrite` armeth whenever the slot carrieth no lease),
                 // so the class drives THAT -- with a real peripheral-manager source, a real link-info write and a
                 // fresh handle -- and fires the lease it armed.*
+                // *** THE LEASE IS ARMED BY THE REAL ADMISSION OF A FRESH RELATION. *** *MEASURED: a STANDING handle's
+                // discover answereth `.noOp` (the transport's own dedup), so the entry that arms UNCONDITIONALLY is the
+                // admission of a NEW relation -- `reductionProcessOutboundDiscover` calls `armTimerLocked` on the very
+                // key it just admitted. That is the production road a second peer takes. The class drives it with a
+                // fresh handle, and the drain barrier inside `bringUpRelation` makes the armed lease readable.*
+                let timedHandle = UUID()
+                timedHandleRef = timedHandle
                 let bound = bringUpRelation(runtime, handle: handleA, remoteHint: peerA.identity.nodeHint)
-                let responderHandle = UUID()
-                guard let pm = runtime.meshNode.ble.currentManagerContextForTest()?.peripheral else {
-                    firstFailure = failureString(cycle, action, "no peripheral manager context stands",
-                                                 census(runtime, handles: [handleA, handleB],
-                                                        incarnationsOf: [handleA, handleB], inbox: inbox))
-                    break
-                }
-                _ = runtime.meshNode.ble.processInboundWrite(
-                    centralId: responderHandle,
-                    rawData: Self.remoteLinkInfo(peerB.identity.nodeHint),
-                    sourceEpoch: runtime.meshNode.ble.currentTransportEpoch,
-                    from: pm)
+                let armedByDiscover = bringUpRelation(runtime, handle: timedHandle,
+                                                     remoteHint: peerB.identity.nodeHint, fullWalk: false)
                 let leases = runtime.meshNode.ble.timerLeaseSnapshotForTest()
-                guard bound, let lease = leases.first(where: { $0.peerId == responderHandle }) else {
+                guard bound, armedByDiscover, let lease = leases.first(where: { $0.peerId == timedHandle }) else {
                     firstFailure = failureString(cycle, action,
-                                                 "the real inbound write armed no lease to fire (bound=\(bound) "
-                                                 + "leases=\(leases.map { $0.peerId.uuidString })"
-                                                 + " handle=\(responderHandle.uuidString))",
+                                                 "the real admission armed no lease to fire (bound=\(bound) "
+                                                 + "armedByDiscover=\(armedByDiscover) leases=\(leases.count) "
+                                                 + "handle=\(timedHandle.uuidString))",
                                                  census(runtime, handles: [handleA, handleB],
                                                         incarnationsOf: [handleA, handleB], inbox: inbox))
                     break
@@ -958,10 +985,16 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                 defer { wipeEstate.remove() }
                 let pendingRuntime = try MeshRuntime.createArchiveOnlyHostComposition(
                     messageStoreUrl: wipeEstate.messageStoreUrl, peerStoreUrl: wipeEstate.peerStoreUrl,
-                    journal: wipeEstate.journal, keychain: ProbeKeychain())
+                    journal: wipeEstate.journal, keychain: wipeEstate.keychain)
                 let gateOpen = pendingRuntime.wipeAuthorityForTest().allowsSensitiveApi()
                 let heldBeforeWipe = pendingRuntime.messageStore.allHeldMsgIds().count
-                let frame = stressFrame(msgId(cycle, salt: 0xAC), routingTag: peerA.identity.nodeHint)
+                // *** AND THE FRAME IS SEALED TO *THIS* RUNTIME, SO THE ROAD REACHETH THE GATED COMMIT. ***
+                // *MEASURED: a frame with a synthetic body is refused at gate 2 (`notForUs`) BEFORE the wipe gate is
+                // consulted -- which proves nothing about the gate. A REAL container sealed to the pending runtime's
+                // own static DH key walketh gates 0..4 and then meets the gated `commitInbound`, which is the road the
+                // class exists to witness.*
+                let frame = try sealedForSelf(pendingRuntime, sender: (peerA.identity, peerA.seed),
+                                              nonce: nonce(cycle, salt: 0xAC), body: "gs-stress-wipe")
                 let dispatch = pendingRuntime.meshNode.dispatchDirect(
                     frame, expectedRecipient: peerA.identity.nodeId) { _, _ in true }
                 let heldAfterWipe = pendingRuntime.messageStore.allHeldMsgIds().count
@@ -1002,6 +1035,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
             // `retireIncarnations(ofPeerId:)` -- the same verb the classes prove releases the slot.*
             _ = runtime.sessionManager.retireIncarnations(ofPeerId: handleA)
             _ = runtime.sessionManager.retireIncarnations(ofPeerId: handleB)
+            runtime.meshNode.ble.forceOutboundDisconnectForTest(peerId: timedHandleRef)
             _ = runtime.meshNode.drainAckOutboxForLink(StressBound.ackOutboxCap)
 
             // (5) *** THE ONE LIFECYCLE AUTHORITY CLOSES THE ACTIVATION. ***
@@ -1055,9 +1089,22 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
 
             // *** THE FULL-GRAPH REOPEN CHECKPOINTS. ***
             if checkpointCycles.contains(cycle + 1) {
-                checkpoints[cycle + 1] = try reopenCheckpoint(e, previous: runtime)
+                // *** AND THE CAMPAIGN CONTINUES ON THE REOPENED OWNER. *** *MEASURED: the first draft kept driving
+                // the runtime whose stores the checkpoint had just CLOSED -- so every later cycle wrote through a
+                // closed handle. The reopen returns the owner it built, and the loop adopts it (with its inbox and a
+                // cleared writer cache, since a fresh owner holdeth no writer).*
+                let (report, reopened) = try reopenCheckpoint(e, previous: runtime)
+                checkpoints[cycle + 1] = report
+                runtime = reopened
+                inbox = try XCTUnwrap(runtime.meshNode.recipientInbox)
+                writerCache.removeAll()
+                timedHandleRef = UUID()
             }
         }
+
+        // *** THE FOURTH CHECKPOINT: AFTER THE FINAL STOP. *** *The card nameth cycles 1000/5000/9000 AND "after the
+        // final stop", so the last reopen is taken here rather than being folded into the loop.*
+        checkpoints[cycles] = try reopenCheckpoint(e, previous: runtime).0
 
         XCTAssertEqual(
             cyclesCompleted, cycles,
@@ -1101,8 +1148,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
 
     /// *** THE FULL-GRAPH REOPEN: the same files, a NEW owner; the owners must be the ones the composition builds and
     /// the durable rows must have survived their owner.***
-    @discardableResult
-    private func reopenCheckpoint(_ e: Estate, previous: MeshRuntime) throws -> String {
+    private func reopenCheckpoint(_ e: Estate, previous: MeshRuntime) throws -> (String, MeshRuntime) {
         let heldBefore = previous.messageStore.allHeldMsgIds()
         let anchorsBefore = heldBefore.map { ($0, previous.messageStore.receiptAnchorForTest($0)) }
         let framesBefore = previous.ackStore.countFrames()
@@ -1130,7 +1176,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         if opened.meshNode.recipientInbox == nil || opened.meshNode.ackDispatcher == nil {
             report = "the reopened composition bound no inbox or dispatcher"
         }
-        return report
+        return (report, opened)
     }
 
     private func storeBytes(_ runtime: MeshRuntime) -> (db: Int, wal: Int) {
