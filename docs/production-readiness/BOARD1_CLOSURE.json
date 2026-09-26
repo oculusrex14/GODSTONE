@@ -443,7 +443,7 @@
   ],
   "strongest_permitted_terminal_state": "READY_FOR_EXTERNAL_REAUDIT"
  },
- "candidate_tag": "production-readiness-board1-rc9",
+ "candidate_tag": "production-readiness-board1-rc10",
  "closure_record_sha": null,
  "main_tip_sha": "35e67340e4706bb8fd38cdbc6768c97205dff399",
  "board2_tip_sha": "35e67340e4706bb8fd38cdbc6768c97205dff399",
@@ -459,8 +459,8 @@
  },
  "candidate_is_immutable": true,
  "candidate_superseded_by": null,
- "candidate_ref": "production-readiness-board1-rc9",
- "current_binding_note": "*** THE BOUND CANDIDATE IS rc9. *** *rc8 WAS TAGGED AND THE HOSTED RUN REFUSED IT ON TWO GROUNDS, BOTH FIXED AT THEIR CAUSES.* **One: the local-identity control found an outbound binding CONSTRUCTED AT A CALL SITE (`LabRuntime.validatedRotationBinding`), which the control forbiddeth -- the construction moved into the identity authority (`MeshIdentity.issueRotationBinding`) and the lab now delegates. Two: the Archive UI arm GSFINAL006 was RED ON THE HOSTED RUNNER and GREEN LOCALLY, because TWO ROADS told the scene about ONE Back -- the reader's own control and the path observer -- so the outcome depended on the runtime's delivery order (MEASURED: 2 of 3 local runs red once reproduced); the reader's control now drives the ONE route authority (the path), and the de-collision left the toolbar's root control as `archive.toRoot`.** *rc8 remaineth an immutable historical tag.*",
+ "candidate_ref": "production-readiness-board1-rc10",
+ "current_binding_note": "*** THE BOUND CANDIDATE IS rc10. *** *rc9 WAS TAGGED AND THE HOSTED RUN REFUSED IT ON ONE GROUND -- the Archive UI arm `GSFINAL006` (Back must return to the submitted search), red 3/3 on the hosted runner.* **THE CAUSE WAS FOUND BY A MODEL PROBE RATHER THAN BY ARGUMENT: a pop fires the browser's `onDisappear { scene.dismiss() }` at the same moment the popping control's `scene.back()` launches the RESTORED RETURN ROUTE's re-run; when the dismissal lands while that search is in flight the SHARED scene's generation moveth under it and it publisheth nothing -- `mode=search passages=0 phase=loading`, the hosted red exactly (the probe: `back()` alone gave `passages=2`).** *The scene is the COMPOSITION's own object and the pushed reader already cancelleth its OWN petition in its OWN `onDisappear`, so that road was cancelling the ROOT's work from a leaf; it is removed, and the place write is untouched.* **rc9's two earlier repairs (the identity authority, and the one-route-authority Back) remain in place.** *rc9 stayeth an immutable historical tag.*",
  "binding_design": {
   "candidate_ref": "the tag NAME this record binds. THE ANNOTATED TAG IS THE SHA BINDING -- a record cannot name the commit that writes it, so it does not try.",
   "candidate_sha": "DERIVED from candidate_ref by `ci/check_candidate_binding.py`, never asserted here. A stated value is checked against the tag and refused if it disagrees.",
