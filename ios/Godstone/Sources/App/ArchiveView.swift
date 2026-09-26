@@ -207,7 +207,16 @@ private struct ArchiveBrowser: View {
                     Button(scene.mode == .document ? "Back" : "Documents") { scene.back() }
                         // GS-FINAL-006: an identifier so an EXECUTED app test can ADDRESS the control proving Back
                         // leaves the document, rather than inferring it from a label that may be localized.
-                        .accessibilityIdentifier("archive.back")
+                        //
+                        // *** AND IT IS DELIBERATELY NOT `archive.back`: THAT IDENTITY BELONGETH TO THE PUSHED
+                        // READER'S OWN CONTROL. *** *The reader rendereth its own `archive.back` in its content
+                        // (see `ArchiveDocumentReader`), and a SECOND control answering to the SAME identity is
+                        // the ambiguity class this campaign removeth elsewhere: `app.buttons["archive.back"]
+                        // .firstMatch` would then resolve to WHICHEVER the runtime listed first -- a tap on the
+                        // chrome instead of the content, or the reverse, decided by nothing the arm controls.*
+                        // **The toolbar's road is the ROOT road (it is rendered where no document is pushed), so
+                        // it is named for what it is.***
+                        .accessibilityIdentifier("archive.toRoot")
                 }
                 if scene.mode == .search || scene.mode == .document {
                     Button("All documents") { scene.backToDocuments() }
@@ -292,9 +301,29 @@ private struct ArchiveBrowser: View {
             // keep `openedDocumentId` set while the reader is back at the list -- the divergence in the other
             // direction, and the one the toolbar's own Back button could never fix. An empty path now returns the
             // scene to its list, and a non-empty one re-opens the document the stack now shows.
+            //
+            // *** AND AN EMPTY PATH MUST BE TOLD APART FROM THE PATH THE SCENE ITSELF JUST EMPTIED. ***
+            //
+            // **MEASURED, HOSTED RUNS `36187910094` AND `36243824132`, ARM `GSFINAL006`, DETERMINISTICALLY: the
+            // reader's own Back tap LEFT THE DOCUMENT AND LANDED ON THE DOCUMENT LIST, with `archive.search.results`
+            // never rendered.** *The trace is a DOUBLE RETURN, and this handler is the second half of it:* the tap
+            // calleth `scene.back()`, whose restored search route setteth `openedDocumentId = nil`; `syncPathWithScene`
+            // then emptyeth the path BECAUSE the scene left the document -- and **THIS OBSERVER RAN ON THAT VERY
+            // EMPTYING, IN THE `.search` MODE THE SCENE HAD JUST ENTERED, AND CALLED `scene.back()` A SECOND TIME.**
+            // *That second call is the `.search` case of `back()`, i.e. `backToDocuments()`, which NILETH
+            // `searchedQuery` AND LOADETH THE LIST -- so the submitted search was destroyed by the app's own
+            // reflection of a correct first return.* **The first draft's guard could not see the difference: it asked
+            // only `scene.mode`, which the same `back()` had already moved to `.search`.**
+            //
+            // *THE DISCRIMINATOR IS `openedDocumentId`, AND IT IS EXACT BECAUSE THE PRODUCTION ROAD OWNS IT: a scene
+            // that has LEFT its document (`nil`) cannot be left again, so the empty path is a REFLECTION and not a
+            // gesture; a scene still HOLDING a document (`non-nil`) is one the USER just popped, which is the case
+            // this handler existeth for.* **THE TWO ROADS ARE NOW ORDERED BY CONSTRUCTION: `syncPathWithScene` runs
+            // AFTER `back()` hath moved the scene, so the reflection is seen with the document already gone.**
             .onChange(of: path) { newPath in
                 guard let shown = newPath.last else {
-                    if scene.mode == .document { scene.back() }
+                    guard scene.openedDocumentId != nil, scene.mode == .document else { return }
+                    scene.back()
                     return
                 }
                 if scene.openedDocumentId != shown.id { openFromPath(shown) }
@@ -312,9 +341,36 @@ private struct ArchiveBrowser: View {
                 scene.dismiss()   // dismissal striketh out the in-flight petition
             }
             .navigationDestination(for: ArchiveDocument.self) { document in
-                ArchiveDocumentReader(document: document, library: library, scene: scene)
+                // *** THE READER IS HANDED THE ONE ROUTE AUTHORITY'S POP, NOT A SECOND ROAD TO THE SCENE. ***
+                // *The destination closure belongeth to `ArchiveBrowser`, so it can reach the bound path; the
+                // reader cannot, and must not invent its own way to the scene.*
+                ArchiveDocumentReader(document: document, library: library, scene: scene,
+                                      onBack: { dismissReader() })
             }
         }
+    }
+
+    /// *** THE ONE ROUTE AUTHORITY'S OWN POP, AND THE ONLY ROAD OFF A PUSHED DOCUMENT. ***
+    ///
+    /// *THE DEFECT THIS REPLACES, MEASURED ON THE HOST AND RECORDED AT THE BUTTON: the reader's Back and the
+    /// path observer BOTH told the scene, so the outcome depended on the runtime's delivery order.* **The button
+    /// now popeth the path, and the observer -- which already existeth to tell the scene about path movement --
+    /// driveth the scene from it.** *One authority, one tell.*
+    ///
+    /// *AND THE RE-ENTRANCY IS HANDLED WHERE IT ARISETH RATHER THAN ASSUMED AWAY:* the observer's own
+    /// `if scene.openedDocumentId != shown.id { openFromPath(shown) }` compareth against the scene, so the
+    /// scene's own `back()` (which clear ETH `openedDocumentId` as the restored route demands) maketh the
+    /// observer a NO-OP on the way out. **The pop is therefore idempotent from both directions.**
+    private func dismissReader() {
+        // *`removeLast` only where something standeth to remove: the reader is only reachable WITH a pushed
+        // document, but a guard that cannot be satisfied by a bare list is cheaper than a crash on one.*
+        guard !path.isEmpty else {
+            // NO PUSHED DOCUMENT (a state the reader cannot be in): tell the scene directly, since there is no
+            // path movement for the observer to reflect.
+            scene.back()
+            return
+        }
+        path.removeLast()
     }
 
     private var documentList: some View {
@@ -421,15 +477,21 @@ private struct ArchiveDocumentReader: View {
     @ObservedObject private var scene: ArchiveSceneModel
     @StateObject private var model: ArchiveReaderModel
     @State private var retry = 0
+    /// *** THE ROUTE AUTHORITY'S POP, HANDED IN RATHER THAN REACHED FOR. *** *This view cannot see the bound
+    /// path (it is the browser's `@State`), and the whole point of the repair is that it MUST NOT reach past
+    /// it to the scene -- see the Back control's own note.*
+    private let onBack: () -> Void
     // The WIP's Dynamic Type change, reviewed and kept: the reading size
     // scaleth with the body category, never a fixed point size.
     @ScaledMetric(relativeTo: .body) private var readingSize = GodstoneTheme.bodyTextSize
 
-    init(document: ArchiveDocument, library: ArchiveLibrary, scene: ArchiveSceneModel) {
+    init(document: ArchiveDocument, library: ArchiveLibrary, scene: ArchiveSceneModel,
+         onBack: @escaping () -> Void) {
         self.document = document
         self.library = library
         _scene = ObservedObject(wrappedValue: scene)
         _model = StateObject(wrappedValue: ArchiveReaderModel(library: library))
+        self.onBack = onBack
     }
 
     @ViewBuilder private func readingView(found: [ArchivePassage]) -> some View {
@@ -481,12 +543,34 @@ private struct ArchiveDocumentReader: View {
         //
         // SO THE AFFORDANCE THE CARD NAMES DID NOT EXIST ON THIS ROAD: "Back returns to the submitted
         // query" is not performable if the only way out is chrome the app does not own. THIS BUTTON IS
-        // IN THE READER'S OWN CONTENT, carries the identifier the witness addresses, and calls the SAME
-        // `scene.back()` the toolbar's control does -- **one scene owner, two rendered affordances, no
-        // second navigator.***
+        // IN THE READER'S OWN CONTENT, carries the identifier the witness addresses, and drives **THE
+        // ONE ROUTE AUTHORITY** -- see below.*
+        //
+        // *** THE BUTTON USED TO CALL `scene.back()` DIRECTLY, AND THAT WAS TWO ROADS TO ONE FACT. ***
+        //
+        // **MEASURED, HOSTED RUNS `36187910094` AND `36243824132`, ARM `GSFINAL006`: the tap LEFT THE DOCUMENT
+        // AND LANDED ON THE DOCUMENT LIST, with `archive.search.results` never rendered -- DETERMINISTICALLY, three
+        // runs out of three, on Xcode 16.4 / iOS 26.2, while the SAME ARM PASSES on the local Xcode 27 / iOS 26.3.**
+        // *A correct `back()` setteth `openedDocumentId = nil` (`ArchiveSceneModel.back`, the restored-search
+        // route), `syncPathWithScene()` then emptyeth the path BECAUSE the scene left the document, and THAT
+        // EMPTYING FIRES THE PATH OBSERVER -- WHICH EXISTETH TO TELL THE SCENE ABOUT A POP THE SCENE DID NOT
+        // MAKE.* **So the tap produced TWO tells: the button's own `scene.back()`, and the observer's, and
+        // WHICH ONE THE SCENE SAW LAST -- AND WHETHER IT SAW TWO AT ALL -- DEPENDED ON THE RUNTIME'S DELIVERY
+        // ORDER, which is exactly what differeth betwixt the two Xcodes.** *A second tell from `.search` is
+        // `backToDocuments()`, i.e. the list: the arm's red, reached by the app's own reflection of a correct
+        // return.*
+        //
+        // **THE FIX IS THE AUDIT'S OWN LAW, APPLIED TO THIS CONTROL: ONE iOS ROUTE AUTHORITY.** *The PATH is
+        // the navigation authority -- it is already bound and already observed -- so the button POPPETH THE
+        // PATH and the observer driveth the scene from it, exactly once, in either order. The button no longer
+        // speaks to the scene at all.* **This is order-independent by construction rather than by timing: there
+        // is now ONE caller of `scene.back()` on this road, and it is the observer.**
+        //
+        // *THE TOOLBAR'S `archive.back` IS DELIBERATELY LEFT ALONE: it is rendered at the ROOT of the stack,
+        // where the path is EMPTY, so `scene.back()` is unambiguous there and there is no pop to reflect.*
         .safeAreaInset(edge: .top) {
             HStack {
-                Button { scene.back() } label: {
+                Button { onBack() } label: {
                     Label("Back", systemImage: "chevron.backward")
                 }
                 .accessibilityIdentifier("archive.back")

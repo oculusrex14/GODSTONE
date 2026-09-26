@@ -236,28 +236,22 @@ public final class LabRuntime: @unchecked Sendable {
     }
 
     /// Build a binding for the node's OWN signing key at a new generation, validated by the real validator.
+    ///
+    /// *** THE CONSTRUCTION MOVED TO THE IDENTITY AUTHORITY. *** *IT WAS HERE, AND THE LOCAL-IDENTITY CONTROL
+    /// REFUSED IT -- correctly: a binding's construction must appear in NO mesh source but the authority file,
+    /// because a call site that can mint its own binding can mint one for a key it does not own.* **So this method now
+    /// DELEGATES to `MeshIdentity.issueRotationBinding`, where the authority signeth and SELF-VERIFIETH, and does only
+    /// the two things a caller legitimately owns: SUPPLY the lab's seeded material, and RUN the frozen validator over
+    /// the result.**
     static func validatedRotationBinding(signingSeed: Data, generation: UInt32,
                                          staticDhSeedByte: UInt8) throws -> ValidatedPeerBinding {
-        let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: signingSeed)
-        let agreementKey = try Curve25519.KeyAgreement.PrivateKey(
-            rawRepresentation: Data(repeating: staticDhSeedByte, count: 32))
-        let preimage = IdentityBindingV1.signaturePreimage(
-            generation: generation,
-            signingPublicKey: signingKey.publicKey.rawRepresentation,
-            staticDhPublicKey: agreementKey.publicKey.rawRepresentation
-        )
-        let signature = try signingKey.signature(for: preimage)
-        let binding = try IdentityBindingV1(
-            generation: generation,
-            signingPublicKey: signingKey.publicKey.rawRepresentation,
-            staticDhPublicKey: agreementKey.publicKey.rawRepresentation,
-            signature: signature
-        )
+        let binding = try MeshIdentity.issueRotationBinding(
+            signingSeed: signingSeed, generation: generation, staticDhSeedByte: staticDhSeedByte)
         let result = IdentityBindingValidator.validate(
             serialized: binding.encode(),
-            authenticatedRemoteStaticKey: agreementKey.publicKey.rawRepresentation,
+            authenticatedRemoteStaticKey: binding.staticDhPublicKey,
             advertisedNodeHint: IdentityBindingV1.deriveNodeHint(
-                nodeId: IdentityBindingV1.deriveNodeId(signingPublicKey: signingKey.publicKey.rawRepresentation)
+                nodeId: IdentityBindingV1.deriveNodeId(signingPublicKey: binding.signingPublicKey)
             )
         )
         guard case .valid(let validated) = result else {

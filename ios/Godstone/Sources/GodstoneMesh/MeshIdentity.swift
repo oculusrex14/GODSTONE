@@ -77,6 +77,46 @@ public struct MeshIdentity: Sendable {
         )
     }
 
+    /// *** THE ROTATION ROAD, ISSUED BY THE AUTHORITY LIKE EVERY OTHER BINDING (GS-UX-001). ***
+    ///
+    /// *THE LOCAL-IDENTITY CONTROL FORBIDDETH `IdentityBindingV1(` IN EVERY MESH SOURCE BUT THIS AUTHORITY FILE, and
+    /// its reason is the one this method honoureth: **an outbound binding must be issued BY the identity authority,
+    /// never assembled at a call site** -- a caller that can mint its own binding can mint one for a key it does not
+    /// own.* *The lab's stale-candidate journey needed a SECOND generation for the SAME node, and it built the binding
+    /// itself; the construction MOVES HERE, where the authority's own `signingKey` performeth the signature and
+    /// self-verifieth it, so the lab now DELEGATES rather than mints.*
+    ///
+    /// **THE SEED IS SUPPLIED BECAUSE THE LAB'S NODE IS SEEDED, NOT KEYCHAIN-BACKED -- everything else is the
+    /// authority's own law: the same preimage, the same self-verification, the same `IdentityBindingV1`.** *The
+    /// returned binding is UNVALIDATED; the caller runneth the frozen `IdentityBindingValidator` over it exactly as
+    /// this file's own issuance road is validated elsewhere.*
+    public static func issueRotationBinding(signingSeed: Data,
+                                            generation: UInt32,
+                                            staticDhSeedByte: UInt8) throws -> IdentityBindingV1 {
+        let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: signingSeed)
+        let agreementKey = try Curve25519.KeyAgreement.PrivateKey(
+            rawRepresentation: Data(repeating: staticDhSeedByte, count: 32))
+        let signingPub = signingKey.publicKey.rawRepresentation
+        let staticPub = agreementKey.publicKey.rawRepresentation
+        let preimage = IdentityBindingV1.signaturePreimage(
+            generation: generation,
+            signingPublicKey: signingPub,
+            staticDhPublicKey: staticPub
+        )
+        let signature = try signingKey.signature(for: preimage)
+        // *THE AUTHORITY SELF-VERIFIETH, exactly as `issueIdentityBinding` doth: a binding whose signature the
+        // issuing key cannot verify is corrupt, not a value to hand out.*
+        guard signingKey.publicKey.isValidSignature(signature, for: preimage) else {
+            throw MeshError.identityStateCorrupt("Rotation issuer self-verification failed")
+        }
+        return IdentityBindingV1(
+            generation: generation,
+            signingPublicKey: signingPub,
+            staticDhPublicKey: staticPub,
+            signature: signature
+        )
+    }
+
     // MARK: - Keychain Tags
 
     internal static let v1Tag = "io.godstone.mesh.identity.v1"
