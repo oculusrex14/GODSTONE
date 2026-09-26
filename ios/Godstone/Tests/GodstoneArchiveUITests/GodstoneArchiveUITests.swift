@@ -763,11 +763,16 @@ final class GodstoneArchiveUITests: XCTestCase {
         let phaseSurface = again.descendants(matching: .any).matching(
             NSPredicate(format: "identifier BEGINSWITH 'archive.phase.'")).firstMatch
         let phaseName = phaseSurface.exists ? phaseSurface.identifier : "archive.phase.<NONE RENDERED>"
+        // *** AND THE READER MUST ACTUALLY BE POPPED, OR THE SCENE IS STILL ON THE DOCUMENT ROAD. ***
+        // *Added because the instrumented state was `phase=ready` with NO search surface, which cannot distinguish a
+        // documents road from a reader still on screen -- and `path` is what decideth it.*
+        let stillOnReader = again.staticTexts.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'")).firstMatch.exists
         XCTAssertTrue(
             again.staticTexts["archive.search.results"].waitForExistence(timeout: 20),
             "*** BACK MUST RETURN TO THE SUBMITTED SEARCH, not the document list: the RESTORED return identity must be "
                 + "the search the reader actually made, which is the half a model court cannot see. "
-                + "OBSERVED STATE: \(phaseName) ***",
+                + "OBSERVED STATE: \(phaseName); readerStillOnScreen=\(stillOnReader) ***",
         )
 
         // (10) AND THE SAME RESULT SET IS STILL ADDRESSABLE.

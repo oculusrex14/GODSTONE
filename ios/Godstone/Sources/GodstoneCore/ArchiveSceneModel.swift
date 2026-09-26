@@ -17,6 +17,17 @@ public enum ArchiveSceneMode: String, Sendable, Equatable {
     case documents
     case search
     case document
+
+    /// *** THE MODE'S OWN NAME, SO AN EXECUTED WITNESS CAN SAY WHICH SURFACE IT STANDS ON. ***
+    /// *Paired with `ArchivePhase.witnessName`: `phase=ready` with NO search surface can mean EITHER a documents
+    /// road or a search road, and those demand opposite repairs -- the mode telleth them apart.*
+    public var witnessName: String {
+        switch self {
+        case .documents: return "documents"
+        case .search: return "search"
+        case .document: return "document"
+        }
+    }
 }
 
 /// The explicit phase of the road. An unavailable archive is told as
