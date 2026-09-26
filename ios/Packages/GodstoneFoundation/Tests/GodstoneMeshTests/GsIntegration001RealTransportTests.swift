@@ -1096,8 +1096,152 @@ final class GsIntegration001RealTransportTests: XCTestCase {
         //
         // *** SO THIS ARM IS A WITNESS THAT A WRONG PEER IS REFUSED (which it genuinely establisheth, with a positive
         // control in the same arm proving an honest pair still establishes) -- AND IT IS **NOT** A WITNESS THAT THE HINT
-        // COMPARISON IS WHAT REFUSETH. The obligation asks for the LATTER's discrimination, so THIS ARM DOES NOT
+        // comparison is what refuseth. The obligation asks for the LATTER's discrimination, so THIS ARM DOES NOT
         // DISCHARGE IT.***
     }
 
+    // ================================================================================================
+    // *** GS-INTEGRATION-001 `real-adapters`: THE REAL-TRANSPORT HOST RIG ARMS. ***
+    //
+    // *The arms above stand on a rig that builds RAW `BleTransport` + `MeshNode` over `InMemoryMessageStore`, with
+    // the transport's HANDSHAKE driven nowhere: `barePair` sayeth so itself -- 'no pairing run yet'. **The card
+    // measured that gap and asked for the real-adapters lane.***
+    //
+    // **THE ARMS BELOW STAND ON `RealTransportHostRig`**: real `BleTransport` pairs whose bytes cross a recording
+    // `RadioFabric` and enter the PEER'S OWN CoreBluetooth entry points, real on-disk `SqliteMessageStore` /
+    // `SqlitePeerIdentityStore` built by `MeshRuntime.createArchiveOnlyHostComposition` -- **the composition root,
+    // with `compositionLane: .labHost`** -- and the production `UnifiedRuntimeLifecycle` for open and close.
+    // ================================================================================================
+
+    /// *** `testTheDefaultLaneCannotManufactureLinkReadiness`. ***
+    ///
+    /// *The composition lane is the whole reason the four shipping gates are untouched: a `.shipping` node must
+    /// refuse every link-layer road exactly as the product doth, and a `.labHost` node from the SAME composition root
+    /// must serve them. **A ROD THAT FLIPS THE PARAMETER DEFAULT TO `.labHost` REDDENS THE SHIPPING HALF** -- which is
+    /// why both halves stand in one arm: the refusal alone could come from a node that refuses everything.*
+    func testTheDefaultLaneCannotManufactureLinkReadiness() throws {
+        let r = RealTransportHostRig()
+        defer { r.tearDown() }
+
+        // ---- (a) A DEFAULT-COMPOSED NODE: `.shipping`, so the four gates stay shut --------------------
+        let shipping = try r.makeShippingNode(label: "shipping", seedByte: 0x61, staticPrivByte: 0x62)
+        XCTAssertFalse(
+            shipping.runtime.meshNode.canStart(linkReady: false),
+            "*** A SHIPPING NODE MUST NOT START WITHOUT REAL LINK READINESS: `canStart(linkReady: false)` is the "
+                + "product's own gate, and a lane that opened it would open the product's. ***")
+
+        // AND THE RECEIVE ROAD REFUSES. The bytes are a WELL-FORMED frame, so the refusal is the LANE, not the
+        // decoder -- and the labHost half below proveth the selfsame bytes DO ingest.
+        let frame = FrameV2(type: .message,
+                            msgId: Data(repeating: 0x11, count: 16),
+                            routingTag: Data(repeating: 0x00, count: 4),
+                            ttl: 10, hopCount: 0,
+                            flags: UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed),
+                            payload: Data(repeating: 0xAB, count: 8))
+        shipping.runtime.meshNode.transportDidReceive(
+            data: frame.encode(), peerId: UUID(), receivedFrom: Data(repeating: 0x77, count: 16))
+        XCTAssertEqual(
+            0, shipping.messageStore.allHeldMsgIds().count,
+            "*** A DEFAULT-LANE NODE MUST INGEST NOTHING FROM `transportDidReceive`: `linkLayerAdmissible` is "
+                + "`(compositionLane == .labHost) || Self.linkLayerReady`, the static stays `false`, the lane is "
+                + "`.shipping` -- so the frame must leave NO durable trace. ***")
+
+        // ---- (b) THE POSITIVE HALF: A `.labHost` NODE FROM THE SAME ROOT SERVES THE SAME ROAD ----------
+        let labNode = try r.makeNode(label: "lab", seedByte: 0x71, staticPrivByte: 0x72)
+        XCTAssertTrue(
+            labNode.runtime.meshNode.canStart(linkReady: labNode.runtime.meshNode.linkLayerAdmissible),
+            "*** A `.labHost` NODE (ASKED FOR AT THE COMPOSITION ROOT) MUST ADMIT THE LINK LAYER WITHOUT THE "
+                + "SHIPPING STATIC -- or the two halves of this arm would be measuring a node that refuses "
+                + "everything. (`canStart(linkReady: false)` is false on BOTH lanes by definition, which is why the "
+                + "labHost half passes the lane's OWN admissibility and the shipping half passes `false`.) ***")
+        XCTAssertTrue(labNode.runtime.meshNode.linkLayerAdmissible,
+                      "and the labHost node's ONE admissibility property must be true")
+        XCTAssertFalse(shipping.runtime.meshNode.linkLayerAdmissible,
+                       "while the shipping node's stays false -- the SAME property, the two lanes")
+        labNode.runtime.meshNode.start()
+        labNode.runtime.meshNode.transportDidReceive(
+            data: frame.encode(), peerId: UUID(), receivedFrom: Data(repeating: 0x77, count: 16))
+        XCTAssertEqual(
+            1, labNode.messageStore.allHeldMsgIds().count,
+            "*** THE SAME BYTES, THE SAME NODE TYPE, THE OTHER LANE: the labHost node must ingest exactly one held "
+                + "frame -- the difference is the LANE and nothing else, which is what maketh the refusal above "
+                + "attributable to it. ***")
+    }
+
+    /// *** `testTheDefaultLaneTwinOfTheARBFrameIngestsNothing`. ***
+    ///
+    /// *The real-adapters arm's negative twin on the SAME bytes and the same rig shape: a `.shipping` node handed the
+    /// identical ingress keepeth NO durable row. **Together with the arm above, the ingest is attributed to the lane
+    /// and to nothing else.***
+    func testTheDefaultLaneTwinOfTheARBFrameIngestsNothing() throws {
+        let r = RealTransportHostRig()
+        defer { r.tearDown() }
+        try r.makeNode(label: "alice", seedByte: 0x11, staticPrivByte: 0x12)
+        let shipping = try r.makeShippingNode(label: "shipping", seedByte: 0x41, staticPrivByte: 0x42)
+        let frame = FrameV2(type: .message,
+                            msgId: Data(repeating: 0x33, count: 16),
+                            routingTag: Data(repeating: 0x00, count: 4),
+                            ttl: 10, hopCount: 0,
+                            flags: UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed),
+                            payload: Data(repeating: 0xAB, count: 8))
+        shipping.runtime.meshNode.transportDidReceive(
+            data: frame.encode(), peerId: UUID(), receivedFrom: Data(repeating: 0x99, count: 16))
+        XCTAssertEqual(
+            0, shipping.messageStore.allHeldMsgIds().count,
+            "*** THE DEFAULT LANE INGESTS NOTHING. The bytes decode -- the labHost node in the arm above ingesteth "
+                + "the IDENTICAL frame -- so this refusal is `linkLayerAdmissible`, not the decoder. ***")
+    }
+
+    /// *** `testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction`. ***
+    ///
+    /// *The seam that maketh the whole rig possible, witnessed rather than assumed: `installFreshContextLocked`
+    /// resolveth the epoch's manager source as `testManagerFactoryOverride ?? managerFactory`, so with the override
+    /// set the epoch's pair is the FABRIC's. **If it were ignored, discovery would enter a real `CBCentralManager`
+    /// and no link could ever stand -- so this arm is why the other arms can exist at all.***
+    func testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction() throws {
+        let r = RealTransportHostRig()
+        defer { r.tearDown() }
+        try r.makeNode(label: "alice", seedByte: 0x13, staticPrivByte: 0x14)
+        try r.makeNode(label: "relay", seedByte: 0x23, staticPrivByte: 0x24)
+        try r.link("alice", "relay")
+        XCTAssertNotNil(
+            r.peripheralManager("relay"),
+            "*** THE EPOCH MUST HAVE OPENED THE FABRIC'S MANAGER. A nil one would mean the override was ignored "
+                + "at install -- which is exactly the defect this arm exists to catch. ***")
+        XCTAssertTrue(r.managerFactoryIsOverridden("relay"),
+                      "and the transport must still carry the override as its epoch's manager source")
+        XCTAssertTrue(
+            r.transportIsTheCompositionsOwn("relay"),
+            "*** AND THE TRANSPORT ITSELF MUST BE THE COMPOSITION'S REAL `BleTransport` (`MeshNode.ble`, the object "
+                + "`UnifiedRuntimeLifecycle` openeth): the override substitutes the MANAGER PAIR, never the "
+                + "transport -- so every reducer, driver, delegate, writer, lease and budget under it is "
+                + "production. ***")
+    }
+
+    /// *** `testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle`. ***
+    ///
+    /// *What `RealTransportHostRig` actually holdeth, said as measurement: the stores are REAL `SqliteMessageStore` /
+    /// `SqlitePeerIdentityStore` over temp files, and open and close travel `runtime.lifecycle` -- the production
+    /// `UnifiedRuntimeLifecycle` over `LifecycleTransportAdapter`. **A rig that substituted the stores, or opened the
+    /// radio by hand, would be the `ComposedRuntime` defect over again.***
+    func testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle() throws {
+        let r = RealTransportHostRig()
+        defer { r.tearDown() }
+        let n = try r.makeNode(label: "alice", seedByte: 0x15, staticPrivByte: 0x16)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: n.runtime.messageStoreUrl.path),
+                      "*** THE MESSAGE STORE MUST BE A FILE ON DISK, not an in-memory dictionary: the composition "
+                          + "root is the whole point of this lane. ***")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: n.runtime.peerStoreUrl.path),
+                      "and the peer-identity store likewise")
+        XCTAssertTrue((n.runtime.messageStore as Any) is SqliteMessageStore,
+                      "and the store object must be the production SQLite store, not a model of it")
+        XCTAssertFalse(n.runtime.lifecycle.isReady(),
+                       "the owner must stand closed before any start")
+        n.runtime.lifecycle.start()
+        XCTAssertTrue(n.runtime.lifecycle.isReady(),
+                      "*** AND `runtime.lifecycle.start()` -- THE PRODUCTION VERB -- MUST OPEN IT. This rig never "
+                          + "calls `ble.start()` itself for a link it establisheth: the owner is the ONE road. ***")
+        n.runtime.lifecycle.stop()
+        XCTAssertFalse(n.runtime.lifecycle.isReady(), "and the production stop must close it")
+    }
 }
