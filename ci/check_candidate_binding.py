@@ -429,11 +429,16 @@ def selftest() -> int:
            "must name the canonical hosted run", "a freeze citing no run is refused")
 
     # 8. *** A GREEN RUN FROM ANOTHER SHA. ***
-    expect(binding_problems(real, freeze=True, run_head=lambda _r: "f" * 40),
+    #
+    # *THE CASE SUPPLIETH ITS OWN `run_id`: the LIVE record carrieth `null` by design (a candidate commit cannot
+    # name a run that has not happened yet), so a case that relied on the live value would redden for the ABSENT run
+    # rather than for the borrowed SHA it is written to provoke.*
+    with_run = {**real, "repository_verification": {"run_id": "1"}}
+    expect(binding_problems(with_run, freeze=True, run_facts=lambda _r: None, run_head=lambda _r: "f" * 40),
            "CANNOT BE BORROWED", "a hosted run whose head_sha is a different commit is refused")
 
     # 9. A RUN THAT CANNOT BE READ.
-    expect(binding_problems(real, freeze=True, run_facts=lambda _r: None, run_head=lambda _r: None),
+    expect(binding_problems(with_run, freeze=True, run_facts=lambda _r: None, run_head=lambda _r: None),
            "could NOT be read", "an unreadable cited run is refused rather than assumed green")
 
     # 10. THE POSITIVE CASE -- *a guard that refuseth the correct binding is not a guard.*

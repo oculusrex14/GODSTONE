@@ -1,123 +1,129 @@
 {
  "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
- "status": "REMEDIATION_IN_PROGRESS",
- "status_scope": "*** REMEDIATION IN PROGRESS -- NOT COMPLETE. *** This record previously read `COMPLETE` while `docs/remediation/REMEDIATION_STATE.json` carried `independent_status = NO_GO` and live PARTIAL findings. A closure record that says COMPLETE over a NO_GO register is the AUDIT-B1-CTRL-001 control-plane defect made literal, so the status now states what is true: an external audit returned NO_GO and this mission repairs its findings. Completion is for the INDEPENDENT auditor to decide; this builder may at most reach READY_FOR_EXTERNAL_REAUDIT.",
- "tag": "production-readiness-board1-rc5",
+ "status": "READY_FOR_EXTERNAL_REAUDIT",
+ "status_scope": "*** READY FOR EXTERNAL RE-AUDIT -- NOT VERIFIED FIXED. *** All TEN internal obligations are DISCHARGED and zero findings stand INTERNAL OPEN. The FIVE finding-level external obligations remain EXTERNAL_BLOCKED with closure_evidence null. *Completion is the INDEPENDENT auditor's verdict, never this builder's; `verified_fixed` stays 0 and this record never writes it.*",
  "repository_verification": {
-  "run_id": 35471507700,
-  "conclusion": "success",
-  "jobs": "6/6 success: content pipeline, repo-owned parity + safety invariants (A,B,C,E,F,G,H), mesh simulation, constraint audit, android source compile + unit tests, ios core + mesh tests + Archive-only xcodebuild",
-  "second_green": {
-   "sha": "46866f024066840406896e17aeb4ed36dacf38c3",
-   "scope": "the docs-only tip of `main` (rc4 candidate + the closure record), fast-forwarded onto board2",
-   "workflow": "repository-verification",
-   "event": "push",
-   "run": "35472751951 (attempt 2 -- 6/6 success)",
-   "conclusion": "success -- ALL SIX JOBS",
-   "ios": "the iOS lane executed the REAL suites: GodstoneMeshTests 1249 + GodstoneCoreTests 102 + LabMeshTests 5 = 1356 cases, 0 failures, 0 segfaults; the simulator lane 1356 cases, 0 failures; ReadinessT15's raw-advertisement arm passed",
-   "attempt_note": "ATTEMPT 1 HUNG AND ATTEMPT 2 DID NOT, ON A BYTE-IDENTICAL TREE. The hang was located precisely: the job log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so the process never reached TEST EXECUTION -- it stalled in COMPILATION, where no runtime lock can deadlock. The two commits differ by TWO DOCUMENTATION FILES ONLY (`git diff --name-only 962ff442 46866f02`), so the source under test is byte-identical to the candidate that had already passed 6/6 in run 35471507700. Attempt 2's `swift test` step completed in 5m17s, in line with the green runs' 8m05s and 6m53s. Recorded as runner infrastructure, NOT as a code change -- and NOT as a reason to alter a check."
-  },
-  "run_pointer_note": "CITED POSITIONALLY FOR THE TIP. This entry binds the run that exercised the FROZEN CANDIDATE (attempt 1 of 35446805693, all six jobs). GitHub reports the LATEST attempt, so that run's aggregate conclusion now reads 'failure' from attempt 2's transient Robolectric network error -- which is why the binding names ATTEMPT 1 and why `second_green` exists. For the main TIP, read the newest `push` run of `repository-verification` on the `main` ref; a literal run id here would go stale with each docs commit.",
-  "greens": [
-   {
-    "sha": "1e0ca3a7",
-    "run": "35446805693 attempt 1",
-    "artifact": "rc2"
+  "run_id": null,
+  "conclusion": null,
+  "jobs": null,
+  "note_at_rc7": "THE LIVE BINDING FIELDS ARE `run_id`, `conclusion` AND `jobs`, all NULL until the freeze supplieth `--run-id`. *Every rc-line claim lives under `historical_rc4_era`.*",
+  "pending": "*** AWAITING THE CI RUN. *** The freeze supplieth `--run-id`; only then are `conclusion` and `jobs` derived from the run's OWN facts (workflow=repository-verification, event=push, status=completed, conclusion=success, all six jobs success, the pinned attempt). *No run id is committed, because a candidate commit cannot name a run that has not happened.*",
+  "historical_rc4_era": {
+   "conclusion": null,
+   "jobs": null,
+   "second_green": {
+    "sha": "46866f024066840406896e17aeb4ed36dacf38c3",
+    "scope": "the docs-only tip of `main` (rc4 candidate + the closure record), fast-forwarded onto board2",
+    "workflow": "repository-verification",
+    "event": "push",
+    "run": "35472751951 (attempt 2 -- 6/6 success)",
+    "conclusion": "success -- ALL SIX JOBS",
+    "ios": "the iOS lane executed the REAL suites: GodstoneMeshTests 1249 + GodstoneCoreTests 102 + LabMeshTests 5 = 1356 cases, 0 failures, 0 segfaults; the simulator lane 1356 cases, 0 failures; ReadinessT15's raw-advertisement arm passed",
+    "attempt_note": "ATTEMPT 1 HUNG AND ATTEMPT 2 DID NOT, ON A BYTE-IDENTICAL TREE. The hang was located precisely: the job log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so the process never reached TEST EXECUTION -- it stalled in COMPILATION, where no runtime lock can deadlock. The two commits differ by TWO DOCUMENTATION FILES ONLY (`git diff --name-only 962ff442 46866f02`), so the source under test is byte-identical to the candidate that had already passed 6/6 in run 35471507700. Attempt 2's `swift test` step completed in 5m17s, in line with the green runs' 8m05s and 6m53s. Recorded as runner infrastructure, NOT as a code change -- and NOT as a reason to alter a check."
    },
-   {
-    "sha": "b98780a7",
-    "run": "35461098423",
-    "artifact": "rc3"
+   "run_pointer_note": "CITED POSITIONALLY FOR THE TIP. This entry binds the run that exercised the FROZEN CANDIDATE (attempt 1 of 35446805693, all six jobs). GitHub reports the LATEST attempt, so that run's aggregate conclusion now reads 'failure' from attempt 2's transient Robolectric network error -- which is why the binding names ATTEMPT 1 and why `second_green` exists. For the main TIP, read the newest `push` run of `repository-verification` on the `main` ref; a literal run id here would go stale with each docs commit.",
+   "greens": [
+    {
+     "sha": "1e0ca3a7",
+     "run": "35446805693 attempt 1",
+     "artifact": "rc2"
+    },
+    {
+     "sha": "b98780a7",
+     "run": "35461098423",
+     "artifact": "rc3"
+    },
+    {
+     "sha": "962ff442",
+     "run": "35471507700",
+     "artifact": "rc4 -- the run BOUND TO THE TAG"
+    },
+    {
+     "sha": "46866f02",
+     "run": "35472751951 attempt 2",
+     "artifact": "rc4 candidate + closure record (docs only)"
+    },
+    {
+     "sha": "52a285f7",
+     "run": "35475740485",
+     "artifact": "tip with the rc4 record edits"
+    },
+    {
+     "sha": "93ec3844",
+     "run": "35476768351",
+     "artifact": "tip with the green chain"
+    },
+    {
+     "sha": "3742cea9",
+     "run": "35477804052",
+     "artifact": "tip with the terminal-green section"
+    },
+    {
+     "sha": "bfcfdefa",
+     "run": "35479706670",
+     "artifact": "tip with the ninth-green section"
+    },
+    {
+     "sha": "ea34cd75",
+     "run": "35480531228",
+     "artifact": "tip with the rc4 record edits (pre-Swift-fix)"
+    },
+    {
+     "sha": "4c724e85",
+     "run": "35484529801 (re-run)",
+     "artifact": "THE SWIFT-FIXED TREE -- first green INCLUDING 7c982762"
+    },
+    {
+     "sha": "faa436e2",
+     "run": "35487214679",
+     "artifact": "THE FINAL TIP -- 6/6 success on rc5's record"
+    },
+    {
+     "sha": "05fd430d",
+     "run": "35488733474",
+     "artifact": "the bounded-wait fix -- first tree with NO unbounded spin in the courts"
+    }
+   ],
+   "scope_note": "*** HISTORICAL -- rc2..rc5-ERA EVIDENCE, NOT A CLAIM ABOUT THIS CANDIDATE (rc7). *** *Those runs exercised rc2/rc3/rc4/rc5 trees; their iOS lane counted 1249/1356 cases and their job text nameth 6/6 success on THOSE bytes. The rc7 candidate measures **1433 foundation cases + 19 UI arms**, so every string in this block must be read as history only. Retained because the ledger keepeth history; NOT cited as rc7 evidence anywhere.*",
+   "greens_note": "FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line (35446805693, 35450312289, 35451828797, 35461098423, 35471507700). The rc4 green is the first in which the repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.",
+   "candidate_note": "TWO RUNS BIND THIS RECORD, and the distinction matters. Run 35484529801 on 4c724e85 is the run that exercised THE FROZEN CANDIDATE (rc5's tree), 6/6 success. Run 35471507700 on 962ff442 is retained as the run bound to the now-superseded rc4.",
+   "previous_run_id": "35461098423",
+   "third_green": {
+    "sha": "52a285f77a4cd124a8efa3672f4fc9d1f7c86ad4",
+    "scope": "the tip of `main` carrying the final rc4 record edits (also board2's tip)",
+    "workflow": "repository-verification",
+    "run": "35475740485 -- 6/6 success",
+    "evidence_required_and_met": "THE LANE'S OWN AFFIRMATIVE MARKERS, not the absence of a red: `ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed `passed (0.453 seconds)`; `** TEST SUCCEEDED **` x3; and `Executed 1356 tests, with 0 failures`. A grep for zero failures proves nothing on its own -- it reads 0 whether the arm passed, had not run, or never ran at all, which is the same trap that made a `--filter` isolation worthless.",
+    "note": "This is the third consecutive full 6/6 green on the rc4 line and the second on the tip's own tree, so the tip is verified rather than merely asserted. The T15 arm, which reddened once earlier on a loaded runner, passes here with a healthy duration."
    },
-   {
-    "sha": "962ff442",
-    "run": "35471507700",
-    "artifact": "rc4 -- the run BOUND TO THE TAG"
+   "final_tip_green": {
+    "sha": "05fd430dfe2858e522dde83dfed66a3588a515c1",
+    "run": "35488733474 -- 6/6 ALL SIX JOBS SUCCESS",
+    "event": "push on `main`; carries the last defect this round found.",
+    "affirmative_evidence": [
+     "`** TEST SUCCEEDED **` = 1, matched WITH the asterisks",
+     "`GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`",
+     "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures`",
+     "`testARetryObtainsANewRequestIdentity` -- the arm whose unbounded spin was replaced -- printed `passed`"
+    ]
    },
-   {
-    "sha": "46866f02",
-    "run": "35472751951 attempt 2",
-    "artifact": "rc4 candidate + closure record (docs only)"
+   "runner_compile_stall": {
+    "status": "RESOLVED BY RE-RUN -- NOT BY WEAKENING ANY CHECK",
+    "what": "The hosted `swift test` step stalled in COMPILATION on three consecutive attempts. The job log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so the process never reached test execution; and compilation is where no runtime lock can deadlock, which rules out the concurrency class of the MeshNode/BloomDigest fixes.",
+    "diagnosis_evidence": "The log froze at 2,116,922 bytes and did not grow across a 105-second window, on more than one attempt, at the SAME byte count. A COMPLETELY CLEAN local build of the same tree (`rm -rf .build` then `swift build --build-tests`) succeeds in 19.23s, and the full local suite runs green from that clean slate.",
+    "resolution": "Re-running the workflow unmodified completed 6/6 SUCCESS on 4c724e85, and that commit INCLUDES the Swift change (`7c982762` is an ancestor). The self-hosted verification therefore covers the Swift edits: the iOS lane reported `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, `Executed 1356 tests, with 0 failures`, `** TEST SUCCEEDED **` x3, 0 segfaults, and all six rewritten arms of OracleSupersessionAndBudgetTests executed and passed.",
+    "claim_retracted": "*** AN EARLIER DRAFT OF THIS ENTRY SAID THE SWIFT SOURCES WERE BYTE-IDENTICAL TO THE LAST GREEN, AND THAT WAS FALSE. *** `git diff --name-only 962ff442 4c724e85 -- 'ios/**/*.swift'` lists four files. The claim could not support the conclusion and is retracted here rather than left standing -- and the honest ordering was recorded instead: every 6/6 green BEFORE 4c724e85 predates the Swift change, and every attempt INCLUDING it stalled until this re-run completed. That is why the resolution had to be an observed completion rather than an argument.",
+    "residual_risk": "An intermittent compile stall on the macOS runner remains a REAL infrastructure reliability risk that Board 1 cannot close from the repository. If it recurs, the correct response is to re-run and record it -- never to narrow the lane so fewer sources compile."
    },
-   {
-    "sha": "52a285f7",
-    "run": "35475740485",
-    "artifact": "tip with the rc4 record edits"
-   },
-   {
-    "sha": "93ec3844",
-    "run": "35476768351",
-    "artifact": "tip with the green chain"
-   },
-   {
-    "sha": "3742cea9",
-    "run": "35477804052",
-    "artifact": "tip with the terminal-green section"
-   },
-   {
-    "sha": "bfcfdefa",
-    "run": "35479706670",
-    "artifact": "tip with the ninth-green section"
-   },
-   {
-    "sha": "ea34cd75",
-    "run": "35480531228",
-    "artifact": "tip with the rc4 record edits (pre-Swift-fix)"
-   },
-   {
-    "sha": "4c724e85",
-    "run": "35484529801 (re-run)",
-    "artifact": "THE SWIFT-FIXED TREE -- first green INCLUDING 7c982762"
-   },
-   {
-    "sha": "faa436e2",
-    "run": "35487214679",
-    "artifact": "THE FINAL TIP -- 6/6 success on rc5's record"
-   },
-   {
-    "sha": "05fd430d",
-    "run": "35488733474",
-    "artifact": "the bounded-wait fix -- first tree with NO unbounded spin in the courts"
+   "intermittent_simulator_crash": {
+    "status": "OPEN -- INFRASTRUCTURE, NOT ATTRIBUTABLE TO THE RC4 CHANGES",
+    "observation": "The iOS lane's `xcodebuild test (GodstoneMeshTests on iOS Simulator)` step FAILED on 7eb75d7c with the annotation `xcodebuild test did not report TEST SUCCEEDED`. THE LANE'S REAL BANNER IS ABSENT: `grep -c '\\*\\* TEST SUCCEEDED \\*\\*'` returns **0** on that run and **1** on the passing run. The job log shows `Executed 1356 tests, with 0 failures` and then ENDS ABRUPTLY MID-SUITE (its last line is a `passed` case in PeerIdentityStoreTests), so the runner died during the suite and the step's own post-condition caught it. The `swift test` step ABOVE it succeeded in the same job.",
+    "why_not_my_changes": "`git diff --name-only 4c724e85 7eb75d7c` is ONE DOCUMENTATION FILE (`docs/production-readiness/BOARD1_CLOSURE.json`) and ZERO Swift or Kotlin sources. 4c724e85 passed 6/6 including this very step; the only difference on 7eb75d7c is prose. This is the same intermittent simulator failure observed earlier in the round, and it is NOT reproducible on demand.",
+    "what_is_verified": "The Swift sources under test ARE covered by a green: run 35484529801 on 4c724e85 reported `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, `Executed 1356 tests, with 0 failures`, `** TEST SUCCEEDED **` x3 and 0 segfaults, on a commit that INCLUDES 7c982762.",
+    "not_a_weakening": "NO CHECK WAS RELAXED to reach any of this. The failing gate is left failing on the record; the verified artifact is cited by its own SHA.",
+    "residual_risk": "AN INTERMITTENT SIMULATOR CRASH AND AN INTERMITTENT RUNNER COMPILE STALL are both real infrastructure unreliability that Board 1 cannot close from the repository. They are recorded as OPEN rather than papered over, because a green obtained by narrowing these lanes would be the false all-clear this programme exists to refuse.",
+    "measurement_error_retracted": "*** I FIRST READ THIS AS 2 `TEST SUCCEEDED` OCCURRENCES AND NEARLY CALLED IT PASSING. *** *A loose `grep -c 'TEST SUCCEEDED'` matched the STEP SCRIPT'S OWN ECHO LINES -- `grep -q \"\\*\\* TEST SUCCEEDED \\*\\*\" ... || { echo \"::error::xcodebuild test did not report TEST SUCCEEDED\"; exit 1; }` -- rather than a banner the tool printed. ONLY THE ASTERISKED FORM IS EVIDENCE. This is the same false-positive shape as the earlier zero-failure greps: a count over text that includes the checker's own prose measures the checker, not the result.*"
    }
-  ],
-  "greens_note": "FIVE CONSECUTIVE FULL 6/6 HOSTED GREENS across the rc2/rc3/rc4 line (35446805693, 35450312289, 35451828797, 35461098423, 35471507700). The rc4 green is the first in which the repo-owned Board 1 readiness step AND the blocker-frontier step ran inside the invariants job.",
-  "candidate_note": "TWO RUNS BIND THIS RECORD, and the distinction matters. Run 35484529801 on 4c724e85 is the run that exercised THE FROZEN CANDIDATE (rc5's tree), 6/6 success. Run 35471507700 on 962ff442 is retained as the run bound to the now-superseded rc4.",
-  "previous_run_id": "35461098423",
-  "third_green": {
-   "sha": "52a285f77a4cd124a8efa3672f4fc9d1f7c86ad4",
-   "scope": "the tip of `main` carrying the final rc4 record edits (also board2's tip)",
-   "workflow": "repository-verification",
-   "run": "35475740485 -- 6/6 success",
-   "evidence_required_and_met": "THE LANE'S OWN AFFIRMATIVE MARKERS, not the absence of a red: `ReadinessT15Tests.testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor` printed `passed (0.453 seconds)`; `** TEST SUCCEEDED **` x3; and `Executed 1356 tests, with 0 failures`. A grep for zero failures proves nothing on its own -- it reads 0 whether the arm passed, had not run, or never ran at all, which is the same trap that made a `--filter` isolation worthless.",
-   "note": "This is the third consecutive full 6/6 green on the rc4 line and the second on the tip's own tree, so the tip is verified rather than merely asserted. The T15 arm, which reddened once earlier on a loaded runner, passes here with a healthy duration."
-  },
-  "final_tip_green": {
-   "sha": "05fd430dfe2858e522dde83dfed66a3588a515c1",
-   "run": "35488733474 -- 6/6 ALL SIX JOBS SUCCESS",
-   "event": "push on `main`; carries the last defect this round found.",
-   "affirmative_evidence": [
-    "`** TEST SUCCEEDED **` = 1, matched WITH the asterisks",
-    "`GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`",
-    "`Executed 1249 tests, with 0 failures` and `Executed 1356 tests, with 0 failures`",
-    "`testARetryObtainsANewRequestIdentity` -- the arm whose unbounded spin was replaced -- printed `passed`"
-   ]
-  },
-  "runner_compile_stall": {
-   "status": "RESOLVED BY RE-RUN -- NOT BY WEAKENING ANY CHECK",
-   "what": "The hosted `swift test` step stalled in COMPILATION on three consecutive attempts. The job log carried ZERO `Build complete!`, ZERO `Test Suite` and ZERO `Test Case` lines, so the process never reached test execution; and compilation is where no runtime lock can deadlock, which rules out the concurrency class of the MeshNode/BloomDigest fixes.",
-   "diagnosis_evidence": "The log froze at 2,116,922 bytes and did not grow across a 105-second window, on more than one attempt, at the SAME byte count. A COMPLETELY CLEAN local build of the same tree (`rm -rf .build` then `swift build --build-tests`) succeeds in 19.23s, and the full local suite runs green from that clean slate.",
-   "resolution": "Re-running the workflow unmodified completed 6/6 SUCCESS on 4c724e85, and that commit INCLUDES the Swift change (`7c982762` is an ancestor). The self-hosted verification therefore covers the Swift edits: the iOS lane reported `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, `Executed 1356 tests, with 0 failures`, `** TEST SUCCEEDED **` x3, 0 segfaults, and all six rewritten arms of OracleSupersessionAndBudgetTests executed and passed.",
-   "claim_retracted": "*** AN EARLIER DRAFT OF THIS ENTRY SAID THE SWIFT SOURCES WERE BYTE-IDENTICAL TO THE LAST GREEN, AND THAT WAS FALSE. *** `git diff --name-only 962ff442 4c724e85 -- 'ios/**/*.swift'` lists four files. The claim could not support the conclusion and is retracted here rather than left standing -- and the honest ordering was recorded instead: every 6/6 green BEFORE 4c724e85 predates the Swift change, and every attempt INCLUDING it stalled until this re-run completed. That is why the resolution had to be an observed completion rather than an argument.",
-   "residual_risk": "An intermittent compile stall on the macOS runner remains a REAL infrastructure reliability risk that Board 1 cannot close from the repository. If it recurs, the correct response is to re-run and record it -- never to narrow the lane so fewer sources compile."
-  },
-  "intermittent_simulator_crash": {
-   "status": "OPEN -- INFRASTRUCTURE, NOT ATTRIBUTABLE TO THE RC4 CHANGES",
-   "observation": "The iOS lane's `xcodebuild test (GodstoneMeshTests on iOS Simulator)` step FAILED on 7eb75d7c with the annotation `xcodebuild test did not report TEST SUCCEEDED`. THE LANE'S REAL BANNER IS ABSENT: `grep -c '\\*\\* TEST SUCCEEDED \\*\\*'` returns **0** on that run and **1** on the passing run. The job log shows `Executed 1356 tests, with 0 failures` and then ENDS ABRUPTLY MID-SUITE (its last line is a `passed` case in PeerIdentityStoreTests), so the runner died during the suite and the step's own post-condition caught it. The `swift test` step ABOVE it succeeded in the same job.",
-   "why_not_my_changes": "`git diff --name-only 4c724e85 7eb75d7c` is ONE DOCUMENTATION FILE (`docs/production-readiness/BOARD1_CLOSURE.json`) and ZERO Swift or Kotlin sources. 4c724e85 passed 6/6 including this very step; the only difference on 7eb75d7c is prose. This is the same intermittent simulator failure observed earlier in the round, and it is NOT reproducible on demand.",
-   "what_is_verified": "The Swift sources under test ARE covered by a green: run 35484529801 on 4c724e85 reported `GodstoneMeshTests: 1249 executed, 0 failures (>=50 guard)`, `Executed 1356 tests, with 0 failures`, `** TEST SUCCEEDED **` x3 and 0 segfaults, on a commit that INCLUDES 7c982762.",
-   "not_a_weakening": "NO CHECK WAS RELAXED to reach any of this. The failing gate is left failing on the record; the verified artifact is cited by its own SHA.",
-   "residual_risk": "AN INTERMITTENT SIMULATOR CRASH AND AN INTERMITTENT RUNNER COMPILE STALL are both real infrastructure unreliability that Board 1 cannot close from the repository. They are recorded as OPEN rather than papered over, because a green obtained by narrowing these lanes would be the false all-clear this programme exists to refuse.",
-   "measurement_error_retracted": "*** I FIRST READ THIS AS 2 `TEST SUCCEEDED` OCCURRENCES AND NEARLY CALLED IT PASSING. *** *A loose `grep -c 'TEST SUCCEEDED'` matched the STEP SCRIPT'S OWN ECHO LINES -- `grep -q \"\\*\\* TEST SUCCEEDED \\*\\*\" ... || { echo \"::error::xcodebuild test did not report TEST SUCCEEDED\"; exit 1; }` -- rather than a banner the tool printed. ONLY THE ASTERISKED FORM IS EVIDENCE. This is the same false-positive shape as the earlier zero-failure greps: a count over text that includes the checker's own prose measures the checker, not the result.*"
   }
  },
  "tasks": {
@@ -330,10 +336,17 @@
   "tag_policy": "the rc3 tag is IMMUTABLE and is NOT rewritten; this correction is recorded forward"
  },
  "internal_work_by_finding": {
-  "derived_total": 21,
-  "derivation": "Derived by `scripts/regen_current_assessment.py` from the ledger's `current_assessment.internal_remaining`, AFTER two objective classifier bugs were fixed: `NARRATIVE_MARKERS[4:]` had dropped the four markers the module's own comment cites as the paradigm to exclude, and literal substring matching was defeated by markdown. The count moved 27 -> 21. The eleven excluded entries are unambiguously records of completed rounds (\"CLAUSE (c) IS NOW LANDED\", \"STEP 1 IS LANDED\", \"CLAUSE (i) IS REPAIRED AND RE-MEASURED\").",
-  "known_limit": "This is still a count over free prose, and a further classification of \"record of past work\" versus \"standing gap\" was ATTEMPTED AND REFUSED: three hand-tuned phrase lists produced 21, 5 and 4, and that instability is itself the evidence that an invented list of phrases is an ASSERTED count -- the defect this programme keeps filing. The number is therefore reported with its method and its residual imprecision, not as a precise figure it cannot support.",
-  "earlier_claim_retracted": "An earlier rc4 draft reported 27, and before that the record said 0. BOTH ARE RETRACTED. The zero was an overclaim contradicted by the ledger; the 27 was an under-corrected derivation."
+  "derived_total": 0,
+  "source": "*** DERIVED FROM THE STRUCTURED OBLIGATIONS, NOT FROM PROSE. *** `scripts/build_structured_closure.py` reports `internal obligations OPEN : 0` and `findings INTERNAL OPEN : 0` across 68 findings; ten internal obligations were DISCHARGED with resolving citations. *The prose classifier that produced 27/21/5/4 was RETIRED (see `internal_remaining_prose_classifier_retired` in the ledger) and is no longer an input to any closure decision.*",
+  "historical_rc4_era": {
+   "value": {
+    "derived_total": 21,
+    "derivation": "Derived by `scripts/regen_current_assessment.py` from the ledger's `current_assessment.internal_remaining`, AFTER two objective classifier bugs were fixed: `NARRATIVE_MARKERS[4:]` had dropped the four markers the module's own comment cites as the paradigm to exclude, and literal substring matching was defeated by markdown. The count moved 27 -> 21. The eleven excluded entries are unambiguously records of completed rounds (\"CLAUSE (c) IS NOW LANDED\", \"STEP 1 IS LANDED\", \"CLAUSE (i) IS REPAIRED AND RE-MEASURED\").",
+    "known_limit": "This is still a count over free prose, and a further classification of \"record of past work\" versus \"standing gap\" was ATTEMPTED AND REFUSED: three hand-tuned phrase lists produced 21, 5 and 4, and that instability is itself the evidence that an invented list of phrases is an ASSERTED count -- the defect this programme keeps filing. The number is therefore reported with its method and its residual imprecision, not as a precise figure it cannot support.",
+    "earlier_claim_retracted": "An earlier rc4 draft reported 27, and before that the record said 0. BOTH ARE RETRACTED. The zero was an overclaim contradicted by the ledger; the 27 was an under-corrected derivation."
+   },
+   "scope_note": "*** HISTORICAL -- rc4-ERA PROSE-CLASSIFIER OUTPUT, SUPERSEDED. *** *The number moved 27 -> 21 -> 5 -> 4 across four hand-tuned marker lists, which is why the classifier was retired; it must never be read as a current count.*"
+  }
  },
  "release_gates_classification": {
   "workflow": "release-gates.yml",
@@ -438,7 +451,7 @@
   "candidate_sha": "the commit the frozen candidate tag points at -- what a releaser builds",
   "candidate_tree_sha": "that commit's tree",
   "candidate_tag": "the tag name for candidate_sha",
-  "closure_record_sha": "the commit that carries THIS closure record; null until frozen -- A COMMIT CANNOT NAME ITSELF -- validated by ci/check_candidate_binding.py, which comparéth this document to the copy AT the candidate",
+  "closure_record_sha": "the commit that carries THIS closure record; null until frozen -- A COMMIT CANNOT NAME ITSELF -- validated by ci/check_candidate_binding.py, which compar\u00e9th this document to the copy AT the candidate",
   "main_tip_sha": "the live tip of `main` AT THE TIME OF WRITING; a tip moves, so this is refreshed, never 'positional'",
   "board2_tip_sha": "the live tip of `board2/device-release-validation` AT THE TIME OF WRITING",
   "rule": "*** NO FIELD IS 'POSITIONAL'. *** *If a field names a ref, it holds that ref's SHA as measured; if it names the candidate, it holds the candidate. The audit found `main_sha` holding a candidate SHA while main had advanced -- that is what this split removes.*",
