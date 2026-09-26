@@ -720,8 +720,17 @@ class MeshNode(
             lifecycle.stop()
             wifi.stop()
         }
+        // *** GS-RUNTIME-001 step 6 (Board 1): THE PEER VIEW IS DRAINED *BEFORE* THE `isStarted` GUARD TOO. ***
+        //
+        // *MEASURED BY THIS ISLE'S OWN WIPE ARM: `stop()` cancelled the workers and closed the adapters before the
+        // guard, and then RETURNED EARLY on a node that was never started -- **so `peers.clear()` never ran, and in
+        // production `isStarted` is FALSE BY CONSTRUCTION (the link-layer flag is frozen off).** *A wipe that
+        // invalidateth the runtime would therefore leave the live peer view STANDING on the very node whose stores it
+        // had just closed.* **THE SAME LESSON AS THE TWO COMMENTS ABOVE, REACHED A THIRD TIME FROM A DIFFERENT
+        // DIRECTION: a guard placed above a teardown step is a teardown step that does not always run.**
+        synchronized(peerLock) { peers.clear() }
         synchronized(peerLock) {
-            if (!isStarted) return
+            if (!isStarted) { publishStatus(); return }
             isStarted = false
         }
         sessions.destroyAll()

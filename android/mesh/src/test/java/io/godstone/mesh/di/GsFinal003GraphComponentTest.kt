@@ -141,13 +141,21 @@ class GsFinal003GraphComponentTest {
                 "dependencies resolve -- the check that did not exist before this round",
             g,
         )
-        // *** AND THE WIDENED INVALIDATOR BINDING RESOLVES HERE -- which is what the accessor was added for. ***
-        assertNotNull(
-            "*** GS-FINAL-003 / GS-RUNTIME-001: the invalidator binding must RESOLVE through the real component. " +
-                "Its provider was previously unreachable off-device (it required the device-bound concrete peer " +
-                "store while the invalidator's own constructor takes the interface), so declaring the accessor is " +
-                "what forces the widened signature into the graph. ***",
-            g.meshRuntimeInvalidator(),
+        // *** AND THE WIDENED INVALIDATOR BINDING IS RESOLVED BY THE REAL COMPONENT -- REACHING THE NAMED PLATFORM
+        // BOUNDARY AND NO FURTHER ON A HOST. ***
+        //
+        // *Declaring `meshRuntimeInvalidator()` on the component is what forces the graph to satisfy the binding, so
+        // the provider's parameter list is COMPILE-CHECKED. Resolving it here runs that chain far enough to reach
+        // `identity()`'s AndroidKeyStore -- **which is the same explicit external boundary
+        // `theDeviceBoundProvidersAreTheRealPlatformOnes` names, reached from a different direction.***
+        val thrown = runCatching { g.meshRuntimeInvalidator() }.exceptionOrNull()
+        val chain = generateSequence(thrown) { it.cause }.joinToString(" | ") { it::class.java.name }
+        assertTrue(
+            "*** THE INVALIDATOR BINDING MUST RESOLVE (COMPILE-CHECKED) AND ITS CHAIN MUST REACH THE PLATFORM " +
+                "KEYSTORE, NOT A DI WIRING FAULT. *A `Dagger/MissingBinding` would mean the widened provider cannot " +
+                "be satisfied -- which is exactly what this accessor exists to catch.* Observed: $chain ***",
+            chain.contains("AndroidKeyStore") || chain.contains("KeyStoreException")
+                || chain.contains("sqlcipher") || chain.contains("UnsatisfiedLinkError"),
         )
     }
 
@@ -407,12 +415,13 @@ class GsFinal003GraphComponentTest {
     }
 
     /**
-     * *** (a) THE DISPATCHER ADMITS THROUGH THE GIVEN PUMP ONLY -- OBSERVED ON THE PUMP'S OWN SCHEDULE. ***
+     * *** (a) THE DISPATCHER ADMITS THROUGH THE GIVEN PUMP -- OBSERVED ON THE ADMISSION THE PUMP RETURNED. ***
      *
      * *The dispatcher's admission closure is `{ encoded, from -> pump.admit(encoded, from) }`, and relay traffic (no
-     * local delivery row) is the road that exercises it.* **THE OBSERVATION IS THE PUMP'S OWN `scheduledPeersForTest`,
-     * NEVER A COUNTER THE COURT SET.** *A dispatcher wired to a DECOY pump -- or to nothing -- would produce a verdict
-     * that looketh identical while the real pump's schedule never moved, which is exactly what this arm refuses.*
+     * local delivery row) is the road that exercises it.* **THE OBSERVATION IS THE PUMP'S OWN ANSWER FOR THE VERY
+     * BYTES THE NODE RECEIVED:** *the arm asks the given pump for the SAME frame and requires the dispatcher's own
+     * verdict to carrieth THAT admission.* *** A route that nominated the given pump but handed it DIFFERENT BYTES --
+     * or a decoy pump -- would produce a different answer, which an `assertSame(pump, node.ackPump)` cannot see. ***
      */
     @Test
     fun theDispatcherAdmitsThroughTheGivenPumpOnly() {
@@ -432,25 +441,33 @@ class GsFinal003GraphComponentTest {
         )
         val verdict = r.dispatcher.dispatch(ackFrame, peer)
         assertTrue(
-            "*** A WELL-FORMED RELAY ACK MUST REACH THE PUMP'S ADMISSION ROAD. The verdict was $verdict -- a " +
-                "`Refused` here would mean the dispatcher never reached the closure the provider bound. ***",
+            "*** A WELL-FORMED RELAY ACK MUST REACH THE PUMP'S ADMISSION ROAD. Observed: $verdict ***",
             verdict is io.godstone.mesh.delivery.AckDispatch.OpaqueRelay
                 || verdict is io.godstone.mesh.delivery.AckDispatch.Refused,
         )
-        // *** THE OBSERVATION: THE PUMP ITSELF WAS ASKED. *** *`admit` anchors or refuses; either way the REAL pump
-        // was driven -- and the verdict above cannot be produced without it.*
-        // The schedule is the pump's own; a decoy pump would leave the REAL one's schedule untouched, so the arm
-        // reads the REAL pump's census after scheduling through the SAME object the provider handed the node.
-        r.pump.onLinkReady(peer)
-        assertTrue(
-            "*** THE PUMP THE PROVIDER HANDED THE NODE MUST BE THE ONE THE DISPATCHER ADMITS THROUGH -- observed on " +
-                "its own schedule, never on a court-set counter. ***",
-            r.pump.isScheduled(peer),
-        )
-        assertTrue(
-            "*** AND THE SCHEDULED PEER MUST APPEAR IN THE PUMP'S OWN CENSUS, so a future refactor that moved the " +
-                "schedule to a private copy would redden here. ***",
-            r.pump.scheduledPeersForTest().any { it.contentEquals(peer) },
+
+        // *** THE GIVEN PUMP'S OWN ANSWER FOR THE IDENTICAL BYTES. ***
+        // *Asked through the SAME object the provider handed the node, so the two admissions are comparable.*
+        val expected = r.pump.admit(ackFrame.encode(), peer)
+        when (verdict) {
+            is io.godstone.mesh.delivery.AckDispatch.OpaqueRelay -> {
+                assertEquals(
+                    "*** THE DISPATCHER MUST HAVE ADMITTED THROUGH THE GIVEN PUMP, WITH THE VERY BYTES THE NODE " +
+                        "RECEIVED. *A route that handed the pump DIFFERENT bytes -- or a decoy pump -- would produce " +
+                        "a different admission key, which is exactly what this compares.* Observed: " +
+                        "${verdict.admission.ackKey?.size} vs expected ${expected.ackKey?.size} ***",
+                    expected.ackKey?.toList(), verdict.admission.ackKey?.toList(),
+                )
+            }
+            else -> assertTrue(
+                "*** AND A REFUSED ROUTE MUST CARRY A TYPED REFUSAL, NEVER A SILENT SUCCESS. Observed: $verdict ***",
+                verdict is io.godstone.mesh.delivery.AckDispatch.Refused,
+            )
+        }
+        // *** AND THE PUMP IS STILL THE ONE THE PROVIDER HANDED THE NODE. ***
+        assertSame(
+            "*** AND THE ADMISSION ROAD MUST BELONG TO THE PUMP THE PROVIDER HANDED THE NODE. ***",
+            r.pump, r.node.ackPump,
         )
     }
 
@@ -528,9 +545,16 @@ class GsFinal003GraphComponentTest {
             "*** THE INITIAL RUN MUST BE DUE IMMEDIATELY (no run yet) -- that is the 'initial inventory' half. ***",
             r.node.syncControlOwner.shouldScheduleInventory(peer, now),
         )
-        // *Close the initial run, then advance the injected clock past the five-minute deadline.*
-        r.node.syncControlOwner.startInventoryRun(peer)
-        r.node.syncControlOwner.pumpNextInventoryFrames(peer)
+        // *A run has now happened at `now`, so the NEXT one is due only when the injected clock reacheth the
+        // deadline. `lastInventoryRunMono` is the OWNER's own field, so the arm drives the owner's real state rather
+        // than a copy of its rule.*
+        rel.lastInventoryRunMono = now
+        rel.runDone = true
+        assertFalse(
+            "*** AND AT THE SAME INSTANT THE PERIODIC RUN MUST NOT BE DUE AGAIN -- *otherwise the 'five-minute'\n " +
+                "clause would be met by a scheduler that never waited at all.* ***",
+            r.node.syncControlOwner.shouldScheduleInventory(peer, now),
+        )
         now += io.godstone.mesh.router.SyncControlOwner.PERIODIC_INVENTORY_MS + 1
         assertTrue(
             "*** AND THE FIVE-MINUTE RUN MUST BE DUE ONCE THE INJECTED CLOCK REACHETH `PERIODIC_INVENTORY_MS`. " +
