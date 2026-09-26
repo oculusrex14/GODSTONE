@@ -224,38 +224,43 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "A host harness that substitutes ONLY the OS/hardware boundary and drives the "
                  "REAL transport / orchestration / handshake adapters -- not `LinkFacade` and not "
                  "an in-memory transport.",
-         "status": "OPEN", "evidence": []},
+         # *** DISCHARGED -- `RealTransportHostRig` DRIveth THE REAL ADAPTERS OVER ON-DISK STORES. ***
+         #
+         # *THE FINDING'S OWN CHARGE WAS THAT THE T44 HARNESS "BYPASSES REAL PERSISTENCE, HANDSHAKE AND WIPE
+         # OWNERS".* **THE COMPONENT-INTEGRATION HARNESS IS NOW SO LABELLED (its header corrected, with the crash,
+         # handshake and cross-platform claims stripped), AND THE REPLACEMENT DRIVES THE PRODUCTION COMPOSITION ROOT
+         # WITH ONLY THE OS FACADE SUBSTITUTED.**
+         "status": "DISCHARGED", "evidence": [
+             "`path:ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift` -- the rig builds every node through `MeshRuntime.createArchiveOnlyHostComposition` over TEMP ON-DISK URLs (real SQLite stores, the real lifecycle) and substitutes exactly THREE OS facades: the manager-factory pair, a `RadioFabric` that records every `writeValue` byte verbatim and re-delivers through the REAL CoreBluetooth entries (`processCentralDidDiscover`/`processCentralConnect`/`processPeripheralDiscoverServices`/`processPeripheralDiscoverCharacteristics`/`processPeripheralReceiveWrite`/`processPeripheralUpdateValue`), and a host keychain/journal facade. **NO in-memory store and no `LinkFacade` appears anywhere on the path.**",
+             "`path:ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift` -- RE-LABELLED COMPONENT-INTEGRATION with in-memory stores: its header now says so, its crash/handshake/cross-platform claims are stripped, and it is named as the fast regression it is, with `RealTransportHostRig` named as the real lane.",
+             "*** THE COMPOSITION LANE IS TYPED, SO THE LAB CANNOT OPEN THE SHIPPING GATE: `MeshNode.CompositionLane` (default `.shipping`) and ONE computed `linkLayerAdmissible` that the four gate sites consult. `MeshNode.linkLayerReady` stays `false`, `LabProfile.manufacturesReadiness` stays `false`, and LIGHT links no `GodstoneMesh` at all. ***",
+             "*** MEASURED, RETAINED: `path:docs/remediation/evidence/gs-integration-001-courts.log` (sha256 `dc5a16fd498861ddc09c60f60193aa0ccacab5c35fe34cab690964b6ddaddc35`) -- `GsIntegration001RealTransportTests` 18 arms and `GsIntegration001ScenarioTests` 6 arms, 24 tests, 0 failures. ***",
+             "*** BOTH SEAMS ARE ADDITIVE AND DEFAULTED, SO NO SHIPPING CALLER CHANGETH: `BleTransport.testManagerFactoryOverride` is consulted ONCE at epoch birth (`nil` for every production value) and `MeshRuntime.compositionLane` defaults to `.shipping`. ***",
+         ]},
         {"id": "gs-integration-001.scenarios",
          "text": "The three named scenario gaps: (A) wrong peer/wrong key rejected at the REAL sealed handshake, not merely FrameV2 wire validation; (B) crash after outbound durable enqueue survives restart; (C) crash after ACK commit survives restart. And the OS-facade route: the production callback route must be actually reachable rather than entered through the internal `ingestInbound`.",
-         # *** THE OS-FACADE CLAUSE WAS CHECKED FROM BYTES, AND THE FINDING IS THAT THE ROUTE IS DEAD BY A SHIPPING
-         # GATE -- NOT THAT THE COURT WAS LAZY. ***
+         # *** DISCHARGED, AND THE PRODUCTION DEFECT THE ARM SURFACED IS THE PROOF RATHER THAN A FOOTNOTE. ***
          #
-         # *MEASURED:*
-         #   * `MeshNode.linkLayerReady` is `public static let linkLayerReady = false` (MeshNode.swift:28) -- **A
-         #     `static let` WITH NO SETTER ANYWHERE IN THE TREE: five READS, ZERO WRITES.**
-         #   * It gateth BOTH OS-facade callbacks: `transportDidReceive(data:peerId:receivedFrom:)` and
-         #     `transportDidReceive(data:peerId:)` each beginneth `guard Self.linkLayerReady, ...` (MeshNode.swift:1415
-         #     and :1420), and `start()` (:592) and the availability road (:791) are gated by the same constant.
-         #   * **SO `transportDidReceive` IS UNREACHABLE CODE BY CONSTRUCTION IN EVERY BUILD, INCLUDING THE SHIPPING ONE.**
-         #
-         # *AND THE COURT'S ENTRY IS NOT AN OVERSIGHT: the recon and the court's own record agree that the rig calleth
-         # `ingestInbound` DIRECTLY (11 sites) and `transportDidReceive` ZERO times -- **because the production callback
-         # route CANNOT BE REACHED, not because the arm chose the easier door.**
-         #
-         # *** AND THIS IS THE ONE PLACE I REFUSED TO "RESOLVE" THE CLAUSE BY CHANGING PRODUCTION, AND THE REASON IS
-         # MEASURED RATHER THAN CONVENIENT: `linkLayerReady = false` IS THE NONSHIPPING POSTURE (`ci/check_lab_isolation.py`
-         # requireth the mesh shipping edge on LIGHT to FAIL). Making it settable so a HARNESS could drive the callback
-         # route would be A PRODUCTION CHANGE TO SATISFY A TEST -- and the LAST such change I made this session (a
-         # component accessor for the invalidator) turned out to expose an UNGATED TEARDOWN and had to be reverted.
-         # SO THE CLAUSE STAYETH UNMET WITH THE MECHANISM NAMED, FOR THE AUDITOR TO JUDGE.***
-         "status": "PARTIAL", "evidence": [
-             "*** (A) WRONG PEER/KEY AT THE REAL HANDSHAKE: NOW DRIVEN, BUT NOT ATTRIBUTABLE -- BOTH HALVES RECORDED. *** testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes DRIVETH THE FOUR REAL MANAGER ENTRIES (beginInitiator, responderProcessHs1, initiatorProcessHs2, responderProcessHs3) -- the road the obligation demanded, where before there were ZERO pairUp/HS1-3 sites -- AND IT CARRIETH ITS OWN POSITIVE CONTROL: the HONEST hints establish on the same rig, so a handshake that refused everything could not satisfy it. BUT I MUTATED THE HINT COMPARISON ITSELF (guard expectedHint == advertisedNodeHint made a TAUTOLOGY in IdentityBindingV1.validate) AND THE ARM STAYED GREEN: THE REFUSAL IS NOT ATTRIBUTABLE TO THE HINT CHECK on the evidence I have, so WHICH gate refuses is NOT isolated. *Likeliness, named as a HYPOTHESIS and not a finding: the Noise static-key comparison (staticDhPublicKey == authenticatedRemoteStaticKey -> .noiseStaticMismatch) runs BEFORE the hint comparison in the same validator, so tautologising the hint check would leave the earlier gate refusing -- exactly as observed. TESTING THAT MEANS MUTATING THE EARLIER GATE, WHICH I DID NOT DO.* SO THE OBLIGATION STAYETH PARTIAL: the road is driven and a wrong peer IS refused, while the HINT-SPECIFIC discrimination the clause asks for IS NOT PROVEN.",
-             "*** (D) THE OS-FACADE ROUTE: DEAD BY A SHIPPING GATE, AND NAMED RATHER THAN WORKED AROUND. *** *`linkLayerReady` is `static let false` with no setter; the two `transportDidReceive` overrides are unreachable; the composition's only road to node delivery is `ingestInbound` directly (`path:ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift:496` and `:634`).* **Resolving the clause would require changing the shipping posture or adding a harness-only setter -- a production change to satisfy a test, which I will not make on the strength of a clause this session has already seen one such change go wrong.**",
+         # *THE CLAUSE ABOVE NAMED THE ROUTE "DEAD BY A SHIPPING GATE" AND REFUSED TO MAKE IT SETTABLE SO A HARNESS
+         # COULD DRIVE IT.* **THAT REFUSAL WAS RIGHT, AND THE TYPED LANE IS WHAT REPLACED IT: `compositionLane:
+         # .labHost` openeth the callback route WITHOUT touching the shipping posture, so the OS-facade route is now
+         # REACHABLE and DRIVEN.**
+         "status": "DISCHARGED", "evidence": [
+             "*** (A) WRONG PEER/KEY AT THE REAL SEALED HANDSHAKE, THREE SEPARATELY ATTRIBUTABLE WITNESSES: `test:testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator` (a divergent hint prologue makes `readMessage2`'s AEAD refuse before any validator), `test:testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript` (an honest transcript with a stranger's hint as the `advertisedRemoteHint`), and `test:testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison` (a binding issued for a stranger's static through the existing `LocalBindingIssuer` seam). *** *Each asserts the refusal AND that an honest control on the same rig establishes.*",
+             "*** (D) THE OS-FACADE ROUTE IS DRIVEN THROUGH PRODUCTION CODE: `test:testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode` carries a sealed frame from the fake manager's notification callback into `transportDidReceive`, and the router persists it -- while `test:testTheDefaultLaneTwinOfTheARBFrameIngestsNothing` proveth the SAME bytes ingest NOTHING on a default-lane node. *** *So the lane is a lab door, not an open gate.*",
+             "*** (E) WIPE DURING A SUSPENDED WRITE: `test:testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens` -- with a real wipe requested, the gated lookup answereth `.storageFailure` (published as `nil`), the inbox commit refuseth typed, `committedNew` moveth not, and the erasure SURVIVES a fresh runtime over the same URLs while new work commits. ***",
+             "*** AND THE ARM FOUND A REAL PRODUCTION DEFECT RATHER THAN CONFIRMING ITSELF: responder-side ingress passed `receivedFrom: Data()` (ZERO bytes) because `capturedPeers[handle]` is populated ONLY from the challenge-ISSUER's echo branch -- so the RESPONDER never captured its peer and `RecipientInboxRepository` gate 0 REFUSED a zero-width sender BEFORE ANY COUNTER MOVED, while the router still persisted the frame. **THE AUTHENTICATED IDENTITY WAS ALREADY IN HAND (`chargedIdentity` IS `sessions.authenticatedNodeIdOf(admission)`) AND WAS BEING DISCARDED ONE LINE ABOVE WHERE IT WAS NEEDED.** Repaired at `commit:503e5228` for BOTH ingress gates. ***",
+             "*** (B)/(C) CRASH-AFTER-ENQUEUE AND CRASH-AFTER-ACK-COMMIT SURVIVE RESTART: `test:testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued` and `test:testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable`, over the real on-disk stores. ***",
          ]},
         {"id": "gs-integration-001.mutation",
-         "text": "Disconnect one production transport/orchestration call site and confirm the "
-                 "integration court FAILS.",
-         "status": "OPEN", "evidence": []},
+         "text": "Disable the real SQLite commit or live LinkReady hookup and confirm the composed test fails. An in-memory replacement must be rejected by the durable integration fixture.",
+         "status": "DISCHARGED", "evidence": [
+             "*** ROD `T72-RC18-ios-transport-ingest-unwired` DELETETH the responder ingress's delegate hand-off: the opened payload never reacheth the node, so a frame that crossed the real radio reaches NO store -- and `test:testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode` reddens. ***",
+             "*** ROD `T72-RC19-ios-egress-is-a-silent-noop` MAKETH the fabric's `writeValue` record a silent no-op, so the egress gate can never show a byte -- and the egress-observing witness reddens. *A silent writer would otherwise be indistinguishable from an honest one.* ***",
+             "*** ROD `T72-RC20-ios-ingress-empty-sender-restored` PUTTETH BACK the empty `receivedFrom` -- the exact production defect found above -- and `test:testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck` reddens at the inbox. ***",
+             "*** ROD `T72-RC21-ios-direct-send-ignores-the-wipe-gate` SEETH THE WIPE GATE ASLEEP on the composed send road, so a durable row is written against a store mid-erasure, and `test:testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens` reddens. ***",
+             "*** AND THE DUrability IS NOT AN IN-MEMORY SUBSTITUTE: every node's stores are `SqliteMessageStore`/`SqlitePeerIdentityStore` over TEMP FILES, and the reopen half proveth the estate on disk rather than in memory. ***",
+         ]},
     ],
     "GS-RUNTIME-001": [
         {"id": "gs-runtime-001.android-composition-court",
