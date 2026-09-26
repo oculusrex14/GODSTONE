@@ -1,0 +1,13 @@
+
+8 tests completed, 2 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':mesh:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC13-android-private-construction-uncounted/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 26s
