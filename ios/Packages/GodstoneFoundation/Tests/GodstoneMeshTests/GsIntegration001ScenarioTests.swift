@@ -325,9 +325,9 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
         XCTAssertTrue(
             r.waitUntil { r.trustedHandles(initiator).contains(r.linkHandle(initiator,
-                                                                             r.peer(of: "alice", "bob")!)) },
-            "*** THE INITIATOR'S OWN APPLICATION-LINKREADY ROSTER MUST CONTAIN THE RELATION, because that roster is
-                what maketh the peer route-eligible for `dispatchDirect`. Ring: " + r.ring(initiator) + " ***")
+                                                                             r.peer(of: "alice", "bob")!)!) },
+            "*** THE INITIATOR'S OWN APPLICATION-LINKREADY ROSTER MUST CONTAIN THE RELATION, because that roster is "
+                + "what maketh the peer route-eligible for `dispatchDirect`. Ring: " + r.ring(initiator) + " ***")
 
         let dir = try XCTUnwrap(r.deliverableDirection("alice", "bob"),
                                 "the rig must name a direction that can deliver locally")
@@ -382,7 +382,7 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
         XCTAssertTrue(
             r.waitUntil { r.trustedHandles(initiator).contains(r.linkHandle(initiator,
-                                                                             r.peer(of: "alice", "bob")!)) },
+                                                                             r.peer(of: "alice", "bob")!)!) },
             "*** THE INITIATOR'S OWN APPLICATION-LINKREADY ROSTER MUST CONTAIN THE RELATION. Ring: "
                 + r.ring(initiator) + " ***")
 
