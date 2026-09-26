@@ -30,6 +30,7 @@ Two lineages, kept apart on the page and in the tally:
 
     python3 ci/mutations.py                 # structural lineage (fast, default)
     python3 ci/mutations.py --semantic      # semantic lineage (runs harnesses)
+    python3 ci/mutations.py --semantic --id T72-RC13   # only this rod (repeatable)
     python3 ci/mutations.py --all           # both, reported separately
     python3 ci/mutations.py --report        # do not fail on findings
     python3 ci/mutations.py --emit-dir DIR  # write logs/ beside the manifest
@@ -86,14 +87,28 @@ def _now_utc():
 
 
 def _row(entry, baseline_sha, category, anchor_count, build_exit, target_tests,
-         tests_run, outcome, failed_assertion, log_path):
-    return {"id": entry["id"], "baseline_sha": baseline_sha,
-            "mutant_patch_sha": entry["patch_sha"], "category": category,
-            "anchor_count": anchor_count, "build_exit": build_exit,
-            "target_tests": list(target_tests), "tests_run": tests_run,
-            "outcome": outcome, "failed_assertion": failed_assertion,
-            "log_sha": _sha_file(log_path), "log_path": log_path,
-            "started_utc": entry.get("started_utc"), "ended_utc": entry.get("ended_utc")}
+         tests_run, outcome, failed_assertion, log_path, restored_green=None):
+    row = {"id": entry["id"], "baseline_sha": baseline_sha,
+           "mutant_patch_sha": entry["patch_sha"], "category": category,
+           "anchor_count": anchor_count, "build_exit": build_exit,
+           "target_tests": list(target_tests), "tests_run": tests_run,
+           "outcome": outcome, "failed_assertion": failed_assertion,
+           "log_sha": _sha_file(log_path), "log_path": log_path,
+           "started_utc": entry.get("started_utc"), "ended_utc": entry.get("ended_utc")}
+    if restored_green is not None:
+        # *** A KILL CARRIETH ITS RESTORATION, WITH A DIGEST PER PHASE LOG. ***
+        # *Three full blobs (baseline, mutant, restored) are registered beside
+        # the row, so a reader can re-derive the verdict from the artifacts
+        # rather than from the verdict line -- and a row whose restored log is
+        # absent cannot pass for a kill.*
+        row["restored_green"] = restored_green
+        if log_path:
+            stem = log_path[:-len(".mutant.log")] if log_path.endswith(".mutant.log") \
+                else log_path
+            row["phase_logs"] = {ph: {"path": stem + "." + ph + ".log",
+                                      "sha256": _sha_file(stem + "." + ph + ".log")}
+                                 for ph in ("baseline", "mutant", "restored")}
+    return row
 
 
 # --------------------------------------------------------------------------
@@ -1695,6 +1710,22 @@ SEMANTIC = [
     {"id": "T72-RC11-ios-the-shutdown-releaseth-nothing", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift", "swift_filter": "ReadinessT72Tests", "find": "        if defect == CampaignDefect.noLeaseRelease { return }\n        leases = 0; timers = 0; sessions = 0", "replace": "        // (mutant) shutdown releaseth NOTHING on this isle\n        return", "witness": "testW02ZeroLeaksAfterShutdown", "why": "the iOS isle's shutdown releaseth nothing, so every campaign leaketh its capacity there. The iOS leak witness condemneth", "baseline": "green (the T72 iOS court: 13 witnesses in ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift, driven by the Swift twin)", "kind": "functional"},
     {"id": "T72-RC12-ios-the-retry-cap-is-disabled", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift", "swift_filter": "ReadinessT72Tests", "find": "        if defect == CampaignDefect.noRetryCap || used < StressCampaign.retryCap {", "replace": "        if true {   // (mutant) the retry cap is disabled on this isle", "witness": "testW04NoDuplicateDeliveryUnderTheRetryCap", "why": "the iOS retry cap is disabled, so a delivery row advances without limit there. The iOS retry witness condemneth", "baseline": "green (the T72 iOS court: 13 witnesses in ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift, driven by the Swift twin)", "kind": "functional"},
     # ----------------------------------------------------------------------
+    # GS-FINAL-003 `zero-private-opens` (Board 1): the ANDROID CONSTRUCTION COUNTERS.
+    #   *THE OBLIGATION'S OWN WORDS ASK FOR "PROVEN AT THE REAL CONSTRUCTION
+    #   SEAMS WITH COUNTERS", so the rods strike THE COUNTER CALLS themselves
+    #   rather than the decision or the permit -- both of which had arms before
+    #   this obligation was written, and neither of which is the clause.*
+    # ----------------------------------------------------------------------
+    {"id": "T72-RC13-android-private-construction-uncounted", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.IDENTITY, permit.issuedFrom)\n        return Identity.loadOrCreate(ctx)", "replace": "        // (mutant) the identity construction is NOT counted at the seam\n        return Identity.loadOrCreate(ctx)", "witness": "testThePermittedRoadCountsOneAttemptPerSeamAtThePlatform", "why": "the identity construction waveth past the counter, so the permitted road moveth no count and EVERY refusal arm reads zero for a reason that has nothing to do with the gate. The permitted-road counter witness condemneth.", "baseline": "green (the GS-FINAL-003 zero-private-opens court: 6 arms in android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt, driven through DaggerMeshGraphComponent over the real journal)", "kind": "semantic"},
+    {"id": "T72-RC14-android-private-permit-may-be-bypassed", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        requireNotNull(PrivateStorePermit.issue(barrier.decision)) {", "replace": "        if (false) requireNotNull(PrivateStorePermit.issue(barrier.decision)) {", "witness": "testTheCompositionIssuerRefusesOnEveryOutstandingRung", "why": "the composition's issuer is bypassed, so a refusing rung yields a permit anyway -- and the graph would construct the estate a later resume is going to erase. The refusal witness condemneth.", "baseline": "green (the GS-FINAL-003 zero-private-opens court, driven through the real component)", "kind": "semantic"},
+    # ----------------------------------------------------------------------
+    # GS-RUNTIME-001 `mutations` (Board 1): the ANDROID RUNTIME-OWNERSHIP WIRING.
+    #   *Each rod deleteth ONE owner assignment from the production provider and
+    #   requires the arm that observes THAT owner through a foreign consumer.*
+    # ----------------------------------------------------------------------
+    {"id": "T72-RC15-android-ack-pump-not-handed-to-the-node", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt", "gradle_filter": "*GsFinal003GraphComponentTest*", "witness": "testTheProductionProviderHandsTheNodeThePumpItWasGiven", "why": "the production provider manufactureth and receiveth the pump and handeth it to nobody, so the node's own dispatcher has no durable ACK road. The pump-identity witness condemneth.", "baseline": "green (the GS-FINAL-003 graph component court in android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt)", "kind": "semantic"},
+    {"id": "T72-RC16-android-ack-dispatcher-admits-elsewhere", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt", "gradle_filter": "*GsFinal003GraphComponentTest*", "witness": "testTheDispatcherAdmitsThroughTheGivenPumpOnly", "why": "the dispatcher's admission road is pointed at a decoy, so an ACK frame admitted through it reacheth NOTHING the node owns. The injection witness condemneth.", "baseline": "green (the GS-FINAL-003 graph component court, driven over real on-disk stores)", "kind": "semantic"},
+    # ----------------------------------------------------------------------
     # T82 (s24-28): the explicitly closed tier and bulk-plane promises. The
     #   card's NAMED semantic negative is RC1/RC2: "Advertise bulk transfer or
     #   introduce INTERNET into Archive-only to solve it: profile/release
@@ -1728,6 +1759,10 @@ SWIFT_COMPILE_RE = re.compile(r"\.swift:[0-9]+:[0-9]+: error:")
 # woe: the build ever surviveth it and the tests e'en run whole -- the
 # classifier must not taste it as one (the T49 campaign caught the roulette)
 KT_COMPILE_RE = re.compile(r"^e: (?!The daemon has terminated unexpectedly)", re.M)
+# the XCUITest lane's own line shapes: every arm's verdict BY NAME, and the
+# explicit skip line -- *the two readings the `ios-ui` executor is built from.*
+UI_CASE_RE = re.compile(r"Test Case '-\[([\w.]+) ([\w]+)\]' (passed|failed)")
+UI_SKIP_RE = re.compile(r"Test Case '[^']+' skipped")
 
 
 def _worktree_add(head, wt_path):
@@ -1747,7 +1782,32 @@ def _worktree_remove(wt_path):
 
 
 def _run_harness(entry, wt_path, timeout=2400):
-    """Run the witness set once. Returns (build_exit, tests_run, failed_set, blob)."""
+    """Run the witness set once.
+
+    Returns a RESULT DICT: {"build_exit", "run", "skipped", "failed", "blob"}.
+    `run` is None when the harness printed no roster line at all; `skipped`
+    counteth arms the toolchain refused to execute -- **a skip measureth
+    nothing, so a roster answered by skips is EXEC_INVALID, never a green.**
+    """
+    if entry["platform"] == "ios-ui":
+        # the XCUITest lane: the runner produceth a log, this control readeth it.
+        # The roster is SOURCE-DERIVED by the committed checker (one source of
+        # truth, two consumers), and every arm's own verdict is read by name.
+        ui_log = entry.get("ui_log", "ios-ui-lane.log")
+        proc = subprocess.run(["sh", "tools/readiness/run_ios_ui_lane.sh", ui_log],
+                              cwd=wt_path, capture_output=True, text=True,
+                              timeout=timeout)
+        blob = (proc.stdout or "") + (proc.stderr or "")
+        log_file = os.path.join(wt_path, ui_log)
+        if os.path.isfile(log_file):
+            blob += "\n" + open(log_file, encoding="utf-8", errors="replace").read()
+        build_exit = 1 if SWIFT_COMPILE_RE.search(blob) else 0
+        cases = UI_CASE_RE.findall(blob)
+        run = len(cases) if cases else None
+        skipped = len(UI_SKIP_RE.findall(blob))
+        failed = {n for _c, n, v in cases if v == "failed"}
+        return {"build_exit": build_exit, "run": run, "skipped": skipped,
+                "failed": failed, "blob": blob}
     if entry["platform"] == "jvm":
         # the module axis: sealed rows name no module and keep the mesh
         # road byte-identical; a :core court declaréth "module": "core"
@@ -1771,17 +1831,29 @@ def _run_harness(entry, wt_path, timeout=2400):
         _gradle_env = dict(os.environ)
         _gradle_env.setdefault("JAVA_HOME", "/opt/homebrew/opt/openjdk@17")
         _gradle_env.setdefault("ANDROID_HOME", os.path.expanduser("~/Library/Android/sdk"))
+        # *** AND THE ROSTER MAY NOT BE ANSWERED BY A CACHED GENERATION. ***
+        #
+        # *Gradle's `UP-TO-DATE` and `FROM-CACHE` are HONEST about a task whose
+        # INPUTS have not changed -- and a mutant is an input change it may not
+        # notice across the phases of one rod: the baseline write, the mutant
+        # write and the restore all land inside one daemon-less invocation
+        # each, but a build cache keyed on the previous phase's bytes would
+        # hand back the PREVIOUS phase's XML.* **So the task directory is
+        # DELETED before every run and `--rerun-tasks` is passed, and a roster
+        # that did not actually execute cannot satisfy a rod.**
+        xml_dir = os.path.join(wt_path, "android", module, "build", "test-results",
+                               task)
+        shutil.rmtree(xml_dir, ignore_errors=True)
         proc = subprocess.run(
             ["./gradlew", ":" + module + ":" + task, "--no-daemon", "-q",
-             "--tests", entry["gradle_filter"]],
+             "--rerun-tasks", "--tests", entry["gradle_filter"]],
             cwd=os.path.join(wt_path, "android"), capture_output=True, text=True,
             env=_gradle_env,
             timeout=timeout)
         blob = (proc.stdout or "") + (proc.stderr or "")
         build_exit = 1 if KT_COMPILE_RE.search(blob) else 0
-        xml_dir = os.path.join(wt_path, "android", module, "build", "test-results",
-                               task)
         run = 0
+        skipped = 0
         fails = 0
         failed = set()
         if os.path.isdir(xml_dir):
@@ -1789,15 +1861,17 @@ def _run_harness(entry, wt_path, timeout=2400):
                 if not (name.startswith("TEST-") and name.endswith(".xml")):
                     continue
                 t = open(os.path.join(xml_dir, name), encoding="utf-8").read()
-                m = re.search(r'tests="([0-9]+)" skipped="[0-9]+" failures="([0-9]+)" errors="([0-9]+)"', t)
+                m = re.search(r'tests="([0-9]+)" skipped="([0-9]+)" failures="([0-9]+)" errors="([0-9]+)"', t)
                 if not m:
                     continue
                 run += int(m.group(1))
-                fails += int(m.group(2)) + int(m.group(3))
+                skipped += int(m.group(2))
+                fails += int(m.group(3)) + int(m.group(4))
                 for cn, _det in re.findall(
                         r'<testcase name="([^"]+)"[^>]*>\s*<(?:failure|error)[^>]*message="([^"]*)"', t):
                     failed.add(cn)
-        return build_exit, (run if run else None), failed, blob
+        return {"build_exit": build_exit, "run": (run if run else None),
+                "skipped": skipped, "failed": failed, "blob": blob}
     if entry["platform"] == "python":
         # the py court sits in whichever home the row names; the single
         # witness is chosen by -k, and its verdict is read from unittest's
@@ -1832,7 +1906,11 @@ def _run_harness(entry, wt_path, timeout=2400):
         build_exit = 1 if (
             spoke is None
             and re.search(r"\b(?:SyntaxError|ImportError)\b", blob)) else 0
-        return build_exit, run, failed, blob
+        # unittest reporteth a skip as `skipped 'reason'` on the verbose line:
+        # *a court that answered by skipping is a court that measured nothing.*
+        return {"build_exit": build_exit, "run": run,
+                "skipped": len(re.findall(r"\.\.\. skipped", blob)),
+                "failed": failed, "blob": blob}
     # the class-form filter is this harness's dialect: the method-form
     # filter answers 'Test run with 0 tests' and blinds the oracle
     argv = ["swift", "test", "--package-path", "ios/Packages/GodstoneFoundation"]
@@ -1844,7 +1922,9 @@ def _run_harness(entry, wt_path, timeout=2400):
     totals = [int(a) for a, b in EXEC_RE.findall(blob) if int(a) >= 1]
     run = max(totals) if totals else None
     failed = {n for n in FAILED_CASE_RE.findall(blob) if n}
-    return build_exit, run, failed, blob
+    return {"build_exit": build_exit, "run": run,
+            "skipped": len(re.findall(r"Test Case '.*' skipped", blob)),
+            "failed": failed, "blob": blob}
 
 
 # ---------------------------------------------------------------------------
@@ -1862,16 +1942,19 @@ class ClassifyPolicy:
     """The rules a verdict obeyeth. The default is the only honest one."""
 
     __slots__ = ("require_baseline", "require_build", "require_anchor", "require_run",
-                 "killed_on_hit", "skipped_is_killed", "escaped_is_killed",
-                 "invalid_is_killed", "timeout_is_killed")
+                 "require_restored", "killed_on_hit", "skipped_is_killed",
+                 "escaped_is_killed", "invalid_is_killed", "timeout_is_killed")
 
     def __init__(self, require_baseline=True, require_build=True, require_anchor=True,
-                 require_run=True, killed_on_hit=True, skipped_is_killed=False,
-                 escaped_is_killed=False, invalid_is_killed=False, timeout_is_killed=False):
+                 require_run=True, require_restored=True, killed_on_hit=True,
+                 skipped_is_killed=False, escaped_is_killed=False,
+                 invalid_is_killed=False, timeout_is_killed=False):
         self.require_baseline = require_baseline
         self.require_build = require_build
         self.require_anchor = require_anchor
         self.require_run = require_run
+        # *a kill without its restored-green companion is an unproven kill.*
+        self.require_restored = require_restored
         self.killed_on_hit = killed_on_hit
         self.skipped_is_killed = skipped_is_killed
         self.escaped_is_killed = escaped_is_killed
@@ -1888,32 +1971,54 @@ class ClassifyPolicy:
             broken.append("build_unchecked")
         if not self.require_run:
             broken.append("run_unchecked")
+        if not self.require_restored:
+            broken.append("restoration_unchecked")
         return "default" if not broken else "broken:" + "+".join(broken)
 
 
 DEFAULT_POLICY = ClassifyPolicy()
 
 
-def _classify_with(policy, entry, build_exit, run, failed, baseline_ok, anchor_count=1):
-    """One verdict, from the policy's rules. ONLY KILLED is a catch."""
+def _classify_with(policy, entry, build_exit, run, failed, baseline_ok, anchor_count=1,
+                   skipped=0, restored_green=None):
+    """One verdict, from the policy's rules. ONLY KILLED is a catch.
+
+    *** THE VERDICTS ARE ATTRIBUTABLE, WHICH IS THE WHOLE POINT. *** *A single
+    `INVALID` conflated two different instrument failures with two different
+    repairs -- a mutant that never compiled is a BAD MUTANT, a roster that never
+    executed is a BAD INVOCATION -- so the outcome now names WHICH:* **BUILD_INVALID**
+    the compiler refused the mutant; **EXEC_INVALID** the roster executed zero
+    cases or answered by SKIPPING (a skip measureth nothing); **BASELINE_INVALID**
+    the unmutated tree itself did not pass; **INCOMPLETE** the restored-green
+    companion never executed, so a kill is unproven. *Every one of those is a
+    refusal, and none is a catch.*
+    """
     if policy.require_anchor and anchor_count != 1:
-        outcome = "SKIPPED"
         note = "the anchor was seen %d times, not exactly once" % anchor_count
-        return ("KILLED", note) if policy.skipped_is_killed else (outcome, note)
+        return ("KILLED", note) if policy.skipped_is_killed else ("SKIPPED", note)
     if policy.require_baseline and not baseline_ok:
         note = "the baseline itself did not pass unmutated"
-        return ("KILLED", note) if policy.invalid_is_killed else ("INVALID", note)
+        return ("KILLED", note) if policy.invalid_is_killed else ("BASELINE_INVALID", note)
     if policy.require_build and build_exit != 0:
         note = "the mutant did not compile"
-        return ("KILLED", note) if policy.invalid_is_killed else ("INVALID", note)
+        return ("KILLED", note) if policy.invalid_is_killed else ("BUILD_INVALID", note)
     witness_tail = entry["witness"].rpartition("/")[2].rpartition(".")[2]
     hit = any(witness_tail in f or f == witness_tail for f in failed)
-    if hit and policy.killed_on_hit:
-        return "KILLED", "witness %s failed as intended (%d failed case(s))" % (
-            witness_tail, len(failed))
+    if policy.require_run and skipped:
+        note = "%d arm(s) SKIPPED -- a skip measureth nothing" % skipped
+        return ("KILLED", note) if policy.invalid_is_killed else ("EXEC_INVALID", note)
     if policy.require_run and (run is None or run == 0):
         note = "the harness executed nothing"
-        return ("KILLED", note) if policy.invalid_is_killed else ("INVALID", note)
+        return ("KILLED", note) if policy.invalid_is_killed else ("EXEC_INVALID", note)
+    if hit and policy.killed_on_hit:
+        # *** A KILL IS ONLY A KILL WHEN THE RESTORATION IS SHOWN. ***
+        if policy.require_restored and not (restored_green and restored_green.get("ok")):
+            note = ("witness %s failed as intended, BUT the restored-green rerun never "
+                    "executed the roster -- an unproven kill is not a catch"
+                    % witness_tail)
+            return ("KILLED", note) if policy.invalid_is_killed else ("INCOMPLETE", note)
+        return "KILLED", "witness %s failed as intended (%d failed case(s)); the restored " \
+                         "tree ran the roster green" % (witness_tail, len(failed))
     if failed:
         note = ("the named witness stayed green; other cases failed (" +
                 ", ".join(sorted(failed))[:180] + ") - inspect")
@@ -1923,20 +2028,33 @@ def _classify_with(policy, entry, build_exit, run, failed, baseline_ok, anchor_c
     return ("KILLED", note) if policy.escaped_is_killed else ("ESCAPED", note)
 
 
-def _classify(entry, build_exit, run, failed, baseline_ok, anchor_count=1):
+def _classify(entry, build_exit, run, failed, baseline_ok, anchor_count=1, skipped=0,
+              restored_green=None):
     return _classify_with(DEFAULT_POLICY, entry, build_exit, run, failed, baseline_ok,
-                          anchor_count)
+                          anchor_count, skipped, restored_green)
 
 
-def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
+def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None):
     head = baseline_sha or subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
         text=True).stdout.strip()
+    # *** `--id` SELECTETH A SUBSET, SO A CAMPAIGN MAY RUN THE RODS IT OWNS
+    # WITHOUT THE WHOLE LEDGER. *** *An unselected row is UNTOUCHED: no
+    # worktree, no run, no row -- so a subset run CANNOT be quoted as a full
+    # ledger, and its manifest sayeth which ids it judged.*
+    selected = [s for s in SEMANTIC if not only_ids or s["id"] in set(only_ids)]
+    unknown = sorted(set(only_ids or ()) - {s["id"] for s in SEMANTIC})
+    if unknown:
+        print("::error::unknown rod id(s): " + ", ".join(unknown), file=sys.stderr)
+        return 1
     rows = []
-    tally = {k: 0 for k in ("KILLED", "SKIPPED", "INVALID", "TIMEOUT", "ESCAPED")}
+    tally = {k: 0 for k in ("KILLED", "SKIPPED", "BUILD_INVALID", "EXEC_INVALID",
+                            "BASELINE_INVALID", "INCOMPLETE", "TIMEOUT", "ESCAPED")}
     print("SEMANTIC lineage (oracle: the readiness suites' named witnesses; "
           "disposable worktrees; the live tree is never touched)")
-    for spec in SEMANTIC:
+    if only_ids:
+        print("  (subset: %d of %d row(s), selected by --id)" % (len(selected), len(SEMANTIC)))
+    for spec in selected:
         entry = dict(spec)
         entry["patch_sha"] = _sha_text(entry["find"] + "\n==\n" + entry["replace"])
         entry["started_utc"] = _now_utc()
@@ -1970,8 +2088,9 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
                       % (entry["id"], anchor_count))
                 continue
             # 1. the baseline must pass unmutated, or nothing below may claim a kill
-            be0, run0, failed0, blob0 = _run_harness(entry, wt_path)
-            baseline_ok = be0 == 0 and run0 not in (None, 0) and not failed0
+            base = _run_harness(entry, wt_path)
+            baseline_ok = (base["build_exit"] == 0 and base["run"] not in (None, 0)
+                           and not base["failed"] and not base["skipped"])
             # 2. install the mutant, exactly once
             open(target, "w", encoding="utf-8").write(
                 text.replace(entry["find"], entry["replace"], 1))
@@ -2001,7 +2120,7 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
                     raise AssertionError("the mutation never reached the mirrored package: " + mir)
             # 3. run the witnesses against the mutant
             try:
-                be, run, failed, blob = _run_harness(entry, wt_path)
+                mutant = _run_harness(entry, wt_path)
             except subprocess.TimeoutExpired:
                 tally["TIMEOUT"] += 1
                 rows.append(_row(entry, head, "semantic", anchor_count, None,
@@ -2009,23 +2128,60 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
                                 "the harness did not settle inside the bound", None))
                 print("  TIMEOUT  %s" % entry["id"])
                 continue
-            outcome, note = _classify(entry, be, run, failed, baseline_ok, anchor_count)
+            # *** 4. RESTORE THE TREE AND RUN THE ROSTER ONCE MORE. ***
+            #
+            # *A kill is only attributable if the SAME roster passeth on the
+            # restored tree: without this phase, a witness that failed for a
+            # reason that has nothing to do with the mutation -- a flaky arm,
+            # a dirty mirror, a wedged device -- is recorded as a catch.* **So
+            # the restore is EXECUTED, not asserted, and a row without it is
+            # INCOMPLETE rather than KILLED.**
+            open(target, "w", encoding="utf-8").write(text)
+            subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                           cwd=wt_path, capture_output=True, timeout=300, check=True)
+            try:
+                restr = _run_harness(entry, wt_path)
+                restored_green = {
+                    "ok": (restr["build_exit"] == 0 and restr["run"] not in (None, 0)
+                           and not restr["failed"] and not restr["skipped"]),
+                    "run": restr["run"], "skipped": restr["skipped"],
+                    "failed": sorted(restr["failed"])}
+                restored_blob = restr["blob"]
+            except subprocess.TimeoutExpired:
+                restored_green = {"ok": False, "run": None, "skipped": None,
+                                  "failed": [], "note": "the restored-green rerun timed out"}
+                restored_blob = "(the restored-green rerun did not settle inside the bound)"
+            outcome, note = _classify(entry, mutant["build_exit"], mutant["run"],
+                                      mutant["failed"], baseline_ok, anchor_count,
+                                      mutant["skipped"], restored_green)
             tally[outcome] += 1
             entry["ended_utc"] = _now_utc()
             log_path = None
             if emit_dir:
-                log_path = os.path.join(emit_dir, "logs", entry["id"] + ".semantic.log")
-                os.makedirs(os.path.dirname(log_path), exist_ok=True)
-                open(log_path, "w", encoding="utf-8").write(
-                    "== baseline ==\n" + blob0[-4000:] + "\n== mutant ==\n" + blob[-12000:])
-            rows.append(_row(entry, head, "semantic", anchor_count, be, [entry["witness"]],
-                            run, outcome, note, log_path))
-            print("  %-8s %-34s run=%s failed=%d :: %s"
-                  % (outcome, entry["id"], run, len(failed), note[:140]))
+                # *** THE COMPLETE BLOBS, NEVER A TRUNCATION. *** *The old runner
+                # kept `blob0[-4000:]` and `blob[-12000:]`, so a rod whose
+                # evidence lived earlier in its own log had nothing to re-read
+                # and the retained artifact could not settle a dispute about the
+                # run. THREE PHASES, THREE FULL LOGS, EACH WITH ITS OWN DIGEST.*
+                log_dir = os.path.join(emit_dir, "logs")
+                os.makedirs(log_dir, exist_ok=True)
+                for phase, payload in (("baseline", base["blob"]),
+                                       ("mutant", mutant["blob"]),
+                                       ("restored", restored_blob)):
+                    open(os.path.join(log_dir, entry["id"] + "." + phase + ".log"),
+                         "w", encoding="utf-8").write(payload)
+                log_path = os.path.join(log_dir, entry["id"] + ".mutant.log")
+            rows.append(_row(entry, head, "semantic", anchor_count, mutant["build_exit"],
+                            [entry["witness"]], mutant["run"], outcome, note, log_path,
+                            restored_green=restored_green))
+            print("  %-14s %-34s run=%s skipped=%s failed=%d restored_green=%s :: %s"
+                  % (outcome, entry["id"], mutant["run"], mutant["skipped"],
+                     len(mutant["failed"]), restored_green.get("ok"), note[:120]))
         finally:
             _worktree_remove(wt_path)
     print("  per outcome: " + ", ".join("%s=%d" % (k, tally[k]) for k in
-          ("KILLED", "SKIPPED", "INVALID", "TIMEOUT", "ESCAPED")))
+          ("KILLED", "SKIPPED", "BUILD_INVALID", "EXEC_INVALID", "BASELINE_INVALID",
+           "INCOMPLETE", "TIMEOUT", "ESCAPED")))
     if emit_dir:
         os.makedirs(emit_dir, exist_ok=True)
         open(os.path.join(emit_dir, "manifest.json"), "w", encoding="utf-8").write(
@@ -2073,21 +2229,40 @@ def run(report_only):
 # skipped rod as a catch.
 # ---------------------------------------------------------------------------
 
-#: (scenario, anchor_count, build_exit, run, failed, baseline_ok, expected)
+#: (scenario, anchor_count, build_exit, run, failed, baseline_ok, skipped,
+#:  restored_green, expected). The restored-green companion is present wherever a
+#: KILL is expected -- *a kill without its restoration is INCOMPLETE, and the
+#: table proves the runner knows the difference.*
+_GREEN = {"ok": True, "run": 12, "skipped": 0, "failed": []}
 KNOWN_ANSWER_CASES = (
-    ("a missing anchor (the needle moved)", 0, 0, 12, set(), True, "SKIPPED"),
-    ("a DUPLICATE anchor (seen twice)", 2, 0, 12, set(), True, "SKIPPED"),
-    ("a compile failure", 1, 1, None, set(), True, "INVALID"),
+    ("a missing anchor (the needle moved)", 0, 0, 12, set(), True, 0, _GREEN, "SKIPPED"),
+    ("a DUPLICATE anchor (seen twice)", 2, 0, 12, set(), True, 0, _GREEN, "SKIPPED"),
+    ("a compile failure", 1, 1, None, set(), True, 0, _GREEN, "BUILD_INVALID"),
     # a compile failure WITH test output: the ONLY rule that can refuse this is the
     # build rule, so the table can SEE that rule fall asleep (the first form of this
     # table could not, and the selftest reported its own blind spot)
-    ("a compile failure despite test output", 1, 1, 12, {"the_named_witness"}, True,
-     "INVALID"),
-    ("a baseline that did not pass", 1, 0, 12, set(), False, "INVALID"),
-    ("a worker that executed nothing", 1, 0, None, set(), True, "INVALID"),
-    ("a surviving semantic mutant", 1, 0, 12, set(), True, "ESCAPED"),
-    ("the named witness killed", 1, 0, 12, {"the_named_witness"}, True, "KILLED"),
-    ("a TIMEOUT (no harness output at all)", 1, 0, None, set(), True, "INVALID"),
+    ("a compile failure despite test output", 1, 1, 12, {"the_named_witness"}, True, 0,
+     _GREEN, "BUILD_INVALID"),
+    ("a baseline that did not pass", 1, 0, 12, set(), False, 0, _GREEN,
+     "BASELINE_INVALID"),
+    ("a worker that executed nothing", 1, 0, None, set(), True, 0, _GREEN,
+     "EXEC_INVALID"),
+    ("a roster answered by SKIPS", 1, 0, 12, set(), True, 3, _GREEN, "EXEC_INVALID"),
+    # *** A SKIPPED ROSTER MUST OUTRANK A WITNESS HIT: a case may not be "killed" by a
+    # run that skipped the very arms it counted. ***
+    ("a skipped roster that also reports a hit", 1, 0, 12, {"the_named_witness"}, True, 1,
+     _GREEN, "EXEC_INVALID"),
+    ("a surviving semantic mutant", 1, 0, 12, set(), True, 0, _GREEN, "ESCAPED"),
+    ("the named witness killed, restored green", 1, 0, 12, {"the_named_witness"}, True, 0,
+     _GREEN, "KILLED"),
+    # *** THE RESTORATION IS MANDATORY: a hit without a restored-green companion is
+    # INCOMPLETE -- *the verdict that stops a flaky failure from being booked as a catch.*
+    ("a hit whose restored-green never executed", 1, 0, 12, {"the_named_witness"}, True, 0,
+     None, "INCOMPLETE"),
+    ("a hit whose restored-green did not pass", 1, 0, 12, {"the_named_witness"}, True, 0,
+     {"ok": False, "run": 12, "skipped": 0, "failed": ["the_named_witness"]}, "INCOMPLETE"),
+    ("a TIMEOUT (no harness output at all)", 1, 0, None, set(), True, 0, _GREEN,
+     "EXEC_INVALID"),
 )
 
 #: The broken policies, each of which the known-answer table MUST catch.
@@ -2098,6 +2273,9 @@ BROKEN_POLICIES = (
     ("a baseline failure left unchecked", ClassifyPolicy(require_baseline=False)),
     ("a compile failure left unchecked", ClassifyPolicy(require_build=False)),
     ("a run that executed nothing left unchecked", ClassifyPolicy(require_run=False)),
+    # *** THE RESTORATION LEFT UNCHECKED: *this is the policy that would book a flaky
+    # witness failure as a kill, and it must be visible to the table.* ***
+    ("the restored-green companion left unchecked", ClassifyPolicy(require_restored=False)),
     ("the anchor count left unchecked", ClassifyPolicy(require_anchor=False)),
 )
 
@@ -2112,9 +2290,10 @@ def classify_selftest():
     entry = _selftest_entry()
     mismatches = []
     checks = 0
-    for (scenario, anchors, build_exit, run, failed, baseline_ok, expected) in KNOWN_ANSWER_CASES:
+    for (scenario, anchors, build_exit, run, failed, baseline_ok, skipped,
+         restored_green, expected) in KNOWN_ANSWER_CASES:
         verdict, _note = _classify_with(DEFAULT_POLICY, entry, build_exit, run, failed,
-                                        baseline_ok, anchors)
+                                        baseline_ok, anchors, skipped, restored_green)
         checks += 1
         if verdict != expected:
             mismatches.append("%s: expected %s, got %s" % (scenario, expected, verdict))
@@ -2142,9 +2321,10 @@ def run_selftest(emit=None):
         entry = _selftest_entry()
         caught = False
         detail = ""
-        for (scenario, anchors, build_exit, run, failed, baseline_ok, expected) in KNOWN_ANSWER_CASES:
+        for (scenario, anchors, build_exit, run, failed, baseline_ok, skipped,
+             restored_green, expected) in KNOWN_ANSWER_CASES:
             verdict, _note = _classify_with(policy, entry, build_exit, run, failed,
-                                            baseline_ok, anchors)
+                                            baseline_ok, anchors, skipped, restored_green)
             if verdict != expected:
                 caught = True
                 detail = "%s: %s -> %s" % (scenario, expected, verdict)
@@ -2186,11 +2366,13 @@ def run_selftest(emit=None):
 
     # (4) the tally rule: a non-KILLED rod must never be counted as a catch
     sample = [{"id": "a", "outcome": "KILLED"}, {"id": "b", "outcome": "SKIPPED"},
-              {"id": "c", "outcome": "ESCAPED"}]
+              {"id": "c", "outcome": "ESCAPED"}, {"id": "d", "outcome": "EXEC_INVALID"},
+              {"id": "e", "outcome": "BUILD_INVALID"},
+              {"id": "f", "outcome": "INCOMPLETE"}]
     cats = [r["id"] for r in sample if r["outcome"] != "KILLED"]
-    if cats == ["b", "c"]:
-        print("  PASS only KILLED counteth: a SKIPPED and an ESCAPED rod are both "
-              "refused as catches")
+    if cats == ["b", "c", "d", "e", "f"]:
+        print("  PASS only KILLED counteth: SKIPPED, ESCAPED, EXEC_INVALID, "
+              "BUILD_INVALID and INCOMPLETE are all refused as catches")
     else:
         ok = False
         print("  FAIL the tally rule: %r" % (cats,))
@@ -2217,6 +2399,8 @@ def main(argv=None):
                     help="prove the harness's own classifier and worktree discipline")
     ap.add_argument("--report", action="store_true", help="do not fail on findings")
     ap.add_argument("--semantic", action="store_true", help="run the semantic lineage")
+    ap.add_argument("--id", action="append", default=None,
+                    help="run only this rod id (repeatable); unselected rows are untouched")
     ap.add_argument("--all", action="store_true", help="run both lineages")
     ap.add_argument("--emit-dir", default=None, help="write logs/ (and the semantic manifest) here")
     ap.add_argument("--baseline", default=None, help="pin the audited head sha for the run")
@@ -2231,7 +2415,7 @@ def main(argv=None):
         rc |= run_structural(a.report, a.emit_dir, a.baseline or "live-tree")
     if a.semantic or a.all:
         os.makedirs(a.work_parent, exist_ok=True)
-        rc |= run_semantic(a.report, a.emit_dir, a.baseline, a.work_parent)
+        rc |= run_semantic(a.report, a.emit_dir, a.baseline, a.work_parent, a.id)
     print("NO AGGREGATE: the two lineages are never summed; no run of this "
           "script may be quoted as a single killed percentage.")
     return rc

@@ -106,6 +106,16 @@ internal interface MeshGraphComponent {
     fun durableAckPump(): DurableAckPump
 
     /**
+     * *** GS-FINAL-003: THE INVALIDATOR, EXPOSED FOR COMPILE-BITE PARITY WITH THE OTHER OWNERS. ***
+     *
+     * *Declaring it here is what forces the graph to RESOLVE the binding -- and resolution is the only thing that
+     * validates a provider's parameter list.* **The provider was previously unreachable off-device because it required
+     * the CONCRETE `SqlcipherPeerIdentityStore` while the invalidator's own constructor takes the INTERFACE, so this
+     * accessor is also the arm that keeps the widened signature honest: narrowing it back reddens at compile time.**
+     */
+    fun meshRuntimeInvalidator(): io.godstone.mesh.identity.MeshRuntimeInvalidator
+
+    /**
      * *** THE COMPONENT'S ONE EXTERNAL INPUT. ***
      *
      * *The application `Context` is the single thing the graph cannot build for itself, so it is BOUND as an instance
@@ -153,6 +163,19 @@ internal abstract class MeshGraphMeshModule {
     /** THE INTERFACE BINDING THE GRAPH WAS MISSING: bound to the module's own `@Singleton` concrete resolver. */
     @Binds @Singleton
     abstract fun bindRecipientKeyResolver(impl: BoundRecipientKeyResolver): RecipientKeyResolver
+
+    /**
+     * *** GS-FINAL-003: AND THE PEER-STORE INTERFACE BINDING, WHICH THE WIDENED INVALIDATOR PROVIDER REQUIRES. ***
+     *
+     * *`MeshRuntimeInvalidator`'s constructor taketh `PeerIdentityStore?` -- the INTERFACE -- so widening the provider
+     * to match maketh the graph ask for the interface, and NOTHING said the concrete store satisfied it.* **A `@Binds`
+     * is the only honest place for that (the alternative is a second `@Provides`, which would mint a RIVAL store over
+     * the same file -- the two-authorities defect this module's docstring names).** *`@Singleton` because the concrete
+     * binding is: an unscoped `@Binds` would hand out a second reference to a differently-scoped object.*
+     */
+    @Binds @Singleton
+    abstract fun bindPeerIdentityStore(impl: io.godstone.mesh.identity.SqlcipherPeerIdentityStore):
+        io.godstone.mesh.identity.PeerIdentityStore
 
     companion object {
         /** Every provider below DELEGATES to `MeshModule`, so the graph's behaviour is the production behaviour. */
@@ -252,6 +275,24 @@ internal abstract class MeshGraphMeshModule {
             gate: DefaultRuntimeLifecycleGate,
             wipeGate: WipeSensitiveUseGate,
         ): SessionManager = MeshModule.provideSessionManager(identity, repo, gate, wipeGate)
+
+        /**
+         * *** GS-FINAL-003: THE INVALIDATOR IS EXPOSED SO ITS BINDING IS COMPILE-BITTEN. ***
+         *
+         * *A provider nothing resolves is a provider codegen never validates -- and this one's parameter list was
+         * NARROWER than the constructor it feeds (`SqlcipherPeerIdentityStore` where the invalidator takes
+         * `PeerIdentityStore`).* **Resolving it here means the widened signature is the one the graph must satisfy, so
+         * a future narrowing reddeneth at COMPILE TIME rather than at an off-device court.**
+         */
+        @Provides @Singleton
+        fun meshRuntimeInvalidator(
+            gate: DefaultRuntimeLifecycleGate,
+            sessions: SessionManager,
+            peerStore: io.godstone.mesh.identity.PeerIdentityStore,
+            messageStore: SqliteMessageStore,
+            node: MeshNode,
+        ): io.godstone.mesh.identity.MeshRuntimeInvalidator =
+            MeshModule.provideMeshRuntimeInvalidator(gate, sessions, peerStore, messageStore, node)
 
         /**
          * *** THE NODE -- THE BINDING THAT MAKES THIS COMPONENT WORTH BUILDING. ***

@@ -223,4 +223,145 @@ class GsFinal003ZeroPrivateOpensTest {
             MeshModule.issuePrivateStorePermit(barrier),
         )
     }
+
+    // =================================================================================================================
+    // *** GS-FINAL-003 `zero-private-opens`: THE CONSTRUCTION COUNTERS, DRIVEN THROUGH THE REAL COMPONENT. ***
+    //
+    // *THE ARMS ABOVE ARE DECISION- AND PERMIT-LEVEL. **THE OBLIGATION'S OWN WORDS ASK FOR SOMETHING STRONGER:
+    // "PROVEN AT THE REAL CONSTRUCTION SEAMS WITH COUNTERS."** *A correct decision that nothing consulteth, or a
+    // permit a provider taketh and then ignoreth, satisfies every arm above while constructing the estate a later
+    // resume is going to erase.*
+    //
+    // *** SO THESE ARMS RESOLVE THE PRIVATE PROVIDERS THROUGH `DaggerMeshGraphComponent` AND COUNT WHAT WALKED. ***
+    // **ON A HOST THE PLATFORM THROWS** (AndroidKeyStore / the SQLCipher native library), *and that throw is
+    // EVIDENCE, not an obstacle: `PrivateConstructionCounter.noteAttempt` runneth BEFORE the platform constructor, so
+    // the count proveth the body REACHED the platform and the message proveth WHICH wall it hit -- rather than a
+    // court-side short circuit.*
+    // =================================================================================================================
+
+    /** *Every private seam, with the component accessor that must walk to it.* */
+    private val privateSeams: List<Pair<PrivateConstructionCounter.Seam, (MeshGraphComponent) -> Any>> = listOf(
+        PrivateConstructionCounter.Seam.IDENTITY to { g: MeshGraphComponent -> g.identity() },
+        PrivateConstructionCounter.Seam.MESSAGE_STORE to { g: MeshGraphComponent -> g.messageStore() },
+        PrivateConstructionCounter.Seam.PEER_STORE to { g: MeshGraphComponent -> g.peerIdentityStore() },
+    )
+
+    private fun graph(): MeshGraphComponent =
+        DaggerMeshGraphComponent.builder().applicationContext(ctx()).build()
+
+    private fun failureChain(t: Throwable?): String =
+        generateSequence(t) { it.cause }.joinToString(" | ") { it::class.java.name + ": " + it.message }
+
+    /**
+     * *** (a) THE PERMITTED ROAD: EVERY SEAM IS ATTEMPTED EXACTLY ONCE, UNDER `CLEAN_START`. ***
+     *
+     * *The `IDLE` journal is the one rung that permits construction, so each accessor must (1) move its counter by
+     * exactly one, (2) record `CLEAN_START` as the authority, and (3) fail at a REAL PLATFORM wall rather than a DI
+     * fault.* **A court-side short circuit would construct successfully and read as green -- so the throw is asserted,
+     * not tolerated.**
+     */
+    @Test
+    fun thePermittedRoadCountsOneAttemptPerSeamAtThePlatform() {
+        presetJournal(PanicWipe.WipeState.IDLE)
+        PrivateConstructionCounter.reset()
+        val g = graph()
+
+        for ((seam, accessor) in privateSeams) {
+            val before = PrivateConstructionCounter.attempts(seam)
+            val thrown = runCatching { accessor(g) }.exceptionOrNull()
+            val after = PrivateConstructionCounter.attempts(seam)
+            assertEquals(
+                "*** $seam: THE PERMITTED ROAD MUST ATTEMPT PRIVATE CONSTRUCTION EXACTLY ONCE. *A delta of 0 would " +
+                    "mean the provider never walked to its own constructor -- the counter would be asleep and every " +
+                    "refusal arm below would be measuring nothing.* Observed delta=${after - before}, thrown=$thrown ***",
+                1L, after - before,
+            )
+            assertEquals(
+                "*** $seam: THE ATTEMPT MUST CARRY THE AUTHORITY THAT PERMITTED IT. *A count alone sayeth " +
+                    "'something was constructed' -- this sayeth WHAT AUTHORISED IT, so a construction under a REFUSING " +
+                    "decision could never satisfy this arm.* ***",
+                StartupWipeDecision.CLEAN_START, PrivateConstructionCounter.lastAuthorizedBy(seam),
+            )
+            assertNotNull(
+                "*** $seam: REACHING PRIVATE STATE ON A HOST MUST FAIL AT THE REAL PLATFORM, NOT CONSTRUCT. " +
+                    "*A successful construction would mean the graph is NOT carrying the production providers, or that " +
+                    "the body was short-circuited.* Observed: $thrown ***",
+                thrown,
+            )
+            val chain = failureChain(thrown)
+            assertTrue(
+                "*** $seam: THE FAILURE MUST NAME A PLATFORM BOUNDARY (AndroidKeyStore / SQLCipher / " +
+                    "UnsatisfiedLinkError), not a DI wiring fault. Observed chain: $chain ***",
+                chain.contains("AndroidKeyStore") || chain.contains("KeyStoreException")
+                    || chain.contains("sqlcipher") || chain.contains("UnsatisfiedLinkError"),
+            )
+        }
+    }
+
+    /**
+     * *** (b) EVERY REFUSING RUNG: THE COUNTER MOVES FOR NO SEAM AT ALL. ***
+     *
+     * *And the refusal must be the GATE's own message, not a court-side short circuit:* **`NO PRIVATE STORE MAY BE
+     * CONSTRUCTED` cometh from `issuePrivateStorePermit`'s `requireNotNull` -- i.e. from the composition's own issuer,
+     * reached through the real binding -- so the arm proveth the ROAD reached the gate rather than that a test
+     * declined to take it.**
+     */
+    @Test
+    fun noRefusingRungMovesAnyConstructionCounter() {
+        for (rung in expectedRefusingRungsPinned) {
+            presetJournal(rung)
+            PrivateConstructionCounter.reset()
+            val g = graph()
+            for ((seam, accessor) in privateSeams) {
+                val before = PrivateConstructionCounter.attempts(seam)
+                val thrown = runCatching { accessor(g) }.exceptionOrNull()
+                val after = PrivateConstructionCounter.attempts(seam)
+                assertEquals(
+                    "*** $rung / $seam: A REFUSING RUNG MUST MOVE THE COUNTER BY ZERO. *Any increment here is a " +
+                        "private construction attempted on an estate a later resume is going to erase -- the exact " +
+                        "clause this obligation states.* Observed delta=${after - before} ***",
+                    0L, after - before,
+                )
+                assertNull(
+                    "*** $rung / $seam: no attempt may be recorded, so no authority may be recorded either. ***",
+                    PrivateConstructionCounter.lastAuthorizedBy(seam),
+                )
+                assertTrue(
+                    "*** $rung / $seam: THE RESOLUTION MUST FAIL WITH THE GATE'S OWN MESSAGE, so the road provably " +
+                        "reached the composition's issuer rather than being declined by the court. Observed: " +
+                        failureChain(thrown).take(400) + " ***",
+                    thrown?.message?.contains("NO PRIVATE STORE MAY BE CONSTRUCTED") == true
+                        || failureChain(thrown).contains("NO PRIVATE STORE MAY BE CONSTRUCTED"),
+                )
+            }
+        }
+    }
+
+    /**
+     * *** (c) THE SAME-RUN CROSS-CHECK: THE COUNTER IS NEITHER STUCK AT ZERO NOR RUNAWAY. ***
+     *
+     * *A counter hardwired to zero satisfies every refusal arm; a counter that increments on refusal satisfies every
+     * permitted arm. **ONLY A SAME-RUN COMPARISON OF BOTH DIRECTIONS can see either defect, which is why this arm
+     * exists beside the two above rather than trusting them separately.***
+     */
+    @Test
+    fun theCounterMovesOnThePermittedRoadAndNowhereOnARefusingOne() {
+        presetJournal(PanicWipe.WipeState.IDLE)
+        PrivateConstructionCounter.reset()
+        val permitted = graph()
+        runCatching { permitted.identity() }
+        val permittedDelta = PrivateConstructionCounter.attempts(PrivateConstructionCounter.Seam.IDENTITY)
+
+        presetJournal(PanicWipe.WipeState.REQUESTED)
+        val refusing = graph()
+        runCatching { refusing.identity() }
+        val refusingDelta = PrivateConstructionCounter.attempts(PrivateConstructionCounter.Seam.IDENTITY)
+
+        assertTrue(
+            "*** THE COUNTER MUST MOVE ON THE PERMITTED ROAD (delta=$permittedDelta) AND NOT ON A REFUSING ONE " +
+                "(delta=$refusingDelta). *An always-zero counter would fail this direction; an increment-on-refusal " +
+                "counter would pass it while constructing on a wiped estate -- so the conjunction is the assertion.* ***",
+            permittedDelta >= 1L && refusingDelta == permittedDelta,
+        )
+    }
 }

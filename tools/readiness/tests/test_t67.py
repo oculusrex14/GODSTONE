@@ -6,9 +6,13 @@ The card's law, one witness each where the rule speaketh:
   W01 the classifier's rules are DATA, and the honest policy is the default
   W02 a MISSING anchor is SKIPPED, and a DUPLICATE anchor is SKIPPED too -- never a
       catch, whatever else the run said
-  W03 a compile failure is INVALID, even when the harness printed test output
-  W04 a baseline that did not pass unmutated is INVALID
-  W05 a worker that executed NOTHING is INVALID; a TIMEOUT is not a catch either
+  W03 a compile failure is BUILD_INVALID, even when the harness printed test output
+  W04 a baseline that did not pass unmutated is BASELINE_INVALID
+  W05 a worker that executed NOTHING is EXEC_INVALID; a TIMEOUT is not a catch either
+  W05b a roster answered by SKIPS is EXEC_INVALID -- *a skip measureth nothing, and
+      outranketh even a witness hit*
+  W05c a kill without its RESTORED-GREEN companion is INCOMPLETE -- *an unproven kill
+      is not a catch, which is what keepeth a flaky witness from being booked*
   W06 a surviving semantic mutant is ESCAPED, and the runner SAYETH which cases
       failed so a witness-field drift can be seen
   W07 THE NAMED NEGATIVE: a harness that counteth SKIPPED as KILLED falleth the
@@ -56,6 +60,11 @@ def _entry(witness: str = "the_named_witness") -> dict:
     return {"id": "probe", "witness": witness, "file": "x", "find": "a", "replace": "b"}
 
 
+def _green() -> dict:
+    """A restored-green companion that EXECUTED the roster and passed it."""
+    return {"ok": True, "run": 12, "skipped": 0, "failed": []}
+
+
 class T67ClassifierTest(unittest.TestCase):
     """W01-W06 -- the classifier, one rule at a time."""
 
@@ -87,25 +96,52 @@ class T67ClassifierTest(unittest.TestCase):
         self.assertNotEqual("KILLED", verdict)
         self.assertNotEqual("KILLED", verdict2)
 
-    def test_w03_a_compile_failure_is_invalid_even_with_test_output(self):
+    def test_w03_a_compile_failure_is_build_invalid_even_with_test_output(self):
         verdict, note = M._classify(_entry(), 1, 12, {"the_named_witness"}, True, 1)
-        self.assertEqual("INVALID", verdict)
+        self.assertEqual("BUILD_INVALID", verdict)
         self.assertIn("did not compile", note)
         # and with no output at all
         verdict2, _ = M._classify(_entry(), 1, None, set(), True, 1)
-        self.assertEqual("INVALID", verdict2)
+        self.assertEqual("BUILD_INVALID", verdict2)
 
-    def test_w04_a_failed_baseline_is_invalid(self):
+    def test_w04_a_failed_baseline_is_baseline_invalid(self):
         verdict, note = M._classify(_entry(), 0, 12, {"the_named_witness"}, False, 1)
-        self.assertEqual("INVALID", verdict)
+        self.assertEqual("BASELINE_INVALID", verdict)
         self.assertIn("baseline", note)
 
-    def test_w05_a_run_that_executed_nothing_is_invalid(self):
+    def test_w05_a_run_that_executed_nothing_is_exec_invalid(self):
         verdict, note = M._classify(_entry(), 0, None, set(), True, 1)
-        self.assertEqual("INVALID", verdict)
+        self.assertEqual("EXEC_INVALID", verdict)
         self.assertIn("executed nothing", note)
         verdict2, _ = M._classify(_entry(), 0, 0, set(), True, 1)
-        self.assertEqual("INVALID", verdict2)
+        self.assertEqual("EXEC_INVALID", verdict2)
+
+    def test_w05b_a_roster_answered_by_skips_is_exec_invalid(self):
+        """*** A SKIP MEASURETH NOTHING, SO IT OUTRANKETH EVEN A WITNESS HIT. ***"""
+        # a skipped roster with no hit
+        verdict, note = M._classify(_entry(), 0, 12, set(), True, 1, 3, _green())
+        self.assertEqual("EXEC_INVALID", verdict)
+        self.assertIn("SKIPPED", note)
+        # ... and the case the old classifier got WRONG: a "killed" witness inside a
+        # roster that skipped three arms is NOT a kill.
+        verdict2, _ = M._classify(_entry(), 0, 12, {"the_named_witness"}, True, 1, 3, _green())
+        self.assertEqual("EXEC_INVALID", verdict2)
+
+    def test_w05c_a_kill_without_its_restored_green_is_incomplete(self):
+        """*** THE RESTORATION IS MANDATORY: an unproven kill is not a catch. ***"""
+        verdict, note = M._classify(_entry(), 0, 12, {"the_named_witness"}, True, 1, 0, None)
+        self.assertEqual("INCOMPLETE", verdict)
+        self.assertIn("restored-green", note)
+        # a restored run that itself failed is not a green either
+        verdict2, _ = M._classify(_entry(), 0, 12, {"the_named_witness"}, True, 1, 0,
+                                  {"ok": False, "run": 12, "skipped": 0,
+                                   "failed": ["the_named_witness"]})
+        self.assertEqual("INCOMPLETE", verdict2)
+        # ... and WITH a green restoration the same hit IS a kill
+        verdict3, note3 = M._classify(_entry(), 0, 12, {"the_named_witness"}, True, 1, 0,
+                                      _green())
+        self.assertEqual("KILLED", verdict3)
+        self.assertIn("restored", note3)
 
     def test_w06_a_surviving_mutant_is_escaped_and_sayeth_which_cases_failed(self):
         verdict, note = M._classify(_entry(), 0, 12, {"some_other_case"}, True, 1)
@@ -129,15 +165,24 @@ class T67SelftestTest(unittest.TestCase):
                          "the broken policy really does misclassify a moved anchor as a kill")
         # ... and the known-answer table CATCHES it
         caught = False
-        for (scenario, anchors, build_exit, run, failed, baseline_ok, expected) in M.KNOWN_ANSWER_CASES:
+        for (scenario, anchors, build_exit, run, failed, baseline_ok, skipped,
+             restored_green, expected) in M.KNOWN_ANSWER_CASES:
             got, _n = M._classify_with(broken, entry, build_exit, run, failed,
-                                       baseline_ok, anchors)
+                                       baseline_ok, anchors, skipped, restored_green)
             if got != expected:
                 caught = True
                 break
         self.assertTrue(caught, "the selftest's table must SEE a skipped-as-killed harness")
         # and the honest rules pass the same table
         self.assertEqual([], M.classify_selftest()[0])
+        # *** AND THE TABLE NOW CARRIETH THE RESTORATION RULE, WHICH THE OLD TABLE
+        # COULD NOT SEE: a hit without its restored-green companion is INCOMPLETE,
+        # and a policy that dropped that rule would be caught by this very case. ***
+        names = [c[0] for c in M.KNOWN_ANSWER_CASES]
+        self.assertTrue(any("restored-green" in n for n in names),
+                        "the table must carry a restoration case")
+        self.assertEqual("INCOMPLETE",
+                         M._classify(_entry(), 0, 12, {"the_named_witness"}, True, 1, 0, None)[0])
 
     def test_w08_the_selftest_executeth_the_disposable_worktree_discipline(self):
         head_before = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
@@ -156,16 +201,23 @@ class T67SelftestTest(unittest.TestCase):
 
     def test_w09_only_killed_counteth_and_the_exit_code_refuseth_the_rest(self):
         rows = [{"id": "a", "outcome": "KILLED"}, {"id": "b", "outcome": "SKIPPED"},
-                {"id": "c", "outcome": "ESCAPED"}, {"id": "d", "outcome": "INVALID"},
-                {"id": "e", "outcome": "TIMEOUT"}]
+                {"id": "c", "outcome": "ESCAPED"}, {"id": "d", "outcome": "BUILD_INVALID"},
+                {"id": "e", "outcome": "TIMEOUT"}, {"id": "f", "outcome": "EXEC_INVALID"},
+                {"id": "g", "outcome": "BASELINE_INVALID"},
+                {"id": "h", "outcome": "INCOMPLETE"}]
         refused = [r["id"] for r in rows if r["outcome"] != "KILLED"]
-        self.assertEqual(["b", "c", "d", "e"], refused)
+        self.assertEqual(["b", "c", "d", "e", "f", "g", "h"], refused)
         # the runner's own refusal path: `bad and not report_only` returneth 1
         source = (CI / "mutations.py").read_text(encoding="utf-8")
         self.assertIn("bad = [r[\"id\"] for r in rows if r[\"outcome\"] != \"KILLED\"]", source)
         self.assertIn("if bad and not report_only:", source)
-        # every outcome the runner may record is one of the five, and KILLED alone
-        for outcome in ("KILLED", "SKIPPED", "ESCAPED", "INVALID", "TIMEOUT"):
+        # *** EVERY OUTCOME THE RUNNER MAY RECORD IS ONE OF THE EIGHT, AND KILLED
+        # ALONE IS A CATCH. *** *The four refusal families are distinct because their
+        # REPAIRS are distinct: a BUILD_INVALID is a bad mutant, an EXEC_INVALID is a
+        # bad invocation, a BASELINE_INVALID is a broken tree, and an INCOMPLETE is an
+        # unproven kill.*
+        for outcome in ("KILLED", "SKIPPED", "ESCAPED", "BUILD_INVALID", "EXEC_INVALID",
+                        "BASELINE_INVALID", "INCOMPLETE", "TIMEOUT"):
             self.assertIn('"%s"' % outcome, source)
 
     def test_w10_the_expected_escape_is_never_counted_as_success(self):

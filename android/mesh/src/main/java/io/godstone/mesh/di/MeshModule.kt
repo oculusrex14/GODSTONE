@@ -417,6 +417,12 @@ internal object MeshModule {
         permit: PrivateStorePermit
     ): Identity {
         recordStartupPermit(barrier, permit)
+        // *** GS-FINAL-003 `zero-private-opens`: THE ATTEMPT IS COUNTED BEFORE THE PLATFORM IS REACHED. ***
+        //
+        // *`Identity.loadOrCreate` reacheth the real AndroidKeyStore, which a JVM host does not have -- **so the
+        // platform throws, and the count must already have moved or a host run would prove nothing.*** *The count is
+        // the ATTEMPT; the throw proves the body WALKED TO the platform rather than being short-circuited in a court.*
+        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.IDENTITY, permit.issuedFrom)
         return Identity.loadOrCreate(ctx)
     }
 
@@ -433,6 +439,8 @@ internal object MeshModule {
         permit: PrivateStorePermit
     ): SqliteMessageStore {
         recordStartupPermit(barrier, permit)
+        // *** AND THE MESSAGE-DATABASE SEAM, COUNTED THE SAME WAY. ***
+        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.MESSAGE_STORE, permit.issuedFrom)
         return SqliteMessageStore(ctx, STORE_MAX_BYTES)
     }
 
@@ -447,6 +455,8 @@ internal object MeshModule {
         permit: PrivateStorePermit
     ): SqlcipherPeerIdentityStore {
         recordStartupPermit(barrier, permit)
+        // *** AND THE PEER-IDENTITY-DATABASE SEAM. ***
+        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.PEER_STORE, permit.issuedFrom)
         return SqlcipherPeerIdentityStore(ctx)
     }
 
@@ -540,7 +550,16 @@ internal object MeshModule {
     fun provideMeshRuntimeInvalidator(
         gate: DefaultRuntimeLifecycleGate,
         sessions: SessionManager,
-        peerStore: SqlcipherPeerIdentityStore,
+        // *** GS-FINAL-003: THE PARAMETER IS THE INTERFACE, WHICH IS WHAT THE INVALIDATOR'S OWN CONSTRUCTOR TAKES. ***
+        //
+        // *`MeshRuntimeInvalidator`'s constructor declared `peerStore: PeerIdentityStore?` -- THE INTERFACE -- while
+        // this provider took the CONCRETE `SqlcipherPeerIdentityStore`.* **THE MISMATCH WAS INVISIBLE BECAUSE NO
+        // COMPONENT ASSEMBLED THE MODULE: a provider whose parameter is narrower than its consumer's contract compiles
+        // and wires, and only a graph that RESOLVES the binding -- or a court that cannot construct the device-bound
+        // concrete type -- reveals that the composition could never be assembled off-device.*** *Widened to the
+        // interface so the binding is constructible wherever the interface is, which is the contract the invalidator
+        // already stated.*
+        peerStore: io.godstone.mesh.identity.PeerIdentityStore,
         messageStore: SqliteMessageStore,
         node: MeshNode,
     ): MeshRuntimeInvalidator =
