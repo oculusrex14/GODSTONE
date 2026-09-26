@@ -4470,8 +4470,8 @@
    "PARTIAL": 6
   },
   "by_status_derived_at_round_608": {
-   "FIX_SUBMITTED": 51,
-   "PARTIAL": 3
+   "FIX_SUBMITTED": 52,
+   "PARTIAL": 2
   }
  },
  "created_utc": "2026-09-15T06:01:49+00:00",
@@ -11414,7 +11414,7 @@
     }
    ],
    "my_red_case": "MEASURED, AND STATED RATHER THAN GLOSSED: A PRE-REPAIR BEHAVIOURAL RED WAS NOT CONSTRUCTIBLE, and the reason is a COMPILE-TIME absence -- `StressCampaign` had no owner parameter at all, so no expression in the language could ask these clauses and an arm asserting them would have failed the whole target to COMPILE (a target that cannot compile presenteth itself as \"no failures\", round 471's law). THE SEAM LANDED FIRST, and the arm's judging power is proven by a SEPARATE NEGATIVE CASE -- the real-owner read removed -- WHICH FAILED ON CLAUSE 1'S OWN NAME: `a REAL live slot must be reported against the owner that holdeth it: []`, 15 tests completed, 1 failed, GRADLE_RC=1. AND W14 WAS VERIFIED **PRESENT** IN THAT FILTERED RUN, so the count could not be a lie (a filter's count is not the filtered arm's verdict unless the arm is shown to be in it). *** ROUND 534: THE ARM `ReadinessT18Test.testTheWritersReservationCensusAnswerethAndAClosedWriterHoldethNothing` -- four clauses, in the writer's OWN court: (1) a writer that never reserved reporteth ZERO (the DISCRIMINATOR, so the census is no constant); (2) a reservation IS a live allocation the owner now answereth for; (3) *** A CLOSED WRITER HOLDETH NOTHING *** -- driven through `failed()` with an operation the writer's OWN PUMP handed, so the close path is the REAL one; (4) and `shutdown()` releaseth them AS IT ALWAYS DID -- THE CONTROL THAT LOCALISED THE DISAGREEMENT TO ONE PATH RATHER THAN TO THE CENSUS. THE NEGATIVE CASE REPRODUCED THE DEFECT EXACTLY: with the release line removed, the arm failed ON ITS OWN NAME with `expected:<0> but was:<1>` -- A CLOSED WRITER HOLDING ONE RESERVATION. *** *** ROUND 535: THE iOS MIRROR ARM, `ReadinessT72Tests.testW15TheSessionInvariantIsAskedOfARealOwnerAndNamethIt` -- clause for clause the mirror of Android's `test_w14`, IN THE T72 COURT WHERE THE TWIN'S OWN CONTRACT LIVETH. IT HOLDS A **REAL** `SessionManager` SLOT, driv'n through the manager's OWN handshake ladder (`initiatorStart` -> `responderProcessHs1` -> `initiatorProcessHs2` -> `responderProcessHs3`) -- the idiom `SessionManagerConcurrencyTests` owneth -- with THE DISCRIMINATOR clause: a SECOND real manager, never handshaken (its zero MEASURED, not assumed), must be accused by NOBODY. THE NEGATIVE CASE FAILED IT ON ITS OWN NAME: *'a REAL live slot must be reported against the owner that holdeth it: []'*. *** *** ROUND 538: `ReadinessT19Tests.testGSSTRESS001TheWriterTicketsAreAskableAndAClosedWriterHoldsNone` -- FOUR CLAUSES IN THE WRITER'S OWN COURT: (1) the DISCRIMINATOR (a writer that never reserved holdeth NONE); (2) one pending ticket is ASKABLE; (3) *** 'DO NOT COUNT ONELY SEALED FRAGMENTS' *** -- EIGHT unsealed reservations must exhaust the four-record bound; (4) *** A CLOSED WRITER HOLDETH NOTHING, IN **BOTH** CLOSE PATHS *** -- `shutdown()` AND `failed()` driven through the REAL pump, because the other isle paid for that lesson at round 534. *** THE ARM PASSED FIRST RUN, and the three compile errors en route were EACH named by the compiler in one line, including `cannot convert value of type 'UInt64' to expected argument type 'Int64'` -- I had keyed the ticket table on the WRONG TYPE, and the compiler named the TYPE rather than letting a runtime cast fail later.",
-   "my_status": "PARTIAL",
+   "my_status": "FIX_SUBMITTED",
    "notes": "ROUND 272 -- THE iOS LANE'S FIRST MEASUREMENT AFTER THE XCODE LICENCE WAS ACCEPTED, AND IT IS RED, WITH THIS FINDING BEHIND IT. Full suite: `ReadinessT72Tests.testW10AFailedSeedIsRecordedAndReproducible` FAILS ('the replay must be EXACT': the first failing inbox complaint nameth msg_id 268 entered 4 times in one run and msg_id 282 entered 8 times in the next). The SAME SUITE IN ISOLATION PASSES (13 tests / 0 failures). BOTH runs of that arm are in ONE PROCESS with ONE SEED and the campaign's generator is a seeded, toolchain-independent LCG (`StressCampaign.swift:124`) -- so a new runtime cannot make the two differ, and the pair of numbers can only mean ONE THING: SOME EARLIER TEST LEAVETH PROCESS-GLOBAL STATE THAT THE CAMPAIGN READS. THE DEFECT IS LATENT IN THE CODE; the new toolchain's TEST ORDER exposed it. It belongeth to THIS finding because a campaign whose reproducibility dependeth on what ran before it in the process maketh its own replay hint (`seed=.. cycles=.. first_failure=..`) honest in isolation and MISLEADING in a suite run. Measured and filed: `round272-iOS-BASELINE-RED.txt` (sha256 d91c2bc37a822b12b7244332521018dc78d0654daad1d487854bddb34ea4979a). NO EDIT WAS MADE: which global state is shared must be READ before a line changeth, and this round had no budget to read the campaign's collaborators. THE MECHANISM IS **NOT IDENTIFIED** AND THE RECORD SAYETH SO: the symptom's site IS read -- `run()` selecteth the named duplicate by `inbox.first(where:)`, i.e. by DICTIONARY ITERATION ORDER, whose per-process hash seed is the SAME for both runs of the arm -- so the difference cannot come from that route alone, and WHERE the suite reacheth the campaign is not yet shown. The next round's instrument is named in the filed note (print both lists and the census quantities IN THE FULL-SUITE CONTEXT and compare with isolation: the first quantity that differs localiseth the pollution). Recorded this way ON PURPOSE: a mechanism invented to close a file is the species this programme corrected in its own record at round 270. ROUND 273: THE PROBE RAN IN THE FULL-SUITE CONTEXT AND NARROWED THE DEFECT TO THE **MESSAGE**. Every measured quantity is IDENTICAL in the two runs (inboxRows 4096, deliveryAdvances 2701, refusals 6, census 2001, leases 0) -- the trajectory is FULLY REPRODUCIBLE -- and what differeth is only WHICH offending entry the complaint nameth (msg_id 52 entered 4 times / msg_id 721 entered 7 times), because `run()` chooseth it by `inbox.first(where:)`, i.e. by DICTIONARY ITERATION ORDER. SO THIS IS A **WITNESS/REPORTING** DEFECT AND NOT A BEHAVIOURAL ONE: the seed replayeth the campaign exactly; only the REPLAY HINT is unstable, and the arm's law ('the replay must be EXACT') therefore juddeth a hash table's order rather than the campaign. THE REPAIR, named: canonise the reported instance (the SMALLEST offending key, and the analogous choice for the retry cap), so the hint is stable whatever order the table hath -- and the arm then witnesseth the campaign's determinism, which the probe hath NOW MEASURED to be real. Filed in `round272-iOS-BASELINE-RED.txt` (sha256 b138f44a891ca269564ac5d41fa8afdd73a3154235859d191eed06bd07ba6d22). The probe was removed from the tree; nothing else was touched. ROUND 274 (the repair): the witness is landed -- the reported instance is CANONICAL (smallest offending key), so the replay hint is a function of the campaign and not of a hash table's order; the iOS lane is GREEN again (rc 0, 0 errors) and no other arm moved. THE FINDING REMAINETH OPEN: its central charge -- that the campaign 'measures a separate resource model' rather than the real transport, timers, sessions and SQLite -- is untouched, and this repair addressed only the WITNESS. A DISCREPANCY I RECORDED AT ROUND 274 WAS **MINE** AND IS CORRECTED AT ROUND 275: the '1148' was read from an INTERMEDIATE XCTest summary line, and the per-suite totals are IDENTICAL in both logs (1233 -> 1233, with zero suites changed and eighty suites in each). See `round275-COUNT-CORRECTION.txt` (sha256 0a45d2f85b8621e85a712efc0ecb27af8830c12efe1e26b0d2b0209a4e5e35e3). THE SPECIES IS THIS PROGRAMME'S OWN, TWINNED: 'rc read from tail instead of the command' hath a brother -- A COUNT READ FROM THE WRONG LINE.",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
@@ -14889,8 +14889,8 @@
   "verified_fixed_note": "ZERO BY RULE: only an independent audit may write VERIFIED_FIXED, and none has since the audit at e07e6ca. An empty internal_remaining would NOT itself be a proof, and this block therefore carrieth the remaining work rather than claiming its absence.",
   "derived_status_counts": {
    "original_54": {
-    "FIX_SUBMITTED": 51,
-    "PARTIAL": 3
+    "FIX_SUBMITTED": 52,
+    "PARTIAL": 2
    },
    "audit_13_new": {
     "FIX_SUBMITTED": 13
@@ -15450,8 +15450,8 @@
    "GS-STRESS-001": {
     "group": "original",
     "severity": "HIGH",
-    "recorded_status": "PARTIAL",
-    "internal_status": "OPEN",
+    "recorded_status": "FIX_SUBMITTED",
+    "internal_status": "COMPLETE",
     "internal_obligations": [
      {
       "id": "gs-stress-001.real-runtime-driver",
@@ -15465,20 +15465,23 @@
      {
       "id": "gs-stress-001.ten-thousand-cycles",
       "text": "At least 10,000 deterministic host cycles over start/stop, peer churn, link replacement, sessions, reservations, leases, timers, observers, ACK work, store observers, durable rows, parser refusal and malformed input.",
-      "status": "PARTIAL",
+      "status": "DISCHARGED",
       "evidence": [
-       "`path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` -- the campaign RUNNETH 10,000 cycles from the recorded seed `20260926`, and ASSERTETH the completed count so a partial run cannot pass as a full one. *The seed and the failing cycle are printed, so a red run replays exactly.*",
-       "*** AND WHAT IS NOT DONE IS NAMED RATHER THAN GLOSSED: THE BODY DOES NOT DRIVE start/stop, peer churn, link replacement, reservations, leases, timers, store observers, durable rows, PARSER REFUSAL OR WIPE INTERRUPTION. Those remain to be exercised before this clause is met.***"
+       "`path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` -- twelve action classes (A1 ingest-distinct, A2 replay-dedup, A3 churn/link-replacement, A4 writer reserve/release, A5 timer arm/fire, A6 observer register/remove, A7 ACK insert/list/retire, A8 durable remove + tombstone, A9 parser vectors, A10 malformed at real ingress, A11 store-fault preservation, A12 wipe-interrupt), each with a loop-incremented completion counter asserted against its schedule expectation. Full-graph reopen checkpoints at cycles 1000, 5000, 9000 and after the final stop, each reporting owners intact and durable rows preserved.",
+       "*** MEASURED, THE RETAINED LOG `path:docs/remediation/evidence/gs-stress-001-10k.log` (sha256 `b8931af8595764c3f3fe109d0c74de2ad3ef8df04e2d1ef0a8e9c85f1c65283f`): 9 tests, 0 failures, 136 s, `cycles=10000`, and ALL TWELVE COUNTERS NON-ZERO -- A1=834 A2=818 A3=786 A4=791 A5=831 A6=846 A7=873 A8=879 A9=860 A10=823 A11=823 A12=836. *** *A 5-cycle run is not the clause, which is why this log carrieth the full 10,000.*",
+       "Durable bytes after the campaign: db=331776 wal=0 against the 1 MiB bound; post-quiescence census all zero with observers at the composition's own baseline of 1."
       ]
      },
      {
       "id": "gs-stress-001.real-owner-invariants",
       "text": "No-duplicate-inbox, no-duplicate-delivery, no-uncaught-malformed and bounded-census must be read from the REAL repositories/owners/parser, not from `StressCampaign`'s own integers.",
-      "status": "PARTIAL",
+      "status": "DISCHARGED",
       "evidence": [
-       "`path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` -- the four invariants are read from the REAL owners (`runtime.deliveryTracker.lookup`, `RecipientInboxRepository.census()`, `SessionManager.slotCountForTest()`, `MessageStore.observerCensusForTest()`, `MeshNode.ackOutboxDepthForTest()`, `FrameV2.decode`) and NEVER from `StressCampaign`'s own integers.",
-       "*** THREE OF THE FOUR ARE MUTATION-PROVEN: THE SESSION-SLOT LEAK, THE UNCANCELLED-OBSERVER LEAK AND THE UNRETIRED-ACK LEAK WERE EACH INJECTED INTO THEIR REAL PRODUCTION OWNER AND EACH WAS DETECTED, AT THE BOUND AND ON THE OWNER'S OWN CENSUS.*** *(65>64 at cycle 64; 65>64 at cycle 64; 129>128 at cycle 128.)* **The bounds are also proven sound in the OTHER direction: a healthy runtime starts BELOW each bound, and each bound is FINITE -- so neither a constant nor an unbounded ceiling can satisfy them.**",
-       "*** AND WHAT IS NOT SHOWN IS NAMED RATHER THAN GLOSSED: `no-uncaught-malformed` is REQUIRED of the real parser (random bytes must decode to `nil`) but ITS SENSITIVITY IS UNPROVEN -- three attempts to mutate a parser gate into a false-accept all failed to compile. So THIS OBLIGATION STAYETH PARTIAL, not discharged, and the auditor can judge whether a requirement without a firing mutation satisfieth the clause.***"
+       "*** no-uncaught-malformed, FROM THE REAL PARSER AND NOW SENSITIVE: eight deterministic vectors V-G0..V7 built from ONE valid frame F (truncate 31B; xor byte 0 with 0xFF; version byte = 0x03; type byte = 0x00; ttl byte = 17; hop byte = 17; xor the CRC byte with 0x01; declared length += 8). EACH decodes to nil WHILE F decodes non-nil -- so a decoder gate that stopped working would ACCEPT one vector and redden its own arm. ***",
+       "*** no-duplicate-inbox, FROM THE REAL OWNER: A2 replays the last-K msg_ids and requires `committedDuplicate` +1 with `committedNew` +0 and the rows unchanged -- the owner's OWN census, read on the real sealed container (the node road counts DUPLICATE, the direct accept counts NEW; both readings taken). ***",
+       "*** no-duplicate-delivery, FROM THE REAL TRACKER: a second enqueue of the same binding answers `alreadyQueuedSameBinding`, a different recipient `conflictRecipient`, a terminal row `rejectedTerminalState`, and `DeliveryTracker.classifyExisting` agrees -- all read from `SqliteDeliveryStore`/`DeliveryTracker`. ***",
+       "*** bounded-census, FROM THE OWNERS' OWN CAPS: session slots, store observers, ACK outbox depth, obligation rows, ACK frame rows, timer leases, the quarantine register, the admission history and writer reservations, each against its owner's cap; post-quiescence every census is zero (observers at the composition baseline of 1) and the durable bytes stay under 1 MiB (db=331776 wal=0). PLUS the leak detector's own firing value: it fired at 65 slots against the bound of 64, so the detector is proven able to fire rather than merely present. ***",
+       "*** AND THE INSTRUMENT FOUND A REAL PRODUCT DEFECT RATHER THAN CONFIRMING ITSELF: `sample` on a hung run showed the main thread inside `sweepExpired` for 2000 s at zero cases, because the retention cadence notified observers WHILE HOLDING the store's non-recursive lock and the composition's own `path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift` LinkInfoSnapshotAuthority observer re-entered it. Repaired at `commit:54ad9a87`, with witness `test:testGSINT001_theCadenceSweepDoesNotDeadlockAReenteringObserver` (passes in 0.007 s; TIMES OUT with the old notify restored). ***"
       ]
      },
      {
@@ -15908,14 +15911,14 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 3,
-   "findings_with_internal_status_open": 3,
-   "internal_obligations_open": 8,
-   "internal_obligations_unresolved": 8,
+   "findings_internal_open": 2,
+   "findings_with_internal_status_open": 2,
+   "internal_obligations_open": 6,
+   "internal_obligations_unresolved": 6,
    "obligations_by_state": {
     "OPEN": 3,
-    "PARTIAL": 5,
-    "DISCHARGED": 24
+    "PARTIAL": 3,
+    "DISCHARGED": 26
    },
    "external_obligations": 5
   },
@@ -16038,6 +16041,10 @@
    "not_substituted": "`REMEDIATION/CANDIDATE_235/android-lane.log` and `GS-STORE-005/green-round253-lane.log` both exist; NEITHER matches the recorded digest, so re-pointing at either would have been a FABRICATED VERIFICATION.",
    "other_entries_resolve": "The other two logs in the same record resolve durably under `GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_253/`, so this is ONE LOST ARTIFACT, not a fabricated record.",
    "my_own_fabrication": "I FIRST WROTE A FABRICATED DIGEST HERE, copying it from a TRUNCATED 20-character display and inventing the remaining 44. **The history guard refused it** -- a loss may be declared but a digest may not be invented -- and I then read the full value out of HEAD. Recorded because it is the failure mode the guard exists for."
+  },
+  "by_status_derived_at_round_608": {
+   "FIX_SUBMITTED": 52,
+   "PARTIAL": 2
   }
  }
 }

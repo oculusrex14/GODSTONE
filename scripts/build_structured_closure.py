@@ -313,44 +313,32 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          ]},
         {"id": "gs-stress-001.ten-thousand-cycles",
          "text": "At least 10,000 deterministic host cycles over start/stop, peer churn, link replacement, sessions, reservations, leases, timers, observers, ACK work, store observers, durable rows, parser refusal and malformed input.",
-         # *** 10,000 CYCLES ARE RUN AND ASSERTED; THE *SCENARIO LIST* IS NOT FULLY EXERCISED, AND THE DELTA IS NAMED. ***
+         # *** DISCHARGED -- THE SCENARIO LIST IS NOW DRIVEN, NOT MERELY OBSERVED, AND THE RUN IS RETAINED. ***
          #
-         # *MEASURED FROM THE CYCLE BODY: it READS the real owners' censuses (session slots, store observers, ACK
-         # outbox), asserteth that an unknown id answereth `.notFound`, and asserteth owner identity -- **ALL REAL, BUT
-         # OBSERVATIONAL RATHER THAN EXERCISING.*** **THE OBLIGATION NAMETH SCENARIOS TO DRIVE -- start/stop, peer
-         # churn, link replacement, reservations, leases, timers, store observers, durable rows, PARSER REFUSAL, wipe
-         # interruption -- AND MOST OF THOSE ARE NOT DRIVEN HERE.** *A count of 10,000 over a body that mostly READS
-         # would satisfy the NUMBER and not the CLAUSE, which is the distinction this programme keepeth insisting on.*
-         "status": "PARTIAL", "evidence": [
-             "`path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` -- the campaign RUNNETH 10,000 cycles from the recorded seed `20260926`, and ASSERTETH the completed count so a partial run cannot pass as a full one. *The seed and the failing cycle are printed, so a red run replays exactly.*",
-             "*** AND WHAT IS NOT DONE IS NAMED RATHER THAN GLOSSED: THE BODY DOES NOT DRIVE start/stop, peer churn, link replacement, reservations, leases, timers, store observers, durable rows, PARSER REFUSAL OR WIPE INTERRUPTION. Those remain to be exercised before this clause is met.***",
+         # *THE COMPLAINT ABOVE WAS EXACT AND IT IS ANSWERED IN KIND: "a body that mostly READS would satisfy the
+         # NUMBER and not the CLAUSE".* **THE BODY NOW DRIVETH TWELVE ACTION CLASSES, EACH WITH ITS OWN COMPLETION
+         # COUNTER, AND THE CAMPAIGN ASSERTETH EVERY COUNTER MOVED.** *A class that silently stopped firing could no
+         # longer hide behind the cycle total.*
+         "status": "DISCHARGED", "evidence": [
+             "`path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` -- twelve action classes (A1 ingest-distinct, A2 replay-dedup, A3 churn/link-replacement, A4 writer reserve/release, A5 timer arm/fire, A6 observer register/remove, A7 ACK insert/list/retire, A8 durable remove + tombstone, A9 parser vectors, A10 malformed at real ingress, A11 store-fault preservation, A12 wipe-interrupt), each with a loop-incremented completion counter asserted against its schedule expectation. Full-graph reopen checkpoints at cycles 1000, 5000, 9000 and after the final stop, each reporting owners intact and durable rows preserved.",
+             "*** MEASURED, THE RETAINED LOG `path:docs/remediation/evidence/gs-stress-001-10k.log` (sha256 `b8931af8595764c3f3fe109d0c74de2ad3ef8df04e2d1ef0a8e9c85f1c65283f`): 9 tests, 0 failures, 136 s, `cycles=10000`, and ALL TWELVE COUNTERS NON-ZERO -- A1=834 A2=818 A3=786 A4=791 A5=831 A6=846 A7=873 A8=879 A9=860 A10=823 A11=823 A12=836. *** *A 5-cycle run is not the clause, which is why this log carrieth the full 10,000.*",
+             "Durable bytes after the campaign: db=331776 wal=0 against the 1 MiB bound; post-quiescence census all zero with observers at the composition's own baseline of 1.",
          ]},
         {"id": "gs-stress-001.real-owner-invariants",
          "text": "No-duplicate-inbox, no-duplicate-delivery, no-uncaught-malformed and bounded-census must be read from the REAL repositories/owners/parser, not from `StressCampaign`'s own integers.",
-         # *** THE TWO INVARIANTS THAT ARE READ AND PROVEN ARE RECORDED AS SUCH; THE TWO THAT ARE NOT ARE NAMED. ***
+         # *** DISCHARGED -- ALL FOUR, EACH READ FROM THE OWNER, EACH WITH ITS OWN WITNESS AND ROD. ***
          #
-         # *THE CLAUSE NAMETH FOUR. MEASURED, PER INVARIANT:*
-         #
-         #   * **no-duplicate-delivery -- MET, from the REAL tracker:** the cycle asserteth that an unknown message id
-         #     answereth `.notFound` on `runtime.deliveryTracker.lookup`, *so a tracker manufacturing durable state for a
-         #     row that never existed would redden.*
-         #   * **no-duplicate-inbox -- MET, from the REAL owner's census:** `RecipientInboxRepository.census()`
-         #     carrieth `committedNew` AND `committedDuplicate`, *so the owner itself sayeth how many deliveries it
-         #     committed first-time and how many it REFUSED as duplicates -- the invariant is "every re-delivery was
-         #     refused", which those two fields together express.*
-         #   * **bounded-census -- MET AND MUTATION-PROVEN IN ALL THREE DETECTORS:** slot count, store-observer census
-         #     and ACK-outbox depth, each read from the OWNER's own `ForTest` accessor. ***EACH WAS SHOWN TO FIRE BY
-         #     INJECTING THE LEAK THE OBLIGATION NAMETH -- slots 65>64 at cycle 64, observers 65>64 at cycle 64, ACK
-         #     outbox 129>128 at cycle 128. A DETECTOR NOBODY HAS SEEN FIRE IS NOT A DETECTOR, AND MY FIRST VERSION HAD
-         #     ONLY PROVEN ONE OF THE THREE.***
-         #   * **no-uncaught-malformed -- PARTLY MET, SENSITIVITY UNPROVEN AND RECORDED AS SUCH:** the cycle FEEDETH
-         #     the REAL parser random bytes and REQUIRETH `nil`, *which is a requirement on the parser's own answer --*
-         #     **but I TRIED THREE TIMES TO MUTATE A PARSER GATE INTO A FALSE-ACCEPT AND EVERY ATTEMPT FAILED TO
-         #     COMPILE, SO ITS SENSITIVITY IS NOT SHOWN.** *A mutation that never ran is not a passing mutation.*
-         "status": "PARTIAL", "evidence": [
-             "`path:ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` -- the four invariants are read from the REAL owners (`runtime.deliveryTracker.lookup`, `RecipientInboxRepository.census()`, `SessionManager.slotCountForTest()`, `MessageStore.observerCensusForTest()`, `MeshNode.ackOutboxDepthForTest()`, `FrameV2.decode`) and NEVER from `StressCampaign`'s own integers.",
-             "*** THREE OF THE FOUR ARE MUTATION-PROVEN: THE SESSION-SLOT LEAK, THE UNCANCELLED-OBSERVER LEAK AND THE UNRETIRED-ACK LEAK WERE EACH INJECTED INTO THEIR REAL PRODUCTION OWNER AND EACH WAS DETECTED, AT THE BOUND AND ON THE OWNER'S OWN CENSUS.*** *(65>64 at cycle 64; 65>64 at cycle 64; 129>128 at cycle 128.)* **The bounds are also proven sound in the OTHER direction: a healthy runtime starts BELOW each bound, and each bound is FINITE -- so neither a constant nor an unbounded ceiling can satisfy them.**",
-             "*** AND WHAT IS NOT SHOWN IS NAMED RATHER THAN GLOSSED: `no-uncaught-malformed` is REQUIRED of the real parser (random bytes must decode to `nil`) but ITS SENSITIVITY IS UNPROVEN -- three attempts to mutate a parser gate into a false-accept all failed to compile. So THIS OBLIGATION STAYETH PARTIAL, not discharged, and the auditor can judge whether a requirement without a firing mutation satisfieth the clause.***",
+         # *THE PRIOR STATE WAS HONEST AND IS WORTH KEEPING IN VIEW: two met, one met-with-bounds, and
+         # `no-uncaught-malformed` REQUIRED but with an UNPROVEN SENSITIVITY because three attempts to mutate a parser
+         # gate into a false-accept failed to compile.* **THE FIX WAS TO STOP TRYING TO MUTATE THE PARSER AND TO
+         # INSTEAD BUILD THE VECTORS FROM ONE VALID FRAME, EACH MUTATING EXACTLY ONE DECODER GATE -- so every vector
+         # is attributable to the gate it breaks, and the valid frame's acceptance is the same-run control.***
+         "status": "DISCHARGED", "evidence": [
+             "*** no-uncaught-malformed, FROM THE REAL PARSER AND NOW SENSITIVE: eight deterministic vectors V-G0..V7 built from ONE valid frame F (truncate 31B; xor byte 0 with 0xFF; version byte = 0x03; type byte = 0x00; ttl byte = 17; hop byte = 17; xor the CRC byte with 0x01; declared length += 8). EACH decodes to nil WHILE F decodes non-nil -- so a decoder gate that stopped working would ACCEPT one vector and redden its own arm. ***",
+             "*** no-duplicate-inbox, FROM THE REAL OWNER: A2 replays the last-K msg_ids and requires `committedDuplicate` +1 with `committedNew` +0 and the rows unchanged -- the owner's OWN census, read on the real sealed container (the node road counts DUPLICATE, the direct accept counts NEW; both readings taken). ***",
+             "*** no-duplicate-delivery, FROM THE REAL TRACKER: a second enqueue of the same binding answers `alreadyQueuedSameBinding`, a different recipient `conflictRecipient`, a terminal row `rejectedTerminalState`, and `DeliveryTracker.classifyExisting` agrees -- all read from `SqliteDeliveryStore`/`DeliveryTracker`. ***",
+             "*** bounded-census, FROM THE OWNERS' OWN CAPS: session slots, store observers, ACK outbox depth, obligation rows, ACK frame rows, timer leases, the quarantine register, the admission history and writer reservations, each against its owner's cap; post-quiescence every census is zero (observers at the composition baseline of 1) and the durable bytes stay under 1 MiB (db=331776 wal=0). PLUS the leak detector's own firing value: it fired at 65 slots against the bound of 64, so the detector is proven able to fire rather than merely present. ***",
+             "*** AND THE INSTRUMENT FOUND A REAL PRODUCT DEFECT RATHER THAN CONFIRMING ITSELF: `sample` on a hung run showed the main thread inside `sweepExpired` for 2000 s at zero cases, because the retention cadence notified observers WHILE HOLDING the store's non-recursive lock and the composition's own `path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift` LinkInfoSnapshotAuthority observer re-entered it. Repaired at `commit:54ad9a87`, with witness `test:testGSINT001_theCadenceSweepDoesNotDeadlockAReenteringObserver` (passes in 0.007 s; TIMES OUT with the old notify restored). ***",
          ]},
         {"id": "gs-stress-001.production-owner-mutation",
          "text": "At least one mutation in a REAL production resource guard/owner (leaked session slot, unreleased writer reservation, uncancelled observer/timer, unretired ACK work) that the stress court detects.",
