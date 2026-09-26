@@ -109,7 +109,7 @@ class AndroidAckWiringTest(unittest.TestCase):
         stop = n[n.index("fun stop() {"):]
         stop = stop[:stop.index("\n    }")]
         cancel_at = stop.index("scope.coroutineContext.cancelChildren()")
-        guard_at = stop.index("if (!isStarted) return")
+        guard_at = stop.index("if (!isStarted) {")
         self.assertLess(cancel_at, guard_at,
                         "GS-RUNTIME-001 step 6: THE CANCEL MUST PRECEDE THE `isStarted` GUARD -- the Swift witness "
                         "watched the turn census climb 2 -> 7 AFTER stop() because its guard returned early")
@@ -188,7 +188,7 @@ class AndroidAckWiringTest(unittest.TestCase):
         stop = n[n.index("fun stop() {"):]
         stop = stop[:stop.index("\n    }")]
         close_at = stop.index("lifecycle.stop()")
-        guard_at = stop.index("if (!isStarted) return")
+        guard_at = stop.index("if (!isStarted) {")
         self.assertLess(close_at, guard_at,
                         "**THE CLOSE MUST PRECEDE THE GUARD**: the Swift census arm found (round 244) that the "
                         "counter stood at ZERO -- the radio was never closed through the owner, ever, because "
@@ -274,7 +274,7 @@ class AndroidAckWiringTest(unittest.TestCase):
         stop = n[n.index("fun stop() {"):]
         stop = stop[:stop.index("\n    }")]
         self.assertIn("wifi.stop()", stop, "the auxiliary's close must travel with the owned road's")
-        self.assertLess(stop.index("wifi.stop()"), stop.index("if (!isStarted) return"),
+        self.assertLess(stop.index("wifi.stop()"), stop.index("if (!isStarted) {"),
                         "**BEFORE THE GUARD** -- the same early-return lesson, applied to BOTH roads at once")
 
     def test_the_signer_refuseth_the_seed_road_by_construction(self):

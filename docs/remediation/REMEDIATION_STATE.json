@@ -14889,12 +14889,11 @@
   "verified_fixed_note": "ZERO BY RULE: only an independent audit may write VERIFIED_FIXED, and none has since the audit at e07e6ca. An empty internal_remaining would NOT itself be a proof, and this block therefore carrieth the remaining work rather than claiming its absence.",
   "derived_status_counts": {
    "original_54": {
-    "FIX_SUBMITTED": 50,
-    "PARTIAL": 4
+    "FIX_SUBMITTED": 51,
+    "PARTIAL": 3
    },
    "audit_13_new": {
-    "FIX_SUBMITTED": 12,
-    "PARTIAL": 1
+    "FIX_SUBMITTED": 13
    },
    "note": "DERIVED FROM THE ENTRIES, NOT WRITTEN BESIDE THEM. This is the audit's own requirement: \"Derive summary counts from entries.\" A count that is asserted rather than derived is the defect this finding is about."
   },
