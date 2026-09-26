@@ -1,4 +1,4 @@
-Building for debugging...
+Another instance of SwiftPM (PID: 33102) is already running using '/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/.build', waiting until that process has finished execution...Building for debugging...
 [1 / 1]
 [2 / 27] GodstoneCore
 [13 / 38] GodstoneCore
@@ -9,6 +9,7 @@ Building for debugging...
     |                `- warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  59 | 
  60 |     public init(values: [String: Any]) { self.values = values }
+[17 / 41] GodstoneCore
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  56 | 
  57 | public struct BundleMetadata: Sendable {
@@ -16,8 +17,6 @@ Building for debugging...
     |                `- warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  59 | 
  60 |     public init(values: [String: Any]) { self.values = values }
-[17 / 41] GodstoneCore
-[17 / 41] GodstoneMesh
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:223:23: warning: result of call to 'withCString' is unused [#NoUsage]
 221 |             let bound = Int64(ArchiveSearchQuery.bound(limit))
 222 |             return try run(sql, binds: { stmt in
@@ -91,8 +90,8 @@ Building for debugging...
 555 |     }
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[27 / 52] GodstoneMesh
 [28 / 52] GodstoneMesh
-[29 / 52] GodstoneCore
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  42 |     public let msgId: Data
  43 |     public let state: DeliveryState
@@ -109,7 +108,6 @@ Building for debugging...
   8 |     public static let magic: UInt16 = 0x4753
   9 |     public static let version: UInt8 = 0x02
 [30 / 49] GodstoneMesh
-[33 / 59] GodstoneCoreTests-product
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:250:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
 248 |         )
 249 |         let signature = try signingKey.signature(for: preimage)
@@ -128,36 +126,15 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-[34 / 59] GodstoneCoreTests-product
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 23 | @MainActor
- 24 | final class ReadinessT48Tests: XCTestCase {
- 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    |                        `- note: static property declared here
- 26 | 
- 27 |     private var fixturesDirectory: URL {
-    :
-132 |     /// Build (or rebuild) the tier's archive under the application-support
-133 |     /// archives directory, where the production resolver looketh.
-134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
-135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-136 |         var knobs = FixtureKnobs()
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 114 | @MainActor
- 115 | final class ReadinessT50Tests: XCTestCase {
- 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-     |                        `- note: static property declared here
- 117 | 
- 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
-     :
- 222 | 
- 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
- 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
-     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
- 226 |         var knobs = FixtureKnobs()
+[33 / 59] GodstoneCoreTests-product
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RealTransportHostRig.swift:704:13: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 702 |                                                    : BleTransport.inboxCharacteristicUuid,
+ 703 |                                   value: bytes)
+ 704 |             _ = responder.ble.processPeripheralReceiveWrite(
+     |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 705 |                 rPM, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+ 706 |                 sourceEpoch: responder.ble.currentTransportEpoch)
+[35 / 59] GodstoneCoreTests-product
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
  76 |     public let to: Int
  77 |     public let statements: [String]
@@ -209,14 +186,207 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RealTransportHostRig.swift:704:13: warning: using '_' to ignore the result of a Void-returning function is redundant
-702 |                                                    : BleTransport.inboxCharacteristicUuid,
-703 |                                   value: bytes)
-704 |             _ = responder.ble.processPeripheralReceiveWrite(
-    |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
-705 |                 rPM, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-706 |                 sourceEpoch: responder.ble.currentTransportEpoch)
-[35 / 59] GodstoneMesh
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 40 |         case ignored(reason: String)
+ 41 |         case refused(reason: String)
+ 42 |         case answered(frame: FrameV2)
+    |              `- warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 43 |         case delivered(frames: [FrameV2])
+ 44 |     }
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 41 |         case refused(reason: String)
+ 42 |         case answered(frame: FrameV2)
+ 43 |         case delivered(frames: [FrameV2])
+    |              `- warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 44 |     }
+ 45 | 
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 44 | /// exactly once -- and every retry re-emiteth these exact bytes.
+ 45 | public struct ForwardCopy: Equatable, Sendable {
+ 46 |     public let frame: FrameV2
+    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 47 |     /// The immediate hop it arrived from, which is never offered it back.
+ 48 |     public let fromPeer: Data?
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
+ 37 | 
+ 38 | internal struct DefaultHs3Writer: Hs3Writer {
+ 39 |     let noiseSession: NoiseSession
+    |         `- warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
+ 40 |     func writeHs3(payload: Data) throws -> Data {
+ 41 |         try noiseSession.writeMessage3(payload: payload)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: note: class 'NoiseSession' does not conform to the 'Sendable' protocol
+ 46 | }
+ 47 | 
+ 48 | public final class NoiseSession {
+    |                    `- note: class 'NoiseSession' does not conform to the 'Sendable' protocol
+ 49 | 
+ 50 |     public enum Role { case initiator, responder }
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 23 | @MainActor
+ 24 | final class ReadinessT48Tests: XCTestCase {
+ 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    |                        `- note: static property declared here
+ 26 | 
+ 27 |     private var fixturesDirectory: URL {
+    :
+132 |     /// Build (or rebuild) the tier's archive under the application-support
+133 |     /// archives directory, where the production resolver looketh.
+134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+136 |         var knobs = FixtureKnobs()
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 114 | @MainActor
+ 115 | final class ReadinessT50Tests: XCTestCase {
+ 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+     |                        `- note: static property declared here
+ 117 | 
+ 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
+     :
+ 222 | 
+ 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
+ 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
+     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+ 226 |         var knobs = FixtureKnobs()
+[39 / 59] GodstoneCoreTests-product
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
+170 |             if rc != SQLITE_OK {
+171 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
+    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+172 |                 if let e = err { sqlite3_free(e) }
+173 |                 XCTFail("plant DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:203:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+201 |             let prc = sqlite3_exec(db, sql, nil, nil, &err)
+202 |             if prc != SQLITE_OK {
+203 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(prc)"
+    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+204 |                 if let e = err { sqlite3_free(e) }
+205 |                 XCTFail("plant insert cried: \(why) on \(String(sql.prefix(72)))…")
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 45 |         switch request {
+ 46 |         case .browse:
+ 47 |             lock.lock(); browseCalls += 1; lock.unlock()
+    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 48 |             return .documents(browseRows ?? [document])
+ 49 |         case .search(let phrase):
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:15:1: note: 'lock()' declared here
+ 13 | 
+ 14 | /// Attempts to acquire a lock, blocking a thread's execution until the lock can be acquired.
+ 15 | - (void)lock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
+    | `- note: 'lock()' declared here
+ 16 | 
+ 17 | /// Relinquishes a previously acquired lock.
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:49: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 45 |         switch request {
+ 46 |         case .browse:
+ 47 |             lock.lock(); browseCalls += 1; lock.unlock()
+    |                                                 `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 48 |             return .documents(browseRows ?? [document])
+ 49 |         case .search(let phrase):
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:18:1: note: 'unlock()' declared here
+ 16 | 
+ 17 | /// Relinquishes a previously acquired lock.
+ 18 | - (void)unlock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
+    | `- note: 'unlock()' declared here
+ 19 | 
+ 20 | @end
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:50:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 48 |             return .documents(browseRows ?? [document])
+ 49 |         case .search(let phrase):
+ 50 |             lock.lock()
+    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 51 |             searched.append(phrase)
+ 52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:15:1: note: 'lock()' declared here
+ 13 | 
+ 14 | /// Attempts to acquire a lock, blocking a thread's execution until the lock can be acquired.
+ 15 | - (void)lock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
+    | `- note: 'lock()' declared here
+ 16 | 
+ 17 | /// Relinquishes a previously acquired lock.
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:53:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 51 |             searched.append(phrase)
+ 52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
+ 53 |             lock.unlock()
+    |                  `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 54 |             return .passages(answer)
+ 55 |         case .document:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:18:1: note: 'unlock()' declared here
+ 16 | 
+ 17 | /// Relinquishes a previously acquired lock.
+ 18 | - (void)unlock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
+    | `- note: 'unlock()' declared here
+ 19 | 
+ 20 | @end
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 23 | @MainActor
+ 24 | final class ReadinessT48Tests: XCTestCase {
+ 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    |                        `- note: static property declared here
+ 26 | 
+ 27 |     private var fixturesDirectory: URL {
+    :
+132 |     /// Build (or rebuild) the tier's archive under the application-support
+133 |     /// archives directory, where the production resolver looketh.
+134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+136 |         var knobs = FixtureKnobs()
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:112:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+110 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
+111 |             if rc != SQLITE_OK {
+112 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
+    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+113 |                 if let e = err { sqlite3_free(e) }
+114 |                 XCTFail("fixture DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:233:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+231 |         let rc = sqlite3_exec(db, sql, nil, nil, &err)
+232 |         if rc != SQLITE_OK {
+233 |             let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
+    |                                                     `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+234 |             if let e = err { sqlite3_free(e) }
+235 |             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
    7 |     public let transportEpoch: UInt64
@@ -459,79 +629,7 @@ Building for debugging...
 
 [#AddPreconcurrencyImport]: <https://docs.swift.org/compiler/documentation/diagnostics/add-preconcurrency-import>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-213 | 
-214 | private func t61Chunked(_ bytes: [UInt8], _ measure: Int, _ burst: Int) -> ModelStaging.T61Chunker {
-215 |     var given = bytes
-    |         `- warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-216 |     var at = 0
-217 |     var words = 0
-
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 45 |         switch request {
- 46 |         case .browse:
- 47 |             lock.lock(); browseCalls += 1; lock.unlock()
-    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 48 |             return .documents(browseRows ?? [document])
- 49 |         case .search(let phrase):
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:15:1: note: 'lock()' declared here
- 13 | 
- 14 | /// Attempts to acquire a lock, blocking a thread's execution until the lock can be acquired.
- 15 | - (void)lock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
-    | `- note: 'lock()' declared here
- 16 | 
- 17 | /// Relinquishes a previously acquired lock.
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:49: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 45 |         switch request {
- 46 |         case .browse:
- 47 |             lock.lock(); browseCalls += 1; lock.unlock()
-    |                                                 `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 48 |             return .documents(browseRows ?? [document])
- 49 |         case .search(let phrase):
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:18:1: note: 'unlock()' declared here
- 16 | 
- 17 | /// Relinquishes a previously acquired lock.
- 18 | - (void)unlock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
-    | `- note: 'unlock()' declared here
- 19 | 
- 20 | @end
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:50:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 48 |             return .documents(browseRows ?? [document])
- 49 |         case .search(let phrase):
- 50 |             lock.lock()
-    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 51 |             searched.append(phrase)
- 52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:15:1: note: 'lock()' declared here
- 13 | 
- 14 | /// Attempts to acquire a lock, blocking a thread's execution until the lock can be acquired.
- 15 | - (void)lock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
-    | `- note: 'lock()' declared here
- 16 | 
- 17 | /// Relinquishes a previously acquired lock.
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:53:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 51 |             searched.append(phrase)
- 52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
- 53 |             lock.unlock()
-    |                  `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 54 |             return .passages(answer)
- 55 |         case .document:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:18:1: note: 'unlock()' declared here
- 16 | 
- 17 | /// Relinquishes a previously acquired lock.
- 18 | - (void)unlock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
-    | `- note: 'unlock()' declared here
- 19 | 
- 20 | @end
-[43 / 60] GodstoneMesh
+[42 / 59] GodstoneMesh
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
@@ -589,22 +687,6 @@ Building for debugging...
 535 | 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[43 / 61] GodstoneCoreTests-product
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
-170 |             if rc != SQLITE_OK {
-171 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
-    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-172 |                 if let e = err { sqlite3_free(e) }
-173 |                 XCTFail("plant DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:203:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-201 |             let prc = sqlite3_exec(db, sql, nil, nil, &err)
-202 |             if prc != SQLITE_OK {
-203 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(prc)"
-    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-204 |                 if let e = err { sqlite3_free(e) }
-205 |                 XCTFail("plant insert cried: \(why) on \(String(sql.prefix(72)))…")
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckDispatcher.swift:323:11: warning: 'catch' block is unreachable because no errors are thrown in 'do' block
 321 |         do {
 322 |             result = admitForeign(encoded, receivedFrom)
@@ -630,36 +712,16 @@ Building for debugging...
 409 |                 continue
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 23 | @MainActor
- 24 | final class ReadinessT48Tests: XCTestCase {
- 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    |                        `- note: static property declared here
- 26 | 
- 27 |     private var fixturesDirectory: URL {
-    :
-132 |     /// Build (or rebuild) the tier's archive under the application-support
-133 |     /// archives directory, where the production resolver looketh.
-134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
-135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-136 |         var knobs = FixtureKnobs()
+[43 / 61] GodstoneCoreTests-product
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+213 | 
+214 | private func t61Chunked(_ bytes: [UInt8], _ measure: Int, _ burst: Int) -> ModelStaging.T61Chunker {
+215 |     var given = bytes
+    |         `- warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+216 |     var at = 0
+217 |     var words = 0
 
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:112:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-110 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
-111 |             if rc != SQLITE_OK {
-112 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
-    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-113 |                 if let e = err { sqlite3_free(e) }
-114 |                 XCTFail("fixture DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:233:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-231 |         let rc = sqlite3_exec(db, sql, nil, nil, &err)
-232 |         if rc != SQLITE_OK {
-233 |             let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
-    |                                                     `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-234 |             if let e = err { sqlite3_free(e) }
-235 |             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  114 | @MainActor
  115 | final class ReadinessT50Tests: XCTestCase {
@@ -837,69 +899,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 40 |         case ignored(reason: String)
- 41 |         case refused(reason: String)
- 42 |         case answered(frame: FrameV2)
-    |              `- warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 43 |         case delivered(frames: [FrameV2])
- 44 |     }
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 41 |         case refused(reason: String)
- 42 |         case answered(frame: FrameV2)
- 43 |         case delivered(frames: [FrameV2])
-    |              `- warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 44 |     }
- 45 | 
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 44 | /// exactly once -- and every retry re-emiteth these exact bytes.
- 45 | public struct ForwardCopy: Equatable, Sendable {
- 46 |     public let frame: FrameV2
-    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 47 |     /// The immediate hop it arrived from, which is never offered it back.
- 48 |     public let fromPeer: Data?
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
- 37 | 
- 38 | internal struct DefaultHs3Writer: Hs3Writer {
- 39 |     let noiseSession: NoiseSession
-    |         `- warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
- 40 |     func writeHs3(payload: Data) throws -> Data {
- 41 |         try noiseSession.writeMessage3(payload: payload)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: note: class 'NoiseSession' does not conform to the 'Sendable' protocol
- 46 | }
- 47 | 
- 48 | public final class NoiseSession {
-    |                    `- note: class 'NoiseSession' does not conform to the 'Sendable' protocol
- 49 | 
- 50 |     public enum Role { case initiator, responder }
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
    7 |     public let transportEpoch: UInt64
@@ -1067,37 +1066,37 @@ Building for debugging...
 2966 |         return Data(bytes: [
 2967 |             UInt8(uuid.0), UInt8(uuid.1), UInt8(uuid.2), UInt8(uuid.3),
 
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:3780:17: warning: result of call to 'publishRelation' is unused [#NoUsage]
-3778 |                 let mayBegin = outboundCentralConnections[peerId]?.state == .roleBound
-3779 |                 unlockTransport()
-3780 |                 publishRelation(delegate.relationKey)
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:3786:17: warning: result of call to 'publishRelation' is unused [#NoUsage]
+3784 |                 let mayBegin = outboundCentralConnections[peerId]?.state == .roleBound
+3785 |                 unlockTransport()
+3786 |                 publishRelation(delegate.relationKey)
      |                 `- warning: result of call to 'publishRelation' is unused [#NoUsage]
-3781 |                 if mayBegin, let relationHint = relationHint {
-3782 |                     _ = beginTrustedHandshake(peerId: peerId, remoteHint: relationHint)
+3787 |                 if mayBegin, let relationHint = relationHint {
+3788 |                     _ = beginTrustedHandshake(peerId: peerId, remoteHint: relationHint)
 
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:3968:17: warning: result of call to 'publishRelation' is unused [#NoUsage]
-3966 |             unlockTransport()
-3967 |             if case .acceptWriteAndDuplexReady = action {
-3968 |                 publishRelation(key)
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:3974:17: warning: result of call to 'publishRelation' is unused [#NoUsage]
+3972 |             unlockTransport()
+3973 |             if case .acceptWriteAndDuplexReady = action {
+3974 |                 publishRelation(key)
      |                 `- warning: result of call to 'publishRelation' is unused [#NoUsage]
-3969 |             }
-3970 |         case .acceptDuplicateWrite:
+3975 |             }
+3976 |         case .acceptDuplicateWrite:
 
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:4060:17: warning: result of call to 'publishRelation' is unused [#NoUsage]
-4058 |             unlockTransport()
-4059 |             if case .acceptSubscriptionAndDuplexReady = action {
-4060 |                 publishRelation(key)
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:4066:17: warning: result of call to 'publishRelation' is unused [#NoUsage]
+4064 |             unlockTransport()
+4065 |             if case .acceptSubscriptionAndDuplexReady = action {
+4066 |                 publishRelation(key)
      |                 `- warning: result of call to 'publishRelation' is unused [#NoUsage]
-4061 |             }
-4062 |         default:
+4067 |             }
+4068 |         default:
 
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:4831:19: warning: value 'inboxChar' was defined but never used; consider replacing with boolean test [#NoUsage]
-4829 |             return
-4830 |         }
-4831 |         guard let inboxChar = mutableInboxCharacteristic else {
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:4858:19: warning: value 'inboxChar' was defined but never used; consider replacing with boolean test [#NoUsage]
+4856 |             return
+4857 |         }
+4858 |         guard let inboxChar = mutableInboxCharacteristic else {
      |                   `- warning: value 'inboxChar' was defined but never used; consider replacing with boolean test [#NoUsage]
-4832 |             unlockTransport()
-4833 |             return
+4859 |             unlockTransport()
+4860 |             return
 
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift:11:1: warning: conformance to 'Sendable' must occur in the same source file as class 'PeerIdentityRepository'; use '@unchecked Sendable' for retroactive conformance; this is an error in the Swift 6 language mode
  9 | }
@@ -1248,7 +1247,7 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [51 / 60] LabMeshTests-product
-[56 / 65] LabMeshTests-product
+[55 / 62] LabMeshTests-product
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  83 |         // over the caller-named medium still findeth EXACTLY THIS intent. Nothing of the authoring runtime is
  84 |         // consulted -- the medium alone answereth.
@@ -1258,6 +1257,8 @@ Building for debugging...
  87 |         guard case .found = journal.load(intentId) else {
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[58 / 63] LabMeshTests-product
+[69 / 74] GodstoneMeshTests-product
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  25 |         )
  26 |         let sig = try signingKey.signature(for: preimage)
@@ -1267,7 +1268,24 @@ Building for debugging...
  29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[68 / 74] GodstoneMeshTests-product
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+501 | 
+502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+503 |         let (pubA, _) = realDhKeypair()
+    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+504 |         let a = nodeA()
+505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  32 |         )
+  33 |         let sig = try! signingKey.signature(for: preimage)
+  34 |         let binding = try! IdentityBindingV1(
+     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  35 |             generation: generation,
+  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
  38 |     /// the coordinator (which GS-FINAL-002 already proved).
  39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
@@ -1293,26 +1311,6 @@ Building for debugging...
 166 |                        aliceHint: Data, bobHint: Data,
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[69 / 74] GodstoneMeshTests-product
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-501 | 
-502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-503 |         let (pubA, _) = realDhKeypair()
-    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-504 |         let a = nodeA()
-505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  32 |         )
-  33 |         let sig = try! signingKey.signature(for: preimage)
-  34 |         let binding = try! IdentityBindingV1(
-     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  35 |             generation: generation,
-  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[72 / 75] GodstoneMeshTests-product
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT36Tests.swift:538:13: warning: variable 'f' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
  536 |     /// rejections -- failure distinguished from empty/no-op success, nothing mutated.
  537 |     func testUnapprovedRecipientYieldsTypedDistinctRejections() async throws {
@@ -1404,6 +1402,300 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[72 / 75] GodstoneMeshTests-product
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift:142:26: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+140 | 
+141 |         // *** AND THE MIGRATIONS REALLY RAN, ON THAT SAME CONNECTION: the repository verbs answer against it. ***
+142 |         XCTAssertNoThrow(try store.allHeldMsgIds(),
+    |                          `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+143 |                          "the repository's own query must succeed on the adopted connection, which is what proves "
+144 |                          + "migrations ran there rather than somewhere else")
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift:305:26: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+303 |         // AND BOTH STORES REALLY WORK ON THEIR ADOPTED CONNECTIONS -- an identity match with a store that cannot
+304 |         // query would prove nothing.
+305 |         XCTAssertNoThrow(try runtime.messageStore.allHeldMsgIds(),
+    |                          `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+306 |                          "the repository must answer on the adopted connection")
+307 | 
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal005MandatoryClockTests.swift:149:21: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+147 |     func testGSFINAL005_theControlClockIsMonotonicAndNotWallTime() throws {
+148 |         let url = tempUrl("controlclock")
+149 |         let store = try SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
+    |                     `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+150 |         let identity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
+151 |         let tracker = DeliveryTracker(
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:172:25: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+170 |             return XCTFail("the stranger-bound initiator must still form its first counsel")
+171 |         }
+172 |         guard let hs2 = try? responder.responderProcessMessage1AndWriteMessage2(hs1: hs1) else {
+    |                         `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+173 |             return XCTFail("the production responder must answer the honest HS1 -- its gates are not the subject here")
+174 |         }
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:356:13: warning: initialization of immutable value 'link' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+354 |         try r.makeNode(label: "alice", seedByte: 0x21, staticPrivByte: 0x22)
+355 |         try r.makeNode(label: "bob", seedByte: 0x31, staticPrivByte: 0x32)
+356 |         let link = try r.link("alice", "bob")
+    |             `- warning: initialization of immutable value 'link' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+357 | 
+358 |         let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:456:88: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+454 |             String(describing: verdict).contains("storageFailure"), true,
+455 |             "*** A COMMIT WHILE THE WIPE STANDS PENDING MUST BE REFUSED WITH THE TYPE'S OWN VOCABULARY, "
+456 |                 + "`.storageFailure` -- never a plausible-looking success. Observed: \(verdict) ***")
+    |                                                                                        |- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+    |                                                                                        |- note: use a default value parameter to avoid this warning
+    |                                                                                        |- note: provide a default value to avoid this warning
+    |                                                                                        `- note: use 'String(describing:)' to silence this warning
+457 |         let censusAfter = r.inboxCensus(receiver)
+458 |         XCTAssertEqual(
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:492:45: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+490 |             true,
+491 |             "*** AND WORK MUST RESUME on an idle journal: a fresh runtime's gate standeth open, so the third frame "
+492 |                 + "is ADMITTED. Observed: \(reopenedVerdict) ***")
+    |                                             |- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
+    |                                             |- note: use a default value parameter to avoid this warning
+    |                                             |- note: provide a default value to avoid this warning
+    |                                             `- note: use 'String(describing:)' to silence this warning
+493 |         XCTAssertTrue(reopened.messageStore.allHeldMsgIds().contains(third.msgId),
+494 |                       "and it must be durably held")
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:412:13: warning: initialization of immutable value 'alice' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+410 |         let r = RealTransportHostRig()
+411 |         defer { r.tearDown() }
+412 |         let alice = try r.makeNode(label: "alice", seedByte: 0x51, staticPrivByte: 0x52)
+    |             `- warning: initialization of immutable value 'alice' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+413 |         let bob = try r.makeNode(label: "bob", seedByte: 0x61, staticPrivByte: 0x62)
+414 |         _ = try r.link("alice", "bob")
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:413:13: warning: initialization of immutable value 'bob' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+411 |         defer { r.tearDown() }
+412 |         let alice = try r.makeNode(label: "alice", seedByte: 0x51, staticPrivByte: 0x52)
+413 |         let bob = try r.makeNode(label: "bob", seedByte: 0x61, staticPrivByte: 0x62)
+    |             `- warning: initialization of immutable value 'bob' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+414 |         _ = try r.link("alice", "bob")
+415 |         let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsStress001RealRuntimeTests.swift:581:13: warning: initialization of variable 'maxHeld' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+579 |         /// **THE FIX IS A COUNTER THE LOOP ITSELF INCREMENTS, asserted against `cycles`.** An early break now fails.
+580 |         var stepsRun = 0
+581 |         var maxHeld = 0
+    |             `- warning: initialization of variable 'maxHeld' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+582 |         var maxDepthSeen = 0
+583 | 
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 44 |         )
+ 45 |         let sig = try! signingKey.signature(for: preimage)
+ 46 |         let binding = try! IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 47 |             generation: generation,
+ 48 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift:181:13: warning: variable 'hs3Result' was written to, but never read
+179 |         let hsThreadFinished = expectation(description: "HS thread finished")
+180 |         let invalidationFinished = expectation(description: "Invalidation finished")
+181 |         var hs3Result: Data?
+    |             `- warning: variable 'hs3Result' was written to, but never read
+182 | 
+183 |         var invalidationReturned = false
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:314:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+312 |         XCTAssertTrue(smA.isReady(a.outbound))
+313 |         let aToB = try XCTUnwrap(smA.seal(a.outbound, Data("incarnation A".utf8)))
+314 |         XCTAssertEqual(try smB.open(a.inbound, aToB), Data("incarnation A".utf8))
+    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+315 |         let backFromB = try XCTUnwrap(smB.seal(a.inbound, Data("and back".utf8)))
+316 |         XCTAssertEqual(try smA.open(a.outbound, backFromB), Data("and back".utf8))
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:316:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+314 |         XCTAssertEqual(try smB.open(a.inbound, aToB), Data("incarnation A".utf8))
+315 |         let backFromB = try XCTUnwrap(smB.seal(a.inbound, Data("and back".utf8)))
+316 |         XCTAssertEqual(try smA.open(a.outbound, backFromB), Data("and back".utf8))
+    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+317 |         XCTAssertEqual(smA.drop(a.outbound), .retired)
+318 |         XCTAssertEqual(smB.drop(a.inbound), .retired)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:338:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+336 |                       "the responder side of the replacement was slain by stale work")
+337 |         let live = try XCTUnwrap(smA.seal(b.outbound, Data("replacement lives".utf8)))
+338 |         XCTAssertEqual(try smB.open(b.inbound, live), Data("replacement lives".utf8))
+    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+339 |         // The replacement's own teardown still worketh, and only it.
+340 |         XCTAssertEqual(smA.drop(b.outbound), .retired)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:381:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+379 |         XCTAssertTrue(smB.isReady(b.inbound), "stale work disturbed the responder's replacement")
+380 |         let genuine = try XCTUnwrap(smA.seal(b.outbound, Data("genuine".utf8)))
+381 |         XCTAssertEqual(try smB.open(b.inbound, genuine), Data("genuine".utf8))
+    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+382 |     }
+383 | 
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1304:20: warning: immutable value 'privB' was never used; consider replacing with '_' or removing it [#NoUsage]
+1302 | 
+1303 |         let (pubA, privA) = realKeypair()
+1304 |         let (pubB, privB) = realKeypair()
+     |                    `- warning: immutable value 'privB' was never used; consider replacing with '_' or removing it [#NoUsage]
+1305 |         let resolver = TwoRecipientResolver(nodeA(), pubA, nodeB(), pubB)
+1306 |         let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: resolver))
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1553:14: warning: immutable value 'pub' was never used; consider replacing with '_' or removing it [#NoUsage]
+1551 |         let faulting = FaultingDeliveryStore(store)
+1552 |         let repo = SqliteDeliveryRepository(faulting)
+1553 |         let (pub, priv) = realKeypair()
+     |              `- warning: immutable value 'pub' was never used; consider replacing with '_' or removing it [#NoUsage]
+1554 |         let recipient = nodeA()
+1555 |         let auth = DualAckAuthenticator()
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1988:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+1986 |         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+1987 |         let repo = SqliteDeliveryRepository(store)
+1988 |         let (pubA, privA) = realKeypair()
+     |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+1989 |         let auth = BlockingAckAuthenticator(result: true)
+1990 |         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:2025:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+2023 |         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+2024 |         let repo = SqliteDeliveryRepository(store)
+2025 |         let (pubA, privA) = realKeypair()
+     |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+2026 |         let auth = BlockingAckAuthenticator(result: true)
+2027 |         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:74:15: warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
+  72 |         _ = open(maxBytes: Int64.max)
+  73 |         let f = frame(7, .direct, 64, type: .sos)
+  74 |         store.persist(f, receivedFrom: Data([0, 1, 2, 3, 4, 5]))
+     |               `- warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
+  75 |         let out = store.allHeldOrderedByPriority()
+  76 |         XCTAssertEqual(out.count, 1)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:92:15: warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
+  90 |         _ = open(maxBytes: Int64.max)
+  91 |         let f = frame(1, .group, 32)
+  92 |         store.persist(f, receivedFrom: Data())
+     |               `- warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
+  93 |         store.persist(f, receivedFrom: Data())
+  94 |         XCTAssertEqual(heldIds().count, 1)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:93:15: warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
+  91 |         let f = frame(1, .group, 32)
+  92 |         store.persist(f, receivedFrom: Data())
+  93 |         store.persist(f, receivedFrom: Data())
+     |               `- warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
+  94 |         XCTAssertEqual(heldIds().count, 1)
+  95 |     }
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:864:9: warning: result of 'try?' is unused [#NoUsage]
+ 862 |         // Seed held frame with foreignNode provenance
+ 863 |         XCTAssertEqual(store.persist(f, receivedFrom: foreignNode), .heldNew)
+ 864 |         try? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)
+     |         `- warning: result of 'try?' is unused [#NoUsage]
+ 865 | 
+ 866 |         // Retry from local node A
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:925:9: warning: result of 'try?' is unused [#NoUsage]
+ 923 |         let origin = localNode(1)
+ 924 | 
+ 925 |         try? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)
+     |         `- warning: result of 'try?' is unused [#NoUsage]
+ 926 |         XCTAssertFalse(containsId(heldIds(), f.msgId))
+ 927 | 
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1014:15: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1012 |         defer { sqlite3_finalize(stmt) }
+1013 |         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+1014 |         msgId.withUnsafeBytes { r in
+     |               `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1015 |             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
+1016 |         }
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1157:13: warning: result of 'try?' is unused [#NoUsage]
+1155 |             let f = directFrame(UInt8(idx + 10), payloadSize: 100)
+1156 |             // Plant delivery row directly with terminal state and NO held frame
+1157 |             try? store.insertDelivery(
+     |             `- warning: result of 'try?' is unused [#NoUsage]
+1158 |                 f.msgId,
+1159 |                 stateOrdinal: termState.code,
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1343:12: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1341 |         }
+1342 |         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+1343 |         id.withUnsafeBytes { r in
+     |            `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1344 |             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(id.count), transient)
+1345 |         }
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1392:15: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1390 |         }
+1391 |         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+1392 |         msgId.withUnsafeBytes { r in
+     |               `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1393 |             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
+1394 |         }
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1400:20: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1398 |         sqlite3_bind_int(stmt, 5, Int32(Priority.toFlags(.group)))
+1399 |         sqlite3_bind_int(stmt, 6, Int32(Priority.group.rawValue))
+1400 |         routingTag.withUnsafeBytes { r in
+     |                    `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1401 |             sqlite3_bind_blob(stmt, 7, r.baseAddress, Int32(routingTag.count), transient)
+1402 |         }
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1404:17: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1402 |         }
+1403 |         let payload = Data(repeating: 0, count: 8)
+1404 |         payload.withUnsafeBytes { r in
+     |                 `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
+1405 |             sqlite3_bind_blob(stmt, 8, r.baseAddress, Int32(payload.count), transient)
+1406 |         }
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1446:22: warning: weak variable 'weakW' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+1444 |             let w = LifetimeWitness()
+1445 |             witnesses.append(w)
+1446 |             weak var weakW = w
+     |                      `- warning: weak variable 'weakW' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
+1447 |             weakBoxes.append { weakW }
+1448 |             // EVERY LIFETIME RELEASETH ITS OWN REGISTRATION, as a runtime's teardown must: the law is that a
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1464:63: warning: mutation of captured var 'fired' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1462 |         let baseline = s.observerCensusForTest()
+1463 |         var fired = 0
+1464 |         let lease = try XCTUnwrap(s.registerHeldSetObserver { fired += 1 },
+     |                                                               `- warning: mutation of captured var 'fired' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1465 |                                   "the real store must answer a RELEASABLE lease, not nil")
+1466 |         XCTAssertEqual(s.observerCensusForTest(), baseline + 1)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:2000:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+1998 |     func testGSSTORE004_retirementLeavethADurableTombstone() throws {
+1999 |         let s = open(maxBytes: 8 * 1024 * 1024)
+2000 |         var now: Int64 = 6_000_000
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+2001 |         s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+2002 |         let f = frame(13, .direct, 48)
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/TrustedHandshakeControllerTests.swift:44:16: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  42 |         )
+  43 |         let sig = try signingKey.signature(for: preimage)
+  44 |         return try IdentityBindingV1(
+     |                `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  45 |             generation: generation,
+  46 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:345:9: warning: using '_' to ignore the result of a Void-returning function is redundant
  343 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
  344 |         pins.append(req)
@@ -1574,119 +1866,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift:142:26: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-140 | 
-141 |         // *** AND THE MIGRATIONS REALLY RAN, ON THAT SAME CONNECTION: the repository verbs answer against it. ***
-142 |         XCTAssertNoThrow(try store.allHeldMsgIds(),
-    |                          `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-143 |                          "the repository's own query must succeed on the adopted connection, which is what proves "
-144 |                          + "migrations ran there rather than somewhere else")
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift:305:26: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-303 |         // AND BOTH STORES REALLY WORK ON THEIR ADOPTED CONNECTIONS -- an identity match with a store that cannot
-304 |         // query would prove nothing.
-305 |         XCTAssertNoThrow(try runtime.messageStore.allHeldMsgIds(),
-    |                          `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-306 |                          "the repository must answer on the adopted connection")
-307 | 
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal005MandatoryClockTests.swift:149:21: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-147 |     func testGSFINAL005_theControlClockIsMonotonicAndNotWallTime() throws {
-148 |         let url = tempUrl("controlclock")
-149 |         let store = try SqliteMessageStore(url: url, maxBytes: 8 * 1024 * 1024)
-    |                     `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-150 |         let identity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
-151 |         let tracker = DeliveryTracker(
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:172:25: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-170 |             return XCTFail("the stranger-bound initiator must still form its first counsel")
-171 |         }
-172 |         guard let hs2 = try? responder.responderProcessMessage1AndWriteMessage2(hs1: hs1) else {
-    |                         `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-173 |             return XCTFail("the production responder must answer the honest HS1 -- its gates are not the subject here")
-174 |         }
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:323:13: warning: initialization of immutable value 'link' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-321 |         try r.makeNode(label: "alice", seedByte: 0x21, staticPrivByte: 0x22)
-322 |         try r.makeNode(label: "bob", seedByte: 0x31, staticPrivByte: 0x32)
-323 |         let link = try r.link("alice", "bob")
-    |             `- warning: initialization of immutable value 'link' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-324 | 
-325 |         let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:420:88: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
-418 |             String(describing: verdict).contains("storageFailure"), true,
-419 |             "*** A COMMIT WHILE THE WIPE STANDS PENDING MUST BE REFUSED WITH THE TYPE'S OWN VOCABULARY, "
-420 |                 + "`.storageFailure` -- never a plausible-looking success. Observed: \(verdict) ***")
-    |                                                                                        |- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
-    |                                                                                        |- note: use a default value parameter to avoid this warning
-    |                                                                                        |- note: provide a default value to avoid this warning
-    |                                                                                        `- note: use 'String(describing:)' to silence this warning
-421 |         let censusAfter = r.inboxCensus(receiver)
-422 |         XCTAssertEqual(
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:445:45: warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
-443 |             true,
-444 |             "*** AND WORK MUST RESUME on an idle journal: a fresh runtime's gate standeth open, so the third frame "
-445 |                 + "is ADMITTED. Observed: \(reopenedVerdict) ***")
-    |                                             |- warning: string interpolation produces a debug description for an optional value; did you mean to make this explicit?
-    |                                             |- note: use a default value parameter to avoid this warning
-    |                                             |- note: provide a default value to avoid this warning
-    |                                             `- note: use 'String(describing:)' to silence this warning
-446 |         XCTAssertTrue(reopened.messageStore.allHeldMsgIds().contains(third.msgId),
-447 |                       "and it must be durably held")
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:378:13: warning: initialization of immutable value 'alice' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-376 |         let r = RealTransportHostRig()
-377 |         defer { r.tearDown() }
-378 |         let alice = try r.makeNode(label: "alice", seedByte: 0x51, staticPrivByte: 0x52)
-    |             `- warning: initialization of immutable value 'alice' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-379 |         let bob = try r.makeNode(label: "bob", seedByte: 0x61, staticPrivByte: 0x62)
-380 |         _ = try r.link("alice", "bob")
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift:379:13: warning: initialization of immutable value 'bob' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-377 |         defer { r.tearDown() }
-378 |         let alice = try r.makeNode(label: "alice", seedByte: 0x51, staticPrivByte: 0x52)
-379 |         let bob = try r.makeNode(label: "bob", seedByte: 0x61, staticPrivByte: 0x62)
-    |             `- warning: initialization of immutable value 'bob' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-380 |         _ = try r.link("alice", "bob")
-381 |         let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsStress001RealRuntimeTests.swift:581:13: warning: initialization of variable 'maxHeld' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-579 |         /// **THE FIX IS A COUNTER THE LOOP ITSELF INCREMENTS, asserted against `cycles`.** An early break now fails.
-580 |         var stepsRun = 0
-581 |         var maxHeld = 0
-    |             `- warning: initialization of variable 'maxHeld' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-582 |         var maxDepthSeen = 0
-583 | 
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 44 |         )
- 45 |         let sig = try! signingKey.signature(for: preimage)
- 46 |         let binding = try! IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 47 |             generation: generation,
- 48 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 29 |         )
- 30 |         let sig = try! signingKey.signature(for: preimage)
- 31 |         let binding = try! IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 32 |             generation: generation,
- 33 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 38 |     /// the coordinator (which GS-FINAL-002 already proved).
- 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- 40 |         var allows: Bool
-    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 41 |         init(allows: Bool) { self.allows = allows }
- 42 |         func allowsSensitiveUse() -> Bool { allows }
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT39Tests.swift:49:42: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  47 |             x25519PrivateKey: Data(repeating: xByte, count: 32))
  48 |         let kc = InMemoryKeychain()
@@ -1746,6 +1925,23 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 29 |         )
+ 30 |         let sig = try! signingKey.signature(for: preimage)
+ 31 |         let binding = try! IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 32 |             generation: generation,
+ 33 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 38 |     /// the coordinator (which GS-FINAL-002 already proved).
+ 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ 40 |         var allows: Bool
+    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 41 |         init(allows: Bool) { self.allows = allows }
+ 42 |         func allowsSensitiveUse() -> Bool { allows }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
 272 |         )
 273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -1988,203 +2184,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift:181:13: warning: variable 'hs3Result' was written to, but never read
-179 |         let hsThreadFinished = expectation(description: "HS thread finished")
-180 |         let invalidationFinished = expectation(description: "Invalidation finished")
-181 |         var hs3Result: Data?
-    |             `- warning: variable 'hs3Result' was written to, but never read
-182 | 
-183 |         var invalidationReturned = false
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:314:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-312 |         XCTAssertTrue(smA.isReady(a.outbound))
-313 |         let aToB = try XCTUnwrap(smA.seal(a.outbound, Data("incarnation A".utf8)))
-314 |         XCTAssertEqual(try smB.open(a.inbound, aToB), Data("incarnation A".utf8))
-    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-315 |         let backFromB = try XCTUnwrap(smB.seal(a.inbound, Data("and back".utf8)))
-316 |         XCTAssertEqual(try smA.open(a.outbound, backFromB), Data("and back".utf8))
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:316:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-314 |         XCTAssertEqual(try smB.open(a.inbound, aToB), Data("incarnation A".utf8))
-315 |         let backFromB = try XCTUnwrap(smB.seal(a.inbound, Data("and back".utf8)))
-316 |         XCTAssertEqual(try smA.open(a.outbound, backFromB), Data("and back".utf8))
-    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-317 |         XCTAssertEqual(smA.drop(a.outbound), .retired)
-318 |         XCTAssertEqual(smB.drop(a.inbound), .retired)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:338:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-336 |                       "the responder side of the replacement was slain by stale work")
-337 |         let live = try XCTUnwrap(smA.seal(b.outbound, Data("replacement lives".utf8)))
-338 |         XCTAssertEqual(try smB.open(b.inbound, live), Data("replacement lives".utf8))
-    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-339 |         // The replacement's own teardown still worketh, and only it.
-340 |         XCTAssertEqual(smA.drop(b.outbound), .retired)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:381:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-379 |         XCTAssertTrue(smB.isReady(b.inbound), "stale work disturbed the responder's replacement")
-380 |         let genuine = try XCTUnwrap(smA.seal(b.outbound, Data("genuine".utf8)))
-381 |         XCTAssertEqual(try smB.open(b.inbound, genuine), Data("genuine".utf8))
-    |                        `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-382 |     }
-383 | 
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1304:20: warning: immutable value 'privB' was never used; consider replacing with '_' or removing it [#NoUsage]
-1302 | 
-1303 |         let (pubA, privA) = realKeypair()
-1304 |         let (pubB, privB) = realKeypair()
-     |                    `- warning: immutable value 'privB' was never used; consider replacing with '_' or removing it [#NoUsage]
-1305 |         let resolver = TwoRecipientResolver(nodeA(), pubA, nodeB(), pubB)
-1306 |         let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: resolver))
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1553:14: warning: immutable value 'pub' was never used; consider replacing with '_' or removing it [#NoUsage]
-1551 |         let faulting = FaultingDeliveryStore(store)
-1552 |         let repo = SqliteDeliveryRepository(faulting)
-1553 |         let (pub, priv) = realKeypair()
-     |              `- warning: immutable value 'pub' was never used; consider replacing with '_' or removing it [#NoUsage]
-1554 |         let recipient = nodeA()
-1555 |         let auth = DualAckAuthenticator()
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1988:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-1986 |         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
-1987 |         let repo = SqliteDeliveryRepository(store)
-1988 |         let (pubA, privA) = realKeypair()
-     |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-1989 |         let auth = BlockingAckAuthenticator(result: true)
-1990 |         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:2025:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-2023 |         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
-2024 |         let repo = SqliteDeliveryRepository(store)
-2025 |         let (pubA, privA) = realKeypair()
-     |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-2026 |         let auth = BlockingAckAuthenticator(result: true)
-2027 |         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:74:15: warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
-  72 |         _ = open(maxBytes: Int64.max)
-  73 |         let f = frame(7, .direct, 64, type: .sos)
-  74 |         store.persist(f, receivedFrom: Data([0, 1, 2, 3, 4, 5]))
-     |               `- warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
-  75 |         let out = store.allHeldOrderedByPriority()
-  76 |         XCTAssertEqual(out.count, 1)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:92:15: warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
-  90 |         _ = open(maxBytes: Int64.max)
-  91 |         let f = frame(1, .group, 32)
-  92 |         store.persist(f, receivedFrom: Data())
-     |               `- warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
-  93 |         store.persist(f, receivedFrom: Data())
-  94 |         XCTAssertEqual(heldIds().count, 1)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:93:15: warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
-  91 |         let f = frame(1, .group, 32)
-  92 |         store.persist(f, receivedFrom: Data())
-  93 |         store.persist(f, receivedFrom: Data())
-     |               `- warning: result of call to 'persist(_:receivedFrom:)' is unused [#NoUsage]
-  94 |         XCTAssertEqual(heldIds().count, 1)
-  95 |     }
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:864:9: warning: result of 'try?' is unused [#NoUsage]
- 862 |         // Seed held frame with foreignNode provenance
- 863 |         XCTAssertEqual(store.persist(f, receivedFrom: foreignNode), .heldNew)
- 864 |         try? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)
-     |         `- warning: result of 'try?' is unused [#NoUsage]
- 865 | 
- 866 |         // Retry from local node A
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:925:9: warning: result of 'try?' is unused [#NoUsage]
- 923 |         let origin = localNode(1)
- 924 | 
- 925 |         try? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)
-     |         `- warning: result of 'try?' is unused [#NoUsage]
- 926 |         XCTAssertFalse(containsId(heldIds(), f.msgId))
- 927 | 
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1014:15: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1012 |         defer { sqlite3_finalize(stmt) }
-1013 |         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-1014 |         msgId.withUnsafeBytes { r in
-     |               `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1015 |             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
-1016 |         }
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1157:13: warning: result of 'try?' is unused [#NoUsage]
-1155 |             let f = directFrame(UInt8(idx + 10), payloadSize: 100)
-1156 |             // Plant delivery row directly with terminal state and NO held frame
-1157 |             try? store.insertDelivery(
-     |             `- warning: result of 'try?' is unused [#NoUsage]
-1158 |                 f.msgId,
-1159 |                 stateOrdinal: termState.code,
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1343:12: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1341 |         }
-1342 |         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-1343 |         id.withUnsafeBytes { r in
-     |            `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1344 |             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(id.count), transient)
-1345 |         }
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1392:15: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1390 |         }
-1391 |         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-1392 |         msgId.withUnsafeBytes { r in
-     |               `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1393 |             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
-1394 |         }
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1400:20: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1398 |         sqlite3_bind_int(stmt, 5, Int32(Priority.toFlags(.group)))
-1399 |         sqlite3_bind_int(stmt, 6, Int32(Priority.group.rawValue))
-1400 |         routingTag.withUnsafeBytes { r in
-     |                    `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1401 |             sqlite3_bind_blob(stmt, 7, r.baseAddress, Int32(routingTag.count), transient)
-1402 |         }
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1404:17: warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1402 |         }
-1403 |         let payload = Data(repeating: 0, count: 8)
-1404 |         payload.withUnsafeBytes { r in
-     |                 `- warning: result of call to 'withUnsafeBytes' is unused [#NoUsage]
-1405 |             sqlite3_bind_blob(stmt, 8, r.baseAddress, Int32(payload.count), transient)
-1406 |         }
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1446:22: warning: weak variable 'weakW' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
-1444 |             let w = LifetimeWitness()
-1445 |             witnesses.append(w)
-1446 |             weak var weakW = w
-     |                      `- warning: weak variable 'weakW' was never mutated; consider changing to 'let' constant [#VariableNeverMutated::WeakMutability]
-1447 |             weakBoxes.append { weakW }
-1448 |             // EVERY LIFETIME RELEASETH ITS OWN REGISTRATION, as a runtime's teardown must: the law is that a
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1464:63: warning: mutation of captured var 'fired' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
-1462 |         let baseline = s.observerCensusForTest()
-1463 |         var fired = 0
-1464 |         let lease = try XCTUnwrap(s.registerHeldSetObserver { fired += 1 },
-     |                                                               `- warning: mutation of captured var 'fired' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
-1465 |                                   "the real store must answer a RELEASABLE lease, not nil")
-1466 |         XCTAssertEqual(s.observerCensusForTest(), baseline + 1)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:2000:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-1998 |     func testGSSTORE004_retirementLeavethADurableTombstone() throws {
-1999 |         let s = open(maxBytes: 8 * 1024 * 1024)
-2000 |         var now: Int64 = 6_000_000
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-2001 |         s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
-2002 |         let f = frame(13, .direct, 48)
-
-/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/TrustedHandshakeControllerTests.swift:44:16: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  42 |         )
-  43 |         let sig = try signingKey.signature(for: preimage)
-  44 |         return try IdentityBindingV1(
-     |                `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  45 |             generation: generation,
-  46 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
 /Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: warning: result of call to 'runPendingOnce(_:fault:)' is unused [#NoUsage]
 150 |         var raised = false
 151 |         do {
@@ -2245,26 +2244,26 @@ Building for debugging...
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [74 / 78] GodstoneMeshTests-product
-Build complete! (8.12 secs)
-Test Suite 'Selected tests' started at 2026-09-26 15:55:13.552.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-26 15:55:13.558.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-26 15:55:13.558.
+Build complete! (8.67 secs)
+Test Suite 'Selected tests' started at 2026-09-26 16:32:31.436.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-26 16:32:31.442.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-26 16:32:31.442.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-26 15:55:13.558.
+Test Suite 'Selected tests' passed at 2026-09-26 16:32:31.442.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-26 15:55:13.595.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-26 15:55:13.601.
-Test Suite 'GsStress001RealRuntimeDriverTests' started at 2026-09-26 15:55:13.601.
+Test Suite 'Selected tests' started at 2026-09-26 16:32:31.479.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-26 16:32:31.485.
+Test Suite 'GsStress001RealRuntimeDriverTests' started at 2026-09-26 16:32:31.485.
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001AfterTheFinalStopEveryCensusReturnsToZeroAndTheBytesAreBounded]' started.
-Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001AfterTheFinalStopEveryCensusReturnsToZeroAndTheBytesAreBounded]' passed (4.563 seconds).
+Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001AfterTheFinalStopEveryCensusReturnsToZeroAndTheBytesAreBounded]' passed (2.096 seconds).
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001AMalformedFrameIsRefusedTypedAtTheRealIngressAndNeverThrows]' started.
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001AMalformedFrameIsRefusedTypedAtTheRealIngressAndNeverThrows]' passed (0.006 seconds).
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001EveryCensusStaysUnderItsOwnersCap]' started.
-Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001EveryCensusStaysUnderItsOwnersCap]' passed (2.353 seconds).
+Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001EveryCensusStaysUnderItsOwnersCap]' passed (2.365 seconds).
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheBoundsCanActuallyFireSoTheyAreNotDecoration]' started.
-Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheBoundsCanActuallyFireSoTheyAreNotDecoration]' passed (0.035 seconds).
+Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheBoundsCanActuallyFireSoTheyAreNotDecoration]' passed (0.039 seconds).
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheNoDuplicateDeliveryInvariantIsReadFromTheRealOwner]' started.
-Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheNoDuplicateDeliveryInvariantIsReadFromTheRealOwner]' passed (0.009 seconds).
+Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheNoDuplicateDeliveryInvariantIsReadFromTheRealOwner]' passed (0.010 seconds).
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheNoDuplicateInboxInvariantIsReadFromTheRealOwners]' started.
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheNoDuplicateInboxInvariantIsReadFromTheRealOwners]' passed (0.012 seconds).
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheRealParserRefusesEveryDeterministicVectorAndAcceptsTheValidFrame]' started.
@@ -3926,15 +3925,15 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-CRYPTO-005 fresh-file step: revision=0 from=0 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheRealRuntimeSurvivesTenThousandDeterministicCycles]' passed (128.987 seconds).
+CRYPTO-005 fresh-file step: revision=0 from=0 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheRealRuntimeSurvivesTenThousandDeterministicCycles]' passed (131.281 seconds).
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheSameSeedPrintsTheSameFirstFailureAddress]' started.
-Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheSameSeedPrintsTheSameFirstFailureAddress]' passed (0.117 seconds).
-Test Suite 'GsStress001RealRuntimeDriverTests' passed at 2026-09-26 15:57:29.689.
-	 Executed 9 tests, with 0 failures (0 unexpected) in 136.088 (136.089) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-26 15:57:29.689.
-	 Executed 9 tests, with 0 failures (0 unexpected) in 136.088 (136.089) seconds
-Test Suite 'Selected tests' passed at 2026-09-26 15:57:29.689.
-	 Executed 9 tests, with 0 failures (0 unexpected) in 136.088 (136.095) seconds
+Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001TheSameSeedPrintsTheSameFirstFailureAddress]' passed (0.118 seconds).
+Test Suite 'GsStress001RealRuntimeDriverTests' passed at 2026-09-26 16:34:47.420.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 135.934 (135.935) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-26 16:34:47.421.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 135.934 (135.935) seconds
+Test Suite 'Selected tests' passed at 2026-09-26 16:34:47.421.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 135.934 (135.941) seconds
 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
@@ -4008,9 +4007,9 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 *** GS-STRESS-001 cycle report: cycles=10000 A1-ingest-distinct=834 A2-replay-dedup=818 A3-churn-link-replacement=786 A4-writer-reserve-release=791 A5-timer-arm-fire=831 A6-observer-register-remove=846 A7-ack-insert-list-retire=873 A8-durable-remove-and-tombstone=879 A9-parser-vectors=860 A10-malformed-at-real-ingress=823 A11-store-fault-preserved=823 A12-wipe-interrupt=836 heldHighWater=0 reservationsHighWater=4 maxHeldInFlight=0 ***
 *** GS-STRESS-001 durable bytes after the campaign: db=331776 wal=0 ***
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-09-26 15:57:29.754.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-26 15:57:29.760.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-26 15:57:29.760.
+Test Suite 'Selected tests' started at 2026-09-26 16:34:47.489.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-26 16:34:47.495.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-26 16:34:47.495.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-26 15:57:29.760.
+Test Suite 'Selected tests' passed at 2026-09-26 16:34:47.495.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds

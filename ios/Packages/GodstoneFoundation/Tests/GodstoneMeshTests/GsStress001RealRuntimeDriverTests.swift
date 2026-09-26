@@ -340,14 +340,25 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         guard let context = transport.currentManagerContextForTest() else { return false }
         let cm = context.central
         let peripheral = stressPeripheral(handle)
+        // *** THE DISCOVER IS DISPATCHED ONTO THE EPOCH EXECUTOR, SO EVERY READ OF ITS RESULT MUST BE PRECEDED BY A
+        // DRAIN -- AND THIS IS THE RACE, MEASURED RATHER THAN SUSPECTED. ***
+        //
+        // *The first draft dispatched the discover and then read `getRelationDelegate` IMMEDIATELY. Both the discover
+        // and the connect reduction (`reductionProcessOutboundDiscover`, which is what INSTALLS `relationDelegates[pid]`
+        // and `outboundCentralConnections[pid]`) run asynchronously on the epoch's serial queue, so the read raced
+        // them: on one run the delegate stood, on another it did not, and the same seed halted at cycle 5 on one
+        // invocation and cycle 21 on the next. **`barrierOnActiveContext()` is the transport's OWN drained point -- the
+        // same one production's teardown uses -- so it is the only wait here, and there is no retry and no sleep.***
         transport.processCentralDidDiscover(
             cm, peripheral: peripheral,
             advertisementData: [CBAdvertisementDataServiceDataKey:
                 [BleTransport.serviceUuid: Self.remoteLinkInfo(remoteHint)]],
             rssi: NSNumber(value: -60), sourceEpoch: transport.currentTransportEpoch)
+        _ = transport.barrierOnActiveContext()
         guard let delegate = transport.getRelationDelegate(handle) else { return false }
         _ = transport.processCentralConnect(peerId: handle, peripheral: peripheral,
                                             sourceEpoch: transport.currentTransportEpoch, from: cm)
+        _ = transport.barrierOnActiveContext()
         _ = transport.processPeripheralDiscoverServices(peripheral, delegate: delegate, error: nil)
         let service = CBMutableService(type: BleTransport.meshProfile.serviceUuid, primary: true)
         service.characteristics = BleTransport.characteristicsToInstall(BleTransport.meshProfile)
@@ -391,6 +402,10 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     @discardableResult
     private func establishReadySession(_ runtime: MeshRuntime, handle: UUID, peer: MeshIdentity) -> Bool {
         let transport = runtime.meshNode.ble
+        // *** AND THE ADMISSION IS READ ONLY AFTER THE CONNECT'S OWN REDUCTION HATH RUN. *** *`admissionForTest` reads
+        // `activeOutboundLifetimes`, which the discover reduction installs -- so this read raced it for the same reason
+        // the delegate read did. The drain is the transport's own, not a sleep.*
+        _ = transport.barrierOnActiveContext()
         guard let minted = transport.admissionForTest(handle, direction: .outboundCentral) else { return false }
         let bob = SessionManager(identity: peer, trustAuthority: AcceptingTrustAuthority())
         let bobAdmission = RelationAdmission(direction: .inboundPeripheral, peerId: handle,
@@ -428,6 +443,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         _ = transport.processPeripheralDiscoverServices(peripheral, delegate: delegate, error: nil)
         _ = transport.processPeripheralDiscoverCharacteristics(peripheral, delegate: delegate,
                                                               service: service, error: nil)
+        _ = transport.barrierOnActiveContext()
         return transport.centralWriterForTest(handle) != nil
     }
 
@@ -441,6 +457,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         writerCache[handle] = nil
         guard let connection = transport.connection(for: handle) else { return nil }
         _ = reinstallOutlet(runtime, handle: handle)
+        _ = transport.barrierOnActiveContext()
         let fresh = transport.centralWriterForTest(handle)
             ?? RecordWriter(connection: connection,
                             relationKey: RelationKey(direction: .outboundCentral, peerId: handle))
