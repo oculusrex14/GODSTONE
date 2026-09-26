@@ -187,7 +187,8 @@ private struct ArchiveBrowser: View {
                 // by the identifiers it could see, and those two demand opposite repairs.*
                 Color.clear.frame(width: 0, height: 0)
                     .accessibilityIdentifier("archive.phase." + scene.phase.witnessName + ".mode." + scene.mode.witnessName
-                        + ".query." + ((scene.searchedQuery?.isEmpty == false) ? "set" : "unset"))
+                        + ".query." + ((scene.searchedQuery?.isEmpty == false) ? "set" : "unset")
+                        + ".backquery." + (scene.lastBackDecisionHadQuery.map { $0 ? "set" : "unset" } ?? "none"))
                 switch scene.phase {
                 case .loading:
                     ProgressView("Opening Archive…")

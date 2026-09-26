@@ -155,6 +155,15 @@ public final class ArchiveSceneModel: ObservableObject {
     @Published public private(set) var searchedQuery: String?
     @Published public private(set) var mode: ArchiveSceneMode = .documents
     @Published public private(set) var phase: ArchivePhase = .loading
+    /// *** THE DECISION-POINT TRUTH, CAPTURED **INSIDE** `back()` BEFORE ITS OWN MUTATIONS. ***
+    ///
+    /// *A WITNESS READ AFTER THE TAP CANNOT TELL THE TWO CAUSES APART: `back()`'s `.document` road ends in
+    /// `backToDocuments()`/`restore`, and BOTH nil `searchedQuery` when the return is a documents route -- so the
+    /// rendered value collapseth to `unset` whether the query was ABSENT at the decision (a PERSISTENCE defect) or
+    /// PRESENT and the guard mis-fired (a `back()`-logic defect).* **THIS FIELD CARRIETH WHICH IT WAS: set at the top
+    /// of `back()`, before any mutation, so a red run sayeth `snapshot=set` (chase `back()`) or `snapshot=unset`
+    /// (chase persistence).** *Nil meaneth `back()` hath not run.*
+    @Published public private(set) var lastBackDecisionHadQuery: Bool?
     @Published public private(set) var documents: [ArchiveDocument] = []
     @Published public private(set) var passages: [ArchivePassage] = []
     @Published public private(set) var openedDocumentId: Int64?
@@ -291,6 +300,8 @@ public final class ArchiveSceneModel: ObservableObject {
     /// opened returneth untouched -- the query, its published identity and
     /// the results stand again, the road not ridden again.
     public func back() {
+        // *THE DECISION-POINT SNAPSHOT, TAKEN BEFORE ANY MUTATION (see `lastBackDecisionHadQuery`).*
+        lastBackDecisionHadQuery = (searchedQuery?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
         switch mode {
         case .document:
             // *** THE RETURN IDENTITY IS DERIVED FROM THE RECORD, NOT ONLY FROM THE STASHED SCENE. ***
