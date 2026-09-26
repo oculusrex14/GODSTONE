@@ -174,6 +174,12 @@ public final class ArchiveSceneModel: ObservableObject {
     /// postrestore=set, backquery=unset` blameth `back()`.*** *Each is `nil` until its moment passeth.*
     @Published public private(set) var lastRestoreCarriedQuery: Bool?
     @Published public private(set) var lastPostRestoreHadQuery: Bool?
+    /// *AND THE **NESTED** CARRIER'S TRUTH: `handle["returnSearchedQuery"]`, which the design persisteth SEPARATELY
+    /// (`if let returnScene`) and rebuildeth into `returnScene.searchedQuery`. **THE TWO CARRIERS CAN DISAGREE: the
+    /// top-level key is written only `if let searchedQuery`, so a REOPENED-DOCUMENT road can omit it while the
+    /// return-identity source still carrieth the query** -- and a check that readeth only the top-level instance
+    /// would report `unset` for a query that SURVIVED in the other. This field telleth them apart.*
+    @Published public private(set) var lastRestoreCarriedReturnQuery: Bool?
     @Published public private(set) var documents: [ArchiveDocument] = []
     @Published public private(set) var passages: [ArchivePassage] = []
     @Published public private(set) var openedDocumentId: Int64?
@@ -332,7 +338,15 @@ public final class ArchiveSceneModel: ObservableObject {
             // `snapshot`/`restore` ALWAYS carry.* **So a document whose return resolveth to the LIST while a search
             // was made is returned to the SEARCH; a genuine BROWSE (`searchedQuery` nil/empty) still returneth to the
             // list. THE DERIVATION INVENTS NO QUERY -- IT ONLY READS ONE THE READER ACTUALLY MADE.**
-            let savedSearch = searchedQuery?.trimmingCharacters(in: .whitespacesAndNewlines)
+            // *** AND THE GATE READETH **BOTH** CARRIERS, BECAUSE THEY CAN DISAGREE. ***
+            // *The design persisteth the return-identity query SEPARATELY (`handle["returnSearchedQuery"]` ->
+            // `returnScene.searchedQuery`), and the TOP-LEVEL `searchedQuery` is written only `if let searchedQuery`
+            // -- so the REOPENED-DOCUMENT road can leave the top-level one NIL while the return scene still carrieth
+            // the query a reader actually made.* **A gate that read only the top-level instance would drop such a
+            // document to the list on its own, which is exactly the card's violation.** *So the surviving source is
+            // consulted as well; the derivation still inventeth no query.*
+            let savedSearch = (searchedQuery ?? returnScene?.searchedQuery)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             if (returnScene?.mode ?? .documents) == .documents, let saved = savedSearch, !saved.isEmpty {
                 generationBump()
                 returnScene = nil
@@ -513,6 +527,8 @@ public final class ArchiveSceneModel: ObservableObject {
         // *THE RESTORE-TIME TRUTH: did the HANDLE carry a query, before this method's own roads run?*
         let carried = (handle["searchedQuery"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         lastRestoreCarriedQuery = (carried?.isEmpty == false)
+        let carriedReturn = (handle["returnSearchedQuery"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        lastRestoreCarriedReturnQuery = (carriedReturn?.isEmpty == false)
         let anchorDocument = handle["anchorDocument"] as? Int64
         let anchorPassage = handle["anchorPassage"] as? Int64
         scrollAnchor = ArchiveScrollAnchor(documentId: anchorDocument, passageId: anchorPassage)

@@ -190,7 +190,8 @@ private struct ArchiveBrowser: View {
                         + ".query." + ((scene.searchedQuery?.isEmpty == false) ? "set" : "unset")
                         + ".backquery." + (scene.lastBackDecisionHadQuery.map { $0 ? "set" : "unset" } ?? "none")
                         + ".restorecarried." + (scene.lastRestoreCarriedQuery.map { $0 ? "set" : "unset" } ?? "none")
-                        + ".postrestore." + (scene.lastPostRestoreHadQuery.map { $0 ? "set" : "unset" } ?? "none"))
+                        + ".postrestore." + (scene.lastPostRestoreHadQuery.map { $0 ? "set" : "unset" } ?? "none")
+                        + ".returnq." + (scene.lastRestoreCarriedReturnQuery.map { $0 ? "set" : "unset" } ?? "none"))
                 switch scene.phase {
                 case .loading:
                     ProgressView("Opening Archive…")
