@@ -1381,7 +1381,13 @@ public final class SqliteMessageStore: MessageStore {
 
     @discardableResult
     public func sweepExpired(limit: Int = 64) -> Int {
-        withDb { db in sweepExpiredNoLock(db: db, limit: limit) } ?? 0
+        // *** THE NOTIFY IS ISSUED HERE, AFTER `withDb` HATH RELEASED THE LOCK. *** *The body no longer dispatcheth
+        // it (see `sweepExpiredNoLock`), so the public road keeps the same observable behaviour while the dispatch
+        // is off the store's non-recursive lock -- which is the law every other call site in this file already
+        // honours.*
+        let retired = withDb { db in sweepExpiredNoLock(db: db, limit: limit) } ?? 0
+        if retired > 0 { notifyHeldSetChanged() }
+        return retired
     }
 
     /// THE SWEEP'S BODY, ON A HANDLE ALREADY HELD -- so it may be reached from the STARTUP path (which holdeth the
@@ -1471,7 +1477,18 @@ public final class SqliteMessageStore: MessageStore {
                 if deleted { retired += 1 }
             }
             _ = try? execStrict(db, "COMMIT")
-            if retired > 0 { notifyHeldSetChanged() }
+            // *** GS-INTEGRATION-001 / GS-STRESS-001: THE NOTIFY MOVES TO THE CALLER, *AFTER* THE LOCK. ***
+            //
+            // *MEASURED BY A `sample` OF A HUNG 10,000-CYCLE RUN: this line called `notifyHeldSetChanged()` WHILE
+            // `withDb` still held the store's NON-RECURSIVE `NSLock`, and the composition's own
+            // `LinkInfoSnapshotAuthority` observer re-enters the store -- so `withDb` -> `lock.lock()` on the SAME
+            // THREAD DEADLOCKED, with zero test cases executed for 2000 seconds.* **AND IT CONTRADICTED THIS FILE'S
+            // OWN STATED LAW, written at `notifyHeldSetChanged` itself: "dispatching AFTER THE COMMIT, OFF THE
+            // STORE'S LOCK, ONCE per registration, in order, and never reentrantly."** *The comment was right and
+            // the call site was wrong.*
+            //
+            // **THE CALLER NOW OWNS THE NOTIFY, AFTER `lock.unlock()`** -- so the dispatch is off the lock by
+            // construction, and the cadence path (which runneth INSIDE `withDb`) can no longer re-enter it.
             lastSweepReport += " retired=\(retired)"
             return retired
         }
@@ -3313,27 +3330,35 @@ public final class SqliteMessageStore: MessageStore {
     // MARK: - sqlite helpers
 
     private func withDb<T>(_ body: (OpaquePointer) -> T) -> T? {
-        lock.lock(); defer { lock.unlock() }
-        guard let db = handle else { return nil }
+        lock.lock()
+        guard let db = handle else { lock.unlock(); return nil }
         // GS-STORE-004 (rounds 316-317): MAINTENANCE AT THE FIRST USE OF ANY KIND -- the STARTUP sweep once, and
         // thereafter ON THE POLICY'S OWN CADENCE (`RetentionPolicy.checkpointCadenceMs`). The flag is set BEFORE the
         // sweep runneth, so a sweep that re-entered this entry point could not recurse; the sweep runneth ON THIS
         // HANDLE (`sweepExpiredNoLock`), so it taketh NO second lock.
         //
-        // WHY THE CADENCE LIVETH HERE AND NOT IN A TIMER: a store layer that owned a timer would be a store layer
-        // that owned a run loop -- and the finding asketh the sweep be connected to RUNTIME SCHEDULING, which this
-        // store's every use IS. The gate is the POLICY'S cadence constant, not a number invented here, so the store
-        // and the retention policy cannot drift apart about how often maintenance is due.
+        // *** AND THE SWEEP'S NOTIFY IS HOISTED OUT OF THE LOCK (GS-INTEGRATION-001 / GS-STRESS-001). *** *MEASURED
+        // BY `sample` ON A HUNG 10,000-CYCLE RUN: this branch runneth INSIDE `withDb`, i.e. WITH THE STORE'S
+        // NON-RECURSIVE `NSLock` HELD, and a retained-rows sweep used to call `notifyHeldSetChanged()` from there --
+        // so the composition's own `LinkInfoSnapshotAuthority` observer re-entered the store on the SAME THREAD and
+        // `lock.lock()` deadlocked. **THE FLAG BELOW CARRIETH THE DECISION OUT OF THE CRITICAL SECTION, WHERE THE
+        // NOTIFY BELONGETH -- the same "off the store's lock, never reentrantly" law every other call site in this
+        // file already honours.***
+        var retiredInMaintenance = 0
         if !startupMaintenanceDone {
             startupMaintenanceDone = true
-            _ = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
+            retiredInMaintenance = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
             lastSweepMonoMs = receiptTimeProvider().monoMs
         } else if let last = lastSweepMonoMs, let now = Optional(receiptTimeProvider().monoMs),
                   now - last >= Int64(RetentionPolicy.checkpointCadenceMs) {
-            _ = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
+            retiredInMaintenance = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
             lastSweepMonoMs = now
         }
-        return body(db)
+        let out = body(db)
+        lock.unlock()
+        // *** THE DISPATCH STANDETH HERE, OUTSIDE THE Lock AND AFTER THE COMMIT -- NEVER REENTRANTLY. ***
+        if retiredInMaintenance > 0 { notifyHeldSetChanged() }
+        return out
     }
 
     private func bindBlob(_ stmt: OpaquePointer?, _ index: Int32, _ data: Data) {

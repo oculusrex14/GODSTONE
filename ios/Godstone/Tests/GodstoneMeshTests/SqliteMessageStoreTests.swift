@@ -2076,4 +2076,79 @@ final class SqliteMessageStoreTests: XCTestCase {
                        "a tombstone past its OWN lifetime must be reaped -- `tombstoneMs` is a lifetime, not a motto")
         XCTAssertNil(s.tombstoneForTest(f.msgId), "and it must be gone from storage, not merely uncounted")
     }
+
+    /// *** GS-INTEGRATION-001 / GS-STRESS-001: THE STORE'S OWN CADENCE SWEEP MUST NOT DEADLOCK A RE-ENTERING OBSERVER. ***
+    ///
+    /// *FOUND BY `sample` ON A HUNG 10,000-CYCLE RUN, NOT BY READING: the stack stood on the MAIN THREAD inside
+    /// `MessageStore.sweepExpired` for 2000 seconds with ZERO executed test cases --*
+    /// `withDb` (holding the store's NON-RECURSIVE `NSLock`) -> the cadence branch -> `sweepExpiredNoLock` ->
+    /// `notifyHeldSetChanged()` -> the registered observer -> back into the store -> `withDb` -> `lock.lock()` on the
+    /// SAME THREAD.
+    ///
+    /// **AND IT WAS REACHABLE IN PRODUCTION, WHICH IS WHY THIS IS NOT A COURT ARTEFACT:** the composition's OWN
+    /// `LinkInfoSnapshotAuthority` registers exactly such an observer, so ANY store use after one cadence of
+    /// monotonic time entered the deadlock. *The file's own comment at `notifyHeldSetChanged` said the dispatch must
+    /// be "off the store's lock ... never reentrantly" -- the comment was right and the call site was wrong.*
+    ///
+    /// **HOW THIS ARM IS RUN WITHOUT RISKING A HUNG SUITE:** the deadlock is a self-deadlock on one lock by one
+    /// thread, so if the defect is present THE ARM ITSELF NEVER RETURNS. It is therefore run on a separate thread
+    /// with a bounded join; a timeout means the deadlock is BACK (or the repair regressed), and the arm FAILS rather
+    /// than hanging XCTest for ever. *The observer does exactly what production's does: it re-enters the store.*
+    func testGSINT001_theCadenceSweepDoesNotDeadlockAReenteringObserver() throws {
+        let s = open(maxBytes: 8 * 1024 * 1024)
+        var now: Int64 = 1_000_000
+        s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+
+        // *A row that will be SPENT once its lifetime is behind us, and a row that stays, so the sweep has work. A
+        // BULK frame is used because its canonical lifetime is the SHORTEST (1 hour), so the advance below is
+        // modest.*
+        let doomed = frame(0x31, .bulk, 48)
+        XCTAssertEqual(s.persist(doomed, receivedFrom: Data([7])), .heldNew)
+
+        // *** AN OBSERVER THAT RE-ENTERS THE STORE -- the composition's own shape. ***
+        // *It reads the store through a PUBLIC road, which is exactly what `LinkInfoSnapshotAuthority` does when it
+        // recomputes a snapshot after a held-set change.*
+        let reentered = Locked(0)
+        let lease = s.registerHeldSetObserver { [weak s] in
+            guard let s else { return }
+            reentered.withLock { $0 += 1 }
+            _ = s.allHeldMsgIds()          // re-enters `withDb` on the same thread
+        }
+        XCTAssertNotNil(lease, "the store must accept a real observer registration")
+
+        // *First use runneth the STARTUP sweep; then advance past BOTH the cadence and the bulk lifetime, so the
+        // NEXT use enters the cadence branch with a genuinely spent row to retire -- which is what used to notify
+        // while holding the lock and deadlock the re-entering observer.*
+        _ = s.allHeldMsgIds()
+        now += Int64(RetentionPolicy.checkpointCadenceMs) + 1
+        now += Int64(RetentionPolicy.maxHoldMs) + 1    // past every kind's lifetime, so the row is surely spent
+
+        // *** THE GUARDED ENTRY: a bounded join, so a regression FAILS rather than hanging the suite. ***
+        let done = DispatchSemaphore(value: 0)
+        let thread = Thread {
+            _ = s.allHeldMsgIds()          // enters the cadence branch, sweeps, and then notifies
+            done.signal()
+        }
+        thread.stackSize = 1 << 20
+        thread.start()
+        XCTAssertEqual(
+            .success, done.wait(timeout: .now() + 10),
+            "*** THE CADENCE SWEEP MUST NOT DEADLOCK A RE-ENTERING OBSERVER. *If this times out, the notify is back "
+                + "INSIDE the store's non-recursive lock -- the exact defect `sample` found on the 10,000-cycle run, "
+                + "reachable in production through `LinkInfoSnapshotAuthority`.* ***")
+        XCTAssertGreaterThan(
+            reentered.value, 0,
+            "*** AND THE OBSERVER MUST HAVE BEEN NOTIFIED -- a repair that simply stopped notifying would pass the "
+                + "liveness arm while breaking GS-STORE-005's dispatch law. Observed: \(reentered.value) ***")
+        if let lease { s.removeHeldSetObserver(lease) }
+    }
+
+    /// *A tiny lock box, so the re-entering observer's count is safe to read from the test.*
+    private final class Locked: @unchecked Sendable {
+        private let lock = NSLock()
+        private var storage: Int
+        init(_ v: Int) { storage = v }
+        func withLock(_ body: (inout Int) -> Void) { lock.lock(); body(&storage); lock.unlock() }
+        var value: Int { lock.lock(); defer { lock.unlock() }; return storage }
+    }
 }
