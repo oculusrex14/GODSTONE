@@ -27,23 +27,26 @@ final class LabMeshUITests: XCTestCase {
     /// reports a missing control, which is exactly the shape of a false alarm about a green build.** This helper
     /// looks in BOTH places, so it cannot be wrong about which container SwiftUI chose.*
     private func tab(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        // *** THE COLD START IS ABSORBED HERE, ONCE PER ARM, BECAUSE EVERY ARM REACHETH ITS FIRST CONTROL THROUGH
-        // THIS HELPER. ***
+        // *** A BOUNDED POLL ON THE IDENTIFIER IN **EITHER** CONTAINER, SO A COLD LAUNCH IS TOLERATED WITHOUT WAITING ON
+        // THE WRONG ELEMENT. ***
         //
-        // *MEASURED, HOSTED RUN `36295031420`: `testGSINT001ACancelledSosHoldDoesNotReachTheRuntime` FAILED "the SOS tab
-        // must exist" after its 20-second wait -- the FIRST assertion after `app.launch()`. **THE APP HAD NOT RENDERED
-        // ITS `TabView` YET: a contended runner's cold start exceedeth the per-control 20-second bound, and the FIRST
-        // control an arm reacheth payeth that cost alone.** *The same arm passeth locally (and in the local lane's own
-        // artifact) where the start is warm -- so this is the host's cold start, not a missing control.*
-        // **SO THE SETTLE MOVETH HERE, WHERE IT IS SHARED: the tab bar is waited for ONCE, with a cold-start bound,
-        // before the per-control wait -- so a slow launch no longer readeth as a MISSING CONTROL (the exact false
-        // signal this bundle's own comments name).** *`app.tabBars.firstMatch` is the container the lab's real
-        // `TabView` rendereth its items under (`viaTabBar` below), so waiting for IT is waiting for the app to stand.*
-        if !app.tabBars.firstMatch.exists && !app.buttons[identifier].exists {
-            _ = app.tabBars.firstMatch.waitForExistence(timeout: 45)
+        // *MEASURED, HOSTED RUN `36299487250`: `testGSINT001ACancelledSosHoldDoesNotReachTheRuntime` FAILED at "the SOS
+        // tab must exist" while ANOTHER ARM OF THE SAME RUN found `lab.tab.sos` in under a second -- so the control
+        // EXISTETH and the arm's own launch was simply slow to render it.* **THE OBVIOUS REPAIR -- wait on
+        // `app.tabBars.buttons[identifier]` -- WAS TRIED AND REGRESSED THE ARM LOCALLY, BECAUSE THAT CONTAINER IS NOT
+        // WHERE THIS CONTROL LIVETH: it BURNED THE WHOLE BOUND ON AN ELEMENT THAT NEVER ARISETH THERE BEFORE CONSULTING
+        // THE FALLBACK.** *So the poll watcheth BOTH containers TOGETHER (whichever ariseth first winneth) with ONE
+        // generous bound, which tolerates the cold start WITHOUT preferring a container that may be wrong.*
+        // **A genuinely-absent control still reddeneth -- the poll returneth the plain query after the bound -- so only
+        // the TIMING is absorbed.***
+        let deadline = Date().addingTimeInterval(45)
+        while Date() < deadline {
+            let viaTabBar = app.tabBars.buttons[identifier]
+            if viaTabBar.exists { return viaTabBar }
+            let plain = app.buttons[identifier]
+            if plain.exists { return plain }
+            usleep(150_000)
         }
-        let viaTabBar = app.tabBars.buttons[identifier]
-        if viaTabBar.exists { return viaTabBar }
         return app.buttons[identifier]
     }
 
