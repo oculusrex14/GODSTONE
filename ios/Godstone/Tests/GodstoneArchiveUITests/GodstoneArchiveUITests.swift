@@ -195,6 +195,21 @@ final class GodstoneArchiveUITests: XCTestCase {
     /// *`ArchiveDocumentReader` deliberately renders an app-owned `archive.back`. If that control is absent then the
     /// journey under test did not happen, and the arm MUST fail -- **NEVER reinterpret an unrelated first
     /// navigation-bar button as Back.***
+    /// *** TYPE A SEARCH PHRASE AND SUBMIT IT, WAITING FOR THE KEYBOARD SO THE TYPE CANNOT LAND ON A BARE SCREEN. ***
+    ///
+    /// *MEASURED, HOSTED RUN `36304303069`: `testGSA005ANonFirstSearchHitOpensItsOwnDocument` FAILED "Failed to
+    /// synthesize event: Neither element nor any descendant has keyboard focus" at its `field.typeText("bleeding\n")`
+    /// -- the tap had not yet GIVEN the field focus when the type was synthesised.* **THE THIRD DISTINCT UI ARM TO RED
+    /// THIS WAY ACROSS RUNS** (*the SOS tab, a reader `Back`, and now this field*), so it is a HOST FOCUS-TIMING class
+    /// rather than one arm's defect: **a tap's effect on focus is asynchronous, and a `typeText` immediately after it
+    /// can outrun the keyboard.** *So the helper TAPS, WAITS for the keyboard to stand, and only then types; the
+    /// phrase's trailing newline remaineth the Return key the search road requireth.*
+    private func submitSearch(_ field: XCUIElement, _ app: XCUIApplication, _ phrase: String = "bleeding") {
+        field.tap()
+        _ = app.keyboards.firstMatch.waitForExistence(timeout: 10)
+        field.typeText(phrase + "\n")
+    }
+
     private func readerBackControl(_ app: XCUIApplication) -> XCUIElement {
         app.buttons["archive.back"].firstMatch
     }
@@ -284,8 +299,7 @@ final class GodstoneArchiveUITests: XCTestCase {
         // *MEASURED: `typeText("bleeding")` alone left the scene in `.documents`, so the arm failed looking for
         // result rows that the app had never been asked to produce -- and that reads as a broken selector when the
         // truth is that the search was never submitted. The newline IS the Return key.*
-        field.tap()
-        field.typeText("bleeding\n")
+        submitSearch(field, app)
 
         // *** A POSITIVE WITNESS THAT THE SEARCH ACTUALLY COMPLETED, BEFORE ANYTHING IS OPENED. ***
         //
@@ -457,8 +471,7 @@ final class GodstoneArchiveUITests: XCTestCase {
         let app = try launchAndOpenArchive()
         let field = app.searchFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 20))
-        field.tap()
-        field.typeText("bleeding\n")
+        submitSearch(field, app)
 
         // *** THE SAME POSITIVE WITNESS THE SIBLING ARM NOW USETH: THE SEARCH SURFACE ITSELF. ***
         // *`archive.search.results` is rendered ONLY by `searchHits`, so this cannot be satisfied by the browse list
@@ -669,8 +682,7 @@ final class GodstoneArchiveUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 20), "*** THE ARCHIVE MUST STAND. ***")
 
         // (2) SEARCH.
-        field.tap()
-        field.typeText("bleeding\n")
+        submitSearch(field, app)
         let searchSurface = app.staticTexts["archive.search.results"]
         XCTAssertTrue(
             searchSurface.waitForExistence(timeout: 20),
