@@ -993,20 +993,32 @@ public final class RealTransportHostRig {
         for (_, n) in nodes where n.opened {
             n.runtime.meshNode.stop()
         }
-        // *** DRAIN THE DELIVERY QUEUE, OR A LATE HOP TOUCHETH A DEAD RIG. ***
+        // *** UNHOOK THE DELIVERY HANDLERS **FIRST**, THEN DRAIN -- A BARRIER ALONE IS NOT ENOUGH. ***
         //
         // *THE CRASH THIS CLOSES, MEASURED ON THE HOST (`swift test`, foundation lane): **`Fatal error: Attempted to
         // read an unowned reference but object 0x… was already deallocated`** -- SIGABRT -- which took the WHOLE test
-        // process down, truncated the suite at 557 tests, and left NO per-bundle total. The control readeth that as
-        // "the run died before its suites finished".*
+        // process down, truncated the suite at 557 tests, and left NO per-bundle total.*
+        //
         // **THE ROOT: `link.peripheral?.onWrite` and the responder's `onUpdate` DISPATCH their delivery onto
-        // `deliveryQueue`, and the queued work holds a `DeliveryRelay` whose `rig` is `unowned` (`:685`). Teardown
-        // stopPETH the nodes and REMOVETH them, but a dispatch already in flight runneth AFTER the rig's storage is
-        // freed -- and reading an unowned reference then ABORTETH.***
-        // *A `barrier` on the same serial queue waiteth for everything already dispatched, so it is the rig's OWN
-        // drain rather than a sleep: it cannot return while a queued delivery standeth, and nothing new is dispatched
-        // once the nodes are stopped. This is the same "quiesce before the storage goeth" shape the transport's own
-        // teardown useth.*
+        // `deliveryQueue`, and the queued work holds a `DeliveryRelay` whose `rig` is `unowned` (`:685`). If a
+        // dispatch runneth AFTER the rig's storage is freed, reading that unowned reference ABORTETH.***
+        //
+        // *** AND THE DRAIN ALONE WAS NOT ENOUGH, WHICH IS THE SUBTLETY: THE DELIVERY IS MULTI-HOP. *** *A delivery'
+        // reverse leg reacheth `processPeripheralIsReadyToUpdateSubscribers` -> `updateValue` -> the `onUpdate`
+        // closure, which ENQUEUETH THE NEXT HOP **DURING** THE DRAIN. A `barrier` waiteth only for work already
+        // dispatched, so that follow-up hop landeth AFTER it returneth -- and would still read the freed rig.*
+        // **SO THE HANDLERS ARE UNHOOKED BEFORE THE DRAIN: `onWrite`/`onUpdate` are set to nil, so NO new hop can be
+        // posted during teardown, and THEN the barrier waiteth for everything already in flight.** *Two halves of one
+        // guarantee: nothing new entereth, and everything inside is finished, before the storage goeth.*
+        //
+        // *`deliveryQueue.sync(flags: .barrier)` is the rig's OWN drain (it cannot return while a queued delivery
+        // standeth), not a sleep -- the same "quiesce before the storage goeth" shape the transport's teardown useth.*
+        for i in links.indices {
+            links[i].peripheral?.onWrite = nil
+        }
+        for (_, n) in nodes {
+            n.factory.lastPeripheralManager?.onUpdate = nil
+        }
         deliveryQueue.sync(flags: .barrier) { }
         for url in nodes.values.flatMap({ $0.urls }) { try? FileManager.default.removeItem(at: url) }
         try? FileManager.default.removeItem(at: tempRoot)
