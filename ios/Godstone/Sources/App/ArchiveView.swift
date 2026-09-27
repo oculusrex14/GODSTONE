@@ -255,7 +255,20 @@ private struct ArchiveBrowser: View {
                     }
                 }
                 if submittedQuery.isEmpty {
-                    await scene.loadDocuments()
+                    // *** AND A RE-ENTRY MUST NOT CLOBBER A RESTORED/MADE IDENTITY. ***
+                    //
+                    // *MEASURED, HOSTED, WITH THE FULL WITNESS: `restorecarried.set postrestore.set backquery.set
+                    // returnq.set` -- the query survived EVERY point -- and the end state was a READY LIST with the
+                    // query STILL SET, which is EXACTLY what `loadDocuments()` produceth.* **SO A BROWSE RAN **AFTER**
+                    // `back()` had returned to the search.** *The card's own order clause is the law: "invoke the
+                    // actual restore path BEFORE the first browse overwrites it" -- and a re-entry is still a first
+                    // browse.* **The guard is the SCENE'S OWN IDENTITY, not a timing one: browse ONLY when the scene
+                    // carrieth NEITHER a search identity NOR an open document.** *A clean launch carrieth neither and
+                    // browses as before; a restored search, a restored document, or a search `back()` just returned to
+                    // carrieth one and is LEFT ALONE.*
+                    if scene.searchedQuery == nil && scene.openedDocumentId == nil {
+                        await scene.loadDocuments()
+                    }
                 } else {
                     scene.onQueryChanged(submittedQuery)
                     await scene.search()
