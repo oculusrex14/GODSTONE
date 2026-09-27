@@ -654,18 +654,36 @@ public final class RealTransportHostRig {
                                   iHandle: iHandle, rHandle: rHandle, rPM: rPM,
                                   fabric: fabric, rig: self)
         let queue = deliveryQueue
-        link.peripheral?.onWrite = { bytes, uuid in
+        // *** BOTH CLOSURES (AND THE HOPS THEY POST) CAPTURE `self` **STRONGLY**, WHICH IS THE ACTUAL LIFETIME
+        // GUARANTEE. ***
+        //
+        // *THE CRASH THIS CLOSES, MEASURED ON THE HOST: `Fatal error: Attempted to read an unowned reference but
+        // object 0x… was already deallocated` -- SIGABRT -- truncating the suite at 557 tests.* **THE ROOT: the
+        // delivery is asynchronous and MULTI-HOP, and each `DeliveryRelay` holdeth the rig `unowned` (`:685`), so a
+        // hop that runneth after the rig's storage is freed ABORTETH.**
+        //
+        // *** A RE-ENTRANT GATE (a flag checked inside the hop) CANNOT FIX THIS BY ITSELF, AND THE `unowned` RELAY IS
+        // WHY: reading the flag would first have to read `relay.rig` -- THE VERY UNOWNED REFERENCE THAT IS DEAD. And
+        // a barrier alone cannot help either, because a hop reacheth `updateValue` -> the next closure and ENQUEUETH
+        // THE FOLLOW-UP DURING the drain.***
+        //
+        // **SO THE RIG IS RETAINED BY ITS OWN DELIVERY CLOSURES: every closure, and every hop it posts, carrieth
+        // `self` strongly, so the `unowned rig` can NEVER dangle -- the rig liveth precisely as long as a hop could
+        // still reference it.** *The cycle this would otherwise create is broken by `tearDown`, which nil-eth the
+        // handlers and clear-eth `nodes`/`links` -- after which the queued blocks (each holding `self`) run, release,
+        // and the rig is freed. NO LEAK, NO CRASH: the lifetime is exactly right rather than a flag guessed in time.*
+        link.peripheral?.onWrite = { [self] bytes, uuid in
             // *The RECORD is taken synchronously -- the egress gate readeth it the moment the sender returns, and an
             // asynchronous record would make "the bytes left the node" a claim about a later queue hop rather than
             // about the send.*
             fabric.record(from: relay.aLabel, to: relay.bLabel, bytes: bytes,
                           characteristic: uuid == BleTransport.linkInfoCharacteristicUuid ? "linkInfo" : "inbox")
-            queue.async { relay.deliverInitiatorToResponder(bytes: bytes, uuid: uuid) }
+            queue.async { [self] in relay.deliverInitiatorToResponder(bytes: bytes, uuid: uuid) }
         }
-        responder.factory.lastPeripheralManager?.onUpdate = { bytes, _, uuid in
+        responder.factory.lastPeripheralManager?.onUpdate = { [self] bytes, _, uuid in
             // *The onUpdate closure is called DURING the responder's own send; recording here as well would be a
             // second record for one write, so the inbound leg records inside the relay only.*
-            queue.async { relay.deliverResponderToInitiator(bytes: bytes, uuid: uuid) }
+            queue.async { [self] in relay.deliverResponderToInitiator(bytes: bytes, uuid: uuid) }
         }
         _ = iPM
     }
