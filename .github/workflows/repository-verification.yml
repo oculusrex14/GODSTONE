@@ -650,7 +650,16 @@ jobs:
     #
     # *45 minutes is ~2x the measured worst case for this job (foundation lane ~8 min + UI lane ~20 min + the archive
     # builds). A run that exceedeth it is wedged, not working.*
-    timeout-minutes: 45
+    #
+    # *** CORRECTED TO 60: THE 45-MINUTE BOUND WAS MEASURED WHEN A RED FOUNDATION ARM ABORTED THE JOB EARLY AND
+    # SKIPPED THE UI LANE ENTIRELY (`if: success()`), SO THE WORST CASE WAS ARTIFICIALLY SHORT.*** *MEASURED SINCE
+    # `run_ios_lane.sh` was fixed to always record its provenance: the foundation lane now always runs to completion
+    # AND the UI lane always runs, so a legitimate sequence is ~34 min (run 36280264123) and can reach ~45 min when
+    # the UI lane's bounded boot wait is spent -- **TWO runs were then CANCELLED at the old 45-minute wall with the
+    # simctl orphan terminated mid-lane, which is a non-answer: the lanes never reported.*** **60 minute remaineth a
+    # BOUND (a genuine wedge still endeth in a cancelled run in an hour, not in six), and it is set by the MEASURED
+    # legitimate duration rather than by the old abbreviated one.**
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
