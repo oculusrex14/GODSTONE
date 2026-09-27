@@ -1192,6 +1192,48 @@ final class GsIntegration001RealTransportTests: XCTestCase {
                 + "the IDENTICAL frame -- so this refusal is `linkLayerAdmissible`, not the decoder. ***")
     }
 
+    /// *** THE RIG MUST **DEALLOCATE** AFTER `tearDown`, EVEN WITH A REAL PENDING DELIVERY -- SO THE
+    /// `unowned`-AFTER-DEALLOC CRASH IS NOT TRADED FOR A LEAK. ***
+    ///
+    /// *THE CRASH THIS ACCOMPANIETH, MEASURED ON THE HOST: `Fatal error: Attempted to read an unowned reference but
+    /// object 0x… was already deallocated` -- SIGABRT -- which took the whole test process down and truncated the
+    /// suite at 557 tests. The repair maketh the delivery closures (and the hops they post) RETAIN the rig
+    /// (`[self]`), so the `unowned rig` in `DeliveryRelay` can never dangle.*
+    ///
+    /// **BUT A STRONG CAPTURE CAN TRADE A CRASH FOR A LEAK, AND NO OTHER GATE IN THIS REPOSITORY CHECKS THE SWIFT
+    /// OWNERSHIP GRAPH -- `check_lane_results.py` counteth tests and failures, and `board1.py` bindeth digests and
+    /// status. So the release is ASSERTED HERE, on the real rig, with a REAL DELIVERY.** *A bare rig deallocateth
+    /// trivially and would prove nothing: the retain cycle, if there were one, existeth ONLY once a delivery closure
+    /// holdeth the rig. So this arm WIRES A LINK, SENDS A REAL FRAME (posting a hop that carrieth the capture), and
+    /// only then asserteth that the rig is gone once the queue draint.*
+    ///
+    /// *THE WEAK REFERENCE IS HELD OUTSIDE THE INNER SCOPE, so the strong reference really is released when the scope
+    /// exiteth, and the drain is BOUNDED (`waitUntil`), not a sleep dressed as a wait.*
+    func testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery() async throws {
+        weak var weakRig: RealTransportHostRig?
+        do {
+            let r = RealTransportHostRig()
+            weakRig = r
+            try r.makeNode(label: "alice", seedByte: 0x31, staticPrivByte: 0x32)
+            try r.makeNode(label: "bob", seedByte: 0x41, staticPrivByte: 0x42)
+            try r.link("alice", "bob")
+            // *** A REAL DELIVERY, SO A `[self]`-CARRYING HOP IS ACTUALLY POSTED. ***
+            _ = try await r.sendDirect(from: "alice", to: "bob", plaintext: Data("the release arm".utf8))
+            r.tearDown()
+        }
+        // *A BOUNDED DRAIN WAIT: the `[self]`-carrying hops release their reference AS THE QUEUE RUNS, so the
+        // assertion is made after the queue may have drained -- not immediately, and not on a sleep (a bounded poll
+        // that returneth the moment the release happeneth).*
+        let deadline = Date().addingTimeInterval(2.0)
+        while weakRig != nil && Date() < deadline { usleep(20_000) }
+        let released = weakRig == nil
+        XCTAssertTrue(
+            released,
+            "*** THE RIG MUST BE RELEASED after tearDown -- a strong `[self]` capture that outlived it would be a "
+                + "LEAK, which is the crash traded for a worse defect. If this reds, the delivery closures (or the "
+                + "hops they post) still hold the rig, and the release must be repaired at that capture. ***")
+    }
+
     /// *** `testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction`. ***
     ///
     /// *The seam that maketh the whole rig possible, witnessed rather than assumed: `installFreshContextLocked`
