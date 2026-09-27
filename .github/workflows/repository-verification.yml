@@ -648,18 +648,16 @@ jobs:
     # the SAME code.** *So this timeout is not the fix for that incident -- it is the durable bound so that ANY
     # future wedge endeth in a red step in fifteen minutes rather than in a cancelled run nobody can read.*
     #
-    # *45 minutes is ~2x the measured worst case for this job (foundation lane ~8 min + UI lane ~20 min + the archive
-    # builds). A run that exceedeth it is wedged, not working.*
+    # *** SET BY THE MEASURED LEGITIMATE WORST CASE, NOT BY A GUESS: 90 MINUTES. ***
     #
-    # *** CORRECTED TO 60: THE 45-MINUTE BOUND WAS MEASURED WHEN A RED FOUNDATION ARM ABORTED THE JOB EARLY AND
-    # SKIPPED THE UI LANE ENTIRELY (`if: success()`), SO THE WORST CASE WAS ARTIFICIALLY SHORT.*** *MEASURED SINCE
-    # `run_ios_lane.sh` was fixed to always record its provenance: the foundation lane now always runs to completion
-    # AND the UI lane always runs, so a legitimate sequence is ~34 min (run 36280264123) and can reach ~45 min when
-    # the UI lane's bounded boot wait is spent -- **TWO runs were then CANCELLED at the old 45-minute wall with the
-    # simctl orphan terminated mid-lane, which is a non-answer: the lanes never reported.*** **60 minute remaineth a
-    # BOUND (a genuine wedge still endeth in a cancelled run in an hour, not in six), and it is set by the MEASURED
-    # legitimate duration rather than by the old abbreviated one.**
-    timeout-minutes: 60
+    # *MEASURED, RUN `36292057119`: the FOUNDATION lane took 723s (12 min) and the UI LANE was still WORKING at 2877s
+    # (48 min) when the 60-minute wall cut it -- **the clean path is ~12 + ~50 min on a slow runner, because the UI
+    # lane's `_bounded_boot_wait` may spend most of its own 900s bound and each of the two UI schemes then needs its
+    # build and run.*** **THE 45-MINUTE NUMBER IT REPLACED WAS MEASURED WHILE A RED FOUNDATION ARM ABORTED THE JOB
+    # EARLY AND SKIPPED THE ENTIRE UI LANE (`if: success()`), SO IT WAS THE WORST CASE OF AN INCOMPLETE RUN.***
+    # *Since `run_ios_lane.sh` was corrected to always record its provenance, BOTH lanes always run, and a genuine
+    # wedge still endeth in a cancelled run -- 90 minutes BOUNDETH a hang without cutting a legitimate sequence.*
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
