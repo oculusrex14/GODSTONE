@@ -993,6 +993,21 @@ public final class RealTransportHostRig {
         for (_, n) in nodes where n.opened {
             n.runtime.meshNode.stop()
         }
+        // *** DRAIN THE DELIVERY QUEUE, OR A LATE HOP TOUCHETH A DEAD RIG. ***
+        //
+        // *THE CRASH THIS CLOSES, MEASURED ON THE HOST (`swift test`, foundation lane): **`Fatal error: Attempted to
+        // read an unowned reference but object 0x… was already deallocated`** -- SIGABRT -- which took the WHOLE test
+        // process down, truncated the suite at 557 tests, and left NO per-bundle total. The control readeth that as
+        // "the run died before its suites finished".*
+        // **THE ROOT: `link.peripheral?.onWrite` and the responder's `onUpdate` DISPATCH their delivery onto
+        // `deliveryQueue`, and the queued work holds a `DeliveryRelay` whose `rig` is `unowned` (`:685`). Teardown
+        // stopPETH the nodes and REMOVETH them, but a dispatch already in flight runneth AFTER the rig's storage is
+        // freed -- and reading an unowned reference then ABORTETH.***
+        // *A `barrier` on the same serial queue waiteth for everything already dispatched, so it is the rig's OWN
+        // drain rather than a sleep: it cannot return while a queued delivery standeth, and nothing new is dispatched
+        // once the nodes are stopped. This is the same "quiesce before the storage goeth" shape the transport's own
+        // teardown useth.*
+        deliveryQueue.sync(flags: .barrier) { }
         for url in nodes.values.flatMap({ $0.urls }) { try? FileManager.default.removeItem(at: url) }
         try? FileManager.default.removeItem(at: tempRoot)
         nodes.removeAll()
