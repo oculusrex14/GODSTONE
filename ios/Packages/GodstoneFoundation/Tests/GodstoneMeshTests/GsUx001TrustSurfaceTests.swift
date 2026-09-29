@@ -458,6 +458,66 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
                        "the rendered readout must carry the measured bound, counted in octets")
     }
 
+    /// *** GS-UX-001 `rendered-controls` step 2: THE BOUNDARY ITSELF -- cap-1, cap AND cap+1 OCTETS, PLUS A MULTIBYTE
+    /// GRAPHEME STRADDLING THE EDGE. ***
+    ///
+    /// *THE CARD'S CLAUSE NAMED THE COMPOSE BOUND BUT THE PRIOR ARM PROBED ONLY ONE OVERFLOW.* **This arm walketh the
+    /// three octet lengths the plan names, and the STRADDLING case is the one that discriminates a grapheme-safe
+    /// truncation from a byte-slicing one: a body whose LAST grapheme begins at cap-1 and would END past cap must be
+    /// dropped WHOLE (the retained bytes stay ≤ cap), never split into invalid UTF-8.** *And the readout's own count
+    /// must equal the RETAINED bytes, so a readout measuring the INPUT would redden.*
+    func test05bTheComposeBoundaryIsExactAtCapMinusOneCapAndCapPlusOne() throws {
+        let cap = LabRuntime.maxComposeBodyOctets
+        // *The readout is an INSTANCE verb on the lab (it renders `N/max octets`), so the octet-count equality is
+        // asserted through `composeOctetsReadout` on a composed handle rather than by naming a free function.*
+        let lab = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x47)
+        func readout(_ s: String) -> String { lab.composeOctetsReadout(s) }
+
+        // (1) CAP-1: returned untouched, and the readout names cap-1.
+        let atMinusOne = String(repeating: "a", count: cap - 1)
+        XCTAssertEqual(LabRuntime.truncateToComposeBound(atMinusOne), atMinusOne,
+                       "a body one octet under the bound must survive byte-for-byte")
+        XCTAssertEqual(readout(atMinusOne), "\(cap - 1)/\(cap) octets")
+
+        // (2) CAP: exactly at the bound, still untouched.
+        let atCap = String(repeating: "a", count: cap)
+        XCTAssertEqual(LabRuntime.truncateToComposeBound(atCap), atCap,
+                       "a body exactly AT the bound must survive byte-for-byte")
+        XCTAssertEqual(readout(atCap), "\(cap)/\(cap) octets")
+
+        // (3) CAP+1: truncated to exactly cap, and the readout names cap.
+        let atPlusOne = String(repeating: "a", count: cap + 1)
+        let truncated = LabRuntime.truncateToComposeBound(atPlusOne)
+        XCTAssertEqual(truncated.utf8.count, cap,
+                       "a body one octet OVER must be truncated to exactly the bound")
+        XCTAssertEqual(readout(truncated), "\(cap)/\(cap) octets",
+                       "*** THE READOUT MUST COUNT THE **RETAINED** BYTES, NOT THE INPUT'S: a readout over the input " +
+                           "would claim more than the bound while the buffer held less. ***")
+
+        // (4) *** A MULTIBYTE GRAPHEME STRADDLING THE BOUNDARY: it must be dropped WHOLE, never split. ***
+        // *`⛵️` is one extended grapheme cluster and SEVERAL octets (U+26F5 + U+FE0F), so placing it at cap-1 means it
+        // would END past cap. A byte-slicing truncation would keep a PARTIAL cluster -- invalid UTF-8 -- while a
+        // grapheme-safe one drops it and stays within the bound.*
+        let straddler = String(repeating: "a", count: cap - 1) + "⛵️"
+        let safe = LabRuntime.truncateToComposeBound(straddler)
+        XCTAssertLessThanOrEqual(
+            safe.utf8.count, cap,
+            "*** THE RETAINED BYTES MUST NEVER EXCEED THE BOUND. Observed \(safe.utf8.count) of \(cap). ***")
+        XCTAssertFalse(safe.contains("⛵️"),
+                       "*** THE STRADDLING GRAPHEME MUST BE DROPPED WHOLE -- a kept partial cluster would be invalid " +
+                           "UTF-8 the authority would refuse. ***")
+        // *AND THE RESULT IS VALID UTF-8 -- which a split cluster would NOT be.*
+        XCTAssertNotNil(String(data: Data(safe.utf8), encoding: .utf8),
+                        "and the retained prefix must decode as UTF-8")
+        // *** THE DISCRIMINATOR: A STRADDLER THAT FITS ENTIRELY IS KEPT WHOLE. ***
+        // *Without this, a truncation that dropped EVERY multibyte tail would pass the split-check while mangling every
+        // emoji body -- the opposite defect.*
+        let fitting = String(repeating: "a", count: cap - 8) + "⛵️"
+        XCTAssertEqual(LabRuntime.truncateToComposeBound(fitting), fitting,
+                       "*** A MULTIBYTE GRAPHEME THAT FITS ENTIRELY MUST SURVIVE -- dropping it would be the opposite " +
+                           "defect from splitting it. ***")
+    }
+
     // -------------------------------------------------------------------------
     // 6. The durable Send's intent SURVIVES the runtime that authored it
     // -------------------------------------------------------------------------
