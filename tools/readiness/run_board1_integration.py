@@ -299,6 +299,20 @@ class Fifo:
 
     def __init__(self, path: Path):
         self.path = path
+        # *** A REUSED PIPE NAME IS REPLACED, NOT REFUSED. ***
+        #
+        # *THE DEFECT THIS CLOSES, MEASURED: the `replay` control's PHASE A re-driveth the honest direction, which
+        # relauncheth workers under the SAME names ("swift-honest"/"android-honest") in the SAME runtime dir -- and
+        # `close()` closeth the descriptor but LEAVETH THE NODE, so a bare `os.mkfifo` raised `FileExistsError` and
+        # the replay control could never run.* **A previous phase's pipe is closed by the time its name is reused
+        # (each `run_direction` closeth its workers in a `finally`), so the stale node is dead and replacing it is
+        # the correct act rather than a hazard.** *`lexists` rather than `exists`: a dangling symlink at the path is
+        # still something `mkfifo` would refuse.*
+        if os.path.lexists(path):
+            try:
+                os.unlink(path)
+            except FileNotFoundError:
+                pass
         os.mkfifo(path)
         self.fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
         self._lock = threading.Lock()
@@ -958,7 +972,20 @@ class Runner:
         """
         self.log(f"--- direction {direction} control={control} ---")
         ios_is_sender = direction == IOS_TO_ANDROID
-        estate = self.fresh_estate(f"{direction.replace('->', '_')}-{control}")
+        # *** THE ESTATE IS NAMED PER INVOCATION, NOT PER (direction, control). ***
+        #
+        # *THE DEFECT THIS CLOSES, MEASURED: the `replay` control's PHASE A re-driveth the honest direction
+        # (`run_replay` -> `run_direction(direction, "honest")`), and the name `estate-ios_android-honest` had
+        # ALREADY been used by the honest control's own run -- so the re-driven receiver reopened a store that
+        # still held the FIRST run's durable row. Its `refreshReports` then never re-emitted `observe` (the row
+        # predated the seat, so the row token never changed), and the coordinator read the STALE row: measured as
+        # `THE RECIPIENT'S ROW NAMES A DIFFERENT MESSAGE (ef806bc4… vs 7b9974fa…)`, where the sender had just
+        # authored 7b9974fa and the store answered a previous message's id.* **A phase that re-runs a control must
+        # not inherit that control's estate, or the control's own store answereth for a session it never ran.** *So
+        # every invocation carrieth its own suffix; a re-run getteth a fresh estate by construction rather than by
+        # the caller remembering to differ the name.*
+        invocation = f"{control}-{self.run_id}"
+        estate = self.fresh_estate(f"{direction.replace('->', '_')}-{invocation}")
         ios_estate = estate / "ios"
         android_estate = estate / "android"
         ios_estate.mkdir(parents=True, exist_ok=True)
