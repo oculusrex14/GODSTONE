@@ -93,14 +93,36 @@ public final class LabRuntime: @unchecked Sendable {
     /// it: **A CALL TO A MEMBER THAT IS NOT THERE IS A COMPILE ERROR, NOT A CAPABILITY.**)
     public var hasDurableRoad: Bool { true }
 
+    /// *** THE RETAINED ON-DISK AUTHORITY, ONE STORE PER NODE LABEL -- EMPTY WHEN NO ESTATE ROOT WAS SUPPLIED. ***
+    private let durableStores: [String: SqliteMessageStore]
+
     private init(harness: ComposedRuntimeHarness, labels: [String], trust: MeshTrustFacade,
-                 trustRepository: PeerIdentityRepository, nodeSigningSeeds: [String: Data]) {
+                 trustRepository: PeerIdentityRepository, nodeSigningSeeds: [String: Data],
+                 durableStores: [String: SqliteMessageStore] = [:]) {
         self.harness = harness
         self.labels = labels
         self.trust = trust
         self.trustRepository = trustRepository
         self.nodeSigningSeeds = nodeSigningSeeds
+        self.durableStores = durableStores
     }
+
+    /// *** THE DURABLE AUTHORITY'S OWN ROW FOR ONE MESSAGE -- the witness a rendered string is not. ***
+    /// *Nil when the lab carrieth no estate root, so an arm can SAY which road it measured.*
+    public func durableSosState(author: String, msgId: Data) -> DeliveryState? {
+        guard let store = durableStores[author] else { return nil }
+        guard let row = try? store.readDelivery(msgId) else { return nil }
+        return DeliveryState.fromCode(row.state)
+    }
+
+    /// *** THE HELD FRAMES THE DURABLE AUTHORITY CARRYETH. *** *A cancel must leave NO held frame, or a relaunch
+    /// would render a live call; an arm asserteth the FRAME, not merely a row describing it.*
+    public func durableSosHeldMsgIds(author: String) -> [Data] {
+        durableStores[author]?.allHeldMsgIds() ?? []
+    }
+
+    /// Whether this handle is bound to a retained on-disk estate at all.
+    public var hasDurableEstate: Bool { !durableStores.isEmpty }
     /// The honest readiness statement. It carrieth no parameter, so no caller can
     /// argue it into saying true.
     public static func readinessStatement() -> LabReadiness {
@@ -110,8 +132,17 @@ public final class LabRuntime: @unchecked Sendable {
 
     /// Compose `labels.count` real peers and link them in a chain, so a message
     /// from the first to the last travelleth through a real relay.
+    /// *** `estateRoot` GIVETH THE LAB'S AUTHOR NODE A RETAINED ON-DISK AUTHORITY. ***
+    ///
+    /// *THE DEFECT THIS CLOSES: the lab composed every node over IN-MEMORY stores, so the SOS authoring row died with
+    /// the process and `sosStateNames()` fell back to a DISPLAY REGISTER -- "a label that claims a rung it never
+    /// read".* **With a root, the AUTHOR's node is built over a REAL `SqliteMessageStore` under it (one file per node
+    /// label, so a reopen over the same root reacheth the same bytes), and `sosStateNames` reads the STORE ROW.** *The
+    /// default nil leaves every existing lab arm byte-identical, so the in-memory composition stands for the courts
+    /// that want it.*
     public static func compose(labels: [String] = ["A", "R", "B"],
-                               seedByte: UInt8? = nil) throws -> LabRuntime {
+                               seedByte: UInt8? = nil,
+                               estateRoot: URL? = nil) throws -> LabRuntime {
         guard labels.count >= 2 else {
             throw LabRuntimeError(reason: "a lab runtime needs at least two peers")
         }
@@ -120,6 +151,11 @@ public final class LabRuntime: @unchecked Sendable {
         }
         let clock = FixedHostClock()
         let harness = ComposedRuntimeHarness(clock: clock, link: LinkFacade(clock: clock))
+        // *** THE RETAINED ESTATE: one durable store per label, under the caller's root. ***
+        if let estateRoot {
+            try FileManager.default.createDirectory(at: estateRoot, withIntermediateDirectories: true)
+        }
+        var durableStores: [String: SqliteMessageStore] = [:]
         var next = seedByte ?? 0x11
         // *** AND THE SIGNING SEED PER NODE IS REMEMBERED, SO A SEEDED ROTATION CAN CARRY THE SAME SIGNING KEY. ***
         //
@@ -129,7 +165,15 @@ public final class LabRuntime: @unchecked Sendable {
         var seeds: [String: Data] = [:]
         for label in labels {
             seeds[label] = Data((0..<32).map { i -> UInt8 in UInt8((Int(next) + i) & 0xFF) })
-            _ = try harness.addNode(label, seedByte: next)
+            // *THE FILE NAME CARRIETH THE LABEL AND THE SEED BYTE, so a reopen over the same root minteth the SAME
+            // estate for the same node rather than a second, empty one.*
+            var durable: SqliteMessageStore? = nil
+            if let estateRoot {
+                let url = estateRoot.appendingPathComponent("lab_\(label)_\(next).db")
+                durable = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+                durableStores[label] = durable
+            }
+            _ = try harness.addNode(label, seedByte: next, durableStore: durable)
             next = next &+ 0x10
         }
         for i in 0..<(labels.count - 1) {
@@ -205,7 +249,8 @@ public final class LabRuntime: @unchecked Sendable {
             wipeHandler: { [weak harness] in harness?.beginWipe() }
         )
         return LabRuntime(harness: harness, labels: labels, trust: trustFacade,
-                          trustRepository: trustRepo, nodeSigningSeeds: seeds)
+                          trustRepository: trustRepo, nodeSigningSeeds: seeds,
+                          durableStores: durableStores)
     }
 
     /// *** GS-UX-001 `rendered-controls` law 3: SEED A ROTATION THAT ARRIVES *AFTER* THE SCREEN LOOKED. ***

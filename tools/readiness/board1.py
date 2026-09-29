@@ -19,6 +19,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import re
 import os
 import subprocess
 import sys
@@ -59,23 +60,40 @@ CLOSURE = ROOT / "docs" / "production-readiness" / "BOARD1_CLOSURE.json"
 LEDGER = ROOT / "docs" / "remediation" / "REMEDIATION_STATE.json"
 
 
-def _run(argv: list[str], timeout: int = 3600) -> tuple[int, str]:
-    """Run one gate from the REPOSITORY ROOT, returning `(rc, tail)`.
+def _run(argv: list[str], timeout: int = 3600) -> tuple[int, str, str]:
+    """Run one gate from the REPOSITORY ROOT, returning `(rc, tail, full_output)`.
 
-    *`capture_output` is used so the verdict is parsed rather than merely printed; the tail is returned so a refusal
-    is DIAGNOSABLE from the caller's own output, which is the lesson the lane checker already paid for.*
+    *`capture_output` is used so the verdict is parsed rather than merely printed; the TAIL is returned for the
+    concise terminal summary and the FULL output for the retained artifact, which is the lesson the lane checker
+    already paid for.*
     """
-    proc = subprocess.run(argv, cwd=str(ROOT), capture_output=True, text=True, timeout=timeout)
-    tail = ((proc.stdout or "") + (proc.stderr or "")).strip().splitlines()
-    return proc.returncode, "\n".join(tail[-12:])
+    try:
+        proc = subprocess.run(argv, cwd=str(ROOT), capture_output=True, text=True, timeout=timeout)
+        rc, blob = proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+    except subprocess.TimeoutExpired as exc:
+        # *** A HUNG GATE IS A FAILURE WITH ITS PARTIAL OUTPUT, NOT A LOST GATE. ***
+        # *The default handler would propagate and take the whole verdict with it, leaving no artifact for the gate
+        # that hung -- which is exactly the shape a run with no verdict wears.*
+        rc = 124
+        partial = exc.stdout or ""
+        if isinstance(partial, bytes):
+            partial = partial.decode("utf-8", "replace")
+        blob = f"(the gate did not settle inside {timeout}s)\n{partial}"
+    return rc, "\n".join(blob.strip().splitlines()[-12:]), blob
 
 
-def verify(*, only: list[str] | None = None) -> int:
+def verify(*, only: list[str] | None = None, artifact_dir: Path | None = None) -> int:
     """*** RUN THE ORDERED GATE SET AND PRINT ONE VERDICT. ***
 
     *A subset is allowed (`--only`), but the verdict then SAYETH it judged a subset -- so a partial run can never be
     quoted as the whole.* **Every failing gate is named WITH ITS OWN OUTPUT TAIL**, because a bare "one gate failed"
     would send the next reader hunting.
+
+    *** AND EVERY GATE'S COMPLETE OUTPUT IS RETAINED, NOT ONLY THE LAST TWELVE LINES. *** *`board1._run` used to keep
+    twelve lines and print them only on failure, so a PASSING gate's real evidence was discarded -- and the twelve lines
+    of a FAILING one were the only artifact.* **A reader who must reconcile a verdict against the gate's own output
+    needs the whole thing, so each gate writeth `<dir>/<slug>.log` with its exit status and full streams.**
+    *The concise terminal summary is unchanged.*
     """
     selected = [(lbl, argv) for lbl, argv in GATES if not only or lbl in only]
     if only:
@@ -83,11 +101,18 @@ def verify(*, only: list[str] | None = None) -> int:
         if unknown:
             print(f"::error::unknown gate(s): {', '.join(unknown)}", file=sys.stderr)
             return 2
+    if artifact_dir is not None:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
     failed: list[tuple[str, str]] = []
     print(f"BOARD 1 verify: {len(selected)} gate(s)"
           + (" (A SUBSET -- this is not the whole set)" if only else ""))
     for label, argv in selected:
-        rc, tail = _run(argv)
+        rc, tail, blob = _run(argv)
+        if artifact_dir is not None:
+            slug = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")
+            (artifact_dir / f"{slug}.log").write_text(
+                f"# gate: {label}\n# argv: {' '.join(argv)}\n# rc: {rc}\n\n{blob}",
+                encoding="utf-8")
         print(f"  {'PASS' if rc == 0 else 'FAIL'}  {label}  (rc={rc})")
         if rc != 0:
             failed.append((label, tail))
@@ -300,6 +325,9 @@ def main(argv=None) -> int:
     p_verify = sub.add_parser("verify", help="run the ordered internal gate set and print one verdict")
     p_verify.add_argument("--only", action="append", default=None,
                           help="run only this gate (repeatable); the verdict then SAYETH it judged a subset")
+    p_verify.add_argument("--artifacts", default=None,
+                          help="verify: a directory to retain EVERY gate's full output (not only the twelve-line "
+                               "summary), one <slug>.log per gate")
     p_verify.add_argument("--attestation", default=None,
                           help="READ-ONLY: re-derive the claims of a written freeze attestation instead of running "
                                "the gates; never regenerates the timestamp or rewrites the file")
@@ -314,7 +342,8 @@ def main(argv=None) -> int:
     if args.command == "verify":
         if args.attestation:
             return validate_attestation(Path(args.attestation))
-        return verify(only=args.only)
+        return verify(only=args.only,
+                      artifact_dir=Path(args.artifacts) if args.artifacts else None)
     if args.command == "freeze":
         return freeze(args.run_id, args.tag, Path(args.attest_out), args.attempt)
     return 2

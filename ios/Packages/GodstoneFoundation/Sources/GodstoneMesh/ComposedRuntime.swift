@@ -339,7 +339,18 @@ public final class ComposedRuntimeHarness {
 
     /// Compose one node. The recipient key directory is per-node and explicit: a
     /// node resolveth only the keys it was actually trusted with.
-    func addNode(_ label: String, seedByte: UInt8? = nil) throws -> ComposedNode {
+    /// *** WHEN A DURABLE STORE IS SUPPLIED, THE NODE **IS** BUILT OVER IT. ***
+    ///
+    /// *THE DEFECT THIS CLOSES: `addNode` composed EVERY node over `InMemoryMessageStore`, so a distress call authored
+    /// by the node's own command landed in memory and died with the process -- which is why `LabRuntime.sosStateNames()`
+    /// fell back to a DISPLAY REGISTER, "a label that claims a rung it never read".* **A row that must survive a
+    /// process has to be authored by the node WHOSE STORE IS THE FILE** -- so the durable store is passed INTO the
+    /// node here, and the tracker and inbox are built over the SAME object. *`MeshNode.store` is the `MessageStore`
+    /// protocol, so the real `SqliteMessageStore` drops straight in, and `ComposedNode.store` keeps its own concrete
+    /// in-memory field for the checkpoint helper.* **With no durable store supplied the composition is byte-identical
+    /// to before, so every existing harness arm is unchanged.**
+    func addNode(_ label: String, seedByte: UInt8? = nil,
+                 durableStore: SqliteMessageStore? = nil) throws -> ComposedNode {
         let seed = Data((0..<32).map { i -> UInt8 in
             if let s = seedByte { return UInt8((Int(s) + i) & 0xFF) }
             return UInt8(Int.random(in: 0...255))
@@ -350,6 +361,8 @@ public final class ComposedRuntimeHarness {
         })
         let identity = try ComposedRuntimeHarness.makeIdentity(seed: seed, xSeed: xSeed)
         let store = InMemoryMessageStore()
+        // *** THE NODE'S OWN STORE: the durable one when supplied, else the in-memory composition. ***
+        let nodeStore: MessageStore = durableStore ?? store
         let ackStore = InMemoryAckStore()
         let keys = MutableKeyTable()
         // a node pinnaleth its OWN authentic signing key first: the inbox
@@ -357,9 +370,12 @@ public final class ComposedRuntimeHarness {
         // key refuseth to issue one at all (the census saith acksRefusedKey)
         keys.put(identity.nodeId, identity.signingPublicKey)
         let authenticator = Ed25519AckAuthenticator(resolver: keys)
-        let repo = ComposedDeliveryRepository(store)
+        // *The tracker's repository followeth the STORE: the durable road needs the real SQL repository (whose CAS
+        // predicates live in SQL), and the in-memory road keeps the composition's own.*
+        let repo: DeliveryRepository = durableStore.map { SqliteDeliveryRepository($0) }
+            ?? ComposedDeliveryRepository(store)
         let tracker = DeliveryTracker(repo: repo, authenticator: authenticator)
-        let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker,
+        let node = MeshNode(identity: identity, store: nodeStore, deliveryTracker: tracker,
                             sessions: SessionManager(identity: identity,
                                                      trustAuthority: ComposedTrustAuthority()))
         // GS-SOS-001 (the iOS twin): the SOS road may no longer fall back to an
@@ -399,10 +415,24 @@ public final class ComposedRuntimeHarness {
             authenticator: Ed25519AckAuthenticator(resolver: keys),
             pairedStore: ackStore,
             commitInbound: { frame, receivedFrom, localRecipient, generation, lifetime, receivedAt, fault in
-                try store.commitInboundWithObligationAtWithFault(
-                    frame, receivedFrom: receivedFrom, localRecipientNodeId: localRecipient,
-                    identityGeneration: generation, obligationLifetimeMs: lifetime,
-                    receivedAt: receivedAt, fault: fault)
+                // *THE CONCRETE STORE THIS NODE RUNS ON CARRIETH THE COMMIT VERB -- an erased protocol would not.
+                // The durable road's fault seam takes the site alone (the handle is its own business); the in-memory
+                // road's taketh the handle too, so the caller's site-only closure is adapted there.*
+                if let durableStore {
+                    // *THE DURABLE STORE'S SEAM CARRIETH THE HANDLE BESIDE THE SITE; the caller's takes the site
+                    // alone, so it is adapted HERE rather than widening the harness's closure shape.*
+                    let durableFault: ((String, OpaquePointer?) throws -> Void)? =
+                        (fault == nil) ? nil : { site, _ in try fault!(site) }
+                    return try durableStore.commitInboundWithObligationAtWithFault(
+                        frame, receivedFrom: receivedFrom, localRecipientNodeId: localRecipient,
+                        identityGeneration: generation, obligationLifetimeMs: lifetime,
+                        receivedAt: receivedAt, fault: durableFault)
+                } else {
+                    return try store.commitInboundWithObligationAtWithFault(
+                        frame, receivedFrom: receivedFrom, localRecipientNodeId: localRecipient,
+                        identityGeneration: generation, obligationLifetimeMs: lifetime,
+                        receivedAt: receivedAt, fault: fault)
+                }
             },
             clockSeconds: { [clock] in clock.wallSeconds() })
         node.recipientInbox = inbox

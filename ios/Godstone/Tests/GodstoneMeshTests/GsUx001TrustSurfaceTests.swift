@@ -562,19 +562,96 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
                        "and a cancel must still leave the author counter unmoved after a relaunch")
     }
 
+    /// *** GS-UX-001 `rendered-controls` step 4: THE SOS JOURNEY OVER A **RETAINED ON-DISK ESTATE**. ***
+    ///
+    /// *THE DEFECT THIS CLOSES, AND `test07` ABOVE IS HONEST ABOUT IT IN ITS OWN COMMENT: the lab composed its nodes
+    /// over IN-MEMORY stores, so the SOS row died with the process and `sosStateNames()` fell back to a DISPLAY
+    /// REGISTER. **A REGISTER IS A LABEL, AND A LABEL THAT CLAIMS A RUNG IT NEVER READ IS WORSE THAN ONE THAT NAMES
+    /// ITS SOURCE.*** **With an estate root the authority is a REAL `SqliteMessageStore` per node, and this arm
+    /// proveth the ROW survives a fresh runtime over the same root.**
+    ///
+    /// *THE FULL JOURNEY, ON THE DISK: arm -> read the ROW -> relaunch -> still active -> cancel -> relaunch ->
+    /// terminal, with the author counter unmoved by the cancel.* **Every state read below cometh from
+    /// `durableSosState`, which readeth the store, not the register.**
+    func test07bTheDistressJourneyIsDurableOnDiskAcrossRelaunches() throws {
+        LabRuntime.resetSosRegisterForTest()
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lab-estate-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        // (1) ARM over the retained estate.
+        let first = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x53, estateRoot: root)
+        let armed = first.armSos(payload: Data("SOS".utf8))
+        XCTAssertTrue(armed.hasPrefix("armed:"), "the arm must reach the durable authority; got \(armed)")
+        let authoredAfterArm = first.sosAuthoredCount()
+
+        // *** THE ROW IS THE WITNESS: READ IT FROM THE STORE, NOT FROM THE LABEL. ***
+        guard let msgId = first.activeSosMsgId() else {
+            return XCTFail("the standing call must have a durable msg_id to cancel")
+        }
+        XCTAssertEqual(
+            first.durableDeliveryState(author: first.author, msgId: msgId), .queuedDurably,
+            "*** THE DURABLE ROW MUST CARRY THE QUEUED STATE ON DISK after an arm. *A rendered 'active:' beside no row "
+                + "would be the display-register defect.* ***")
+        XCTAssertTrue(first.durableSosHeldMsgIds(author: first.author).contains(msgId),
+                      "and the held frame itself must be ON DISK, or the row would describe a message nobody holds")
+
+        // (2) RELAUNCH over the SAME root: a fresh runtime, nothing of the first consulted.
+        let second = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x53, estateRoot: root)
+        XCTAssertEqual(
+            second.durableDeliveryState(author: second.author, msgId: msgId), .queuedDurably,
+            "*** THE ROW MUST SURVIVE A RELAUNCH: this is the authority a view must read, and it is on the disk. ***")
+        XCTAssertTrue(second.sosStateNames().hasPrefix("active: "),
+                      "and the rendered state must still be active after the relaunch: \(second.sosStateNames())")
+
+        // (3) CANCEL BY THE DURABLE ID, and require the row terminal.
+        let cancelled = second.cancelSos(msgId: msgId)
+        XCTAssertTrue(cancelled.hasPrefix("cancelled"), "the cancel must report its durable result: \(cancelled)")
+        XCTAssertEqual(
+            second.durableDeliveryState(author: second.author, msgId: msgId), .cancelledLocally,
+            "*** THE DURABLE ROW MUST BE TERMINAL AFTER A CANCEL. ***")
+        XCTAssertEqual(second.sosAuthoredCount(), authoredAfterArm,
+                       "*** A CANCEL MUST NOT MOVE THE AUTHOR COUNTER: it stoppeth a call, it doth not un-author one ***")
+        XCTAssertFalse(second.durableSosHeldMsgIds(author: second.author).contains(msgId),
+                       "and a cancelled call must leave NO held frame, or a relaunch would render a live call")
+
+        // (4) RELAUNCH ONCE MORE: the terminal state must still read from the disk.
+        let third = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x53, estateRoot: root)
+        XCTAssertEqual(
+            third.durableDeliveryState(author: third.author, msgId: msgId), .cancelledLocally,
+            "*** THE TERMINAL ROW MUST SURVIVE THE SECOND RELAUNCH: a cancellation that reappeared as active after a "
+                + "restart would be the resurrection defect. ***")
+        XCTAssertTrue(third.sosStateNames().hasPrefix("terminal: "),
+                      "and the rendered state must be terminal: \(third.sosStateNames())")
+        XCTAssertEqual(third.sosAuthoredCount(), authoredAfterArm,
+                       "and the author counter must remain unmoved across both relaunches")
+    }
+
     // -------------------------------------------------------------------------
     // 8. The host-decidable accessibility contract, over the LAB's own roster
     // -------------------------------------------------------------------------
 
-    /// *** GS-UX-001 `accessibility`: THE CONTRACT CHECKS, RUN OVER THE LAB'S RENDERED ROSTER. ***
+    /// *** GS-UX-001 `accessibility`: THE CONTRACT CHECKS, RUN OVER A HAND-BUILT ROSTER -- PURE CONTRACT LAW. ***
     ///
-    /// *The obligation is `Internally verify rendered semantics (labels, identifiers, roles, state descriptions)
-    /// without claiming human/device accessibility acceptance`. The contract's eight checks are the host-decidable
-    /// half (`AccessibilityContract.swift:58-136`), and **HUMAN acceptance stays EXTERNAL** -- this arm asserteth only
-    /// what a host can decide, and the roster below is built from the SHARED vocabulary so an invented word reddens.*
+    /// *** AND IT IS LABELLED SO, BECAUSE AN EARLIER VERSION OF THIS COMMENT READ AS THOUGH IT WERE RENDERED
+    /// EVIDENCE. *** *THE ROSTER BELOW IS A **FIXTURE**, NOT A TREE: each `UiNode` is typed in by the court, so this
+    /// arm proveth that the SHARED TABLE decideth its laws -- it proveth NOTHING about what the lab's screens
+    /// render.*
     ///
-    /// **EVERY ESSENTIAL CONTROL IS PRESENT, LABELLED AND DESCRIBED, at BOTH scales and under RTL** -- because a
-    /// contract check that only ever saw the default scale would certify nothing about enlarged type.
+    /// **THE RENDERED HALF IS ELSEWHERE, AND IT IS NOT THIS ARM:**
+    ///   * `LabMeshUITests` LAUNCHES the application and drivest its real accessibility tree (`app.descendants`, the
+    ///     rendered labels/values/identifiers), and `ci/check_lane_results.py` reapeth that bundle against a
+    ///     source-derived arm roster so an arm that never ran cannot pass;
+    ///   * the app's OWN view is exercised there against a launched process rather than a fixture.
+    ///
+    /// *A fixture roster that asserteth "the contract passes" is exactly as informative as the table it exercises --
+    /// and exactly as silent about the screen. **KEEPING THE TWO APART IS THE DIFFERENCE BETWEEN "the obligation was
+    /// discharged" AND "the obligation was talked about".*** *HUMAN acceptance stayeth EXTERNAL
+    /// (`gs-ux-001.human-accessibility-acceptance`).*
+    ///
+    /// *This arm's subject is the automated, host-decidable half (`AccessibilityContract.swift`), at BOTH scales and
+    /// under RTL -- because a table check that only ever saw the default scale would certify nothing about enlarged
+    /// type -- plus the DISCRIMINATOR below, without which seven passing checks would only prove the checks ran.*
     func test08TheHostDecidableAccessibilityContractPassesAtBothScalesAndRtl() throws {
         // THE ROSTER: the essential controls, with content descriptions and touch sizes from the contract's own
         // minimum for iOS. The state words come FROM the shared table, never typed here.

@@ -1384,6 +1384,8 @@ def build_parser():
     p_board1.add_argument('--attest-out', default=None, help='freeze: where to write the attestation')
     p_board1.add_argument('--attestation', default=None,
                           help='verify: READ-ONLY re-derivation of a written attestation (never rewrites it)')
+    p_board1.add_argument('--artifacts', default=None,
+                          help='verify: retain EVERY gate\'s full output in this directory, one <slug>.log per gate')
     return parser
 
 
@@ -1465,7 +1467,10 @@ def main(argv=None):
                 if args.attestation:
                     return (EXIT_OK if _board1.validate_attestation(_pathlib.Path(args.attestation)) == 0
                             else EXIT_FAILED)
-                return EXIT_OK if _board1.verify(only=args.only) == 0 else EXIT_FAILED
+                return (EXIT_OK if _board1.verify(
+                    only=args.only,
+                    artifact_dir=_pathlib.Path(args.artifacts) if args.artifacts else None) == 0
+                    else EXIT_FAILED)
             for required in ('run_id', 'tag', 'attest_out'):
                 if not getattr(args, required):
                     print(f'ERROR: board1 freeze needs --{required.replace("_", "-")}', file=sys.stderr)
