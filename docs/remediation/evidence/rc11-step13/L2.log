@@ -1,0 +1,703 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light -configuration LightDebug -destination "platform=iOS Simulator,name=iPhone 17 Pro Max" -resultBundlePath /tmp/rc11-evidence/L2.xcresult CODE_SIGNING_ALLOWED=NO test "-only-testing:GodstoneMeshTests/GsIntegration001ScenarioTests" -test-iterations 10
+
+Build settings from command line:
+    CODE_SIGNING_ALLOWED = NO
+
+Running tests repeatedly 10 times.
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  GodstonePackages: /Users/oculus/Projects/GODSTONE/ios/Godstone
+
+Writing result bundle at path:
+	/tmp/rc11-evidence/L2.xcresult
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (6 targets)
+    Target 'GodstoneMeshTests' in project 'Godstone'
+        ➜ Explicit dependency on target 'GodstoneMesh-product' in project 'GodstonePackages'
+        ➜ Explicit dependency on target 'GodstoneCore-product' in project 'GodstonePackages'
+    Target 'GodstoneMesh-product' in project 'GodstonePackages'
+        ➜ Explicit dependency on target 'GodstoneMesh' in project 'GodstonePackages'
+        ➜ Explicit dependency on target 'GodstoneCore' in project 'GodstonePackages'
+    Target 'GodstoneMesh' in project 'GodstonePackages'
+        ➜ Explicit dependency on target 'GodstoneCore' in project 'GodstonePackages'
+    Target 'Godstone' in project 'Godstone'
+        ➜ Explicit dependency on target 'GodstoneCore-product' in project 'GodstonePackages'
+    Target 'GodstoneCore-product' in project 'GodstonePackages'
+        ➜ Explicit dependency on target 'GodstoneCore' in project 'GodstonePackages'
+    Target 'GodstoneCore' in project 'GodstonePackages' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator27.0.sdk /Users/oculus/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator27.0-24A430-8dc58220667be655e1bcc261a7455254.sdkstatcache
+    cd /Users/oculus/Projects/GODSTONE/ios/Godstone.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator27.0.sdk -o /Users/oculus/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator27.0-24A430-8dc58220667be655e1bcc261a7455254.sdkstatcache
+
+PruneExplicitPrecompiledModules /Users/oculus/Library/Developer/Xcode/DerivedData/Godstone-bcmxjhbxvzzwftexmsgiyverziqb/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /Users/oculus/Library/Developer/Xcode/DerivedData/Godstone-bcmxjhbxvzzwftexmsgiyverziqb/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /Users/oculus/Library/Developer/Xcode/DerivedData/SDKExplicitPrecompiledModules
+
+Test Suite 'Selected tests' started at 2026-09-29 20:28:30.987.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-29 20:28:30.987.
+Test Suite 'GsIntegration001ScenarioTests' started at 2026-09-29 20:28:30.987.
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 1 of 10).
+2026-09-29 20:28:31.005499+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_59F7E451-C3A5-40E4-A9FB-589DDDBEF810.db
+2026-09-29 20:28:31.005459+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_BDD26C1B-B74C-41BF-BB6E-91BCD6CD8631.db
+2026-09-29 20:28:31.005547+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.005547+0530 xctest[55048:18488981] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.005741+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_727D863E-83B9-4238-ACE3-46EEB6D2EE50.db
+2026-09-29 20:28:31.005775+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_F1409DCE-E7F9-483E-BC2C-06274234661F.db
+2026-09-29 20:28:31.005799+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+2026-09-29 20:28:31.005805+0530 xctest[55048:18488981] [logging] invalidated open fd: 6 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.019 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 2 of 10).
+2026-09-29 20:28:31.022335+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_F8C6EFE8-F770-4961-994F-0D5B39AAF915.db
+2026-09-29 20:28:31.022400+0530 xctest[55048:18488981] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.022366+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_92452049-C28F-4C2C-AA58-13F0ED1E3572.db
+2026-09-29 20:28:31.022458+0530 xctest[55048:18488972] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.022590+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_418054DD-BA71-44E4-8A38-5C6A00BBE045.db
+2026-09-29 20:28:31.022635+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_EF1F841B-7860-4180-8361-DD097952D0F9.db
+2026-09-29 20:28:31.022650+0530 xctest[55048:18488972] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.022661+0530 xctest[55048:18488981] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.016 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 3 of 10).
+2026-09-29 20:28:31.038916+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_09306EF1-DF5B-4355-BB84-624CF3C00C65.db
+2026-09-29 20:28:31.038965+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_EB0B32C3-5B0C-4C1F-A93D-C52DB6EC8A2B.db
+2026-09-29 20:28:31.038997+0530 xctest[55048:18488981] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.039029+0530 xctest[55048:18488979] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.039269+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_BFB783B0-9DD4-4EFD-9C72-B9F0E5D3F522.db
+2026-09-29 20:28:31.039347+0530 xctest[55048:18488979] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.039428+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_02692962-A51F-4DAA-9705-962858F70F2D.db
+2026-09-29 20:28:31.039484+0530 xctest[55048:18488981] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.017 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 4 of 10).
+2026-09-29 20:28:31.058043+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_C556BBE9-B036-4635-91B8-F1B9AC80A230.db
+2026-09-29 20:28:31.058182+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.019 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 5 of 10).
+2026-09-29 20:28:31.077280+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_564421B0-CAD9-48B0-B6B8-F77220ACA0FC.db
+2026-09-29 20:28:31.077244+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_B32FBFA2-3A44-4C0E-8540-7BA810BA4C63.db
+2026-09-29 20:28:31.077316+0530 xctest[55048:18488972] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.077318+0530 xctest[55048:18488979] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.077458+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_71C2F914-1FE3-4885-A65A-990E81871DAF.db
+2026-09-29 20:28:31.077482+0530 xctest[55048:18488979] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.077515+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_E9519D1A-94D4-4655-AE10-BB94635DFCA2.db
+2026-09-29 20:28:31.077549+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.018 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 6 of 10).
+2026-09-29 20:28:31.093685+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_CF563C63-948D-4CAA-8469-7C20E87377E2.db
+2026-09-29 20:28:31.093744+0530 xctest[55048:18488981] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.093762+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_938CBC3A-0209-484E-814D-71CBEE7533BE.db
+2026-09-29 20:28:31.093844+0530 xctest[55048:18488972] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.093960+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_5CBBCE89-3587-4BAC-AEE6-AA0EC2091C87.db
+2026-09-29 20:28:31.093984+0530 xctest[55048:18488972] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.094009+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_69C2BB4C-B844-4403-8B60-B0305B4224AB.db
+2026-09-29 20:28:31.094028+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.016 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 7 of 10).
+2026-09-29 20:28:31.109357+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_64CF4CF9-D625-42A8-95BD-F0A1A71DC0B7.db
+2026-09-29 20:28:31.109397+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_82F17F68-7555-442A-99D4-A48737087A23.db
+2026-09-29 20:28:31.109438+0530 xctest[55048:18488981] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.109428+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.109565+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_A3F04444-42E4-4FBE-9C6C-6B57CB5A8384.db
+2026-09-29 20:28:31.109608+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.109643+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_67BE3941-2C01-45A8-A78E-3D6F14410544.db
+2026-09-29 20:28:31.109683+0530 xctest[55048:18488981] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.015 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 8 of 10).
+2026-09-29 20:28:31.125121+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_FA260F26-340B-4417-9DBF-A8E85075DB79.db
+2026-09-29 20:28:31.125212+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.125197+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_D27AD542-7511-449B-9551-3528CF1F8B0C.db
+2026-09-29 20:28:31.125331+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.126275+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_0FD0E186-3E67-4A2E-989E-C9DCF87DADDC.db
+2026-09-29 20:28:31.126646+0530 xctest[55048:18488980] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.018 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 9 of 10).
+2026-09-29 20:28:31.145070+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_D16A14D2-039B-4142-9D1B-DCC7A9CF72AB.db
+2026-09-29 20:28:31.145232+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_14EC0489-F2BF-49EA-BE4F-FD9B7D255012.db
+2026-09-29 20:28:31.145973+0530 xctest[55048:18488980] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.145975+0530 xctest[55048:18488972] [logging] invalidated open fd: 10 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.020 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started (Iteration 10 of 10).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.039 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 1 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.219558+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.220755+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.224450+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.225141+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.241482+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.242000+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.280261+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638100> can only accept this command while in the powered on state
+2026-09-29 20:28:31.281395+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638300> can only accept this command while in the powered on state
+2026-09-29 20:28:31.281749+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638400> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.097 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 2 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.306390+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.306571+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.307058+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.307260+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.310702+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.310876+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.334511+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638600> can only accept this command while in the powered on state
+2026-09-29 20:28:31.335006+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638700> can only accept this command while in the powered on state
+2026-09-29 20:28:31.335287+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638500> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.053 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 3 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.361430+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.361589+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.362133+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.362301+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.363736+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.363893+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.392510+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638900> can only accept this command while in the powered on state
+2026-09-29 20:28:31.392997+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638a00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.393309+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638800> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.058 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 4 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.419387+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.419461+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.419928+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.419962+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.421271+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.422073+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.462599+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638d00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.462956+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638b00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.463245+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638c00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.068 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 5 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.489985+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.490263+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.491659+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.492031+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.495395+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.495760+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.520233+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638e00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.522335+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105638f00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.522735+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639000> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.059 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 6 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.548569+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.548897+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.550096+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.550364+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.551974+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.552160+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.583064+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639200> can only accept this command while in the powered on state
+2026-09-29 20:28:31.583511+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639300> can only accept this command while in the powered on state
+2026-09-29 20:28:31.583776+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639100> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.062 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 7 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.608068+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.608445+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.609614+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.609845+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.612461+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.612672+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.636371+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639500> can only accept this command while in the powered on state
+2026-09-29 20:28:31.636596+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639600> can only accept this command while in the powered on state
+2026-09-29 20:28:31.636767+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639400> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.051 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 8 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.661161+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.661488+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.662648+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.662836+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.665151+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.665275+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.694595+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639800> can only accept this command while in the powered on state
+2026-09-29 20:28:31.694852+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639900> can only accept this command while in the powered on state
+2026-09-29 20:28:31.694964+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639700> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.058 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 9 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.715900+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.716132+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.716799+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.716936+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.718318+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.718529+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.746401+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639b00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.746655+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639c00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.746934+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639a00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.052 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started (Iteration 10 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:31.769293+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.769346+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.769762+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.769837+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.771242+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.771368+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:31.800723+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639e00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.801253+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639d00> can only accept this command while in the powered on state
+2026-09-29 20:28:31.801599+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x105639f00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.055 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 1 of 10).
+2026-09-29 20:28:31.816066+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_10E03C1E-66AE-4A64-9C3A-AEF2AF5CE07B.db
+2026-09-29 20:28:31.816159+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_4226ED7A-6A59-4AD8-98DB-E8FAEC6175A5.db
+2026-09-29 20:28:31.816210+0530 xctest[55048:18488979] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.816221+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.816603+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_AB5A6BB1-1115-409D-829D-AA12C9D1F383.db
+2026-09-29 20:28:31.816685+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_E41C98D1-796C-4B5D-B16A-D5D3905D268E.db
+2026-09-29 20:28:31.819333+0530 xctest[55048:18488979] [logging] invalidated open fd: 7 (0x11)
+2026-09-29 20:28:31.819341+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.016 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 2 of 10).
+2026-09-29 20:28:31.835283+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_7E6F186F-6E4D-4B05-807A-7E6DCE8ABDFE.db
+2026-09-29 20:28:31.835307+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_210B7604-8B90-4B35-8554-E10E83B55389.db
+2026-09-29 20:28:31.835413+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.835402+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.835922+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_43666C7C-218E-4184-B97A-A84DBCD16BD2.db
+2026-09-29 20:28:31.835927+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_F3BFB325-2868-4DF8-9ECE-985233527EDB.db
+2026-09-29 20:28:31.836859+0530 xctest[55048:18488972] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.836869+0530 xctest[55048:18488980] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.017 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 3 of 10).
+2026-09-29 20:28:31.852706+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_59118A64-B665-49D1-AC0C-2DE65B61218D.db
+2026-09-29 20:28:31.852725+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_881ECED3-4C83-4AC4-8726-92441475797A.db
+2026-09-29 20:28:31.852839+0530 xctest[55048:18488979] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.852847+0530 xctest[55048:18488972] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.853308+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_DB4E6172-AFF7-4907-8E3C-4957578A4371.db
+2026-09-29 20:28:31.853426+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_DAB05ECD-06E2-4C10-9E60-CC5631449DE1.db
+2026-09-29 20:28:31.853840+0530 xctest[55048:18488972] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.853855+0530 xctest[55048:18488979] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.017 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 4 of 10).
+2026-09-29 20:28:31.866790+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_92E36A7B-7CC1-4C0C-B7D2-E74761B04768.db
+2026-09-29 20:28:31.866829+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_0C009451-FB4C-499F-98E0-75729DBA068D.db
+2026-09-29 20:28:31.866892+0530 xctest[55048:18488979] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.866930+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.867210+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_372B37BC-A6C0-402C-A520-314A61E54E37.db
+2026-09-29 20:28:31.867251+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_05AAF2BE-F702-46AE-ACF0-26E8D00FA31E.db
+2026-09-29 20:28:31.870858+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.870874+0530 xctest[55048:18488979] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.017 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 5 of 10).
+2026-09-29 20:28:31.887548+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_2354F0B1-9EDA-49EB-A3A5-F67EC2452516.db
+2026-09-29 20:28:31.887584+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_33074A37-4F0D-4428-AAEB-BF4FBBD11361.db
+2026-09-29 20:28:31.887715+0530 xctest[55048:18488981] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.887724+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.888217+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_36DFBDDE-008D-45E2-BEA5-48D5D0732F1A.db
+2026-09-29 20:28:31.888321+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.888343+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_8A6A3480-B2A1-4C5F-9721-C9E7930D1511.db
+2026-09-29 20:28:31.888395+0530 xctest[55048:18488981] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.017 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 6 of 10).
+2026-09-29 20:28:31.902089+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_A202AF33-5FA9-4EF7-B5D1-10B8D022B2C4.db
+2026-09-29 20:28:31.902123+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_54E2E84C-2841-4E2C-871A-A0B2ECD2D934.db
+2026-09-29 20:28:31.902216+0530 xctest[55048:18488980] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.902230+0530 xctest[55048:18488972] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.902647+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_4828A0B7-2F15-42E6-BC53-E6426D1BA0EA.db
+2026-09-29 20:28:31.902735+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.902772+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_DBD7202E-7615-4FFD-AA7F-7E9068C09894.db
+2026-09-29 20:28:31.902812+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 7 of 10).
+2026-09-29 20:28:31.916136+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_0F63347B-41AE-4D6B-996A-1A0F643C23B6.db
+2026-09-29 20:28:31.916162+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_42495629-B31B-4638-8763-8DD06E655CFE.db
+2026-09-29 20:28:31.916257+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.916267+0530 xctest[55048:18488981] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.916675+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_64EF3AB4-1A98-465F-BA9B-2622B7AAC295.db
+2026-09-29 20:28:31.916776+0530 xctest[55048:18488981] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.916784+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_0488A618-2F7B-413E-A649-6BD32110A93C.db
+2026-09-29 20:28:31.916854+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 8 of 10).
+2026-09-29 20:28:31.931292+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_0F24D8D4-E71A-44A6-B3EA-1DF56ADAD3BD.db
+2026-09-29 20:28:31.931318+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_4CBD2393-EFE1-4CEC-90A9-9404753BA36F.db
+2026-09-29 20:28:31.931427+0530 xctest[55048:18488981] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.931434+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.931845+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_E6140EC7-8BD6-4187-82E7-C1EC3538A57F.db
+2026-09-29 20:28:31.931939+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.931969+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_BC147263-AE52-4970-84BF-4E9D24B6E4E5.db
+2026-09-29 20:28:31.932004+0530 xctest[55048:18488981] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.015 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 9 of 10).
+2026-09-29 20:28:31.943428+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_03DB5976-2FE7-45A7-A384-52EB6E240FAB.db
+2026-09-29 20:28:31.943453+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_7884228B-FB14-4D53-8EFF-F30317397740.db
+2026-09-29 20:28:31.943562+0530 xctest[55048:18488979] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.943574+0530 xctest[55048:18488981] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.943993+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_2F433482-18C0-4657-ABE1-F11A9C5CAAE4.db
+2026-09-29 20:28:31.944079+0530 xctest[55048:18488979] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.944112+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_4704612A-6CF0-4EBD-B346-9218FDC7B1F7.db
+2026-09-29 20:28:31.944155+0530 xctest[55048:18488981] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.012 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started (Iteration 10 of 10).
+2026-09-29 20:28:31.957349+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_10465E86-A751-4E65-BB80-CBD95411979D.db
+2026-09-29 20:28:31.957386+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_D4B695D2-A681-4D5B-852D-BAA7872EDE16.db
+2026-09-29 20:28:31.957491+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.957497+0530 xctest[55048:18488979] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.957926+0530 xctest[55048:18488979] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_2CAC8FBA-6D64-41E5-8E2E-A129215E0969.db
+2026-09-29 20:28:31.958025+0530 xctest[55048:18488979] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.958038+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_607D9252-E62C-41EC-B526-287BB7B3D9E8.db
+2026-09-29 20:28:31.958087+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 1 of 10).
+2026-09-29 20:28:31.971989+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_F5BCB38E-DC84-47C4-B600-5217FD906754.db
+2026-09-29 20:28:31.972025+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_22276DC9-0E90-438A-880F-8DFAA3A6E15E.db
+2026-09-29 20:28:31.972105+0530 xctest[55048:18488980] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.972106+0530 xctest[55048:18488981] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.972316+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_A041EFDE-314D-48D3-955E-EDB9909E15BF.db
+2026-09-29 20:28:31.972354+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_5F5B8F75-F673-466D-97DC-477594793A34.db
+2026-09-29 20:28:31.972375+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.972401+0530 xctest[55048:18488981] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 2 of 10).
+2026-09-29 20:28:31.983609+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_1EAF82AD-2878-400B-8051-8CFCBD7A4C65.db
+2026-09-29 20:28:31.983638+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_869FD901-43FC-462D-914E-5135AD411C66.db
+2026-09-29 20:28:31.983707+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.983734+0530 xctest[55048:18488981] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.984170+0530 xctest[55048:18488981] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_273073FF-16F9-4F78-B611-47CC87ABF92F.db
+2026-09-29 20:28:31.984256+0530 xctest[55048:18488981] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.984290+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_76E1DB62-04D9-4A75-B768-F755A3ED7264.db
+2026-09-29 20:28:31.984334+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.012 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 3 of 10).
+2026-09-29 20:28:31.997709+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_78D8CEEB-321D-4CBD-AC4E-F113BC050CD4.db
+2026-09-29 20:28:31.997734+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_2F465271-451A-41C7-B979-588902A56DC0.db
+2026-09-29 20:28:31.997848+0530 xctest[55048:18488980] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:31.997853+0530 xctest[55048:18488972] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:31.998235+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_DC566A81-6F4A-4A7A-AAD7-2944119CC5B7.db
+2026-09-29 20:28:31.998311+0530 xctest[55048:18488972] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:31.998332+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_612076FE-0937-4CCC-880C-0DC801A56A16.db
+2026-09-29 20:28:31.998375+0530 xctest[55048:18488980] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.014 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 4 of 10).
+2026-09-29 20:28:32.012331+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_78D197A7-186F-4F1A-BAFE-EEF488A30617.db
+2026-09-29 20:28:32.012354+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_970274DD-B5A9-43EE-81F2-D2DD3BA01B0F.db
+2026-09-29 20:28:32.012465+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:32.012478+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:32.012905+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_38C9671E-13A5-4D3D-9CBC-436F4E308C46.db
+2026-09-29 20:28:32.012988+0530 xctest[55048:18488972] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:32.013037+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_F7EFE1B1-EC85-4A21-977B-29444BB45807.db
+2026-09-29 20:28:32.013095+0530 xctest[55048:18488980] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.015 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 5 of 10).
+2026-09-29 20:28:32.024301+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_8D12BF85-2FFA-4B36-85AB-964A3FA9947B.db
+2026-09-29 20:28:32.024336+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_6108255A-FD98-4BE3-9949-17AC67264FF1.db
+2026-09-29 20:28:32.024433+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:32.024440+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:32.024835+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_1D7D2BCA-BACB-4B7F-BC03-23E191E2ED6A.db
+2026-09-29 20:28:32.024914+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:32.024952+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_75EAD130-D287-4F13-A5CF-B34FA68107CD.db
+2026-09-29 20:28:32.024998+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.011 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 6 of 10).
+2026-09-29 20:28:32.038230+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_F94DF043-1E77-40F1-805A-5DC791593AF3.db
+2026-09-29 20:28:32.038259+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_DD072451-6537-4527-A427-829E41C5E592.db
+2026-09-29 20:28:32.038368+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:32.038375+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:32.038765+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_4EF9880C-CEDB-4960-BF4C-2B4A67FE72BC.db
+2026-09-29 20:28:32.038849+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_F61A4416-3CA6-4BF9-99F1-4E05BE5CB236.db
+2026-09-29 20:28:32.038851+0530 xctest[55048:18488980] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:32.038887+0530 xctest[55048:18488972] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 7 of 10).
+2026-09-29 20:28:32.052288+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_893F0BBC-292C-4042-B160-3F1B22C94C77.db
+2026-09-29 20:28:32.052306+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_1D4E4EBE-E5DE-43EA-A8B1-899595846A71.db
+2026-09-29 20:28:32.052423+0530 xctest[55048:18488972] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:32.052435+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:32.052835+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_2C35EB4A-EA50-4660-A1D0-554CC460D9E6.db
+2026-09-29 20:28:32.052911+0530 xctest[55048:18488972] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:32.052940+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_0875D389-DA23-4D90-8CA2-2D7EE5301B34.db
+2026-09-29 20:28:32.052991+0530 xctest[55048:18488980] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 8 of 10).
+2026-09-29 20:28:32.066220+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_8EA23BB3-3A56-4A90-B2EF-E718F48DC9B0.db
+2026-09-29 20:28:32.066252+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_337AC2A0-D70C-423C-9761-CB1E476BCF17.db
+2026-09-29 20:28:32.066352+0530 xctest[55048:18488980] [logging] invalidated open fd: 8 (0x11)
+2026-09-29 20:28:32.066361+0530 xctest[55048:18488972] [logging] invalidated open fd: 10 (0x11)
+2026-09-29 20:28:32.066744+0530 xctest[55048:18488972] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_a_A5E17066-FE23-4DA5-BFAF-915C6F4BD4B8.db
+2026-09-29 20:28:32.066822+0530 xctest[55048:18488972] [logging] invalidated open fd: 6 (0x11)
+2026-09-29 20:28:32.066845+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_76FBB2C8-1074-4D70-BCF4-E6D62355424E.db
+2026-09-29 20:28:32.066885+0530 xctest[55048:18488980] [logging] invalidated open fd: 7 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 9 of 10).
+2026-09-29 20:28:32.080214+0530 xctest[55048:18488980] [logging] BUG IN CLIENT OF libsqlite3.dylib: database integrity compromised by API violation: vnode unlinked while in use: /Users/oculus/Library/Developer/CoreSimulator/Devices/81AA5C4D-B2A7-4DF4-91EF-2926A3FAC8BF/data/tmp/t17_pair_b_72B0CCA1-A9FB-44B5-9477-BE23233FDEAA.db
+2026-09-29 20:28:32.081503+0530 xctest[55048:18488980] [logging] invalidated open fd: 10 (0x11)
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.015 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started (Iteration 10 of 10).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.011 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 1 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.111518+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.111796+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.115438+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.119619+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.157311+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a000> can only accept this command while in the powered on state
+2026-09-29 20:28:32.157791+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a100> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.066 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 2 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.177634+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.178048+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.179336+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.179589+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.217870+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a200> can only accept this command while in the powered on state
+2026-09-29 20:28:32.218338+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a300> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.060 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 3 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.237533+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.238129+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.238657+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.238750+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.265796+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a400> can only accept this command while in the powered on state
+2026-09-29 20:28:32.266255+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a500> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.047 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 4 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.285937+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.286313+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.287703+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.288031+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.323429+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a600> can only accept this command while in the powered on state
+2026-09-29 20:28:32.323771+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a700> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.059 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 5 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.343744+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.344031+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.345361+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.345717+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.382869+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a800> can only accept this command while in the powered on state
+2026-09-29 20:28:32.383334+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563a900> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.057 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 6 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.399577+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.399976+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.401345+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.401650+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.429132+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563aa00> can only accept this command while in the powered on state
+2026-09-29 20:28:32.429627+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563ab00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.046 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 7 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.447236+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.447493+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.448942+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.449164+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.483088+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563ac00> can only accept this command while in the powered on state
+2026-09-29 20:28:32.483552+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563ad00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.053 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 8 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.501169+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.501603+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.502925+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.503253+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.539712+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563ae00> can only accept this command while in the powered on state
+2026-09-29 20:28:32.540187+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563af00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.055 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 9 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.556327+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.556651+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.557311+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.557594+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.592031+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b100> can only accept this command while in the powered on state
+2026-09-29 20:28:32.592443+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b000> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.055 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started (Iteration 10 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.613737+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.614126+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.615547+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.615778+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.652349+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b300> can only accept this command while in the powered on state
+2026-09-29 20:28:32.652793+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b200> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.058 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 1 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.675062+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.675455+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.676835+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.677060+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.705129+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b500> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.735252+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b400> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.082 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 2 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.753920+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.754333+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.755767+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.756064+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.785234+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b700> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.801614+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b600> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.066 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 3 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.829424+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.829699+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.831120+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.831478+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.859290+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b900> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.874857+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563b800> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.072 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 4 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.892670+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.892793+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.893305+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.893411+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.920876+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563bb00> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.935362+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563ba00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.061 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 5 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.952206+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.952373+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.952788+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.952870+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:32.970443+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563bd00> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:32.986018+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563bc00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.050 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 6 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.003526+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.003917+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.005088+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.005353+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.031636+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563bf00> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.049535+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x10563be00> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.063 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 7 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.077884+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.078149+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.079588+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.079666+0530 xctest[55048:18488979] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.100874+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x108f40100> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.119706+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x108f40000> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.069 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 8 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.141589+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.141692+0530 xctest[55048:18488981] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.142414+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.142527+0530 xctest[55048:18488981] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.169533+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x108f40300> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.185302+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x108f40200> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.065 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 9 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.209147+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.209541+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.210877+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.211112+0530 xctest[55048:18488972] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.235285+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x108f40500> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.252620+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x108f40400> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.066 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started (Iteration 10 of 10).
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.270997+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.271607+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.271690+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.271767+0530 xctest[55048:18488980] [CoreBluetooth] XPC connection invalid
+2026-09-29 20:28:33.291095+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x108f40700> can only accept this command while in the powered on state
+CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
+2026-09-29 20:28:33.309063+0530 xctest[55048:18488873] [CoreBluetooth] API MISUSE: <_TtCC12GodstoneMesh20RealTransportHostRig21HostPeripheralManager: 0x108f40600> can only accept this command while in the powered on state
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.057 seconds).
+Test Suite 'GsIntegration001ScenarioTests' passed at 2026-09-29 20:28:33.315.
+	 Executed 60 tests, with 0 failures (0 unexpected) in 2.298 (2.328) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-29 20:28:33.315.
+	 Executed 60 tests, with 0 failures (0 unexpected) in 2.298 (2.328) seconds
+Test Suite 'Selected tests' passed at 2026-09-29 20:28:33.315.
+	 Executed 60 tests, with 0 failures (0 unexpected) in 2.298 (2.328) seconds
+2026-09-29 20:28:33.631 xcodebuild[55005:18488662] [MT] IDETestOperationsObserverDebug: 3.066 elapsed -- Testing started completed.
+2026-09-29 20:28:33.631 xcodebuild[55005:18488662] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-29 20:28:33.631 xcodebuild[55005:18488662] [MT] IDETestOperationsObserverDebug: 3.066 sec, +3.066 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/rc11-evidence/L2.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started
