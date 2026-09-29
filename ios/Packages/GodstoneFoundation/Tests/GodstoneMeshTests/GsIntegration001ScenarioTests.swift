@@ -342,14 +342,23 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         XCTAssertTrue(String(describing: verdict).hasPrefix("admitted"),
                       "*** THE RECIPIENT ACK MUST CROSS THE REAL LINK WRITER: this rig carrieth the BYTE production "
                           + "issued, it doth not mint one. Observed: \(verdict) ***")
-        // *** THE RETURNING EGRESS IS READ FROM THE FABRIC'S OWN WINDOW, IN EITHER NAMING. ***
-        // *The fabric recordeth each `writeValue` under the WIRING's own labels (the link's initiator and responder),
-        // and `carryToWire` may be called with those names in either order -- so the arm asks what crossed SINCE ITS
-        // OWN MARK, which is the same egress law without depending on which end the caller named first.*
-        XCTAssertGreaterThan(
-            r.fabric.bytes(since: mark), 0,
+        // *** THE RETURNING EGRESS IS READ FROM THE FABRIC'S OWN WINDOW, IN EITHER NAMING -- AND BOUNDED. ***
+        // *The fabric recordeth each `writeValue`/`updateValue` under the WIRING's own labels (the link's initiator
+        // and responder), and `carryToWire` may be called with those names in either order -- so the arm asks what
+        // crossed SINCE ITS OWN MARK, which is the same egress law without depending on which end the caller named
+        // first.*
+        //
+        // *** AND THE READ IS A BOUNDED WAIT, BECAUSE THE RESPONDER'S RECORD IS TAKEN ON THE DELIVERY QUEUE. ***
+        // *MEASURED, INTERMITTENTLY, IN THE SCENARIO CLASS AT x10: a responder-issued ACK pumpeth `updateValue`,
+        // whose `onUpdate` closure DISPATCHES the delivery onto `deliveryQueue` -- and the fabric records inside that
+        // hop. So a synchronous read immediately after `carryToWire` returneth is a RACE, and it reddened twice in ten
+        // iterations.* **The rig's own law is "arms wait on the estate (bounded `waitUntil`)", which is exactly how a
+        // court must observe an asynchronous radio in the first place** -- *and this is the same class of defect the
+        // A-R-B readiness predicate and the terminal-ACK barrier above were repaired for.*
+        XCTAssertTrue(
+            r.waitUntil { r.fabric.bytes(since: mark) > 0 },
             "*** AND THE ACK'S OWN BYTES MUST BE RECORDED BY THE FABRIC -- the same egress law on the returning road. "
-                + "*A silent writer would leave this at 0.* ***")
+                + "*A silent writer would leave this at 0.* Observed: \(r.fabric.bytes(since: mark)) bytes ***")
 
         // ---- AND THE RELAY'S OWN TRUSTED RELATIONS STAND: THE MESH WAS ESTABLISHED, NOT REPLACED ---------
         //

@@ -672,17 +672,18 @@ final class GsIntegration001RealTransportTests: XCTestCase {
         )
     }
 
-    /// *** AN OUTBOUND FRAME WITH NO RELAY IS QUEUED DURABLY -- THE QUEUE-TRANSITION CLAIM, AND NO MORE. ***
+    /// *** COMPONENT TEST (NOT A CRASH). AN OUTBOUND FRAME WITH NO RELAY IS QUEUED DURABLY. ***
     ///
-    /// *** WHAT THIS ARM DOES **NOT** MEASURE. *** *My first draft called an OBJECT REBIRTH a crash: it built a fresh
-    /// `MeshNode` over the SAME still-live `InMemoryMessageStore` and asserted the row was still there. **THE STORE
-    /// NEVER RESTARTED, so the row stood for the reason the arm was NOT claiming -- the same in-memory dictionary was
-    /// never discarded -- and `_ = reborn` asserted nothing at all.** An object rebirth is not a process death.*
+    /// *** THIS ARM IS A COMPONENT TEST AND IS LABELLED ONE. *** *My first draft called an OBJECT REBIRTH a crash: it
+    /// built a fresh `MeshNode` over the SAME still-live `InMemoryMessageStore` and asserted the row was still there.
+    /// **THE STORE NEVER RESTARTED, so the row stood for the reason the arm was NOT claiming -- the same in-memory
+    /// dictionary was never discarded -- and `_ = reborn` asserted nothing at all.** An object rebirth is not a
+    /// process death, and the rebirth assertion is now REMOVED rather than dressed up.*
     ///
-    /// **THE DURABLE-ACROSS-RESTART CLAIM IS OWED TO THE REAL-COMPOSITION LANE**, where `SqliteMessageStore`'
-    /// `enqueueDirectOutbound` (MessageStore.swift:111) commits the frame AND its `QUEUED_DURABLY` row in ONE
-    /// transaction. *What THIS arm honestly establishes is the TRANSITION: with no relay attached, the outbound road
-    /// returns `.queuedLocally` rather than claiming a radio or losing the work.*
+    /// **THE DURABLE-ACROSS-RESTART CLAIM IS OWED TO `GsIntegration001ProcessTests`**, where a child process is
+    /// SIGKILLed at an owner boundary and a NEW PROCESS reopens the same on-disk estate. *What THIS component arm
+    /// honestly establishes is the TRANSITION: with no relay attached, the outbound road returns `.queuedLocally`
+    /// rather than claiming a radio or losing the work.*
     func testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued() throws {
         let rig = try makeHarness()
         defer { rig.tearDown() }
@@ -695,31 +696,24 @@ final class GsIntegration001RealTransportTests: XCTestCase {
             .queuedLocally, outcome,
             "*** WITH NO RELAY THE OUTBOUND FRAME IS QUEUED DURABLY -- committing BEFORE the radio is the point. ***",
         )
-
-        // *** THE CRASH: a fresh node over the SAME durable store. ***
-        let reborn = MeshNode(
-            identity: rig.pair.aliceIdentity, store: rig.aliceStore,
-            deliveryTracker: DeliveryTracker(
-                repo: rig.aliceRepo,
-                authenticator: Ed25519AckAuthenticator(resolver: rig.aliceKeys)),
-            sessions: rig.pair.aliceManager,
-        )
-        _ = reborn
+        // *** THE COMPONENT CLAIM, AND NO MORE: the durable road recorded the pair, so the work is held locally
+        // rather than handed anywhere. NO REBIRTH IS PERFORMED AND NO CRASH IS CLAIMED. ***
         XCTAssertTrue(
             rig.aliceStore.allHeldMsgIds().contains(frame.msgId),
-            "*** THE OUTBOUND ROW MUST SURVIVE THE CRASH. It was committed before the radio precisely so that a "
-                + "process death between commit and send cannot lose the user's message -- **an outbound row that "
-                + "vanished at restart would mean the commit was not durable at all.** ***",
+            "*** THE OUTBOUND COMMIT MUST STAND IN THE DURABLE ROAD. *This is observed on the SAME live store -- it "
+                + "is a component assertion about the commit, not a crash-survival claim, and the process-crash half "
+                + "lives in `GsIntegration001ProcessTests`.* ***",
         )
     }
 
-    /// *** THE ACK ROAD STANDS ON A FRESH NODE OVER THE SAME STORE -- THE ROAD'S EXISTENCE, NOT ITS DURABILITY. ***
+    /// *** COMPONENT TEST (NOT A CRASH). THE ACK ROAD STANDS FOR A FRESH NODE OVER THE SAME STORE. ***
     ///
-    /// *** WHAT THIS ARM DOES **NOT** MEASURE. *** *The same review that corrected the outbound arm applies here: the
-    /// ack outbox is PER-NODE IN-MEMORY on this isle, so an offered ACK does NOT survive a process death, and this
-    /// arm does not claim it does. **It asserts the weaker, true thing: a fresh node over the same store can still
-    /// OFFER and hold an ACK for the link.*** *The card's "crash after ACK commit" durability claim therefore remains
-    /// OWED to the real-composition lane, where the obligation is a durable row rather than a volatile queue.*
+    /// *** WHAT THIS ARM DOES **NOT** MEASURE, AND NOW SAYS SO. *** *The ack outbox is PER-NODE IN-MEMORY on this
+    /// isle, so an offered ACK does NOT survive a process death, and this arm does not claim it does. **It performs
+    /// no object rebirth: the previous `reborn` construction asserted a property of a node it then discarded.***
+    /// *What it asserts is the weaker, true thing -- a node over the same store can still OFFER and hold an ACK for
+    /// the link. The card's "crash after ACK commit" durability claim is owed to `GsIntegration001ProcessTests`,
+    /// where the obligation is a durable row rather than a volatile queue.*
     func testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable() throws {
         let rig = try makeHarness()
         defer { rig.tearDown() }
@@ -727,25 +721,10 @@ final class GsIntegration001RealTransportTests: XCTestCase {
         let ack = makeFrame([0xA1], msgIdByte: 0xC1, routingTag: rig.pair.aliceIdentity.nodeHint)
         XCTAssertTrue(rig.bobNode.offerAckForLink(ack), "the ACK is offered")
         XCTAssertEqual(1, rig.bobNode.ackOutboxDepthForTest())
-
-        // *** THE CRASH: a fresh node over the same durable store. ***
-        let reborn = MeshNode(
-            identity: rig.pair.bobIdentity, store: rig.bobStore,
-            deliveryTracker: DeliveryTracker(
-                repo: rig.bobRepo,
-                authenticator: Ed25519AckAuthenticator(resolver: rig.bobKeys)),
-            sessions: rig.pair.bobManager,
-        )
-        // *The outbox is per-node in-memory by design on this isle, so the honest claim is about the DURABLE
-        // obligation, not the volatile queue: a fresh node must still be able to offer and drain, i.e. the ACK ROAD
-        // must stand. A reborn node that could not offer at all would be the pump failure.*
-        XCTAssertTrue(
-            reborn.offerAckForLink(ack),
-            "*** THE ACK ROAD MUST STAND AFTER A RESTART. If a fresh node over the same store cannot offer an ACK, "
-                + "the pump's own road died with the process -- and the sender waits forever. ***",
-        )
+        // *** NO REBIRTH, NO `_ = reborn`: the outbox is per-node in-memory by construction, so the honest component
+        // claim is about the OFFER ROAD's existence, observed on the node that stands. ***
         XCTAssertEqual(
-            1, reborn.ackOutboxDepthForTest(),
+            1, rig.bobNode.ackOutboxDepthForTest(),
             "and the offered ACK must be held for the link, drainable",
         )
     }
@@ -1421,8 +1400,13 @@ final class GsIntegration001RealTransportTests: XCTestCase {
             carried, .admitted,
             "*** AND IT MUST CROSS THE REAL LINK WRITER: the ACK production issued is carried by this rig, never "
                 + "minted by it. Observed: \(carried) ***")
-        XCTAssertGreaterThan(r.fabric.bytes(since: ackMark), 0,
-                             "and the ACK's own bytes must be recorded by the fabric")
+        // *** THE RETURNING EGRESS IS A BOUNDED WAIT, NOT A SYNCHRONOUS READ. ***
+        // *The responder's ACK pumpeth `updateValue`, whose closure DISPATCHES onto the delivery queue, and the fabric
+        // recordeth inside that hop -- so an immediate read is a race (measured intermittently in the scenario class
+        // at x10). The rig's own law is to wait on the estate.*
+        XCTAssertTrue(r.waitUntil { r.fabric.bytes(since: ackMark) > 0 },
+                      "and the ACK's own bytes must be recorded by the fabric; observed "
+                      + "\(r.fabric.bytes(since: ackMark)) bytes")
         // *** AND THE ROW IS STILL EXACTLY THE ONE ROW -- a replay must not add a second. ***
         XCTAssertEqual(r.messageStore(receiver).allHeldMsgIds().filter { $0 == frame.msgId }.count, 1,
                        "exactly one durable row for this frame")
