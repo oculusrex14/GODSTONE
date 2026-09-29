@@ -851,9 +851,9 @@ class Runner:
             sender_seed += 1
             receiver_seed += 1
             self.log(f"  re-mint: sender hint {sender_real} does not open against {receiver_real}; asking BOTH for "
-                     f"seeds 0x{sender_seed:02x}/0x{receiver_seed:02x}")
-            sender.send("mint", b"", seed=sender_seed)
-            receiver.send("mint", b"", seed=receiver_seed)
+                     f"seeds 0x{sender_seed & 0xFF:02x}/0x{receiver_seed & 0xFF:02x}")
+            sender.send("mint", b"", seed=sender_seed & 0xFF)
+            receiver.send("mint", b"", seed=receiver_seed & 0xFF)
             sender_hello = sender.wait(lambda r: r.kind == "hello", timeout_s, "its re-minted `hello`")
             receiver_hello = receiver.wait(lambda r: r.kind == "hello", timeout_s,
                                            "its re-minted `hello`")
