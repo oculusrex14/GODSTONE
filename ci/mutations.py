@@ -1933,7 +1933,18 @@ SEMANTIC = [
 #: never a success, and a rod named here could never be counted as a catch.
 EXPECTED_ESCAPES: tuple = ()
 
-EXEC_RE = re.compile(r"Executed ([0-9]+) tests, with ([0-9]+) failures")
+# *** THE SINGULAR IS PART OF THE LANGUAGE, AND THE PRECISE KILL IS THE ONE THAT WEARS IT. ***
+#
+# *XCTest printeth "with 0 failures", "with 1 failure" AND "with N failures" -- the SINGULAR form for exactly one
+# failed case.* **A REGEX THAT DEMANDED THE PLURAL MISREAD THE IDEAL MUTATION: a rod whose mutant reddens EXACTLY ONE
+# named witness printeth "Executed 13 tests, with 1 failure", `run` stayed `None`, and the rod was reported
+# `EXEC_INVALID :: the harness executed nothing` -- a FALSE NON-CATCH ON A REAL CATCH, the mirror of the false green
+# this harness existeth to prevent.** *The campaign logs of T56-RC9/T56-RC12 carried the proof: `Executed 13 tests,
+# with 1 failure` with the named witness's own `Test Case ... failed` line, and nine such lines across the rods.*
+# **So the plural `s` is OPTIONAL ON BOTH NOUNS** -- XCTest printeth "Executed 1 test, with 1 failure" for the
+# single-arm case, and a regex demanding "tests" misreads it the same way. `FAILED_CASE_RE` (which already readeth
+# the singular `failed` case line) is the independent witness that agrees with the count.
+EXEC_RE = re.compile(r"Executed ([0-9]+) tests?, with ([0-9]+) failures?")
 # the failed-case extractor, stated as one expression: each legacy line that
 # pronounces a method failed yields the method's name, and nothing else.
 FAILED_CASE_RE = re.compile(r"Test Case '-\[[^\]]*? ([A-Za-z][A-Za-z0-9_]*?)\]' failed")
@@ -2708,6 +2719,40 @@ def run_selftest(emit=None):
             print("       " + m)
     else:
         print("  PASS the honest rules classified %d known-answer cases correctly" % checks)
+
+    # (1b) *** THE PARSE LAYER IS EXERCISED AGAINST REAL XCTEST TEXT, NOT ONLY AGAINST PRE-PARSED `run=`. ***
+    #
+    # *THE DEFECT THIS CLOSES, MEASURED: `EXEC_RE` demanded the PLURAL "failures", but XCTest printeth "with 1
+    # failure" for a SINGLE failed case -- so the IDEAL mutation (one named witness reddened) parsed to `run=None` and
+    # was reported `EXEC_INVALID`, a FALSE NON-CATCH ON A REAL CATCH.* **The known-answer table above could not see
+    # this, because it hands `_classify_with` an already-parsed `run`: the bug lived in the extraction, one layer
+    # BELOW the classifier the table testeth.** *So the extraction is measured directly here, on the very strings
+    # XCTest emit.*
+    _PARSE_CASES = (
+        # (real XCTest line fragment, expected run, expected failure count)
+        ("\t Executed 13 tests, with 1 failure (0 unexpected) in 0.224 (0.224) seconds", 13, 1),
+        ("\t Executed 13 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds", 13, 0),
+        ("\t Executed 7 tests, with 3 failures (0 unexpected) in 1.0 (1.0) seconds", 7, 3),
+        ("\t Executed 1 test, with 1 failure (0 unexpected) in 0.1 (0.1) seconds", 1, 1),
+    )
+    parse_bad = []
+    for text, want_run, want_fail in _PARSE_CASES:
+        m = EXEC_RE.search(text)
+        got = (int(m.group(1)), int(m.group(2))) if m else (None, None)
+        if got != (want_run, want_fail):
+            parse_bad.append("  %r -> %s, wanted (%d, %d)" % (text.strip(), got, want_run, want_fail))
+    # and the FAILED-case extractor must read the SINGULAR case line the singular count announces
+    _failed_line = "Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW09AStaleConfirmationPromotethNothing]' failed (0.212 seconds)."
+    if FAILED_CASE_RE.findall(_failed_line) != ["testW09AStaleConfirmationPromotethNothing"]:
+        parse_bad.append("  the singular failed-case line did not yield its witness: %r" % _failed_line)
+    if parse_bad:
+        ok = False
+        print("  FAIL the extraction mis-parsed real XCTest text:")
+        for line in parse_bad:
+            print("       " + line)
+    else:
+        print("  PASS the extraction parsed %d real XCTest line(s) incl. the SINGULAR '1 failure'"
+              % len(_PARSE_CASES))
 
     # (2) every broken policy must be CAUGHT by that same table
     for name, policy in BROKEN_POLICIES:
