@@ -383,8 +383,8 @@
 [02:45:19]   authored msg_id=be05addaa4d02d3e27652b1f6bc4439a
 [02:45:19]   [android-honest] -> bye  payload=0B
 [02:45:19]   [swift-honest] -> bye  payload=0B
-[02:45:19]   [android-honest] <- observe  payload=0B
-[02:45:19]   [swift-honest] <- observe  payload=0B
+[02:45:19]   [swift-honest] <- observe  payload=0B[02:45:19]   [android-honest] <- observe  payload=0B
+
 [02:45:20]   captured 5 inbox record(s) from the honest session
 [02:45:20] --- direction android->ios control=replay: phase B (fresh session, fresh estate) ---
 [02:45:20]   [swift-replay-fresh] <- hello  payload=0B
