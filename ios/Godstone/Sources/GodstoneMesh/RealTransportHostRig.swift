@@ -106,24 +106,106 @@ public final class RealTransportHostRig {
     // MARK: - the substituted platform facades
     // ============================================================================================
 
+    /// *** THE HOST KEYCHAIN FACADE, MEMORY-ONLY BY DEFAULT AND FILE-BACKED IN THE CRASH FIXTURE. ***
+    ///
+    /// *MEASURED BEFORE THIS WAS ADDED: the rig's keychain was a plain dictionary, minted fresh per node, so a NEW
+    /// PROCESS could not see the identity the previous one had -- **and "reopen the SAME estate in a new process"
+    /// is exactly what a crash fixture needeth**.* **THE DEFAULT IS UNCHANGED: `persistentAt == nil` giveth the
+    /// dictionary every existing arm already had, so no existing arm's behaviour moveth.** *A fixture root maketh
+    /// the facade a single JSON file under that root, written on every mutation.*
+    ///
+    /// **WHAT PERSISTETH IS THE FACADE, NOT THE PROCESS'S REAL KEYCHAIN** -- a host court may not write the
+    /// device's keychain, and the file liveth in the caller's temporary estate.
     internal final class HostKeychain: LocalIdentityKeychain, @unchecked Sendable {
         private let lock = NSLock()
         private var store: [String: Data] = [:]
+        private let file: URL?
+        /// *** THE FACADE'S OWN RECORD OF EVERY DELETE, IN ORDER. ***
+        ///
+        /// *THE E ARM'S CLAUSE IS "Record actual facade key-delete calls" -- and a key that is absent afterwards is
+        /// consistent with BOTH "the facade was asked to delete it" and "nobody ever wrote it".* **So the call itself
+        /// is recorded, by the call's own name, which is what maketh "the key was really destroyed through this
+        /// facade" an observation rather than an inference.** *Memory-only mode records identically; nothing here is
+        /// persisted, because a RECORD of a deletion is not material a wipe needeth to keep.*
+        private var deletes: [String] = []
+
+        var deletedTags: [String] { lock.lock(); defer { lock.unlock() }; return deletes }
+
+        init(persistentAt file: URL? = nil) {
+            self.file = file
+            self.store = Self.load(file)
+        }
+
+        private static func load(_ file: URL?) -> [String: Data] {
+            guard let file, let raw = try? Data(contentsOf: file),
+                  let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: String]
+            else { return [:] }
+            var out: [String: Data] = [:]
+            for (k, v) in obj { if let d = Data(base64Encoded: v) { out[k] = d } }
+            return out
+        }
+
+        /// Rewrite the whole file under the lock. The estate is tiny (one identity state item), so the write is
+        /// atomic-by-replacement rather than incremental -- a torn keychain file would be a corrupt identity.
+        private func flushLocked() {
+            guard let file else { return }
+            let obj = store.mapValues { $0.base64EncodedString() }
+            guard let raw = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys]) else { return }
+            try? raw.write(to: file, options: .atomic)
+        }
+
         func read(tag: String) throws -> Data? { lock.lock(); defer { lock.unlock() }; return store[tag] }
-        func add(tag: String, data: Data) throws { lock.lock(); store[tag] = data; lock.unlock() }
-        func delete(tag: String) throws { lock.lock(); store[tag] = nil; lock.unlock() }
-        func put(_ tag: String, _ data: Data) { lock.lock(); store[tag] = data; lock.unlock() }
+        func add(tag: String, data: Data) throws { lock.lock(); store[tag] = data; flushLocked(); lock.unlock() }
+        func delete(tag: String) throws { lock.lock(); store[tag] = nil; deletes.append(tag); flushLocked(); lock.unlock() }
+        func put(_ tag: String, _ data: Data) { lock.lock(); store[tag] = data; flushLocked(); lock.unlock() }
     }
 
     /// The journal the composition is given: in memory, idle, readable. *The ONE thing a host run may not write is
     /// the process's real `UserDefaults`; the wipe GATE reads it either way.*
+    ///
+    /// *** AND IN THE CRASH FIXTURE IT PERSISTETH A SINGLE STATE NAME TO A FILE UNDER THE ESTATE ROOT. ***
+    /// *That is what maketh a wipe's PROGRESS SURVIVE A SIGKILL: the child dieth at a persisted rung, and the
+    /// recovery child RESUMETH FROM THAT RUNG rather than from an artificially idle journal.* **THE ASSIGNMENT'S
+    /// OWN WORDS: "Preserve wipe-produced key deletion/new identity rather than restoring the original seed or
+    /// resetting the journal to IDLE."** *Default (`persistentAt == nil`) is the memory-only dictionary, so no
+    /// existing arm changeth.*
     internal final class HostJournal: WipeJournal, @unchecked Sendable {
         private let lock = NSLock()
         private var state: WipeState = .idle
+        private let file: URL?
+        /// *** EVERY RUNG THIS JOURNAL WAS ACTUALLY MOVED TO, IN ORDER, FOR THE LIFETIME OF THE OBJECT. ***
+        ///
+        /// *THE E ARM MUST PROVE THE ORDERING LAW: "key deletion must not precede the drain". The journal cannot
+        /// answer that alone -- a single durable slot readeth only its LAST rung -- so the object that WRITETH the
+        /// rungs keepeth their sequence, which is what maketh "ARTIFACTS_DELETED came after the keys" an observation
+        /// on the wipe's own instrument rather than on a court's clock.* **The record is in-memory (the durable slot
+        /// is still the one state); it is never consulted by production.**
+        private var rungs: [WipeState] = []
+
+        var rungHistory: [WipeState] { lock.lock(); defer { lock.unlock() }; return rungs }
+
+        init(persistentAt file: URL? = nil) {
+            self.file = file
+            if let file, let raw = try? String(contentsOf: file, encoding: .utf8) {
+                // AN UNPARSEABLE RECORD READETH AS `idle` HERE, matching `UserDefaultsWipeJournal`'s own coercion --
+                // and `isReadable` below is the honest answer that distinguishes the two.
+                let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                state = WipeState(rawValue: name) ?? .idle
+            }
+        }
+
         func read() -> WipeState { lock.lock(); defer { lock.unlock() }; return state }
-        func write(_ s: WipeState) { lock.lock(); state = s; lock.unlock() }
-        func clear() { lock.lock(); state = .idle; lock.unlock() }
-        var isReadable: Bool { true }
+        func write(_ s: WipeState) {
+            lock.lock(); state = s; rungs.append(s)
+            if let file { try? s.rawValue.write(to: file, atomically: true, encoding: .utf8) }
+            lock.unlock()
+        }
+        func clear() { write(.idle) }
+        /// *An absent file is a clean first launch; an unparseable one is NOT.*
+        var isReadable: Bool {
+            guard let file, let raw = try? String(contentsOf: file, encoding: .utf8) else { return true }
+            return WipeState(rawValue: raw.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+        }
         func set(_ s: WipeState) { write(s) }
     }
 
@@ -341,6 +423,18 @@ public final class RealTransportHostRig {
     internal var nodes: [String: Node] = [:]
     internal var links: [Link] = []
     private var tempRoot: URL
+    /// *** THE FIXTURE ROOT: WHEN SET, THE ESTATE OUTLIVETH THE RIG AND ITS PROCESS. ***
+    ///
+    /// *Every file the crash fixture needeth -- each node's two SQLite stores, the keychain facade and the wipe
+    /// journal -- liveth under this directory, so a NEW PROCESS pointed at the SAME root reacheth the SAME estate:
+    /// the same committed rows, the same (possibly DELETED) identity keys and the same (possibly mid-ladder) wipe
+    /// journal.* **`nil` is the default and preserveth every existing arm byte-for-byte: an anonymous temp root
+    /// that `tearDown` deleteth.**
+    private var fixtureRoot: URL?
+    /// Whether `tearDown` deletes the estate. `false` under a caller-owned fixture root, because the whole point of
+    /// that mode is that the estate survives for the next process to inspect.
+    private var ownsEstate = true
+
     /// Every message a node handed to a link, attributed by the send window it stood in.
     internal var egressByLabel: [String: [Data: Int]] = [:]
 
@@ -349,6 +443,25 @@ public final class RealTransportHostRig {
             .appendingPathComponent("gs_rig_" + UUID().uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         self.tempRoot = root
+    }
+
+    /// *** OPEN A RIG OVER A CALLER-OWNED, PERSISTENT ESTATE ROOT. ***
+    ///
+    /// *THE CRASH FIXTURE'S ONLY CONSTRUCTION ROAD: the same root handed to a SECOND process must reach the same
+    /// stores, the same keychain facade and the same wipe journal.* **`tearDown` DELIBERATELY LEAVETH THIS ESTATE
+    /// IN PLACE** -- deleting it would destroy exactly the durable evidence the recovery child existeth to read.
+    /// The caller owns the directory's lifetime, and it liveth in a temporary directory it chose.
+    internal init(fixtureRoot: URL) {
+        self.fixtureRoot = fixtureRoot
+        self.tempRoot = fixtureRoot
+        self.ownsEstate = false
+        try? FileManager.default.createDirectory(at: fixtureRoot, withIntermediateDirectories: true)
+    }
+
+    /// The per-estate file a node's facade/journal liveth in, namespaced by label so two nodes never share one.
+    private func estateFile(_ kind: String, _ label: String) -> URL? {
+        guard let fixtureRoot else { return nil }
+        return fixtureRoot.appendingPathComponent("\(kind)_\(label).bin")
     }
 
     // ============================================================================================
@@ -419,12 +532,28 @@ public final class RealTransportHostRig {
     private func buildNode(label: String, seedByte: UInt8, staticPrivByte: UInt8,
                            lane: CompositionLane,
                            messageUrl: URL? = nil, peerUrl: URL? = nil) throws -> Node {
-        let keychain = HostKeychain()
+        // *** THE FACADES COME FROM THE ESTATE IN FIXTURE MODE, AND FROM A FRESH DICTIONARY OTHERWISE. ***
+        //
+        // *THE DEFAULT PATH IS UNCHANGED -- `estateFile` answereth `nil` without a fixture root, so the keychain is
+        // the memory-only dictionary and the journal is idle-in-memory, exactly as every existing arm expecteth.*
+        // **UNDER A FIXTURE ROOT, A NEW PROCESS READS THE FACADE THE OLD ONE WROTE, WHICH IS THE WHOLE MECHANISM OF
+        // "reopen the SAME estate": a wipe's key DELETION is visible (the tag is absent), and a wipe's journal rung
+        // is visible (the file carrieth it).**
+        let keychain = HostKeychain(persistentAt: estateFile("keychain", label))
         let state = try LocalIdentityStateV1(generation: 0,
                                              ed25519Seed: Data(repeating: seedByte, count: 32),
                                              x25519PrivateKey: Data(repeating: staticPrivByte, count: 32))
-        keychain.put(MeshIdentity.v1Tag, state.encode())
-        let journal = HostJournal()
+        // *** AND THE SEED IS ONLY WRITTEN WHEN THE ESTATE HATH NO IDENTITY YET. ***
+        //
+        // *THE DEFECT THIS AVOIDETH IS EXACTLY THE ONE THE ASSIGNMENT NAMETH: "'Preserve wipe-produced key
+        // deletion/new identity rather than restoring the original seed.'"* **A node built over an estate a wipe
+        // hath already passed through must LOAD what survived -- the regenerated identity -- rather than re-seeding
+        // the old one over it.** *In memory-only mode the store is empty at every build, so the condition is always
+        // true and the behaviour is byte-identical to before.*
+        if try keychain.read(tag: MeshIdentity.v1Tag) == nil {
+            keychain.put(MeshIdentity.v1Tag, state.encode())
+        }
+        let journal = HostJournal(persistentAt: estateFile("wipejournal", label))
         let factory = HostManagerFactory()
         let urlSuffix = "\(label)_\(seedByte)"
         let messageUrl = messageUrl ?? tempRoot.appendingPathComponent("msg_\(urlSuffix).db")
@@ -517,13 +646,22 @@ public final class RealTransportHostRig {
     // MARK: - the radio open (through the NODE, so its delegate and session registry stand)
     // ============================================================================================
 
-    /// *** OPEN A NODE'S RADIO THROUGH THE NODE, NOT THE BARE TRANSPORT. ***
+    /// *** OPEN A NODE'S RADIO THROUGH THE NODE, NOT THE BARE TRANSPORT -- AND THE NODE ROUTES TO THE LIFECYCLE OWNER. ***
     ///
     /// *`MeshNode.start()` installs its own consumers FIRST (`ble.delegate = self`, `ble.sessions = sessions`,
     /// `ble.identity`, `ble.store`) and only then opens the adapter -- which is the whole `consume-before-open` law.
     /// **A rig that called `ble.start()` directly would open a radio with NO delegate and NO session registry, and
     /// every handshake would refuse with `no trusted session registry`** -- measured, and it is exactly what a first
     /// version of this rig did.*
+    ///
+    /// **AND THE OPEN TRAVELS `runtime.lifecycle`, NOT A SECOND PATH**: `MeshNode.start()` funnelleth its open step
+    /// through `lifecycleOwner` when the runtime hath given it one (`openAdapters`, IOS-06 step 1: "ONE RUNTIME OWNER
+    /// FOR LIFECYCLE"), and the composition root setts that owner -- so this call IS the production verb rather than a
+    /// rig-private road beside it. *The direct adapter road standeth only for a node that owneth no authority, which
+    /// is what maketh the change additive; a rig that started the radio some OTHER way would be the very second,
+    /// unowned path that finding removed.* **`testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle`
+    /// asserteth `runtime.lifecycle.start()`/`.isReady()`/`.stop()` independently, so the owner is witnessed on its
+    /// own road as well.**
     internal func open(_ label: String) throws {
         guard let n = nodes[label] else { throw RigError.unknownNode(label) }
         guard !n.opened else { return }
@@ -888,6 +1026,31 @@ public final class RealTransportHostRig {
     /// The handle `a` nameth `b` by (the outbound relation the rig established, on whichever side opened).
     internal func linkHandle(_ a: String, _ b: String) -> UUID? { handle(between: a, and: b) }
 
+    // ============================================================================================
+    // MARK: - the wipe-during-suspended-write observation doors
+    // ============================================================================================
+
+    /// *** WHICH KEY TAGS THE FACADE WAS ACTUALLY ASKED TO DELETE, IN ORDER -- AND WHAT SURVIVED. ***
+    ///
+    /// *THE E ARM'S OWN WORDS: "Record actual facade key-delete calls."* **A tag that is absent after a wipe is
+    /// consistent with both a real deletion and a key that was never written, so the CALL is what is witnessed here,
+    /// beside the surviving roster.** *Both halves are needed to speak of a genuine key deletion: the request and its
+    /// effect.*
+    internal func keychainFacade(_ label: String) -> (deletedTags: [String], survivingTags: [String])? {
+        guard let n = nodes[label] else { return nil }
+        let state = try? n.keychain.read(tag: MeshIdentity.v1Tag)
+        return (n.keychain.deletedTags, state == nil ? [] : [MeshIdentity.v1Tag])
+    }
+
+    /// *** THE WIPE JOURNAL'S OWN RUNG SEQUENCE, AS THE COMPOSITION MOVED IT. ***
+    ///
+    /// *THE ORDERING LAW THE E ARM MUST PROVE -- "key deletion must not precede the drain" -- is a claim about the
+    /// ORDER of two events, and a single durable slot readeth only the last.* **The journal object that receiveth
+    /// every rung keepeth the sequence, so the order is read from the wipe's own instrument.**
+    internal func journalRungs(_ label: String) -> [WipeState] {
+        return nodes[label]?.journal.rungHistory ?? []
+    }
+
     /// *** IS `link` READY ON THE SIDE PRODUCTION COULD EVER DELIVER TO -- THE OPENER'S, BY ITS EXACT HANDLE? ***
     ///
     /// *THE DEFECT THIS REPLACES, MEASURED IN THE HOSTED RUN AND REPRODUCED LOCALLY: the old predicate was
@@ -981,6 +1144,203 @@ public final class RealTransportHostRig {
     }
 
     internal func relationRing(_ label: String) -> String { ring(label) }
+
+    // ============================================================================================
+    // MARK: - the crash fixture's own observation doors
+    // ============================================================================================
+
+    /// *** HOLD A REAL RECEIVE AT A DURABLE BOUNDARY, ON ANOTHER THREAD, SO THE WIPE CAN RUN WHILE IT IS SUSPENDED. ***
+    ///
+    /// *THE E ARM'S CLAUSE, VERBATIM: "Begin a second valid write and hold it at an acknowledged owner boundary ...
+    /// Invoke the runtime's public resumable wipe entry on another worker."* **The hold is a REAL production
+    /// checkpoint -- `MeshCheckpoint`, the same seam the child-process harness uses -- so what is suspended is the
+    /// production operation at an owner's own named boundary, not a court's sleep.**
+    ///
+    /// **THE OPERATION RUNS ON ITS OWN THREAD AND ITS RESULT IS RETURNED THROUGH A SEMAPHORE**, so the caller can keep
+    /// the main thread for the wipe. *The gate is bounded: a hold that the test never releases, or an operation that
+    /// never reacheth its boundary, is a FAILURE reported to the caller rather than a hang.*
+    internal final class BoundaryGateStop: Error {}
+
+    internal func holdNextReceiveAtInboundCommit() -> SuspendedWrite {
+        return SuspendedWrite(boundary: MeshCheckpointNames.inboundCommit)
+    }
+
+    /// A receive suspended at a named durable boundary. `start` runneth it on a worker; `release` lets it finish.
+    internal final class SuspendedWrite: MeshCheckpointObserver, @unchecked Sendable {
+        private let boundary: String
+        private let reachedSem = DispatchSemaphore(value: 0)
+        private let releaseSem = DispatchSemaphore(value: 0)
+        private let doneSem = DispatchSemaphore(value: 0)
+        private let lock = NSLock()
+        private var firedFlag = false
+        private var result: Result<InboxCommitResult?, Error>?
+
+        init(boundary: String) { self.boundary = boundary }
+
+        var reachedBoundary: Bool {
+            lock.lock(); defer { lock.unlock() }
+            return firedFlag
+        }
+
+        /// Wait (bounded) for the operation to reach its durable boundary.
+        func awaitBoundary(_ timeout: TimeInterval = 30) -> Bool {
+            return reachedSem.wait(timeout: .now() + timeout) == .success
+        }
+
+        /// Release the hold and wait for the operation's own outcome.
+        func release(_ timeout: TimeInterval = 30) throws -> InboxCommitResult? {
+            releaseSem.signal()
+            guard doneSem.wait(timeout: .now() + timeout) == .success else {
+                throw RigError.notEstablished("the suspended operation never finished after release")
+            }
+            lock.lock(); defer { lock.unlock() }
+            switch result {
+            case .success(let v): return v
+            case .failure(let e): throw e
+            case nil: throw RigError.notEstablished("the suspended operation produced nothing")
+            }
+        }
+
+        /// The observer the fixture installs: it reports the boundary, then waits for the release.
+        func checkpoint(_ event: MeshCheckpointEvent) {
+            lock.lock()
+            if firedFlag || event.name != boundary { lock.unlock(); return }
+            firedFlag = true
+            lock.unlock()
+            reachedSem.signal()
+            releaseSem.wait()
+        }
+
+        fileprivate func finish(_ outcome: Result<InboxCommitResult?, Error>) {
+            lock.lock(); result = outcome; lock.unlock()
+            doneSem.signal()
+        }
+    }
+
+    /// Install a hold on the NEXT receive's `inboundCommit`, run `body` on a worker, and hand back the suspension.
+    internal func suspendReceive(_ label: String, frame: FrameV2, from senderNodeId: Data) -> SuspendedWrite {
+        let suspended = SuspendedWrite(boundary: MeshCheckpointNames.inboundCommit)
+        MeshCheckpoint.install(suspended)
+        guard let n = nodes[label], let inbox = n.node.recipientInbox else {
+            MeshCheckpoint.install(nil)
+            suspended.finish(.success(nil))
+            return suspended
+        }
+        let queue = DispatchQueue(label: "io.godstone.rig.suspended-write")
+        queue.async {
+            let outcome: Result<InboxCommitResult?, Error>
+            do {
+                outcome = .success(try inbox.acceptVerifiedAndRequireAck(
+                    frame, receivedFrom: senderNodeId, fault: nil))
+            } catch {
+                outcome = .failure(error)
+            }
+            // *** AND THE OBSERVER IS REMOVED ON THE WORKER, AFTER THE OPERATION HAS LEFT ITS BOUNDARY. *** *Leaving
+            // it installed would hold the NEXT receive too, which is not what "hold ONE write" meaneth.*
+            MeshCheckpoint.install(nil)
+            suspended.finish(outcome)
+        }
+        return suspended
+    }
+
+    /// *** RE-ENTER A RECORD CAPTURED EARLIER INTO A *LIVE* TRANSPORT'S REAL INGRESS. ***
+    ///
+    /// *THE PLAN'S `handshake` ROW ENDeth: "captured old-session records are refused."* **The only honest way to
+    /// test that is to hand the ACTUAL BYTES the fabric recorded to the receiving side's OWN CoreBluetooth entry
+    /// point and read what production decideth** -- never to inspect a session table. *Both directions are
+    /// legitimate and each side uses its OWN ingress: the initiator's `writeValue` arrives at the responder's
+    /// `processPeripheralReceiveWrite`, the responder's `updateValue` at the initiator's
+    /// `processPeripheralUpdateValue`.*
+    ///
+    /// **THE VERDICT IS AN OBSERVATION, NOT A RETURN VALUE**: `reductionProcessPeripheralReceiveWrite` answers
+    /// `Void`, so the refusal is read from the receiver's own estate -- after the replay it must hold NO connection
+    /// for the captured handle, no new ready relation and no new durable row. *A record from a retired epoch is
+    /// dropped at the door, which is exactly the "no session/ready state inherited" the row demandeth.*
+    /// *** RE-ENTER A RECORD CAPTURED EARLIER INTO A *LIVE* TRANSPORT'S REAL INGRESS, UNDER AN EXPLICIT KEY. ***
+    ///
+    /// *THE PLAN'S `handshake` ROW ENDeth: "captured old-session records are refused."* **The only honest way to test
+    /// that is to hand the ACTUAL BYTES the fabric recorded to the receiving side's OWN CoreBluetooth entry point and
+    /// read what production decideth** -- never to inspect a session table.
+    ///
+    /// **THE ROUTING KEY IS A PARAMETER RATHER THAN A LOOKUP, AND THAT IS A MEASURED REQUIREMENT: a retired
+    /// relation's handle no longer appeareth in the rig's link list, so a lookup could only ever re-address the
+    /// REPLACEMENT connection -- which would make the "old-session record" a fresh-session record and the witness
+    /// meaningless.** *The caller nameth the exact handle the captured bytes were addressed under, and which side
+    /// sent them.*
+    ///
+    /// **THE VERDICT IS AN OBSERVATION, NOT A RETURN VALUE**: the ingress answers `Void`, so the refusal is read
+    /// from the receiver's own estate -- after the replay it must hold NO connection for the retired handle, no new
+    /// ready relation and no new durable row. *A record from a retired epoch is dropped at the door, which is exactly
+    /// the "no session/ready state inherited" the row demandeth.*
+    internal func replayCapturedWrite(_ write: WireWrite, into receiverLabel: String,
+                                      underHandle handle: UUID, initiatorSent: Bool) -> String {
+        guard let receiver = nodes[receiverLabel] else { return "refused(no node \(receiverLabel))" }
+        let uuid = write.characteristic == "linkInfo"
+            ? BleTransport.linkInfoCharacteristicUuid : BleTransport.inboxCharacteristicUuid
+        let connectionBefore = receiver.ble.connection(for: handle)
+        let readyBefore = receiver.ble.linkReadyPeersForTest().count
+        let heldBefore = receiver.messageStore.allHeldMsgIds().count
+
+        if initiatorSent {
+            // The initiator wrote; this arrives at the RESPONDER's manager ingress.
+            guard let pm = receiver.ble.currentManagerContextForTest()?.peripheral else {
+                return "refused(no live responder epoch to replay into)"
+            }
+            let request = HostRequest(pinnedCentral: centralPresent(handle), uuid: uuid, value: write.bytes)
+            receiver.ble.processPeripheralReceiveWrite(
+                pm, requests: [unsafeBitCast(request, to: CBATTRequest.self)],
+                sourceEpoch: receiver.ble.currentTransportEpoch)
+        } else {
+            // The responder wrote; this arrives at the INITIATOR's peripheral ingress.
+            guard let delegate = receiver.ble.getRelationDelegate(handle) else {
+                return "refused(no relation delegate in the live epoch)"
+            }
+            let characteristic = CBMutableCharacteristic(
+                type: uuid, properties: [.read, .write, .notify], value: write.bytes,
+                permissions: [.readable, .writeable])
+            _ = receiver.ble.processPeripheralUpdateValue(
+                unsafeBitCast(HostPeripheral(identifier: handle), to: CBPeripheral.self),
+                delegate: delegate, characteristic: characteristic, error: nil)
+        }
+
+        // *** AND THE REFUSAL IS READ FROM WHAT THE RECEIVER'S OWN ESTATE DID *NOT* DO. ***
+        if receiver.ble.linkReadyPeersForTest().count > readyBefore {
+            return "accepted(the retired record revived a ready relation)"
+        }
+        if receiver.messageStore.allHeldMsgIds().count > heldBefore {
+            return "accepted(the retired record committed a durable row)"
+        }
+        if connectionBefore == nil && receiver.ble.connection(for: handle) != nil {
+            return "accepted(the retired record seated a connection)"
+        }
+        return "refused(no relation, no session and no durable effect for the retired handle)"
+    }
+
+    /// *** RESTART A NODE'S TRANSPORT INTO A FRESH EPOCH, THROUGH ITS OWN NODE. ***
+    ///
+    /// *THE `handshake` RECOVERY NEEDETH THIS AND NOTHING ELSE GIVETH IT: to judge "a captured OLD-SESSION record is
+    /// refused", the receiver must hold a LIVE, FRESHLY NEGOTIATED epoch -- *refusing at a stopped transport would be
+    /// a weaker and different observation.* **The restart goeth through `MeshNode.start()` for the same reason
+    /// `open` doth: a bare `ble.start()` would open a radio with no delegate and no session registry.**
+    @discardableResult
+    internal func restartTransport(label: String) -> Bool {
+        guard let n = nodes[label] else { return false }
+        n.runtime.meshNode.stop()
+        n.opened = false
+        return n.runtime.meshNode.start()
+    }
+
+    /// The byte total the fabric recorded for a label's own send window, without naming a msgId.
+
+    ///
+    /// *A DELIVERED row carrieth NO held frame -- retirement deleted it -- so neither `allHeldMsgIds` nor a msg_id
+    /// the court remembers can name it. The row itself must answer, which is what a sender-side crash scenario
+    /// needeth: the question "did DELIVERED and retirement AGREE?" is exactly the question of what the delivery
+    /// namespace carrieth after the kill.*
+    internal func anyDeliveryMsgId(_ label: String) -> Data? {
+        guard let n = nodes[label] else { return nil }
+        return n.runtime.messageStore.allDeliveryMsgIdsForTest().first
+    }
 
     // ============================================================================================
     // MARK: - authoring and dispatch
