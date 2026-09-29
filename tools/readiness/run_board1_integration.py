@@ -395,7 +395,18 @@ class Worker:
         self.notes: list[str] = []
         self._lock = threading.Lock()
         self._queue: list[Record] = []
-        self._stop = threading.Event()
+        # *** THE WAIT CURSOR IS PERSISTENT, BECAUSE `wait` IS CALLED MORE THAN ONCE IN ONE RUN. ***
+        #
+        # *THE DEFECT THIS CLOSES, MEASURED: `wait` scanned `self._queue` from index 0 on EVERY call, so once a
+        # `hello` had matched, EVERY SUBSEQUENT `wait` -- including one for the RE-MINT's own `hello` -- re-matched
+        # the FIRST `hello` and its stale hint. The re-mint path (never reached before the cross-platform run got
+        # this far) therefore looped 16 times reporting the SAME old hint (`d72ffe42 does not open against
+        # 0bb99473`) while the worker had in fact re-minted each time, and the run refused with `THE SENDER COULD NOT
+        # BE SEATED AS THE INITIATOR IN 16 RE-MINTS`.* **A consumer of a stream must advance, exactly as the
+        # worker-side `nextRecord` does; a local cursor that resetteth per call turneth every repeated `wait` into a
+        # read of history.** `observe`/`all_of`/`take` are the HISTORY readers and keep their whole-transcript view;
+        # only `wait` -- the forward consumer -- advanceth.
+        self._wait_cursor = 0
         self.log_path = runtime_dir / f"{spec.name}.worker.log"
         self._log_fh = None
         self.process: Optional[subprocess.Popen] = None
@@ -447,19 +458,19 @@ class Worker:
         if self.process is None:
             raise Refused(f"*** THE {self.name} WORKER WAS NEVER STARTED, so {what} cannot be awaited. ***")
         deadline = time.monotonic() + timeout
-        seen = 0
         while True:
             with self._lock:
-                while seen < len(self._queue):
-                    rec = self._queue[seen]
-                    seen += 1
+                while self._wait_cursor < len(self._queue):
+                    rec = self._queue[self._wait_cursor]
+                    self._wait_cursor += 1
                     if predicate(rec):
                         return rec
             if self.process.poll() is not None:
                 # Give the reader a moment to deliver the tail before concluding the worker is gone.
                 time.sleep(0.3)
                 with self._lock:
-                    pending = self._queue[seen:]
+                    pending = self._queue[self._wait_cursor:]
+                    self._wait_cursor = len(self._queue)
                     notes = list(self.notes)
                     transcript = [r.kind for r in self.transcript]
                 for rec in pending:
@@ -482,6 +493,10 @@ class Worker:
         with self._lock:
             out = self._queue
             self._queue = []
+            # *** `take` EMPTIETH THE QUEUE, SO THE FORWARD CURSOR RESTARTETH WITH IT. *** *The cursor indexeth
+            # `_queue`; leaving it pointing past a queue that was just replaced with a new one would SKIP the next
+            # record(s) until the new queue outgrew the stale index. The two must move together.*
+            self._wait_cursor = 0
         return out
 
     def observe(self, predicate: Callable[[Record], bool]) -> Optional[Record]:
