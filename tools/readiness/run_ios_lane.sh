@@ -17,6 +17,14 @@ set -eu
 cd "$(dirname "$0")/../.."
 LOG="${1:-ios-lane.log}"
 
+# *** THE PRE-RUN SOURCE DIGEST, SO A MID-RUN EDIT CANNOT DESCRIBE A TREE THE TESTS NEVER RAN. ***
+#
+# *THE SAME HOLE THE UI LANE CLOSED, AND IT WAS OPEN HERE: the lane wrote ONE digest AFTER `swift test`, so an edit to a
+# Swift source BETWEEN the compile and the sidecar produced a log that DESCRIBED a tree the tests never built -- and
+# `ci/check_lane_results.py` would then compare that late digest to the current tree and find them EQUAL, because both
+# are post-edit.* **THE DIGEST IS THEREFORE TAKEN TWICE -- BEFORE the compile and AFTER -- AND THE TWO MUST AGREE.**
+python3 tools/readiness/ios_source_digest.py >"$LOG.pre.sha256"
+
 python3 scripts/sync_ios_foundation_package.py
 # *** THE VERDICT COMES FROM THE CHECKER, NOT THE RAW `swift test` STATUS -- AND THE DIGEST IS WRITTEN EITHER WAY. ***
 #
@@ -37,5 +45,14 @@ rc=0
 swift test --package-path ios/Packages/GodstoneFoundation >"$LOG" 2>&1 || rc=$?
 
 python3 tools/readiness/ios_source_digest.py >"$LOG.sources.sha256"
+post_digest="$(cat "$LOG.sources.sha256")"
+pre_digest="$(cat "$LOG.pre.sha256")"
+if [ "$pre_digest" != "$post_digest" ]; then
+    echo "::error::a lane input changed WHILE the foundation lane ran:" >&2
+    echo "::error::  pre=$pre_digest" >&2
+    echo "::error::  post=$post_digest" >&2
+    echo "::error::the log is therefore not evidence about any single revision" >&2
+    exit 3
+fi
 echo "iOS lane: rc=$rc, log=$LOG, digest=$(cut -c1-16 "$LOG.sources.sha256")…"
 echo "  (*the raw swift-test status is EVIDENCE; the verdict comes from \`ci/check_lane_results.py\`*)"

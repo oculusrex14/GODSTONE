@@ -361,13 +361,42 @@ public final class RealTransportHostRig {
     /// survived is a fact about the disk rather than about a live object.**
     internal func closeAndReopen(_ label: String, as newLabel: String) throws -> Node {
         guard let old = nodes[label] else { throw RigError.unknownNode(label) }
+        // *** STOP, QUIESCE, **THEN** CLOSE -- THE SAME ORDER AS `tearDown`, FOR THIS NODE'S OWN LINKS. ***
+        //
+        // *A close that raced a delivery still in flight would be the `sqlite3` "database is unlinked while open"
+        // diagnostic the full simulator lane must not carry: the delivery queue can still hold a hop addressed to
+        // this node's transport, and that hop would then write into a closed/adopted connection.* **So the links are
+        // quiesced exactly as `tearDown` quiesces them, and only then are the stores released.**
+        quiesceLinks(of: label)
         old.runtime.lifecycle.stop()
         old.runtime.messageStore.close()
         old.runtime.peerIdentityStore.close()
+        old.runtime.closeAdoptedConnections()
         return try buildNode(label: newLabel, seedByte: old.seedByte, staticPrivByte: old.staticPrivByte,
                              lane: old.runtime.meshNode.compositionLane,
                              messageUrl: old.runtime.messageStoreUrl,
                              peerUrl: old.runtime.peerStoreUrl)
+    }
+
+    /// *** QUIESCE EVERY LINK THAT NAMES `label` -- UNHOOK ITS PRODUCERS, THEN DRAIN WHAT IS ALREADY IN FLIGHT. ***
+    ///
+    /// *`tearDown`'s ordering law, factored out because `closeAndReopen` needeth the identical guarantee for one
+    /// node while the rig lives on: **nothing new may be posted during teardown, and everything already inside must
+    /// be finished, before the storage goeth.** A barrier alone cannot do it -- a delivery's reverse hop re-enters
+    /// `updateValue` -> the `onUpdate` closure, which would ENQUEUE THE NEXT HOP during the drain.*
+    private func quiesceLinks(of label: String) {
+        for i in links.indices where links[i].a == label || links[i].b == label {
+            links[i].peripheral?.onWrite = nil
+        }
+        if let n = nodes[label] {
+            for manager in n.factory.peripheralManagers { manager.onUpdate = nil }
+        } else if let link = links.first(where: { $0.a == label || $0.b == label }) {
+            // The node was already forgotten: unhook through the surviving peer's factory, which is where the
+            // relation's responder manager actually lives.
+            let peerLabel = link.a == label ? link.b : link.a
+            for manager in nodes[peerLabel]?.factory.peripheralManagers ?? [] { manager.onUpdate = nil }
+        }
+        deliveryQueue.sync(flags: .barrier) { }
     }
 
     /// *** A REAL NODE, ON THE HOST LANE. *** *The identity is seeded from the keychain FACADE, and the graph is the
@@ -800,6 +829,45 @@ public final class RealTransportHostRig {
     /// The handle `a` nameth `b` by (the outbound relation the rig established, on whichever side opened).
     internal func linkHandle(_ a: String, _ b: String) -> UUID? { handle(between: a, and: b) }
 
+    /// *** IS `link` READY ON THE SIDE PRODUCTION COULD EVER DELIVER TO -- THE OPENER'S, BY ITS EXACT HANDLE? ***
+    ///
+    /// *THE DEFECT THIS REPLACES, MEASURED IN THE HOSTED RUN AND REPRODUCED LOCALLY: the old predicate was
+    /// `trustedHandles(arOpen).count > 0 && trustedHandles(rbOpen).count > 0`. **WHEN BOTH OPENERS ARE THE RELAY,
+    /// THAT IS SATISFIABLE BY THE A--R RELATION ALONE** -- the relay's roster is non-empty after the first hop, so the
+    /// A--R--B arm proceeded while R--B's own handshake was still in flight, and every later assertion (inbox row,
+    /// commit decision, ACK) then read a recipient that had received nothing.*
+    ///
+    /// **THE CONTRACT, NAMED RATHER THAN GLOSSED: a link is ready when BOTH of the opener's own views carry the
+    /// relation's EXACT handle** -- the transport's APPLICATION LinkReady roster (`linkReadyPeersForTest`, published
+    /// only upon the sealed key-confirmation round) **and** the node's route-eligible view (`knownPeersForTest`,
+    /// populated by `transportApplicationLinkReady` -> `trustedPeerDidConnect`). *The second is required because
+    /// `publishApplicationLinkReadyOnce` publisheth its OWN roster before it notifieth `MeshNode`, so a roster-only
+    /// check could pass an instant before the peer became routable and `dispatchDirect` would offer to nobody.*
+    ///
+    /// *Only the OPENER can be asked: production publish eth Application LinkReady solely inside
+    /// `takeInboundKeyConfirmation`'s RESPONSE branch, so the responder's roster legitimately stays empty. An unknown
+    /// link (or an unknown node) is `false`, never a guess.*
+    internal func isLinkReady(_ link: Link) -> Bool {
+        let openerLabel = link.aOpened ? link.a : link.b
+        let handle = link.aOpened ? link.aHandle : link.bHandle
+        guard let n = nodes[openerLabel] else { return false }
+        return n.ble.linkReadyPeersForTest().contains(handle)
+            && n.node.knownPeersForTest().contains(handle)
+    }
+
+    /// The opener, its exact handle, and both readiness observations -- the failure detail an arm prints.
+    internal func linkReadinessDetail(_ link: Link) -> String {
+        let openerLabel = link.aOpened ? link.a : link.b
+        let peerLabel = link.aOpened ? link.b : link.a
+        let handle = link.aOpened ? link.aHandle : link.bHandle
+        guard let n = nodes[openerLabel] else { return "no node \(openerLabel)" }
+        return "opener=\(openerLabel) peer=\(peerLabel) handle=\(handle) "
+            + "transportRoster=\(n.ble.linkReadyPeersForTest()) "
+            + "routeEligible=\(n.node.knownPeersForTest()) "
+            + "epoch=\(n.ble.currentTransportEpoch) "
+            + "fabric=\(fabric.recordCount()) ring=\(ring(openerLabel))"
+    }
+
     /// *** PRESENT ONE ALREADY-AUTHORED FRAME TO A NODE'S OWN RECIPIENT INBOX. ***
     ///
     /// *This is the inbox's typed door (`acceptVerifiedAndRequireAck`), which is the production road the node's own
@@ -901,9 +969,14 @@ public final class RealTransportHostRig {
     /// is filed under the frame's `msgId` -- **because the ciphertext carrieth no sixteen-octet id, a decode cannot
     /// attribute it; the window can, and an arm that also proves the RECIPIENT holdeth that exact `msgId` cannot be
     /// satisfied by a silent no-op.**
+    ///
+    /// *** THE RESULT IS THE TYPED `DirectDispatchResult`, NOT A RENDERED STRING. *** *It was `String(describing:)`,
+    /// which made every arm assert on a text prefix -- a shape that cannot distinguish `.handedToRelays(1)` from
+    /// `.handedToRelays(7)`, and which an arm could satisfy with bytes that never carried this frame at all (a
+    /// handshake write inside the same window).* **An arm now asserts the enum case production returned.**
     @discardableResult
     public func sendDirect(from authorLabel: String, to recipientLabel: String,
-                           plaintext: Data) async throws -> (frame: FrameV2, result: String, egressBytes: Int) {
+                           plaintext: Data) async throws -> (frame: FrameV2, result: DirectDispatchResult, egressBytes: Int) {
         guard let a = nodes[authorLabel] else { throw RigError.unknownNode(authorLabel) }
         let frame = try await authorDirectFrame(from: authorLabel, to: recipientLabel, plaintext: plaintext)
         guard let aHandle = handle(between: authorLabel, and: recipientLabel) else {
@@ -918,7 +991,7 @@ public final class RealTransportHostRig {
         }
         let delta = fabric.bytes(from: authorLabel, to: recipientLabel, since: mark)
         egressByLabel[authorLabel, default: [:]][frame.msgId] = delta
-        return (frame, String(describing: outcome), delta)
+        return (frame, outcome, delta)
     }
 
     /// *** CARRY ONE ALREADY-ISSUED FRAME OUT OVER THE REAL LINK WRITER. ***
@@ -1008,6 +1081,7 @@ public final class RealTransportHostRig {
     // ============================================================================================
 
     public func tearDown() {
+        // --- (1) STOP THE NODES -----------------------------------------------------------------------
         for (_, n) in nodes where n.opened {
             n.runtime.meshNode.stop()
         }
@@ -1031,13 +1105,33 @@ public final class RealTransportHostRig {
         //
         // *`deliveryQueue.sync(flags: .barrier)` is the rig's OWN drain (it cannot return while a queued delivery
         // standeth), not a sleep -- the same "quiesce before the storage goeth" shape the transport's teardown useth.*
+        //
+        // *** AND EVERY MANAGER OF EVERY FACTORY IS UNHOOKED, NOT ONLY `.last`. *** *`HostManagerFactory` minteth a
+        // PAIR PER EPOCH and `peripheralManagers` is a list: a node whose epoch was reinstalled carried more than one
+        // responder manager, and `lastPeripheralManager?.onUpdate = nil` left the older ones' closures alive -- each
+        // one retaining the rig strongly and able to post another hop. That is exactly the leak-shaped half of the
+        // crash this block exists to close.*
         for i in links.indices {
             links[i].peripheral?.onWrite = nil
         }
         for (_, n) in nodes {
-            n.factory.lastPeripheralManager?.onUpdate = nil
+            for manager in n.factory.peripheralManagers { manager.onUpdate = nil }
         }
+        // --- (2) DRAIN THE DELIVERY QUEUE, WITH EVERY PRODUCER ALREADY STOPPED --------------------------
         deliveryQueue.sync(flags: .barrier) { }
+        // --- (3) RELEASE THE STORES AND THE ADOPTED CONNECTIONS -- EXPLICITLY, WHILE THE OWNER STANDS -----
+        //
+        // *THE DEFECT THIS CLOSES, MEASURED IN THE FULL SIMULATOR LANE: removing the database FILES underneath live
+        // SQLite handles produced `database is unlinked while open` diagnostics, and an adopted connection that
+        // nobody closed kept its `dlopen`ed library alive for the process's lifetime.* **The composition carries the
+        // close verbs (`messageStore.close()`, `peerIdentityStore.close()`, `closeAdoptedConnections()`), all
+        // idempotent, and the order is the honest one: stop, drain, close, THEN delete the files.**
+        for (_, n) in nodes {
+            n.runtime.messageStore.close()
+            n.runtime.peerIdentityStore.close()
+            n.runtime.closeAdoptedConnections()
+        }
+        // --- (4) NOW THE ESTATE MAY GO ----------------------------------------------------------------
         for url in nodes.values.flatMap({ $0.urls }) { try? FileManager.default.removeItem(at: url) }
         try? FileManager.default.removeItem(at: tempRoot)
         nodes.removeAll()

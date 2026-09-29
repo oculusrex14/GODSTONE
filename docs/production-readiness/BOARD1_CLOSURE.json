@@ -1,7 +1,7 @@
 {
  "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
- "status": "READY_FOR_EXTERNAL_REAUDIT",
- "status_scope": "*** READY FOR EXTERNAL RE-AUDIT -- NOT VERIFIED FIXED. *** All TEN internal obligations are DISCHARGED and zero findings stand INTERNAL OPEN. The FIVE finding-level external obligations remain EXTERNAL_BLOCKED with closure_evidence null. *Completion is the INDEPENDENT auditor's verdict, never this builder's; `verified_fixed` stays 0 and this record never writes it.*",
+ "status": "REMEDIATION_IN_PROGRESS",
+ "status_scope": "*** REMEDIATION IN PROGRESS -- NOT READY, NOT VERIFIED FIXED. *** The Board-1 builder remediation round that produced rc11 reopened three internal obligations to PARTIAL after finding their evidence stronger than the arms that carried it: `gs-integration-001.scenarios` (object rebirth was called a process crash; a sequential wipe was called a suspended write), `gs-integration-001.mutation` (a recorder deletion was called a radio suppression), and `gs-stress-001.production-owner-mutation` (a test-accessor census was called a real leaked slot). *The FIVE finding-level external obligations remain EXTERNAL_BLOCKED with closure_evidence null. Completion is the INDEPENDENT auditor's verdict, never this builder's; `verified_fixed` stays 0 and this record never writes it.*",
  "repository_verification": {
   "run_id": null,
   "conclusion": null,
@@ -451,7 +451,7 @@
   "candidate_sha": "the commit the frozen candidate tag points at -- what a releaser builds",
   "candidate_tree_sha": "that commit's tree",
   "candidate_tag": "the tag name for candidate_sha",
-  "closure_record_sha": "the commit that carries THIS closure record; null until frozen -- A COMMIT CANNOT NAME ITSELF -- validated by ci/check_candidate_binding.py, which compar\u00e9th this document to the copy AT the candidate",
+  "closure_record_sha": "the commit that carries THIS closure record; null until frozen -- A COMMIT CANNOT NAME ITSELF -- validated by ci/check_candidate_binding.py, which comparéth this document to the copy AT the candidate",
   "main_tip_sha": "the live tip of `main` AT THE TIME OF WRITING; a tip moves, so this is refreshed, never 'positional'",
   "board2_tip_sha": "the live tip of `board2/device-release-validation` AT THE TIME OF WRITING",
   "rule": "*** NO FIELD IS 'POSITIONAL'. *** *If a field names a ref, it holds that ref's SHA as measured; if it names the candidate, it holds the candidate. The audit found `main_sha` holding a candidate SHA while main had advanced -- that is what this split removes.*",

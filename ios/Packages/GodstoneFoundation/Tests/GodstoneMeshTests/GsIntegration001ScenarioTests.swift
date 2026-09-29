@@ -233,18 +233,20 @@ final class GsIntegration001ScenarioTests: XCTestCase {
                           "the two sides name one relation by DIFFERENT handles, exactly as a real radio must")
         XCTAssertNotEqual(rb.aHandle, rb.bHandle, "and so for the second hop")
 
-        // *** BOTH HOPS MUST REACH THE TRUSTED HOUR BY PRODUCTION'S OWN EVENT. ***
+        // *** BOTH HOPS MUST REACH THE TRUSTED HOUR BY PRODUCTION'S OWN EVENT, ON THE OPENER'S OWN EXACT HANDLE. ***
+        //
+        // *THE DEFECT THIS REPLACES, MEASURED IN THE HOSTED RUN 36307478795 AND REPRODUCED ON THIS HOST: the old
+        // predicate was `trustedHandles(arOpen).count > 0 && trustedHandles(rbOpen).count > 0`. **WHEN BOTH OPENERS
+        // ARE THE RELAY, THAT IS SATISFIABLE BY THE A--R RELATION ALONE** -- so the arm dispatched into a receiver
+        // whose own handshake was still in flight, and every assertion below then read an empty estate (the hosted
+        // all-zero census at lines 274/289/295/297/300).* **`isLinkReady` asketh the opener's transport roster AND
+        // its route-eligible view for the relation's EXACT handle, so a sibling relation can no longer stand in.***
         XCTAssertTrue(
-            // *** ONLY THE INITIATOR PUBLISHES APPLICATION LINKREADY ON THIS ISLE. *** *MEASURED BY THE PROBE: after
-            // a completed exchange the INITIATOR's roster moveth and the responder's stays 0 -- production publishes
-            // inside `takeInboundKeyConfirmation`'s RESPONSE branch, and the responder (which only ANSWERS the
-            // challenge) never taketh it. So the wait is on the OPENER of each hop, not on every party.*
-            r.waitUntil { let arOpen = r.opener(of: "alice", "relay") ?? ""
-                          let rbOpen = r.opener(of: "relay", "bob") ?? ""
-                          return r.trustedHandles(arOpen).count > 0 && r.trustedHandles(rbOpen).count > 0 },
-            "*** A--R AND R--B MUST BOTH REACH THE TRUSTED HOUR THROUGH THE PRODUCTION PATH. THE PROBE: fabric "
+            r.waitUntil { r.isLinkReady(ar) && r.isLinkReady(rb) },
+            "*** A--R AND R--B MUST EACH BE READY ON THEIR OWN OPENER'S EXACT HANDLE. THE PROBE: fabric "
                 + "writes=\(r.fabric.recordCount()) [0 => HS1 NEVER LEFT THE INITIATOR; >0 => it left and the "
-                + "responder did not answer], aliceRoster=\(r.trustedHandles("alice").count) "
+                + "responder did not answer], AR(\(r.linkReadinessDetail(ar))), RB(\(r.linkReadinessDetail(rb))), "
+                + "aliceRoster=\(r.trustedHandles("alice").count) "
                 + "relayRoster=\(r.trustedHandles("relay").count) bobRoster=\(r.trustedHandles("bob").count), "
                 + "aliceRing=" + r.ring("alice") + " | relayRing=" + r.ring("relay")
                 + " | bobRing=" + r.ring("bob") + " ***")
@@ -265,17 +267,48 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         let receiver = try XCTUnwrap(r.peer(of: "relay", "bob"), "and its peer")
         let body = Data("the a-r-b arm's own body".utf8)
         let sent = try awaitRig { try await r.sendDirect(from: sender, to: receiver, plaintext: body) }
+        // *** THE DISPATCH VERDICT IS THE TYPED ENUM, NOT A TEXT PREFIX. *** *`String(describing:)` could not
+        // distinguish `.handedToRelays(1)` from `.handedToRelays(7)`, and a prefix test could be satisfied by
+        // `.queuedLocally`-plus-anything-that-happened-to-contain-the-substring.*
+        XCTAssertEqual(
+            sent.result, .handedToRelays(1),
+            "*** PRODUCTION MUST HAVE HANDED THIS FRAME TO EXACTLY ONE RELAY. Anything else -- `.queuedLocally` "
+                + "(the sender's route-eligible view held no handle) or a `.rejected` -- is a DIFFERENT failure from "
+                + "the egress one below and must be read as such. Observed: \(sent.result); sender=\(sender) "
+                + "receiver=\(receiver) ready(\(r.linkReadinessDetail(rb))) ***")
         XCTAssertGreaterThan(
             sent.egressBytes, 0,
             "*** THE EGRESS GATE: EVERY ADMITTED SEND MUST SHOW >=1 RECORDED `writeValue` BYTE IN THE FABRIC FOR "
                 + "THIS SEND WINDOW. A silent no-op would show 0 and FAIL here. Observed: \(sent.egressBytes) bytes "
                 + "***")
 
+        // *** THE COMPLETION BARRIER IS THE RECEIVER'S TERMINAL ADMISSION DECISION, NOT A ROUTER-HELD ROW. ***
+        //
+        // *THE DEFECT THIS REPLACES, MEASURED IN THE HOSTED RUN AND REPRODUCED LOCALLY: the barrier was
+        // `allHeldMsgIds().contains(msgId)`. **`MeshNode.ingestInbound` runneth `Router.ingest` FIRST -- which
+        // PERSISTETH the held row -- and only THEN callth `acceptVerifiedAndRequireAck`; the census counters
+        // (`committedNew`/`committedDuplicate`, `acksIssued`) increment inside `admitArm`, AFTER the ACK has been
+        // restored or created.** So a held row is visible while the inbox has decided NOTHING, and the arm read an
+        // all-zero census and an empty outbox -- a RACE, not a refusal, and not a thrown commit (no evidence of a
+        // throw exists anywhere in the hosted log).* **The wait is therefore on the ONE admission decision, the ONE
+        // issued ACK and the ONE outbox entry; only then is the frame's identity asserted.**
         XCTAssertTrue(
-            r.waitUntil { r.messageStore(receiver).allHeldMsgIds().contains(sent.frame.msgId) },
-            "*** AND IT MUST REACH THE RECIPIENT'S DURABLE INBOX THROUGH THE FABRIC AND ITS OWN TRANSPORT ENTRY: the egress "
-                + "bytes prove bytes left, THIS proveth they were this frame and that the recipient's sealed open, "
-                + "signed-author verification and inbox commit all ran. ***")
+            r.waitUntil {
+                let c = r.inboxCensus(receiver)
+                return (c?.committedNew ?? 0) + (c?.committedDuplicate ?? 0) == 1
+                    && c?.acksIssued == 1
+                    && r.ackOutboxDepth(receiver) == 1
+            },
+            "*** THE RECEIVER MUST REACH ITS TERMINAL ADMISSION OUTCOME: exactly one inbox commit decision, exactly "
+                + "one ACK issued, exactly one entry in the bounded outbox. *A timeout here is a FAILURE WITH THESE "
+                + "OBSERVATIONS -- never a reason to raise the bound or resend.* Observed: "
+                + "census=\(String(describing: r.inboxCensus(receiver))) outbox=\(r.ackOutboxDepth(receiver)) "
+                + "held=\(r.messageStore(receiver).allHeldMsgIds().count) ring=\(r.ring(receiver)) "
+                + "ready(\(r.linkReadinessDetail(rb))) ***")
+        XCTAssertTrue(
+            r.messageStore(receiver).allHeldMsgIds().contains(sent.frame.msgId),
+            "*** AND THE DURABLE ROW MUST BE THIS FRAME: the terminal admission decideth a frame, and THIS proveth "
+                + "which one reached the recipient's sealed open, signed-author verification and inbox commit. ***")
 
         // ---- THE RECIPIENT'S CANONICAL ACK: ISSUED BY PRODUCTION, CARRIED OVER THE REAL WRITER ---------
         //
@@ -299,6 +332,11 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         guard let ack = r.drainOneAck(receiver) else {
             return XCTFail("the recipient's canonical ACK must have been issued by production")
         }
+        // *** AND THE ACK THAT CROSSED IS **THIS FRAME'S** ACK, BY ITS OWN msg_id. ***
+        XCTAssertEqual(
+            ack.msgId, sent.frame.msgId,
+            "*** THE DRAINED ACK MUST NAME THE FRAME THAT WAS SENT: an ACK for any other message would satisfy a "
+                + "mere `carryToWire` verdict while proving nothing about this receipt. ***")
         let mark = r.fabric.mark()
         let verdict = r.carryToWire(ack, from: receiver, to: sender)
         XCTAssertTrue(String(describing: verdict).hasPrefix("admitted"),
@@ -357,9 +395,11 @@ final class GsIntegration001ScenarioTests: XCTestCase {
 
         let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
         XCTAssertTrue(
-            r.waitUntil { (r.linkHandle(initiator, "bob").map { h in r.trustedHandles(initiator).contains(h) }) ?? false },
-            "*** THE INITIATOR'S OWN APPLICATION-LINKREADY ROSTER MUST CONTAIN THE RELATION, because that roster is "
-                + "what maketh the peer route-eligible for `dispatchDirect`. Ring: " + r.ring(initiator) + " ***")
+            r.waitUntil { r.isLinkReady(link) },
+            "*** THE LINK MUST BE READY ON ITS OPENER'S EXACT HANDLE -- both the transport's APPLICATION LinkReady "
+                + "roster AND the node's route-eligible view, because `dispatchDirect` offers only to the latter and "
+                + "production publishes the former an instant before it notifieth the node. Detail: "
+                + r.linkReadinessDetail(link) + " ***")
 
         let sender = try XCTUnwrap(r.opener(of: "alice", "bob"), "the opener of the alice--bob exchange")
         let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
@@ -411,20 +451,41 @@ final class GsIntegration001ScenarioTests: XCTestCase {
         defer { r.tearDown() }
         let alice = try r.makeNode(label: "alice", seedByte: 0x51, staticPrivByte: 0x52)
         let bob = try r.makeNode(label: "bob", seedByte: 0x61, staticPrivByte: 0x62)
-        _ = try r.link("alice", "bob")
-        let initiator = try XCTUnwrap(r.opener(of: "alice", "bob"), "the initiator of the alice--bob exchange")
+        let link = try r.link("alice", "bob")
         XCTAssertTrue(
-            r.waitUntil { (r.linkHandle(initiator, "bob").map { h in r.trustedHandles(initiator).contains(h) }) ?? false },
-            "*** THE INITIATOR'S OWN APPLICATION-LINKREADY ROSTER MUST CONTAIN THE RELATION. Ring: "
-                + r.ring(initiator) + " ***")
+            r.waitUntil { r.isLinkReady(link) },
+            "*** THE LINK MUST BE READY ON ITS OPENER'S EXACT HANDLE BEFORE ANY FRAME IS DISPATCHED. The earlier "
+                + "predicate asked only whether SOME handle was ready, which a sibling relation could satisfy — the "
+                + "measured hosted failure. Detail: \(r.linkReadinessDetail(link)) ***")
 
         // ---- (1) A FIRST FRAME COMMITS, SO THE ESTATE HAS SOMETHING TO PROVE AFTERWARDS ----------------
         let sender = try XCTUnwrap(r.opener(of: "alice", "bob"), "the opener of the alice--bob exchange")
         let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
         let first = try awaitRig { try await r.sendDirect(from: sender, to: receiver,
                                                           plaintext: Data("before the gate".utf8)) }
-        XCTAssertTrue(r.waitUntil { r.messageStore(receiver).allHeldMsgIds().contains(first.frame.msgId) },
+        XCTAssertEqual(first.result, .handedToRelays(1),
+                       "the first frame must be handed to its one relay; observed \(first.result)")
+        // *** THE BARRIER IS THE TERMINAL ADMISSION, NOT A HELD ROW (see the A–R–B arm for the measured reason:
+        // `Router.ingest` persisteth the row BEFORE the inbox decideth, so a visible row proveth nothing yet). ***
+        XCTAssertTrue(
+            r.waitUntil {
+                let c = r.inboxCensus(receiver)
+                return (c?.committedNew ?? 0) + (c?.committedDuplicate ?? 0) == 1
+                    && c?.acksIssued == 1 && r.ackOutboxDepth(receiver) == 1
+            },
+            "*** THE FIRST RECEIPT MUST REACH ITS TERMINAL OUTCOME BEFORE THE WIPE BEGINS: one admission decision, "
+                + "one ACK, one outbox entry. *E must finish this first receipt before requesting the wipe; a "
+                + "timeout is a failure with these observations.* census=\(String(describing: r.inboxCensus(receiver))) "
+                + "outbox=\(r.ackOutboxDepth(receiver)) ring=\(r.ring(receiver)) ***")
+        XCTAssertTrue(r.messageStore(receiver).allHeldMsgIds().contains(first.frame.msgId),
                       "the first frame must commit before the gate closeth; ring: " + r.ring(receiver))
+        // *** AND PRODUCTION'S OWN ACK FOR THIS RECEIPT IS DRAINED HERE, SO THE WIPE IS NOT REQUESTED WHILE AN ACK
+        // IS STILL WAITING FOR ITS LINK. ***
+        guard let firstAck = r.drainOneAck(receiver) else {
+            return XCTFail("*** THE FIRST RECEIPT MUST HAVE ISSUED ITS CANONICAL ACK BEFORE THE WIPE. ***")
+        }
+        XCTAssertEqual(firstAck.msgId, first.frame.msgId,
+                       "and the drained ACK must name the receipt that produced it")
         let censusBefore = r.inboxCensus(receiver)
         // *** ONE COMMIT DECISION, new OR duplicate -- see the A-R-B arm for the measured reason (the router
         // persisteth the held row BEFORE the inbox runneth, so the inbox seeth an existing row). ***

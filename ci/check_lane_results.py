@@ -210,6 +210,216 @@ IOS_CLASS_SUITE = re.compile(r"^Test Suite '(\w+)' passed", re.M)
 IOS_TOTAL = re.compile(r"^\s*Executed (\d+) tests?, with (\d+) failures? \(\d+ unexpected\)", re.M)
 
 
+#: *** THE SIMULATOR LANE, WHICH THE WORKFLOW'S STEP 13 RAN AS AN INLINE GREP AND THIS CONTROL NOW REAPS. ***
+#:
+#: *MEASURED, AND IT IS THE DEFECT THIS ADDS A LANE FOR: the inline step read
+#: `grep -oE "Executed [0-9]+ tests, with 0 failures" | tail -1` and then asked only `>= 50`.* **XCTest printeth an
+#: `Executed` line per NESTED suite, so `tail -1` is a CHILD'S total, and 50 accepted a run whose outer suite never
+#: finished. Nothing bound that step's log to the bytes it compiled, nothing captured its raw status (it ended in a
+#: `| tee` pipeline), and nothing kept a result bundle.**
+#:
+#: **THIS CONTROL REAPS THAT LANE AGAINST A SOURCE-DERIVED ROSTER:** every `XCTestCase` class declared under the target's
+#: configured source directories must print a `passed` line, every `func test...` arm must be OBSERVED with its own
+#: verdict, no arm may be missing, duplicated or skipped, no suite may be unfinished, the raw status must be zero, and
+#: the log must carry agreeing pre/post source digests. *A count that merely exceeds 50 cannot discharge any of that.*
+SIMULATOR_LOG = REPO / "ios-simulator-lane.log"
+
+
+def _simulator_target_source_dirs() -> list[str]:
+    """The `Godstone-Light` scheme's TEST target source directories, from `project.yml`.
+
+    *Read rather than hard-coded, so an arm added to the tree automatically becomes a REQUIREMENT here instead of
+    silently widening what the control tolerates.* **The simulator lane runs the scheme's test action, which the spec
+    configures to the mesh test target -- so the roster cometh from THAT target's sources, not from a hand list.**
+    """
+    import yaml  # noqa: PLC0415 - imported here so a host without PyYAML degrades loudly, not at import time
+    spec = yaml.safe_load(IOS_PROJECT_SPEC.read_text(encoding="utf-8"))
+    targets = spec.get("targets") or {}
+    # The scheme's test action names its targets; fall back to the unit-test bundle that the scheme runs when the
+    # scheme block is absent, so an older spec still yields a roster rather than an empty one.
+    scheme_tests: list[str] = []
+    for scheme in (spec.get("schemes") or {}).values():
+        for entry in ((scheme.get("test") or {}).get("targets") or []):
+            name = entry if isinstance(entry, str) else (entry or {}).get("name")
+            if name:
+                scheme_tests.append(name)
+    chosen = [n for n in scheme_tests if (targets.get(n) or {}).get("type") == "bundle.unit-test"]
+    if not chosen:
+        chosen = [n for n, t in targets.items() if (t or {}).get("type") == "bundle.unit-test"]
+    dirs: list[str] = []
+    for name in chosen:
+        for s in (targets.get(name, {}).get("sources") or []):
+            if isinstance(s, dict) and "path" in s:
+                dirs.append(s["path"])
+    return dirs
+
+
+def simulator_roster() -> tuple[list[str], int]:
+    """`([XCTestCase class names], arm count)` declared by the SIMULATOR lane's configured test sources."""
+    classes: list[str] = []
+    arms = 0
+    for rel in _simulator_target_source_dirs():
+        for f in sorted((REPO / "ios" / rel).rglob("*.swift")):
+            text = f.read_text(encoding="utf-8", errors="replace")
+            classes.extend(IOS_TEST_CLASS.findall(text))
+            arms += len(_UI_TEST_FUNC.findall(text))
+    return sorted(set(classes)), arms
+
+
+def check_ios_simulator_lane() -> tuple[list[str], dict]:
+    """*** THE SIMULATOR LANE: THE SOURCE ROSTER BY NAME, THE RAW STATUS, SKIPS, UNFINISHED SUITES, PRE/POST DIGESTS. ***
+
+    *Each guard below is the replacement for one hole in the inline `>=50` grep the workflow carried.* **A green here
+    meaneth: the scheme's own test action ran on a RECORDED device, every source-declared class and arm executed and
+    passed, no arm was skipped, no suite was left unfinished, the raw `xcodebuild` status was zero, and the log was
+    produced from ONE source revision.**
+    """
+    problems: list[str] = []
+    totals = {"suites": 0, "tests": 0, "failures": 0, "skipped": 0, "required_arms": 0, "evidence": []}
+    if not SIMULATOR_LOG.is_file():
+        return ([f"the iOS simulator lane log is absent at {SIMULATOR_LOG} -- the workflow's step 13 has not been run "
+                 f"here, and AN UNRUN LANE IS NOT A PASS"], totals)
+    text = SIMULATOR_LOG.read_text(encoding="utf-8", errors="replace")
+
+    # (a) THE RAW STATUS, READ FROM THE CHILD AND NOT FROM A PIPELINE'S LAST ELEMENT.
+    m = re.search(r"^raw_xcodebuild_rc=(\d+)$", text, re.M)
+    if not m:
+        problems.append("the iOS simulator lane carrieth NO `raw_xcodebuild_rc=` line -- *the runner must capture the "
+                        "`xcodebuild` child's OWN status (the workflow's `| tee` gave `tee`'s), and an absent status "
+                        "cannot be reconciled with the roster below.*")
+    else:
+        raw = int(m.group(1))
+        totals["raw_rc"] = raw
+        if raw != 0:
+            problems.append(f"the iOS simulator lane's raw `xcodebuild` status is {raw}, NOT zero -- *a non-zero "
+                            f"process is a failure whatever the log's summary lines say.*")
+
+    # (b) THE DEVICE, RECORDED RATHER THAN ASSUMED.
+    for key in ("device_name", "device_udid", "device_runtime"):
+        if not re.search(rf"^{key}=.+$", text, re.M):
+            problems.append(f"the iOS simulator lane carrieth no `{key}` -- *a lane that does not name the device it "
+                            f"ran on cannot be re-executed on the same one, and `name=iPhone` is not an identity.*")
+
+    # (c) THE OUTERMOST VERDICT: `** TEST SUCCEEDED **` AND NO `** TEST FAILED **`.
+    if "** TEST SUCCEEDED **" not in text:
+        problems.append("the iOS simulator lane carrieth NO `** TEST SUCCEEDED **` banner -- *a run that died "
+                        "mid-suite can still print a `0 failures` line for the suites it reached.*")
+    if "** TEST FAILED **" in text:
+        problems.append("the iOS simulator lane carrieth `** TEST FAILED **`")
+
+    # (d) EVERY ARM'S OWN VERDICT, BY STABLE IDENTITY -- NOT A COUNT.
+    cases = IOS_UITEST_CASE.findall(text)
+    totals["tests"] = len(cases)
+    totals["failures"] = sum(1 for _, _, v in cases if v == "failed")
+    totals["suites"] = len({c.split(".")[-1] for c, _, _ in cases})
+    if not cases:
+        problems.append("the iOS simulator lane carrieth NO `Test Case '...' passed|failed` line -- **AN EMPTY RUN IS "
+                        "NOT A PASS**, and a log with no per-arm verdicts cannot distinguish 'all passed' from "
+                        "'nothing executed'")
+    try:
+        classes, arm_count = simulator_roster()
+    except Exception as exc:  # noqa: BLE001 - an unobtainable roster must not read as an absent arm
+        problems.append(f"the simulator lane's source roster could not be derived from {IOS_PROJECT_SPEC}: {exc} -- "
+                        f"**AN UNOBTAINABLE ROSTER IS NOT AN EMPTY ONE**")
+        classes, arm_count = [], 0
+    totals["declared_classes"] = len(classes)
+    totals["declared_arms"] = arm_count
+    got_classes = set(IOS_CLASS_SUITE.findall(text))
+    missing = sorted(set(classes) - got_classes)
+    for name in missing[:6]:
+        problems.append(f"the iOS simulator lane carrieth no PASSED line for source-declared test class {name} -- a "
+                        f"class that did not run is not covered by this control")
+    if missing:
+        problems.append(f"and {len(missing)} of {len(classes)} source-declared classes are missing their PASSED line")
+
+    # (e) THE ARMS, BY NAME, WITH DUPLICATES AND SKIPS REFUSED.
+    observed: dict[str, int] = {}
+    for c, n, _v in cases:
+        key = f"{c.split('.')[-1]}.{n}"
+        observed[key] = observed.get(key, 0) + 1
+    for key, times in sorted(observed.items()):
+        if times > 1 and key in _required_simulator_arm_names():
+            problems.append(f"the iOS simulator lane carrieth {times} verdicts for required arm {key} -- a duplicated "
+                            f"arm would be double-counted")
+    for m in re.finditer(r"^Test Case '([^']+)' skipped", text, re.M):
+        totals["skipped"] += 1
+        if totals["skipped"] <= 3:
+            problems.append(f"the iOS simulator lane carrieth a SKIPPED arm ({m.group(1)}) -- a skipped witness "
+                            f"reports as a pass while measuring nothing")
+    if totals["skipped"] > 3:
+        problems.append(f"and {totals['skipped'] - 3} further skipped arm(s)")
+
+    # (f) NO UNFINISHED SUITE: every `Test Suite 'X' started` must be matched by a terminal line.
+    started = re.findall(r"^Test Suite '([\w.]+)' started", text, re.M)
+    finished = set(re.findall(r"^Test Suite '([\w.]+)' (?:passed|failed)", text, re.M))
+    unfinished = [s for s in started if s not in finished]
+    totals["unfinished_suites"] = len(unfinished)
+    if unfinished:
+        problems.append(f"the iOS simulator lane carrieth {len(unfinished)} suite(s) that STARTED but never reached a "
+                        f"terminal line: {sorted(set(unfinished))[:5]} -- *a suite cut off mid-run is exactly what a "
+                        f"`tail -1` count cannot see.*")
+
+    # (g) THE AGGREGATE, RECONCILED WITH THE SOURCES -- two independent measurements of one population.
+    run = []
+    for mm in re.finditer(r"^Test Suite '[\w.]+\.xctest' passed.*?^\s*Executed (\d+) tests?, with (\d+) failures?",
+                          text, re.M | re.S):
+        run.append((int(mm.group(1)), int(mm.group(2))))
+    if not run:
+        problems.append("the iOS simulator lane carrieth NO per-bundle 'Executed N tests, with M failures' total -- "
+                        "the run died before its suites finished")
+    bundle_tests = sum(t for t, _ in run)
+    bundle_failures = sum(f for _, f in run)
+    totals["bundle_tests"] = bundle_tests
+    totals["evidence"] = [f"{t} tests / {f} failures" for t, f in run] + [f"SOURCES declare {arm_count} arms"]
+    if run and arm_count and bundle_tests != arm_count:
+        problems.append(f"the iOS simulator lane executed {bundle_tests} tests but its SOURCES declare {arm_count} "
+                        f"`func test...` arms -- a count that disagreeth with the sources is a swallowed class, a "
+                        f"truncated log, or a log from a different tree")
+    if bundle_failures:
+        problems.append(f"the iOS simulator lane's per-bundle totals carry {bundle_failures} failure(s)")
+    if bundle_tests == 0 and run:
+        problems.append("the iOS simulator lane executed ZERO tests -- a zero-test run has not measured anything")
+
+    # (h) NO `error:` LINES.
+    if re.search(r"^\s*.*error: ", text, re.M):
+        problems.append("the iOS simulator lane log carrieth `error:` lines")
+
+    # (i) THE STALENESS AND PRE/POST DIGEST CONTRACT -- the same one the UI lane carrieth.
+    side = Path(str(SIMULATOR_LOG) + ".sources.sha256")
+    pre = Path(str(SIMULATOR_LOG) + ".pre.sha256")
+    if not side.is_file():
+        problems.append(f"the iOS simulator lane carrieth no digest sidecar at {side.name} -- an undatable log is not "
+                        f"evidence about the current tree")
+    if not pre.is_file():
+        problems.append(f"the iOS simulator lane carrieth no PRE-RUN digest at {pre.name} -- *a log whose source set "
+                        f"was sampled only AFTER the run cannot be shown to describe one revision.*")
+    if side.is_file() and pre.is_file():
+        post_digest = side.read_text(encoding="utf-8").strip().split()[0]
+        pre_digest = pre.read_text(encoding="utf-8").strip().split()[0]
+        current = _ios_source_digest()
+        if pre_digest != post_digest:
+            problems.append(f"the iOS simulator lane's SOURCE SET CHANGED WHILE IT RAN: pre-run {pre_digest[:16]}… "
+                            f"does not match post-run {post_digest[:16]}… -- *this log is not evidence about ANY "
+                            f"single revision.*")
+        elif post_digest != current:
+            problems.append(f"the iOS simulator lane log is STALE: its source digest {post_digest[:16]}… does not "
+                            f"match the tree's {current[:16]}… -- *the log never saw these sources. Re-run the lane.*")
+    return problems, totals
+
+
+def _required_simulator_arm_names() -> set[str]:
+    """The source-declared arm names, as `<Class>.<test>` -- used for the duplicate check above."""
+    names: set[str] = set()
+    for rel in _simulator_target_source_dirs():
+        for f in sorted((REPO / "ios" / rel).rglob("*.swift")):
+            text = f.read_text(encoding="utf-8", errors="replace")
+            m = re.search(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase", text, re.M)
+            cls = m.group(1) if m else None
+            for arm in _UI_TEST_FUNC.findall(text):
+                names.add(f"{cls}.{arm}" if cls else arm)
+    return names
+
+
 #: *The foundation lane's roster, read from the TEST SOURCES -- the same "one source of truth, two consumers" shape as
 #: the UI arm roster, and for the same reason: a hard-coded list drifteth from the tree it claims to describe.*
 IOS_TEST_SOURCE_ROOT = REPO / "ios" / "Packages" / "GodstoneFoundation" / "Tests"
@@ -341,8 +551,28 @@ def check_ios_lane() -> tuple[list[str], dict]:
         if recorded != current:
             problems.append(
                 f"the iOS lane log is STALE: its source digest {recorded[:16]}… does not match the tree's "
-                f"{current[:16]}… -- *the log never saw these sources, so it is not evidence about them. Re-run the "
+                f"{current[:16]}… -- *the lane never saw these sources, so it is not evidence about them. Re-run the "
                 f"lane.*")
+    # *** AND THE PRE-RUN DIGEST MUST EQUAL THE POST-RUN ONE, OR A MID-RUN EDIT STOLE THE LOG'S OWN PROVENANCE. ***
+    #
+    # *THE DEFECT THIS CLOSES: `run_ios_lane.sh` wrote its digest AFTER `swift test`, so an edit to a Swift source
+    # BETWEEN the compile and the sidecar produced a log DESCRIBING a tree the tests never built -- **and the staleness
+    # guard above CANNOT see it, because both the late digest and the tree are post-edit.*** *The runner now writes a
+    # PRE-RUN digest beside it, and the two must agree.*
+    pre = Path(str(IOS_LOG) + ".pre.sha256")
+    if not pre.is_file():
+        problems.append(
+            f"the iOS lane log carrieth NO PRE-RUN digest at {pre.name} -- *a log whose source set was sampled only "
+            f"AFTER the run cannot be shown to describe one revision: a mid-run edit leaves the late digest and the "
+            f"current tree EQUAL, so the staleness guard is blind to it.*")
+    elif sidecar.is_file():
+        pre_digest = pre.read_text(encoding="utf-8").strip().split()[0]
+        post_digest = sidecar.read_text(encoding="utf-8").strip().split()[0]
+        if pre_digest != post_digest:
+            problems.append(
+                f"the iOS lane's SOURCE SET CHANGED WHILE IT RAN: pre-run {pre_digest[:16]}… does not match post-run "
+                f"{post_digest[:16]}… -- *this log is not evidence about ANY single revision. Revert the concurrent "
+                f"edit and re-run.*")
     return problems, totals
 
 # *** SELF-CLOSING-TOLERANT: a passing case is `<testcase ... />`, and the naive pattern swallows what follows. ***
@@ -953,10 +1183,12 @@ def ios_scope_rows(scope: str, ios_totals: dict, ui_totals: dict, ui_evidence: l
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--scope", choices=("all", "ios", "android"), default="all",
+    ap.add_argument("--scope", choices=("all", "ios", "android", "ios-simulator"), default="all",
                     help="which lanes this invocation is responsible for -- *a control run inside the iOS job "
                          "cannot judge the ANDROID lanes, which a different job produces, nor the UI lane, which has "
-                         "not run yet; asking it to would refuse thirteen things that are merely ABSENT*")
+                         "not run yet; asking it to would refuse thirteen things that are merely ABSENT*. "
+                         "`ios-simulator` judges ONLY the workflow's step-13 simulator lane, whose log/bundle live "
+                         "beside the repository like the other lanes'.")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--selftest-ui", action="store_true")
     ap.add_argument("--selftest-foundation", action="store_true")
@@ -1048,6 +1280,23 @@ def main() -> int:
     # *A lane outside the scope sayeth so and carrieth NO COUNT; a lane inside it carrieth its real counts. **Both
     # branches are the same call, so the selftest cannot drift from the shipped rendering.***
     summary.extend(ios_scope_rows(args.scope, ios_totals, ui_totals, list(IOS_UI_REQUIRED_SUITES)))
+    # *** AND THE SIMULATOR LANE, WHICH `--scope all` AND `--scope ios` BOTH REQUIRE. ***
+    #
+    # *The workflow's step 13 is a lane like the other two, so `--scope ios` must judge it and `--scope all` must too;
+    # `--scope ios-simulator` judgeth it ALONE, which is what the step's own control invocation uses (the other two
+    # lanes' artifacts are judged by their own preceding step, and asking this one to re-judge them would refuse
+    # nothing real but would duplicate the verdict).*
+    if args.scope in ("all", "ios", "ios-simulator"):
+        sim_probs, sim_totals = check_ios_simulator_lane()
+    else:
+        sim_probs, sim_totals = ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
+    summary.append(
+        f"  {'ios:simulator':<14} suites={sim_totals['suites']:<3} tests={sim_totals['tests']:<5} "
+        f"failures={sim_totals['failures']} raw_rc={sim_totals.get('raw_rc')} "
+        f"skipped={sim_totals.get('skipped', 0)} unfinished={sim_totals.get('unfinished_suites', 0)}"
+        + ("  <- per bundle: " + "; ".join(sim_totals.get("evidence", []))
+           if sim_totals.get("evidence") else ""))
+    all_problems.extend(sim_probs)
     # NOTICES ARE ANNOUNCED, NEVER COUNTED AS FAILURES -- *a recorded gap is not a broken lane, and a notice that
     # reddened the control would force the known-red entry to be DELETED to get green.*
     for notice in ui_totals.get("notices", []):
@@ -1193,14 +1442,28 @@ def _android_source_digest_problems(label: str) -> list[str]:
     safe = label.replace(":", "-")
     sidecar = REPO / f"{safe}.sources.sha256"
     current = _android_source_digest(label)
+    problems: list[str] = []
     if not sidecar.is_file():
         return [f"{label}: no source digest at {sidecar.name} -- *a result with no provenance cannot be dated, and an "
                 f"undatable result is not evidence about the current tree. Run tools/readiness/run_android_lanes.sh.*"]
     recorded = sidecar.read_text(encoding="utf-8").strip()
     if recorded != current:
-        return [f"{label}: STALE -- its source digest {recorded[:16]}… does not match the tree's {current[:16]}… -- "
-                f"*the results never saw these sources. Re-run the lane.*"]
-    return []
+        problems.append(f"{label}: STALE -- its source digest {recorded[:16]}… does not match the tree's "
+                        f"{current[:16]}… -- *the results never saw these sources. Re-run the lane.*")
+    # *** AND THE PRE-RUN DIGEST MUST EQUAL THE POST-RUN ONE. ***
+    # *The same contract the iOS lanes carry: a digest sampled only AFTER the run cannot show that one revision was
+    # compiled, because a mid-run edit leaves the late digest and the current tree EQUAL.*
+    pre = REPO / f"{safe}.pre.sha256"
+    if not pre.is_file():
+        problems.append(f"{label}: no PRE-RUN digest at {pre.name} -- *a result whose source set was sampled only "
+                        f"AFTER the run cannot be shown to describe one revision.*")
+    else:
+        pre_digest = pre.read_text(encoding="utf-8").strip()
+        if pre_digest != recorded:
+            problems.append(f"{label}: SOURCE SET CHANGED WHILE IT RAN: pre-run {pre_digest[:16]}… does not match "
+                            f"post-run {recorded[:16]}… -- *the results describe no single revision. Revert the "
+                            f"concurrent edit and re-run.*")
+    return problems
 
 
 #: The test tree each lane compiles, for the SOURCE-side census below.

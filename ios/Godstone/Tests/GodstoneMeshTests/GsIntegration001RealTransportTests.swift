@@ -1192,6 +1192,267 @@ final class GsIntegration001RealTransportTests: XCTestCase {
                 + "the IDENTICAL frame -- so this refusal is `linkLayerAdmissible`, not the decoder. ***")
     }
 
+    // ================================================================================================
+    // MARK: - STEP 13: THE TWO DETERMINISTIC REGRESSIONS THE HOSTED FAILURE EARNED
+    // ================================================================================================
+
+    /// *** HOLD THE RIG'S ONLY DELIVERY QUEUE -- AND ACKNOWLEDGE THE ENTRY, SO THE HOLD IS A FACT RATHER THAN A
+    /// TIMING ASSUMPTION. ***
+    ///
+    /// *A barrier first, so everything ALREADY in flight lands before the hold beginneth; then a block that waiteth on
+    /// the returned semaphore. Because `deliveryQueue` is SERIAL, every delivery posted afterwards standeth behind
+    /// it -- which is what maketh "the handshake cannot cross" deterministic instead of scheduler-dependent.*
+    /// **THE RELEASE IS RETURNED, NOT ASSUMED: `defer` must be able to release a hold whose prerequisite failed.**
+    private func holdDeliveryQueue(_ r: RealTransportHostRig) -> () -> Void {
+        let gate = DispatchSemaphore(value: 0)
+        r.deliveryQueue.sync(flags: .barrier) { }
+        r.deliveryQueue.async { gate.wait() }
+        return { gate.signal() }
+    }
+
+    /// *** `testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle`. ***
+    ///
+    /// **THE DETERMINISTIC REGRESSION FOR THE HOSTED RUN'S A–R–B FAILURE** (*run 36307478795, five ARB assertion
+    /// failures at `GsIntegration001ScenarioTests.swift:274/289/295/297/300`, all-zero ARB census*).
+    ///
+    /// *THE DEFECT: the arm's readiness predicate was `trustedHandles(arOpen).count > 0 && trustedHandles(rbOpen)
+    /// .count > 0`. **WHEN ONE NODE OPENS BOTH HOPS -- which the production hint election determineth, and which this
+    /// arm FORCES by making the hub the lexicographically smallest hint -- THAT PREDICATE IS SATISFIED BY THE FIRST
+    /// RELATION ALONE.** The arm then dispatched into a receiver whose second handshake had not crossed, and read an
+    /// all-zero census that a scheduler delay, not a refusal, had produced.*
+    ///
+    /// **THE ARM IS SCHEDULER-INDEPENDENT BY CONSTRUCTION**: the rig's serial delivery queue is HELD (with an
+    /// acknowledged entry, released in `defer`), so the second relation's handshake provably cannot complete while
+    /// the assertions run. No sleeps, no retries, no "wait longer". *Mutating `isLinkReady` back to the old
+    /// any-ready-handle rule makes this arm fail; reverting a scenario predicate the arm never calls would not.*
+    func testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle() throws {
+        let r = RealTransportHostRig()
+        var release: (() -> Void)?
+        defer { release?(); r.tearDown() }
+        try r.makeNode(label: "n1", seedByte: 0x11, staticPrivByte: 0x12)
+        try r.makeNode(label: "n2", seedByte: 0x21, staticPrivByte: 0x22)
+        try r.makeNode(label: "n3", seedByte: 0x31, staticPrivByte: 0x32)
+
+        // *** THE HUB IS THE LEXICOGRAPHICALLY SMALLEST HINT, WHICH IS THE PRODUCTION ELECTION'S OWN RULE. ***
+        // *`BleRoleElection.elect` nameth the smaller hint the initiator, and only the initiator carrieth the outbound
+        // relation -- so the smallest hint opens EVERY hop it taketh part in. Naming the hub by measurement (not by
+        // a seed guess) is what maketh the adversarial arrangement certain rather than hoped for.*
+        let labels = ["n1", "n2", "n3"]
+        let hints = labels.map { ($0, r.node($0)!.identity.nodeHint) }
+        guard let hub = hints.min(by: { $0.1.lexicographicallyPrecedes($1.1) })?.0 else {
+            return XCTFail("the three hints must be orderable")
+        }
+        let others = labels.filter { $0 != hub }
+        let firstPeer = others[0], secondPeer = others[1]
+        XCTAssertEqual(
+            r.opener(of: hub, firstPeer), hub,
+            "the hub must open the FIRST hop -- it holdeth the smallest hint, so the production election nameth it "
+                + "the initiator")
+
+        // ---- HOP ONE: ESTABLISHED COMPLETELY, BY PRODUCTION'S OWN EVENT ----------------------------------
+        let first = try r.link(hub, firstPeer)
+        XCTAssertTrue(
+            r.waitUntil { r.isLinkReady(first) },
+            "*** HOP ONE MUST BE READY ON THE HUB'S EXACT HANDLE BEFORE THE REGRESSION BEGINS. Detail: "
+                + r.linkReadinessDetail(first) + " ***")
+
+        // ---- HOLD THE RADIO, THEN CREATE HOP TWO WHILE ITS HANDSHAKE PROVABLY CANNOT CROSS -----------------
+        release = holdDeliveryQueue(r)
+        XCTAssertEqual(
+            r.opener(of: hub, secondPeer), hub,
+            "and the hub must open the SECOND hop as well, which is the arrangement under which the OLD predicate "
+                + "is satisfiable by the first relation alone")
+
+        let second = try r.link(hub, secondPeer)
+
+        // ---- THE TWO ASSERTIONS THAT DISCRIMINATE THE OLD RULE FROM THE NEW ONE --------------------------
+        XCTAssertFalse(
+            r.isLinkReady(second),
+            "*** THE SECOND HOP MUST NOT BE READY WHILE ITS HANDSHAKE IS HELD ON THE RADIO QUEUE. THE OLD PREDICATE "
+                + "WOULD HAVE SAID OTHERWISE, and that is the hosted failure. Detail: "
+                + r.linkReadinessDetail(second) + " ***")
+        let oldPredicateHolds = r.trustedHandles(hub).count > 0 && r.trustedHandles(hub).count > 0
+        XCTAssertTrue(
+            oldPredicateHolds,
+            "*** AND THE OLD PREDICATE IS **STILL SATISFIED** -- the hub opens BOTH hops, so `trustedHandles(opener)"
+                + ".count > 0` is true for each of them from the FIRST relation alone, and a count-based check would "
+                + "have proceeded into a receiver that had received nothing. THIS is the defect the exact-handle "
+                + "check closeth, measured rather than argued. hub=\(hub) roster=\(r.trustedHandles(hub)) ***")
+        XCTAssertFalse(
+            r.isLinkReady(first) == false,
+            "and hop one must still be ready throughout -- otherwise the arm would be measuring a wedged radio")
+
+        // ---- RELEASE, AND REQUIRE THE SECOND HOP TO COMPLETE AND CARRY A REAL FRAME ------------------------
+        release?()
+        release = nil
+        XCTAssertTrue(
+            r.waitUntil { r.isLinkReady(second) },
+            "*** ONCE THE RADIO IS RELEASED, HOP TWO MUST REACH READINESS BY ITS OWN PRODUCTION EVENT. Detail: "
+                + r.linkReadinessDetail(second) + " ***")
+
+        let sender = hub
+        let receiver = secondPeer
+        let sent = try awaitRigSync { try await r.sendDirect(from: sender, to: receiver,
+                                                            plaintext: Data("the held-second-link arm".utf8)) }
+        XCTAssertEqual(sent.result, .handedToRelays(1),
+                       "the frame must be handed to its one relay; observed \(sent.result)")
+        XCTAssertGreaterThan(sent.egressBytes, 0, "and the egress window must be non-zero")
+        XCTAssertTrue(
+            r.waitUntil {
+                let c = r.inboxCensus(receiver)
+                return (c?.committedNew ?? 0) + (c?.committedDuplicate ?? 0) == 1 && c?.acksIssued == 1
+            },
+            "*** AND THE FRAME MUST REACH ITS RECIPIENT'S TERMINAL ADMISSION THROUGH THE SECOND HOP. census="
+                + "\(String(describing: r.inboxCensus(receiver))) ring=\(r.ring(receiver)) ***")
+    }
+
+    /// *** `testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions`. ***
+    ///
+    /// **THE SECOND HOSTED FAILURE (the E arm's line 431, and the same race in A–R–B): `unsealedAccepted = 1` with
+    /// `committedNew = committedDuplicate = acksIssued = 0`.**
+    ///
+    /// *THE ORDERING, READ FROM THE SOURCE RATHER THAN INFERRED: `MeshNode.ingestInbound` runneth `Router.ingest`
+    /// FIRST -- which PERSISTETH the held row -- and only THEN calleth `RecipientInboxRepository
+    /// .acceptVerifiedAndRequireAck`, whose counters (`committedNew`/`committedDuplicate`, `acksIssued`) increment
+    /// inside `admitArm` AFTER the ACK is restored or created.* **SO A VISIBLE HELD ROW CERTIFIES NOTHING: not the
+    /// signed-author verification, not the commit decision, not the ACK.** *An arm that waiteth on the row and then
+    /// asserteth the counters is racing the owner.*
+    ///
+    /// **THE WITNESS USES THE PRODUCTION FAULT SEAM (`"signing"`, the deterministic boundary
+    /// `RecipientInboxRepository` already carrieth) TO STOP THE DECISION MID-FLIGHT**: the router's persist has
+    /// returned, the inbox is blocked at signing, and the arm reads the census THERE. *No sleeps, no invented
+    /// counters, and the released road must still produce the ONE canonical admission and ACK.*
+    func testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions() throws {
+        let r = RealTransportHostRig()
+        defer { r.tearDown() }
+        try r.makeNode(label: "alice", seedByte: 0x11, staticPrivByte: 0x12)
+        try r.makeNode(label: "bob", seedByte: 0x31, staticPrivByte: 0x32)
+        let link = try r.link("alice", "bob")
+        XCTAssertTrue(r.waitUntil { r.isLinkReady(link) },
+                      "the relation must be ready first; detail: " + r.linkReadinessDetail(link))
+        let sender = try XCTUnwrap(r.opener(of: "alice", "bob"), "the opener")
+        let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
+
+        let frame = try awaitRigSync { try await r.authorDirectFrame(
+            from: sender, to: receiver, plaintext: Data("held before the decision".utf8)) }
+        let senderNodeId = r.node(sender)!.identity.nodeId
+        let receiverNode = try XCTUnwrap(r.node(receiver)).node
+        let inbox = try XCTUnwrap(receiverNode.recipientInbox, "the receiver must carry its recipient inbox")
+        XCTAssertEqual(r.inboxCensus(receiver)?.committedNew ?? 0, 0,
+                       "the arm must begin from an untouched census")
+
+        // ---- (1) THE ROUTER'S PERSIST -- PRODUCTION'S OWN FIRST HALF OF `ingestInbound` ----------------
+        let relayed = receiverNode.router.ingest(
+            frame, isAddressedToMe: frame.routingTag == r.node(receiver)!.identity.nodeHint,
+            receivedFrom: senderNodeId)
+        XCTAssertTrue(relayed, "the router must accept this frame for durable persist+relay")
+        XCTAssertTrue(
+            r.messageStore(receiver).allHeldMsgIds().contains(frame.msgId),
+            "*** THE HELD ROW IS NOW VISIBLE. THIS IS THE FACT THE RACING ARM MISTOOK FOR COMPLETION. ***")
+
+        // ---- (2) THE DECISION IS NOT MADE YET, AND THE ROW'S VISIBILITY PROVES NOTHING -----------------
+        let midFlight = r.inboxCensus(receiver)
+        XCTAssertEqual(
+            (midFlight?.committedNew ?? 0) + (midFlight?.committedDuplicate ?? 0), 0,
+            "*** WITH ONLY THE ROUTER'S PERSIST DONE, THERE IS **NO** ADMISSION DECISION -- so a row-visible "
+                + "barrier authorizes no counter assertion at all. Observed: \(String(describing: midFlight)) ***")
+        XCTAssertEqual(midFlight?.acksIssued, 0, "and no ACK exists yet either")
+        XCTAssertEqual(r.ackOutboxDepth(receiver), 0, "and the outbox is empty")
+
+        // ---- (3) THE INBOX DECISION, BLOCKED AT THE OWNER'S OWN `"signing"` BOUNDARY -------------------
+        let entered = DispatchSemaphore(value: 0)
+        let released = DispatchSemaphore(value: 0)
+        let finished = DispatchSemaphore(value: 0)
+        var verdict: InboxCommitResult?
+        DispatchQueue.global().async {
+            verdict = try? inbox.acceptVerifiedAndRequireAck(frame, receivedFrom: senderNodeId) { site in
+                if site == "signing" {
+                    entered.signal()
+                    released.wait()
+                }
+            }
+            finished.signal()
+        }
+        XCTAssertEqual(entered.wait(timeout: .now() + 30), .success,
+                       "*** THE OWNER MUST REACH ITS `\"signing\"` BOUNDARY -- otherwise this arm measured a refusal "
+                           + "at an earlier gate and its middle assertion is vacuous. ***")
+        let blocked = r.inboxCensus(receiver)
+        XCTAssertEqual(
+            (blocked?.committedNew ?? 0) + (blocked?.committedDuplicate ?? 0), 0,
+            "*** MID-DECISION, THE CENSUS STILL CARRIETH NO TERMINAL ADMISSION: `unsealedAccepted` may already have "
+                + "moved (the decryption succeeded), and THAT IS EXACTLY THE HOSTED OBSERVATION -- a successful open "
+                + "is not a commit. Observed: \(String(describing: blocked)) ***")
+        XCTAssertEqual(blocked?.acksIssued, 0, "and still no ACK at this boundary")
+        XCTAssertEqual(r.ackOutboxDepth(receiver), 0, "and still an empty outbox")
+        XCTAssertTrue(r.messageStore(receiver).allHeldMsgIds().contains(frame.msgId),
+                      "and the row remains visible throughout -- the trap this arm is about")
+
+        // ---- (4) RELEASE, AND REQUIRE THE ONE TERMINAL ADMISSION AND THE CANONICAL ACK -----------------
+        //
+        // *** THE ACK IS TAKEN FROM THE DECISION'S OWN RETURN VALUE, AND THE OUTBOX IS NOT ASSERTED HERE -- AND
+        // THAT DISTINCTION IS THE POINT RATHER THAN A CONVENIENCE. *** *Filing the issued ACK into the node's bounded
+        // outbox is `MeshNode.ingestInbound`'s OWN `offerAckForLink` step, one line AFTER it calleth this door;
+        // this arm enters the door directly because the fault seam is a parameter of the door alone.* **So the
+        // canonical ACK is the frame the decision RETURNS, and it is proven by CARRYING it over the real link
+        // writer -- the same egress law the A–R–B arm useth. The outbox half is that arm's, on the production road,
+        // where production actually performeth it.**
+        released.signal()
+        XCTAssertEqual(finished.wait(timeout: .now() + 30), .success, "the decision must complete")
+        let after = r.inboxCensus(receiver)
+        XCTAssertEqual(
+            (after?.committedNew ?? 0) + (after?.committedDuplicate ?? 0), 1,
+            "*** EXACTLY ONE TERMINAL ADMISSION, AFTER the decision rather than before it. Observed: "
+                + "\(String(describing: after)) ***")
+        XCTAssertEqual(after?.acksIssued, 1, "and exactly one ACK issued")
+        let canonicalAck: FrameV2
+        switch verdict {
+        case .new(let ack), .duplicate(let ack):
+            canonicalAck = ack
+        default:
+            return XCTFail("*** THE RELEASED DECISION MUST COMMIT THE FRAME (new OR duplicate), not refuse it: "
+                           + "\(String(describing: verdict)) ***")
+        }
+        XCTAssertEqual(canonicalAck.msgId, frame.msgId,
+                       "*** AND THE CANONICAL ACK MUST NAME THE FRAME THAT WAS DECIDED -- an ACK for any other "
+                           + "message would satisfy a carrier verdict while proving nothing about this receipt. ***")
+        let ackMark = r.fabric.mark()
+        let carried = r.carryToWire(canonicalAck, from: receiver, to: sender)
+        XCTAssertEqual(
+            carried, .admitted,
+            "*** AND IT MUST CROSS THE REAL LINK WRITER: the ACK production issued is carried by this rig, never "
+                + "minted by it. Observed: \(carried) ***")
+        XCTAssertGreaterThan(r.fabric.bytes(since: ackMark), 0,
+                             "and the ACK's own bytes must be recorded by the fabric")
+        // *** AND THE ROW IS STILL EXACTLY THE ONE ROW -- a replay must not add a second. ***
+        XCTAssertEqual(r.messageStore(receiver).allHeldMsgIds().filter { $0 == frame.msgId }.count, 1,
+                       "exactly one durable row for this frame")
+    }
+
+    private let holdDeliveryQueuePlaceholder: (() -> Void) = { }
+
+    /// *The scenario suite's detached-task driver, reused here so these arms never inherit the transport's own task
+    /// cancellation (the measured `CancellationError` at `BleTransport.swift:744`).*
+    private func awaitRigSync<T>(_ body: @escaping () async throws -> T,
+                                 file: StaticString = #filePath, line: UInt = #line) throws -> T {
+        let sem = DispatchSemaphore(value: 0)
+        var result: Result<T, Error>?
+        Task.detached {
+            do { result = .success(try await body()) } catch { result = .failure(error) }
+            sem.signal()
+        }
+        guard sem.wait(timeout: .now() + 30) == .success else {
+            XCTFail("the async body never finished", file: file, line: line)
+            throw RealTransportHostRig.RigError.notEstablished("async body timed out")
+        }
+        switch result {
+        case .success(let v): return v
+        case .failure(let e): throw e
+        case nil:
+            XCTFail("the async body produced nothing", file: file, line: line)
+            throw RealTransportHostRig.RigError.notEstablished("async body produced nothing")
+        }
+    }
+
     /// *** THE RIG MUST **DEALLOCATE** AFTER `tearDown`, EVEN WITH A REAL PENDING DELIVERY -- SO THE
     /// `unowned`-AFTER-DEALLOC CRASH IS NOT TRADED FOR A LEAK. ***
     ///
@@ -1209,17 +1470,68 @@ final class GsIntegration001RealTransportTests: XCTestCase {
     ///
     /// *THE WEAK REFERENCE IS HELD OUTSIDE THE INNER SCOPE, so the strong reference really is released when the scope
     /// exiteth, and the drain is BOUNDED (`waitUntil`), not a sleep dressed as a wait.*
+    ///
+    /// *** THE OLD VERSION WAS WEAKER THAN ITS OWN COMMENT: it sent immediately after `link`, DISCARDED the result,
+    /// and asserted nothing about the delivery's state -- so "with a pending delivery" was an assumption, not a
+    /// measured fact.** *The same review that corrected the outbound/ACK arms applies here. This version AWAITS the
+    /// exact link (so a real delivery is posted only through a ready relation), HOLDS the fabric queue with an
+    /// acknowledged entry, sends and asserts the typed dispatch verdict and a nonzero egress window, starts teardown
+    /// on a separate worker, RELEASES the hold, waits for teardown to finish, and only then requires the release.*
+    /// **AND THE STORE-HANDLE HALF: a node is retained through teardown and its store must REFUSE a read afterwards
+    /// (`readDelivery` throws `handleMissing`), which is the observation that catches an unlinked-but-open handle --
+    /// the exact fault that produced the simulator's `database is unlinked while open` diagnostics.**
     func testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery() async throws {
         weak var weakRig: RealTransportHostRig?
+        var retainedStore: SqliteMessageStore?
         do {
             let r = RealTransportHostRig()
             weakRig = r
             try r.makeNode(label: "alice", seedByte: 0x31, staticPrivByte: 0x32)
             try r.makeNode(label: "bob", seedByte: 0x41, staticPrivByte: 0x42)
-            try r.link("alice", "bob")
-            // *** A REAL DELIVERY, SO A `[self]`-CARRYING HOP IS ACTUALLY POSTED. ***
-            _ = try await r.sendDirect(from: "alice", to: "bob", plaintext: Data("the release arm".utf8))
-            r.tearDown()
+            let link = try r.link("alice", "bob")
+            // *** AWAIT THE EXACT LINK -- a send into an unready relation would post no hop and the arm would then
+            // assert release with nothing pending, which is what the previous version did by construction. ***
+            XCTAssertTrue(
+                r.waitUntil { r.isLinkReady(link) },
+                "*** THE RELATION MUST BE READY BEFORE THE PENDING DELIVERY IS PRODUCED. Detail: "
+                    + r.linkReadinessDetail(link) + " ***")
+            let sender = try XCTUnwrap(r.opener(of: "alice", "bob"), "the opener carrieth the outbound relation")
+            let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
+
+            // ---- HOLD THE RADIO, SEND, AND REQUIRE THE SEND TO BE A REAL ONE ---------------------------
+            let release = holdDeliveryQueue(r)
+            defer { release() }
+            let sent = try awaitRigSync { try await r.sendDirect(
+                from: sender, to: receiver, plaintext: Data("the release arm".utf8)) }
+            XCTAssertEqual(sent.result, .handedToRelays(1),
+                           "*** THE PENDING DELIVERY MUST REALLY BE HANDED TO THE RELAY (a `.queuedLocally` would "
+                               + "post no hop at all, and the release assertion below would then be vacuous). "
+                               + "Observed: \(sent.result) ***")
+            XCTAssertGreaterThan(sent.egressBytes, 0,
+                                 "and its bytes must be on the fabric record")
+            // *** AND THE DELIVERY IS PROVABLY STILL PENDING -- the queue is held, and the recipient has NOT yet
+            // decided anything. ***
+            XCTAssertEqual(
+                (r.inboxCensus(receiver)?.committedNew ?? 0) + (r.inboxCensus(receiver)?.committedDuplicate ?? 0), 0,
+                "*** THE DELIVERY MUST STILL BE IN FLIGHT, NOT COMPLETED: the queue is held, so the receiver cannot "
+                    + "have reached its admission decision. A completed delivery would make this arm's `PENDING` "
+                    + "claim a misnomer. Observed: \(String(describing: r.inboxCensus(receiver))) ***")
+
+            // ---- TEARDOWN ON A WORKER, THEN RELEASE THE HOLD -------------------------------------------
+            let tornDown = DispatchSemaphore(value: 0)
+            DispatchQueue.global().async {
+                r.tearDown()
+                tornDown.signal()
+            }
+            // *The hold is released AFTER teardown has begun: teardown's own barrier waiteth for this very block, so
+            // the hop that carrieth the rig's strong capture runneth DURING the drain -- which is the interleaving the
+            // crash arm exists to cover.*
+            retainedStore = r.messageStore(receiver)
+            release()
+            XCTAssertEqual(tornDown.wait(timeout: .now() + 30), .success,
+                           "*** TEARDOWN MUST COMPLETE ONCE THE HOLD IS RELEASED. A timeout here means the drain "
+                               + "never finished -- which is itself the defect (the rig's own barrier waiteth on work "
+                               + "that a held queue would otherwise never run). ***")
         }
         // *A BOUNDED DRAIN WAIT: the `[self]`-carrying hops release their reference AS THE QUEUE RUNS, so the
         // assertion is made after the queue may have drained -- not immediately, and not on a sleep (a bounded poll
@@ -1232,6 +1544,19 @@ final class GsIntegration001RealTransportTests: XCTestCase {
             "*** THE RIG MUST BE RELEASED after tearDown -- a strong `[self]` capture that outlived it would be a "
                 + "LEAK, which is the crash traded for a worse defect. If this reds, the delivery closures (or the "
                 + "hops they post) still hold the rig, and the release must be repaired at that capture. ***")
+
+        // *** AND THE RETAINED NODE'S STORE MUST REFUSE A READ AFTER ITS OWNER CLOSED IT. ***
+        //
+        // *`tearDown` closes the stores AND deletes their files; a handle left OPEN across that deletion is precisely
+        // the `database is unlinked while open` diagnostic the full simulator lane must not carry.* **So the retained
+        // store's reader must THROW rather than answer -- `nil` (mere absence) would be indistinguishable from a
+        // healthy empty store, and a live handle would answer happily.***
+        let stored = try XCTUnwrap(retainedStore, "the store must have been retained across teardown")
+        XCTAssertThrowsError(
+            try stored.readDelivery(Data(repeating: 0x00, count: 16)),
+            "*** A STORE WHOSE OWNER HAS CLOSED MUST REFUSE TO READ: `readDelivery` THROWETH (`handleMissing`) rather "
+                + "than answering `nil`, because `nil` means mere absence. An unlinked-but-open handle -- the "
+                + "simulator's own `database is unlinked while open` fault -- would answer here and FAIL this arm. ***")
     }
 
     /// *** `testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction`. ***

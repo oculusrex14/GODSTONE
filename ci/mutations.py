@@ -256,6 +256,84 @@ def run_structural(report_only, emit_dir, baseline_sha):
 
 
 # --------------------------------------------------------------------------
+# *** THE BOARD 1 REQUIRED-ID SET, WHICH `--group board1` SELECTETH. ***
+#
+# *`--id` SELECTS BY EXACT FULL ID, and that is right for a single rod but wrong for a campaign: naming 40 rods on a
+# command line inviteth a typo that silently narroweth the population, and a narrowed population that still PASSES is
+# the exact false-green this ledger's honesty rules exist to refuse.*
+#
+# **SO THE GROUP IS A NAMED SET IN THE SOURCE, AND `run_semantic` REFUSETH ANY ID IN IT THAT IS NOT IN `SEMANTIC`
+# -- a group entry naming a rod the ledger has never carried is a hole in the campaign, and a hole that reads as a
+# pass is worse than a missing rod.** *The set is deliberately the ids the Board 1 plan's steps 3-10 name, each a
+# semantic control over real production behaviour with its own named witness and its opposite healthy control.*
+BOARD1_REQUIRED_IDS: tuple[str, ...] = (
+    # --- STEP 3: the three construction counters and the permit refusal (Android, zero private opens) ---
+    "T72-RC13-android-private-construction-uncounted",
+    "T72-RC14-android-private-permit-may-be-bypassed",
+    # --- STEP 4: the runtime-owner witnesses (pump, dispatcher admission, origin, invalidator, idle) ---
+    "T72-RC15-android-ack-pump-not-handed-to-the-node",
+    "T72-RC16-android-ack-dispatcher-admits-elsewhere",
+    # --- STEP 5: the real transport -- default shipping gate, ingress, OS egress, LinkReady publication ---
+    "T72-RC18-ios-transport-ingest-unwired",
+    "T72-RC19-ios-egress-is-a-silent-noop",
+    "T72-RC20-ios-ingress-empty-sender-restored",
+    # --- STEP 6: hint/static/old-epoch refusal and the wipe ladder ---
+    "T72-RC21-ios-resolver-stopeth-resolving-altogether",
+    "T55-RC4-a-failed-wipe-is-not-resumable",
+    "T56-RC7-a-failed-wipe-is-not-resumable",
+    # --- STEP 7: the real-owner resource releases, dedup and parser gates ---
+    "T72-RC1-the-shutdown-releaseth-no-lease",
+    "T72-RC3-the-inbox-dedup-is-asleep",
+    "T72-RC11-ios-the-shutdown-releaseth-nothing",
+    "T72-RC10-android-the-inbox-dedup-is-asleep",
+    # --- STEP 8: the rendered Trust/Approval journey -- stale candidate, confirmation CAS, revoke ---
+    "T55-RC1-approve-the-current-rotation-not-the-displayed-one",
+    "T56-RC1-verified-shown-before-the-durable-cas",
+    "T56-RC5-the-displayed-candidate-is-not-what-travels",
+    "T56-RC9-a-mismatching-confirmation-promoteth",
+    "T56-RC12-revocation-leaveth-the-sessions-standing",
+    "T57-RC5-the-compose-bound-is-characters-not-bytes",
+    "T57-RC6-truncation-splitteth-a-character",
+    "T57-RC11-a-duplicate-tap-sendeth-twice",
+    "T57-RC12-the-relaunch-inventeth-an-armed-control",
+    "T58-RC7-the-compose-bound-is-characters",
+    "T58-RC8-a-bare-confirm-placeth-a-call",
+    "T58-RC10-a-duplicate-arrival-becometh-two-rows",
+    # --- STEP 9: the live accessibility semantics (targets, labels, traversal, clipping) ---
+    "T60-RC1-a-label-less-essential-control-is-accepted",
+    "T60-RC2-a-clipped-status-is-accepted-at-large-text",
+    "T60-RC4-a-undersized-target-is-accepted",
+    "T60-RC5-a-gapped-reading-order-is-accepted",
+    "T60-RC11-ios-a-clipped-status-is-accepted",
+    "T60-RC12-ios-the-touch-target-minimum-vanish",
+    # --- STEP 10: SQLCipher's engine claim and the handle/provider lifetime ---
+    "T72-RC17-ios-engine-claims-pinned-without-binding",
+    # --- the shipping gate stays closed ---
+    "T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge",
+    "T54-RC2-lab-isolation-gate-sleepeth-on-a-readiness-override",
+    "T54-RC3-lab-may-masquerade-as-the-shipping-identity",
+    "T59-RC9-the-light-profile-claimeth-the-radio",
+)
+
+
+def _group_ids(name: str) -> list[str]:
+    """The rod ids a named group selecteth, AND A HARD REFUSAL IF ANY IS NOT IN `SEMANTIC`.
+
+    *A group entry with no matching rod is a hole in the campaign -- the campaign would report KILLED for every rod it
+    ran while never running that one, which is the "a control that has never been observed failing is not a control"
+    defect wearing a group's name.*
+    """
+    if name != "board1":
+        raise SystemExit(f"::error::unknown group {name!r}; the only group is `board1`")
+    known = {s["id"] for s in SEMANTIC}
+    missing = [i for i in BOARD1_REQUIRED_IDS if i not in known]
+    if missing:
+        raise SystemExit(f"::error::the `board1` group names {len(missing)} id(s) that are NOT in SEMANTIC: "
+                         f"{missing} -- a group entry with no rod is a hole in the campaign, never a pass")
+    return list(BOARD1_REQUIRED_IDS)
+
+
+# --------------------------------------------------------------------------
 # The semantic lineage. Every mutation runs in a DISPOSABLE worktree at a
 # pinned head; the oracle is the named witness case of the readiness suites.
 # --------------------------------------------------------------------------
@@ -2050,7 +2128,65 @@ def _classify(entry, build_exit, run, failed, baseline_ok, anchor_count=1, skipp
                           anchor_count, skipped, restored_green)
 
 
-def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None):
+def _tested_input_digests() -> dict:
+    """A digest per file-family the campaign MUTATES AND READS, plus the runner itself.
+
+    *A digest map, not one number: a reader who see'th a mismatch must be able to NAME which family moved, and one
+    digest over everything would only say "something changed".* **`ci/mutations.py` is included because the rods'
+    `find`/`replace` pairs live in ITS bytes -- a manifest that bound only the mutated tree would not notice a rod
+    definition changing under the run.**
+    """
+    families = {
+        "swift_sources": ("ios/Godstone/Sources", "*.swift"),
+        "swift_tests": ("ios/Godstone/Tests", "*.swift"),
+        "mirror_sources": ("ios/Packages/GodstoneFoundation/Sources", "*.swift"),
+        "mirror_tests": ("ios/Packages/GodstoneFoundation/Tests", "*.swift"),
+        "android_sources": ("android/mesh/src", "*.kt"),
+        "android_labmesh": ("android/labmesh/src", "*.kt"),
+    }
+    out: dict[str, str] = {}
+    for name, (rel, pattern) in families.items():
+        h = hashlib.sha256()
+        base = os.path.join(ROOT, rel)
+        if os.path.isdir(base):
+            matches: list[str] = []
+            for dirpath, _dirnames, filenames in os.walk(base):
+                for fn in filenames:
+                    if fn.endswith(pattern.lstrip("*")):
+                        matches.append(os.path.join(dirpath, fn))
+            for path in sorted(matches):
+                h.update(os.path.relpath(path, ROOT).encode())
+                h.update(b"\0")
+                with open(path, "rb") as stream:
+                    h.update(stream.read())
+                h.update(b"\0")
+        out[name] = h.hexdigest()
+    for rel in ("ci/mutations.py", "ios/project.yml", "android/settings.gradle.kts"):
+        path = os.path.join(ROOT, rel)
+        out[rel] = _sha_file(path) or "absent"
+    return out
+
+
+def _toolchain_probe() -> dict:
+    """The toolchain versions the campaign ran under, PROBED rather than asserted.
+
+    *A campaign whose compiler version is unrecorded cannot be re-executed: the same sources under a different Swift or
+    JDK can compile differently, and a KILL obtained under an unrecorded toolchain is a verdict nobody can reproduce.*
+    """
+    out: dict[str, str] = {}
+    for name, argv in (("swift", ["swift", "--version"]),
+                       ("xcodebuild", ["xcodebuild", "-version"]),
+                       ("java", ["java", "-version"])):
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True, timeout=60)
+            blob = (proc.stdout or "") + (proc.stderr or "")
+            out[name] = blob.strip().splitlines()[0] if blob.strip() else "no output"
+        except Exception as exc:  # noqa: BLE001 - an unobtainable version must be NAMED, not omitted
+            out[name] = f"unavailable: {type(exc).__name__}"
+    return out
+
+
+def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None, group=None):
     head = baseline_sha or subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
         text=True).stdout.strip()
@@ -2058,6 +2194,12 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
     # WITHOUT THE WHOLE LEDGER. *** *An unselected row is UNTOUCHED: no
     # worktree, no run, no row -- so a subset run CANNOT be quoted as a full
     # ledger, and its manifest sayeth which ids it judged.*
+    #
+    # *** AND `--group NAME` IS THE SAME SELECTION FROM A NAMED SET IN THE SOURCE. *** *Forty ids on a command line
+    # inviteth a typo that silently narroweth the population while still PASSING -- so the Board 1 campaign names its
+    # group, and an unknown id inside that group is refused above rather than skipped.*
+    if group:
+        only_ids = list(only_ids or []) + _group_ids(group)
     selected = [s for s in SEMANTIC if not only_ids or s["id"] in set(only_ids)]
     unknown = sorted(set(only_ids or ()) - {s["id"] for s in SEMANTIC})
     if unknown:
@@ -2104,7 +2246,41 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
                       % (entry["id"], anchor_count))
                 continue
             # 1. the baseline must pass unmutated, or nothing below may claim a kill
-            base = _run_harness(entry, wt_path)
+            #
+            # *** A BASELINE THAT HANGS OR THROWS IS RECORDED, NOT DROPPED. ***
+            #
+            # *THE DEFECT THIS CLOSES: `_run_harness` was called with NO guard, so a baseline `TimeoutExpired` escaped
+            # the per-rod `try` and reached... the outer handler, where `rows` never received a row for this rod. **A
+            # campaign that crashes on rod 12 produceth a manifest with eleven rows and an exception traceback -- and
+            # eleven KILLED rows in a file named `manifest.json` read as a complete, green campaign.** So the baseline
+            # is guarded exactly as the mutant and the restoration already are, its raw stderr is retained, and the
+            # row is written with an explicit outcome.*
+            try:
+                base = _run_harness(entry, wt_path)
+            except subprocess.TimeoutExpired as exc:
+                tally["TIMEOUT"] += 1
+                row = _row(entry, head, "semantic", anchor_count, None,
+                           [entry["witness"]], None, "TIMEOUT",
+                           "the BASELINE harness did not settle inside the bound", None)
+                if emit_dir:
+                    log_dir = os.path.join(emit_dir, "logs")
+                    os.makedirs(log_dir, exist_ok=True)
+                    blob = (exc.stdout or b"") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+                    if isinstance(blob, bytes):
+                        blob = blob.decode("utf-8", "replace")
+                    open(os.path.join(log_dir, entry["id"] + ".baseline.log"), "w",
+                         encoding="utf-8").write(str(blob) + "\n\n"
+                                                 "(the baseline harness timed out; partial stdout above)")
+                rows.append(row)
+                print("  TIMEOUT  %s (baseline)" % entry["id"])
+                continue
+            except Exception as exc:  # noqa: BLE001 - a baseline exception must be a ROW, never a lost rod
+                tally["BASELINE_INVALID"] += 1
+                rows.append(_row(entry, head, "semantic", anchor_count, None,
+                                 [entry["witness"]], None, "BASELINE_INVALID",
+                                 f"the baseline harness raised {type(exc).__name__}: {exc}", None))
+                print("  BASELINE_INVALID  %s :: %s" % (entry["id"], exc))
+                continue
             baseline_ok = (base["build_exit"] == 0 and base["run"] not in (None, 0)
                            and not base["failed"] and not base["skipped"])
             # 2. install the mutant, exactly once
@@ -2193,6 +2369,19 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
             print("  %-14s %-34s run=%s skipped=%s failed=%d restored_green=%s :: %s"
                   % (outcome, entry["id"], mutant["run"], mutant["skipped"],
                      len(mutant["failed"]), restored_green.get("ok"), note[:120]))
+        except Exception as exc:  # noqa: BLE001 - NO ROD MAY BE LOST TO AN EXCEPTION
+            # *** THE CATCH-ALL THAT MAKES A PARTIAL CAMPAIGN VISIBLE. ***
+            #
+            # *An exception anywhere in the per-rod body -- an anchor assert, a worktree failure, a mirror sync error --
+            # used to escape this loop entirely, so the row for this rod was simply ABSENT from the manifest. **A
+            # manifest with an omitted rod reads as a campaign with fewer rods, not as a campaign that crashed, and the
+            # rods it DID carry are all KILLED.** So the failure is recorded as an explicit row with the exception's
+            # type and text, and the tally carrieth it.*
+            tally["EXEC_INVALID"] += 1
+            rows.append(_row(entry, head, "semantic", 0, None, [entry.get("witness")], None,
+                             "EXEC_INVALID",
+                             f"the rod body raised {type(exc).__name__}: {exc}", None))
+            print("  EXEC_INVALID  %s :: %s" % (entry["id"], exc))
         finally:
             _worktree_remove(wt_path)
     print("  per outcome: " + ", ".join("%s=%d" % (k, tally[k]) for k in
@@ -2200,8 +2389,28 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
            "INCOMPLETE", "TIMEOUT", "ESCAPED")))
     if emit_dir:
         os.makedirs(emit_dir, exist_ok=True)
+        # *** THE MANIFEST CARRIETH A SCHEMA, THE SELECTED SET, THE FULL SOURCE COMMIT, THE TESTED-INPUT DIGEST MAP AND
+        # THE TOOLCHAIN -- SO A CAMPAIGN ROW CAN BE BOUND TO THE BYTES IT RAN AGAINST. ***
+        #
+        # *A BARE LIST OF ROWS IS NOT EVIDENCE OF A CAMPAIGN: it sayeth which rods ran and nothing about WHICH TREE,
+        # WHICH INPUTS or WHICH TOOLCHAIN produced them. So the rows travel inside an envelope, and the envelope's
+        # `required_ids`/`selected_ids` make the difference between "the whole Board 1 group passed" and "a subset
+        # passed" READABLE FROM THE ARTIFACT rather than from the command line a reader never saw.*
+        env = {
+            "schema": 1,
+            "lineage": "semantic",
+            "baseline_sha": head,
+            "group": group,
+            "required_ids": list(BOARD1_REQUIRED_IDS) if group == "board1" else [],
+            "selected_ids": [s["id"] for s in selected],
+            "unselected_ids": [s["id"] for s in SEMANTIC if s not in selected],
+            "inputs": _tested_input_digests(),
+            "toolchain": _toolchain_probe(),
+            "generated_utc": _now_utc(),
+            "rows": rows,
+        }
         open(os.path.join(emit_dir, "manifest.json"), "w", encoding="utf-8").write(
-            json.dumps(rows, indent=1) + "\n")
+            json.dumps(env, indent=1) + "\n")
     bad = [r["id"] for r in rows if r["outcome"] != "KILLED"]
     if bad and not report_only:
         print("::error::semantic controls not killed: " + ", ".join(bad), file=sys.stderr)
@@ -2316,6 +2525,85 @@ def classify_selftest():
     return mismatches, checks
 
 
+MANIFEST_DIR_DEFAULT = os.path.join(ROOT, "docs", "remediation", "evidence", "board1-rc11-rods")
+
+
+def validate_campaign_manifest(emit_dir=None, group="board1") -> int:
+    """*** `board1 verify` GATE: PROVE A CAMPAIGN RAN, NOT MERELY THAT THE HARNESS DECIDETH. ***
+
+    *THE DEFECT THIS CLOSES: `board1 verify` ran `ci/mutations.py --selftest` and nothing else -- **so it passed while
+    the last real campaign, the one whose KILLED rows the closure cites, had never run against this tree.*** *The
+    selftest proveth the CLASSIFIER; this proveth the CAMPAIGN.*
+
+    It refuseth, BY NAME:
+      * an ABSENT manifest (an unrun campaign is not a pass);
+      * a manifest whose `group` is not the required one, or whose `required_ids` differ from the source set;
+      * any required id missing, or not KILLED, or without its restored-green companion;
+      * any row whose `baseline_sha` disagrees with the manifest's own;
+      * a `selected_ids` set that omits a required id (a narrowed campaign that still passed);
+      * a manifest whose `inputs` do not match the tree's (a campaign against other bytes).
+    """
+    emit_dir = emit_dir or MANIFEST_DIR_DEFAULT
+    path = os.path.join(emit_dir, "manifest.json")
+    if not os.path.isfile(path):
+        print(f"::error::no campaign manifest at {path} -- an unrun campaign is not a pass; run "
+              f"`ci/mutations.py --semantic --group {group} --baseline <SHA> --emit-dir {emit_dir}`", file=sys.stderr)
+        return 1
+    try:
+        env = json.load(open(path, encoding="utf-8"))
+    except ValueError as exc:
+        print(f"::error::the campaign manifest is not valid JSON: {exc}", file=sys.stderr)
+        return 1
+    problems: list[str] = []
+    if not isinstance(env, dict) or "rows" not in env:
+        print(f"::error::the campaign manifest at {path} is a bare row list with NO envelope -- it bindeth no source "
+              f"commit, no tested inputs and no selected set", file=sys.stderr)
+        return 1
+    if env.get("lineage") != "semantic":
+        problems.append(f"the manifest's lineage is {env.get('lineage')!r}, not 'semantic'")
+    if group == "board1":
+        required = set(BOARD1_REQUIRED_IDS)
+        if set(env.get("required_ids") or []) != required:
+            problems.append(f"the manifest's required_ids differ from the source set: missing "
+                            f"{sorted(required - set(env.get('required_ids') or []))}, extra "
+                            f"{sorted(set(env.get('required_ids') or []) - required)}")
+        selected = set(env.get("selected_ids") or [])
+        omitted = sorted(required - selected)
+        if omitted:
+            problems.append(f"the campaign OMITTED {len(omitted)} required id(s) from its selection: {omitted[:6]}")
+    rows = {r.get("id"): r for r in (env.get("rows") or [])}
+    baseline = env.get("baseline_sha")
+    for rid in (BOARD1_REQUIRED_IDS if group == "board1" else []):
+        r = rows.get(rid)
+        if r is None:
+            problems.append(f"required rod {rid} has NO row in the manifest")
+            continue
+        if r.get("outcome") != "KILLED":
+            problems.append(f"required rod {rid} is {r.get('outcome')!r}, not KILLED")
+        if r.get("baseline_sha") != baseline:
+            problems.append(f"rod {rid} carries baseline_sha {r.get('baseline_sha')} != the manifest's {baseline}")
+        rg = r.get("restored_green")
+        if not (isinstance(rg, dict) and rg.get("ok")):
+            problems.append(f"rod {rid} has no GREEN restored-green companion -- a kill without its restoration is "
+                            f"not provable")
+    # tested-input equality
+    current = _tested_input_digests()
+    recorded = env.get("inputs") or {}
+    for key, val in sorted(recorded.items()):
+        if key not in current:
+            problems.append(f"the manifest binds input family {key!r} that no longer exists")
+        elif current[key] != val:
+            problems.append(f"input family {key!r} has MOVED since the campaign: manifest {str(val)[:16]}… != tree "
+                            f"{str(current[key])[:16]}… -- the campaign ran against other bytes")
+    if problems:
+        for p in problems:
+            print(f"::error::{p}", file=sys.stderr)
+        return 1
+    print(f"campaign manifest OK: {len(rows)} row(s), group={env.get('group')}, {len(BOARD1_REQUIRED_IDS if group == 'board1' else [])} "
+          f"required id(s) all KILLED with restorations, inputs match the tree, baseline {str(baseline)[:12]}…")
+    return 0
+
+
 def run_selftest(emit=None):
     """Prove the harness decideth. Returneth 0 iff every control behaved."""
     ok = True
@@ -2413,10 +2701,18 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--selftest", action="store_true",
                     help="prove the harness's own classifier and worktree discipline")
+    ap.add_argument("--selftest-manifest", action="store_true",
+                    help="prove a real CAMPAIGN ran: validate the board1 campaign manifest (required ids all KILLED "
+                         "with restorations, phase hashes, tested-input equality)")
+    ap.add_argument("--manifest-dir", default=None,
+                    help="with --selftest-manifest: the campaign's emit-dir (defaults to the board1 path)")
     ap.add_argument("--report", action="store_true", help="do not fail on findings")
     ap.add_argument("--semantic", action="store_true", help="run the semantic lineage")
     ap.add_argument("--id", action="append", default=None,
                     help="run only this rod id (repeatable); unselected rows are untouched")
+    ap.add_argument("--group", default=None,
+                    help="run a NAMED required-id set from the source (`board1`); an id in the group that the "
+                         "ledger does not carry is refused rather than skipped")
     ap.add_argument("--all", action="store_true", help="run both lineages")
     ap.add_argument("--emit-dir", default=None, help="write logs/ (and the semantic manifest) here")
     ap.add_argument("--baseline", default=None, help="pin the audited head sha for the run")
@@ -2426,12 +2722,14 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.selftest:
         return run_selftest()
+    if a.selftest_manifest:
+        return validate_campaign_manifest(a.manifest_dir, a.group or "board1")
     rc = 0
     if a.all or not a.semantic:
         rc |= run_structural(a.report, a.emit_dir, a.baseline or "live-tree")
     if a.semantic or a.all:
         os.makedirs(a.work_parent, exist_ok=True)
-        rc |= run_semantic(a.report, a.emit_dir, a.baseline, a.work_parent, a.id)
+        rc |= run_semantic(a.report, a.emit_dir, a.baseline, a.work_parent, a.id, a.group)
     print("NO AGGREGATE: the two lineages are never summed; no run of this "
           "script may be quoted as a single killed percentage.")
     return rc

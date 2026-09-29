@@ -13,6 +13,13 @@
 set -eu
 cd "$(dirname "$0")/../.."
 
+# *** THE PRE-RUN DIGESTS, SO A MID-RUN EDIT CANNOT DESCRIBE A TREE THE TESTS NEVER COMPILED. ***
+# *The same contract the two iOS runners carry: the digest is taken BEFORE the lanes start and AFTER they finish, and
+# the two must agree -- otherwise the result files describe no single revision.*
+python3 tools/readiness/android_source_digest.py >android-app.pre.sha256
+python3 tools/readiness/android_source_digest.py --lane android:core >android-core.pre.sha256
+python3 tools/readiness/android_source_digest.py --lane android:mesh >android-mesh.pre.sha256
+
 JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@17}" \
 ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}" \
   ./android/gradlew -p android \
@@ -23,5 +30,21 @@ rc=$?
 python3 tools/readiness/android_source_digest.py >android-app.sources.sha256
 python3 tools/readiness/android_source_digest.py --lane android:core >android-core.sources.sha256
 python3 tools/readiness/android_source_digest.py --lane android:mesh >android-mesh.sources.sha256
+
+# *** AND THE PRE-RUN DIGESTS MUST EQUAL THE POST-RUN ONES. ***
+drift=0
+for lane in app core mesh; do
+    if ! cmp -s "android-$lane.pre.sha256" "android-$lane.sources.sha256"; then
+        echo "::error::a lane input changed WHILE the android lane ran (android:$lane):" >&2
+        echo "::error::  pre=$(cut -c1-16 "android-$lane.pre.sha256")" >&2
+        echo "::error::  post=$(cut -c1-16 "android-$lane.sources.sha256")" >&2
+        drift=1
+    fi
+done
+if [ "$drift" -ne 0 ]; then
+    echo "::error::the result files are therefore not evidence about any single revision" >&2
+    exit 3
+fi
+
 echo "Android lanes: rc=$rc, digests written"
 exit $rc
