@@ -1,0 +1,28 @@
+[21:53:39] === GS-INTEGRATION-001 cross-platform coordinator: mode=cross-platform run=20260929T162338Z-0a76d4 ===
+[21:53:39]     repo=/Users/oculus/Projects/GODSTONE evidence=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration
+[21:53:39]     input digest (pre) = e98038f960f9a123bc169f834230cbee6c7f3740983ade0aa41fee29ce862c3e
+[21:53:39]     toolchain swift: Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6
+[21:53:39]     toolchain xcodebuild: Xcode 27.0 Build version 27A266a
+[21:53:39]     toolchain java: openjdk version "17.0.20.1" 2026-08-18 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1) OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)
+[21:53:39]     toolchain python: 3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)
+[21:53:39]     toolchain host: macOS-26.6.2-arm64-arm-64bit-Mach-O
+[21:53:39]     toolchain gradle: ------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191
+[21:53:39]     toolchain android_sdk: unset
+[21:53:39] *** --skip-build: the host fixtures are assumed already built ***
+[21:53:39] --- direction ios->android control=honest ---
+[21:53:39]   [swift-honest] <- hello  payload=0B
+[21:54:16]   [android-honest] <- hello  payload=0B
+[21:54:16]   seat: sender real_hint=0bb99473 receiver real_hint=80368826 -> the sender is the production election's INITIATOR (re-mints=0)
+[21:54:16]   [swift-honest] -> peer  payload=0B
+[21:54:16]   [android-honest] -> peer  payload=0B
+[21:54:16]   [swift-honest] -> setup  payload=0B
+[21:54:16]   [android-honest] -> setup  payload=0B
+[21:54:16]   [android-honest] <- ready  payload=0B
+[21:54:16]   [swift-honest] <- frame  payload=13B
+[21:54:16]   [swift-honest] <- frame  payload=40B
+[21:54:16]   [swift-honest] <- ready  payload=0B
+[21:54:16]   swift-honest seated: {'advertised_hint': '0bb99473', 'handle': '95C32D8A-EA23-40FA-B3CA-A78E560CDB7A', 'kind': 'ready', 'platform': 'ios', 'remote_hint': '80368826', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[21:54:16]   android-honest seated: {'advertised_hint': '80368826', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0bb99473', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[21:57:47] *** REFUSED: *** THE swift-honest WORKER NEVER REACHED its `authored` marker WITHIN 150s. *** Said: ['hello', 'frame', 'frame', 'ready'] notes=[] log=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration/gs_int_coord_cdz56pq5/swift-honest.worker.log ***
+[21:57:47]     input digest (post) = e98038f960f9a123bc169f834230cbee6c7f3740983ade0aa41fee29ce862c3e (agrees)
+[21:57:47] *** FAIL ***

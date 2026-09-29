@@ -693,6 +693,48 @@ jobs:
           brew install xcodegen
           xcodegen --version
 
+      # *** GS-INTEGRATION-001 `real-adapters` (step 5.5/5.6): THE CROSS-PLATFORM COORDINATOR'S TOOLCHAIN. ***
+      #
+      # **ONLY THE macOS JOB CAN HOST BOTH RUNTIMES.** *The coordinator launch eth a Swift/macOS worker (the built
+      # SwiftPM test bundle, via the Xcode `xctest` executable) **and** an Android/Robolectric worker (through the
+      # committed `:mesh:board1IntegrationWorker` Gradle task), and relays the exact characteristic bytes between
+      # their OS facades.* **The iOS runner image carrieth Xcode but NOT a JDK or an Android SDK**, so the android
+      # toolchain must be provisioned HERE, in THIS JOB'S OWN STEP LIST, before the coordinator is invoked -- and it
+      # must be the SAME Temurin 17 the `android` job useth, so a cross-platform claim is not a claim about two
+      # different compilers. **NO SEVENTH JOB IS ADDED: the six job names stay exactly as they are.**
+      #
+      # *** THE TOOLCHAIN VERSIONS ARE RECORDED IN EVERY MANIFEST: the coordinator writeth `swift --version`,
+      # `xcodebuild -version`, `java -version`, `gradle --version` and the SDK root into
+      # `manifest.json`/`producers.json` before any worker launch eth, so a reader can re-execute the run rather than
+      # guess its toolchain.***
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: provision the Android command-line SDK (accepted licences) for the worker
+        run: |
+          set -euo pipefail
+          # *** PROVISIONED ONCE, WITHOUT `sdkmanager` INTERACTION: the command-line tools tarball, `--licenses`
+          # accepted non-interactively, and the platform + build-tools this project's `compileSdk = 35` needs. ***
+          # *An unprovisioned SDK is the one launch failure the coordinator cannot report usefully -- the Gradle
+          # invocation would refuse with a message about a missing SDK, which is a TOOLCHAIN absence and not a
+          # transport verdict.*
+          export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+          if [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then
+            mkdir -p "$ANDROID_HOME/cmdline-tools"
+            tmp="$(mktemp -d)"
+            curl -fsSL -o "$tmp/cmdline-tools.zip" \
+              https://dl.google.com/android/repository/commandlinetools-mac-11076708_latest.zip
+            unzip -q "$tmp/cmdline-tools.zip" -d "$tmp"
+            mv "$tmp/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          fi
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
+
       # *** THE iOS FOUNDATION LANE AND THE UI LANE, ONE REPOSITORY-OWNED PATH EACH. ***
       #
       # *THE DEFECT THIS CLOSES: `tools/readiness/run_ios_ui_lane.sh` was committed but invoked by NO workflow, and
@@ -763,6 +805,33 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/check_lane_results.py --scope ios-simulator
+
+      # *** GS-INTEGRATION-001 `real-adapters` (step 5.5/5.6): THE BIDIRECTIONAL CROSS-PLATFORM INGESTION. ***
+      #
+      # **THE CLAUSE THIS STEP ANSWERETH: "Complete bidirectional cross-platform execution using actual live
+      # endpoint implementations."** *The two real-transport rigs each substitute exactly ONE thing -- the radio --
+      # and re-enter the OTHER side's REAL OS facade; proving that an iOS facade and an Android facade can carry one
+      # another's bytes therefore requires TWO PROCESSES AND A REAL WIRE BETWEEN THEM.*
+      #
+      # `tools/readiness/run_board1_integration.py --mode all` buildeth the host fixtures ONCE, launch eth the
+      # Swift/macOS worker (the bundle built above) and the Android/Robolectric worker (through the committed
+      # `:mesh:board1IntegrationWorker` Gradle task **using the repository's own wrapper**), relays the EXACT
+      # characteristic bytes between the two OS facades, and record eth a length-delimited binary transcript plus a
+      # separate metadata manifest. **IT ALSO RUNS THE `crash` MODE: the macOS child-process SIGKILL campaign beside
+      # its Android durable-boundary mirror.**
+      #
+      # *** THE COORDINATOR NEVER DECODES A PAYLOAD. *** *It frameth an opaque octet string with a four-octet length,
+      # record eth its bytes verbatim, and pass eth it on untouched; the only bytes it ever alters are the
+      # deliberately-tampered control records, and there it flippeth ONE octet at an offset derived from the length.*
+      #
+      # **A REFUSAL IS FIRST-CLASS: a missing worker, a missing marker, a timeout or an early exit endeth the step
+      # non-zero with a NAMED reason, so a run that could not execute its workers is never reported as a pass.**
+      - name: cross-platform integration coordinator (iOS <-> Android, both directions)
+        run: |
+          set -euo pipefail
+          python3 tools/readiness/run_board1_integration.py --mode all \
+            --evidence-dir docs/remediation/evidence/board1-rc11-integration \
+            --timeout 300
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -803,4 +872,20 @@ jobs:
         with:
           name: ios-simulator-xcresult
           path: ios-simulator-lane.xcresult
+          if-no-files-found: warn
+
+      # *** AND THE CROSS-PLATFORM INTEGRATION'S OWN EVIDENCE. ***
+      #
+      # *The transcript is the framed records EXACTLY as they crossed (or were observed), concatenated; the manifest
+      # nameth, for every recorded payload, where it lives in the transcript and what it hash eth to; the report
+      # carrieth each direction's verdict (the recipient's durable row and the sender's DELIVERY transition, and
+      # every control's refusal at its actual boundary).* **`if: always()`, because the run whose evidence most
+      # needeth reading is the one where the coordinator REFUSED.**
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: board1-integration-evidence
+          path: |
+            docs/remediation/evidence/board1-rc11-integration/**
+            tools/integration-fixtures/**
           if-no-files-found: warn
