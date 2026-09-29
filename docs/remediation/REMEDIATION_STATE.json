@@ -15489,6 +15489,18 @@
       ]
      },
      {
+      "id": "gs-stress-001.thirty-thousand-cycles",
+      "text": "The same real-runtime campaign at 30,000 cycles through the same driver and the SAME fixed owner bounds, with its own exact schedule counts and reopen observations, so the longer length is proven rather than extrapolated.",
+      "status": "PARTIAL",
+      "evidence": [
+       "*** MEASURED, THE 10k HALF ON THE INTEGRATED TREE: `testGSSTRESS001TheRealRuntimeSurvivesTenThousandDeterministicCycles` PASSED (134.571s and 134.863s across two runs), the twelve-class tally moving at every class, `db=331776 wal=0` against the 1 MiB bound. ***",
+       "*** AND THE 10k ARM NEEDED A REAL REPAIR FIRST, WHICH IS WHY THE 30k ARM EXISTED AT ALL TO FIND: the court's A4/A5 classes walk the INITIATOR legs, and a bare `ProbeKeychain` minted a FRESH RANDOM identity per composition, so on about a third of runs the runtime was LAWFULLY elected RESPONDER (`BleRoleElection.elect`) and the court failed at cycle 5 with `bound=false ready=true`. THE TRANSPORT WAS RIGHT AND THE COURT ASSUMED A SEAT IT NEVER CHOSE. The repair is the production law, not a retry: the identity is minted from a seed whose hint is ASSERTED ascendant to both peers and pinned in the estate's keychain BEFORE the graph is built. ***",
+       "*** rc11, THE 30k ARM STALLS -- DIAGNOSED, NOT FIXED, AND NOT CLAIMED: `testGSSTRESS001TheRealRuntimeSurvivesThirtyThousandDeterministicCycles` hung twice (0.0% CPU, zero log growth, no terminal line; SIGKILLed, RC=137). `sample` (`/tmp/rc11-evidence/stress-30k-hang-sample.txt`, `stress-fix-30k-sample.txt`) shows NO GodstoneMesh frame executing, the main thread idle in `CFRunLoop`, and one cooperative-pool thread parked in `_dispatch_group_wait_slow` -> `__ulock_wait`. The SECOND sample's frames above the wait are XCTest/SwiftPM RUNNER frames, so the group is XCTest's OWN completion group waiting on a test that never returns. ***",
+       "*** A FIRST FIX WAS APPLIED AND WAS NECESSARY BUT NOT SUFFICIENT, AND THE MEASUREMENT IS RECORDED RATHER THAN GLOSSED: `awaitBlocking` used to block a cooperative-pool thread with a `DispatchSemaphore` while awaiting a Task the pool had to schedule to signal it -- a real pool-stealing wait. The mint now runs inside `Thread { Task { ... } }` (a pthread the pool never owned), content-verified (live file and mirror sha256 `e739d59b5da829b9…`). The 30k arm STILL STALLED, so the prime remaining suspect is A8/A12's per-cycle FRESH estates (A12 composing a second full `MeshRuntime` ~2500 times). ***",
+       "*** NO BOUND RAISED, NO ASSERTION WEAKENED, COUNTS UNCHANGED: the schedule tallies, seed, cycle counts and owner bounds are byte-identical to the 10k arm's, so the two arms remain directly comparable. The A8/A12 instrumentation follow-up is recorded for a future window; until a 30k run reaches a genuine terminal verdict, this obligation stays PARTIAL. ***"
+      ]
+     },
+     {
       "id": "gs-stress-001.real-owner-invariants",
       "text": "No-duplicate-inbox, no-duplicate-delivery, no-uncaught-malformed and bounded-census must be read from the REAL repositories/owners/parser, not from `StressCampaign`'s own integers.",
       "status": "DISCHARGED",
@@ -15962,11 +15974,11 @@
    "findings_total": 68,
    "findings_internal_open": 2,
    "findings_with_internal_status_open": 2,
-   "internal_obligations_open": 3,
-   "internal_obligations_unresolved": 3,
+   "internal_obligations_open": 4,
+   "internal_obligations_unresolved": 4,
    "obligations_by_state": {
     "OPEN": 0,
-    "PARTIAL": 3,
+    "PARTIAL": 4,
     "DISCHARGED": 30
    },
    "external_obligations": 5
