@@ -114,16 +114,26 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
 
         static func parseOne(_ buffer: Data) -> Record? {
             guard let len = recordLength(buffer), buffer.count >= len else { return nil }
+            // *** ABSOLUTE-INDEX SAFE, AND THAT IS A MEASURED REPAIR RATHER THAN A PRECAUTION. ***
+            //
+            // *`nextRecord` consumeth a whole record with `buffer.removeFirst(len)`, **WHICH MOVETH `startIndex`
+            // AND DOES NOT RE-BASE THE REMAINING BYTES** -- so the tail's first octet liveth at `startIndex`, and a
+            // helper that indexed from ZERO TRAPPED (`EXC_BREAKPOINT`/SIGTRAP, measured in the coordinator's first
+            // live run at `Framing.readU32`).* **Every offset is therefore taken from `startIndex`, and the payload
+            // is a slice of the same base.**
+            let base = buffer.startIndex
             let headLen = Int(readU32(buffer, 0))
-            let head = buffer.subdata(in: 4..<(4 + headLen))
-            let payload = buffer.subdata(in: (4 + headLen + 4)..<len)
+            let head = Data(buffer[(base + 4)..<(base + 4 + headLen)])
+            let payload = Data(buffer[(base + 4 + headLen + 4)..<(base + len)])
             guard let header = (try? JSONSerialization.jsonObject(with: head)) as? [String: Any] else { return nil }
             return Record(header: header, payload: payload)
         }
 
         private static func readU32(_ data: Data, _ at: Int) -> UInt32 {
-            (UInt32(data[at]) << 24) | (UInt32(data[at + 1]) << 16)
-                | (UInt32(data[at + 2]) << 8) | UInt32(data[at + 3])
+            // *Offsets are relative to `startIndex`, so a slice readeth the same layout as a fresh `Data`.*
+            let base = data.startIndex + at
+            return (UInt32(data[base]) << 24) | (UInt32(data[base + 1]) << 16)
+                | (UInt32(data[base + 2]) << 8) | UInt32(data[base + 3])
         }
     }
 

@@ -51,6 +51,22 @@ public final class LabRuntimeHolder: ObservableObject {
     }
 }
 
+/// *** GS-UX-001 `accessibility` law 4: THE PLATFORM'S 44pt TOUCH-TARGET MINIMUM, APPLIED AT THE CONTROL. ***
+///
+/// *A plain SwiftUI `Button("Send")` lays out to roughly its TEXT's height -- about 20-30pt -- so every lab control
+/// was below the 44pt minimum the shared contract requireth.* **THE LIVE LANE MEASURETH EACH CONTROL'S LAID-OUT FRAME
+/// AND WOULD REDDEN**, which is exactly why the measurement is taken rather than the model asserted: a court handed a
+/// constant could never have seen this.*
+///
+/// *So each INTERACTIVE control carrieth the minimum explicitly. `contentShape` is what maketh the WHOLE enlarged
+/// frame tappable rather than only the glyph inside it -- without it the frame groweth and the hit target doth not,
+/// which is the difference between a measured minimum and a claimed one.*
+extension View {
+    func labTouchTarget() -> some View {
+        frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+    }
+}
+
 /// The lab root: it SAYETH what this build is, and it carrieth no readiness claim of its own.
 struct LabRootView: View {
     @EnvironmentObject private var holder: LabRuntimeHolder
@@ -199,6 +215,7 @@ struct LabContactsView: View {
                     Text(label).tag(label)
                 }
             }
+            .labTouchTarget()
             .accessibilityIdentifier("lab.trust.recipient")
             // AND A CHANGE OF SELECTION RE-CAPTURES, so the ref always belongeth to the contact on screen.
             .onChange(of: selectedContact) { _ in captureDisplayed() }
@@ -239,6 +256,7 @@ struct LabContactsView: View {
                     trustOutcome = holder.runtime.compareAndConfirmFingerprint(
                         for: selectedContact, displayedFingerprint: displayedFingerprint)
                 }
+                .labTouchTarget()
                 .accessibilityIdentifier("lab.trust.confirm")
                 .accessibilityLabel("Compare and confirm fingerprint")
                 .accessibilityHint("Confirms the fingerprint shown for \(selectedContact)")
@@ -253,6 +271,7 @@ struct LabContactsView: View {
                     // And the screen re-captures afterwards, so the next tap is about what is now shown.
                     captureDisplayed()
                 }
+                .labTouchTarget()
                 .accessibilityIdentifier("lab.trust.approve")
                 .accessibilityLabel("Approve rotation")
                 .accessibilityHint("Approves the exact rotation candidate shown for \(selectedContact)")
@@ -261,6 +280,7 @@ struct LabContactsView: View {
                     let contact = selectedContact
                     trustOutcome = holder.runtime.revokeContact(for: contact)
                 }
+                .labTouchTarget()
                 .accessibilityIdentifier("lab.trust.revoke")
                 .accessibilityLabel("Revoke contact")
                 .accessibilityHint("Revokes \(selectedContact); this cannot be undone from here")
@@ -296,6 +316,7 @@ struct LabContactsView: View {
                 // screen one generation behind the authority: the state a tap must refuse from.*
                 if displayedCandidate == nil { captureDisplayed() }
             }
+            .labTouchTarget()
             .accessibilityIdentifier("lab.trust.seedrotation")
             .accessibilityLabel("A new key arrives")
             .accessibilityHint("Drives a real rotation for \(selectedContact); the displayed candidate is not re-read")
@@ -341,6 +362,36 @@ struct LabConversationView: View {
     @State private var intentHex: String = ""
     @State private var durableVerdict: String = "not asked"
 
+    /// *** GS-UX-001 `accessibility`: WHAT THIS SCREEN LAST POSTED THROUGH THE ANNOUNCEMENT DOOR. ***
+    ///
+    /// *The rendered outcome is a status that CHANGES, and on iOS a repainted `Text` is not announced. The mechanism
+    /// is the platform's own: `.accessibilityAddTraits(.updatesFrequently)` DECLARES that the value changeth, and
+    /// `UIAccessibility.post(notification:.announcement)` SPEAKS it. This record is what a court can bind: **it is
+    /// written in the SAME method that posteth**, so a screen that rendered a status and announced nothing readeth
+    /// `nothing yet` and reddens.*
+    ///
+    /// *** AND THE ANNOUNCEMENT IS POSTED AT THE TRANSITION ITSELF, NOT ONLY VIA `onChange`. ***
+    ///
+    /// *MEASURED, AND IT IS THE DEFECT THIS METHOD REPLACETH: `.onChange(of:)` fires ONLY on a change AFTER the view
+    /// has appeared, so the FIRST non-initial state a surface reached could be rendered and never announced at all --
+    /// measured on this very arm, where the door read `nothing yet` after a real status change.* **A DOOR THAT IS
+    /// ONLY OPENED FOR *SUBSEQUENT* CHANGES IS A DOOR A USER OF ASSISTIVE TECHNOLOGY CAN NEVER HEAR THE IMPORTANT
+    /// PART THROUGH.** *So the helper is called where the value is SET -- the transition, whichever direction it
+    /// goeth -- and the initial placeholder is deliberately not announced (announcing `nothing sent yet` on launch
+    /// would be noise rather than a status).*
+    ///
+    /// **AND THE LIMIT IS NAMED RATHER THAN GLOSSED:** *XCUITest carrieth no API to observe a posted announcement, so
+    /// this binds the DOOR'S OWN RECORD and the trigger -- never the platform's read-back, which stayeth with the
+    /// human screen-reader acceptance.*
+    @State private var announced: String = ""
+
+    /// The ONE place this surface speaketh: set-and-announce, so no state change can be rendered silently.
+    private func announceOutcome(_ words: String) {
+        outcome = words
+        announced = words
+        LabAnnouncements.announce(words)
+    }
+
     /// *** THE BOUNDED INPUT, IN OCTETS. ***
     ///
     /// *`onChange` truncates in UTF-8 OCTETS through the runtime's own measured bound -- **NEVER `Character.count`**,
@@ -367,6 +418,7 @@ struct LabConversationView: View {
             Picker("from", selection: $author) {
                 ForEach(holder.runtime.labels, id: \.self) { label in Text(label).tag(label) }
             }
+            .labTouchTarget()
             .accessibilityIdentifier("lab.conversation.author")
 
             Picker("to", selection: $recipient) {
@@ -374,6 +426,7 @@ struct LabConversationView: View {
                     Text(label).tag(label)
                 }
             }
+            .labTouchTarget()
             .accessibilityIdentifier("lab.conversation.recipient")
 
             // *** AND THE LINK STATE, RENDERED: a recipient that cannot be reached must be VISIBLE as such rather
@@ -386,6 +439,12 @@ struct LabConversationView: View {
             // *** A REAL UTF-8-BOUNDED INPUT AND A REAL SEND ACTION (step 4's core), WIRED TO THE RUNTIME. ***
             TextField("message", text: $body_)
                 .textFieldStyle(.roundedBorder)
+                .labTouchTarget()
+                // *** GS-UX-001 law 2: THE FIELD MUST CARRY ITS OWN ACCESSIBLE NAME. ***
+                // *MEASURED: without this the field read an EMPTY label -- a placeholder is not an accessible name,
+                // so a screen reader announceth NOTHING for the control a user must type into, which is law 2's own
+                // defect.*
+                .accessibilityLabel("Message text")
                 .accessibilityIdentifier("lab.conversation.field")
                 .onChange(of: body_) { _ in boundTheInput() }
 
@@ -406,13 +465,37 @@ struct LabConversationView: View {
                 let intent = LabRuntime.mintIntentId()
                 intentHex = intent.map { String(format: "%02x", $0) }.joined()
                 Task {
-                    outcome = await holder.runtime.sendDirectDurableIntent(
-                        from, recipient: to, plaintext: Data(text.utf8), intentId: intent)
+                    // *** THE TRANSITION ITSELF ANNOUNCETH: the Send's own answer is what a screen-reader user must
+                    // hear, and it is posted here rather than left to a change observer.*
+                    announceOutcome(await holder.runtime.sendDirectDurableIntent(
+                        from, recipient: to, plaintext: Data(text.utf8), intentId: intent))
                     durableVerdict = holder.runtime.durableIntentVerdict(intent)
                 }
             }
+            .labTouchTarget()
             .accessibilityIdentifier("lab.conversation.send")
-            Text(outcome).accessibilityIdentifier("lab.conversation.outcome")
+            // *** GS-UX-001 `accessibility`: THE OUTCOME IS ANNOUNCED, NOT MERELY REPAINTED. ***
+            //
+            // *`updatesFrequently` is the platform's own declaration that this element's value changeth and must be
+            // re-announced; the `onChange` posteth the platform's own announcement with the SHARED words -- the same
+            // vocabulary Android's `stateDescription` speaketh.* **A DELIVERED MESSAGE THAT LANDETH SILENTLY IS A
+            // MESSAGE A SCREEN-READER USER NEVER HEARS ABOUT.**
+            Text(outcome)
+                .accessibilityIdentifier("lab.conversation.outcome")
+                .accessibilityAddTraits(.updatesFrequently)
+                // *AND THE ONE DECLARATION IS PAIRED WITH A FALLBACK OBSERVER, so a status set by ANY other road
+                // (a future caller, a restored value) is still announced rather than silently repainted.*
+                .onChange(of: outcome) { words in
+                    announced = words
+                    LabAnnouncements.announce(words)
+                }
+            HStack(spacing: 0) {
+                Text("announced: " + (announced.isEmpty ? "nothing yet" : announced)).font(.footnote)
+            }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("lab.a11y.announced")
+                .accessibilityLabel("Last announced status")
+                .accessibilityValue(announced.isEmpty ? "nothing yet" : announced)
 
             // *** AND THE REOPEN'S OWN ANSWER, RENDERED -- THE CLAUSE THAT SEPARATES A DURABLE ROAD FROM A MEMORY ONE. ***
             //
@@ -473,6 +556,19 @@ struct LabSosView: View {
     /// The rendered distress state, read from the delivery row (or the durable register) in the shared vocabulary.
     @State private var sosState: String = "no active call"
 
+    /// *** GS-UX-001 `accessibility`: THE SOS ANNOUNCEMENT DOOR'S OWN RECORD, written where it posteth. ***
+    @State private var sosAnnounced: String = ""
+
+    /// The ONE place the distress state speaketh: set-and-announce, at the transition itself.
+    ///
+    /// *The same measured defect as the conversation surface's: a change observer misseth the FIRST non-initial
+    /// state, and an armed or cancelled call is the most consequential state change on this screen.*
+    private func announceSosState(_ words: String) {
+        sosState = words
+        sosAnnounced = words
+        LabAnnouncements.announce(words)
+    }
+
     private let clock = ContinuousClock()
 
     /// Has the hold lasted the threshold? Measured on the MONOTONIC clock, so a wall-clock step cannot arm it early.
@@ -490,7 +586,8 @@ struct LabSosView: View {
     /// vocabulary.*
     private func sendSos() {
         outcome = holder.runtime.armSos(payload: Data("SOS".utf8))
-        sosState = holder.runtime.sosStateNames()
+        // *** THE TRANSITION ANNOUNCETH: an armed call must be SPOKEN, not merely repainted. ***
+        announceSosState(holder.runtime.sosStateNames())
     }
 
     /// Cancel the standing call by the DURABLE msg_id -- the node's own `.cancel(msgId)` arm.
@@ -500,7 +597,8 @@ struct LabSosView: View {
             return
         }
         outcome = holder.runtime.cancelSos(msgId: msgId)
-        sosState = holder.runtime.sosStateNames()
+        // *** AND A CANCELLED CALL TOO -- it is the change a bystander most needeth to hear. ***
+        announceSosState(holder.runtime.sosStateNames())
     }
 
     var body: some View {
@@ -520,6 +618,7 @@ struct LabSosView: View {
             // gesture the accessibility tree cannot name is also unreachable. The identifier is what makes the
             // control ADDRESSABLE; the gesture below is what makes it REAL.*
             Text("HOLD TO ARM")
+                .labTouchTarget()
                 .accessibilityIdentifier("lab.sos.hold")
                 .padding()
                 .background(armed ? Color.red.opacity(0.3) : Color.gray.opacity(0.2))
@@ -552,11 +651,13 @@ struct LabSosView: View {
             // THE ACCESSIBLE ALTERNATIVE: the SAME SEND without a hold, because a hold must never be the only road.
             Button("Send SOS (accessible alternative)") { sendSos() }
                 .accessibilityLabel("Send SOS")
+                .labTouchTarget()
                 .accessibilityIdentifier("lab.sos.send")
 
             // *** THE CANCELLABLE ROAD THE CARD NAMES ("SOS hold/cancel"), BY ITS OWN DURABLE ID. ***
             Button("Cancel the call") { cancelSos() }
                 .accessibilityLabel("Cancel the distress call")
+                .labTouchTarget()
                 .accessibilityIdentifier("lab.sos.cancel")
 
             if let outcome { Text(outcome).font(.footnote).accessibilityIdentifier("lab.sos.outcome") }
@@ -571,7 +672,37 @@ struct LabSosView: View {
                 .accessibilityIdentifier("lab.sos.state")
                 .accessibilityLabel("Distress call state")
                 .accessibilityValue(sosState)
-                .onAppear { sosState = holder.runtime.sosStateNames() }
+                // *** GS-UX-001 `accessibility`: AN ARMED OR CANCELLED CALL IS THE MOST CONSEQUENTIAL STATE CHANGE ON
+                // THIS SCREEN, SO IT IS ANNOUNCED RATHER THAN LEFT TO A REPAINT. ***
+                //
+                // *The Android twin carrieth `LiveRegionMode.Assertive` here for that reason; iOS's road is the
+                // `.updatesFrequently` trait plus the platform's own announcement, posted with the shared words when
+                // the state actually changeth.*
+                .accessibilityAddTraits(.updatesFrequently)
+                .onChange(of: sosState) { words in
+                    sosAnnounced = words
+                    LabAnnouncements.announce(words)
+                }
+                // *** THE FIRST LOOK IS ANNOUNCED TOO, GUARDED: a STANDING call restored from the durable estate is
+                // the state a user must hear on arrival, while the EMPTY initial placeholder is deliberately silent
+                // (announcing "no active call" on launch would be noise rather than a status).*
+                .onAppear {
+                    let words = holder.runtime.sosStateNames()
+                    sosState = words
+                    if words.hasPrefix("active: ") || words.hasPrefix("terminal: ") {
+                        sosAnnounced = words
+                        LabAnnouncements.announce(words)
+                    }
+                }
+
+            // *** AND THE SOS'S OWN ANNOUNCEMENT RECORD, SO A COURT CAN BIND THE DOOR RATHER THAN TRUST IT. ***
+            HStack(spacing: 0) {
+                Text("announced: " + (sosAnnounced.isEmpty ? "nothing yet" : sosAnnounced)).font(.footnote)
+            }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("lab.sos.announced")
+                .accessibilityLabel("Last announced distress state")
+                .accessibilityValue(sosAnnounced.isEmpty ? "nothing yet" : sosAnnounced)
 
             // *** AND THE RUNTIME'S OWN COUNT, SO THE SOS ARM CAN BIND RUNTIME-OWNED STATE TOO. ***
             Text("sos admitted: " + String(holder.runtime.admittedCount()))
@@ -618,6 +749,7 @@ struct LabDiagnosticsView: View {
                 holder.runtime.beginWipe()
                 wipeNote = holder.runtime.wipeStateName()
             }
+            .labTouchTarget()
             .accessibilityIdentifier("lab.diagnostics.beginwipe")
 
             Text("wipe result: " + wipeNote)

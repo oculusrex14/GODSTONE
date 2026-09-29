@@ -2,6 +2,19 @@
 // checks. The twin of the python conductor and the Android court, with the SAME
 // laws and the SAME words, and this platform's own numbers (44pt, AX5).
 //
+// *** THESE ARE PURE CONTRACT-LAW CASES, AND THEY ARE LABELLED SO. ***
+//
+// *The `UiNode` rosters below are HAND-BUILT FIXTURES, not a screen: they exist to exercise the SHARED TABLE's laws
+// (a label-less control is refused, a clipped status is refused, a colour without words is refused, the platform
+// minimums differ) against inputs the court controls, so each law can be driven to BOTH its verdicts.*
+//
+// **THEY ARE NOT RENDERED EVIDENCE, AND NOTHING HERE CLAIMS TO BE.** *The rendered half liveth where a real tree can
+// be asked: `GsUx001TrustSurfaceTests` over the lab's own runtime surface, and the `LabMeshUITests` /
+// `GodstoneArchiveUITests` bundles, which launch the application and drive its accessibility tree.* **A fixture that
+// asserteth a law is exactly as informative as the table it exercises -- and exactly as silent about the screen.**
+// *`ci/check_lane_results.py` reapeth the UI bundles against a source-derived roster precisely so a fixture can never
+// be mistaken for the rendered arm.*
+//
 // The card's law: "Remove an essential control label or clip status at large text:
 // UI/accessibility check fails."
 import XCTest
