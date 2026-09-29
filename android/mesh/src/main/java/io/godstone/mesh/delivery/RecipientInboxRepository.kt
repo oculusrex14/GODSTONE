@@ -425,8 +425,23 @@ internal class RecipientInboxRepository(
         if (theirNode == null || !theirNode.contentEquals(ourNodeId)) {
             return refuseKey("signer does not name the obligated recipient")
         }
-        val seed = signer.signingSeed(frame.msgId, ourNodeId)
-            ?: return refuseKey("signing seed unavailable")
+        // *** *** GS-RUNTIME-001 step 2's ROAD, TAKEN HERE AT LAST: THE SIGNATURE ROAD, NOT THE SEED ROAD. *** ***
+        //
+        // **THE DEFECT THIS CLOSETH WAS MEASURED ON THE PRODUCTION COMPOSITION RATHER THAN READ:** the composition
+        // handeth this repository the PRODUCTION signer (`IdentityAckSigner`), whose `signingSeed` answereth null BY
+        // CONSTRUCTION (*"a production identity doth not export its signing seed"*) -- while this body asked for the
+        // seed and built the frame from it. **So EVERY accept on the composed runtime committed its held row and its
+        // obligation and then answered `refuseKey("signing seed unavailable")`: the durable inbox worked and THE ACK
+        // ROAD WAS DEAD BY CONSTRUCTION**, `admitArm` was unreachable, and the owner's own
+        // `committedNew`/`committedDuplicate` census could never move. *MEASURED FIRST IN THIS SLICE as the live
+        // cross-platform run's `unsealedAccepted=1` beside `acksIssued=0, acksRefusedKey=1`.*
+        //
+        // *THE SWIFT TWIN TOOK THIS VERY REPAIR AT `RecipientInboxRepository.swift:443-462` ("THE SIGNATURE ROAD, NOT
+        // THE SEED ROAD"), and the driver already took it here (`AckObligationDriver`); this call site was the one
+        // that did not.* **AND IT IS ADDITIVE FOR EVERY HARNESS SIGNER:** `AckSignerSeam`'s own default `signAck`
+        // signeth THROUGH `signingSeed`, so a court signer that can release only a seed keepeth working unchanged.
+        val signedPreimage = signer.signAck(frame.msgId, ourNodeId)
+            ?: return refuseKey("the signer refused to sign the canonical preimage")
         when (val ol = pairedStore.lookupObligation(frame.msgId, ourNodeId)) {
             is ObligationLookup.Found -> {
                 if (signer.generation() < ol.obligation.identityGeneration) {
@@ -438,9 +453,9 @@ internal class RecipientInboxRepository(
             is ObligationLookup.Corrupt -> return refuseCorrupt("obligation row: " + ol.reason)
             ObligationLookup.StorageFailure -> return refuseStorage("obligation lookup")
         }
-        val built = AckFrame.build(
+        val built = AckFrame.buildFromSignature(
             msgId = frame.msgId,
-            recipientSigningPrivKey = seed,
+            signature = signedPreimage,
             recipientNodeId = ourNodeId,
             routingTag = ourNodeId.copyOfRange(0, ACK_HINT_LEN),
             ttl = ACK_INITIAL_TTL,

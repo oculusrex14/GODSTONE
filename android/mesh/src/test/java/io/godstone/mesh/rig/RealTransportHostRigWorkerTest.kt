@@ -3,6 +3,7 @@ package io.godstone.mesh.rig
 import androidx.test.core.app.ApplicationProvider
 import io.godstone.mesh.delivery.DeliveryState
 import io.godstone.mesh.store.DeliveryRow
+import io.godstone.mesh.transport.BleDirection
 import io.godstone.mesh.transport.BleLinkInfoCodec
 import io.godstone.mesh.transport.PeerId
 import io.godstone.mesh.transport.TransportResult
@@ -651,6 +652,8 @@ internal class RealTransportHostRigWorkerTest {
         private var remoteHint: ByteArray? = null
         private var remoteStaticPub: ByteArray? = null
         private var isInitiator = false
+        /** *Whether the responder's seat hath already been taken from the relayed link-info record -- a repeat is a no-op.* */
+        private var seated = false
         private var ringBaseline = 0
         private var trackedMsgId: ByteArray? = null
         private var authoredFrame: io.godstone.mesh.wire.v2.FrameV2? = null
@@ -776,8 +779,51 @@ internal class RealTransportHostRigWorkerTest {
 
         private fun buildEndpoint(seedValue: Int) {
             seed = seedValue
-            rig.makeNode(ENDPOINT)
+            // *** *** THE ENDPOINT'S EGRESS BRIDGE: EVERY BYTE THE TRANSPORT HANDETH ITS OS FACADE CROSSETH THE
+            // PIPE, VERBATIM -- THE ANDROID TWIN OF THE iOS WORKER'S `peripheral.onWrite`/`m.onUpdate` HOOKS. *** ***
+            //
+            // *THE DEFECT THIS CLOSES, MEASURED: this worker built its endpoint with the rig's DEFAULT outlet
+            // (`rig.makeNode(ENDPOINT)`), whose `forward` is null -- so NOTHING this endpoint's stack produced ever
+            // reached the coordinator.* **The iOS initiator's sealed key-confirmation echo therefore never crossed,
+            // this endpoint never became ready, `authored` never fired and no DATA record left -- `receiver=[]`
+            // `sender=[]` in the coordinator's own words.** *The bytes were real all along (the rig recorded them);
+            // only the bridge was missing.*
+            //
+            // **THE CHARACTERISTIC IS DERIVED FROM THE LEG, WHICH IS A FACT ABOUT THIS ENDPOINT'S OWN PLATFORM
+            // BINDING RATHER THAN A GUESS:** the sealed application/handshake records travel the INBOX
+            // characteristic on both legs of this transport (`GattClient.sendAttValueTyped` and
+            // `BleGattServer.sendNotificationTyped` both write `inboxCharacteristic`), and the link-info record is
+            // a SEPARATE GATT path (`GattClient.writeLinkInfo` -> `writeCharacteristic`) that does NOT reach the
+            // outlet at all -- *so nothing this bridge emits can be a link-info record, and the coordinator routes
+            // every one of them back to the INBOX door, exactly where the relayed bytes must re-enter.*
+            // *`seatInitiator` injecteth the remote hinted link-info locally through `handleScanEvent`, so the
+            // initiator's own link-info write-back is part of its ladder and needs no emission.*
+            val outlet = RealTransportHostRig.FabricOutlet(
+                label = ENDPOINT,
+                forward = { address, bytes, direction -> emitFrame(address, bytes, direction) },
+            )
+            rig.makeNode(ENDPOINT, hooks = outlet)
             rig.open(ENDPOINT)
+        }
+
+        /**
+         * *** ONE `frame` RECORD: THE EXACT BYTES THIS ENDPOINT'S OS FACADE HANDED ITS STACK. ***
+         *
+         * *The characteristic is named so the coordinator's routing is a fact about the record rather than a guess
+         * (`inbox`, per this platform's own binding), and the epoch is the RELATION'S OWN -- read from the
+         * transport's frozen admission (`admissionForTest`), which is the one the crypto authority keyed the
+         * relation under.* **An emission failure is a NAMED REFUSAL rather than a swallowed one** -- a worker that
+         * kept running after its egress stopped crossing would hang the coordinator on a marker that could never
+         * arrive.
+         */
+        private fun emitFrame(address: String, bytes: ByteArray, direction: BleDirection) {
+            val transport = rig.nodeOf(ENDPOINT).transport
+            val peerId = PeerId.fromAddress(address) ?: address.toByteArray()
+            val admission = transport.admissionForTest(peerId, direction)
+            emit("frame", payload = bytes, header = mapOf(
+                "characteristic" to "inbox",
+                "epoch" to (admission?.transportEpoch ?: 0L),
+            ))
         }
 
         /**
@@ -794,7 +840,7 @@ internal class RealTransportHostRigWorkerTest {
             rootFor(next).mkdirs()
             rig = RealTransportHostRig(ctx = ApplicationProvider.getApplicationContext(), fixtureRoot = rootFor(next))
             remoteNodeId = null; remoteAddress = null; remoteHint = null; remoteStaticPub = null
-            isInitiator = false; ringBaseline = 0; trackedMsgId = null; authoredFrame = null
+            isInitiator = false; seated = false; ringBaseline = 0; trackedMsgId = null; authoredFrame = null
             dispatched = false
             inbox.clear()
             buildEndpoint(next)
@@ -846,8 +892,22 @@ internal class RealTransportHostRigWorkerTest {
             // measured in the coordinator's live run. The parameter is what the FOREIGN INITIATOR wrote on the
             // link, which is its own advertised hint. Same for `seatInitiator`.*
             val peerAdvertised = remoteHint ?: ByteArray(0)
-            if (isInitiator) rig.seatInitiator(ENDPOINT, address, peerAdvertised)
-            else rig.seatResponder(ENDPOINT, address, peerAdvertised)
+            if (isInitiator) {
+                rig.seatInitiator(ENDPOINT, address, peerAdvertised)
+            } else {
+                rig.seatResponder(ENDPOINT, address, peerAdvertised)
+                // *** THE SEAT IS ALREADY TAKEN, SO A RELAYED LINK-INFO RECORD IS A NO-OP RATHER THAN A SECOND ADMISSION. ***
+                //
+                // *MEASURED, in the coordinator's live run: the iOS worker's eager seat emit eth its link-info record
+                // ONCE, and the relay carrieth it to this responder AFTER this ladder hath already seated the relation
+                // from the advertised hint -- **so the relayed record's `seatResponder` answered
+                // `RejectConnection("Client is already ACTIVE")`, which the rig's own `check` turneth into an exception
+                // that KILLED the worker mid-handshake (`receiver=[]` `sender=[]`).*** *The relation already standeth in
+                // exactly the shape that record would establish (the same remote hint, the same ladder), and
+                // production's own link-info door accepteth the duplicate (`AcceptDuplicateWrite`), so the repeat is a
+                // no-op.*
+                seated = true
+            }
             ringBaseline = ringCount()
             emit("ready", header = mapOf("seat" to if (isInitiator) "initiator" else "responder",
                                          "handle" to address,
@@ -1004,7 +1064,20 @@ internal class RealTransportHostRigWorkerTest {
                     emit("refuse", header = refusalHeader(mapOf("reason" to "the relayed link-info record did not decode")))
                     return
                 }
-                rig.seatResponder(ENDPOINT, address, hint)
+                // *** THE SEAT IS TAKEN ONCE, BECAUSE PRODUCTION'S OWN LINK-INFO DOOR REFUSETH A SECOND ADMISSION. ***
+                //
+                // *MEASURED, in the coordinator's live run: the iOS initiator emiteth its link-info record ONCE, but
+                // a SECOND link-info frame can arriveth after this responder is already seated -- and
+                // `bringUpResponderLadder`'s `srv.onClientConnected(initiatorAddress, 1L)` then answereth
+                // `RejectConnection("Client is already ACTIVE")`, which the rig's own `check` turneth into an
+                // exception that KILLED the worker mid-handshake and left `receiver=[] sender=[]`.* **The seat is
+                // already established in exactly the shape this record would establish (the same remote hint, the
+                // same ladder), so a repeat is a NO-OP rather than a refusal** -- and the door itself accepteth the
+                // duplicate (`AcceptDuplicateWrite`), so nothing a real radio would do is skipped.*
+                if (!seated) {
+                    rig.seatResponder(ENDPOINT, address, hint)
+                    seated = true
+                }
             } else if (isInitiator) {
                 // THE SEAT DECIDES THE INBOX DOOR: production's responder readeth a WRITE, the initiator a NOTIFICATION.
                 node.transport.handleCentralInboundNotification(address, rec.payload)
@@ -1043,6 +1116,7 @@ internal class RealTransportHostRigWorkerTest {
             runCatching { node.transport.stop() }
             runCatching { node.node.stop() }
             inbox.clear()
+            seated = false
             rig.open(ENDPOINT)
             // *** THE LADDER TAKES THE REMOTE'S ADVERTISED HINT, NOT OURS -- AND THE RUN MEASURED WHY. ***
             //
@@ -1052,8 +1126,12 @@ internal class RealTransportHostRigWorkerTest {
             // measured in the coordinator's live run. The parameter is what the FOREIGN INITIATOR wrote on the
             // link, which is its own advertised hint. Same for `seatInitiator`.*
             val peerAdvertised = remoteHint ?: ByteArray(0)
-            if (isInitiator) rig.seatInitiator(ENDPOINT, address, peerAdvertised)
-            else rig.seatResponder(ENDPOINT, address, peerAdvertised)
+            if (isInitiator) {
+                rig.seatInitiator(ENDPOINT, address, peerAdvertised)
+            } else {
+                rig.seatResponder(ENDPOINT, address, peerAdvertised)
+                seated = true
+            }
             ringBaseline = ringCount()
         }
 

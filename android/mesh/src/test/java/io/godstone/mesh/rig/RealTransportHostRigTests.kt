@@ -88,7 +88,8 @@ internal class RealTransportHostRigTests {
         val (frame, result) = r.sendDirect("A", "B", plaintext)
 
         assertTrue(
-            "*** the dispatch must hand the sealed frame to exactly one relay, observed $result; ring: ${r.ring("A")} ***",
+            "*** the dispatch must hand the sealed frame to exactly one relay, observed $result; " +
+                "ring: ${r.ring("A")}; detail: ${r.dispatchDetail("A")} ***",
             result is DirectDispatchResult.HandedToRelays && result.count == 1,
         )
         assertTrue(

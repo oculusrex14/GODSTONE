@@ -158,13 +158,28 @@ internal class RealTransportHostRig(
         override fun isPeerSubscribed(address: String): Boolean = subscribed == address
         override fun isClientConnected(address: String): Boolean = clientConnected == address
 
+        // *** THE BOOLEAN LEGS CARRY THE BYTES TOO, EXACTLY AS THE TYPED ONES DO. ***
+        //
+        // *THE DEFECT THIS CLOSES, MEASURED: the handshake writers reach the outlet through its BOOLEAN voice --
+        // `writeHandshakeRecordViaClient` -> `outlet.writePeer` (HS1/HS3) and `writeHandshakeRecordViaServer` ->
+        // `outlet.notifyPeer` (HS2) -- and those two legs RECORDED but neither forwarded nor delivered, while only
+        // the typed legs did.* **So a rig link could never complete its sealed handshake: the fragments were
+        // recorded as if they had left and were handed to nobody** (the rig's own court timed out at
+        // `both registries report the peer ready`, and a cross-process worker emitted no handshake record at all).
+        // *Production's own binding answers identically on both voices -- the typed override is the same
+        // `sendNotificationTyped`/`sendAttValueTyped` call the Boolean one makes -- so the two legs must carry the
+        // same bytes, and no call site uses both for one record.*
         override suspend fun notifyPeer(address: String, value: ByteArray): Boolean {
             record(address, value, BleDirection.INBOUND)
+            forward?.invoke(address, value, BleDirection.INBOUND)
+            deliver?.invoke(address, value, BleDirection.INBOUND)
             return floodingAddress != address
         }
 
         override suspend fun writePeer(address: String, value: ByteArray): Boolean {
             record(address, value, BleDirection.OUTBOUND)
+            forward?.invoke(address, value, BleDirection.OUTBOUND)
+            deliver?.invoke(address, value, BleDirection.OUTBOUND)
             return floodingAddress != address
         }
 
@@ -528,7 +543,25 @@ internal class RealTransportHostRig(
     /** The node's OWN two collectors (the same ones `attachConsumers` registers), over the live transport. */
     private fun attachConsumers(n: Node) {
         n.transport.peers().onEach { event -> n.node.handlePeerEvent(event) }.launchIn(n.scope)
-        n.transport.received().onEach { (peer, clear) -> n.node.handleInboundFrame(peer, clear) }.launchIn(n.scope)
+        n.transport.received().onEach { (peer, clear) ->
+            // *** *** THE INGRESS SENDER IS THE AUTHENTICATED NODE ID, NOT THE PLATFORM ADDRESS. *** ***
+            //
+            // *THE GAP THIS CLOSES, MEASURED BY THE COURT AND BY THE LIVE COORDINATOR: this `Flow` carrieth the
+            // connection's own `peerId` (the SEVENTEEN-octet ADDRESS TEXT on this isle), and
+            // `MeshNode.handleInboundFrame(fromPeer, ...)` passeth it straight on -- so
+            // `RecipientInboxRepository.acceptVerifiedAndRequireAck`'s GATE 0 refuseth it (`receivedFrom.size != 16`)
+            // BEFORE ANY COUNTER MOVETH. The row still committeth through the ROUTER, which is why the recipient's
+            // durable row was present while `acksIssued` stayed 0 and the sender never reached DELIVERED.* **The
+            // identity is ALREADY IN HAND: the sealed handshake bound it to this relation, and
+            // `SessionManager.authenticatedNodeIdOf` is the authority iOS production reads at its own ingress**
+            // (`BleTransport.swift`'s `ingressSender` fallback, "the node id IS the trusted handshake's own record of
+            // who this relation is"). *This is the Android twin of that line, resolved in the rig's consumer where the
+            // rig already holds both owners -- no counter is read, no identity is invented, and a relation whose trust
+            // was never marked FALLS BACK TO THE ADDRESS, exactly as the iOS fallback doth ("the six-octet relation
+            // handle is only the fallback for a relation whose trust was never marked").*
+            val from = n.sessions.authenticatedNodeIdOf(peer) ?: peer
+            n.node.handleInboundFrame(from, clear)
+        }.launchIn(n.scope)
     }
 
     // ============================================================================================
@@ -550,8 +583,16 @@ internal class RealTransportHostRig(
         }
         return Link(
             a = a, b = b,
-            aHandle = if (aAscendant) second.address else first.address,
-            bHandle = if (aAscendant) first.address else second.address,
+            // *** EACH SIDE'S HANDLE IS ITS PEER'S ADDRESS -- UNCONDITIONALLY. ***
+            //
+            // *THE DEFECT THIS CLOSES, MEASURED BY THE COURT THAT TIMED OUT AFTER THE HANDSHAKE BEGAN TO COMPLETE:
+            // the old mapping SWAPPED the two handles whenever `a` was not the elected opener, so a link whose
+            // initiator was `b` described `b`'s handle as `b`'s OWN address and `isLinkReady` then looked for the
+            // opener's own address in the opener's roster of its PEER -- `expectedHex=[…55:56]` against a roster
+            // holding `…14:15`, both the same node's salt bytes.* **A handle is the name one side useth for the
+            // other, which never dependeth on who opened: `a` nameth `b`'s address and `b` nameth `a`'s.**
+            aHandle = second.address,
+            bHandle = first.address,
             aOpened = aAscendant,
         )
     }
@@ -786,6 +827,13 @@ internal class RealTransportHostRig(
 
     /** The bytes this rig watched `label` write towards [to] for the frame it authored with [msgId]. */
     fun recordedEgressBytes(label: String, msgId: ByteArray): Int = egressByLabel[label]?.get(msgId.toList()) ?: 0
+
+    /** *** THE DISPATCH DIAGNOSTIC AN ARM PRINTETH WHEN A SEND HANDETH NOTHING TO ANY RELAY. *** */
+    fun dispatchDetail(from: String): String {
+        val n = nodes[from] ?: return "no node $from"
+        return "knownPeers=${n.node.knownPeersForTest()} ring=${ring(from)} " +
+            "linkReady=${n.transport.linkReadyPeersForTest().map { hex(it) }}"
+    }
 
     /** The peer ADDRESS `a` nameth `b` by -- order-insensitively, because BOTH directions are legitimate. */
     fun handleTowards(a: String, b: String): String {
