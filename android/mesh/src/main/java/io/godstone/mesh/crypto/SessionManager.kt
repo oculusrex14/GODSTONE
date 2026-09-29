@@ -123,6 +123,11 @@ class SessionManager internal constructor(
             controllers[admission.place] = created
             created
         }
+        superseded?.let { stale ->
+            // GS-STRESS-001 step 4: a SUPERSEDED incarnation's timer lease perisheth with it, or the successor
+            // armed on the same admission would never be given a deadline (`armAgeTimer`'s immutability guard).
+            mapLock.withLock { releaseAgeDeadlineLocked(stale.admission) }
+        }
         superseded?.retire()?.destroy()
         return fresh
     }
@@ -136,6 +141,9 @@ class SessionManager internal constructor(
             val standing = controllers[admission.place] ?: return@withLock null
             if (standing.admission != admission) return@withLock null
             controllers.remove(admission.place)
+            // GS-STRESS-001 step 4: the incarnation is gone, so its timer lease goeth with it -- otherwise a
+            // successor on the same admission is never armed (see `releaseAgeDeadlineLocked`).
+            releaseAgeDeadlineLocked(admission)
             standing
         }
 
@@ -253,6 +261,31 @@ class SessionManager internal constructor(
 
     /** Evidence hook: the armed deadlines. */
     internal fun armedAgeDeadlinesForTest(): List<Long> = mapLock.withLock { armedAgeDeadlines.values.sorted() }
+
+    /**
+     * *** GS-STRESS-001 step 4 (Board 1): THE DEADLINE PERISHETH WITH ITS INCARNATION -- AND THE REASON IS
+     * BEHAVIOURAL, NOT MERELY A CENSUS. ***
+     *
+     * *MEASURED BY THIS ISLE'S OWN RELEASE ARM (`RealOwnerReleaseDedupParserControlsTest
+     * .theAgeTimerLeaseIsReleasedOnCancellationAndReArmedForTheSuccessor`): nothing anywhere in this class removed an
+     * entry from [armedAgeDeadlines].* **`drop()`, `retireIncarnations()`, `destroyAll()`, `invalidateForWipe()` and
+     * [getOrCreateSlot]'s supersession all removed SLOTS and left the DEADLINE MAP untouched -- and the census the
+     * stress campaign's `liveArmedTimers()` hook readeth stayed non-zero after every one of those boundaries.**
+     *
+     * THE SECOND CONSEQUENCE IS THE ONE THAT BITETH: [armAgeTimer] returneth early on
+     * `armedAgeDeadlines.containsKey(admission)` -- the IMMUTABILITY law that a deadline shall never be EXTENDED --
+     * **SO A RELATION THAT WAS DROPPED AND RE-ESTABLISHED ON THE SAME ADMISSION (THE ORDINARY RECONNECT) KEPT THE OLD
+     * INCARNATION'S DEADLINE, AND THE FRESH SESSION'S OWN DEADLINE WAS *NEVER ARMED AND NEVER DELIVERED TO THE
+     * SCHEDULER*.** *An idle-aged session after a reconnect therefore never retired through its own timer, which is
+     * precisely the clause CRYPTO-002 step 4 existeth to keep.*
+     *
+     * THE IMMUTABILITY LAW IS PRESERVED EXACTLY: a deadline for a **LIVE** admission is still never extended -- the
+     * release happeneth only where the incarnation itself is being removed. Called under `mapLock` (the three callers
+     * hold it), so no second lock is taken here.
+     */
+    private fun releaseAgeDeadlineLocked(admission: RelationKey) {
+        armedAgeDeadlines.remove(admission)
+    }
 
     /**
      * The delivery is DELEGATED, not owned: whoever owneth a run loop receiveth the deadline here. INSTALLING A
@@ -600,7 +633,11 @@ class SessionManager internal constructor(
             mapLock.withLock {
                 val places = controllers.keys.filter { it.handle == ofHandle }
                 for (place in places) {
-                    controllers.remove(place)?.let { doomed.add(it) }
+                    controllers.remove(place)?.let {
+                        // GS-STRESS-001 step 4: the departure retireth the timer leases with the incarnations.
+                        releaseAgeDeadlineLocked(it.admission)
+                        doomed.add(it)
+                    }
                 }
             }
             for (slot in doomed) {
@@ -617,6 +654,8 @@ class SessionManager internal constructor(
                     slot.retire()?.destroy()
                 }
                 controllers.clear()
+                // GS-STRESS-001 step 4: NO TIMER LEASE OUTLIVETH THE REGISTRY IT WAS ARMED BY.
+                armedAgeDeadlines.clear()
             }
         }
     }
@@ -645,6 +684,9 @@ class SessionManager internal constructor(
                     slot.controller = null
                 }
                 controllers.clear()
+                // GS-STRESS-001 step 4: a wipe that cleared the registry must clear the timer leases with it -- the
+                // stress campaign's `liveArmedTimers()` census stayed non-zero across every wipe until now.
+                armedAgeDeadlines.clear()
             }
         }
     }

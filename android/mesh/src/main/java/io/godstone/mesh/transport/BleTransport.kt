@@ -568,6 +568,25 @@ class BleTransport(
         capturedPeers.clear()
         centralRemoteLinkInfo.clear()
         responderRemoteLinkInfo.clear()
+        // *** GS-STRESS-001 step 5 (Board 1): AND THE DIRECTION WRITERS PERISH WITH THE RELATIONS THEY SERVED. ***
+        //
+        // *MEASURED BY THIS ISLE'S OWN RELEASE ARM (`RealOwnerReleaseDedupParserControlsTest
+        // .theTransportReleasesItsWriterAndTheWritersReservationsAtStop`): `stop()` cleared every connection, both
+        // drivers, the capacity authority and the published relations -- **AND LEFT EVERY `RecordWriter` STANDING IN
+        // `centralWriters`/`serverWriters` TOGETHER WITH ITS RESERVATIONS, ITS ADMITTED RECORDS AND ITS CONNECTION
+        // REFERENCE.** THE iOS TWIN hath shut both maps down at this very boundary since round 244 ('for writer in
+        // centralWriters.values { writer.shutdown() }'), and round 534's arm had already found that two of THIS
+        // writer's OWN close paths disagreed about what a closed writer holdeth -- while the owner's stop released
+        // nothing at all. `shutdown()` is idempotent and a released writer answereth `Inactive` to every reservation,
+        // so a stale holder of a writer handle cannot write after the transport stopped.*
+        synchronized(centralWriters) {
+            for (writer in centralWriters.values) writer.shutdown()
+            centralWriters.clear()
+        }
+        synchronized(serverWriters) {
+            for (writer in serverWriters.values) writer.shutdown()
+            serverWriters.clear()
+        }
     }
 
     private fun startAdvertising(): Boolean {

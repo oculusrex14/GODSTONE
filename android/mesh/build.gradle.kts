@@ -96,3 +96,54 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("androidx.test.ext:junit:1.2.1")
 }
+
+// =====================================================================================================================
+// *** GS-INTEGRATION-001 `real-adapters`: THE EXPLICIT `board1IntegrationWorker` TASK. ***
+//
+// THE PLAN'S OWN WORDS: "the Kotlin worker reuseth the `:mesh` test classpath/Robolectric setup through a dedicated
+// `board1IntegrationWorker` Gradle task. Worker launch is EXPLICIT, not a default-suite empty/skipped test."
+//
+// *A `Test` task DERIVED from the debug unit-test variant, so it CARRIETH the variant's own classes/classpath (the
+// Robolectric + sqlite-jdbc + junit test classpath) rather than a hand-assembled one.* **`outputs.upToDateWhen {
+// false }` is mandatory: an up-to-date worker would report a stale green.** JUnit XML is on by default for a `Test`
+// task and is stated explicitly here, so the coordinator has a stable artifact path.
+//
+// THE FILTER NAMES THE RIG'S OWN CLASSES (`RealTransportHostRig`, `RealTransportHostRigTests`, and the cross-process
+// `RealTransportHostRigWorkerTest` owned by the coordinator), so this task RUNNETH the rig court rather than an empty
+// selection. Launch it explicitly:
+//
+//   cd android && ./gradlew :mesh:board1IntegrationWorker --no-daemon
+//
+// The rig court also participateth in the ordinary `:mesh:testDebugUnitTest` run (it is a normal test class), so no
+// arm of it is silently excluded from the default suite.
+// =====================================================================================================================
+
+tasks.register<Test>("board1IntegrationWorker") {
+    group = "verification"
+    description = "GS-INTEGRATION-001 real-adapters: runs the Android real-transport host rig court and the " +
+        "cross-process integration worker explicitly (not a default-suite empty/skipped test)."
+
+    // *THE DEBUG UNIT-TEST TASK'S OWN CLASSES AND CLASSPATH, carried straight from it* -- so this worker runneth on
+    // the SAME Robolectric/sqlite-jdbc/junit runtime classpath the default suite useth, with no hand-assembled
+    // classpath to drift. `tasks.named` keepeth this configuration-cache-safe (no other task is RESOLVED at
+    // configuration time).
+    val debugUnitTest = tasks.named<Test>("testDebugUnitTest")
+    testClassesDirs = debugUnitTest.get().testClassesDirs
+    classpath = debugUnitTest.get().classpath
+    filter { includeTestsMatching("*RealTransportHostRig*") }
+
+    // An up-to-date worker is a stale green: always re-run, and retain the XML the coordinator consumes.
+    outputs.upToDateWhen { false }
+    reports.junitXml.required.set(true)
+    reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/board1IntegrationWorker"))
+    testLogging {
+        events("passed", "failed", "skipped")
+        showStandardStreams = true
+    }
+    // The coordinator's own parameter names, forwarded to the worker JVM through the configuration-cache-correct
+    // provider API (never a configuration-time `System.getProperties()` read).
+    listOf("role", "root", "in", "out", "mode", "metadata").forEach { key ->
+        val name = "godstone.integration.$key"
+        systemProperty(name, providers.systemProperty(name).getOrElse(""))
+    }
+}

@@ -487,6 +487,23 @@ class MeshNode(
      */
     internal var transportSendOverride: (suspend (ByteArray, ByteArray) -> TransportResult)? = null
 
+    /**
+     * *** GS-INTEGRATION-001 `real-adapters`: THE TRANSPORT'S OWN OS SEAMS, FOR THE REAL-TRANSPORT HOST RIG. ***
+     *
+     * *THE ASSIGNMENT'S OWN NAMED REQUIREMENT: "constructor-injected `BleOutletHooks.notifyPeerTyped`/
+     * `writePeerTyped` and advertising hooks."* **THIS NODE BUILT ITS TRANSPORT WITH NEITHER, and this shipping tree
+     * FREEZETH the readiness flag off (`LINK_LAYER_READY=false`), so a host rig could neither capture an ATT byte nor
+     * open a radio -- the transport would reach the (absent) platform server.**
+     *
+     * *These three seams are ADDITIVE and INTERNAL, and they default to `null`, so THE PRODUCTION CONSTRUCTION IS
+     * BYTE-IDENTICAL: `outletHooksForRig = null` maketh `BleTransport` fall back to its own real outlet exactly as
+     * before, `advertisingHooksForRig = null` to `RealAdvertisingHooks`, and `serverStartAttemptForRig = null` to the
+     * real `gattServer.start()`. A test-only rig setteth them to a recording/re-delivering facade.*
+     */
+    internal var outletHooksForRig: io.godstone.mesh.transport.BleOutletHooks? = null
+    internal var advertisingHooksForRig: io.godstone.mesh.transport.AdvertisingHooks? = null
+    internal var serverStartAttemptForRig: (() -> Boolean)? = null
+
     private val ble: BleTransport by lazy {
         // ctx is non-null in production; null only in pure-JVM tests
         // that never start the node and so never reach the transports.
@@ -495,7 +512,10 @@ class MeshNode(
             identity = identity,
             digestProvider = { router.currentDigest() },
             sessions = sessions,
-            store = store
+            store = store,
+            outletHooks = outletHooksForRig,
+            advertisingHooks = advertisingHooksForRig,
+            serverStartAttempt = serverStartAttemptForRig,
         )
     }
     private val wifi: WifiAwareTransport by lazy { WifiAwareTransport(ctx!!) }
@@ -729,11 +749,21 @@ class MeshNode(
         // had just closed.* **THE SAME LESSON AS THE TWO COMMENTS ABOVE, REACHED A THIRD TIME FROM A DIFFERENT
         // DIRECTION: a guard placed above a teardown step is a teardown step that does not always run.**
         synchronized(peerLock) { peers.clear() }
+        // *** GS-STRESS-001 step 4 (Board 1): THE SESSION OWNER IS RETIRED *BEFORE* THE `isStarted` GUARD TOO --
+        // THE FOURTH ARRIVAL AT THIS SAME LESSON, AND THE ONE THAT HAD NOT BEEN TAKEN. ***
+        //
+        // *MEASURED BY THIS ISLE'S OWN RELEASE ARM (`RealOwnerReleaseDedupParserControlsTest
+        // .theSessionOwnerIsRetiredByStopEvenOnANodeThatWasNeverStarted`): the workers, the adapters and the peer view
+        // had all been moved above the guard by three earlier rounds, while `sessions.destroyAll()` STOOD BELOW IT --
+        // **and in this shipping tree `isStarted` is FALSE BY CONSTRUCTION, so a production `stop()` NEVER RETIRED A
+        // SESSION: every live slot, its Noise ciphers and its armed age timer survived the stop, and the arm read the
+        // manager's own census as 1 after `stop()`.** THE BEHAVIOURAL READING AGREED: a retired registry must refuse
+        // to seal, and this one still sealed.*
+        sessions.destroyAll()
         synchronized(peerLock) {
             if (!isStarted) { publishStatus(); return }
             isStarted = false
         }
-        sessions.destroyAll()
         synchronized(peerLock) { peers.clear() }
         publishStatus()
     }
