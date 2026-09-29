@@ -1,49 +1,49 @@
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
 Calculating task graph as configuration cache cannot be reused because system property 'godstone.integration.root' has changed.
-> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :mesh:preBuild UP-TO-DATE
-> Task :mesh:generateDebugUnitTestAssets UP-TO-DATE
-> Task :core:preBuild UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :mesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
-> Task :core:preDebugBuild UP-TO-DATE
+> Task :core:preBuild UP-TO-DATE
+> Task :mesh:generateDebugUnitTestAssets UP-TO-DATE
 > Task :mesh:preDebugBuild UP-TO-DATE
 > Task :mesh:preDebugUnitTestBuild UP-TO-DATE
-> Task :core:javaPreCompileDebug
-> Task :mesh:generateDebugResValues
-> Task :mesh:writeDebugAarMetadata
-> Task :core:writeDebugAarMetadata
-> Task :mesh:generateDebugUnitTestResValues
+> Task :core:preDebugBuild UP-TO-DATE
 > Task :core:generateDebugResValues
-> Task :core:mergeDebugShaders
+> Task :core:javaPreCompileDebug
+> Task :mesh:generateDebugUnitTestResValues
+> Task :mesh:generateDebugResValues
+> Task :core:writeDebugAarMetadata
+> Task :mesh:writeDebugAarMetadata
 > Task :mesh:javaPreCompileDebug
-> Task :core:extractDeepLinksDebug
-> Task :mesh:extractDeepLinksDebug
-> Task :core:generateDebugResources
-> Task :mesh:generateDebugResources
+> Task :core:mergeDebugShaders
 > Task :mesh:generateDebugUnitTestResources
+> Task :core:extractDeepLinksDebug
+> Task :mesh:generateDebugResources
 > Task :mesh:mergeDebugShaders
+> Task :core:generateDebugResources
+> Task :mesh:extractDeepLinksDebug
 > Task :core:compileDebugShaders NO-SOURCE
 > Task :core:generateDebugAssets UP-TO-DATE
 > Task :mesh:compileDebugShaders NO-SOURCE
 > Task :mesh:generateDebugAssets UP-TO-DATE
 > Task :core:packageDebugAssets
-> Task :mesh:packageDebugAssets
 > Task :core:packageDebugResources
 > Task :mesh:javaPreCompileDebugUnitTest
-> Task :mesh:mergeDebugUnitTestAssets
-> Task :core:compileDebugLibraryResources
-> Task :mesh:mergeDebugAssets
 > Task :mesh:processDebugManifest
-> Task :mesh:checkDebugUnitTestAarMetadata
-> Task :core:processDebugManifest
 > Task :mesh:packageDebugResources
+> Task :core:processDebugManifest
+> Task :mesh:packageDebugAssets
+> Task :mesh:mergeDebugAssets
+> Task :core:compileDebugLibraryResources
+> Task :mesh:checkDebugUnitTestAarMetadata
 > Task :mesh:mapDebugUnitTestSourceSetPaths
+> Task :mesh:mergeDebugUnitTestAssets
 > Task :core:parseDebugLocalResources
 > Task :mesh:parseDebugLocalResources
-> Task :mesh:compileDebugLibraryResources
-> Task :core:generateDebugRFile
 > Task :mesh:generateDebugRFile
+> Task :core:generateDebugRFile
+> Task :mesh:compileDebugLibraryResources
 > Task :mesh:processDebugUnitTestManifest
 > Task :mesh:mergeDebugUnitTestResources
 > Task :mesh:processDebugUnitTestResources
@@ -58,8 +58,8 @@ w: file:///Users/oculus/Projects/GODSTONE/android/core/src/main/java/io/godstone
 
 > Task :core:compileDebugJavaWithJavac NO-SOURCE
 > Task :core:processDebugJavaRes
-> Task :core:bundleLibCompileToJarDebug
 > Task :core:bundleLibRuntimeToJarDebug
+> Task :core:bundleLibCompileToJarDebug
 > Task :mesh:kspDebugKotlin
 
 > Task :mesh:compileDebugKotlin
@@ -78,8 +78,8 @@ w: file:///Users/oculus/Projects/GODSTONE/android/mesh/src/main/java/io/godstone
 > Task :mesh:processDebugJavaRes
 > Task :mesh:compileDebugJavaWithJavac
 > Task :mesh:transformDebugClassesWithAsm
-> Task :mesh:bundleLibCompileToJarDebug
 > Task :mesh:bundleLibRuntimeToJarDebug
+> Task :mesh:bundleLibCompileToJarDebug
 > Task :mesh:kspDebugUnitTestKotlin
 
 > Task :mesh:compileDebugUnitTestKotlin
@@ -120,9 +120,10 @@ RealTransportHostRigTests > testPreAuthFragmentsAreRefusedAndCommitNothing FAILE
 
 RealTransportHostRigWorkerTest > testTheWorkerFramingSurvivesHostileOctetsAndAnIncompleteLaunchIsRefused PASSED
 
-RealTransportHostRigWorkerTest > testGSINT001CrossPlatformWorker PASSED
+RealTransportHostRigWorkerTest > testGSINT001CrossPlatformWorker FAILED
+    java.lang.IllegalStateException at RealTransportHostRigWorkerTest.kt:139
 
-6 tests completed, 3 failed
+6 tests completed, 4 failed
 
 > Task :mesh:board1IntegrationWorker FAILED
 
@@ -135,6 +136,6 @@ Execution failed for task ':mesh:board1IntegrationWorker'.
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 4m 7s
+BUILD FAILED in 6m 36s
 53 actionable tasks: 53 executed
 Configuration cache entry stored.
