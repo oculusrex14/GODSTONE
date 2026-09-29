@@ -1,5 +1,7 @@
 package io.godstone.mesh.lab
 
+import io.godstone.mesh.SosCommand
+import io.godstone.mesh.SosCommandResult
 import io.godstone.mesh.delivery.DeliveryLookup
 import io.godstone.mesh.delivery.DeliveryState
 import io.godstone.mesh.runtime.ComposedOutcome
@@ -64,6 +66,24 @@ data class LabReadiness(
 )
 
 /**
+ * The outcome of one directed send, with the `msg_id` THE DURABLE ENQUEUE COMMITTED.
+ *
+ * [detail] is the composition's own verdict text; [msgId] is null exactly when nothing was durably committed, so a
+ * caller cannot render an id an estate never carried.
+ */
+data class DirectSendResult(
+    val detail: String,
+    val msgId: ByteArray?,
+    val committed: Boolean,
+) {
+    override fun equals(other: Any?): Boolean = other is DirectSendResult &&
+        other.detail == detail && other.committed == committed &&
+        ((other.msgId == null && msgId == null) || (other.msgId != null && msgId != null && other.msgId.contentEquals(msgId)))
+
+    override fun hashCode(): Int = 31 * (31 * detail.hashCode() + (msgId?.contentHashCode() ?: 0)) + committed.hashCode()
+}
+
+/**
  * The lab runtime handle. [compose] buildeth real composed peers over a
  * deterministic clock and a recording radio; the caller then driveth REAL product
  * flows (author, dispatch, relay, inbox, ACK) against them exactly as the T44
@@ -79,9 +99,70 @@ class LabRuntime private constructor(
         return (node.tracker.lookup(msgId) as? DeliveryLookup.Found)?.record?.state
     }
 
+    /**
+     * *** THE AUTHOR'S DURABLE MESSAGE ID, READ FROM THE STORE -- THE WITNESS A VIEW STRING IS NOT. ***
+     *
+     * *A rendered outcome line is a CLAIM; the held frame's `msg_id` is the SOURCE. A journey that rendered a string it
+     * remembered would pass a text-only court while the durable estate carried nothing, so the screen's message id is
+     * read HERE, from the same store the ACK authority and the relay read.*
+     */
+    suspend fun heldMsgIdOf(nodeLabel: String): ByteArray? =
+        harness.node(nodeLabel)?.store?.allHeldMsgIds()?.lastOrNull()
+
+    /** Every msg_id the named node's durable estate carrieth. */
+    suspend fun heldMsgIdsOf(nodeLabel: String): List<ByteArray> =
+        harness.node(nodeLabel)?.store?.allHeldMsgIds()?.map { it.copyOf() } ?: emptyList()
+
+    /** The honest label the durable row supporteth, or null when the estate carrieth no row. */
+    fun deliveryLabelOf(nodeLabel: String, msgId: ByteArray): String? {
+        val node = harness.node(nodeLabel) ?: return null
+        val projection = node.node.deliveryProjection(msgId)
+        return projection.label.name
+    }
+
     /** How many messages the named node durably holdeth. */
     suspend fun heldCount(nodeLabel: String): Int =
         harness.node(nodeLabel)?.store?.allHeldMsgIds()?.size ?: 0
+
+    /**
+     * *** GS-UX-001 `rendered-controls`: THE DIRECTED SEND, WITH THE MESSAGE ID THE AUTHORITY MINTED. ***
+     *
+     * *The screen must render the ID THE RUNTIME OWNS rather than one it invented, so the send returneth the `msg_id` the
+     * durable enqueue committed (or null when nothing was committed). The rendered id is then a READ, which is what
+     * maketh a view-local string unable to satisfy the journey arm.*
+     */
+    suspend fun sendDirectResult(from: String, recipient: String, plaintext: ByteArray): DirectSendResult {
+        val before = harness.node(from)?.store?.allHeldMsgIds()?.map { it.toList() }?.toSet() ?: emptySet()
+        val outcome = harness.sendDirect(from, recipient, plaintext)
+        val after = harness.node(from)?.store?.allHeldMsgIds() ?: emptyList()
+        val minted = after.lastOrNull { it.toList() !in before }
+        return DirectSendResult(describe(outcome), minted?.copyOf(), minted != null)
+    }
+
+    /**
+     * *** THE SOS COMMAND DOOR, BOUND TO THE NODE'S OWN `handleSosCommand`. ***
+     *
+     * *The iOS twin bindeth the same command surface (`harness.sosCommand`); this isle's arm is the node's own, so the
+     * arm and the cancel road route through ONE authority rather than a second SOS state machine.*
+     */
+    suspend fun sosCommand(from: String, command: SosCommand): SosCommandResult? {
+        val node = harness.node(from) ?: return null
+        return node.node.handleSosCommand(command) { peerId, bytes ->
+            sendOpaque(node, peerId, bytes)
+        }
+    }
+
+    /** The active SOS projection from the DURABLE row, or null when no call standeth. */
+    suspend fun activeSosStateOf(nodeLabel: String): DeliveryState? {
+        val node = harness.node(nodeLabel) ?: return null
+        return node.node.activeSosSnapshot()?.state
+    }
+
+    /** The `msg_id` of the standing distress call, read from the durable projection. */
+    suspend fun activeSosMsgIdOf(nodeLabel: String): ByteArray? {
+        val node = harness.node(nodeLabel) ?: return null
+        return node.node.activeSosSnapshot()?.msgId?.copyOf()
+    }
 
     /** Author one DIRECT message at [from] FOR [recipient]. */
     suspend fun sendDirect(from: String, recipient: String, plaintext: ByteArray): String =
@@ -108,6 +189,23 @@ class LabRuntime private constructor(
 
     /** How many link hand-offs were admitted. */
     fun admittedCount(): Int = harness.link.admitted()
+
+    /**
+     * *** ONE LINK HAND-OFF THROUGH THE COMPOSITION'S OWN RADIO, ON THE SOS COMMAND ROAD. ***
+     *
+     * *`ComposedRuntimeHarness.send` is private, so this mirrors the composition's hand-off through the harness's PUBLIC
+     * recorder (`harness.link`) and the receiving node's own `ingestInbound` statute -- the same two steps the harness
+     * taketh, and never a synthetic receive.*
+     */
+    private suspend fun sendOpaque(node: io.godstone.mesh.runtime.ComposedNode, peerId: ByteArray, bytes: ByteArray): Boolean {
+        val toLabel = labels.firstOrNull { harness.node(it)?.nodeId?.contentEquals(peerId) == true }
+            ?: return false
+        val admitted = harness.link.offer(node.label, toLabel, bytes)
+        if (admitted) {
+            io.godstone.mesh.wire.v2.FrameV2.decode(bytes)?.let { harness.node(toLabel)?.node?.ingestInbound(it, node.nodeId) }
+        }
+        return admitted
+    }
 
     private fun describe(outcome: ComposedOutcome): String = when (outcome) {
         is ComposedOutcome.Applied -> "applied:" + outcome.detail

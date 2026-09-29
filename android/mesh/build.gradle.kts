@@ -142,8 +142,75 @@ tasks.register<Test>("board1IntegrationWorker") {
     }
     // The coordinator's own parameter names, forwarded to the worker JVM through the configuration-cache-correct
     // provider API (never a configuration-time `System.getProperties()` read).
-    listOf("role", "root", "in", "out", "mode", "metadata").forEach { key ->
+    listOf("role", "root", "in", "out", "mode", "metadata", "variant", "deadlineSeconds").forEach { key ->
         val name = "godstone.integration.$key"
         systemProperty(name, providers.systemProperty(name).getOrElse(""))
     }
+}
+
+// =====================================================================================================================
+// *** GS-INTEGRATION-001 `scenarios` (step 6): THE ANDROID DURABLE-BOUNDARY WORKER -- APPENDED, NOT SUBSTITUTED. ***
+//
+// THE PLAN'S OWN WORDS: "Mirror the durable-boundary recovery assertions against Android's real host store/runtime
+// path using fresh Robolectric worker JVMs controlled by the same host coordinator. Do not kill a Gradle daemon or
+// unrelated test process; target the registered worker only."
+//
+// *`board1IntegrationWorker` ABOVE BELONGETH TO THE CROSS-PLATFORM ISLE AND IS DELIBERATELY UNTOUCHED: this task is a
+// SECOND, SEPARATE registration that selecteth only `Board1DurableBoundaryWorkerTest`, so the crash mirror can be
+// launched (and re-launched by the parent campaign for its child roles) without ever re-running, or reaching into,
+// the cross-platform court.* **Its `outputs.upToDateWhen { false }` is mandatory for the same reason: an up-to-date
+// worker would report a stale green -- and here it would be worse than stale, because a worker role that is never
+// re-executed cannot reach its boundary at all.**
+//
+//   cd android && ./gradlew :mesh:board1DurableBoundaryWorker --no-daemon
+//
+// and the coordinator's crash arm reacheth it through its own env hooks:
+//
+//   GS_ANDROID_CRASH_TASK=:mesh:board1DurableBoundaryWorker \
+//   GS_ANDROID_CRASH_CLASS=io.godstone.mesh.rig.Board1DurableBoundaryWorkerTest \
+//   python3 tools/readiness/run_board1_integration.py --mode crash --evidence-dir <path>
+//
+// and the acceptance court runneth it through the ordinary debug unit-test task by name:
+//
+//   ./gradlew :mesh:testDebugUnitTest --tests '*Board1DurableBoundary*'
+// =====================================================================================================================
+
+tasks.register<Test>("board1DurableBoundaryWorker") {
+    group = "verification"
+    description = "GS-INTEGRATION-001 scenarios (step 6): runs the Android durable-boundary recovery worker -- a " +
+        "prepare JVM that halts at a named durable boundary and a fresh recovery JVM over the same on-disk estate."
+
+    // The debug unit-test task's own classes and classpath, carried straight from it, so this worker runs on the SAME
+    // Robolectric/sqlite-jdbc/junit runtime classpath the default suite uses with nothing hand-assembled to drift.
+    val debugUnitTest = tasks.named<Test>("testDebugUnitTest")
+    testClassesDirs = debugUnitTest.get().testClassesDirs
+    classpath = debugUnitTest.get().classpath
+    filter { includeTestsMatching("*Board1DurableBoundary*") }
+
+    // An up-to-date worker is a stale green; retain the XML the coordinator consumes.
+    outputs.upToDateWhen { false }
+    reports.junitXml.required.set(true)
+    reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/board1DurableBoundaryWorker"))
+    testLogging {
+        events("passed", "failed", "skipped")
+        showStandardStreams = true
+    }
+    // *** THE SHARED KEY SPACE, PLUS THIS ISLE'S OWN TWO. ***
+    //
+    // *`boundary` is named EXPLICITLY rather than smuggled through `variant` -- the sibling worker still readeth
+    // `variant`, so BOTH are forwarded and the boundary is read from `boundary` first.* **`holdForParentKill` is this
+    // file's own switch: the parent campaign setteth it true so the child it spawneth waits to be killed and the
+    // parent can prove the child was still alive at the fatal instant; an unset (empty) value is dropped by the
+    // worker, and an empty value is an ABSENT one throughout** -- because this task forwards every unset key as an
+    // empty string, and a worker that took "" for a role would refuse an ordinary run.
+    listOf(
+        "role", "root", "in", "out", "mode", "metadata", "variant", "deadlineSeconds",
+        "boundary", "expectedMsgId", "holdForParentKill",
+    ).forEach { key ->
+        val name = "godstone.integration.$key"
+        systemProperty(name, providers.systemProperty(name).getOrElse(""))
+    }
+    // The default JVM's own heap/fork settings are inherited; no daemon is started by this task beyond the wrapper's
+    // own, and `--no-daemon` at the command line keeps a Gradle daemon out of the crash lane entirely.
+    maxHeapSize = "2g"
 }

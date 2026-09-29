@@ -185,16 +185,40 @@ class LabMeshJourneySemanticsTest {
         else -> ControlRole.BUTTON
     }
 
-    private fun render(state: LabJourneyState = LabJourneyState(), rtl: Boolean = false) {
+    private fun render(state: LabJourneyState = componentState(), rtl: Boolean = false) {
         composeRule.setContent {
             val direction = if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr
             CompositionLocalProvider(LocalLayoutDirection provides direction) {
                 // A BOUNDED WIDTH, SO THE LAYOUT IS A PHONE RATHER THAN THE TEST WINDOW: a control measured against
                 // an unbounded width would pass any minimum by accident.
-                Box(Modifier.width(360.dp)) { LabMeshJourneyScreen(state, onSend = {}) }
+                Box(Modifier.width(360.dp)) { LabMeshJourneyScreen(state, onSend = { _, _ -> }) }
             }
         }
     }
+
+    /**
+     * *** THE COMPONENT-MODE STATE: EXPLICIT, POSSIBLY-EMPTY CALLBACKS -- NEVER AN OMITTED ONE. ***
+     *
+     * *`LabJourneyState` no longer carrieth `{}` defaults for its REQUIRED command callbacks, so a component arm must
+     * say what its distress controls do. The arms above are SEMANTICS arms -- they judge the rendered tree, not the
+     * commands -- so they pass honest empty lambdas, which is the whole difference between "this arm does not exercise
+     * the command" and "a caller may forget the command".*
+     */
+    private fun componentState(
+        recipients: List<String> = listOf("Alice", "Bob"),
+        outcome: String = "nothing sent yet",
+        stateWords: String = AccessibilityContract.STATE_WORDS.getValue("QUEUED"),
+        sosStateWords: String = AccessibilityContract.STATE_WORDS.getValue("CANCELLED"),
+        durableMsgId: String? = null,
+        durableLabel: String = "UNAVAILABLE",
+        onArmSos: () -> Unit = {},
+        onCancelSos: () -> Unit = {},
+        onRetry: () -> Unit = {},
+    ) = LabJourneyState(
+        recipients = recipients, outcome = outcome, stateWords = stateWords, sosStateWords = sosStateWords,
+        durableMsgId = durableMsgId, durableLabel = durableLabel,
+        onArmSos = onArmSos, onCancelSos = onCancelSos, onRetry = onRetry,
+    )
 
     /**
      * *** EVERY REQUIRED CONTROL IS RENDERED, DISPLAYED AND CARRIETH A DESCRIPTION. ***
@@ -268,7 +292,7 @@ class LabMeshJourneySemanticsTest {
      */
     @Test
     fun test_the_state_descriptions_speak_the_shared_vocabulary() {
-        render(LabJourneyState(
+        render(componentState(
             stateWords = AccessibilityContract.STATE_WORDS.getValue("DELIVERED"),
             sosStateWords = AccessibilityContract.STATE_WORDS.getValue("QUEUED"),
         ))
@@ -313,9 +337,9 @@ class LabMeshJourneySemanticsTest {
     fun test_the_announcement_record_follows_the_shared_state_word() {
         val delivered = AccessibilityContract.STATE_WORDS.getValue("DELIVERED")
         val attempting = AccessibilityContract.STATE_WORDS.getValue("ATTEMPTING")
-        val state = androidx.compose.runtime.mutableStateOf(LabJourneyState(stateWords = delivered))
+        val state = androidx.compose.runtime.mutableStateOf(componentState(stateWords = delivered))
         composeRule.setContent {
-            Box(Modifier.width(360.dp)) { LabMeshJourneyScreen(state.value, onSend = {}) }
+            Box(Modifier.width(360.dp)) { LabMeshJourneyScreen(state.value, onSend = { _, _ -> }) }
         }
         composeRule.waitForIdle()
         assertEquals(
@@ -324,7 +348,7 @@ class LabMeshJourneySemanticsTest {
             delivered, stateDescriptionOf(LabControl.ANNOUNCED),
         )
         // *** AND THE EDGE: THE STATE CHANGES, SO THE ANNOUNCEMENT MUST FOLLOW. ***
-        state.value = LabJourneyState(stateWords = attempting)
+        state.value = componentState(stateWords = attempting)
         composeRule.waitForIdle()
         assertEquals(
             "*** A STATE CHANGE MUST MOVE THE ANNOUNCED RECORD: a region declared and never updated speaketh the " +
@@ -356,7 +380,7 @@ class LabMeshJourneySemanticsTest {
     fun test_type_select_and_send_reach_the_callback_with_multibyte_text() {
         var sent: String? = null
         composeRule.setContent {
-            Box(Modifier.width(360.dp)) { LabMeshJourneyScreen(LabJourneyState(), onSend = { sent = it }) }
+            Box(Modifier.width(360.dp)) { LabMeshJourneyScreen(componentState(), onSend = { _, body -> sent = body }) }
         }
         val arabic = "مياه عند الجسر"
         node(LabControl.COMPOSE_BODY).performTextInput(arabic)
@@ -513,7 +537,7 @@ class LabMeshJourneySemanticsTest {
                 LocalDensity provides androidx.compose.ui.unit.Density(density = 2.75f,
                                                                      fontScale = fontScale.value),
             ) {
-                Box(Modifier.width(360.dp)) { LabMeshJourneyScreen(LabJourneyState(), onSend = {}) }
+                Box(Modifier.width(360.dp)) { LabMeshJourneyScreen(componentState(), onSend = { _, _ -> }) }
             }
         }
         composeRule.waitForIdle()

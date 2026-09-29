@@ -1,28 +1,50 @@
 package io.godstone.labmesh
 
-import android.app.Activity
 import android.os.Bundle
-import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import io.godstone.mesh.lab.LabRuntime
 
 /**
- * T54 / GS-LAB-001: THE LAB'S LAUNCHABLE ENTRY POINT.
+ * T54 / GS-LAB-001 + GS-UX-001 `rendered-controls`: THE LAB'S LAUNCHABLE ENTRY POINT, HOSTING THE RENDERED JOURNEY.
  *
- * The audit found the LabMesh application targets WITHOUT launchable entry points: the manifest declared an
- * application and no activity at all, so a lab existed which nobody could start. This activity is the smallest honest
- * door: it nameth the lab, stateth what it is (EXPERIMENTAL and NONSHIPPING), and carrieth NO readiness claim and NO
- * radio work of its own -- the runtime it would drive is the canonical one, reached through
- * `io.godstone.mesh.lab.LabRuntime`, exactly as `LabMeshApp` saith.
+ * *THE AUDIT'S FIRST FINDING WAS THAT THE LAB TARGETS HAD **NO LAUNCHABLE ENTRY POINT AT ALL**; the second was that
+ * the journey was a `TextView` -- a screen with NO controls, NO callbacks and NO `onCommand` wiring.* **This activity
+ * closeth both: it is the door, and behind it standeth a screen whose commands reach the REAL
+ * `io.godstone.mesh.lab.LabRuntime`.**
  *
- * WHY IT EXTENDETH A PLAIN Activity RATHER THAN THE SHIPPING APP'S ComponentActivity: the lab module carrieth no
- * Compose or Hilt surface of its own, and ADDING dependencies for an entry point would widen the lab's isolation
- * footprint -- which `ci/check_lab_isolation.py` guardeth. A view with a sentence cannot manufacture readiness.
+ * *** THE RUNTIME IS THE APPLICATION'S -- NEVER A VIEW'S. *** *`LabMeshApplication.runtime` is composed ONCE at process
+ * start (this file contains no `compose(` call, which `ci/check_lab_isolation.py`'s retained-runtime control asserteth:
+ * a runtime composed by a view is composed again on every recomposition).*
+ *
+ * *** THE BINDING IS TIED TO THIS ACTIVITY'S LIFECYCLE SCOPE, AND THE FLOW IS COLLECTED LIFECYCLE-AWARE. *** *A
+ * `suspend` write (`sendDirect`, the SOS commands) runneth on a scope that is CANCELLED with the activity -- an
+ * unowned scope would outlive the surface reading its state -- and `collectAsStateWithLifecycle` STOPPETH collecting
+ * when the owner is backgrounded, so no state is read by a surface nobody is looking at.*
+ *
+ * *** AND NOTHING HERE MANUFACTURETH READINESS. *** *No flag is written, no setter called, and the readiness statement
+ * reacheth `LabRuntime.readinessStatement()`'s compile-time `false`. The lab remaineth EXPERIMENTAL and NONSHIPPING.*
  */
-class LabMainActivity : Activity() {
+class LabMainActivity : ComponentActivity() {
+    private val runtime: LabRuntime
+        get() = (application as LabMeshApplication).runtime
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(TextView(this).apply {
-            text = "Godstone LabMesh -- EXPERIMENTAL, NONSHIPPING.\n" +
-                "This build exercises the real adapters on a real device; it is never a store candidate."
-        })
+        // THE BINDING REACHETH THE RETAINED RUNTIME'S OWN AUTHORITY, ON THIS ACTIVITY'S OWN SCOPE.
+        val bindings = LabJourneyBindings(runtime, lifecycleScope)
+        // *The rendered state is REFRESHED from the runtime's estate at start, so a relaunch renders what the store
+        // carrieth rather than a placeholder -- the read is the runtime's, never this activity's memory.*
+        bindings.refresh()
+        setContent {
+            val state by bindings.state.collectAsStateWithLifecycle()
+            Surface {
+                LabMeshJourneyScreen(state, onSend = bindings::send)
+            }
+        }
     }
 }

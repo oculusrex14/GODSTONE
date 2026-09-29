@@ -273,6 +273,12 @@ internal class RealTransportHostRig(
         val sessions: SessionManager,
         val gate: DefaultRuntimeLifecycleGate,
         val pump: DurableAckPump,
+        /**
+         * *** THE NODE'S OWN TRUST REPOSITORY -- the SAME authority the production handshake and the ACK road
+         * consult, never a second `PeerIdentityRepository` over the same file.*** *A cross-process worker that
+         * learneth a foreign binding over IPC pinneth it through [RealTransportHostRig.pinRemote].*
+         */
+        val peerRepository: PeerIdentityRepository,
         internal val scope: CoroutineScope,
     ) {
         internal var opened = false
@@ -412,7 +418,7 @@ internal class RealTransportHostRig(
             label = label, identity = identity, node = node, messageStore = messageStore,
             peerStore = peerStore, outlet = outlet, advertiser = advertiser, address = address,
             engine = engine, ackStore = ackStore, tracker = tracker, sessions = sessions,
-            gate = gate, pump = pump, scope = scope,
+            gate = gate, pump = pump, peerRepository = repo, scope = scope,
         )
         outlet.deliver = { dest, bytes, direction -> postDelivery(n.address, dest, bytes, direction) }
         nodes[label] = n
@@ -450,19 +456,35 @@ internal class RealTransportHostRig(
     }
 
     /** Pin a node's own binding into its own repository through the FROZEN validator, as production doth. */
-    private fun pinOwnIdentity(identity: Identity, repo: PeerIdentityRepository) {
+    private fun pinOwnIdentity(identity: Identity, repo: PeerIdentityRepository) = pinBinding(identity, repo)
+
+    /**
+     * *** PIN ONE REMOTE IDENTITY INTO A NODE'S OWN TRUST REPOSITORY -- through the SAME frozen validator. ***
+     *
+     * *A cross-process worker learneth the foreign platform's binding over IPC and must have it resolvable: the ACK
+     * road and the recipient inbox verify the signed author through THIS node's repository.* **This pinneth into the
+     * repository the node ALREADY carrieth, so no second authority is built over the same file.**
+     *
+     * *It is a TEST RIG door: in a two-sided `link()` the PRODUCTION handshake authority writeth the trust rows
+     * itself, and nothing here is used. It exists only for the one-sided cross-process endpoints.*
+     */
+    fun pinRemote(label: String, identity: Identity) {
+        pinBinding(identity, nodeOf(label).peerRepository)
+    }
+
+    private fun pinBinding(identity: Identity, repo: PeerIdentityRepository) {
         val validated = IdentityBindingValidator.validate(
             serialized = identity.issueIdentityBinding().encode(),
             authenticatedRemoteStaticKey = identity.staticDhPub,
             advertisedNodeHint = identity.nodeHint,
         )
         check(validated is IdentityBindingValidationResult.Valid) {
-            "the rig could not validate its own identity binding: $validated"
+            "the rig could not validate the identity binding: $validated"
         }
         val binding: ValidatedPeerBinding = validated.binding
         val applied = repo.applyValidatedBinding(binding)
         check(applied is PeerTrustApplyResult.FirstSeenPinned || applied is PeerTrustApplyResult.Accepted) {
-            "pinning the node's own identity was refused: $applied"
+            "pinning the identity was refused: $applied"
         }
     }
 
@@ -550,8 +572,8 @@ internal class RealTransportHostRig(
         open(a)
         open(b)
         fabricEnabled = true
-        bringUpResponderLadder(responder, initiator)
-        bringUpInitiatorLadder(initiator, responder)
+        bringUpResponderLadder(responder, initiator.address, initiator.identity.nodeHint)
+        bringUpInitiatorLadder(initiator, responder.address, responder.identity.nodeHint)
         links.add(link)
         awaitUntil("both registries report the peer ready") {
             val iconn = initiator.transport.centralDriver.getActiveConnection(responder.address)
@@ -562,49 +584,73 @@ internal class RealTransportHostRig(
         return link
     }
 
+    /**
+     * *** THE RESPONDER'S LADDER, ONE-SIDED: it needeth only the REMOTE address and hint, never a local Node. ***
+     *
+     * *A cross-process worker driveth this side alone; the initiator liveth in another process.*
+     */
+    fun seatResponder(label: String, remoteAddress: String, remoteHint: ByteArray) {
+        val responder = nodes[label] ?: error("no node $label")
+        open(label)
+        bringUpResponderLadder(responder, remoteAddress, remoteHint)
+    }
+
     /** The responder's ladder, through its own driver entries. */
-    private fun bringUpResponderLadder(responder: Node, initiator: Node) {
+    private fun bringUpResponderLadder(responder: Node, initiatorAddress: String, initiatorHint: ByteArray) {
         val srv = responder.transport.serverDriver
-        val admitted = srv.onClientConnected(initiator.address, 1L)
+        val admitted = srv.onClientConnected(initiatorAddress, 1L)
         check(admitted is BleServerAction.AdmitConnection) { "the client connection was not admitted: $admitted" }
-        responder.transport.handleInboundClientAdmitted(initiator.address, 1L)
+        responder.transport.handleInboundClientAdmitted(initiatorAddress, 1L)
         // *THE SUBSCRIPTION SEATS BEFORE THE LINK-INFO WRITE, AS PRODUCTION'S PLATFORM SEQUENCE DOTH* -- so the
         // responder's `isHandshakeTransportReady` is already TRUE at the link-info write and it publishes Found.
-        responder.outlet.subscribed = initiator.address
-        val descriptor = srv.onDescriptorWriteRequest(initiator.address, true)
+        responder.outlet.subscribed = initiatorAddress
+        val descriptor = srv.onDescriptorWriteRequest(initiatorAddress, true)
         check(descriptor is BleServerAction.AcceptDescriptorWrite ||
             descriptor is BleServerAction.AcceptDescriptorWriteAndPublishFound) { "the subscription was refused: $descriptor" }
-        val linkInfo = srv.onLinkInfoWriteRequest(initiator.address, linkInfoOf(initiator.identity))
+        val linkInfo = srv.onLinkInfoWriteRequest(initiatorAddress, linkInfoOf(initiatorHint))
         check(linkInfo is BleServerAction.AcceptWrite ||
             linkInfo is BleServerAction.AcceptWriteAndPublishFound) { "the link-info record was refused: $linkInfo" }
-        srv.onMtuChanged(initiator.address, MTU)
-        val conn = responder.transport.serverDriver.getInboundConnection(initiator.address)
+        srv.onMtuChanged(initiatorAddress, MTU)
+        val conn = responder.transport.serverDriver.getInboundConnection(initiatorAddress)
             ?: error("the responder has no connection")
         check(conn.isHandshakeTransportReady) { "the responder's duplex is not up: state=${conn.state}" }
     }
 
+    /**
+     * *** THE INITIATOR'S LADDER, ONE-SIDED: it needeth only the REMOTE address and hint. ***
+     *
+     * *This is the entry a cross-process worker driveth when IT is the initiator; the real trusted handshake then
+     * proceedeth automatically through the node's own consumers as the remote side's records arrive at this node's
+     * ingress door (`handleCentralInboundNotification`).*
+     */
+    fun seatInitiator(label: String, remoteAddress: String, remoteHint: ByteArray) {
+        val initiator = nodes[label] ?: error("no node $label")
+        open(label)
+        bringUpInitiatorLadder(initiator, remoteAddress, remoteHint)
+    }
+
     /** The initiator's ladder, through its own driver entries (the T17/T23 idiom). */
-    private fun bringUpInitiatorLadder(initiator: Node, responder: Node) {
+    private fun bringUpInitiatorLadder(initiator: Node, remoteAddress: String, remoteHint: ByteArray) {
         val scan = initiator.transport.openScanContextForTest()
         check(initiator.transport.handleScanEvent(
-            ScanEvent(scan, 1, responder.address, -55,
-                BleLinkInfoV1(nodeHint = responder.identity.nodeHint, shortDigest = ByteArray(6))),
+            ScanEvent(scan, 1, remoteAddress, -55,
+                BleLinkInfoV1(nodeHint = remoteHint, shortDigest = ByteArray(6))),
         )) { "the scan admission was refused" }
         val driver = initiator.transport.centralDriver
-        driver.onGattConnected(responder.address, 1L, 1L)
-        driver.onServicesDiscovered(responder.address, true, 1L, 1L)
-        driver.onLinkInfoReadResult(responder.address, linkInfoOf(responder.identity), 1L, 1L)
-        driver.onLinkInfoWriteAcknowledged(responder.address, true, responder.identity.nodeHint, 1L, 1L)
+        driver.onGattConnected(remoteAddress, 1L, 1L)
+        driver.onServicesDiscovered(remoteAddress, true, 1L, 1L)
+        driver.onLinkInfoReadResult(remoteAddress, linkInfoOf(remoteHint), 1L, 1L)
+        driver.onLinkInfoWriteAcknowledged(remoteAddress, true, remoteHint, 1L, 1L)
         // *THE OUTLET IS WIRED BEFORE THE PUBLICATION, AS PRODUCTION'S IS*: the CCCD ack's PublishFound dispatch
         // is where the transport's OWN door (`maybeBeginTrustedHandshake`) launches the begin coroutine, which
         // READETH this state.
-        initiator.outlet.clientConnected = responder.address
-        val cccdAck = driver.onCccdWriteAcknowledged(responder.address, true, 1L, 1L)
+        initiator.outlet.clientConnected = remoteAddress
+        val cccdAck = driver.onCccdWriteAcknowledged(remoteAddress, true, 1L, 1L)
         if (cccdAck is BleCentralAction.PublishFound) {
-            initiator.transport.dispatchCentralActionForTest(responder.address, cccdAck)
+            initiator.transport.dispatchCentralActionForTest(remoteAddress, cccdAck)
         }
-        driver.onMtuChanged(responder.address, MTU)
-        val conn = initiator.transport.centralDriver.getActiveConnection(responder.address)
+        driver.onMtuChanged(remoteAddress, MTU)
+        val conn = initiator.transport.centralDriver.getActiveConnection(remoteAddress)
             ?: error("the initiator has no connection")
         check(conn.localRole == BleRole.INITIATOR) { "the election made the initiator, was ${conn.localRole}" }
         check(conn.isHandshakeTransportReady) { "the initiator's duplex is not up: state=${conn.state}" }
@@ -901,9 +947,9 @@ internal class RealTransportHostRig(
          */
         const val COLLECTOR_SETTLE_MILLIS = 50L
 
-        fun linkInfoOf(peer: Identity): ByteArray = BleLinkInfoCodec.encode(
+        fun linkInfoOf(nodeHint: ByteArray): ByteArray = BleLinkInfoCodec.encode(
             flags = 0.toByte(),
-            nodeHint = peer.nodeHint,
+            nodeHint = nodeHint,
             shortDigest = ByteArray(6) { (it % 251).toByte() },
             queueDepth = 0,
         )

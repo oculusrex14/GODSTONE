@@ -53,7 +53,7 @@ import io.godstone.mesh.a11y.AccessibilityContract
  * so the lie can no longer pass.*
  */
 @Composable
-fun LabMeshJourneyScreen(state: LabJourneyState, onSend: (String) -> Unit) {
+fun LabMeshJourneyScreen(state: LabJourneyState, onSend: (String, String) -> Unit) {
     // *** THE JOURNEY IS LONGER THAN A PHONE SCREEN, SO IT SCROLLS. ***
     //
     // *This is not decoration: without it a control below the fold is measured against a clipped viewport and a
@@ -141,7 +141,7 @@ fun LabMeshJourneyScreen(state: LabJourneyState, onSend: (String) -> Unit) {
                 },
         )
         Button(
-            onClick = { onSend(body) },
+            onClick = { onSend(recipient, body) },
             enabled = body.isNotEmpty() && recipient.isNotEmpty() && octets <= MESSAGE_BODY_MAX,
             modifier = Modifier
                 .testTag(LabControl.COMPOSE_SEND)
@@ -179,6 +179,21 @@ fun LabMeshJourneyScreen(state: LabJourneyState, onSend: (String) -> Unit) {
                 .semantics {
                     contentDescription = "Last announced status"
                     stateDescription = announced
+                },
+        )
+        // *** AND THE DURABLE PROJECTION ITSELF, ON SCREEN: THE MESSAGE ID AND LABEL THE RUNTIME'S OWN ROW CARRIETH. ***
+        //
+        // *This is the node a view-local string CANNOT satisfy. `msgId` is the `msg_id` the durable enqueue committed and
+        // `label` is the honest label the delivery row supporteth (`DeliveryProjection.of`); both are READ from the
+        // runtime through `LabJourneyState.durableMsgId`/`durableLabel`, so a screen that remembered its own sentence --
+        // or a court that asserted one -- would see `none` here while the estate carried a row.*
+        Text(
+            text = "durable: " + (state.durableMsgId ?: "none") + " / " + state.durableLabel,
+            modifier = Modifier
+                .testTag(LabControl.DURABLE)
+                .semantics {
+                    contentDescription = "Durable message state"
+                    stateDescription = state.durableLabel
                 },
         )
 
@@ -267,6 +282,7 @@ object LabControl {
     const val COMPOSE_SEND = "compose_send"
     const val OUTCOME = "delivery_outcome"
     const val ANNOUNCED = "delivery_announced"
+    const val DURABLE = "durable_message_state"
     const val SOS_ARM = "sos_arm"
     const val SOS_CANCEL = "sos_cancel"
     const val SOS_STATE = "sos_state"
@@ -275,7 +291,7 @@ object LabControl {
 
     /** Every id the semantics court must observe a RENDERED node for. */
     val REQUIRED: List<String> = listOf(
-        RECIPIENT_SELECT, COMPOSE_BODY, OCTETS, COMPOSE_SEND, OUTCOME, ANNOUNCED, SOS_ARM, SOS_CANCEL,
+        RECIPIENT_SELECT, COMPOSE_BODY, OCTETS, COMPOSE_SEND, OUTCOME, ANNOUNCED, DURABLE, SOS_ARM, SOS_CANCEL,
         SOS_STATE, RETRY, RTL_MEANING,
     )
 
@@ -318,6 +334,7 @@ object LabControl {
         COMPOSE_SEND to Role.Button,
         OUTCOME to null,                 // *a live-region STATUS, not an action*
         ANNOUNCED to null,               // *the announcement record: a readout*
+        DURABLE to null,                 // *the durable projection: a readout, never an action*
         SOS_ARM to Role.Button,
         SOS_CANCEL to Role.Button,
         SOS_STATE to null,               // *a live-region STATUS*
@@ -343,13 +360,26 @@ object LabControl {
  *
  * `stateWords` and `sosStateWords` come from the SHARED vocabulary (`AccessibilityContract.STATE_WORDS`), so this
  * isle cannot invent a status word the durable projection does not speak.
+ *
+ * *** `durableMsgId`/`durableLabel` ARE READ FROM THE RUNTIME'S OWN ROW, WHICH IS WHAT MAKETH THE JOURNEY DURABLE. ***
+ * *A view-local string cannot satisfy them: they are the committed `msg_id` and the honest `DeliveryLabel` the estate
+ * supporteth, so a screen that remembered a sentence would render `none` while the store carried a row.*
+ *
+ * *** AND `onArmSos`/`onCancelSos`/`onRetry` CARRY NO NO-OP DEFAULT. *** *They are REQUIRED JOURNEY COMMANDS: a default
+ * `{}` let a caller render a screen whose distress controls did nothing -- silently, with every semantics arm still
+ * green -- which is precisely the "gesture callbacks or onCommand wiring" the finding's own charge nameth. A component
+ * test passeth an explicit (possibly empty) lambda; a caller that omits one no longer compiles.*
  */
 data class LabJourneyState(
     val recipients: List<String> = listOf("Alice", "Bob"),
     val outcome: String = "nothing sent yet",
     val stateWords: String = AccessibilityContract.STATE_WORDS.getValue("QUEUED"),
     val sosStateWords: String = AccessibilityContract.STATE_WORDS.getValue("CANCELLED"),
-    val onArmSos: () -> Unit = {},
-    val onCancelSos: () -> Unit = {},
-    val onRetry: () -> Unit = {},
+    /** The committed `msg_id` of the last authored message, or null when nothing was committed. */
+    val durableMsgId: String? = null,
+    /** The honest label the durable row supporteth; `UNAVAILABLE` when no estate carrieth a row. */
+    val durableLabel: String = "UNAVAILABLE",
+    val onArmSos: () -> Unit,
+    val onCancelSos: () -> Unit,
+    val onRetry: () -> Unit,
 )
