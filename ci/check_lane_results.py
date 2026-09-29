@@ -67,6 +67,14 @@ LANES = [
     ("android:app", "testLightDebugUnitTest", "android/app/build/test-results/testLightDebugUnitTest/*.xml"),
     ("android:core", "testDebugUnitTest", "android/core/build/test-results/testDebugUnitTest/*.xml"),
     ("android:mesh", "testDebugUnitTest", "android/mesh/build/test-results/testDebugUnitTest/*.xml"),
+    # *** AND THE LABMESH LANE, WHICH THE WORKFLOW JOB RAN AND THIS CONTROL NEVER JUDGED. ***
+    #
+    # *`android/labmesh` carrieth the RENDERED journey court (GS-UX-001 `rendered-controls`), and the step-9
+    # accessibility roster -- so a lane that produced those results and went unjudged was the same "machinery exists
+    # but is not the gate" shape the UI lane had.* **The job already invokes `:labmesh:testDebugUnitTest`; this
+    # control now reapeth its XML with the same rules (non-empty, tests>0, zero skipped/failed/errored, digest-bound,
+    # source-census-equal).**
+    ("android:labmesh", "testDebugUnitTest", "android/labmesh/build/test-results/testDebugUnitTest/*.xml"),
 ]
 
 # *** AND THE iOS LANE, WHICH THIS CONTROL DID NOT COVER AT ALL (round 691). ***
@@ -1420,6 +1428,7 @@ ANDROID_SOURCE_TREES = {
     "android:app": ("android/app/src",),
     "android:core": ("android/core/src",),
     "android:mesh": ("android/mesh/src",),
+    "android:labmesh": ("android/labmesh/src",),
 }
 
 
@@ -1471,6 +1480,7 @@ LANE_TEST_SOURCES = {
     "android:app": "android/app/src/test",
     "android:core": "android/core/src/test",
     "android:mesh": "android/mesh/src/test",
+    "android:labmesh": "android/labmesh/src/test",
 }
 
 

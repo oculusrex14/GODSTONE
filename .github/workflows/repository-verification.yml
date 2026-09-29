@@ -738,41 +738,31 @@ jobs:
           xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light
           -configuration LightRelease -destination 'generic/platform=iOS'
           CODE_SIGNING_ALLOWED=NO build
-      # Execute the GodstoneMeshTests (GMP/2.1 wire vectors, Blake2s port
-      # vectors, router, Noise_XX handshake, GMP/2.1 msg-id/Bloom/PoW KAT parity,
-      # + Phase F PanicWipe state-machine tests + Phase G durable-store tests
-      # + Phase H authenticated-ACK delivery state-machine tests)
-      # via xcodebuild on a simulator --
-      # the real iOS test execution, not just the host swift-test mirror. The
-      # scheme's test action targets GodstoneMeshTests (test-only; see
-      # project.yml). Resolve the highest-numbered available iPhone simulator so
-      # the step is robust across Xcode/runner-image versions. The count guard
-      # below is a >=50 regression floor, not an exact pin.
+      # Execute GodstoneMeshTests via xcodebuild on a simulator -- the real iOS
+      # test execution, not just the host swift-test mirror.
+      #
+      # *** rc11: THE INLINE STEP IS REPLACED BY THE COMMITTED RUNNER, FOR THE SAME REASON THE TWO iOS LANES ABOVE
+      # WERE. *** *THE DEFECT IT CLOSED: the inline step read `grep -oE "Executed [0-9]+ tests, with 0 failures" |
+      # tail -1` and asked only `>= 50`.* **XCTest printeth an `Executed` line per NESTED suite, so `tail -1` is a
+      # CHILD'S total, and 50 accepted a run whose outer suite never finished. Nothing bound the log to the bytes it
+      # compiled, nothing captured the child's own status (it ended in a `| tee` pipeline, so the step's exit code was
+      # `tee`'s), and no result bundle was kept.**
+      #
+      # **`tools/readiness/run_ios_simulator_lane.sh` RUNS IT**: it resolves and RECORDS the device UDID and runtime,
+      # takes a PRE-run and POST-run source digest and requires them to agree, captures the raw `xcodebuild` status
+      # from the child, and keeps a fresh `.xcresult` -- and
+      # `python3 ci/check_lane_results.py --scope ios-simulator` reapeth the roster BY NAME from a SOURCE-DERIVED
+      # class list, refusing a missing/duplicate/skipped arm, an unfinished suite, a non-zero raw status or a stale
+      # digest. *`>= 50` cannot discharge any of that.*
       - name: xcodebuild test (GodstoneMeshTests on iOS Simulator)
         run: |
-          set -e
-          sim=$(xcrun simctl list devices available 2>/dev/null \
-                | grep -oE 'iPhone [0-9]+( Pro Max| Pro| Plus)?' \
-                | sort -u | tail -1)
-          echo "Using simulator: ${sim}"
-          xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light \
-            -configuration LightDebug \
-            -destination "platform=iOS Simulator,name=${sim}" \
-            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee /tmp/xcb-test.log
-          # Truthful, non-brittle guard: assert the run succeeded with 0
-          # failures and at least 50 executed tests (a regression below 50 --
-          # e.g. a compile failure silently dropping the suite -- fails this).
-          # The exact count is intentionally not pinned so adding tests (Phase F
-          # added 7 -> 57; Phase G added 12 -> 69; Phase H added 12 -> 81) does not break the gate.
-          grep -q "\*\* TEST SUCCEEDED \*\*" /tmp/xcb-test.log \
-            || { echo "::error::xcodebuild test did not report TEST SUCCEEDED"; exit 1; }
-          line=$(grep -oE "Executed [0-9]+ tests, with 0 failures" /tmp/xcb-test.log | tail -1)
-          [ -n "$line" ] \
-            || { echo "::error::no '0 failures' summary line found in xcodebuild output"; exit 1; }
-          n=$(printf '%s' "$line" | grep -oE "[0-9]+" | head -1)
-          [ "$n" -ge 50 ] \
-            || { echo "::error::expected at least 50 GodstoneMeshTests with 0 failures, got $n"; exit 1; }
-          echo "GodstoneMeshTests: $n executed, 0 failures (>=50 guard)"
+          set -euo pipefail
+          tools/readiness/run_ios_simulator_lane.sh ios-simulator-lane.log "$PWD/ios-simulator-lane.xcresult"
+
+      - name: ios simulator lane control (the step-13 roster, by name)
+        run: |
+          set -euo pipefail
+          python3 ci/check_lane_results.py --scope ios-simulator
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -795,6 +785,22 @@ jobs:
           path: |
             ios-lane.log
             ios-lane.log.sources.sha256
+            ios-lane.log.pre.sha256
             ios-ui-lane.log
             ios-ui-lane.log.sources.sha256
+            ios-ui-lane.log.pre.sha256
+            ios-simulator-lane.log
+            ios-simulator-lane.log.sources.sha256
+            ios-simulator-lane.log.pre.sha256
+          if-no-files-found: warn
+
+      # *** AND THE SIMULATOR RESULT BUNDLE, WHICH THE INLINE STEP NEVER KEPT. ***
+      # *A `.xcresult` carrieth the per-CASE roster, the suite lifecycle and the skip annotations that a log carrieth
+      # only as XCTest chose to print.* **Uploaded `if: always()`, because the run whose bundle most needeth reading is
+      # the one where the control refused the log.**
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ios-simulator-xcresult
+          path: ios-simulator-lane.xcresult
           if-no-files-found: warn

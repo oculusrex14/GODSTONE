@@ -19,21 +19,24 @@ cd "$(dirname "$0")/../.."
 python3 tools/readiness/android_source_digest.py >android-app.pre.sha256
 python3 tools/readiness/android_source_digest.py --lane android:core >android-core.pre.sha256
 python3 tools/readiness/android_source_digest.py --lane android:mesh >android-mesh.pre.sha256
+python3 tools/readiness/android_source_digest.py --lane android:labmesh >android-labmesh.pre.sha256
 
 JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@17}" \
 ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}" \
   ./android/gradlew -p android \
     :app:testDebugUnitTest :core:testDebugUnitTest :mesh:testDebugUnitTest \
+    :labmesh:testDebugUnitTest \
     --rerun-tasks --no-daemon --console=plain
 rc=$?
 
 python3 tools/readiness/android_source_digest.py >android-app.sources.sha256
 python3 tools/readiness/android_source_digest.py --lane android:core >android-core.sources.sha256
 python3 tools/readiness/android_source_digest.py --lane android:mesh >android-mesh.sources.sha256
+python3 tools/readiness/android_source_digest.py --lane android:labmesh >android-labmesh.sources.sha256
 
 # *** AND THE PRE-RUN DIGESTS MUST EQUAL THE POST-RUN ONES. ***
 drift=0
-for lane in app core mesh; do
+for lane in app core mesh labmesh; do
     if ! cmp -s "android-$lane.pre.sha256" "android-$lane.sources.sha256"; then
         echo "::error::a lane input changed WHILE the android lane ran (android:$lane):" >&2
         echo "::error::  pre=$(cut -c1-16 "android-$lane.pre.sha256")" >&2
