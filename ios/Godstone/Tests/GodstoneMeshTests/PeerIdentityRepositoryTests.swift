@@ -2218,6 +2218,73 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(try afterRevoke.readRaw(b3.nodeId)?.trustCodeRaw,
                        PeerTrustLevel.revoked.persistedCode,
                        "and the revoked row must stay revoked")
+
+        // (e) *** AND A STALE DISPLAYED GENERATION IS REFUSED AS `.stale` ON A ROW THAT CARRIETH NO PENDING CANDIDATE. ***
+        //
+        // *WHY THIS ARM EXISTETH: sub-case (a) above is refused by the EARLIER `pendingGeneration == nil` predicate --
+        // `throw ConfirmationAbort.quarantined` -- so the DISPLAYED-GENERATION comparison is never consulted there and
+        // a rod that striketh that comparison is invisible to (a).* **THIS arm reacheth the generation CAS itself: the
+        // row is non-quarantined, non-revoked and still at TOFU, so the ONLY predicate standing between a stale
+        // (node, generation, digest) capture and an UNLAWFUL promotion is `current.acceptedGeneration ==
+        // expectedAcceptedGeneration`.** *It is read from the store before and after, so a stale confirmation that
+        // CHANGED anything -- promoted the row it no longer describeth -- reddens.*
+        let staleUrl = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: staleUrl) }
+        let staleStore = try SqlitePeerIdentityStore(url: staleUrl)
+        let staleRepo = PeerIdentityRepository(store: staleStore)
+        let b1 = makeBinding(seed: seedB, generation: 1, staticDhPriv: staticPrivC)
+        let b4 = makeBinding(seed: seedB, generation: 4, staticDhPriv: staticPrivD)
+        let b1Digest = ExactRotationCandidateRef.digestHex(b1.staticDhPublicKey)
+        let b4Digest = ExactRotationCandidateRef.digestHex(b4.staticDhPublicKey)
+        XCTAssertEqual(staleRepo.applyValidatedBinding(b1), .firstSeenPinned)
+        XCTAssertEqual(staleRepo.applyValidatedBinding(b4), .keyChangedQuarantined,
+                       "the rotation quarantines the row first")
+        guard case .approved = staleRepo.approvePendingRotation(
+            nodeId: b1.nodeId, expectedPendingGeneration: 4,
+            expectedPendingStaticDhPublicKey: b4.staticDhPublicKey) else {
+            return XCTFail("the quarantine must be approvable so the row carrieth no pending candidate")
+        }
+        // *THE ROW NOW STANDS NON-QUARANTINED AT GENERATION 4 AND STILL TOFU: the `quarantined` predicate can no
+        // longer fire, so a promotion is reachable and the generation CAS is the guard that must refuse a stale one.*
+        let movedRow = try staleStore.readRaw(b1.nodeId)
+        XCTAssertEqual(movedRow?.acceptedGenerationRaw, 4, "the approved row must stand at the new generation")
+        XCTAssertEqual(movedRow?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode,
+                       "and still at TOFU, so a promotion from this state is possible at all")
+        XCTAssertNil(movedRow?.pendingStaticDhPublicKeyRaw, "and carry NO pending candidate")
+        XCTAssertNil(movedRow?.pendingGenerationRaw, "and carry NO pending generation")
+
+        // *A CAPTURE TAKEN AGAINST THE DISPLAYED GENERATION 1 -- ON A ROW THAT HAS MOVED TO GENERATION 4 -- MUST BE
+        // REFUSED. With the display CAS intact this is `.stale`; with the displayed-generation predicate struck it
+        // PROMOTES and the durable row moves, which is the defect this rod names.*
+        let staleGeneration = staleRepo.confirmVerified(nodeId: b1.nodeId, expectedAcceptedGeneration: 1,
+                                                        expectedFingerprintHex: b4Digest)
+        XCTAssertEqual(
+            staleGeneration, .stale,
+            "*** A CONFIRMATION CAPTURED AGAINST THE DISPLAYED GENERATION 1 MUST BE REFUSED AS `.stale` ONCE THE ROW "
+                + "STANDS AT GENERATION 4. *The row carrieth no pending candidate here, so the accepted-generation CAS "
+                + "is the ONLY predicate that can refuse it -- which is why this arm reacheth the guard the rod "
+                + "striketh.* Observed: \(staleGeneration) ***")
+        // *** AND THE DURABLE ROW IS UNMOVED BY THE STALE CAPTURE, READ FROM A FRESH STORE. ***
+        let afterStale = try SqlitePeerIdentityStore(url: staleUrl)
+        XCTAssertEqual(
+            try afterStale.readRaw(b1.nodeId), movedRow,
+            "*** A REFUSED STALE CONFIRMATION MUST LEAVE THE DURABLE ROW BYTE-FOR-BYTE AS IT WAS FOUND. *The "
+                + "displayed-generation predicate is what maketh the refusal real: without it the CAS promoteth the "
+                + "row and this comparison failleth.* ***")
+        // *The WRONG DIGEST at the RIGHT generation is likewise refused -- the digest predicate is genuinely consulted.*
+        XCTAssertEqual(
+            staleRepo.confirmVerified(nodeId: b1.nodeId, expectedAcceptedGeneration: 4,
+                                      expectedFingerprintHex: b1Digest),
+            .stale,
+            "a digest that doeth not name the row's accepted key must be refused")
+        // *AND THE HONEST CONTROL ON THIS SAME NON-QUARANTINED ROW: the exact CURRENT displayed state promoteth, so
+        // (e) is not an everything-refuses tautology.*
+        guard case .confirmed(let promotedFromTofu) = staleRepo.confirmVerified(
+            nodeId: b1.nodeId, expectedAcceptedGeneration: 4, expectedFingerprintHex: b4Digest) else {
+            return XCTFail("the CURRENT displayed state on the non-quarantined row must confirm")
+        }
+        XCTAssertEqual(promotedFromTofu.trustLevel, .userVerified,
+                       "and the honest confirmation must carry the promoted view")
     }
 
     /// *** A FORGED SUCCESS PROJECTION CANNOT REPLACE THE DURABLE UPDATE. ***
@@ -2235,17 +2302,35 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         let realStore = try SqlitePeerIdentityStore(url: url)
         _ = PeerIdentityRepository(store: realStore).applyValidatedBinding(binding)
 
-        // *** THE HOOK: THE CONFIRMATION'S GUARDED UPDATE IS SILENTLY SKIPPED, SO THE READBACK CANNOT AGREE. ***
-        // *This is exactly "a success projection without a durable update": the caller would receive `.confirmed` if
-        // the code trusted its own intent rather than the readback.*
-        let hookStore = HookablePeerIdentityStore(delegate: realStore)
-        hookStore.hookConfirmVerified = { _, _, _, _ in 0 }   // zero rows affected, no error
-        let hookedRepo = PeerIdentityRepository(store: hookStore)
-        let result = hookedRepo.confirmVerified(nodeId: binding.nodeId, expectedAcceptedGeneration: 2,
-                                                expectedFingerprintHex: digest)
+        // *** THE HOOK: THE CONFIRMATION'S GUARDED UPDATE IS SILENTLY SKIPPED. ***
+        // *Two shapes of the same lie, caught by TWO different layers:*
+        //   - affecting NOTHING is caught by the post-update CARDINALITY gate; and
+        //   - **REPORTING a success -- one row affected -- while the DURABLE ROW never moved is the "forged success
+        //     projection" the clause names.** The caller would receive `.confirmed` if the code trusted its own intent
+        //     rather than the post-mutation readback.
+        // **THE SECOND SHAPE IS THE ONE THE READBACK GUARD OWNS: the store sayeth it updated a row, so the cardinality
+        // gate passeth, and ONLY the readback comparison can see that the durable row still carrieth TOFU.**
+        let zeroStore = HookablePeerIdentityStore(delegate: realStore)
+        zeroStore.hookConfirmVerified = { _, _, _, _ in 0 }   // zero rows affected, no error
+        XCTAssertEqual(
+            PeerIdentityRepository(store: zeroStore).confirmVerified(
+                nodeId: binding.nodeId, expectedAcceptedGeneration: 2, expectedFingerprintHex: digest),
+            .corrupt(.mutationCardinality(expected: 1, actual: 0)),
+            "an update that changed NOTHING must be refused by the cardinality gate")
+
+        // *** AND THE FORGED-SUCCESS SHAPE: THE STORE CLAIMETH ONE ROW CHANGED, YET THE ROW CARRIETH TOFU. ***
+        // *The cardinality gate is satisfied by the lie, so the ONLY observation between it and a `.confirmed`
+        // projection is the post-mutation READBACK. This is exactly the arm the rod striketh: with the readback
+        // comparison removed, the intent alone is reported as success beside an unmoved durable row.*
+        let lieStore = HookablePeerIdentityStore(delegate: realStore)
+        lieStore.hookConfirmVerified = { _, _, _, _ in 1 }   // claims a change; the durable row is never touched
+        let result = PeerIdentityRepository(store: lieStore).confirmVerified(
+            nodeId: binding.nodeId, expectedAcceptedGeneration: 2, expectedFingerprintHex: digest)
         guard case .corrupt = result else {
-            return XCTFail("*** A CONFIRMATION WHOSE UPDATE AFFECTED NOTHING MUST NOT REPORT SUCCESS. *The old shape "
-                           + "would have trusted the intent; the readback makes the lie detectable.* Observed: "
+            return XCTFail("*** A CONFIRMATION WHOSE READBACK DISAGREES WITH ITS INTENT MUST NOT REPORT SUCCESS. *The "
+                           + "store reported one row affected yet the durable row still carrieth TOFU; if the code "
+                           + "trusted that intent instead of the readback it would return a `.confirmed` projection "
+                           + "beside an unmoved row -- the forged-success defect the clause names.* Observed: "
                            + "\(result) ***")
         }
         // *** AND THE DURABLE ROW IS STILL TOFU -- the rollback really happened. ***
