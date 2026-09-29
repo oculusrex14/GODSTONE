@@ -1463,10 +1463,12 @@ final class GsIntegration001RealTransportTests: XCTestCase {
     /// a cross-delivery, precisely the misrouting this programme hunts. A real radio cannot do that: the stack
     /// carries the subscribed central with the value.*
     ///
-    /// **THE ARM IS THE ADVERSARIAL ARRANGEMENT**: one hub opens BOTH hops (which the production hint election
-    /// produceth when the hub holdeth the smallest hint), and the two INITIATORS each send a DISTINCT body. Each
-    /// initiator's durable row must hold ONLY ITS OWN frame -- a cross-delivery would put the other's msgId in its
-    /// store, and the msgId assertion makes that visible rather than a byte-count coincidence.
+    /// **THE ARM IS THE ADVERSARIAL ARRANGEMENT, AND MY FIRST VERSION GOT IT BACKWARDS.** *I made the hub the
+    /// OPENER of both hops, which means each peer was a RESPONDER with only ONE relation -- so no node ever had two
+    /// relations on one manager, and the mutant ESCAPED. The per-link overwrite needed a node that is the RESPONDER
+    /// of BOTH hops.* **So the hub is the lexicographically LARGEST hint, which the production election nameth the
+    /// responder; and because only the OPENER carrieth a route-eligible relation of its own, the SENDER is the hub
+    /// (whose `updateValue` road the dispatcher drives) and the RECEIVERS are the two peers.**
     func testGSINT001ATwoRelationResponderNeverCrossDelivers() throws {
         let r = RealTransportHostRig()
         defer { r.tearDown() }
@@ -1474,52 +1476,54 @@ final class GsIntegration001RealTransportTests: XCTestCase {
         try r.makeNode(label: "m2", seedByte: 0x21, staticPrivByte: 0x22)
         try r.makeNode(label: "m3", seedByte: 0x31, staticPrivByte: 0x32)
 
-        // *** THE HUB IS THE LEXICOGRAPHICALLY SMALLEST HINT, BY MEASUREMENT RATHER THAN A SEED GUESS. ***
+        // *** THE HUB IS THE LEXICOGRAPHICALLY **LARGEST** HINT, BY MEASUREMENT RATHER THAN A SEED GUESS. ***
         let labels = ["m1", "m2", "m3"]
         let hints = labels.map { ($0, r.node($0)!.identity.nodeHint) }
-        guard let hub = hints.min(by: { $0.1.lexicographicallyPrecedes($1.1) })?.0 else {
+        guard let hub = hints.max(by: { $0.1.lexicographicallyPrecedes($1.1) })?.0 else {
             return XCTFail("the three hints must be orderable")
         }
         let peers = labels.filter { $0 != hub }
-        XCTAssertEqual(r.opener(of: hub, peers[0]), hub,
-                       "the hub must open BOTH hops -- the arrangement the old per-link overwrite needed")
-        XCTAssertEqual(r.opener(of: hub, peers[1]), hub, "and the second one too")
+        XCTAssertEqual(r.opener(of: peers[0], hub), peers[0],
+                       "the peer must open hop one, so the HUB is its responder -- the arrangement a shared "
+                       + "responder manager needs")
+        XCTAssertEqual(r.opener(of: peers[1], hub), peers[1], "and the same for the second hop")
 
         let first = try r.link(hub, peers[0])
         let second = try r.link(hub, peers[1])
+        // *** THE PREMISE: THE HUB IS THE RESPONDER OF **BOTH** RELATIONS, SO BOTH SHARE ITS ONE MANAGER. ***
+        XCTAssertFalse(first.aOpened, "the hub must NOT be the opener here, or this arm measures the wrong shape")
+        XCTAssertFalse(second.aOpened, "and likewise for the second relation")
         XCTAssertTrue(r.waitUntil { r.isLinkReady(first) && r.isLinkReady(second) },
-                      "both relations must be ready on the hub's exact handles; "
+                      "both relations must be ready on their openers' exact handles; "
                       + "detail \(r.linkReadinessDetail(first)) / \(r.linkReadinessDetail(second))")
-        // *** AND THE TWO RELATIONS HAVE DISTINCT HANDLES, so a route keyed by the central is a real distinction. ***
         XCTAssertNotEqual(first.bHandle, second.bHandle,
                           "one responder must name two relations by two DIFFERENT inbound central handles")
 
-        // *** EACH INITIATOR SENDS ITS OWN BODY FROM ITS OWN SIDE OF THE HUB. ***
-        // *The hub is the OPENER, so it carrieth the outbound relation; the two PEERS are the ones whose messages
-        // the hub must route by destination central.*
-        let bodies = ["alpha-body", "beta-body"]
+        // *** THE HUB CARRIES A FRAME TO EACH PEER, ONE DISTINCT BODY EACH, OVER ITS SINGLE MANAGER. ***
+        //
+        // *THE DISPATCHER IS THE SUBJECT, SO THE SEND USES THE LINK WRITER (`carryToWire`) RATHER THAN
+        // `dispatchDirect`: the responder carrieth no ROUTE-ELIGIBLE view of its own (production publish eth Application
+        // LinkReady only on the challenge-ISSUING side), so `dispatchDirect` would offer to nobody.* **`ble.send` is
+        // the transport's own writer keyed by the handle, and for a RESPONDER it pumps `updateValue` -- WHICH IS
+        // EXACTLY THE ROAD THE DISPATCHER SITS ON.***
         var msgIds: [Data] = []
         for (i, peer) in peers.enumerated() {
-            let link = (peer == peers[0]) ? first : second
-            let sender = try XCTUnwrap(r.opener(of: hub, peer), "the opener of hop \(i)")
-            let receiver = try XCTUnwrap(r.peer(of: hub, peer), "and its peer")
-            XCTAssertEqual(sender, hub, "the hub must be the sender on both hops")
-            _ = link
-            let sent = try awaitRigSync { try await r.sendDirect(from: sender, to: receiver,
-                                                                 plaintext: Data(bodies[i].utf8)) }
-            XCTAssertEqual(sent.result, .handedToRelays(1),
-                           "hop \(i) must be handed to its one relay; observed \(sent.result)")
-            XCTAssertGreaterThan(sent.egressBytes, 0, "hop \(i)'s egress must be non-zero")
-            msgIds.append(sent.frame.msgId)
+            let body = ["alpha-body", "beta-body"][i]
+            let frame = try awaitRigSync { try await r.authorDirectFrame(from: hub, to: peer, plaintext: Data(body.utf8)) }
+            let verdict = r.carryToWire(frame, from: hub, to: peer)
+            XCTAssertEqual(verdict, .admitted,
+                           "hop \(i) must cross the hub's own link writer; observed \(verdict). *The hub is the "
+                           + "RESPONDER here, so this road pumpeth `updateValue` -- the dispatcher's own road.*")
+            msgIds.append(frame.msgId)
         }
         XCTAssertNotEqual(msgIds[0], msgIds[1], "the two sends must be distinct frames")
 
-        // *** THE DISCRIMINATOR: EACH INITIATOR'S STORE HOLDS **ONLY ITS OWN** msgID. ***
+        // *** THE DISCRIMINATOR: EACH RECEIVER'S STORE HOLDS **ONLY ITS OWN** msgID. ***
         // *A cross-delivery would land the OTHER hop's frame in this store, and the exact-id assertion sees it.*
         for (i, peer) in peers.enumerated() {
             XCTAssertTrue(
                 r.waitUntil { r.messageStore(peer).allHeldMsgIds().contains(msgIds[i]) },
-                "*** HOP \(i)'S OWN FRAME MUST REACH ITS OWN INITIATOR. *** store=\(r.messageStore(peer).allHeldMsgIds().count) "
+                "*** HOP \(i)'S OWN FRAME MUST REACH ITS OWN RECEIVER. *** held=\(r.messageStore(peer).allHeldMsgIds().count) "
                     + "ring=\(r.ring(peer))")
             XCTAssertFalse(
                 r.messageStore(peer).allHeldMsgIds().contains(msgIds[1 - i]),

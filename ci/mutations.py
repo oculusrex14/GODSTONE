@@ -279,6 +279,8 @@ BOARD1_REQUIRED_IDS: tuple[str, ...] = (
     "T72-RC20-ios-ingress-empty-sender-restored",
     # --- STEP 6: hint/static/old-epoch refusal and the wipe ladder ---
     "T72-RC21-ios-resolver-stopeth-resolving-altogether",
+    "T72-RC22-ios-link-readiness-falls-back-to-any-handle",
+    "T72-RC23-ios-responder-dispatcher-ignores-the-destination-central",
     "T55-RC4-a-failed-wipe-is-not-resumable",
     "T56-RC7-a-failed-wipe-is-not-resumable",
     # --- STEP 7: the real-owner resource releases, dedup and parser gates ---
@@ -1833,6 +1835,18 @@ SEMANTIC = [
     #   *The plan requires the mutation AT THE RIG (where `isLinkReady` liveth), NOT on a scenario predicate the
     #   regression never calls -- reverting a predicate outside the exercised path would prove nothing.*
     {"id": "T72-RC22-ios-link-readiness-falls-back-to-any-handle", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift", "swift_filter": "GsIntegration001RealTransportTests", "find": "        return n.ble.linkReadyPeersForTest().contains(handle)\n            && n.node.knownPeersForTest().contains(handle)", "replace": "        // (mutant) the OLD rule: ANY ready handle satisfieth this relation\n        return !n.ble.linkReadyPeersForTest().isEmpty\n            && !n.node.knownPeersForTest().isEmpty", "witness": "testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle", "why": "the exact-handle readiness predicate is replaced by the any-ready-handle count, so a SECOND relation opened by the SAME node inherits the FIRST's readiness -- the measured hosted defect. The held-second-link regression condemneth, because its second hop is provably not ready while the mutant sayeth it is.", "baseline": "green (GsIntegration001RealTransportTests: the held-second-link, ACK-boundary, deallocation and lane arms, plus GsIntegration001ScenarioTests, all pass on the unmutated tree)"},
+    # *** THE RESPONDER DISPATCHER, WHICH ROUTES BY DESTINATION CENTRAL RATHER THAN "THE LAST WIRED LINK". ***
+    #
+    #   *MEASURED BY READING THE OLD WIRING: `responder.factory.lastPeripheralManager?.onUpdate` was set ONCE PER LINK,
+    #   EACH TIME OVERWRITING THE LAST, and the closure ignored the destination-central argument. So when one node
+    #   carrieth TWO relations, its single manager's `updateValue` closure belonged to whichever link was wired last,
+    #   and a value staged for the OTHER central was delivered to the WRONG initiator.*
+    #
+    #   **THIS ROD PUTTETH THE OLD "ANY LINK FOR THIS RESPONDER" RULE BACK, AND `testGSINT001ATwoRelationResponderNever
+    #   CrossDelivers` MUST REDDEN. THE ARM WAS CORRECTED ONCE ALREADY: my first arrangement made the hub the OPENER of
+    #   both hops, which gave each peer exactly ONE relation and let this rod ESCAPE -- so the arm now makes the HUB the
+    #   RESPONDER of both hops, which is the only shape in which one manager carrieth two relations.**
+    {"id": "T72-RC23-ios-responder-dispatcher-ignores-the-destination-central", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift", "swift_filter": "GsIntegration001RealTransportTests", "find": "                let key = ResponderKey(responderLabel: responder.label, centralId: centralId)\n                guard let route = responderDispatch[key] else { return }", "replace": "                // (mutant) the OLD per-link overwrite: ignore the destination central\n                _ = centralId\n                guard let route = responderDispatch.values.first(where: { $0.relay.bLabel == responder.label }) else { return }", "witness": "testGSINT001ATwoRelationResponderNeverCrossDelivers", "why": "the responder dispatcher stops routing by the destination central and picks ANY route for its own label, so a value staged for one relation is delivered to the WRONG initiator -- cross-delivery, the misrouting class this programme hunts. The two-relation arm condemneth (the handshakes refuse and neither store receives its own frame).", "baseline": "green (GsIntegration001RealTransportTests 22 arms, GsIntegration001ScenarioTests 6 arms, 0 failures)"},
     # ----------------------------------------------------------------------
     # T82 (s24-28): the explicitly closed tier and bulk-plane promises. The
     #   card's NAMED semantic negative is RC1/RC2: "Advertise bulk transfer or
