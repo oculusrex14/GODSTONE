@@ -1260,6 +1260,21 @@ public final class MeshNode {
             return .rejected(enqueueRes)
         }
 
+        // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `outboundEnqueue` BOUNDARY. ***
+        //
+        // *THE PLAN'S ROW: "After successful atomic held+delivery enqueue, before first radio submission."*
+        // **THE ATOMIC ENQUEUE HAS RETURNED SUCCESS BY THIS LINE -- `enqueueDirectOutbound` INSERTED the held frame
+        // AND the `QUEUED_DURABLY` delivery row in ONE transaction, and the switch above admitted only `.created`
+        // and `.alreadyQueuedSameBinding`. Every other outcome already returned `.rejected`.** *So a child killed
+        // HERE must leave the SAME ACCEPTED `msgId` AND its queued delivery row standing, with NO DELIVERED claim,
+        // and the resumption must transmit it WITHOUT A SECOND AUTHORING INTENT.*
+        //
+        // *** NO OFFER HAS BEEN MADE YET: the marker standeth BEFORE `mintDispatchLease` and before every
+        // `send(...)` in the loop below.*** *The distinction matters because an admitted send records an ephemeral
+        // link offer (T43) whose presence would make "was the work ever handed to a radio?" unanswerable.*
+        MeshCheckpoint.emit(MeshCheckpointNames.outboundEnqueue, detail: "queued-durably",
+                            bytes: canonicalFrame.payload.count)
+
         // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
         // inside a send callback suppresseth the offers not yet made.
         let dispatchLease = mintDispatchLease(canonicalFrame.msgId)

@@ -2013,6 +2013,19 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     writer.rewindInFlight(operation)
                     return true
                 }
+                // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `preSend` BOUNDARY (initiator leg). ***
+                //
+                // *THE PLAN'S ROW: "Immediately before a bound writer's external write, after durable
+                // acceptance."* **THE BYTES ARE ALREADY STAGED BY THE WHOLE-RECORD WRITER -- i.e. the durable
+                // acceptance happened upstream and this is the last instant before the OS is handed anything.**
+                // *A child killed HERE must leave the accepted work QUEUED: a new epoch resumes it, and the OLD
+                // connection/record can never claim delivery of bytes the radio never carried.*
+                //
+                // **NO TRANSACTION ORDERING IS TOUCHED: this is a read of the staged hand. The bytes themselves
+                // are never passed on -- only their count.**
+                MeshCheckpoint.emit(MeshCheckpointNames.preSend,
+                                    detail: "outbound-central op=\(operation.operationId) frag=\(operation.fragmentIndex)",
+                                    epoch: currentTransportEpoch, bytes: bytes.count)
                 // Without response, the platform's readiness is the only
                 // completion the stack owns: the value left, and nothing is
                 // claimed of the remote.
@@ -2036,6 +2049,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     writer.rewindInFlight(operation)
                     return true
                 }
+                // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `preSend` BOUNDARY (responder leg). ***
+                // *The same row on the manager side: the bytes are staged and the OS call is the very next
+                // statement. Only the record's sequence and byte count travel -- never the bytes.*
+                MeshCheckpoint.emit(MeshCheckpointNames.preSend,
+                                    detail: "inbound-peripheral op=\(operation.operationId) frag=\(operation.fragmentIndex)",
+                                    epoch: currentTransportEpoch, bytes: bytes.count)
                 let ok = peripheral.updateValue(bytes, for: inboxChar, onSubscribedCentrals: [centralObj])
                 // The census is kept for the attempt, refused or taken alike:
                 // the record names the very handle the value was carried by,
@@ -2378,6 +2397,17 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 return
             }
             delegate?.transportDidHandshakeReady(peerId: centralId)
+            // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `handshake` BOUNDARY (responder leg). ***
+            //
+            // *THE PLAN ASKeth FOR THIS TWICE: "once during the sealed handshake before LinkReady, once after
+            // authentication before first DATA."* **THE RESPONDER HAS NO EARLIER POINT: IT PUBLISHES NO APPLICATION
+            // LinkReady AT ALL, so `authenticated` IS BOTH ITS EVENTS -- the trusted hour is marked and the first
+            // DATA record may be dispatched the instant the next ingress arriveth.** *A child killed HERE must
+            // inherit NO SESSION AND NO READY STATE: the fresh callbacks must negotiate again, and a captured
+            // old-session record must be REFUSED.*
+            MeshCheckpoint.emit(MeshCheckpointNames.handshake,
+                                detail: MeshCheckpointNames.handshakeDetailAuthenticated,
+                                epoch: currentTransportEpoch)
         default:
             break
         }
@@ -2459,6 +2489,19 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             closeInitiatorRelation(peerId)
             return
         }
+        // *** GS-INTEGRATION-001 `scenarios` (step 6): THE INITIATOR'S `handshake` BOUNDARY, `pre-ready`. ***
+        //
+        // *THE PLAN ASKeth FOR TWO HANDLING POINTS: "once during the sealed handshake before LinkReady, once after
+        // authentication before first DATA."* **THIS IS THE FIRST, AND IT IS THE INITIATOR'S ALONE: `markTrustedReady`
+        // just succeeded, and the challenge/echo round BELOW is exactly what publishes APPLICATION LinkReady -- so a
+        // child killed here holds an authenticated session with NO READY ROSTER YET.** *The second point stands on the
+        // RESPONDER's tail (`handleInboundHandshakeRecordResponderSide`), which is a DIFFERENT side at a DIFFERENT
+        // instant -- so the two scenarios measure two genuine boundaries rather than one twice.*
+        //
+        // **NO TRANSACTION ORDERING IS TOUCHED: the marker is a read of state `markTrustedReady` established.**
+        MeshCheckpoint.emit(MeshCheckpointNames.handshake,
+                            detail: MeshCheckpointNames.handshakeDetailPreReady,
+                            epoch: currentTransportEpoch)
         // IOS-02 step 4: **THE TRUSTED HOUR ITSELF ISSUETH THE CHALLENGE.** The card: "At the proper
         // trusted-ready transition, automatically initiate the specified encrypted challenge/echo
         // procedure using the existing DATA writer." Until this repair the transition issued NOTHING and
@@ -2916,6 +2959,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // a forged or an elder relations echo, and is observ'd as such
         if conn.keyConfirmation.matchesAndConsume(frame.challenge) {
             _ = conn.markKeyConfirmed()
+            // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `handshake` BOUNDARY, RESPONDER LEG, `pre-ready`. ***
+            //
+            // *`publishApplicationLinkReadyOnce` below is the SINGLE production site that publishes APPLICATION
+            // LinkReady, and on the responder this is where it happens -- so a child killed between this marker and
+            // the publication must inherit NO READY ROSTER while already holding an authenticated session.* **That is
+            // the sharpest available crash point for the plan's "no session/ready state inherited" clause.**
+            MeshCheckpoint.emit(MeshCheckpointNames.handshake,
+                                detail: MeshCheckpointNames.handshakeDetailPreReady,
+                                epoch: currentTransportEpoch)
             _ = publishApplicationLinkReadyOnce(conn.peerId)
         } else {
             recordDispatchViolation(peerId: conn.peerId, site: "hs.confirm",

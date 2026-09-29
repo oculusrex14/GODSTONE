@@ -255,6 +255,19 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
             }
             switch res {
             case .applied:
+                // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `senderAckRetire` BOUNDARY. ***
+                //
+                // *THE PLAN'S ROW: "After `atomicAcknowledgeAndRetire` commits."* **THE GUARDED CAS AND THE EXACT
+                // HELD-FRAME DELETION HAVE BOTH COMMITTED IN ONE TRANSACTION AND THE ANSWER IS `.applied` -- the
+                // only outcome that means the row newly advanced; `.noMatch`/`.missingHeld` returned above.**
+                // *So a child killed HERE must, on restart, find DELIVERED AND THE HELD-ROW RETIREMENT IN AGREEMENT,
+                // and a replay of the same canonical ACK must be IDEMPOTENT (`.alreadyAcknowledged` /
+                // `.duplicateAuthenticatedAck`), never a second transition and never a resurrected held row.*
+                //
+                // **THE MARKER STANDeth AFTER THE TRANSACTION RETURNED, NOT INSIDE IT** -- which is exactly the
+                // distinction the plan draweth against `after_delivery_insert`.
+                MeshCheckpoint.emit(MeshCheckpointNames.senderAckRetire, detail: "delivered-and-retired",
+                                    bytes: msgId.count)
                 return .applied
             case .noMatch:
                 return classifyZeroRowAck(msgId: msgId, expectedRecipient: expectedRecipient)

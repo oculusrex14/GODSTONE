@@ -3105,6 +3105,34 @@ public final class SqliteMessageStore: MessageStore {
         try withDbThrowing { db in try readDeliveryNoLockStrict(db, msgId) }
     }
 
+    /// *** GS-INTEGRATION-001 `scenarios` (step 6): THE DELIVERY NAMESPACE'S OWN ROSTER. ***
+    ///
+    /// *THE CRASH FIXTURE'S SENDER-SIDE ROWS CANNOT BE FOUND BY `allHeldMsgIds()`: retirement DELETES the held frame
+    /// when a receipt is acknowledged, so the very case the fixture must judge -- "DELIVERED and held-row retirement
+    /// AGREE after a restart" -- is a row that NO held id can name.* **The delivery namespace is the authority that
+    /// answereth, so it is asked directly.**
+    ///
+    /// **READ-ONLY, INTERNAL, AND NARROW: it addeth no write, no state and no protocol requirement.** *A failed read
+    /// answereth an EMPTY roster rather than a fabricated row -- and no caller in this file treats emptiness as
+    /// success.*
+    internal func allDeliveryMsgIdsForTest() -> [Data] {
+        let rows = try? withDbThrowing { (db: OpaquePointer) -> [Data] in
+            var stmt: OpaquePointer?
+            let sql = "SELECT \(StoreSchema.colDMsgId) FROM \(StoreSchema.deliveryTable)"
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt)
+                throw StoreError.prepareFailed
+            }
+            defer { fn.finalize(stmt) }
+            var out: [Data] = []
+            while fn.step(stmt) == SQLITE_ROW {
+                out.append(readBlob(stmt, 0))
+            }
+            return out
+        }
+        return rows ?? []
+    }
+
     /// Atomically create the delivery row in QUEUED_DURABLY with the ack mode and
     /// expected recipient. Returns true iff a NEW row was inserted; false if a row
     /// already exists (ON CONFLICT DO NOTHING) -- the caller re-reads to classify

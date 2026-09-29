@@ -439,27 +439,43 @@ final class GsIntegration001ScenarioTests: XCTestCase {
     /// *** `testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens`. ***
     ///
     /// *The card's clause: "close the lane gate mid-write, assert lookups answer `.storageFailure`, `committedNew`
-    /// delta 0, then reopen and continue (RuntimeLifecycleGate gated lookups)."*
+    /// delta 0, then reopen and continue (RuntimeLifecycleGate gated lookups)."* **AND THE AUDIT'S OWN CORRECTION OF
+    /// THE FIRST VERSION OF THIS ARM, WHICH IS THE WHOLE REASON IT WAS REWRITTEN: *"NO WRITE WAS SUSPENDED ACROSS THE
+    /// GATE"* -- the old sequence was receive, wipe, offer, which is a sequential story about a gate rather than a
+    /// write that is genuinely in flight when the gate closeth.**
     ///
-    /// **HOW THIS RIG MODELS EACH HALF, NAMED RATHER THAN GLOSSED:**
-    ///   * **THE CLOSED GATE IS THE WIPE AUTHORITY'S OWN**: `runtime.wipeAuthorityForTest().requestWipe()` writeth the
-    ///     durable journal, and `wipeGateBox.authority` is THE SAME OBJECT the composition's inbox-commit closure and
-    ///     the resolver decorators consult -- so the refusal is production's own typed `.storageFailure`.
-    ///   * **THE TYPED LOOKUP** is read through the gated peer-identity road the runtime handeth out
+    /// **THIS ARM NOW SUSPENDS A REAL WRITE.** The second frame is handed to the recipient inbox ON A WORKER, held at
+    /// the production `inboundCommit` boundary -- *the very seam the child-process harness uses, so what is suspended
+    /// is production's own operation at an owner's own named boundary, not a court's sleep* -- while the main thread
+    /// requests the wipe through the runtime's PUBLIC resumable entry.
+    ///
+    /// **WHAT EACH HALF MEASURETH, NAMED RATHER THAN GLOSSED:**
+    ///   * **THE CLOSED GATE IS THE WIPE AUTHORITY'S OWN**: `runtime.beginPanicWipe()` is the PUBLIC entry (the same
+    ///     one `LabRuntime` and the shipping panic road travel), and `wipeGateBox.authority` is THE SAME OBJECT the
+    ///     composition's inbox-commit closure and the resolver decorators consult -- so the refusal is production's
+    ///     own typed `.storageFailure`.
+    ///   * **THE TYPED LOOKUP** is the gated peer-identity road the runtime handeth out
     ///     (`recipientKeyResolver.publicSigningKey`), whose `WipeGatedPeerIdentityLookupSource` answereth
     ///     `.storageFailure` and therefore `nil` -- fail-closed.
-    ///   * **THE "REOPEN"** is a FRESH runtime over the SAME ON-DISK URLs whose journal is idle: `CrashResumableWipe`
-    ///     has no un-invalidate (a wipe is not undone), so "the lane reopens on a settled estate" is the honest
-    ///     reading. **AND WHAT IS ASSERTED AFTER IT IS THE WIPE'S OWN OUTCOME, NOT THE OPPOSITE OF IT:** *MEASURED,
-    ///     `preClose held=0` -- the wipe ERASED the pre-wipe row, which is its duty.* So the arm proveth the erasure
-    ///     SURVIVES the reopen (a fresh runtime must not resurrect it) and that NEW work commits afterwards.
-    ///     *An earlier version of this arm asserted "the frame that committed before the wipe is still held", which
-    ///     the probe measured false and would have pinned a panic wipe that FAILED to erase its estate.*
+    ///   * **THE REAL KEY-DELETE CALLS AND THE REAL DRAIN** are read from the facade's own delete record and the
+    ///     wipe journal's own rung sequence: *the ordering law "key deletion must not precede the drain" is a claim
+    ///     about the ORDER of two events, and a single durable slot readeth only the last -- so the journal object
+    ///     that receiveth every rung is what answereth.*
+    ///   * **THE RELEASE IS DELIBERATE, AND BOTH OUTCOMES ARE ACCEPTED**: the held operation must end in EITHER its
+    ///     pre-wipe committed outcome OR its typed refusal -- *never a partially committed row and never a post-wipe
+    ///     success.* **That disjunction is honest: the race between the commit's own transaction and the wipe's
+    ///     close is real, and the arm refuses only the two shapes that would be defects.**
+    ///   * **THE STALE CALLBACK** is delivered after the wipe and the clock is advanced; the store and the
+    ///     external-call records are INSPECTED -- *a counter-only assertion would be satisfied by a wipe that lied.*
+    ///
+    /// **AND THE ERASURE IS ASSERTED AS THE WIPE'S OWN OUTCOME, NOT THE OPPOSITE OF IT:** *MEASURED in the earlier
+    /// form of this arm, `preClose held=0` -- the wipe ERASED the pre-wipe row, which is its duty.* **A PANIC WIPE
+    /// THAT LEFT THE PRE-WIPE MESSAGE READABLE WOULD BE THE DEFECT.**
     func testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens() throws {
         let r = RealTransportHostRig()
         defer { r.tearDown() }
-        let alice = try r.makeNode(label: "alice", seedByte: 0x51, staticPrivByte: 0x52)
-        let bob = try r.makeNode(label: "bob", seedByte: 0x61, staticPrivByte: 0x62)
+        try r.makeNode(label: "alice", seedByte: 0x51, staticPrivByte: 0x52)
+        try r.makeNode(label: "bob", seedByte: 0x61, staticPrivByte: 0x62)
         let link = try r.link("alice", "bob")
         XCTAssertTrue(
             r.waitUntil { r.isLinkReady(link) },
@@ -467,7 +483,7 @@ final class GsIntegration001ScenarioTests: XCTestCase {
                 + "predicate asked only whether SOME handle was ready, which a sibling relation could satisfy — the "
                 + "measured hosted failure. Detail: \(r.linkReadinessDetail(link)) ***")
 
-        // ---- (1) A FIRST FRAME COMMITS, SO THE ESTATE HAS SOMETHING TO PROVE AFTERWARDS ----------------
+        // ---- (1) A FIRST FRAME COMMITS AND REACHES ITS TERMINAL ACK, SO THE ESTATE HAS A PAST ---------
         let sender = try XCTUnwrap(r.opener(of: "alice", "bob"), "the opener of the alice--bob exchange")
         let receiver = try XCTUnwrap(r.peer(of: "alice", "bob"), "and its peer")
         let first = try awaitRig { try await r.sendDirect(from: sender, to: receiver,
@@ -488,58 +504,162 @@ final class GsIntegration001ScenarioTests: XCTestCase {
                 + "outbox=\(r.ackOutboxDepth(receiver)) ring=\(r.ring(receiver)) ***")
         XCTAssertTrue(r.messageStore(receiver).allHeldMsgIds().contains(first.frame.msgId),
                       "the first frame must commit before the gate closeth; ring: " + r.ring(receiver))
-        // *** AND PRODUCTION'S OWN ACK FOR THIS RECEIPT IS DRAINED HERE, SO THE WIPE IS NOT REQUESTED WHILE AN ACK
-        // IS STILL WAITING FOR ITS LINK. ***
         guard let firstAck = r.drainOneAck(receiver) else {
             return XCTFail("*** THE FIRST RECEIPT MUST HAVE ISSUED ITS CANONICAL ACK BEFORE THE WIPE. ***")
         }
         XCTAssertEqual(firstAck.msgId, first.frame.msgId,
                        "and the drained ACK must name the receipt that produced it")
         let censusBefore = r.inboxCensus(receiver)
-        // *** ONE COMMIT DECISION, new OR duplicate -- see the A-R-B arm for the measured reason (the router
-        // persisteth the held row BEFORE the inbox runneth, so the inbox seeth an existing row). ***
         XCTAssertEqual(
             (censusBefore?.committedNew ?? 0) + (censusBefore?.committedDuplicate ?? 0), 1,
             "exactly one inbox commit decision so far; got \(String(describing: censusBefore))")
 
-        // ---- (2) THE LOOKUP HALF: A GATED READ ANSWERETH `.storageFailure` (nil, fail-closed) ---------
+        // ---- (2) THE LOOKUP HALF: A GATED READ ANSWERETH `.storageFailure` (nil, fail-closed) --------
         XCTAssertNotNil(
             r.node(receiver)!.runtime.recipientKeyResolver.publicSigningKey(forNodeId: r.node(sender)!.identity.nodeId),
             "*** BEFORE THE WIPE THE GATED LOOKUP MUST RESOLVE -- a resolver that always answered nil would satisfy "
                 + "the refusal below while proving nothing. ***")
 
-        // ---- (3) CLOSE THE GATE MID-WRITE: a real wipe is REQUESTED, so the durable journal says so ----
-        _ = try r.node(receiver)!.runtime.wipeAuthorityForTest().requestWipe()
+        // ---- (3) BEGIN THE SECOND WRITE AND SUSPEND IT AT ITS OWN DURABLE BOUNDARY -------------------
+        //
+        // *** THE FRAME IS AUTHORED FIRST SO WHAT IS SUSPENDED IS THE COMMIT, NOT THE AUTHORING. *** *The receiver's
+        // inbox is then run on a worker, and the production `inboundCommit` observer holds it INSIDE the operation --
+        // after the held+obligation transaction returned, before signing.*
+        let second = try awaitRig { try await r.authorDirectFrame(from: sender, to: receiver,
+                                                                 plaintext: Data("during the wipe".utf8)) }
+        let senderNodeId = r.node(sender)!.identity.nodeId
+        let suspended = r.suspendReceive(receiver, frame: second, from: senderNodeId)
+        XCTAssertTrue(
+            suspended.awaitBoundary(),
+            "*** THE SECOND WRITE MUST REACH ITS DURABLE BOUNDARY -- `inboundCommit`, AFTER the held+obligation "
+                + "transaction returned. *A write that never got there is a FAILURE, not a reason to wait longer.* "
+                + "ring=\(r.ring(receiver)) ***")
+        XCTAssertTrue(
+            r.messageStore(receiver).allHeldMsgIds().contains(second.msgId),
+            "*** AND THE COMMITTED ROW MUST BE VISIBLE WHILE THE OPERATION IS SUSPENDED: the transaction returned "
+                + "BEFORE the boundary, which is what maketh this a write in flight rather than a queued intent. ***")
+
+        // ---- (4) CLOSE THE GATE *WHILE THAT WRITE STANDS SUSPENDED* -----------------------------------
+        //
+        // *** THE WIPE IS INVOKED ON THIS THREAD THROUGH THE RUNTIME'S PUBLIC RESumable ENTRY -- not a test flag and
+        // not a private door. *** *The worker's operation is still inside `issueOrRestoreAck`, so the gate closeth
+        // underneath a write that is genuinely in flight.*
+        let wipeVerdict = try r.node(receiver)!.runtime.beginPanicWipe()
         XCTAssertNil(
-            r.node(receiver)!.runtime.recipientKeyResolver.publicSigningKey(forNodeId: r.node(sender)!.identity.nodeId),
+            r.node(receiver)!.runtime.recipientKeyResolver.publicSigningKey(forNodeId: senderNodeId),
             "*** WITH THE WIPE PENDING, THE GATED PEER-IDENTITY LOOKUP MUST ANSWER `.storageFailure`, WHICH THE "
                 + "RESOLVER PUBLISHES AS `nil` -- fail-closed. A resolver that still answered would be reading "
                 + "stores the wipe is erasing. ***")
 
-        // ---- (4) AND THE INBOX COMMIT REFUSETH, TYPED: `.storageFailure`, `committedNew` UNMOVED ---------
-        let second = try awaitRig { try await r.authorDirectFrame(from: sender, to: receiver,
-                                                                 plaintext: Data("during the wipe".utf8)) }
-        let verdict = r.offerToInbox(receiver, frame: second, from: r.node(sender)!.identity.nodeId)
+        // ---- (5) NEW SENSITIVE WORK REFUSETH, TYPED, WHILE ADMISSION IS CLOSED -------------------------
+        let third = try awaitRig { try await r.authorDirectFrame(from: sender, to: receiver,
+                                                                plaintext: Data("a new write under the gate".utf8)) }
+        let refused = r.offerToInbox(receiver, frame: third, from: senderNodeId)
         XCTAssertEqual(
-            String(describing: verdict).contains("storageFailure"), true,
-            "*** A COMMIT WHILE THE WIPE STANDS PENDING MUST BE REFUSED WITH THE TYPE'S OWN VOCABULARY, "
-                + "`.storageFailure` -- never a plausible-looking success. Observed: \(verdict) ***")
-        let censusAfter = r.inboxCensus(receiver)
-        XCTAssertEqual(
-            censusAfter?.committedNew, censusBefore?.committedNew,
-            "*** `committedNew` MUST NOT MOVE: the refusal left the durable estate exactly as it found it. ***")
+            String(describing: refused).contains("storageFailure"), true,
+            "*** A NEW COMMIT WHILE THE WIPE STANDS PENDING MUST BE REFUSED WITH THE TYPE'S OWN VOCABULARY, "
+                + "`.storageFailure` -- never a plausible-looking success. Observed: \(String(describing: refused)) ***")
         XCTAssertFalse(
-            r.messageStore(receiver).allHeldMsgIds().contains(second.msgId),
+            r.messageStore(receiver).allHeldMsgIds().contains(third.msgId),
             "and the refused frame must leave NO held row")
 
-        // ---- (5) REOPEN ON A SETTLED ESTATE: THE LANE CONTINUES, AND NEW WORK COMMITS -------------------
+        // ---- (6) LET THE SUSPENDED WRITE FINISH, AND ACCEPT ONLY ONE OF TWO SHAPES ---------------------
+        let releaseOutcome: InboxCommitResult?
+        do {
+            releaseOutcome = try suspended.release()
+        } catch {
+            return XCTFail("*** THE HELD OPERATION MUST END ON RELEASE, NOT HANG OR THROW UNEXPECTEDLY: \(error) ***")
+        }
+        let finishedCommitted: Bool
+        switch releaseOutcome {
+        case .new, .duplicate:
+            finishedCommitted = true
+        case .rejected(let reason, _):
+            XCTAssertEqual(
+                reason, .storageFailure,
+                "*** A RELEASED WRITE MAY COMMIT (its transaction won the race) OR BE REFUSED TYPED -- NEVER a "
+                    + "different refusal class. Observed: \(reason) ***")
+            finishedCommitted = false
+        case nil:
+            return XCTFail("*** THE RELEASED WRITE MUST PRODUCE AN OUTCOME, NOT NOTHING. ***")
+        }
+        // *** AND THE DISJUNCTION IS CHECKED AGAINST THE ESTATE, NOT MERELY AGAINST THE RETURN VALUE: a "committed"
+        // answer whose row is absent would be the partially committed shape this clause forbids. ***
+        let heldAfterRelease = r.messageStore(receiver).allHeldMsgIds()
+        XCTAssertEqual(
+            finishedCommitted, heldAfterRelease.contains(second.msgId),
+            "*** THE OUTCOME AND THE DURABLE ESTATE MUST AGREE: `committed` with no row, or a refusal WITH one, is "
+                + "exactly the partially committed shape that is forbidden. held=\(heldAfterRelease.count) ***")
+        // *** AND AN ISSUED ACK MUST BELONG TO A COMMITTED OUTCOME -- AND THE COUNT IS A DELTA, NOT AN ABSOLUTE. ***
+        // *MEASURED, AND IT IS WHY THIS IS A DELTA: the FIRST receipt already issued its ACK, so `acksIssued` stood at
+        // 1 BEFORE the suspended write even began -- an arm comparing against the absolute would report a "refusal
+        // that issued an ACK" for a refusal that issued nothing.* **The question is whether THIS write added one.**
+        let acksIssuedBefore = censusBefore?.acksIssued ?? 0
+        XCTAssertEqual(
+            finishedCommitted, (r.inboxCensus(receiver)?.acksIssued ?? 0) == acksIssuedBefore + 1,
+            "*** AN ISSUED ACK MUST BELONG TO A COMMITTED OUTCOME -- never to a refusal. "
+                + "before=\(acksIssuedBefore) after=\(r.inboxCensus(receiver)?.acksIssued ?? -1) "
+                + "committed=\(finishedCommitted) ***")
+
+        // ---- (7) THE ORDERING LAW: THE DRAIN PRECEDETH THE KEY DELETION --------------------------------
         //
-        // *** THE PRE-WIPE FRAME IS GONE, AND THAT IS THE WIPE WORKING -- NOT A LOSS. ***
-        // *MY FIRST VERSION OF THIS ARM ASSERTED THE OPPOSITE ("the frame that committed before the wipe is still
-        // held"), AND THE PROBE MEASURED IT FALSE: `preClose held=0`, i.e. the wipe's OWN drain had already erased
-        // the held row by the time the arm looked.* **A PANIC WIPE THAT LEFT THE PRE-WIPE MESSAGE READABLE WOULD BE
-        // THE DEFECT; asserting its survival was asserting the wrong thing.** *So the arm now asserts what the card
-        // actually says -- "then reopen and continue" -- and NAMES the erasure as the wipe's own outcome.*
+        // *READ FROM THE WIPE'S OWN INSTRUMENTS: the journal's rung sequence (the object that receiveth every rung,
+        // not the single durable slot) and the facade's own record of the tags it was asked to delete.*
+        let rungs = r.journalRungs(receiver)
+        let drainIndex = rungs.firstIndex(of: .runtimeDrained)
+        let keyIndex = rungs.firstIndex(of: .keyErased)
+        XCTAssertNotNil(rungs.firstIndex(of: .requested),
+                        "*** THE WIPE MUST HAVE BEEN REQUESTED THROUGH A REAL AUTHORITY. rungs=\(rungs) ***")
+        if let d = drainIndex, let k = keyIndex {
+            XCTAssertLessThan(d, k,
+                              "*** THE DRAIN MUST PRECEDE THE KEY ERASURE -- `RUNTIME_DRAINED` before `KEYS_ERASED` "
+                                  + "in the journal's own sequence. rungs=\(rungs) ***")
+        }
+        let facade = r.keychainFacade(receiver)
+        XCTAssertNotNil(facade, "the receiver's keychain facade")
+        // *THE LADDER STOPS BEFORE `KEYS_ERASED` WHEN A SEAM CANNOT PROCEED -- and on this composition the DEK owner
+        // is absent, which the vault correctly answers `.absent` for. So the assertion is about the ORDER OF WHAT DID
+        // HAPPEN, and a ladder that never reached the keys must not have reached the artifacts either.*
+        if let artifactsIndex = rungs.firstIndex(of: .artifactsDeleted) {
+            XCTAssertNotNil(keyIndex,
+                            "*** THE ARTIFACTS MUST NOT BE DELETED BEFORE THE KEYS: a ladder that reached "
+                                + "`ARTIFACTS_DELETED` without passing `KEYS_ERASED` skipped the point of no return. "
+                                + "rungs=\(rungs) ***")
+            XCTAssertLessThan(keyIndex!, artifactsIndex, "and `KEYS_ERASED` must precede `ARTIFACTS_DELETED`")
+        }
+        // *THE VERDICT IS WHATEVER THE LADDER ACTUALLY REACHED, AND BOTH SHAPES ARE LEGITIMATE ON THIS COMPOSITION:
+        // `advanced`/`alreadyAtOrPast` when the ladder settled, `retryLater`/`refused` when a seam could not proceed
+        // (the DEK owner is absent here, which the vault answers `.absent` for).* **WHAT WOULD BE A DEFECT IS AN
+        // UNTYPED OR INVENTED ANSWER -- and there is none: the enum carrieth exactly these four.** *So the assertion
+        // NAMES the four, which is a check on the vocabulary rather than on which rung was reached.*
+        switch wipeVerdict {
+        case .advanced, .alreadyAtOrPast, .retryLater, .refused:
+            break
+        }
+
+        // ---- (8) THE STALE CALLBACK AND THE ADVANCED CLOCK: NOTHING OLD MAY MOVE -----------------------
+        //
+        // *** THE OLD EPOCH'S HANDLE IS RE-DELIVERED AND THE STORE IS *INSPECTED*, NOT COUNTED. *** *A counter-only
+        // assertion would be satisfied by a wipe that lied; the durable roster and the lookup road are what answer.*
+        let heldAtWipeEnd = r.messageStore(receiver).allHeldMsgIds()
+        let stale = r.node(receiver)!.runtime.wipeAuthorityForTest()
+        _ = stale.deliverLate("a stale radio callback from the pre-wipe epoch")
+        XCTAssertNil(
+            r.node(receiver)!.runtime.recipientKeyResolver.publicSigningKey(forNodeId: senderNodeId),
+            "*** NO OLD-EPOCH LOOKUP MAY SUCCEED AFTER THE WIPE: the gated read must stay refused. ***")
+        XCTAssertEqual(
+            r.messageStore(receiver).allHeldMsgIds().count, heldAtWipeEnd.count,
+            "*** AND THE STALE CALLBACK MUST COMMIT NO NEW INBOX ROW. ***")
+        let censusAtWipeEnd = r.inboxCensus(receiver)
+        XCTAssertEqual(
+            censusAtWipeEnd?.committedNew ?? 0, censusBefore?.committedNew ?? 0,
+            "*** AND NO NEW COMMIT DECISION MAY HAVE BEEN MADE BY A STALE CALLBACK. ***")
+
+        // ---- (9) REOPEN ON A SETTLED ESTATE: THE LANE CONTINUES, AND NEW WORK COMMITS ------------------
+        //
+        // *** THE PRE-WIPE FRAME IS GONE, AND THAT IS THE WIPE WORKING -- NOT A LOSS. *** *MEASURED in the earlier
+        // form: `preClose held=0`, i.e. the wipe's OWN drain had already erased the held row. A PANIC WIPE THAT LEFT
+        // THE PRE-WIPE MESSAGE READABLE WOULD BE THE DEFECT; asserting its survival was asserting the wrong thing.*
         let preCloseIds = r.messageStore(receiver).allHeldMsgIds()
         XCTAssertTrue(
             preCloseIds.isEmpty,
@@ -551,16 +671,16 @@ final class GsIntegration001ScenarioTests: XCTestCase {
             reopened.messageStore.allHeldMsgIds().contains(first.frame.msgId),
             "*** AND THE ERASURE MUST SURVIVE THE REOPEN: a FRESH runtime over the SAME on-disk URLs must not "
                 + "resurrect the wiped row -- *if it did, the wipe was a memory-only illusion.* ***")
-        let third = try awaitRig { try await r.authorDirectFrame(from: sender, to: receiver + "_reopened",
-                                                                plaintext: Data("after the gate".utf8)) }
-        let reopenedVerdict = r.offerToInbox(receiver + "_reopened", frame: third,
+        let fourth = try awaitRig { try await r.authorDirectFrame(from: sender, to: receiver + "_reopened",
+                                                                 plaintext: Data("after the gate".utf8)) }
+        let reopenedVerdict = r.offerToInbox(receiver + "_reopened", frame: fourth,
                                             from: r.node(sender)!.identity.nodeId)
         XCTAssertEqual(
             String(describing: reopenedVerdict).contains("new(") || String(describing: reopenedVerdict).contains("duplicate("),
             true,
-            "*** AND WORK MUST RESUME on an idle journal: a fresh runtime's gate standeth open, so the third frame "
-                + "is ADMITTED. Observed: \(reopenedVerdict) ***")
-        XCTAssertTrue(reopened.messageStore.allHeldMsgIds().contains(third.msgId),
+            "*** AND WORK MUST RESUME on an idle journal: a fresh runtime's gate standeth open, so this frame is "
+                + "ADMITTED. Observed: \(String(describing: reopenedVerdict)) ***")
+        XCTAssertTrue(reopened.messageStore.allHeldMsgIds().contains(fourth.msgId),
                       "and it must be durably held")
     }
 

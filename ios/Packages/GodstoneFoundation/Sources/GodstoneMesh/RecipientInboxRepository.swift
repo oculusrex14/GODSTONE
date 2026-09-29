@@ -357,6 +357,23 @@ final class RecipientInboxRepository: @unchecked Sendable {
             return .rejected(reason: .widths, detail: "commit args")
         }
 
+        // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `inboundCommit` BOUNDARY. ***
+        //
+        // *THE PLAN'S ROW, VERBATIM: "After recipient held+ACK-obligation transaction returns, before signing."*
+        // **THE PLACEMENT IS THE WHOLE POINT AND IT IS MEASURED RATHER THAN CHOSEN: `commitInbound` HAS RETURNED
+        // `.committed` OR IT HAS NOT REACHED HERE AT ALL** -- a `.rejectedCapacity`/`.storageFailure`/`.invalidArgument`
+        // already returned above, and `withTransaction` has committed (or rolled back) before its answer existeth.
+        // *So this marker is a genuine DURABLE-COMMIT fact, unlike `after_delivery_insert`, which standeth INSIDE the
+        // transaction and whose row may still be rolled back.*
+        //
+        // *** AND IT STANDS BEFORE `issueOrRestoreAck` -- i.e. BEFORE THE SIGNING, WHICH IS WHERE THE CRASH TABLE
+        // PUTS IT: a child killed here must leave ONE INBOX ROW AND ONE PENDING OBLIGATION, with no ACK filed and
+        // none claimed. NO TRANSACTION ORDERING CHANGETH FOR THE COURT: the marker is a read of state the commit
+        // already established. ***
+        MeshCheckpoint.emit(MeshCheckpointNames.inboundCommit,
+                            detail: "heldNew=\(heldNew) obligationStored=\(obligationStored)",
+                            bytes: frame.payload.count)
+
         // -- step 6: AFTER the commit, the canonical recipient ACK, once ------
         return try issueOrRestoreAck(frame, receivedFrom: receivedFrom,
                                      heldNew: heldNew, obligationStored: obligationStored,
@@ -481,9 +498,35 @@ final class RecipientInboxRepository: @unchecked Sendable {
             return .rejected(reason: .cacheKeyUnsound, detail: "record")
         }
         if let f = fault { try f("frame_insert") }
+        // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `ackCreate` BOUNDARY. ***
+        //
+        // *THE PLAN'S ROW: "After canonical ACK construction/self-verification, before `commitFrameAndRetireObligation`."*
+        // **EVERY GATE ABOVE HAS PASSED BY THIS LINE: `AckFrame.build` produced the canonical frame, the pinned-key
+        // `authenticator.verify` accepted it, the payload shape was checked and the `AckCacheKey` was computed.** *A
+        // child killed HERE holdeth a PENDING OBLIGATION AND NO FILED ACK -- so recovery must regenerate and
+        // re-verify the canonical ACK for the surviving obligation, and must NOT claim a receipt from memory
+        // nothing wrote.*
+        //
+        // *** THE MARKER CARRIETH NO SIGNATURE AND NO BYTES OF THE ACK: only its `msgId` LENGTH and the fact that a
+        // canonical frame stood.*** *A crash fixture must never write key material or a receipt into a log.*
+        MeshCheckpoint.emit(MeshCheckpointNames.ackCreate, detail: "canonical-ack-verified",
+                            bytes: built.payload.count)
         switch pairedStore.commitFrameAndRetireObligation(record, msgId: frame.msgId,
                                                          recipientNodeId: ourNodeId) {
         case .committed, .idempotent:
+            // *** GS-INTEGRATION-001 `scenarios` (step 6): THE `ackCommit` BOUNDARY. ***
+            //
+            // *THE PLAN'S ROW: "After `commitFrameAndRetireObligation` returned committed/idempotent, before
+            // outbox/wire."* **THE PAIR STEP HAS RETURNED -- the `ack_frames` row AND the obligation retirement
+            // committed together, or the answer would be `.storageFailure`/a quota refusal and this line unreachable.**
+            // *A child killed here must leave a STORED ACK WITH THE OBLIGATION RETIRED, and recovery must SEND THAT
+            // STORED ACK WITHOUT ADMITTING A SECOND INBOX ENTRY.* **This is deliberately distinct from
+            // `senderAckRetire`, which is the SENDER's own delivery-row retirement.**
+            //
+            // *THE MARKER STANDS BEFORE `bump(.issued)` AND BEFORE `admitArm`, i.e. BEFORE THE OUTBOX/WIRE HALF the
+            // plan names -- and it is emitted AFTER the durable commit returned, never inside it.*
+            MeshCheckpoint.emit(MeshCheckpointNames.ackCommit, detail: "pair-committed",
+                                bytes: built.payload.count)
             bump(.issued)
             return admitArm(heldNew, built)
         case .refusedQuotaPair, .refusedQuotaGlobal:

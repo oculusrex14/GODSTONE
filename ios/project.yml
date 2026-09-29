@@ -169,6 +169,15 @@ targets:
     platform: iOS
     sources:
       - path: Godstone/Tests/GodstoneMeshTests
+        # *** GS-INTEGRATION-001 `scenarios` (step 6): THE SIMULATOR LANE MUST NOT LAUNCH A CHILD PROCESS. ***
+        #
+        # *FOUNDATION PROCESS SPAWNING IS UNAVAILABLE UNDER THE iOS SIMULATOR, so the child-process crash harness
+        # is macOS-HOST-ONLY. The file carrieth its own `#if os(macOS)` guard, and this exclusion is the SECOND,
+        # structural half of the same boundary: the simulator target never even compiles the file. **THE FILE IS
+        # STILL MIRRORED INTO `ios/Packages/GodstoneFoundation` by `scripts/sync_ios_foundation_package.py`, which
+        # copies the whole test directory -- so the macOS SwiftPM lane runneth it while the simulator lane cannot.***
+        excludes:
+          - GsIntegration001ProcessTests.swift
     dependencies:
       - package: GodstonePackages
         product: GodstoneMesh
