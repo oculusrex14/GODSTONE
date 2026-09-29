@@ -122,11 +122,51 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     }
 
     private func openRuntime(_ e: Estate) throws -> MeshRuntime {
+        // *** THE SEAT IS CHOSEN BEFORE THE GRAPH IS BUILT. *** *`loadOrCreate` reloads the seeded identity, so every
+        // owner composed over this estate -- including every reopen -- carrieth the SAME ascendant seat.*
+        try seedIdentity(e)
         let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
             messageStoreUrl: e.messageStoreUrl, peerStoreUrl: e.peerStoreUrl,
             journal: e.journal, keychain: e.keychain)
         try pinLocalIdentity(runtime)
         return runtime
+    }
+
+    /// *** THE ROLE THE COURT'S WALK CLAIMS, ASSERTED RATHER THAN ASSUMED (GS-STRESS-001 step 7). ***
+    ///
+    /// *** THE DEFECT THIS CLOSES, MEASURED, AND IT WAS THE COURT'S AND NOT THE TRANSPORT'S. *** *The A4/A5 classes
+    /// walk the INITIATOR legs, and the transport -- correctly -- answers them only when the runtime's OWN 4-byte
+    /// node hint is LEXICOGRAPHICALLY SMALLER than the peer's, the law of `BleRoleElection.elect`. A bare
+    /// `ProbeKeychain` mints a FRESH RANDOM identity at every composition, so the local hint was fresh per run:
+    /// **on about a third of runs the runtime was lawfully elected RESPONDER, the driver answered
+    /// `.disconnectPeripheral("Elected RESPONDER on central link")`, and the court failed at cycle 5 with
+    /// `bound=false`. THE TRANSPORT WAS RIGHT AND THE COURT WAS ENTITLED TO NOTHING.** I first suspected a race in
+    /// the transport's async lifecycle (the retired-context drain a previous round added) and TRACED it: the trace
+    /// showed `chars=readLinkInfo` then `upd=disconnectPeripheral(...Elected RESPONDER on central link)` with the
+    /// delegate still standing -- a DETERMINISTIC REFUSAL delivered to a court that had assumed the seat.*
+    ///
+    /// THE REPAIR IS THE PRODUCTION LAW, NOT A RETRY: the campaign drives ONE relation whose seat it CHOOSES. It
+    /// mints the runtime's identity from a SEEDED pair of key materials whose node hint is asserted ascendant to
+    /// BOTH peers' hints and whose `nodeId` is therefore a function of the recorded seed alone; the identity is
+    /// pinned in the estate's keychain BEFORE the graph is built, so `loadOrCreate` reloads it (exactly the road the
+    /// estate's own reopen already relies on). The key material is a literal, never a secret, and the estate stays
+    /// identified by it across reopens -- which the estate's own comment already demandeth.*
+    private func seedIdentity(_ e: Estate) throws {
+        // TWO candidate seeds; the first whose hint is strictly below both peers' hints is kept, so the seat is
+        // PROVEN here rather than hoped for. Byte 0x20 is below every peer hint this file mints (0x51/0x61/0x71/0x73),
+        // so the first is normally taken -- but the search is real, so a future peer hint cannot silently break it.
+        let peerHints = [try peerIdentity(0x51, 0x52).identity.nodeHint,
+                         try peerIdentity(0x61, 0x62).identity.nodeHint]
+        for salt in UInt8(0x20)...UInt8(0x2F) {
+            let state = try LocalIdentityStateV1(generation: 0,
+                                                 ed25519Seed: Data(repeating: salt, count: 32),
+                                                 x25519PrivateKey: Data(repeating: salt &+ 1, count: 32))
+            e.keychain.put(MeshIdentity.v1Tag, state.encode())
+            let candidate = try MeshIdentity.loadFromKeychain(keychain: e.keychain)
+            let hint = candidate.nodeHint
+            if peerHints.allSatisfy({ hint.lexicographicallyPrecedes($0) }) { return }
+        }
+        throw ProbeError.noAscendantSeat
     }
 
     /// A real peer identity, minted as `ReadinessTrustedPairing` mints one.
@@ -245,8 +285,9 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     }
 
     /// *The seeded schedule: EVERY class must be picked, so a class that never ran cannot read as an owner that never
-    /// moved.*
-    private func classSchedule() -> ([ActionClass], [ActionClass: Int]) {
+    /// moved.* **GS-STRESS-001 step 7: the bound is a PARAMETER, so the same seed produceth each length's own
+    /// schedule from the one generator -- never a second copy of the loop.**
+    private func classSchedule(cycles: Int) -> ([ActionClass], [ActionClass: Int]) {
         var rng = SeededGenerator(seed: seed)
         var order: [ActionClass] = []
         order.reserveCapacity(cycles)
@@ -256,6 +297,48 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         var counts: [ActionClass: Int] = [:]
         for c in order { counts[c, default: 0] += 1 }
         return (order, counts)
+    }
+
+    /// *** THE FULL-GRAPH REOPEN RUNGS FOR ONE LENGTH (GS-STRESS-001 step 7). ***
+    ///
+    /// *The card nameth 1000/5000/9000 for the ten-thousand floor; the thirty-thousand arm carrieth a 25 000 rung of
+    /// its OWN, so the longer estate is reopened well inside its second half as well as at its recorded rungs. The
+    /// rungs are a function of the bound and never of the court's bookkeeping.*
+    static func checkpointCycles(for cycles: Int) -> Set<Int> {
+        if cycles >= 30_000 { return [1_000, 5_000, 9_000, 25_000] }
+        return [1_000, 5_000, 9_000]
+    }
+
+    /// *** THE ONE INJECTION POINT (GS-STRESS-001 step 7): a REAL owner action that the quiescence census must
+    /// catch, driven at a NAMED cycle. ***
+    private enum InjectedOwnerFailure: Equatable {
+        case none
+        /// *At `cycle`, a THIRD relation is admitted into the RUNTIME'S OWN `SessionManager` and deliberately left
+        /// standing past the drain. The production release verb (`retireIncarnations(ofPeerId:)`) is never asked to
+        /// retire it, so the quiescence census measures a live slot -- the exact leak class the card names, read
+        /// from the owner that allocates it.*
+        case unreleasedRelationAt(cycle: Int)
+    }
+
+    /// *** THE RESULT ONE CAMPAIGN RUN ANSWERETH WITH (GS-STRESS-001 step 7). ***
+    ///
+    /// *The two length arms judge the SAME observations against THEIR OWN expectations; nothing the loop measured is
+    /// recomputed at assertion time, so a truncated loop or a leaked estate cannot be papered over by arithmetic in
+    /// the asserting arm.*
+    private struct CampaignRun {
+        let cyclesRequested: Int
+        let cyclesCompleted: Int
+        let scheduleCount: Int
+        let expected: [ActionClass: Int]
+        let tallies: [ActionClass: ClassTally]
+        let firstFailure: String?
+        let checkpointCycles: Set<Int>
+        let checkpoints: [Int: String]
+        let heldHighWater: Int
+        let reservationsHighWater: Int
+        let maxHeldInFlight: Int
+        let storeDbBytes: Int
+        let storeWalBytes: Int
     }
 
     private func next(_ rng: inout SeededGenerator, bound: Int) -> Int {
@@ -502,13 +585,17 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     // MARK: - THE DRIVER
     // --------------------------------------------------------------------------------------------
 
-    /// *** TEN THOUSAND DETERMINISTIC CYCLES, EACH A FULL LIFECYCLE OVER THE PRODUCTION OWNERS. ***
-    func testGSSTRESS001TheRealRuntimeSurvivesTenThousandDeterministicCycles() throws {
-        XCTAssertEqual(cycles, StressBound.cycles,
-                       "*** THE CARD'S FLOOR IS TEN THOUSAND CYCLES. A lane that quietly ran fewer would be the "
-                       + "vacuous class this ledger condemns: a count nobody earned. ***")
-        XCTAssertEqual(cycles, 10_000, "*** and it is asserted against the literal too. ***")
-
+    /// *** THE CAMPAIGN BODY, FACTORED OUT OF THE TEN-THOUSAND-CYCLE ARM (GS-STRESS-001 step 7). ***
+    ///
+    /// *THE CARD ASKETH FOR A TEN-THOUSAND FLOOR AND FOR THE SAME DRIVER AT LONGER LENGTHS; TWO COPIES OF A
+    /// FIVE-HUNDRED-LINE BODY WOULD DRIFT, AND THE SECOND COPY WOULD BE THE ONE NOBODY RE-READ. So the loop, the
+    /// seeded schedule, the owner census and the reopen machinery live ONCE and answer with a `CampaignRun`, which
+    /// each arm then asserteth against ITS OWN expectations. The bound `cycles:` is the ONLY thing the two arms
+    /// disagree about, and the schedule and the checkpoint set are derived from it and from the recorded seed --
+    /// NEVER from the court's bookkeeping.*
+    @discardableResult
+    private func runCampaign(cycles: Int,
+                             injectedFailure: InjectedOwnerFailure = .none) throws -> CampaignRun {
         let e = estate("main")
         defer { e.remove() }
         var runtime = try openRuntime(e)
@@ -534,7 +621,8 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                               incarnationsOf: [handleA, handleB], inbox: inbox)
         let baselineHeld = runtime.messageStore.allHeldMsgIds().count
 
-        let (order, expected) = classSchedule()
+        let checkpointCycles = Self.checkpointCycles(for: cycles)
+        let (order, expected) = classSchedule(cycles: cycles)
         XCTAssertEqual(order.count, cycles, "*** THE SCHEDULE MUST COVER EVERY CYCLE. ***")
         XCTAssertEqual(expected.count, ActionClass.allCases.count,
                        "*** AND EVERY ONE OF THE TWELVE CLASSES MUST BE SCHEDULED, or a class would be counted as "
@@ -1079,6 +1167,18 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
             }
 
             // (6) *** THE QUIESCENCE CENSUS MUST EQUAL THE BASELINE. ***
+            //
+            // *** THE INJECTED OWNER FAILURE, DRIVEN AT ITS NAMED CYCLE (GS-STRESS-001 step 7). *** *`runCampaign`'s
+            // ONE injection point exists so the replay arm can produce a REAL owner failure deterministically and
+            // compare two runs' first-failure addresses. It is `.none` in both length arms, so the campaign they
+            // measure is untainted; and the failure it produces is a real owner's own census, never a fabricated
+            // string.*
+            if case .unreleasedRelationAt(let at) = injectedFailure, cycle == at {
+                let stray = UUID()
+                _ = runtime.sessionManager.beginInitiator(
+                    SessionManager.hostAdmission(stray, direction: .outboundCentral, generation: 999),
+                    remoteHint: peerA.identity.nodeHint)
+            }
             let after = census(runtime, handles: [handleA, handleB],
                                incarnationsOf: [handleA, handleB], inbox: inbox)
             if after.sessionSlots != baseline.sessionSlots
@@ -1133,48 +1233,122 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
             }
         }
 
-        // *** THE FOURTH CHECKPOINT: AFTER THE FINAL STOP. *** *The card nameth cycles 1000/5000/9000 AND "after the
+        // *** THE LAST CHECKPOINT: AFTER THE FINAL STOP. *** *The card nameth cycles 1000/5000/9000 AND "after the
         // final stop", so the last reopen is taken here rather than being folded into the loop.*
-        checkpoints[cycles] = try reopenCheckpoint(e, previous: runtime).0
+        //
+        // *** GS-STRESS-001 STEP 7: THE FINAL OWNER IS RETAINED AND DISPOSED, WHICH THE FIRST DRAFT GOT WRONG. ***
+        // *MEASURED: this line read `checkpoints[cycles] = try reopenCheckpoint(e, previous: runtime).0` -- it
+        // DISCARDED the runtime the reopen returned and let the old `runtime` variable stand, so every byte and
+        // census read BELOW addressed the CLOSED former owner while the freshly built owner leaked. A reopen
+        // answereth with the NEW owner, and this arm now ADOPTS it: the durable bytes are read from the owner the
+        // reopen built, and the estate is closed through THAT owner's own close path.*
+        let (finalReport, finalRuntime) = try reopenCheckpoint(e, previous: runtime)
+        checkpoints[cycles] = finalReport
+        runtime = finalRuntime
 
+        // *** THE OWNER THE REOPEN BUILT IS THE ONE THE ESTATE IS CLOSED THROUGH. *** *No assertion here: the arms
+        // judge the durable rows, the anchors, the ACK namespaces and the identity from the `CampaignRun` below, and
+        // the store's own close path is what a `closeAndReopen` estate expects.*
+        runtime.messageStore.close()
+        runtime.peerIdentityStore.close()
+        let bytes = storeBytes(runtime)
+        return CampaignRun(
+            cyclesRequested: cycles,
+            cyclesCompleted: cyclesCompleted,
+            scheduleCount: order.count,
+            expected: expected,
+            tallies: tallies,
+            firstFailure: firstFailure,
+            checkpointCycles: checkpointCycles,
+            checkpoints: checkpoints,
+            heldHighWater: heldHighWater,
+            reservationsHighWater: reservationsHighWater,
+            maxHeldInFlight: maxHeldInFlight,
+            storeDbBytes: bytes.db,
+            storeWalBytes: bytes.wal)
+    }
+
+    /// *** THE TWO ARMS: THE CARD'S TEN-THOUSAND FLOOR, AND THE THIRTY-THOUSAND LENGTH. ***
+    ///
+    /// *BOTH use THE SAME SEED (`20_260_926`), THE SAME ACTION CLASSES AND THE SAME FIXED OWNER BOUNDS; the only
+    /// difference is the cycle bound, and each asserteth its OWN exact schedule counts and its own reopen
+    /// checkpoints.*
+    func testGSSTRESS001TheRealRuntimeSurvivesTenThousandDeterministicCycles() throws {
+        let run = try runCampaign(cycles: 10_000)
+        XCTAssertEqual(10_000, StressBound.cycles,
+                       "*** THE CARD'S FLOOR IS TEN THOUSAND CYCLES. A lane that quietly ran fewer would be the "
+                       + "vacuous class this ledger condemns: a count nobody earned. ***")
+        XCTAssertEqual(run.cyclesRequested, 10_000, "*** and it is asserted against the literal too. ***")
+        assertCampaign(run, label: "10_000")
+    }
+
+    /// *** GS-STRESS-001 STEP 7: THE SAME DRIVER AT THIRTY THOUSAND CYCLES. ***
+    ///
+    /// *The longer length is NOT a second instrument: `runCampaign(cycles:)` is the one body, and this arm asserteth
+    /// against ITS OWN schedule counts (a function of the bound), ITS OWN checkpoint set (1000/5000/9000/25000 and
+    /// after the final stop) and the SAME fixed owner bounds. An instrument whose bounds moved with the length would
+    /// be measuring itself.*
+    func testGSSTRESS001TheRealRuntimeSurvivesThirtyThousandDeterministicCycles() throws {
+        let run = try runCampaign(cycles: 30_000)
+        XCTAssertEqual(run.cyclesRequested, 30_000,
+                       "*** THE LONGER ARM MUST RUN THE LENGTH IT NAMES. ***")
+        XCTAssertEqual(run.checkpointCycles, [1_000, 5_000, 9_000, 25_000],
+                       "*** and its OWN reopen rungs, which include the 25k checkpoint the 10k arm hath not. ***")
+        assertCampaign(run, label: "30_000")
+    }
+
+    /// *** EVERY ASSERTION THE TEN-THOUSAND ARM CARRIED, APPLIED TO WHICHEVER LENGTH RAN. ***
+    ///
+    /// *The body is shared so the two lengths cannot drift; the EXPECTATIONS are the run's own, derived from the
+    /// bound it was given. No assertion is weakened to accommodate the second length.*
+    private func assertCampaign(_ run: CampaignRun, label: String,
+                                file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(run.scheduleCount, run.cyclesRequested,
+                       "*** THE SCHEDULE MUST COVER EVERY CYCLE. ***", file: file, line: line)
+        XCTAssertEqual(run.expected.count, ActionClass.allCases.count,
+                       "*** AND EVERY ONE OF THE TWELVE CLASSES MUST BE SCHEDULED, or a class would be counted as "
+                       + "zero and read as an owner that never moved. ***", file: file, line: line)
         XCTAssertEqual(
-            cyclesCompleted, cycles,
+            run.cyclesCompleted, run.cyclesRequested,
             "*** THE CAMPAIGN MUST COMPLETE EVERY CYCLE IT CLAIMS. *The counter is incremented by the loop's own "
             + "body -- a constant-fed counter is forbidden, and the first version of this file used one "
             + "(`step0Completion(cycles)` returned `cycles`, making the assertion a tautology).* Observed: "
-            + "\(cyclesCompleted) of \(cycles) ***")
+            + "\(run.cyclesCompleted) of \(run.cyclesRequested) ***", file: file, line: line)
         XCTAssertNil(
-            firstFailure,
-            "*** THE REAL RUNTIME MUST SURVIVE \(cycles) DETERMINISTIC CYCLES. *The failure printeth seed, cycle, "
-            + "class and the whole owner census, so a red run is REPLAYABLE rather than merely red.* "
-            + "Observed: \(firstFailure ?? "none") ***")
+            run.firstFailure,
+            "*** THE REAL RUNTIME MUST SURVIVE \(run.cyclesRequested) DETERMINISTIC CYCLES. *The failure printeth "
+            + "seed, cycle, class and the whole owner census, so a red run is REPLAYABLE rather than merely red.* "
+            + "Observed: \(run.firstFailure ?? "none") ***", file: file, line: line)
         for action in ActionClass.allCases {
-            let tally = tallies[action] ?? ClassTally()
+            let tally = run.tallies[action] ?? ClassTally()
             XCTAssertEqual(
-                tally.performances, expected[action] ?? 0,
-                "*** \(action.name): the class's own completion counter must equal the schedule's expectation. ***")
+                tally.performances, run.expected[action] ?? 0,
+                "*** \(action.name): the class's own completion counter must equal the schedule's expectation. ***",
+                file: file, line: line)
             XCTAssertGreaterThan(
                 tally.observed, 0,
                 "*** \(action.name): a class that ran but read NOTHING from the owner it is responsible for is a "
-                + "class whose invariant was never asked. Observed: \(tally.observed) ***")
+                + "class whose invariant was never asked. Observed: \(tally.observed) ***", file: file, line: line)
         }
-        print("*** GS-STRESS-001 cycle report: cycles=\(cyclesCompleted) "
-              + ActionClass.allCases.map { "\($0.name)=\(tallies[$0]?.performances ?? 0)" }.joined(separator: " ")
-              + " heldHighWater=\(heldHighWater) reservationsHighWater=\(reservationsHighWater) "
-              + "maxHeldInFlight=\(maxHeldInFlight) ***")
+        print("*** GS-STRESS-001 cycle report (\(label)): cycles=\(run.cyclesCompleted) "
+              + ActionClass.allCases.map { "\($0.name)=\(run.tallies[$0]?.performances ?? 0)" }.joined(separator: " ")
+              + " heldHighWater=\(run.heldHighWater) reservationsHighWater=\(run.reservationsHighWater) "
+              + "maxHeldInFlight=\(run.maxHeldInFlight) ***")
         XCTAssertEqual(
-            checkpoints.count, checkpointCycles.count + 1,
-            "*** FOUR FULL-GRAPH REOPENS: cycles 1000, 5000, 9000, and after the final stop. Observed: "
-            + "\(checkpoints.keys.sorted()) ***")
-        for (at, report) in checkpoints.sorted(by: { $0.key < $1.key }) {
+            run.checkpoints.count, run.checkpointCycles.count + 1,
+            "*** THE FULL-GRAPH REOPENS: \(run.checkpointCycles.sorted()) AND after the final stop. Observed: "
+            + "\(run.checkpoints.keys.sorted()) ***", file: file, line: line)
+        for (at, report) in run.checkpoints.sorted(by: { $0.key < $1.key }) {
             XCTAssertTrue(report.hasPrefix("intact"),
-                          "*** the reopen at \(at) did not find an intact estate: \(report) ***")
+                          "*** the reopen at \(at) did not find an intact estate: \(report) ***",
+                          file: file, line: line)
         }
-        let bytes = storeBytes(runtime)
         XCTAssertLessThanOrEqual(
-            bytes.db + bytes.wal, StressBound.maxStoreBytes,
-            "*** THE DURABLE ESTATE MUST STAY BOUNDED AFTER \(cycles) CYCLES. Observed db=\(bytes.db) wal=\(bytes.wal) ***")
-        print("*** GS-STRESS-001 durable bytes after the campaign: db=\(bytes.db) wal=\(bytes.wal) ***")
+            run.storeDbBytes + run.storeWalBytes, StressBound.maxStoreBytes,
+            "*** THE DURABLE ESTATE MUST STAY BOUNDED AFTER \(run.cyclesRequested) CYCLES. Observed "
+            + "db=\(run.storeDbBytes) wal=\(run.storeWalBytes) ***", file: file, line: line)
+        print("*** GS-STRESS-001 durable bytes after the campaign (\(label)): "
+              + "db=\(run.storeDbBytes) wal=\(run.storeWalBytes) ***")
     }
 
     /// *** THE FULL-GRAPH REOPEN: the same files, a NEW owner; the owners must be the ones the composition builds and
@@ -1339,15 +1513,33 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         XCTAssertEqual(decoded.payload.count, 16, "*** with its own payload. ***")
 
         var refused: Set<String> = []
+        let base = [UInt8](valid)
         for vector in ParserVector.all(valid) {
+            // *** THE SINGLE-GATE PROPERTY IS CHECKED BEFORE THE REFUSAL IS CREDITED. *** *A vector that mutated two
+            // gates could be refused for the wrong reason, and the control would then prove nothing about the gate it
+            // names.*
+            if let range = vector.mutatedRange {
+                let mutated = [UInt8](vector.bytes)
+                XCTAssertEqual(mutated.count, base.count,
+                               "*** \(vector.name): a gate mutation must not change the frame's length. ***")
+                for i in 0..<base.count where !range.contains(i) {
+                    XCTAssertEqual(mutated[i], base[i],
+                                   "*** \(vector.name): byte \(i) lies OUTSIDE the declared single-gate range "
+                                   + "\(range) and must be unchanged, or the vector mutates more than one gate. ***")
+                }
+                XCTAssertNotEqual(mutated[range.lowerBound], base[range.lowerBound],
+                                  "*** \(vector.name): the gate \(vector.gate) must actually be mutated. ***")
+            }
             if FrameV2.decode(vector.bytes) != nil {
-                XCTFail("*** no_uncaught_malformed: vector \(vector.name) WAS ACCEPTED. ***")
+                XCTFail("*** no_uncaught_malformed: vector \(vector.name) (gate \(vector.gate)) WAS ACCEPTED. ***")
             } else {
                 refused.insert(vector.name)
             }
         }
         XCTAssertEqual(refused.count, ParserVector.count,
-                       "*** ALL EIGHT VECTORS MUST BE REFUSED. Refused: \(refused.sorted()) ***")
+                       "*** ALL EIGHT VECTORS MUST BE REFUSED, EACH AT ITS OWN GATE. Refused: \(refused.sorted()) ***")
+        XCTAssertEqual(Set(ParserVector.all(valid).map(\.gate)).count, ParserVector.count,
+                       "*** AND NO TWO VECTORS MAY NAME THE SAME GATE: eight guards, eight vectors, one each. ***")
 
         // *** AND THE SAME BYTES AT THE REAL INGRESS SEAM: the node's OWN decode gate refuses every malformed vector,
         // and the durable store is unmoved. ***
@@ -1513,45 +1705,307 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
               + "\(runtime.messageStore.observerCensusForTest()) db=\(bytes.db) wal=\(bytes.wal) ***")
     }
 
-    /// *** CT2: TWO RUNS OF ONE SEED PRINT THE SAME FIRST FAILURE, BYTE FOR BYTE. ***
+    /// *** CT2, REBUILT (GS-STRESS-001 step 7): TWO REAL CAMPAIGNS OF ONE SEED, ONE INJECTED OWNER FAILURE, THE
+    /// SAME FIRST FAILURE ADDRESS -- THEN THE FAILURE REMOVED AND THE CAMPAIGN GREEN. ***
+    ///
+    /// *** WHAT STOOD HERE WAS A TAUTOLOGY, AND ITS OWN COMMENT ADMITTED IT IN THE SAME BREATH. *** *The old arm
+    /// compared `replay(4242) == replay(4242)`: a LOCAL function that built an `OwnerCensus` from LITERAL ZEROS and
+    /// formatted a string. It executed NO runtime op, read NO owner, and its "AND THE SCHEDULE'S PREFIX IS EXECUTED
+    /// THROUGH THE REAL RUNTIME" tail drove a HUNDRED UNRELATED cycles that observed nothing. **A COMPARISON OF A
+    /// PURE FUNCTION WITH ITSELF IS TRUE FOR ANY SEED AND ANY RUNTIME**, so it could not redden when the mechanism it
+    /// claimed to defend broke -- the exact class this ledger condemns.*
+    ///
+    /// THE REPLACEMENT RUNS THE REAL CAMPAIGN THREE TIMES, in FRESH ESTATES:
+    ///   (1) and (2) with the SAME injected owner failure at the SAME cycle -- **a third relation admitted into the
+    ///       runtime's own `SessionManager` and left standing past the drain** -- so both must stop at the SAME
+    ///       cycle, the SAME class and the SAME owner census;
+    ///   (3) with NO injected failure, which must run GREEN to its bound.
+    ///
+    /// *The address is compared WHOLE. It carrieth no wall-clock instant and no random path -- every field is the
+    /// seed, the cycle, the class and the owners' own counts -- so a difference in any of them is a real
+    /// non-determinism rather than a clock. The cycle bound is SHORT here (the schedule and the reopen machinery are
+    /// the same code the length arms exercise; this arm's subject is REPRODUCIBILITY, not endurance), and the
+    /// failure is injected EARLY so the comparison is cheap and the address is stable.*
     func testGSSTRESS001TheSameSeedPrintsTheSameFirstFailureAddress() throws {
-        let (orderA, countsA) = classSchedule()
-        let (orderB, countsB) = classSchedule()
-        XCTAssertEqual(orderA.map(\.name), orderB.map(\.name), "*** THE SCHEDULE IS A FUNCTION OF THE SEED ALONE. ***")
+        // THE SCHEDULE IS A FUNCTION OF THE SEED ALONE -- and now the LENGTH too, so both are asserted.
+        let (orderA, countsA) = classSchedule(cycles: 400)
+        let (orderB, countsB) = classSchedule(cycles: 400)
+        XCTAssertEqual(orderA.map(\.name), orderB.map(\.name),
+                       "*** THE SCHEDULE IS A FUNCTION OF THE SEED ALONE. ***")
         XCTAssertEqual(countsA, countsB, "*** and so are its per-class expectations. ***")
-
-        func replay(_ brokenAt: Int?) -> String {
-            let censusHere = OwnerCensus(sessionSlots: 0, peersWithIncarnations: 0, storeObservers: 1,
-                                         ackOutboxDepth: 0, ackObligations: 0, ackFrames: 0,
-                                         quarantinedIdentities: 0, admissionHistory: 0,
-                                         timerLeases: 0, leaseSweepTicks: 0)
-            if let brokenAt { return failureString(brokenAt, orderA[brokenAt], "a named failure", censusHere) }
-            return "seed=\(seed) no-failure census=[\(censusHere.description)]"
+        XCTAssertEqual(orderA.count, 400, "*** and it covereth the bound it was given. ***")
+        for action in ActionClass.allCases {
+            XCTAssertGreaterThan(
+                countsA[action] ?? 0, 0,
+                "*** every class must be scheduled inside a 400-cycle window, or the arm below could stop before "
+                + "reaching one and the comparison would not cover all twelve. \(action.name) ***")
         }
-        XCTAssertEqual(replay(4242), replay(4242),
-                       "*** CT2: the same seed, cycle and class must produce the SAME address. ***")
-        let address = replay(4242)
-        XCTAssertTrue(address.hasPrefix("seed=\(seed) cycle=4242 class="),
-                      "*** the address must begin `seed=… cycle=… class=…`. Observed: \(address) ***")
-        XCTAssertTrue(address.contains("census=["),
+
+        // THE INJECTION IS DRIVEN WHERE ALL TWELVE CLASSES ARE STILL REACHABLE WITHIN THE BOUND.
+        let injected = InjectedOwnerFailure.unreleasedRelationAt(cycle: 400 - 1)
+
+        let first = try runCampaign(cycles: 400, injectedFailure: injected)
+        let second = try runCampaign(cycles: 400, injectedFailure: injected)
+        let failureA = try XCTUnwrap(first.firstFailure,
+                                     "*** THE INJECTED FAILURE MUST ACTUALLY FAIL THE CAMPAIGN, or the comparison "
+                                     + "below compares two absences. ***")
+        let failureB = try XCTUnwrap(second.firstFailure, "*** ...in BOTH runs. ***")
+
+        XCTAssertTrue(failureA.hasPrefix("seed=\(seed) cycle="),
+                      "*** CT2: the address must begin `seed=… cycle=… class=…`. Observed: \(failureA) ***")
+        XCTAssertTrue(failureA.contains("census=["),
                       "*** and carry the census the run stopped at. ***")
+        XCTAssertTrue(failureA.contains("why=the quiescence census did not return to its baseline"),
+                      "*** and NAME the owner invariant the injected leak broke. Observed: \(failureA) ***")
+        XCTAssertEqual(failureA, failureB,
+                       "*** CT2: the same seed and the same injected owner failure must print the SAME first-failure "
+                       + "address, byte for byte. A mismatch is a non-determinism the card forbids. "
+                       + "first=[\(failureA)] second=[\(failureB)] ***")
 
-        // *** AND THE SCHEDULE'S PREFIX IS EXECUTED THROUGH THE REAL RUNTIME, so the arm is not only arithmetic. ***
-        let e = estate("replay"); defer { e.remove() }
-        let runtime = try openRuntime(e)
-        var executed = 0
-        var scheduleRng = SeededGenerator(seed: seed)
-        for _ in 0..<100 {
-            _ = next(&scheduleRng, bound: ActionClass.allCases.count)
-            runtime.lifecycle.start()
-            let id = msgId(executed, salt: 0x5F)
-            _ = runtime.meshNode.ingestInbound(stressFrame(id, routingTag: Data(repeating: 0, count: 4)),
-                                               receivedFrom: Data(repeating: 0x11, count: 16))
-            _ = runtime.messageStore.removeHeld(id)
-            runtime.lifecycle.stop()
-            executed += 1
+        // *** AND THE SAME CYCLE AND CLASS IN BOTH, READ STRUCTURALLY RATHER THAN BY WHOLE-STRING LUCK. ***
+        XCTAssertEqual(first.cyclesCompleted, second.cyclesCompleted,
+                       "*** both runs must stop at the same cycle. \(first.cyclesCompleted) vs "
+                       + "\(second.cyclesCompleted) ***")
+        XCTAssertEqual(first.firstFailure?.components(separatedBy: " class:").first,
+                       second.firstFailure?.components(separatedBy: " class:").first,
+                       "*** and name the same cycle. ***")
+
+        // *** (3) REMOVE THE FAILURE: THE SAME SEED, THE SAME BOUND, A FRESH ESTATE, AND THE CAMPAIGN IS GREEN. ***
+        let clean = try runCampaign(cycles: 400, injectedFailure: .none)
+        XCTAssertNil(clean.firstFailure,
+                     "*** WITH THE INJECTED FAILURE REMOVED the same seed must run GREEN to its bound -- otherwise "
+                     + "the red above named the seed or the estate rather than the injection. Observed: "
+                     + "\(clean.firstFailure ?? "none") ***")
+        XCTAssertEqual(clean.cyclesCompleted, 400,
+                       "*** and it must COMPLETE every cycle. Observed: \(clean.cyclesCompleted) ***")
+        for action in ActionClass.allCases {
+            XCTAssertEqual(clean.tallies[action]?.performances ?? 0, clean.expected[action] ?? 0,
+                           "*** \(action.name): the green run's own schedule count. ***")
         }
-        XCTAssertEqual(executed, 100, "*** the first hundred cycles of the recorded schedule must execute. ***")
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // MARK: - THE THREE REAL-OWNER RESOURCE-RELEASE WITNESSES (GS-STRESS-001 step 7)
+    // --------------------------------------------------------------------------------------------
+
+    /// *** (1) THE SESSION OWNER'S OWN RELEASE VERB MUST EMPTY ITS OWN REGISTRY. ***
+    ///
+    /// *`SessionManager.retireIncarnations(ofPeerId:)` is THE production verb a departed peer travels -- the same
+    /// verb the campaign's own drain calls. This witness admits a relation through the owner's own admission road,
+    /// requires the OWNER'S census to show it (one slot, one incarnation), drives the release verb and requires BOTH
+    /// readings to return to zero. **THE MUTATION IT IS BUILT TO KILL lives at that verb: suppressing the removal
+    /// leaveth the slot standing, and no other path in this court would then see it** -- which is the test of whether
+    /// this witness observeth the RELEASE OWNER rather than a downstream symptom.*
+    func testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot() throws {
+        let e = estate("release-session"); defer { e.remove() }
+        let runtime = try openRuntime(e)
+        let peer = try peerIdentity(0x51, 0x52)
+        let handle = UUID()
+        try pinPeer(runtime, peer.identity)
+
+        let admission = SessionManager.hostAdmission(handle, direction: .outboundCentral, generation: 7)
+        XCTAssertEqual(runtime.sessionManager.slotCountForTest(), 0,
+                       "*** the owner must START empty, or the reading below measures a pre-existing row. ***")
+        XCTAssertNotNil(runtime.sessionManager.beginInitiator(admission, remoteHint: peer.identity.nodeHint),
+                        "*** the owner's own admission road must admit the relation. ***")
+        XCTAssertEqual(runtime.sessionManager.slotCountForTest(), 1,
+                       "*** and its OWN slot census must show it: this is the resource the release must reclaim. ***")
+        XCTAssertEqual(runtime.sessionManager.incarnationCountForTest(handle), 1,
+                       "*** and one incarnation of that handle. ***")
+
+        XCTAssertEqual(runtime.sessionManager.retireIncarnations(ofPeerId: handle), 1,
+                       "*** the release verb must report the one incarnation it retired. ***")
+        XCTAssertEqual(runtime.sessionManager.slotCountForTest(), 0,
+                       "*** THE OWNER'S OWN CENSUS MUST RETURN TO ZERO AFTER ITS OWN RELEASE VERB. A slot standing "
+                       + "here is the leak class the card names, read from the owner that allocates it. ***")
+        XCTAssertEqual(runtime.sessionManager.incarnationCountForTest(handle), 0,
+                       "*** and no incarnation of the handle may survive it. ***")
+
+        runtime.messageStore.close()
+        runtime.peerIdentityStore.close()
+    }
+
+    /// *** (2) THE TRANSPORT'S OWN LEASE-REMOVAL ON STOP MUST EMPTY ITS OWN LEASE REGISTER. ***
+    ///
+    /// *A lease is armed by the REAL admission of a fresh relation (`reductionProcessOutboundDiscover` calls
+    /// `armTimerLocked` on the key it just admitted -- the production road `bringUpRelation` drives). The witness
+    /// requires the transport's OWN `timerLeaseCountForTest()` to show it armed, drives the lifecycle owner's
+    /// `stop()` -- whose `cancelAllTimerLeasesLocked` is the release -- and requires the register to empty.
+    /// **THE MUTATION IT IS BUILT TO KILL suppresses that removal; the count then stays standing and nothing else
+    /// observes it.***
+    func testGSSTRESS001TransportStopReleasesEveryHeldTimerLease() throws {
+        let e = estate("release-timer"); defer { e.remove() }
+        let runtime = try openRuntime(e)
+        let peer = try peerIdentity(0x51, 0x52)
+        try pinPeer(runtime, peer.identity)
+
+        let factory = StressManagerFactory()
+        stressFactory = factory
+        runtime.meshNode.ble.testManagerFactoryOverride = factory
+
+        runtime.lifecycle.start()
+        let timedHandle = UUID()
+        let bound = bringUpRelation(runtime, handle: timedHandle,
+                                    remoteHint: peer.identity.nodeHint, fullWalk: false)
+        let armed = runtime.meshNode.ble.timerLeaseCountForTest()
+        XCTAssertTrue(bound, "*** the real admission must bind the relation before a lease can be armed. ***")
+        XCTAssertGreaterThan(armed, 0,
+                             "*** the transport's OWN lease register must show the lease its own admission armed. "
+                             + "Observed: \(armed) ***")
+
+        runtime.lifecycle.stop()
+        XCTAssertEqual(runtime.meshNode.ble.timerLeaseCountForTest(), 0,
+                       "*** THE OWNER'S OWN LEASE REGISTER MUST EMPTY WHEN IT STOPS. A lease standing past the stop is "
+                       + "the leak class the card names, read from the transport that allocates it. ***")
+
+        runtime.messageStore.close()
+        runtime.peerIdentityStore.close()
+    }
+
+    /// *** (3) THE WRITER'S OWN SHUTDOWN MUST RETURN ITS OWN RESERVATION TABLE TO ZERO. ***
+    ///
+    /// *`RecordWriter.shutdown()` is the production close path ("A CLOSED RELATION ACCEPTETH NOTHING FURTHER: WHAT IT
+    /// HOLDETH MUST BE RELEASED"). The witness binds the writer through the REAL send road (a ready session over a
+    /// standing connection, exactly as A4 does), fills its OWN bound, requires `reservedCountForTest()` to show the
+    /// tickets, calls `shutdown()` and requires zero. **THE MUTATION IT IS BUILT TO KILL suppresses the release in
+    /// that close path; the tickets then stand and the owner's own census sayeth so.***
+    func testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations() throws {
+        let e = estate("release-writer"); defer { e.remove() }
+        let runtime = try openRuntime(e)
+        let peer = try peerIdentity(0x51, 0x52)
+        let handle = UUID()
+        try pinPeer(runtime, peer.identity)
+
+        let factory = StressManagerFactory()
+        stressFactory = factory
+        runtime.meshNode.ble.testManagerFactoryOverride = factory
+
+        runtime.lifecycle.start()
+        runtime.meshNode.transportApplicationLinkReady(peerId: handle, receivedFrom: peer.identity.nodeId,
+                                                       generation: 1)
+        let bound = bringUpRelation(runtime, handle: handle, remoteHint: peer.identity.nodeHint)
+        let ready = establishReadySession(runtime, handle: handle, peer: peer.identity)
+        XCTAssertTrue(bound && ready,
+                      "*** the OS-facade legs must bind a READY relation before a writer existeth (bound=\(bound) "
+                      + "ready=\(ready)) ***")
+        _ = runtime.meshNode.ble.connection(for: handle)?.markReadyForTesting()
+        guard let writer = writer(for: runtime, handle: handle) else {
+            XCTFail("*** THE PRODUCTION SEND ROAD MUST MINT A WRITER FOR A READY RELATION. ***"); return
+        }
+        var admitted = 0
+        for _ in 0..<StressBound.writerAdmittedRecords {
+            if case .admitted = writer.reserve(recordType: .data, clearLength: 16,
+                                               capacity: StressBound.writerCapacity) { admitted += 1 }
+        }
+        XCTAssertEqual(admitted, StressBound.writerAdmittedRecords,
+                       "*** the writer's own cap must admit its full bound. ***")
+        XCTAssertEqual(writer.reservedCountForTest(), StressBound.writerAdmittedRecords,
+                       "*** and its OWN reservation table must show every ticket: these are the resources the "
+                       + "shutdown must release. ***")
+
+        writer.shutdown()
+        XCTAssertEqual(writer.reservedCountForTest(), 0,
+                       "*** THE WRITER'S OWN CLOSE PATH MUST RETURN ITS OWN RESERVATION TABLE TO ZERO. Tickets "
+                       + "standing after shutdown are the leak class the card names, read from the writer that "
+                       + "allocated them. ***")
+        XCTAssertTrue(writer.isClosed(), "*** and the writer must report itself closed. ***")
+
+        writerCache[handle] = nil
+        runtime.lifecycle.stop()
+        runtime.messageStore.close()
+        runtime.peerIdentityStore.close()
+    }
+
+    // --------------------------------------------------------------------------------------------
+    // MARK: - THE INDEPENDENT DEDUP AND PARSER-GATE CONTROLS (GS-STRESS-001 step 7)
+    // --------------------------------------------------------------------------------------------
+
+    /// *** `no_duplicate_inbox`, ASKED OF THE **DURABLE STORE'S OWN UNIQUENESS DECISION**. ***
+    ///
+    /// *The existing arms read the NODE's verdict and the INBOX's census. THIS one readeth the STORE DIRECTLY
+    /// through `persist`, whose `insertRowNoLockStrict` is the row's own `ON CONFLICT DO NOTHING` -- so the mutation
+    /// it is built to kill (making that insert OVERWRITE rather than refuse) reddens HERE even if every higher road
+    /// were bypassed. **A FORCED CENSUS ANSWER IS NOT INBOX CORRUPTION: the control mutates the durable decision
+    /// being defended and requires a wrong ROW COUNT.***
+    func testGSSTRESS001TheDurableStoreItselfRefusesTheSecondRowForOneIdentity() throws {
+        let e = estate("store-dup"); defer { e.remove() }
+        let store = SqliteMessageStore(url: e.messageStoreUrl, maxBytes: 64 * 1024 * 1024)
+        defer { store.close() }
+        let peer = try peerIdentity(0x51, 0x52)
+        let id = msgId(0x31, salt: 0xDA)
+        let frame = stressFrame(id, routingTag: peer.identity.nodeHint)
+
+        // (1) THE FIRST PERSIST INSERTS. `PersistResult` answers the store's own verdict.
+        let first = store.persist(frame, receivedFrom: peer.identity.nodeId)
+        XCTAssertEqual(store.allHeldMsgIds().count, 1,
+                       "*** the first persist must leave exactly ONE durable row. Observed: \(first) ***")
+        let anchorAfterFirst = try XCTUnwrap(store.receiptAnchorForTest(id),
+                                             "*** and that row must carry its receipt anchor. ***")
+
+        // (2) THE SAME FRAME AGAIN: the store's OWN uniqueness must refuse to add a second row.
+        let second = store.persist(frame, receivedFrom: peer.identity.nodeId)
+        XCTAssertEqual(store.allHeldMsgIds().count, 1,
+                       "*** THE STORE'S OWN UNIQUENESS MUST REFUSE A SECOND ROW FOR ONE msg_id. A count of 2 here is "
+                       + "the mutation this witness is built to kill. Observed: \(second) ***")
+        XCTAssertEqual(Set(store.allHeldMsgIds()).count, store.allHeldMsgIds().count,
+                       "*** and no identity may stand twice. ***")
+        XCTAssertEqual(store.receiptAnchorForTest(id), anchorAfterFirst,
+                       "*** and the re-persist must not MOVE the existing row's anchor: an overwrite re-stamps it, "
+                       + "which is precisely the corruption a uniqueness bypass produces. ***")
+
+        // (3) AND A DISTINCT ID IS STILL ADMITTED, so the refusal above is about identity and not a store that
+        // stopped accepting.
+        let other = stressFrame(msgId(0x32, salt: 0xDB), routingTag: peer.identity.nodeHint)
+        _ = store.persist(other, receivedFrom: peer.identity.nodeId)
+        XCTAssertEqual(store.allHeldMsgIds().count, 2,
+                       "*** a DISTINCT identity must still be admitted, or the refusal above proves only that the "
+                       + "store stopped accepting. ***")
+    }
+
+    /// *** `no_duplicate_delivery`, ASKED OF THE **DURABLE DELIVERY ROW'S OWN CLASSIFIER**. ***
+    ///
+    /// *The existing arm drives the tracker's in-memory classifyExisting; THIS one drives the SQLITE engine's --
+    /// `SqliteDeliveryRepository.classifyExisting` -- through `enqueueDirectOutboundAtWithFault`, whose pair insert
+    /// is the transaction the card names. **THE MUTATION IT IS BUILT TO KILL changes that classifier's answer (e.g.
+    /// returning `.created` for an existing row), which would double-book a delivery; the observable consequence is
+    /// a second `created` for one binding.***
+    func testGSSTRESS001TheDurableDeliveryRowRefusesTheSecondBindingForOneIdentity() throws {
+        let e = estate("store-deliv"); defer { e.remove() }
+        let runtime = try openRuntime(e)
+        defer { runtime.messageStore.close(); runtime.peerIdentityStore.close() }
+        let recipient = try peerIdentity(0x71, 0x72)
+        let other = try peerIdentity(0x73, 0x74)
+        let id = msgId(0x33, salt: 0xDC)
+        let frame = stressFrame(id, routingTag: recipient.identity.nodeHint)
+
+        let first = runtime.messageStore.enqueueDirectOutboundAtWithFault(
+            frame, expectedRecipient: recipient.identity.nodeId,
+            localOriginNodeId: runtime.identity.nodeId, receivedAt: nil, fault: nil)
+        guard case .created = first else {
+            XCTFail("*** the first enqueue must create the pair. Observed: \(first) ***"); return
+        }
+        let rowAfterFirst = try XCTUnwrap(runtime.messageStore.readDelivery(id),
+                                          "*** and the durable delivery row must stand. ***")
+
+        let same = runtime.messageStore.enqueueDirectOutboundAtWithFault(
+            frame, expectedRecipient: recipient.identity.nodeId,
+            localOriginNodeId: runtime.identity.nodeId, receivedAt: nil, fault: nil)
+        guard case .alreadyQueuedSameBinding = same else {
+            XCTFail("*** THE DURABLE CLASSIFIER MUST ANSWER `alreadyQueuedSameBinding` FOR A RE-QUEUE OF THE SAME "
+                    + "BINDING; `.created` here would double-book one delivery. Observed: \(same) ***"); return
+        }
+        XCTAssertEqual(try runtime.messageStore.readDelivery(id)?.state, rowAfterFirst.state,
+                       "*** and the row's own state must not move on the refused re-queue. ***")
+
+        let conflict = runtime.messageStore.enqueueDirectOutboundAtWithFault(
+            frame, expectedRecipient: other.identity.nodeId,
+            localOriginNodeId: runtime.identity.nodeId, receivedAt: nil, fault: nil)
+        guard case .conflictRecipient = conflict else {
+            XCTFail("*** a DIFFERENT binding for one identity must be refused as a conflict. Observed: \(conflict) ***")
+            return
+        }
+        XCTAssertEqual(try runtime.messageStore.readDelivery(id)?.expectedRecipient, recipient.identity.nodeId,
+                       "*** and the standing row must still name its ORIGINAL recipient. ***")
     }
 
     /// *** AND THE MUTATION: A DELIBERATE RESOURCE LEAK MUST BE DETECTED. ***
@@ -1658,30 +2112,47 @@ private enum StressBound {
 /// first thirty octets (`b[30..32]`); and the declared length (`b[28..30]`) against the actual byte count. **EACH
 /// VECTOR BELOW BREAKS EXACTLY ONE OF THOSE**, so a rod that disables one gate reddens exactly one vector.*
 private enum ParserVector {
-    struct Vector { let name: String; let bytes: Data }
+    struct Vector {
+        let name: String
+        /// *The decoder gate this vector is built to break, in the decoder's own order.*
+        let gate: String
+        /// *The bytes of the ONE gate this vector mutates, so the control proveth the mutation is single-gate.*
+        let mutatedRange: Range<Int>?
+        let bytes: Data
+    }
 
     static let count = 8
 
     static func truncated(_ valid: Data) -> Vector {
-        Vector(name: "V-G0-truncated-short-of-header", bytes: valid.dropLast(1))
+        Vector(name: "V-G0-truncated-short-of-header", gate: "count>=headerSize",
+               mutatedRange: nil, bytes: valid.dropLast(1))
     }
 
+    /// *** EACH VECTOR MUTATES EXACTLY ONE DECODER GATE, AND SAYETH SO. ***
+    ///
+    /// *The card's step 7 asketh for controls "each built from ONE valid frame with each malformed vector mutating
+    /// exactly one decoder gate". The `gate` and `mutatedRange` fields make that a CHECKED property rather than a
+    /// comment: the arm below asserteth that the vector differs from the valid frame ONLY within its declared
+    /// range, so a future edit that quietly broke two gates at once -- and thus could be caught by either -- would
+    /// redden the control rather than pass for the wrong reason.*
     static func all(_ valid: Data) -> [Vector] {
         let base = [UInt8](valid)
-        func mutate(_ name: String, _ body: (inout [UInt8]) -> Void) -> Vector {
+        func mutate(_ name: String, _ gate: String, _ at: Int, _ body: (inout [UInt8]) -> Void) -> Vector {
             var copy = base
             body(&copy)
-            return Vector(name: name, bytes: Data(copy))
+            return Vector(name: name, gate: gate, mutatedRange: at..<(at + 1), bytes: Data(copy))
         }
         return [
             truncated(valid),
-            mutate("V-G1-magic-first-octet") { $0[0] ^= 0xFF },
-            mutate("V-G2-version-third-octet") { $0[2] = 0x03 },
-            mutate("V-G3-unknown-type-octet") { $0[3] = 0x00 },
-            mutate("V-G4-ttl-over-max") { $0[24] = FrameV2.maxTtl + 1 },
-            mutate("V-G5-hop-over-max") { $0[25] = FrameV2.maxTtl + 1 },
-            mutate("V-G6-crc-last-octet") { $0[31] ^= 0x01 },
-            mutate("V-G7-declared-length-overrun") { $0[29] = UInt8(min(255, Int($0[29]) + 8)) },
+            mutate("V-G1-magic-first-octet", "magic", 0) { $0[0] ^= 0xFF },
+            mutate("V-G2-version-third-octet", "version", 2) { $0[2] = 0x03 },
+            mutate("V-G3-unknown-type-octet", "type", 3) { $0[3] = 0x00 },
+            mutate("V-G4-ttl-over-max", "ttl", 24) { $0[24] = FrameV2.maxTtl + 1 },
+            mutate("V-G5-hop-over-max", "hop", 25) { $0[25] = FrameV2.maxTtl + 1 },
+            mutate("V-G6-crc-last-octet", "crc", 31) { $0[31] ^= 0x01 },
+            mutate("V-G7-declared-length-overrun", "declaredLength", 29) {
+                $0[29] = UInt8(min(255, Int($0[29]) + 8))
+            },
         ]
     }
 }
@@ -1786,6 +2257,7 @@ private final class ProbeJournal: WipeJournal, @unchecked Sendable {
 }
 
 private enum ProbeError: Error, Equatable {
+    case noAscendantSeat
     case localBindingRefused
     case localPinRefused
     case peerBindingRefused
