@@ -102,6 +102,14 @@ ANDROID_OUT_PROP = PROP_PREFIX + "out"
 IOS_TO_ANDROID = "ios->android"
 ANDROID_TO_IOS = "android->ios"
 
+
+def flip_direction(direction: str) -> str:
+    """THE OPPOSITE DIRECTION. *The relay pump driveth BOTH ways, so it needeth the reverse of whichever it was
+    given -- and the expression that computed it was DEGENERATE (`ANDROID_TO_IOS if x == IOS_TO_ANDROID else
+    ANDROID_TO_IOS`, both arms the same), so an `android->ios` run pumpeth `android->ios` in both slots and the
+    reverse leg never carried anything. It is one function now, so the two call sites cannot drift apart again.*"""
+    return ANDROID_TO_IOS if direction == IOS_TO_ANDROID else IOS_TO_ANDROID
+
 CONTROLS = ("honest", "altered", "mismatched", "replay")
 # *** THE BOUNDARIES THE ANDROID MIRROR WALKETH. *** *The macOS isle's child-process campaign walketh the plan's full
 # step-6 table (`outboundEnqueue`, `inboundCommit`, `ackCreate`, `ackCommit`, `senderAckRetire`, `preSend`,
@@ -883,7 +891,7 @@ class Runner:
              release: Optional[Callable[[], None]] = None) -> None:
         """Relay both ways until `until()` or the deadline. Bounded, always."""
         deadline = time.monotonic() + timeout
-        flip = ANDROID_TO_IOS if direction == IOS_TO_ANDROID else ANDROID_TO_IOS
+        flip = flip_direction(direction)
         while time.monotonic() < deadline:
             if until():
                 return
@@ -1023,7 +1031,7 @@ class Runner:
                 deadline = time.monotonic() + min(self.deadline_s, 120.0)
                 while time.monotonic() < deadline and not authored_seen():
                     self.relay(sender, receiver, direction, control=control)
-                    self.relay(receiver, sender, self.flip(direction), control=control)
+                    self.relay(receiver, sender, flip_direction(direction), control=control)
                     time.sleep(0.02)
                 if not authored_seen():
                     raise Refused(f"*** {direction} ({control}): THE PRODUCER NEVER ANNOUNCED ITS AUTHORED FRAME, so "
