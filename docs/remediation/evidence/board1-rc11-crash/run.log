@@ -1,0 +1,30 @@
+[22:38:39] === GS-INTEGRATION-001 cross-platform coordinator: mode=crash run=20260929T170839Z-e574a7 ===
+[22:38:39]     repo=/Users/oculus/Projects/GODSTONE evidence=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash
+[22:38:39]     input digest (pre) = 90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e
+[22:38:39]     toolchain swift: Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6
+[22:38:39]     toolchain xcodebuild: Xcode 27.0 Build version 27A266a
+[22:38:39]     toolchain java: openjdk version "17.0.20.1" 2026-08-18 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1) OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)
+[22:38:39]     toolchain python: 3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)
+[22:38:39]     toolchain host: macOS-26.6.2-arm64-arm-64bit-Mach-O
+[22:38:39]     toolchain gradle: ------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191
+[22:38:39]     toolchain android_sdk: unset
+[22:38:39] *** building the host fixtures ONCE (SwiftPM macOS test bundle) ***
+[22:38:40]   swift build --build-tests: rc=0
+[22:38:40] *** crash mode: the macOS child-process SIGKILL campaign ***
+[22:38:43]   macOS crash campaign rc=0 log=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/swift-crash-campaign.log
+[22:38:43] *** crash mode: the Android durable-boundary recovery worker ***
+[22:39:19]   [android-prepare-outboundEnqueue] <- at_boundary  payload=0B
+[22:39:19]   outboundEnqueue: {'boundary': 'outboundEnqueue', 'detail': 'the atomic held+delivery enqueue returned success; halting before any radio work', 'enqueue': 'Created', 'kind': 'at_boundary', 'msg_id': '9ef10918ac222f4103ab5a8ef168b351', 'platform': 'android', 'v': 1}
+[22:39:57]   [android-recover-outboundEnqueue] <- complete  payload=0B
+[22:39:57]   [android-recover-outboundEnqueue] -> bye  payload=0B
+[22:40:34]   [android-prepare-inboundCommit] <- at_boundary  payload=0B
+[22:40:34]   inboundCommit: {'boundary': 'inboundCommit', 'commit': 'Committed', 'detail': 'the atomic held+obligation pair returned success; halting before signing', 'kind': 'at_boundary', 'msg_id': 'fe759c8d26a5a2ab5ab962ba0efdfd61', 'platform': 'android', 'v': 1}
+[22:41:11]   [android-recover-inboundCommit] <- complete  payload=0B
+[22:41:11]   [android-recover-inboundCommit] -> bye  payload=0B
+[22:41:12] *** results ***
+[22:41:12]   android-crash  outboundEnqueue RECOVERED row=present delivery=QUEUED_DURABLY refusal=-
+[22:41:12]   android-crash  inboundCommit RECOVERED row=present delivery=none refusal=-
+[22:41:12]   transcript framing (first 128 octets): 00 00 00 fc 7b 22 62 6f 75 6e 64 61 72 79 22 3a 22 6f 75 74 62 6f 75 6e 64 45 6e 71 75 65 75 65 22 2c 22 64 65 6c 69 76 65 72 79 22 3a 22 51 55 45 55 45 44 5f 44 55 52 41 42 4c 59 22 2c 22 64 65 74 61 69 6c 22 3a 22 61 20 46 52 45 53 48 20 4a 56 4d 20 6f 76 65 72 20 74 68 65 20 53 41 4d 45 20 65 73 74 61 74 65 20 72 65 61 64 20 74 68 65 20 6f 77 6e 65 72 73 27 20 6f 77 6e 20 64 75
+[22:41:12]   fixtures persisted under tools/integration-fixtures/20260929T170839Z-e574a7
+[22:41:12]     input digest (post) = 90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e (agrees)
+[22:41:12] *** PASS ***
