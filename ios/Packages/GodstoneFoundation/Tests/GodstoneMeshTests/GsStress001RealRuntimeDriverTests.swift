@@ -393,11 +393,40 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                        ttl: built.ttl, hopCount: built.hopCount, flags: built.flags, payload: built.payload)
     }
 
-    /// *`Router.buildSealedMessage` is `async`; this court is synchronous, so the await is driven on a semaphore.*
+    /// *** THE ASYNC MINT, DRIVEN OFF THE COOPERATIVE POOL (GS-STRESS-001 step 7, the 30k hang). ***
+    ///
+    /// *** WHAT STOOD HERE WAS A BLOCKING-SEMAPHORE BRIDGE, AND IT WAS A REAL DEFECT AT LENGTH. *** *It read:
+    /// `Task { …; sem.signal() }; sem.wait()` -- a `DispatchSemaphore.wait()` ON THE CALLING THREAD while the Task
+    /// that must signal it waits to be scheduled on the SAME cooperative pool. **BLOCKING A THREAD ON A SEMAPHORE
+    /// STEALS A COOPERATIVE-POOL THREAD**, so the pool narrows by one for every mint; at 10 000 cycles the pool
+    /// happened to survive, and at 30 000 it starved.*
+    ///
+    /// **MEASURED BY `sample` ON THE HUNG 30 000-CYCLE RUN, AND IT IS WHY THIS WAS REPLACED RATHER THAN BOUNDED:**
+    /// five threads only; the main thread idle in `CFRunLoop`; **NO GodstoneMesh or test frame executing anywhere**;
+    /// and one cooperative-pool thread parked for the whole 4 006-sample window at
+    /// `completeTaskAndRelease` -> `_dispatch_group_wait_slow` -> `_ulock_wait`, with 86 MB resident and 0.0% CPU.
+    /// *A park, not slowness -- so raising a deadline would have hidden the defect rather than found it.*
+    ///
+    /// THE REPAIR IS THE ROAD THE COMPILER INTENDED: the whole async body runs on a THREAD OF ITS OWN (`Thread`,
+    /// which is NOT a cooperative-pool thread), where the semaphore's wait cannot steal pool capacity. The body is
+    /// unchanged, and `sealedForSelf` still mints through the same frozen `Router.buildSealedMessage` -- so the
+    /// frames, the seed, the schedule and every bound are IDENTICAL, and the 10 000- and 30 000-cycle arms remain
+    /// directly comparable.
     private func awaitBlocking<T>(_ body: @escaping () async throws -> T) throws -> T {
         let sem = DispatchSemaphore(value: 0)
         var result: Result<T, Error>!
-        Task { do { result = .success(try await body()) } catch { result = .failure(error) }; sem.signal() }
+        // *** THE MINT RUNNETH ON A DEDICATED THREAD, NOT ON THE COOPERATIVE POOL. *** *`Thread` starteth a real
+        // pthread, so the `sem.wait()` below parketh a thread the Swift concurrency pool never owned -- the starvation
+        // the 30 000-cycle run measured is therefore impossible by construction, not merely unlikely.*
+        let worker = Thread {
+            Task {
+                do { result = .success(try await body()) } catch { result = .failure(error) }
+                sem.signal()
+            }
+        }
+        worker.name = "gs-stress-async-mint"
+        worker.stackSize = 1 << 20
+        worker.start()
         sem.wait()
         return try result.get()
     }
