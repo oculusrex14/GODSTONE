@@ -1968,7 +1968,14 @@ EXPECTED_ESCAPES: tuple = ()
 # **So the plural `s` is OPTIONAL ON BOTH NOUNS** -- XCTest printeth "Executed 1 test, with 1 failure" for the
 # single-arm case, and a regex demanding "tests" misreads it the same way. `FAILED_CASE_RE` (which already readeth
 # the singular `failed` case line) is the independent witness that agrees with the count.
-EXEC_RE = re.compile(r"Executed ([0-9]+) tests?, with ([0-9]+) failures?")
+#
+# *** AND THE LINE CARRIETH AN OPTIONAL `and N test(s) skipped` INFIX, WHICH IS A THIRD FORM. *** *MEASURED on
+# `ReadinessT30Tests`: `Executed 22 tests, with 1 test skipped and 0 failures` -- a class that ran 22 arms, PASSED
+# all of them, and SKIPPED one (the EXTERNAL-BLOCKED pinned-library arm).* **A regex without that infix readeth
+# `run=None`, so a whole CLASS OF GREEN-AND-ONE-HONEST-SKIP baselines were booked `BASELINE_INVALID` (measured:
+# `T72-RC17-ios-engine-claims-pinned-without-binding`).** *The `skipped` count is a SEPARATE clause and is read
+# elsewhere; this pattern need only reach the failures figure, so it tolerareth any `and N test(s) skipped` infix.*
+EXEC_RE = re.compile(r"Executed ([0-9]+) tests?, with (?:[0-9]+ tests? skipped and )?([0-9]+) failures?")
 # the failed-case extractor, stated as one expression: each legacy line that
 # pronounces a method failed yields the method's name, and nothing else.
 FAILED_CASE_RE = re.compile(r"Test Case '-\[[^\]]*? ([A-Za-z][A-Za-z0-9_]*?)\]' failed")
