@@ -3,6 +3,7 @@ package io.godstone.mesh.rig
 import androidx.test.core.app.ApplicationProvider
 import io.godstone.mesh.delivery.DeliveryState
 import io.godstone.mesh.store.DeliveryRow
+import io.godstone.mesh.transport.BleLinkInfoCodec
 import io.godstone.mesh.transport.PeerId
 import io.godstone.mesh.transport.TransportResult
 import io.godstone.mesh.wire.v2.LogicalMessageIdentity
@@ -333,6 +334,9 @@ internal class RealTransportHostRigWorkerTest {
 
         class Record(val header: Map<String, Any?>, val payload: ByteArray) {
             val kind: String get() = header["kind"] as? String ?: ""
+            /// *** THE GATT CHARACTERISTIC THE COORDINATOR RELAYED -- a REAL RADIO CARRIETH IT WITH THE ATT WRITE, so
+            /// the receiving worker routes by it (linkInfo -> the link-info write handler, inbox -> the inbox door).
+            val characteristic: String get() = header["characteristic"] as? String ?: "inbox"
         }
 
         /** *** THE LAUNCH'S OWN PRECONDITIONS, CHECKED BEFORE ANY RESOURCE IS TOUCHED. *** */
@@ -980,9 +984,33 @@ internal class RealTransportHostRigWorkerTest {
                 emit("refuse", header = refusalHeader(mapOf("reason" to "the endpoint holds no seat")))
                 return
             }
-            // THE SEAT DECIDES THE DOOR: production's responder readeth a WRITE, the initiator a NOTIFICATION.
-            if (isInitiator) node.transport.handleCentralInboundNotification(address, rec.payload)
-            else node.transport.handleServerInboundWrite(address, rec.payload)
+            // *** *** THE CHARACTERISTIC DECIDES THE DOOR, NOT THE SEAT. *** ***
+            //
+            // *THE DEFECT THIS CLOSES, MEASURED BY RUNNING THE COORDINATOR: the iOS worker's FIRST egress is the
+            // LINK-INFO record (characteristic `linkInfo`), and this worker injected EVERY relayed frame at the INBOX
+            // door (`handleServerInboundWrite`) -- so the Android transport refused it as
+            // `ingest.write|malformed record` and the handshake never progressed.* **A REAL RADIO CARRIETH THE
+            // CHARACTERISTIC WITH THE ATT WRITE, and the stack routes it: `linkInfo` belongeth to the link-info
+            // write-handler (`BleServerOrchestrationDriver.onLinkInfoWriteRequest`, reached by `seatResponder`), and
+            // `inbox` to the inbox door.**
+            //
+            // *The coordinator relays the EXACT characteristic, so the routing is a fact about the record and not a
+            // guess.*
+            if (rec.characteristic == "linkInfo") {
+                // *The payload IS the peer's link-info record; `seatResponder`'s third parameter is the remote HINT,
+                // which the caller decodeth from that record through the production codec.*
+                val hint: ByteArray? = BleLinkInfoCodec.decode(rec.payload)?.nodeHint
+                if (hint == null) {
+                    emit("refuse", header = refusalHeader(mapOf("reason" to "the relayed link-info record did not decode")))
+                    return
+                }
+                rig.seatResponder(ENDPOINT, address, hint)
+            } else if (isInitiator) {
+                // THE SEAT DECIDES THE INBOX DOOR: production's responder readeth a WRITE, the initiator a NOTIFICATION.
+                node.transport.handleCentralInboundNotification(address, rec.payload)
+            } else {
+                node.transport.handleServerInboundWrite(address, rec.payload)
+            }
         }
 
         /**
