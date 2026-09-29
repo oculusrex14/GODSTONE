@@ -876,9 +876,20 @@ class Runner:
                 "A hint that moves the election would refuse the mismatched control for the WRONG REASON.")
 
         # *** THE IDENTITIES CROSS, AND EACH IS LEARNT FROM THE OTHER'S `hello` (NO PRE-TRUST IS WRITTEN). ***
+        #
+        # *** AND `real_hint` CROSSETH TOO, WHICH IS WHAT MAKETH THE MISMATCHED CONTROL MEASURE THE RIGHT BOUNDARY. ***
+        # *THE DEFECT THIS CLOSES, MEASURED: only `("node_id", "node_hint", "static_dh_pub", "binding")` were
+        # forwarded. `node_hint` IS the ADVERTISED hint -- the `mismatched` control lies there BY DESIGN -- so the iOS
+        # worker (which VALIDATES the peer's binding at its pin, `acceptPeer`) fell back to the LIE for the hint it
+        # authenticated against and refused the pin with `IdentityBindingValidator` BEFORE any session existed. That
+        # is a refusal at the PIN, not at the sealed-handshake boundary the control is about.* **The peer's REAL hint
+        # (`real_hint` on the same `hello`) is what the TOFU pin must authenticate against; the advertised hint is
+        # what the SEALED ROUND must later contradict.** *The Android worker does not pre-pin, which is why
+        # ios->android mismatched passed while android->ios could not: the fix maketh the two directions symmetric
+        # rather than changing what any control measures.*
         for me, them in ((sender, receiver_hello), (receiver, sender_hello)):
             me.send("peer", b"", **{k: them.header.get(k, "") for k in
-                                    ("node_id", "node_hint", "static_dh_pub", "binding")})
+                                    ("node_id", "node_hint", "real_hint", "static_dh_pub", "binding")})
         for me in (sender, receiver):
             me.send("setup", b"", seat="initiator" if me is sender else "responder")
         for me in (sender, receiver):

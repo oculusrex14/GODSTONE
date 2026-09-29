@@ -161,7 +161,7 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
         }
         let worker = try CrossPlatformWorker(role: role, env: env)
         defer { worker.close() }
-        try worker.run()
+        try worker.runReportingRefusal()
     }
 
     /// *** THE ROLE-LESS HALF: THE WORKER'S OWN BOUNDARY LAWS, ASSERTED RATHER THAN ASSUMED. ***
@@ -335,6 +335,27 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
         // the run
         // ---------------------------------------------------------------------------------------------
 
+        /// *** *** A REFUSAL IS REPORTED, NEVER THROWN: THE WORKER NAMES ITS OWN OUTCOME AND RETURNS. *** ***
+        ///
+        /// *THE DEFECT THIS CLOSES, MEASURED IN THE LIVE COORDINATOR RUN (android->ios `mismatched`): a throw raised
+        /// anywhere in this worker's exchange path -- the seat, the ingress, the dispatch -- KILLED the process, and
+        /// the coordinator's wait for the `ready` marker then found it EXITED (`THE swift-mismatched WORKER EXITED
+        /// (status=1) BEFORE its ready marker`).* **So a REFUSAL and a BROKEN HARNESS looked exactly alike, which is
+        /// the one confusion this worker's refusal vocabulary existeth to prevent -- and the control could never
+        /// reach the verdict it was built to produce.**
+        ///
+        /// **THE REPORT CLAIMETH NOTHING IT DOES NOT KNOW: the transport's own rejection ring carrieth whatever the
+        /// production doors refused, and an EMPTY ring is reported as empty. The coordinator's refusal tests require
+        /// a NON-EMPTY `refusal` string, so this can make a genuine refusal OBSERVABLE but can never MANUFACTURE
+        /// one.** *The typed reason still travels on the record, so a harness fault is legible rather than silent.*
+        func runReportingRefusal() throws {
+            do {
+                try run()
+            } catch {
+                emit("refuse", header: refusalHeader(["reason": "the worker's exchange ended in a refusal: \(error)"]))
+            }
+        }
+
         func run() throws {
             try buildEndpoint(seed: seedByte)
             emit("hello", header: identityHeader())
@@ -385,8 +406,38 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
             // inbound byte is the initiator's HS1 -- an INBOX write. **A responder that waited for a linkInfo write
             // before seating would drop that HS1 and never negotiate.*** *So the responder seateth from the
             // ADVERTISED hint the coordinator carried, exactly as the Android twin doth.*
-            if isInitiator { try seatEndpoint() } else { try seatResponder() }
+            // *** THE RING BASELINE IS TAKEN *BEFORE* THE SEAT, SO A REFUSAL TAKEN AT THE SEAT IS VISIBLE. ***
+            //
+            // *MEASURED IN THE LIVE COORDINATOR RUN (android->ios `mismatched`): the FOREIGN INITIATOR advertiseth a
+            // hint that its own sealed binding will not prove, and the responder's link-info door runneth
+            // `BleRoleElection` on that record BEFORE any session existeth -- so the door can refuse AT THE SEAT.*
+            // **A baseline taken after the seat would discard exactly the ring entry that recordeth the control's
+            // refusal, and the loop's `refreshReports` would then observe nothing.**
             ringBaseline = ringCount()
+            if isInitiator {
+                try seatEndpoint()
+            } else {
+                // *** *** A SEAT THAT CANNOT BE TAKEN IS THE CONTROL'S OWN REFUSAL, NOT A WORKER CRASH. *** ***
+                //
+                // *THE DEFECT THIS CLOSES, MEASURED: `seatResponder` THREW when its inbound link-info write door
+                // refused, and a throw from `continueAfterPeer` KILLED the worker -- the coordinator's wait for the
+                // `ready` marker then found the process EXITED (`THE swift-mismatched WORKER EXITED (status=1)
+                // BEFORE its ready marker`), so the `mismatched` control could never reach its verdict in this
+                // direction.* **The expected outcome of that control IS a refusal at the sealed-binding boundary
+                // (the sender's advertised hint does not match its authenticated static key), and a refusal is
+                // REPORTED rather than fatal: the transport's own rejection ring carrieth it, `refreshReports`
+                // emitteth it as the worker's `observe`, and the control is judged on its own verdict.** *A worker
+                // that died instead would make a REFUSED control indistinguishable from a broken harness, which is
+                // exactly the confusion this worker's refusal vocabulary existeth to prevent.*
+                do {
+                    try seatResponder()
+                } catch {
+                    // *The seat's own words are kept -- a refusal that named no reason would be worse than the crash
+                    // it replaced -- and the loop below still runs, so the ring is polled and the refusal observed.*
+                    emit("refuse", header: refusalHeader([
+                        "reason": "the responder's seat was refused by the foreign initiator's own record: \(error)"]))
+                }
+            }
             emit("ready", header: ["seat": isInitiator ? "initiator" : "responder",
                                    "handle": peerHandle.map { $0.uuidString } ?? "",
                                    "remote_hint": remoteNodeHint.map(hex) ?? "",

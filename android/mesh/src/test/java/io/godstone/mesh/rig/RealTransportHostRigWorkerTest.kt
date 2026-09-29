@@ -125,6 +125,27 @@ internal class RealTransportHostRigWorkerTest {
     }
 
     /**
+     * *** ONE `refuse` RECORD FROM THE WORKER'S OWN BOUNDARY, SO A REFUSAL IS OBSERVABLE RATHER THAN FATAL. ***
+     *
+     * *The exchange's own `emit` is a member of [CrossPlatformWorker]; this entry standeth on the test class so the
+     * top-level catch can speak after the worker object (and its streams) still stand.* **An empty reason is sent as
+     * empty: the coordinator's refusal tests require a non-empty `refusal`, so this can make a genuine refusal
+     * visible but can never manufacture a verdict.**
+     */
+    private fun emitRefusal(reason: String) {
+        val outPath = System.getProperty(WorkerFraming.OUT) ?: return
+        runCatching {
+            FileOutputStream(outPath).use { out ->
+                out.write(WorkerFraming.frame(
+                    mapOf("v" to 1, "kind" to "refuse", "platform" to "android", "reason" to reason),
+                    ByteArray(0),
+                ))
+                out.flush()
+            }
+        }
+    }
+
+    /**
      * *** ONE TEST METHOD. With `godstone.integration.role` set it IS the worker; without it, the boundary contract
      * above is the only arm. *** *The role-less run therefore never blocks on a FIFO, and the coordinator's own
      * `-Dgodstone.integration.role=...` is what maketh this the worker.*
@@ -137,7 +158,19 @@ internal class RealTransportHostRigWorkerTest {
             null -> return
             "crash-prepare" -> CrashRoles.prepare(props)
             "crash-recover" -> CrashRoles.recover(props)
-            else -> WorkerLauncher.worker(props).use { it.run() }
+            else -> try {
+                WorkerLauncher.worker(props).use { it.run() }
+            } catch (refused: WorkerFraming.Refused) {
+                // *** *** A REFUSAL IS REPORTED, NEVER THROWN: THE WORKER NAMES ITS OWN OUTCOME AND RETURNS. *** ***
+                //
+                // *THE TWIN OF THE iOS REPAIR, AND THE SAME MEASURED CLASS: a throw anywhere in the exchange path
+                // KILLED the JVM, the coordinator's wait for `ready`/`observe` then reported a FAILED WORKER LAUNCH,
+                // and a REFUSAL became indistinguishable from a broken harness.* **The record carrieth whatever the
+                // transport's own rejection ring holds -- an empty ring is reported empty, so this can make a
+                // genuine refusal OBSERVABLE but can never MANUFACTURE one** (the coordinator's refusal tests require
+                // a non-empty reason). *The typed reason still travels, so a harness fault stayeth legible.*
+                emitRefusal("the worker's exchange ended in a refusal: ${refused.message}")
+            }
         }
     }
 
@@ -891,24 +924,31 @@ internal class RealTransportHostRigWorkerTest {
             // compare the local hint with itself -> `.tie` -> `RejectWrite("Tie or invalid role election")`** --
             // measured in the coordinator's live run. The parameter is what the FOREIGN INITIATOR wrote on the
             // link, which is its own advertised hint. Same for `seatInitiator`.*
+            ringBaseline = ringCount()
             val peerAdvertised = remoteHint ?: ByteArray(0)
             if (isInitiator) {
                 rig.seatInitiator(ENDPOINT, address, peerAdvertised)
             } else {
-                rig.seatResponder(ENDPOINT, address, peerAdvertised)
-                // *** THE SEAT IS ALREADY TAKEN, SO A RELAYED LINK-INFO RECORD IS A NO-OP RATHER THAN A SECOND ADMISSION. ***
+                // *** *** A SEAT THE FOREIGN INITIATOR'S OWN RECORD REFUSETH IS THE CONTROL'S OWN REFUSAL. *** ***
                 //
-                // *MEASURED, in the coordinator's live run: the iOS worker's eager seat emit eth its link-info record
-                // ONCE, and the relay carrieth it to this responder AFTER this ladder hath already seated the relation
-                // from the advertised hint -- **so the relayed record's `seatResponder` answered
-                // `RejectConnection("Client is already ACTIVE")`, which the rig's own `check` turneth into an exception
-                // that KILLED the worker mid-handshake (`receiver=[]` `sender=[]`).*** *The relation already standeth in
-                // exactly the shape that record would establish (the same remote hint, the same ladder), and
-                // production's own link-info door accepteth the duplicate (`AcceptDuplicateWrite`), so the repeat is a
-                // no-op.*
-                seated = true
+                // *THE TWIN OF THE iOS REPAIR, AND THE SAME MEASURED CLASS: `seatResponder` RUNNETH
+                // `BleRoleElection.elect(localHint, remoteHint)` ON THE RELAYED LINK-INFO, so a foreign initiator
+                // whose advertised record the election (or the link-info door) refuseth -- the `mismatched`
+                // control's exact shape on this side -- would turn the rig's own `check` into a THROWN exception that
+                // KILLED the worker.* **The refusal is REPORTED (the transport's ring carrieth the door's own words,
+                // and `refreshReports` emitteth it) rather than fatal, so the control reacheth its verdict instead
+                // of looking like a broken harness.**
+                try {
+                    rig.seatResponder(ENDPOINT, address, peerAdvertised)
+                    // *THE SEAT IS ALREADY TAKEN, SO A RELAYED LINK-INFO RECORD IS A NO-OP RATHER THAN A SECOND
+                    // ADMISSION. (MEASURED: repeating it answered `RejectConnection("Client is already ACTIVE")`
+                    // and killed the worker mid-handshake.)*
+                    seated = true
+                } catch (refused: Throwable) {
+                    emit("refuse", header = refusalHeader(mapOf(
+                        "reason" to "the responder's seat was refused by the foreign initiator's own record: $refused")))
+                }
             }
-            ringBaseline = ringCount()
             emit("ready", header = mapOf("seat" to if (isInitiator) "initiator" else "responder",
                                          "handle" to address,
                                          "remote_hint" to hex(remoteHint ?: ByteArray(0)),
