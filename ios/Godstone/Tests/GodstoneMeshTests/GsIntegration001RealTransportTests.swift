@@ -1453,6 +1453,81 @@ final class GsIntegration001RealTransportTests: XCTestCase {
         }
     }
 
+    /// *** `testGSINT001ATwoRelationResponderNeverCrossDelivers`. ***
+    ///
+    /// **THE DEFECT THIS CLOSES: the responder's `onUpdate` closure was installed ONCE PER LINK, EACH TIME
+    /// OVERWRITING THE LAST, and it ignored the destination-central argument (`bytes, _, uuid`).**
+    ///
+    /// *So when ONE node carrieth TWO relations, its single manager's `updateValue` closure belonged to whichever
+    /// link was wired last, and a value staged for the OTHER central would be delivered to the WRONG initiator --
+    /// a cross-delivery, precisely the misrouting this programme hunts. A real radio cannot do that: the stack
+    /// carries the subscribed central with the value.*
+    ///
+    /// **THE ARM IS THE ADVERSARIAL ARRANGEMENT**: one hub opens BOTH hops (which the production hint election
+    /// produceth when the hub holdeth the smallest hint), and the two INITIATORS each send a DISTINCT body. Each
+    /// initiator's durable row must hold ONLY ITS OWN frame -- a cross-delivery would put the other's msgId in its
+    /// store, and the msgId assertion makes that visible rather than a byte-count coincidence.
+    func testGSINT001ATwoRelationResponderNeverCrossDelivers() throws {
+        let r = RealTransportHostRig()
+        defer { r.tearDown() }
+        try r.makeNode(label: "m1", seedByte: 0x11, staticPrivByte: 0x12)
+        try r.makeNode(label: "m2", seedByte: 0x21, staticPrivByte: 0x22)
+        try r.makeNode(label: "m3", seedByte: 0x31, staticPrivByte: 0x32)
+
+        // *** THE HUB IS THE LEXICOGRAPHICALLY SMALLEST HINT, BY MEASUREMENT RATHER THAN A SEED GUESS. ***
+        let labels = ["m1", "m2", "m3"]
+        let hints = labels.map { ($0, r.node($0)!.identity.nodeHint) }
+        guard let hub = hints.min(by: { $0.1.lexicographicallyPrecedes($1.1) })?.0 else {
+            return XCTFail("the three hints must be orderable")
+        }
+        let peers = labels.filter { $0 != hub }
+        XCTAssertEqual(r.opener(of: hub, peers[0]), hub,
+                       "the hub must open BOTH hops -- the arrangement the old per-link overwrite needed")
+        XCTAssertEqual(r.opener(of: hub, peers[1]), hub, "and the second one too")
+
+        let first = try r.link(hub, peers[0])
+        let second = try r.link(hub, peers[1])
+        XCTAssertTrue(r.waitUntil { r.isLinkReady(first) && r.isLinkReady(second) },
+                      "both relations must be ready on the hub's exact handles; "
+                      + "detail \(r.linkReadinessDetail(first)) / \(r.linkReadinessDetail(second))")
+        // *** AND THE TWO RELATIONS HAVE DISTINCT HANDLES, so a route keyed by the central is a real distinction. ***
+        XCTAssertNotEqual(first.bHandle, second.bHandle,
+                          "one responder must name two relations by two DIFFERENT inbound central handles")
+
+        // *** EACH INITIATOR SENDS ITS OWN BODY FROM ITS OWN SIDE OF THE HUB. ***
+        // *The hub is the OPENER, so it carrieth the outbound relation; the two PEERS are the ones whose messages
+        // the hub must route by destination central.*
+        let bodies = ["alpha-body", "beta-body"]
+        var msgIds: [Data] = []
+        for (i, peer) in peers.enumerated() {
+            let link = (peer == peers[0]) ? first : second
+            let sender = try XCTUnwrap(r.opener(of: hub, peer), "the opener of hop \(i)")
+            let receiver = try XCTUnwrap(r.peer(of: hub, peer), "and its peer")
+            XCTAssertEqual(sender, hub, "the hub must be the sender on both hops")
+            _ = link
+            let sent = try awaitRigSync { try await r.sendDirect(from: sender, to: receiver,
+                                                                 plaintext: Data(bodies[i].utf8)) }
+            XCTAssertEqual(sent.result, .handedToRelays(1),
+                           "hop \(i) must be handed to its one relay; observed \(sent.result)")
+            XCTAssertGreaterThan(sent.egressBytes, 0, "hop \(i)'s egress must be non-zero")
+            msgIds.append(sent.frame.msgId)
+        }
+        XCTAssertNotEqual(msgIds[0], msgIds[1], "the two sends must be distinct frames")
+
+        // *** THE DISCRIMINATOR: EACH INITIATOR'S STORE HOLDS **ONLY ITS OWN** msgID. ***
+        // *A cross-delivery would land the OTHER hop's frame in this store, and the exact-id assertion sees it.*
+        for (i, peer) in peers.enumerated() {
+            XCTAssertTrue(
+                r.waitUntil { r.messageStore(peer).allHeldMsgIds().contains(msgIds[i]) },
+                "*** HOP \(i)'S OWN FRAME MUST REACH ITS OWN INITIATOR. *** store=\(r.messageStore(peer).allHeldMsgIds().count) "
+                    + "ring=\(r.ring(peer))")
+            XCTAssertFalse(
+                r.messageStore(peer).allHeldMsgIds().contains(msgIds[1 - i]),
+                "*** AND IT MUST **NOT** HOLD THE OTHER HOP'S FRAME -- that would be the CROSS-DELIVERY the "
+                    + "per-link-overwrite dispatcher produced. An arm that checked only 'a row exists' would miss it. ***")
+        }
+    }
+
     /// *** THE RIG MUST **DEALLOCATE** AFTER `tearDown`, EVEN WITH A REAL PENDING DELIVERY -- SO THE
     /// `unowned`-AFTER-DEALLOC CRASH IS NOT TRADED FOR A LEAK. ***
     ///

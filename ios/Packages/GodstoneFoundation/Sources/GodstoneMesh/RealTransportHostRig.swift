@@ -326,6 +326,8 @@ public final class RealTransportHostRig {
     // ============================================================================================
 
     internal let fabric = RadioFabric()
+    /// *** THE RESPONDER ROUTE REGISTRY: (responder, destination central) -> the link's route. ***
+    internal var responderDispatch: [ResponderKey: ResponderRoute] = [:]
     /// *** THE DELIVERY IS ASYNCHRONOUS, AND THAT IS A CORRECTNESS REQUIREMENT RATHER THAN A CONVENIENCE. ***
     ///
     /// **MEASURED: DELIVERING ON THE CALLER'S THREAD DEADLOCKED THE TWO TRANSPORTS.** *Each transport's reductions run
@@ -709,12 +711,59 @@ public final class RealTransportHostRig {
                           characteristic: uuid == BleTransport.linkInfoCharacteristicUuid ? "linkInfo" : "inbox")
             queue.async { [self] in relay.deliverInitiatorToResponder(bytes: bytes, uuid: uuid) }
         }
-        responder.factory.lastPeripheralManager?.onUpdate = { [self] bytes, _, uuid in
-            // *The onUpdate closure is called DURING the responder's own send; recording here as well would be a
-            // second record for one write, so the inbound leg records inside the relay only.*
-            queue.async { [self] in relay.deliverResponderToInitiator(bytes: bytes, uuid: uuid) }
-        }
+        // *** *** ONE MANAGER DISPATCHER OVER A LINK REGISTRY, ROUTED BY THE DESTINATION CENTRAL. *** ***
+        //
+        // *THE DEFECT THIS CLOSES, MEASURED BY READING THE OLD WIRING: `responder.factory.lastPeripheralManager
+        // ?.onUpdate` was set **ONCE PER LINK, EACH TIME OVERWRITING THE LAST**, and the closure IGNORED the
+        // destination-central argument (`bytes, _, uuid`).* **So when one responder node carrieth TWO relations, its
+        // single manager's `updateValue` closure belongeth to whichever link was wired last, and a value staged for
+        // the OTHER central would be delivered to the wrong initiator -- a CROSS-DELIVERY, which is precisely the
+        // misrouting this programme hunts.** *A real radio cannot do that: the stack carries the subscribed central
+        // with the value, and the receiver's OWN connection is addressed.*
+        //
+        // **SO THE MANAGER GETS ONE DISPATCHER (installed once per factory), AND IT LOOKETH UP THE LINK BY THE
+        // DESTINATION CENTRAL THE VALUE WAS STAGED FOR.** *`unregisterResponderLink` removeth a retired link's entry,
+        // so a REPLACEMENT connection for the same central cannot inherit the old link's epoch or delegate -- the
+        // other half of the same defect.*
+        installResponderDispatcher(for: responder)
+        responderDispatch[ResponderKey(responderLabel: responder.label, centralId: rHandle)] =
+            ResponderRoute(relay: relay, epoch: responder.ble.currentTransportEpoch)
         _ = iPM
+    }
+
+    /// One entry per (responder node, destination central) -- the registry the manager dispatcher walketh.
+    internal struct ResponderKey: Hashable {
+        let responderLabel: String
+        let centralId: UUID
+    }
+
+    /// *** AN IMMUTABLE PER-LINK PROVENANCE RECORD: the relay, and the EPOCH the link was admitted under. ***
+    ///
+    /// *A queued delivery keeps THIS epoch rather than reading the receiver's CURRENT one at dequeue -- so a record
+    /// that crossed an epoch boundary can be REFUSED instead of being handed to a replacement connection wearing the
+    /// new epoch's blessing.*
+    internal struct ResponderRoute {
+        let relay: DeliveryRelay
+        let epoch: UInt64
+    }
+
+    /// The dispatcher is installed ONCE per responder factory, and it is the ONLY writer of `onUpdate`.
+    private func installResponderDispatcher(for responder: Node) {
+        for manager in responder.factory.peripheralManagers {
+            manager.onUpdate = { [self] bytes, centralId, uuid in
+                // *** THE DESTINATION CENTRAL IS THE ROUTING KEY, NOT "THE LAST WIRED LINK". ***
+                let key = ResponderKey(responderLabel: responder.label, centralId: centralId)
+                guard let route = responderDispatch[key] else { return }
+                deliveryQueue.async { [self] in
+                    route.relay.deliverResponderToInitiator(bytes: bytes, uuid: uuid, admittedEpoch: route.epoch)
+                }
+            }
+        }
+    }
+
+    /// *** RETIRE A LINK'S ROUTE, so a replacement connection cannot inherit it. ***
+    internal func unregisterResponderLink(responderLabel: String, centralId: UUID) {
+        responderDispatch.removeValue(forKey: ResponderKey(responderLabel: responderLabel, centralId: centralId))
     }
 
     /// *** THE TWO DELIVERY LEGS, IN ONE `@unchecked Sendable` BOX SO THE QUEUE CLOSURE CAPTURETH ONLY SAFE VALUES. ***
@@ -757,8 +806,18 @@ public final class RealTransportHostRig {
             }
         }
 
-        /// The responder's manager -> the initiator's real peripheral entry.
-        func deliverResponderToInitiator(bytes: Data, uuid: CBUUID) {
+        /// *** THE RESPONDER'S MANAGER -> THE INITIATOR'S REAL PERIPHERAL ENTRY, WITH THE ADMITTED EPOCH. ***
+        ///
+        /// *`admittedEpoch` is the epoch this link was admitted under, carried IN THE ROUTE rather than read from the
+        /// receiver at dequeue.* **A queued record whose epoch no longer matcheth the link it was staged for is
+        /// REFUSED here rather than delivered to a replacement connection -- the stale-epoch refusal.** *Its
+        /// observable consequence: after a link is retired (`unregisterResponderLink`) or its epoch advanced, an
+        /// in-flight queued record reacheth NO recipient, so a REPLACEMENT relation cannot inherit stale traffic.*
+        func deliverResponderToInitiator(bytes: Data, uuid: CBUUID, admittedEpoch: UInt64) {
+            // *** THE STALE-EPOCH GUARD, CHECKED AT DEQUEUE AGAINST THE LINK'S OWN EPOCH. ***
+            // *The route carrieth the epoch the link was admitted under; a record dequeued after the epoch moved is
+            // stale and is dropped rather than substituted into the replacement connection.*
+            guard responder.ble.currentTransportEpoch == admittedEpoch else { return }
             guard let iDelegate = initiator.ble.getRelationDelegate(iHandle) else { return }
             fabric.record(from: responder.label, to: initiator.label, bytes: bytes,
                           characteristic: uuid == BleTransport.linkInfoCharacteristicUuid ? "linkInfo" : "inbox")
@@ -1139,5 +1198,6 @@ public final class RealTransportHostRig {
         fabric.clear()
         egressByLabel.removeAll()
         centralPins.removeAll()
+        responderDispatch.removeAll()
     }
 }
