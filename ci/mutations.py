@@ -2081,6 +2081,16 @@ def _run_harness(entry, wt_path, timeout=2400):
         skipped = 0
         fails = 0
         failed = set()
+        # *** THE ROSTER IS RENDERED INTO THE BLOB, BECAUSE GRADLE `-q` PRINTS NOTHING ON A GREEN RUN. ***
+        #
+        # *THE DEFECT THIS CLOSES, MEASURED: the jvm branch deriveth its verdict from the JUnit XML but wrote the
+        # GRADLE output as the phase blob -- and `-q` emiteth NOTHING when the build succeedeth, so the BASELINE and
+        # RESTORED phase logs were EMPTY FILES (`e3b0c442...`, the empty-string digest) for 26 of 49 required rods.*
+        # **A kill whose baseline and restored logs are empty is EVIDENCE-INCOMPLETE: a reader cannot re-check that
+        # the unmutated tree passed or that the restoration returned to green -- the manifest's `ok=true` would be the
+        # only witness, which is precisely the downstream-substitution trap.** *So the roster the classifier READ is
+        # rendered back into the blob as its own evidence, per suite and per case, and travels into the phase log.*
+        roster_lines: list[str] = []
         if os.path.isdir(xml_dir):
             for name in sorted(os.listdir(xml_dir)):
                 if not (name.startswith("TEST-") and name.endswith(".xml")):
@@ -2089,12 +2099,20 @@ def _run_harness(entry, wt_path, timeout=2400):
                 m = re.search(r'tests="([0-9]+)" skipped="([0-9]+)" failures="([0-9]+)" errors="([0-9]+)"', t)
                 if not m:
                     continue
+                roster_lines.append(
+                    "TEST-SUITE %s tests=%s skipped=%s failures=%s errors=%s"
+                    % (name, m.group(1), m.group(2), m.group(3), m.group(4)))
                 run += int(m.group(1))
                 skipped += int(m.group(2))
                 fails += int(m.group(3)) + int(m.group(4))
+                for cn in re.findall(r'<testcase name="([^"]+)"[^>]*/>', t):
+                    roster_lines.append("TEST-CASE PASS %s" % cn)
                 for cn, _det in re.findall(
                         r'<testcase name="([^"]+)"[^>]*>\s*<(?:failure|error)[^>]*message="([^"]*)"', t):
                     failed.add(cn)
+                    roster_lines.append("TEST-CASE FAIL %s" % cn)
+        if roster_lines:
+            blob = blob + "\n" + "\n".join(roster_lines) + "\n"
         return {"build_exit": build_exit, "run": (run if run else None),
                 "skipped": skipped, "failed": failed, "blob": blob}
     if entry["platform"] == "python":

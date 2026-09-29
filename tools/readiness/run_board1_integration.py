@@ -65,6 +65,7 @@ import os
 import platform as platform_module
 import select
 import shutil
+import signal
 import struct
 import subprocess
 import sys
@@ -417,17 +418,55 @@ class Worker:
         env = dict(os.environ)
         env.update(self.spec.env)
         self._log_fh = self.log_path.open("wb")
+        # *** EACH WORKER GETS ITS OWN PROCESS GROUP, SO A KILL REACHETH ITS GRANDCHILDREN. ***
+        #
+        # *THE DEFECT THIS CLOSES, MEASURED: a hosted coordinator run can leave an ORPHANED child behind -- an
+        # `xctest` cross-platform worker, PPID 1, ZERO CPU for 2h15m, blocked on a FIFO whose coordinator was gone.
+        # `start_new_session=True` putteth the worker in its own session/group, so `close()`'s group-kill reacheth
+        # every process the worker spawned (a Gradle wrapper's Java, that JVM's `xctest` child) rather than only the
+        # process this object directly holds -- **the Swift worker IS `xctest` itself, and the Android worker's tree
+        # is Gradle -> java -> child, so terminating only `self.process` leaveth its descendants alive.*** *A worker
+        # that outlives its coordinator holdeth the shared `.build` bundle and the FIFOs, wedging the next run.*
         self.process = subprocess.Popen(  # noqa: S603 -- argv is constructed here, never a shell string
             self.spec.argv,
             cwd=str(self.spec.cwd) if self.spec.cwd else str(REPO),
             env=env,
             stdout=self._log_fh,
             stderr=subprocess.STDOUT,
+            start_new_session=True,
         )
+        # *** THE GROUP ID IS CAPTURED NOW, BECAUSE AFTER `wait()` REAPS THE LEADER `os.getpgid(pid)` FAILETH. ***
+        # *A group whose leader is gone can still hold living descendants; signalling by the pid we saved (rather than
+        # re-deriving it from a reaped pid) is what reacheth them.*
+        try:
+            self._pgid: Optional[int] = os.getpgid(self.process.pid)
+        except OSError:
+            self._pgid = None
         self._reader = threading.Thread(target=self._drain, name=f"drain-{self.spec.name}", daemon=True)
         self._reader.start()
 
     # ---- the reader -----------------------------------------------------------------------------------------
+
+    def _signal_group(self, sig: int) -> None:
+        """Signal the WHOLE process group of the worker, ignoring the case where it is already gone.
+
+        *`start_new_session=True` made `self.process.pid` the group leader, so `os.killpg(pid, sig)` reacheth every
+        descendant the worker spawned. The calls are BEST-EFFORT: a group that already exited raiseth `ProcessLookupError`
+        (or `PermissionError` for a group this user no longer owns), and neither is an error here -- the goal is to
+        leave nothing alive, and a group that is gone is exactly that.*
+        """
+        if self.process is None:
+            return
+        pgid = getattr(self, "_pgid", None)
+        if pgid is None:
+            try:
+                pgid = os.getpgid(self.process.pid)
+            except OSError:
+                return
+        try:
+            os.killpg(pgid, sig)
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
 
     def _drain(self) -> None:
         while not self._stop.is_set():
@@ -527,12 +566,17 @@ class Worker:
             try:
                 self.process.wait(timeout=60)
             except subprocess.TimeoutExpired:
-                self.process.terminate()
+                self._signal_group(signal.SIGTERM)
                 try:
                     self.process.wait(timeout=15)
                 except subprocess.TimeoutExpired:
-                    self.process.kill()
+                    self._signal_group(signal.SIGKILL)
                     self.process.wait(timeout=15)
+        # *** AND EVEN A WORKER THAT EXITED ITSELF MAY HAVE LEFT DESCENDANTS: reap the WHOLE GROUP once more. ***
+        # *The Swift worker IS the `xctest` process; the Android worker is `gradlew` -> its own JVM -> a Gradle
+        # daemon-less build's children. A parent that exited is not proof its tree did, and the leaked `xctest` this
+        # close() repair existeth for was exactly such a grandchild.*
+        self._signal_group(signal.SIGKILL)
         if self._reader:
             self._reader.join(timeout=10)
         try:
