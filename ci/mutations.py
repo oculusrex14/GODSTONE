@@ -2765,6 +2765,10 @@ def run_selftest(emit=None):
         ("\t Executed 13 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds", 13, 0),
         ("\t Executed 7 tests, with 3 failures (0 unexpected) in 1.0 (1.0) seconds", 7, 3),
         ("\t Executed 1 test, with 1 failure (0 unexpected) in 0.1 (0.1) seconds", 1, 1),
+        # *** THE SKIPPED INFIX: a whole class green WITH one honest skip -- measured on ReadinessT30Tests, whose
+        # pinned-library arm is EXTERNAL-BLOCKED. A pattern blind to the infix booked it BASELINE_INVALID. ***
+        ("\t Executed 22 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.017 (0.017) seconds", 22, 0),
+        ("\t Executed 7 tests, with 2 tests skipped and 1 failure (0 unexpected) in 0.2 (0.2) seconds", 7, 1),
     )
     parse_bad = []
     for text, want_run, want_fail in _PARSE_CASES:
