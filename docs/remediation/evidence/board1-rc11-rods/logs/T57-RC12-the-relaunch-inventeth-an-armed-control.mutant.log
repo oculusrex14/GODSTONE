@@ -10,4 +10,4 @@ Execution failed for task ':app:testLightDebugUnitTest'.
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 16s
+BUILD FAILED in 14s
