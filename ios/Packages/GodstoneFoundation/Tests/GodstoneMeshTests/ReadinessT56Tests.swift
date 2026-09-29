@@ -140,14 +140,20 @@ fileprivate final class AuthorityDouble: TrustAuthorityPort, @unchecked Sendable
             acceptedGeneration: row.acceptedGeneration, trustLevel: .userVerified))
     }
 
-    func confirmVerified(nodeId: Data, fingerprintHex: String) -> ConfirmOutcome {
+    /// *** THE CONFIRMATION DOUBLE NOW CARRIES THE DISPLAYED GENERATION, SO IT CAN REFUSE A STALE DISPLAY. ***
+    /// *The port's signature grew the generation because a CAS guarded only on a hex digest cannot tell "the
+    /// displayed candidate" from "the current one" -- and the real repository refuses a generation that moved. The
+    /// double must mirror that clause, or an arm asserting "a stale confirmation changes nothing" would pass against a
+    /// double that never had the check.*
+    func confirmVerified(nodeId: Data, fingerprintHex: String,
+                         displayedGeneration: UInt32) -> ConfirmOutcome {
         guard let row = rows[nodeId] else { return .peerNotFound }
         if confirmRefusals { return .refused("the durable store refused the confirmation") }
+        if row.trust == .revoked { return .revoked }
+        // *** THE DISPLAYED GENERATION AND THE DIGEST MUST BOTH NAME **THIS** ROW. ***
+        guard row.acceptedGeneration == displayedGeneration else { return .rotatedSinceDisplayed }
+        guard row.acceptedKeyDigest.lowercased() == fingerprintHex.lowercased() else { return .mismatch }
         if row.trust == .verified { return .alreadyVerified }
-        if row.trust == .revoked { return .refused("revoked") }
-        if row.acceptedKeyDigest.lowercased() != fingerprintHex.lowercased() {
-            return .mismatch
-        }
         row.trust = .verified
         return .confirmed(nodeId: nodeId, acceptedGeneration: row.acceptedGeneration)
     }

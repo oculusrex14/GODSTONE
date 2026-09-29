@@ -9,9 +9,10 @@ import GodstoneCore
 ///   (which calls `tx.approvePendingRotationGuarded(...)`).
 /// - `revokePeer` delegates to `PeerIdentityRepository.revokePeer`
 ///   (which calls `tx.revokePeerGuarded(...)`).
-/// - `confirmVerified`: this isle exposes no durable fingerprint-confirmation CAS;
-///   promotion to userVerified is unclaimed pending an ADR (as witnessed by ReadinessT56Tests:585).
-///   Truthfully returns `.refused(...)` rather than breaking model law 2 with a local fake.
+/// - `confirmVerified` delegates to `PeerIdentityRepository.confirmVerified`, which performs the
+///   guarded TOFU -> USER_VERIFIED CAS inside the SAME serialized transaction the other mutations use.
+///   THE WIRE PROTOCOL IS UNCHANGED: it is a durable local, out-of-band confirmation, captured against
+///   the EXACT node/generation/fingerprint the user read, so a stale confirmation changes nothing.
 internal final class TrustAuthorityAdapter: TrustAuthorityPort {
     internal let repository: PeerIdentityRepository
     private var currentWipeState: WipeProgressState = .idle
@@ -70,8 +71,37 @@ internal final class TrustAuthorityAdapter: TrustAuthorityPort {
         sessionInvalidator?(nodeId)
     }
 
-    func confirmVerified(nodeId: Data, fingerprintHex: String) -> ConfirmOutcome {
-        .refused("this isle exposes no durable fingerprint-confirmation CAS; promotion is unclaimed pending an ADR")
+    /// *** THE CONFIRMATION IS CARRIED BY THE CAPTURED GENERATION, WHICH THE PORT MUST NOW PASS. ***
+    ///
+    /// *The port's old signature took only the hex digest, which is not enough to guard a CAS: the generation is the
+    /// field that telleth "the displayed candidate" from "the current one". So `TrustAuthorityPort.confirmVerified`
+    /// now taketh the displayed generation too, and the ADAPTER passes both through to the repository -- which
+    /// comparess the fingerprint against the ROW's own key inside the same transaction.*
+    func confirmVerified(nodeId: Data, fingerprintHex: String,
+                         displayedGeneration: UInt32) -> ConfirmOutcome {
+        switch repository.confirmVerified(nodeId: nodeId,
+                                          expectedAcceptedGeneration: displayedGeneration,
+                                          expectedFingerprintHex: fingerprintHex) {
+        case .confirmed(let view):
+            return .confirmed(nodeId: view.nodeId, acceptedGeneration: view.acceptedGeneration)
+        case .alreadyVerified(let view):
+            _ = view
+            return .alreadyVerified
+        case .peerNotFound:
+            return .peerNotFound
+        case .revoked:
+            return .revoked
+        case .quarantined:
+            return .rotatedSinceDisplayed
+        case .stale:
+            return .rotatedSinceDisplayed
+        case .corrupt(let reason):
+            return .refused("the durable record is corrupt: \(reason)")
+        case .storageFailure:
+            return .refused("the durable authority could not be reached")
+        case .invalidArgument(let why):
+            return .refused(why)
+        }
     }
 
     func applyBinding(nodeId: Data, staticDhPublicKey: Data, signature: Data) -> BindingImportOutcome {

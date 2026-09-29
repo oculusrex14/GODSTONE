@@ -327,6 +327,7 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         var hookAdvancePending: ((Data, Data, Data, Int64, Int32, Data, Int64, Data, Int64) throws -> Int)?
         var hookApprovePending: ((Data, Data, Data, Int64, Int32, Data, Int64) throws -> Int)?
         var hookRevoke: ((Data, Data, Data, Int64, Int32, Data?, Int64?) throws -> Int)?
+        var hookConfirmVerified: ((Data, Data, Data, Int64) throws -> Int)?
         var hookInTx: (((PeerIdentityStore) throws -> Any) throws -> Any)?
 
         var faultAfterInsert: Bool = false
@@ -351,6 +352,7 @@ final class PeerIdentityRepositoryTests: XCTestCase {
                 txHookStore.hookAdvancePending = self.hookAdvancePending
                 txHookStore.hookApprovePending = self.hookApprovePending
                 txHookStore.hookRevoke = self.hookRevoke
+                txHookStore.hookConfirmVerified = self.hookConfirmVerified
                 txHookStore.faultAfterInsert = self.faultAfterInsert
                 txHookStore.faultAfterInitialPending = self.faultAfterInitialPending
                 txHookStore.faultAfterAdvancePending = self.faultAfterAdvancePending
@@ -483,6 +485,23 @@ final class PeerIdentityRepositoryTests: XCTestCase {
                 throw InjectedStorageFault()
             }
             return affected
+        }
+
+        /// *** THE CONFIRMATION CAS, ON THE TEST CONFORMER: DELEGATED TO THE PARENT'S REAL SQL ROAD. ***
+        /// *A conformer that returned a constant would make every confirmation arm vacuous, so this forwards to the
+        /// same guarded statement the production store uses (the hook lets a court provoke a storage fault).*
+        func confirmVerifiedGuarded(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64
+        ) throws -> Int {
+            if let hook = hookConfirmVerified {
+                return try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration)
+            }
+            return try delegate.confirmVerifiedGuarded(nodeId: nodeId, signingPub: signingPub,
+                                                       acceptedStatic: acceptedStatic,
+                                                       acceptedGeneration: acceptedGeneration)
         }
 
         func revokePeerGuarded(
@@ -2077,5 +2096,163 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.revoked.persistedCode)
         XCTAssertNil(row?.pendingGenerationRaw)
         XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
+    }
+
+    // =========================================================================
+    // GS-UX-001 (`fingerprint-confirmation`): THE LOCAL OUT-OF-BAND CAS
+    // =========================================================================
+
+    /// *** A VALID CONFIRMATION PROMOTES TOFU -> USER_VERIFIED, AND THE PROMOTION SURVIVES A REOPEN. ***
+    ///
+    /// *THE GAP THIS CLOSES: both schemas carried `USER_VERIFIED = 2` and NO guarded operation could reach it, so
+    /// `TrustAuthorityAdapter.confirmVerified` refused unconditionally -- a user could SEE a verified fingerprint and
+    /// never confirm it.* **This arm proveth the promotion is a DURABLE authority transition (read back from a FRESH
+    /// store over the same file) and not a projection.***
+    func testConfirmVerifiedPromotesToUserVerifiedAndSurvivesReopen() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let binding = makeBinding(seed: seedA, generation: 3, staticDhPriv: staticPrivA)
+        let digest = ExactRotationCandidateRef.digestHex(binding.staticDhPublicKey)
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+        XCTAssertEqual(repo.applyValidatedBinding(binding), .firstSeenPinned)
+        // *The row stands at TOFU, so the promotion has somewhere to go.*
+        guard case .verified(let before) = repo.lookup(binding.nodeId) else {
+            return XCTFail("the pinned row must classify as .verified"); }
+        XCTAssertEqual(before.trustLevel, .tofuPinned, "and at TOFU, not yet user-verified")
+
+        let result = repo.confirmVerified(nodeId: binding.nodeId,
+                                          expectedAcceptedGeneration: 3,
+                                          expectedFingerprintHex: digest)
+        guard case .confirmed(let view) = result else {
+            return XCTFail("*** A VALID CONFIRMATION MUST PROMOTE. Observed: \(result) ***")
+        }
+        XCTAssertEqual(view.trustLevel, .userVerified, "and the promoted view must SAY user-verified")
+        XCTAssertEqual(view.acceptedGeneration, 3, "carrying the same accepted generation")
+
+        // *** AND THE AUTHORITY IS DURABLE: A FRESH STORE OVER THE SAME FILE SEES `USER_VERIFIED = 2`. ***
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let freshRepo = PeerIdentityRepository(store: freshStore)
+        XCTAssertEqual(
+            try freshStore.readRaw(binding.nodeId)?.trustCodeRaw, PeerTrustLevel.userVerified.persistedCode,
+            "*** THE PROMOTION MUST BE ON DISK, NOT MERELY IN THE RETURNED PROJECTION. The literal code is 2, which "
+                + "both peer schemas already declared -- a projection that reported `userVerified` while the row kept "
+                + "code 1 would be the forged-success defect this arm refuses. ***")
+        guard case .verified(let reloaded) = freshRepo.lookup(binding.nodeId) else {
+            return XCTFail("the reopened row must still classify"); }
+        XCTAssertEqual(reloaded.trustLevel, .userVerified)
+        // *** AND A SECOND CONFIRMATION AT THE SAME STATE IS IDEMPOTENT. ***
+        let again = repo.confirmVerified(nodeId: binding.nodeId, expectedAcceptedGeneration: 3,
+                                         expectedFingerprintHex: digest)
+        guard case .alreadyVerified(let sameView) = again else {
+            return XCTFail("a repeat of the SAME confirmation must be idempotent, not a second write; got \(again)")
+        }
+        XCTAssertEqual(sameView.trustLevel, .userVerified, "and it must report the state that already stood")
+    }
+
+    /// *** A STALE CONFIRMATION CHANGES NOTHING -- THE EXACT STATE THAT WAS DISPLAYED IS WHAT THE CAS GUARDS. ***
+    ///
+    /// *A confirmation captured against generation 3 must NOT promote a row that has SINCE rotated to generation 5,
+    /// and one carrying a different fingerprint must not promote under any circumstance.* **In both cases the durable
+    /// row must be left EXACTLY as it was found -- the "changes nothing" clause, read from the store rather than from
+    /// the return value.**
+    func testAStaleOrMismatchedConfirmationChangesNothing() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let b3 = makeBinding(seed: seedA, generation: 3, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        let staleDigest = ExactRotationCandidateRef.digestHex(b3.staticDhPublicKey)
+        let currentDigest = ExactRotationCandidateRef.digestHex(b5.staticDhPublicKey)
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+        _ = repo.applyValidatedBinding(b3)
+        // *A rotation is proposed, so the row is QUARANTINED with a pending candidate -- the state in which a user
+        // might still be holding the old fingerprint.*
+        _ = repo.applyValidatedBinding(b5)
+        let quarantinedRow = try store.readRaw(b3.nodeId)
+
+        // (a) A CONFIRMATION CAPTURED AGAINST THE OLD GENERATION/DIGEST IS REFUSED.
+        let stale = repo.confirmVerified(nodeId: b3.nodeId, expectedAcceptedGeneration: 3,
+                                         expectedFingerprintHex: staleDigest)
+        XCTAssertEqual(
+            stale, .quarantined,
+            "*** A CONFIRMATION AGAINST A ROW THAT CARRIETH A PENDING CANDIDATE MUST BE REFUSED -- the displayed "
+                + "fingerprint is no longer the whole trust state, so promoting it would silently bless a rotation "
+                + "the user never saw. Observed: \(stale) ***")
+
+        // *** AND THE DURABLE ROW IS UNMOVED, READ FROM THE STORE. ***
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        XCTAssertEqual(
+            try freshStore.readRaw(b3.nodeId), quarantinedRow,
+            "*** A REFUSED CONFIRMATION MUST LEAVE THE DURABLE ROW BYTE-FOR-BYTE AS IT WAS FOUND. *A refusal that "
+                + "moved a column -- even the trust level -- would be a mutation the user never authorised.* ***")
+
+        // (b) THE *CURRENT* DIGEST ON AN ACTIVE (NON-QUARANTINED) ROW IS ACCEPTED, SO THE ARM IS NOT AN
+        //     EVERYTHING-REFUSES TAUTOLOGY: approve the rotation, then confirm the NEW displayed state.
+        let approved = repo.approvePendingRotation(
+            nodeId: b3.nodeId, expectedPendingGeneration: 5, expectedPendingStaticDhPublicKey: b5.staticDhPublicKey)
+        guard case .approved(let view) = approved else {
+            return XCTFail("the rotation must be approvable first; got \(approved)") }
+        XCTAssertEqual(view.trustLevel, .tofuPinned, "and approval alone must NOT elevate trust to user-verified")
+        let honest = repo.confirmVerified(nodeId: b3.nodeId, expectedAcceptedGeneration: 5,
+                                          expectedFingerprintHex: currentDigest)
+        guard case .confirmed(let confirmedView) = honest else {
+            return XCTFail("*** THE HONEST CONTROL: the CURRENT displayed state must confirm. Observed: \(honest) ***") }
+        XCTAssertEqual(confirmedView.trustLevel, .userVerified)
+
+        // (c) AND A WRONG DIGEST, ON THE NOW-VERIFIED ROW AT THE RIGHT GENERATION, IS REFUSED AS STALE.
+        let wrongDigest = repo.confirmVerified(nodeId: b3.nodeId, expectedAcceptedGeneration: 5,
+                                               expectedFingerprintHex: staleDigest)
+        XCTAssertEqual(wrongDigest, .stale,
+                       "a digest that doeth not name the row's accepted key must be refused")
+        // (d) AND A REVOKED ROW CANNOT BE CONFIRMED BACK TO LIFE.
+        _ = repo.revokePeer(b3.nodeId)
+        XCTAssertEqual(repo.confirmVerified(nodeId: b3.nodeId, expectedAcceptedGeneration: 5,
+                                            expectedFingerprintHex: currentDigest),
+                       .revoked,
+                       "*** A CONFIRMATION MUST NOT RESTORE TRUST TO A REVOKED PEER -- revocation is terminal for this "
+                           + "road, and a confirmation that resurrected it would be a trust bypass. ***")
+        let afterRevoke = try SqlitePeerIdentityStore(url: url)
+        XCTAssertEqual(try afterRevoke.readRaw(b3.nodeId)?.trustCodeRaw,
+                       PeerTrustLevel.revoked.persistedCode,
+                       "and the revoked row must stay revoked")
+    }
+
+    /// *** A FORGED SUCCESS PROJECTION CANNOT REPLACE THE DURABLE UPDATE. ***
+    ///
+    /// *THE CLAUSE NAMED IT EXPLICITLY. A caller that receives a `.confirmed` projection without the durable row
+    /// moving is the exact defect -- so this arm proveth that the projection is DERIVED FROM the post-mutation
+    /// READBACK: it forces the readback to disagree and requires the transaction to ROLL BACK with `.corrupt`, leaving
+    /// the row at TOFU rather than reporting a success the store never made.*
+    func testAConfirmationWhoseReadbackDisagreesRollsBackRatherThanReportingSuccess() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let binding = makeBinding(seed: seedA, generation: 2, staticDhPriv: staticPrivA)
+        let digest = ExactRotationCandidateRef.digestHex(binding.staticDhPublicKey)
+
+        let realStore = try SqlitePeerIdentityStore(url: url)
+        _ = PeerIdentityRepository(store: realStore).applyValidatedBinding(binding)
+
+        // *** THE HOOK: THE CONFIRMATION'S GUARDED UPDATE IS SILENTLY SKIPPED, SO THE READBACK CANNOT AGREE. ***
+        // *This is exactly "a success projection without a durable update": the caller would receive `.confirmed` if
+        // the code trusted its own intent rather than the readback.*
+        let hookStore = HookablePeerIdentityStore(delegate: realStore)
+        hookStore.hookConfirmVerified = { _, _, _, _ in 0 }   // zero rows affected, no error
+        let hookedRepo = PeerIdentityRepository(store: hookStore)
+        let result = hookedRepo.confirmVerified(nodeId: binding.nodeId, expectedAcceptedGeneration: 2,
+                                                expectedFingerprintHex: digest)
+        guard case .corrupt = result else {
+            return XCTFail("*** A CONFIRMATION WHOSE UPDATE AFFECTED NOTHING MUST NOT REPORT SUCCESS. *The old shape "
+                           + "would have trusted the intent; the readback makes the lie detectable.* Observed: "
+                           + "\(result) ***")
+        }
+        // *** AND THE DURABLE ROW IS STILL TOFU -- the rollback really happened. ***
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        XCTAssertEqual(
+            try freshStore.readRaw(binding.nodeId)?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode,
+            "*** THE FORGED-SUCCESS CASE MUST LEAVE THE ROW AT TOFU: a projection claiming user-verified beside a row "
+                + "still at code 1 is the exact defect, and the rollback is what prevents it. ***")
     }
 }

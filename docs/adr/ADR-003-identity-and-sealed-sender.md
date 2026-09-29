@@ -143,6 +143,32 @@ Existing GODSTONE identities created prior to Phase C8 possess valid Ed25519 and
 - **C8.1 Scope:** C8.1 implements local generation ownership, generation-0 local issuance, and remote validation/trust policy. Dedicated local static-key rotation UI commands remain for a future phase.
 - **No-Wrap Invariant:** The generation counter MUST NEVER wrap. If `bindingGeneration == UINT32_MAX`, any future rotation attempt fails closed. An overflow from `UINT32_MAX -> 0` is strictly forbidden.
 
+### 5.4 Local Out-of-Band Fingerprint Confirmation (`userVerified`)
+
+The trust levels carry explicit persistence codes (`tofuPinned = 1`, `userVerified = 2`, `revoked = 3`), and this
+section defines the ONE operation that may promote `1 -> 2`.
+
+- **It is a LOCAL operation.** The fingerprint confirmation is an out-of-band comparison performed by the human at the
+  device. **THE WIRE PROTOCOL IS UNCHANGED:** no message, no handshake payload and no protocol version is affected,
+  and the promotion is never conveyed to the peer.
+- **It is a guarded CAS with an exact captured reference.** `PeerIdentityRepository.confirmVerified` is called with the
+  *displayed* accepted generation and the *displayed* fingerprint (the digest of the accepted static key, computed
+  from the row itself inside the transaction). The durable `UPDATE` requires, in ONE serialized transaction:
+  - the exact `node_id` and `signing_public_key`;
+  - the exact `accepted_static_dh_public_key` and `accepted_generation` that were DISPLAYED;
+  - `trust_level = 1` (TOFU) -- so an already-verified row is reported `.alreadyVerified` (idempotent) and a
+    `revoked` row can never be restored;
+  - `pending_static_dh_public_key IS NULL AND pending_generation IS NULL` -- so a row carrying a proposed rotation is
+    refused as quarantined rather than blessed without the user seeing the new key.
+
+  The statement sets **only** `trust_level = 2`; no other column is touched, and a post-mutation readback must agree
+  or the transaction rolls back (`corrupt`).
+- **Rotation approval still cannot elevate TOFU.** Approving a pending candidate promotes the *candidate keys*, never
+  the trust level: an approved rotation of a TOFU row remains `tofuPinned`. Elevation requires a separate confirmation
+  of the NEW generated fingerprint.
+- **Refusals change nothing.** A stale (generation or key moved), mismatched, quarantined, revoked, corrupt or
+  storage-failed confirmation leaves the durable row byte-for-byte as it was found.
+
 ---
 
 ## 6. Noise XX Placement & Handshake Sequencing

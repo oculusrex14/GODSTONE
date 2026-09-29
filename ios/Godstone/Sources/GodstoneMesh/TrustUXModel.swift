@@ -337,7 +337,8 @@ protocol TrustAuthorityPort: AnyObject {
     /// Drop the sessions of one peer (revocation and rotation both reach here).
     func invalidateSessions(for nodeId: Data)
     /// The durable fingerprint-confirmation CAS.
-    func confirmVerified(nodeId: Data, fingerprintHex: String) -> ConfirmOutcome
+    func confirmVerified(nodeId: Data, fingerprintHex: String,
+                         displayedGeneration: UInt32) -> ConfirmOutcome
     func applyBinding(nodeId: Data, staticDhPublicKey: Data, signature: Data) -> BindingImportOutcome
 }
 
@@ -346,6 +347,13 @@ enum ConfirmOutcome: Sendable, Equatable {
     case mismatch
     case peerNotFound
     case alreadyVerified
+    /// *** THE CAPTURED REFERENCE NO LONGER NAMETH THE DURABLE ROW. ***
+    /// *The generation, the accepted key or the pending state moved since the fingerprint was DISPLAYED -- so the
+    /// confirmation changeth NOTHING and the user must re-read the current fingerprint rather than approve a stale
+    /// one.* **This is a DISTINCT outcome from `mismatch` (the entered digest differs from the displayed one): here
+    /// the display itself is stale.**
+    case rotatedSinceDisplayed
+    case revoked
     case refused(String)
 }
 
@@ -552,15 +560,25 @@ public final class TrustUXModel: ObservableObject {
         }
         // LAW 2: the promotion is DURABLE. A local match is never enough, and no
         // biometric success may stand in for the authority's own CAS.
-        switch authority.confirmVerified(nodeId: nodeId, fingerprintHex: contact.fingerprintHex) {
-        case .confirmed(_, _):
-            return project(lastOutcome: "fingerprint confirmed for " + contact.label, error: nil)
+        // *** THE DISPLAYED GENERATION TRAVELS WITH THE CONFIRMATION. *** *The port carrieth it so the durable CAS
+        // can refuse a display that went stale between the read and the tap -- the same law rotation approval
+        // already follows ("the displayed candidate, not the current one").*
+        switch authority.confirmVerified(nodeId: nodeId, fingerprintHex: contact.fingerprintHex,
+                                         displayedGeneration: contact.acceptedGeneration) {
+        case .confirmed(_, let generation):
+            return project(lastOutcome: "fingerprint confirmed for " + contact.label
+                           + " at generation \(generation)", error: nil)
         case .mismatch:
             return withAuthorityError("the durable fingerprint is not the one you compared: trust is unchanged")
         case .peerNotFound:
             return withAuthorityError("no such contact")
         case .alreadyVerified:
             return project(lastOutcome: "that contact was already verified", error: nil)
+        case .rotatedSinceDisplayed:
+            return withAuthorityError("the contact's key changed since you read that fingerprint: trust is unchanged "
+                                      + "and the displayed fingerprint is stale")
+        case .revoked:
+            return withAuthorityError("that contact is revoked; a confirmation cannot restore trust")
         case .refused(let reason):
             return withAuthorityError("confirmation refused: " + reason)
         }

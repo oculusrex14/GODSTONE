@@ -138,6 +138,31 @@ internal enum PeerIdentitySchema {
           AND trust_level IN (1,2)
         """
 
+    // *** THE FINGERPRINT-CONFIRMATION CAS: promote TOFU -> USER_VERIFIED, GUARDED ON THE EXACT DISPLAYED STATE. ***
+    //
+    // *THE DEFECT THIS CLOSES: both peer schemas already CARRIED `USER_VERIFIED = 2`, and `TrustAuthorityAdapter
+    // .confirmVerified` refused unconditionally because no guarded promotion existed. So a user could SEE a verified
+    // fingerprint and could never confirm it.* **This is the missing guarded operation -- a local, out-of-band
+    // confirmation. The WIRE PROTOCOL IS UNCHANGED: this is a durable local trust transition, not a message.**
+    //
+    // *THE CAS REQUIRETH: the exact node, the exact SIGNING KEY, the exact accepted static key AND generation, the
+    // TOFU state, and NO pending candidate.* **So a stale confirmation (the key rotated or the generation moved since
+    // the fingerprint was displayed) changes nothing, and a confirmation captured against a quarantined/revoked row
+    // is refused by the `trust_level = 1` and `IS NULL` predicates rather than by a caller's re-check.** *Matches
+    // already-verified state is idempotent -- the `trust_level = 1` predicate simply matches no row and the caller
+    // reports idempotence after reading back.*
+    static let confirmVerifiedSql = """
+        UPDATE peer_identities
+        SET trust_level = 2
+        WHERE node_id = ?
+          AND signing_public_key = ?
+          AND accepted_static_dh_public_key = ?
+          AND accepted_generation = ?
+          AND trust_level = 1
+          AND pending_static_dh_public_key IS NULL
+          AND pending_generation IS NULL
+        """
+
     static let revokeNoPendingSql = """
         UPDATE peer_identities
         SET trust_level = 3,
@@ -238,6 +263,14 @@ internal protocol PeerIdentityStore: AnyObject {
         trustLevel: Int32,
         expectedPendingStatic: Data,
         expectedPendingGeneration: Int64
+    ) throws -> Int
+
+    /// *** THE FINGERPRINT-CONFIRMATION CAS: TOFU -> USER_VERIFIED, GUARDED ON THE EXACT DISPLAYED STATE. ***
+    func confirmVerifiedGuarded(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64
     ) throws -> Int
 
     func revokePeerGuarded(
@@ -603,6 +636,25 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         )
     }
 
+    /// *** THE FINGERPRINT-CONFIRMATION CAS: TOFU -> USER_VERIFIED, GUARDED ON THE EXACT DISPLAYED STATE. ***
+    func confirmVerifiedGuarded(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64
+    ) throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db = handle else { throw PeerStoreError.handleMissing }
+        return try confirmVerifiedNoLock(
+            db,
+            nodeId: nodeId,
+            signingPub: signingPub,
+            acceptedStatic: acceptedStatic,
+            acceptedGeneration: acceptedGeneration
+        )
+    }
+
     func revokePeerGuarded(
         nodeId: Data,
         signingPub: Data,
@@ -781,6 +833,29 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         return Int(fn.changes(db))
     }
 
+    // *** THE FINGERPRINT-CONFIRMATION CAS, AT THE STORE. *** *Same guarded shape as `revokePeerNoLock`, and the
+    // caller (the repository) has already decoded the row strictly so the predicates name the state that was
+    // DISPLAYED rather than a state re-resolved at confirmation time.*
+    fileprivate func confirmVerifiedNoLock(
+        _ db: OpaquePointer,
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64
+    ) throws -> Int {
+        var stmt: OpaquePointer?
+        guard fn.prepareV2(db, PeerIdentitySchema.confirmVerifiedSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
+        }
+        defer { fn.finalize(stmt) }
+        bindBlob(stmt, 1, nodeId)
+        bindBlob(stmt, 2, signingPub)
+        bindBlob(stmt, 3, acceptedStatic)
+        fn.bindInt64(stmt, 4, acceptedGeneration)
+        guard fn.step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+        return Int(fn.changes(db))
+    }
+
     fileprivate func revokePeerNoLock(
         _ db: OpaquePointer,
         nodeId: Data,
@@ -942,6 +1017,17 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
                 expectedPendingStatic: expectedPendingStatic,
                 expectedPendingGeneration: expectedPendingGeneration
             )
+        }
+
+        func confirmVerifiedGuarded(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64
+        ) throws -> Int {
+            try parent.confirmVerifiedNoLock(db, nodeId: nodeId, signingPub: signingPub,
+                                             acceptedStatic: acceptedStatic,
+                                             acceptedGeneration: acceptedGeneration)
         }
 
         func revokePeerGuarded(

@@ -74,6 +74,40 @@ private enum RevokeControlAbort: Error {
     case alreadyRevoked
 }
 
+/// *** THE CONFIRMATION ABORT REASONS -- typed, so the caller can render WHICH refusal it was. ***
+private enum ConfirmationAbort: Error {
+    case peerNotFound
+    case revoked
+    case quarantined
+    case stale
+}
+
+/// *** THE OUTCOME OF A FINGERPRINT CONFIRMATION, TYPED RATHER THAN A BOOLEAN. ***
+///
+/// *A `Bool` would collapse four distinguishable states -- promoted, already-verified, stale and refused -- into
+/// "true/false", and the UI must render DIFFERENT words for each.* **`alreadyVerified` is the idempotent case: the
+/// row already stood verified at the EXACT accepted state the fingerprint was displayed against, so nothing changed
+/// and nothing needed to.**
+enum PeerConfirmationResult: Sendable, Equatable {
+    case confirmed(VerifiedPeerIdentity)
+    case alreadyVerified(VerifiedPeerIdentity)
+    case peerNotFound
+    case revoked
+    case quarantined
+    case stale
+    case corrupt(PeerTrustRepositoryCorruptionReason)
+    case storageFailure
+    case invalidArgument(String)
+
+    /// Whether the durable authority now carrieth the confirmed state (promoted OR already there).
+    var isDurableUserVerified: Bool {
+        switch self {
+        case .confirmed, .alreadyVerified: return true
+        default: return false
+        }
+    }
+}
+
 /// Durable peer identity repository owning transaction serialization, strict row decoding,
 /// and post-mutation readback verification (ADR-003, Phase C8.2B).
 internal final class PeerIdentityRepository {
@@ -441,6 +475,113 @@ internal final class PeerIdentityRepository {
             return .noPendingCandidate
         } catch ApprovalControlAbort.staleCandidate {
             return .staleCandidate
+        } catch let ApplyTxnAbort.corrupt(reason) {
+            return .corrupt(reason)
+        } catch {
+            return .storageFailure
+        }
+    }
+
+    /// *** THE FINGERPRINT-CONFIRMATION OPERATION: A LOCAL, OUT-OF-BAND TOFU -> USER_VERIFIED TRANSITION. ***
+    ///
+    /// *THE GAP THIS CLOSES: both peer schemas carried `USER_VERIFIED = 2`, and no guarded operation could reach it --
+    /// so `TrustAuthorityAdapter.confirmVerified` refused unconditionally and a user could SEE a verified fingerprint
+    /// and never confirm it.* **The wire protocol is UNCHANGED: this is a durable local trust transition.**
+    ///
+    /// **THE CAS IS GUARDED ON THE **DISPLAYED** STATE, NOT A RE-RESOLVED ONE:** the caller passeth the exact node,
+    /// signing key, accepted static key and accepted generation it showed with the fingerprint, and the store's
+    /// predicates require exactly those plus TOFU and NO pending candidate. *So a stale confirmation (the key rotated
+    /// or the generation moved since) changes nothing, and a quarantined/revoked/corrupt row is refused rather than
+    /// promoted. A row ALREADY at `userVerified` with the SAME accepted state is reported `.alreadyVerified`
+    /// (idempotent), and a row already verified at a DIFFERENT accepted state is `.stale` -- never a silent
+    /// promotion.*
+    func confirmVerified(
+        nodeId: Data,
+        expectedAcceptedGeneration: UInt32,
+        expectedFingerprintHex: String
+    ) -> PeerConfirmationResult {
+        guard nodeId.count == 16 else {
+            return .invalidArgument("nodeId must be exactly 16 bytes, got \(nodeId.count)")
+        }
+        guard expectedFingerprintHex.count == 64,
+              expectedFingerprintHex.allSatisfy({ $0.isHexDigit }) else {
+            return .invalidArgument("expectedFingerprintHex must be a 64-character hex digest")
+        }
+        do {
+            return try store.inImmediateTransaction { tx in
+                guard let currentRaw = try tx.readRaw(nodeId) else {
+                    throw ConfirmationAbort.peerNotFound
+                }
+                let current: PeerIdentityRecord
+                switch decodeRowStrict(currentRaw) {
+                case .success(let rec): current = rec
+                case .failure(let reason): throw ApplyTxnAbort.corrupt(reason)
+                }
+                // *** THE FIVE PREDICATES THE STORE ALSO ENFORCES, CHECKED HERE TO RETURN A TYPED REASON. ***
+                // *The store's SQL is the authority; this decode names WHY it will not match, so the caller gets
+                // `.revoked`/`.quarantined`/`.stale` rather than a bare "no row changed".*
+                guard current.trustLevel != .revoked else { throw ConfirmationAbort.revoked }
+                guard current.pendingGeneration == nil, current.pendingStaticDhPublicKey == nil else {
+                    throw ConfirmationAbort.quarantined
+                }
+                // *** THE CAPTURED REFERENCE MUST NAME **THIS ROW**: the generation AND the fingerprint of the
+                // accepted static key must be exactly what was DISPLAYED when the user read it. ***
+                // *A digest is enough here because it is compared against the ROW's own key inside the same
+                // transaction -- so a key that rotated between display and tap produceth a different digest and the
+                // CAS refuseth, without this layer ever handling key material.*
+                guard current.acceptedGeneration == expectedAcceptedGeneration,
+                      ExactRotationCandidateRef.digestHex(current.acceptedStaticDhPublicKey)
+                        .lowercased() == expectedFingerprintHex.lowercased() else {
+                    throw ConfirmationAbort.stale
+                }
+                // *** IDEMPOTENCE FOR A ROW ALREADY VERIFIED AT THIS EXACT STATE. ***
+                if current.trustLevel == .userVerified {
+                    guard let view = VerifiedPeerIdentity.fromRecord(current) else {
+                        throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("unable to mint a verified view"))
+                    }
+                    return .alreadyVerified(view)
+                }
+                // *** ONLY NOW THE GUARDED PROMOTION, WHICH CANNOT TOUCH ANY OTHER COLUMN. ***
+                let affected = try tx.confirmVerifiedGuarded(
+                    nodeId: current.nodeId,
+                    signingPub: current.signingPublicKey,
+                    acceptedStatic: current.acceptedStaticDhPublicKey,
+                    acceptedGeneration: Int64(current.acceptedGeneration))
+                if affected != 1 {
+                    throw ApplyTxnAbort.corrupt(.mutationCardinality(expected: 1, actual: affected))
+                }
+                guard let readbackRaw = try tx.readRaw(nodeId) else {
+                    throw ApplyTxnAbort.corrupt(.missingPostMutationRow)
+                }
+                let readback: PeerIdentityRecord
+                switch decodeRowStrict(readbackRaw) {
+                case .success(let rec): readback = rec
+                case .failure(let reason): throw ApplyTxnAbort.corrupt(reason)
+                }
+                let expected = PeerIdentityRecord(
+                    nodeId: current.nodeId,
+                    signingPublicKey: current.signingPublicKey,
+                    acceptedStaticDhPublicKey: current.acceptedStaticDhPublicKey,
+                    acceptedGeneration: current.acceptedGeneration,
+                    trustLevel: .userVerified,
+                    pendingStaticDhPublicKey: nil,
+                    pendingGeneration: nil)
+                guard readback == expected else {
+                    throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("confirmVerified readback mismatch"))
+                }
+                guard let view = VerifiedPeerIdentity.fromRecord(readback) else {
+                    throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("unable to mint a verified view"))
+                }
+                return .confirmed(view)
+            }
+        } catch ConfirmationAbort.peerNotFound {
+            return .peerNotFound
+        } catch ConfirmationAbort.revoked {
+            return .revoked
+        } catch ConfirmationAbort.quarantined {
+            return .quarantined
+        } catch ConfirmationAbort.stale {
+            return .stale
         } catch let ApplyTxnAbort.corrupt(reason) {
             return .corrupt(reason)
         } catch {

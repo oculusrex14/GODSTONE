@@ -208,7 +208,18 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
     // -------------------------------------------------------------------------
     // 2. Confirm-on-match reaches port and refuses honest unclaimed
     // -------------------------------------------------------------------------
-    func test02ConfirmOnMatchReachesPortAndRefusesHonestUnclaimed() throws {
+    /// *** THE CONFIRM-ON-MATCH ROAD NOW **PROMOTES DURABLY** -- THE GAP IS CLOSED, SO THIS ARM ASSERTS IT. ***
+    ///
+    /// *THIS ARM USED TO ASSERT THE OPPOSITE, AND THE OPPOSITE WAS TRUE: `TrustAuthorityAdapter.confirmVerified`
+    /// returned `.refused("...no durable fingerprint-confirmation CAS; promotion is unclaimed pending an ADR")`
+    /// UNCONDITIONALLY, so a matching fingerprint could never promote a contact. **THE PLAN CLOSES THAT GAP: the
+    /// guarded CAS now exists on both peer schemas' own `USER_VERIFIED = 2` code, and the arm was re-pinned to the
+    /// behaviour the user actually needs.*** *The old `unclaimed pending an ADR` prose is gone from the tree, so
+    /// re-pinning it would pin a falsehood.*
+    ///
+    /// **THE TWO DIRECTIONS THIS ARM COVERS, BOTH FROM THE OUTSIDE:** the durable row is promoted AND the projection
+    /// agrees with it; and the promotion is the CAS's, not a local flag.
+    func test02ConfirmOnMatchReachesPortAndPromotesDurably() throws {
         let url = tempDbUrl()
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -227,84 +238,45 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
             XCTFail("Alice must have a rendered fingerprint")
             return
         }
+        // *Before the confirmation the contact standeth TOFU -- so the promotion below has somewhere to go.*
+        XCTAssertEqual(facade.contactTrust(label: "Alice"), ContactTrustLabel.tofuUnverified.rawValue,
+                       "the contact must start TOFU, or the promotion this arm asserts could not be observed")
 
         let outcome = facade.compareAndConfirm(label: "Alice", displayedFingerprintHex: matchingFp)
-
-        // Matching fingerprint passes local model check and reaches port;
-        // port returns the honest refusal recorded by T56 (unclaimed pending ADR).
-        XCTAssertTrue(outcome.hasPrefix("refused:"), "Outcome must report port refusal: \(outcome)")
         XCTAssertTrue(
-            outcome.contains("unclaimed pending an ADR"),
-            "Expected port refusal reason regarding unclaimed promotion: \(outcome)"
-        )
-        XCTAssertFalse(facade.isVerified(label: "Alice"), "Contact must remain unverified")
+            outcome.hasPrefix("applied:"),
+            "*** A MATCHING FINGERPRINT ON AN HONEST ROW MUST BE APPLIED -- the durable CAS promotes TOFU to "
+                + "USER_VERIFIED. Observed: \(outcome) ***")
+        XCTAssertFalse(facade.isRotationPending(label: "Alice"),
+                       "and a confirmed (non-quarantined) row carrieth no pending candidate")
 
-        // *** AND THE DURABLE DISCRIMINATOR -- `test04`'s OWN STANDARD APPLIED HERE. ***
-        //
-        // *`test04` reads `repo.lookup` directly because **THE PROJECTION IS A CLAIM AND THE STORE IS THE SOURCE**;
-        // these two arms asserted ONLY `facade.*` projections, which an adapter that promoted locally could move
-        // without touching the row. **AN EXTERNAL REVIEW POINTED OUT THAT INCONSISTENCY AND WAS RIGHT.***
-        //
-        // *`PeerIdentityLookup.verified` + `PeerTrustLevel.tofuPinned` is the UNCHANGED state a REFUSED confirm must
-        // leave behind: a bound peer sits at `.tofuPinned`, and `.userVerified` is what only a durable CAS may
-        // produce (`PeerTrustModels.swift:11`: tofuPinned=1, userVerified=2, revoked=3).*
-        //
-        // *** HONEST SCOPE: `TrustAuthorityAdapter.confirmVerified` returns `.refused(...)` UNCONDITIONALLY today --
-        // THERE IS NO DURABLE CAS -- so this cannot catch a live bug. IT GUARDS THE FUTURE CAS: when one is written,
-        // an implementation that projects success WITHOUT the durable write reddens here rather than shipping.*** *Stated
-        // so the arm is not read as proving more than it does.*
-        guard case .verified(let unchanged) = repo.lookup(binding.nodeId) else {
-            XCTFail("*** a refused confirm must leave the row verified/tofuPinned; got \(repo.lookup(binding.nodeId)) ***")
-            return
+        // *** AND THE DURABLE DISCRIMINATOR: THE ROW ITSELF MOVED, READ FROM THE REPOSITORY. ***
+        // *The projection is a claim and the store is the source; a local flag that moved `isVerified` without the row
+        // would be the forged-success defect.*
+        guard case .verified(let promoted) = repo.lookup(binding.nodeId) else {
+            return XCTFail("the confirmed row must classify as verified; got \(repo.lookup(binding.nodeId))")
         }
-        // *** WHAT THIS CHECK IS AND IS NOT -- STATED EXACTLY, BECAUSE AN EXTERNAL REVIEW ASKED. ***
-        //
-        // *It catches ONE DIRECTION: **A SPURIOUS PROMOTION.** If the adapter ever wrote `userVerified` on a
-        // refused confirm, the row would no longer be `.tofuPinned` and this reddens.*
-        //
-        // *IT IS **NOT MUTATION-PROVEN TODAY**, AND THAT IS RECORDED RATHER THAN GLOSSED: the adapter has NO write
-        // path -- `confirmVerified` returns `.refused(...)` with no store access -- so there is nothing to mutate to
-        // make it fire. **IT IS A GUARD FOR THE FUTURE CAS, NOT VERIFIED COVERAGE.** The mutation that WAS run
-        // (project success without a write) leaves the row untouched, so THIS check passes under it -- which is
-        // exactly why the forgery check below exists.*
-        //
-        // *THE TWO ARE NOT REDUNDANT AND NEITHER IS A TAUTOLOGY: they cover OPPOSITE DIRECTIONS. This one fires on
-        // "promoted without authority"; the forgery check fires on "claimed without promotion". **A SINGLE-SOURCE
-        // ASSERTION IN EITHER DIRECTION IS BLIND TO THE OTHER'S DEFECT** -- established by measurement across three
-        // versions of this arm, not by argument.*
         XCTAssertEqual(
-            unchanged.trustLevel, .tofuPinned,
-            "*** THE DURABLE STATE: a refused confirm must leave the row where it was. Fires on a SPURIOUS " +
-                "PROMOTION -- the opposite direction from the forgery check below. ***",
-        )
+            promoted.trustLevel, .userVerified,
+            "*** THE DURABLE STATE: a confirmed confirm must promote the ROW ITSELF to USER_VERIFIED, not merely the "
+                + "projection. ***")
+        // *** AND IT IS ON DISK: A FRESH STORE OVER THE SAME FILE SEES CODE 2. ***
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        XCTAssertEqual(
+            try freshStore.readRaw(binding.nodeId)?.trustCodeRaw, PeerTrustLevel.userVerified.persistedCode,
+            "*** THE PROMOTION MUST SURVIVE A REOPEN: reading it only from the live store would not distinguish a "
+                + "durable write from an in-memory flag. ***")
 
-        // *** AND THE DISCRIMINATOR THAT ACTUALLY CATCHES FORGING -- WHICH TOOK TWO WRONG VERSIONS TO FIND. ***
-        //
-        // *MY FIRST VERSION stopped at the store assertion above, and **THE MUTATION PROVED IT INSUFFICIENT**:
-        // with `confirmVerified` mutated to project success without a durable write, the row genuinely stayed
-        // `tofuPinned`, so that check PASSED. **A CHECK THAT ONLY READS THE STORE CANNOT SEE A PROJECTION THAT
-        // DISAGREES WITH IT.***
-        //
-        // *MY SECOND VERSION asserted the model and the store AGREE on verification -- and it STILL did not fire,
-        // because of something the mutation revealed about the model itself: `.confirmed` sets
-        // `lastOutcome: "fingerprint confirmed for Alice"` and then `project()` RE-READS THE STORE, so
-        // `isVerified` stays FALSE. **THE MODEL CONTRADICTS ITSELF: IT REPORTS SUCCESS AND NON-VERIFICATION AT
-        // ONCE**, and both sides of my comparison said "not verified".*
-        //
-        // **SO THE FORGERY'S ACTUAL SIGNATURE IS A SUCCESS CLAIM WITHOUT A DURABLE PROMOTION**, and that is what is
-        // asserted here: the outcome string may report a confirmation ONLY IF THE ROW WAS PROMOTED. *This is the
-        // model's own law 2 -- "USER_VERIFIED APPEARETH ONLY AFTER THE DURABLE CAS SUCCEEDETH" -- checked from the
-        // OUTSIDE, where a local-only implementation cannot satisfy it.*
-        let projectedOutcome = facade.lastOutcome() ?? ""
-        let claimsConfirmation = projectedOutcome.contains("confirmed")
-        let rowWasPromoted = (unchanged.trustLevel == .userVerified)
-        XCTAssertFalse(
-            claimsConfirmation && !rowWasPromoted,
-            "*** A SUCCESS CLAIM WITHOUT A DURABLE PROMOTION IS THE FORGERY: the model reported "
-                + "\"\(projectedOutcome)\" while the row still says \(unchanged.trustLevel). **THE PROJECTION IS A CLAIM AND "
-                + "THE STORE IS THE SOURCE** -- their disagreement is the defect, and no single-source assertion "
-                + "(neither the store alone nor the model alone) can see it. ***",
-        )
+        // *** AND A WRONG FINGERPRINT MUST LEAVE THE ROW AT USER_VERIFIED AND CHANGE NOTHING FURTHER. ***
+        let wrong = String(repeating: "0", count: 64)
+        let refused = facade.compareAndConfirm(label: "Alice", displayedFingerprintHex: wrong)
+        XCTAssertTrue(refused.hasPrefix("refused:"),
+                      "a mismatched fingerprint must be refused locally; observed \(refused)")
+        guard case .verified(let afterRefusal) = repo.lookup(binding.nodeId) else {
+            return XCTFail("the row must still classify after a refusal")
+        }
+        XCTAssertEqual(afterRefusal.trustLevel, .userVerified,
+                       "and a refused comparison must not move the already-promoted row")
     }
 
     // -------------------------------------------------------------------------
