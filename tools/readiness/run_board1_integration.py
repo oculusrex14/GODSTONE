@@ -407,6 +407,7 @@ class Worker:
         # read of history.** `observe`/`all_of`/`take` are the HISTORY readers and keep their whole-transcript view;
         # only `wait` -- the forward consumer -- advanceth.
         self._wait_cursor = 0
+        self._stop = threading.Event()
         self.log_path = runtime_dir / f"{spec.name}.worker.log"
         self._log_fh = None
         self.process: Optional[subprocess.Popen] = None
@@ -1187,8 +1188,18 @@ class Runner:
         deduplicated to the row phase A already wrote.***
         """
         self.log(f"--- direction {direction} control=replay: phase A (capture) ---")
+        # *** THE CAPTURE IS SCOPED TO PHASE A'S OWN RECORDS, NOT THE WHOLE RUN'S ACCUMULATOR. ***
+        #
+        # *THE DEFECT THIS CLOSES: `self.evidence.records` is the RUN's accumulator, and `replay` runneth LAST, so by
+        # phase A it already held the honest control's records AND the `altered` control's octet-tampered DATA frames
+        # AND the `mismatched` control's -- all under the same `direction` label. A capture filtered only on
+        # direction/kind/characteristic would replay a MIXTURE, so phase B's `refused, no committed row` verdict could
+        # be earned by feeding a tampered or cross-session frame, and the control would pass for the WRONG reason.*
+        # **So the index of the first record is taken BEFORE phase A and only the records phase A appends are
+        # captured: the bytes replayed are provably the ones PHASE A's OWN session put on the wire.***
+        capture_start = len(self.evidence.records)
         capture = self.run_direction(direction, "honest")
-        captured = [e for e in self.evidence.records
+        captured = [e for e in self.evidence.records[capture_start:]
                     if e["direction"] == direction and e["kind"] == "frame"
                     and e["characteristic"] == "inbox" and e["payload_length"] > 0]
         if not captured:
