@@ -649,6 +649,10 @@ class Runner:
         self.runtime_dir = Path(tempfile.mkdtemp(prefix="gs_int_coord_", dir=str(self.evidence_dir)))
         self.evidence = Evidence(self.evidence_dir, self.run_id, self.digest, self.toolchains)
         self.results: list[Result] = []
+        # *** A MONOTONIC PER-INVOCATION COUNTER, BECAUSE `control` ALONE IS NOT UNIQUE ACROSS A PHASE RE-RUN. ***
+        # *The `replay` control's phase A re-driveth the honest direction, so `(direction, "honest")` occurreth
+        # TWICE in one run; an estate named by control alone is therefore shared between the control and the phase.*
+        self._invocation = 0
         self.fixtures_root = REPO / "tools" / "integration-fixtures"
         self.deadline_s = float(args.timeout)
         self.workers: list[Worker] = []
@@ -984,7 +988,8 @@ class Runner:
         # not inherit that control's estate, or the control's own store answereth for a session it never ran.** *So
         # every invocation carrieth its own suffix; a re-run getteth a fresh estate by construction rather than by
         # the caller remembering to differ the name.*
-        invocation = f"{control}-{self.run_id}"
+        invocation = f"{control}-{self.run_id}-{self._invocation}"
+        self._invocation += 1
         estate = self.fresh_estate(f"{direction.replace('->', '_')}-{invocation}")
         ios_estate = estate / "ios"
         android_estate = estate / "android"
