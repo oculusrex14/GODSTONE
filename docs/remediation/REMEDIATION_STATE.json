@@ -15788,6 +15788,21 @@
       "evidence": [
        "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift`. `init(verifiedConnection:)` performs NO `sqlite3_open_v2` of its own and calls `try runMigrations(db)` on the SUPPLIED handle (MessageStore line 1021, PeerIdentityStore line 308); the legacy `init(url:)` roads run migrations on their own handles (lines 1086 and 336), so each road migrates the connection it actually owns"
       ]
+     },
+     {
+      "id": "gs-final-004.provider-dispatch",
+      "text": "A pointer created by one SQLite implementation must not be passed to another: the complete function surface a store uses must be bound from the SAME image the handle came from, carried with the connection, and used for every operation; no global raw-pointer-to-provider map; a partial bind must refuse; a failed open must close its partial handle; and the key road must not echo the DEK.",
+      "status": "DISCHARGED",
+      "evidence": [
+       "`path:ios/Godstone/Sources/GodstoneMesh/SQLiteFunctionTable.swift` -- the ONE immutable per-provider function table: the COMPLETE 20-entry-point surface both stores use, bound all-or-nothing from one image (`requiredSymbols`), with `.linkedPlatform` for the archive/legacy road where the handle and the functions come from the same image by construction. **NO GLOBAL RAW-POINTER->PROVIDER MAP: the table is carried BY VALUE with the connection, so a recycled pointer cannot be answered by a dead provider's table.** *`GsFinal004OwnedConnectionTests` also checks the two sources' `sqlite3_*` usage against this set, so an unlisted entry point cannot be reached.*",
+       "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift` -- the connection carrieth `provider: SQLiteFunctionTable`, so a store that adopteth one calls through the image the handle came from.",
+       "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift` -- BOTH stores carry `fn` (the provider) and install it from the adopted connection BEFORE any statement runs; every `sqlite3_*` call site (467 across the two files) now goeth through the table. *The legacy `url:` roads keep `.linkedPlatform`, where the handle and the functions are the same image.*",
+       "`path:ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift` -- the engine binds the complete table all-or-nothing (a loaded image missing a symbol REFUSETH rather than calling a garbage pointer), and `openKeyedVerified` handeth the table to the connection.",
+       "*** LOADER AND ERROR PATHS, EACH REPAIRED AND NAMED: (a) a failed `sqlite3_open_v2` now CLOSES its NONNULL PARTIAL HANDLE before the throw -- the old body threw on the non-zero code and leaked it; (b) the KEY ROAD no longer interpolates the DEK-bearing SQL into its fault -- a non-secret operation label plus a NUMERIC result is reported instead, and `errmsg` is REDACTED because SQLCipher's messages can quote the offending statement; (c) `SQLITE_NOTADB` is normalised to `.wrongKey` at BOTH `prepare` and `step`; (d) a successful `step` is `SQLITE_DONE(101)`/`SQLITE_ROW(100)` -- `0` is NOT a successful step result; (e) every created statement is finalised on all paths. ***",
+       "*** MEASURED, `test:testGF004TheStoreCallsThroughTheProvidersFunctionTable`: an engine hands over a connection whose provider is an INSTRUMENTED table (counters over the statically linked SQLite3), and the store's own work must LAND on that table -- prepares, steps AND column reads all > 0 -- while a `url:` store's prepares do NOT move it, so the table is provably CARRIED rather than picked up globally. *** *A store still reaching the global symbols would leave the counters at zero while its queries succeeded.*",
+       "*** AND `test:testGF004APartialProviderBindIsRefusedAndAKeyFaultIsTyped`: a real image that LOADS but carrieth no sqlite3 surface (`/usr/lib/libSystem.B.dylib`) is REFUSED with a named binding failure; an unloaded image likewise; a REALLY BOUND image (`/usr/lib/libsqlite3.dylib`) REFUSES an empty DEK with `.wrongKey` and REFUSES a STOCK SQLite with a fault that NAMES the failed probe -- *so the cipher probe is what decideth at-rest, not the library merely loading*; and a failed open on a DIRECTORY is proven to have CLOSED its partial handle via the table's own close counter (the `PROBE_BYPASS` control). 9 arms, 0 failures. ***",
+       "*** AND THE EXTERNAL HALF IS NAMED RATHER THAN GLOSSED: `ReadinessT30Tests.testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent` is an explicit `XCTSkip` (EXTERNAL-BLOCKED) when the approved pinned artifact is absent -- the pinned binary, encrypted pages, correct-key reopen and on-device at-rest proof remain EXTERNAL. *** *The prior shape was a `guard ... { print(...); return }` that reported a PASSED test without exercising any positive road; it is now a counted skip.*"
+      ]
      }
     ],
     "external_obligations": [
@@ -15952,7 +15967,7 @@
    "obligations_by_state": {
     "OPEN": 0,
     "PARTIAL": 3,
-    "DISCHARGED": 29
+    "DISCHARGED": 30
    },
    "external_obligations": 5
   },
