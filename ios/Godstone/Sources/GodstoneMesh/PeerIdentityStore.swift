@@ -254,6 +254,12 @@ internal protocol PeerIdentityStore: AnyObject {
 /// Production SQLite-backed peer identity store with fixed FileProtectionType.complete (ADR-003, Phase C8.2B).
 internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     private var handle: OpaquePointer?
+
+    /// *** THE PROVIDER TABLE THIS STORE CALLS THROUGH -- THE IMAGE ITS HANDLE CAME FROM. ***
+    /// *Same contract as the message store's: a `url:` store runs the statically linked table, and an adopting store
+    /// takes the provider the engine handed over WITH the connection, so no adopted handle ever reaches a globally
+    /// linked `sqlite3_*` through this file.*
+    private var fn: SQLiteFunctionTable = .linkedPlatform
     private let lock = NSLock()
     internal let fileProtection: FileProtectionType = .complete
 
@@ -297,12 +303,14 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
             throw PeerStoreError.handleMissing
         }
         let db = owned.connection.rawHandle
+        // *** THE PROVIDER TRAVELS WITH THE CONNECTION, INSTALLED BEFORE ANY STATEMENT RUNS. ***
+        fn = owned.connection.provider
         handle = db
         // The OWNER closes it, never this store: the same explicit close ownership the message store records.
         ownsConnection = false
         adoptedConnectionIdentity = owned.connection.connectionIdentity
 
-        sqlite3_busy_timeout(db, 5000)
+        fn.busyTimeout(db, 5000)
 
         do {
             try runMigrations(db)
@@ -323,19 +331,19 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         let path = url.path
         var db: OpaquePointer?
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
-        guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK, let validDb = db else {
-            if let db = db { sqlite3_close_v2(db) }
+        guard fn.openV2(path, &db, flags, nil) == SQLITE_OK, let validDb = db else {
+            if let db = db { fn.closeV2(db) }
             throw PeerStoreError.handleMissing
         }
         handle = validDb
 
         // Set busy timeout for cross-connection concurrency
-        sqlite3_busy_timeout(validDb, 5000)
+        fn.busyTimeout(validDb, 5000)
 
         do {
             try runMigrations(validDb)
         } catch {
-            sqlite3_close_v2(validDb)
+            fn.closeV2(validDb)
             handle = nil
             throw error
         }
@@ -359,7 +367,7 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         do {
             try protectionSetter(path, fileProtection)
         } catch {
-            sqlite3_close_v2(validDb)
+            fn.closeV2(validDb)
             handle = nil
             throw PeerStoreError.fileProtectionFailed
         }
@@ -370,7 +378,7 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     // its owner still holds.*
     deinit {
         if ownsConnection, let db = handle {
-            sqlite3_close_v2(db)
+            fn.closeV2(db)
         }
     }
 
@@ -387,7 +395,7 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
             return
         }
         if let db = handle {
-            sqlite3_close_v2(db)
+            fn.closeV2(db)
             handle = nil
         }
     }
@@ -397,43 +405,43 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         defer { lock.unlock() }
         guard let db = handle else { throw PeerStoreError.handleMissing }
 
-        guard sqlite3_exec(db, "BEGIN IMMEDIATE", nil, nil, nil) == SQLITE_OK else {
+        guard fn.exec(db, "BEGIN IMMEDIATE", nil, nil, nil) == SQLITE_OK else {
             throw PeerStoreError.stepFailed
         }
 
         let txStore = TransactionStore(parent: self, db: db)
         do {
             let result = try block(txStore)
-            guard sqlite3_exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK else {
-                sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+            guard fn.exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK else {
+                fn.exec(db, "ROLLBACK", nil, nil, nil)
                 throw PeerStoreError.stepFailed
             }
             return result
         } catch {
-            sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+            fn.exec(db, "ROLLBACK", nil, nil, nil)
             throw error
         }
     }
 
     private func readUserVersion(_ db: OpaquePointer) throws -> Int32 {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, "PRAGMA user_version", -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        guard fn.prepareV2(db, "PRAGMA user_version", -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { throw PeerStoreError.stepFailed }
-        return sqlite3_column_int(stmt, 0)
+        defer { fn.finalize(stmt) }
+        guard fn.step(stmt) == SQLITE_ROW else { throw PeerStoreError.stepFailed }
+        return fn.columnInt(stmt, 0)
     }
 
     private func tableExists(_ db: OpaquePointer, _ name: String) throws -> Bool {
         var stmt: OpaquePointer?
         let sql = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindText(stmt, 1, name)
-        let rc = sqlite3_step(stmt)
+        let rc = fn.step(stmt)
         return rc == SQLITE_ROW
     }
 
@@ -443,17 +451,17 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
 
         if v == 0 && !exists {
             // Case A: Fresh database -> Create inside transaction and stamp user_version = 1
-            guard sqlite3_exec(db, "BEGIN", nil, nil, nil) == SQLITE_OK else { throw PeerStoreError.stepFailed }
+            guard fn.exec(db, "BEGIN", nil, nil, nil) == SQLITE_OK else { throw PeerStoreError.stepFailed }
             do {
-                guard sqlite3_exec(db, PeerIdentitySchema.createTableSql, nil, nil, nil) == SQLITE_OK else {
+                guard fn.exec(db, PeerIdentitySchema.createTableSql, nil, nil, nil) == SQLITE_OK else {
                     throw PeerStoreError.stepFailed
                 }
-                guard sqlite3_exec(db, "PRAGMA user_version = \(PeerIdentitySchema.dbVersion)", nil, nil, nil) == SQLITE_OK else {
+                guard fn.exec(db, "PRAGMA user_version = \(PeerIdentitySchema.dbVersion)", nil, nil, nil) == SQLITE_OK else {
                     throw PeerStoreError.stepFailed
                 }
-                guard sqlite3_exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK else { throw PeerStoreError.stepFailed }
+                guard fn.exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK else { throw PeerStoreError.stepFailed }
             } catch {
-                sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+                fn.exec(db, "ROLLBACK", nil, nil, nil)
                 throw error
             }
             try validateSchema(db)
@@ -478,12 +486,12 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     private func validateSchema(_ db: OpaquePointer) throws {
         var stmt: OpaquePointer?
         let sql = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindText(stmt, 1, PeerIdentitySchema.table)
-        guard sqlite3_step(stmt) == SQLITE_ROW, let raw = sqlite3_column_text(stmt, 0) else {
+        guard fn.step(stmt) == SQLITE_ROW, let raw = fn.columnText(stmt, 0) else {
             throw PeerStoreError.schemaMismatch
         }
         let actual = String(cString: raw)
@@ -636,23 +644,23 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
 
     fileprivate func readRawNoLock(_ db: OpaquePointer, _ nodeId: Data) throws -> PeerIdentityRow? {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, PeerIdentitySchema.readRawSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        guard fn.prepareV2(db, PeerIdentitySchema.readRawSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, nodeId)
 
-        let rc = sqlite3_step(stmt)
+        let rc = fn.step(stmt)
         if rc == SQLITE_DONE { return nil }
         guard rc == SQLITE_ROW else { throw PeerStoreError.stepFailed }
 
         let nId = readBlob(stmt, 0)
         let signPub = readBlob(stmt, 1)
         let accStatic = readBlob(stmt, 2)
-        let accGen = sqlite3_column_int64(stmt, 3)
-        let trustCode = sqlite3_column_int(stmt, 4)
-        let pendStatic: Data? = sqlite3_column_type(stmt, 5) == SQLITE_NULL ? nil : readBlob(stmt, 5)
-        let pendGen: Int64? = sqlite3_column_type(stmt, 6) == SQLITE_NULL ? nil : sqlite3_column_int64(stmt, 6)
+        let accGen = fn.columnInt64(stmt, 3)
+        let trustCode = fn.columnInt(stmt, 4)
+        let pendStatic: Data? = fn.columnType(stmt, 5) == SQLITE_NULL ? nil : readBlob(stmt, 5)
+        let pendGen: Int64? = fn.columnType(stmt, 6) == SQLITE_NULL ? nil : fn.columnInt64(stmt, 6)
 
         return PeerIdentityRow(
             nodeIdRaw: nId,
@@ -674,18 +682,18 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         trustCode: Int32
     ) throws -> Int {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, PeerIdentitySchema.insertFirstSeenSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        guard fn.prepareV2(db, PeerIdentitySchema.insertFirstSeenSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, nodeId)
         bindBlob(stmt, 2, signingPub)
         bindBlob(stmt, 3, acceptedStatic)
-        sqlite3_bind_int64(stmt, 4, acceptedGeneration)
-        sqlite3_bind_int(stmt, 5, trustCode)
+        fn.bindInt64(stmt, 4, acceptedGeneration)
+        fn.bindInt(stmt, 5, trustCode)
 
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
-        return Int(sqlite3_changes(db))
+        guard fn.step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+        return Int(fn.changes(db))
     }
 
     fileprivate func setInitialPendingNoLock(
@@ -699,20 +707,20 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         newPendingGeneration: Int64
     ) throws -> Int {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, PeerIdentitySchema.setInitialPendingSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        guard fn.prepareV2(db, PeerIdentitySchema.setInitialPendingSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, newPendingStatic)
-        sqlite3_bind_int64(stmt, 2, newPendingGeneration)
+        fn.bindInt64(stmt, 2, newPendingGeneration)
         bindBlob(stmt, 3, nodeId)
         bindBlob(stmt, 4, signingPub)
         bindBlob(stmt, 5, acceptedStatic)
-        sqlite3_bind_int64(stmt, 6, acceptedGeneration)
-        sqlite3_bind_int(stmt, 7, trustLevel)
+        fn.bindInt64(stmt, 6, acceptedGeneration)
+        fn.bindInt(stmt, 7, trustLevel)
 
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
-        return Int(sqlite3_changes(db))
+        guard fn.step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+        return Int(fn.changes(db))
     }
 
     fileprivate func advancePendingNoLock(
@@ -728,22 +736,22 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         newPendingGeneration: Int64
     ) throws -> Int {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, PeerIdentitySchema.advancePendingSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        guard fn.prepareV2(db, PeerIdentitySchema.advancePendingSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, newPendingStatic)
-        sqlite3_bind_int64(stmt, 2, newPendingGeneration)
+        fn.bindInt64(stmt, 2, newPendingGeneration)
         bindBlob(stmt, 3, nodeId)
         bindBlob(stmt, 4, signingPub)
         bindBlob(stmt, 5, acceptedStatic)
-        sqlite3_bind_int64(stmt, 6, acceptedGeneration)
-        sqlite3_bind_int(stmt, 7, trustLevel)
+        fn.bindInt64(stmt, 6, acceptedGeneration)
+        fn.bindInt(stmt, 7, trustLevel)
         bindBlob(stmt, 8, oldPendingStatic)
-        sqlite3_bind_int64(stmt, 9, oldPendingGeneration)
+        fn.bindInt64(stmt, 9, oldPendingGeneration)
 
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
-        return Int(sqlite3_changes(db))
+        guard fn.step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+        return Int(fn.changes(db))
     }
 
     fileprivate func approvePendingRotationNoLock(
@@ -757,20 +765,20 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         expectedPendingGeneration: Int64
     ) throws -> Int {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, PeerIdentitySchema.approvePendingRotationSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        guard fn.prepareV2(db, PeerIdentitySchema.approvePendingRotationSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw PeerStoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, nodeId)
         bindBlob(stmt, 2, signingPub)
         bindBlob(stmt, 3, acceptedStatic)
-        sqlite3_bind_int64(stmt, 4, acceptedGeneration)
-        sqlite3_bind_int(stmt, 5, trustLevel)
+        fn.bindInt64(stmt, 4, acceptedGeneration)
+        fn.bindInt(stmt, 5, trustLevel)
         bindBlob(stmt, 6, expectedPendingStatic)
-        sqlite3_bind_int64(stmt, 7, expectedPendingGeneration)
+        fn.bindInt64(stmt, 7, expectedPendingGeneration)
 
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
-        return Int(sqlite3_changes(db))
+        guard fn.step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+        return Int(fn.changes(db))
     }
 
     fileprivate func revokePeerNoLock(
@@ -785,52 +793,52 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     ) throws -> Int {
         var stmt: OpaquePointer?
         if let oldStatic = oldPendingStatic, let oldGen = oldPendingGeneration {
-            guard sqlite3_prepare_v2(db, PeerIdentitySchema.revokeWithPendingSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+            guard fn.prepareV2(db, PeerIdentitySchema.revokeWithPendingSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw PeerStoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             bindBlob(stmt, 1, nodeId)
             bindBlob(stmt, 2, signingPub)
             bindBlob(stmt, 3, acceptedStatic)
-            sqlite3_bind_int64(stmt, 4, acceptedGeneration)
-            sqlite3_bind_int(stmt, 5, currentTrustLevel)
+            fn.bindInt64(stmt, 4, acceptedGeneration)
+            fn.bindInt(stmt, 5, currentTrustLevel)
             bindBlob(stmt, 6, oldStatic)
-            sqlite3_bind_int64(stmt, 7, oldGen)
+            fn.bindInt64(stmt, 7, oldGen)
 
-            guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
-            return Int(sqlite3_changes(db))
+            guard fn.step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+            return Int(fn.changes(db))
         } else {
-            guard sqlite3_prepare_v2(db, PeerIdentitySchema.revokeNoPendingSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+            guard fn.prepareV2(db, PeerIdentitySchema.revokeNoPendingSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw PeerStoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             bindBlob(stmt, 1, nodeId)
             bindBlob(stmt, 2, signingPub)
             bindBlob(stmt, 3, acceptedStatic)
-            sqlite3_bind_int64(stmt, 4, acceptedGeneration)
-            sqlite3_bind_int(stmt, 5, currentTrustLevel)
+            fn.bindInt64(stmt, 4, acceptedGeneration)
+            fn.bindInt(stmt, 5, currentTrustLevel)
 
-            guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
-            return Int(sqlite3_changes(db))
+            guard fn.step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+            return Int(fn.changes(db))
         }
     }
 
     @inline(__always)
     private func bindBlob(_ stmt: OpaquePointer?, _ index: Int32, _ data: Data) {
         _ = data.withUnsafeBytes { raw in
-            sqlite3_bind_blob(stmt, index, raw.baseAddress, Int32(data.count), peerStoreSqliteTransient)
+            fn.bindBlob(stmt, index, raw.baseAddress, Int32(data.count), peerStoreSqliteTransient)
         }
     }
 
     @inline(__always)
     private func bindText(_ stmt: OpaquePointer?, _ index: Int32, _ text: String) {
-        sqlite3_bind_text(stmt, index, text, -1, peerStoreSqliteTransient)
+        fn.bindText(stmt, index, text, -1, peerStoreSqliteTransient)
     }
 
     @inline(__always)
     private func readBlob(_ stmt: OpaquePointer?, _ index: Int32) -> Data {
-        guard let bytes = sqlite3_column_blob(stmt, index) else { return Data() }
-        let count = Int(sqlite3_column_bytes(stmt, index))
+        guard let bytes = fn.columnBlob(stmt, index) else { return Data() }
+        let count = Int(fn.columnBytes(stmt, index))
         return Data(bytes: bytes, count: count)
     }
 

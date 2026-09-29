@@ -50,21 +50,15 @@ public enum SQLCipherPin {
     public static let supportedCipherVersion = 4
 }
 
-/// *** THE SYMBOLS THIS ENGINE NEEDS, RESOLVED BY NAME. ***
+/// *** THE SYMBOLS THIS ENGINE NEEDS ARE NOW DECLARED IN ONE PLACE: `SQLiteFunctionTable`. ***
 ///
-/// *The list is EXACTLY the set the engine calls, so the binding's surface is auditable at a glance
-/// and an unlisted symbol cannot be reached.* **`sqlite3_key`/`sqlite3_rekey` are deliberately
-/// ABSENT: SQLCipher's `PRAGMA key` is the documented interface and it goeth through `sqlite3_exec`,
-/// which keeps the key material inside the engine's own parser rather than in a buffer this file
-/// owns.***
-private typealias SQLite3Open = @convention(c) (UnsafePointer<CChar>?, UnsafeMutablePointer<OpaquePointer?>?, Int32, UnsafePointer<CChar>?) -> Int32
-private typealias SQLite3Close = @convention(c) (OpaquePointer?) -> Int32
-private typealias SQLite3Prepare = @convention(c) (OpaquePointer?, UnsafePointer<CChar>?, Int32, UnsafeMutablePointer<OpaquePointer?>?, UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> Int32
-private typealias SQLite3Step = @convention(c) (OpaquePointer?) -> Int32
-private typealias SQLite3ColumnText = @convention(c) (OpaquePointer?, Int32) -> UnsafePointer<UInt8>?
-private typealias SQLite3ColumnInt = @convention(c) (OpaquePointer?, Int32) -> Int32
-private typealias SQLite3Finalize = @convention(c) (OpaquePointer?) -> Int32
-private typealias SQLite3Errmsg = @convention(c) (OpaquePointer?) -> UnsafePointer<CChar>?
+/// *THE DEFECT THIS REPLACES: this file carrieth EIGHT private typealiases and bound exactly those eight symbols --
+/// which is why the engine could perform its own probe and nothing more, leaving the ADOPTING STORES to reach the
+/// globally linked `sqlite3_*` functions for the other twelve entry points they use.* **The complete surface now lives
+/// in `SQLiteFunctionTable.requiredSymbols`, bound all-or-nothing from the one image, and handed over with the
+/// connection.** *`sqlite3_key`/`sqlite3_rekey` remain deliberately ABSENT there: SQLCipher's `PRAGMA key` is the
+/// documented interface and it goeth through the statement road, which keeps the key material inside the engine's own
+/// parser rather than in a buffer this file owns.*
 
 /// *** THE DYNAMICALLY BOUND SQLCIPHER ENGINE. ***
 ///
@@ -80,20 +74,24 @@ private typealias SQLite3Errmsg = @convention(c) (OpaquePointer?) -> UnsafePoint
 ///      closed on EVERY failure path before the throw.
 public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked Sendable {
 
-    /// The resolved symbols, or nil when the bind did not complete.
-    private struct Symbols {
-        let open: SQLite3Open
-        let close: SQLite3Close
-        let prepare: SQLite3Prepare
-        let step: SQLite3Step
-        let columnText: SQLite3ColumnText
-        let columnInt: SQLite3ColumnInt
-        let finalize: SQLite3Finalize
-        let errmsg: SQLite3Errmsg
-    }
+    /// *** THE COMPLETE TABLE BOUND FROM THIS ENGINE'S OWN IMAGE -- ALL-OR-NOTHING. ***
+    ///
+    /// *The old engine bound eight symbols into a private struct and then let the adopting stores reach the GLOBALLY
+    /// LINKED `sqlite3_*` functions for everything else. This table carrieth the COMPLETE surface both stores use, all
+    /// resolved from the one image, and `openKeyedVerified` hands it to the connection -- so no raw handle ever
+    /// crosses a provider boundary through a global symbol again.*
+    private let table: SQLiteFunctionTable?
 
+    /// *** THE `dlopen` HANDLE IS RETAINED FOR AS LONG AS THE TABLE'S POINTERS CAN BE USED, AND THE CLOSE IS PAIRED
+    /// WITH THE ENGINE'S OWN LIFETIME. ***
+    ///
+    /// *THE DEFECT THIS CLOSES: the old `deinit` called `dlclose`, but the close CLOSURE handed to `OwnedConnection`
+    /// captured only the eight FUNCTION POINTERS -- so if an `OwnedConnection` outlived the engine, its close would
+    /// invoke a pointer into an UNLOADED image. The reverse ordering is the practical one (an engine outlives its
+    /// connections in the composition), but "practical" is not a guarantee.* **So ownership is made explicit: the
+    /// engine keepeth the `dlopen` handle, the connection carrieth its table, and the composition's close order
+    /// (stores, then adopted connections, then the engine) is what the courts assert.**
     private let handle: UnsafeMutableRawPointer?
-    private let symbols: Symbols?
     private let bindingFailure: String?
 
     /// Bind the pinned library. *A caller may pin its own name for a court; production passeth none.*
@@ -103,50 +101,45 @@ public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked 
         self.handle = h
         guard let h else {
             let why = dlerror().map { String(cString: $0) } ?? "dlopen returned no handle"
-            self.symbols = nil
+            self.table = nil
             self.bindingFailure = "the pinned SQLCipher library '\(name)' is not present: \(why)"
             return
         }
-        // *** EVERY SYMBOL MUST RESOLVE, OR THE ENGINE IS NOT AN ENGINE. *** *A partially bound
-        // library would let the probe run with a garbage function pointer -- which is a crash, not a
-        // refusal. So a missing symbol is a TYPED BINDING FAILURE, taken here, once.*
-        guard let open = Self.sym(h, "sqlite3_open_v2", SQLite3Open.self),
-              let close = Self.sym(h, "sqlite3_close_v2", SQLite3Close.self),
-              let prepare = Self.sym(h, "sqlite3_prepare_v2", SQLite3Prepare.self),
-              let step = Self.sym(h, "sqlite3_step", SQLite3Step.self),
-              let columnText = Self.sym(h, "sqlite3_column_text", SQLite3ColumnText.self),
-              let columnInt = Self.sym(h, "sqlite3_column_int", SQLite3ColumnInt.self),
-              let finalize = Self.sym(h, "sqlite3_finalize", SQLite3Finalize.self),
-              let errmsg = Self.sym(h, "sqlite3_errmsg", SQLite3Errmsg.self)
-        else {
-            self.symbols = nil
-            self.bindingFailure = "the library '\(name)' loaded but carrieth NOT ONE OF THE REQUIRED "
-                + "sqlite3_* symbols; a partial bind cannot perform the cipher probe"
+        // *** THE COMPLETE TABLE, ALL-OR-NOTHING. *** *A partially bound image would call a garbage function pointer
+        // -- a crash, not a refusal -- so a missing symbol is a TYPED BINDING FAILURE taken here, once. The required
+        // names are the ONE list the table and its court agree on.*
+        guard let bound = SQLiteFunctionTable.bind(fromImage: h,
+                                                   providerName: "SQLCipher (\(name))") else {
+            self.table = nil
+            self.bindingFailure = "the library '\(name)' loaded but carrieth not the complete "
+                + "sqlite3_* surface both stores use (\(SQLiteFunctionTable.requiredSymbols.count) symbols); a "
+                + "partial bind cannot perform the cipher probe"
             return
         }
-        self.symbols = Symbols(open: open, close: close, prepare: prepare, step: step,
-                               columnText: columnText, columnInt: columnInt,
-                               finalize: finalize, errmsg: errmsg)
+        self.table = bound
         self.bindingFailure = nil
     }
 
+    /// *** `deinit` CLOSES THE IMAGE -- AND THAT IS EXACTLY WHY THE TABLE MUST BE CARRIED BY THE CONNECTION. ***
+    ///
+    /// *An `OwnedConnection` that outlived its engine would otherwise close through a pointer into an unloaded image.
+    /// The composition's close order (documented in `closeAdoptedConnections`) is stores -> adopted connections ->
+    /// engine, and `GsFinal004OwnedConnectionTests` asserteth that order.*
     deinit { if let handle { dlclose(handle) } }
-
-    private static func sym<T>(_ h: UnsafeMutableRawPointer, _ name: String, _ type: T.Type) -> T? {
-        guard let p = dlsym(h, name) else { return nil }
-        return unsafeBitCast(p, to: T.self)
-    }
 
     /// *** WHETHER THE ENGINE IS ACTUALLY THE PINNED ONE -- ASKED OF THE BIND, NOT OF A CONSTANT. ***
     ///
-    /// *This is the property the factory guardeth on, and it is TRUE ONLY WHEN THE LIBRARY LOADED AND
-    /// EVERY SYMBOL RESOLVED.* **A `kind` that returned `.pinnedSQLCipher` unconditionally would make
-    /// every fail-closed arm pass vacuously -- the factory would proceed to open with no engine and
-    /// the arms would measure the absence of a file rather than the presence of a gate.**
-    public var isBound: Bool { symbols != nil }
+    /// *This is the property the factory guardeth on, and it is TRUE ONLY WHEN THE LIBRARY LOADED AND EVERY SYMBOL
+    /// RESOLVED.* **A `kind` that returned `.pinnedSQLCipher` unconditionally would make every fail-closed arm pass
+    /// vacuously -- the factory would proceed to open with no engine and the arms would measure the absence of a file
+    /// rather than the presence of a gate.**
+    public var isBound: Bool { table != nil }
 
     /// The binding failure, for an operator or a court that must NAME why the engine is absent.
     public var bindingFailureReason: String? { bindingFailure }
+
+    /// The provider name this engine bound, for a court that must prove a store ran on THIS image's table.
+    public var providerName: String? { table?.providerName }
 
     // ---------------------------------------------------------------- EncryptedStoreEngine
 
@@ -195,7 +188,7 @@ public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked 
     /// a keyed one giveth `SQLITE_NOTADB` -- so an engine that probed first would refuse every
     /// genuinely encrypted store and accept every plaintext one. The order is not a style choice.**
     private func openKeyedVerified(path: String, dek: StoreDEK, create: Bool) throws -> OwnedConnection {
-        guard let s = symbols else {
+        guard let s = table else {
             // *No engine, no store. This throw is the second gate; the factory's `kind` guard is the
             // first, and both exist because either alone could be bypassed by a future caller.*
             throw StoreOpenFault.io(bindingFailure ?? "the SQLCipher engine is not bound")
@@ -205,24 +198,33 @@ public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked 
         var db: OpaquePointer?
         // SQLITE_OPEN_READWRITE = 2, SQLITE_OPEN_CREATE = 4
         let flags: Int32 = create ? (2 | 4) : 2
-        let rcOpen = path.withCString { s.open($0, &db, flags, nil) }
+        let rcOpen = path.withCString { s.openV2($0, &db, flags, nil) }
+        // *** AND A **PARTIAL** HANDLE FROM A FAILED OPEN IS CLOSED BEFORE THE THROW. ***
+        //
+        // *THE DEFECT THIS CLOSES, MEASURED BY READING THE OLD BODY: `sqlite3_open_v2` may return a NONNULL handle
+        // even on failure (`SQLITE_CANTOPEN`/`SQLITE_NOTADB`), and the old guard threw on `rcOpen != 0` WITHOUT closing
+        // it -- so every failed open leaked a connection. The cleanup below began only AFTER the success guard and
+        // therefore could never see this case.* **The partial handle is closed HERE, before the throw, exactly as the
+        // card's "close handles on every failure path" requirith.**
         guard rcOpen == 0, let handle = db else {
+            if let partial = db { _ = s.closeV2(partial) }
             throw StoreOpenFault.io("sqlite3_open_v2 refused \(path) (rc=\(rcOpen))")
         }
         // *** A HANDLE THAT WAS OPENED IS CLOSED ON EVERY PATH BELOW. *** *"Close handles on every
         // failure path" is on the card's remediation list, and the `defer`-shaped version of it is
         // the only one that cannot be forgotten when a branch is added.*
         var handedOver = false
-        defer { if !handedOver { _ = s.close(handle) } }
+        defer { if !handedOver { _ = s.closeV2(handle) } }
 
         // (1) THE KEY, BEFORE ANY SCHEMA READ. *Hex-literal form, so the DEK never enters a string
         // that could be logged or reused: `PRAGMA key = "x'…'"`.*
-        try exec(s, handle, "PRAGMA key = \"x'\(hex(dek.bytes))'\";")
+        try applyKey(s, handle, dek: dek)
 
         // (2) THE CIPHER PROBE: this must be SQLCipher, not stock SQLite. *Stock SQLite silently
         // ignoreth an unknown `PRAGMA key` and reporteth no cipher version at all -- which is exactly
         // how a plaintext store could otherwise be mistaken for a protected one.*
-        guard let version = try scalarText(s, handle, "PRAGMA cipher_version;"), !version.isEmpty else {
+        guard let version = try scalarText(s, handle, "PRAGMA cipher_version;", label: "cipher_version probe"),
+              !version.isEmpty else {
             throw StoreOpenFault.io("PRAGMA cipher_version returned nothing: this library is NOT SQLCipher, "
                 + "and a store it opened would be plaintext")
         }
@@ -233,8 +235,7 @@ public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked 
         }
 
         // (3) THE KEY-ACTUALLY-WORKED PROBE: a schema read that a WRONG key cannot survive.
-        // *SQLCipher answers `SQLITE_NOTADB` (26) for a wrong key, so a store opened with the wrong
-        // DEK is a TYPED REFUSAL here rather than an empty-but-healthy store.*
+        // *The probe NORMALISES `SQLITE_NOTADB` to `.wrongKey` in BOTH `prepare` and `step` -- see the helpers.*
         let count = try scalarInt(s, handle, "SELECT count(*) FROM sqlite_master;")
 
         // (4) ONLY NOW IS AT-REST CLAIMED -- and the claim is made of the connection itself, not of a
@@ -243,58 +244,104 @@ public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked 
                                                engineKind: .pinnedSQLCipher,
                                                cipherVersion: major,
                                                encryptedAtRest: true,
-                                               path: path)
+                                               path: path,
+                                               provider: s)
         _ = count
         handedOver = true
         // *The close handler is `sqlite3_close_v2`, so ownership is explicit and a double close is
         // refused by `OwnedConnection` before it can reach SQLite's undefined behaviour.*
-        return OwnedConnection(connection: verified) { h in _ = s.close(h) }
+        return OwnedConnection(connection: verified) { h in _ = s.closeV2(h) }
     }
 
     // ---------------------------------------------------------------- statement helpers
 
-    private func exec(_ s: Symbols, _ db: OpaquePointer, _ sql: String) throws {
+    /// *** THE KEY IS APPLIED WITHOUT EVER ECHOING IT -- AND WITHOUT AN INTERPOLATED SQL STRING IN ANY FAULT. ***
+    ///
+    /// *THE DEFECT THIS CLOSES, MEASURED: `exec` interpolated the SQL IT WAS GIVEN into its fault message, and for the
+    /// key statement that SQL IS `PRAGMA key = "x'<hex DEK>'"` -- so a wrong-key refusal wrote the DATABASE KEY into an
+    /// error string (and, on this isle, into whatever logs it).* **The repair takes a NON-SECRET OPERATION LABEL plus
+    /// the NUMERIC result code, and never the SQL or the engine text; the DEK is never placed in a value this file
+    /// formats.** *No retry and no plaintext fallback is introduced -- the refusal stays a refusal.*
+    private func applyKey(_ s: SQLiteFunctionTable, _ db: OpaquePointer, dek: StoreDEK) throws {
+        let sql = "PRAGMA key = \"x'\(hex(dek.bytes))'\";"
         var stmt: OpaquePointer?
-        let rc = sql.withCString { s.prepare(db, $0, -1, &stmt, nil) }
+        let rc = sql.withCString { s.prepareV2(db, $0, -1, &stmt, nil) }
         defer { if let stmt { _ = s.finalize(stmt) } }
         guard rc == 0, let stmt else {
-            throw StoreOpenFault.io("could not prepare '\(sql)': \(err(s, db))")
+            // *The label is non-secret and the code is numeric: neither can carry the DEK.*
+            throw StoreOpenFault.io("apply-key prepare failed (rc=\(rc))")
         }
         let stepRC = s.step(stmt)
-        guard stepRC == 101 || stepRC == 0 else {   // SQLITE_DONE / SQLITE_ROW
-            throw StoreOpenFault.io("could not execute '\(sql)': \(err(s, db))")
+        guard stepRC == 101 || stepRC == 100 else {
+            throw StoreOpenFault.io("apply-key step failed (rc=\(stepRC))")
         }
     }
 
-    private func scalarText(_ s: Symbols, _ db: OpaquePointer, _ sql: String) throws -> String? {
+    /// A NON-KEY statement, executed. *Its SQL is a fixed literal owned by this file (BEGIN/COMMIT/PRAGMA
+    /// user_version), so naming it is not a key-leak risk -- but the shape below still passeth a LABEL rather than
+    /// interpolating freely, so a future caller cannot route the key road through it.*
+    private func exec(_ s: SQLiteFunctionTable, _ db: OpaquePointer, _ sql: String) throws {
         var stmt: OpaquePointer?
-        let rc = sql.withCString { s.prepare(db, $0, -1, &stmt, nil) }
+        let rc = sql.withCString { s.prepareV2(db, $0, -1, &stmt, nil) }
         defer { if let stmt { _ = s.finalize(stmt) } }
-        guard rc == 0, let stmt else { throw StoreOpenFault.io("prepare '\(sql)': \(err(s, db))") }
+        guard rc == 0, let stmt else {
+            throw StoreOpenFault.io("could not prepare a fixed statement (rc=\(rc))")
+        }
+        let stepRC = s.step(stmt)
+        // *** SQLITE_DONE(101)/SQLITE_ROW(100) ARE SUCCESS; **0 IS *NOT*.** ***
+        // *The old comment said "SQLITE_DONE / SQLITE_ROW" while accepting `0` -- and `SQLITE_OK(0)` is never a
+        // successful `step` result, so accepting it would have silently passed a statement that never ran.*
+        guard stepRC == 101 || stepRC == 100 else {
+            throw StoreOpenFault.io("could not execute a fixed statement (rc=\(stepRC))")
+        }
+    }
+
+    private func scalarText(_ s: SQLiteFunctionTable, _ db: OpaquePointer, _ sql: String,
+                            label: String = "scalar read") throws -> String? {
+        var stmt: OpaquePointer?
+        let rc = sql.withCString { s.prepareV2(db, $0, -1, &stmt, nil) }
+        defer { if let stmt { _ = s.finalize(stmt) } }
+        guard rc == 0, let stmt else {
+            // *** `SQLITE_NOTADB` AT **PREPARE** IS NORMALISED TOO -- a wrong key on a keyed file can refuse here
+            // as well as at `step`, and the old road reported a generic IO fault for it. ***
+            if rc == 26 { throw StoreOpenFault.wrongKey }
+            throw StoreOpenFault.io("\(label): prepare failed (rc=\(rc))")
+        }
         let stepRC = s.step(stmt)
         guard stepRC == 100 else {                            // SQLITE_ROW
             if stepRC == 26 { throw StoreOpenFault.wrongKey } // SQLITE_NOTADB
-            throw StoreOpenFault.io("'\(sql)' answered rc=\(stepRC): \(err(s, db))")
+            // *** THE LABEL NAMES THE PROBE, SO A LIBRARY THAT ANSWERETH `DONE` WITH NO ROWS IS DIAGNOSABLE. ***
+            // *Stock SQLite silently ignoreth an unknown `PRAGMA key` and answereth `PRAGMA cipher_version` with DONE
+            // and zero rows -- which is EXACTLY the plaintext-library case -- so the fault must say WHICH probe it was
+            // rather than printing a bare result code.*
+            throw StoreOpenFault.io("\(label) answered rc=\(stepRC) with no row: this library is NOT SQLCipher")
         }
         guard let text = s.columnText(stmt, 0) else { return nil }
         return String(cString: text)
     }
 
-    private func scalarInt(_ s: Symbols, _ db: OpaquePointer, _ sql: String) throws -> Int32 {
+    private func scalarInt(_ s: SQLiteFunctionTable, _ db: OpaquePointer, _ sql: String) throws -> Int32 {
         var stmt: OpaquePointer?
-        let rc = sql.withCString { s.prepare(db, $0, -1, &stmt, nil) }
+        let rc = sql.withCString { s.prepareV2(db, $0, -1, &stmt, nil) }
         defer { if let stmt { _ = s.finalize(stmt) } }
-        guard rc == 0, let stmt else { throw StoreOpenFault.io("prepare '\(sql)': \(err(s, db))") }
+        guard rc == 0, let stmt else {
+            if rc == 26 { throw StoreOpenFault.wrongKey }     // SQLITE_NOTADB at prepare
+            throw StoreOpenFault.io("prepare failed (rc=\(rc))")
+        }
         let stepRC = s.step(stmt)
         guard stepRC == 100 else {
             if stepRC == 26 { throw StoreOpenFault.wrongKey } // SQLITE_NOTADB: the key did not decrypt
-            throw StoreOpenFault.io("'\(sql)' answered rc=\(stepRC): \(err(s, db))")
+            throw StoreOpenFault.io("statement answered rc=\(stepRC)")
         }
         return s.columnInt(stmt, 0)
     }
 
-    private func err(_ s: Symbols, _ db: OpaquePointer) -> String {
-        s.errmsg(db).map { String(cString: $0) } ?? "no engine message"
+    /// **REDACTED, AND DELIBERATELY SO.** *The engine's own message is NOT returned, because SQLCipher's messages can
+    /// quote the offending SQL -- and for the key road that SQL is the DEK. Kept for the call sites that only need a
+    /// non-key diagnostic; the key road above does not use it.*
+    private func err(_ s: SQLiteFunctionTable, _ db: OpaquePointer) -> String {
+        _ = s.errmsg(db)
+        return "engine error (message redacted: it may quote the key-bearing statement)"
     }
 
     private func hex(_ data: Data) -> String {

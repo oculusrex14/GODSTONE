@@ -1012,6 +1012,8 @@ public final class SqliteMessageStore: MessageStore {
         }
 
         let db = owned.connection.rawHandle
+        // *** THE PROVIDER TRAVELS WITH THE CONNECTION, AND IS INSTALLED BEFORE ANY STATEMENT RUNS. ***
+        fn = owned.connection.provider
         handle = db
         // PUBLISHED ONLY NOW, BESIDE THE HANDLE IT NAMES: the connection is accepted, so the observation is true.
         adoptedConnectionIdentity = owned.connection.connectionIdentity
@@ -1026,6 +1028,21 @@ public final class SqliteMessageStore: MessageStore {
         }
         openOutcome = .opened
     }
+
+    /// *** THE PROVIDER TABLE THIS STORE CALLS THROUGH -- THE IMAGE ITS HANDLE CAME FROM. ***
+    ///
+    /// *THE DEFECT THIS CLOSES: an ADOPTED connection was created by `SqlCipherDylibEngine`'s `dlsym`-loaded image,
+    /// and this store then called the GLOBALLY LINKED `sqlite3_*` functions on it -- a pointer created by one SQLite
+    /// implementation passed to another.* **So the table is CARRIED, not looked up: a `url:` store runs
+    /// `SQLiteFunctionTable.linkedPlatform` (its handle and its functions come from the same image by construction),
+    /// and an adopting store takes the provider the engine handed over WITH the connection.** *A global
+    /// raw-pointer→provider map would be mutable state a recycled pointer could answer wrongly; a table carried by
+    /// value cannot be wrong.*
+    private var fn: SQLiteFunctionTable = .linkedPlatform
+
+    /// *** THE PROVIDER THIS STORE IS RUNNING ON, FOR A COURT. *** *An observation rather than an assertion: a court
+    /// asks the store which image its handle calls into, and compares that against what the engine bound.*
+    internal var providerNameForTest: String { lock.lock(); defer { lock.unlock() }; return fn.providerName }
 
     /// The identity of the connection this store was HANDED, or nil when it opened its own.
     ///
@@ -1057,8 +1074,8 @@ public final class SqliteMessageStore: MessageStore {
         let path = url.path
         var db: OpaquePointer?
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
-        guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK else {
-            sqlite3_close_v2(db)
+        guard fn.openV2(path, &db, flags, nil) == SQLITE_OK else {
+            fn.closeV2(db)
             openOutcome = .failed(.cannotOpenDatabase)
             return
         }
@@ -1085,7 +1102,7 @@ public final class SqliteMessageStore: MessageStore {
         do {
             try runMigrations(db)
         } catch {
-            sqlite3_close_v2(db)
+            fn.closeV2(db)
             handle = nil
             openOutcome = .failed(.schemaMigrationFailed)
             return
@@ -1112,7 +1129,7 @@ public final class SqliteMessageStore: MessageStore {
     // *** GS-FINAL-004: `deinit` MUST NOT CLOSE A CONNECTION THIS STORE DOES NOT OWN. ***
     // *It closed unconditionally, so on the factory road the store's own deallocation would close a handle the
     // COMPOSITION owns -- and the wipe path closes both, so the same `OpaquePointer` could be freed twice.*
-    deinit { if ownsConnection, let db = handle { sqlite3_close_v2(db) } }
+    deinit { if ownsConnection, let db = handle { fn.closeV2(db) } }
 
     public func close() {
         // GS-STORE-005: closing releaseth EVERY registration -- a store that no longer standeth must hold no
@@ -1136,7 +1153,7 @@ public final class SqliteMessageStore: MessageStore {
             return
         }
         if let db = handle {
-            sqlite3_close_v2(db)
+            fn.closeV2(db)
             handle = nil
         }
     }
@@ -1299,17 +1316,17 @@ public final class SqliteMessageStore: MessageStore {
                 "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity) " +
                 "FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ? LIMIT 1"
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return false
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); return false
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             let blob = msgId as NSData
-            guard sqlite3_bind_blob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK else { return false }
-            guard sqlite3_step(stmt) == SQLITE_ROW else { return false }
-            let remaining = sqlite3_column_type(stmt, 0) == SQLITE_NULL ? nil : Int64(sqlite3_column_int64(stmt, 0))
-            let mono = sqlite3_column_type(stmt, 1) == SQLITE_NULL ? nil : Int64(sqlite3_column_int64(stmt, 1))
-            let boot = sqlite3_column_text(stmt, 2).map { String(cString: $0) }
-            let disco = sqlite3_column_type(stmt, 3) == SQLITE_NULL ? nil : Int64(sqlite3_column_int64(stmt, 3))
+            guard fn.bindBlob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK else { return false }
+            guard fn.step(stmt) == SQLITE_ROW else { return false }
+            let remaining = fn.columnType(stmt, 0) == SQLITE_NULL ? nil : Int64(fn.columnInt64(stmt, 0))
+            let mono = fn.columnType(stmt, 1) == SQLITE_NULL ? nil : Int64(fn.columnInt64(stmt, 1))
+            let boot = fn.columnText(stmt, 2).map { String(cString: $0) }
+            let disco = fn.columnType(stmt, 3) == SQLITE_NULL ? nil : Int64(fn.columnInt64(stmt, 3))
             found = (remaining, mono, boot, disco)
             return true
         }
@@ -1348,17 +1365,17 @@ public final class SqliteMessageStore: MessageStore {
             "\(StoreSchema.colBootIdentity) = ? " +
             "WHERE \(StoreSchema.colMsgId) = ?"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return false
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); return false
         }
-        defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_int64(stmt, 1, Int64(next.remainingMs))
-        sqlite3_bind_int64(stmt, 2, Int64(next.checkpointMonotonicMs))
-        sqlite3_bind_int64(stmt, 3, Int64(next.discontinuityCount))
-        sqlite3_bind_text(stmt, 4, next.bootIdentity, -1, storeSqliteTransient)
+        defer { fn.finalize(stmt) }
+        fn.bindInt64(stmt, 1, Int64(next.remainingMs))
+        fn.bindInt64(stmt, 2, Int64(next.checkpointMonotonicMs))
+        fn.bindInt64(stmt, 3, Int64(next.discontinuityCount))
+        fn.bindText(stmt, 4, next.bootIdentity, -1, storeSqliteTransient)
         let blob = msgId as NSData
-        sqlite3_bind_blob(stmt, 5, blob.bytes, Int32(blob.length), storeSqliteTransient)
-        return sqlite3_step(stmt) == SQLITE_DONE
+        fn.bindBlob(stmt, 5, blob.bytes, Int32(blob.length), storeSqliteTransient)
+        return fn.step(stmt) == SQLITE_DONE
     }
 
     /// GS-STORE-004 (STEP NINE -- THE API WITHOUT ITS SEMANTICS): THE BOUNDED EXPIRY SWEEP. It retireth AT MOST
@@ -1405,23 +1422,23 @@ public final class SqliteMessageStore: MessageStore {
                 "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), \(StoreSchema.colBootIdentity), " +
                 "\(StoreSchema.colDiscontinuity) FROM \(StoreSchema.table) LIMIT ?"
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, scan, -1, &stmt, nil) == SQLITE_OK else { sqlite3_finalize(stmt); return 0 }
-            defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_int(stmt, 1, Int32(max(1, limit)))
+            guard fn.prepareV2(db, scan, -1, &stmt, nil) == SQLITE_OK else { fn.finalize(stmt); return 0 }
+            defer { fn.finalize(stmt) }
+            fn.bindInt(stmt, 1, Int32(max(1, limit)))
             var spent: [Data] = []
             var scanned = 0
-            while sqlite3_step(stmt) == SQLITE_ROW {
+            while fn.step(stmt) == SQLITE_ROW {
                 scanned += 1
-                let budget = sqlite3_column_type(stmt, 3) == SQLITE_NULL
-                    ? nil : Int64(sqlite3_column_int64(stmt, 3))
-                let cp = sqlite3_column_type(stmt, 4) == SQLITE_NULL
-                    ? nil : Int64(sqlite3_column_int64(stmt, 4))
-                let storedBoot = sqlite3_column_text(stmt, 5).map { String(cString: $0) }
-                let disco = sqlite3_column_type(stmt, 6) == SQLITE_NULL
-                    ? nil : Int64(sqlite3_column_int64(stmt, 6))
+                let budget = fn.columnType(stmt, 3) == SQLITE_NULL
+                    ? nil : Int64(fn.columnInt64(stmt, 3))
+                let cp = fn.columnType(stmt, 4) == SQLITE_NULL
+                    ? nil : Int64(fn.columnInt64(stmt, 4))
+                let storedBoot = fn.columnText(stmt, 5).map { String(cString: $0) }
+                let disco = fn.columnType(stmt, 6) == SQLITE_NULL
+                    ? nil : Int64(fn.columnInt64(stmt, 6))
                 _ = boot
-                if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 2),
-                                  kind: MessageKind.ofStoredTypeCode(Int(sqlite3_column_int(stmt, 1))),
+                if !isForwardable(receivedAt: fn.columnInt64(stmt, 2),
+                                  kind: MessageKind.ofStoredTypeCode(Int(fn.columnInt(stmt, 1))),
                                   storedBudget: budget, storedCheckpoint: cp,
                                   storedBoot: storedBoot, storedDiscontinuity: disco) {
                     spent.append(readBlob(stmt, 0))
@@ -1442,11 +1459,11 @@ public final class SqliteMessageStore: MessageStore {
             for id in spent {
                 let del = "DELETE FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
                 var d: OpaquePointer?
-                guard sqlite3_prepare_v2(db, del, -1, &d, nil) == SQLITE_OK else { sqlite3_finalize(d); continue }
+                guard fn.prepareV2(db, del, -1, &d, nil) == SQLITE_OK else { fn.finalize(d); continue }
                 let blob = id as NSData
-                sqlite3_bind_blob(d, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
-                let deleted = sqlite3_step(d) == SQLITE_DONE
-                sqlite3_finalize(d)
+                fn.bindBlob(d, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
+                let deleted = fn.step(d) == SQLITE_DONE
+                fn.finalize(d)
                 // THE TOMBSTONE, WRITTEN INSIDE THE SAME TRANSACTION THAT RETIRETH THE ROW -- because a row
                 // retired without one could be REPLAYED AND RE-ACCEPTED, and a retirement that half-happeneth
                 // would be worse than none. Its lifetime is the POLICY'S OWN `tombstoneMs`, and it carrieth the
@@ -1457,23 +1474,23 @@ public final class SqliteMessageStore: MessageStore {
                         "\(StoreSchema.colTMsgId), \(StoreSchema.colTExpiresAtMono), " +
                         "\(StoreSchema.colTBootIdentity)) VALUES (?,?,?)"
                     var ts: OpaquePointer?
-                    if sqlite3_prepare_v2(handle, ins, -1, &ts, nil) == SQLITE_OK {
-                        sqlite3_bind_blob(ts, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
-                        sqlite3_bind_int64(ts, 2, now + Int64(RetentionPolicy.tombstoneMs))
-                        boot.withCString { sqlite3_bind_text(ts, 3, $0, -1, storeSqliteTransient) }
-                        _ = sqlite3_step(ts)
+                    if fn.prepareV2(handle, ins, -1, &ts, nil) == SQLITE_OK {
+                        fn.bindBlob(ts, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
+                        fn.bindInt64(ts, 2, now + Int64(RetentionPolicy.tombstoneMs))
+                        boot.withCString { fn.bindText(ts, 3, $0, -1, storeSqliteTransient) }
+                        _ = fn.step(ts)
                     }
-                    sqlite3_finalize(ts)
+                    fn.finalize(ts)
                 }
                 let upd = "UPDATE \(StoreSchema.deliveryTable) SET \(StoreSchema.colDState) = ? " +
                     "WHERE \(StoreSchema.colDMsgId) = ?"
                 var u: OpaquePointer?
-                if sqlite3_prepare_v2(db, upd, -1, &u, nil) == SQLITE_OK {
-                    sqlite3_bind_int(u, 1, DeliveryState.expired.code)
-                    sqlite3_bind_blob(u, 2, blob.bytes, Int32(blob.length), storeSqliteTransient)
-                    _ = sqlite3_step(u)
+                if fn.prepareV2(db, upd, -1, &u, nil) == SQLITE_OK {
+                    fn.bindInt(u, 1, DeliveryState.expired.code)
+                    fn.bindBlob(u, 2, blob.bytes, Int32(blob.length), storeSqliteTransient)
+                    _ = fn.step(u)
                 }
-                sqlite3_finalize(u)
+                fn.finalize(u)
                 if deleted { retired += 1 }
             }
             _ = try? execStrict(db, "COMMIT")
@@ -1551,29 +1568,29 @@ public final class SqliteMessageStore: MessageStore {
             "SELECT \(StoreSchema.colTMsgId) FROM \(StoreSchema.tombstoneTable) " +
             "WHERE \(StoreSchema.colTBootIdentity) = ? AND \(StoreSchema.colTExpiresAtMono) <= ? LIMIT ?)"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); return
         }
-        defer { sqlite3_finalize(stmt) }
-        boot.withCString { sqlite3_bind_text(stmt, 1, $0, -1, storeSqliteTransient) }
-        sqlite3_bind_int64(stmt, 2, nowMono)
-        sqlite3_bind_int(stmt, 3, Int32(max(1, limit)))
-        _ = sqlite3_step(stmt)
+        defer { fn.finalize(stmt) }
+        boot.withCString { fn.bindText(stmt, 1, $0, -1, storeSqliteTransient) }
+        fn.bindInt64(stmt, 2, nowMono)
+        fn.bindInt(stmt, 3, Int32(max(1, limit)))
+        _ = fn.step(stmt)
     }
 
     private func liveTombstoneNoLock(_ db: OpaquePointer, _ msgId: Data) -> Bool {
         let sql = "SELECT \(StoreSchema.colTExpiresAtMono), \(StoreSchema.colTBootIdentity) " +
             "FROM \(StoreSchema.tombstoneTable) WHERE \(StoreSchema.colTMsgId) = ? LIMIT 1"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return false
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); return false
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         let blob = msgId as NSData
-        guard sqlite3_bind_blob(stmt, 1, blob.bytes, Int32(blob.length), storeSqliteTransient) == SQLITE_OK,
-              sqlite3_step(stmt) == SQLITE_ROW else { return false }
-        let expiresAt = Int64(sqlite3_column_int64(stmt, 0))
-        let boot = sqlite3_column_text(stmt, 1).map { String(cString: $0) }
+        guard fn.bindBlob(stmt, 1, blob.bytes, Int32(blob.length), storeSqliteTransient) == SQLITE_OK,
+              fn.step(stmt) == SQLITE_ROW else { return false }
+        let expiresAt = Int64(fn.columnInt64(stmt, 0))
+        let boot = fn.columnText(stmt, 1).map { String(cString: $0) }
         let clock = receiptTimeProvider
         let stamp = clock()
         guard let writtenBy = boot, writtenBy == stamp.bootIdentity else { return true }
@@ -1594,12 +1611,12 @@ public final class SqliteMessageStore: MessageStore {
         withDb { db -> Int in
             var stmt: OpaquePointer?
             let sql = "SELECT COUNT(*) FROM \(StoreSchema.tombstoneTable)"
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return 0
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); return 0
             }
-            defer { sqlite3_finalize(stmt) }
-            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-            return Int(sqlite3_column_int64(stmt, 0))
+            defer { fn.finalize(stmt) }
+            guard fn.step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(fn.columnInt64(stmt, 0))
         } ?? 0
     }
 
@@ -1609,15 +1626,15 @@ public final class SqliteMessageStore: MessageStore {
             let sql = "SELECT \(StoreSchema.colTExpiresAtMono), \(StoreSchema.colTBootIdentity) " +
                 "FROM \(StoreSchema.tombstoneTable) WHERE \(StoreSchema.colTMsgId) = ? LIMIT 1"
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return false
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); return false
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             let blob = msgId as NSData
-            guard sqlite3_bind_blob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK,
-                  sqlite3_step(stmt) == SQLITE_ROW else { return false }
-            found = (Int64(sqlite3_column_int64(stmt, 0)),
-                     sqlite3_column_text(stmt, 1).map { String(cString: $0) })
+            guard fn.bindBlob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK,
+                  fn.step(stmt) == SQLITE_ROW else { return false }
+            found = (Int64(fn.columnInt64(stmt, 0)),
+                     fn.columnText(stmt, 1).map { String(cString: $0) })
             return true
         }
         return found
@@ -1630,14 +1647,14 @@ public final class SqliteMessageStore: MessageStore {
         _ = withDb { db in
             let sql = "SELECT \(StoreSchema.colReceivedAt) FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ? LIMIT 1"
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return false
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); return false
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             let blob = msgId as NSData
-            guard sqlite3_bind_blob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK else { return false }
-            guard sqlite3_step(stmt) == SQLITE_ROW else { return false }
-            found = Int64(sqlite3_column_int64(stmt, 0))
+            guard fn.bindBlob(stmt, 1, blob.bytes, Int32(blob.length), nil) == SQLITE_OK else { return false }
+            guard fn.step(stmt) == SQLITE_ROW else { return false }
+            found = Int64(fn.columnInt64(stmt, 0))
             return true
         }
         return found
@@ -1669,32 +1686,32 @@ public final class SqliteMessageStore: MessageStore {
                 "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity) FROM \(StoreSchema.table) " +
                 "ORDER BY \(StoreSchema.priorityOrder)"
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); return
             }
-            defer { sqlite3_finalize(stmt) }
-            while sqlite3_step(stmt) == SQLITE_ROW {
+            defer { fn.finalize(stmt) }
+            while fn.step(stmt) == SQLITE_ROW {
                 let row = StoreRow(
-                    typeCode: sqlite3_column_int(stmt, 0),
+                    typeCode: fn.columnInt(stmt, 0),
                     msgId: readBlob(stmt, 1),
                     routingTag: readBlob(stmt, 2),
-                    ttl: sqlite3_column_int(stmt, 3),
-                    hopCount: sqlite3_column_int(stmt, 4),
-                    flags: sqlite3_column_int(stmt, 5),
+                    ttl: fn.columnInt(stmt, 3),
+                    hopCount: fn.columnInt(stmt, 4),
+                    flags: fn.columnInt(stmt, 5),
                     payload: readBlob(stmt, 6))
                 guard let frame = row.toFrame() else { continue }   // skip unknown-type
-                let storedBudget = sqlite3_column_type(stmt, 8) == SQLITE_NULL
-                    ? nil : Int64(sqlite3_column_int64(stmt, 8))
-                let storedCheckpoint = sqlite3_column_type(stmt, 9) == SQLITE_NULL
-                    ? nil : Int64(sqlite3_column_int64(stmt, 9))
-                if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 7),
+                let storedBudget = fn.columnType(stmt, 8) == SQLITE_NULL
+                    ? nil : Int64(fn.columnInt64(stmt, 8))
+                let storedCheckpoint = fn.columnType(stmt, 9) == SQLITE_NULL
+                    ? nil : Int64(fn.columnInt64(stmt, 9))
+                if !isForwardable(receivedAt: fn.columnInt64(stmt, 7),
                                   kind: MessageKind.ofStoredTypeCode(Int(row.typeCode)),
                                   storedBudget: storedBudget,
                                   storedCheckpoint: storedCheckpoint,
-                                  storedBoot: sqlite3_column_type(stmt, 10) == SQLITE_NULL
-                                      ? nil : sqlite3_column_text(stmt, 10).map { String(cString: $0) },
-                                  storedDiscontinuity: sqlite3_column_type(stmt, 11) == SQLITE_NULL
-                                      ? nil : Int64(sqlite3_column_int64(stmt, 11)),
+                                  storedBoot: fn.columnType(stmt, 10) == SQLITE_NULL
+                                      ? nil : fn.columnText(stmt, 10).map { String(cString: $0) },
+                                  storedDiscontinuity: fn.columnType(stmt, 11) == SQLITE_NULL
+                                      ? nil : Int64(fn.columnInt64(stmt, 11)),
                                   persistDebitFor: row.msgId, onHandle: db) { continue }
                 if !visit(frame) { return }
             }
@@ -1710,28 +1727,28 @@ public final class SqliteMessageStore: MessageStore {
                 "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), " +
                 "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity) FROM \(StoreSchema.table)"
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); return
             }
-            defer { sqlite3_finalize(stmt) }
-            while sqlite3_step(stmt) == SQLITE_ROW {
+            defer { fn.finalize(stmt) }
+            while fn.step(stmt) == SQLITE_ROW {
                 // GS-STORE-004: the id reader is a FORWARDING surface too, so it carrieth the same gate -- AND
                 // the id is bound ONCE, because the gate must be able to WRITE THE DEBIT BACK to the row it
                 // judged (round 308's park stopped exactly here: a bound computed and dropped can never reach
                 // its limit).
                 let idValue = readBlob(stmt, 0)
-                let idBudget = sqlite3_column_type(stmt, 2) == SQLITE_NULL
-                    ? nil : Int64(sqlite3_column_int64(stmt, 2))
-                let idCheckpoint = sqlite3_column_type(stmt, 3) == SQLITE_NULL
-                    ? nil : Int64(sqlite3_column_int64(stmt, 3))
-                if !isForwardable(receivedAt: sqlite3_column_int64(stmt, 1),
+                let idBudget = fn.columnType(stmt, 2) == SQLITE_NULL
+                    ? nil : Int64(fn.columnInt64(stmt, 2))
+                let idCheckpoint = fn.columnType(stmt, 3) == SQLITE_NULL
+                    ? nil : Int64(fn.columnInt64(stmt, 3))
+                if !isForwardable(receivedAt: fn.columnInt64(stmt, 1),
                                   kind: .direct,
                                   storedBudget: idBudget,
                                   storedCheckpoint: idCheckpoint,
-                                  storedBoot: sqlite3_column_type(stmt, 4) == SQLITE_NULL
-                                      ? nil : sqlite3_column_text(stmt, 4).map { String(cString: $0) },
-                                  storedDiscontinuity: sqlite3_column_type(stmt, 5) == SQLITE_NULL
-                                      ? nil : Int64(sqlite3_column_int64(stmt, 5)),
+                                  storedBoot: fn.columnType(stmt, 4) == SQLITE_NULL
+                                      ? nil : fn.columnText(stmt, 4).map { String(cString: $0) },
+                                  storedDiscontinuity: fn.columnType(stmt, 5) == SQLITE_NULL
+                                      ? nil : Int64(fn.columnInt64(stmt, 5)),
                                   persistDebitFor: idValue, onHandle: db) {
                     // the kind is unknown here (this reader selecteth ids alone); a DIRECT row past its
                     // budget is the conservative case, and the schema revision will carry the real kind.
@@ -2205,15 +2222,15 @@ public final class SqliteMessageStore: MessageStore {
         let deleted = withDb { db -> Bool in
             let sql = "DELETE FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt)
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt)
                 return false
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             self.bindBlob(stmt, 1, msgId)
-            let step = sqlite3_step(stmt)
+            let step = fn.step(stmt)
             if step == SQLITE_DONE {
-                return sqlite3_changes(db) > 0
+                return fn.changes(db) > 0
             }
             return false
         } ?? false
@@ -2257,18 +2274,18 @@ public final class SqliteMessageStore: MessageStore {
         lock.lock()
         defer { lock.unlock() }
         guard let db = handle else { throw StoreTxnError.openFailed }
-        if sqlite3_exec(db, "BEGIN IMMEDIATE", nil, nil, nil) != SQLITE_OK {
+        if fn.exec(db, "BEGIN IMMEDIATE", nil, nil, nil) != SQLITE_OK {
             throw StoreTxnError.beginFailed
         }
         do {
             let result = try body(db)
-            if sqlite3_exec(db, "COMMIT", nil, nil, nil) != SQLITE_OK {
-                sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+            if fn.exec(db, "COMMIT", nil, nil, nil) != SQLITE_OK {
+                fn.exec(db, "ROLLBACK", nil, nil, nil)
                 throw StoreTxnError.commitFailed
             }
             return result
         } catch {
-            sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+            fn.exec(db, "ROLLBACK", nil, nil, nil)
             throw error
         }
     }
@@ -2295,27 +2312,27 @@ public final class SqliteMessageStore: MessageStore {
             "\(StoreSchema.colBootIdentity), \(StoreSchema.colDiscontinuity)) " +
             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, frame.msgId)
-        sqlite3_bind_int(stmt, 2, Int32(frame.type.rawValue))
-        sqlite3_bind_int(stmt, 3, Int32(frame.ttl))
-        sqlite3_bind_int(stmt, 4, Int32(frame.hopCount))
-        sqlite3_bind_int(stmt, 5, Int32(frame.flags))
-        sqlite3_bind_int(stmt, 6, Int32(Priority.fromFlags(frame.flags).rawValue))
+        fn.bindInt(stmt, 2, Int32(frame.type.rawValue))
+        fn.bindInt(stmt, 3, Int32(frame.ttl))
+        fn.bindInt(stmt, 4, Int32(frame.hopCount))
+        fn.bindInt(stmt, 5, Int32(frame.flags))
+        fn.bindInt(stmt, 6, Int32(Priority.fromFlags(frame.flags).rawValue))
         bindBlob(stmt, 7, frame.routingTag)
         bindBlob(stmt, 8, frame.payload)
         bindBlob(stmt, 9, receivedFrom)
-        sqlite3_bind_int64(stmt, 10, receivedAt)
+        fn.bindInt64(stmt, 10, receivedAt)
         // GS-STORE-004 STEP FIVE: THE LOCAL POLICY BUDGET, PERSISTED WITH THE ROW IN THE SAME STATEMENT. NULL
         // when no clock was injected: the historical behaviour is preserved for every path that owneth no
         // runtime clock, and the four fields then mean "not yet governed by retention" rather than a fabricated
         // zero. A DUPLICATE never reacheth here (INSERT OR IGNORE), which is what maketh the budget un-replenishable.
         if let retention = retention {
-            sqlite3_bind_int64(stmt, 11, Int64(retention.remainingMs))
-            sqlite3_bind_int64(stmt, 12, Int64(retention.checkpointMonotonicMs))
+            fn.bindInt64(stmt, 11, Int64(retention.remainingMs))
+            fn.bindInt64(stmt, 12, Int64(retention.checkpointMonotonicMs))
             // THE CONTINUITY IDENTIFIER COMETH FROM THE INJECTED CLOCK, NOT FROM THE CHECKPOINT TYPE: read in
             // the tree, `RetentionCheckpoint` carrieth `remainingMs`, `checkpointMonotonicMs`,
             // `lastWallCheckpointMs`, `discontinuityCount`, `priority` and `firstReceiptId` -- AND NO BOOT
@@ -2325,17 +2342,17 @@ public final class SqliteMessageStore: MessageStore {
             // TEMPORARY Swift string is the classic way to persist an EMPTY value -- and the measured arm caught
             // exactly that ("" where "boot-A" was due).
             if let boot = bootIdentity {
-                boot.withCString { sqlite3_bind_text(stmt, 13, $0, -1, storeSqliteTransient) }
+                boot.withCString { fn.bindText(stmt, 13, $0, -1, storeSqliteTransient) }
             } else {
-                sqlite3_bind_null(stmt, 13)
+                fn.bindNull(stmt, 13)
             }
-            sqlite3_bind_int64(stmt, 14, Int64(retention.discontinuityCount))
+            fn.bindInt64(stmt, 14, Int64(retention.discontinuityCount))
         } else {
-            sqlite3_bind_null(stmt, 11); sqlite3_bind_null(stmt, 12)
-            sqlite3_bind_null(stmt, 13); sqlite3_bind_null(stmt, 14)
+            fn.bindNull(stmt, 11); fn.bindNull(stmt, 12)
+            fn.bindNull(stmt, 13); fn.bindNull(stmt, 14)
         }
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-        return sqlite3_changes(db) == 1
+        guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return fn.changes(db) == 1
     }
 
     /// C6.4.1-H / C6.6.3: strict final-presence check. THROWS on prepare failure or
@@ -2346,12 +2363,12 @@ public final class SqliteMessageStore: MessageStore {
     @inline(__always)
     private func containsNoLockStrict(_ db: OpaquePointer, _ msgId: Data) throws -> Bool {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.containsSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, StoreSchema.containsSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, msgId)
-        let rc = sqlite3_step(stmt)
+        let rc = fn.step(stmt)
         if rc == SQLITE_ROW {
             return true
         }
@@ -2370,23 +2387,23 @@ public final class SqliteMessageStore: MessageStore {
             "\(StoreSchema.colPayload), \(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt) " +
             "FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, msgId)
-        let rc = sqlite3_step(stmt)
+        let rc = fn.step(stmt)
         if rc == SQLITE_DONE { return nil }
         guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
-        let typeCode = sqlite3_column_int(stmt, 0)
+        let typeCode = fn.columnInt(stmt, 0)
         let rowMsgId = readBlob(stmt, 1)
         let routingTag = readBlob(stmt, 2)
-        let ttl = sqlite3_column_int(stmt, 3)
-        let hopCount = sqlite3_column_int(stmt, 4)
-        let flags = sqlite3_column_int(stmt, 5)
+        let ttl = fn.columnInt(stmt, 3)
+        let hopCount = fn.columnInt(stmt, 4)
+        let flags = fn.columnInt(stmt, 5)
         let payload = readBlob(stmt, 6)
         let receivedFrom = readBlob(stmt, 7)
-        let receivedAt = sqlite3_column_int64(stmt, 8)
+        let receivedAt = fn.columnInt64(stmt, 8)
         let storeRow = StoreRow(
             typeCode: typeCode,
             msgId: rowMsgId,
@@ -2408,12 +2425,12 @@ public final class SqliteMessageStore: MessageStore {
     @inline(__always)
     private func heldBytesNoLockStrict(_ db: OpaquePointer) throws -> Int64 {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.heldBytesSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, StoreSchema.heldBytesSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { throw StoreError.stepFailed }
-        return sqlite3_column_int64(stmt, 0)
+        defer { fn.finalize(stmt) }
+        guard fn.step(stmt) == SQLITE_ROW else { throw StoreError.stepFailed }
+        return fn.columnInt64(stmt, 0)
     }
 
     /// C6.4.1-H: strict eviction. THROWS on a prepare/step failure. Used inside
@@ -2425,12 +2442,12 @@ public final class SqliteMessageStore: MessageStore {
     @inline(__always)
     private func evictOldestPrefixNoLockStrict(_ db: OpaquePointer, overshoot: Int64) throws {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.evictPrefixSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, StoreSchema.evictPrefixSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_int64(stmt, 1, overshoot)
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        defer { fn.finalize(stmt) }
+        fn.bindInt64(stmt, 1, overshoot)
+        guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
     }
 
     /// Total stored bytes on the locked connection. Non-throwing (swallows a
@@ -2440,11 +2457,11 @@ public final class SqliteMessageStore: MessageStore {
     @inline(__always)
     private func heldBytesNoLock(_ db: OpaquePointer) -> Int64 {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.heldBytesSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return 0
+        guard fn.prepareV2(db, StoreSchema.heldBytesSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); return 0
         }
-        defer { sqlite3_finalize(stmt) }
-        return sqlite3_step(stmt) == SQLITE_ROW ? sqlite3_column_int64(stmt, 0) : 0
+        defer { fn.finalize(stmt) }
+        return fn.step(stmt) == SQLITE_ROW ? fn.columnInt64(stmt, 0) : 0
     }
 
     /// Delete the oldest non-SOS-first prefix meeting [overshoot] bytes, on the
@@ -2454,12 +2471,12 @@ public final class SqliteMessageStore: MessageStore {
     @inline(__always)
     private func evictOldestPrefixNoLock(_ db: OpaquePointer, overshoot: Int64) {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.evictPrefixSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return
+        guard fn.prepareV2(db, StoreSchema.evictPrefixSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); return
         }
-        defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_int64(stmt, 1, overshoot)
-        sqlite3_step(stmt)
+        defer { fn.finalize(stmt) }
+        fn.bindInt64(stmt, 1, overshoot)
+        fn.step(stmt)
     }
 
     // MARK: - C6.4-E / C6.4.1-B/C/D/E: PRAGMA user_version schema versioning
@@ -2488,12 +2505,12 @@ public final class SqliteMessageStore: MessageStore {
     @inline(__always)
     private func readUserVersion(_ db: OpaquePointer) throws -> Int32 {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, "PRAGMA user_version", -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, "PRAGMA user_version", -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { throw StoreError.stepFailed }
-        return sqlite3_column_int(stmt, 0)
+        defer { fn.finalize(stmt) }
+        guard fn.step(stmt) == SQLITE_ROW else { throw StoreError.stepFailed }
+        return fn.columnInt(stmt, 0)
     }
 
     /// C6.4.1-D: execute one SQL statement and THROW on any non-OK result so a
@@ -2501,7 +2518,7 @@ public final class SqliteMessageStore: MessageStore {
     /// handle. Every migration statement runs through this.
     @inline(__always)
     private func execStrict(_ db: OpaquePointer, _ sql: String) throws {
-        if sqlite3_exec(db, sql, nil, nil, nil) != SQLITE_OK { throw StoreError.execFailed }
+        if fn.exec(db, sql, nil, nil, nil) != SQLITE_OK { throw StoreError.execFailed }
     }
 
     /// Stamp `PRAGMA user_version = version` (persists in the DB header). Strict:
@@ -2529,11 +2546,11 @@ public final class SqliteMessageStore: MessageStore {
         // name is an internal constant, not user input -> string interpolation is safe.
         let sql = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '\(name)'"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW, let raw = sqlite3_column_text(stmt, 0) else {
+        defer { fn.finalize(stmt) }
+        guard fn.step(stmt) == SQLITE_ROW, let raw = fn.columnText(stmt, 0) else {
             throw StoreError.schemaMismatch
         }
         let actual = String(cString: raw)
@@ -2718,7 +2735,7 @@ public final class SqliteMessageStore: MessageStore {
                 }
                 try store.execStrict(db, "COMMIT")
             } catch {
-                sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+                store.fn.exec(db, "ROLLBACK", nil, nil, nil)
                 throw error
             }
         }
@@ -2752,12 +2769,12 @@ public final class SqliteMessageStore: MessageStore {
         let table = tokens[2]
         let column = tokens[5].trimmingCharacters(in: CharacterSet(charactersIn: ";"))
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, "PRAGMA table_info(\(table))", -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return false
+        guard fn.prepareV2(db, "PRAGMA table_info(\(table))", -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); return false
         }
-        defer { sqlite3_finalize(stmt) }
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            if let name = sqlite3_column_text(stmt, 1), String(cString: name) == column { return true }
+        defer { fn.finalize(stmt) }
+        while fn.step(stmt) == SQLITE_ROW {
+            if let name = fn.columnText(stmt, 1), String(cString: name) == column { return true }
         }
         return false
     }
@@ -2777,24 +2794,24 @@ public final class SqliteMessageStore: MessageStore {
         // name is an internal constant, not user input -> interpolation is safe.
         let sql = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '\(name)'"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW, let raw = sqlite3_column_text(stmt, 0) else { return nil }
+        defer { fn.finalize(stmt) }
+        guard fn.step(stmt) == SQLITE_ROW, let raw = fn.columnText(stmt, 0) else { return nil }
         return String(cString: raw)
     }
 
     /// The live column names of `table` (from `PRAGMA table_info`), or [] when absent.
     private func liveColumns(_ db: OpaquePointer, name: String) throws -> [String] {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, "PRAGMA table_info(\(name))", -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, "PRAGMA table_info(\(name))", -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         var columns: [String] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            if let raw = sqlite3_column_text(stmt, 1) { columns.append(String(cString: raw)) }
+        while fn.step(stmt) == SQLITE_ROW {
+            if let raw = fn.columnText(stmt, 1) { columns.append(String(cString: raw)) }
         }
         return columns
     }
@@ -2846,21 +2863,21 @@ public final class SqliteMessageStore: MessageStore {
     private func immutableCells(_ db: OpaquePointer, table: String, columns: [String]) -> [[[UInt8]?]] {
         let select = "SELECT \(columns.joined(separator: ", ")) FROM \(table)"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, select, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return []
+        guard fn.prepareV2(db, select, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); return []
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         var rows: [[[UInt8]?]] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
+        while fn.step(stmt) == SQLITE_ROW {
             var cells: [[UInt8]?] = []
             for index in 0..<Int32(columns.count) {
-                if sqlite3_column_type(stmt, index) == SQLITE_NULL {
+                if fn.columnType(stmt, index) == SQLITE_NULL {
                     cells.append(nil)
-                } else if let blob = sqlite3_column_blob(stmt, index) {
-                    let length = Int(sqlite3_column_bytes(stmt, index))
+                } else if let blob = fn.columnBlob(stmt, index) {
+                    let length = Int(fn.columnBytes(stmt, index))
                     cells.append(Array(UnsafeBufferPointer(
                         start: blob.assumingMemoryBound(to: UInt8.self), count: length)))
-                } else if let text = sqlite3_column_text(stmt, index) {
+                } else if let text = fn.columnText(stmt, index) {
                     cells.append(Array(String(cString: text).utf8))
                 } else {
                     cells.append([])
@@ -2886,7 +2903,7 @@ public final class SqliteMessageStore: MessageStore {
     // no-match use those sentinels). This is the "throwing strict primitives"
     // directive for iOS (Android catches `Exception` at the boundary; iOS throws
     // from the primitive and catches at the repository). Each operation is executed
-    // under the connection lock; row counts come from `sqlite3_changes(db)` (Android
+    // under the connection lock; row counts come from `fn.changes(db)` (Android
     // uses executeUpdateDelete(); JDBC uses executeUpdate()). Transitions are guarded
     // SQL CAS statements built by the repository and run through `execDeliveryUpdate`;
     // authenticated ACK retirement is a guarded delivery CAS + exact held deletion
@@ -2906,19 +2923,19 @@ public final class SqliteMessageStore: MessageStore {
 
     private func readDeliveryNoLockStrict(_ db: OpaquePointer, _ msgId: Data) throws -> DeliveryRow? {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.readDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, StoreSchema.readDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, msgId)
-        let rc = sqlite3_step(stmt)
+        let rc = fn.step(stmt)
         if rc == SQLITE_DONE { return nil } // no row -- absence, NOT failure
         guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
-        let state = sqlite3_column_int(stmt, 0)
-        let ackMode = sqlite3_column_int(stmt, 1)
+        let state = fn.columnInt(stmt, 0)
+        let ackMode = fn.columnInt(stmt, 1)
         // Distinguish SQL NULL (no recipient) from a zero-length blob.
         let expected: Data? =
-            sqlite3_column_type(stmt, 2) == SQLITE_NULL ? nil : readBlob(stmt, 2)
+            fn.columnType(stmt, 2) == SQLITE_NULL ? nil : readBlob(stmt, 2)
         return DeliveryRow(state: state, ackMode: ackMode, expectedRecipient: expected)
     }
 
@@ -2930,16 +2947,16 @@ public final class SqliteMessageStore: MessageStore {
         expectedRecipient: Data?
     ) throws -> Bool {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.insertDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, StoreSchema.insertDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, msgId)
-        sqlite3_bind_int(stmt, 2, stateOrdinal)
-        sqlite3_bind_int(stmt, 3, ackModeOrdinal)
-        if let r = expectedRecipient { bindBlob(stmt, 4, r) } else { sqlite3_bind_null(stmt, 4) }
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-        return sqlite3_changes(db) > 0   // 1 inserted, 0 on conflict (DO NOTHING)
+        fn.bindInt(stmt, 2, stateOrdinal)
+        fn.bindInt(stmt, 3, ackModeOrdinal)
+        if let r = expectedRecipient { bindBlob(stmt, 4, r) } else { fn.bindNull(stmt, 4) }
+        guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return fn.changes(db) > 0   // 1 inserted, 0 on conflict (DO NOTHING)
     }
 
     /// Read the delivery row for `msgId`: (state code, ack_mode code, expected
@@ -2983,10 +3000,10 @@ public final class SqliteMessageStore: MessageStore {
 
     private func insertIntentNoLockStrict(_ db: OpaquePointer, _ entry: JournalEntry) throws -> Bool {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, Self.intentInsertIfAbsentSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.stepFailed
+        guard fn.prepareV2(db, Self.intentInsertIfAbsentSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.stepFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         // *** CRYPTO-005 (round 489): THE TWO LISTS ARE READ TOGETHER, WHICH IS THE LAW THIS SPAN LEARNED FOR THE SCHEMA AT ROUND 432
         // ("a list that describeth a shape existeth in more than one place"), APPLIED HERE TO A **BIND SEQUENCE**. The first version
         // carried SEVEN blobs -- the seventh being `bindingDigest`, WHICH IS **COLUMN 8** -- and then bound `acceptedGeneration` at
@@ -2996,22 +3013,22 @@ public final class SqliteMessageStore: MessageStore {
         let blobs = [entry.intentId, entry.logicalMessageId, entry.signedPlaintextBytes, entry.canonicalFrameBytes,
                      entry.recipientNodeId, entry.recipientStaticDhPub]
         for (i, b) in blobs.enumerated() {
-            guard sqlite3_bind_blob(stmt, Int32(i + 1), (b as NSData).bytes, Int32(b.count), nil) == SQLITE_OK else {
+            guard fn.bindBlob(stmt, Int32(i + 1), (b as NSData).bytes, Int32(b.count), nil) == SQLITE_OK else {
                 throw StoreError.stepFailed
             }
         }
         // AND THE SIX SCALARS IN THE SAME ORDER THE COLUMN LIST DECLARETH (7..12).
-        guard sqlite3_bind_int64(stmt, 7, Int64(entry.acceptedGeneration)) == SQLITE_OK,
-              sqlite3_bind_blob(stmt, 8, (entry.bindingDigest as NSData).bytes, Int32(entry.bindingDigest.count), nil) == SQLITE_OK,
-              sqlite3_bind_int64(stmt, 9, entry.createdAtEpochSeconds) == SQLITE_OK,
-              sqlite3_bind_blob(stmt, 10, (entry.messageNonce as NSData).bytes, Int32(entry.messageNonce.count), nil) == SQLITE_OK,
-              sqlite3_bind_int64(stmt, 11, Int64(entry.priorityCode)) == SQLITE_OK,
-              sqlite3_bind_int64(stmt, 12, Int64(entry.stateRank.rawValue)) == SQLITE_OK else {
+        guard fn.bindInt64(stmt, 7, Int64(entry.acceptedGeneration)) == SQLITE_OK,
+              fn.bindBlob(stmt, 8, (entry.bindingDigest as NSData).bytes, Int32(entry.bindingDigest.count), nil) == SQLITE_OK,
+              fn.bindInt64(stmt, 9, entry.createdAtEpochSeconds) == SQLITE_OK,
+              fn.bindBlob(stmt, 10, (entry.messageNonce as NSData).bytes, Int32(entry.messageNonce.count), nil) == SQLITE_OK,
+              fn.bindInt64(stmt, 11, Int64(entry.priorityCode)) == SQLITE_OK,
+              fn.bindInt64(stmt, 12, Int64(entry.stateRank.rawValue)) == SQLITE_OK else {
             throw StoreError.stepFailed
         }
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
         // TRUE IFF A NEW ROW WAS INSERTED -- `INSERT OR IGNORE` LEAVETH `changes` AT 0 FOR A CONFLICT, WHICH IS THE CONFLICT SIGNAL.
-        return sqlite3_changes(db) > 0
+        return fn.changes(db) > 0
     }
 
     static let intentAdvanceSql = """
@@ -3029,17 +3046,17 @@ public final class SqliteMessageStore: MessageStore {
     private func advanceIntentNoLockStrict(_ db: OpaquePointer, intentId: Data,
                                            from: IntentStateRank, to: IntentStateRank) throws -> Int {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, Self.intentAdvanceSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.stepFailed
+        guard fn.prepareV2(db, Self.intentAdvanceSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.stepFailed
         }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_bind_int64(stmt, 1, Int64(to.rawValue)) == SQLITE_OK,
-              sqlite3_bind_blob(stmt, 2, (intentId as NSData).bytes, Int32(intentId.count), nil) == SQLITE_OK,
-              sqlite3_bind_int64(stmt, 3, Int64(from.rawValue)) == SQLITE_OK else {
+        defer { fn.finalize(stmt) }
+        guard fn.bindInt64(stmt, 1, Int64(to.rawValue)) == SQLITE_OK,
+              fn.bindBlob(stmt, 2, (intentId as NSData).bytes, Int32(intentId.count), nil) == SQLITE_OK,
+              fn.bindInt64(stmt, 3, Int64(from.rawValue)) == SQLITE_OK else {
             throw StoreError.stepFailed
         }
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-        return Int(sqlite3_changes(db))
+        guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return Int(fn.changes(db))
     }
 
     /// THE READER, mirroring `readDelivery`: it THROWETH on a storage fault, and it ANSWERETH `nil` ONLY FOR ABSENCE -- WHICH IS THE
@@ -3057,21 +3074,21 @@ public final class SqliteMessageStore: MessageStore {
     /// `.corrupt` at the seam, which is what "fail closed" meaneth for a read.
     private func readIntentRow(_ db: OpaquePointer, _ intentId: Data) throws -> JournalEntry? {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, Self.intentSelectSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt)
+        guard fn.prepareV2(db, Self.intentSelectSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt)
             throw StoreError.stepFailed
         }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_bind_blob(stmt, 1, (intentId as NSData).bytes, Int32(intentId.count), nil) == SQLITE_OK else {
+        defer { fn.finalize(stmt) }
+        guard fn.bindBlob(stmt, 1, (intentId as NSData).bytes, Int32(intentId.count), nil) == SQLITE_OK else {
             throw StoreError.stepFailed
         }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+        guard fn.step(stmt) == SQLITE_ROW else { return nil }
         let intent = blob(stmt, 0), logical = blob(stmt, 1), plaintext = blob(stmt, 2), frame = blob(stmt, 3)
         let recipient = blob(stmt, 4), recipientDh = blob(stmt, 5)
-        let generation = UInt32(truncatingIfNeeded: sqlite3_column_int64(stmt, 6))
+        let generation = UInt32(truncatingIfNeeded: fn.columnInt64(stmt, 6))
         let digest = blob(stmt, 7), nonce = blob(stmt, 9)
-        let created = sqlite3_column_int64(stmt, 8), priority = Int(sqlite3_column_int(stmt, 10))
-        let rank = IntentStateRank(rawValue: Int(sqlite3_column_int(stmt, 11))) ?? .authored
+        let created = fn.columnInt64(stmt, 8), priority = Int(fn.columnInt(stmt, 10))
+        let rank = IntentStateRank(rawValue: Int(fn.columnInt(stmt, 11))) ?? .authored
         return JournalEntry(intentId: intent, logicalMessageId: logical, signedPlaintextBytes: plaintext,
                             canonicalFrameBytes: frame, recipientNodeId: recipient,
                             recipientStaticDhPub: recipientDh, acceptedGeneration: generation,
@@ -3080,8 +3097,8 @@ public final class SqliteMessageStore: MessageStore {
     }
 
     private func blob(_ stmt: OpaquePointer?, _ index: Int32) -> Data {
-        guard let bytes = sqlite3_column_blob(stmt, index) else { return Data() }
-        return Data(bytes: bytes, count: Int(sqlite3_column_bytes(stmt, index)))
+        guard let bytes = fn.columnBlob(stmt, index) else { return Data() }
+        return Data(bytes: bytes, count: Int(fn.columnBytes(stmt, index)))
     }
 
     internal func readDelivery(_ msgId: Data) throws -> DeliveryRow? {
@@ -3117,15 +3134,15 @@ public final class SqliteMessageStore: MessageStore {
     internal func execDeliveryUpdate(_ sql: String, bytesArgs: [Data?]) throws -> Int {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             for (i, arg) in bytesArgs.enumerated() {
-                if let d = arg { bindBlob(stmt, Int32(i + 1), d) } else { sqlite3_bind_null(stmt, Int32(i + 1)) }
+                if let d = arg { bindBlob(stmt, Int32(i + 1), d) } else { fn.bindNull(stmt, Int32(i + 1)) }
             }
-            guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-            return Int(sqlite3_changes(db))
+            guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+            return Int(fn.changes(db))
         }
     }
 
@@ -3158,14 +3175,14 @@ public final class SqliteMessageStore: MessageStore {
             result = try withTransaction { db in
                 try fault?("before_ack_cas", db)
                 var stmt: OpaquePointer?
-                guard sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil) == SQLITE_OK else {
-                    sqlite3_finalize(stmt); throw StoreError.prepareFailed
+                guard fn.prepareV2(db, guardedAckSql, -1, &stmt, nil) == SQLITE_OK else {
+                    fn.finalize(stmt); throw StoreError.prepareFailed
                 }
-                defer { sqlite3_finalize(stmt) }
+                defer { fn.finalize(stmt) }
                 bindBlob(stmt, 1, msgId)
                 bindBlob(stmt, 2, expectedRecipient)
-                guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-                let ackChanges = sqlite3_changes(db)
+                guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+                let ackChanges = fn.changes(db)
                 if ackChanges == 0 {
                     return .noMatch
                 }
@@ -3177,13 +3194,13 @@ public final class SqliteMessageStore: MessageStore {
 
                 let deleteHeldSql = StoreSchema.deleteHeldSql
                 var delStmt: OpaquePointer?
-                guard sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil) == SQLITE_OK else {
-                    sqlite3_finalize(delStmt); throw StoreError.prepareFailed
+                guard fn.prepareV2(db, deleteHeldSql, -1, &delStmt, nil) == SQLITE_OK else {
+                    fn.finalize(delStmt); throw StoreError.prepareFailed
                 }
-                defer { sqlite3_finalize(delStmt) }
+                defer { fn.finalize(delStmt) }
                 bindBlob(delStmt, 1, msgId)
-                guard sqlite3_step(delStmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-                let delChanges = sqlite3_changes(db)
+                guard fn.step(delStmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+                let delChanges = fn.changes(db)
                 if delChanges == 0 {
                     throw StoreTxnError.missingHeld
                 }
@@ -3229,13 +3246,13 @@ public final class SqliteMessageStore: MessageStore {
             result = try withTransaction { db in
                 try fault?("before_terminal_cas", db)
                 var stmt: OpaquePointer?
-                guard sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil) == SQLITE_OK else {
-                    sqlite3_finalize(stmt); throw StoreError.prepareFailed
+                guard fn.prepareV2(db, guardedTransitionSql, -1, &stmt, nil) == SQLITE_OK else {
+                    fn.finalize(stmt); throw StoreError.prepareFailed
                 }
-                defer { sqlite3_finalize(stmt) }
+                defer { fn.finalize(stmt) }
                 bindBlob(stmt, 1, msgId)
-                guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-                let casChanges = sqlite3_changes(db)
+                guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+                let casChanges = fn.changes(db)
                 if casChanges == 0 {
                     return .noMatch
                 }
@@ -3247,13 +3264,13 @@ public final class SqliteMessageStore: MessageStore {
 
                 let deleteHeldSql = StoreSchema.deleteHeldSql
                 var delStmt: OpaquePointer?
-                guard sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil) == SQLITE_OK else {
-                    sqlite3_finalize(delStmt); throw StoreError.prepareFailed
+                guard fn.prepareV2(db, deleteHeldSql, -1, &delStmt, nil) == SQLITE_OK else {
+                    fn.finalize(delStmt); throw StoreError.prepareFailed
                 }
-                defer { sqlite3_finalize(delStmt) }
+                defer { fn.finalize(delStmt) }
                 bindBlob(delStmt, 1, msgId)
-                guard sqlite3_step(delStmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-                let delChanges = sqlite3_changes(db)
+                guard fn.step(delStmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+                let delChanges = fn.changes(db)
                 if delChanges == 0 {
                     throw StoreTxnError.missingHeld
                 }
@@ -3283,7 +3300,7 @@ public final class SqliteMessageStore: MessageStore {
     /// the write). Production never calls this. Mirrors Android `StoreDb.execRawSql`.
     internal func execRawSql(_ sql: String) throws {
         try withDbThrowing { db in
-            if sqlite3_exec(db, sql, nil, nil, nil) != SQLITE_OK { throw StoreError.execFailed }
+            if fn.exec(db, sql, nil, nil, nil) != SQLITE_OK { throw StoreError.execFailed }
         }
     }
 
@@ -3292,22 +3309,22 @@ public final class SqliteMessageStore: MessageStore {
     /// `ack_mode` to an unknown code WITHOUT opening a second connection (SQLite
     /// cross-connection file contention). Mirrors `JdbcStoreDb.execRawUpdate` on
     /// Android. Binds one BLOB parameter per `bytesArgs` entry (`?`, in order) and
-    /// returns `sqlite3_changes(db)` (0 if the CHECK rejected the write -- wrap the
+    /// returns `fn.changes(db)` (0 if the CHECK rejected the write -- wrap the
     /// caller in `PRAGMA ignore_check_constraints` via `execRawSql` to plant past
     /// the CHECK). Production never calls this.
     @discardableResult
     internal func execRawUpdate(_ sql: String, _ bytesArgs: [Data]) -> Int {
         withDb { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return 0
+            guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); return 0
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             for (i, arg) in bytesArgs.enumerated() {
                 bindBlob(stmt, Int32(i + 1), arg)
             }
-            sqlite3_step(stmt)
-            return Int(sqlite3_changes(db))
+            fn.step(stmt)
+            return Int(fn.changes(db))
         } ?? 0
     }
 
@@ -3363,13 +3380,13 @@ public final class SqliteMessageStore: MessageStore {
 
     private func bindBlob(_ stmt: OpaquePointer?, _ index: Int32, _ data: Data) {
         data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> Void in
-            sqlite3_bind_blob(stmt, index, raw.baseAddress, Int32(data.count), storeSqliteTransient)
+            fn.bindBlob(stmt, index, raw.baseAddress, Int32(data.count), storeSqliteTransient)
         }
     }
 
     private func readBlob(_ stmt: OpaquePointer?, _ index: Int32) -> Data {
-        let count = Int(sqlite3_column_bytes(stmt, index))
-        guard let ptr = sqlite3_column_blob(stmt, index), count > 0 else { return Data() }
+        let count = Int(fn.columnBytes(stmt, index))
+        guard let ptr = fn.columnBlob(stmt, index), count > 0 else { return Data() }
         return Data(bytes: ptr, count: count)
     }
 }
@@ -3863,17 +3880,17 @@ extension SqliteMessageStore: AckObligationEngine {
         identityGeneration: Int64, remainingLifetimeMs: Int64, stateCode: Int32
     ) throws -> Bool {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.insertObligationSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, StoreSchema.insertObligationSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, msgId)
         bindBlob(stmt, 2, recipientNodeId)
-        sqlite3_bind_int64(stmt, 3, identityGeneration)
-        sqlite3_bind_int64(stmt, 4, remainingLifetimeMs)
-        sqlite3_bind_int(stmt, 5, stateCode)
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-        return sqlite3_changes(db) > 0   // 1 inserted, 0 on pair-key conflict (DO NOTHING)
+        fn.bindInt64(stmt, 3, identityGeneration)
+        fn.bindInt64(stmt, 4, remainingLifetimeMs)
+        fn.bindInt(stmt, 5, stateCode)
+        guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return fn.changes(db) > 0   // 1 inserted, 0 on pair-key conflict (DO NOTHING)
     }
 
     func readObligation(_ msgId: Data, recipientNodeId: Data) throws -> ObligationEntryRow? {
@@ -3885,38 +3902,38 @@ extension SqliteMessageStore: AckObligationEngine {
     private func readObligationNoLock(_ db: OpaquePointer, _ msgId: Data,
                                       recipientNodeId: Data) throws -> ObligationEntryRow? {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.readObligationSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, StoreSchema.readObligationSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, msgId)
         bindBlob(stmt, 2, recipientNodeId)
-        let rc = sqlite3_step(stmt)
+        let rc = fn.step(stmt)
         if rc == SQLITE_DONE { return nil }   // no row -- absence, NOT failure
         guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
         return ObligationEntryRow(
             msgId: Data(msgId), recipientNodeId: Data(recipientNodeId),
-            identityGeneration: sqlite3_column_int64(stmt, 0),
-            remainingLifetimeMs: sqlite3_column_int64(stmt, 1),
-            stateCode: sqlite3_column_int(stmt, 2)
+            identityGeneration: fn.columnInt64(stmt, 0),
+            remainingLifetimeMs: fn.columnInt64(stmt, 1),
+            stateCode: fn.columnInt(stmt, 2)
         )
     }
 
     func listPendingObligations(_ bound: Int32) throws -> [ObligationEntryRow] {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.listPendingObligationSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.listPendingObligationSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_int64(stmt, 1, Int64(bound))
+            defer { fn.finalize(stmt) }
+            fn.bindInt64(stmt, 1, Int64(bound))
             var out: [ObligationEntryRow] = []
-            while sqlite3_step(stmt) == SQLITE_ROW {
+            while fn.step(stmt) == SQLITE_ROW {
                 out.append(ObligationEntryRow(
                     msgId: readBlob(stmt, 0), recipientNodeId: readBlob(stmt, 1),
-                    identityGeneration: sqlite3_column_int64(stmt, 2),
-                    remainingLifetimeMs: sqlite3_column_int64(stmt, 3),
-                    stateCode: sqlite3_column_int(stmt, 4)
+                    identityGeneration: fn.columnInt64(stmt, 2),
+                    remainingLifetimeMs: fn.columnInt64(stmt, 3),
+                    stateCode: fn.columnInt(stmt, 4)
                 ))
             }
             return out
@@ -3926,12 +3943,12 @@ extension SqliteMessageStore: AckObligationEngine {
     func countObligationRows() throws -> Int {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.countObligationSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.countObligationSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
-            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-            return Int(sqlite3_column_int(stmt, 0))
+            defer { fn.finalize(stmt) }
+            guard fn.step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(fn.columnInt(stmt, 0))
         }
     }
 
@@ -3951,13 +3968,13 @@ extension SqliteMessageStore: AckObligationEngine {
     /// affected-row count, never a fabricated zero (a step failure THROWS).
     private func execGuardedNoLock(_ db: OpaquePointer, _ sql: String, _ binds: [Data]) throws -> Int {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         for (i, arg) in binds.enumerated() { bindBlob(stmt, Int32(i + 1), arg) }
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-        return Int(sqlite3_changes(db))
+        guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return Int(fn.changes(db))
     }
 
     func insertAckFrameRow(_ row: AckFrameRowView) throws -> Bool {
@@ -3968,40 +3985,40 @@ extension SqliteMessageStore: AckObligationEngine {
 
     private func insertAckFrameRowNoLock(_ db: OpaquePointer, _ row: AckFrameRowView) throws -> Bool {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, StoreSchema.insertAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        guard fn.prepareV2(db, StoreSchema.insertAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+            fn.finalize(stmt); throw StoreError.prepareFailed
         }
-        defer { sqlite3_finalize(stmt) }
+        defer { fn.finalize(stmt) }
         bindBlob(stmt, 1, row.ackKey)
         bindBlob(stmt, 2, row.msgId)
         bindBlob(stmt, 3, row.recipientNodeId)
         bindBlob(stmt, 4, row.signature)
         bindBlob(stmt, 5, row.encodedFrame)
-        if let from = row.receivedFrom { bindBlob(stmt, 6, from) } else { sqlite3_bind_null(stmt, 6) }
-        sqlite3_bind_int64(stmt, 7, row.remainingLifetimeMs)
-        sqlite3_bind_int(stmt, 8, row.verificationClassCode)
-        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-        return sqlite3_changes(db) > 0   // 1 inserted, 0 on ack_key conflict (DO NOTHING)
+        if let from = row.receivedFrom { bindBlob(stmt, 6, from) } else { fn.bindNull(stmt, 6) }
+        fn.bindInt64(stmt, 7, row.remainingLifetimeMs)
+        fn.bindInt(stmt, 8, row.verificationClassCode)
+        guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return fn.changes(db) > 0   // 1 inserted, 0 on ack_key conflict (DO NOTHING)
     }
 
     func readAckFrameRowByAckKey(_ ackKey: Data) throws -> AckFrameRowView? {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.readAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.readAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             bindBlob(stmt, 1, ackKey)
-            let rc = sqlite3_step(stmt)
+            let rc = fn.step(stmt)
             if rc == SQLITE_DONE { return nil }   // absence, NOT failure
             guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
             return AckFrameRowView(
                 ackKey: Data(ackKey),
                 msgId: readBlob(stmt, 0), recipientNodeId: readBlob(stmt, 1),
                 signature: readBlob(stmt, 2), encodedFrame: readBlob(stmt, 3),
-                receivedFrom: sqlite3_column_type(stmt, 4) == SQLITE_NULL ? nil : readBlob(stmt, 4),
-                remainingLifetimeMs: sqlite3_column_int64(stmt, 5),
-                verificationClassCode: sqlite3_column_int(stmt, 6)
+                receivedFrom: fn.columnType(stmt, 4) == SQLITE_NULL ? nil : readBlob(stmt, 4),
+                remainingLifetimeMs: fn.columnInt64(stmt, 5),
+                verificationClassCode: fn.columnInt(stmt, 6)
             )
         }
     }
@@ -4009,22 +4026,22 @@ extension SqliteMessageStore: AckObligationEngine {
     func listAckFrameRowsForPair(_ msgId: Data, recipientNodeId: Data, bound: Int32) throws -> [AckFrameRowView] {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.listAckFrameForPairSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.listAckFrameForPairSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             bindBlob(stmt, 1, msgId)
             bindBlob(stmt, 2, recipientNodeId)
-            sqlite3_bind_int64(stmt, 3, Int64(bound))
+            fn.bindInt64(stmt, 3, Int64(bound))
             var out: [AckFrameRowView] = []
-            while sqlite3_step(stmt) == SQLITE_ROW {
+            while fn.step(stmt) == SQLITE_ROW {
                 out.append(AckFrameRowView(
                     ackKey: readBlob(stmt, 0),
                     msgId: readBlob(stmt, 1), recipientNodeId: readBlob(stmt, 2),
                     signature: readBlob(stmt, 3), encodedFrame: readBlob(stmt, 4),
-                    receivedFrom: sqlite3_column_type(stmt, 5) == SQLITE_NULL ? nil : readBlob(stmt, 5),
-                    remainingLifetimeMs: sqlite3_column_int64(stmt, 6),
-                    verificationClassCode: sqlite3_column_int(stmt, 7)
+                    receivedFrom: fn.columnType(stmt, 5) == SQLITE_NULL ? nil : readBlob(stmt, 5),
+                    remainingLifetimeMs: fn.columnInt64(stmt, 6),
+                    verificationClassCode: fn.columnInt(stmt, 7)
                 ))
             }
             return out
@@ -4034,26 +4051,26 @@ extension SqliteMessageStore: AckObligationEngine {
     func countAckFrameRowsForPair(_ msgId: Data, recipientNodeId: Data) throws -> Int {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameForPairSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.countAckFrameForPairSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             bindBlob(stmt, 1, msgId)
             bindBlob(stmt, 2, recipientNodeId)
-            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-            return Int(sqlite3_column_int(stmt, 0))
+            guard fn.step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(fn.columnInt(stmt, 0))
         }
     }
 
     func countAckFrameRowsTotal() throws -> Int {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameTotalSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.countAckFrameTotalSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
-            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-            return Int(sqlite3_column_int(stmt, 0))
+            defer { fn.finalize(stmt) }
+            guard fn.step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(fn.columnInt(stmt, 0))
         }
     }
 
@@ -4068,21 +4085,21 @@ extension SqliteMessageStore: AckObligationEngine {
     func listAckFrameRows(_ bound: Int32) throws -> [AckFrameRowView] {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.listAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.listAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_int(stmt, 1, bound)
+            defer { fn.finalize(stmt) }
+            fn.bindInt(stmt, 1, bound)
             var out: [AckFrameRowView] = []
-            while sqlite3_step(stmt) == SQLITE_ROW {
+            while fn.step(stmt) == SQLITE_ROW {
                 out.append(AckFrameRowView(
                     ackKey: readBlob(stmt, 0), msgId: readBlob(stmt, 1),
                     recipientNodeId: readBlob(stmt, 2), signature: readBlob(stmt, 3),
                     encodedFrame: readBlob(stmt, 4),
-                    receivedFrom: sqlite3_column_type(stmt, 5) == SQLITE_NULL
+                    receivedFrom: fn.columnType(stmt, 5) == SQLITE_NULL
                         ? nil : readBlob(stmt, 5),
-                    remainingLifetimeMs: sqlite3_column_int64(stmt, 6),
-                    verificationClassCode: sqlite3_column_int(stmt, 7)))
+                    remainingLifetimeMs: fn.columnInt64(stmt, 6),
+                    verificationClassCode: fn.columnInt(stmt, 7)))
             }
             return out
         }
@@ -4093,41 +4110,41 @@ extension SqliteMessageStore: AckObligationEngine {
     func debitAckFrameLifetime(_ ackKey: Data, remainingLifetimeMs: Int64) throws -> Bool {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.debitAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.debitAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_int64(stmt, 1, remainingLifetimeMs)
+            defer { fn.finalize(stmt) }
+            fn.bindInt64(stmt, 1, remainingLifetimeMs)
             bindBlob(stmt, 2, ackKey)
-            sqlite3_bind_int64(stmt, 3, remainingLifetimeMs)
-            guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-            return sqlite3_changes(db) > 0
+            fn.bindInt64(stmt, 3, remainingLifetimeMs)
+            guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+            return fn.changes(db) > 0
         }
     }
 
     func deleteAckFrameRow(_ ackKey: Data) throws -> Bool {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.deleteAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.deleteAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             bindBlob(stmt, 1, ackKey)
-            guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-            return sqlite3_changes(db) > 0
+            guard fn.step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+            return fn.changes(db) > 0
         }
     }
 
     func countAckFrameRowsFromPeer(_ peer: Data) throws -> Int {
         try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameFromPeerSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.countAckFrameFromPeerSql, -1, &stmt, nil) == SQLITE_OK else {
+                fn.finalize(stmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(stmt) }
+            defer { fn.finalize(stmt) }
             bindBlob(stmt, 1, peer)
-            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-            return Int(sqlite3_column_int(stmt, 0))
+            guard fn.step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(fn.columnInt(stmt, 0))
         }
     }
 
@@ -4137,28 +4154,28 @@ extension SqliteMessageStore: AckObligationEngine {
     func commitAckPair(_ row: AckFrameRowView, msgId: Data, recipientNodeId: Data) throws -> FrameCommitOutcome {
         try withTransaction { db in
             var presentStmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.readAckFrameSql, -1, &presentStmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(presentStmt); throw StoreError.prepareFailed
+            guard fn.prepareV2(db, StoreSchema.readAckFrameSql, -1, &presentStmt, nil) == SQLITE_OK else {
+                fn.finalize(presentStmt); throw StoreError.prepareFailed
             }
-            defer { sqlite3_finalize(presentStmt) }
+            defer { fn.finalize(presentStmt) }
             bindBlob(presentStmt, 1, row.ackKey)
-            let present = sqlite3_step(presentStmt) == SQLITE_ROW
+            let present = fn.step(presentStmt) == SQLITE_ROW
             if !present {
                 var pairStmt: OpaquePointer?
-                guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameForPairSql, -1, &pairStmt, nil) == SQLITE_OK else {
-                    sqlite3_finalize(pairStmt); throw StoreError.prepareFailed
+                guard fn.prepareV2(db, StoreSchema.countAckFrameForPairSql, -1, &pairStmt, nil) == SQLITE_OK else {
+                    fn.finalize(pairStmt); throw StoreError.prepareFailed
                 }
-                defer { sqlite3_finalize(pairStmt) }
+                defer { fn.finalize(pairStmt) }
                 bindBlob(pairStmt, 1, row.msgId)
                 bindBlob(pairStmt, 2, row.recipientNodeId)
-                let pairCount = sqlite3_step(pairStmt) == SQLITE_ROW ? Int(sqlite3_column_int(pairStmt, 0)) : 0
+                let pairCount = fn.step(pairStmt) == SQLITE_ROW ? Int(fn.columnInt(pairStmt, 0)) : 0
                 if pairCount >= ackCandidatesPerPairLimit { return .refusedQuotaPair }
                 var totalStmt: OpaquePointer?
-                guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameTotalSql, -1, &totalStmt, nil) == SQLITE_OK else {
-                    sqlite3_finalize(totalStmt); throw StoreError.prepareFailed
+                guard fn.prepareV2(db, StoreSchema.countAckFrameTotalSql, -1, &totalStmt, nil) == SQLITE_OK else {
+                    fn.finalize(totalStmt); throw StoreError.prepareFailed
                 }
-                defer { sqlite3_finalize(totalStmt) }
-                let total = sqlite3_step(totalStmt) == SQLITE_ROW ? Int(sqlite3_column_int(totalStmt, 0)) : 0
+                defer { fn.finalize(totalStmt) }
+                let total = fn.step(totalStmt) == SQLITE_ROW ? Int(fn.columnInt(totalStmt, 0)) : 0
                 if total >= ackCandidatesTotalLimit { return .refusedQuotaGlobal }
                 _ = try insertAckFrameRowNoLock(db, row)
             }

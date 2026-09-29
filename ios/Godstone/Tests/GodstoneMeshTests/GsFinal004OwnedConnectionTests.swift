@@ -3,6 +3,72 @@ import Foundation
 import SQLite3
 @testable import GodstoneMesh
 
+/// *** THE FILE-SCOPE COUNTER AND NON-CAPTURING THUNKS THE INSTRUMENTED TABLE NEEDS. ***
+///
+/// *A `@convention(c)` function pointer CANNOT CAPTURE CONTEXT, so the wrappers must be free functions reading
+/// FILE-SCOPE state -- the counter is stored once here and cleared by the court before each arm.* **This is a
+/// test-only seam: the production table is bound from a real image and carrieth no counters at all.**
+private let gf004CounterLock = NSLock()
+private var gf004Prepare = 0
+private var gf004Step = 0
+private var gf004Column = 0
+private var gf004Close = 0
+
+private func gf004PrepareThunk(_ db: OpaquePointer?, _ sql: UnsafePointer<CChar>?, _ n: Int32,
+                               _ out: UnsafeMutablePointer<OpaquePointer?>?,
+                               _ tail: UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> Int32 {
+    gf004CounterLock.lock(); gf004Prepare += 1; gf004CounterLock.unlock()
+    return sqlite3_prepare_v2(db, sql, n, out, tail)
+}
+private func gf004StepThunk(_ stmt: OpaquePointer?) -> Int32 {
+    gf004CounterLock.lock(); gf004Step += 1; gf004CounterLock.unlock()
+    return sqlite3_step(stmt)
+}
+private func gf004ColumnThunk(_ stmt: OpaquePointer?, _ i: Int32) -> Int32 {
+    gf004CounterLock.lock(); gf004Column += 1; gf004CounterLock.unlock()
+    return sqlite3_column_int(stmt, i)
+}
+private func gf004CloseThunk(_ db: OpaquePointer?) -> Int32 {
+    gf004CounterLock.lock(); gf004Close += 1; gf004CounterLock.unlock()
+    return sqlite3_close_v2(db)
+}
+
+/// A table of wrappers over the statically linked SQLite3, with the four counted entry points above.
+private func instrumentedTable() -> SQLiteFunctionTable {
+    SQLiteFunctionTable(
+        providerName: "instrumented-provider",
+        openV2: { a, b, c, d in sqlite3_open_v2(a, b, c, d) },
+        closeV2: gf004CloseThunk,
+        busyTimeout: { h, ms in sqlite3_busy_timeout(h, ms) },
+        exec: { a, b, c, d, e in sqlite3_exec(a, b, c, d, e) },
+        changes: { h in sqlite3_changes(h) },
+        errmsg: { h in sqlite3_errmsg(h) },
+        prepareV2: gf004PrepareThunk,
+        step: gf004StepThunk,
+        finalize: { h in sqlite3_finalize(h) },
+        bindBlob: { a, b, c, d, e in sqlite3_bind_blob(a, b, c, d, e) },
+        bindInt: { a, b, c in sqlite3_bind_int(a, b, c) },
+        bindInt64: { a, b, c in sqlite3_bind_int64(a, b, c) },
+        bindNull: { a, b in sqlite3_bind_null(a, b) },
+        bindText: { a, b, c, d, e in sqlite3_bind_text(a, b, c, d, e) },
+        columnBlob: { a, b in sqlite3_column_blob(a, b) },
+        columnBytes: { a, b in sqlite3_column_bytes(a, b) },
+        columnInt: gf004ColumnThunk,
+        columnInt64: { a, b in sqlite3_column_int64(a, b) },
+        columnText: { a, b in sqlite3_column_text(a, b) },
+        columnType: { a, b in sqlite3_column_type(a, b) })
+}
+
+/// The counted entry points, read and reset under the same lock the thunks use.
+private func gf004Counts() -> (prepare: Int, step: Int, column: Int, close: Int) {
+    gf004CounterLock.lock(); defer { gf004CounterLock.unlock() }
+    return (gf004Prepare, gf004Step, gf004Column, gf004Close)
+}
+private func gf004ResetCounts() {
+    gf004CounterLock.lock(); gf004Prepare = 0; gf004Step = 0; gf004Column = 0; gf004Close = 0
+    gf004CounterLock.unlock()
+}
+
 /// *** GS-FINAL-004 CLAUSES (a) AND (b): ONE CONNECTION, VERIFIED, AND THE STORE ACTUALLY RUNS ON IT. ***
 ///
 /// THE AUDIT'S CHARGE, VERBATIM: *"MeshRuntime checks an EncryptedStoreFactory result, then creates a new
@@ -94,6 +160,199 @@ final class GsFinal004OwnedConnectionTests: XCTestCase {
                 sqlite3_close(handle)
                 self?.lock.lock(); self?.closeCount += 1; self?.lock.unlock()
             }
+        }
+    }
+
+    /// *** GS-FINAL-004 (`provider-dispatch`): THE FUNCTION TABLE CARRIES THE IMAGE, AND A STORE CALLS THROUGH IT. ***
+    ///
+    /// *THE DEFECT THIS CLOSES, MEASURED BY READING THE TREE: the engine obtained its handle by `dlsym` from a library
+    /// IT loaded, and the adopting stores then called the GLOBALLY LINKED `sqlite3_*` functions on that handle --
+    /// **A POINTER CREATED BY ONE SQLITE IMPLEMENTATION PASSED TO ANOTHER.***
+    ///
+    /// **THIS ARM PROVES THE CUTOVER BY SUBSTITUTION: an engine hands over a connection whose provider is a table of
+    /// INSTRUMENTED functions, and every database operation the store performs must land on THAT table.** *A store
+    /// still reaching the global symbols would leave the instrumented table's counters at zero while its own queries
+    /// succeeded -- so the arm cannot pass by accident.*
+    func testGF004TheStoreCallsThroughTheProvidersFunctionTable() throws {
+        let url = tempURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        gf004ResetCounts()
+        let engine = InstrumentedEngine()
+        let factory = EncryptedStoreFactory(provider: CountingProvider(), engine: engine)
+
+        let result = factory.reopenOwnedRequiringDEK(path: url.path, tag: "message-store")
+        guard case .opened(let owned, _) = result else {
+            return XCTFail("the factory must hand over an owned connection; got \(result)")
+        }
+        // *** THE PROVIDER IS THE TABLE THE ENGINE BOUND, AND IT IS CARRIED BY THE CONNECTION. ***
+        XCTAssertTrue(
+            owned.connection.provider.providerName == "instrumented-provider",
+            "*** THE CONNECTION MUST CARRY THE ENGINE'S OWN PROVIDER TABLE. *A connection handing over "
+                + "`.linkedPlatform` while the engine bound a different image is exactly the provider mismatch this "
+                + "clause is about.* Observed: \(owned.connection.provider.providerName) ***")
+
+        // *** ADOPT IT, RUN REAL WORK, AND REQUIRE THE WORK TO HAVE LANDED ON THAT TABLE. ***
+        let store = SqliteMessageStore(verifiedConnection: owned, maxBytes: 64 * 1024 * 1024)
+        XCTAssertNoThrow(try store.allHeldMsgIds(),
+                         "the store's own query must succeed through the provider table")
+        XCTAssertGreaterThan(
+            gf004Counts().prepare, 0,
+            "*** EVERY STATEMENT THE STORE PREPARES MUST GO THROUGH THE HANDED-OVER TABLE. *A count of zero means "
+                + "the store reached the GLOBAL `sqlite3_*` symbols instead -- the provider mismatch, with the store "
+                + "silently running on the wrong implementation.* ***")
+        XCTAssertGreaterThan(
+            gf004Counts().step, 0,
+            "and every step likewise -- the whole statement road, not merely the prepare")
+        XCTAssertGreaterThan(
+            gf004Counts().column, 0,
+            "and the column reads: a store that prepared through the table but read through the globals would still "
+                + "be crossing implementations mid-statement")
+
+        // *** AND THE NEGATIVE: A SECOND STORE OVER THE PLAIN PROVIDER MUST ***NOT*** TOUCH THE INSTRUMENTED TABLE. ***
+        // *A decoy that left the counters unchanged proveth the counters belong to the handover rather than to the
+        // process.*
+        let before = gf004Counts().prepare
+        let plainURL = tempURL()
+        defer { try? FileManager.default.removeItem(at: plainURL) }
+        let plain = SqliteMessageStore(url: plainURL, maxBytes: 64 * 1024 * 1024)
+        XCTAssertNoThrow(try plain.allHeldMsgIds(), "the plain store must still work on its own table")
+        XCTAssertEqual(
+            gf004Counts().prepare, before,
+            "*** A STORE THAT OPENED ITS OWN `url:` CONNECTION MUST NOT TOUCH THE INSTRUMENTED TABLE: its handle and "
+                + "its functions come from the statically linked image, and a counter that moved here would mean the "
+                + "table is being picked up GLOBALLY rather than carried. ***")
+        // *** AND THE ADOPTED STORE'S OWN TABLE NAMES THE PLAIN PROVIDER FOR THE PLAIN ROAD. ***
+        XCTAssertTrue(plain.providerNameForTest.contains("platform-sqlite3"),
+                      "the legacy road must NAME its provider, so a composition running it is visibly the plaintext/"
+                      + "archive road: \(plain.providerNameForTest)")
+    }
+
+    /// *** GS-FINAL-004 (`provider-dispatch`): A PARTIAL BIND IS REFUSED, AND A FAILED OPEN CLOSES ITS PARTIAL HANDLE. ***
+    ///
+    /// *The engine's table is bound ALL-OR-NOTHING: a loaded image missing one required symbol must refuse rather than
+    /// call a garbage function pointer. And an `sqlite3_open_v2` that returns a NONNULL handle while reporting failure
+    /// must close that handle BEFORE the throw -- the old body threw on the non-zero code and left it leaked.*
+    func testGF004APartialProviderBindIsRefusedAndAKeyFaultIsTyped() throws {
+        // (a) AN IMAGE THAT LOADS BUT CARRIETH NO SQLITE SURFACE: `/usr/lib/libSystem.B.dylib` is a real dynamic
+        //     library on every macOS, so it LOADS, and it carrieth none of the twenty required `sqlite3_*` symbols --
+        //     which is exactly the "loaded but incompletely bound" case the all-or-nothing bind must refuse.
+        let partial = SqlCipherDylibEngine(libraryPath: "/usr/lib/libSystem.B.dylib")
+        XCTAssertNil(
+            partial.providerName,
+            "*** AN IMAGE THAT LOADS BUT LACKS THE sqlite3 SURFACE MUST YIELD NO TABLE. *A partially bound table "
+                + "would call a garbage function pointer -- a crash, not a refusal -- so the bind is ALL-OR-NOTHING "
+                + "and its failure must be TYPED. Observed provider: \(partial.providerName ?? "nil") ***")
+        XCTAssertFalse(partial.isBound)
+        XCTAssertNotNil(partial.bindingFailureReason, "and the refusal must be NAMED")
+
+        // (b) A LIBRARY THAT IS NOT THERE AT ALL.
+        let absent = SqlCipherDylibEngine(libraryPath: "libsqlcipher-DOES-NOT-EXIST-\(UUID().uuidString).dylib")
+        XCTAssertNil(absent.providerName, "an unloaded image must yield NO table")
+        XCTAssertFalse(absent.isBound)
+        let dek = StoreDEK(bytes: Data(repeating: 0x11, count: 32))
+        do {
+            _ = try absent.openOwnedForWriting(path: "/tmp/never-\(UUID().uuidString).db", dek: dek)
+            XCTFail("an unbound engine must not answer a connection")
+        } catch let f as StoreOpenFault {
+            guard case .io(let why) = f else { return XCTFail("expected a typed .io fault; got \(f)") }
+            XCTAssertTrue(why.contains("not present") || why.contains("not bound"),
+                          "the refusal must NAME the absence: \(why)")
+        }
+
+        // (c) *** THE EMPTY DEK, CHECKED AGAINST A **REALLY BOUND** IMAGE. ***
+        // *This is the arm my first version got wrong: it used the UNBOUND engine, where the binding guard fires
+        // first and the `.io` fault arrives before the key check can -- so the arm measured the binding, not the key.
+        // A bound image is needed, and macOS ships one (`/usr/lib/libsqlite3.dylib`) carrying the whole sqlite3
+        // surface.* **If that library is somehow unbindable on this host, the arm SAYS SO rather than passing
+        // vacuously.**
+        let bound = SqlCipherDylibEngine(libraryPath: "/usr/lib/libsqlite3.dylib")
+        try XCTSkipUnless(
+            bound.isBound,
+            "SKIPPED: /usr/lib/libsqlite3.dylib did not bind on this host, so the empty-DEK refusal cannot be reached "
+            + "through a bound engine here. Reason: \(bound.bindingFailureReason ?? "unknown")")
+        do {
+            _ = try bound.openOwnedForWriting(path: "/tmp/never-\(UUID().uuidString).db", dek: StoreDEK(bytes: Data()))
+            XCTFail("an empty DEK must be refused")
+        } catch let f as StoreOpenFault {
+            XCTAssertEqual(f, .wrongKey, "an empty key is not a key")
+        }
+        // *** AND THE STOCK LIBRARY IS REFUSED BY THE CIPHER PROBE, NOT ACCEPTED. ***
+        // *`libsqlite3.dylib` is NOT SQLCipher: it silently ignoreth `PRAGMA key` and reporteth no cipher version, so
+        // the probe must refuse it as a typed fault. THIS is the arm that proveth the probe is what decideth at-rest
+        // rather than the library merely loading.*
+        let stockURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("gf004-stock-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: stockURL) }
+        do {
+            _ = try bound.openOwnedForWriting(path: stockURL.path, dek: dek)
+            XCTFail("*** A STOCK SQLITE LIBRARY MUST NOT BE ACCEPTED AS THE PINNED ENGINE: it carrieth no cipher, so "
+                    + "the probe must refuse it. An accept here would mean a plaintext store was claimed at-rest. ***")
+        } catch let f as StoreOpenFault {
+            switch f {
+            case .io(let why):
+                XCTAssertTrue(why.contains("NOT SQLCipher") || why.contains("cipher_version"),
+                              "the refusal must NAME the probe that failed: \(why)")
+            case .wrongKey, .cipherVersionMismatch:
+                break   // also acceptable: a library that answers NOTADB has still refused
+            default:
+                XCTFail("expected a typed probe refusal; got \(f)")
+            }
+        }
+
+        // (d) *** A FAILED OPEN CLOSES ITS PARTIAL HANDLE: PROVEN BY THE TABLE'S OWN CLOSE COUNTER. ***
+        // *`sqlite3_open_v2` on a DIRECTORY returns non-OK with a nonnull handle; the old body threw without closing
+        // it. The instrumented table counts closes, so a leaked handle showeth as a missing close.*
+        gf004ResetCounts()
+        let engine2 = InstrumentedEngine()
+        let factory2 = EncryptedStoreFactory(provider: CountingProvider(), engine: engine2)
+        let dirPath = NSTemporaryDirectory() + "/gf004-dir-\(UUID().uuidString)"
+        try? FileManager.default.createDirectory(atPath: dirPath, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: dirPath) }
+        let res = factory2.reopenOwnedRequiringDEK(path: dirPath, tag: "message-store")
+        if case .opened = res {
+            XCTFail("opening a DIRECTORY as a database must not succeed")
+        }
+        XCTAssertGreaterThan(
+            gf004Counts().close, 0,
+            "*** A FAILED OPEN THAT RETURNED A PARTIAL HANDLE MUST CLOSE IT BEFORE THE THROW. *A zero close count "
+                + "here means the partial handle leaked -- the exact defect the guard repairs.* ***")
+    }
+
+    // MARK: - an engine whose provider table is INSTRUMENTED
+
+    /// *** AN ENGINE THAT OPENS A REAL FILE AND HANDS OVER A CONNECTION CARRYING AN INSTRUMENTED TABLE. ***
+    ///
+    /// *The table's function pointers are thin wrappers around the STATICALLY LINKED SQLite3, so the connection is
+    /// fully functional -- and every call routes through the counters, which is what maketh "the store called through
+    /// the provider" observable rather than asserted.*
+    private final class InstrumentedEngine: OwnedConnectionStoreEngine, @unchecked Sendable {
+        var kind: StoreEngineKind { .pinnedSQLCipher }
+        var supportedCipherVersion: Int { 4 }
+
+        func openForWriting(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle {
+            EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: true, cipherVersion: 4)
+        }
+        func reopenRequiringDEK(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle {
+            EncryptedStoreHandle(path: path, kind: .pinnedSQLCipher, encryptedAtRest: true, cipherVersion: 4)
+        }
+        func openOwnedForWriting(path: String, dek: StoreDEK) throws -> OwnedConnection {
+            try reopenOwnedRequiringDEK(path: path, dek: dek)
+        }
+
+        func reopenOwnedRequiringDEK(path: String, dek: StoreDEK) throws -> OwnedConnection {
+            let provider = instrumentedTable()
+            var db: OpaquePointer?
+            // *THE OPEN GOES THROUGH THE TABLE TOO, so a directory path returns non-OK WITH a partial handle -- which
+            // is what the caller's own close-on-failure must then clean up.*
+            let rc = provider.openV2(path, &db, Int32(SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX), nil)
+            guard rc == 0, let handle = db else {
+                if let partial = db { _ = provider.closeV2(partial) }
+                throw StoreOpenFault.io("the instrumented engine could not open \(path) (rc=\(rc))")
+            }
+            let verified = OwnedVerifiedConnection(rawHandle: handle, engineKind: .pinnedSQLCipher,
+                                                   cipherVersion: 4, encryptedAtRest: true, path: path,
+                                                   provider: provider)
+            return OwnedConnection(connection: verified) { h in _ = provider.closeV2(h) }
         }
     }
 

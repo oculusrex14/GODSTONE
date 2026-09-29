@@ -443,15 +443,23 @@ final class ReadinessT30Tests: XCTestCase {
     }
 
     // (17) AND THE POSITIVE PATH, RUN ONLY WHEN THE PINNED BINARY IS REALLY PRESENT ON THIS HOST.
+    //
+    // *** THE DEFECT THIS REPLACES, NAMED: `guard e.isBound else { ...; return }` REPORTED A PASSED TEST WITHOUT
+    // EXERCISING ANY POSITIVE ROAD -- the classic "a test that cannot fail" -- and the closure cited it beside the
+    // engine's native claims. *** *The plan requires the optional approved-native roundtrip to be an EXPLICITLY
+    // external probe and a MISSING APPROVAL to be recorded as EXTERNAL-BLOCKED, never a green native result.*
+    //
+    // **SO WHEN THE LIBRARY IS ABSENT THIS ARM THROWS `XCTSkip` WITH THE BLOCKING REASON** -- a skip is DISTINGUISHABLE
+    // from a pass and is COUNTED, which is exactly what the lane's skip accounting exists for. The INTERNAL
+    // adapter/ownership refusals above remain mandatory and always run.
     func testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent() throws {
         let e = SqlCipherDylibEngine()
         guard e.isBound else {
-            // *The honest skip: the pinned artifact is the EXTERNAL half. A host without it cannot exercise the
-            // positive road, and SAYING SO is the difference between a bounded claim and a vacuous green.*
-            print("*** GS-STORE-002: the pinned SQLCipher library '\(SQLCipherPin.libraryName)' is not present on "
-                  + "this host, so the POSITIVE road is not exercised. The fail-closed arms above ran. The pinned "
-                  + "binary and its device at-rest proof remain EXTERNAL. Reason: \(e.bindingFailureReason ?? "?") ***")
-            return
+            throw XCTSkip(
+                "EXTERNAL-BLOCKED: the approved pinned SQLCipher library '\(SQLCipherPin.libraryName)' is not "
+                + "present on this host, so the POSITIVE native road is NOT exercised. The fail-closed adapter arms "
+                + "above RAN and are the internal obligation; the pinned binary, encrypted pages, correct-key reopen "
+                + "and on-device at-rest proof remain EXTERNAL. Reason: \(e.bindingFailureReason ?? "unknown")")
         }
         let dir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("t30-bound-\(UUID().uuidString)", isDirectory: true)

@@ -64,14 +64,26 @@ public struct OwnedVerifiedConnection: @unchecked Sendable {
     /// The path this connection is bound to, so a mismatch with the requested store is detectable.
     public let path: String
 
+    /// *** THE PROVIDER'S OWN FUNCTION TABLE -- THE IMAGE THIS HANDLE CAME FROM. ***
+    ///
+    /// *THE DEFECT THIS CLOSES: the handle was created by `SqlCipherDylibEngine`'s `dlsym`-loaded image, and every
+    /// adoptING store then called the GLOBALLY LINKED `sqlite3_*` functions on it.* **A pointer created by one SQLite
+    /// implementation must not be passed to another -- so the table travelleth WITH the connection, and a store that
+    /// adopteth one carrieth the table and calls through it.** *A legacy `url:` store carrieth
+    /// `SQLiteFunctionTable.linkedPlatform`, where the handle and the functions come from the same image by
+    /// construction.*
+    public let provider: SQLiteFunctionTable
+
     /// *** INTERNAL ON PURPOSE: AN ENGINE, NOT A CALLER, MINTS ONE OF THESE. ***
     internal init(rawHandle: OpaquePointer, engineKind: StoreEngineKind,
-                  cipherVersion: Int, encryptedAtRest: Bool, path: String) {
+                  cipherVersion: Int, encryptedAtRest: Bool, path: String,
+                  provider: SQLiteFunctionTable = .linkedPlatform) {
         self.rawHandle = rawHandle
         self.engineKind = engineKind
         self.cipherVersion = cipherVersion
         self.encryptedAtRest = encryptedAtRest
         self.path = path
+        self.provider = provider
     }
 
     /// Identity of the CONNECTION ITSELF, for a court that must prove the repository is running on
