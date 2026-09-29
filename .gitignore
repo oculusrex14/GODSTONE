@@ -112,6 +112,10 @@ docs/production-readiness/.runtime-state.json
 # MIRRORS A MEASUREMENT GOES STALE SILENTLY; the control printeth the live figures on every run.*
 ios-ui-lane.log
 ios-lane.log
+# The workflow's step-13 simulator lane log (written by `tools/readiness/run_ios_simulator_lane.sh`) is RUN OUTPUT
+# like the two above: `ci/check_lane_results.py --scope ios-simulator` reaps it, its `.xcresult` sits beside it
+# (already covered by `*.xcresult/`), and the control REFUSES WHEN IT IS ABSENT -- so an unrun lane is never a pass.
+ios-simulator-lane.log
 
 # *** LANE PROVENANCE SIDECARS (introduced in 74155b42). ***
 # (wording RECONSTRUCTED 2026-09-19, on the same terms as the block above: paraphrase from 74155b42's own
