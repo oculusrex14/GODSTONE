@@ -836,15 +836,33 @@ class Runner:
             if sender_real and receiver_real and self.elect(sender_real, receiver_real) == "initiator":
                 break
             attempts += 1
+            # *** BOTH SIDES ARE RE-MINTED, NOT THE SENDER ALONE -- THE SENDER ALONE IS NOT ENOUGH. ***
+            #
+            # *THE DEFECT THIS CLOSES, MEASURED: only the SENDER was re-minted, so the receiver's hint stood FIXED
+            # for all 16 attempts. When that fixed hint is very small -- the live run's receiver held `0bb99473`,
+            # first octet 0x0b -- a random sender hint is below it only ~4.3% of the time, so 16 attempts failed
+            # about half the time and the run refused with `THE SENDER COULD NOT BE SEATED AS THE INITIATOR IN 16
+            # RE-MINTS` (observed: ALL SEVENTEEN sender hints were above `0bb99473`).* **Re-minting BOTH maketh each
+            # attempt a fresh draw of the ORDER, which the election is a function of, so the pair convergeth in a
+            # handful of rounds rather than depending on the receiver's hint happening to be large.** *And it is
+            # equally honest by the same law the single-side re-mint relied on: nothing has happened yet -- no link,
+            # no session, no store row -- so BOTH are fresh identities over fresh estates rather than either side
+            # forced against the production election.*
             sender_seed += 1
-            self.log(f"  re-mint: sender hint {sender_real} does not open against {receiver_real}; asking the "
-                     f"sender for seed 0x{sender_seed:02x}")
+            receiver_seed += 1
+            self.log(f"  re-mint: sender hint {sender_real} does not open against {receiver_real}; asking BOTH for "
+                     f"seeds 0x{sender_seed:02x}/0x{receiver_seed:02x}")
             sender.send("mint", b"", seed=sender_seed)
+            receiver.send("mint", b"", seed=receiver_seed)
             sender_hello = sender.wait(lambda r: r.kind == "hello", timeout_s, "its re-minted `hello`")
+            receiver_hello = receiver.wait(lambda r: r.kind == "hello", timeout_s,
+                                           "its re-minted `hello`")
         else:
             raise Refused("*** THE SENDER COULD NOT BE SEATED AS THE INITIATOR IN 16 RE-MINTS. *** *Refusing rather "
                           "than grinding: a hint collision this persistent is a defect, not bad luck.*")
         setattr(self, seed_attr, sender_seed)
+        if "sender" in seed_attr:
+            setattr(self, seed_attr.replace("sender", "receiver"), receiver_seed)
         self.log(f"  seat: sender real_hint={sender_real} receiver real_hint={receiver_real} -> the sender is the "
                  f"production election's INITIATOR (re-mints={attempts})")
 
