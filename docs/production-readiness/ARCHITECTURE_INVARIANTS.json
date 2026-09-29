@@ -184,7 +184,7 @@
           "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         },
         {
-          "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
+          "blob_sha1": "b7afca3102c0cb4b52ad3e849da6710297f26cf7",
           "boundary": "identity",
           "freeze": "normative",
           "path": "docs/adr/ADR-003-identity-and-sealed-sender.md",
@@ -300,7 +300,7 @@
       ],
       "authority_paths": [
         {
-          "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
+          "blob_sha1": "b7afca3102c0cb4b52ad3e849da6710297f26cf7",
           "boundary": "identity",
           "freeze": "normative",
           "path": "docs/adr/ADR-003-identity-and-sealed-sender.md",
@@ -358,7 +358,7 @@
       ],
       "authority_paths": [
         {
-          "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
+          "blob_sha1": "b7afca3102c0cb4b52ad3e849da6710297f26cf7",
           "boundary": "identity",
           "freeze": "normative",
           "path": "docs/adr/ADR-003-identity-and-sealed-sender.md",
