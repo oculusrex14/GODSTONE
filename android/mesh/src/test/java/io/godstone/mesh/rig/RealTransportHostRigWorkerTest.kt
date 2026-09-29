@@ -978,10 +978,47 @@ internal class RealTransportHostRigWorkerTest {
          * The hint this endpoint advertiseth. **Honest: its own. Mismatched: a FOREIGN but well-formed four-octet
          * hint -- the exact class the election bindeth and the frozen validator then refuseth against the
          * authenticated static key.**
+         *
+         * *** *** THE LIE IS CHOSEN TO PRESERVE THE ELECTION, WHICH IS WHAT MAKETH THE CONTROL MEASURE THE BINDING. *** ***
+         *
+         * *THE DEFECT THIS CLOSES, MEASURED IN THE LIVE COORDINATOR RUN: the old lie was `own xor 0xFF`, which for
+         * this pair's real hints moved the UNSIGNED-LEXICOGRAPHIC election the WRONG WAY (`real elect(0bb99473,
+         * 63f4c56f) = initiator`, but `advertised elect(f4466b8c, 63f4c56f) = responder`) -- so the coordinator's own
+         * seat law refused with `THE ADVERTISED HINTS ELECT AGAINST THE REAL ONES` BEFORE any session existed.* **A
+         * control that is refused at the election measureth the ELECTION, not the sealed binding it existeth to
+         * test, and its verdict would be a verdict about the wrong boundary.**
+         *
+         * **AND THE REQUIREMENT IS SATISFIABLE WITHOUT EVEN KNOWING THE PEER'S HINT, WHICH MATTERS BECAUSE THIS VALUE
+         * IS EMITTED IN `hello` BEFORE THE PEER IS NAMED.** *The sender is seated as the production election's
+         * INITIATOR, which by the production law meaneth `real(self) < real(peer)` unsigned-lexicographically; the
+         * peer advertiseth its REAL hint (only the SENDER carrieth the `mismatched` variant), so `real(peer)` standeth
+         * fixed.* **THEREFORE EVERY HINT STRICTLY BELOW `real(self)` IS ALSO STRICTLY BELOW `real(peer)` -- the
+         * ordering is transitive, and a strictly-smaller lie preserveth the election for ANY peer the coordinator
+         * could have elected us against.** *So the lie is built as the lexicographic predecessor: the first non-zero
+         * octet is decremented (which alone maketh the value strictly smaller) and every later octet is maximised, so
+         * the result is as large as a strictly-smaller value can be -- and, differing in that octet, is never the
+         * identity's own hint.*
+         *
+         * *NOTE (the same fragility Main flagged in the Swift twin at `GsIntegration001CrossPlatformWorkerTests
+         * .swift:611-614`): the iOS half still useth `own ^ 0xFF` and can move this election the same way; that is the
+         * iOS worker's own lane and is recorded here rather than silently mirrored.*
          */
         private fun advertisedHint(): ByteArray {
             val own = rig.nodeOf(ENDPOINT).identity.nodeHint
-            return if (variant == "mismatched") ByteArray(own.size) { (own[it].toInt() xor 0xFF).toByte() } else own
+            if (variant != "mismatched") return own
+            val lie = own.copyOf()
+            var at = 0
+            while (at < lie.size && lie[at] == 0.toByte()) at++
+            // *UNREACHABLE WHILE WE ARE THE ELECTED INITIATOR: an all-zero hint could only be the smaller of the pair
+            // if the peer's hint were negative, which no four-octet value is. Named rather than silently returned.*
+            check(at < lie.size) {
+                "*** the endpoint's own hint is all zero, so NO well-formed hint can be strictly smaller: the " +
+                    "`mismatched` lie cannot preserve the election. Refusing rather than moving it. ***"
+            }
+            lie[at] = (lie[at] - 1).toByte()
+            for (later in at + 1 until lie.size) lie[later] = 0xFF.toByte()
+            check(!lie.contentEquals(own)) { "*** the mismatched lie must never be the identity's own hint ***" }
+            return lie
         }
 
         // ---------------------------------------------------------------------------------------------------------

@@ -608,10 +608,39 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
         /// The hint this endpoint advertiseth. **Honest: its own. Mismatched: a FOREIGN but well-formed four-octet
         /// hint -- the exact class the election bindeth and the frozen validator then refuseth against the
         /// authenticated static key.**
+        ///
+        /// *** *** THE LIE IS CHOSEN TO PRESERVE THE ELECTION, WHICH IS WHAT MAKETH THE CONTROL MEASURE THE BINDING. *** ***
+        ///
+        /// *MEASURED IN THE LIVE COORDINATOR RUN: the former lie was `own ^ 0xFF`, which for this pair's real hints
+        /// moved the UNSIGNED-LEXICOGRAPHIC election the WRONG WAY (`real elect(0bb99473, bfeb4baf) = initiator`, but
+        /// `advertised elect(f4466b8c, bfeb4baf) = responder`) -- so the coordinator's own seat law refused with `THE
+        /// ADVERTISED HINTS ELECT AGAINST THE REAL ONES` BEFORE any session existed.* **A control refused at the
+        /// election measureth the ELECTION, not the sealed binding it existeth to test.**
+        ///
+        /// **AND THE REQUIREMENT IS SATISFIABLE WITHOUT EVEN KNOWING THE PEER'S HINT, WHICH MATTERS BECAUSE THIS VALUE
+        /// IS EMITTED IN `hello` BEFORE THE PEER IS NAMED.** *The sender is seated as the production election's
+        /// INITIATOR, which by the production law meaneth `real(self) < real(peer)` unsigned-lexicographically; the
+        /// peer advertiseth its REAL hint (only the SENDER carrieth the `mismatched` variant), so `real(peer)` standeth
+        /// fixed.* **THEREFORE EVERY HINT STRICTLY BELOW `real(self)` IS ALSO STRICTLY BELOW `real(peer)` -- the
+        /// ordering is transitive.** *So the lie is the lexicographic predecessor: the first non-zero octet is
+        /// decremented (which alone maketh the value strictly smaller) and every later octet is maximised, so the
+        /// result is as large as a strictly-smaller value can be -- and, differing in that octet, is never the
+        /// identity's own hint.*
+        ///
+        /// *(The Android twin carrieth the same repair at `RealTransportHostRigWorkerTest.kt`'s `advertisedHint()`.)*
         private func advertisedHint() -> Data {
             guard let node = rig.node(GsIntegration001CrossPlatformWorkerTests.endpoint) else { return Data() }
             guard variant == .mismatched else { return node.identity.nodeHint }
-            return Data(node.identity.nodeHint.map { $0 ^ 0xFF })
+            var lie = node.identity.nodeHint
+            guard let at = lie.firstIndex(where: { $0 != 0 }) else {
+                // *UNREACHABLE WHILE WE ARE THE ELECTED INITIATOR: an all-zero hint could only be the smaller of the
+                // pair if the peer's hint were negative, which no four-octet value is. A named refusal rather than a
+                // silent return that would move the election.*
+                return Data()
+            }
+            lie[at] -= 1
+            for later in lie.indices where later > at { lie[later] = 0xFF }
+            return lie
         }
 
         /// *** THE RESPONDER'S SEAT, COMPLETED BY THE FOREIGN PLATFORM'S OWN LINK-INFO WRITE. ***

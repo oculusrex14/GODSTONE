@@ -138,7 +138,7 @@
     "Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift": "1a58a3c0af61a9f60557025eaf9e7969bbd752f3156711a406ce5355b93f10ed",
     "Tests/GodstoneMeshTests/GsFinal005MandatoryClockTests.swift": "df7b95c5cf2fd1f630d27e50eb7009505d762edbded6c2447ed3e030a26ccd71",
     "Tests/GodstoneMeshTests/GsFinal010ShutdownLatchTests.swift": "8703a497044d87d670595122f1d5de3eeec67f0eaae0e954a42625f1c474fd56",
-    "Tests/GodstoneMeshTests/GsIntegration001CrossPlatformWorkerTests.swift": "3d0764b41665030ab43f7bbabb969d753ae65d32ccfb94f5768314ac02db88e6",
+    "Tests/GodstoneMeshTests/GsIntegration001CrossPlatformWorkerTests.swift": "40723ddf45a03895b985883fe29d3d3b59be0e80e462dafcfbf0a868016ef322",
     "Tests/GodstoneMeshTests/GsIntegration001ProcessTests.swift": "eaaf434f84aebf82487e64a105af9dc29c97173667ecb0ba3018a185896d3c80",
     "Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift": "b328af5d63a8202c4335bbb1671e2d7ddcef318ad05757914b6de1c1f6d2270c",
     "Tests/GodstoneMeshTests/GsIntegration001ScenarioTests.swift": "8a210fa0ee8d6b8790c525c88bf8d958c3b4ecf9945c004e47785088b29cee64",
