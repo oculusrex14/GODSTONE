@@ -1,48 +1,48 @@
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
-Calculating task graph as configuration cache cannot be reused because system property 'godstone.integration.root' has changed.
+Calculating task graph as configuration cache cannot be reused because file 'labmesh/build.gradle.kts' has changed.
 > Task :mesh:preBuild UP-TO-DATE
-> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :mesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :core:preBuild UP-TO-DATE
 > Task :mesh:generateDebugUnitTestAssets UP-TO-DATE
 > Task :mesh:preDebugBuild UP-TO-DATE
-> Task :mesh:preDebugUnitTestBuild UP-TO-DATE
 > Task :core:preDebugBuild UP-TO-DATE
-> Task :core:generateDebugResValues
-> Task :core:javaPreCompileDebug
+> Task :mesh:preDebugUnitTestBuild UP-TO-DATE
 > Task :mesh:generateDebugUnitTestResValues
+> Task :mesh:writeDebugAarMetadata
 > Task :mesh:generateDebugResValues
 > Task :core:writeDebugAarMetadata
-> Task :mesh:writeDebugAarMetadata
+> Task :core:generateDebugResValues
+> Task :core:javaPreCompileDebug
 > Task :mesh:javaPreCompileDebug
 > Task :core:mergeDebugShaders
-> Task :mesh:generateDebugUnitTestResources
-> Task :core:extractDeepLinksDebug
-> Task :mesh:generateDebugResources
 > Task :mesh:mergeDebugShaders
 > Task :core:generateDebugResources
+> Task :core:extractDeepLinksDebug
+> Task :mesh:generateDebugUnitTestResources
 > Task :mesh:extractDeepLinksDebug
+> Task :mesh:generateDebugResources
+> Task :mesh:javaPreCompileDebugUnitTest
 > Task :core:compileDebugShaders NO-SOURCE
-> Task :core:generateDebugAssets UP-TO-DATE
 > Task :mesh:compileDebugShaders NO-SOURCE
+> Task :core:generateDebugAssets UP-TO-DATE
 > Task :mesh:generateDebugAssets UP-TO-DATE
 > Task :core:packageDebugAssets
 > Task :core:packageDebugResources
-> Task :mesh:javaPreCompileDebugUnitTest
-> Task :mesh:processDebugManifest
+> Task :mesh:packageDebugAssets
 > Task :mesh:packageDebugResources
 > Task :core:processDebugManifest
-> Task :mesh:packageDebugAssets
 > Task :mesh:mergeDebugAssets
 > Task :core:compileDebugLibraryResources
+> Task :mesh:processDebugManifest
+> Task :mesh:mergeDebugUnitTestAssets
 > Task :mesh:checkDebugUnitTestAarMetadata
 > Task :mesh:mapDebugUnitTestSourceSetPaths
-> Task :mesh:mergeDebugUnitTestAssets
 > Task :core:parseDebugLocalResources
 > Task :mesh:parseDebugLocalResources
-> Task :mesh:generateDebugRFile
 > Task :core:generateDebugRFile
+> Task :mesh:generateDebugRFile
 > Task :mesh:compileDebugLibraryResources
 > Task :mesh:processDebugUnitTestManifest
 > Task :mesh:mergeDebugUnitTestResources
@@ -58,8 +58,8 @@ w: file:///Users/oculus/Projects/GODSTONE/android/core/src/main/java/io/godstone
 
 > Task :core:compileDebugJavaWithJavac NO-SOURCE
 > Task :core:processDebugJavaRes
-> Task :core:bundleLibRuntimeToJarDebug
 > Task :core:bundleLibCompileToJarDebug
+> Task :core:bundleLibRuntimeToJarDebug
 > Task :mesh:kspDebugKotlin
 
 > Task :mesh:compileDebugKotlin
@@ -78,8 +78,8 @@ w: file:///Users/oculus/Projects/GODSTONE/android/mesh/src/main/java/io/godstone
 > Task :mesh:processDebugJavaRes
 > Task :mesh:compileDebugJavaWithJavac
 > Task :mesh:transformDebugClassesWithAsm
-> Task :mesh:bundleLibRuntimeToJarDebug
 > Task :mesh:bundleLibCompileToJarDebug
+> Task :mesh:bundleLibRuntimeToJarDebug
 > Task :mesh:kspDebugUnitTestKotlin
 
 > Task :mesh:compileDebugUnitTestKotlin

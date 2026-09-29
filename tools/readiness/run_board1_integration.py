@@ -117,6 +117,20 @@ SWIFT_BUNDLE_NAME = "GodstoneMeshTests.xctest"
 ANDROID_WORKER_TASK = ":mesh:board1IntegrationWorker"
 ANDROID_WORKER_CLASS = "io.godstone.mesh.rig.RealTransportHostRigWorkerTest"
 
+# *** THE CRASH ROLES MAY LIVE IN A DIFFERENT TASK/CLASS, NAMED BY THE ENVIRONMENT. ***
+#
+# *THE PLAN PUT THE ANDROID DURABLE-BOUNDARY MIRROR IN THE SAME SLICE AS THIS COORDINATOR, BUT IT BELONGETH TO A
+# SEPARATE WORKER (`AndroidCrashMirror`'s `Board1DurableBoundaryWorkerTest` + `board1DurableBoundaryWorker`), WHICH
+# DRIVETH THE BOUNDARY WITH A PARENT-OWNED KILL RATHER THAN A SELF-HALT.* **So the task and class for the CRASH roles
+# alone are overridable -- the cross-platform roles keep the committed defaults -- and the coordinator reacheth either
+# worker with no edit:**
+#
+#   GS_ANDROID_CRASH_TASK=:mesh:board1DurableBoundaryWorker \
+#   GS_ANDROID_CRASH_CLASS=io.godstone.mesh.rig.Board1DurableBoundaryWorkerTest \
+#     python3 tools/readiness/run_board1_integration.py --mode crash --evidence-dir PATH
+ANDROID_CRASH_TASK = os.environ.get("GS_ANDROID_CRASH_TASK", ANDROID_WORKER_TASK)
+ANDROID_CRASH_CLASS = os.environ.get("GS_ANDROID_CRASH_CLASS", ANDROID_WORKER_CLASS)
+
 # The seeds the two workers mint their identities from. **The coordinator re-mints until the production role
 # election seats the SENDER as the initiator** -- see `seat_pair` -- because only the initiator is reachable in the
 # route-eligible view, which is a production fact and not a convenience.
@@ -706,6 +720,10 @@ class Runner:
         return worker
 
     def launch_android(self, name: str, role: str, variant: str, estate: Path, timeout_s: float) -> Worker:
+        # *** THE CRASH ROLES USE THE OVERRIDABLE TASK/CLASS; EVERY OTHER ROLE USES THE COMMITTED DEFAULTS. ***
+        is_crash = role in ("crash-prepare", "crash-recover")
+        task = ANDROID_CRASH_TASK if is_crash else ANDROID_WORKER_TASK
+        klass = ANDROID_CRASH_CLASS if is_crash else ANDROID_WORKER_CLASS
         java_home = os.environ.get("JAVA_HOME", "/opt/homebrew/opt/openjdk@17")
         android_home = os.environ.get("ANDROID_HOME", str(Path.home() / "Library" / "Android" / "sdk"))
         gradlew = REPO / "android" / "gradlew"
@@ -719,7 +737,7 @@ class Runner:
         )
         worker = Worker(spec, self.runtime_dir, self.log, {})   # creates the two FIFOs
         argv = [
-            str(gradlew), "-p", str(REPO / "android"), ANDROID_WORKER_TASK,
+            str(gradlew), "-p", str(REPO / "android"), task,
             "--no-daemon", "--console=plain", "--rerun-tasks",
             f"-D{ANDROID_ROLE_PROP}={role}",
             f"-D{ANDROID_VARIANT_PROP}={variant}",
@@ -729,8 +747,8 @@ class Runner:
             f"-D{ANDROID_OUT_PROP}={worker.from_worker.path}",
         ]
         worker.spec.argv = argv
-        worker.launch = {"executable": str(gradlew), "task": ANDROID_WORKER_TASK,
-                         "test_class": ANDROID_WORKER_CLASS,
+        worker.launch = {"executable": str(gradlew), "task": task,
+                         "test_class": klass,
                          "jvm_args": [a for a in argv if a.startswith("-D")],
                          "env_keys": ["JAVA_HOME", "ANDROID_HOME"]}
         worker.start()

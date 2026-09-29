@@ -1,0 +1,15 @@
+test_w03_an_essential_control_without_a_label_is_refused (test_t60.T60NamedNegativeTest.test_w03_an_essential_control_without_a_label_is_refused) ... FAIL
+
+======================================================================
+FAIL: test_w03_an_essential_control_without_a_label_is_refused (test_t60.T60NamedNegativeTest.test_w03_an_essential_control_without_a_label_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC1-a-label-less-essential-control-is-accepted/tools/readiness/tests/test_t60.py", line 128, in test_w03_an_essential_control_without_a_label_is_refused
+    self.assertFalse(passed, "a control with no visible label must be refused")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : a control with no visible label must be refused
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

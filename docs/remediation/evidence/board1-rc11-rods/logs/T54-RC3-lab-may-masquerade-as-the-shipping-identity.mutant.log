@@ -1,0 +1,17 @@
+test_w05_the_lab_carrieth_its_own_distinct_identity (test_t54.T54LabTargetTest.test_w05_the_lab_carrieth_its_own_distinct_identity) ... FAIL
+
+======================================================================
+FAIL: test_w05_the_lab_carrieth_its_own_distinct_identity (test_t54.T54LabTargetTest.test_w05_the_lab_carrieth_its_own_distinct_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/oculus/.cache/godstone-mutation-worktrees/wt_T54-RC3-lab-may-masquerade-as-the-shipping-identity/tools/readiness/tests/test_t54.py", line 198, in test_w05_the_lab_carrieth_its_own_distinct_identity
+    self.assertTrue(any("SHIPPING identity" in e for e in findings.errors),
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    findings.errors)
+                    ^^^^^^^^^^^^^^^^
+AssertionError: False is not true : []
+
+----------------------------------------------------------------------
+Ran 1 test in 0.009s
+
+FAILED (failures=1)

@@ -1,0 +1,15 @@
+test_w04_a_clipped_status_is_refused_at_large_text (test_t60.T60NamedNegativeTest.test_w04_a_clipped_status_is_refused_at_large_text) ... FAIL
+
+======================================================================
+FAIL: test_w04_a_clipped_status_is_refused_at_large_text (test_t60.T60NamedNegativeTest.test_w04_a_clipped_status_is_refused_at_large_text)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC2-a-clipped-status-is-accepted-at-large-text/tools/readiness/tests/test_t60.py", line 155, in test_w04_a_clipped_status_is_refused_at_large_text
+    self.assertFalse(passed, "a clipped status must be refused")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : a clipped status must be refused
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

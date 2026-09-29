@@ -1,33 +1,32 @@
-[22:04:08] === GS-INTEGRATION-001 cross-platform coordinator: mode=cross-platform run=20260929T163407Z-a0a8dd ===
-[22:04:08]     repo=/Users/oculus/Projects/GODSTONE evidence=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration
-[22:04:08]     input digest (pre) = da3556ff523ab2b8b6e67d2a7b19280f01acac3254cd7bc45499550e7efd1ab8
-[22:04:08]     toolchain swift: Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6
-[22:04:08]     toolchain xcodebuild: Xcode 27.0 Build version 27A266a
-[22:04:08]     toolchain java: openjdk version "17.0.20.1" 2026-08-18 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1) OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)
-[22:04:08]     toolchain python: 3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)
-[22:04:08]     toolchain host: macOS-26.6.2-arm64-arm-64bit-Mach-O
-[22:04:08]     toolchain gradle: ------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191
-[22:04:08]     toolchain android_sdk: unset
-[22:04:08] *** building the host fixtures ONCE (SwiftPM macOS test bundle) ***
-[22:04:10]   swift build --build-tests: rc=0
-[22:04:10] --- direction ios->android control=honest ---
-[22:04:10]   [swift-honest] <- hello  payload=0B
-[22:04:46]   [android-honest] <- hello  payload=0B
-[22:04:46]   seat: sender real_hint=0bb99473 receiver real_hint=c5600116 -> the sender is the production election's INITIATOR (re-mints=0)
-[22:04:46]   [swift-honest] -> peer  payload=0B
-[22:04:46]   [android-honest] -> peer  payload=0B
-[22:04:46]   [swift-honest] -> setup  payload=0B
-[22:04:46]   [android-honest] -> setup  payload=0B
-[22:04:46]   [android-honest] <- ready  payload=0B
-[22:04:46]   [swift-honest] <- frame  payload=13B
-[22:04:46]   [swift-honest] <- frame  payload=40B
-[22:04:46]   [swift-honest] <- ready  payload=0B
-[22:04:46]   swift-honest seated: {'advertised_hint': '0bb99473', 'handle': '4395D0D7-8225-4599-822C-8F00E15D22EF', 'kind': 'ready', 'platform': 'ios', 'remote_hint': 'c5600116', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
-[22:04:46]   android-honest seated: {'advertised_hint': 'c5600116', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0bb99473', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
-[22:04:46]   [swift-honest] -> go  payload=0B
-[22:04:46]   [android-honest] -> inject  payload=13B
-[22:04:46]   [android-honest] -> inject  payload=40B
-[22:10:47] *** REFUSED: *** ios->android (honest): THE RELAY DID NOT REACH ITS COMPLETION WITHIN 300s. *** receiver=[] sender=[] ***
-[22:10:47] *** REFUSED: an input changed WHILE the run executed ***
-    pre =da3556ff523ab2b8b6e67d2a7b19280f01acac3254cd7bc45499550e7efd1ab8
-    post=90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e
+[22:31:48] === GS-INTEGRATION-001 cross-platform coordinator: mode=cross-platform run=20260929T170148Z-18104c ===
+[22:31:48]     repo=/Users/oculus/Projects/GODSTONE evidence=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration
+[22:31:48]     input digest (pre) = 90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e
+[22:31:48]     toolchain swift: Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6
+[22:31:48]     toolchain xcodebuild: Xcode 27.0 Build version 27A266a
+[22:31:48]     toolchain java: openjdk version "17.0.20.1" 2026-08-18 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1) OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)
+[22:31:48]     toolchain python: 3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)
+[22:31:48]     toolchain host: macOS-26.6.2-arm64-arm-64bit-Mach-O
+[22:31:48]     toolchain gradle: ------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191
+[22:31:48]     toolchain android_sdk: unset
+[22:31:48] *** building the host fixtures ONCE (SwiftPM macOS test bundle) ***
+[22:31:49]   swift build --build-tests: rc=0
+[22:31:49] --- direction ios->android control=honest ---
+[22:31:49]   [swift-honest] <- hello  payload=0B
+[22:32:25]   [android-honest] <- hello  payload=0B
+[22:32:25]   seat: sender real_hint=0bb99473 receiver real_hint=b4301d84 -> the sender is the production election's INITIATOR (re-mints=0)
+[22:32:25]   [swift-honest] -> peer  payload=0B
+[22:32:25]   [android-honest] -> peer  payload=0B
+[22:32:25]   [swift-honest] -> setup  payload=0B
+[22:32:25]   [android-honest] -> setup  payload=0B
+[22:32:25]   [android-honest] <- ready  payload=0B
+[22:32:25]   [swift-honest] <- frame  payload=13B
+[22:32:25]   [swift-honest] <- frame  payload=40B
+[22:32:25]   [swift-honest] <- ready  payload=0B
+[22:32:25]   swift-honest seated: {'advertised_hint': '0bb99473', 'handle': '52BCDBA9-EADD-4BC9-AD98-7EA2B212EF7C', 'kind': 'ready', 'platform': 'ios', 'remote_hint': 'b4301d84', 'role': 'sender', 'seat': 'initiator', 'v': 1, 'variant': 'honest'}
+[22:32:25]   android-honest seated: {'advertised_hint': 'b4301d84', 'handle': '0B:B9:94:73:55:56', 'kind': 'ready', 'platform': 'android', 'remote_hint': '0bb99473', 'role': 'recipient', 'seat': 'responder', 'v': 1, 'variant': 'honest'}
+[22:32:25]   [swift-honest] -> go  payload=0B
+[22:32:25]   [android-honest] -> inject  payload=13B
+[22:32:25]   [android-honest] -> inject  payload=40B
+[22:38:26] *** REFUSED: *** ios->android (honest): THE RELAY DID NOT REACH ITS COMPLETION WITHIN 300s. *** receiver=[] sender=[] ***
+[22:38:26]     input digest (post) = 90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e (agrees)
+[22:38:26] *** FAIL ***

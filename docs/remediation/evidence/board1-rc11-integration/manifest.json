@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "protocol_version": 1,
+  "run_id": "20260929T170148Z-18104c",
+  "generated_at": "2026-09-29T17:08:26Z",
+  "input_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e",
+  "toolchain": {
+    "swift": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6",
+    "xcodebuild": "Xcode 27.0 Build version 27A266a",
+    "java": "openjdk version \"17.0.20.1\" 2026-08-18 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1) OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)",
+    "python": "3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)",
+    "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "gradle": "------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191",
+    "android_sdk": "unset"
+  },
+  "worker_launches": [
+    {
+      "name": "swift-honest",
+      "platform": "ios",
+      "role": "sender",
+      "variant": "honest",
+      "argv": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/xctest",
+        "-XCTest",
+        "GodstoneMeshTests.GsIntegration001CrossPlatformWorkerTests/testGSINT001CrossPlatformWorker",
+        "/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/.build/debug/GodstoneMeshTests.xctest"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration/gs_int_coord_d0a4yx0f/estate-ios_android-honest/ios"
+    },
+    {
+      "name": "android-honest",
+      "platform": "android",
+      "role": "recipient",
+      "variant": "honest",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=recipient",
+        "-Dgodstone.integration.variant=honest",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration/gs_int_coord_d0a4yx0f/estate-ios_android-honest/android",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration/gs_int_coord_d0a4yx0f/android-honest.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration/gs_int_coord_d0a4yx0f/android-honest.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-integration/gs_int_coord_d0a4yx0f/estate-ios_android-honest/android"
+    }
+  ],
+  "transcript": {
+    "path": "transcript.bin",
+    "length": 290,
+    "sha256": "0234092acd97b1c248d4385a7f6762c044daad9d90d3dc4706903d92e43f8f17",
+    "framing": "u32be header_len | header(json,utf8) | u32be payload_len | payload"
+  },
+  "record_count": 2,
+  "records": [
+    {
+      "sequence": 1,
+      "platform": "ios",
+      "producer": "swift-honest",
+      "target": "android-honest",
+      "direction": "ios->android",
+      "characteristic": "linkInfo",
+      "kind": "frame",
+      "epoch": 1,
+      "payload_offset": 0,
+      "payload_length": 13,
+      "payload_sha256": "dcf0908ba7b807be648fff482c52db55c88470e682eea32016c86fee8b42a6d6",
+      "frame_length": 133,
+      "source_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e",
+      "note": "honest"
+    },
+    {
+      "sequence": 2,
+      "platform": "ios",
+      "producer": "swift-honest",
+      "target": "android-honest",
+      "direction": "ios->android",
+      "characteristic": "inbox",
+      "kind": "frame",
+      "epoch": 1,
+      "payload_offset": 133,
+      "payload_length": 40,
+      "payload_sha256": "0ad4c4c1c194a8e9d1218c641ccc769960b00f14d57cfe50b53286fdbe919270",
+      "frame_length": 157,
+      "source_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e",
+      "note": "honest"
+    }
+  ]
+}
