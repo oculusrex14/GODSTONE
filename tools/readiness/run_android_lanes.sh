@@ -13,6 +13,19 @@
 set -eu
 cd "$(dirname "$0")/../.."
 
+# *** THE RESULTS ROOT IS CLEARED FIRST, SO THE LANE'S EVIDENCE IS ITS OWN. ***
+#
+# *THE DEFECT THIS CLOSES, MEASURED: `ci/check_lane_results.py` refuseth an UNEXPECTED SIBLING under a lane's
+# `build/test-results/` -- a filtered run (`--tests ...`) writeth BESIDE the lane's own task directory, and a
+# sibling is how this lane's count was once inflated. **The cross-platform coordinator legitimateth such a sibling
+# (`:mesh:board1IntegrationWorker` writeth `board1IntegrationWorker/`), so a machine that ran the coordinator before
+# the lane carried that directory into the lane's evidence and the control refused it -- correctly, since a stale
+# sibling is exactly the pollution it existeth to catch.** *`--rerun-tasks` regenerateth the lane's own XML, so
+# clearing the root first leaveth the lane's run as the only writer and the count bound to the sources.*
+for _mod in app core mesh labmesh; do
+    rm -rf "android/$_mod/build/test-results"
+done
+
 # *** THE PRE-RUN DIGESTS, SO A MID-RUN EDIT CANNOT DESCRIBE A TREE THE TESTS NEVER COMPILED. ***
 # *The same contract the two iOS runners carry: the digest is taken BEFORE the lanes start and AFTER they finish, and
 # the two must agree -- otherwise the result files describe no single revision.*
