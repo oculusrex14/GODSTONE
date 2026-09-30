@@ -774,10 +774,24 @@ jobs:
             mv "$tmp/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
           fi
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          # *** AND THE PACKAGES THE BUILD ITSELF DECLARES, NOT MERELY THE ONES `compileSdk` NAMES. ***
+          #
+          # *MEASURED, RUN `36775091464`: `android/llm/build.gradle.kts` carrieth `ndkVersion = "27.0.12077973"`
+          # and the AGP also wanteth build-tools 34 -- NEITHER was provisioned here, so GRADLE DOWNLOADED AND
+          # INSTALLED BOTH LAZILY **INSIDE THE COORDINATOR'S TIMED RUN**, and the
+          # `android-prepare-outboundEnqueue` worker consumed its whole 300s bound on
+          # `Installing NDK (Side by side) 27.0.12077973` + `Install Android SDK Build-Tools 34` and never reached
+          # its `AT_BOUNDARY` marker. The refusal named the marker, not the toolchain, so the log had to be read to
+          # find it.* **A DOWNLOAD THAT LANDS INSIDE A TIMED STEP IS A TIMEOUT THAT LOOKS LIKE A BROKEN PRODUCT --
+          # provisioning is exactly what this step existeth to prevent.**
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+            "platform-tools" "platforms;android-35" "build-tools;35.0.0" "build-tools;34.0.0" \
+            "ndk;27.0.12077973"
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
+          # *** AND THE TOOLCHAIN IS ASSERTED PRESENT, SO A LATER SILENT ABSENCE CANNOT BECOME A MARKER TIMEOUT. ***
+          test -d "$ANDROID_HOME/ndk/27.0.12077973" || \
+            { echo "::error::the NDK the build declares (27.0.12077973) is NOT installed after provisioning"; exit 1; }
 
       # *** THE iOS FOUNDATION LANE AND THE UI LANE, ONE REPOSITORY-OWNED PATH EACH. ***
       #
