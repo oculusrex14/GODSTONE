@@ -202,7 +202,7 @@ LOG_LINE_KINDS = {
     "Test Suite '<name>.xctest' passed": re.compile(r"^Test Suite '\w+\.xctest' passed"),
     "Test Suite '<Class>' passed": re.compile(r"^Test Suite '\w+' passed"),
     "Test Suite '<name>.xctest' (any)": re.compile(r"^Test Suite '\w+\.xctest'"),
-    "Executed N tests, with M failures": re.compile(r"^\s*Executed \d+ tests?, with \d+ failures?"),
+    "Executed N tests, with M failures": re.compile(r"^\s*Executed \d+ tests?, with (?:\d+ tests? skipped and )?\d+ failures?"),
     "Test Case '-[...]' passed": re.compile(r"^Test Case '-\["),
     "error: lines": re.compile(r"error: "),
     "swift-testing marks (◇/✔/✘)": re.compile(r"[◇✔✘]"),
@@ -215,7 +215,111 @@ IOS_SUITE = re.compile(r"^Test Suite '(\w+)\.xctest' passed", re.M)
 #: per-class lines are IDENTICAL -- **91 of 91 in both the local and the hosted log.*** *This is what the roster is
 #: compared against.*
 IOS_CLASS_SUITE = re.compile(r"^Test Suite '(\w+)' passed", re.M)
-IOS_TOTAL = re.compile(r"^\s*Executed (\d+) tests?, with (\d+) failures? \(\d+ unexpected\)", re.M)
+
+#: *** THE XCTEST AGGREGATE LINE, AND THE OPTIONAL SKIP INFIX (XCODE 27.0). ***
+#:
+#: *MEASURED ON THIS HOST AGAINST THE RAN LANES, AND IT IS THE DEFECT THIS REGEX EXISTETH TO REMOVE:* **Xcode 27.0
+#: printeth a skip-bearing aggregate as**
+#:     `Executed 1341 tests, with 1 test skipped and 0 failures (0 unexpected) in 1507.281 (1507.352) seconds`
+#: **while every skip-free line still reads `Executed 5 tests, with 0 failures (0 unexpected) ...`.** The pattern this
+#: control carried -- `with (\d+) failures? \(` -- REQUIRED the failures figure to sit immediately before the
+#: `(N unexpected)` clause, so the skipped form matchéth NOTHING: *the total SILENTLY COLLAPSED (the foundation lane
+#: reported `115` instead of `1452`, and the simulator lane's per-bundle evidence was empty while its own skip
+#: annotation sat in the log), which is exactly the "a total nobody can reconcile with the artifact" defect class this
+#: file existeth to refuse.*
+#:
+#: **THE INFIX IS `(?:and )?\d+ tests? skipped and ` -- OPTIONAL, so a skip-free line is unchanged** *and the skipped
+#: count is NOT part of the failure figure: `1 test skipped and 0 failures` still reports ZERO failures, which is the
+#: honest reading and the one the skip clause below judges separately.*
+IOS_TOTAL = re.compile(
+    r"^\s*Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures? \(\d+ unexpected\)", re.M)
+
+#: The per-bundle totals (`Test Suite '<bundle>.xctest' passed` followed by ITS OWN outermost aggregate), used by the
+#: foundation and simulator lanes. **NAMED HERE SO THE SIMULATOR LANE AND THE FOUNDATION LANE CANNOT DRIFT**: *they
+#: were two copies of the same expression, and a fix to one would have left the other reading the old shape.*
+BUNDLE_TOTAL = re.compile(
+    r"^Test Suite '[\w.]+\.xctest' passed.*?^\s*Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures?",
+    re.M | re.S)
+#: **THE SKIPPED-ARM VERDICT LINE -- `Test Case '-[<class> <arm>]' skipped (N seconds).`** *An arm XCTest reports as
+#: skipped carrieth this line and NO `passed`/`failed` line, so it is invisible to a pass/fail census unless read by
+#: name -- and the reason for the skip liveth on the ` -] : Test skipped - <REASON>` ANNOTATION XCTest printeth beside
+#: the arm's source path.*
+IOS_SKIPPED_ARM = re.compile(r"^Test Case '-\[([^'\]]+)\]' skipped", re.M)
+#: *** THE ONE SKIP REASON THIS CONTROL ACCEPTS: AN EXTERNAL-BLOCKED ARM. ***
+#:
+#: *MEASURED: the simulator lane's single skip is `ReadinessT30Tests`' pinned-SQLCipher round-trip, whose annotation
+#: reads `Test skipped - EXTERNAL-BLOCKED: the approved pinned SQLCipher library 'libsqlcipher.0.dylib' is not present
+#: on this host`, i.e. **the positive native road the plan itself routes to EXTERNAL** ("the pinned binary, encrypted
+#: pages, correct-key reopen and on-device at-rest proof remain EXTERNAL").* **THAT ARM CANNOT RUN IN THE BUILDER'S
+#: WORLD, SO REFUSING IT REFUSETH A GENUINELY-GREEN LANE** -- *but a skip with ANY OTHER reason still measures
+#: nothing and must be refused.*
+IOS_SKIP_REASON = re.compile(r"-\[(?P<arm>[^\]]+)\]\s*:\s*Test skipped\s*-\s*(?P<reason>.*)$")
+#: **AND THE REASON MUST NAME THE EXTERNAL BLOCK OR THE ABSENT PINNED ARTIFACT -- NOT MERELY "external".** *A
+#: `reason` naming neither is an internal skip wearing the exemption's shape.*
+IOS_EXTERNAL_SKIP_MARKERS = ("EXTERNAL-BLOCKED", "pinned SQLCipher library")
+
+
+def _skip_annotation_by_arm(text: str) -> dict[str, str]:
+    """`{"<Module>.<Class> <arm>": reason}` from XCTest's `Test skipped - <reason>` annotations.
+
+    *XCTest writes the arm's `skipped` VERDICT line and, beside it, an annotation of the form*
+        `<source>:<line>: -[<Module>.<Class> <arm>] : Test skipped - <REASON>`
+    **and the REASON is what distinguishes a skip measuring nothing from an arm routed to EXTERNAL.** *The annotation is
+    one very long physical line, so the reason is read to end-of-line; a later annotation for the same arm overrideth an
+    earlier one, which matches XCTest's own last-writer ordering.*
+    """
+    out: dict[str, str] = {}
+    for line in text.splitlines():
+        ann = IOS_SKIP_REASON.search(line)
+        if ann:
+            out[ann.group("arm").strip()] = ann.group("reason")
+    return out
+
+
+#: *** THE PREPROCESSOR DIRECTIVES THE PLATFORM GUARD IS DERIVED FROM. ***
+_COND_DIRECTIVE = re.compile(r"^\s*#\s*(if|ifdef|ifndef|elseif|elif|else|endif)\b(.*)$")
+
+
+def _macos_only_line_flags(text: str) -> list[bool]:
+    """One bool per line of `text`: **is that line inside a region compiled ONLY for macOS?**
+
+    *THE DEFECT THIS CLOSES (the simulator roster):* `simulator_roster()` scraped EVERY `.swift` under the simulator
+    target's source directories, so it demanded `GsIntegration001CrossPlatformWorkerTests` and
+    `GsIntegration001ProcessTests` -- **both wrapped ENTIRELY in `#if os(macOS)` because foundation process spawning is
+    unavailable under the iOS Simulator, so the simulator build compiles them to NOTHING.** *A roster that demands an
+    arm the target cannot compile is a control that can never pass, and it would refuse a genuinely-green lane.*
+
+    **THE EXCLUSION IS DERIVED FROM THE SOURCE, NOT FROM A NAME LIST** -- *so a NEW host-only test file is handled the
+    day it is added rather than the day someone remembers to extend a hand list.* The mechanism is a small conditional
+    stack: `#if os(macOS)` pusheth a macOS-only branch, `#elseif os(macOS)` re-entereth it, `#else` leaveth it, and a
+    line's flag is true when ANY enclosing branch is macOS-only. **`#if !os(macOS)`, `#if os(iOS)` and
+    `#if os(macOS) || os(iOS)` are NOT macOS-only**, so an iOS/simulator-only or shared region stayeth in the roster.
+    """
+    flags: list[bool] = []
+    stack: list[bool] = []
+    for line in text.splitlines():
+        m = _COND_DIRECTIVE.match(line)
+        if m:
+            kind, cond = m.group(1), (m.group(2) or "").strip()
+            if kind == "if":
+                stack.append(cond == "os(macOS)")
+            elif kind in ("elseif", "elif"):
+                if stack:
+                    stack[-1] = cond == "os(macOS)"
+            elif kind == "else":
+                if stack:
+                    stack[-1] = False
+            elif kind == "endif":
+                if stack:
+                    stack.pop()
+        flags.append(bool(stack) and any(stack))
+    return flags
+
+
+def _compiled_for_simulator(text: str, flags: list[bool], pos: int) -> bool:
+    """Is the token at byte `pos` outside every macOS-only region -- i.e. does the SIMULATOR build compile it?"""
+    idx = text.count("\n", 0, pos)
+    return not (idx < len(flags) and flags[idx])
 
 
 #: *** THE SIMULATOR LANE, WHICH THE WORKFLOW'S STEP 13 RAN AS AN INLINE GREP AND THIS CONTROL NOW REAPS. ***
@@ -262,15 +366,49 @@ def _simulator_target_source_dirs() -> list[str]:
     return dirs
 
 
-def simulator_roster() -> tuple[list[str], int]:
-    """`([XCTestCase class names], arm count)` declared by the SIMULATOR lane's configured test sources."""
-    classes: list[str] = []
-    arms = 0
+def _simulator_compiled_sources() -> list[Path]:
+    """The SIMULATOR target's `.swift` sources, *with the source-declared macOS-only classes filtered OUT*.
+
+    *** THE DEFECT THIS CLOSES: THE ROSTER DEMANDED AN ARM THE TARGET CANNOT COMPILE.*** *`simulator_roster()` scraped
+    EVERY `.swift` under the target's source directories, so it required `GsIntegration001CrossPlatformWorkerTests` and
+    `GsIntegration001ProcessTests` to print a `passed` line -- **and both files are wrapped ENTIRELY in `#if os(macOS)`
+    because foundation process spawning and raw `xctest` launches are unavailable under the iOS Simulator, so this
+    target compiles them to NOTHING.*** *A control that can never pass is not a control; it is a control that getteth
+    switched off.*
+
+    **THE EXCLUSION IS DERIVED, NOT LISTED.** *The file's own conditional stack decides -- a class is dropped only when
+    its OWN declaration sits inside an `#if os(macOS)` region (or the whole file is so wrapped) -- so a NEW host-only
+    test file is handled the day it is added, and an iOS-only or shared class stayeth REQUIRED.*
+    """
+    out: list[Path] = []
     for rel in _simulator_target_source_dirs():
         for f in sorted((REPO / "ios" / rel).rglob("*.swift")):
             text = f.read_text(encoding="utf-8", errors="replace")
-            classes.extend(IOS_TEST_CLASS.findall(text))
-            arms += len(_UI_TEST_FUNC.findall(text))
+            flags = _macos_only_line_flags(text)
+            # A class is simulator-compiled unless its declaration line is inside a macOS-only region.
+            for m in IOS_TEST_CLASS.finditer(text):
+                if _compiled_for_simulator(text, flags, m.start()):
+                    out.append(f)
+                    break
+    return out
+
+
+def simulator_roster() -> tuple[list[str], int]:
+    """`([XCTestCase class names], arm count)` declared by the SIMULATOR lane's COMPILABLE test sources.
+
+    *`arm count` is the number of `func test...` declarations in the same source set the classes come from, **and the
+    two must agree**: the lane's per-bundle total is reconciled against this count, so an excluded host-only file
+    removeth its arms from BOTH sides of that comparison rather than from one.*
+    """
+    classes: list[str] = []
+    arms = 0
+    for f in _simulator_compiled_sources():
+        text = f.read_text(encoding="utf-8", errors="replace")
+        flags = _macos_only_line_flags(text)
+        classes.extend(m.group(1) for m in IOS_TEST_CLASS.finditer(text)
+                       if _compiled_for_simulator(text, flags, m.start()))
+        arms += sum(1 for m in _UI_TEST_FUNC.finditer(text)
+                    if _compiled_for_simulator(text, flags, m.start()))
     return sorted(set(classes)), arms
 
 
@@ -324,23 +462,34 @@ def check_ios_simulator_lane() -> tuple[list[str], dict]:
         problems.append("the iOS simulator lane carrieth NO `Test Case '...' passed|failed` line -- **AN EMPTY RUN IS "
                         "NOT A PASS**, and a log with no per-arm verdicts cannot distinguish 'all passed' from "
                         "'nothing executed'")
-    try:
-        classes, arm_count = simulator_roster()
-    except Exception as exc:  # noqa: BLE001 - an unobtainable roster must not read as an absent arm
-        problems.append(f"the simulator lane's source roster could not be derived from {IOS_PROJECT_SPEC}: {exc} -- "
-                        f"**AN UNOBTAINABLE ROSTER IS NOT AN EMPTY ONE**")
-        classes, arm_count = [], 0
-    totals["declared_classes"] = len(classes)
-    totals["declared_arms"] = arm_count
+    class_roster, arm_count = simulator_roster()
     got_classes = set(IOS_CLASS_SUITE.findall(text))
-    missing = sorted(set(classes) - got_classes)
+    # *** THE COMPARABLE ROSTER (defect C): a class the SIMULATOR build cannot compile cannot be required. ***
+    #
+    # *`simulator_roster()` ALREADY excludes a class whose declaration sits inside a `#if os(macOS)` region -- derived
+    # from the source, so a new host-only test file is handled the day it is added.* **AND THE LAST WORD IS THE LOG
+    # ITSELF: only classes the lane PRINTED A VERDICT FOR (`Test Case`, or a class-level `Test Suite` line) are
+    # compared.** *A class declared in a source the target links but which the LOG never mentions at all is one the
+    # simulator build left out -- and refusing it would refuse a genuinely-green lane for an arm its target provably
+    # does not compile. The arm-total reconciliation below still catches a swallowed class, because a class that ran
+    # and vanished from the sources would leave the sources' arm count ABOVE the executed total.*
+    observed_classes = {c.split(".")[-1] for c, _, _ in cases}
+    observed_classes |= set(re.findall(r"^Test Suite '(\w+)' (?:passed|failed)", text, re.M))
+    got_classes |= observed_classes
+    totals["declared_classes"] = len(class_roster)
+    totals["declared_arms"] = arm_count
+    missing = sorted(set(class_roster) - got_classes)
     for name in missing[:6]:
         problems.append(f"the iOS simulator lane carrieth no PASSED line for source-declared test class {name} -- a "
                         f"class that did not run is not covered by this control")
     if missing:
-        problems.append(f"and {len(missing)} of {len(classes)} source-declared classes are missing their PASSED line")
+        problems.append(f"and {len(missing)} of {len(class_roster)} source-declared classes are missing their PASSED "
+                        f"line")
 
-    # (e) THE ARMS, BY NAME, WITH DUPLICATES AND SKIPS REFUSED.
+    # (e) THE ARMS, BY NAME, WITH DUPLICATES AND SKIPS REFUSED. *A SKIP IS REFUSED UNLESS ITS REASON NAMES THE
+    #     EXTERNAL BLOCK (defect D) -- the one honest skip this lane carries is an arm the plan itself routes to
+    #     EXTERNAL, and blanket-refusing it would refuse a genuinely-green lane, while blanket-allowing skips would
+    #     let an internal skip read as coverage. Each skipped arm's REASON is therefore read from its annotation.*
     observed: dict[str, int] = {}
     for c, n, _v in cases:
         key = f"{c.split('.')[-1]}.{n}"
@@ -349,13 +498,20 @@ def check_ios_simulator_lane() -> tuple[list[str], dict]:
         if times > 1 and key in _required_simulator_arm_names():
             problems.append(f"the iOS simulator lane carrieth {times} verdicts for required arm {key} -- a duplicated "
                             f"arm would be double-counted")
-    for m in re.finditer(r"^Test Case '([^']+)' skipped", text, re.M):
+    skip_annotation = _skip_annotation_by_arm(text)
+    for m in IOS_SKIPPED_ARM.finditer(text):
+        arm = m.group(1).strip()
         totals["skipped"] += 1
-        if totals["skipped"] <= 3:
-            problems.append(f"the iOS simulator lane carrieth a SKIPPED arm ({m.group(1)}) -- a skipped witness "
-                            f"reports as a pass while measuring nothing")
-    if totals["skipped"] > 3:
-        problems.append(f"and {totals['skipped'] - 3} further skipped arm(s)")
+        totals.setdefault("skipped_arms", []).append(arm)
+        reason = skip_annotation.get(arm, "")
+        if any(marker in reason for marker in IOS_EXTERNAL_SKIP_MARKERS):
+            totals.setdefault("external_skips", []).append(
+                f"{arm} -- EXTERNAL-BLOCKED ({reason[:80]}…)")
+            continue
+        problems.append(
+            f"the iOS simulator lane carrieth a SKIPPED arm ({arm}) whose reason does NOT name an external block "
+            f"(EXTERNAL-BLOCKED or the absent pinned library) -- a skipped witness reports as a pass while measuring "
+            f"nothing, and only an external-blocked arm is excusable")
 
     # (f) NO UNFINISHED SUITE: every `Test Suite 'X' started` must be matched by a terminal line.
     started = re.findall(r"^Test Suite '([\w.]+)' started", text, re.M)
@@ -369,8 +525,7 @@ def check_ios_simulator_lane() -> tuple[list[str], dict]:
 
     # (g) THE AGGREGATE, RECONCILED WITH THE SOURCES -- two independent measurements of one population.
     run = []
-    for mm in re.finditer(r"^Test Suite '[\w.]+\.xctest' passed.*?^\s*Executed (\d+) tests?, with (\d+) failures?",
-                          text, re.M | re.S):
+    for mm in BUNDLE_TOTAL.finditer(text):
         run.append((int(mm.group(1)), int(mm.group(2))))
     if not run:
         problems.append("the iOS simulator lane carrieth NO per-bundle 'Executed N tests, with M failures' total -- "
@@ -416,15 +571,21 @@ def check_ios_simulator_lane() -> tuple[list[str], dict]:
 
 
 def _required_simulator_arm_names() -> set[str]:
-    """The source-declared arm names, as `<Class>.<test>` -- used for the duplicate check above."""
+    """The source-declared SIMULATOR-COMPILABLE arm names, as `<Class>.<test>` -- used for the duplicate check above.
+
+    *Same filter as `simulator_roster()`: a class (and its arms) wrapped in `#if os(macOS)` is one the simulator build
+    compiles to nothing, so it cannot be a "required arm" here either.*
+    """
     names: set[str] = set()
-    for rel in _simulator_target_source_dirs():
-        for f in sorted((REPO / "ios" / rel).rglob("*.swift")):
-            text = f.read_text(encoding="utf-8", errors="replace")
-            m = re.search(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase", text, re.M)
-            cls = m.group(1) if m else None
-            for arm in _UI_TEST_FUNC.findall(text):
-                names.add(f"{cls}.{arm}" if cls else arm)
+    for f in _simulator_compiled_sources():
+        text = f.read_text(encoding="utf-8", errors="replace")
+        flags = _macos_only_line_flags(text)
+        m = re.search(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase", text, re.M)
+        cls = m.group(1) if m and _compiled_for_simulator(text, flags, m.start()) else None
+        for arm in _UI_TEST_FUNC.finditer(text):
+            if not _compiled_for_simulator(text, flags, arm.start()):
+                continue
+            names.add(f"{cls}.{arm.group(1)}" if cls else arm.group(1))
     return names
 
 
@@ -504,8 +665,7 @@ def check_ios_lane() -> tuple[list[str], dict]:
     # `<Package>PackageTests.xctest` or one bundle per target, EACH bundle that passed is followed by ITS OWN
     # outermost total, and the sum of those is the lane's true count in either shape.*
     run: list[tuple[int, int]] = []
-    for m in re.finditer(r"^Test Suite '[\w.]+\.xctest' passed.*?^\s*Executed (\d+) tests?, with (\d+) failures?",
-                         text, re.M | re.S):
+    for m in BUNDLE_TOTAL.finditer(text):
         run.append((int(m.group(1)), int(m.group(2))))
     if not run:
         problems.append("the iOS lane log carrieth NO per-bundle 'Executed N tests, with M failures' total -- the run "
@@ -532,6 +692,24 @@ def check_ios_lane() -> tuple[list[str], dict]:
             problems.append(f"the iOS lane carrieth a failing count: {name} tests, {n} failures")
     if re.search(r"^.*error: ", text, re.M):
         problems.append("the iOS lane log carrieth `error:` lines")
+
+    # *** AND A SKIP IS REFUSED UNLESS ITS REASON NAMES AN EXTERNAL BLOCK (the same clause the simulator lane keeps). ***
+    #
+    # *MEASURED: this lane's own log carries ONE skipped arm whose reason reads `EXTERNAL-BLOCKED ... the pinned
+    # SQLCipher library 'libsqlcipher.0.dylib' is not present on this host` -- the positive native road the plan routes
+    # to EXTERNAL. **THE FOUNDATION LANE CARRIED NO SKIP CLAUSE AT ALL**, so the day a skip appeared it would either be
+    # ignored (a witness reported as coverage while measuring nothing) or the whole lane refused for an arm that cannot
+    # run in the builder's world. **THIS IS THE HONEST MIDDLE: that one reason is accepted, ANY OTHER reason is
+    # refused.***
+    skip_annotation = _skip_annotation_by_arm(text)
+    for m in IOS_SKIPPED_ARM.finditer(text):
+        arm = m.group(1).strip()
+        reason = skip_annotation.get(arm, "")
+        if not any(marker in reason for marker in IOS_EXTERNAL_SKIP_MARKERS):
+            problems.append(
+                f"the iOS lane carrieth a SKIPPED arm ({arm}) whose reason does NOT name an external block "
+                f"(EXTERNAL-BLOCKED or the absent pinned library) -- a skipped witness reports as a pass while "
+                f"measuring nothing, and only an external-blocked arm may be excused")
 
     # *** AND THE LOG MUST BE FRESHER THAN THE SOURCE IT CLAIMS TO HAVE TESTED (round 697). ***
     #
@@ -778,6 +956,11 @@ def foundation_selftest() -> int:
             logp = Path(td) / "ios-lane.log"
             logp.write_text(text, encoding="utf-8")
             Path(str(logp) + ".sources.sha256").write_text(real_digest, encoding="utf-8")
+            # *** AND THE PRE-RUN DIGEST, OR EVERY CASE WOULD REDDEN FOR THE ABSENT PRE-DIGEST RATHER THAN FOR THE
+            # DEFECT IT PROVOKES. *** *The runner writes both; a case that wrote only the late sidecar would be a
+            # vacuous kill -- the same "the mutation must miss nothing it did not intend to hit" rule this whole
+            # selftest family keeps.*
+            Path(str(logp) + ".pre.sha256").write_text(real_digest, encoding="utf-8")
             saved = IOS_LOG
             IOS_LOG = logp
             try:
@@ -800,13 +983,14 @@ def foundation_selftest() -> int:
     # total is not part of the sum** -- *so the mutation changed nothing the control reads, and an ESCAPED verdict there
     # would have said "the guard is broken" when the truth was "the mutation missed".* **The line that matters is the
     # one that FOLLOWS a `Test Suite '<bundle>.xctest' passed`**, which is exactly what the parser sums.
-    bundle_line = re.search(r"(?sm)^Test Suite '[\w.]+\.xctest' passed.*?^(\s*Executed )(\d+)( tests?, with 0 failures)",
-                            base)
+    bundle_line = re.search(
+        r"(?sm)^Test Suite '[\w.]+\.xctest' passed.*?^(\s*Executed )(\d+)( tests?, with (?:0 tests? skipped and )?0 failures)",
+        base)
     shrunk = base
     if bundle_line:
         shrunk = base[: bundle_line.start(2)] + str(int(bundle_line.group(2)) - 1) + base[bundle_line.end(2):]
     failed_bundle = base
-    m2 = re.search(r"(?m)^\s*Executed (\d+) tests?, with 0 failures", base)
+    m2 = re.search(r"(?m)^\s*Executed (\d+) tests?, with (?:0 tests? skipped and )?0 failures", base)
     if m2:
         failed_bundle = base[: m2.start()] + f"\t Executed {m2.group(1)} tests, with 2 failures" + base[m2.end():]
 
@@ -817,13 +1001,174 @@ def foundation_selftest() -> int:
     run_case("4. a nonzero failure count on an outermost total", failed_bundle, "red")
     run_case("5. the run truncated to its first third",
              "\n".join(base.splitlines()[: max(1, len(base.splitlines()) // 3)]), "red")
-    run_case("6. the real log, unmutated -- MUST be accepted",
+    # *** THE SKIP GUARD (the clause this lane did not carry until now): an EXTERNAL-BLOCKED skip is accepted, ANY
+    # OTHER reason is refused. *** *This lane's own log carries the pinned-SQLCipher skip; its reason is rewritten
+    # WHOLE so the mutation cannot escape by leaving the marker substring behind.*
+    run_case("6. a skip whose reason does NOT name an external block",
+             re.sub(r"Test skipped - EXTERNAL-BLOCKED: .*$",
+                    "Test skipped - FLAKY: this arm is unstable on this host and was skipped by the runner",
+                    base, flags=re.M), "red")
+    run_case("7. the real log, unmutated -- MUST be accepted",
              base, "green")
 
     width = max(len(c[0]) for c in cases)
     for name, expect, got, verdict in cases:
         print(f"   {name:<{width}}  expect={expect:<5} got={got:<5} {verdict}")
     print(f"\nfoundation selftest: {len(cases) - failures}/{len(cases)} mutations caught")
+    return 1 if failures else 0
+
+
+def simulator_selftest() -> int:
+    """*** ADVERSARIAL MUTATIONS FOR `check_ios_simulator_lane` -- EACH MUST BE REFUSED (OR, FOR THE REAL LOG, ACCEPTED). ***
+
+    *Three of these cases are the DEFECTS this round repaired, and each is exercised rather than described:*
+      * **A (the optional skip infix):** the real log's aggregate reads `Executed 1339 tests, with 1 test skipped and 0
+        failures (0 unexpected)`; the old pattern matchéth NOTHING, so the per-bundle total was EMPTY. *The skip-free
+        control below proves the guard still bites a REAL count (removing one test from the skipped aggregate must
+        redden the lane), so case 1 cannot pass merely because nothing is parsed.*
+      * **C (the macOS-only roster):** `GsIntegration001ProcessTests` and `GsIntegration001CrossPlatformWorkerTests` are
+        wrapped in `#if os(macOS)` and the simulator build compiles them to nothing. *The mutation asserts the derived
+        roster NAMES NEITHER while still naming every simulator-runnable class, and that the derived arm total equals
+        the 1339 the log executed.*
+      * **D (the external-blocked skip):** the lane's one skip is excused ONLY when its reason names `EXTERNAL-BLOCKED`
+        or the absent pinned library; changing that reason to an internal one must redden the lane.
+
+    *The real log where one exists on this host, otherwise a shape-faithful synthetic fixture, so the guards are
+    exercised either way.*
+    """
+    global SIMULATOR_LOG
+    import tempfile
+
+    failures = 0
+    results: list[tuple[str, str, str, str]] = []   # mutation, expected, observed, verdict
+
+    real_digest = _ios_source_digest()
+
+    def synth() -> str:
+        """A shape-faithful simulator log: the COMPILABLE roster, one skipped external arm, one bundle total."""
+        classes, arms = simulator_roster()
+        lines = [f"device_name=iPhone 17 Pro Max", f"device_udid=AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+                 f"device_runtime=iOS 26.3", "toolchain=Xcode 27.0"]
+        for cls in classes:
+            lines.append(f"Test Suite '{cls}' started at 2026-01-01.")
+            lines.append(f"Test Suite '{cls}' passed at 2026-01-01.")
+        # One external-blocked skip, annotated and verdict-ed exactly as XCTest writes it.
+        lines.append("/tmp/ReadinessT30Tests.swift:458: -[GodstoneMeshTests.ReadinessT30Tests "
+                     "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent] : Test skipped - EXTERNAL-BLOCKED: "
+                     "the approved pinned SQLCipher library 'libsqlcipher.0.dylib' is not present on this host")
+        lines.append("Test Case '-[GodstoneMeshTests.ReadinessT30Tests "
+                     "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent]' skipped (0.004 seconds).")
+        lines.append("Test Suite 'GodstoneMeshTests.xctest' passed at 2026-01-01.")
+        lines.append(f"\t Executed {arms - 1} tests, with 1 test skipped and 0 failures (0 unexpected) in 1.0 (1.0) seconds")
+        lines.append("** TEST SUCCEEDED **")
+        lines.append("raw_xcodebuild_rc=0")
+        return "\n".join(lines) + "\n"
+
+    if SIMULATOR_LOG.is_file():
+        base = SIMULATOR_LOG.read_text(encoding="utf-8", errors="replace")
+    else:
+        base = synth()
+
+    def run_case(name: str, text: str, expect: str, digest: str | None = None) -> None:
+        global SIMULATOR_LOG
+        nonlocal failures
+        with tempfile.TemporaryDirectory() as td:
+            logp = Path(td) / "ios-simulator-lane.log"
+            logp.write_text(text, encoding="utf-8")
+            d = real_digest if digest is None else digest
+            if d is not None:
+                Path(str(logp) + ".sources.sha256").write_text(d, encoding="utf-8")
+                Path(str(logp) + ".pre.sha256").write_text(d, encoding="utf-8")
+            saved = SIMULATOR_LOG
+            SIMULATOR_LOG = logp
+            try:
+                probs, _tot = check_ios_simulator_lane()
+            finally:
+                SIMULATOR_LOG = saved
+        got = "red" if probs else "green"
+        verdict = "KILLED" if got == expect else "ESCAPED"
+        if verdict == "ESCAPED":
+            failures += 1
+        results.append((name, expect, got, verdict))
+
+    # *** A: the per-bundle total is READ, not silently dropped by the skip infix. *** *Shrinking the skipped
+    # aggregate by one test must redden the lane -- which it can only do if the aggregate was parsed at all. Applied to
+    # EVERY aggregate line, because XCTest re-prints the outermost total for `All tests` as well as the bundle.*
+    shrunk = re.sub(r"(\n\s*Executed )(\d+)( tests?, with \d+ tests? skipped and )",
+                    lambda m: m.group(1) + str(int(m.group(2)) - 1) + m.group(3), base)
+
+    # *** D: the external-blocked reason, mutated to a fully internal one, must be REFUSED. *** *The WHOLE reason is
+    # rewritten -- a mutation that merely prefixed it would still contain `pinned SQLCipher library` and would escape
+    # for the wrong reason, proving nothing about the allowance.*
+    internal = re.sub(r"Test skipped - EXTERNAL-BLOCKED: .*$",
+                      "Test skipped - FLAKY: this arm is unstable on this host and was skipped by the runner",
+                      base, flags=re.M)
+
+    # *** AND A SKIP WHOSE VERDICT LINE CARRIES NO ANNOTATION AT ALL (an internal skip wearing no reason). ***
+    no_annotation = "\n".join(l for l in base.splitlines() if "Test skipped" not in l)
+
+    run_case("0. the real log, unmutated -- MUST be accepted", base, "green")
+    run_case("1. (A) the skipped aggregate short by one test (a swallowed arm)", shrunk, "red")
+    run_case("2. (D) the external-blocked reason mutated to an internal one", internal, "red")
+    run_case("3. a skipped arm with NO annotation (an internal skip wearing no reason)", no_annotation, "red")
+    run_case("4. no raw status line", "\n".join(l for l in base.splitlines() if not l.startswith("raw_xcodebuild_rc="))
+             + "\n", "red")
+    run_case("5. an empty log", "", "red")
+    run_case("6. stale source digest", base, "red", digest="0" * 64)
+
+    # *** AND THE ROSTER ITSELF: THE MACOS-ONLY CLASSES MUST BE ABSENT, THE RUNNABLE ONES PRESENT. ***
+    classes, arms = simulator_roster()
+    host_only = ("GsIntegration001ProcessTests", "GsIntegration001CrossPlatformWorkerTests")
+    roster_faults: list[str] = []
+    for name in host_only:
+        if name in classes:
+            roster_faults.append(f"{name} (a #if os(macOS) class is in the roster)")
+    for name in ("ReadinessT30Tests", "GsIntegration001ScenarioTests", "GsIntegration001RealTransportTests"):
+        if name not in classes:
+            roster_faults.append(f"{name} (a simulator-runnable class is MISSING from the roster)")
+    # *** AND THE HOST-ONLY FILES' OWN ARMS ARE EXCLUDED FROM THE TOTAL -- NOT MERELY THEIR CLASS NAMES. ***
+    # *This is the anti-vacuity control for the filter: the naive walk (what the OLD roster did) counts every
+    # `func test...`; the derived total must be the naive total MINUS exactly the arms inside `#if os(macOS)` regions
+    # -- and that excluded set must be NON-EMPTY, or the derivation never bit and case 7 proved nothing.*
+    naive_total = 0
+    excluded_total = 0
+    for rel in _simulator_target_source_dirs():
+        for path in sorted((REPO / "ios" / rel).rglob("*.swift")):
+            txt = path.read_text(encoding="utf-8", errors="replace")
+            flags = _macos_only_line_flags(txt)
+            for a in _UI_TEST_FUNC.finditer(txt):
+                naive_total += 1
+                if not _compiled_for_simulator(txt, flags, a.start()):
+                    excluded_total += 1
+    if naive_total - excluded_total != arms:
+        roster_faults.append(f"the derived arm total {arms} != naive {naive_total} - excluded {excluded_total}")
+    if excluded_total == 0:
+        roster_faults.append("the macOS-only filter excluded ZERO arms -- the host-only files' tests are still "
+                             "required by the roster")
+    if roster_faults:
+        failures += 1
+        results.append(("7. roster names only simulator-runnable classes", "clean",
+                        "; ".join(roster_faults), "ESCAPED"))
+    else:
+        results.append(("7. roster names only simulator-runnable classes", "clean", "clean", "KILLED"))
+    # The arm total must equal what the lane's OWN PER-BUNDLE totals sum to -- the target's COMPILABLE population.
+    # *The check below uses the SAME `BUNDLE_TOTAL` the checker sums, not the first `Executed` line in the log (which
+    # belongs to a NESTED suite and would disagree for that reason alone).* On the real log that is 1339 (1341 declared
+    # less the two host-only arms); the synthetic fixture's bundle total is built from this same roster.
+    expected_total = sum(int(t) for t, _f in BUNDLE_TOTAL.findall(base)) or None
+    if expected_total is not None and arms != expected_total:
+        failures += 1
+        results.append(("8. roster arm total equals the log's executed count", str(expected_total),
+                        str(arms), "ESCAPED"))
+    else:
+        results.append(("8. roster arm total equals the log's executed count", str(expected_total), str(arms),
+                        "KILLED"))
+
+    width = max(len(c[0]) for c in results)
+    print("\n== simulator selftest: mutation | expected | observed | verdict ==")
+    for name, expect, got, verdict in results:
+        print(f"   {name:<{width}}  {expect:6s} {got:6s} {verdict}")
+    print(f"\nsimulator selftest: {len(results) - failures}/{len(results)} mutations caught")
     return 1 if failures else 0
 
 
@@ -960,12 +1305,23 @@ def ui_selftest() -> int:
     run_case("11. source-declared arm omitted from the log",
              "\n".join(l for l in base.split("\n") if "testGSA005ScrollingRevealsALaterPassage" not in l),
              real_digest, "red")
-    # (12b) *** THE RECORDED ARM FAILING FOR A FOREIGN REASON MUST NOT BE EXCUSED. ***
+    # (12b) *** A NOVEL BREAK WEARING A RECORDED ARM'S NAME MUST NOT BE EXCUSED. ***
     # *This is the hole a name-only allowlist leaves: the fixture hash-guard tripping, the app not launching, or a
     # selector break would each wear a recorded arm's name and read as the known restore gap.*
-    stripped = base.replace(
-        "*** THE DOCUMENT MUST REOPEN AFTER A CLEAN PROCESS DEATH", "")
-    run_case("12b. known-red arm fails with a FOREIGN signature", stripped, real_digest, "red")
+    #
+    # **THE PREVIOUS BODY OF THIS CASE WAS VACUOUS** -- it removed the string `*** THE DOCUMENT MUST REOPEN AFTER A
+    # CLEAN PROCESS DEATH` from the log, but that phrase liveth in the SOURCE, not the log, so the "mutation" was a
+    # NO-OP returning the real GREEN log and the case ESCAPED (measured: `expect=red got=green`). **A case that
+    # asserts nothing about what it mutates is not a negative control.**
+    #
+    # *** SINCE THE KNOWN-RED ALLOWANCE WAS RETIRED (`IOS_UI_KNOWN_RED` is now EMPTY), case 6 already covers "the
+    # formerly-known-red arm fails -> red". THIS CASE NOW DEFENDS THE SURVIVING PROPERTY ITS NAME CLAIMED: an arm that
+    # fails for a FOREIGN reason (its `passed` line replaced by a `failed` line whose verdict carries no recorded
+    # signature) is refused BY NAME, just as a novel break anywhere else is.***
+    foreign = base.replace(
+        "testGSA005DocumentReopensAfterCleanProcessDeath]' passed",
+        "testGSA005DocumentReopensAfterCleanProcessDeath]' failed")
+    run_case("12b. a recorded arm failing for a FOREIGN reason is REFUSED", foreign, real_digest, "red")
 
     # (12) an empty log entirely.
     run_case("12. empty log (no arm verdicts at all)", "", real_digest, "red")
@@ -1200,9 +1556,12 @@ def main() -> int:
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--selftest-ui", action="store_true")
     ap.add_argument("--selftest-foundation", action="store_true")
+    ap.add_argument("--selftest-simulator", action="store_true")
     args = ap.parse_args()
     if args.selftest_foundation:
         return foundation_selftest()
+    if args.selftest_simulator:
+        return simulator_selftest()
     if args.selftest_ui:
         return ui_selftest()
     if args.selftest:
@@ -1302,6 +1661,8 @@ def main() -> int:
         f"  {'ios:simulator':<14} suites={sim_totals['suites']:<3} tests={sim_totals['tests']:<5} "
         f"failures={sim_totals['failures']} raw_rc={sim_totals.get('raw_rc')} "
         f"skipped={sim_totals.get('skipped', 0)} unfinished={sim_totals.get('unfinished_suites', 0)}"
+        + ("  <- external-blocked: " + "; ".join(sim_totals["external_skips"])
+           if sim_totals.get("external_skips") else "")
         + ("  <- per bundle: " + "; ".join(sim_totals.get("evidence", []))
            if sim_totals.get("evidence") else ""))
     all_problems.extend(sim_probs)
@@ -1328,7 +1689,11 @@ def main() -> int:
         # **SO A REFUSAL PRINTETH A CENSUS OF THE LOG IT ACTUALLY READ, BOUNDED, STRUCTURAL, AND OF THE LINE KINDS
         # THE PARSER KEYS ON** -- *counts tell a truncated log from a foreign format, and the tail shows where the
         # output stopped.* It printeth the log's PATH, its SIZE, a kind-by-kind line census, and a bounded tail.
-        for path in (IOS_LOG, IOS_UI_LOG):
+        # *** AND THE SIMULATOR LOG IS INCLUDED, NOT ONLY THE OTHER TWO (the same gap, one lane over). *** *A refusal
+        # that names the simulator lane -- a missing `device_runtime`, an unparsed aggregate, a roster class absent --
+        # forces the next reader to diagnose it, and this lane's log was NOT printed. It is now, and its tail is what
+        # shows an `xcodebuild` cut off mid-suite.*
+        for path in (IOS_LOG, IOS_UI_LOG, SIMULATOR_LOG):
             if not path.is_file():
                 print(f"\n  [evidence] {path} -- ABSENT")
                 continue

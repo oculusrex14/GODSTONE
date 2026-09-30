@@ -53,9 +53,29 @@ if [ -z "$SIM" ]; then
     echo "::error::ran is not a pass" >&2
     exit 3
 fi
-UDID="$(xcrun simctl list devices available 2>/dev/null | grep -F "$SIM (" | head -1 | grep -oE '[0-9A-F-]{36}')"
-RUNTIME="$(xcrun simctl list devices available 2>/dev/null | grep -F "$SIM (" | head -1 \
-           | grep -oE 'iOS [0-9.]+' | head -1)"
+# *** THE RUNTIME COMES FROM THE GROUP HEADER, NOT THE DEVICE LINE -- AND THAT IS A MEASURED DEFECT, NOT A STYLE. ***
+#
+# *`xcrun simctl list devices available` printeth the runtime ONCE as a GROUP HEADER and the device line carrieth only
+# the name, UDID and state:*
+#     -- iOS 26.3 --
+#         iPhone 17 Pro Max (B44EC7AF-...) (Booted)
+# **THE PREVIOUS `grep -oE 'iOS [0-9.]+'` OVER THE DEVICE LINE THEREFORE MATCHED NOTHING**, so `device_runtime=` was
+# written EMPTY and the lane refused its own digest contract for a device it had in fact resolved and run on. *The
+# header immediately ABOVE the matched device line is the device's runtime, so that is what is read -- recorded
+# verbatim (`iOS 26.3`), and asserted non-empty below rather than silently exported empty.*
+SIMCTL_DEVICES="$(xcrun simctl list devices available 2>/dev/null)"
+DEVICE_LINE="$(printf '%s\n' "$SIMCTL_DEVICES" | grep -F "$SIM (" | head -1)"
+UDID="$(printf '%s\n' "$DEVICE_LINE" | grep -oE '[0-9A-F-]{36}')"
+RUNTIME="$(printf '%s\n' "$SIMCTL_DEVICES" | awk -v needle="$SIM (" '
+    /^-- .* --[[:space:]]*$/ { rt = $0; sub(/^-- /, "", rt); sub(/ --[[:space:]]*$/, "", rt); next }
+    index($0, needle) { print rt; exit }
+')"
+if [ -z "$RUNTIME" ]; then
+    echo "::error::could not derive the RUNTIME for '$SIM' from 'xcrun simctl list devices available' -- *the runtime"
+    echo "::error::is the group header above the device line; an empty device_runtime is a lane that cannot be" >&2
+    echo "::error::re-executed on the same device, so it is refused rather than recorded empty*" >&2
+    exit 3
+fi
 TOOLCHAIN="$(xcodebuild -version 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g')"
 
 # 4. A FRESH RESULT BUNDLE EVERY RUN: *a pre-existing bundle would let a reader attribute an older run's roster to
