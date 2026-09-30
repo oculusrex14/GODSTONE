@@ -573,6 +573,19 @@ jobs:
       # comparison. It needs no network and no wheelhouse.
       - name: verify the pinned build supply chain
         run: python3 tools/supplychain/supply_chain.py verify --all
+      - name: android pre-run source digests (so every result is bound to ONE revision)
+        run: |
+          set -euo pipefail
+          # *** THE PRE-RUN DIGESTS MUST BE WRITTEN BEFORE THE TESTS RUN, NOT AFTER. ***
+          # *THE DEFECT THIS CLOSES, MEASURED ON THE HOSTED RUN: the lane-control step wrote only the POST-run digests,
+          # and `ci/check_lane_results.py` REFUSED with 'no PRE-RUN digest at android-app.pre.sha256 -- a result whose
+          # source set was sampled only AFTER the run cannot be shown to describe one revision'. **The committed runner
+          # `run_android_lanes.sh` writeth BOTH sides for exactly this reason; this job's inline gradle invocation was
+          # never given the pre-run half.** So the four pre-digests are taken HERE, before any lane compiles.*
+          python3 tools/readiness/android_source_digest.py >android-app.pre.sha256
+          python3 tools/readiness/android_source_digest.py --lane android:core >android-core.pre.sha256
+          python3 tools/readiness/android_source_digest.py --lane android:mesh >android-mesh.pre.sha256
+          python3 tools/readiness/android_source_digest.py --lane android:labmesh >android-labmesh.pre.sha256
       - name: compile Kotlin surfaces and run host unit tests
         working-directory: android
         run: |
@@ -590,12 +603,17 @@ jobs:
       # artifacts were produced and never judged -- **the same "machinery exists but is not the canonical gate"
       # shape the UI lane had.** The digests are written here by the same tool the committed runner uses, so the
       # control can bind each result to the source bytes it tested.
+      #
+      # *** ALL FOUR LANES, POST-RUN, AND THE PRE-RUN DIGESTS ALREADY EXIST: the digest control compares them
+      # pairwise, so a mid-run edit of any module's sources is refused rather than described. `android:labmesh` is
+      # written too -- omitting it turned a judged lane into an undatable one the control refused by name.***
       - name: android lane control (scoped to this job's lanes)
         run: |
           set -euo pipefail
           python3 tools/readiness/android_source_digest.py >android-app.sources.sha256
           python3 tools/readiness/android_source_digest.py --lane android:core >android-core.sources.sha256
           python3 tools/readiness/android_source_digest.py --lane android:mesh >android-mesh.sources.sha256
+          python3 tools/readiness/android_source_digest.py --lane android:labmesh >android-labmesh.sources.sha256
           python3 ci/check_lane_results.py --scope android
 
       - name: lab-isolation gate (T54) -- prove the nonshipping LabMesh targets
