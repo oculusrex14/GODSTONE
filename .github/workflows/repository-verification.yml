@@ -793,6 +793,31 @@ jobs:
           test -d "$ANDROID_HOME/ndk/27.0.12077973" || \
             { echo "::error::the NDK the build declares (27.0.12077973) is NOT installed after provisioning"; exit 1; }
 
+      # *** PRE-WARM THE WORKER'S GRADLE BUILD OUTSIDE THE COORDINATOR'S TIMED WINDOW. ***
+      #
+      # *MEASURED, RUN `36775091464`: the `android-prepare-outboundEnqueue` worker DID launch -- its log reacheth
+      # `> Task :mesh:compileDebugUnitTestKotlin` -- and was then cut by the coordinator's `--timeout 300` with the
+      # compile INCOMPLETE. **IT WAS NOT A PRE-BOOT FAILURE AND NOT THE ENQUEUE HANDOFF: it was the one-time cost of a
+      # COLD `gradlew --no-daemon --rerun-tasks` LAUNCH landing inside a timed step -- Gradle configuration, the NDK
+      # install (since provisioned above), the FULL :mesh main+test Kotlin compile, and Robolectric's first-run
+      # android-all fetch.*** *That is the same defect class as the NDK download: an environment cost that is paid once
+      # and must therefore be paid OUTSIDE the bound that measureth the work.*
+      #
+      # **SO THE WORKER TASK'S OWN BUILD IS PRIMED ONCE HERE.** *`:mesh:board1IntegrationWorker` is a `Test` task whose
+      # `outputs.upToDateWhen { false }` makes it ALWAYS re-run, so what remaineth to pay per launch is the Gradle
+      # configuration and the compile of EVERYTHING the worker's classpath reacheth -- the whole `:mesh` and `:llm`
+      # main + test graphs.* **THIS STEP COMPILES THAT EXACT GRAPH, WITH NO FILTER AND WITHOUT RUNNING THE WORKER**, so
+      # the downloads, the Kotlin compiler and the caches are all warm before the coordinator starteth its clock.
+      # *MEASURED LOCALLY with warm caches and `--rerun-tasks`: 27s; the cold hosted cost is what the bound must
+      # absorb, and it is now paid here instead.*
+      - name: pre-warm the Android worker's Gradle graph (outside the coordinator's timed window)
+        run: |
+          set -euo pipefail
+          # The worker's own classpath is the debug unit-test variant's, so priming it is what matters. No --rerun-tasks
+          # is passed: this step WARMS caches, and the worker itself still rebuilds under its own bound.
+          ./android/gradlew -p android :mesh:compileDebugUnitTestKotlin :mesh:compileDebugKotlin :llm:compileDebugKotlin \
+            --no-daemon --console=plain
+
       # *** THE iOS FOUNDATION LANE AND THE UI LANE, ONE REPOSITORY-OWNED PATH EACH. ***
       #
       # *THE DEFECT THIS CLOSES: `tools/readiness/run_ios_ui_lane.sh` was committed but invoked by NO workflow, and
@@ -908,9 +933,21 @@ jobs:
       - name: cross-platform integration coordinator (iOS <-> Android, both directions)
         run: |
           set -euo pipefail
+          # *** `--timeout` IS SIZED FROM THE MEASURED PER-LAUNCH COST, NOT FROM A DESIRE FOR HEADROOM. ***
+          #
+          # *MEASURED, RUN `36731398586` attempt 3 (the six-job green): the coordinator took 30.6 min across EIGHT
+          # worker launches and NEVER hit the 300s bound -- so every legitimate launch was under 5 min, ~3.8 min on
+          # average.* *MEASURED, RUN `36775091464`: the FIRST Android launch consumed the whole 300s and was cut at
+          # `> Task :mesh:compileDebugUnitTestKotlin`, because Gradle was installing the NDK and build-tools 34 inside
+          # the timed window -- **the toolchain absence was the cost, not the worker's own work.***
+          # **THE NDK, THE BUILD-TOOLS AND THE WHOLE COMPILE GRAPH ARE NOW PROVISIONED AND PRIMED OUTSIDE THIS
+          # WINDOW (the two steps above), SO THE 300 IS RAISED ONLY TO 600: TWICE THE MEASURED 5-MINUTE CEILING, which
+          # absorbeth hosted variance and Robolectric's first-run fetch while keeping the worst case (8 x 600 = 80 min)
+          # inside the job's remaining budget.** *A worker that genuinely never reaches its boundary still endeth in the
+          # SAME named refusal; the bound moved because the measured cold cost did, not to hide a refusal.*
           python3 tools/readiness/run_board1_integration.py --mode all \
             --evidence-dir board1-integration-ci \
-            --timeout 300
+            --timeout 600
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
