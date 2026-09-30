@@ -686,22 +686,28 @@ jobs:
     # ThirtyThousandDeterministicCycles` -- landed 2026-09-29 (`e1bec601`), i.e. AFTER the original 90-minute bound was
     # set on 2026-09-27 (`ac9f3ebd`) -- MEASURED 1868s (31 min) inside that lane's own log, plus the 10k arm at 212s.*
     #
-    # **SO THE BOUND IS THE SUM OF THE SLOWEST MEASURED INSTANCE OF EVERY COMPONENT THIS JOB RUNS:**
-    #   foundation  ~46 (this run; the 30k arm is 31 of it)
-    #   UI          ~64 (this run; both boot-waits at their 900s bound, then two schemes)
-    #   simulator   ~65 (MEASURED 1922s locally = 32 min, at the ~2.0x host ratio the foundation lane shows:
-    #                    22.6 min local -> 45.9 hosted)
-    #   integration ~10 (bounded)
-    #   setup       ~4
-    #   = ~189, and 210 carries ~11% over the measured worst case.
+    # **SO THE BOUND IS THE SUM OF THE SLOWEST MEASURED INSTANCE OF EVERY COMPONENT THIS JOB RUNS -- AND THE
+    # `integration` COMPONENT WAS THE ONE I UNDER-BUDGETED:**
+    #   foundation   ~57 (MEASURED 56.3 in run 36731398586; the 30k stress arm is 31 of it)
+    #   UI           ~64 (MEASURED 63.6 in run 36693923353; both boot-waits at their 900s bound, then two schemes)
+    #   simulator    ~48 (MEASURED 47.4 in run 36731398586)
+    #   integration  ~31 (MEASURED 30.6 in run 36731398586 -- **NOT the ~10 the 210 was derived with**)
+    #   setup         ~4
+    #   = ~204, and the GREEN RUN ITSELF MEASURED 179.4 MIN OF THE 210 WALL.
     #
-    # **210 BOUNDETH A GENUINE WEDGE WITHOUT CUTTING A LEGITIMATE SEQUENCE -- WHICH IS THE SAME RULE THE 90 AND THE 150
-    # FOLLOWED: THE NUMBER MOVED BECAUSE THE MEASURED SEQUENCE DID, NOT BECAUSE A RED WAS SMOOTHED OVER.** *Both the
-    # cancelled runs remain visible in the record: nothing here reinterprets one as green.*
+    # *** AND THE COORDINATOR'S OWN MARGIN WAS RAZOR-THIN: ITS FIRST ANDROID WORKER REACHED `at_boundary` AT
+    # `BUILD FAILED in 4m 59s` -- 299 SECONDS UNDER A 300-SECOND BOUND. *** *That worker is SIGKILLed AT the boundary
+    # by design (exit 137), so that 299s is the FULL cold Gradle configure + compile + test-launch cost of ONE of the
+    # coordinator's EIGHT launches, and it had ONE SECOND of room.* **A per-launch bound of 600 without a wall to match
+    # would simply move the failure to the job wall, which is the smaller-bound-fires-first trap this file already
+    # carrieth a lesson about.**
     #
-    # *A genuine wedge still endeth in a cancelled run; `run_ios_lane.sh` and `run_ios_ui_lane.sh` always record their
-    # provenance, so BOTH lanes always run and neither can hide behind an early abort.*
-    timeout-minutes: 210
+    # **SO THE WALL MOVES TO 360 WITH THE PER-LAUNCH BOUND, DERIVED THE SAME WAY -- SUM THE SLOWEST INSTANCE OF EACH
+    # COMPONENT, THEN ADD THE COORDINATOR'S OWN WORST CASE RATHER THAN A SHARE OF IT:** 204 + (8 launches x 600s =
+    # 80 min worst case) is larger than any honest bound, so the number is set from the MEASURED path with real
+    # headroom for the coordinator's launches: 204 (measured sum) + ~90 = ~294, and **360 carries ~20% over that.**
+    # *A legitimate sequence cannot be cut; a genuine wedge still endeth in a cancelled run.*
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
