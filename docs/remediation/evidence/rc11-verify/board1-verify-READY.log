@@ -1,0 +1,13 @@
+BOARD 1 verify: 10 gate(s)
+  PASS  candidate binding selftest  (rc=0)
+  PASS  closure law  (rc=0)
+  PASS  required runs  (rc=0)
+  PASS  evidence digests  (rc=0)
+  PASS  release gates status  (rc=0)
+  PASS  blockers  (rc=0)
+  PASS  readiness suites  (rc=0)
+  PASS  lane results  (rc=0)
+  PASS  mutation harness selftest  (rc=0)
+  PASS  board1 campaign manifest  (rc=0)
+
+BOARD 1 verify: PASSED
