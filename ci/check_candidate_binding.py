@@ -206,7 +206,7 @@ def _fetch_paginated(fetch, first_path: str, *, api_root: str = "repos") -> dict
     return {"jobs": merged, "total_count": len(merged)}
 
 
-def _gh_api(path: str) -> dict | None:
+def _gh_api(path: str) -> dict | list | None:
     """One GitHub API read, WITH THE PAGINATION LINK PRESERVED.
 
     *`gh api` printeth only the JSON body, so a caller that wanteth the next page must ask for the headers: `--include`
@@ -239,19 +239,28 @@ def _gh_api(path: str) -> dict | None:
     else:
         # No header block at all (a fetch that did not ask for `--include`): the whole stream is the body.
         raw_headers, raw_body = "", proc.stdout
-    data: dict | None = None
+    # *** THE BODY MAY BE AN OBJECT *OR* AN ARRAY -- AND BOTH ARE REAL GITHUB SHAPES. ***
+    #
+    # *MEASURED, 2026-09-30, ONE LAYER UNDER THE LINE-ENDING DEFECT ABOVE: this accepted only `isinstance(parsed,
+    # dict)`, so `repos/{o}/{r}/check-runs/{id}/annotations` -- which returneth a JSON **ARRAY** -- yielded `None`, and
+    # `_job_annotations` therefore returned `None` for EVERY job.* **`_job_annotations`' docs say an unreadable list
+    # "the caller treateth as a refusal", so `board1 freeze` would have refused EVERY candidate a SECOND time, for a
+    # reason entirely unrelated to any lane: the endpoint is a list and the reader only knew how to read objects.**
+    # *The array carrieth no `_next_path` -- annotations are not paginated by a `Link` header here -- so the pagination
+    # hook is attached only to a dict.*
+    data = None
     for chunk in (raw_body, proc.stdout):
         try:
             parsed = json.loads(chunk)
-            if isinstance(parsed, dict):
-                data = parsed
-                break
         except ValueError:
             continue
+        if isinstance(parsed, (dict, list)):
+            data = parsed
+            break
     if data is None:
         return None
     nxt = _next_path_from_link(raw_headers or raw_body)
-    if nxt:
+    if nxt and isinstance(data, dict):
         data["_next_path"] = nxt
     return data
 
@@ -1034,10 +1043,34 @@ def selftest() -> int:
             else:
                 print(f"   FAIL: _gh_api mis-parsed {label} output -- got {got}")
                 failures += 1
+
+        # 31. *** THE ANNOTATIONS ENDPOINT RETURNETH AN ARRAY, AND `_job_annotations` MUST READ IT. ***
+        #    *MEASURED, 2026-09-30: `_gh_api` accepted only a `dict`, so `check-runs/{id}/annotations` (a JSON ARRAY)
+        #    yielded None and `_job_annotations` returned None for EVERY job -- and its contract calleth an unreadable
+        #    list a REFUSAL, so the freeze would have refused every candidate a second time.* **This case drives the
+        #    REAL `_job_annotations` through a real array body, not a stub.***
+        arr = [{"annotation_level": "warning", "message": "Node.js 20 is deprecated"},
+               {"annotation_level": "notice", "message": "toolchain recorded"}]
+        stream = "HTTP/2.0 200 OK\nX-Ratelimit-Used: 1\n\n" + json.dumps(arr)
+        real_run = subprocess.run
+
+        def fake_run_arr(*a, **k):
+            return subprocess.CompletedProcess(a, 0, stream, "")
+
+        subprocess.run = fake_run_arr
+        try:
+            got_ann = _job_annotations(110013227770)
+        finally:
+            subprocess.run = real_run
+        if isinstance(got_ann, list) and len(got_ann) == 2:
+            print("   PASS: _job_annotations reads an ARRAY body (check-runs/{id}/annotations)")
+        else:
+            print(f"   FAIL: _job_annotations returned {got_ann!r} for an array body -- the freeze would refuse")
+            failures += 1
     finally:
         globals()["_file_at"] = real_file_at
 
-    total = 31
+    total = 32
     print(f"\ncandidate binding selftest: {total - failures}/{total} mutations killed")
     return 1 if failures else 0
 
