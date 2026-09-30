@@ -831,7 +831,17 @@ def selftest() -> int:
     """*** THE CONTROL'S OWN ADVERSARIAL MUTATIONS: EACH MUST BE CAUGHT. ***"""
     import tempfile
 
-    failures = 0
+    passed = 0
+    total = 0
+    def record_check(ok: bool, desc: str, detail: str = "") -> None:
+        nonlocal passed, total
+        total += 1
+        if ok:
+            passed += 1
+            print(f"   PASS: {desc}")
+        else:
+            print(f"   FAIL: {desc}{' -- ' + detail if detail else ''}")
+
     print("== selftest: an empty/absent lane result must be caught ==")
     with tempfile.TemporaryDirectory() as td:
         # 1. NO FILES AT ALL.
@@ -839,30 +849,24 @@ def selftest() -> int:
         saved = REPO
         REPO = Path(td)
         probs = check_lane("no-files", "*.xml")
-        if probs:
-            print(f"   PASS: a lane with no results is REFUSED ({probs[0][:70]}...)")
-        else:
-            print("   FAIL: a lane with no results was ACCEPTED"); failures += 1
+        record_check(bool(probs), f"a lane with no results is REFUSED ({probs[0][:70]}...)" if probs else "a lane with no results is REFUSED",
+                     "a lane with no results was ACCEPTED")
 
         # 2. A ZERO-TEST SUITE -- THE EXACT SHAPE A BROKEN BUILD PRODUCES.
         (Path(td) / "TEST-x.xml").write_text(
             '<?xml version="1.0"?><testsuite name="x" tests="0" skipped="0" failures="0" errors="0"></testsuite>',
             encoding="utf-8")
         probs = check_lane("zero-tests", "*.xml")
-        if probs and "ZERO TESTS" in probs[0]:
-            print("   PASS: tests=\"0\" is REFUSED rather than read as a pass")
-        else:
-            print("   FAIL: a zero-test suite was ACCEPTED"); failures += 1
+        record_check(bool(probs and "ZERO TESTS" in probs[0]), 'tests="0" is REFUSED rather than read as a pass',
+                     "a zero-test suite was ACCEPTED")
 
         # 3. A SKIPPED ARM.
         (Path(td) / "TEST-x.xml").write_text(
             '<?xml version="1.0"?><testsuite name="x" tests="1" skipped="1" failures="0" errors="0">'
             '<testcase name="a"/></testsuite>', encoding="utf-8")
         probs = check_lane("skipped", "*.xml")
-        if probs and "SKIPPED" in probs[0]:
-            print("   PASS: a skipped arm is REFUSED")
-        else:
-            print("   FAIL: a skipped arm was ACCEPTED"); failures += 1
+        record_check(bool(probs and "SKIPPED" in probs[0]), "a skipped arm is REFUSED",
+                     "a skipped arm was ACCEPTED")
 
         # 4. *** THE SELF-CLOSING TRAP: A PASSING CASE FOLLOWED BY A FAILING ONE. The naive pattern attributes the
         #    failure to the PASSING name -- so this mutation proves the parser does not.
@@ -872,10 +876,9 @@ def selftest() -> int:
             '<testcase name="theRealFailure"><failure message="boom"/></testcase>'
             '</testsuite>', encoding="utf-8")
         parsed = parse_suite(Path(td) / "TEST-x.xml")
-        if parsed["bad"] == ["theRealFailure"]:
-            print("   PASS: the failure is attributed to the FAILING arm, not the passing one")
-        else:
-            print(f"   FAIL: attribution was shifted -- got {parsed['bad']}"); failures += 1
+        record_check(parsed["bad"] == ["theRealFailure"],
+                     "the failure is attributed to the FAILING arm, not the passing one",
+                     f"attribution was shifted -- got {parsed['bad']}")
 
         # 5. *** A LANE OUTSIDE THE SCOPE MUST NOT BE REPORTED AS A ZERO. ***
         #
@@ -890,33 +893,51 @@ def selftest() -> int:
         # definition and both branches are exercised through it.*
         real = {"suites": 91, "tests": 1400, "failures": 0, "evidence": ["5 tests / 0 failures"]}
         unjudged = ios_scope_rows("android", real, real, ["LabMeshUITests"])
-        if unjudged and all("NOT JUDGED HERE" in r for r in unjudged):
-            print("   PASS: a lane outside the scope is marked NOT JUDGED")
-        else:
-            print(f"   FAIL: an unjudged lane was not marked -- got {unjudged}"); failures += 1
-        if not any(re.search(r"tests=\d", r) for r in unjudged):
-            print("   PASS: an unjudged lane carrieth NO COUNT AT ALL")
-        else:
-            print(f"   FAIL: an unjudged lane carrieth a count -- got {unjudged}"); failures += 1
+        record_check(bool(unjudged and all("NOT JUDGED HERE" in r for r in unjudged)),
+                     "a lane outside the scope is marked NOT JUDGED", f"got {unjudged}")
+        record_check(not any(re.search(r"tests=\d", r) for r in unjudged),
+                     "an unjudged lane carrieth NO COUNT AT ALL", f"got {unjudged}")
         # *The mutation is the OLD rendering. It must be distinguishable from the repaired one, or this case would
         # pass against the defect too.*
         old_rendering = f"  {'ios:foundation':<14} suites={0:<3} tests={0:<5} failures={0}"
-        if not any(r == old_rendering for r in unjudged):
-            print("   PASS: the old zero-count rendering is gone")
-        else:
-            print("   FAIL: the defective rendering is still emitted"); failures += 1
+        record_check(not any(r == old_rendering for r in unjudged),
+                     "the old zero-count rendering is gone", "defective rendering is still emitted")
         # *And the in-scope branch must still carry REAL counts -- a rule that silenced every lane would be a
         # different defect wearing this repair's clothes.*
         judged = ios_scope_rows("ios", real, {"suites": 2, "tests": 12, "failures": 1}, ["LabMeshUITests"])
-        if any("tests=1400" in r for r in judged) and any("tests=12" in r for r in judged):
-            print("   PASS: an in-scope lane still carrieth its real counts")
-        else:
-            print(f"   FAIL: an in-scope lane lost its counts -- got {judged}"); failures += 1
+        record_check(bool(any("tests=1400" in r for r in judged) and any("tests=12" in r for r in judged)),
+                     "an in-scope lane still carrieth its real counts", f"got {judged}")
+
+        # 5b. Scope matrix validation across all five supported scopes:
+        sim_real = {"suites": 83, "tests": 1338, "failures": 0, "raw_rc": 0, "evidence": ["1338 tests / 0 failures"]}
+        host_judged = ios_scope_rows("ios-host", real, {"suites": 2, "tests": 12, "failures": 0}, ["LabMeshUITests"])
+        record_check(bool(any("tests=1400" in r for r in host_judged) and any("tests=12" in r for r in host_judged)),
+                     "ios-host carries real foundation and ui counts", f"got {host_judged}")
+
+        sim_host = simulator_scope_row("ios-host", sim_real)
+        record_check(bool("NOT JUDGED HERE" in sim_host and "tests=" not in sim_host),
+                     "ios-host marks simulator as NOT JUDGED without zero counts", f"invalid: {sim_host}")
+
+        sim_android = simulator_scope_row("android", sim_real)
+        record_check(bool("NOT JUDGED HERE" in sim_android and "tests=" not in sim_android),
+                     "android marks simulator as NOT JUDGED without zero counts", f"invalid: {sim_android}")
+
+        sim_ios = simulator_scope_row("ios", sim_real)
+        record_check(bool("tests=1338" in sim_ios and "NOT JUDGED" not in sim_ios),
+                     "ios scope carries real simulator counts (aggregate all-3)", f"invalid: {sim_ios}")
+
+        sim_sim = simulator_scope_row("ios-simulator", sim_real)
+        record_check(bool("tests=1338" in sim_sim and "NOT JUDGED" not in sim_sim),
+                     "ios-simulator scope carries real simulator counts", f"invalid: {sim_sim}")
+
+        sim_all = simulator_scope_row("all", sim_real)
+        record_check(bool("tests=1338" in sim_all and "NOT JUDGED" not in sim_all),
+                     "all scope carries real simulator counts", f"invalid: {sim_all}")
 
         REPO = saved
 
-    print(f"\nselftest: {7 - failures}/7 mutations caught")
-    return 1 if failures else 0
+    print(f"\nselftest: {passed}/{total} checks passed")
+    return 0 if (passed == total and total > 0) else 1
 
 
 def foundation_selftest() -> int:
@@ -944,9 +965,16 @@ def foundation_selftest() -> int:
         for cls in roster:
             lines.append(f"Test Suite '{cls}' started at 2026-01-01.")
             lines.append(f"Test Suite '{cls}' passed at 2026-01-01.")
+            lines.append(f"Test Case '-[{cls} testSomething]' passed (0.001 seconds).")
             lines.append("\t Executed 1 test, with 0 failures (0 unexpected) in 0.0 (0.0) seconds")
+        # One external-blocked skip, annotated and verdict-ed exactly as XCTest writes it.
+        lines.append("/tmp/ReadinessT30Tests.swift:458: -[GodstoneMeshTests.ReadinessT30Tests "
+                     "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent] : Test skipped - EXTERNAL-BLOCKED: "
+                     "the approved pinned SQLCipher library 'libsqlcipher.0.dylib' is not present on this host")
+        lines.append("Test Case '-[GodstoneMeshTests.ReadinessT30Tests "
+                     "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent]' skipped (0.004 seconds).")
         lines.append("Test Suite 'SyntheticPackageTests.xctest' passed at 2026-01-01.")
-        lines.append(f"\t Executed {_arms} tests, with 0 failures (0 unexpected) in 1.0 (1.0) seconds")
+        lines.append(f"\t Executed {_arms} tests, with 1 test skipped and 0 failures (0 unexpected) in 1.0 (1.0) seconds")
         base = "\n".join(lines) + "\n"
 
     def run_case(name: str, text: str, expect: str) -> None:
@@ -985,13 +1013,13 @@ def foundation_selftest() -> int:
     # would have said "the guard is broken" when the truth was "the mutation missed".* **The line that matters is the
     # one that FOLLOWS a `Test Suite '<bundle>.xctest' passed`**, which is exactly what the parser sums.
     bundle_line = re.search(
-        r"(?sm)^Test Suite '[\w.]+\.xctest' passed.*?^(\s*Executed )(\d+)( tests?, with (?:0 tests? skipped and )?0 failures)",
+        r"(?sm)^Test Suite '[\w.]+\.xctest' passed.*?^(\s*Executed )(\d+)( tests?, with (?:\d+ tests? skipped and )?0 failures)",
         base)
     shrunk = base
     if bundle_line:
         shrunk = base[: bundle_line.start(2)] + str(int(bundle_line.group(2)) - 1) + base[bundle_line.end(2):]
     failed_bundle = base
-    m2 = re.search(r"(?m)^\s*Executed (\d+) tests?, with (?:0 tests? skipped and )?0 failures", base)
+    m2 = re.search(r"(?m)^\s*Executed (\d+) tests?, with (?:\d+ tests? skipped and )?0 failures", base)
     if m2:
         failed_bundle = base[: m2.start()] + f"\t Executed {m2.group(1)} tests, with 2 failures" + base[m2.end():]
 
@@ -1052,6 +1080,7 @@ def simulator_selftest() -> int:
                  f"device_runtime=iOS 26.3", "toolchain=Xcode 27.0"]
         for cls in classes:
             lines.append(f"Test Suite '{cls}' started at 2026-01-01.")
+            lines.append(f"Test Case '-[{cls} testSomething]' passed (0.001 seconds).")
             lines.append(f"Test Suite '{cls}' passed at 2026-01-01.")
         # One external-blocked skip, annotated and verdict-ed exactly as XCTest writes it.
         lines.append("/tmp/ReadinessT30Tests.swift:458: -[GodstoneMeshTests.ReadinessT30Tests "
@@ -1060,7 +1089,7 @@ def simulator_selftest() -> int:
         lines.append("Test Case '-[GodstoneMeshTests.ReadinessT30Tests "
                      "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent]' skipped (0.004 seconds).")
         lines.append("Test Suite 'GodstoneMeshTests.xctest' passed at 2026-01-01.")
-        lines.append(f"\t Executed {arms - 1} tests, with 1 test skipped and 0 failures (0 unexpected) in 1.0 (1.0) seconds")
+        lines.append(f"\t Executed {arms} tests, with 1 test skipped and 0 failures (0 unexpected) in 1.0 (1.0) seconds")
         lines.append("** TEST SUCCEEDED **")
         lines.append("raw_xcodebuild_rc=0")
         return "\n".join(lines) + "\n"
@@ -1532,7 +1561,7 @@ def ios_scope_rows(scope: str, ios_totals: dict, ui_totals: dict, ui_evidence: l
     EXERCISED BY `--selftest` RATHER THAN MERELY DESCRIBED** -- a second copy of the expression inside the selftest
     would test the copy, which is the same vacuous-witness class this file existeth to remove.*
     """
-    if scope in ("all", "ios"):
+    if scope in ("all", "ios", "ios-host"):
         return [
             f"  {'ios:foundation':<14} suites={ios_totals['suites']:<3} tests={ios_totals['tests']:<5} "
             f"failures={ios_totals['failures']}  <- per bundle: " + "; ".join(ios_totals.get("evidence", [])),
@@ -1546,14 +1575,29 @@ def ios_scope_rows(scope: str, ios_totals: dict, ui_totals: dict, ui_evidence: l
     ]
 
 
+def simulator_scope_row(scope: str, sim_totals: dict) -> str:
+    """The simulator row of the summary, for a given scope. Exercised directly by `--selftest`."""
+    if scope in ("all", "ios", "ios-simulator"):
+        return (
+            f"  {'ios:simulator':<14} suites={sim_totals['suites']:<3} tests={sim_totals['tests']:<5} "
+            f"failures={sim_totals['failures']} raw_rc={sim_totals.get('raw_rc')} "
+            f"skipped={sim_totals.get('skipped', 0)} unfinished={sim_totals.get('unfinished_suites', 0)}"
+            + ("  <- external-blocked: " + "; ".join(sim_totals["external_skips"])
+               if sim_totals.get("external_skips") else "")
+            + ("  <- per bundle: " + "; ".join(sim_totals.get("evidence", []))
+               if sim_totals.get("evidence") else "")
+        )
+    return f"  {'ios:simulator':<14} NOT JUDGED HERE -- the simulator lane stands outside `--scope {scope}`"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--scope", choices=("all", "ios", "android", "ios-simulator"), default="all",
+    ap.add_argument("--scope", choices=("all", "ios", "ios-host", "android", "ios-simulator"), default="all",
                     help="which lanes this invocation is responsible for -- *a control run inside the iOS job "
-                         "cannot judge the ANDROID lanes, which a different job produces, nor the UI lane, which has "
-                         "not run yet; asking it to would refuse thirteen things that are merely ABSENT*. "
-                         "`ios-simulator` judges ONLY the workflow's step-13 simulator lane, whose log/bundle live "
-                         "beside the repository like the other lanes'.")
+                         "cannot judge the ANDROID lanes, which a different job produces. "
+                         "`ios-host` judges ONLY the host-macOS foundation and UI lanes (run early before the "
+                         "simulator build); `ios` judges ALL THREE iOS lanes; `ios-simulator` judges the simulator "
+                         "lane alone; and `all` judges every lane in the repository.*")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--selftest-ui", action="store_true")
     ap.add_argument("--selftest-foundation", action="store_true")
@@ -1624,7 +1668,7 @@ def main() -> int:
                 f"disagreeth with the sources is counting stale result files from a sibling task directory, or did not "
                 f"run them all. Clear `build/test-results/` and re-run the lane.*")
 
-    ios_probs, ios_totals = check_ios_lane() if args.scope in ("all", "ios") else ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
+    ios_probs, ios_totals = check_ios_lane() if args.scope in ("all", "ios", "ios-host") else ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
     all_problems.extend(ios_probs)
 
     # *** THE UI LANE IS MANDATORY UNDER `--scope ios` -- NEVER OPTIONAL-WHEN-PRESENT. ***
@@ -1637,7 +1681,7 @@ def main() -> int:
     # **SO `--scope ios` REQUIRES BOTH iOS LANES, AND THE iOS JOB INVOKES IT ONLY AFTER BOTH HAVE RUN.** *A job that
     # wants to judge the foundation lane before the UI step does not exist here, and would need its own named scope
     # rather than a softer meaning of this one.*
-    if args.scope in ("all", "ios"):
+    if args.scope in ("all", "ios", "ios-host"):
         ui_probs, ui_totals = check_ios_ui_lane()
     else:
         # *Same rule as `ios:foundation` above, and for the same measured reason: never a zero for a lane this scope
@@ -1648,25 +1692,18 @@ def main() -> int:
     # *A lane outside the scope sayeth so and carrieth NO COUNT; a lane inside it carrieth its real counts. **Both
     # branches are the same call, so the selftest cannot drift from the shipped rendering.***
     summary.extend(ios_scope_rows(args.scope, ios_totals, ui_totals, list(IOS_UI_REQUIRED_SUITES)))
-    # *** AND THE SIMULATOR LANE, WHICH `--scope all` AND `--scope ios` BOTH REQUIRE. ***
+    # *** AND THE SIMULATOR LANE, WHICH `--scope all`, `--scope ios` AND `--scope ios-simulator` JUDGE. ***
     #
-    # *The workflow's step 13 is a lane like the other two, so `--scope ios` must judge it and `--scope all` must too;
-    # `--scope ios-simulator` judgeth it ALONE, which is what the step's own control invocation uses (the other two
-    # lanes' artifacts are judged by their own preceding step, and asking this one to re-judge them would refuse
-    # nothing real but would duplicate the verdict).*
+    # *`--scope ios` is the aggregate all-3 iOS control (invoked after simulator execution, requiring all three
+    # lanes: foundation, UI, simulator). `--scope ios-host` judgeth only the host-macOS foundation and UI lanes
+    # (invoked early before the simulator build, with simulator marked NOT JUDGED HERE). `--scope ios-simulator`
+    # judgeth the simulator lane alone. `--scope all` judgeth all lanes together.*
     if args.scope in ("all", "ios", "ios-simulator"):
         sim_probs, sim_totals = check_ios_simulator_lane()
+        all_problems.extend(sim_probs)
     else:
         sim_probs, sim_totals = ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
-    summary.append(
-        f"  {'ios:simulator':<14} suites={sim_totals['suites']:<3} tests={sim_totals['tests']:<5} "
-        f"failures={sim_totals['failures']} raw_rc={sim_totals.get('raw_rc')} "
-        f"skipped={sim_totals.get('skipped', 0)} unfinished={sim_totals.get('unfinished_suites', 0)}"
-        + ("  <- external-blocked: " + "; ".join(sim_totals["external_skips"])
-           if sim_totals.get("external_skips") else "")
-        + ("  <- per bundle: " + "; ".join(sim_totals.get("evidence", []))
-           if sim_totals.get("evidence") else ""))
-    all_problems.extend(sim_probs)
+    summary.append(simulator_scope_row(args.scope, sim_totals))
     # NOTICES ARE ANNOUNCED, NEVER COUNTED AS FAILURES -- *a recorded gap is not a broken lane, and a notice that
     # reddened the control would force the known-red entry to be DELETED to get green.*
     for notice in ui_totals.get("notices", []):

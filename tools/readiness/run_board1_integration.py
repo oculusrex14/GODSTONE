@@ -776,13 +776,21 @@ class Runner:
     def resolve_swift_bundle(self) -> Path:
         if self._swift_bundle:
             return self._swift_bundle
-        bundle = REPO / "ios" / "Packages" / "GodstoneFoundation" / ".build" / "debug" / SWIFT_BUNDLE_NAME
-        if not bundle.exists():
-            raise Refused(
-                f"*** THE macOS TEST BUNDLE {bundle} IS ABSENT: the coordinator must build it before launching a "
-                "worker. *** Run without `--skip-build`, or build it once with `swift build --build-tests`.")
-        self._swift_bundle = bundle
-        return bundle
+        debug_dir = REPO / "ios" / "Packages" / "GodstoneFoundation" / ".build" / "debug"
+        # Xcode 27 / Swift 6.4 builds per-target bundles; Xcode 16 / Swift 6.1 builds a merged package bundle.
+        candidates = [
+            debug_dir / SWIFT_BUNDLE_NAME,
+            debug_dir / "GodstoneFoundationPackageTests.xctest",
+        ]
+        tried: list[str] = []
+        for candidate in candidates:
+            tried.append(str(candidate))
+            if candidate.exists():
+                self._swift_bundle = candidate
+                return candidate
+        raise Refused(
+            f"*** THE macOS TEST BUNDLE IS ABSENT under {debug_dir}: tried {tried}. *** "
+            "Run without `--skip-build`, or build it once with `swift build --build-tests`.")
 
     def launch_swift(self, name: str, role: str, variant: str, estate: Path, timeout_s: float) -> Worker:
         bundle = self.resolve_swift_bundle()

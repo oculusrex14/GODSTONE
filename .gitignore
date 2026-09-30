@@ -136,3 +136,4 @@ ios-simulator-lane.log
 # BEFORE the schemes run and writeth it to `<log>.pre.sha256`; the checker requireth it to EQUAL the post-run sidecar,
 # so an edit DURING a run cannot leave a log that describeth a tree the tests never compiled.*
 *.pre.sha256
+tools/integration-fixtures/

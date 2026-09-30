@@ -783,12 +783,12 @@ jobs:
           # aborting on it would either suppress the obligation or force it to be hidden.*
           tools/readiness/run_ios_ui_lane.sh ios-ui-lane.log
 
-      - name: ios lane control (scoped to this job's lanes)
+      - name: "ios lane control (scoped to host lanes: foundation + UI)"
         run: |
           set -euo pipefail
-          # ONE invocation over both artifacts: required suites, the SOURCE-DERIVED arm roster BY NAME, zero skips,
+          # ONE invocation over both host artifacts: required suites, the SOURCE-DERIVED arm roster BY NAME, zero skips,
           # the exact failed-arm set, the recorded known-red arm announced, and both digests current.
-          python3 ci/check_lane_results.py --scope ios
+          python3 ci/check_lane_results.py --scope ios-host
 
       # xcodegen + xcodebuild Archive-only (LightRelease) is repo-owned green:
       # the app starts with a truthful local "Archive unavailable" state and
@@ -819,10 +819,11 @@ jobs:
           set -euo pipefail
           tools/readiness/run_ios_simulator_lane.sh ios-simulator-lane.log "$PWD/ios-simulator-lane.xcresult"
 
-      - name: ios simulator lane control (the step-13 roster, by name)
+      - name: ios lane control (aggregate all-3 iOS lanes)
         run: |
           set -euo pipefail
-          python3 ci/check_lane_results.py --scope ios-simulator
+          # All three iOS lanes (foundation, UI, simulator) have now executed; verify all three together.
+          python3 ci/check_lane_results.py --scope ios
 
       # *** GS-INTEGRATION-001 `real-adapters` (step 5.5/5.6): THE BIDIRECTIONAL CROSS-PLATFORM INGESTION. ***
       #

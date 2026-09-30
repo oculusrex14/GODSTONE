@@ -336,20 +336,79 @@ final class GsIntegration001ProcessTests: XCTestCase {
     /// *** THE ALREADY-BUILT BUNDLE, RESOLVED FROM THE LOADED TEST BUNDLE RATHER THAN HARD-CODED. *** *Under
     /// `swift test` the case is executed through a synthesized runner, so `Bundle(for:)` is consulted FIRST and the
     /// loaded-bundle roster is the fallback -- a path literal would break the moment the build directory moved.*
-    private func resolveTestBundlePath() throws -> String {
-        let direct = Bundle(for: GsIntegration001ProcessTests.self).bundlePath
-        if direct.hasSuffix("GodstoneMeshTests.xctest"), FileManager.default.fileExists(atPath: direct) {
+    static func resolveBundlePath(
+        from direct: String,
+        env: [String: String] = [:],
+        fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
+    ) throws -> String {
+        if direct.hasSuffix(".xctest"), fileExists(direct) {
             return direct
         }
-        for candidate in Bundle.allBundles where candidate.bundlePath.hasSuffix("GodstoneMeshTests.xctest") {
-            if FileManager.default.fileExists(atPath: candidate.bundlePath) { return candidate.bundlePath }
+        var tried: [String] = [direct]
+        let parentDir = URL(fileURLWithPath: direct).deletingLastPathComponent().path
+        let knownCandidates = [
+            (parentDir as NSString).appendingPathComponent("GodstoneMeshTests.xctest"),
+            (parentDir as NSString).appendingPathComponent("GodstoneFoundationPackageTests.xctest"),
+        ]
+        for candidate in knownCandidates {
+            tried.append(candidate)
+            if fileExists(candidate) { return candidate }
         }
-        if let envBundle = ProcessInfo.processInfo.environment["XCTestBundlePath"],
-           FileManager.default.fileExists(atPath: envBundle) {
-            return envBundle
+        if let envBundle = env["XCTestBundlePath"] {
+            tried.append(envBundle)
+            if fileExists(envBundle) { return envBundle }
         }
         throw ChildError.unavailable(
-            "the built GodstoneMeshTests.xctest bundle could not be located (candidate=\(direct))")
+            "the built test bundle could not be located; tried candidates: \(tried)")
+    }
+
+    private func resolveTestBundlePath() throws -> String {
+        try Self.resolveBundlePath(
+            from: Bundle(for: GsIntegration001ProcessTests.self).bundlePath,
+            env: ProcessInfo.processInfo.environment
+        )
+    }
+
+    func testGSINT001ProcessBundleResolution() throws {
+        // 1. Direct resolution against live runtime bundle
+        let bundle = try resolveTestBundlePath()
+        XCTAssertTrue(bundle.hasSuffix(".xctest"), "resolved bundle must be an xctest: \(bundle)")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: bundle), "resolved bundle must exist: \(bundle)")
+
+        // 2. Direct per-target bundle candidate
+        let directTarget = "/build/debug/GodstoneMeshTests.xctest"
+        let resolvedTarget = try Self.resolveBundlePath(from: directTarget, fileExists: { $0 == directTarget })
+        XCTAssertEqual(resolvedTarget, directTarget)
+
+        // 3. Merged package bundle candidate (Xcode 16 shape)
+        let directPkg = "/build/debug/GodstoneFoundationPackageTests.xctest"
+        let resolvedPkg = try Self.resolveBundlePath(from: directPkg, fileExists: { $0 == directPkg })
+        XCTAssertEqual(resolvedPkg, directPkg)
+
+        // 4. Fallback from a synthetic non-existing direct path to package bundle
+        let directMissing = "/build/debug/Runner.app"
+        let resolvedFallback = try Self.resolveBundlePath(
+            from: directMissing,
+            fileExists: { $0 == "/build/debug/GodstoneFoundationPackageTests.xctest" }
+        )
+        XCTAssertEqual(resolvedFallback, "/build/debug/GodstoneFoundationPackageTests.xctest")
+
+        // 5. Environment variable fallback
+        let envResolved = try Self.resolveBundlePath(
+            from: directMissing,
+            env: ["XCTestBundlePath": "/custom/path/MyTests.xctest"],
+            fileExists: { $0 == "/custom/path/MyTests.xctest" }
+        )
+        XCTAssertEqual(envResolved, "/custom/path/MyTests.xctest")
+
+        // 6. Refusal when none exist
+        XCTAssertThrowsError(try Self.resolveBundlePath(from: directMissing, fileExists: { _ in false })) { error in
+            guard case ChildError.unavailable(let msg) = error else {
+                XCTFail("expected ChildError.unavailable, got \(error)")
+                return
+            }
+            XCTAssertTrue(msg.contains("tried candidates:"), "message must list tried candidates: \(msg)")
+        }
     }
 
     // ============================================================================================
