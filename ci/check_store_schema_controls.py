@@ -716,13 +716,20 @@ def scan(root: Path) -> list[str]:
                 missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault must execute inside withTransaction closure")
             else:
                 clean_tx = strip_comments(tx_closure)
-                prep_match = re.search(r"sqlite3_prepare_v2\s*\(\s*db\s*,\s*guardedAckSql\b", clean_tx)
+                # *** THE PREPARE IS READ THROUGH WHICHEVER VOICE THE PROVIDER TABLE USES. ***
+                # *The SQLiteFunctionTable cutover (GS-FINAL-004) re-routed every `sqlite3_prepare_v2(db, ...)` call
+                # site through the connection's OWN table (`fn.prepareV2(db, ...)`), so the guard is the SAME call
+                # spelled via the provider -- a STRONGER form, since the function comes from the image the handle
+                # came from rather than a global symbol. The control must accept both spellings, or it would refuse
+                # a control that is intact.*
+                prep_match = re.search(
+                    r"(?:sqlite3_prepare_v2|fn\.prepareV2)\s*\(\s*db\s*,\s*guardedAckSql\b", clean_tx)
                 pos_del = clean_tx.find("StoreSchema.deleteHeldSql")
                 if pos_del == -1:
                     pos_del = clean_tx.find("deleteHeldSql")
 
                 if not prep_match:
-                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: guardedAckSql must be prepared via sqlite3_prepare_v2 inside withTransaction closure")
+                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: guardedAckSql must be prepared (sqlite3_prepare_v2 or the provider table's prepareV2) inside withTransaction closure")
                 if pos_del == -1:
                     missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault must use StoreSchema.deleteHeldSql inside withTransaction closure")
 
@@ -815,7 +822,8 @@ def scan(root: Path) -> list[str]:
                 missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicTransitionAndRetireWithFault must execute inside withTransaction closure")
             else:
                 clean_tx = strip_comments(tx_closure)
-                prep_match = re.search(r"sqlite3_prepare_v2\s*\(\s*db\s*,\s*guardedTransitionSql\b", clean_tx)
+                prep_match = re.search(
+                    r"(?:sqlite3_prepare_v2|fn\.prepareV2)\s*\(\s*db\s*,\s*guardedTransitionSql\b", clean_tx)
                 pos_del = clean_tx.find("StoreSchema.deleteHeldSql")
                 if pos_del == -1:
                     pos_del = clean_tx.find("deleteHeldSql")
@@ -1662,7 +1670,7 @@ def selftest() -> int:
             encoding="utf-8",
         )
         res = scan(root)
-        if not any("guardedAckSql must be prepared via sqlite3_prepare_v2 inside withTransaction closure" in m for m in res):
+        if not any("guardedAckSql must be prepared" in m for m in res):
             failures.append(f"iOS guardedAckSql decoy/comment NOT detected; got {res}")
         else:
             print("  ok    [iOS Guarded SQL Decoy] comment-only/string decoy for guardedAckSql detected")
