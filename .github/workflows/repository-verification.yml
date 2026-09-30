@@ -666,16 +666,33 @@ jobs:
     # the SAME code.** *So this timeout is not the fix for that incident -- it is the durable bound so that ANY
     # future wedge endeth in a red step in fifteen minutes rather than in a cancelled run nobody can read.*
     #
-    # *** SET BY THE MEASURED LEGITIMATE WORST CASE, NOT BY A GUESS: 90 MINUTES. ***
+    # *** SET BY THE MEASURED LEGITIMATE WORST CASE, NOT BY A GUESS: 45 -> 60 -> 90 -> 150 MINUTES. ***
     #
     # *MEASURED, RUN `36292057119`: the FOUNDATION lane took 723s (12 min) and the UI LANE was still WORKING at 2877s
-    # (48 min) when the 60-minute wall cut it -- **the clean path is ~12 + ~50 min on a slow runner, because the UI
-    # lane's `_bounded_boot_wait` may spend most of its own 900s bound and each of the two UI schemes then needs its
-    # build and run.*** **THE 45-MINUTE NUMBER IT REPLACED WAS MEASURED WHILE A RED FOUNDATION ARM ABORTED THE JOB
-    # EARLY AND SKIPPED THE ENTIRE UI LANE (`if: success()`), SO IT WAS THE WORST CASE OF AN INCOMPLETE RUN.***
-    # *Since `run_ios_lane.sh` was corrected to always record its provenance, BOTH lanes always run, and a genuine
-    # wedge still endeth in a cancelled run -- 90 minutes BOUNDETH a hang without cutting a legitimate sequence.*
-    timeout-minutes: 90
+    # (48 min) when the 60-minute wall cut it -- **the clean path was ~12 + ~50 min then, because the UI lane's
+    # `_bounded_boot_wait` may spend most of its own 900s bound and each of the two UI schemes then needs its build
+    # and run.*** **THE 45-MINUTE NUMBER IT REPLACED WAS MEASURED WHILE A RED FOUNDATION ARM ABORTED THE JOB EARLY AND
+    # SKIPPED THE ENTIRE UI LANE (`if: success()`), SO IT WAS THE WORST CASE OF AN INCOMPLETE RUN.***
+    #
+    # *** AND THE 90-MINUTE NUMBER IS NOW STALE FOR THE SAME CLASS OF REASON -- THE SEQUENCE IT BOUNDED GREW. ***
+    #
+    # *MEASURED, RUN `36675565062` attempt 2 (the repair that added `--scope ios-host` and the simulator lane's own
+    # control to one job):* **foundation 41.6 min, UI 30.4 min, then the SIMULATOR lane was cut at 17.1 min by the
+    # 90-minute wall -- with 31 suites already executed and the job still doing real work.** *The foundation lane grew
+    # because a PRE-EXISTING stress arm now runneth there: `testGSSTRESS001TheRealRuntimeSurvivesThirtyThousandDeterministicCycles`
+    # MEASURED 1868s (31 min) in the same log, plus the 10k arm at 212s.* **THAT ARM LANDED 2026-09-29 (`e1bec601`),
+    # TWO DAYS AFTER THIS BOUND WAS SET (2026-09-27, `ac9f3ebd`) -- so a bound calibrated without it cannot bound the
+    # job that now carrieth it, and the run was cut mid-simulator rather than refused.***
+    #
+    # **THE BOUND IS RE-MEASURED FROM THE COMPONENTS THE JOB ACTUALLY RUNS:** foundation ~42 (the 30k arm IS the 42 on
+    # a slow runner) + UI ~50 worst case (both 900s boot-waits fully burned + two scheme builds) + simulator ~32
+    # (MEASURED locally at 1897s) + integration ~10 + setup ~4 = ~138. **150 minutes BOUNDETH a genuine wedge without
+    # cutting a legitimate sequence, which is the same rule the 90 followed -- the number moved because the measured
+    # sequence did, not because a red was smoothed over.**
+    #
+    # *A genuine wedge still endeth in a cancelled run; `run_ios_lane.sh` and `run_ios_ui_lane.sh` always record their
+    # provenance, so BOTH lanes always run and neither can hide behind an early abort.*
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
