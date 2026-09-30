@@ -219,11 +219,28 @@ def _gh_api(path: str) -> dict | None:
         return None
     if proc.returncode != 0:
         return None
-    body, _, headers = proc.stdout.partition("\r\n\r\n")
-    if not headers:
-        body, _, headers = proc.stdout.partition("\n\n")
+    # *** THE HEADERS END AT THE FIRST BLANK LINE -- WHATEVER ITS LINE ENDING. ***
+    #
+    # *MEASURED, 2026-09-30: this used `partition("\r\n\r\n")` and then, if that found nothing, `partition("\n\n")`
+    # -- but it re-partitioned `proc.stdout` rather than the REMAINDER, so when `gh` emitted LF-separated headers
+    # (which it does on this host: the raw output carrieth NO CR at all) NEITHER candidate parsed as JSON, and
+    # `_gh_api` returned `None`.* **THE CONSEQUENCE WAS TOTAL AND SILENT: `_run_facts` returned `None` for EVERY run,
+    # so `board1 freeze` refused every candidate with "could NOT be read -- a freeze may not cite a run it cannot
+    # verify", while `gh api` itself answered 200 with a well-formed body.*** *A control that cannot read the artefact
+    # it judges is not a control; this is the same class as the pagination defect beside it, one layer down.*
+    #
+    # *So the split is on the first blank line, `\r\n\r\n` or `\n\n` -- the LONGER (CRLF) form first, so a CRLF blank
+    # line is never mistaken for a bare LF one -- and the BODY is what is parsed; the header block is kept only for
+    # the `Link:` header.*
+    if "\r\n\r\n" in proc.stdout:
+        raw_headers, _, raw_body = proc.stdout.partition("\r\n\r\n")
+    elif "\n\n" in proc.stdout:
+        raw_headers, _, raw_body = proc.stdout.partition("\n\n")
+    else:
+        # No header block at all (a fetch that did not ask for `--include`): the whole stream is the body.
+        raw_headers, raw_body = "", proc.stdout
     data: dict | None = None
-    for chunk in (body, proc.stdout):
+    for chunk in (raw_body, proc.stdout):
         try:
             parsed = json.loads(chunk)
             if isinstance(parsed, dict):
@@ -233,7 +250,7 @@ def _gh_api(path: str) -> dict | None:
             continue
     if data is None:
         return None
-    nxt = _next_path_from_link(headers or body)
+    nxt = _next_path_from_link(raw_headers or raw_body)
     if nxt:
         data["_next_path"] = nxt
     return data
@@ -991,10 +1008,36 @@ def selftest() -> int:
             else:
                 print(f"   FAIL: attestation validation rc={rc}, bytes unchanged={before == after}")
                 failures += 1
+
+        # 30. *** `_gh_api` MUST SPLIT `gh api --include` OUTPUT CORRECTLY, WHATEVER THE LINE ENDING. ***
+        #    *MEASURED, 2026-09-30, AND THIS CASE EXISTS BECAUSE THE OTHER TWENTY-NINE COULD NOT SEE IT: every other
+        #    case in this file injecteth a SYNTHETIC fetcher (`api=`/`run_facts=`), so `_gh_api`'s own parser was
+        #    NEVER EXERCISED. A real hosted freeze then refused with "could NOT be read -- a freeze may not cite a run
+        #    it cannot verify" while `gh api` answered 200 with a well-formed body, because the split re-partitioned
+        #    `proc.stdout` instead of the remainder and NEITHER candidate parsed.* **A CONTROL'S OWN I/O IS PART OF THE
+        #    CONTROL; a suite that stubs it out certifieth the stub.***
+        for label, blank in (("LF", "\n\n"), ("CRLF", "\r\n\r\n")):
+            payload = {"id": 1, "conclusion": "success", "jobs": []}
+            stream = "HTTP/2.0 200 OK\nLink: <https://api.github.com/x?page=2>; rel=\"next\"" + blank + json.dumps(payload)
+            real_run = subprocess.run
+
+            def fake_run(*a, **k):
+                return subprocess.CompletedProcess(a, 0, stream, "")
+
+            subprocess.run = fake_run
+            try:
+                got = _gh_api("x")
+            finally:
+                subprocess.run = real_run
+            if got and got.get("conclusion") == "success" and got.get("_next_path") == "x?page=2":
+                print(f"   PASS: _gh_api splits {label}-separated --include output and keeps the Link header")
+            else:
+                print(f"   FAIL: _gh_api mis-parsed {label} output -- got {got}")
+                failures += 1
     finally:
         globals()["_file_at"] = real_file_at
 
-    total = 29
+    total = 31
     print(f"\ncandidate binding selftest: {total - failures}/{total} mutations killed")
     return 1 if failures else 0
 
