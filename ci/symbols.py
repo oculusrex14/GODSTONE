@@ -75,6 +75,15 @@ TYPE_DECL = re.compile(
     r"(?:\s*:\s*([^\n{]+))?",
     re.M)
 
+#: A file's own package, and its explicit imports. *** THE RESOLVER ONCE MODELLED NEITHER, AND THAT BLINDNESS
+#: PRODUCED A FALSE POSITIVE: a `Cursor` typed receiver in a file that `import android.database.Cursor` was resolved
+#: to a PROJECT class named `Cursor` declared in an unrelated test file, and `cursor.use()` was reported unresolved
+#: although the Kotlin compiler accepteth it. *** *A simple name EXPLICITLY IMPORTED FROM A PACKAGE IS THAT PACKAGE'S
+#: TYPE, NOT a same-named project class -- so the receiver's members live outside the project and must not be judged.
+#: A `import a.b.C` is read as (C, "a.b"); a wildcard `import a.b.*` carrieth no simple name and is ignored.*
+PACKAGE_DECL = re.compile(r"^\s*package\s+([\w.]+)", re.M)
+IMPORT_DECL = re.compile(r"^\s*import\s+([\w.]+)(?:\s+as\s+(\w+))?\s*$", re.M)
+
 # `data class Name` -- a data class synthesises copy(), equals(), hashCode(),
 # toString() and componentN() that never appear as `fun` in source. Without this,
 # R2 flags `frame.copy(...)` as unresolved -- a false positive the GMP/2.1 cutover
@@ -441,10 +450,19 @@ def all_members(t: str, members: dict, supers: dict, seen=None) -> set[str]:
 
 
 def resolve(root: Path) -> list[str]:
+    global SKIPPED_INCOMPLETE
     files = sorted((root / "android").rglob("*.kt"))
     members, supers, declared = parse_types(files)
+    # *** EVERY PACKAGE THIS PROJECT DECLARES, so an import of a PROJECT type is not mistaken for an external one. ***
+    # *The resolver compares an import's package against this set: a match meaneth the import names a project type
+    # (keep judging its receivers); a miss meaneth an external type whose members this resolver cannot see (skip).*
+    project_packages = set()
+    for _f in files:
+        _pkg = PACKAGE_DECL.search(_f.read_text(encoding="utf-8", errors="ignore"))
+        if _pkg:
+            project_packages.add(_pkg.group(1))
+    globals()["PROJECT_PACKAGES"] = project_packages
     problems: list[str] = []
-
     # (b) GS-CTRL-002: an override can only be judged when the WHOLE inheritance chain
     # is declared in this project. When a supertype is an SDK/library class
     # (`SQLiteOpenHelper`), the member may well be declared there, so the resolver
@@ -466,6 +484,35 @@ def resolve(root: Path) -> list[str]:
         src = f.read_text(encoding="utf-8", errors="ignore")
         rel = f.relative_to(root)
         regions, decls = declaration_regions(src)
+
+        # *** AN EXPLICITLY-IMPORTED NON-PROJECT TYPE IS UNKNOWABLE: THE IMPORT WINNETH OVER A SAME-NAMED PROJECT CLASS. ***
+        #
+        # *THE DEFECT THIS CLOSES, MEASURED: a test file declared a PROJECT-LOCAL `private class Cursor(val text:
+        # String)`, and `android/.../PeerIdentitySchema.kt` -- which explicitly `import android.database.Cursor` --
+        # typed a receiver `Cursor` and called `cursor.use()`. **The resolver resolved the receiver to the PROJECT class
+        # `Cursor` (by simple name) and reported a FALSE UNRESOLVED on a source the compiler accepts.** *In Kotlin an
+        # explicit import BINDETH the simple name to that package's type, so a project class elsewhere is NOT the
+        # receiver's type and its members must not be judged.* **Only imports of names this project does NOT declare
+        # are treated as external; an import of a project type (`import io.godstone...MessageStore`) is unchanged, and
+        # an import naming a simple name that a project class shadows IN THE SAME FILE is left alone (the resolver's
+        # existing scoping already picks the nearest declaration).**
+        pkg_match = PACKAGE_DECL.search(src)
+        local_decls = {m.group(1) for m in decls}
+        external_imports: set[str] = set()
+        for im in IMPORT_DECL.finditer(src):
+            target, alias = im.group(1), im.group(2)
+            if target.endswith(".*"):
+                continue
+            simple = alias or target.rsplit(".", 1)[-1]
+            # an import naming a type THIS FILE declares is the same-module type (leave it judged);
+            # an import whose FQN lives in a package THIS PROJECT declares is a project type (leave it judged);
+            # otherwise the simple name bindeth to the imported package's type, which is external.
+            import_pkg = target.rsplit(".", 1)[0] if "." in target else ""
+            if simple in local_decls and not alias:
+                continue
+            if import_pkg in PROJECT_PACKAGES:
+                continue
+            external_imports.add(simple)
 
         # Which declarations were read IN FULL? A region that endeth before its own
         # body's closing brace carrieth only part of the type, so its member set is
@@ -621,10 +668,17 @@ def resolve(root: Path) -> list[str]:
                         t = simple
                     else:
                         continue                  # not a project type: cannot judge it
+                # *** AN EXPLICITLY-IMPORTED EXTERNAL TYPE IS UNKNOWABLE: THE IMPORT WINNETH OVER A SAME-NAMED PROJECT CLASS. ***
+                # *In Kotlin an explicit import bindeth the simple name to that package's type, so a project class
+                # elsewhere that shareth the name (`Cursor`) is NOT the receiver's type -- judging it against the
+                # project class's members reported a FALSE UNRESOLVED (`cursor.use()`). The receiver's members live
+                # outside the project, so it is SKIPPED (a visible limitation, like an incomplete chain).*
+                if t in external_imports:
+                    SKIPPED_INCOMPLETE.add(t)
+                    continue
                 if t in INCOMPLETE_PARSED or t in truncated:
                     # the type's declaration was NOT read in full, so its member set is
                     # known to be incomplete: SKIP, and count the limitation
-                    global SKIPPED_INCOMPLETE
                     SKIPPED_INCOMPLETE.add(t)
                     continue
                 candidates = {t}
