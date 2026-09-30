@@ -23,6 +23,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -154,14 +155,44 @@ internal class Board1DurableBoundaryWorkerTest {
             return out
         }
 
-        /** The header text of the record at the head of [bytes], or null when the framing is not whole. */
-        fun headerOf(bytes: ByteArray): Pair<String, Int>? {
-            if (bytes.size < 8) return null
-            val headLen = u32(bytes, 0)
-            if (headLen <= 0 || bytes.size < 4 + headLen + 4) return null
-            val payLen = u32(bytes, 4 + headLen)
-            if (bytes.size != 4 + headLen + 4 + payLen) return null
-            return String(bytes, 4, headLen, Charsets.UTF_8) to payLen
+        /**
+         * *** THE MARKER RECORD THE PARENT SEEKETH, WALKED OUT OF THE CHANNEL'S CONCATENATED FRAMES. ***
+         *
+         * *THE DEFECT THIS CLOSES WAS MEASURED ON BOTH SIDES OF THE ISLE AND IN THIS FILE'S OWN ASSERTIONS: a
+         * prepare child writeth TWO records -- `ready` when the estate is built, and `at_boundary` at the boundary --
+         * so `length_of(ready) + length_of(at_boundary) != length_of(file)`. **A reader that framed only the record
+         * at offset zero therefore called a whole marker "not parseable" and reported `bytes=391`/`bytes=380` for a
+         * channel that held BOTH records intact** (the coordinator's own reader walketh the records; this file's
+         * reader did not, and neither did the macOS twin's).*
+         *
+         * *The walk is the coordinator's own law: `u32be head_len | head | u32be payload_len | payload`, repeated
+         * while whole records remain. `at_boundary`/`complete` return the FIRST record of that kind; `ready` keeps
+         * its head-of-file meaning, because it IS the first record a prepare child writeth. A TORN OR UNKNOWN RECORD
+         * IS STILL REFUSED: the walk stoppeth and only whole, canonical records are ever returned.*
+         */
+        fun recordOf(bytes: ByteArray, kind: String): Pair<String, Int>? =
+            records(bytes).firstOrNull { (header, _) -> header.contains("\"kind\":\"$kind\"") }
+
+        /** *Every WHOLE record in the channel, in order; a torn tail endeth the walk.* */
+        fun records(bytes: ByteArray): List<Pair<String, Int>> {
+            val out = ArrayList<Pair<String, Int>>()
+            var at = 0
+            while (at + 8 <= bytes.size) {
+                val parsed = recordAt(bytes, at) ?: break
+                out.add(parsed.first)
+                at += parsed.second
+            }
+            return out
+        }
+
+        /** *One whole record at [at], as (header, total octets); null when it is not whole.* */
+        private fun recordAt(bytes: ByteArray, at: Int): Pair<Pair<String, Int>, Int>? {
+            val headLen = u32(bytes, at)
+            if (headLen <= 0 || bytes.size < at + 4 + headLen + 4) return null
+            val payLen = u32(bytes, at + 4 + headLen)
+            val total = 4 + headLen + 4 + payLen
+            if (bytes.size < at + total) return null
+            return (String(bytes, at + 4, headLen, Charsets.UTF_8) to payLen) to total
         }
 
         private fun json(value: Map<String, Any?>): String =
@@ -256,7 +287,7 @@ internal class Board1DurableBoundaryWorkerTest {
             "kind" to "at_boundary", "boundary" to OUTBOUND_ENQUEUE, "msg_id" to "0a0b0c",
         )
         val framed = Wire.frame(hostile)
-        val parsed = Wire.headerOf(framed)
+        val parsed = Wire.recordOf(framed, "at_boundary")
         assertNotNull("*** THE FRAME MUST PARSE. ***", parsed)
         val (header, payloadLen) = parsed!!
         assertEquals("no payload ever travels on a marker", 0, payloadLen)
@@ -265,11 +296,28 @@ internal class Board1DurableBoundaryWorkerTest {
         )) {
             assertTrue("the framed header must carry $expected; got $header", header.contains(expected))
         }
+        // *** AND A CONCATENATED CHANNEL IS WALKED, NOT MIS-FRAMED. ***
+        //
+        // *MEASURED: a prepare child writeth `ready` and THEN `at_boundary`, so a reader that parsed only the record
+        // at offset zero reported "no parseable framed record" for a channel that held both whole. The walk findeth
+        // the marker wherever it standeth, and it findeth NOTHING in a channel that holdeth no such record.*
+        val readyRecord = Wire.frame(mapOf("v" to 1, "kind" to "ready", "platform" to "android",
+            "boundary" to OUTBOUND_ENQUEUE))
+        val two = readyRecord + framed
+        assertEquals("the walk readeth BOTH records", 2, Wire.records(two).size)
+        assertEquals(
+            "and the marker is found though it is not the first record",
+            header, Wire.recordOf(two, "at_boundary")?.first,
+        )
+        assertNull(
+            "*** A CHANNEL THAT HOLDETH NO SUCH RECORD YIELDETH NOTHING. ***",
+            Wire.recordOf(two, "complete"),
+        )
         // AND A TRUNCATED RECORD IS REFUSED RATHER THAN HALF-READ.
         assertTrue(
             "*** A TRUNCATED RECORD MUST NOT PARSE. *** *A reader that accepted it would take a torn marker for a " +
                 "whole one.*",
-            Wire.headerOf(framed.copyOfRange(0, framed.size - 1)) == null,
+            Wire.records(framed.copyOfRange(0, framed.size - 1)).isEmpty(),
         )
 
         val complete = mapOf(Wire.ROLE to Wire.PREPARE, Wire.ROOT to "/tmp/e", Wire.OUT to "/tmp/o")
@@ -378,12 +426,18 @@ internal class Board1DurableBoundaryWorkerTest {
      * outcome honestly.**
      */
     private fun warmUpTheJvm() {
-        // *** THREE ATTEMPTS, AND THE DIAGNOSTIC OF THE LAST ONE IS PRINTED. ***
+        // *** THREE ATTEMPTS, AND EVERY FAILING ATTEMPT'S DIAGNOSTIC IS PRINTED. ***
         //
         // *The fixture's handshake window is a fixed 2-second bound, and a cold JVM can lose it on the FIRST rung;
-        // a SECOND link in the same JVM is already warm. But the retry is not allowed to hide the reason: the
-        // readiness detail of the failing attempt (both registries, the route-eligible view and the rejection ring)
-        // is PRINTED, so a genuine environment refusal is named rather than smoothed over.*
+        // a SECOND link in the same JVM is already warm. **MEASURED: a warm-up that skipped the collector settle --
+        // the step-5 `deliver` legs now hand the handshake's FIRST records to nobody unless both ends' `peers()` /
+        // `received()` inner collectors have attached, and those are COLD replay-less flows -- lost the sealed
+        // confirmation round on BOTH rungs and reported only `transportRoster=[]` with a route-eligible view and an
+        // empty ring, which is the very "Found is dropped" race `RealTransportHostRig.open`'s own comment recordeth.
+        // The measured arm already granteth [COLLECTOR_SETTLE_MILLIS]; the warm-up now granteth the same pause and
+        // ALSO requires the rig's exact-handle readiness, so a rung that merely began is never taken for a warm
+        // one.** The retry is still not allowed to hide a reason: every failing attempt's readiness detail (both
+        // registries, the route-eligible view and the rejection ring) is PRINTED.*
         for (attempt in 1..3) {
             val dir = File(System.getProperty("java.io.tmpdir")!!, "gs-boundary-warmup-${UUID.randomUUID()}")
             assertTrue("the warm-up root must be creatable", dir.mkdirs())
@@ -397,8 +451,14 @@ internal class Board1DurableBoundaryWorkerTest {
                 val link = rig.electLink("warmup-a", "warmup-b")
                 try {
                     rig.link("warmup-a", "warmup-b")
-                    println("GS-BOUNDARY warm-up attempt=$attempt link ready=${rig.isLinkReady(link)}")
-                    return
+                    if (rig.waitUntil(600, pollMillis = 5L) { rig.isLinkReady(link) }) {
+                        println("GS-BOUNDARY warm-up attempt=$attempt link ready=true")
+                        return
+                    }
+                    println(
+                        "GS-BOUNDARY warm-up attempt=$attempt FAILED: the link never reported ready ;; " +
+                            rig.linkReadinessDetail(link),
+                    )
                 } catch (t: Throwable) {
                     println(
                         "GS-BOUNDARY warm-up attempt=$attempt FAILED: $t ;; " + rig.linkReadinessDetail(link),
@@ -1009,8 +1069,14 @@ internal class Board1DurableBoundaryWorkerTest {
 
         // AND THE FRAMED RECORD IS THE COORDINATOR'S OWN PROTOCOL, VERIFIED RATHER THAN TRUSTED.
         val bytes = records.readBytes()
-        val parsedRecord = Wire.headerOf(bytes)
-        assertNotNull("*** THE PREPARE CHILD LEFT NO PARSEABLE FRAMED RECORD. *** bytes=${bytes.size}", parsedRecord)
+        val parsedRecord = Wire.recordOf(bytes, "at_boundary")
+        assertNotNull(
+            "*** THE PREPARE CHILD LEFT NO PARSEABLE `at_boundary` RECORD. *** *The channel carrieth the `ready` " +
+                "record the child writeth when its estate is built AND the `at_boundary` marker; the walk readeth " +
+                "every whole record, and the marker is the one sought.* bytes=${bytes.size} " +
+                "records=${Wire.records(bytes).map { it.first }}",
+            parsedRecord,
+        )
         val (header, payloadLen) = parsedRecord!!
         assertEquals("a marker carrieth no payload", 0, payloadLen)
         assertTrue("the record must be an at_boundary marker: $header", header.contains("\"kind\":\"at_boundary\""))
@@ -1067,8 +1133,12 @@ internal class Board1DurableBoundaryWorkerTest {
             line.startsWith("COMPLETE $boundary PASS durable_row=present"),
         )
         val bytes = records.readBytes()
-        val parsedRecord = Wire.headerOf(bytes)
-        assertNotNull("*** THE RECOVERY CHILD LEFT NO PARSEABLE FRAMED RECORD. *** bytes=${bytes.size}", parsedRecord)
+        val parsedRecord = Wire.recordOf(bytes, "complete")
+        assertNotNull(
+            "*** THE RECOVERY CHILD LEFT NO PARSEABLE `complete` RECORD. *** bytes=${bytes.size} " +
+                "records=${Wire.records(bytes).map { it.first }}",
+            parsedRecord,
+        )
         val (header, payloadLen) = parsedRecord!!
         assertEquals("a completion carrieth no payload", 0, payloadLen)
         assertTrue("the record must be a completion: $header", header.contains("\"kind\":\"complete\""))
@@ -1103,6 +1173,19 @@ internal class Board1DurableBoundaryWorkerTest {
     private class Child(private val process: Process, private val log: File) {
         private val lines = LinkedBlockingQueue<String>()
 
+        /**
+         * *** EVERY NORMALIZED LINE THE CHILD EVER WROTE, KEPT BESIDE THE MATCHING QUEUE. ***
+         *
+         * *`await` POLLS AND DISCARDS the lines it is not looking for -- a matcher cannot put a line back -- so a
+         * diagnostic read from `lines` alone would report `(none printed)` for a warm-up line the child plainly
+         * printed before the marker it was awaited for. **MEASURED: the parent's own summary reported "warm-up did
+         * not run" for a child whose log held `GS-BOUNDARY warm-up attempt=1 link ready=true`.*** *The transcript is
+         * therefore RETAINED here as well, and `linesForDiagnostic` readeth THIS -- the class's own rule is that an
+         * environment refusal is PRINTED rather than swallowed.*
+         */
+        private val seenLock = Any()
+        private val seen = ArrayList<String>()
+
         /** *SET BY THE DRAIN THREAD AT EOF, so "the pipe is closed" is distinguishable from "the line is late".* */
         @Volatile
         private var drained = false
@@ -1116,7 +1199,9 @@ internal class Board1DurableBoundaryWorkerTest {
                             // QUEUE carrieth the NORMALIZED line, with JUnitCore's leading progress characters
                             // stripped, because those characters are the harness's own decoration and would otherwise
                             // hide the child's first protocol line from the parent. See the class docstring.*
-                            lines.put(line.trimStart('.', 'E'))
+                            val normalized = line.trimStart('.', 'E')
+                            synchronized(seenLock) { seen.add(normalized) }
+                            lines.put(normalized)
                             writer.write(line); writer.newLine(); writer.flush()
                         }
                     }
@@ -1188,7 +1273,7 @@ internal class Board1DurableBoundaryWorkerTest {
         fun tail(max: Int = 80): String = log.readLines().takeLast(max).joinToString("\n")
 
         /** *EVERY NORMALIZED LINE SEEN SO FAR, for a parent that must report an environment refusal.* */
-        fun linesForDiagnostic(): List<String> = lines.toList()
+        fun linesForDiagnostic(): List<String> = synchronized(seenLock) { seen.toList() }
     }
 
     private fun launchChild(

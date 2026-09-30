@@ -1109,7 +1109,18 @@ class BleTransport(
             return
         }
 
-        val conn = centralDriver.getActiveConnection(peerAddress) ?: return
+        val conn = centralDriver.getActiveConnection(peerAddress) ?: run {
+            // ANDROID-07 / T26 -- AND "PRE-AUTH FRAGMENTS MUST REMAIN REFUSED". A value whose address hath NO
+            // CONNECTION was CHARGED above and is refused HERE, and the refusal is a BOUNDED EVENT on this
+            // transport's own ring, as every other gate's refusal is. THE AUDITED ROAD RETURNED IN SILENCE: the
+            // value was charged and then dropped where it stood, so raw pre-auth traffic left NO observable
+            // refusal behind and a station that received such a fragment was indistinguishable from one that
+            // received nothing at all. *Nothing is committed and nothing is emitted either way -- the durable
+            // store and the air stay untouched -- but the refusal is now TOLD, which is what maketh it a bounded
+            // event rather than a hole in the record.*
+            recordRejection(ByteArray(0), "ingest.notify", "no such connection: " + peerAddress)
+            return
+        }
         if (!conn.isRoleBound) return
         activeClientConnections[peerAddress]?.let { client ->
             val boundGen = client.relationGeneration
@@ -1214,7 +1225,12 @@ class BleTransport(
             return
         }
 
-        val conn = serverDriver.getInboundConnection(peerAddress) ?: return
+        val conn = serverDriver.getInboundConnection(peerAddress) ?: run {
+            // ANDROID-07 / T26 -- the responder's arm of the same law: charged above, and the refusal TOLD here
+            // rather than returned in silence. See the initiator's door for the full record of the defect.
+            recordRejection(ByteArray(0), "ingest.write", "no such connection: " + peerAddress)
+            return
+        }
         if (!conn.isRoleBound) return
         serverDriver.getClientGeneration(peerAddress)?.let { gen ->
             val relation = RelationKey(BleDirection.INBOUND, peerAddress, gen)

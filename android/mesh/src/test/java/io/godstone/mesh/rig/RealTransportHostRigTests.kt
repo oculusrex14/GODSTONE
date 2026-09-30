@@ -7,6 +7,7 @@ import io.godstone.mesh.delivery.DeliveryState
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -83,53 +84,65 @@ internal class RealTransportHostRigTests {
             r.waitUntil { r.isLinkReady(link) },
         )
 
+        // *** *** THE AUTHOR IS THE PRODUCTION ELECTION'S OPENER -- NOT A LABEL CHOSEN BY THIS COURT. *** ***
+        //
+        // *`dispatchDirect` offereth to `knownPeers()` -- the ROUTE-ELIGIBLE view -- and production populateth that
+        // view ONLY for the party that published APPLICATION LinkReady, which is the INITIATOR. **A label-driven arm
+        // that named "A" the author could send from the RESPONDER, whose view is legitimately empty, and observed
+        // `QueuedLocally` with `knownPeers=[]` while the link it had just asserted READY (on the OPENER's two views)
+        // was perfectly established.*** *The election is the production `BleRoleElection`'s own answer over the two
+        // persistent hints, so this derivation is a fact about the fixture rather than a concession: the SAME
+        // derivation `Board1DurableBoundaryWorkerTest.electionOpener` and the Swift twin already make.*
+        val author = if (link.aOpened) link.a else link.b
+        val recipient = if (link.aOpened) link.b else link.a
+
         val plaintext = "the river riseth at dawn and the bridge at Harrow is under two feet of water; send boats"
             .toByteArray(Charsets.US_ASCII)
-        val (frame, result) = r.sendDirect("A", "B", plaintext)
+        val (frame, result) = r.sendDirect(author, recipient, plaintext)
 
         assertTrue(
             "*** the dispatch must hand the sealed frame to exactly one relay, observed $result; " +
-                "ring: ${r.ring("A")}; detail: ${r.dispatchDetail("A")} ***",
+                "ring: ${r.ring(author)}; detail: ${r.dispatchDetail(author)} ***",
             result is DirectDispatchResult.HandedToRelays && result.count == 1,
         )
         assertTrue(
             "*** AND THE REAL TRANSPORT MUST HAVE PRODUCED ATTRIBUTED EGRESS for this frame: " +
-                "${r.recordedEgressBytes("A", frame.msgId)} octets ***",
-            r.recordedEgressBytes("A", frame.msgId) > 0,
+                "${r.recordedEgressBytes(author, frame.msgId)} octets ***",
+            r.recordedEgressBytes(author, frame.msgId) > 0,
         )
 
         // *** THE AUTHOR'S DURABLE INTENT, IN ONE TRANSACTION, BEFORE THE OFFER. ***
         assertTrue(
-            "*** the author must durably hold its own frame: ${r.heldMsgIds("A").size} held ***",
-            r.holdsMsg("A", frame.msgId),
+            "*** the author must durably hold its own frame: ${r.heldMsgIds(author).size} held ***",
+            r.holdsMsg(author, frame.msgId),
         )
         assertTrue(
             "*** and the author's delivery row must stand QUEUED_DURABLY (never DELIVERED on host evidence alone), " +
-                "observed ${r.deliveryState("A", frame.msgId)} ***",
-            r.deliveryState("A", frame.msgId) == DeliveryState.QUEUED_DURABLY,
+                "observed ${r.deliveryState(author, frame.msgId)} ***",
+            r.deliveryState(author, frame.msgId) == DeliveryState.QUEUED_DURABLY,
         )
 
         // *** THE RECIPIENT'S DURABLE ROW, THROUGH THE REAL INGRESS DOORS. ***
         assertTrue(
             "*** THE RECIPIENT MUST REALLY HOLD THE EXACT msgId IN ITS OWN ON-DISK STORE. " +
-                "Observed held=${r.heldMsgIds("B").size}, ring: ${r.ring("B")} ***",
-            r.waitUntil { r.holdsMsg("B", frame.msgId) },
+                "Observed held=${r.heldMsgIds(recipient).size}, ring: ${r.ring(recipient)} ***",
+            r.waitUntil { r.holdsMsg(recipient, frame.msgId) },
         )
         assertNull(
             "the recipient is not the author: no delivery row of its own",
-            r.deliveryRow("B", frame.msgId),
+            r.deliveryRow(recipient, frame.msgId),
         )
 
         // *** AND THE INBOX ROAD REALLY RAN -- WHICH A RELAY HOLD ALONE WOULD NOT PROVE. ***
-        val census = r.inboxCensus("B")
+        val census = r.inboxCensus(recipient)
         assertNotNull("*** the recipient's inbox owner must exist on the production composition ***", census)
         assertTrue(
             "*** THE RECIPIENT'S INBOX MUST HAVE ISSUED ITS CANONICAL ACK -- census=$census, " +
-                "outboxDepth=${r.ackOutboxDepth("B")} ***",
-            r.waitUntil { (r.inboxCensus("B")?.acksIssued ?: 0) >= 1 && r.ackOutboxDepth("B") >= 1 },
+                "outboxDepth=${r.ackOutboxDepth(recipient)} ***",
+            r.waitUntil { (r.inboxCensus(recipient)?.acksIssued ?: 0) >= 1 && r.ackOutboxDepth(recipient) >= 1 },
         )
         // *AND THE ACK PRODUCTION ISSUED IS RETRIEVABLE, NEVER MINTED BY THE RIG.*
-        val ack = r.drainOneAck("B")
+        val ack = r.drainOneAck(recipient)
         assertNotNull("*** the canonical ACK must stand in the node's own outbox ***", ack)
         assertTrue(
             "*** and it must name the very message the author sealed ***",
@@ -211,7 +224,9 @@ internal class RealTransportHostRigTests {
      *
      * *The card's clause: "pre-auth fragments must remain refused."* **A fragment fed to an address with NO
      * connection reacheth the pre-auth budget and the door's own guard, and NOTHING is committed and NOTHING is
-     * emitted: the durable store stayeth empty and the fabric recordeth no egress.**
+     * emitted: the durable store stayeth empty and the fabric recordeth no egress.** *And the refusal is a BOUNDED
+     * EVENT on the transport's own ring -- ONE per door, at the address that had no connection -- so the arm
+     * nameth the very records it requires rather than accepting any entry at all.*
      */
     @Test
     fun testPreAuthFragmentsAreRefusedAndCommitNothing() {
@@ -220,15 +235,33 @@ internal class RealTransportHostRigTests {
         val a = r.nodeOf("A")
         r.open("A")
 
+        val address = "11:22:33:44:55:66"
         val junk = ByteArray(24) { (it * 7 + 1).toByte() }
-        runBlocking { a.transport.handleServerInboundWrite("11:22:33:44:55:66", junk) }
-        runBlocking { a.transport.handleCentralInboundNotification("11:22:33:44:55:66", junk) }
+        assertTrue("the control: the ring starteth clean", a.transport.rejectionRecordsForTest().isEmpty())
+        runBlocking { a.transport.handleServerInboundWrite(address, junk) }
+        runBlocking { a.transport.handleCentralInboundNotification(address, junk) }
 
         assertTrue("*** NOTHING may be committed from a pre-auth fragment ***", r.heldMsgIds("A").isEmpty())
         assertTrue("*** and nothing may ride the air ***", a.outlet.airIsEmpty())
+        // *** *** THE REFUSAL IS THE DOORS' OWN, NAMED BY SITE AND ADDRESS. *** ***
+        //
+        // *THE DEFECT THIS CLOSES WAS MEASURED: both doors charged the value and then returned IN SILENCE at the
+        // no-connection guard, so a pre-auth fragment left NO observable refusal behind. **A `isNotEmpty` test could
+        // be satisfied by an unrelated entry; this one requireth the write door AND the notify door to have each told
+        // their own refusal, at the exact address that carried no connection** -- and the durable store and the air
+        // are asserted untouched beside it, so "refused" can never be confused with "accepted".*
+        val ring = a.transport.rejectionRecordsForTest()
         assertTrue(
             "*** and the refusal must be a BOUNDED EVENT in the transport's own ring, observed: ${r.ring("A")} ***",
-            a.transport.rejectionRecordsForTest().isNotEmpty(),
+            ring.isNotEmpty(),
         )
+        for (site in listOf("ingest.write", "ingest.notify")) {
+            assertEquals(
+                "*** THE $site DOOR MUST TELL ITS OWN NO-CONNECTION REFUSAL, at the address that carried none: " +
+                    "${r.ring("A")} ***",
+                1, ring.count { it.site == site && it.reason.contains(address) },
+            )
+        }
+        assertEquals("one bounded event per refused door", 2, ring.size)
     }
 }
