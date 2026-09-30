@@ -1,0 +1,20 @@
+# gate: mutation harness selftest
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 ci/mutations.py --selftest
+# rc: 0
+
+MUTATION HARNESS SELFTEST (T67)
+  ONLY KILLED is a catch; every other verdict is not.
+  PASS the honest rules classified 13 known-answer cases correctly
+  PASS the extraction parsed 6 real XCTest line(s) incl. the SINGULAR '1 failure'
+  KILLED   skipped counted as KILLED (the named negative) (a missing anchor (the needle moved): SKIPPED -> KILLED)
+  KILLED   an escaped mutant counted as KILLED (a surviving semantic mutant: ESCAPED -> KILLED)
+  KILLED   an invalid run counted as KILLED (a compile failure: BUILD_INVALID -> KILLED)
+  KILLED   a baseline failure left unchecked (a baseline that did not pass: BASELINE_INVALID -> ESCAPED)
+  KILLED   a compile failure left unchecked (a compile failure: BUILD_INVALID -> EXEC_INVALID)
+  KILLED   a run that executed nothing left unchecked (a worker that executed nothing: EXEC_INVALID -> ESCAPED)
+  KILLED   the restored-green companion left unchecked (a hit whose restored-green never executed: INCOMPLETE -> KILLED)
+  KILLED   the anchor count left unchecked (a missing anchor (the needle moved): SKIPPED -> ESCAPED)
+  PASS a disposable worktree was created, used and REMOVED, and the live tree's HEAD and status are unchanged
+  PASS only KILLED counteth: SKIPPED, ESCAPED, EXEC_INVALID, BUILD_INVALID and INCOMPLETE are all refused as catches
+  PASS no rod is documented as an expected escape, so none can be counted as a success
+SELFTEST OK

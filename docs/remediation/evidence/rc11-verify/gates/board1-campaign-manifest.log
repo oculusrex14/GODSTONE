@@ -1,0 +1,5 @@
+# gate: board1 campaign manifest
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 ci/mutations.py --selftest-manifest --group board1
+# rc: 0
+
+campaign manifest OK: 49 row(s), group=board1, 49 required id(s) all KILLED with restorations, inputs match the tree, baseline 96c434b2bbe8…

@@ -1,0 +1,37 @@
+# gate: candidate binding selftest
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 ci/check_candidate_binding.py --selftest
+# rc: 0
+
+   PASS: a candidate ref that is not a tag is refused
+   PASS: a stated candidate_sha that disagrees with the tag is refused
+   PASS: a stated tree the candidate does not have is refused
+   PASS: a record naming no candidate is refused
+   PASS: a record whose ref disagrees with the copy at the candidate is refused
+   PASS: a freeze naming a tag that does not exist is refused
+   PASS: pre-freeze, a not-yet-created candidate tag is the honest state
+   PASS: a freeze citing no run is refused
+   PASS: a hosted run whose head_sha is a different commit is refused
+   PASS: an unreadable cited run is refused rather than assumed green
+   PASS: the real record's own binding is accepted
+   PASS: a run whose head_sha is another commit is refused
+   PASS: a run with a skipped job is refused
+   PASS: a post-tag edit outside the allowlist is refused
+   PASS: a lightweight candidate tag is refused
+   PASS: an unstated candidate tree is refused
+   PASS: a run from a different workflow is refused
+   PASS: a run from a non-push event is refused
+   PASS: a run whose head_sha is another commit is refused
+   PASS: a run missing a canonical job is refused
+   PASS: a run whose job was RENAMED is refused even though the count is six
+   PASS: a run with a duplicate job name is refused
+   PASS: a run whose job carries a failure annotation is refused although the job concluded success
+   PASS: an unreadable annotation list is refused rather than read as clean
+   PASS: the paginated fetch follows the next link
+   PASS: the pinned attempt's OWN endpoints are fetched, not the latest attempt's
+   PASS: an attempt endpoint answering a sibling attempt is refused
+   PASS: a git-diff failure is returned as a sentinel, never as an empty delta
+   PASS: a freeze taken in a dirty working tree is refused
+   PASS: a post-tag edit outside the named attestation path is refused
+   PASS: a tampered attestation is refused and left BYTE-IDENTICAL (read-only)
+
+candidate binding selftest: 29/29 mutations killed

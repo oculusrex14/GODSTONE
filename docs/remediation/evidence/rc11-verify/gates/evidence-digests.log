@@ -1,0 +1,9 @@
+# gate: evidence digests
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 ci/check_evidence_digests.py
+# rc: 0
+
+::notice::declared re-point for record_corrections[54]: /Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-STRESS-001/round727-three-way-invariant-census.log (this entry declared that its file changed after capture; the declared prior value was 5eb1b342dce7..., it now hasheth 005349a58a88...)
+evidence digests: 897 registered | 896 examined | 896 verified | 0 mismatched | 0 unresolved | 0 unnamed | 0 undigested
+  populations: findings 708 registered / 708 examined | convergence 83 registered / 82 examined | other 106 registered / 106 examined
+  root: /Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE
+evidence digests: PASSED (every registered entry examined, every digest matching)

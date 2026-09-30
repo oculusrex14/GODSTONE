@@ -1,0 +1,9 @@
+# gate: release gates status
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 ci/check_release_gates_status.py
+# rc: 0
+
+ok: release-gate status selftest refuseth 12 of 12 malformed/false-closure controls
+ok: gate-evidence selftest refuseth 15 of 15 evidence controls
+ok: repo-owned lane selftest refuseth 7 of 7 amputation controls
+ok: 8 release gates represented; CLOSED gates have well-formed, resolved and classified evidence pointers (evidence content is not verified here); android-archive-only-release classified HISTORICAL (inputs changed since: 36).
+ok: 2 repository-owned lanes carry every face they must hold; an amputated lane is refused by name.

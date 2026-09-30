@@ -1,0 +1,672 @@
+# gate: readiness suites
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 -m unittest discover -s tools/readiness/tests
+# rc: 0
+
+OBS corrupt AAB: {"verdict": "FAIL", "AAB": {"path": "/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-final-negative-4ctb43am/bad.aab", "sha256": "53e28594c9d3902996133fbef8a65ff9b9aa27fbad1cc52165d227164d79d9e5", "abi": {"arm64-v8a": ["libgodstone_core.so", "libgodstone_sqlite.so"]}}}
+OBS corrupt AAB: {"verdict": "FAIL", "AAB": {"path": "/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-final-negative-atvx709a/bad.aab", "sha256": "53e28594c9d3902996133fbef8a65ff9b9aa27fbad1cc52165d227164d79d9e5", "abi": {"arm64-v8a": ["libgodstone_core.so", "libgodstone_sqlite.so"]}}}
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp2fkwmwtp/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpx03h7atq/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp1ppfmduq/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpv_nktf0k/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpm9yu8meo/dist/archive_light.db (0.1 MB)
+corpus_sha256 850d575a615745ddde4e71e5ff2fe02a5803358392e6a799804f4174fb0940b7
+archive_sha256 8578b5db3c578ef9169eb36b70c823823de12a756d9d3e233226beb4e8196449
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpm9yu8meo/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpwqz7qwlq/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpnr8elzgj/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpigcjqg18/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpzddq7_ed/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpjm06q03z/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp9vnk7odf/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpqic2uvnr/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpy6zhe8gu/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmplty36fpq/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpwdsv7ppw/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp6nopdkkw/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 bc169eb0efff11bc288056f441d9ea9a02afe1f7b3519a70c958ea98bc6bc430
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpban8_b7f/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpe6b85dxa/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+OBS foreign platform: {"verdict": "FAIL", "architectures": {"architectures": ["arm64"], "platform": "macos", "minimum_os": "16.0"}}
+OBS signed entitlement: {"verdict": "FAIL", "entitlements": {"signed": true, "keys": ["com.apple.developer.networking.multicast", "get-task-allow"], "declared_keys": [], "forbidden": ["com.apple.developer.networking.multicast"]}}
+OBS foreign platform: {"verdict": "FAIL", "architectures": {"architectures": ["arm64"], "platform": "macos", "minimum_os": "16.0"}}
+OBS signed entitlement: {"verdict": "FAIL", "entitlements": {"signed": true, "keys": ["com.apple.developer.networking.multicast", "get-task-allow"], "declared_keys": [], "forbidden": ["com.apple.developer.networking.multicast"]}}
+OBS cache traversal: {"rejected": true, "wrote_outside_destination": false}
+OBS cache traversal: {"rejected": true, "wrote_outside_destination": false}
+F01
+Ran 10 checks in selftest
+OK
+F01-narrow-python3.14: PASSED exit=0 tests=n/a
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpgonzs77p/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 b80e81a88614c9046509a43e1990d29420c18d74f0553dbb8bf2ef7136388b5b
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpgonzs77p/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 b80e81a88614c9046509a43e1990d29420c18d74f0553dbb8bf2ef7136388b5b
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpprmafb59/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 b80e81a88614c9046509a43e1990d29420c18d74f0553dbb8bf2ef7136388b5b
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp2d0dre_2/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 b80e81a88614c9046509a43e1990d29420c18d74f0553dbb8bf2ef7136388b5b
+tier LIGHT: 2 documents
+tier LIGHT: 2 documents
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp5w4_x5op/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 b80e81a88614c9046509a43e1990d29420c18d74f0553dbb8bf2ef7136388b5b
+tier LIGHT: 2 documents
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp5w4_x5op/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 b80e81a88614c9046509a43e1990d29420c18d74f0553dbb8bf2ef7136388b5b
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp5w4_x5op/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 b80e81a88614c9046509a43e1990d29420c18d74f0553dbb8bf2ef7136388b5b
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp_ldlarm4/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 b80e81a88614c9046509a43e1990d29420c18d74f0553dbb8bf2ef7136388b5b
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpnwgmeo2z/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 f2530656735d437d318b3d15daf5d62bde348de5a723a4450017f221816f89f7
+tier LIGHT: 2 documents
+tier LIGHT: 6 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 6 chunk(s) covered by 2 bundle(s); digest ea4380e9767a
+tier LIGHT: 6 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpkiwm8iha/dist/archive_light.db (0.1 MB)
+corpus_sha256 7d94077173306af1554550370d7828714e3be5475c915f27802f8328f8815aa8
+archive_sha256 0fb0e6158b554349290dff65607572d95c00279c9582bd627b0d0d2bb0c3a994
+release assets verified
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp_7tyypdu/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpc9np7gf2/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpgj4uj8jg/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+tier LIGHT: 2 documents
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest ebd74a148e19
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpgj4uj8jg/dist/archive_light.db (0.1 MB)
+corpus_sha256 a3ce16c4aadeefebc5e02f36471b54b1e71ed9a88b93dde692da500803632fda
+archive_sha256 b1c6b7390ec005d7421c9ca8578031e097854762fd8a6da578903475ffdc5a60
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpt4_a1nn6/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpn_sk5v_d/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpn_sk5v_d/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 307c0bc2c8ac776a8737cfdc204532509977af20d94be5d66b642c3755d2ec9c
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpj06l5uki/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+tier LIGHT: 2 documents
+validated 2 production document manifest(s)
+approvals proved: 5 chunk(s) covered by 2 bundle(s); digest d7c668813128
+tier LIGHT: 5 chunks (target ~40,000)
+wrote /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpl0v0orfg/dist/archive_light.db (0.1 MB)
+corpus_sha256 1769e2233bce0321798bc050a7128a06e29c91bf04d14dd96ed881050ec672f8
+archive_sha256 9cee6295a20ddfba305722bb6d5ca07b16eb6c18433cdde84e956841b5080321
+selftest: clean profile set PASSES
+selftest: KILLED  a lab source set in the LIGHT android source set
+selftest: KILLED  a :mesh shipping edge on LIGHT android
+selftest: KILLED  a readiness override in the LIGHT flavour
+selftest: KILLED  the lab masquerading as the shipping android identity
+selftest: KILLED  the lab dropping its :mesh dependency
+selftest: KILLED  a synthetic READY setter in the lab
+selftest: KILLED  the LIGHT ios app linking GodstoneMesh
+selftest: KILLED  the lab sharing the shipping ios bundle id
+selftest: KILLED  readiness turned true in the manifest
+selftest: KILLED  a gate citing the lab
+selftest: OK
+ok: model-provenance selftest refuseth 27 of 27 corruptions; the lawful register, the atomic promotion and the determinist repeat all pass
+INCOMPLETE: 13 case(s), false_allow=0 false_block=0 uncertain=2 uncited_numeric=0 undecided_reviews=13
+COMPLETE: 13 case(s), false_allow=0 false_block=0 uncertain=2 uncited_numeric=0 undecided_reviews=0
+COMPLETE: 13 case(s) verified, false_allow=0 false_block=0
+MUTATION HARNESS SELFTEST (T67)
+  ONLY KILLED is a catch; every other verdict is not.
+  PASS the honest rules classified 13 known-answer cases correctly
+  PASS the extraction parsed 6 real XCTest line(s) incl. the SINGULAR '1 failure'
+  KILLED   skipped counted as KILLED (the named negative) (a missing anchor (the needle moved): SKIPPED -> KILLED)
+  KILLED   an escaped mutant counted as KILLED (a surviving semantic mutant: ESCAPED -> KILLED)
+  KILLED   an invalid run counted as KILLED (a compile failure: BUILD_INVALID -> KILLED)
+  KILLED   a baseline failure left unchecked (a baseline that did not pass: BASELINE_INVALID -> ESCAPED)
+  KILLED   a compile failure left unchecked (a compile failure: BUILD_INVALID -> EXEC_INVALID)
+  KILLED   a run that executed nothing left unchecked (a worker that executed nothing: EXEC_INVALID -> ESCAPED)
+  KILLED   the restored-green companion left unchecked (a hit whose restored-green never executed: INCOMPLETE -> KILLED)
+  KILLED   the anchor count left unchecked (a missing anchor (the needle moved): SKIPPED -> ESCAPED)
+  PASS a disposable worktree was created, used and REMOVED, and the live tree's HEAD and status are unchanged
+  PASS only KILLED counteth: SKIPPED, ESCAPED, EXEC_INVALID, BUILD_INVALID and INCOMPLETE are all refused as catches
+  PASS no rod is documented as an expected escape, so none can be counted as a success
+SELFTEST OK
+::warning::toolchain lock: cmake is absent on this host while 3.22.1 is expected; the lane that needeth it must be provisioned before it can be claimed
+::warning::toolchain lock: python measureth 3.14.4 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: java measureth 17.0.20.1 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: swift measureth 6.3.3 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: xcode measureth 26.6 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: macos measureth macOS 26.6.2 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::error::dependency manifest: lane 'dev' wanteth pyyaml==6.0.2 in its closure
+::error::dependency manifest: lane 'dev' wanteth cryptography==50.0.0 in its closure
+::error::dependency manifest: lane 'content' is missing from the manifest
+::error::dependency manifest: lane 'signing' is missing from the manifest
+::error::dependency manifest: lane 'eval' is missing from the manifest
+::error::dependency manifest: lane 'native' is missing from the manifest
+::error::SBOM: the Gradle verification nameth maven:org.example:lib:1.0 and the SBOM carrieth it not
+7 refusal(s)
+::warning::toolchain lock: cmake is absent on this host while 3.22.1 is expected; the lane that needeth it must be provisioned before it can be claimed
+::warning::toolchain lock: python measureth 3.14.4 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: java measureth 17.0.20.1 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: swift measureth 6.3.3 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: xcode measureth 26.6 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: macos measureth macOS 26.6.2 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::error::dependency manifest: lane 'dev': godstonefixture carrieth a digest that is not a lower-case SHA-256: 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'
+::error::dependency manifest: lane 'dev': godstonefixture carrieth a distribution whose bytes are not pip's resolved digest
+::error::dependency manifest: lane 'dev' wanteth pyyaml==6.0.2 in its closure
+::error::dependency manifest: lane 'dev' wanteth cryptography==50.0.0 in its closure
+::error::dependency manifest: lane 'content' is missing from the manifest
+::error::dependency manifest: lane 'signing' is missing from the manifest
+::error::dependency manifest: lane 'eval' is missing from the manifest
+::error::dependency manifest: lane 'native' is missing from the manifest
+::error::gradle verification: Gradle dependency verification metadata is absent, so the dependency graph is not verified
+9 refusal(s)
+::warning::toolchain lock: cmake is absent on this host while 3.22.1 is expected; the lane that needeth it must be provisioned before it can be claimed
+::warning::toolchain lock: python measureth 3.14.4 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: java measureth 17.0.20.1 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: swift measureth 6.4 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: xcode measureth 27.0 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::toolchain lock: macos measureth macOS 26.6.2 and the repository carrieth no expectation to compare it against: recorded, not pinned
+::warning::nondeterminism record: app-light-debug.apk diverged between the two runs: the multidex partition differeth between two builds of the same clean tree: the six classes*.dex entries disagree in content and in size (46364 vs 46316, 98708 vs 98440 bytes) while the other 188 entries are byte-identical; the debug variant dexeth through the incremental build cache, so the class-to-dex partition is not a function of the sources alone, and byte-reproducibility of an unsigned debug APK is NOT claimed
+::error::toolchain lock: the reviewed input 'ios/project.yml' changed since the lock was captured (af1ff48afe848459ed8d235d1b758e0cedd88ba0a5000a7d11b56aefe606648b -> 281cebfc8ed6672f287ca3b076afd46a9aaf864cdcb3c79fd29a3759576e422c)
+::error::dependency manifest: lane 'dev': godstonefixture carrieth a digest that is not a lower-case SHA-256: 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'
+::error::dependency manifest: lane 'dev': godstonefixture carrieth a distribution whose bytes are not pip's resolved digest
+::error::dependency manifest: lane 'dev' wanteth pyyaml==6.0.2 in its closure
+::error::dependency manifest: lane 'dev' wanteth cryptography==50.0.0 in its closure
+::error::dependency manifest: lane 'content' is missing from the manifest
+::error::dependency manifest: lane 'signing' is missing from the manifest
+::error::dependency manifest: lane 'eval' is missing from the manifest
+::error::dependency manifest: lane 'native' is missing from the manifest
+::error::SBOM: the dependency lock nameth pypi:godstonefixture and the SBOM carrieth it not
+10 refusal(s)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-eb7l_1m8/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-eb7l_1m8/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-eb7l_1m8/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-eb7l_1m8/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-cfm2n6gu/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-cfm2n6gu/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-cfm2n6gu/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-cfm2n6gu/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-_ftr1yqb/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-_ftr1yqb/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-_ftr1yqb/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-_ftr1yqb/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-t72r85b2/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-t72r85b2/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-t72r85b2/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-t72r85b2/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-a_mmmgec/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-a_mmmgec/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-a_mmmgec/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-a_mmmgec/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-a8g9w3kz/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-a8g9w3kz/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-a8g9w3kz/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-a8g9w3kz/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-zbq7hs7d/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-zbq7hs7d/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-zbq7hs7d/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-zbq7hs7d/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-uyah36z0/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-uyah36z0/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-uyah36z0/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-uyah36z0/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-itoz0mo6/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-itoz0mo6/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-itoz0mo6/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-itoz0mo6/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-q6rfz9mv/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-q6rfz9mv/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-q6rfz9mv/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-q6rfz9mv/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-wmnskpcn/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-wmnskpcn/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-wmnskpcn/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-wmnskpcn/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-62z5u1a4/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-62z5u1a4/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-62z5u1a4/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-62z5u1a4/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-_q1wdn3s/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-_q1wdn3s/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-_q1wdn3s/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-_q1wdn3s/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-l2f2ko8y/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-l2f2ko8y/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-l2f2ko8y/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-l2f2ko8y/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-y3eb1ae6/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-y3eb1ae6/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-y3eb1ae6/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-y3eb1ae6/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-ru4espy1/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-ru4espy1/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-ru4espy1/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-ru4espy1/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-mcyyp2ka/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-mcyyp2ka/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-mcyyp2ka/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-mcyyp2ka/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-aqkxg039/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-aqkxg039/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-aqkxg039/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-aqkxg039/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-6qt5c98a/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-6qt5c98a/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-6qt5c98a/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-6qt5c98a/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-ma0ihofl/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-ma0ihofl/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-ma0ihofl/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-ma0ihofl/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-skdo_ttb/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-skdo_ttb/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-skdo_ttb/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-skdo_ttb/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-bz95sykx/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-bz95sykx/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-bz95sykx/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-bz95sykx/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-sna2s2ab/world/documents/prior/archive_light.db (3 documents, 7 passages, variant prior, schema 2)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-sna2s2ab/world/documents/installed/archive_light.db (3 documents, 7 passages, variant installed, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-sna2s2ab/world/documents/candidate/archive_light.db (3 documents, 7 passages, variant candidate, schema 3)
+Development fixture only: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-t77-court-sna2s2ab/world/documents/future/archive_light.db (3 documents, 7 passages, variant future, schema 4)
+............................................................................................/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py:361: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10750a980>
+  obj, end = self.scan_once(s, idx)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py:361: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10750a6b0>
+  obj, end = self.scan_once(s, idx)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py:361: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10750b1f0>
+  obj, end = self.scan_once(s, idx)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py:361: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10750b4c0>
+  obj, end = self.scan_once(s, idx)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py:361: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x10750b3d0>
+  obj, end = self.scan_once(s, idx)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..........................  ::error:: GS-ARCHIVE-005: recorded internal status is 'OPEN' while ALL 1 of its obligations are terminal. A finding cannot stand internally open with nothing left to do -- so the recorded status has not followed its own obligations. Discharge is incomplete and an obligation must be reopened with evidence, or the finding's recorded status must be updated to FIX_SUBMITTED in the ledger
+.......................................................................................................................................................................usage: preserve.py [-h] root evidence_dir
+preserve.py: error: the following arguments are required: root, evidence_dir
+..../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t01.py:521: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmph68yim9h/checkout/docs/production-readiness/ORIGINAL_CHECKOUT_ADDITIONS.hashes.json' mode='r' encoding='utf-8'>
+  _path, doc = None, json.load(open(os.path.join(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.................................../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t02.py:433: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpllzvwgtm/repo/docs/production-readiness/BUILD_STATE.json' mode='r' encoding='utf-8'>
+  state = json.load(open(self.repo.docs_file('BUILD_STATE.json'),
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t02.py:422: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp0m627q4b/repo/docs/production-readiness/BUILD_STATE.json' mode='r' encoding='utf-8'>
+  state = json.load(open(self.repo.docs_file('BUILD_STATE.json'),
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..usage: run.py ladder [-h] --profile {archive,lab-mesh,lab-oracle} [--dry-run]
+                     levels
+run.py ladder: error: the following arguments are required: --profile
+....ERROR: unknown task 'NOPE'
+.../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t02.py:187: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpa6fx815x/repo/docs/production-readiness/BUILD_STATE.json' mode='r' encoding='utf-8'>
+  return json.load(open(self.repo.docs_file('BUILD_STATE.json'),
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+...../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t02.py:341: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpr1t59cf7/evidence/F01/commands.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(os.path.join(self.repo.evidence, 'F01',
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t02.py:387: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmphc25u2pq/repo/docs/production-readiness/BUILD_STATE.json' mode='r' encoding='utf-8'>
+  state = json.load(open(self.repo.docs_file('BUILD_STATE.json'),
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t02.py:362: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpi41gsb6q/repo/docs/production-readiness/BUILD_STATE.json' mode='r' encoding='utf-8'>
+  state = json.load(open(self.repo.docs_file('BUILD_STATE.json'),
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t02.py:362: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpmwzsz6qg/repo/docs/production-readiness/BUILD_STATE.json' mode='r' encoding='utf-8'>
+  state = json.load(open(self.repo.docs_file('BUILD_STATE.json'),
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:182: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:183: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpuxyyaq6j/ARCHITECTURE_INVARIANTS.json' mode='w' encoding='utf-8'>
+  json.dump(doc, open(target, 'w', encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:187: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpuxyyaq6j/ARCHITECTURE_INVARIANTS.json' mode='w' encoding='utf-8'>
+  json.dump(doc, open(target, 'w', encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:194: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:198: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpeijvsj11/ARCHITECTURE_INVARIANTS.json' mode='w' encoding='utf-8'>
+  json.dump(doc, open(target, 'w', encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:208: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:212: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpvy7hgt_m/ARCHITECTURE_INVARIANTS.json' mode='w' encoding='utf-8'>
+  json.dump(doc, open(target, 'w', encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:218: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:220: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpnqwj9lbl/ARCHITECTURE_INVARIANTS.json' mode='w' encoding='utf-8'>
+  json.dump(doc, open(target, 'w', encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:149: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:247: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/CAPABILITY_PROFILES.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(PROFILES, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:263: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/adr/ADR-007-cipher-suite.md' mode='r' encoding='utf-8'>
+  encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:265: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  invariants = json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:239: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/CAPABILITY_PROFILES.json' mode='r' encoding='utf-8'>
+  profiles = json.load(open(PROFILES, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:226: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/CAPABILITY_PROFILES.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(PROFILES, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:235: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:255: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/transport/ROLE_MATRIX.md' mode='r' encoding='utf-8'>
+  encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+...../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:278: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/CAPABILITY_PROFILES.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(source, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:278: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(source, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:278: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(source, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:316: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:333: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/production-readiness/ARCHITECTURE_INVARIANTS.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(INVARIANTS, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:91: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift' mode='r' encoding='utf-8'>
+  text = open(os.path.join(REPO, rel), encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:91: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/android/mesh/src/main/java/io/godstone/mesh/delivery/AckAuthenticator.kt' mode='r' encoding='utf-8'>
+  text = open(os.path.join(REPO, rel), encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:99: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/docs/adr/ADR-005-sos-and-lifecycle.md' mode='r' encoding='utf-8'>
+  encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:110: ResourceWarning: unclosed file <_io.BufferedReader name='/Users/oculus/Projects/GODSTONE/ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift'>
+  h1 = hashlib.sha256(open(canonical, 'rb').read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/Users/oculus/Projects/GODSTONE/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckAuthenticator.swift'>
+  h2 = hashlib.sha256(open(generated, 'rb').read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:78: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt' mode='r' encoding='utf-8'>
+  encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t03.py:82: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/ios/Godstone/Sources/GodstoneMesh/MeshNode.swift' mode='r' encoding='utf-8'>
+  encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t04.py:159: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpg9sul2oc/noise_lock.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(lock_path, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t04.py:82: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpvi1odmyd/synthetic_vectors.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(fixture_path, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t04.py:82: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpcmog5mwd/synthetic_vectors.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(fixture_path, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t04.py:326: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp5evw1qvr/crypto/noise_lock.py' mode='r' encoding='utf-8'>
+  src = open(module_path, encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t04.py:329: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp5evw1qvr/crypto/noise_lock.py' mode='w' encoding='utf-8'>
+  open(module_path, 'w', encoding='utf-8').write(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t04.py:334: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp5evw1qvr/case/synthetic_vectors.json' mode='r' encoding='utf-8'>
+  doc = json.load(open(fixture_path, encoding='utf-8'))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.........warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+.warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+.warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+.warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+.warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+..warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+.warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+..warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+warning: 2 document(s) are UNREVIEWED worked examples (a.md, b.md). --release would refuse this build.
+.............../opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/zipfile/__init__.py:1721: UserWarning: Duplicate name: 'assets/archive_light.db'
+  return self._open_to_write(zinfo, force_zip64=force_zip64)
+..............................................................................................................................................::error::13 case(s) carry no reviewer decision ['ctx-conflict-nuclear', 'harm-subst-post', 'harm-tourniquet-only']: the blinded review is incomplete
+::error::the evaluation record answers a different manifest than the one supplied
+::error::the Archive is missing: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp5spjqzdz/absent.db
+.......................................................................::error::the bundle is not a directory: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpqpmomnb7/absent.app
+::error::the bundle is not a directory: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpqpmomnb7/not-a-bundle.txt
+..................::error::the APK is missing: /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp1c47qo97/absent.apk
+............................................................................./Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t77.py:797: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/scripts/upgrade_recovery.py' mode='r' encoding='utf-8'>
+  source = open(os.path.join(REPO, self.SCRIPT), encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+../Users/oculus/Projects/GODSTONE/tools/readiness/tests/test_t77.py:817: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/oculus/Projects/GODSTONE/.github/workflows/repository-verification.yml' mode='r' encoding='utf-8'>
+  text = open(os.path.join(REPO, self.WORKFLOW), encoding='utf-8').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..........................................................................
+----------------------------------------------------------------------
+Ran 799 tests in 366.331s
+
+OK

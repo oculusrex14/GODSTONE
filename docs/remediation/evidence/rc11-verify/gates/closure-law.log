@@ -1,0 +1,8 @@
+# gate: closure law
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 scripts/build_structured_closure.py --check
+# rc: 0
+
+  findings total            : 68
+  findings INTERNAL OPEN    : 1
+  internal obligations OPEN : 2
+  external obligations      : 5

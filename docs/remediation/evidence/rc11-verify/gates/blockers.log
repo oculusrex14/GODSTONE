@@ -1,0 +1,12 @@
+# gate: blockers
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 tools/readiness/blockers.py --check
+# rc: 0
+
+frontier: 84 tasks, 72 COMPLETE, 12 pending, 12 BLOCKED_EXTERNAL
+  A06                independent-review   tasks=T73,T75,T78,T79
+  APPROVED_CONTENT   content              tasks=T78,T80
+  NATIVE_MODELS      native               tasks=T62,T63,T64,T65,T78,T81
+  HARDWARE           device               tasks=T73,T74,T75,T76,T78
+  SIGNING            release              tasks=T76,T78
+VERDICT: PASS
+  (PASS = the register is INTERNALLY HONEST about what is owed: every externally-blocked task is recorded OPEN/BLOCKED and every readiness flag is false. It is NOT a statement that any obligation is met -- an unmet external gate is SUPPOSED to read PASS here, and this refuses the moment someone flips a flag true to satisfy it.)

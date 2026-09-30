@@ -1,0 +1,7 @@
+# gate: required runs
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 ci/check_required_runs.py
+# rc: 0
+
+required runs: 54 finding(s) of a declared 54 | derived {"FIX_SUBMITTED": 53, "PARTIAL": 1}
+  RECORDED, NOT ENFORCED: 22 finding(s) describe their RED as prose rather than a log path -- reported because a manifest must not demand a shape the record never promised
+required runs: PASSED (every required record and population is present, and the counts derive from the entries)

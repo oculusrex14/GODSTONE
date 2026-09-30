@@ -1,0 +1,15 @@
+# gate: lane results
+# argv: /opt/homebrew/opt/python@3.14/bin/python3.14 ci/check_lane_results.py --scope all
+# rc: 0
+
+LANE RESULTS (parsed from the result files, not grepped from stdout):
+  android:app    files=12  tests=97    skipped=0 failures=0 errors=0
+  android:core   files=2   tests=21    skipped=0 failures=0 errors=0
+  android:mesh   files=88  tests=1324  skipped=0 failures=0 errors=0
+  android:labmesh files=3   tests=17    skipped=0 failures=0 errors=0
+  ios:foundation suites=95  tests=1452  failures=0  <- per bundle: 5 tests / 0 failures; 1341 tests / 0 failures; 106 tests / 0 failures; SOURCES declare 1452 arms
+  ios:ui         suites=2   tests=30    failures=0  <- the `bundle.ui-testing` targets: LabMeshUITests, GodstoneArchiveUITests
+  ios:simulator  suites=83  tests=1338  failures=0 raw_rc=0 skipped=1 unfinished=0  <- external-blocked: GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent -- EXTERNAL-BLOCKED (EXTERNAL-BLOCKED: the approved pinned SQLCipher library 'libsqlcipher.0.dylib' i…)  <- per bundle: 1339 tests / 0 failures; SOURCES declare 1339 arms
+
+lane results: PASSED (every lane ran, executed at least one test, and carried no skipped/failed/errored arm)
+mirror membership: PASSED (every canonical file is mirrored, none orphaned) -- GodstoneCore=24, GodstoneMesh=92, GodstoneCoreTests=9, GodstoneMeshTests=88, LabMeshTests=1
