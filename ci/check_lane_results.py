@@ -687,7 +687,8 @@ def check_ios_lane() -> tuple[list[str], dict]:
     totals["evidence"] = [f"{t} tests / {f} failures" for t, f in run] + [f"SOURCES declare {arm_count} arms"]
     if totals["tests"] == 0:
         problems.append("the iOS lane executed ZERO tests -- a zero-test run has not measured anything")
-    for name, n in re.findall(r"^\s*Executed (\d+) tests?, with (\d+) failures?", text, re.M):
+    for name, n in re.findall(r"^\s*Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures?", text,
+                              re.M):
         if int(name) and int(n):
             problems.append(f"the iOS lane carrieth a failing count: {name} tests, {n} failures")
     if re.search(r"^.*error: ", text, re.M):
@@ -1428,7 +1429,7 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
                         "'nothing executed'")
 
     # (b) `Executed 0` AND ANY SKIP ARE FAILURES, BY NAME.
-    for m in re.finditer(r"^\s*Executed (\d+) tests?, with (\d+) failures?", text, re.M):
+    for m in re.finditer(r"^\s*Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures?", text, re.M):
         if int(m.group(1)) == 0:
             problems.append("the iOS UI lane carrieth `Executed 0 tests` -- **A ZERO-EXECUTED RUN IS WHAT A CRASHED "
                             "XCUITest PROCESS REPORTS, and it must never read as green**")
