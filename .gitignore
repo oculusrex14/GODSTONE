@@ -137,3 +137,17 @@ ios-simulator-lane.log
 # so an edit DURING a run cannot leave a log that describeth a tree the tests never compiled.*
 *.pre.sha256
 tools/integration-fixtures/
+
+# *** AND THE CI CROSS-PLATFORM COORDINATOR'S OWN RUN OUTPUT (2026-09-30). ***
+#
+# *The workflow's `cross-platform integration coordinator` step was invoked with
+# `--evidence-dir docs/remediation/evidence/board1-rc11-integration`, a TRACKED directory holding the FROZEN rc11
+# evidence the closure record cites by name. **MEASURED, RUN `36709921466`: it overwrote THIRTEEN tracked files with
+# the run's own output, and `provenance (final -- tree still clean)` correctly refused the dirty tree.*** *The hole was
+# invisible because every earlier run cancelled at the simulator lane or skipped the step (`if: success()`), so the
+# coordinator had not successfully run in CI since that evidence was frozen.*
+#
+# **RUN OUTPUT GOES WHERE RUN OUTPUT GOES: gitignored here, retained as an artifact (`board1-integration-evidence`).**
+# *Same rule as `ios-lane.log` and `*.xcresult` above -- regenerable, uploaded, never committed. The frozen rc11
+# evidence under `docs/remediation/evidence/board1-rc11-integration/` stays byte-identical.*
+board1-integration-ci/

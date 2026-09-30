@@ -871,11 +871,31 @@ jobs:
       #
       # **A REFUSAL IS FIRST-CLASS: a missing worker, a missing marker, a timeout or an early exit endeth the step
       # non-zero with a NAMED reason, so a run that could not execute its workers is never reported as a pass.**
+      # *** THE COORDINATOR'S OUTPUT IS RUN OUTPUT, SO IT MUST NOT LAND IN A TRACKED PATH. ***
+      #
+      # *MEASURED, RUN `36709921466` (the first run in which the simulator lane AND this step both completed): the
+      # coordinator was invoked with `--evidence-dir docs/remediation/evidence/board1-rc11-integration`, a TRACKED
+      # directory that carrieth the FROZEN rc11 evidence the closure record citeth by name
+      # (`path:docs/remediation/evidence/board1-rc11-integration/coordinator.log`).* **IT OVERWROTE THIRTEEN TRACKED
+      # FILES WITH THIS RUN'S OUTPUT, AND THE NEXT STEP -- `provenance (final -- tree still clean)` -- THEN REFUSED
+      # THE DIRTY TREE, WHICH IS EXACTLY WHAT THAT CONTROL EXISTETH TO DO: `M docs/remediation/evidence/
+      # board1-rc11-integration/integration-report.json`, `M .../manifest.json`, `M .../transcript.bin`, the eight
+      # worker logs and `run.log`.**
+      #
+      # **THE HOLE WAS INVISIBLE UNTIL NOW BECAUSE EVERY EARLIER RUN EITHER CANCELLED AT THE SIMULATOR LANE OR
+      # SKIPPED THIS STEP ENTIRELY (`if: success()`), so the coordinator had not successfully run in CI since the
+      # evidence was frozen.** *And the damage is the WORSE kind: had the dirty tree been committed, the frozen bytes
+      # the closure citeth would have been silently REPLACED by a later run's, which is the "evidence re-pointed"
+      # class this programme forbids.*
+      #
+      # *** SO THE OUTPUT GOES WHERE RUN OUTPUT GOES: A GITIGNORED PATH THAT CI STILL UPLOADS AS AN ARTIFACT. ***
+      # *Same rule as `ios-lane.log`, `ios-ui-lane.log` and `*.xcresult` -- regenerable, retained, never committed.
+      # The frozen rc11 evidence under `docs/remediation/evidence/board1-rc11-integration/` is left byte-identical.*
       - name: cross-platform integration coordinator (iOS <-> Android, both directions)
         run: |
           set -euo pipefail
           python3 tools/readiness/run_board1_integration.py --mode all \
-            --evidence-dir docs/remediation/evidence/board1-rc11-integration \
+            --evidence-dir board1-integration-ci \
             --timeout 300
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
@@ -926,11 +946,14 @@ jobs:
       # carrieth each direction's verdict (the recipient's durable row and the sender's DELIVERY transition, and
       # every control's refusal at its actual boundary).* **`if: always()`, because the run whose evidence most
       # needeth reading is the one where the coordinator REFUSED.**
+      #
+      # *The path is the GITIGNORED run-output directory the step above writeth, not the frozen rc11 evidence: this
+      # artifact is where a reader findeth THIS run's transcript, and the committed directory keepeth ITS bytes.*
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: board1-integration-evidence
           path: |
-            docs/remediation/evidence/board1-rc11-integration/**
+            board1-integration-ci/**
             tools/integration-fixtures/**
           if-no-files-found: warn
