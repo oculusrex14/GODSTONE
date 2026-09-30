@@ -1,16 +1,16 @@
-Test Suite 'Selected tests' started at 2026-09-30 04:03:43.936.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 04:03:43.942.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 04:03:43.942.
+Test Suite 'Selected tests' started at 2026-09-30 06:41:18.740.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-30 06:41:18.746.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 06:41:18.746.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:03:43.942.
+Test Suite 'Selected tests' passed at 2026-09-30 06:41:18.746.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 04:03:43.980.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 04:03:43.985.
-Test Suite 'PeerIdentityRepositoryTests' started at 2026-09-30 04:03:43.985.
+Test Suite 'Selected tests' started at 2026-09-30 06:41:18.785.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 06:41:18.790.
+Test Suite 'PeerIdentityRepositoryTests' started at 2026-09-30 06:41:18.790.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAConfirmationWhoseReadbackDisagreesRollsBackRatherThanReportingSuccess]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAConfirmationWhoseReadbackDisagreesRollsBackRatherThanReportingSuccess]' passed (0.003 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAConfirmationWhoseReadbackDisagreesRollsBackRatherThanReportingSuccess]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAdvancePendingCandidateHighWater]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAdvancePendingCandidateHighWater]' passed (0.003 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAdvancePendingCandidateHighWater]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAdvancePendingReadbackCorruptionRollsBack]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAdvancePendingReadbackCorruptionRollsBack]' passed (0.003 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_CardinalityTwo_RollsBack]' started.
@@ -22,7 +22,7 @@ Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_Ex
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_InvalidArgument_NodeIdOrKeyOrGenerationInvalid]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_InvalidArgument_NodeIdOrKeyOrGenerationInvalid]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_NoPendingCandidate_ReturnsNoPendingCandidateAndDoesNotMutate]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_NoPendingCandidate_ReturnsNoPendingCandidateAndDoesNotMutate]' passed (0.001 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_NoPendingCandidate_ReturnsNoPendingCandidateAndDoesNotMutate]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_PeerNotFound_ReturnsPeerNotFound]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_PeerNotFound_ReturnsPeerNotFound]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_PostWriteCorruptReadback_RollsBack]' started.
@@ -30,7 +30,7 @@ Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_Po
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_PreservesTofuPinnedTrustLevel]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_PreservesTofuPinnedTrustLevel]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_PreservesUserVerifiedTrustLevel]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_PreservesUserVerifiedTrustLevel]' passed (0.002 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_PreservesUserVerifiedTrustLevel]' passed (0.003 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_Revoked_ReturnsRejectedRevoked]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_Revoked_ReturnsRejectedRevoked]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_SameGenerationWrongStatic_ReturnsStaleCandidateAndDoesNotMutate]' started.
@@ -42,22 +42,22 @@ Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_St
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_StorageFaultAfterUpdate_RollsBack]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_StorageFaultAfterUpdate_RollsBack]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_Vs_NewerPending_CrossConnectionRace]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_Vs_NewerPending_CrossConnectionRace]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testApprovePending_Vs_NewerPending_CrossConnectionRace]' passed (0.005 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAStaleOrMismatchedConfirmationChangesNothing]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:2261: error: -[GodstoneMeshTests.PeerIdentityRepositoryTests testAStaleOrMismatchedConfirmationChangesNothing] : XCTAssertEqual failed: ("confirmed(GodstoneMesh.VerifiedPeerIdentity(nodeId: 16 bytes, signingPublicKey: 32 bytes, acceptedStaticDhPublicKey: 32 bytes, acceptedGeneration: 4, trustLevel: GodstoneMesh.PeerTrustLevel.userVerified))") is not equal to ("stale") - *** A CONFIRMATION CAPTURED AGAINST THE DISPLAYED GENERATION 1 MUST BE REFUSED AS `.stale` ONCE THE ROW STANDS AT GENERATION 4. *The row carrieth no pending candidate here, so the accepted-generation CAS is the ONLY predicate that can refuse it -- which is why this arm reacheth the guard the rod striketh.* Observed: confirmed(GodstoneMesh.VerifiedPeerIdentity(nodeId: 16 bytes, signingPublicKey: 32 bytes, acceptedStaticDhPublicKey: 32 bytes, acceptedGeneration: 4, trustLevel: GodstoneMesh.PeerTrustLevel.userVerified)) ***
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:2269: error: -[GodstoneMeshTests.PeerIdentityRepositoryTests testAStaleOrMismatchedConfirmationChangesNothing] : XCTAssertEqual failed: ("Optional(GodstoneMesh.PeerIdentityRow(nodeIdRaw: 16 bytes, signingPublicKeyRaw: 32 bytes, acceptedStaticDhPublicKeyRaw: 32 bytes, acceptedGenerationRaw: 4, trustCodeRaw: 2, pendingStaticDhPublicKeyRaw: nil, pendingGenerationRaw: nil))") is not equal to ("Optional(GodstoneMesh.PeerIdentityRow(nodeIdRaw: 16 bytes, signingPublicKeyRaw: 32 bytes, acceptedStaticDhPublicKeyRaw: 32 bytes, acceptedGenerationRaw: 4, trustCodeRaw: 1, pendingStaticDhPublicKeyRaw: nil, pendingGenerationRaw: nil))") - *** A REFUSED STALE CONFIRMATION MUST LEAVE THE DURABLE ROW BYTE-FOR-BYTE AS IT WAS FOUND. *The displayed-generation predicate is what maketh the refusal real: without it the CAS promoteth the row and this comparison failleth.* ***
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:2284: error: -[GodstoneMeshTests.PeerIdentityRepositoryTests testAStaleOrMismatchedConfirmationChangesNothing] : failed - the CURRENT displayed state on the non-quarantined row must confirm
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAStaleOrMismatchedConfirmationChangesNothing]' failed (0.029 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testAStaleOrMismatchedConfirmationChangesNothing]' failed (0.032 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_AdvancePending_TwoAffected_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_AdvancePending_TwoAffected_RollsBack]' passed (0.002 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_AdvancePending_TwoAffected_RollsBack]' passed (0.003 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_AdvancePending_ZeroAffected_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_AdvancePending_ZeroAffected_RollsBack]' passed (0.002 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_AdvancePending_ZeroAffected_RollsBack]' passed (0.007 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_InitialPending_TwoAffected_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_InitialPending_TwoAffected_RollsBack]' passed (0.002 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_InitialPending_TwoAffected_RollsBack]' passed (0.006 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_InitialPending_ZeroAffected_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_InitialPending_ZeroAffected_RollsBack]' passed (0.002 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCardinalityMatrix_InitialPending_ZeroAffected_RollsBack]' passed (0.009 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC1IdenticalFirstSeen]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC1IdenticalFirstSeen]' passed (0.003 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC1IdenticalFirstSeen]' passed (0.015 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC2Gen5Gen6HighWater]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC2Gen5Gen6HighWater]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC3ExactPendingReplayKeepsQuarantined]' started.
@@ -65,13 +65,13 @@ Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC3Exac
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC4OldAcceptedReplayKeepsQuarantined]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencyC4OldAcceptedReplayKeepsQuarantined]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencySupplementalAdvancePendingHighWater]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencySupplementalAdvancePendingHighWater]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencySupplementalAdvancePendingHighWater]' passed (0.005 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencySupplementalIndependentNodes]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencySupplementalIndependentNodes]' passed (0.003 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConcurrencySupplementalIndependentNodes]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConfirmVerifiedPromotesToUserVerifiedAndSurvivesReopen]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testConfirmVerifiedPromotesToUserVerifiedAndSurvivesReopen]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCorruptRowDetectionFailsClosed]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCorruptRowDetectionFailsClosed]' passed (0.001 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testCorruptRowDetectionFailsClosed]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testExactReconnectAccepted]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testExactReconnectAccepted]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testFirstSeenGenerationSeven]' started.
@@ -99,21 +99,21 @@ Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_Active
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_AlreadyRevoked_ReturnsAlreadyRevokedWithoutMutation]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_AlreadyRevoked_ReturnsAlreadyRevokedWithoutMutation]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CardinalityTwo_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CardinalityTwo_RollsBack]' passed (0.001 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CardinalityTwo_RollsBack]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CardinalityZero_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CardinalityZero_RollsBack]' passed (0.001 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CardinalityZero_RollsBack]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CorruptDurableRow_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CorruptDurableRow_RollsBack]' passed (0.001 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_CorruptDurableRow_RollsBack]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_InvalidArgument_InvalidNodeId]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_InvalidArgument_InvalidNodeId]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_PeerNotFound_ReturnsPeerNotFound]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_PeerNotFound_ReturnsPeerNotFound]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_PostWriteCorruptReadback_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_PostWriteCorruptReadback_RollsBack]' passed (0.001 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_PostWriteCorruptReadback_RollsBack]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_SimulatedCommitFailure_RollsBack]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_SimulatedCommitFailure_RollsBack]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_StorageFaultAfterUpdate_RollsBack]' started.
-Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_StorageFaultAfterUpdate_RollsBack]' passed (0.001 seconds).
+Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_StorageFaultAfterUpdate_RollsBack]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_ThenApprovePending_ReturnsRejectedRevoked]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_ThenApprovePending_ReturnsRejectedRevoked]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testRevokePeer_Vs_InboundApply_CrossConnectionRace]' started.
@@ -128,17 +128,17 @@ Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testStorageFaultF2_In
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testStorageFaultF2_InitialPendingFailure_RollsBack]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testStorageFaultF3_AdvancePendingFailure_RollsBack]' started.
 Test Case '-[GodstoneMeshTests.PeerIdentityRepositoryTests testStorageFaultF3_AdvancePendingFailure_RollsBack]' passed (0.002 seconds).
-Test Suite 'PeerIdentityRepositoryTests' failed at 2026-09-30 04:03:44.133.
-	 Executed 59 tests, with 3 failures (0 unexpected) in 0.146 (0.148) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 04:03:44.133.
-	 Executed 59 tests, with 3 failures (0 unexpected) in 0.146 (0.148) seconds
-Test Suite 'Selected tests' failed at 2026-09-30 04:03:44.133.
-	 Executed 59 tests, with 3 failures (0 unexpected) in 0.146 (0.153) seconds
-Test Suite 'Selected tests' started at 2026-09-30 04:03:44.185.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 04:03:44.190.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 04:03:44.190.
+Test Suite 'PeerIdentityRepositoryTests' failed at 2026-09-30 06:41:18.974.
+	 Executed 59 tests, with 3 failures (0 unexpected) in 0.181 (0.183) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 06:41:18.974.
+	 Executed 59 tests, with 3 failures (0 unexpected) in 0.181 (0.183) seconds
+Test Suite 'Selected tests' failed at 2026-09-30 06:41:18.974.
+	 Executed 59 tests, with 3 failures (0 unexpected) in 0.181 (0.189) seconds
+Test Suite 'Selected tests' started at 2026-09-30 06:41:19.025.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 06:41:19.031.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 06:41:19.031.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:03:44.191.
+Test Suite 'Selected tests' passed at 2026-09-30 06:41:19.031.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
@@ -616,6 +616,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[33 / 33] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
    [0;36m6 |[0;0m     public let relationKey: RelationKey
@@ -862,21 +863,6 @@ Building for debugging...
 [0;36m175 |[0;0m             }
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m42 |[0;0m     public let msgId: Data
- [0;36m43 |[0;0m     public let state: DeliveryState
- [0;36m44 |[0;0m     public let frame: FrameV2
-    [0;36m|[0;0m                `- [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m45 |[0;0m     /// When this node committed the pair, when it remembers; nil when the
- [0;36m46 |[0;0m     /// tables cannot name the instant (honest silence over a fabricated clock).
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m5 |[0;0m 
-  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
-  [0;36m7 |[0;0m public struct FrameV2: Equatable {
-    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
-  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: [1;33mwarning: [1;39mvariable 'bloom' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
 [0;36m141 |[0;0m         let nodeHint = identity.nodeHint
 [0;36m142 |[0;0m         var count = 0
@@ -903,6 +889,21 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m42 |[0;0m     public let msgId: Data
+ [0;36m43 |[0;0m     public let state: DeliveryState
+ [0;36m44 |[0;0m     public let frame: FrameV2
+    [0;36m|[0;0m                `- [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m45 |[0;0m     /// When this node committed the pair, when it remembers; nil when the
+ [0;36m46 |[0;0m     /// tables cannot name the instant (honest silence over a fabricated clock).
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m5 |[0;0m 
+  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
+  [0;36m7 |[0;0m public struct FrameV2: Equatable {
+    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
+  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: [1;33mwarning: [1;39massociated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
  [0;36m40 |[0;0m         case ignored(reason: String)
  [0;36m41 |[0;0m         case refused(reason: String)
@@ -3144,6 +3145,31 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
+ [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ [0;36m40 |[0;0m         var allows: Bool
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
+ [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m501 |[0;0m 
+[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
+    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m504 |[0;0m         let a = nodeA()
+[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
+[0;36m164 |[0;0m     @discardableResult
+    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
   [0;36m32 |[0;0m         )
   [0;36m33 |[0;0m         let sig = try! signingKey.signature(for: preimage)
@@ -3771,31 +3797,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
- [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- [0;36m40 |[0;0m         var allows: Bool
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
- [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m501 |[0;0m 
-[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
-    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m504 |[0;0m         let a = nodeA()
-[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
-[0;36m164 |[0;0m     @discardableResult
-    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
  [0;36m29 |[0;0m         )
  [0;36m30 |[0;0m         let sig = try! signingKey.signature(for: preimage)
@@ -4146,4 +4147,4 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.44 secs)
+Build complete! (11.01 secs)

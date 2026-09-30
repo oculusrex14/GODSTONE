@@ -11,3 +11,18 @@ Execution failed for task ':mesh:testDebugUnitTest'.
 > Run with --scan to get full insights.
 
 BUILD FAILED in 28s
+
+TEST-SUITE TEST-io.godstone.mesh.di.GsFinal003GraphComponentTest.xml tests=13 skipped=0 failures=2 errors=0
+TEST-CASE PASS theComponentsPumpIdentityIsUnreachableOnAHostAndSaysSo
+TEST-CASE PASS theRealComponentsGateIsReadPerCallNotCached
+TEST-CASE PASS theIdlePumpRunsInitialAndFiveMinuteInventoryOnTheInjectedClock
+TEST-CASE PASS theRealComponentsGateAnswersBothDirections
+TEST-CASE PASS theLifecycleGateIsOneAuthority
+TEST-CASE PASS theDeviceBoundProvidersAreTheRealPlatformOnes
+TEST-CASE PASS everyBindingIsScopedToTheComponent
+TEST-CASE PASS theDispatcherVerifiesOriginThroughTheGivenTrackerOnly
+TEST-CASE PASS theAckStoreRouteIsDeclaredOverTheDecorator
+TEST-CASE PASS theWipeInvalidatorReachesEveryOwnerTheCompositionHandedOut
+TEST-CASE PASS theComponentAssemblesSoTheGraphResolves
+TEST-CASE FAIL theDispatcherAdmitsThroughTheGivenPumpOnly
+TEST-CASE FAIL theProductionProviderHandsTheNodeThePumpItWasGiven

@@ -1,16 +1,16 @@
-Test Suite 'Selected tests' started at 2026-09-30 04:00:13.801.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 04:00:13.807.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 04:00:13.807.
+Test Suite 'Selected tests' started at 2026-09-30 06:37:47.544.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-30 06:37:47.550.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 06:37:47.550.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:00:13.807.
+Test Suite 'Selected tests' passed at 2026-09-30 06:37:47.550.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 04:00:13.844.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 04:00:13.849.
-Test Suite 'GsIntegration001ScenarioTests' started at 2026-09-30 04:00:13.849.
+Test Suite 'Selected tests' started at 2026-09-30 06:37:47.587.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 06:37:47.592.
+Test Suite 'GsIntegration001ScenarioTests' started at 2026-09-30 06:37:47.592.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.018 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.054 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.051 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.009 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started.
@@ -18,13 +18,13 @@ Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscrip
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.035 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.038 seconds).
-Test Suite 'GsIntegration001ScenarioTests' passed at 2026-09-30 04:00:14.011.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.161 (0.161) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 04:00:14.011.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.161 (0.161) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:00:14.011.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.161 (0.167) seconds
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.037 seconds).
+Test Suite 'GsIntegration001ScenarioTests' passed at 2026-09-30 06:37:47.750.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.157 (0.157) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 06:37:47.750.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.157 (0.157) seconds
+Test Suite 'Selected tests' passed at 2026-09-30 06:37:47.750.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.157 (0.163) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
@@ -34,11 +34,11 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-09-30 04:00:14.059.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 04:00:14.065.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 04:00:14.065.
+Test Suite 'Selected tests' started at 2026-09-30 06:37:47.798.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 06:37:47.804.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 06:37:47.804.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:00:14.065.
+Test Suite 'Selected tests' passed at 2026-09-30 06:37:47.804.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -515,7 +515,7 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [34 / 38] GodstoneMesh
-[35 / 39] GodstoneMesh/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
    [0;36m6 |[0;0m     public let relationKey: RelationKey
    [0;36m7 |[0;0m     public let transportEpoch: UInt64
    [0;36m8 |[0;0m     public let peripheral: CBPeripheral?
@@ -749,17 +749,8 @@ Building for debugging...
 
 [#AddPreconcurrencyImport]: <https://docs.swift.org/compiler/documentation/diagnostics/add-preconcurrency-import>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-
+[35 / 39] GodstoneMesh
 [48 / 52] GodstoneMesh
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:173:27: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m171 |[0;0m             if let estateRoot {
-[0;36m172 |[0;0m                 let url = estateRoot.appendingPathComponent("lab_\(label)_\(next).db")
-[0;36m173 |[0;0m                 durable = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
-    [0;36m|[0;0m                           `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m174 |[0;0m                 durableStores[label] = durable
-[0;36m175 |[0;0m             }
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: [1;33mwarning: [1;39mvariable 'bloom' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
 [0;36m141 |[0;0m         let nodeHint = identity.nodeHint
 [0;36m142 |[0;0m         var count = 0
@@ -786,6 +777,15 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:173:27: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m171 |[0;0m             if let estateRoot {
+[0;36m172 |[0;0m                 let url = estateRoot.appendingPathComponent("lab_\(label)_\(next).db")
+[0;36m173 |[0;0m                 durable = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+    [0;36m|[0;0m                           `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m174 |[0;0m                 durableStores[label] = durable
+[0;36m175 |[0;0m             }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
  [0;36m42 |[0;0m     public let msgId: Data
  [0;36m43 |[0;0m     public let state: DeliveryState
@@ -3023,6 +3023,24 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m44 |[0;0m         )
+ [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
+ [0;36m46 |[0;0m         let binding = try! IdentityBindingV1(
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m47 |[0;0m             generation: generation,
+ [0;36m48 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m501 |[0;0m 
+[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
+    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m504 |[0;0m         let a = nodeA()
+[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
   [0;36m32 |[0;0m         )
@@ -3394,24 +3412,6 @@ Building for debugging...
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m44 |[0;0m         )
- [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
- [0;36m46 |[0;0m         let binding = try! IdentityBindingV1(
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m47 |[0;0m             generation: generation,
- [0;36m48 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m501 |[0;0m 
-[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
-    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m504 |[0;0m         let a = nodeA()
-[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC21-ios-resolver-stopeth-resolving-altogether/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
  [0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
  [0;36m346 |[0;0m         pins.append(req)
@@ -4044,4 +4044,4 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.24 secs)
+Build complete! (10.79 secs)

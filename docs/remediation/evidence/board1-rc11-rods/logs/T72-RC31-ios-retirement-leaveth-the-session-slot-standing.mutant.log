@@ -1,30 +1,30 @@
-Test Suite 'Selected tests' started at 2026-09-30 04:09:05.312.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 04:09:05.319.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 04:09:05.319.
+Test Suite 'Selected tests' started at 2026-09-30 06:46:48.941.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-30 06:46:48.947.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 06:46:48.947.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:09:05.319.
-	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
-Test Suite 'Selected tests' started at 2026-09-30 04:09:05.362.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 04:09:05.369.
-Test Suite 'GsStress001RealRuntimeDriverTests' started at 2026-09-30 04:09:05.369.
+Test Suite 'Selected tests' passed at 2026-09-30 06:46:48.947.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
+Test Suite 'Selected tests' started at 2026-09-30 06:46:48.983.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 06:46:48.989.
+Test Suite 'GsStress001RealRuntimeDriverTests' started at 2026-09-30 06:46:48.989.
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift:1845: error: -[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot] : XCTAssertEqual failed: ("0") is not equal to ("1") - *** the release verb must report the one incarnation it retired. ***
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift:1847: error: -[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot] : XCTAssertEqual failed: ("1") is not equal to ("0") - *** THE OWNER'S OWN CENSUS MUST RETURN TO ZERO AFTER ITS OWN RELEASE VERB. A slot standing here is the leak class the card names, read from the owner that allocates it. ***
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift:1850: error: -[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot] : XCTAssertEqual failed: ("1") is not equal to ("0") - *** and no incarnation of the handle may survive it. ***
-Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot]' failed (0.285 seconds).
-Test Suite 'GsStress001RealRuntimeDriverTests' failed at 2026-09-30 04:09:05.654.
-	 Executed 1 test, with 3 failures (0 unexpected) in 0.285 (0.285) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 04:09:05.654.
-	 Executed 1 test, with 3 failures (0 unexpected) in 0.285 (0.285) seconds
-Test Suite 'Selected tests' failed at 2026-09-30 04:09:05.654.
-	 Executed 1 test, with 3 failures (0 unexpected) in 0.285 (0.292) seconds
+Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot]' failed (0.049 seconds).
+Test Suite 'GsStress001RealRuntimeDriverTests' failed at 2026-09-30 06:46:49.037.
+	 Executed 1 test, with 3 failures (0 unexpected) in 0.049 (0.049) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 06:46:49.037.
+	 Executed 1 test, with 3 failures (0 unexpected) in 0.049 (0.049) seconds
+Test Suite 'Selected tests' failed at 2026-09-30 06:46:49.038.
+	 Executed 1 test, with 3 failures (0 unexpected) in 0.049 (0.054) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-09-30 04:09:05.711.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 04:09:05.718.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 04:09:05.718.
+Test Suite 'Selected tests' started at 2026-09-30 06:46:49.086.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 06:46:49.091.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 06:46:49.091.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:09:05.718.
-	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+Test Suite 'Selected tests' passed at 2026-09-30 06:46:49.091.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
 Building for debugging...
@@ -502,7 +502,7 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [34 / 38] GodstoneMesh
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
+[35 / 39] GodstoneMesh/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
    [0;36m6 |[0;0m     public let relationKey: RelationKey
    [0;36m7 |[0;0m     public let transportEpoch: UInt64
    [0;36m8 |[0;0m     public let peripheral: CBPeripheral?
@@ -736,7 +736,7 @@ Building for debugging...
 
 [#AddPreconcurrencyImport]: <https://docs.swift.org/compiler/documentation/diagnostics/add-preconcurrency-import>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[35 / 39] GodstoneMesh
+
 [48 / 52] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:173:27: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
 [0;36m171 |[0;0m             if let estateRoot {
@@ -3019,6 +3019,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
  [0;36m44 |[0;0m         )
  [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
@@ -3037,7 +3038,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[61 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
   [0;36m32 |[0;0m         )
   [0;36m33 |[0;0m         let sig = try! signingKey.signature(for: preimage)
@@ -3055,7 +3055,31 @@ Building for debugging...
  [0;36m29 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[62 / 66] GodstoneMeshTests-product
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
+ [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ [0;36m40 |[0;0m         var allows: Bool
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
+ [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m501 |[0;0m 
+[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
+    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m504 |[0;0m         let a = nodeA()
+[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
+[0;36m164 |[0;0m     @discardableResult
+    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: [1;33mwarning: [1;39mvariable 'b' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
 [0;36m120 |[0;0m 
 [0;36m121 |[0;0m     private func bloomDigest(_ ids: [Data]) -> Data {
@@ -3112,105 +3136,6 @@ Building for debugging...
 [0;36m185 |[0;0m         let id = Data(repeating: 0x5A, count: 16)
 [0;36m186 |[0;0m 
 
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
- [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- [0;36m40 |[0;0m         var allows: Bool
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
- [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m501 |[0;0m 
-[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
-    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m504 |[0;0m         let a = nodeA()
-[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
-[0;36m164 |[0;0m     @discardableResult
-    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: [1;33mwarning: [1;39minitialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m272 |[0;0m         )
-[0;36m273 |[0;0m         let driverBefore = try XCTUnwrap(transport.centralDriver)
-[0;36m274 |[0;0m         let driverIdentityBefore = ObjectIdentifier(driverBefore)
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39minitialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m275 |[0;0m 
-[0;36m276 |[0;0m         let order = OrderLog()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:421:13: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
-[0;36m419 |[0;0m         let innerTrace = Box<BleTransport.ReductionTrace>()
-[0;36m420 |[0;0m         transport.failpointAfterValidationForTest = { _ in
-[0;36m421 |[0;0m             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
-[0;36m422 |[0;0m             if let inner = transport.lastReductionTraceForTest {
-[0;36m423 |[0;0m                 innerTrace.set(inner)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
-[0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
-[0;36m346 |[0;0m         pins.append(req)
-[0;36m347 |[0;0m         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-    [0;36m|[0;0m         `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
-[0;36m348 |[0;0m                                              sourceEpoch: bob.currentTransportEpoch)
-[0;36m349 |[0;0m     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:371:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
-[0;36m369 |[0;0m                 ReadinessT17Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
-[0;36m370 |[0;0m         ]
-[0;36m371 |[0;0m         _ = alice.processCentralDidDiscover(
-    [0;36m|[0;0m         `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
-[0;36m372 |[0;0m             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
-[0;36m373 |[0;0m             advertisementData: advRecord, rssi: NSNumber(value: -60),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:861:13: [1;33mwarning: [1;39minitialization of variable 'bytesQueued' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m859 |[0;0m 
-[0;36m860 |[0;0m         var verdicts: [TransportResult] = []
-[0;36m861 |[0;0m         var bytesQueued = 0
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39minitialization of variable 'bytesQueued' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m862 |[0;0m         for i in 0..<260 {
-[0;36m863 |[0;0m             let verdict = alice.send(makeFrame([UInt8(i % 251) + 4]), to: peerId)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
- [0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
- [0;36m346 |[0;0m         pins.append(req)
- [0;36m347 |[0;0m         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-     [0;36m|[0;0m         `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
- [0;36m348 |[0;0m                                              sourceEpoch: bob.currentTransportEpoch)
- [0;36m349 |[0;0m     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:372:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
- [0;36m370 |[0;0m                 ReadinessT19Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
- [0;36m371 |[0;0m         ]
- [0;36m372 |[0;0m         _ = alice.processCentralDidDiscover(
-     [0;36m|[0;0m         `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
- [0;36m373 |[0;0m             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
- [0;36m374 |[0;0m             advertisementData: advRecord, rssi: NSNumber(value: -60),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:939:13: [1;33mwarning: [1;39mvariable 'accepts' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
- [0;36m937 |[0;0m                                               remoteHint: pair.aliceIdentity.nodeHint)
- [0;36m938 |[0;0m         guard let pm = pmOpt else { XCTFail(why); return }
- [0;36m939 |[0;0m         var accepts = false
-     [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'accepts' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
- [0;36m940 |[0;0m         pm.updateAnswer = { _ in accepts }
- [0;36m941 |[0;0m         let f = makeFrame([9, 8, 7, 6, 5, 4])
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:1127:34: [1;33mwarning: [1;39mimmutable value 'res' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1125 |[0;0m         let writer = RecordWriter(connection: conn, relationKey: rk)
-[0;36m1126 |[0;0m         let answer = writer.reserve(recordType: .data, clearLength: 120, capacity: 512)
-[0;36m1127 |[0;0m         guard case .admitted(let res) = answer else {
-     [0;36m|[0;0m                                  `- [1;33mwarning: [1;39mimmutable value 'res' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1128 |[0;0m             return XCTFail("the reservation must be admitted: \(answer)")
-[0;36m1129 |[0;0m         }
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift:181:13: [1;33mwarning: [1;39mvariable 'hs3Result' was written to, but never read[0;0m
 [0;36m179 |[0;0m         let hsThreadFinished = expectation(description: "HS thread finished")
@@ -3969,6 +3894,80 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: [1;33mwarning: [1;39minitialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m272 |[0;0m         )
+[0;36m273 |[0;0m         let driverBefore = try XCTUnwrap(transport.centralDriver)
+[0;36m274 |[0;0m         let driverIdentityBefore = ObjectIdentifier(driverBefore)
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39minitialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m275 |[0;0m 
+[0;36m276 |[0;0m         let order = OrderLog()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:421:13: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+[0;36m419 |[0;0m         let innerTrace = Box<BleTransport.ReductionTrace>()
+[0;36m420 |[0;0m         transport.failpointAfterValidationForTest = { _ in
+[0;36m421 |[0;0m             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+[0;36m422 |[0;0m             if let inner = transport.lastReductionTraceForTest {
+[0;36m423 |[0;0m                 innerTrace.set(inner)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+[0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
+[0;36m346 |[0;0m         pins.append(req)
+[0;36m347 |[0;0m         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+    [0;36m|[0;0m         `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+[0;36m348 |[0;0m                                              sourceEpoch: bob.currentTransportEpoch)
+[0;36m349 |[0;0m     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:371:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+[0;36m369 |[0;0m                 ReadinessT17Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
+[0;36m370 |[0;0m         ]
+[0;36m371 |[0;0m         _ = alice.processCentralDidDiscover(
+    [0;36m|[0;0m         `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+[0;36m372 |[0;0m             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
+[0;36m373 |[0;0m             advertisementData: advRecord, rssi: NSNumber(value: -60),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:861:13: [1;33mwarning: [1;39minitialization of variable 'bytesQueued' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m859 |[0;0m 
+[0;36m860 |[0;0m         var verdicts: [TransportResult] = []
+[0;36m861 |[0;0m         var bytesQueued = 0
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39minitialization of variable 'bytesQueued' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m862 |[0;0m         for i in 0..<260 {
+[0;36m863 |[0;0m             let verdict = alice.send(makeFrame([UInt8(i % 251) + 4]), to: peerId)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+ [0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
+ [0;36m346 |[0;0m         pins.append(req)
+ [0;36m347 |[0;0m         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+     [0;36m|[0;0m         `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+ [0;36m348 |[0;0m                                              sourceEpoch: bob.currentTransportEpoch)
+ [0;36m349 |[0;0m     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:372:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+ [0;36m370 |[0;0m                 ReadinessT19Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
+ [0;36m371 |[0;0m         ]
+ [0;36m372 |[0;0m         _ = alice.processCentralDidDiscover(
+     [0;36m|[0;0m         `- [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
+ [0;36m373 |[0;0m             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
+ [0;36m374 |[0;0m             advertisementData: advRecord, rssi: NSNumber(value: -60),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:939:13: [1;33mwarning: [1;39mvariable 'accepts' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+ [0;36m937 |[0;0m                                               remoteHint: pair.aliceIdentity.nodeHint)
+ [0;36m938 |[0;0m         guard let pm = pmOpt else { XCTFail(why); return }
+ [0;36m939 |[0;0m         var accepts = false
+     [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'accepts' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+ [0;36m940 |[0;0m         pm.updateAnswer = { _ in accepts }
+ [0;36m941 |[0;0m         let f = makeFrame([9, 8, 7, 6, 5, 4])
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:1127:34: [1;33mwarning: [1;39mimmutable value 'res' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1125 |[0;0m         let writer = RecordWriter(connection: conn, relationKey: rk)
+[0;36m1126 |[0;0m         let answer = writer.reserve(recordType: .data, clearLength: 120, capacity: 512)
+[0;36m1127 |[0;0m         guard case .admitted(let res) = answer else {
+     [0;36m|[0;0m                                  `- [1;33mwarning: [1;39mimmutable value 'res' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1128 |[0;0m             return XCTFail("the reservation must be admitted: \(answer)")
+[0;36m1129 |[0;0m         }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
 [0;36m150 |[0;0m         var raised = false
 [0;36m151 |[0;0m         do {
@@ -4030,7 +4029,7 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [67 / 69] GodstoneMeshTests-product
 [70 / 74] LabMeshTests-product
-[72 / 76] LabMeshTests-product/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC31-ios-retirement-leaveth-the-session-slot-standing/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
  [0;36m83 |[0;0m         // over the caller-named medium still findeth EXACTLY THIS intent. Nothing of the authoring runtime is
  [0;36m84 |[0;0m         // consulted -- the medium alone answereth.
  [0;36m85 |[0;0m         let reopened = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
@@ -4039,6 +4038,6 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
  [0;36m87 |[0;0m         guard case .found = journal.load(intentId) else {
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-
+[72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (11.51 secs)
+Build complete! (10.33 secs)

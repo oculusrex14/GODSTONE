@@ -1,26 +1,26 @@
-Test Suite 'Selected tests' started at 2026-09-30 03:56:54.488.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 03:56:54.494.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 03:56:54.494.
+Test Suite 'Selected tests' started at 2026-09-30 06:34:28.392.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-30 06:34:28.398.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 06:34:28.398.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 03:56:54.494.
+Test Suite 'Selected tests' passed at 2026-09-30 06:34:28.398.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 03:56:54.530.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 03:56:54.536.
-Test Suite 'ReadinessT30Tests' started at 2026-09-30 03:56:54.536.
+Test Suite 'Selected tests' started at 2026-09-30 06:34:28.436.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 06:34:28.441.
+Test Suite 'ReadinessT30Tests' started at 2026-09-30 06:34:28.441.
 Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT30Tests.swift:382: error: -[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent] : XCTAssertEqual failed: ("pinnedSQLCipher") is not equal to ("plainSQLite") - *** AN ENGINE THAT DID NOT BIND MUST NOT CLAIM `.pinnedSQLCipher`. *The factory refuses a plain engine outright ('no plaintext fallback, ever'), so this single property is the FIRST fail-closed gate -- and an unconditional `.pinnedSQLCipher` would make every refusal arm below vacuous.* ***
-Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent]' failed (0.035 seconds).
-Test Suite 'ReadinessT30Tests' failed at 2026-09-30 03:56:54.572.
-	 Executed 1 test, with 1 failure (0 unexpected) in 0.035 (0.035) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 03:56:54.572.
-	 Executed 1 test, with 1 failure (0 unexpected) in 0.035 (0.035) seconds
-Test Suite 'Selected tests' failed at 2026-09-30 03:56:54.572.
-	 Executed 1 test, with 1 failure (0 unexpected) in 0.035 (0.041) seconds
-Test Suite 'Selected tests' started at 2026-09-30 03:56:54.621.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 03:56:54.627.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 03:56:54.627.
+Test Case '-[GodstoneMeshTests.ReadinessT30Tests testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent]' failed (0.031 seconds).
+Test Suite 'ReadinessT30Tests' failed at 2026-09-30 06:34:28.472.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.031 (0.031) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 06:34:28.472.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.031 (0.031) seconds
+Test Suite 'Selected tests' failed at 2026-09-30 06:34:28.472.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.031 (0.036) seconds
+Test Suite 'Selected tests' started at 2026-09-30 06:34:28.520.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 06:34:28.526.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 06:34:28.526.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 03:56:54.627.
+Test Suite 'Selected tests' passed at 2026-09-30 06:34:28.526.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
@@ -181,6 +181,35 @@ Building for debugging...
     [0;36m|[0;0m `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
  [0;36m19 |[0;0m 
  [0;36m20 |[0;0m @end
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+ [0;36m23 |[0;0m @MainActor
+ [0;36m24 |[0;0m final class ReadinessT48Tests: XCTestCase {
+ [0;36m25 |[0;0m     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    [0;36m|[0;0m                        `- [1;39mnote: [1;39mstatic property declared here[0;0m
+ [0;36m26 |[0;0m 
+ [0;36m27 |[0;0m     private var fixturesDirectory: URL {
+    [0;36m:[0;0m
+[0;36m132 |[0;0m     /// Build (or rebuild) the tier's archive under the application-support
+[0;36m133 |[0;0m     /// archives directory, where the production resolver looketh.
+[0;36m134 |[0;0m     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    [0;36m|[0;0m                                                                     `- [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+[0;36m135 |[0;0m                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+[0;36m136 |[0;0m         var knobs = FixtureKnobs()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+ [0;36m114 |[0;0m @MainActor
+ [0;36m115 |[0;0m final class ReadinessT50Tests: XCTestCase {
+ [0;36m116 |[0;0m     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+     [0;36m|[0;0m                        `- [1;39mnote: [1;39mstatic property declared here[0;0m
+ [0;36m117 |[0;0m 
+ [0;36m118 |[0;0m     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
+     [0;36m:[0;0m
+ [0;36m222 |[0;0m 
+ [0;36m223 |[0;0m     /// Build (or rebuild) the tier's archive under the resolver's eye.
+ [0;36m224 |[0;0m     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
+     [0;36m|[0;0m                                                                     `- [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+ [0;36m225 |[0;0m                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+ [0;36m226 |[0;0m         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: [1;33mwarning: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode[0;0m
 [0;36m176 |[0;0m 
 [0;36m177 |[0;0m         func retrieve(question: String) async -> RetrievalResult {
@@ -238,35 +267,6 @@ Building for debugging...
 [0;36m535 |[0;0m 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
- [0;36m23 |[0;0m @MainActor
- [0;36m24 |[0;0m final class ReadinessT48Tests: XCTestCase {
- [0;36m25 |[0;0m     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    [0;36m|[0;0m                        `- [1;39mnote: [1;39mstatic property declared here[0;0m
- [0;36m26 |[0;0m 
- [0;36m27 |[0;0m     private var fixturesDirectory: URL {
-    [0;36m:[0;0m
-[0;36m132 |[0;0m     /// Build (or rebuild) the tier's archive under the application-support
-[0;36m133 |[0;0m     /// archives directory, where the production resolver looketh.
-[0;36m134 |[0;0m     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    [0;36m|[0;0m                                                                     `- [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
-[0;36m135 |[0;0m                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-[0;36m136 |[0;0m         var knobs = FixtureKnobs()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
- [0;36m114 |[0;0m @MainActor
- [0;36m115 |[0;0m final class ReadinessT50Tests: XCTestCase {
- [0;36m116 |[0;0m     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-     [0;36m|[0;0m                        `- [1;39mnote: [1;39mstatic property declared here[0;0m
- [0;36m117 |[0;0m 
- [0;36m118 |[0;0m     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
-     [0;36m:[0;0m
- [0;36m222 |[0;0m 
- [0;36m223 |[0;0m     /// Build (or rebuild) the tier's archive under the resolver's eye.
- [0;36m224 |[0;0m     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
-     [0;36m|[0;0m                                                                     `- [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
- [0;36m225 |[0;0m                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
- [0;36m226 |[0;0m         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: [1;33mwarning: [1;39mleft side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used[0;0m
 [0;36m169 |[0;0m             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 [0;36m170 |[0;0m             if rc != SQLITE_OK {
@@ -282,6 +282,15 @@ Building for debugging...
     [0;36m|[0;0m                                                         `- [1;33mwarning: [1;39mleft side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used[0;0m
 [0;36m204 |[0;0m                 if let e = err { sqlite3_free(e) }
 [0;36m205 |[0;0m                 XCTFail("plant insert cried: \(why) on \(String(sql.prefix(72)))…")
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: [1;33mwarning: [1;39mvariable 'given' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+[0;36m213 |[0;0m 
+[0;36m214 |[0;0m private func t61Chunked(_ bytes: [UInt8], _ measure: Int, _ burst: Int) -> ModelStaging.T61Chunker {
+[0;36m215 |[0;0m     var given = bytes
+    [0;36m|[0;0m         `- [1;33mwarning: [1;39mvariable 'given' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+[0;36m216 |[0;0m     var at = 0
+[0;36m217 |[0;0m     var words = 0
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
  [0;36m23 |[0;0m @MainActor
  [0;36m24 |[0;0m final class ReadinessT48Tests: XCTestCase {
@@ -312,15 +321,6 @@ Building for debugging...
     [0;36m|[0;0m                                                     `- [1;33mwarning: [1;39mleft side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used[0;0m
 [0;36m234 |[0;0m             if let e = err { sqlite3_free(e) }
 [0;36m235 |[0;0m             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: [1;33mwarning: [1;39mvariable 'given' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
-[0;36m213 |[0;0m 
-[0;36m214 |[0;0m private func t61Chunked(_ bytes: [UInt8], _ measure: Int, _ burst: Int) -> ModelStaging.T61Chunker {
-[0;36m215 |[0;0m     var given = bytes
-    [0;36m|[0;0m         `- [1;33mwarning: [1;39mvariable 'given' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
-[0;36m216 |[0;0m     var at = 0
-[0;36m217 |[0;0m     var words = 0
-
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
  [0;36m114 |[0;0m @MainActor
  [0;36m115 |[0;0m final class ReadinessT50Tests: XCTestCase {
@@ -744,6 +744,21 @@ Building for debugging...
 [0;36m175 |[0;0m             }
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m42 |[0;0m     public let msgId: Data
+ [0;36m43 |[0;0m     public let state: DeliveryState
+ [0;36m44 |[0;0m     public let frame: FrameV2
+    [0;36m|[0;0m                `- [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m45 |[0;0m     /// When this node committed the pair, when it remembers; nil when the
+ [0;36m46 |[0;0m     /// tables cannot name the instant (honest silence over a fabricated clock).
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m5 |[0;0m 
+  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
+  [0;36m7 |[0;0m public struct FrameV2: Equatable {
+    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
+  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: [1;33mwarning: [1;39mvariable 'bloom' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
 [0;36m141 |[0;0m         let nodeHint = identity.nodeHint
 [0;36m142 |[0;0m         var count = 0
@@ -770,21 +785,6 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m42 |[0;0m     public let msgId: Data
- [0;36m43 |[0;0m     public let state: DeliveryState
- [0;36m44 |[0;0m     public let frame: FrameV2
-    [0;36m|[0;0m                `- [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m45 |[0;0m     /// When this node committed the pair, when it remembers; nil when the
- [0;36m46 |[0;0m     /// tables cannot name the instant (honest silence over a fabricated clock).
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m5 |[0;0m 
-  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
-  [0;36m7 |[0;0m public struct FrameV2: Equatable {
-    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
-  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: [1;33mwarning: [1;39mstored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode[0;0m
  [0;36m76 |[0;0m     public let to: Int
  [0;36m77 |[0;0m     public let statements: [String]
@@ -3007,6 +3007,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
  [0;36m44 |[0;0m         )
  [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
@@ -3025,7 +3026,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
   [0;36m32 |[0;0m         )
   [0;36m33 |[0;0m         let sig = try! signingKey.signature(for: preimage)
@@ -3396,23 +3396,6 @@ Building for debugging...
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m29 |[0;0m         )
- [0;36m30 |[0;0m         let sig = try! signingKey.signature(for: preimage)
- [0;36m31 |[0;0m         let binding = try! IdentityBindingV1(
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m32 |[0;0m             generation: generation,
- [0;36m33 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
- [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- [0;36m40 |[0;0m         var allows: Bool
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
- [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
  [0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
  [0;36m346 |[0;0m         pins.append(req)
@@ -3695,6 +3678,23 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m29 |[0;0m         )
+ [0;36m30 |[0;0m         let sig = try! signingKey.signature(for: preimage)
+ [0;36m31 |[0;0m         let binding = try! IdentityBindingV1(
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m32 |[0;0m             generation: generation,
+ [0;36m33 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
+ [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ [0;36m40 |[0;0m         var allows: Bool
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
+ [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC17-ios-engine-claims-pinned-without-binding/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT36Tests.swift:538:13: [1;33mwarning: [1;39mvariable 'f' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
  [0;36m536 |[0;0m     /// rejections -- failure distinguished from empty/no-op success, nothing mutated.
  [0;36m537 |[0;0m     func testUnapprovedRecipientYieldsTypedDistinctRejections() async throws {
@@ -4028,4 +4028,4 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.30 secs)
+Build complete! (10.35 secs)

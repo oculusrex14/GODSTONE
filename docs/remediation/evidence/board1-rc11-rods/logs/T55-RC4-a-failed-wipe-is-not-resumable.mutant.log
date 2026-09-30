@@ -11,3 +11,20 @@ Execution failed for task ':app:testLightDebugUnitTest'.
 > Run with --scan to get full insights.
 
 BUILD FAILED in 14s
+
+TEST-SUITE TEST-io.godstone.app.readiness.ReadinessT55Test.xml tests=15 skipped=0 failures=1 errors=0
+TEST-CASE PASS test_w01_one_contact_is_verified_only_after_the_compare
+TEST-CASE PASS test_w08_an_oversized_payload_is_refused_before_decoding
+TEST-CASE PASS test_w03_a_stale_ref_leaveth_the_estate_unchanged
+TEST-CASE PASS test_w09_no_private_material_is_exported_or_leaked
+TEST-CASE PASS test_w11_a_mismatching_fingerprint_is_refused
+TEST-CASE PASS test_w13_the_ref_matcheth_the_durable_cas_signature
+TEST-CASE PASS test_ux042_the_confirm_carries_the_displayed_fingerprint
+TEST-CASE PASS test_w07_a_malformed_payload_is_refused
+TEST-CASE PASS test_w10_the_screenshot_policy_followeth_the_material
+TEST-CASE PASS test_w12_a_refused_command_never_mutates_the_estate
+TEST-CASE PASS test_w02_the_displayed_candidate_is_the_one_approved
+TEST-CASE PASS test_ux043_the_rotation_and_revoke_controls_dispatch_their_existing_commands
+TEST-CASE PASS test_w04_revocation_during_an_active_session
+TEST-CASE PASS test_w05_a_corrupt_trust_store_claimeth_nothing
+TEST-CASE FAIL test_w06_a_failed_wipe_surviveth_a_relaunch

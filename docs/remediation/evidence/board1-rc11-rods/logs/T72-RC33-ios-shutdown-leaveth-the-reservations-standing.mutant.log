@@ -1,27 +1,27 @@
-Test Suite 'Selected tests' started at 2026-09-30 04:10:46.459.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 04:10:46.465.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 04:10:46.465.
+Test Suite 'Selected tests' started at 2026-09-30 06:48:11.867.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-30 06:48:11.872.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 06:48:11.872.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:10:46.465.
+Test Suite 'Selected tests' passed at 2026-09-30 06:48:11.873.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 04:10:46.501.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 04:10:46.507.
-Test Suite 'GsStress001RealRuntimeDriverTests' started at 2026-09-30 04:10:46.507.
+Test Suite 'Selected tests' started at 2026-09-30 06:48:11.909.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 06:48:11.915.
+Test Suite 'GsStress001RealRuntimeDriverTests' started at 2026-09-30 06:48:11.915.
 Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift:1936: error: -[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations] : XCTAssertEqual failed: ("4") is not equal to ("0") - *** THE WRITER'S OWN CLOSE PATH MUST RETURN ITS OWN RESERVATION TABLE TO ZERO. Tickets standing after shutdown are the leak class the card names, read from the writer that allocated them. ***
-Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations]' failed (0.247 seconds).
-Test Suite 'GsStress001RealRuntimeDriverTests' failed at 2026-09-30 04:10:46.754.
-	 Executed 1 test, with 1 failure (0 unexpected) in 0.247 (0.247) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 04:10:46.754.
-	 Executed 1 test, with 1 failure (0 unexpected) in 0.247 (0.247) seconds
-Test Suite 'Selected tests' failed at 2026-09-30 04:10:46.754.
-	 Executed 1 test, with 1 failure (0 unexpected) in 0.247 (0.252) seconds
+Test Case '-[GodstoneMeshTests.GsStress001RealRuntimeDriverTests testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations]' failed (0.043 seconds).
+Test Suite 'GsStress001RealRuntimeDriverTests' failed at 2026-09-30 06:48:11.958.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.043 (0.043) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 06:48:11.958.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.043 (0.043) seconds
+Test Suite 'Selected tests' failed at 2026-09-30 06:48:11.958.
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.043 (0.049) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-09-30 04:10:46.804.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 04:10:46.810.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 04:10:46.810.
+Test Suite 'Selected tests' started at 2026-09-30 06:48:12.006.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 06:48:12.012.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 06:48:12.012.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 04:10:46.810.
+Test Suite 'Selected tests' passed at 2026-09-30 06:48:12.012.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
@@ -499,8 +499,9 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[29 / 32] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
-[35 / 39] GodstoneMesh/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
    [0;36m6 |[0;0m     public let relationKey: RelationKey
    [0;36m7 |[0;0m     public let transportEpoch: UInt64
    [0;36m8 |[0;0m     public let peripheral: CBPeripheral?
@@ -734,7 +735,7 @@ Building for debugging...
 
 [#AddPreconcurrencyImport]: <https://docs.swift.org/compiler/documentation/diagnostics/add-preconcurrency-import>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-
+[35 / 39] GodstoneMesh
 [48 / 52] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:173:27: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
 [0;36m171 |[0;0m             if let estateRoot {
@@ -3008,6 +3009,24 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m44 |[0;0m         )
+ [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
+ [0;36m46 |[0;0m         let binding = try! IdentityBindingV1(
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m47 |[0;0m             generation: generation,
+ [0;36m48 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m501 |[0;0m 
+[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
+    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m504 |[0;0m         let a = nodeA()
+[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
   [0;36m32 |[0;0m         )
@@ -3182,24 +3201,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m44 |[0;0m         )
- [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
- [0;36m46 |[0;0m         let binding = try! IdentityBindingV1(
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m47 |[0;0m             generation: generation,
- [0;36m48 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m501 |[0;0m 
-[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
-    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m504 |[0;0m         let a = nodeA()
-[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift:181:13: [1;33mwarning: [1;39mvariable 'hs3Result' was written to, but never read[0;0m
 [0;36m179 |[0;0m         let hsThreadFinished = expectation(description: "HS thread finished")
 [0;36m180 |[0;0m         let invalidationFinished = expectation(description: "Invalidation finished")
@@ -3397,23 +3398,6 @@ Building for debugging...
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m29 |[0;0m         )
- [0;36m30 |[0;0m         let sig = try! signingKey.signature(for: preimage)
- [0;36m31 |[0;0m         let binding = try! IdentityBindingV1(
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m32 |[0;0m             generation: generation,
- [0;36m33 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
- [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- [0;36m40 |[0;0m         var allows: Bool
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
- [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
  [0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
  [0;36m346 |[0;0m         pins.append(req)
@@ -3696,6 +3680,23 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m29 |[0;0m         )
+ [0;36m30 |[0;0m         let sig = try! signingKey.signature(for: preimage)
+ [0;36m31 |[0;0m         let binding = try! IdentityBindingV1(
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m32 |[0;0m             generation: generation,
+ [0;36m33 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
+ [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ [0;36m40 |[0;0m         var allows: Bool
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
+ [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift:196:26: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
 [0;36m194 |[0;0m         // *** ADOPT IT, RUN REAL WORK, AND REQUIRE THE WORK TO HAVE LANDED ON THAT TABLE. ***
 [0;36m195 |[0;0m         let store = SqliteMessageStore(verifiedConnection: owned, maxBytes: 64 * 1024 * 1024)
@@ -3810,6 +3811,65 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m150 |[0;0m         var raised = false
+[0;36m151 |[0;0m         do {
+[0;36m152 |[0;0m             try dying.runPendingOnce(8) { point in
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m153 |[0;0m                 if point == "signing" { throw NSError(domain: "ReadinessT83", code: 1) }
+[0;36m154 |[0;0m             }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:240:54: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m238 |[0;0m             let batch = r.pump.nextBatch(Data(to.local.id.nodeId), now: now)
+[0;36m239 |[0;0m             return batch.copies.map { copy in
+[0;36m240 |[0;0m                 let verdict = to.dispatcher.dispatch(try! FrameV2.decode(copy.encodedFrame)!,
+    [0;36m|[0;0m                                                      `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m241 |[0;0m                                                      receivedFrom: Data(r.local.id.nodeId))
+[0;36m242 |[0;0m                 r.pump.onForwardOutcome(copy, peer: Data(to.local.id.nodeId), accepted: true, now: now)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:272:10: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m270 |[0;0m 
+[0;36m271 |[0;0m     private func heldFrames(_ store: InMemoryMessageStore) -> Int {
+[0;36m272 |[0;0m         (try? store.allHeldMsgIds().count) ?? -1
+    [0;36m|[0;0m          `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m273 |[0;0m     }
+[0;36m274 |[0;0m 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:438:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m436 |[0;0m         XCTAssertEqual(copy.ttl, ackRelayInitialTtl - 1)
+[0;36m437 |[0;0m         XCTAssertEqual(copy.hopCount, 1)
+[0;36m438 |[0;0m         let decoded = try FrameV2.decode(copy.encodedFrame)!
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m439 |[0;0m         XCTAssertEqual(decoded.flags, 0)
+[0;36m440 |[0;0m         XCTAssertEqual(decoded.payload.count, 80, "the 80-byte payload travelleth whole")
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:601:47: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m599 |[0;0m         XCTAssertEqual(batch.copies.count, 1)
+[0;36m600 |[0;0m         guard let rebornCopy = firstCopy(batch, "the reborn copy") else { return }
+[0;36m601 |[0;0m         let verdict = w.a.dispatcher.dispatch(try FrameV2.decode(rebornCopy.encodedFrame)!,
+    [0;36m|[0;0m                                               `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m602 |[0;0m                                              receivedFrom: Data(w.r.local.id.nodeId))
+[0;36m603 |[0;0m         XCTAssertTrue(verdict.accepted)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
+[0;36m164 |[0;0m     @discardableResult
+    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:94:13: [1;33mwarning: [1;39mvariable 'bobIdentity' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+ [0;36m92 |[0;0m         // right way: alice below bob. Search forward from the requested seed.
+ [0;36m93 |[0;0m         var aliceIdentity = try makeIdentity(seedByte: seedA, staticPrivByte: privA)
+ [0;36m94 |[0;0m         var bobIdentity = try makeIdentity(seedByte: seedB, staticPrivByte: privB)
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'bobIdentity' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+ [0;36m95 |[0;0m         var candidate = seedA
+ [0;36m96 |[0;0m         while ReadinessTrustedPairing.hintOrder(aliceIdentity.nodeHint, bobIdentity.nodeHint) != .orderedAscending {
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT36Tests.swift:538:13: [1;33mwarning: [1;39mvariable 'f' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
  [0;36m536 |[0;0m     /// rejections -- failure distinguished from empty/no-op success, nothing mutated.
  [0;36m537 |[0;0m     func testUnapprovedRecipientYieldsTypedDistinctRejections() async throws {
@@ -3957,65 +4017,6 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m150 |[0;0m         var raised = false
-[0;36m151 |[0;0m         do {
-[0;36m152 |[0;0m             try dying.runPendingOnce(8) { point in
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m153 |[0;0m                 if point == "signing" { throw NSError(domain: "ReadinessT83", code: 1) }
-[0;36m154 |[0;0m             }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:240:54: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m238 |[0;0m             let batch = r.pump.nextBatch(Data(to.local.id.nodeId), now: now)
-[0;36m239 |[0;0m             return batch.copies.map { copy in
-[0;36m240 |[0;0m                 let verdict = to.dispatcher.dispatch(try! FrameV2.decode(copy.encodedFrame)!,
-    [0;36m|[0;0m                                                      `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m241 |[0;0m                                                      receivedFrom: Data(r.local.id.nodeId))
-[0;36m242 |[0;0m                 r.pump.onForwardOutcome(copy, peer: Data(to.local.id.nodeId), accepted: true, now: now)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:272:10: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m270 |[0;0m 
-[0;36m271 |[0;0m     private func heldFrames(_ store: InMemoryMessageStore) -> Int {
-[0;36m272 |[0;0m         (try? store.allHeldMsgIds().count) ?? -1
-    [0;36m|[0;0m          `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m273 |[0;0m     }
-[0;36m274 |[0;0m 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:438:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m436 |[0;0m         XCTAssertEqual(copy.ttl, ackRelayInitialTtl - 1)
-[0;36m437 |[0;0m         XCTAssertEqual(copy.hopCount, 1)
-[0;36m438 |[0;0m         let decoded = try FrameV2.decode(copy.encodedFrame)!
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m439 |[0;0m         XCTAssertEqual(decoded.flags, 0)
-[0;36m440 |[0;0m         XCTAssertEqual(decoded.payload.count, 80, "the 80-byte payload travelleth whole")
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:601:47: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m599 |[0;0m         XCTAssertEqual(batch.copies.count, 1)
-[0;36m600 |[0;0m         guard let rebornCopy = firstCopy(batch, "the reborn copy") else { return }
-[0;36m601 |[0;0m         let verdict = w.a.dispatcher.dispatch(try FrameV2.decode(rebornCopy.encodedFrame)!,
-    [0;36m|[0;0m                                               `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m602 |[0;0m                                              receivedFrom: Data(w.r.local.id.nodeId))
-[0;36m603 |[0;0m         XCTAssertTrue(verdict.accepted)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
-[0;36m164 |[0;0m     @discardableResult
-    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:94:13: [1;33mwarning: [1;39mvariable 'bobIdentity' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
- [0;36m92 |[0;0m         // right way: alice below bob. Search forward from the requested seed.
- [0;36m93 |[0;0m         var aliceIdentity = try makeIdentity(seedByte: seedA, staticPrivByte: privA)
- [0;36m94 |[0;0m         var bobIdentity = try makeIdentity(seedByte: seedB, staticPrivByte: privB)
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'bobIdentity' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
- [0;36m95 |[0;0m         var candidate = seedA
- [0;36m96 |[0;0m         while ReadinessTrustedPairing.hintOrder(aliceIdentity.nodeHint, bobIdentity.nodeHint) != .orderedAscending {
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [67 / 69] GodstoneMeshTests-product
 [70 / 74] LabMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC33-ios-shutdown-leaveth-the-reservations-standing/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
@@ -4029,4 +4030,4 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (16.10 secs)
+Build complete! (10.54 secs)

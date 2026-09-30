@@ -11,3 +11,13 @@ Execution failed for task ':mesh:testDebugUnitTest'.
 > Run with --scan to get full insights.
 
 BUILD FAILED in 27s
+
+TEST-SUITE TEST-io.godstone.mesh.di.GsFinal003ZeroPrivateOpensTest.xml tests=8 skipped=0 failures=2 errors=0
+TEST-CASE PASS noPermitIsIssuedOnAnyOutstandingRung
+TEST-CASE PASS theCompositionIssuerRefusesOnEveryOutstandingRung
+TEST-CASE PASS noRefusingRungMovesAnyConstructionCounter
+TEST-CASE PASS theTerminalRungIssuesThePermit
+TEST-CASE PASS theRefusingRosterMatchesItsPinnedExpectation
+TEST-CASE PASS theCompositionIssuerPermitsOnTheTerminalRung
+TEST-CASE FAIL theCounterMovesOnThePermittedRoadAndNowhereOnARefusingOne
+TEST-CASE FAIL thePermittedRoadCountsOneAttemptPerSeamAtThePlatform

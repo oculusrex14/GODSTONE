@@ -1,12 +1,12 @@
-Test Suite 'Selected tests' started at 2026-09-30 03:40:37.184.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 03:40:37.190.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 03:40:37.190.
+Test Suite 'Selected tests' started at 2026-09-30 06:18:02.567.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-30 06:18:02.574.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 06:18:02.574.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 03:40:37.190.
-	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 03:40:37.227.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 03:40:37.233.
-Test Suite 'ReadinessT56Tests' started at 2026-09-30 03:40:37.233.
+Test Suite 'Selected tests' passed at 2026-09-30 06:18:02.574.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+Test Suite 'Selected tests' started at 2026-09-30 06:18:02.611.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 06:18:02.618.
+Test Suite 'ReadinessT56Tests' started at 2026-09-30 06:18:02.618.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW01UserVerifiedAppearethOnlyAfterTheDurableCas]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW01UserVerifiedAppearethOnlyAfterTheDurableCas]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW02ARefusedCasNeverShowethUserVerified]' started.
@@ -33,17 +33,17 @@ Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW12TheBindingPayloadIsBound
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW12TheBindingPayloadIsBounded]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW13TheIslesShareTheirFixturesAndTheCasContract]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW13TheIslesShareTheirFixturesAndTheCasContract]' passed (0.003 seconds).
-Test Suite 'ReadinessT56Tests' passed at 2026-09-30 03:40:37.245.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.012) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 03:40:37.245.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.012) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 03:40:37.245.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.018) seconds
-Test Suite 'Selected tests' started at 2026-09-30 03:40:37.293.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 03:40:37.299.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 03:40:37.299.
+Test Suite 'ReadinessT56Tests' passed at 2026-09-30 06:18:02.630.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 06:18:02.630.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'Selected tests' passed at 2026-09-30 06:18:02.630.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.019) seconds
+Test Suite 'Selected tests' started at 2026-09-30 06:18:02.679.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 06:18:02.684.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 06:18:02.684.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 03:40:37.299.
+Test Suite 'Selected tests' passed at 2026-09-30 06:18:02.684.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -137,6 +137,7 @@ Building for debugging...
 [0;36m555 |[0;0m     }
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[17 / 20] GodstoneCore
 [18 / 22] GodstoneCoreTests-product
 [28 / 32] GodstoneCoreTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: [1;33mwarning: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode[0;0m
@@ -202,35 +203,6 @@ Building for debugging...
     [0;36m|[0;0m `- [1;39mnote: [1;39m'unlock()' declared here[0;0m
  [0;36m19 |[0;0m 
  [0;36m20 |[0;0m @end
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
- [0;36m23 |[0;0m @MainActor
- [0;36m24 |[0;0m final class ReadinessT48Tests: XCTestCase {
- [0;36m25 |[0;0m     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    [0;36m|[0;0m                        `- [1;39mnote: [1;39mstatic property declared here[0;0m
- [0;36m26 |[0;0m 
- [0;36m27 |[0;0m     private var fixturesDirectory: URL {
-    [0;36m:[0;0m
-[0;36m132 |[0;0m     /// Build (or rebuild) the tier's archive under the application-support
-[0;36m133 |[0;0m     /// archives directory, where the production resolver looketh.
-[0;36m134 |[0;0m     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    [0;36m|[0;0m                                                                     `- [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
-[0;36m135 |[0;0m                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-[0;36m136 |[0;0m         var knobs = FixtureKnobs()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
- [0;36m114 |[0;0m @MainActor
- [0;36m115 |[0;0m final class ReadinessT50Tests: XCTestCase {
- [0;36m116 |[0;0m     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-     [0;36m|[0;0m                        `- [1;39mnote: [1;39mstatic property declared here[0;0m
- [0;36m117 |[0;0m 
- [0;36m118 |[0;0m     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
-     [0;36m:[0;0m
- [0;36m222 |[0;0m 
- [0;36m223 |[0;0m     /// Build (or rebuild) the tier's archive under the resolver's eye.
- [0;36m224 |[0;0m     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
-     [0;36m|[0;0m                                                                     `- [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
- [0;36m225 |[0;0m                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
- [0;36m226 |[0;0m         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: [1;33mwarning: [1;39minstance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode[0;0m
 [0;36m176 |[0;0m 
 [0;36m177 |[0;0m         func retrieve(question: String) async -> RetrievalResult {
@@ -288,6 +260,35 @@ Building for debugging...
 [0;36m535 |[0;0m 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+ [0;36m23 |[0;0m @MainActor
+ [0;36m24 |[0;0m final class ReadinessT48Tests: XCTestCase {
+ [0;36m25 |[0;0m     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    [0;36m|[0;0m                        `- [1;39mnote: [1;39mstatic property declared here[0;0m
+ [0;36m26 |[0;0m 
+ [0;36m27 |[0;0m     private var fixturesDirectory: URL {
+    [0;36m:[0;0m
+[0;36m132 |[0;0m     /// Build (or rebuild) the tier's archive under the application-support
+[0;36m133 |[0;0m     /// archives directory, where the production resolver looketh.
+[0;36m134 |[0;0m     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    [0;36m|[0;0m                                                                     `- [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+[0;36m135 |[0;0m                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+[0;36m136 |[0;0m         var knobs = FixtureKnobs()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+ [0;36m114 |[0;0m @MainActor
+ [0;36m115 |[0;0m final class ReadinessT50Tests: XCTestCase {
+ [0;36m116 |[0;0m     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+     [0;36m|[0;0m                        `- [1;39mnote: [1;39mstatic property declared here[0;0m
+ [0;36m117 |[0;0m 
+ [0;36m118 |[0;0m     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
+     [0;36m:[0;0m
+ [0;36m222 |[0;0m 
+ [0;36m223 |[0;0m     /// Build (or rebuild) the tier's archive under the resolver's eye.
+ [0;36m224 |[0;0m     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
+     [0;36m|[0;0m                                                                     `- [1;33mwarning: [1;39mmain actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode[0;0m
+ [0;36m225 |[0;0m                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+ [0;36m226 |[0;0m         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: [1;33mwarning: [1;39mleft side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used[0;0m
 [0;36m169 |[0;0m             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 [0;36m170 |[0;0m             if rc != SQLITE_OK {
@@ -519,7 +520,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[33 / 33] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
    [0;36m6 |[0;0m     public let relationKey: RelationKey
@@ -3029,7 +3029,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
  [0;36m44 |[0;0m         )
  [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
@@ -3048,6 +3047,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
   [0;36m32 |[0;0m         )
   [0;36m33 |[0;0m         let sig = try! signingKey.signature(for: preimage)
@@ -3065,31 +3065,6 @@ Building for debugging...
  [0;36m29 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
- [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- [0;36m40 |[0;0m         var allows: Bool
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
- [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
- [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m501 |[0;0m 
-[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
-    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m504 |[0;0m         let a = nodeA()
-[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
-[0;36m164 |[0;0m     @discardableResult
-    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: [1;33mwarning: [1;39mvariable 'b' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
 [0;36m120 |[0;0m 
 [0;36m121 |[0;0m     private func bloomDigest(_ ids: [Data]) -> Data {
@@ -3147,6 +3122,31 @@ Building for debugging...
 [0;36m186 |[0;0m 
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
+ [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ [0;36m40 |[0;0m         var allows: Bool
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
+ [0;36m41 |[0;0m         init(allows: Bool) { self.allows = allows }
+ [0;36m42 |[0;0m         func allowsSensitiveUse() -> Bool { allows }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m501 |[0;0m 
+[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
+    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m504 |[0;0m         let a = nodeA()
+[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
+[0;36m164 |[0;0m     @discardableResult
+    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: [1;33mwarning: [1;39minitialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
 [0;36m272 |[0;0m         )
 [0;36m273 |[0;0m         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -3221,203 +3221,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift:181:13: [1;33mwarning: [1;39mvariable 'hs3Result' was written to, but never read[0;0m
-[0;36m179 |[0;0m         let hsThreadFinished = expectation(description: "HS thread finished")
-[0;36m180 |[0;0m         let invalidationFinished = expectation(description: "Invalidation finished")
-[0;36m181 |[0;0m         var hs3Result: Data?
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'hs3Result' was written to, but never read[0;0m
-[0;36m182 |[0;0m 
-[0;36m183 |[0;0m         var invalidationReturned = false
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:314:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m312 |[0;0m         XCTAssertTrue(smA.isReady(a.outbound))
-[0;36m313 |[0;0m         let aToB = try XCTUnwrap(smA.seal(a.outbound, Data("incarnation A".utf8)))
-[0;36m314 |[0;0m         XCTAssertEqual(try smB.open(a.inbound, aToB), Data("incarnation A".utf8))
-    [0;36m|[0;0m                        `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m315 |[0;0m         let backFromB = try XCTUnwrap(smB.seal(a.inbound, Data("and back".utf8)))
-[0;36m316 |[0;0m         XCTAssertEqual(try smA.open(a.outbound, backFromB), Data("and back".utf8))
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:316:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m314 |[0;0m         XCTAssertEqual(try smB.open(a.inbound, aToB), Data("incarnation A".utf8))
-[0;36m315 |[0;0m         let backFromB = try XCTUnwrap(smB.seal(a.inbound, Data("and back".utf8)))
-[0;36m316 |[0;0m         XCTAssertEqual(try smA.open(a.outbound, backFromB), Data("and back".utf8))
-    [0;36m|[0;0m                        `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m317 |[0;0m         XCTAssertEqual(smA.drop(a.outbound), .retired)
-[0;36m318 |[0;0m         XCTAssertEqual(smB.drop(a.inbound), .retired)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:338:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m336 |[0;0m                       "the responder side of the replacement was slain by stale work")
-[0;36m337 |[0;0m         let live = try XCTUnwrap(smA.seal(b.outbound, Data("replacement lives".utf8)))
-[0;36m338 |[0;0m         XCTAssertEqual(try smB.open(b.inbound, live), Data("replacement lives".utf8))
-    [0;36m|[0;0m                        `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m339 |[0;0m         // The replacement's own teardown still worketh, and only it.
-[0;36m340 |[0;0m         XCTAssertEqual(smA.drop(b.outbound), .retired)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:381:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m379 |[0;0m         XCTAssertTrue(smB.isReady(b.inbound), "stale work disturbed the responder's replacement")
-[0;36m380 |[0;0m         let genuine = try XCTUnwrap(smA.seal(b.outbound, Data("genuine".utf8)))
-[0;36m381 |[0;0m         XCTAssertEqual(try smB.open(b.inbound, genuine), Data("genuine".utf8))
-    [0;36m|[0;0m                        `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m382 |[0;0m     }
-[0;36m383 |[0;0m 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1304:20: [1;33mwarning: [1;39mimmutable value 'privB' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1302 |[0;0m 
-[0;36m1303 |[0;0m         let (pubA, privA) = realKeypair()
-[0;36m1304 |[0;0m         let (pubB, privB) = realKeypair()
-     [0;36m|[0;0m                    `- [1;33mwarning: [1;39mimmutable value 'privB' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1305 |[0;0m         let resolver = TwoRecipientResolver(nodeA(), pubA, nodeB(), pubB)
-[0;36m1306 |[0;0m         let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: resolver))
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1553:14: [1;33mwarning: [1;39mimmutable value 'pub' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1551 |[0;0m         let faulting = FaultingDeliveryStore(store)
-[0;36m1552 |[0;0m         let repo = SqliteDeliveryRepository(faulting)
-[0;36m1553 |[0;0m         let (pub, priv) = realKeypair()
-     [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pub' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1554 |[0;0m         let recipient = nodeA()
-[0;36m1555 |[0;0m         let auth = DualAckAuthenticator()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1988:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1986 |[0;0m         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
-[0;36m1987 |[0;0m         let repo = SqliteDeliveryRepository(store)
-[0;36m1988 |[0;0m         let (pubA, privA) = realKeypair()
-     [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1989 |[0;0m         let auth = BlockingAckAuthenticator(result: true)
-[0;36m1990 |[0;0m         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:2025:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m2023 |[0;0m         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
-[0;36m2024 |[0;0m         let repo = SqliteDeliveryRepository(store)
-[0;36m2025 |[0;0m         let (pubA, privA) = realKeypair()
-     [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m2026 |[0;0m         let auth = BlockingAckAuthenticator(result: true)
-[0;36m2027 |[0;0m         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:74:15: [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-  [0;36m72 |[0;0m         _ = open(maxBytes: Int64.max)
-  [0;36m73 |[0;0m         let f = frame(7, .direct, 64, type: .sos)
-  [0;36m74 |[0;0m         store.persist(f, receivedFrom: Data([0, 1, 2, 3, 4, 5]))
-     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-  [0;36m75 |[0;0m         let out = store.allHeldOrderedByPriority()
-  [0;36m76 |[0;0m         XCTAssertEqual(out.count, 1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:92:15: [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-  [0;36m90 |[0;0m         _ = open(maxBytes: Int64.max)
-  [0;36m91 |[0;0m         let f = frame(1, .group, 32)
-  [0;36m92 |[0;0m         store.persist(f, receivedFrom: Data())
-     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-  [0;36m93 |[0;0m         store.persist(f, receivedFrom: Data())
-  [0;36m94 |[0;0m         XCTAssertEqual(heldIds().count, 1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:93:15: [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-  [0;36m91 |[0;0m         let f = frame(1, .group, 32)
-  [0;36m92 |[0;0m         store.persist(f, receivedFrom: Data())
-  [0;36m93 |[0;0m         store.persist(f, receivedFrom: Data())
-     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-  [0;36m94 |[0;0m         XCTAssertEqual(heldIds().count, 1)
-  [0;36m95 |[0;0m     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:864:9: [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
- [0;36m862 |[0;0m         // Seed held frame with foreignNode provenance
- [0;36m863 |[0;0m         XCTAssertEqual(store.persist(f, receivedFrom: foreignNode), .heldNew)
- [0;36m864 |[0;0m         [4;39mtry? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)[0;0m
-     [0;36m|[0;0m         `- [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
- [0;36m865 |[0;0m 
- [0;36m866 |[0;0m         // Retry from local node A
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:925:9: [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
- [0;36m923 |[0;0m         let origin = localNode(1)
- [0;36m924 |[0;0m 
- [0;36m925 |[0;0m         [4;39mtry? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)[0;0m
-     [0;36m|[0;0m         `- [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
- [0;36m926 |[0;0m         XCTAssertFalse(containsId(heldIds(), f.msgId))
- [0;36m927 |[0;0m 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1014:15: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1012 |[0;0m         defer { sqlite3_finalize(stmt) }
-[0;36m1013 |[0;0m         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-[0;36m1014 |[0;0m         msgId.withUnsafeBytes [4;39m{ r in[0;0m
-     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1015 |[0;0m             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
-[0;36m1016 |[0;0m         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1157:13: [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1155 |[0;0m             let f = directFrame(UInt8(idx + 10), payloadSize: 100)
-[0;36m1156 |[0;0m             // Plant delivery row directly with terminal state and NO held frame
-[0;36m1157 |[0;0m             [4;39mtry? store.insertDelivery([0;0m
-     [0;36m|[0;0m             `- [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1158 |[0;0m                 f.msgId,
-[0;36m1159 |[0;0m                 stateOrdinal: termState.code,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1343:12: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1341 |[0;0m         }
-[0;36m1342 |[0;0m         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-[0;36m1343 |[0;0m         id.withUnsafeBytes [4;39m{ r in[0;0m
-     [0;36m|[0;0m            `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1344 |[0;0m             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(id.count), transient)
-[0;36m1345 |[0;0m         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1392:15: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1390 |[0;0m         }
-[0;36m1391 |[0;0m         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-[0;36m1392 |[0;0m         msgId.withUnsafeBytes [4;39m{ r in[0;0m
-     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1393 |[0;0m             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
-[0;36m1394 |[0;0m         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1400:20: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1398 |[0;0m         sqlite3_bind_int(stmt, 5, Int32(Priority.toFlags(.group)))
-[0;36m1399 |[0;0m         sqlite3_bind_int(stmt, 6, Int32(Priority.group.rawValue))
-[0;36m1400 |[0;0m         routingTag.withUnsafeBytes [4;39m{ r in[0;0m
-     [0;36m|[0;0m                    `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1401 |[0;0m             sqlite3_bind_blob(stmt, 7, r.baseAddress, Int32(routingTag.count), transient)
-[0;36m1402 |[0;0m         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1404:17: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1402 |[0;0m         }
-[0;36m1403 |[0;0m         let payload = Data(repeating: 0, count: 8)
-[0;36m1404 |[0;0m         payload.withUnsafeBytes [4;39m{ r in[0;0m
-     [0;36m|[0;0m                 `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m1405 |[0;0m             sqlite3_bind_blob(stmt, 8, r.baseAddress, Int32(payload.count), transient)
-[0;36m1406 |[0;0m         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1446:22: [1;33mwarning: [1;39mweak variable 'weakW' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\::]8;;https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability\WeakMutability]8;;\]
-[0;36m1444 |[0;0m             let w = LifetimeWitness()
-[0;36m1445 |[0;0m             witnesses.append(w)
-[0;36m1446 |[0;0m             weak var weakW = w
-     [0;36m|[0;0m                      `- [1;33mwarning: [1;39mweak variable 'weakW' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\::]8;;https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability\WeakMutability]8;;\]
-[0;36m1447 |[0;0m             weakBoxes.append { weakW }
-[0;36m1448 |[0;0m             // EVERY LIFETIME RELEASETH ITS OWN REGISTRATION, as a runtime's teardown must: the law is that a
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1464:63: [1;33mwarning: [1;39mmutation of captured var 'fired' in concurrently-executing code; this is an error in the Swift 6 language mode[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures\SendableClosureCaptures]8;;\]
-[0;36m1462 |[0;0m         let baseline = s.observerCensusForTest()
-[0;36m1463 |[0;0m         var fired = 0
-[0;36m1464 |[0;0m         let lease = try XCTUnwrap(s.registerHeldSetObserver { fired += 1 },
-     [0;36m|[0;0m                                                               `- [1;33mwarning: [1;39mmutation of captured var 'fired' in concurrently-executing code; this is an error in the Swift 6 language mode[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures\SendableClosureCaptures]8;;\]
-[0;36m1465 |[0;0m                                   "the real store must answer a RELEASABLE lease, not nil")
-[0;36m1466 |[0;0m         XCTAssertEqual(s.observerCensusForTest(), baseline + 1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:2000:13: [1;33mwarning: [1;39mvariable 'now' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
-[0;36m1998 |[0;0m     func testGSSTORE004_retirementLeavethADurableTombstone() throws {
-[0;36m1999 |[0;0m         let s = open(maxBytes: 8 * 1024 * 1024)
-[0;36m2000 |[0;0m         var now: Int64 = 6_000_000
-     [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'now' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
-[0;36m2001 |[0;0m         s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
-[0;36m2002 |[0;0m         let f = frame(13, .direct, 48)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/TrustedHandshakeControllerTests.swift:44:16: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-  [0;36m42 |[0;0m         )
-  [0;36m43 |[0;0m         let sig = try signingKey.signature(for: preimage)
-  [0;36m44 |[0;0m         return try IdentityBindingV1(
-     [0;36m|[0;0m                `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-  [0;36m45 |[0;0m             generation: generation,
-  [0;36m46 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
  [0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
  [0;36m346 |[0;0m         pins.append(req)
@@ -3831,65 +3634,6 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m150 |[0;0m         var raised = false
-[0;36m151 |[0;0m         do {
-[0;36m152 |[0;0m             try dying.runPendingOnce(8) { point in
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m153 |[0;0m                 if point == "signing" { throw NSError(domain: "ReadinessT83", code: 1) }
-[0;36m154 |[0;0m             }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:240:54: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m238 |[0;0m             let batch = r.pump.nextBatch(Data(to.local.id.nodeId), now: now)
-[0;36m239 |[0;0m             return batch.copies.map { copy in
-[0;36m240 |[0;0m                 let verdict = to.dispatcher.dispatch(try! FrameV2.decode(copy.encodedFrame)!,
-    [0;36m|[0;0m                                                      `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m241 |[0;0m                                                      receivedFrom: Data(r.local.id.nodeId))
-[0;36m242 |[0;0m                 r.pump.onForwardOutcome(copy, peer: Data(to.local.id.nodeId), accepted: true, now: now)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:272:10: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m270 |[0;0m 
-[0;36m271 |[0;0m     private func heldFrames(_ store: InMemoryMessageStore) -> Int {
-[0;36m272 |[0;0m         (try? store.allHeldMsgIds().count) ?? -1
-    [0;36m|[0;0m          `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m273 |[0;0m     }
-[0;36m274 |[0;0m 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:438:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m436 |[0;0m         XCTAssertEqual(copy.ttl, ackRelayInitialTtl - 1)
-[0;36m437 |[0;0m         XCTAssertEqual(copy.hopCount, 1)
-[0;36m438 |[0;0m         let decoded = try FrameV2.decode(copy.encodedFrame)!
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m439 |[0;0m         XCTAssertEqual(decoded.flags, 0)
-[0;36m440 |[0;0m         XCTAssertEqual(decoded.payload.count, 80, "the 80-byte payload travelleth whole")
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:601:47: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m599 |[0;0m         XCTAssertEqual(batch.copies.count, 1)
-[0;36m600 |[0;0m         guard let rebornCopy = firstCopy(batch, "the reborn copy") else { return }
-[0;36m601 |[0;0m         let verdict = w.a.dispatcher.dispatch(try FrameV2.decode(rebornCopy.encodedFrame)!,
-    [0;36m|[0;0m                                               `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-[0;36m602 |[0;0m                                              receivedFrom: Data(w.r.local.id.nodeId))
-[0;36m603 |[0;0m         XCTAssertTrue(verdict.accepted)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
-[0;36m164 |[0;0m     @discardableResult
-    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
-[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:94:13: [1;33mwarning: [1;39mvariable 'bobIdentity' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
- [0;36m92 |[0;0m         // right way: alice below bob. Search forward from the requested seed.
- [0;36m93 |[0;0m         var aliceIdentity = try makeIdentity(seedByte: seedA, staticPrivByte: privA)
- [0;36m94 |[0;0m         var bobIdentity = try makeIdentity(seedByte: seedB, staticPrivByte: privB)
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'bobIdentity' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
- [0;36m95 |[0;0m         var candidate = seedA
- [0;36m96 |[0;0m         while ReadinessTrustedPairing.hintOrder(aliceIdentity.nodeHint, bobIdentity.nodeHint) != .orderedAscending {
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT36Tests.swift:538:13: [1;33mwarning: [1;39mvariable 'f' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
  [0;36m536 |[0;0m     /// rejections -- failure distinguished from empty/no-op success, nothing mutated.
  [0;36m537 |[0;0m     func testUnapprovedRecipientYieldsTypedDistinctRejections() async throws {
@@ -4037,6 +3781,262 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift:181:13: [1;33mwarning: [1;39mvariable 'hs3Result' was written to, but never read[0;0m
+[0;36m179 |[0;0m         let hsThreadFinished = expectation(description: "HS thread finished")
+[0;36m180 |[0;0m         let invalidationFinished = expectation(description: "Invalidation finished")
+[0;36m181 |[0;0m         var hs3Result: Data?
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'hs3Result' was written to, but never read[0;0m
+[0;36m182 |[0;0m 
+[0;36m183 |[0;0m         var invalidationReturned = false
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:314:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m312 |[0;0m         XCTAssertTrue(smA.isReady(a.outbound))
+[0;36m313 |[0;0m         let aToB = try XCTUnwrap(smA.seal(a.outbound, Data("incarnation A".utf8)))
+[0;36m314 |[0;0m         XCTAssertEqual(try smB.open(a.inbound, aToB), Data("incarnation A".utf8))
+    [0;36m|[0;0m                        `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m315 |[0;0m         let backFromB = try XCTUnwrap(smB.seal(a.inbound, Data("and back".utf8)))
+[0;36m316 |[0;0m         XCTAssertEqual(try smA.open(a.outbound, backFromB), Data("and back".utf8))
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:316:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m314 |[0;0m         XCTAssertEqual(try smB.open(a.inbound, aToB), Data("incarnation A".utf8))
+[0;36m315 |[0;0m         let backFromB = try XCTUnwrap(smB.seal(a.inbound, Data("and back".utf8)))
+[0;36m316 |[0;0m         XCTAssertEqual(try smA.open(a.outbound, backFromB), Data("and back".utf8))
+    [0;36m|[0;0m                        `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m317 |[0;0m         XCTAssertEqual(smA.drop(a.outbound), .retired)
+[0;36m318 |[0;0m         XCTAssertEqual(smB.drop(a.inbound), .retired)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:338:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m336 |[0;0m                       "the responder side of the replacement was slain by stale work")
+[0;36m337 |[0;0m         let live = try XCTUnwrap(smA.seal(b.outbound, Data("replacement lives".utf8)))
+[0;36m338 |[0;0m         XCTAssertEqual(try smB.open(b.inbound, live), Data("replacement lives".utf8))
+    [0;36m|[0;0m                        `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m339 |[0;0m         // The replacement's own teardown still worketh, and only it.
+[0;36m340 |[0;0m         XCTAssertEqual(smA.drop(b.outbound), .retired)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerTests.swift:381:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m379 |[0;0m         XCTAssertTrue(smB.isReady(b.inbound), "stale work disturbed the responder's replacement")
+[0;36m380 |[0;0m         let genuine = try XCTUnwrap(smA.seal(b.outbound, Data("genuine".utf8)))
+[0;36m381 |[0;0m         XCTAssertEqual(try smB.open(b.inbound, genuine), Data("genuine".utf8))
+    [0;36m|[0;0m                        `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m382 |[0;0m     }
+[0;36m383 |[0;0m 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1304:20: [1;33mwarning: [1;39mimmutable value 'privB' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1302 |[0;0m 
+[0;36m1303 |[0;0m         let (pubA, privA) = realKeypair()
+[0;36m1304 |[0;0m         let (pubB, privB) = realKeypair()
+     [0;36m|[0;0m                    `- [1;33mwarning: [1;39mimmutable value 'privB' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1305 |[0;0m         let resolver = TwoRecipientResolver(nodeA(), pubA, nodeB(), pubB)
+[0;36m1306 |[0;0m         let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: resolver))
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1553:14: [1;33mwarning: [1;39mimmutable value 'pub' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1551 |[0;0m         let faulting = FaultingDeliveryStore(store)
+[0;36m1552 |[0;0m         let repo = SqliteDeliveryRepository(faulting)
+[0;36m1553 |[0;0m         let (pub, priv) = realKeypair()
+     [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pub' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1554 |[0;0m         let recipient = nodeA()
+[0;36m1555 |[0;0m         let auth = DualAckAuthenticator()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:1988:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1986 |[0;0m         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+[0;36m1987 |[0;0m         let repo = SqliteDeliveryRepository(store)
+[0;36m1988 |[0;0m         let (pubA, privA) = realKeypair()
+     [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1989 |[0;0m         let auth = BlockingAckAuthenticator(result: true)
+[0;36m1990 |[0;0m         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift:2025:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m2023 |[0;0m         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+[0;36m2024 |[0;0m         let repo = SqliteDeliveryRepository(store)
+[0;36m2025 |[0;0m         let (pubA, privA) = realKeypair()
+     [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m2026 |[0;0m         let auth = BlockingAckAuthenticator(result: true)
+[0;36m2027 |[0;0m         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:74:15: [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+  [0;36m72 |[0;0m         _ = open(maxBytes: Int64.max)
+  [0;36m73 |[0;0m         let f = frame(7, .direct, 64, type: .sos)
+  [0;36m74 |[0;0m         store.persist(f, receivedFrom: Data([0, 1, 2, 3, 4, 5]))
+     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+  [0;36m75 |[0;0m         let out = store.allHeldOrderedByPriority()
+  [0;36m76 |[0;0m         XCTAssertEqual(out.count, 1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:92:15: [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+  [0;36m90 |[0;0m         _ = open(maxBytes: Int64.max)
+  [0;36m91 |[0;0m         let f = frame(1, .group, 32)
+  [0;36m92 |[0;0m         store.persist(f, receivedFrom: Data())
+     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+  [0;36m93 |[0;0m         store.persist(f, receivedFrom: Data())
+  [0;36m94 |[0;0m         XCTAssertEqual(heldIds().count, 1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:93:15: [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+  [0;36m91 |[0;0m         let f = frame(1, .group, 32)
+  [0;36m92 |[0;0m         store.persist(f, receivedFrom: Data())
+  [0;36m93 |[0;0m         store.persist(f, receivedFrom: Data())
+     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'persist(_:receivedFrom:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+  [0;36m94 |[0;0m         XCTAssertEqual(heldIds().count, 1)
+  [0;36m95 |[0;0m     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:864:9: [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+ [0;36m862 |[0;0m         // Seed held frame with foreignNode provenance
+ [0;36m863 |[0;0m         XCTAssertEqual(store.persist(f, receivedFrom: foreignNode), .heldNew)
+ [0;36m864 |[0;0m         [4;39mtry? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)[0;0m
+     [0;36m|[0;0m         `- [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+ [0;36m865 |[0;0m 
+ [0;36m866 |[0;0m         // Retry from local node A
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:925:9: [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+ [0;36m923 |[0;0m         let origin = localNode(1)
+ [0;36m924 |[0;0m 
+ [0;36m925 |[0;0m         [4;39mtry? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)[0;0m
+     [0;36m|[0;0m         `- [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+ [0;36m926 |[0;0m         XCTAssertFalse(containsId(heldIds(), f.msgId))
+ [0;36m927 |[0;0m 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1014:15: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1012 |[0;0m         defer { sqlite3_finalize(stmt) }
+[0;36m1013 |[0;0m         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+[0;36m1014 |[0;0m         msgId.withUnsafeBytes [4;39m{ r in[0;0m
+     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1015 |[0;0m             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
+[0;36m1016 |[0;0m         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1157:13: [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1155 |[0;0m             let f = directFrame(UInt8(idx + 10), payloadSize: 100)
+[0;36m1156 |[0;0m             // Plant delivery row directly with terminal state and NO held frame
+[0;36m1157 |[0;0m             [4;39mtry? store.insertDelivery([0;0m
+     [0;36m|[0;0m             `- [1;33mwarning: [1;39mresult of 'try?' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1158 |[0;0m                 f.msgId,
+[0;36m1159 |[0;0m                 stateOrdinal: termState.code,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1343:12: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1341 |[0;0m         }
+[0;36m1342 |[0;0m         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+[0;36m1343 |[0;0m         id.withUnsafeBytes [4;39m{ r in[0;0m
+     [0;36m|[0;0m            `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1344 |[0;0m             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(id.count), transient)
+[0;36m1345 |[0;0m         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1392:15: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1390 |[0;0m         }
+[0;36m1391 |[0;0m         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+[0;36m1392 |[0;0m         msgId.withUnsafeBytes [4;39m{ r in[0;0m
+     [0;36m|[0;0m               `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1393 |[0;0m             sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
+[0;36m1394 |[0;0m         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1400:20: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1398 |[0;0m         sqlite3_bind_int(stmt, 5, Int32(Priority.toFlags(.group)))
+[0;36m1399 |[0;0m         sqlite3_bind_int(stmt, 6, Int32(Priority.group.rawValue))
+[0;36m1400 |[0;0m         routingTag.withUnsafeBytes [4;39m{ r in[0;0m
+     [0;36m|[0;0m                    `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1401 |[0;0m             sqlite3_bind_blob(stmt, 7, r.baseAddress, Int32(routingTag.count), transient)
+[0;36m1402 |[0;0m         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1404:17: [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1402 |[0;0m         }
+[0;36m1403 |[0;0m         let payload = Data(repeating: 0, count: 8)
+[0;36m1404 |[0;0m         payload.withUnsafeBytes [4;39m{ r in[0;0m
+     [0;36m|[0;0m                 `- [1;33mwarning: [1;39mresult of call to 'withUnsafeBytes' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m1405 |[0;0m             sqlite3_bind_blob(stmt, 8, r.baseAddress, Int32(payload.count), transient)
+[0;36m1406 |[0;0m         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1446:22: [1;33mwarning: [1;39mweak variable 'weakW' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\::]8;;https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability\WeakMutability]8;;\]
+[0;36m1444 |[0;0m             let w = LifetimeWitness()
+[0;36m1445 |[0;0m             witnesses.append(w)
+[0;36m1446 |[0;0m             weak var weakW = w
+     [0;36m|[0;0m                      `- [1;33mwarning: [1;39mweak variable 'weakW' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\::]8;;https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability\WeakMutability]8;;\]
+[0;36m1447 |[0;0m             weakBoxes.append { weakW }
+[0;36m1448 |[0;0m             // EVERY LIFETIME RELEASETH ITS OWN REGISTRATION, as a runtime's teardown must: the law is that a
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:1464:63: [1;33mwarning: [1;39mmutation of captured var 'fired' in concurrently-executing code; this is an error in the Swift 6 language mode[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures\SendableClosureCaptures]8;;\]
+[0;36m1462 |[0;0m         let baseline = s.observerCensusForTest()
+[0;36m1463 |[0;0m         var fired = 0
+[0;36m1464 |[0;0m         let lease = try XCTUnwrap(s.registerHeldSetObserver { fired += 1 },
+     [0;36m|[0;0m                                                               `- [1;33mwarning: [1;39mmutation of captured var 'fired' in concurrently-executing code; this is an error in the Swift 6 language mode[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures\SendableClosureCaptures]8;;\]
+[0;36m1465 |[0;0m                                   "the real store must answer a RELEASABLE lease, not nil")
+[0;36m1466 |[0;0m         XCTAssertEqual(s.observerCensusForTest(), baseline + 1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift:2000:13: [1;33mwarning: [1;39mvariable 'now' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+[0;36m1998 |[0;0m     func testGSSTORE004_retirementLeavethADurableTombstone() throws {
+[0;36m1999 |[0;0m         let s = open(maxBytes: 8 * 1024 * 1024)
+[0;36m2000 |[0;0m         var now: Int64 = 6_000_000
+     [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'now' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+[0;36m2001 |[0;0m         s.receiptTimeProvider = { (monoMs: now, bootIdentity: "boot-A") }
+[0;36m2002 |[0;0m         let f = frame(13, .direct, 48)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/TrustedHandshakeControllerTests.swift:44:16: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+  [0;36m42 |[0;0m         )
+  [0;36m43 |[0;0m         let sig = try signingKey.signature(for: preimage)
+  [0;36m44 |[0;0m         return try IdentityBindingV1(
+     [0;36m|[0;0m                `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+  [0;36m45 |[0;0m             generation: generation,
+  [0;36m46 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m150 |[0;0m         var raised = false
+[0;36m151 |[0;0m         do {
+[0;36m152 |[0;0m             try dying.runPendingOnce(8) { point in
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mresult of call to 'runPendingOnce(_:fault:)' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m153 |[0;0m                 if point == "signing" { throw NSError(domain: "ReadinessT83", code: 1) }
+[0;36m154 |[0;0m             }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:240:54: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m238 |[0;0m             let batch = r.pump.nextBatch(Data(to.local.id.nodeId), now: now)
+[0;36m239 |[0;0m             return batch.copies.map { copy in
+[0;36m240 |[0;0m                 let verdict = to.dispatcher.dispatch(try! FrameV2.decode(copy.encodedFrame)!,
+    [0;36m|[0;0m                                                      `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m241 |[0;0m                                                      receivedFrom: Data(r.local.id.nodeId))
+[0;36m242 |[0;0m                 r.pump.onForwardOutcome(copy, peer: Data(to.local.id.nodeId), accepted: true, now: now)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:272:10: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m270 |[0;0m 
+[0;36m271 |[0;0m     private func heldFrames(_ store: InMemoryMessageStore) -> Int {
+[0;36m272 |[0;0m         (try? store.allHeldMsgIds().count) ?? -1
+    [0;36m|[0;0m          `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m273 |[0;0m     }
+[0;36m274 |[0;0m 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:438:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m436 |[0;0m         XCTAssertEqual(copy.ttl, ackRelayInitialTtl - 1)
+[0;36m437 |[0;0m         XCTAssertEqual(copy.hopCount, 1)
+[0;36m438 |[0;0m         let decoded = try FrameV2.decode(copy.encodedFrame)!
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m439 |[0;0m         XCTAssertEqual(decoded.flags, 0)
+[0;36m440 |[0;0m         XCTAssertEqual(decoded.payload.count, 80, "the 80-byte payload travelleth whole")
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:601:47: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m599 |[0;0m         XCTAssertEqual(batch.copies.count, 1)
+[0;36m600 |[0;0m         guard let rebornCopy = firstCopy(batch, "the reborn copy") else { return }
+[0;36m601 |[0;0m         let verdict = w.a.dispatcher.dispatch(try FrameV2.decode(rebornCopy.encodedFrame)!,
+    [0;36m|[0;0m                                               `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+[0;36m602 |[0;0m                                              receivedFrom: Data(w.r.local.id.nodeId))
+[0;36m603 |[0;0m         XCTAssertTrue(verdict.accepted)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m162 |[0;0m     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+[0;36m163 |[0;0m     /// freshly started transport minteth for the first relation of that handle.
+[0;36m164 |[0;0m     @discardableResult
+    [0;36m|[0;0m     `- [1;33mwarning: [1;39m'@discardableResult' declared on a function returning 'Void' is unnecessary[0;0m
+[0;36m165 |[0;0m     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+[0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:94:13: [1;33mwarning: [1;39mvariable 'bobIdentity' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+ [0;36m92 |[0;0m         // right way: alice below bob. Search forward from the requested seed.
+ [0;36m93 |[0;0m         var aliceIdentity = try makeIdentity(seedByte: seedA, staticPrivByte: privA)
+ [0;36m94 |[0;0m         var bobIdentity = try makeIdentity(seedByte: seedB, staticPrivByte: privB)
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'bobIdentity' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+ [0;36m95 |[0;0m         var candidate = seedA
+ [0;36m96 |[0;0m         while ReadinessTrustedPairing.hintOrder(aliceIdentity.nodeHint, bobIdentity.nodeHint) != .orderedAscending {
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [67 / 69] GodstoneMeshTests-product
 [70 / 74] LabMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC9-a-mismatching-confirmation-promoteth/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
@@ -4050,4 +4050,4 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.55 secs)
+Build complete! (10.18 secs)

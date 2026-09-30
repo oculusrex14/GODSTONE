@@ -1,12 +1,12 @@
-Test Suite 'Selected tests' started at 2026-09-30 03:39:55.496.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 03:39:55.502.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 03:39:55.502.
+Test Suite 'Selected tests' started at 2026-09-30 06:17:20.856.
+Test Suite 'LabMeshTests.xctest' started at 2026-09-30 06:17:20.861.
+Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 06:17:20.862.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 03:39:55.502.
+Test Suite 'Selected tests' passed at 2026-09-30 06:17:20.862.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 03:39:55.539.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 03:39:55.545.
-Test Suite 'ReadinessT56Tests' started at 2026-09-30 03:39:55.545.
+Test Suite 'Selected tests' started at 2026-09-30 06:17:20.898.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 06:17:20.905.
+Test Suite 'ReadinessT56Tests' started at 2026-09-30 06:17:20.905.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW01UserVerifiedAppearethOnlyAfterTheDurableCas]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW01UserVerifiedAppearethOnlyAfterTheDurableCas]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW02ARefusedCasNeverShowethUserVerified]' started.
@@ -33,17 +33,17 @@ Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW12TheBindingPayloadIsBound
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW12TheBindingPayloadIsBounded]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW13TheIslesShareTheirFixturesAndTheCasContract]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW13TheIslesShareTheirFixturesAndTheCasContract]' passed (0.003 seconds).
-Test Suite 'ReadinessT56Tests' passed at 2026-09-30 03:39:55.557.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.012) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 03:39:55.557.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.012) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 03:39:55.557.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.018) seconds
-Test Suite 'Selected tests' started at 2026-09-30 03:39:55.606.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 03:39:55.612.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 03:39:55.612.
+Test Suite 'ReadinessT56Tests' passed at 2026-09-30 06:17:20.918.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 06:17:20.918.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'Selected tests' passed at 2026-09-30 06:17:20.918.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.019) seconds
+Test Suite 'Selected tests' started at 2026-09-30 06:17:20.965.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 06:17:20.971.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 06:17:20.971.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 03:39:55.612.
+Test Suite 'Selected tests' passed at 2026-09-30 06:17:20.971.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -519,7 +519,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[33 / 33] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: [1;33mwarning: [1;39mstored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode[0;0m
    [0;36m6 |[0;0m     public let relationKey: RelationKey
@@ -858,69 +857,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: [1;33mwarning: [1;39massociated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m40 |[0;0m         case ignored(reason: String)
- [0;36m41 |[0;0m         case refused(reason: String)
- [0;36m42 |[0;0m         case answered(frame: FrameV2)
-    [0;36m|[0;0m              `- [1;33mwarning: [1;39massociated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m43 |[0;0m         case delivered(frames: [FrameV2])
- [0;36m44 |[0;0m     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m5 |[0;0m 
-  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
-  [0;36m7 |[0;0m public struct FrameV2: Equatable {
-    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
-  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: [1;33mwarning: [1;39massociated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m41 |[0;0m         case refused(reason: String)
- [0;36m42 |[0;0m         case answered(frame: FrameV2)
- [0;36m43 |[0;0m         case delivered(frames: [FrameV2])
-    [0;36m|[0;0m              `- [1;33mwarning: [1;39massociated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m44 |[0;0m     }
- [0;36m45 |[0;0m 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m5 |[0;0m 
-  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
-  [0;36m7 |[0;0m public struct FrameV2: Equatable {
-    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
-  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m44 |[0;0m /// exactly once -- and every retry re-emiteth these exact bytes.
- [0;36m45 |[0;0m public struct ForwardCopy: Equatable, Sendable {
- [0;36m46 |[0;0m     public let frame: FrameV2
-    [0;36m|[0;0m                `- [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
- [0;36m47 |[0;0m     /// The immediate hop it arrived from, which is never offered it back.
- [0;36m48 |[0;0m     public let fromPeer: Data?
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m5 |[0;0m 
-  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
-  [0;36m7 |[0;0m public struct FrameV2: Equatable {
-    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
-  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
-  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: [1;33mwarning: [1;39mstored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode[0;0m
- [0;36m37 |[0;0m 
- [0;36m38 |[0;0m internal struct DefaultHs3Writer: Hs3Writer {
- [0;36m39 |[0;0m     let noiseSession: NoiseSession
-    [0;36m|[0;0m         `- [1;33mwarning: [1;39mstored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode[0;0m
- [0;36m40 |[0;0m     func writeHs3(payload: Data) throws -> Data {
- [0;36m41 |[0;0m         try noiseSession.writeMessage3(payload: payload)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: [1;39mnote: [1;39mclass 'NoiseSession' does not conform to the 'Sendable' protocol[0;0m
- [0;36m46 |[0;0m }
- [0;36m47 |[0;0m 
- [0;36m48 |[0;0m public final class NoiseSession {
-    [0;36m|[0;0m                    `- [1;39mnote: [1;39mclass 'NoiseSession' does not conform to the 'Sendable' protocol[0;0m
- [0;36m49 |[0;0m 
- [0;36m50 |[0;0m     public enum Role { case initiator, responder }
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift:346:12: [1;33mwarning: [1;39mresult of call to function returning 'Int32' is unused[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
  [0;36m344 |[0;0m         adoptedConnectionIdentity = owned.connection.connectionIdentity
  [0;36m345 |[0;0m 
@@ -1354,6 +1290,69 @@ Building for debugging...
  [0;36m940 |[0;0m                 sourceEpoch: responder.ble.currentTransportEpoch)
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: [1;33mwarning: [1;39massociated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m40 |[0;0m         case ignored(reason: String)
+ [0;36m41 |[0;0m         case refused(reason: String)
+ [0;36m42 |[0;0m         case answered(frame: FrameV2)
+    [0;36m|[0;0m              `- [1;33mwarning: [1;39massociated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m43 |[0;0m         case delivered(frames: [FrameV2])
+ [0;36m44 |[0;0m     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m5 |[0;0m 
+  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
+  [0;36m7 |[0;0m public struct FrameV2: Equatable {
+    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
+  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: [1;33mwarning: [1;39massociated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m41 |[0;0m         case refused(reason: String)
+ [0;36m42 |[0;0m         case answered(frame: FrameV2)
+ [0;36m43 |[0;0m         case delivered(frames: [FrameV2])
+    [0;36m|[0;0m              `- [1;33mwarning: [1;39massociated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m44 |[0;0m     }
+ [0;36m45 |[0;0m 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m5 |[0;0m 
+  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
+  [0;36m7 |[0;0m public struct FrameV2: Equatable {
+    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
+  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m44 |[0;0m /// exactly once -- and every retry re-emiteth these exact bytes.
+ [0;36m45 |[0;0m public struct ForwardCopy: Equatable, Sendable {
+ [0;36m46 |[0;0m     public let frame: FrameV2
+    [0;36m|[0;0m                `- [1;33mwarning: [1;39mstored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m47 |[0;0m     /// The immediate hop it arrived from, which is never offered it back.
+ [0;36m48 |[0;0m     public let fromPeer: Data?
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m5 |[0;0m 
+  [0;36m6 |[0;0m /// GMP/2 frame. Header is 32 bytes, big-endian.
+  [0;36m7 |[0;0m public struct FrameV2: Equatable {
+    [0;36m|[0;0m               `- [1;39mnote: [1;39mconsider making struct 'FrameV2' conform to the 'Sendable' protocol[0;0m
+  [0;36m8 |[0;0m     public static let magic: UInt16 = 0x4753
+  [0;36m9 |[0;0m     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: [1;33mwarning: [1;39mstored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m37 |[0;0m 
+ [0;36m38 |[0;0m internal struct DefaultHs3Writer: Hs3Writer {
+ [0;36m39 |[0;0m     let noiseSession: NoiseSession
+    [0;36m|[0;0m         `- [1;33mwarning: [1;39mstored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode[0;0m
+ [0;36m40 |[0;0m     func writeHs3(payload: Data) throws -> Data {
+ [0;36m41 |[0;0m         try noiseSession.writeMessage3(payload: payload)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: [1;39mnote: [1;39mclass 'NoiseSession' does not conform to the 'Sendable' protocol[0;0m
+ [0;36m46 |[0;0m }
+ [0;36m47 |[0;0m 
+ [0;36m48 |[0;0m public final class NoiseSession {
+    [0;36m|[0;0m                    `- [1;39mnote: [1;39mclass 'NoiseSession' does not conform to the 'Sendable' protocol[0;0m
+ [0;36m49 |[0;0m 
+ [0;36m50 |[0;0m     public enum Role { case initiator, responder }
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckDispatcher.swift:323:11: [1;33mwarning: [1;39m'catch' block is unreachable because no errors are thrown in 'do' block[0;0m
 [0;36m321 |[0;0m         do {
 [0;36m322 |[0;0m             result = admitForeign(encoded, receivedFrom)
@@ -3029,25 +3028,24 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m44 |[0;0m         )
- [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
- [0;36m46 |[0;0m         let binding = try! IdentityBindingV1(
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m47 |[0;0m             generation: generation,
- [0;36m48 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m501 |[0;0m 
-[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
-    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
-[0;36m504 |[0;0m         let a = nodeA()
-[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [62 / 66] GodstoneMeshTests-product
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+  [0;36m32 |[0;0m         )
+  [0;36m33 |[0;0m         let sig = try! signingKey.signature(for: preimage)
+  [0;36m34 |[0;0m         let binding = try! IdentityBindingV1(
+     [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+  [0;36m35 |[0;0m             generation: generation,
+  [0;36m36 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m25 |[0;0m         )
+ [0;36m26 |[0;0m         let sig = try signingKey.signature(for: preimage)
+ [0;36m27 |[0;0m         let binding = try IdentityBindingV1(
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m28 |[0;0m             generation: generation,
+ [0;36m29 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: [1;33mwarning: [1;39mstored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode[0;0m
  [0;36m38 |[0;0m     /// the coordinator (which GS-FINAL-002 already proved).
  [0;36m39 |[0;0m     private final class SwitchableWipeGate: WipeSensitiveUseGate {
@@ -3073,23 +3071,63 @@ Building for debugging...
 [0;36m166 |[0;0m                        aliceHint: Data, bobHint: Data,
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-  [0;36m32 |[0;0m         )
-  [0;36m33 |[0;0m         let sig = try! signingKey.signature(for: preimage)
-  [0;36m34 |[0;0m         let binding = try! IdentityBindingV1(
-     [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
-  [0;36m35 |[0;0m             generation: generation,
-  [0;36m36 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: [1;33mwarning: [1;39mvariable 'b' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+[0;36m120 |[0;0m 
+[0;36m121 |[0;0m     private func bloomDigest(_ ids: [Data]) -> Data {
+[0;36m122 |[0;0m         var b = BloomDigest()
+    [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'b' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
+[0;36m123 |[0;0m         for id in ids { b.add(id) }
+[0;36m124 |[0;0m         return Data(b.toBytes().prefix(BleLinkInfoConstants.shortDigestBytes))
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m25 |[0;0m         )
- [0;36m26 |[0;0m         let sig = try signingKey.signature(for: preimage)
- [0;36m27 |[0;0m         let binding = try IdentityBindingV1(
-    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
- [0;36m28 |[0;0m             generation: generation,
- [0;36m29 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:89:47: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+ [0;36m87 |[0;0m                 let maxStr = maxToken.split(separator: "=", omittingEmptySubsequences: true).map { String($0) }
+ [0;36m88 |[0;0m                 let mx = Int(maxStr[1]) ?? 4096
+ [0;36m89 |[0;0m                 gov = PeerGovernor(nowMillis: clock(), maxTrackedPeers: mx)
+    [0;36m|[0;0m                                               `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+ [0;36m90 |[0;0m                 step = 0
+ [0;36m91 |[0;0m                 continue
 
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:114:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m112 |[0;0m     // (2) bounded cache under Sybil churn: tracked set is capped; a known peer is served
+[0;36m113 |[0;0m     func testBoundedCacheHoldsUnderSybilChurn() {
+[0;36m114 |[0;0m         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 8)
+    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m115 |[0;0m         var served = 0
+[0;36m116 |[0;0m         for k in 0..<12 {
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:128:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m126 |[0;0m     // (3) denial leaves EXISTING trusted peers intact (per-identity isolation)
+[0;36m127 |[0;0m     func testDenialLeavesExistingTrustedPeersIntact() {
+[0;36m128 |[0;0m         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m129 |[0;0m         let attacker = node(0xE3)
+[0;36m130 |[0;0m         let bystander = node(0xE1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:148:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m146 |[0;0m     //     peer's calls would begin to drop -- this witness is the T27-SM1 killer.
+[0;36m147 |[0;0m     func testAdvertisedHintIsNeverTheAuthenticatedIdentity() {
+[0;36m148 |[0;0m         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m149 |[0;0m         let sharedHint = Data([0x0B, 0xAD, 0xF0, 0x0D])
+[0;36m150 |[0;0m         let a = node(0xF1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:163:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m161 |[0;0m     // (5) a malformed/short advertised hint cannot collapse distinct identities
+[0;36m162 |[0;0m     func testMalformedHintDoesNotCollapseDistinctIdentities() {
+[0;36m163 |[0;0m         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m164 |[0;0m         let x = node(0x34)
+[0;36m165 |[0;0m         let y = node(0x78)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:184:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m182 |[0;0m     func testGSSerialisedTrustMutationsGiveADeterministicScore() {
+[0;36m183 |[0;0m         let clock: () -> Int64 = { 1_700_000_000_000 }
+[0;36m184 |[0;0m         let g = PeerGovernor(nowMillis: clock, maxTrackedPeers: 8)
+    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
+[0;36m185 |[0;0m         let id = Data(repeating: 0x5A, count: 16)
+[0;36m186 |[0;0m 
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: [1;33mwarning: [1;39minitialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
 [0;36m272 |[0;0m         )
 [0;36m273 |[0;0m         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -3361,63 +3399,24 @@ Building for debugging...
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: [1;33mwarning: [1;39mvariable 'b' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
-[0;36m120 |[0;0m 
-[0;36m121 |[0;0m     private func bloomDigest(_ ids: [Data]) -> Data {
-[0;36m122 |[0;0m         var b = BloomDigest()
-    [0;36m|[0;0m             `- [1;33mwarning: [1;39mvariable 'b' was never mutated; consider changing to 'let' constant[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated\VariableNeverMutated]8;;\]
-[0;36m123 |[0;0m         for id in ids { b.add(id) }
-[0;36m124 |[0;0m         return Data(b.toBytes().prefix(BleLinkInfoConstants.shortDigestBytes))
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m44 |[0;0m         )
+ [0;36m45 |[0;0m         let sig = try! signingKey.signature(for: preimage)
+ [0;36m46 |[0;0m         let binding = try! IdentityBindingV1(
+    [0;36m|[0;0m                       `- [1;33mwarning: [1;39mno calls to throwing functions occur within 'try' expression[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker\UnnecessaryEffectMarker]8;;\]
+ [0;36m47 |[0;0m             generation: generation,
+ [0;36m48 |[0;0m             signingPublicKey: signingKey.publicKey.rawRepresentation,
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:89:47: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
- [0;36m87 |[0;0m                 let maxStr = maxToken.split(separator: "=", omittingEmptySubsequences: true).map { String($0) }
- [0;36m88 |[0;0m                 let mx = Int(maxStr[1]) ?? 4096
- [0;36m89 |[0;0m                 gov = PeerGovernor(nowMillis: clock(), maxTrackedPeers: mx)
-    [0;36m|[0;0m                                               `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
- [0;36m90 |[0;0m                 step = 0
- [0;36m91 |[0;0m                 continue
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m501 |[0;0m 
+[0;36m502 |[0;0m     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+[0;36m503 |[0;0m         let (pubA, _) = realDhKeypair()
+    [0;36m|[0;0m              `- [1;33mwarning: [1;39mimmutable value 'pubA' was never used; consider replacing with '_' or removing it[0;0m [#]8;;https://docs.swift.org/compiler/documentation/diagnostics/no-usage\NoUsage]8;;\]
+[0;36m504 |[0;0m         let a = nodeA()
+[0;36m505 |[0;0m         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:114:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m112 |[0;0m     // (2) bounded cache under Sybil churn: tracked set is capped; a known peer is served
-[0;36m113 |[0;0m     func testBoundedCacheHoldsUnderSybilChurn() {
-[0;36m114 |[0;0m         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 8)
-    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m115 |[0;0m         var served = 0
-[0;36m116 |[0;0m         for k in 0..<12 {
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:128:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m126 |[0;0m     // (3) denial leaves EXISTING trusted peers intact (per-identity isolation)
-[0;36m127 |[0;0m     func testDenialLeavesExistingTrustedPeersIntact() {
-[0;36m128 |[0;0m         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m129 |[0;0m         let attacker = node(0xE3)
-[0;36m130 |[0;0m         let bystander = node(0xE1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:148:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m146 |[0;0m     //     peer's calls would begin to drop -- this witness is the T27-SM1 killer.
-[0;36m147 |[0;0m     func testAdvertisedHintIsNeverTheAuthenticatedIdentity() {
-[0;36m148 |[0;0m         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m149 |[0;0m         let sharedHint = Data([0x0B, 0xAD, 0xF0, 0x0D])
-[0;36m150 |[0;0m         let a = node(0xF1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:163:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m161 |[0;0m     // (5) a malformed/short advertised hint cannot collapse distinct identities
-[0;36m162 |[0;0m     func testMalformedHintDoesNotCollapseDistinctIdentities() {
-[0;36m163 |[0;0m         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m164 |[0;0m         let x = node(0x34)
-[0;36m165 |[0;0m         let y = node(0x78)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:184:41: [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m182 |[0;0m     func testGSSerialisedTrustMutationsGiveADeterministicScore() {
-[0;36m183 |[0;0m         let clock: () -> Int64 = { 1_700_000_000_000 }
-[0;36m184 |[0;0m         let g = PeerGovernor(nowMillis: clock, maxTrackedPeers: 8)
-    [0;36m|[0;0m                                         `- [1;33mwarning: [1;39mconverting non-Sendable function value to '@Sendable () -> Int64' may introduce data races[0;0m
-[0;36m185 |[0;0m         let id = Data(repeating: 0x5A, count: 16)
-[0;36m186 |[0;0m 
-
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC7-a-failed-wipe-is-not-resumable/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:347:9: [1;33mwarning: [1;39musing '_' to ignore the result of a Void-returning function is redundant[0;0m
  [0;36m345 |[0;0m         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
  [0;36m346 |[0;0m         pins.append(req)
@@ -4050,4 +4049,4 @@ GodstoneMesh.RealTransportHostRig:1:20: [1;39mnote: [1;39mclass 'RealTransport
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.42 secs)
+Build complete! (10.28 secs)
