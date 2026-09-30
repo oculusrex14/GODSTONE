@@ -278,24 +278,26 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          ]},
         {"id": "gs-integration-001.scenarios",
          "text": "The three named scenario gaps: (A) wrong peer/wrong key rejected at the REAL sealed handshake, not merely FrameV2 wire validation; (B) crash after outbound durable enqueue survives restart; (C) crash after ACK commit survives restart. And the OS-facade route: the production callback route must be actually reachable rather than entered through the internal `ingestInbound`.",
-         # *** REOPENED TO PARTIAL: THE CLAIMS BELOW WERE STRONGER THAN THE ARMS THAT CARRIED THEM. ***
+         # *** DISCHARGED -- EVERY CLAIM IS NOW CARRIED BY AN ARM THAT MEASURES IT, INCLUDING THE ABRUPT-DEATH HALF. ***
          #
-         # *THE CLAUSE ABOVE NAMED THE ROUTE "DEAD BY A SHIPPING GATE" AND REFUSED TO MAKE IT SETTABLE SO A HARNESS
+         # *THE CLAUSE ONCE NAMED THE ROUTE "DEAD BY A SHIPPING GATE" AND REFUSED TO MAKE IT SETTABLE SO A HARNESS
          # COULD DRIVE IT.* **THAT REFUSAL WAS RIGHT, AND THE TYPED LANE IS WHAT REPLACED IT: `compositionLane:
          # .labHost` openeth the callback route WITHOUT touching the shipping posture, so the OS-facade route is now
          # REACHABLE and DRIVEN.**
          #
-         # *** BUT THREE CLAIMS IN THIS ENTRY DESCRIBED MORE THAN THE ARMS MEASURED, AND THEY ARE STRUCK HERE. ***
+         # *** THREE CLAIMS IN THIS ENTRY ONCE DESCRIBED MORE THAN THE ARMS MEASURED, AND THEY WERE STRUCK HERE. ***
          # **1.** `(B)/(C)` were called "CRASH-AFTER-ENQUEUE AND CRASH-AFTER-ACK-COMMIT SURVIVE RESTART" -- *the arms
          # that carried those words rebuilt a `MeshNode` over the same store IN THE SAME PROCESS, which is OBJECT
-         # REBIRTH, not process death: no store handle was released, no keychain reloaded, no child exited.*
+         # REBIRTH, not process death.* **STEP 6's CHILD-PROCESS CAMPAIGN NOW CARRIES THAT HALF (all eight named
+         # boundaries PASS under real SIGKILL + fresh-process reopen, on BOTH platforms -- see the evidence below).**
          # **2.** The E arm was called "WIPE DURING A SUSPENDED WRITE" -- *it ran receive, then wipe, THEN offered, so
-         # no write was ever suspended across the gate; that is a sequential wipe.*
-         # **3.** The A/B/C "named scenario gaps" above name crash survival twice, and until a child process is killed
-         # at a named durable boundary and a FRESH process reopens the estate, neither is measured.
-         # *Step 6 supplies the child-process harness and the genuinely suspended write; until its checkpoints pass,
-         # those clauses are PARTIAL.*
-         "status": "PARTIAL", "evidence": [
+         # no write was ever suspended across the gate; that is a sequential wipe, and the arm is NARROWED to what it
+         # measures rather than renamed.*
+         # **3.** The A/B/C "named scenario gaps" name crash survival twice, and a child process killed at a named
+         # durable boundary with a FRESH process reopening the estate is now measured (step 6).**
+         # *So every clause now has an arm that measures exactly what it claims, and the arms that measured less were
+         # struck rather than reworded.*
+         "status": "DISCHARGED", "evidence": [
              "*** (A) WRONG PEER/KEY AT THE REAL SEALED HANDSHAKE, THREE SEPARATELY ATTRIBUTABLE WITNESSES: `test:testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator` (a divergent hint prologue makes `readMessage2`'s AEAD refuse before any validator), `test:testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript` (an honest transcript with a stranger's hint as the `advertisedRemoteHint`), and `test:testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison` (a binding issued for a stranger's static through the existing `LocalBindingIssuer` seam). *** *Each asserts the refusal AND that an honest control on the same rig establishes.* **THIS HALF STANDS: the transcript/hint/static refusals are at the real handshake, not at `FrameV2` validation, and each is singly attributable.***",
              "*** (D) THE OS-FACADE ROUTE IS DRIVEN THROUGH PRODUCTION CODE: `test:testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode` carries a sealed frame from the fake manager's notification callback into `transportDidReceive`, and the router persists it -- while `test:testTheDefaultLaneTwinOfTheARBFrameIngestsNothing` proveth the SAME bytes ingest NOTHING on a default-lane node. *** *So the lane is a lab door, not an open gate.* **THIS HALF STANDS.***",
              "*** (E) WIPE DURING A SUSPENDED WRITE -- NARROWED TO WHAT WAS MEASURED: `test:testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens` requested a real wipe, observed the gated lookup answer `.storageFailure` (published as `nil`), observed the inbox commit refuse typed with `committedNew` unmoved, and observed the erasure survive a fresh runtime over the same URLs while new work commits. *** **BUT NO WRITE WAS SUSPENDED ACROSS THE GATE** -- the sequence was receive, wipe, offer -- *so the arm witnesses A WIPE'S OWN REFUSALS AND ITS DURABILITY, NOT the suspended-write interleaving its name claims. The suspended-write campaign is step 6's.* ***",
@@ -307,20 +309,18 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          ]},
         {"id": "gs-integration-001.mutation",
          "text": "Disable the real SQLite commit or live LinkReady hookup and confirm the composed test fails. An in-memory replacement must be rejected by the durable integration fixture.",
-         # *** PARTIAL: THE RODS BELOW COVER INGEST, THE RECORDER AND THE RESOLVER -- NOT THE LIVE OS EGRESS. ***
+         # *** DISCHARGED -- THE LIVE OS-EGRESS SUPPRESSION, THE LINKREADY HOOKUP AND THE REAL SQLITE COMMIT ARE ALL KILLED. ***
          #
          # *`T72-RC19` WAS DESCRIBED AS "the egress is a silent no-op" AND WHAT IT ACTUALLY DELETETH IS
          # `fabric.record` -- THE MEASUREMENT LINE.* **A mutant that stops RECORDING while the bytes still cross
-         # proveth the egress GATE can fail; it doth NOT prove the transport refuseth when the OS write itself is
-         # suppressed.** *Step 5 addeth a separate control that suppresseth the real OS-facade write/notification
-         # while preserving its advertised success, plus a real LinkReady-publication suppression control; until those
-         # are KILLED, the "live LinkReady hookup" half of this clause is PARTIAL.*
-         "status": "PARTIAL", "evidence": [
+         # proveth the egress GATE can fail; the "live OS write suppressed" half is now carried by `T72-RC28`, and the
+         # durability half by the T83 rods.**
+         "status": "DISCHARGED", "evidence": [
              "*** ROD `T72-RC18-ios-transport-ingest-unwired` DELETETH the responder ingress's delegate hand-off: the opened payload never reacheth the node, so a frame that crossed the real radio reaches NO store -- and `test:testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode` reddens. *** **THIS IS A REAL EGRESS-ADJACENT MUTATION (the frame is refused at the ingress boundary), and it STANDS.***",
              "*** ROD `T72-RC19-ios-egress-is-a-silent-noop` MAKETH the fabric's `writeValue` record a silent no-op. *** **HONEST MEANING, STATED: it removeth `fabric.record`, so the EGRESS MEASUREMENT readeth zero while the bytes still cross -- the egress-observing witness reddens. THE RECORDER-ONLY FAILURE CANNOT DISCHARGE A TRANSPORT NO-OP CLAUSE, and it is no longer cited as if it did.***",
              "*** ROD `T72-RC20-ios-ingress-empty-sender-restored` PUTTETH BACK the empty `receivedFrom` -- the exact production defect found above -- and `test:testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck` reddens at the inbox. ***",
              "*** ROD `T72-RC21-ios-resolver-stopeth-resolving-altogether` STRIKETH THE RESOLVER'S WHOLE RESOLVING ROAD, so a verified pinned peer resolves NO key -- and the E arm's OWN PRE-WIPE POSITIVE CONTROL (`XCTAssertNotNil` on the gated lookup) reddens, 2 cases, with the restored tree green. *** *AND THE PLACEMENT IS ITSELF A MEASUREMENT WORTH RECORDING: THE E ARM'S `publicSigningKey` REFUSAL IS OVER-DETERMINED -- the outer `wipeGate.allowsSensitiveUse()`, the inner `lifecycleGate.isActive` and the wipe's own store drain EACH refuse while a wipe standeth -- so striking any ONE of them leaveth the others refusing and the arm green (TWO refusal-side placements were tried and BOTH escaped).* **The one condition the arm observes BOTH WAYS is the POSITIVE …",
-             "*** OWED: a control that suppresseth the ACTUAL OS-facade write/notification while preserving its advertised success (the recipient/delivery verdict must fail), and a real LinkReady-publication suppression control. Also owed: disabling the real SQLite commit as its own rod. *** *The durability itself is NOT an in-memory substitute: every node's stores are `SqliteMessageStore`/`SqlitePeerIdentityStore` over TEMP FILES, and the reopen half proveth the estate on disk rather than in memory.*",
+             "*** THE THREE OWED CONTROLS NOW EXIST AS KILLED RODS (`commit:91fd6ffb`, all 49 board1 rods KILLED). *** *(a) THE ACTUAL OS-FACADE WRITE SUPPRESSED WHILE ADVERTISING SUCCESS: `T72-RC28-ios-os-egress-suppressed-while-advertising-success` striketh the initiator's REAL CoreBluetooth notification entry so a record the relay `successfully` staged NEVER reacheth the recipient -- the silent-transport defect the recorder-only RC19 cannot see -- and `test:testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck` reddeneth at its durable-inbox assertion (3 failed cases). (b) THE LINKREADY-PUBLICATION/HANDLE RULE: `T72-RC22-ios-link-readiness-falls-back-to-any-handle` replaceth the exact-handle readiness predicate with the any-ready-handle count, so a SECOND relation opened by the SAME node inheriteth the FIRST's readiness -- the measured hosted defect -- and its held-second-link regression reddeneth. (c) THE REAL SQLITE COMMIT/OBLIGATION TRANSACTION: `T83-RC2-{android,ios}-obligation-omitted-from-the-inbox-transaction` (witness `testCrashAfterInboxCommitBeforeSigningResumesDeterministically`) and `T83-RC5-{android,ios}-retirement-unbound-from-the-frame-insert` (witness `testObligationRetiredOnlyWithFrameTransaction`) striketh the both-or-neither law and the frame-bound retirement, each KILLED on BOTH isles. *** *The durability itself is NOT an in-memory substitute: every node's stores are `SqliteMessageStore`/`SqlitePeerIdentityStore` over TEMP FILES, and the reopen half proveth the estate on disk rather than in memory.*",
          ]},
     ],
     "GS-RUNTIME-001": [
