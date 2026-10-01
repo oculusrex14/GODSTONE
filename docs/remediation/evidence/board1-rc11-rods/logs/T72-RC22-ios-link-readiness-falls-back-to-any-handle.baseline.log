@@ -1,62 +1,62 @@
-Test Suite 'Selected tests' started at 2026-09-30 11:11:58.688.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 11:11:58.695.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 11:11:58.695.
+Test Suite 'Selected tests' started at 2026-10-01 10:03:21.590.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 10:03:21.596.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 10:03:21.596.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:11:58.695.
+Test Suite 'Selected tests' passed at 2026-10-01 10:03:21.596.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 11:11:58.737.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 11:11:58.743.
-Test Suite 'GsIntegration001RealTransportTests' started at 2026-09-30 11:11:58.743.
+Test Suite 'Selected tests' started at 2026-10-01 10:03:21.633.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 10:03:21.639.
+Test Suite 'GsIntegration001RealTransportTests' started at 2026-10-01 10:03:21.639.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' passed (0.009 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' passed (0.008 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.008 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.005 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' passed (0.033 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' passed (0.029 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' passed (0.045 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' passed (0.043 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' passed (0.041 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' passed (0.043 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' passed (0.019 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' passed (0.013 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' passed (0.003 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' passed (0.003 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' passed (0.024 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' passed (0.023 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' passed (0.012 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' passed (0.011 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' passed (0.011 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' passed (0.010 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.015 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.013 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' passed (0.005 seconds).
-Test Suite 'GsIntegration001RealTransportTests' passed at 2026-09-30 11:11:59.022.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.277 (0.279) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 11:11:59.022.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.277 (0.279) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:11:59.022.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.277 (0.285) seconds
+Test Suite 'GsIntegration001RealTransportTests' passed at 2026-10-01 10:03:21.888.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.247 (0.249) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 10:03:21.888.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.247 (0.249) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 10:03:21.888.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.247 (0.254) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
@@ -74,11 +74,11 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-09-30 11:11:59.076.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 11:11:59.082.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 11:11:59.082.
+Test Suite 'Selected tests' started at 2026-10-01 10:03:21.937.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 10:03:21.943.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 10:03:21.943.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:11:59.082.
+Test Suite 'Selected tests' passed at 2026-10-01 10:03:21.943.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [Pre-planning 1 / 211]
@@ -182,12 +182,12 @@ Building for debugging...
 555 |     }
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[112 / 167] GodstoneCore
 [118 / 168] GodstoneMesh
-[129 / 180] GodstoneMesh
+[128 / 180] GodstoneCoreTests-product
 [130 / 222]
 [131 / 222]
 [134 / 222]
+[135 / 222]
 [137 / 222]
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  42 |     public let msgId: Data
@@ -204,8 +204,17 @@ Building for debugging...
     |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
   8 |     public static let magic: UInt16 = 0x4753
   9 |     public static let version: UInt8 = 0x02
-[138 / 222] GodstoneMesh
-[141 / 222]
+[140 / 222]
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:173:27: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+171 |             if let estateRoot {
+172 |                 let url = estateRoot.appendingPathComponent("lab_\(label)_\(next).db")
+173 |                 durable = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
+    |                           `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+174 |                 durableStores[label] = durable
+175 |             }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[143 / 222]
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: warning: variable 'bloom' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 141 |         let nodeHint = identity.nodeHint
 142 |         var count = 0
@@ -232,16 +241,8 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-[145 / 222]
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:173:27: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-171 |             if let estateRoot {
-172 |                 let url = estateRoot.appendingPathComponent("lab_\(label)_\(next).db")
-173 |                 durable = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
-    |                           `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-174 |                 durableStores[label] = durable
-175 |             }
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[148 / 222]
+[151 / 222]
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
    7 |     public let transportEpoch: UInt64
@@ -476,9 +477,7 @@ Building for debugging...
 
 [#AddPreconcurrencyImport]: <https://docs.swift.org/compiler/documentation/diagnostics/add-preconcurrency-import>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[149 / 222]
-[162 / 222]
-[165 / 222]
+[157 / 222] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
  76 |     public let to: Int
  77 |     public let statements: [String]
@@ -530,6 +529,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[166 / 222] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  40 |         case ignored(reason: String)
  41 |         case refused(reason: String)
@@ -593,7 +593,7 @@ Building for debugging...
     |                    `- note: class 'NoiseSession' does not conform to the 'Sendable' protocol
  49 | 
  50 |     public enum Role { case initiator, responder }
-[167 / 222] GodstoneMesh
+[167 / 222]
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift:346:12: warning: result of call to function returning 'Int32' is unused [#NoUsage]
  344 |         adoptedConnectionIdentity = owned.connection.connectionIdentity
  345 | 
@@ -1027,6 +1027,7 @@ Building for debugging...
  940 |                 sourceEpoch: responder.ble.currentTransportEpoch)
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[167 / 222] GodstoneMesh
 [167 / 222]
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckDispatcher.swift:323:11: warning: 'catch' block is unreachable because no errors are thrown in 'do' block
 321 |         do {
@@ -1053,8 +1054,9 @@ Building for debugging...
 409 |                 continue
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[170 / 222] GodstoneMesh
+[170 / 222]
 [171 / 222]
+[180 / 222] GodstoneCoreTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  23 | @MainActor
  24 | final class ReadinessT48Tests: XCTestCase {
@@ -1084,8 +1086,70 @@ Building for debugging...
      |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
  226 |         var knobs = FixtureKnobs()
-[180 / 222] GodstoneCoreTests-product
-[183 / 222] GodstoneCoreTests-product
+[181 / 222] GodstoneCoreTests-product
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 45 |         switch request {
+ 46 |         case .browse:
+ 47 |             lock.lock(); browseCalls += 1; lock.unlock()
+    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 48 |             return .documents(browseRows ?? [document])
+ 49 |         case .search(let phrase):
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:15:1: note: 'lock()' declared here
+ 13 | 
+ 14 | /// Attempts to acquire a lock, blocking a thread's execution until the lock can be acquired.
+ 15 | - (void)lock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
+    | `- note: 'lock()' declared here
+ 16 | 
+ 17 | /// Relinquishes a previously acquired lock.
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:49: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 45 |         switch request {
+ 46 |         case .browse:
+ 47 |             lock.lock(); browseCalls += 1; lock.unlock()
+    |                                                 `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 48 |             return .documents(browseRows ?? [document])
+ 49 |         case .search(let phrase):
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:18:1: note: 'unlock()' declared here
+ 16 | 
+ 17 | /// Relinquishes a previously acquired lock.
+ 18 | - (void)unlock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
+    | `- note: 'unlock()' declared here
+ 19 | 
+ 20 | @end
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:50:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 48 |             return .documents(browseRows ?? [document])
+ 49 |         case .search(let phrase):
+ 50 |             lock.lock()
+    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 51 |             searched.append(phrase)
+ 52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:15:1: note: 'lock()' declared here
+ 13 | 
+ 14 | /// Attempts to acquire a lock, blocking a thread's execution until the lock can be acquired.
+ 15 | - (void)lock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
+    | `- note: 'lock()' declared here
+ 16 | 
+ 17 | /// Relinquishes a previously acquired lock.
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:53:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 51 |             searched.append(phrase)
+ 52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
+ 53 |             lock.unlock()
+    |                  `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 54 |             return .passages(answer)
+ 55 |         case .document:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:18:1: note: 'unlock()' declared here
+ 16 | 
+ 17 | /// Relinquishes a previously acquired lock.
+ 18 | - (void)unlock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
+    | `- note: 'unlock()' declared here
+ 19 | 
+ 20 | @end
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 170 |             if rc != SQLITE_OK {
@@ -1158,36 +1222,6 @@ Building for debugging...
 535 | 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 23 | @MainActor
- 24 | final class ReadinessT48Tests: XCTestCase {
- 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    |                        `- note: static property declared here
- 26 | 
- 27 |     private var fixturesDirectory: URL {
-    :
-132 |     /// Build (or rebuild) the tier's archive under the application-support
-133 |     /// archives directory, where the production resolver looketh.
-134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
-135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-136 |         var knobs = FixtureKnobs()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:112:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-110 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
-111 |             if rc != SQLITE_OK {
-112 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
-    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-113 |                 if let e = err { sqlite3_free(e) }
-114 |                 XCTFail("fixture DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:233:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-231 |         let rc = sqlite3_exec(db, sql, nil, nil, &err)
-232 |         if rc != SQLITE_OK {
-233 |             let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
-    |                                                     `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
-234 |             if let e = err { sqlite3_free(e) }
-235 |             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift:215:9: warning: variable 'given' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 213 | 
 214 | private func t61Chunked(_ bytes: [UInt8], _ measure: Int, _ burst: Int) -> ModelStaging.T61Chunker {
@@ -1197,6 +1231,7 @@ Building for debugging...
 217 |     var words = 0
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[187 / 222] GodstoneCoreTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift:66:10: warning: associated value 'created' of 'Sendable'-conforming enum 'OutboundEnqueueResult' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
   64 | public enum OutboundEnqueueResult: Sendable, Equatable {
   65 |     /// A new DIRECT message was atomically persisted in held_frames and delivery_state (QUEUED_DURABLY).
@@ -2594,70 +2629,36 @@ Building for debugging...
 352 |         }
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[187 / 222] GodstoneMesh
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 45 |         switch request {
- 46 |         case .browse:
- 47 |             lock.lock(); browseCalls += 1; lock.unlock()
-    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 48 |             return .documents(browseRows ?? [document])
- 49 |         case .search(let phrase):
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 23 | @MainActor
+ 24 | final class ReadinessT48Tests: XCTestCase {
+ 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    |                        `- note: static property declared here
+ 26 | 
+ 27 |     private var fixturesDirectory: URL {
+    :
+132 |     /// Build (or rebuild) the tier's archive under the application-support
+133 |     /// archives directory, where the production resolver looketh.
+134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+136 |         var knobs = FixtureKnobs()
 
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:15:1: note: 'lock()' declared here
- 13 | 
- 14 | /// Attempts to acquire a lock, blocking a thread's execution until the lock can be acquired.
- 15 | - (void)lock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
-    | `- note: 'lock()' declared here
- 16 | 
- 17 | /// Relinquishes a previously acquired lock.
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:112:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+110 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
+111 |             if rc != SQLITE_OK {
+112 |                 let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
+    |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+113 |                 if let e = err { sqlite3_free(e) }
+114 |                 XCTFail("fixture DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:49: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 45 |         switch request {
- 46 |         case .browse:
- 47 |             lock.lock(); browseCalls += 1; lock.unlock()
-    |                                                 `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 48 |             return .documents(browseRows ?? [document])
- 49 |         case .search(let phrase):
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:18:1: note: 'unlock()' declared here
- 16 | 
- 17 | /// Relinquishes a previously acquired lock.
- 18 | - (void)unlock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
-    | `- note: 'unlock()' declared here
- 19 | 
- 20 | @end
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:50:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 48 |             return .documents(browseRows ?? [document])
- 49 |         case .search(let phrase):
- 50 |             lock.lock()
-    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 51 |             searched.append(phrase)
- 52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:15:1: note: 'lock()' declared here
- 13 | 
- 14 | /// Attempts to acquire a lock, blocking a thread's execution until the lock can be acquired.
- 15 | - (void)lock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
-    | `- note: 'lock()' declared here
- 16 | 
- 17 | /// Relinquishes a previously acquired lock.
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:53:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 51 |             searched.append(phrase)
- 52 |             let answer = searchAnswers.isEmpty ? hitsForSearch : searchAnswers.removeFirst()
- 53 |             lock.unlock()
-    |                  `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
- 54 |             return .passages(answer)
- 55 |         case .document:
-
-/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSLock.h:18:1: note: 'unlock()' declared here
- 16 | 
- 17 | /// Relinquishes a previously acquired lock.
- 18 | - (void)unlock NS_SWIFT_UNAVAILABLE_FROM_ASYNC("Use async-safe scoped locking instead");
-    | `- note: 'unlock()' declared here
- 19 | 
- 20 | @end
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:233:53: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+231 |         let rc = sqlite3_exec(db, sql, nil, nil, &err)
+232 |         if rc != SQLITE_OK {
+233 |             let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
+    |                                                     `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+234 |             if let e = err { sqlite3_free(e) }
+235 |             XCTFail("fixture insert cried: \(why) on \(String(sql.prefix(72)))…")
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
  114 | @MainActor
  115 | final class ReadinessT50Tests: XCTestCase {
@@ -2835,6 +2836,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[188 / 222] GodstoneCoreTests-product
 [189 / 222] GodstoneCoreTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
@@ -3090,8 +3092,8 @@ Building for debugging...
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [193 / 222] GodstoneMesh
 [202 / 224] LabMeshTests-product
-[205 / 227] LabMeshTests-product
 [216 / 238] LabMeshTests-product
+[219 / 238] LabMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  83 |         // over the caller-named medium still findeth EXACTLY THIS intent. Nothing of the authoring runtime is
  84 |         // consulted -- the medium alone answereth.
@@ -3101,8 +3103,6 @@ Building for debugging...
  87 |         guard case .found = journal.load(intentId) else {
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[222 / 238] GodstoneMeshTests-product
-[222 / 238] LabMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 120 | 
 121 |     private func bloomDigest(_ ids: [Data]) -> Data {
@@ -3160,6 +3160,7 @@ Building for debugging...
 186 | 
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+[220 / 238] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
  38 |     /// the coordinator (which GS-FINAL-002 already proved).
  39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
@@ -3185,7 +3186,7 @@ Building for debugging...
 166 |                        aliceHint: Data, bobHint: Data,
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[230 / 238] LabMeshTests-product
+[224 / 238] GodstoneMeshTests-product
 [232 / 238] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsStress001RealRuntimeTests.swift:581:13: warning: initialization of variable 'maxHeld' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
 579 |         /// **THE FIX IS A COUNTER THE LOOP ITSELF INCREMENTS, asserted against `cycles`.** An early break now fails.
@@ -3238,13 +3239,13 @@ Building for debugging...
 275 | 
 276 |         let order = OrderLog()
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:421:13: warning: using '_' to ignore the result of a Void-returning function is redundant
-419 |         let innerTrace = Box<BleTransport.ReductionTrace>()
-420 |         transport.failpointAfterValidationForTest = { _ in
-421 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:445:13: warning: using '_' to ignore the result of a Void-returning function is redundant
+443 |         let innerTrace = Box<BleTransport.ReductionTrace>()
+444 |         transport.failpointAfterValidationForTest = { _ in
+445 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
     |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
-422 |             if let inner = transport.lastReductionTraceForTest {
-423 |                 innerTrace.set(inner)
+446 |             if let inner = transport.lastReductionTraceForTest {
+447 |                 innerTrace.set(inner)
 
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
@@ -4112,4 +4113,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [234 / 238] GodstoneMeshTests-product
-Build complete! (16.77 secs)
+Build complete! (15.68 secs)

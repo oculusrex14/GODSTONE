@@ -1,40 +1,40 @@
-Test Suite 'Selected tests' started at 2026-09-30 11:13:24.399.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 11:13:24.404.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 11:13:24.404.
+Test Suite 'Selected tests' started at 2026-10-01 10:04:40.620.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 10:04:40.626.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 10:04:40.626.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:13:24.405.
+Test Suite 'Selected tests' passed at 2026-10-01 10:04:40.626.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 11:13:24.445.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 11:13:24.451.
-Test Suite 'GsIntegration001RealTransportTests' started at 2026-09-30 11:13:24.451.
+Test Suite 'Selected tests' started at 2026-10-01 10:04:40.664.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 10:04:40.669.
+Test Suite 'GsIntegration001RealTransportTests' started at 2026-10-01 10:04:40.669.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' passed (0.010 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' passed (0.009 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.008 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.005 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' passed (0.006 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' passed (0.005 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' passed (0.008 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' passed (0.005 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' passed (0.031 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' passed (0.036 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' passed (0.006 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' passed (0.041 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' passed (0.044 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' passed (0.043 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' passed (0.044 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' passed (0.017 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' passed (0.014 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' passed (0.006 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' passed (0.005 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' started.
@@ -42,21 +42,21 @@ Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001Th
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' passed (0.023 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' passed (0.012 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' passed (0.011 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' passed (0.011 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' passed (0.010 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.019 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.014 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' passed (0.008 seconds).
-Test Suite 'GsIntegration001RealTransportTests' passed at 2026-09-30 11:13:24.731.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.279 (0.281) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 11:13:24.731.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.279 (0.281) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:13:24.732.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.279 (0.287) seconds
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' passed (0.005 seconds).
+Test Suite 'GsIntegration001RealTransportTests' passed at 2026-10-01 10:04:40.932.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.261 (0.262) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 10:04:40.932.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.261 (0.262) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 10:04:40.932.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.261 (0.268) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
@@ -74,13 +74,14 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-09-30 11:13:24.797.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 11:13:24.804.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 11:13:24.804.
+Test Suite 'Selected tests' started at 2026-10-01 10:04:40.982.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 10:04:40.987.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 10:04:40.987.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:13:24.804.
-	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 10:04:40.988.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
+[1 / 5]
 [2 / 6] GodstoneCore
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
  56 | 
@@ -553,6 +554,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[32 / 34] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
@@ -799,21 +801,6 @@ Building for debugging...
 175 |             }
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 42 |     public let msgId: Data
- 43 |     public let state: DeliveryState
- 44 |     public let frame: FrameV2
-    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 45 |     /// When this node committed the pair, when it remembers; nil when the
- 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: warning: variable 'bloom' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 141 |         let nodeHint = identity.nodeHint
 142 |         var count = 0
@@ -840,6 +827,21 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 42 |     public let msgId: Data
+ 43 |     public let state: DeliveryState
+ 44 |     public let frame: FrameV2
+    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 45 |     /// When this node committed the pair, when it remembers; nil when the
+ 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
  76 |     public let to: Int
  77 |     public let statements: [String]
@@ -3062,7 +3064,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  44 |         )
  45 |         let sig = try! signingKey.signature(for: preimage)
@@ -3081,6 +3082,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
   32 |         )
   33 |         let sig = try! signingKey.signature(for: preimage)
@@ -3123,63 +3125,6 @@ Building for debugging...
 166 |                        aliceHint: Data, bobHint: Data,
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-120 | 
-121 |     private func bloomDigest(_ ids: [Data]) -> Data {
-122 |         var b = BloomDigest()
-    |             `- warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-123 |         for id in ids { b.add(id) }
-124 |         return Data(b.toBytes().prefix(BleLinkInfoConstants.shortDigestBytes))
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:89:47: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
- 87 |                 let maxStr = maxToken.split(separator: "=", omittingEmptySubsequences: true).map { String($0) }
- 88 |                 let mx = Int(maxStr[1]) ?? 4096
- 89 |                 gov = PeerGovernor(nowMillis: clock(), maxTrackedPeers: mx)
-    |                                               `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
- 90 |                 step = 0
- 91 |                 continue
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:114:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-112 |     // (2) bounded cache under Sybil churn: tracked set is capped; a known peer is served
-113 |     func testBoundedCacheHoldsUnderSybilChurn() {
-114 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 8)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-115 |         var served = 0
-116 |         for k in 0..<12 {
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:128:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-126 |     // (3) denial leaves EXISTING trusted peers intact (per-identity isolation)
-127 |     func testDenialLeavesExistingTrustedPeersIntact() {
-128 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-129 |         let attacker = node(0xE3)
-130 |         let bystander = node(0xE1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:148:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-146 |     //     peer's calls would begin to drop -- this witness is the T27-SM1 killer.
-147 |     func testAdvertisedHintIsNeverTheAuthenticatedIdentity() {
-148 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-149 |         let sharedHint = Data([0x0B, 0xAD, 0xF0, 0x0D])
-150 |         let a = node(0xF1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:163:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-161 |     // (5) a malformed/short advertised hint cannot collapse distinct identities
-162 |     func testMalformedHintDoesNotCollapseDistinctIdentities() {
-163 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-164 |         let x = node(0x34)
-165 |         let y = node(0x78)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:184:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-182 |     func testGSSerialisedTrustMutationsGiveADeterministicScore() {
-183 |         let clock: () -> Int64 = { 1_700_000_000_000 }
-184 |         let g = PeerGovernor(nowMillis: clock, maxTrackedPeers: 8)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-185 |         let id = Data(repeating: 0x5A, count: 16)
-186 | 
-
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
 272 |         )
 273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -3188,13 +3133,13 @@ Building for debugging...
 275 | 
 276 |         let order = OrderLog()
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:421:13: warning: using '_' to ignore the result of a Void-returning function is redundant
-419 |         let innerTrace = Box<BleTransport.ReductionTrace>()
-420 |         transport.failpointAfterValidationForTest = { _ in
-421 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:445:13: warning: using '_' to ignore the result of a Void-returning function is redundant
+443 |         let innerTrace = Box<BleTransport.ReductionTrace>()
+444 |         transport.failpointAfterValidationForTest = { _ in
+445 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
     |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
-422 |             if let inner = transport.lastReductionTraceForTest {
-423 |                 innerTrace.set(inner)
+446 |             if let inner = transport.lastReductionTraceForTest {
+447 |                 innerTrace.set(inner)
 
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
@@ -3733,6 +3678,63 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+120 | 
+121 |     private func bloomDigest(_ ids: [Data]) -> Data {
+122 |         var b = BloomDigest()
+    |             `- warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+123 |         for id in ids { b.add(id) }
+124 |         return Data(b.toBytes().prefix(BleLinkInfoConstants.shortDigestBytes))
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:89:47: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+ 87 |                 let maxStr = maxToken.split(separator: "=", omittingEmptySubsequences: true).map { String($0) }
+ 88 |                 let mx = Int(maxStr[1]) ?? 4096
+ 89 |                 gov = PeerGovernor(nowMillis: clock(), maxTrackedPeers: mx)
+    |                                               `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+ 90 |                 step = 0
+ 91 |                 continue
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:114:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+112 |     // (2) bounded cache under Sybil churn: tracked set is capped; a known peer is served
+113 |     func testBoundedCacheHoldsUnderSybilChurn() {
+114 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 8)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+115 |         var served = 0
+116 |         for k in 0..<12 {
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:128:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+126 |     // (3) denial leaves EXISTING trusted peers intact (per-identity isolation)
+127 |     func testDenialLeavesExistingTrustedPeersIntact() {
+128 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+129 |         let attacker = node(0xE3)
+130 |         let bystander = node(0xE1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:148:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+146 |     //     peer's calls would begin to drop -- this witness is the T27-SM1 killer.
+147 |     func testAdvertisedHintIsNeverTheAuthenticatedIdentity() {
+148 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+149 |         let sharedHint = Data([0x0B, 0xAD, 0xF0, 0x0D])
+150 |         let a = node(0xF1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:163:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+161 |     // (5) a malformed/short advertised hint cannot collapse distinct identities
+162 |     func testMalformedHintDoesNotCollapseDistinctIdentities() {
+163 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+164 |         let x = node(0x34)
+165 |         let y = node(0x78)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:184:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+182 |     func testGSSerialisedTrustMutationsGiveADeterministicScore() {
+183 |         let clock: () -> Int64 = { 1_700_000_000_000 }
+184 |         let g = PeerGovernor(nowMillis: clock, maxTrackedPeers: 8)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+185 |         let id = Data(repeating: 0x5A, count: 16)
+186 | 
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  29 |         )
  30 |         let sig = try! signingKey.signature(for: preimage)
@@ -4072,7 +4074,7 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [67 / 69] GodstoneMeshTests-product
 [70 / 74] LabMeshTests-product
-[72 / 76] LabMeshTests-product/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC23-ios-responder-dispatcher-ignores-the-destination-central/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  83 |         // over the caller-named medium still findeth EXACTLY THIS intent. Nothing of the authoring runtime is
  84 |         // consulted -- the medium alone answereth.
  85 |         let reopened = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
@@ -4081,6 +4083,6 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
  87 |         guard case .found = journal.load(intentId) else {
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-
+[72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (13.87 secs)
+Build complete! (10.29 secs)

@@ -1,12 +1,12 @@
-Test Suite 'Selected tests' started at 2026-09-30 10:59:28.610.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 10:59:28.616.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 10:59:28.616.
+Test Suite 'Selected tests' started at 2026-10-01 09:50:53.473.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 09:50:53.479.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 09:50:53.479.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 10:59:28.616.
+Test Suite 'Selected tests' passed at 2026-10-01 09:50:53.479.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 10:59:28.654.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 10:59:28.659.
-Test Suite 'ReadinessT60Tests' started at 2026-09-30 10:59:28.659.
+Test Suite 'Selected tests' started at 2026-10-01 09:50:53.515.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 09:50:53.522.
+Test Suite 'ReadinessT60Tests' started at 2026-10-01 09:50:53.522.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW01TheContractCarriethRequirementClasses]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW01TheContractCarriethRequirementClasses]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW02ContrastIsComputedForReal]' started.
@@ -33,17 +33,17 @@ Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW12TheWordsAreTheDurableVoc
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW12TheWordsAreTheDurableVocabulary]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName]' passed (0.001 seconds).
-Test Suite 'ReadinessT60Tests' passed at 2026-09-30 10:59:28.662.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 10:59:28.662.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 10:59:28.662.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.002 (0.009) seconds
-Test Suite 'Selected tests' started at 2026-09-30 10:59:28.711.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 10:59:28.717.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 10:59:28.717.
+Test Suite 'ReadinessT60Tests' passed at 2026-10-01 09:50:53.525.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 09:50:53.525.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 09:50:53.525.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.003 (0.010) seconds
+Test Suite 'Selected tests' started at 2026-10-01 09:50:53.573.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 09:50:53.579.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 09:50:53.579.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 10:59:28.717.
+Test Suite 'Selected tests' passed at 2026-10-01 09:50:53.579.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -202,35 +202,6 @@ Building for debugging...
     | `- note: 'unlock()' declared here
  19 | 
  20 | @end
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 23 | @MainActor
- 24 | final class ReadinessT48Tests: XCTestCase {
- 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    |                        `- note: static property declared here
- 26 | 
- 27 |     private var fixturesDirectory: URL {
-    :
-132 |     /// Build (or rebuild) the tier's archive under the application-support
-133 |     /// archives directory, where the production resolver looketh.
-134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
-135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-136 |         var knobs = FixtureKnobs()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 114 | @MainActor
- 115 | final class ReadinessT50Tests: XCTestCase {
- 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-     |                        `- note: static property declared here
- 117 | 
- 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
-     :
- 222 | 
- 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
- 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
-     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
- 226 |         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
@@ -288,6 +259,35 @@ Building for debugging...
 535 | 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 23 | @MainActor
+ 24 | final class ReadinessT48Tests: XCTestCase {
+ 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    |                        `- note: static property declared here
+ 26 | 
+ 27 |     private var fixturesDirectory: URL {
+    :
+132 |     /// Build (or rebuild) the tier's archive under the application-support
+133 |     /// archives directory, where the production resolver looketh.
+134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+136 |         var knobs = FixtureKnobs()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 114 | @MainActor
+ 115 | final class ReadinessT50Tests: XCTestCase {
+ 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+     |                        `- note: static property declared here
+ 117 | 
+ 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
+     :
+ 222 | 
+ 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
+ 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
+     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+ 226 |         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 170 |             if rc != SQLITE_OK {
@@ -3028,6 +3028,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  44 |         )
  45 |         let sig = try! signingKey.signature(for: preimage)
@@ -3046,7 +3047,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
   32 |         )
   33 |         let sig = try! signingKey.signature(for: preimage)
@@ -3154,13 +3154,13 @@ Building for debugging...
 275 | 
 276 |         let order = OrderLog()
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:421:13: warning: using '_' to ignore the result of a Void-returning function is redundant
-419 |         let innerTrace = Box<BleTransport.ReductionTrace>()
-420 |         transport.failpointAfterValidationForTest = { _ in
-421 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:445:13: warning: using '_' to ignore the result of a Void-returning function is redundant
+443 |         let innerTrace = Box<BleTransport.ReductionTrace>()
+444 |         transport.failpointAfterValidationForTest = { _ in
+445 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
     |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
-422 |             if let inner = transport.lastReductionTraceForTest {
-423 |                 innerTrace.set(inner)
+446 |             if let inner = transport.lastReductionTraceForTest {
+447 |                 innerTrace.set(inner)
 
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
@@ -4049,4 +4049,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.42 secs)
+Build complete! (10.15 secs)

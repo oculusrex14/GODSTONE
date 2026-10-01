@@ -1,16 +1,16 @@
-Test Suite 'Selected tests' started at 2026-09-30 11:01:44.444.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 11:01:44.449.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 11:01:44.449.
+Test Suite 'Selected tests' started at 2026-10-01 09:53:07.149.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 09:53:07.155.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 09:53:07.155.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:01:44.450.
+Test Suite 'Selected tests' passed at 2026-10-01 09:53:07.155.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 11:01:44.487.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 11:01:44.493.
-Test Suite 'ReadinessT72Tests' started at 2026-09-30 11:01:44.493.
+Test Suite 'Selected tests' started at 2026-10-01 09:53:07.192.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 09:53:07.197.
+Test Suite 'ReadinessT72Tests' started at 2026-10-01 09:53:07.197.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW01TenThousandCyclesOverMultiplePeers]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW01TenThousandCyclesOverMultiplePeers]' passed (0.031 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW01TenThousandCyclesOverMultiplePeers]' passed (0.030 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown]' passed (0.030 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown]' passed (0.029 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW03NoDuplicateInboxRow]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW03NoDuplicateInboxRow]' passed (0.003 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW04NoDuplicateDeliveryUnderTheRetryCap]' started.
@@ -24,11 +24,11 @@ Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW07TheFaultScheduleIsBounde
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW08TheFiveFaultsAreAppliedAtTheirSteps]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW08TheFiveFaultsAreAppliedAtTheirSteps]' passed (0.007 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW09EachDefectIsCaughtByName]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW09EachDefectIsCaughtByName]' passed (0.019 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW09EachDefectIsCaughtByName]' passed (0.018 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW10AFailedSeedIsRecordedAndReproducible]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW10AFailedSeedIsRecordedAndReproducible]' passed (0.015 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW10AFailedSeedIsRecordedAndReproducible]' passed (0.014 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW11TheCampaignIsBoundedInTime]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW11TheCampaignIsBoundedInTime]' passed (0.098 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW11TheCampaignIsBoundedInTime]' passed (0.094 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW12TheIslesCarryTheSameInvariantsAndFaults]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW12TheIslesCarryTheSameInvariantsAndFaults]' passed (0.005 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW13TheConductorNeverClaimethADevice]' started.
@@ -37,17 +37,17 @@ Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW14TheCampaignIsANamedResou
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW14TheCampaignIsANamedResourceModel]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW15TheSessionInvariantIsAskedOfARealOwnerAndNamethIt]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW15TheSessionInvariantIsAskedOfARealOwnerAndNamethIt]' passed (0.004 seconds).
-Test Suite 'ReadinessT72Tests' passed at 2026-09-30 11:01:44.747.
-	 Executed 15 tests, with 0 failures (0 unexpected) in 0.253 (0.254) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-09-30 11:01:44.747.
-	 Executed 15 tests, with 0 failures (0 unexpected) in 0.253 (0.254) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:01:44.747.
-	 Executed 15 tests, with 0 failures (0 unexpected) in 0.253 (0.260) seconds
-Test Suite 'Selected tests' started at 2026-09-30 11:01:44.796.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 11:01:44.802.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 11:01:44.802.
+Test Suite 'ReadinessT72Tests' passed at 2026-10-01 09:53:07.444.
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.246 (0.247) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 09:53:07.444.
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.246 (0.247) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 09:53:07.444.
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.246 (0.252) seconds
+Test Suite 'Selected tests' started at 2026-10-01 09:53:07.493.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 09:53:07.499.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 09:53:07.499.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:01:44.802.
+Test Suite 'Selected tests' passed at 2026-10-01 09:53:07.499.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -141,7 +141,6 @@ Building for debugging...
 555 |     }
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[17 / 19] GodstoneCoreTests-product
 [18 / 22] GodstoneCoreTests-product
 [28 / 32] GodstoneCoreTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
@@ -3052,23 +3051,6 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [62 / 66] GodstoneMeshTests-product
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  32 |         )
-  33 |         let sig = try! signingKey.signature(for: preimage)
-  34 |         let binding = try! IdentityBindingV1(
-     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  35 |             generation: generation,
-  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 25 |         )
- 26 |         let sig = try signingKey.signature(for: preimage)
- 27 |         let binding = try IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 28 |             generation: generation,
- 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
  38 |     /// the coordinator (which GS-FINAL-002 already proved).
  39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
@@ -3094,6 +3076,23 @@ Building for debugging...
 166 |                        aliceHint: Data, bobHint: Data,
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  32 |         )
+  33 |         let sig = try! signingKey.signature(for: preimage)
+  34 |         let binding = try! IdentityBindingV1(
+     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  35 |             generation: generation,
+  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 25 |         )
+ 26 |         let sig = try signingKey.signature(for: preimage)
+ 27 |         let binding = try IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 28 |             generation: generation,
+ 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 120 | 
 121 |     private func bloomDigest(_ ids: [Data]) -> Data {
@@ -3159,13 +3158,13 @@ Building for debugging...
 275 | 
 276 |         let order = OrderLog()
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:421:13: warning: using '_' to ignore the result of a Void-returning function is redundant
-419 |         let innerTrace = Box<BleTransport.ReductionTrace>()
-420 |         transport.failpointAfterValidationForTest = { _ in
-421 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:445:13: warning: using '_' to ignore the result of a Void-returning function is redundant
+443 |         let innerTrace = Box<BleTransport.ReductionTrace>()
+444 |         transport.failpointAfterValidationForTest = { _ in
+445 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
     |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
-422 |             if let inner = transport.lastReductionTraceForTest {
-423 |                 innerTrace.set(inner)
+446 |             if let inner = transport.lastReductionTraceForTest {
+447 |                 innerTrace.set(inner)
 
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
@@ -3225,23 +3224,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 29 |         )
- 30 |         let sig = try! signingKey.signature(for: preimage)
- 31 |         let binding = try! IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 32 |             generation: generation,
- 33 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 38 |     /// the coordinator (which GS-FINAL-002 already proved).
- 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- 40 |         var allows: Bool
-    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 41 |         init(allows: Bool) { self.allows = allows }
- 42 |         func allowsSensitiveUse() -> Bool { allows }
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
  345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
  346 |         pins.append(req)
@@ -3524,6 +3506,23 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 29 |         )
+ 30 |         let sig = try! signingKey.signature(for: preimage)
+ 31 |         let binding = try! IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 32 |             generation: generation,
+ 33 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 38 |     /// the coordinator (which GS-FINAL-002 already proved).
+ 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ 40 |         var allows: Bool
+    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 41 |         init(allows: Bool) { self.allows = allows }
+ 42 |         func allowsSensitiveUse() -> Bool { allows }
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift:196:26: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
 194 |         // *** ADOPT IT, RUN REAL WORK, AND REQUIRE THE WORK TO HAVE LANDED ON THAT TABLE. ***
 195 |         let store = SqliteMessageStore(verifiedConnection: owned, maxBytes: 64 * 1024 * 1024)
@@ -4054,4 +4053,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.37 secs)
+Build complete! (10.51 secs)

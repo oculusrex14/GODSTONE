@@ -10,7 +10,7 @@ Execution failed for task ':mesh:testDebugUnitTest'.
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 27s
+BUILD FAILED in 26s
 
 TEST-SUITE TEST-io.godstone.mesh.readiness.ReadinessT72Test.xml tests=24 skipped=0 failures=8 errors=0
 TEST-CASE PASS testGSSTRESS001theFifthOwnerObserversIsCensused

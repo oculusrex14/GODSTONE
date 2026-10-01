@@ -1,21 +1,21 @@
-Test Suite 'Selected tests' started at 2026-09-30 11:01:32.271.
-Test Suite 'LabMeshTests.xctest' started at 2026-09-30 11:01:32.277.
-Test Suite 'LabMeshTests.xctest' passed at 2026-09-30 11:01:32.277.
+Test Suite 'Selected tests' started at 2026-10-01 09:52:54.827.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 09:52:54.835.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 09:52:54.835.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:01:32.277.
-	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-09-30 11:01:32.314.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-09-30 11:01:32.319.
-Test Suite 'ReadinessT72Tests' started at 2026-09-30 11:01:32.319.
+Test Suite 'Selected tests' passed at 2026-10-01 09:52:54.835.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.008) seconds
+Test Suite 'Selected tests' started at 2026-10-01 09:52:54.875.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 09:52:54.880.
+Test Suite 'ReadinessT72Tests' started at 2026-10-01 09:52:54.880.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW01TenThousandCyclesOverMultiplePeers]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:15: error: -[GodstoneMeshTests.ReadinessT72Tests testW01TenThousandCyclesOverMultiplePeers] : XCTAssertTrue failed - ["no_leaked_leases: 1 lease(s) leaked after shutdown", "no_leaked_timers: 1 timer(s) leaked after shutdown", "no_leaked_sessions: 1 session(s) leaked after shutdown"]
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW01TenThousandCyclesOverMultiplePeers]' failed (0.251 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW01TenThousandCyclesOverMultiplePeers]' failed (0.245 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:29: error: -[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown] : XCTAssertTrue failed - ["no_leaked_leases: 1 lease(s) leaked after shutdown", "no_leaked_timers: 1 timer(s) leaked after shutdown", "no_leaked_sessions: 1 session(s) leaked after shutdown"]
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:30: error: -[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown] : XCTAssertEqual failed: ("1") is not equal to ("0")
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:31: error: -[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown] : XCTAssertEqual failed: ("1") is not equal to ("0")
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:32: error: -[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown] : XCTAssertEqual failed: ("1") is not equal to ("0")
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown]' failed (0.030 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW02ZeroLeaksAfterShutdown]' failed (0.028 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW03NoDuplicateInboxRow]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:45: error: -[GodstoneMeshTests.ReadinessT72Tests testW03NoDuplicateInboxRow] : XCTAssertTrue failed - ["no_leaked_leases: 1 lease(s) leaked after shutdown", "no_leaked_timers: 1 timer(s) leaked after shutdown", "no_leaked_sessions: 1 session(s) leaked after shutdown"]
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW03NoDuplicateInboxRow]' failed (0.003 seconds).
@@ -26,7 +26,7 @@ Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW05NoUncaughtMalformedInput
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW05NoUncaughtMalformedInput]' failed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW06TheCensusPlateauIsStructural]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:87: error: -[GodstoneMeshTests.ReadinessT72Tests testW06TheCensusPlateauIsStructural] : XCTAssertTrue failed - ["no_leaked_leases: 1 lease(s) leaked after shutdown", "no_leaked_timers: 1 timer(s) leaked after shutdown", "no_leaked_sessions: 1 session(s) leaked after shutdown"]
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW06TheCensusPlateauIsStructural]' failed (0.036 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW06TheCensusPlateauIsStructural]' failed (0.032 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW07TheFaultScheduleIsBoundedAndDeterministic]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW07TheFaultScheduleIsBoundedAndDeterministic]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW08TheFiveFaultsAreAppliedAtTheirSteps]' started.
@@ -39,26 +39,26 @@ Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW10AFailedSeedIsRecordedAnd
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW11TheCampaignIsBoundedInTime]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:185: error: -[GodstoneMeshTests.ReadinessT72Tests testW11TheCampaignIsBoundedInTime] : XCTAssertTrue failed - ["no_leaked_leases: 1 lease(s) leaked after shutdown", "no_leaked_timers: 1 timer(s) leaked after shutdown", "no_leaked_sessions: 1 session(s) leaked after shutdown"]
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT72Tests.swift:189: error: -[GodstoneMeshTests.ReadinessT72Tests testW11TheCampaignIsBoundedInTime] : XCTAssertTrue failed - ["no_leaked_leases: 1 lease(s) leaked after shutdown", "no_leaked_timers: 1 timer(s) leaked after shutdown", "no_leaked_sessions: 1 session(s) leaked after shutdown"]
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW11TheCampaignIsBoundedInTime]' failed (0.094 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW11TheCampaignIsBoundedInTime]' failed (0.092 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW12TheIslesCarryTheSameInvariantsAndFaults]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW12TheIslesCarryTheSameInvariantsAndFaults]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW12TheIslesCarryTheSameInvariantsAndFaults]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW13TheConductorNeverClaimethADevice]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW13TheConductorNeverClaimethADevice]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW14TheCampaignIsANamedResourceModel]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW14TheCampaignIsANamedResourceModel]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW15TheSessionInvariantIsAskedOfARealOwnerAndNamethIt]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT72Tests testW15TheSessionInvariantIsAskedOfARealOwnerAndNamethIt]' passed (0.004 seconds).
-Test Suite 'ReadinessT72Tests' failed at 2026-09-30 11:01:32.792.
-	 Executed 15 tests, with 11 failures (0 unexpected) in 0.471 (0.472) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-09-30 11:01:32.792.
-	 Executed 15 tests, with 11 failures (0 unexpected) in 0.471 (0.472) seconds
-Test Suite 'Selected tests' failed at 2026-09-30 11:01:32.792.
-	 Executed 15 tests, with 11 failures (0 unexpected) in 0.471 (0.478) seconds
-Test Suite 'Selected tests' started at 2026-09-30 11:01:32.842.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-09-30 11:01:32.848.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-09-30 11:01:32.848.
+Test Suite 'ReadinessT72Tests' failed at 2026-10-01 09:52:55.338.
+	 Executed 15 tests, with 11 failures (0 unexpected) in 0.457 (0.458) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-10-01 09:52:55.338.
+	 Executed 15 tests, with 11 failures (0 unexpected) in 0.457 (0.458) seconds
+Test Suite 'Selected tests' failed at 2026-10-01 09:52:55.338.
+	 Executed 15 tests, with 11 failures (0 unexpected) in 0.457 (0.463) seconds
+Test Suite 'Selected tests' started at 2026-10-01 09:52:55.388.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 09:52:55.394.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 09:52:55.394.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-09-30 11:01:32.848.
+Test Suite 'Selected tests' passed at 2026-10-01 09:52:55.394.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
@@ -219,6 +219,35 @@ Building for debugging...
     | `- note: 'unlock()' declared here
  19 | 
  20 | @end
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 23 | @MainActor
+ 24 | final class ReadinessT48Tests: XCTestCase {
+ 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    |                        `- note: static property declared here
+ 26 | 
+ 27 |     private var fixturesDirectory: URL {
+    :
+132 |     /// Build (or rebuild) the tier's archive under the application-support
+133 |     /// archives directory, where the production resolver looketh.
+134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+136 |         var knobs = FixtureKnobs()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 114 | @MainActor
+ 115 | final class ReadinessT50Tests: XCTestCase {
+ 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+     |                        `- note: static property declared here
+ 117 | 
+ 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
+     :
+ 222 | 
+ 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
+ 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
+     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+ 226 |         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
@@ -276,35 +305,6 @@ Building for debugging...
 535 | 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 23 | @MainActor
- 24 | final class ReadinessT48Tests: XCTestCase {
- 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    |                        `- note: static property declared here
- 26 | 
- 27 |     private var fixturesDirectory: URL {
-    :
-132 |     /// Build (or rebuild) the tier's archive under the application-support
-133 |     /// archives directory, where the production resolver looketh.
-134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
-135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-136 |         var knobs = FixtureKnobs()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 114 | @MainActor
- 115 | final class ReadinessT50Tests: XCTestCase {
- 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-     |                        `- note: static property declared here
- 117 | 
- 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
-     :
- 222 | 
- 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
- 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
-     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
- 226 |         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 170 |             if rc != SQLITE_OK {
@@ -3045,6 +3045,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  44 |         )
  45 |         let sig = try! signingKey.signature(for: preimage)
@@ -3063,7 +3064,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[61 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
   32 |         )
   33 |         let sig = try! signingKey.signature(for: preimage)
@@ -3081,7 +3081,31 @@ Building for debugging...
  29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[62 / 66] GodstoneMeshTests-product
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 38 |     /// the coordinator (which GS-FINAL-002 already proved).
+ 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ 40 |         var allows: Bool
+    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 41 |         init(allows: Bool) { self.allows = allows }
+ 42 |         func allowsSensitiveUse() -> Bool { allows }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+501 | 
+502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+503 |         let (pubA, _) = realDhKeypair()
+    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+504 |         let a = nodeA()
+505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
+162 |     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+163 |     /// freshly started transport minteth for the first relation of that handle.
+164 |     @discardableResult
+    |     `- warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
+165 |     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+166 |                        aliceHint: Data, bobHint: Data,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 120 | 
 121 |     private func bloomDigest(_ ids: [Data]) -> Data {
@@ -3139,31 +3163,6 @@ Building for debugging...
 186 | 
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 38 |     /// the coordinator (which GS-FINAL-002 already proved).
- 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- 40 |         var allows: Bool
-    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 41 |         init(allows: Bool) { self.allows = allows }
- 42 |         func allowsSensitiveUse() -> Bool { allows }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-501 | 
-502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-503 |         let (pubA, _) = realDhKeypair()
-    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-504 |         let a = nodeA()
-505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
-162 |     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-163 |     /// freshly started transport minteth for the first relation of that handle.
-164 |     @discardableResult
-    |     `- warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
-165 |     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-166 |                        aliceHint: Data, bobHint: Data,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
 272 |         )
 273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -3172,13 +3171,13 @@ Building for debugging...
 275 | 
 276 |         let order = OrderLog()
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:421:13: warning: using '_' to ignore the result of a Void-returning function is redundant
-419 |         let innerTrace = Box<BleTransport.ReductionTrace>()
-420 |         transport.failpointAfterValidationForTest = { _ in
-421 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:445:13: warning: using '_' to ignore the result of a Void-returning function is redundant
+443 |         let innerTrace = Box<BleTransport.ReductionTrace>()
+444 |         transport.failpointAfterValidationForTest = { _ in
+445 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
     |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
-422 |             if let inner = transport.lastReductionTraceForTest {
-423 |                 innerTrace.set(inner)
+446 |             if let inner = transport.lastReductionTraceForTest {
+447 |                 innerTrace.set(inner)
 
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC11-ios-the-shutdown-releaseth-nothing/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
@@ -4067,4 +4066,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (11.08 secs)
+Build complete! (10.96 secs)
