@@ -15031,6 +15031,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15039,6 +15040,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15047,6 +15049,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15055,6 +15058,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15063,6 +15067,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15071,6 +15076,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15079,6 +15085,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15087,6 +15094,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15095,6 +15103,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15103,6 +15112,7 @@
     "severity": "MEDIUM",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15111,6 +15121,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15119,6 +15130,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15127,6 +15139,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15135,6 +15148,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15143,6 +15157,7 @@
     "severity": "MEDIUM",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15151,6 +15166,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15159,6 +15175,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15167,6 +15184,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15175,6 +15193,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15183,6 +15202,7 @@
     "severity": "MEDIUM",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-archive-005.app-witness",
@@ -15203,6 +15223,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15211,6 +15232,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15219,6 +15241,7 @@
     "severity": "MEDIUM",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15227,6 +15250,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15235,6 +15259,7 @@
     "severity": "MEDIUM",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15243,6 +15268,7 @@
     "severity": "MEDIUM",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15251,6 +15277,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15259,6 +15286,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15267,6 +15295,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-integration-001.real-adapters",
@@ -15331,6 +15360,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15339,6 +15369,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15347,6 +15378,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15355,6 +15387,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15363,6 +15396,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-runtime-001.android-composition-court",
@@ -15401,6 +15435,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15409,6 +15444,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15417,6 +15453,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15425,6 +15462,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-store-002.internal-architecture",
@@ -15452,6 +15490,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15460,6 +15499,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15468,6 +15508,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15476,6 +15517,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15484,6 +15526,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-stress-001.real-runtime-driver",
@@ -15564,6 +15607,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15572,6 +15616,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15580,6 +15625,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15587,7 +15633,8 @@
     "group": "original",
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
-    "internal_status": "COMPLETE",
+    "internal_status": "OPEN",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-ux-001.facade",
@@ -15600,7 +15647,7 @@
      {
       "id": "gs-ux-001.rendered-controls",
       "text": "The rendered LabMesh UI must exercise the real authority/projection for the complete internally testable journey: recipient selection; UTF-8 bounded compose; Send; fingerprint compare/confirmation; exact rotation-candidate approval; revoke; visible durable state after recreation; visible wipe/recovery state. Displayed state must derive from the real authority/projection.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
        "*** THE DISPLAYED-CANDIDATE APPROVAL (card law 3, 'the displayed candidate is the one approved'): `approveRotation(for:)` IS DELETED from both `MeshTrustFacade` and `LabRuntime` -- measured, `grep -rn approveRotation(for: ios/Godstone` returneth NOTHING -- and the two callers migrated to `displayedRotationCandidate(for:)` + `approveDisplayedRotation(_:)`, which forward the captured generation+key into the existing durable CAS. The screen captures the ref in state beside the fingerprint and re-captures on selection change. ***",
        "`test:testGSINT001AStaleRotationCandidateIsRefusedWithTheExactString` -- the displayed candidate is approved BY REF, and a rotation that arriveth behind it is REFUSED with the exact string `refused: that rotation is no longer pending: nothing was approved`. *MEASURED IN THE UI LANE: passing.*",
@@ -15616,7 +15663,7 @@
      {
       "id": "gs-ux-001.ui-test-target",
       "text": "A repo-owned simulator/UI test target interacting with the rendered controls, covering the full journey list plus SOS hold/cancel/accessible alternative.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
        "*** MEASURED, THE LANE: `path:docs/remediation/evidence/gs-integration-001-courts.log` plus `ios-ui-lane.log` -- `ios:ui suites=2 tests=19 failures=0`, raw-rc=0, both `LabMeshUITests` (12 arms) and `GodstoneArchiveUITests` (7 arms) EXECUTED. *** *The runner regenerateth the project from `ios/project.yml` and writeth a pre-run AND post-run source digest, so a mid-run edit cannot leave a current-looking log.*",
        "`path:ci/check_lane_results.py` -- the arm roster is SOURCE-DERIVED from the `bundle.ui-testing` targets' own source directories, so an arm that never ran is a REFUSAL BY NAME rather than an absence from a count. *MEASURED: `--selftest-ui` 15/15 mutations killed, including the mid-run-edit case.*",
@@ -15627,7 +15674,7 @@
      {
       "id": "gs-ux-001.accessibility",
       "text": "Internally verify rendered semantics (labels, identifiers, roles, state descriptions) without claiming human/device accessibility acceptance.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
        "*** THE LIVE TREE IS ASKED, NOT A MODEL OF IT: `test:testGSINT001TheLiveTreeCarriesTheRenderedSemantics` walks the ACTUAL rendered elements -- every button must carry a NON-EMPTY label, and each readout must carry a non-empty label AND its value -- so an element a screen reader would read blank is a REFUSAL. ***",
        "*** rc11, THE ANDROID ROSTER IS EXTRACTED FROM THE RENDERED SEMANTICS TREE: `test:test_the_shared_contract_is_applied_to_the_rendered_roster` readeth role, content description, state, REAL LAID-OUT SIZE and `positionInRoot` order from the Robolectric/Compose tree, REPLACING the fabricated 120x48 nodes and fallback labels. MEASURED: `:labmesh:testDebugUnitTest --tests '*LabMeshJourneySemanticsTest*'` -- 11 arms, executed 11, failures 0, skipped 0. *** *The four direction/scale combinations are `test:test_the_roster_survives_default_and_largest_text_in_ltr_and_rtl`, which carrieth a SCALE DISCRIMINATOR so a roster that never reflowed would redden.*",
@@ -15653,6 +15700,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15661,6 +15709,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15669,6 +15718,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15677,6 +15727,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15685,6 +15736,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15693,6 +15745,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15701,6 +15754,7 @@
     "severity": "HIGH",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15709,6 +15763,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15717,6 +15772,7 @@
     "severity": "High",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15724,12 +15780,13 @@
     "group": "independent",
     "severity": "High",
     "recorded_status": "FIX_SUBMITTED",
-    "internal_status": "COMPLETE",
+    "internal_status": "OPEN",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-final-003.ios-recovery-graph",
       "text": "iOS: a recovery/bootstrap composition whose transport seam exists BEFORE and independently of the store graph, so a pending wipe can be driven to a typed decision without constructing private stores.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
        "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- `testGSFINAL003_theRecoveryGraphStandsBeforeAndWithoutTheStoreGraph`, which asserts BOTH halves: the DEFERRED transport seam is real and HONEST (`notDrained(reason:)` NAMING the condition, never claiming a drain it did not perform), and the typed decision is produced with **ZERO private-store constructions, ZERO sensitive-runtime constructions, ZERO DEK requests and ZERO identity writes** -- *counted at the seams, not inferred from an absent file.* MEASURED: 15 passed, rc=0.",
        "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- `StartupRecoveryBootstrap`, whose ONLY collaborator is the journal-bound coordinator, and `PrivateRuntimePermit`. *A bootstrap that owneth no store cannot open one.*",
@@ -15739,7 +15796,7 @@
      {
       "id": "gs-final-003.typed-permit",
       "text": "Both platforms: a non-forgeable typed startup decision (not a Bool, not a log line, no public initializer) issued only after the typed recovery answer.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
        "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- iOS: the six typed cases and `PrivateRuntimePermit` (PRIVATE init, nullable `issue(_:)`), and `createPrivateComposition` REQUIREth one as a parameter.",
        "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- Android: `PrivateStorePermit` with a PRIVATE constructor and `issue(decision)` returning `null` for every refusing decision, REQUIRED as a parameter by all three private providers; `issuePrivateStorePermit` is the ONE minting site, and `recordStartupPermit` now CONSUMETH the permit and recordeth WHICH decision authorised construction.",
@@ -15749,7 +15806,7 @@
      {
       "id": "gs-final-003.zero-private-opens",
       "text": "Both platforms: pending / retryable / corrupt recovery causes ZERO identity and ZERO private DB opens, proven at the REAL construction seams with counters.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
        "*** iOS HALF: DONE, WITH COUNTERS. *** `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt` -- the ANDROID court: `noPermitIsIssuedOnAnyOutstandingRung`, `theCompositionIssuerRefusesOnEveryOutstandingRung`, and the positive controls `theTerminalRungIssuesThePermit` / `theCompositionIssuerPermitsOnTheTerminalRung`. **MEASURED: 5 tests, 0 failures**, with the refusing set DERIVED by asking the barrier. *A gate that always refused would fail the positive controls, and one that never refused would fail the others -- both directions.*",
        "*** ANDROID HALF, WITH COUNTERS COUNTERS AT THE REAL SEAMS: `path:android/mesh/src/main/java/io/godstone/mesh/di/PrivateConstructionCounter.kt`. *** *A plain `object` -- deliberately NOT a Dagger key, because a rebindable counter is a fakenable counter -- with one `AtomicLong` and a `@Volatile` authority per seam.* **The note is taken BEFORE the platform constructor, so on a JVM host the count reacheth 1 and the platform then throweth `KeyStoreException`/`UnsatisfiedLinkError`: the throw proveth the body WALKED TO the platform and the count proveth the ATTEMPT.**",
@@ -15763,7 +15820,7 @@
      {
       "id": "gs-final-003.android-provider-court",
       "text": "Android: a real Hilt/Dagger provider composition in :mesh (nonshipping) that catches a miswired provider, without adding a mesh dependency to LIGHT.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
        "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshGraphComponent.kt`, `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`, `test:theRealComponentsGateAnswersBothDirections`, `path:ci/check_lab_isolation.py`. A real `@Singleton @Component` in the `:mesh` MAIN source set, delegating every provider to `MeshModule`, constructed by the court through `DaggerMeshGraphComponent.builder()`. **THE MISWIRING MUTATION WAS RUN, NOT ASSERTED: inverting `provideWipeIsPending` polarity (the exact 18-round production defect) REDDENS TWO ARMS** -- `theRealComponentsGateAnswersBothDirections` and `theRealComponentsGateIsReadPerCallNotCached`; restored, 7/7 pass. *** AND LIGHT GAINS NOTHING: `Godstone` declares ONE dependency (GodstoneCore, no mesh edge) and `ci/check_lab_isolation.py` rc=0.***"
       ]
@@ -15771,7 +15828,7 @@
      {
       "id": "gs-final-003.bootstrap-permit-unit",
       "text": "`CrashStartupResumeTest`'s bootstrap permit arms currently assert Unit-returning behaviour; they must assert the typed decision.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
        "`path:ios/Godstone/Tests/GodstoneMeshTests/CrashStartupResumeTests.swift` -- `testGSFINAL003_TheBootstrapDecisionIsTypedAndATypedDecisionIsWhatThisCourtAsserts`, asserting at the seams THIS court already owneth: a clean start PERMITS and nameth itself; a `REQUESTED` journal REFUSES and is NOT mistaken for clean; an unreadable journal REFUSES **AND `requiresOperator`**; and the three roads yield THREE DISTINCT NAMES. MEASURED: 28 passed, rc=0.",
        "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- the six typed cases and `PrivateRuntimePermit`, whose `issue` returneth nil for every refusing decision.",
@@ -15786,6 +15843,7 @@
     "severity": "High",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-final-004.owned-connection",
@@ -15849,6 +15907,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15857,6 +15916,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "derived_from_obligations",
     "internal_obligations": [
      {
       "id": "gs-final-006.ios-restoration-witness",
@@ -15887,6 +15947,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15895,6 +15956,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15903,6 +15965,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15911,6 +15974,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15919,6 +15983,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15927,6 +15992,7 @@
     "severity": "Medium",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15935,6 +16001,7 @@
     "severity": "Low",
     "recorded_status": "FIX_SUBMITTED",
     "internal_status": "COMPLETE",
+    "internal_status_source": "recorded_status",
     "internal_obligations": [],
     "external_obligations": []
    },
@@ -15942,22 +16009,22 @@
     "group": "external_audit_2026_09_20",
     "severity": "High",
     "recorded_status": "PARTIAL",
-    "internal_status": "COMPLETE",
+    "internal_status": "OPEN",
     "internal_obligations": [
      {
       "id": "audit-b1-ctrl-001.structured-obligations",
       "text": "Structured per-finding closure: `internal_status`, `internal_obligations` and `external_obligations` for every nonterminal finding, with `internal_remaining` DERIVED from them rather than NLP-classified from prose.",
       "status": "DISCHARGED",
       "evidence": [
-       "`path:scripts/build_structured_closure.py` --write wrote `finding_closure` (68 entries, every one carrying `internal_status`) + `structured_counts` into the ledger; `internal_remaining_prose_classifier_retired` records the NLP classifier as RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision, so `internal_remaining` is DERIVED from explicit obligation statuses"
+       "`path:scripts/build_structured_closure.py` --write wrote `finding_closure` (68 entries, every one carrying `internal_status`) + `structured_counts` into the ledger; `internal_remaining_prose_classifier_retired` records the NLP classifier as RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision, so `internal_remaining` is DERIVED from explicit obligation statuses. *** THE MISSION'S ADDED SEMANTICS (`known_internal_gaps`, `unresolved_internal_dependencies`, `required_controls_present`, and the structured discharge fields) ARE TRACKED ON `audit-b1-ctrl-001.closure-law` AND `audit-b1-ctrl-001.ready-requires-both-populations`, which are the obligations that gate them -- not duplicated here. ***"
       ]
      },
      {
       "id": "audit-b1-ctrl-001.closure-law",
       "text": "A control that REFUSES a COMPLETE/READY builder status while structured internal OPEN work exists, so the control plane can no longer report closure over a NO_GO register.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
-       "`path:docs/production-readiness/BOARD1_CLOSURE.json`, `path:scripts/build_structured_closure.py`. MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"
+       "*** REOPENED 2026-10-02: the law refuses READY-over-OPEN, but it does not yet (a) REFUSE a terminal DISCHARGED that its own structured fields CONTRADICT, (b) ERROR on unknown states at the closure boundary (it only errors on unknown OBLIGATION states), or (c) carry the new required discharge fields. Until those exist the law is necessary but not sufficient. *** *Prior DISCHARGED text kept.* `path:docs/production-readiness/BOARD1_CLOSURE.json`, `path:scripts/build_structured_closure.py`. MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"
       ]
      },
      {
@@ -15979,9 +16046,9 @@
      {
       "id": "audit-b1-ctrl-001.ready-requires-both-populations",
       "text": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: unresolved internal obligations, and findings whose internal_status is OPEN. The two are not the same test, and a gate reading only one of them can permit readiness over live work.",
-      "status": "DISCHARGED",
+      "status": "OPEN",
       "evidence": [
-       "`path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `path:tools/readiness/tests/test_closure_law_refuses.py:361` (`ReadinessRequiresBothPopulations`)."
+       "*** REOPENED 2026-10-02: both populations ARE checked in `--check`, but the readiness claim is not yet gated on the new structured semantics (`required_controls_present`, `unresolved_internal_dependencies`) that this mission adds, and the unknown-state refusal is not yet enforced at the CLOSURE boundary. *** *Prior DISCHARGED text kept.* `path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `path:tools/readiness/tests/test_closure_law_refuses.py:361` (`ReadinessRequiresBothPopulations`)."
       ]
      }
     ],
@@ -15990,14 +16057,14 @@
   },
   "structured_counts": {
    "findings_total": 68,
-   "findings_internal_open": 0,
-   "findings_with_internal_status_open": 0,
-   "internal_obligations_open": 0,
-   "internal_obligations_unresolved": 0,
+   "findings_internal_open": 3,
+   "findings_with_internal_status_open": 3,
+   "internal_obligations_open": 10,
+   "internal_obligations_unresolved": 10,
    "obligations_by_state": {
-    "OPEN": 0,
+    "OPEN": 10,
     "PARTIAL": 0,
-    "DISCHARGED": 35
+    "DISCHARGED": 25
    },
    "external_obligations": 5
   },

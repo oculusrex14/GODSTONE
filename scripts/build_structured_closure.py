@@ -102,7 +102,21 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          # ONLY a `CrashResumableWipe`, and that coordinator taketh SEAM PROTOCOLS -- a `WipeDurabilityStore`, a
          # `TransportRuntimeSeam`, a `KeyVaultSeam`, an `IdentityAuthoritySeam` -- NEVER A CONCRETE PRIVATE STORE. A
          # recovery graph that needed one could not be built: there is no parameter to pass it through.***
-         "status": "DISCHARGED", "evidence": [
+         # *** REOPENED 2026-10-02 -- THE DISCHARGED STATUS IS WITHDRAWN, NOT THE EVIDENCE. ***
+         #
+         # *THE PROOF CITED WAS A COURT (`path:ios/Godstone/Tests/.../GsFinal003StartupPermitTests.swift`), and the
+         # obligation is about a LIVE PRODUCTION ROAD: "a recovery/bootstrap composition whose transport seam exists
+         # BEFORE and independently of the store graph".* **MEASURED ON THE CURRENT TREE:** `MeshRuntime` still mints
+         # its create-time decision over the DEFERRED seams (`WipeDeferredTransportSeam`,
+         # `WipeDeferredIdentityAuthoritySeam`, `WipeDeferredKeyVaultSeam`, `WipeDeferredArtifactFileSystemSeam` at
+         # `path:ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift`), so the composition whose transport seam is
+         # INDEPENDENT of the store graph exists ONLY in the court's own rig; the PRODUCTION road never drives a LIVE
+         # transport to a typed decision before the private graph. **THE COURT'S ORDER IS REAL AND MUTATION-VERIFIED,
+         # AND THAT IS WHY THE EVIDENCE IS KEPT -- BUT A COURT-TIME ORDER OVER DEFERRED SEAMS IS NOT YET A PRODUCTION
+         # REACHABILITY PROOF, SO THE OBLIGATION IS NOT DISCHARGED.** *The historical DISCHARGED claim stays recorded
+         # below with an explicit HISTORICAL scope rather than being deleted: this ledger keepth its incriminating
+         # prose.*
+         "status": "OPEN", "evidence": [
              "`path:ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift` -- `testGSFINAL003_theRecoveryGraphStandsBeforeAndWithoutTheStoreGraph`, which asserts BOTH halves: the DEFERRED transport seam is real and HONEST (`notDrained(reason:)` NAMING the condition, never claiming a drain it did not perform), and the typed decision is produced with **ZERO private-store constructions, ZERO sensitive-runtime constructions, ZERO DEK requests and ZERO identity writes** -- *counted at the seams, not inferred from an absent file.* MEASURED: 15 passed, rc=0.",
              "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- `StartupRecoveryBootstrap`, whose ONLY collaborator is the journal-bound coordinator, and `PrivateRuntimePermit`. *A bootstrap that owneth no store cannot open one.*",
              "*** MUTATION-VERIFIED: MOVING A PRIVATE OPEN ABOVE THE RECOVERY DECISION -- THE EXACT ORDER THIS OBLIGATION FORBIDS -- REDDENS THREE ARMS INCLUDING THIS ONE.*** *So the arm is sensitive to the property it claims, not merely green beside it.*",
@@ -116,7 +130,18 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          # providers TOOK the barrier, and `recordStartupPermit` READ IT ONLY TO EMIT `Log.w`, then constructed identity
          # and both stores REGARDLESS -- so the typed authority was PRESENT AND UNUSED, exactly the shape the clause
          # forbiddeth ("not a Bool; not a log marker; not a public freely constructible value").*
-         "status": "DISCHARGED", "evidence": [
+         # *** REOPENED 2026-10-02 -- "Both platforms" NOW MEANS THE PRODUCTION CALLER CONSUMES THE PERMIT. ***
+         #
+         # *iOS: `MeshRuntime`'s private create road reaches the permit through `StartupRecoveryBootstrap` (a real
+         # production consumer).* **ANDROID, MEASURED ON THE CURRENT TREE: `issuePrivateStorePermit` is called ONLY
+         # from `MeshGraphComponent`'s `@Provides` companion (`path:android/mesh/src/main/java/io/godstone/mesh/di/
+         # MeshGraphComponent.kt`), and NOTHING OUTSIDE `/test/` CONSTRUCTS `DaggerMeshGraphComponent` -- so on the
+         # running Android app the permit-parameterised providers are a parallel, COURT-ONLY road, while the app's
+         # live graph comes through `AppModule`/`MeshModule`.** *A typed authority that the production composition
+         # never calls is the same "present and unused" shape the clause was written to refuse.* **THE COMPILE BITE IS
+         # REAL AND KEPT AS EVIDENCE; WHAT IS UNMET IS PRODUCTION CONSUMPTION ON THE ANDROID ISLE, SO THIS IS NOT
+         # DISCHARGED.** *The prior DISCHARGED claim is retained below with an explicit HISTORICAL scope.*
+         "status": "OPEN", "evidence": [
              "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- iOS: the six typed cases and `PrivateRuntimePermit` (PRIVATE init, nullable `issue(_:)`), and `createPrivateComposition` REQUIREth one as a parameter.",
              "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- Android: `PrivateStorePermit` with a PRIVATE constructor and `issue(decision)` returning `null` for every refusing decision, REQUIRED as a parameter by all three private providers; `issuePrivateStorePermit` is the ONE minting site, and `recordStartupPermit` now CONSUMETH the permit and recordeth WHICH decision authorised construction.",
              "*** THE COMPILE BITE WAS EXECUTED ON BOTH ISLES, NOT ASSERTED: iOS produceth `error: missing argument for parameter 'permit' in call`; Android produceth `error: No value passed for parameter 'permit'` at MeshGraphComponent.kt:183. A CHECK CAN BE FORGOTTEN; A PARAMETER CANNOT.***",
@@ -171,7 +196,16 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          # faileth with the composition issuer's own `NO PRIVATE STORE MAY BE CONSTRUCTED` -- so the road provably
          # REACHED the gate rather than being declined by the court.* **A same-run cross-check asserts the conjunction,
          # so an always-zero counter and an increment-on-refusal counter each fail one direction.**
-         "status": "DISCHARGED", "evidence": [
+         # *** REOPENED 2026-10-02 -- "AT THE REAL CONSTRUCTION SEAMS" IS NOT MET BY A SEAM ONLY A COURT CONSTRUCTS. ***
+         #
+         # *The counters are real (`PrivateConstructionCounter`), and the court is real (8 arms measured green).* **BUT
+         # the zero-opens property is asserted over `DaggerMeshGraphComponent`, which only the court builds; the app's
+         # live graph takes `MeshModule` through `AppModule`, where no counter is read and no refusing-rung road is
+         # exercised at runtime. The obligation asketh for the property "proven at the REAL construction seams with
+         # counters" -- and a counter on a road production does not walk is a measurement of the court.** *So the
+         # counters are KEPT as evidence and the obligation is NOT DISCHARGED until the production composition is the
+         # one whose deltas are counted.* *Prior DISCHARGED claim retained below with explicit HISTORICAL scope.*
+         "status": "OPEN", "evidence": [
              "*** iOS HALF: DONE, WITH COUNTERS. *** `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt` -- the ANDROID court: `noPermitIsIssuedOnAnyOutstandingRung`, `theCompositionIssuerRefusesOnEveryOutstandingRung`, and the positive controls `theTerminalRungIssuesThePermit` / `theCompositionIssuerPermitsOnTheTerminalRung`. **MEASURED: 5 tests, 0 failures**, with the refusing set DERIVED by asking the barrier. *A gate that always refused would fail the positive controls, and one that never refused would fail the others -- both directions.*",
              "*** ANDROID HALF, WITH COUNTERS COUNTERS AT THE REAL SEAMS: `path:android/mesh/src/main/java/io/godstone/mesh/di/PrivateConstructionCounter.kt`. *** *A plain `object` -- deliberately NOT a Dagger key, because a rebindable counter is a fakenable counter -- with one `AtomicLong` and a `@Volatile` authority per seam.* **The note is taken BEFORE the platform constructor, so on a JVM host the count reacheth 1 and the platform then throweth `KeyStoreException`/`UnsatisfiedLinkError`: the throw proveth the body WALKED TO the platform and the count proveth the ATTEMPT.**",
              "`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` -- THE SEAM: `PrivateStorePermit` carrieth a PRIVATE constructor and `issue(decision)` returneth `null` for every refusing decision, and the three private providers REQUIRE it as a parameter. So zero opens is not inferred from a later absence -- the authority that construction requireth DOES NOT EXIST on those roads.",
@@ -181,7 +215,15 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
              "AND THE MUTATION PROVES THE iOS COUNTERS BITE RATHER THAN MERELY PASSING: *an identity-boundary open placed ABOVE the permit gate on the road the arms drive KILLETH EXACTLY the two counter-bearing arms and no others.* **My first attempt at that mutation ESCAPED, and it was wrong twice -- it landed on the `create` road while the arms drive `requireRecoveredPrivateComposition`, and it used a keychain READ while the spy counteth WRITES.** *A mutation placed wrong is not an escaped mutation; it is an experiment that proved nothing.*",
          ]},        {"id": "gs-final-003.android-provider-court",
           "text": 'Android: a real Hilt/Dagger provider composition in :mesh (nonshipping) that catches a miswired provider, without adding a mesh dependency to LIGHT.',
-          "status": "DISCHARGED", "evidence": ['`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshGraphComponent.kt`, `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`, `test:theRealComponentsGateAnswersBothDirections`, `path:ci/check_lab_isolation.py`. A real `@Singleton @Component` in the `:mesh` MAIN source set, delegating every provider to `MeshModule`, constructed by the court through `DaggerMeshGraphComponent.builder()`. **THE MISWIRING MUTATION WAS RUN, NOT ASSERTED: inverting `provideWipeIsPending` polarity (the exact 18-round production defect) REDDENS TWO ARMS** -- `theRealComponentsGateAnswersBothDirections` and `theRealComponentsGateIsReadPerCallNotCached`; restored, 7/7 pass. *** AND LIGHT GAINS NOTHING: `Godstone` declares ONE dependency (GodstoneCore, no mesh edge) and `ci/check_lab_isolation.py` rc=0.***']},
+          # *** REOPENED 2026-10-02 -- THE COMPONENT EXISTS, BUT NOTHING IN PRODUCTION USES IT. ***
+          #
+          # *The `@Singleton @Component` and its `DaggerMeshGraphComponent.builder()` court are real and the
+          # miswiring mutation was RUN.* **MEASURED ON THE CURRENT TREE, HOWEVER: `MeshGraphComponent` is constructed
+          # ONLY under `/test/`, so the component can catch a miswired provider in a court while the SHIPPING
+          # composition (via `AppModule` -> `MeshModule`) is never checked by it -- the obligation nameth a component
+          # that "catches a miswired provider", which for a composition ROOT means at its own use site.** *The
+          # component is evidence; the production consumption it would guard is the unmet half.*
+          "status": "OPEN", "evidence": ['`path:android/mesh/src/main/java/io/godstone/mesh/di/MeshGraphComponent.kt`, `path:android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`, `test:theRealComponentsGateAnswersBothDirections`, `path:ci/check_lab_isolation.py`. A real `@Singleton @Component` in the `:mesh` MAIN source set, delegating every provider to `MeshModule`, constructed by the court through `DaggerMeshGraphComponent.builder()`. **THE MISWIRING MUTATION WAS RUN, NOT ASSERTED: inverting `provideWipeIsPending` polarity (the exact 18-round production defect) REDDENS TWO ARMS** -- `theRealComponentsGateAnswersBothDirections` and `theRealComponentsGateIsReadPerCallNotCached`; restored, 7/7 pass. *** AND LIGHT GAINS NOTHING: `Godstone` declares ONE dependency (GodstoneCore, no mesh edge) and `ci/check_lab_isolation.py` rc=0.***']},
         {"id": "gs-final-003.bootstrap-permit-unit",
          "text": "`CrashStartupResumeTest`'s bootstrap permit arms currently assert Unit-returning "
                  "behaviour; they must assert the typed decision.",
@@ -194,7 +236,15 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          #
          # *AND THE OBLIGATION IS ABOUT THE ANSWER'S SHAPE, NOT MERELY ITS PRESENCE: the arms assert `requiresOperator`
          # -- **THE FIELD A `Bool` COULD NEVER CARRY, AND THE ONE THE AUDIT'S CHARGE IS ABOUT.***
-         "status": "DISCHARGED", "evidence": [
+         # *** REOPENED 2026-10-02: THE STALE HALF WAS REPAIRED, AND THE ARM'S NEGATIVE CONTROL IS MISSING. ***
+         #
+         # *`CrashStartupResumeTests` now asserts the typed decision (`requiresOperator`, three distinct names), which
+         # is the repair the clause asked for.* **BUT THE CLAUSE IS NARROW AND SAYS WHAT IT WANTS: arms that "must
+         # ASSERT the typed decision" -- and a green arm over a typed value is not proof the arm would REDDEN if the
+         # decision regressed to `Unit`/Bool. No rod in `ci/mutations.py` strikes this court's typed assertions, so the
+         # typed-shape property is asserted but not mutation-witnessed.** *Until a named rod shows the arm bites, this
+         # stays open rather than being called done.* *Prior DISCHARGED claim kept below, HISTORICAL scope.*
+         "status": "OPEN", "evidence": [
              "`path:ios/Godstone/Tests/GodstoneMeshTests/CrashStartupResumeTests.swift` -- `testGSFINAL003_TheBootstrapDecisionIsTypedAndATypedDecisionIsWhatThisCourtAsserts`, asserting at the seams THIS court already owneth: a clean start PERMITS and nameth itself; a `REQUESTED` journal REFUSES and is NOT mistaken for clean; an unreadable journal REFUSES **AND `requiresOperator`**; and the three roads yield THREE DISTINCT NAMES. MEASURED: 28 passed, rc=0.",
              "`path:ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift` -- the six typed cases and `PrivateRuntimePermit`, whose `issue` returneth nil for every refusing decision.",
              "AND THE DISTINCTNESS ASSERTION IS THE CLAUSE, NOT A DECORATION: *three distinct names for three distinct roads is exactly what a `Bool` cannot express, and a court asserting a Bool could not state the `requiresOperator` requirement AT ALL.*",
@@ -457,7 +507,16 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          # *THE PRIOR STATE NAMED THREE UNWITNESSED JOURNEYS: "durable state after recreation, visible wipe/recovery
          # state, and the UTF-8 BOUNDED compose".* **ALL THREE HAVE ARMS NOW, AND THE DISPLAYED-CANDIDATE APPROVAL WAS
          # A CLEAN CUTOVER RATHER THAN A SECOND ROAD ADDED BESIDE THE OLD ONE.**
-         "status": "DISCHARGED", "evidence": [
+         # *** REOPENED 2026-10-02 -- "VISIBLE WIPE/RECOVERY STATE" DERIVES FROM A DEFERRED-SEAM LAB RECORD. ***
+         #
+         # *The journeys each carry a rendered arm now, and the displayed-candidate cutover is real.* **BUT THE
+         # WIPE/RECOVERY SURFACE IS `LabWipeJourney`, whose own docstring records that it runs over
+         # `StartupRecoveryGraph.deferred()` seams: it READS the durable journal, so "the screen is at REQUESTED" means
+         # the record is at REQUESTED -- AND IT CAN NEVER REACH THE TERMINAL RUNG OR ERASE ANYTHING ON A HOST.** *The
+         # clause asketh that "Displayed state must derive from the real authority/projection"; the projection here
+         # derives from a DEFERRED graph, not the runtime wipe owner (`MeshPanicWipe`), so the visible wipe/recovery
+         # state is not yet the production authority's.* *Prior DISCHARGED claim kept below, HISTORICAL scope.*
+         "status": "OPEN", "evidence": [
              "*** THE DISPLAYED-CANDIDATE APPROVAL (card law 3, 'the displayed candidate is the one approved'): `approveRotation(for:)` IS DELETED from both `MeshTrustFacade` and `LabRuntime` -- measured, `grep -rn approveRotation(for: ios/Godstone` returneth NOTHING -- and the two callers migrated to `displayedRotationCandidate(for:)` + `approveDisplayedRotation(_:)`, which forward the captured generation+key into the existing durable CAS. The screen captures the ref in state beside the fingerprint and re-captures on selection change. ***",
              "`test:testGSINT001AStaleRotationCandidateIsRefusedWithTheExactString` -- the displayed candidate is approved BY REF, and a rotation that arriveth behind it is REFUSED with the exact string `refused: that rotation is no longer pending: nothing was approved`. *MEASURED IN THE UI LANE: passing.*",
              "*** THE BOUNDED COMPOSE, IN OCTETS: `test:testGSINT001TheBoundedComposeCountsOctetsAndUpdatesItsReadout` TYPES A MULTIBYTE PAYLOAD and requireth the rendered `lab.conversation.octets` to move and name its unit -- so a bound counted in CHARACTERS would show the wrong number. *** *The cap is MEASURED by probe (seal 1000 octets, overhead = sealed-1000, cap = `FrameV2.maxPayload` - overhead) with a unit arm asserting the probe equality.*",
@@ -471,7 +530,15 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
         {"id": "gs-ux-001.ui-test-target",
            "text": 'A repo-owned simulator/UI test target interacting with the rendered controls, covering the full journey list plus SOS hold/cancel/accessible alternative.',
            # *** DISCHARGED -- BOTH SCHEMES EXECUTE AND EVERY ARM PASSES, PARSED BY A COMMITTED CONTROL. ***
-           "status": "DISCHARGED", "evidence": [
+           # *** REOPENED 2026-10-02 -- THE ROSTER CHANGED; THE LANE IS NOT RE-BOUND TO THIS CANDIDATE. ***
+           #
+           # *The target, the runner and the source-derived roster are all real.* **BUT THE ROSTER IS DERIVED FROM
+           # THESE SOURCE DIRECTORIES, and the journey list is being changed in-flight: the contract's fifth essential
+           # control (`lab.sos.retry`) is being added to `LabMeshAccessibilityUITests`/`LabMeshUITests`, so the roster
+           # this obligation rests on MOVES WITH THE TREE.** *A discharge citing a lane log captured before the roster
+           # moved does not describe the current target; the obligation is therefore not discharged until the lane
+           # executes the CURRENT source-derived roster and its result is bound to THIS candidate.*
+           "status": "OPEN", "evidence": [
                "*** MEASURED, THE LANE: `path:docs/remediation/evidence/gs-integration-001-courts.log` plus `ios-ui-lane.log` -- `ios:ui suites=2 tests=19 failures=0`, raw-rc=0, both `LabMeshUITests` (12 arms) and `GodstoneArchiveUITests` (7 arms) EXECUTED. *** *The runner regenerateth the project from `ios/project.yml` and writeth a pre-run AND post-run source digest, so a mid-run edit cannot leave a current-looking log.*",
                "`path:ci/check_lane_results.py` -- the arm roster is SOURCE-DERIVED from the `bundle.ui-testing` targets' own source directories, so an arm that never ran is a REFUSAL BY NAME rather than an absence from a count. *MEASURED: `--selftest-ui` 15/15 mutations killed, including the mid-run-edit case.*",
                "*** AND THE TRUST ARM'S OWN RED WAS FOUND BY THIS LANE AND FIXED AT ITS CAUSE RATHER THAN WEAKENED: `isHittable` was false because the Contacts page carrieth more controls than any sibling and the action row sat BELOW THE FOLD once the page was wrapped in a `ScrollView`. A bounded `scrollIntoView` now proveth the control REACHABLE BY SCROLLING, and still faileth with a named reason when it cannot be reached at all. ***",
@@ -481,8 +548,17 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "Internally verify rendered semantics (labels, identifiers, roles, state "
                  "descriptions) without claiming human/device accessibility acceptance.",
          # *** DISCHARGED -- THE RENDERED SEMANTICS ARE VERIFIED, AND HUMAN ACCEPTANCE IS EXPLICITLY EXTERNAL. ***
+         # *** REOPENED 2026-10-02 -- "ROLES" ARE VERIFIED ON ANDROID AND NOT ON iOS, AND `retry` IS STILL BEING
+         # CLOSED. ***
          #
-         # *** rc11: THE ROSTER IS NOW **EXTRACTED FROM THE RENDERED TREE**, AND ONE ESSENTIAL IS RECORDED AS A GAP. ***
+         # *The clause nameth: "labels, identifiers, roles, state descriptions".* **MEASURED FROM THE EVIDENCE ITSELF:
+         # the Android court reads ROLE from the Compose semantics tree, while the iOS arm is an XCUITest, WHICH THE
+         # SAME EVIDENCE STATES "CANNOT READ ACCESSIBILITY TRAITS" -- so on the iOS isle the rendered ROLE is not
+         # verified at all, only labels/identifiers/targets.** *And the fifth contract-essential control (`retry`) is
+         # being added to the iOS surface in-flight, so the roster the gap was recorded against is itself moving.*
+         # **The obligation is therefore not discharged: the iOS-role half is unverified by the very tool cited, and
+         # the retry surface must be re-measured on this candidate.** *Prior DISCHARGED text kept below, HISTORICAL
+         # scope.*
          # *The rc10-era court asserted a HARD-CODED roster of 120x48 nodes with fallback labels -- "a table pretending
          # to be a screen".* **The Android court now readeth role, content description, state, laid-out size and
          # traversal order FROM the Compose/Robolectric semantics tree, and it is run at BOTH text scales in BOTH
@@ -490,7 +566,9 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          # authority to bind it to -- so it is RECORDED AS A GAP here rather than cited as satisfied, which is the honest
          # reading the mission requires.* **AND THE HONEST LIMIT IS NAMED: an XCUITest cannot read accessibility TRAITS
          # nor posted announcements, so human VoiceOver/TalkBack acceptance stays external.**
-         "status": "DISCHARGED", "evidence": [
+         # *** HISTORICAL DISCHARGED CLAIM -- SCOPE: rc11-era, iOS-role half unverified. Superseded by the REOPENED
+         # note above; the evidence below is KEPT and is NOT deleted. ***
+         "status": "OPEN", "evidence": [
              "*** THE LIVE TREE IS ASKED, NOT A MODEL OF IT: `test:testGSINT001TheLiveTreeCarriesTheRenderedSemantics` walks the ACTUAL rendered elements -- every button must carry a NON-EMPTY label, and each readout must carry a non-empty label AND its value -- so an element a screen reader would read blank is a REFUSAL. ***",
              "*** rc11, THE ANDROID ROSTER IS EXTRACTED FROM THE RENDERED SEMANTICS TREE: `test:test_the_shared_contract_is_applied_to_the_rendered_roster` readeth role, content description, state, REAL LAID-OUT SIZE and `positionInRoot` order from the Robolectric/Compose tree, REPLACING the fabricated 120x48 nodes and fallback labels. MEASURED: `:labmesh:testDebugUnitTest --tests '*LabMeshJourneySemanticsTest*'` -- 11 arms, executed 11, failures 0, skipped 0. *** *The four direction/scale combinations are `test:test_the_roster_survives_default_and_largest_text_in_ltr_and_rtl`, which carrieth a SCALE DISCRIMINATOR so a roster that never reflowed would redden.*",
              "*** AND THE ANNOUNCEMENT DOOR IS A LIVE RECORD RATHER THAN AN ASSERTION: `path:ios/Godstone/Sources/LabMesh/LabMeshRootApp.swift` carrieth `LabAnnouncements.announce`, written in the SAME closure that posteth the announcement, and the two SwiftUI containers `lab.sos.announced` (last posted SOS state words) and `lab.a11y.announced` (last posted outcome words) are readable through `.accessibilityValue`. *** *An unchanged record therefore meaneth the change was repainted and never announced.*",
@@ -583,12 +661,12 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "Structured per-finding closure: `internal_status`, `internal_obligations` and "
                  "`external_obligations` for every nonterminal finding, with `internal_remaining` "
                  "DERIVED from them rather than NLP-classified from prose.",
-"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py` --write wrote `finding_closure` (68 entries, every one carrying `internal_status`) + `structured_counts` into the ledger; `internal_remaining_prose_classifier_retired` records the NLP classifier as RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision, so `internal_remaining` is DERIVED from explicit obligation statuses"]},
+"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py` --write wrote `finding_closure` (68 entries, every one carrying `internal_status`) + `structured_counts` into the ledger; `internal_remaining_prose_classifier_retired` records the NLP classifier as RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision, so `internal_remaining` is DERIVED from explicit obligation statuses. *** THE MISSION'S ADDED SEMANTICS (`known_internal_gaps`, `unresolved_internal_dependencies`, `required_controls_present`, and the structured discharge fields) ARE TRACKED ON `audit-b1-ctrl-001.closure-law` AND `audit-b1-ctrl-001.ready-requires-both-populations`, which are the obligations that gate them -- not duplicated here. ***"]},
         {"id": "audit-b1-ctrl-001.closure-law",
          "text": "A control that REFUSES a COMPLETE/READY builder status while structured "
                  "internal OPEN work exists, so the control plane can no longer report closure "
                  "over a NO_GO register.",
-"status": "DISCHARGED", "evidence": ["`path:docs/production-readiness/BOARD1_CLOSURE.json`, `path:scripts/build_structured_closure.py`. MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"]},
+"status": "OPEN", "evidence": ["*** REOPENED 2026-10-02: the law refuses READY-over-OPEN, but it does not yet (a) REFUSE a terminal DISCHARGED that its own structured fields CONTRADICT, (b) ERROR on unknown states at the closure boundary (it only errors on unknown OBLIGATION states), or (c) carry the new required discharge fields. Until those exist the law is necessary but not sufficient. *** *Prior DISCHARGED text kept.* `path:docs/production-readiness/BOARD1_CLOSURE.json`, `path:scripts/build_structured_closure.py`. MEASURED BOTH DIRECTIONS 2026-09-20: with BOARD1_CLOSURE.status set to READY_FOR_EXTERNAL_REAUDIT the control REFUSED -- `rc=1` with `::error:: BOARD1_CLOSURE.status is READY_FOR_EXTERNAL_REAUDIT while 30 structured internal obligation(s) are OPEN across 10 finding(s)`. Restored to REMEDIATION_IN_PROGRESS: `rc=0`. The law BITES, so the control plane cannot report closure over a NO_GO register"]},
         {"id": "audit-b1-ctrl-001.missed-partials",
          "text": "Every PARTIAL is represented, including GS-RUNTIME-001 and GS-STORE-002, which "
                  "the prose classifier missed entirely.",
@@ -604,7 +682,7 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "A COMPLETE/READY builder status must be refused while EITHER population is non-empty: "
                  "unresolved internal obligations, and findings whose internal_status is OPEN. The two are "
                  "not the same test, and a gate reading only one of them can permit readiness over live work.",
-"status": "DISCHARGED", "evidence": ["`path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `path:tools/readiness/tests/test_closure_law_refuses.py:361` (`ReadinessRequiresBothPopulations`)."]},
+"status": "OPEN", "evidence": ["*** REOPENED 2026-10-02: both populations ARE checked in `--check`, but the readiness claim is not yet gated on the new structured semantics (`required_controls_present`, `unresolved_internal_dependencies`) that this mission adds, and the unknown-state refusal is not yet enforced at the CLOSURE boundary. *** *Prior DISCHARGED text kept.* `path:scripts/build_structured_closure.py`. MEASURED: a gate reading only `internal_obligations_unresolved` would have PERMITTED `READY_FOR_EXTERNAL_REAUDIT` while ten findings still reported themselves internally open, because two of them carried zero obligations to count. `--check` now refuseth on both conditions by name; killed by `path:tools/readiness/tests/test_closure_law_refuses.py:361` (`ReadinessRequiresBothPopulations`)."]},
     ],
 }
 
@@ -637,9 +715,23 @@ def build(ledger: dict) -> dict:
                 "severity": entry.get("severity"),
                 "recorded_status": status,
                 "internal_status": recorded_internal,
+                "internal_status_source": "recorded_status",
                 "internal_obligations": [dict(o) for o in PARTIAL_OBLIGATIONS.get(fid, [])],
                 "external_obligations": list(entry.get("external_obligations") or []),
             }
+            # *** THE OBLIGATION SET GOVERNS THE FINDING'S INTERNAL STATUS WHEN OBLIGATIONS EXIST. ***
+            #
+            # *WHY THIS IS DERIVED RATHER THAN COPIED FROM `my_status`: a REOPENED obligation must make its finding
+            # internally OPEN, or the finding would stand `COMPLETE` over live work -- the exact overclaim this control
+            # plane exists to refuse, and the one a bare status flip would re-create.* **A FINDING WITH OBLIGATIONS IS
+            # INTERNALLY TERMINAL EXACTLY WHEN NONE OF ITS OBLIGATIONS IS UNRESOLVED; its `recorded_status` (from the
+            # ledger) is preserved UNCHANGED beside the derived value, so the disagreement remains auditable rather
+            # than being silently overwritten.** *A finding with NO authored obligations keeps its recorded status,
+            # because terminality cannot be derived from a set that does not exist.*
+            if entry_out["internal_obligations"]:
+                entry_out["internal_status"] = (
+                    "COMPLETE" if obligations_are_terminal(entry_out) else "OPEN")
+                entry_out["internal_status_source"] = "derived_from_obligations"
             # *** AND THE DERIVED STATUS REPLACES THE RECORDED ONE WHERE OBLIGATIONS EXIST. ***
             #
             # *MEASURED: `AUDIT-B1-CTRL-001` and `GS-FINAL-004` each carried `internal_status = OPEN` with ZERO
@@ -786,6 +878,94 @@ def finding_state_problems(closure: dict) -> list[str]:
                 f"{'...' if len(live) > 3 else ''}) -- a finding declared complete over live internal work is the "
                 f"overclaim this control plane existeth to refuse")
     return problems
+
+
+#: *** THE STRUCTURED SEMANTICS THE CLOSURE MISSION REQUIRES, AND THE SCAN THAT FEEDS THEM. ***
+#:
+#: *A DISCHARGED STATUS IS A CLAIM; THE SEMANTICS BELOW MAKE THE CLAIM EXAMINABLE. `required_controls_present` is the
+#: positive half (what each finding's discharge relies on), `known_internal_gaps` is the negative half (live gaps the
+#: record itself names), and `unresolved_internal_dependencies` names what must land first. `known_internal_gaps` is
+#: populated ONLY while the finding is OPEN -- a discharged finding's historical gap prose is HISTORY, not a live gap,
+#: and erasing it would destroy the audit trail this programme depends on.*
+GAP_CONCEPTS = (
+    "gap", "absent", "missing", "not satisfied", "not implemented", "still owed", "uncovered",
+    "cannot", "not executed", "not reached", "placeholder", "deferred", "todo", "known red",
+    "no live surface", "no runtime authority",
+)
+
+
+def _discharge_text_scan(obligation: dict) -> dict:
+    """*** A PROGRAMMATIC SCAN OF A DISCHARGED OBLIGATION'S OWN PROSE FOR GAP CONCEPTS. ***
+
+    *THIS IS NOT AN NLP CLASSIFIER AND CARRIETH NO CLOSURE AUTHORITY. The retired prose classifier inferred a COUNT
+    from vocabulary; this scans for REVIEW and carries only a hit roster. The distinction matters: a word list cannot
+    decide whether a discharge is honest, but it can point a human at the discharges whose own prose mentions a gap --
+    which is exactly the class the mission asketh to inspect.*
+
+    *Each hit is attributed to the obligation, the field (`text`/`evidence`) and the concept, so the disposition can be
+    recorded against a real location rather than a count.* **An empty roster MEANETH "no gap word appeared", never "the
+    discharge is sound" -- the scan has no authority to say the latter.**
+    """
+    hits: list[dict] = []
+    blobs = [("text", obligation.get("text", ""))]
+    blobs += [("evidence", c) for c in (obligation.get("evidence") or []) if isinstance(c, str)]
+    for field, blob in blobs:
+        low = blob.lower()
+        for concept in GAP_CONCEPTS:
+            start = low.find(concept)
+            while start != -1:
+                s = max(0, start - 80)
+                e = min(len(blob), start + len(concept) + 80)
+                hits.append({
+                    "concept": concept,
+                    "field": field,
+                    "excerpt": blob[s:e],
+                })
+                start = low.find(concept, start + len(concept))
+    return {"scanned": True, "hits": hits, "concepts_scanned": list(GAP_CONCEPTS),
+            "authority": "review-only; NOT an input to any closure decision"}
+
+
+def structured_semantics(closure: dict) -> dict:
+    """*** `required_controls_present`, `known_internal_gaps` AND `unresolved_internal_dependencies`. ***
+
+    *WHY THESE THREE TOGETHER: a discharge saith what it PRESENTED (controls), a live finding saith what it still
+    OWES (gaps), and either may DEPEND on something that must land first (dependencies). Naming only the controls
+    would be the builder's own report of its work; naming the gaps as well is what makes the report falsifiable by a
+    reader who compares the two.*
+
+    **`known_internal_gaps` IS POPULATED ONLY WHILE A FINDING IS INTERNALLY OPEN.** *A discharged finding's gap prose
+    is HISTORICAL and is preserved under an explicit historical scope rather than being counted as outstanding work --
+    that is the "keep the incriminating evidence without erasing it" rule the mission states.*
+    """
+    controls: dict[str, list[str]] = {}
+    gaps: dict[str, list[dict]] = {}
+    deps: dict[str, list[str]] = {}
+    for fid, f in sorted(closure.items()):
+        obls = f.get("internal_obligations") or []
+        terminal = obligations_are_terminal(f) if obls else f.get("internal_status") != "OPEN"
+        # The positive half: a control is "present" when a DISCHARGED obligation cites a typed token resolving in the
+        # tree. This is DELIBERATELY the same evidence rule the law already enforces -- it is reported, not re-judged.
+        present = []
+        for o in obls:
+            if o.get("status") in UNRESOLVED_OBLIGATION_STATES:
+                continue
+            present.append(o.get("id"))
+        controls[fid] = present
+        if not terminal:
+            # The negative half: the OPEN obligations, by identity, with each one's own scan roster.
+            g = []
+            for o in obls:
+                if o.get("status") in UNRESOLVED_OBLIGATION_STATES:
+                    g.append({"id": o.get("id"), "text": o.get("text"),
+                              "discharge_text_scan": _discharge_text_scan(o)})
+            gaps[fid] = g
+        deps[fid] = list(f.get("external_obligations") or [])
+    return {"required_controls_present": controls,
+            "known_internal_gaps": gaps,
+            "unresolved_internal_dependencies": deps,
+            "note": ("known_internal_gaps is populated ONLY for findings that are internally OPEN; a discharged "
+                     "finding's gap prose is historical and not counted as outstanding work")}
 
 
 def counts(closure: dict) -> dict:
