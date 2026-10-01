@@ -1,0 +1,65 @@
+{
+ "schema": 1,
+ "candidate_ref": "production-readiness-board1-rc14",
+ "candidate_sha": "f76c5ae3cd54a19ca7489f492441e91af50edddc",
+ "candidate_tree_sha": "4157f3eb23a23cdbb33a86b7590ffd665f8ef14a",
+ "tag_object_sha": "2481e66d7dad7417d142507d74bdce0b06a8ec24",
+ "closure_record_sha": "f76c5ae3cd54a19ca7489f492441e91af50edddc",
+ "run": {
+  "id": 36864119928,
+  "attempt": 2,
+  "workflow": "repository-verification",
+  "workflow_path": ".github/workflows/repository-verification.yml",
+  "event": "push",
+  "repository": "oculusrex14/GODSTONE",
+  "head_branch": "board1/external-audit-final-remediation",
+  "head_sha": "f76c5ae3cd54a19ca7489f492441e91af50edddc",
+  "conclusion": "success",
+  "jobs": [
+   {
+    "id": 110452163271,
+    "name": "android source compile + unit tests (committed wrapper)",
+    "conclusion": "success",
+    "check_run_url": "https://api.github.com/repos/oculusrex14/GODSTONE/check-runs/110452163271"
+   },
+   {
+    "id": 110452165544,
+    "name": "content pipeline (LIGHT archive, no model)",
+    "conclusion": "success",
+    "check_run_url": "https://api.github.com/repos/oculusrex14/GODSTONE/check-runs/110452165544"
+   },
+   {
+    "id": 110452166102,
+    "name": "constraint audit (C1/C2 + tiers + release-gate status)",
+    "conclusion": "success",
+    "check_run_url": "https://api.github.com/repos/oculusrex14/GODSTONE/check-runs/110452166102"
+   },
+   {
+    "id": 110452166861,
+    "name": "repo-owned parity + safety invariants (A,B,C,E,F,G,H)",
+    "conclusion": "success",
+    "check_run_url": "https://api.github.com/repos/oculusrex14/GODSTONE/check-runs/110452166861"
+   },
+   {
+    "id": 110452208716,
+    "name": "ios core + mesh tests + Archive-only xcodebuild",
+    "conclusion": "success",
+    "check_run_url": "https://api.github.com/repos/oculusrex14/GODSTONE/check-runs/110452208716"
+   },
+   {
+    "id": 110452217872,
+    "name": "mesh simulation (regression guard)",
+    "conclusion": "success",
+    "check_run_url": "https://api.github.com/repos/oculusrex14/GODSTONE/check-runs/110452217872"
+   }
+  ]
+ },
+ "at_tag_closure_sha256": "a9ce1f8a923f1880621772402b5fb13a3ebde3194903fc00f20e8c5123328d58",
+ "at_tag_ledger_sha256": "76cb89309dcbcfd0ba82d8bf3c8537e42ae529ea919ef12d4021c128d268c7fe",
+ "measured_at": "2026-10-01T15:51:49Z",
+ "builder_verdict": "READY_FOR_EXTERNAL_REAUDIT",
+ "auditor": {
+  "verdict": null,
+  "signed_at": null
+ }
+}
