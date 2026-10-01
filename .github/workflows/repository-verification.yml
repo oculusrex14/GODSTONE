@@ -799,31 +799,6 @@ jobs:
           test -d "$ANDROID_HOME/ndk/27.0.12077973" || \
             { echo "::error::the NDK the build declares (27.0.12077973) is NOT installed after provisioning"; exit 1; }
 
-      # *** PRE-WARM THE WORKER'S GRADLE BUILD OUTSIDE THE COORDINATOR'S TIMED WINDOW. ***
-      #
-      # *MEASURED, RUN `36775091464`: the `android-prepare-outboundEnqueue` worker DID launch -- its log reacheth
-      # `> Task :mesh:compileDebugUnitTestKotlin` -- and was then cut by the coordinator's `--timeout 300` with the
-      # compile INCOMPLETE. **IT WAS NOT A PRE-BOOT FAILURE AND NOT THE ENQUEUE HANDOFF: it was the one-time cost of a
-      # COLD `gradlew --no-daemon --rerun-tasks` LAUNCH landing inside a timed step -- Gradle configuration, the NDK
-      # install (since provisioned above), the FULL :mesh main+test Kotlin compile, and Robolectric's first-run
-      # android-all fetch.*** *That is the same defect class as the NDK download: an environment cost that is paid once
-      # and must therefore be paid OUTSIDE the bound that measureth the work.*
-      #
-      # **SO THE WORKER TASK'S OWN BUILD IS PRIMED ONCE HERE.** *`:mesh:board1IntegrationWorker` is a `Test` task whose
-      # `outputs.upToDateWhen { false }` makes it ALWAYS re-run, so what remaineth to pay per launch is the Gradle
-      # configuration and the compile of EVERYTHING the worker's classpath reacheth -- the whole `:mesh` and `:llm`
-      # main + test graphs.* **THIS STEP COMPILES THAT EXACT GRAPH, WITH NO FILTER AND WITHOUT RUNNING THE WORKER**, so
-      # the downloads, the Kotlin compiler and the caches are all warm before the coordinator starteth its clock.
-      # *MEASURED LOCALLY with warm caches and `--rerun-tasks`: 27s; the cold hosted cost is what the bound must
-      # absorb, and it is now paid here instead.*
-      - name: pre-warm the Android worker's Gradle graph (outside the coordinator's timed window)
-        run: |
-          set -euo pipefail
-          # The worker's own classpath is the debug unit-test variant's, so priming it is what matters. No --rerun-tasks
-          # is passed: this step WARMS caches, and the worker itself still rebuilds under its own bound.
-          ./android/gradlew -p android :mesh:compileDebugUnitTestKotlin :mesh:compileDebugKotlin :llm:compileDebugKotlin \
-            --no-daemon --console=plain
-
       # *** THE iOS FOUNDATION LANE AND THE UI LANE, ONE REPOSITORY-OWNED PATH EACH. ***
       #
       # *THE DEFECT THIS CLOSES: `tools/readiness/run_ios_ui_lane.sh` was committed but invoked by NO workflow, and
@@ -895,6 +870,33 @@ jobs:
           set -euo pipefail
           # All three iOS lanes (foundation, UI, simulator) have now executed; verify all three together.
           python3 ci/check_lane_results.py --scope ios
+
+      # *** PRE-WARM THE WORKER'S GRADLE GRAPH OUTSIDE THE COORDINATOR'S TIMED WINDOW -- AND IMMEDIATELY BEFORE IT. ***
+      #
+      # *MEASURED, RUN `36775091464`: the `android-prepare-outboundEnqueue` worker DID launch (its log reacheth
+      # `> Task :mesh:compileDebugUnitTestKotlin`) and was then cut by the coordinator's `--timeout 300` with the compile
+      # INCOMPLETE. **IT WAS NOT A PRE-BOOT FAILURE AND NOT THE ENQUEUE HANDOFF: it was the one-time cost of a COLD
+      # `gradlew --no-daemon --rerun-tasks` LAUNCH landing inside a timed step.*** *Same defect class as the NDK
+      # download: an environment cost paid once, and therefore to be paid OUTSIDE the bound that measureth the work.*
+      #
+      # **AND ITS PLACEMENT IS DELIBERATE: THIS STEP SITS HERE, NOT BESIDE THE TOOLCHAIN PROVISIONING ABOVE.** *An
+      # earlier revision put it before the iOS lanes, where its `set -euo pipefail` made an Android-only warmup a HARD
+      # GATE ON THE PRIMARY PAYLOAD -- a flaky hosted Gradle warmup would have aborted the job and SKIPPED the
+      # foundation, UI and simulator lanes entirely, destroying the very evidence this job existeth to produce.*
+      # **MOVING IT DOWN COUPLES NOTHING: same runner, same `~/.gradle`, so the cache it builds still persisteth to the
+      # coordinator's launches -- placement changes only what a warmup failure can destroy.***
+      #
+      # *MEASURED, AFTER THE WARM WENT IN (RUN `36789666598`, the green): the first Android worker reached `at_boundary`
+      # at `BUILD FAILED in 2m 25s` (145s) -- against 299s before -- and every other launch finished in 58-108s, so the
+      # margin under the 600s bound went from ONE SECOND to several minutes. That is the evidence the warm removeth the
+      # cold cost rather than the bound hiding it.*
+      - name: pre-warm the Android worker's Gradle graph (outside the coordinator's timed window)
+        run: |
+          set -euo pipefail
+          # The worker's own classpath is the debug unit-test variant's, so priming it is what matters. No --rerun-tasks
+          # is passed: this step WARMS caches, and the worker itself still rebuilds under its own bound.
+          ./android/gradlew -p android :mesh:compileDebugUnitTestKotlin :mesh:compileDebugKotlin :llm:compileDebugKotlin \
+            --no-daemon --console=plain
 
       # *** GS-INTEGRATION-001 `real-adapters` (step 5.5/5.6): THE BIDIRECTIONAL CROSS-PLATFORM INGESTION. ***
       #
