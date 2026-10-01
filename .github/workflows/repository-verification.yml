@@ -149,7 +149,27 @@ jobs:
           # convention is followed rather than re-argued.
           set -euo pipefail
           READINESS_LOG="${RUNNER_TEMP:-/tmp}/readiness.log"
-          python -m unittest discover -s tools/readiness/tests -v 2>&1 | tee "$READINESS_LOG"
+          # *** THE SUITE'S OUTPUT GOES TO THE EVIDENCE FILE, NOT THROUGH THE ACTIONS LOG. ***
+          #
+          # *MEASURED, RUN `36846643879`: this step PASSED (`OK`, 804 tests, rc=0) and the job concluded `success` --
+          # yet `check-runs/{job}/annotations` carrieth TEN `failure`-level annotations, every one a NEGATIVE-CONTROL
+          # PROBE'S OWN REFUSAL TEXT (`the bundle is not a directory: …/not-a-bundle.txt`, `the Archive is missing:
+          # …/absent.db`, `SBOM: …org.example:lib:1.0…`, `dependency manifest: lane 'native' is missing`).*
+          # **THOSE PROBES PASS PRECISELY BECAUSE THE TOOL REFUSES -- `test_t69.py` planteth a non-bundle and asserteth
+          # `assertIn("::error::", said)` on the CAPTURED stream -- so that text is EVIDENCE OF A WORKING CONTROL.** *But
+          # `2>&1 | tee` put every `::error::` on the runner's stdout, GitHub harvested each into a check-run
+          # annotation, and `ci/check_candidate_binding.py` refuseth ANY failure-level annotation on ANY job (its "a job
+          # conclusion is success even when a step emitted ::error:: that a later step swallowed" guard).* **THE
+          # CONSEQUENCE WAS THAT NO RUN OF THIS WORKFLOW WAS FREEZABLE -- MEASURED ON ALL THREE GREEN RUNS
+          # (`36789666598`, `36813737384`, `36846643879`), EACH CARRYING THE SAME TEN.**
+          #
+          # **SO THE SUITE WRITETH STRAIGHT TO THE FILE.** *One run, bytes kept VERBATIM -- the probe tokens remain in
+          # `$READINESS_LOG` exactly as before, so the assertions and the evidence are untouched -- and they simply never
+          # pass through the Actions log, which is the only channel GitHub harvests annotations from.* **THE VERDICT IS
+          # STILL READ FROM THAT FILE by the guards below, and THIS STEP'S OWN `::error::` LINES ARE UNTOUCHED: a REAL
+          # failure still annotates the job, which is the signal the freeze guard existeth to read.** *No second suite
+          # run, no swallow, no rewrite of a single byte.*
+          python -m unittest discover -s tools/readiness/tests -v > "$READINESS_LOG" 2>&1
           # the verdict is read from the log EXPLICITLY: the floor and the presence
           # checks below both pass on a FAILED run, so this is the guard that matters.
           if grep -qE '^(FAILED|ERROR)' "$READINESS_LOG"; then
