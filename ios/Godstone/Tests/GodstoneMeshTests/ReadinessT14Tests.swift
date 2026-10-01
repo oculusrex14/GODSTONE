@@ -288,6 +288,27 @@ final class ReadinessT14Tests: XCTestCase {
             capacityDuring.set(transport.capacityAuthority.totalCount)
             reached.signal()
             _ = resumed.wait(timeout: .now() + 5.0)
+            // *** THIS MARKER IS RECORDED INSIDE THE SERIALISED REGION, WHICH IS WHAT MAKES THE FINAL ASSERTION
+            // MEANINGFUL RATHER THAN RACY. ***
+            //
+            // *MEASURED, HOSTED RUN `36804640878`: this arm failed with `["validated:…", "stop-done",
+            // "connect-return", "start-done"]` WHILE EVERY MID-FLIGHT ASSERTION PASSED -- the stopper did not progress
+            // within the 0.5s window, `returnedAction` was nil and `stopReturned` was false.* **SO THE PRODUCT'S
+            // BARRIER HELD; what inverted was the TEST'S OWN RECORDING.** *`processCentralConnect` runneth its
+            // reduction inside `serialise` and RETURNETH from it; the old code appended this marker AFTER that
+            // return, on the connect thread -- while the stopper appended its own marker after `stop()` returned, on
+            // ANOTHER thread. Both appends therefore happened outside the serial region with NO ordering between
+            // them, so the array recorded THREAD SCHEDULING, not the product's causal order -- and no timeout could
+            // cure that, because `wait(for:)` returneth only once both appends have already happened.*
+            //
+            // **THE PRODUCT'S GUARANTEE IS THAT THE QUEUE IS NOT SPLIT: the reduction's one operation completes
+            // before the queued stop's `serialise` may begin.** *Recording this marker HERE -- still within the
+            // reduction's serialised body, on the epoch's own serial queue -- makes the ordering CAUSAL: the stop's
+            // `serialise` cannot start until this body ends, so "connect-reduced" must precede "stop-done" BY THE
+            // PRODUCT. And it remaineth non-vacuous, which was PROVEN BOTH WAYS WHEN THIS WAS WRITTEN: running the
+            // reduction WITHOUT the serial executor (the named defect) made this arm red with the order
+            // `["validated:…", "stop-done", "start-done", "connect-reduced"]`, and it passeth unmutated.*
+            order.append("connect-reduced")
         }
 
         let connectDone = expectation(description: "connect reduction completed")
@@ -301,7 +322,6 @@ final class ReadinessT14Tests: XCTestCase {
                 sourceEpoch: transport.currentTransportEpoch, from: centralManager
             )
             returnedAction.set(act)
-            order.append("connect-return")
             connectDone.fulfill()
         }
         _ = reached.wait(timeout: .now() + 5.0)
@@ -342,9 +362,13 @@ final class ReadinessT14Tests: XCTestCase {
 
         // The decisive teeth: the stopper may only cross the queue barrier
         // once the parked reduction has finished its one operation, so the
-        // lifecycle lines up strictly after the connect's own completion.
+        // lifecycle lines up strictly after the connect's own REDUCTION.
+        // *The marker asserted here is recorded INSIDE the reduction's serialised body (see the failpoint above), so
+        // its precedence is a consequence of the product's queue discipline -- not of which thread happened to append
+        // first. The connect's return-line is deliberately NOT asserted: that append happeneth outside the serial
+        // region, so requiring it here would assert thread scheduling.*
         XCTAssertEqual(order.snapshot(), [
-            "validated:processCentralConnect", "connect-return", "stop-done", "start-done",
+            "validated:processCentralConnect", "connect-reduced", "stop-done", "start-done",
         ], "the queued lifecycle proceeds only after the parked reduction completes its operation")
         XCTAssertEqual(returnedAction.get(), .discoverServices(peerId), "the action was scheduled on the validated driver")
 
