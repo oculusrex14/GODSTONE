@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "lineage": "semantic",
- "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+ "baseline_sha": "d5c7d5e4",
  "group": "board1",
  "required_ids": [
   "T72-RC13-android-private-construction-uncounted",
@@ -660,7 +660,7 @@
  ],
  "inputs": {
   "swift_sources": "fd78e47b003854c37da4e71ded1177aff0a0341dc1f817318741b93460b469a9",
-  "swift_tests": "c258a3af658a10aa38565349540d0fbd3295e23ecf883da0d202a8ae1735b2d2",
+  "swift_tests": "d305c1bf0234d287c307330aeed0189685dd9df2f2499121e15efc070844f0b6",
   "mirror_sources": "fb6f9f3469d6ae403bb1746a418788eb18ea110335f4fc6c3a8d8dd91d3cf86f",
   "mirror_tests": "af6eda3c3c09f31602789e2e1e92e64679b6fa18595d60bc581cab2d669a722c",
   "android_sources": "6d584ead914b8f01970656d74e00b448d3c37343c8adf7824ee6f2ad7f51e2ac",
@@ -674,11 +674,11 @@
   "xcodebuild": "Xcode 27.0",
   "java": "openjdk version \"17.0.20.1\" 2026-08-18"
  },
- "generated_utc": "2026-10-01T04:43:47Z",
+ "generated_utc": "2026-10-01T08:50:17Z",
  "rows": [
   {
    "id": "T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "774a425315ac9b59bea5d249b08be409a87475fcc19653c250e800db825a1203",
    "category": "semantic",
    "anchor_count": 1,
@@ -689,10 +689,10 @@
    "tests_run": 1,
    "outcome": "KILLED",
    "failed_assertion": "witness test_w02_the_light_release_carrieth_no_lab_and_no_mesh_edge failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "fb132b3c8d291346482f13d52648458d8360c0b853d5c8c60479480aef9470cb",
+   "log_sha": "e4676b39e223581151a52e3a69a977a7264dffe7a7d85d3098953eabc950e069",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge.mutant.log",
-   "started_utc": "2026-10-01T04:08:39Z",
-   "ended_utc": "2026-10-01T04:08:40Z",
+   "started_utc": "2026-10-01T08:14:55Z",
+   "ended_utc": "2026-10-01T08:14:56Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -706,7 +706,7 @@
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge.mutant.log",
-     "sha256": "fb132b3c8d291346482f13d52648458d8360c0b853d5c8c60479480aef9470cb"
+     "sha256": "e4676b39e223581151a52e3a69a977a7264dffe7a7d85d3098953eabc950e069"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC1-lab-isolation-gate-sleepeth-on-a-mesh-edge.restored.log",
@@ -716,7 +716,7 @@
   },
   {
    "id": "T54-RC2-lab-isolation-gate-sleepeth-on-a-readiness-override",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "a61179848a19d7c9467f8567f2171077e74234e1255ecb977a40bbf9a16fc695",
    "category": "semantic",
    "anchor_count": 1,
@@ -729,8 +729,8 @@
    "failed_assertion": "witness test_w03_a_readiness_override_in_the_light_flavour_is_refused failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "fc1f056bdd2e6ba6d83a1d9d69aee5940361b8e45960947852369c8befaad0f1",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC2-lab-isolation-gate-sleepeth-on-a-readiness-override.mutant.log",
-   "started_utc": "2026-10-01T04:08:40Z",
-   "ended_utc": "2026-10-01T04:08:41Z",
+   "started_utc": "2026-10-01T08:14:56Z",
+   "ended_utc": "2026-10-01T08:14:57Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -748,13 +748,13 @@
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC2-lab-isolation-gate-sleepeth-on-a-readiness-override.restored.log",
-     "sha256": "34e241fdc3d721de2f5bbfbc58b0748d42088c6bdb2412151ac3a4ef20f5bc39"
+     "sha256": "a8ef6524d3999e37cd197da6435e61481bcb16894e3235c930f1c1fbfc4b1d05"
     }
    }
   },
   {
    "id": "T54-RC3-lab-may-masquerade-as-the-shipping-identity",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "142e662fa4e1598e99e51b24f55001886fdc464fa58ee587918d82c7095e8002",
    "category": "semantic",
    "anchor_count": 1,
@@ -767,8 +767,8 @@
    "failed_assertion": "witness test_w05_the_lab_carrieth_its_own_distinct_identity failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "765517c83a0b65f8f60d555687c9ad95caf68e96e836a2b623905d2c1a23a519",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC3-lab-may-masquerade-as-the-shipping-identity.mutant.log",
-   "started_utc": "2026-10-01T04:08:41Z",
-   "ended_utc": "2026-10-01T04:08:42Z",
+   "started_utc": "2026-10-01T08:14:57Z",
+   "ended_utc": "2026-10-01T08:14:58Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -778,7 +778,7 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC3-lab-may-masquerade-as-the-shipping-identity.baseline.log",
-     "sha256": "efb78da666903e9c78e40344330985b758724d91de85fe56e103576544ed2cb2"
+     "sha256": "c8f585cb92ea7fe883c031948721f344b3e47df3dc0841e0e0572a577f1cb20f"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC3-lab-may-masquerade-as-the-shipping-identity.mutant.log",
@@ -786,13 +786,13 @@
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T54-RC3-lab-may-masquerade-as-the-shipping-identity.restored.log",
-     "sha256": "efb78da666903e9c78e40344330985b758724d91de85fe56e103576544ed2cb2"
+     "sha256": "c8f585cb92ea7fe883c031948721f344b3e47df3dc0841e0e0572a577f1cb20f"
     }
    }
   },
   {
    "id": "T55-RC1-approve-the-current-rotation-not-the-displayed-one",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "bb55353cda68438836588f9d1037763300f698280643493863f2534378f737dd",
    "category": "semantic",
    "anchor_count": 1,
@@ -803,10 +803,10 @@
    "tests_run": 15,
    "outcome": "KILLED",
    "failed_assertion": "witness test_w02_the_displayed_candidate_is_the_one_approved failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "d25deabfb11954dd330d43000da4ca9a478163fedde342c3652b603afba62fdc",
+   "log_sha": "62c6a63733d52b245e0a1418279bdee9208e85e08b690670545d69d1c3f19f12",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T55-RC1-approve-the-current-rotation-not-the-displayed-one.mutant.log",
-   "started_utc": "2026-10-01T04:08:42Z",
-   "ended_utc": "2026-10-01T04:09:32Z",
+   "started_utc": "2026-10-01T08:14:58Z",
+   "ended_utc": "2026-10-01T08:15:54Z",
    "restored_green": {
     "ok": true,
     "run": 15,
@@ -820,7 +820,7 @@
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T55-RC1-approve-the-current-rotation-not-the-displayed-one.mutant.log",
-     "sha256": "d25deabfb11954dd330d43000da4ca9a478163fedde342c3652b603afba62fdc"
+     "sha256": "62c6a63733d52b245e0a1418279bdee9208e85e08b690670545d69d1c3f19f12"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T55-RC1-approve-the-current-rotation-not-the-displayed-one.restored.log",
@@ -830,7 +830,7 @@
   },
   {
    "id": "T55-RC4-a-failed-wipe-is-not-resumable",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "178f09a23343e76d387bb34d3ff5eb1366b22a9ca124c53d40331f4162ba6fbb",
    "category": "semantic",
    "anchor_count": 1,
@@ -841,10 +841,10 @@
    "tests_run": 15,
    "outcome": "KILLED",
    "failed_assertion": "witness test_w06_a_failed_wipe_surviveth_a_relaunch failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "4f911ef42fd9cfd5a64c05a66a1e6d52cc4edc42813150307dd487ed48cc042a",
+   "log_sha": "8b1b9e14d6e8b007d17d73e4692be49c9cda3e92d0955bfc8171901c6d709d3f",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T55-RC4-a-failed-wipe-is-not-resumable.mutant.log",
-   "started_utc": "2026-10-01T04:09:33Z",
-   "ended_utc": "2026-10-01T04:10:23Z",
+   "started_utc": "2026-10-01T08:15:54Z",
+   "ended_utc": "2026-10-01T08:16:50Z",
    "restored_green": {
     "ok": true,
     "run": 15,
@@ -858,7 +858,7 @@
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T55-RC4-a-failed-wipe-is-not-resumable.mutant.log",
-     "sha256": "4f911ef42fd9cfd5a64c05a66a1e6d52cc4edc42813150307dd487ed48cc042a"
+     "sha256": "8b1b9e14d6e8b007d17d73e4692be49c9cda3e92d0955bfc8171901c6d709d3f"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T55-RC4-a-failed-wipe-is-not-resumable.restored.log",
@@ -868,7 +868,7 @@
   },
   {
    "id": "T56-RC1-verified-shown-before-the-durable-cas",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "1a4143e1539de27f1ea836611984956ab462eab2f2d5344ed73db1b94f47b388",
    "category": "semantic",
    "anchor_count": 1,
@@ -879,10 +879,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW02ARefusedCasNeverShowethUserVerified failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "b14dd5f56682753551659c052bdddca12bb4f1ad016041ea2c2f6612b29c898c",
+   "log_sha": "cbb1e72e1902baed2edd9287e851338b8496b79b6ee17b3999dd28d3ecc91881",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC1-verified-shown-before-the-durable-cas.mutant.log",
-   "started_utc": "2026-10-01T04:10:23Z",
-   "ended_utc": "2026-10-01T04:11:07Z",
+   "started_utc": "2026-10-01T08:16:50Z",
+   "ended_utc": "2026-10-01T08:17:37Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -892,21 +892,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC1-verified-shown-before-the-durable-cas.baseline.log",
-     "sha256": "d6a43593419a7b46cfb6f0693b92b3590d7c6c185aff062f922370a6641ca8ed"
+     "sha256": "35a79d334d6ab7da307c546848198fa37572af0baebc47d4954d83a04257f1a3"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC1-verified-shown-before-the-durable-cas.mutant.log",
-     "sha256": "b14dd5f56682753551659c052bdddca12bb4f1ad016041ea2c2f6612b29c898c"
+     "sha256": "cbb1e72e1902baed2edd9287e851338b8496b79b6ee17b3999dd28d3ecc91881"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC1-verified-shown-before-the-durable-cas.restored.log",
-     "sha256": "32570ba8c1f19d0034e86df47c60dfad67f5825d81a5a0112dbff3e10a647c55"
+     "sha256": "ac76e3f99b2ec1b6e0d0868acb52ba50db438ef41fa55e56b41d8eae6fa4e3b6"
     }
    }
   },
   {
    "id": "T56-RC5-the-displayed-candidate-is-not-what-travels",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "71d6da02dc017bc86ee6792e1c0030f4db834d335dc383ef85fe54953f1d603e",
    "category": "semantic",
    "anchor_count": 1,
@@ -917,10 +917,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW03TheDisplayedCandidateIsTheOneApproved failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "503800788afae040e8aa15c0e496088d9efb589c3005a8dc4d9c7db084089006",
+   "log_sha": "390103455d298bd8ab461acf9960e04ebbe48d5299d242745a76050e9041ed1b",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC5-the-displayed-candidate-is-not-what-travels.mutant.log",
-   "started_utc": "2026-10-01T04:11:08Z",
-   "ended_utc": "2026-10-01T04:11:50Z",
+   "started_utc": "2026-10-01T08:17:37Z",
+   "ended_utc": "2026-10-01T08:18:22Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -930,21 +930,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC5-the-displayed-candidate-is-not-what-travels.baseline.log",
-     "sha256": "7658fedd1b09a9abd8317f966a8167755a9c1d6593bade96c46e087379c1696d"
+     "sha256": "3f8007d7c127ca04f19b594f8b3b3c49d6f8dbad9489798b072ab9ef0ba37555"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC5-the-displayed-candidate-is-not-what-travels.mutant.log",
-     "sha256": "503800788afae040e8aa15c0e496088d9efb589c3005a8dc4d9c7db084089006"
+     "sha256": "390103455d298bd8ab461acf9960e04ebbe48d5299d242745a76050e9041ed1b"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC5-the-displayed-candidate-is-not-what-travels.restored.log",
-     "sha256": "de467ce3e41cdf0639b0273dcf4ea33d60213d78ae1ef34244092960b6dfe8be"
+     "sha256": "0bb68364be754e55d3edb9b7bbfb9fbb6887221866a6990a46743e0bd08e586c"
     }
    }
   },
   {
    "id": "T56-RC7-a-failed-wipe-is-not-resumable",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "fd8d2e8f7da76704888ffae016f77e10872f732ee90bb4aeac2310648b1a031b",
    "category": "semantic",
    "anchor_count": 1,
@@ -955,10 +955,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW08AFailedWipeSurvivethARelaunch failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "cd96633c0721bfaa94b2a1c34fba0c882a1b35a072ac6ee5528d4ae8fb4c8c90",
+   "log_sha": "3ceae631c946107eae8b7dd66f1acf8e8984bb4368a975c45e5b4d01578e8bf9",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC7-a-failed-wipe-is-not-resumable.mutant.log",
-   "started_utc": "2026-10-01T04:11:50Z",
-   "ended_utc": "2026-10-01T04:12:32Z",
+   "started_utc": "2026-10-01T08:18:23Z",
+   "ended_utc": "2026-10-01T08:19:08Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -968,21 +968,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC7-a-failed-wipe-is-not-resumable.baseline.log",
-     "sha256": "bb7f1e5994df24e1cfa2d7119215a1b5a4da263def6f91ec5cadbefd7dd40832"
+     "sha256": "4d84ee4e1d8e2eadd9ce6463d58f08bd8fc62332734137651821274a7646db4a"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC7-a-failed-wipe-is-not-resumable.mutant.log",
-     "sha256": "cd96633c0721bfaa94b2a1c34fba0c882a1b35a072ac6ee5528d4ae8fb4c8c90"
+     "sha256": "3ceae631c946107eae8b7dd66f1acf8e8984bb4368a975c45e5b4d01578e8bf9"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC7-a-failed-wipe-is-not-resumable.restored.log",
-     "sha256": "d87a1fac0e8c2e82d334fd06ea668f219dd87af4769ebd8a7d1f1a5aa86c2d5d"
+     "sha256": "cdf235d4f9ab99c383a502fc8c198ab34c4259f936a8deba49ec1c5b2a40f87b"
     }
    }
   },
   {
    "id": "T56-RC9-a-mismatching-confirmation-promoteth",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "a250dbc6b1bbfbf75732456460cb1b0f412c1413d4bdf1d97e77c8aae0f4374d",
    "category": "semantic",
    "anchor_count": 1,
@@ -993,10 +993,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW09AStaleConfirmationPromotethNothing failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "2db6c581231a6740597a50991cb578e8ab28e25f91124ada473ded87baad2d97",
+   "log_sha": "62df988228c0cbc844e3d8bdf2596849a8261bcb628a85b118d1cd10c16594ab",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC9-a-mismatching-confirmation-promoteth.mutant.log",
-   "started_utc": "2026-10-01T04:12:32Z",
-   "ended_utc": "2026-10-01T04:13:14Z",
+   "started_utc": "2026-10-01T08:19:08Z",
+   "ended_utc": "2026-10-01T08:19:53Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1006,21 +1006,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC9-a-mismatching-confirmation-promoteth.baseline.log",
-     "sha256": "1f298733768369de2d1315700ac128f4e8cff6d1707b9ecf9866e76f0b82108f"
+     "sha256": "a780984c567b2eb0013238accb00e1a7fa0db062acda8a22f8988382a12c9ffe"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC9-a-mismatching-confirmation-promoteth.mutant.log",
-     "sha256": "2db6c581231a6740597a50991cb578e8ab28e25f91124ada473ded87baad2d97"
+     "sha256": "62df988228c0cbc844e3d8bdf2596849a8261bcb628a85b118d1cd10c16594ab"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC9-a-mismatching-confirmation-promoteth.restored.log",
-     "sha256": "a9db406ee5097d74c9a5f9e23cc157a0c84cd60f44a7818ea4ff145f3de3294d"
+     "sha256": "902037772b74851c16d2046516d57c3f21a030459c6e297c10236f7d60ae1521"
     }
    }
   },
   {
    "id": "T56-RC12-revocation-leaveth-the-sessions-standing",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "76b2fa2874a6fd17b253debc2865a4c285d608f60670e4c992a4336a2c8add8a",
    "category": "semantic",
    "anchor_count": 1,
@@ -1031,10 +1031,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW10RotationAndRevocationInvalidateSessions failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "53db7d7e8044adcab9c9b53943178f15d0b125308e7e997824fdaf2e8662f253",
+   "log_sha": "c6b6d4263c1489b5a428d18ecdfe1d325627d421bff78b409763265868545d3f",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC12-revocation-leaveth-the-sessions-standing.mutant.log",
-   "started_utc": "2026-10-01T04:13:15Z",
-   "ended_utc": "2026-10-01T04:13:57Z",
+   "started_utc": "2026-10-01T08:19:53Z",
+   "ended_utc": "2026-10-01T08:20:34Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1044,21 +1044,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC12-revocation-leaveth-the-sessions-standing.baseline.log",
-     "sha256": "31f6a74dc0d12de4e65bbaa0f21fe7ee9b0744ff338a34d2e8d7744579a98e3c"
+     "sha256": "bdc933d677f13b15158aaa0fa743368864bdaf1df6bae4e482cc121437792fbd"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC12-revocation-leaveth-the-sessions-standing.mutant.log",
-     "sha256": "53db7d7e8044adcab9c9b53943178f15d0b125308e7e997824fdaf2e8662f253"
+     "sha256": "c6b6d4263c1489b5a428d18ecdfe1d325627d421bff78b409763265868545d3f"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T56-RC12-revocation-leaveth-the-sessions-standing.restored.log",
-     "sha256": "38d6b99eedc7c75dc723cbbe2f230c804cca33a51d56e0ed588af80086907702"
+     "sha256": "2a81fde312e9e8ed0d079138fe316e0954e0409eafa0c367d7255c8d14710f3a"
     }
    }
   },
   {
    "id": "T57-RC5-the-compose-bound-is-characters-not-bytes",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "c43be590b4d4df00f621086099e54e1492f214e6836a9d633edc1381c8689f50",
    "category": "semantic",
    "anchor_count": 1,
@@ -1071,8 +1071,8 @@
    "failed_assertion": "witness test_w06_the_compose_bound_is_bytes_not_characters failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "a04385504289963c179720e19f28bb0613167ad2af0af9523021031266937e80",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T57-RC5-the-compose-bound-is-characters-not-bytes.mutant.log",
-   "started_utc": "2026-10-01T04:13:57Z",
-   "ended_utc": "2026-10-01T04:14:47Z",
+   "started_utc": "2026-10-01T08:20:34Z",
+   "ended_utc": "2026-10-01T08:21:24Z",
    "restored_green": {
     "ok": true,
     "run": 15,
@@ -1096,7 +1096,7 @@
   },
   {
    "id": "T57-RC6-truncation-splitteth-a-character",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "9e248ba9316010dd94046989dd258bcc42920090bf0f15b3d0b4593252f9b1a1",
    "category": "semantic",
    "anchor_count": 1,
@@ -1109,8 +1109,8 @@
    "failed_assertion": "witness test_w06_the_compose_bound_is_bytes_not_characters failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "1349a057c1ca2905c001fbcad0a27fbc7cb236a3a9c9d1554ea0cf54117c5c15",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T57-RC6-truncation-splitteth-a-character.mutant.log",
-   "started_utc": "2026-10-01T04:14:47Z",
-   "ended_utc": "2026-10-01T04:15:37Z",
+   "started_utc": "2026-10-01T08:21:25Z",
+   "ended_utc": "2026-10-01T08:22:17Z",
    "restored_green": {
     "ok": true,
     "run": 15,
@@ -1120,7 +1120,7 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T57-RC6-truncation-splitteth-a-character.baseline.log",
-     "sha256": "1adccd503f3d17807d8b42f975bb3a72d0b8ac54b5262a555134c143431a44e6"
+     "sha256": "ccc3433f28aaeb7c0ce45c53cbbe22e2a38b458f9fbb49d35e2a7ff282ba399e"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T57-RC6-truncation-splitteth-a-character.mutant.log",
@@ -1134,7 +1134,7 @@
   },
   {
    "id": "T57-RC11-a-duplicate-tap-sendeth-twice",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "57177dd5e060d7aaaa02771e6695f3c10e75ec9e409b4d94a535ef381de32d83",
    "category": "semantic",
    "anchor_count": 1,
@@ -1147,8 +1147,8 @@
    "failed_assertion": "witness test_w04_duplicate_taps_create_one_row failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "2d23ec36bb8541e7709abcaec83d7021566f47e44aae0ffbcb4b4f4d84455439",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T57-RC11-a-duplicate-tap-sendeth-twice.mutant.log",
-   "started_utc": "2026-10-01T04:15:37Z",
-   "ended_utc": "2026-10-01T04:16:26Z",
+   "started_utc": "2026-10-01T08:22:17Z",
+   "ended_utc": "2026-10-01T08:23:08Z",
    "restored_green": {
     "ok": true,
     "run": 15,
@@ -1172,7 +1172,7 @@
   },
   {
    "id": "T57-RC12-the-relaunch-inventeth-an-armed-control",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "44e8dd04420196da9a1a19a316c8b8563b698c17dde47aa8c1ba2f97aced7a3b",
    "category": "semantic",
    "anchor_count": 1,
@@ -1185,8 +1185,8 @@
    "failed_assertion": "witness test_w09_a_relaunch_restoreth_the_active_call failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "f2bff2f3e97b340a1af1ce8e44b37fc8dd33a1f6fec45942ee1cc429ac43f27e",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T57-RC12-the-relaunch-inventeth-an-armed-control.mutant.log",
-   "started_utc": "2026-10-01T04:16:26Z",
-   "ended_utc": "2026-10-01T04:17:16Z",
+   "started_utc": "2026-10-01T08:23:09Z",
+   "ended_utc": "2026-10-01T08:23:59Z",
    "restored_green": {
     "ok": true,
     "run": 15,
@@ -1210,7 +1210,7 @@
   },
   {
    "id": "T58-RC7-the-compose-bound-is-characters",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "b0cd6378163e8b5b1a70aaeed99a5fe2a1fdf7ee5cd0ee39a4e0064d2a639669",
    "category": "semantic",
    "anchor_count": 1,
@@ -1221,10 +1221,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW06TheComposeBoundIsBytesNotCharacters failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "5ff126fba0b5130a7f5abedeb3b8bca4933a959043b358192e4b75adb32f3a3a",
+   "log_sha": "456d91667bae1a6de7a8c9868bea37a2abbcf63d0d82499dc8fe25700cbeebbe",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC7-the-compose-bound-is-characters.mutant.log",
-   "started_utc": "2026-10-01T04:17:17Z",
-   "ended_utc": "2026-10-01T04:18:00Z",
+   "started_utc": "2026-10-01T08:23:59Z",
+   "ended_utc": "2026-10-01T08:24:41Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1234,21 +1234,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC7-the-compose-bound-is-characters.baseline.log",
-     "sha256": "53ac6e95f355d693ccc76c590accec9728b083c8eeb7f21fce95229eaea27dd3"
+     "sha256": "5dd2ccc2ea15475265a4f07023cb88b5cf211b58443e414d5720356d8c66bf51"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC7-the-compose-bound-is-characters.mutant.log",
-     "sha256": "5ff126fba0b5130a7f5abedeb3b8bca4933a959043b358192e4b75adb32f3a3a"
+     "sha256": "456d91667bae1a6de7a8c9868bea37a2abbcf63d0d82499dc8fe25700cbeebbe"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC7-the-compose-bound-is-characters.restored.log",
-     "sha256": "c946a9cdd12ee182fbf2ee3b6a525b4c97a066ef7c6f077c568d5b210e10beed"
+     "sha256": "d1e190ba27c64c77615749daac7d5ebb21e4ab9c45b05624b9c6a067e3d5bfa2"
     }
    }
   },
   {
    "id": "T58-RC8-a-bare-confirm-placeth-a-call",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "f69c0e9f57894dfd684e97027e9b0731d985ba4d00ccd4f9e3240674e38b9096",
    "category": "semantic",
    "anchor_count": 1,
@@ -1259,10 +1259,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW07TheSosControlRequirethAnArm failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "c9a9d99908eb6a0aaf49eb6a8fe0251a2418fe67221b923d788b97acb8519cac",
+   "log_sha": "8335b9226f8b5a03bf16f2bfc7cd41ed094fae2c83d48f55a0bc8f435e1fefc6",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC8-a-bare-confirm-placeth-a-call.mutant.log",
-   "started_utc": "2026-10-01T04:18:00Z",
-   "ended_utc": "2026-10-01T04:18:42Z",
+   "started_utc": "2026-10-01T08:24:41Z",
+   "ended_utc": "2026-10-01T08:25:23Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1272,21 +1272,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC8-a-bare-confirm-placeth-a-call.baseline.log",
-     "sha256": "2773edb08da9a0c56a738a63173d3cdb68cc0b47761b5f70ff61169b26406155"
+     "sha256": "c0e224de68de0e5c3a0477b5628e59cdb2920f001d329979ee23c26b1108025f"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC8-a-bare-confirm-placeth-a-call.mutant.log",
-     "sha256": "c9a9d99908eb6a0aaf49eb6a8fe0251a2418fe67221b923d788b97acb8519cac"
+     "sha256": "8335b9226f8b5a03bf16f2bfc7cd41ed094fae2c83d48f55a0bc8f435e1fefc6"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC8-a-bare-confirm-placeth-a-call.restored.log",
-     "sha256": "2c7f4b0ce7d8d62a65906e33b7c66da9abf7f2d75e2b0a1f037e0d5cd3a3c7d9"
+     "sha256": "6397fcceb3a7ee1fc28077360491940623d5944a8c7a9415d37fcebe29135d32"
     }
    }
   },
   {
    "id": "T58-RC10-a-duplicate-arrival-becometh-two-rows",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "63fecd1721763da45a53d46ec49c2a9b553a49ce5172404055b8fcc1f781c287",
    "category": "semantic",
    "anchor_count": 1,
@@ -1297,10 +1297,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW04AnIncomingDuplicateIsOneRow failed as intended (3 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "d8466e59dc21e43ae74978fa516b98a6a06af6f2888642d3dece9cf37eea6c05",
+   "log_sha": "4347ed45df726e03b20e435b613ebe2afc1972448a0a63bc695b74ed96233430",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC10-a-duplicate-arrival-becometh-two-rows.mutant.log",
-   "started_utc": "2026-10-01T04:18:42Z",
-   "ended_utc": "2026-10-01T04:19:24Z",
+   "started_utc": "2026-10-01T08:25:23Z",
+   "ended_utc": "2026-10-01T08:26:05Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1310,21 +1310,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC10-a-duplicate-arrival-becometh-two-rows.baseline.log",
-     "sha256": "ef1f474407ba6339dbbd4481dc398d0a9c7fef370bea8b8d7467fed56b42378c"
+     "sha256": "7b0f62acc2306ac5970bf41ab6bc019a3743a6102a44a7fc3e2366fba3e196d7"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC10-a-duplicate-arrival-becometh-two-rows.mutant.log",
-     "sha256": "d8466e59dc21e43ae74978fa516b98a6a06af6f2888642d3dece9cf37eea6c05"
+     "sha256": "4347ed45df726e03b20e435b613ebe2afc1972448a0a63bc695b74ed96233430"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T58-RC10-a-duplicate-arrival-becometh-two-rows.restored.log",
-     "sha256": "587afbf0b45fd51c9fd19a7190ee54804e067203561cc51d2cad20c0d6f93187"
+     "sha256": "946b4c4b76d4fe0c131ab819ef1cf8b1cbda2b94fe9c5a2435e87adb5e22b1b8"
     }
    }
   },
   {
    "id": "T59-RC9-the-light-profile-claimeth-the-radio",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "2ca905b248a9bb508e420d5a1a93a644f10078a1cb9fde95cc2a5ec8c9c43442",
    "category": "semantic",
    "anchor_count": 1,
@@ -1337,8 +1337,8 @@
    "failed_assertion": "witness test_w10_the_light_profile_carrieth_no_radio_capability failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "d1012a1c5a843e8dcf81a9c9e61e66fa6252957f21fd3cfb412d3c2ae946d755",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T59-RC9-the-light-profile-claimeth-the-radio.mutant.log",
-   "started_utc": "2026-10-01T04:19:24Z",
-   "ended_utc": "2026-10-01T04:19:25Z",
+   "started_utc": "2026-10-01T08:26:05Z",
+   "ended_utc": "2026-10-01T08:26:06Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -1362,7 +1362,7 @@
   },
   {
    "id": "T60-RC1-a-label-less-essential-control-is-accepted",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "d2f8cd254cca147714a8a4fffbb1795ecfb8c5a5bec0946e4edbfb5430fe83c9",
    "category": "semantic",
    "anchor_count": 1,
@@ -1375,8 +1375,8 @@
    "failed_assertion": "witness test_w03_an_essential_control_without_a_label_is_refused failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "e95e2a461917d75bf85e4d2aed1875950d4c870376367916f0283d01cf3f4588",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC1-a-label-less-essential-control-is-accepted.mutant.log",
-   "started_utc": "2026-10-01T04:19:25Z",
-   "ended_utc": "2026-10-01T04:19:26Z",
+   "started_utc": "2026-10-01T08:26:06Z",
+   "ended_utc": "2026-10-01T08:26:07Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -1400,7 +1400,7 @@
   },
   {
    "id": "T60-RC2-a-clipped-status-is-accepted-at-large-text",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "54f796bb9fb5418ec2883f52bd96143ab58a558b2af3ad54ec1ea65a2f1e2474",
    "category": "semantic",
    "anchor_count": 1,
@@ -1413,8 +1413,8 @@
    "failed_assertion": "witness test_w04_a_clipped_status_is_refused_at_large_text failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "5d2d76dad1107701d9f08cb62e80fff8761409b996018808158c1b7d894429f3",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC2-a-clipped-status-is-accepted-at-large-text.mutant.log",
-   "started_utc": "2026-10-01T04:19:26Z",
-   "ended_utc": "2026-10-01T04:19:27Z",
+   "started_utc": "2026-10-01T08:26:07Z",
+   "ended_utc": "2026-10-01T08:26:08Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -1438,7 +1438,7 @@
   },
   {
    "id": "T60-RC4-a-undersized-target-is-accepted",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "490b333ce8a7cf88639ebcb83b53084b43abda4bd35c66c752b3ac0c243e830d",
    "category": "semantic",
    "anchor_count": 1,
@@ -1451,8 +1451,8 @@
    "failed_assertion": "witness test_w06_the_touch_target_minimums_differ_by_platform failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "9fe0fa9dd95448d690396eb0604049ad55557b6fe952ebfdc08a6bfebf883047",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC4-a-undersized-target-is-accepted.mutant.log",
-   "started_utc": "2026-10-01T04:19:27Z",
-   "ended_utc": "2026-10-01T04:19:28Z",
+   "started_utc": "2026-10-01T08:26:08Z",
+   "ended_utc": "2026-10-01T08:26:09Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -1476,7 +1476,7 @@
   },
   {
    "id": "T60-RC5-a-gapped-reading-order-is-accepted",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "346c0b555b2c80f34d0be2f1a9c67c3c537551c58cbad0d0b0f3cb34788e8bc1",
    "category": "semantic",
    "anchor_count": 1,
@@ -1489,8 +1489,8 @@
    "failed_assertion": "witness test_w07_the_reading_order_is_contiguous_and_complete failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "82df0b84b94dbdd36760b8169093324606b2afeb301fccc0f26df03e11b2f328",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC5-a-gapped-reading-order-is-accepted.mutant.log",
-   "started_utc": "2026-10-01T04:19:28Z",
-   "ended_utc": "2026-10-01T04:19:29Z",
+   "started_utc": "2026-10-01T08:26:09Z",
+   "ended_utc": "2026-10-01T08:26:10Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -1514,7 +1514,7 @@
   },
   {
    "id": "T60-RC11-ios-a-clipped-status-is-accepted",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "8c107cc7457e61b125a4a75bf42676ecfc674834436fd9c08a4d17957f9b6688",
    "category": "semantic",
    "anchor_count": 1,
@@ -1525,10 +1525,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW04AClippedStatusIsRefusedAtLargeText failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "7f37cc0566beb649f5547b4cfc075f4b60b3c8660595cf189c797c3ac67f6dba",
+   "log_sha": "9f4b82a048a83c6793a1bef1bb1682130b96e18d901d0f8b0c3c9bf7a6132dca",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC11-ios-a-clipped-status-is-accepted.mutant.log",
-   "started_utc": "2026-10-01T04:19:29Z",
-   "ended_utc": "2026-10-01T04:20:11Z",
+   "started_utc": "2026-10-01T08:26:10Z",
+   "ended_utc": "2026-10-01T08:26:52Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1538,21 +1538,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC11-ios-a-clipped-status-is-accepted.baseline.log",
-     "sha256": "f958ac3d8a8afbdb82b98dea2ac641da6000b804f0b9fbdfa9e484c8f549ae00"
+     "sha256": "2c9f4c1a9fba26b5aaf84c2b2d81c62c1be9dd8a81dae43baa0f752282431e53"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC11-ios-a-clipped-status-is-accepted.mutant.log",
-     "sha256": "7f37cc0566beb649f5547b4cfc075f4b60b3c8660595cf189c797c3ac67f6dba"
+     "sha256": "9f4b82a048a83c6793a1bef1bb1682130b96e18d901d0f8b0c3c9bf7a6132dca"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC11-ios-a-clipped-status-is-accepted.restored.log",
-     "sha256": "96c3fe83b8fdf55a641ab2dbd9da1cb7a44df4c83d5bb951f054f5c380d29dc1"
+     "sha256": "ad2bc807f2a3e1643852bb3e99ba74d39fe67ee49f88f9757909d4bdf66b7111"
     }
    }
   },
   {
    "id": "T60-RC12-ios-the-touch-target-minimum-vanish",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "41e3bad39a0aa0096c7741b295c3745c66ed8a9c1b1c602775c3e89cd1c67aa3",
    "category": "semantic",
    "anchor_count": 1,
@@ -1563,10 +1563,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness testW06TheTouchTargetMinimumsDifferByPlatform failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "4804eb92f53c5258a8bcf903a3657153b3261fdc61764a7e873600e93d1cb3a0",
+   "log_sha": "8d4f661311fdb336344c64a95944ac06fa3a683f30b7b29180cae1dadcc946d8",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC12-ios-the-touch-target-minimum-vanish.mutant.log",
-   "started_utc": "2026-10-01T04:20:12Z",
-   "ended_utc": "2026-10-01T04:20:53Z",
+   "started_utc": "2026-10-01T08:26:52Z",
+   "ended_utc": "2026-10-01T08:27:34Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1576,21 +1576,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC12-ios-the-touch-target-minimum-vanish.baseline.log",
-     "sha256": "6043a88b3165c51ee55c008a0f3c9b80dd9ef4a561c779b8ebed19ca665df251"
+     "sha256": "03bb30153af988626d4d4f5ad40c0c3743a10fa497ca4862a2d6e5489d257339"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC12-ios-the-touch-target-minimum-vanish.mutant.log",
-     "sha256": "4804eb92f53c5258a8bcf903a3657153b3261fdc61764a7e873600e93d1cb3a0"
+     "sha256": "8d4f661311fdb336344c64a95944ac06fa3a683f30b7b29180cae1dadcc946d8"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T60-RC12-ios-the-touch-target-minimum-vanish.restored.log",
-     "sha256": "3df4d5098635205bee002adafa4106e3e4fc0ae51141414f8d2af8a2d1175a3c"
+     "sha256": "1564bd66a69fcd26767efc0aa37da26d8d9bc19d084e3d97ae99e3dc9f7de4e6"
     }
    }
   },
   {
    "id": "T72-RC1-the-shutdown-releaseth-no-lease",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "df44ba3f0e4f0b6e30240ade3b9f4bb18d944780628906022afabeb3df55f74e",
    "category": "semantic",
    "anchor_count": 1,
@@ -1603,8 +1603,8 @@
    "failed_assertion": "witness test_w02_zero_leaked_leases_timers_sessions_after_shutdown failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "6bb5c2e13fdf61c586002314907e68caea2d4d13d6d85049c492f622e49c656d",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC1-the-shutdown-releaseth-no-lease.mutant.log",
-   "started_utc": "2026-10-01T04:20:54Z",
-   "ended_utc": "2026-10-01T04:20:55Z",
+   "started_utc": "2026-10-01T08:27:34Z",
+   "ended_utc": "2026-10-01T08:27:35Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -1622,13 +1622,13 @@
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC1-the-shutdown-releaseth-no-lease.restored.log",
-     "sha256": "8ad5e99250a66dac69978d6c28dfdc467cf2bc56d40416a3f33c552f3d2e6313"
+     "sha256": "d16b7744420976858942f7d43ba2518639a8bee247ea96356553b3b3deafd6fe"
     }
    }
   },
   {
    "id": "T72-RC3-the-inbox-dedup-is-asleep",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "a15a67c675aa581604ba0d0df374dd86d998639f4c618e53e59e36a3c5db10e2",
    "category": "semantic",
    "anchor_count": 1,
@@ -1641,8 +1641,8 @@
    "failed_assertion": "witness test_w03_no_duplicate_inbox_row failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "8b576623572a140a3c9ea46078ca82beecb99bd26826143d2cfe3c3956579434",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC3-the-inbox-dedup-is-asleep.mutant.log",
-   "started_utc": "2026-10-01T04:20:55Z",
-   "ended_utc": "2026-10-01T04:20:56Z",
+   "started_utc": "2026-10-01T08:27:35Z",
+   "ended_utc": "2026-10-01T08:27:36Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -1666,7 +1666,7 @@
   },
   {
    "id": "T72-RC10-android-the-inbox-dedup-is-asleep",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "b1e9cb9ed14eca8ecaf08ab695bbe6676be18623373b98c37fd47a79bfa8495e",
    "category": "semantic",
    "anchor_count": 1,
@@ -1677,10 +1677,10 @@
    "tests_run": 24,
    "outcome": "KILLED",
    "failed_assertion": "witness test_w03_no_duplicate_inbox_row failed as intended (8 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "d49e1083880489d28c16f1fe657b251a4834665396e5bbe27b544d78a8179c57",
+   "log_sha": "fa7f7182646f9dd527598c6d6bd3a2f1e66de04d815cbf41f1d58967c666439a",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC10-android-the-inbox-dedup-is-asleep.mutant.log",
-   "started_utc": "2026-10-01T04:20:56Z",
-   "ended_utc": "2026-10-01T04:22:22Z",
+   "started_utc": "2026-10-01T08:27:36Z",
+   "ended_utc": "2026-10-01T08:29:03Z",
    "restored_green": {
     "ok": true,
     "run": 24,
@@ -1694,7 +1694,7 @@
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC10-android-the-inbox-dedup-is-asleep.mutant.log",
-     "sha256": "d49e1083880489d28c16f1fe657b251a4834665396e5bbe27b544d78a8179c57"
+     "sha256": "fa7f7182646f9dd527598c6d6bd3a2f1e66de04d815cbf41f1d58967c666439a"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC10-android-the-inbox-dedup-is-asleep.restored.log",
@@ -1704,7 +1704,7 @@
   },
   {
    "id": "T72-RC11-ios-the-shutdown-releaseth-nothing",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "2fcc28f531020f8525553cac205dec211a1682c7a0888af5c3a43de9d71a531d",
    "category": "semantic",
    "anchor_count": 1,
@@ -1715,10 +1715,10 @@
    "tests_run": 15,
    "outcome": "KILLED",
    "failed_assertion": "witness testW02ZeroLeaksAfterShutdown failed as intended (7 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "84e048481a8ac30a8f2ffdf03eb62deaf94f7cfa4ad5e44a3db7af1f1e0aac37",
+   "log_sha": "9aa87b36a2e5ad0f241c4b14b52349760a22f3ae89698afa52b27cee04553d74",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC11-ios-the-shutdown-releaseth-nothing.mutant.log",
-   "started_utc": "2026-10-01T04:22:23Z",
-   "ended_utc": "2026-10-01T04:23:07Z",
+   "started_utc": "2026-10-01T08:29:03Z",
+   "ended_utc": "2026-10-01T08:29:48Z",
    "restored_green": {
     "ok": true,
     "run": 15,
@@ -1728,21 +1728,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC11-ios-the-shutdown-releaseth-nothing.baseline.log",
-     "sha256": "c0a95535aef8f70b9d6283e7740d28455260f9a8fb74228134139be0092cbb1e"
+     "sha256": "975f92266c74e56298d9432b05f81288412c7be297d77e111b6eddc89533216b"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC11-ios-the-shutdown-releaseth-nothing.mutant.log",
-     "sha256": "84e048481a8ac30a8f2ffdf03eb62deaf94f7cfa4ad5e44a3db7af1f1e0aac37"
+     "sha256": "9aa87b36a2e5ad0f241c4b14b52349760a22f3ae89698afa52b27cee04553d74"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC11-ios-the-shutdown-releaseth-nothing.restored.log",
-     "sha256": "8e23b6ccad07e2cff8debc16fe825b15032971c55b6217a5875e3fbab3687163"
+     "sha256": "356ec49f28958c4458114a062fb38d64703d1089c3dbf48c7dec14517c98c690"
     }
    }
   },
   {
    "id": "T72-RC13-android-private-construction-uncounted",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "2aa142d36c9767fcb34ade5665a0d825fcceeffd5f0d335e4b05aedbf8811e03",
    "category": "semantic",
    "anchor_count": 1,
@@ -1755,8 +1755,8 @@
    "failed_assertion": "witness thePermittedRoadCountsOneAttemptPerSeamAtThePlatform failed as intended (2 failed case(s)); the restored tree ran the roster green",
    "log_sha": "7346d4e76db4497b8b28f416bd3ec8b7ff2ebb042b7671ee244d369ef6ddbecd",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC13-android-private-construction-uncounted.mutant.log",
-   "started_utc": "2026-10-01T04:23:07Z",
-   "ended_utc": "2026-10-01T04:24:36Z",
+   "started_utc": "2026-10-01T08:29:48Z",
+   "ended_utc": "2026-10-01T08:31:15Z",
    "restored_green": {
     "ok": true,
     "run": 8,
@@ -1780,7 +1780,7 @@
   },
   {
    "id": "T72-RC14-android-private-permit-may-be-bypassed",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "d35c8469bb84c602037465a2aa0544bfd3da4c30d2173c0e77422dde766198e3",
    "category": "semantic",
    "anchor_count": 1,
@@ -1791,10 +1791,10 @@
    "tests_run": 8,
    "outcome": "KILLED",
    "failed_assertion": "witness theCompositionIssuerRefusesOnEveryOutstandingRung failed as intended (3 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "359f40f5e36cca1a9ae3f8440b6fd77f40b80498a1863be26958f18998bae5ec",
+   "log_sha": "fec52dfd3526a0e91d6cb34287a42e54962fc8a8c76eb34e45f46d900c50e373",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC14-android-private-permit-may-be-bypassed.mutant.log",
-   "started_utc": "2026-10-01T04:24:36Z",
-   "ended_utc": "2026-10-01T04:26:10Z",
+   "started_utc": "2026-10-01T08:31:16Z",
+   "ended_utc": "2026-10-01T08:32:44Z",
    "restored_green": {
     "ok": true,
     "run": 8,
@@ -1808,17 +1808,17 @@
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC14-android-private-permit-may-be-bypassed.mutant.log",
-     "sha256": "359f40f5e36cca1a9ae3f8440b6fd77f40b80498a1863be26958f18998bae5ec"
+     "sha256": "fec52dfd3526a0e91d6cb34287a42e54962fc8a8c76eb34e45f46d900c50e373"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC14-android-private-permit-may-be-bypassed.restored.log",
-     "sha256": "a67decf2e987e1393620d92617623169dde40ae4c73b8d70dc9bc0821c951ec8"
+     "sha256": "a87ce67bf4ccf33365ffc6bcd8a73813622ad1628b910478d135573e650032b9"
     }
    }
   },
   {
    "id": "T72-RC15-android-ack-pump-not-handed-to-the-node",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "9c10a14fd84d03a2bc3800d8f781139ecf9fda2684964c3a4c3df9e22f23ee8e",
    "category": "semantic",
    "anchor_count": 1,
@@ -1829,10 +1829,10 @@
    "tests_run": 13,
    "outcome": "KILLED",
    "failed_assertion": "witness theProductionProviderHandsTheNodeThePumpItWasGiven failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "ca3d0c3585cc3291f6f053363e3be24fcd82ab5b4bb01d72fca38646dcf0869b",
+   "log_sha": "f03ebf6013ad57db30e31e1e5ed08fba813919706976618b6d107243876fd280",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC15-android-ack-pump-not-handed-to-the-node.mutant.log",
-   "started_utc": "2026-10-01T04:26:10Z",
-   "ended_utc": "2026-10-01T04:27:41Z",
+   "started_utc": "2026-10-01T08:32:44Z",
+   "ended_utc": "2026-10-01T08:34:15Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1846,7 +1846,7 @@
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC15-android-ack-pump-not-handed-to-the-node.mutant.log",
-     "sha256": "ca3d0c3585cc3291f6f053363e3be24fcd82ab5b4bb01d72fca38646dcf0869b"
+     "sha256": "f03ebf6013ad57db30e31e1e5ed08fba813919706976618b6d107243876fd280"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC15-android-ack-pump-not-handed-to-the-node.restored.log",
@@ -1856,7 +1856,7 @@
   },
   {
    "id": "T72-RC16-android-ack-dispatcher-admits-elsewhere",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "e1172862dfdd9a28df4e3bcaddd0e2dbe3f0d9f43223a0290c951cc275172fe7",
    "category": "semantic",
    "anchor_count": 1,
@@ -1869,8 +1869,8 @@
    "failed_assertion": "witness theDispatcherAdmitsThroughTheGivenPumpOnly failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "ef642067d5b4c497ea26d975829ee2f0faf9ca6a016c6ce7733abc4163114159",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC16-android-ack-dispatcher-admits-elsewhere.mutant.log",
-   "started_utc": "2026-10-01T04:27:41Z",
-   "ended_utc": "2026-10-01T04:29:11Z",
+   "started_utc": "2026-10-01T08:34:16Z",
+   "ended_utc": "2026-10-01T08:35:47Z",
    "restored_green": {
     "ok": true,
     "run": 13,
@@ -1894,7 +1894,7 @@
   },
   {
    "id": "T72-RC17-ios-engine-claims-pinned-without-binding",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "4e03e93754a0087d78c5c6b781244b54a3cf0ca237bc8b806d364fa7913ba7b8",
    "category": "semantic",
    "anchor_count": 1,
@@ -1905,10 +1905,10 @@
    "tests_run": 1,
    "outcome": "KILLED",
    "failed_assertion": "witness testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "9ed7cb483f15ec77ad094323c87fd8d0065cd0aaa83581abfbe370d01b38635e",
+   "log_sha": "fdef949ca83f4ab2032120a550b0ba87e42dddcdedf103531368f74dc6d1d9b7",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC17-ios-engine-claims-pinned-without-binding.mutant.log",
-   "started_utc": "2026-10-01T04:29:11Z",
-   "ended_utc": "2026-10-01T04:29:54Z",
+   "started_utc": "2026-10-01T08:35:48Z",
+   "ended_utc": "2026-10-01T08:36:31Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -1918,21 +1918,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC17-ios-engine-claims-pinned-without-binding.baseline.log",
-     "sha256": "d669d580c95fc690cc9855d50f3522e28dd4620c06773a6f850af734472ef8c9"
+     "sha256": "637ec6d3ca95130aba7789eeaa9e74faf29f48917e2c8c64c1e41437466b3d6f"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC17-ios-engine-claims-pinned-without-binding.mutant.log",
-     "sha256": "9ed7cb483f15ec77ad094323c87fd8d0065cd0aaa83581abfbe370d01b38635e"
+     "sha256": "fdef949ca83f4ab2032120a550b0ba87e42dddcdedf103531368f74dc6d1d9b7"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC17-ios-engine-claims-pinned-without-binding.restored.log",
-     "sha256": "5a3acafdd858eb0307d368ac9fcfa1fb9c70a8b4c272c48362bb2250642d50fe"
+     "sha256": "d083463b72f20af0adb099eb5666b808a4ef8cafbd3494f0d132a984be211dc4"
     }
    }
   },
   {
    "id": "T72-RC18-ios-transport-ingest-unwired",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "b7f725bfd8f7de7d211413e6d605a197fae109d0c0225ec0129f6b0e002ab75b",
    "category": "semantic",
    "anchor_count": 1,
@@ -1943,10 +1943,10 @@
    "tests_run": 6,
    "outcome": "KILLED",
    "failed_assertion": "witness testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "34b0e6870072548252647528aba556292218ff9112ce841b19614cb53981198c",
+   "log_sha": "83024d828932555d11bf10c0adbed40850283077d46caad85f09d9b387a1f9a5",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC18-ios-transport-ingest-unwired.mutant.log",
-   "started_utc": "2026-10-01T04:29:55Z",
-   "ended_utc": "2026-10-01T04:30:43Z",
+   "started_utc": "2026-10-01T08:36:31Z",
+   "ended_utc": "2026-10-01T08:37:20Z",
    "restored_green": {
     "ok": true,
     "run": 6,
@@ -1956,21 +1956,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC18-ios-transport-ingest-unwired.baseline.log",
-     "sha256": "7a896912e8606faca0ddbac4399c76ba60ef32c808c514c97f89ff48f3cf67ba"
+     "sha256": "949e5981b60f715137a6c4a135994949cc33a7b7ab539005362c927b3e88d453"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC18-ios-transport-ingest-unwired.mutant.log",
-     "sha256": "34b0e6870072548252647528aba556292218ff9112ce841b19614cb53981198c"
+     "sha256": "83024d828932555d11bf10c0adbed40850283077d46caad85f09d9b387a1f9a5"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC18-ios-transport-ingest-unwired.restored.log",
-     "sha256": "b482a4d41d4fd4d356856c46f50934fd55dacf7bbc31b1711514572197d9d921"
+     "sha256": "abccf5558fd1a46cf4f0ff7490f1ce238bb0eb683f5b80c587e73e872bb79949"
     }
    }
   },
   {
    "id": "T72-RC19-ios-egress-is-a-silent-noop",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "dc859927df5874e0a95b2e76098e3e975a29468b2ba83254a355a52fc52f432d",
    "category": "semantic",
    "anchor_count": 1,
@@ -1981,10 +1981,10 @@
    "tests_run": 6,
    "outcome": "KILLED",
    "failed_assertion": "witness testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "a2222c4c0545758b579989dcddaebe1c545488eba06c923025a274562b378e51",
+   "log_sha": "28b77abf84a91d515d4a5618f9d6be2a389feaf0b9e12250668fc0f4550c5ea7",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC19-ios-egress-is-a-silent-noop.mutant.log",
-   "started_utc": "2026-10-01T04:30:43Z",
-   "ended_utc": "2026-10-01T04:31:26Z",
+   "started_utc": "2026-10-01T08:37:20Z",
+   "ended_utc": "2026-10-01T08:38:03Z",
    "restored_green": {
     "ok": true,
     "run": 6,
@@ -1994,21 +1994,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC19-ios-egress-is-a-silent-noop.baseline.log",
-     "sha256": "681ffd208f2810985ebc18001cc98bcae04df76fd61236fe185e67bb3d84c9c1"
+     "sha256": "9a88679264e3b1fdb104d2277db4bacc79cb3d281c9777350baf938537ee2d22"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC19-ios-egress-is-a-silent-noop.mutant.log",
-     "sha256": "a2222c4c0545758b579989dcddaebe1c545488eba06c923025a274562b378e51"
+     "sha256": "28b77abf84a91d515d4a5618f9d6be2a389feaf0b9e12250668fc0f4550c5ea7"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC19-ios-egress-is-a-silent-noop.restored.log",
-     "sha256": "105d0a4b53702c344142e1a9a121b3de858dcc4bff1b9f22ea32d95c475cc537"
+     "sha256": "71db51bcf9690c0d0ef9cfd1be735525a2b21cc4cf53571836f15f6750a1b8f9"
     }
    }
   },
   {
    "id": "T72-RC20-ios-ingress-empty-sender-restored",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "afbdc897897dbe162fa00bd939d96e71dcb6f4216ea6186dae5f86d3b44abecc",
    "category": "semantic",
    "anchor_count": 1,
@@ -2019,10 +2019,10 @@
    "tests_run": 6,
    "outcome": "KILLED",
    "failed_assertion": "witness testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "3ec8681a199b75a0047dc0fdf951b327b20b1541678d3fbc74bd952656473a81",
+   "log_sha": "a9f247fa0463d08ba4e66083c0d11c5d61b4b1f8edf12ad3398354e38a05fd86",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC20-ios-ingress-empty-sender-restored.mutant.log",
-   "started_utc": "2026-10-01T04:31:26Z",
-   "ended_utc": "2026-10-01T04:32:14Z",
+   "started_utc": "2026-10-01T08:38:04Z",
+   "ended_utc": "2026-10-01T08:38:51Z",
    "restored_green": {
     "ok": true,
     "run": 6,
@@ -2032,21 +2032,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC20-ios-ingress-empty-sender-restored.baseline.log",
-     "sha256": "a9afaeed8fa79b6773fd5b8423af5b11a1bdd4daed3b4b6c7a5f5d1f458a532d"
+     "sha256": "015051a0edbd0477dc540a026a20aab5322ddf59b4ca9cf9ce98d6af4650fe4c"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC20-ios-ingress-empty-sender-restored.mutant.log",
-     "sha256": "3ec8681a199b75a0047dc0fdf951b327b20b1541678d3fbc74bd952656473a81"
+     "sha256": "a9f247fa0463d08ba4e66083c0d11c5d61b4b1f8edf12ad3398354e38a05fd86"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC20-ios-ingress-empty-sender-restored.restored.log",
-     "sha256": "9f986631cc8a3f2932c223e3eec6d4e1cd0af3b5000a5c9fe81af361acafa75e"
+     "sha256": "ed54f97a4f53bc298c64570b89cbaf1ffec0b35a2cd74e96831a22cbae2b5958"
     }
    }
   },
   {
    "id": "T72-RC21-ios-resolver-stopeth-resolving-altogether",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "ce8aa16e7d467eb627da21e82d2ce25e90d8c8ed995a924fa92882938c276069",
    "category": "semantic",
    "anchor_count": 1,
@@ -2057,10 +2057,10 @@
    "tests_run": 6,
    "outcome": "KILLED",
    "failed_assertion": "witness testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens failed as intended (2 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "8b4f92ae46f27ab84cc670aa384e2aee9a86fe10a57a2398aaeb3e805260ca8e",
+   "log_sha": "1dffd23b938dc2df893cbceee799b0ab2211a749791857d7c78685726e48849d",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC21-ios-resolver-stopeth-resolving-altogether.mutant.log",
-   "started_utc": "2026-10-01T04:32:14Z",
-   "ended_utc": "2026-10-01T04:33:02Z",
+   "started_utc": "2026-10-01T08:38:52Z",
+   "ended_utc": "2026-10-01T08:39:40Z",
    "restored_green": {
     "ok": true,
     "run": 6,
@@ -2070,21 +2070,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC21-ios-resolver-stopeth-resolving-altogether.baseline.log",
-     "sha256": "906ef697f9850e1092d44e8b115504495da265c6dc4ac1f3566767173e65048d"
+     "sha256": "a6184cc4debb07bfa036e9dfbb174142a9c5240d30c49bdeb38d7caaded75edb"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC21-ios-resolver-stopeth-resolving-altogether.mutant.log",
-     "sha256": "8b4f92ae46f27ab84cc670aa384e2aee9a86fe10a57a2398aaeb3e805260ca8e"
+     "sha256": "1dffd23b938dc2df893cbceee799b0ab2211a749791857d7c78685726e48849d"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC21-ios-resolver-stopeth-resolving-altogether.restored.log",
-     "sha256": "36753f23235f91da4c636263f1809816518c4b82828be15b6d7a2108946ad7ef"
+     "sha256": "680fd38382aa95dfc176fdf09df287ff8dfcea1cef2d857b703187f96500792a"
     }
    }
   },
   {
    "id": "T72-RC22-ios-link-readiness-falls-back-to-any-handle",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "99eb563601e4700284f51f252d986babeba218c9ea8efbae3666d27b3403b533",
    "category": "semantic",
    "anchor_count": 1,
@@ -2095,10 +2095,10 @@
    "tests_run": 22,
    "outcome": "KILLED",
    "failed_assertion": "witness testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "a27047cfa060f28e220591cca61c9d70f2f251e26007cf827bc29df3cb43d940",
+   "log_sha": "1a8cdaf1ae9bb610edccd14b9498abcbbe787e354e0c74e9c7506369065a4fe6",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC22-ios-link-readiness-falls-back-to-any-handle.mutant.log",
-   "started_utc": "2026-10-01T04:33:02Z",
-   "ended_utc": "2026-10-01T04:33:49Z",
+   "started_utc": "2026-10-01T08:39:40Z",
+   "ended_utc": "2026-10-01T08:40:25Z",
    "restored_green": {
     "ok": true,
     "run": 22,
@@ -2108,21 +2108,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC22-ios-link-readiness-falls-back-to-any-handle.baseline.log",
-     "sha256": "b55575d5512b00dbdcf07eda5c5580ca68510516598bb95d9cc9b55babcb597e"
+     "sha256": "2a8f205603e84a7df4d846c1c0caabfba6a91ab635d761d9245ec31d555b9056"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC22-ios-link-readiness-falls-back-to-any-handle.mutant.log",
-     "sha256": "a27047cfa060f28e220591cca61c9d70f2f251e26007cf827bc29df3cb43d940"
+     "sha256": "1a8cdaf1ae9bb610edccd14b9498abcbbe787e354e0c74e9c7506369065a4fe6"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC22-ios-link-readiness-falls-back-to-any-handle.restored.log",
-     "sha256": "75e531ce080be1ac3f2185b87f410ef15185908aaf18eb768f08fb13ce7e8ed3"
+     "sha256": "fd0e80ab04e40b7d6c6500d762f14948f7858da832c597a127e6b6b5aaba700d"
     }
    }
   },
   {
    "id": "T72-RC23-ios-responder-dispatcher-ignores-the-destination-central",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "94b289c921f0bcdc4dbd9ebfcc085fc393466bb2f8d50c5376895736a39e748b",
    "category": "semantic",
    "anchor_count": 1,
@@ -2133,10 +2133,10 @@
    "tests_run": 22,
    "outcome": "KILLED",
    "failed_assertion": "witness testGSINT001ATwoRelationResponderNeverCrossDelivers failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "805c9b54237e1af2a1ccf18bbb929bcf5e032f618bd8bd90feacce928e01f729",
+   "log_sha": "d8bc8df54a1f8295a9c10a810698ecf5ef5ec770c7ce4a8f71bad0337cde62d2",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC23-ios-responder-dispatcher-ignores-the-destination-central.mutant.log",
-   "started_utc": "2026-10-01T04:33:49Z",
-   "ended_utc": "2026-10-01T04:34:41Z",
+   "started_utc": "2026-10-01T08:40:26Z",
+   "ended_utc": "2026-10-01T08:41:17Z",
    "restored_green": {
     "ok": true,
     "run": 22,
@@ -2146,21 +2146,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC23-ios-responder-dispatcher-ignores-the-destination-central.baseline.log",
-     "sha256": "2b6dfb6f1f807bb44e67dc1baf1ae8befc5f5b7a23ceb79d07f64060fcd3a84c"
+     "sha256": "8038fb9450d4de9d4bbf323af51c7c0091e578fdbb677322819596df21f64a51"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC23-ios-responder-dispatcher-ignores-the-destination-central.mutant.log",
-     "sha256": "805c9b54237e1af2a1ccf18bbb929bcf5e032f618bd8bd90feacce928e01f729"
+     "sha256": "d8bc8df54a1f8295a9c10a810698ecf5ef5ec770c7ce4a8f71bad0337cde62d2"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC23-ios-responder-dispatcher-ignores-the-destination-central.restored.log",
-     "sha256": "1cf0538bf881a6ddc15113fd2e1a87e2cafeff8998ada80426286afd79272a71"
+     "sha256": "08ead0c0a9a4f9212089a9ae52ec1b671a1e500a56a2bf91681955abdcdd19d0"
     }
    }
   },
   {
    "id": "T72-RC26-ios-confirmation-trusts-its-intent-not-the-readback",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "be26b12dc9d96306b7628922920a78f6177cf9a12961aca565220a8f054ec831",
    "category": "semantic",
    "anchor_count": 1,
@@ -2171,10 +2171,10 @@
    "tests_run": 59,
    "outcome": "KILLED",
    "failed_assertion": "witness testAConfirmationWhoseReadbackDisagreesRollsBackRatherThanReportingSuccess failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "d471294bcb51fccd53059a5ed11b02e5b14654542b252c56de10fd1fd89877fe",
+   "log_sha": "cfc0c81d5a7a49a8efcc9825ee87bca9757ef1d137ffe3508692b66ba0eaf8be",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC26-ios-confirmation-trusts-its-intent-not-the-readback.mutant.log",
-   "started_utc": "2026-10-01T04:34:41Z",
-   "ended_utc": "2026-10-01T04:35:24Z",
+   "started_utc": "2026-10-01T08:41:17Z",
+   "ended_utc": "2026-10-01T08:42:01Z",
    "restored_green": {
     "ok": true,
     "run": 59,
@@ -2184,21 +2184,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC26-ios-confirmation-trusts-its-intent-not-the-readback.baseline.log",
-     "sha256": "75b7148554e7afef0784d38da2833ab491ade818bac0075f2b1520b38d0f39bd"
+     "sha256": "805662412eb98e96bfef93766733f1e933c7673068d32e81b17fb4a48346e8d1"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC26-ios-confirmation-trusts-its-intent-not-the-readback.mutant.log",
-     "sha256": "d471294bcb51fccd53059a5ed11b02e5b14654542b252c56de10fd1fd89877fe"
+     "sha256": "cfc0c81d5a7a49a8efcc9825ee87bca9757ef1d137ffe3508692b66ba0eaf8be"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC26-ios-confirmation-trusts-its-intent-not-the-readback.restored.log",
-     "sha256": "a81ff781651e5ea51ab0849df26a3f04b12ad0125c6ac7c76049f3a9a8a765fd"
+     "sha256": "fe45b43bf4a0b5c6a81de927bf34492b2c9a53d770e7df7a2cedb5c29ba292f8"
     }
    }
   },
   {
    "id": "T72-RC27-ios-lab-composes-the-author-over-memory-not-the-estate",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "7d70de325e3ed2abda78c3a1e2dd5d6cb4d0ddf1287f3d5dc16eff9b3dcc60f9",
    "category": "semantic",
    "anchor_count": 1,
@@ -2209,10 +2209,10 @@
    "tests_run": 11,
    "outcome": "KILLED",
    "failed_assertion": "witness test07bTheDistressJourneyIsDurableOnDiskAcrossRelaunches failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "c8be8b13e8e1a173d12934cdfcdf8ea6aef97c6ad0af199485eaebba2abc5c7b",
+   "log_sha": "2964cd29f94b2c441a812ba2aa86941d266ea04ef283c1d0515c71fec1034330",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC27-ios-lab-composes-the-author-over-memory-not-the-estate.mutant.log",
-   "started_utc": "2026-10-01T04:35:24Z",
-   "ended_utc": "2026-10-01T04:36:07Z",
+   "started_utc": "2026-10-01T08:42:01Z",
+   "ended_utc": "2026-10-01T08:42:44Z",
    "restored_green": {
     "ok": true,
     "run": 11,
@@ -2222,21 +2222,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC27-ios-lab-composes-the-author-over-memory-not-the-estate.baseline.log",
-     "sha256": "a74b4a7d0773a78359fdced45de042798a6e0205a62c9233b7a7bf57c7027c59"
+     "sha256": "4bee63362976b96b95ad2991ef3d56f74861751d5baf10cd7efe8c5c35ef28f9"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC27-ios-lab-composes-the-author-over-memory-not-the-estate.mutant.log",
-     "sha256": "c8be8b13e8e1a173d12934cdfcdf8ea6aef97c6ad0af199485eaebba2abc5c7b"
+     "sha256": "2964cd29f94b2c441a812ba2aa86941d266ea04ef283c1d0515c71fec1034330"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC27-ios-lab-composes-the-author-over-memory-not-the-estate.restored.log",
-     "sha256": "0e60e5bc83050aec789d7ecad160221cb1f7ee5f83e79e55b3b83062f1657ef8"
+     "sha256": "ce1ed8d94afb303926fc84035f7353df7aa4bc39787bb71237bcdd27aef94af9"
     }
    }
   },
   {
    "id": "T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "3682a03f84c0e21d77ab431b7064daf46fc8b0816261a1750fcc3c1661d3dda0",
    "category": "semantic",
    "anchor_count": 1,
@@ -2247,10 +2247,10 @@
    "tests_run": 59,
    "outcome": "KILLED",
    "failed_assertion": "witness testAStaleOrMismatchedConfirmationChangesNothing failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "553f64370b4a7e2578c5842fc0be23521135fd3cf82603ca14d22f6fc1a843fb",
+   "log_sha": "c9db4f5f96bb7fa745259a7be67ca27770552b95e733a4133d004d4599c19c98",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation.mutant.log",
-   "started_utc": "2026-10-01T04:36:07Z",
-   "ended_utc": "2026-10-01T04:36:50Z",
+   "started_utc": "2026-10-01T08:42:44Z",
+   "ended_utc": "2026-10-01T08:43:26Z",
    "restored_green": {
     "ok": true,
     "run": 59,
@@ -2260,21 +2260,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation.baseline.log",
-     "sha256": "895059506f6ae9c3e906005aacafb0041f20959e619419b8c4d4868c450dac9e"
+     "sha256": "b6c22950270c206c56389352cd46b2226168e24f57cfc7f36a33986132a63043"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation.mutant.log",
-     "sha256": "553f64370b4a7e2578c5842fc0be23521135fd3cf82603ca14d22f6fc1a843fb"
+     "sha256": "c9db4f5f96bb7fa745259a7be67ca27770552b95e733a4133d004d4599c19c98"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC24-ios-confirmation-cas-ignores-the-displayed-generation.restored.log",
-     "sha256": "bc00f8e75cf36f378ae1c9971e4e71dcc3549c4013b17e56a49ef1ca4d786b47"
+     "sha256": "a1bac65a341b2a3cf17a864b520d20c7d18225de65366390bd69dab4cc12751b"
     }
    }
   },
   {
    "id": "T72-RC25-ios-confirmation-cas-ignores-the-key-digest",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "d435236a4a4dfbd4166bcd3a8ddfd150bc7dc3b33c318bc4585e884f7ac1416e",
    "category": "semantic",
    "anchor_count": 1,
@@ -2285,10 +2285,10 @@
    "tests_run": 59,
    "outcome": "KILLED",
    "failed_assertion": "witness testAStaleOrMismatchedConfirmationChangesNothing failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "05a5f497b1cd90ce26754f31ecada22828c249a6dfd074a31efcf74dd0a66cf4",
+   "log_sha": "bccf23afc2c160aef9d82594a1084239cba3a403cbb45abcf46b54458963f27f",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC25-ios-confirmation-cas-ignores-the-key-digest.mutant.log",
-   "started_utc": "2026-10-01T04:36:50Z",
-   "ended_utc": "2026-10-01T04:37:33Z",
+   "started_utc": "2026-10-01T08:43:27Z",
+   "ended_utc": "2026-10-01T08:44:09Z",
    "restored_green": {
     "ok": true,
     "run": 59,
@@ -2298,21 +2298,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC25-ios-confirmation-cas-ignores-the-key-digest.baseline.log",
-     "sha256": "e632ba5abae33e210b3ae44127164364723ad83f6b3b99e8e61431c9273c4f58"
+     "sha256": "f410856de21765dd9c9dabc04e771070e1415b3edcf13cdfbe5bb81e697c18f4"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC25-ios-confirmation-cas-ignores-the-key-digest.mutant.log",
-     "sha256": "05a5f497b1cd90ce26754f31ecada22828c249a6dfd074a31efcf74dd0a66cf4"
+     "sha256": "bccf23afc2c160aef9d82594a1084239cba3a403cbb45abcf46b54458963f27f"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC25-ios-confirmation-cas-ignores-the-key-digest.restored.log",
-     "sha256": "391200d01b1ecb13b287d6d77bff1c35802976ed8ed156a733b6973aa2d4624c"
+     "sha256": "1f1eecd9ad8ae8711f17c65ee217228e6efb3d06ced1a14b536e2dca9d05fa88"
     }
    }
   },
   {
    "id": "T72-RC28-ios-os-egress-suppressed-while-advertising-success",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "8a0de3cca833756191df0f6ce5827259f51227bd0305071a4b7fde826044dfa6",
    "category": "semantic",
    "anchor_count": 1,
@@ -2323,10 +2323,10 @@
    "tests_run": 6,
    "outcome": "KILLED",
    "failed_assertion": "witness testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck failed as intended (3 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "85103fce20632337a2e9e4c2fda12234b72b2545a3cd5b93f5c6401ff2c7fa23",
+   "log_sha": "7cbf229b856a347005272435b4bfd44d72df64608232d93acd069a2b895261c6",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC28-ios-os-egress-suppressed-while-advertising-success.mutant.log",
-   "started_utc": "2026-10-01T04:37:33Z",
-   "ended_utc": "2026-10-01T04:38:33Z",
+   "started_utc": "2026-10-01T08:44:09Z",
+   "ended_utc": "2026-10-01T08:45:09Z",
    "restored_green": {
     "ok": true,
     "run": 6,
@@ -2336,21 +2336,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC28-ios-os-egress-suppressed-while-advertising-success.baseline.log",
-     "sha256": "d8123b9a67c54f199faa9471f37b13802b214ff2d8e9579b80acea3b82d0af8f"
+     "sha256": "92e209d37e811397fb81d8defb66a5d3fd358c26dcc2ec11d774fa01a1cbca6d"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC28-ios-os-egress-suppressed-while-advertising-success.mutant.log",
-     "sha256": "85103fce20632337a2e9e4c2fda12234b72b2545a3cd5b93f5c6401ff2c7fa23"
+     "sha256": "7cbf229b856a347005272435b4bfd44d72df64608232d93acd069a2b895261c6"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC28-ios-os-egress-suppressed-while-advertising-success.restored.log",
-     "sha256": "9be2c77c17fba8344fe25d1a01efdb35ec7e3313cede2785763712efa10c6710"
+     "sha256": "2c002e3f4f1e0a997314f799f5202c96aed7feeeaee9d1772429bf9fd075b795"
     }
    }
   },
   {
    "id": "T72-RC29-android-message-store-construction-uncounted",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "a3d52da253e5a276dd679810471037c551bdd5b56a7ae67a274f53638b242595",
    "category": "semantic",
    "anchor_count": 1,
@@ -2363,8 +2363,8 @@
    "failed_assertion": "witness thePermittedRoadCountsOneAttemptPerSeamAtThePlatform failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "9e2d0457af84167fe1ff5f328f5c77df11ff85753c82bf3d388c1c904e436f31",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC29-android-message-store-construction-uncounted.mutant.log",
-   "started_utc": "2026-10-01T04:38:34Z",
-   "ended_utc": "2026-10-01T04:40:03Z",
+   "started_utc": "2026-10-01T08:45:09Z",
+   "ended_utc": "2026-10-01T08:46:38Z",
    "restored_green": {
     "ok": true,
     "run": 8,
@@ -2388,7 +2388,7 @@
   },
   {
    "id": "T72-RC30-android-peer-store-construction-uncounted",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "15991bb439303a8054a2872c985187d3036c2684b622a97493ac5f9170bb4146",
    "category": "semantic",
    "anchor_count": 1,
@@ -2401,8 +2401,8 @@
    "failed_assertion": "witness thePermittedRoadCountsOneAttemptPerSeamAtThePlatform failed as intended (1 failed case(s)); the restored tree ran the roster green",
    "log_sha": "e607ac346380f3607381206a35ff19eeb37bbaaaf9bdffb991f61fe06ec99a20",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC30-android-peer-store-construction-uncounted.mutant.log",
-   "started_utc": "2026-10-01T04:40:04Z",
-   "ended_utc": "2026-10-01T04:41:33Z",
+   "started_utc": "2026-10-01T08:46:39Z",
+   "ended_utc": "2026-10-01T08:48:08Z",
    "restored_green": {
     "ok": true,
     "run": 8,
@@ -2426,7 +2426,7 @@
   },
   {
    "id": "T72-RC31-ios-retirement-leaveth-the-session-slot-standing",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "7a44d7c6680d68689ecfa479492895c96bd4c904b4a61ad5bf393f90889766cc",
    "category": "semantic",
    "anchor_count": 1,
@@ -2437,10 +2437,10 @@
    "tests_run": 1,
    "outcome": "KILLED",
    "failed_assertion": "witness testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "6c48c2790df519fb978e273c93783d38afb794a26a6d48fdc9a0eb72dd05a5f1",
+   "log_sha": "7da105a9f6371a3556bab60f51e7e53ca06ee3596a112e41719e3271e7d7f22f",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC31-ios-retirement-leaveth-the-session-slot-standing.mutant.log",
-   "started_utc": "2026-10-01T04:41:33Z",
-   "ended_utc": "2026-10-01T04:42:18Z",
+   "started_utc": "2026-10-01T08:48:08Z",
+   "ended_utc": "2026-10-01T08:48:52Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -2450,21 +2450,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC31-ios-retirement-leaveth-the-session-slot-standing.baseline.log",
-     "sha256": "32e8c5c3d3407b945d615b9b85d7ca774d7573526bf48372f110b496db5d2c25"
+     "sha256": "f6c8d0762d62da00e2f7d12454da408fb52eb7c4f9818e9fb026629fd65c614d"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC31-ios-retirement-leaveth-the-session-slot-standing.mutant.log",
-     "sha256": "6c48c2790df519fb978e273c93783d38afb794a26a6d48fdc9a0eb72dd05a5f1"
+     "sha256": "7da105a9f6371a3556bab60f51e7e53ca06ee3596a112e41719e3271e7d7f22f"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC31-ios-retirement-leaveth-the-session-slot-standing.restored.log",
-     "sha256": "305319046c0236f1ccddef7415f9f96c9a4af0d04caa88ade6894d257de6e020"
+     "sha256": "72f365cc017240f60bed31136e7a1c4c1d7adc30158ece291e963bd635ee7b13"
     }
    }
   },
   {
    "id": "T72-RC32-ios-stop-leaveth-every-timer-lease-standing",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "dc445a999deb6b06b65a44ffda048ca8a992d987ab9e7d9f46ba5eae76ac2bd1",
    "category": "semantic",
    "anchor_count": 1,
@@ -2475,10 +2475,10 @@
    "tests_run": 1,
    "outcome": "KILLED",
    "failed_assertion": "witness testGSSTRESS001TransportStopReleasesEveryHeldTimerLease failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "c80935206baf4e9e0a23ee0a6a4d4876791d1391b5e6134e601dc6db381bb9f5",
+   "log_sha": "72d3cf4bd02f0d98c45fc658b9e76e5ecfaaeaef7ba0bb23f1234441eb775c80",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC32-ios-stop-leaveth-every-timer-lease-standing.mutant.log",
-   "started_utc": "2026-10-01T04:42:19Z",
-   "ended_utc": "2026-10-01T04:43:02Z",
+   "started_utc": "2026-10-01T08:48:52Z",
+   "ended_utc": "2026-10-01T08:49:34Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -2488,21 +2488,21 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC32-ios-stop-leaveth-every-timer-lease-standing.baseline.log",
-     "sha256": "c849bdb0a3af065e1ac0416461f88b8edcef3feb3383032405b716b5a5baeaf9"
+     "sha256": "f6faff52079ad61db989fca9bd3d8a1689e5e980040725ae35925947cc647ce2"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC32-ios-stop-leaveth-every-timer-lease-standing.mutant.log",
-     "sha256": "c80935206baf4e9e0a23ee0a6a4d4876791d1391b5e6134e601dc6db381bb9f5"
+     "sha256": "72d3cf4bd02f0d98c45fc658b9e76e5ecfaaeaef7ba0bb23f1234441eb775c80"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC32-ios-stop-leaveth-every-timer-lease-standing.restored.log",
-     "sha256": "149512220a33037727a6c3c9bfdc73420a7c1f4869fa431e389177590c7de124"
+     "sha256": "83cdb978613c009197cdc12a9db1008d1a074fe6e97cae22ff0e230d82a9658a"
     }
    }
   },
   {
    "id": "T72-RC33-ios-shutdown-leaveth-the-reservations-standing",
-   "baseline_sha": "86e4368d9333e92ca91cb2d8fca5cf7db51871c3",
+   "baseline_sha": "d5c7d5e4",
    "mutant_patch_sha": "76dab162957cc54e851b796c78eb318fea953ce3e2420dcc646ab4ec32915cec",
    "category": "semantic",
    "anchor_count": 1,
@@ -2513,10 +2513,10 @@
    "tests_run": 1,
    "outcome": "KILLED",
    "failed_assertion": "witness testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations failed as intended (1 failed case(s)); the restored tree ran the roster green",
-   "log_sha": "1a8dff5f549d9000cefce779de692288f51606e1a78636316eb2b3dcd76439b2",
+   "log_sha": "a73a628382f7adc47cecf22b5af13d26bd181f7ae4f242669d44c77ed0a587f3",
    "log_path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC33-ios-shutdown-leaveth-the-reservations-standing.mutant.log",
-   "started_utc": "2026-10-01T04:43:03Z",
-   "ended_utc": "2026-10-01T04:43:46Z",
+   "started_utc": "2026-10-01T08:49:34Z",
+   "ended_utc": "2026-10-01T08:50:16Z",
    "restored_green": {
     "ok": true,
     "run": 1,
@@ -2526,15 +2526,15 @@
    "phase_logs": {
     "baseline": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC33-ios-shutdown-leaveth-the-reservations-standing.baseline.log",
-     "sha256": "f563fbf9a01eec3c2cbb6fbf69af7233316569f1b776887b2c97bd5d30886846"
+     "sha256": "41ece0b18a0e68c523f37f7a9b1b904e3ecd1a2d8c55c7ad2e8e124a1028635a"
     },
     "mutant": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC33-ios-shutdown-leaveth-the-reservations-standing.mutant.log",
-     "sha256": "1a8dff5f549d9000cefce779de692288f51606e1a78636316eb2b3dcd76439b2"
+     "sha256": "a73a628382f7adc47cecf22b5af13d26bd181f7ae4f242669d44c77ed0a587f3"
     },
     "restored": {
      "path": "docs/remediation/evidence/board1-rc11-rods/logs/T72-RC33-ios-shutdown-leaveth-the-reservations-standing.restored.log",
-     "sha256": "f7882b964e3d7ef50ea136cf4a9b957e682f717ecc8627b22978ddae84c109f1"
+     "sha256": "16d3e769893681944aaa115eef293dca4c89d3e9a21ac3ca9baa7985498708e3"
     }
    }
   }

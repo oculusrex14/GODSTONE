@@ -1,12 +1,12 @@
-Test Suite 'Selected tests' started at 2026-10-01 09:50:41.763.
-Test Suite 'LabMeshTests.xctest' started at 2026-10-01 09:50:41.769.
-Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 09:50:41.769.
+Test Suite 'Selected tests' started at 2026-10-01 13:57:22.155.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 13:57:22.161.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 13:57:22.161.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 09:50:41.769.
+Test Suite 'Selected tests' passed at 2026-10-01 13:57:22.161.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-10-01 09:50:41.806.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 09:50:41.811.
-Test Suite 'ReadinessT60Tests' started at 2026-10-01 09:50:41.811.
+Test Suite 'Selected tests' started at 2026-10-01 13:57:22.203.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 13:57:22.208.
+Test Suite 'ReadinessT60Tests' started at 2026-10-01 13:57:22.208.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW01TheContractCarriethRequirementClasses]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW01TheContractCarriethRequirementClasses]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW02ContrastIsComputedForReal]' started.
@@ -19,7 +19,7 @@ Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW05NoColourOnlyState]' star
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW05NoColourOnlyState]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW06TheTouchTargetMinimumsDifferByPlatform]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT60Tests.swift:170: error: -[GodstoneMeshTests.ReadinessT60Tests testW06TheTouchTargetMinimumsDifferByPlatform] : XCTAssertFalse failed
-Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW06TheTouchTargetMinimumsDifferByPlatform]' failed (0.199 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW06TheTouchTargetMinimumsDifferByPlatform]' failed (0.028 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW07TheReadingOrderIsContiguousAndComplete]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW07TheReadingOrderIsContiguousAndComplete]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW08RtlMirrorMayNotMoveAMeaning]' started.
@@ -34,18 +34,18 @@ Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW12TheWordsAreTheDurableVoc
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW12TheWordsAreTheDurableVocabulary]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT60Tests.swift:340: error: -[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName] : XCTAssertFalse failed
-Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName]' failed (0.002 seconds).
-Test Suite 'ReadinessT60Tests' failed at 2026-10-01 09:50:42.015.
-	 Executed 13 tests, with 2 failures (0 unexpected) in 0.203 (0.204) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-10-01 09:50:42.015.
-	 Executed 13 tests, with 2 failures (0 unexpected) in 0.203 (0.204) seconds
-Test Suite 'Selected tests' failed at 2026-10-01 09:50:42.015.
-	 Executed 13 tests, with 2 failures (0 unexpected) in 0.203 (0.209) seconds
-Test Suite 'Selected tests' started at 2026-10-01 09:50:42.065.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 09:50:42.070.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 09:50:42.070.
+Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName]' failed (0.001 seconds).
+Test Suite 'ReadinessT60Tests' failed at 2026-10-01 13:57:22.240.
+	 Executed 13 tests, with 2 failures (0 unexpected) in 0.031 (0.032) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-10-01 13:57:22.240.
+	 Executed 13 tests, with 2 failures (0 unexpected) in 0.031 (0.032) seconds
+Test Suite 'Selected tests' failed at 2026-10-01 13:57:22.240.
+	 Executed 13 tests, with 2 failures (0 unexpected) in 0.031 (0.037) seconds
+Test Suite 'Selected tests' started at 2026-10-01 13:57:22.289.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 13:57:22.294.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 13:57:22.294.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 09:50:42.070.
+Test Suite 'Selected tests' passed at 2026-10-01 13:57:22.294.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
@@ -141,6 +141,7 @@ Building for debugging...
 555 |     }
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[17 / 20] GodstoneCore
 [18 / 22] GodstoneCoreTests-product
 [28 / 32] GodstoneCoreTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
@@ -523,6 +524,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[33 / 33] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
@@ -810,69 +812,6 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 40 |         case ignored(reason: String)
- 41 |         case refused(reason: String)
- 42 |         case answered(frame: FrameV2)
-    |              `- warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 43 |         case delivered(frames: [FrameV2])
- 44 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 41 |         case refused(reason: String)
- 42 |         case answered(frame: FrameV2)
- 43 |         case delivered(frames: [FrameV2])
-    |              `- warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 44 |     }
- 45 | 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 44 | /// exactly once -- and every retry re-emiteth these exact bytes.
- 45 | public struct ForwardCopy: Equatable, Sendable {
- 46 |     public let frame: FrameV2
-    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 47 |     /// The immediate hop it arrived from, which is never offered it back.
- 48 |     public let fromPeer: Data?
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
- 37 | 
- 38 | internal struct DefaultHs3Writer: Hs3Writer {
- 39 |     let noiseSession: NoiseSession
-    |         `- warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
- 40 |     func writeHs3(payload: Data) throws -> Data {
- 41 |         try noiseSession.writeMessage3(payload: payload)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: note: class 'NoiseSession' does not conform to the 'Sendable' protocol
- 46 | }
- 47 | 
- 48 | public final class NoiseSession {
-    |                    `- note: class 'NoiseSession' does not conform to the 'Sendable' protocol
- 49 | 
- 50 |     public enum Role { case initiator, responder }
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
  76 |     public let to: Int
  77 |     public let statements: [String]
@@ -1357,6 +1296,69 @@ Building for debugging...
  940 |                 sourceEpoch: responder.ble.currentTransportEpoch)
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 40 |         case ignored(reason: String)
+ 41 |         case refused(reason: String)
+ 42 |         case answered(frame: FrameV2)
+    |              `- warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 43 |         case delivered(frames: [FrameV2])
+ 44 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 41 |         case refused(reason: String)
+ 42 |         case answered(frame: FrameV2)
+ 43 |         case delivered(frames: [FrameV2])
+    |              `- warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 44 |     }
+ 45 | 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 44 | /// exactly once -- and every retry re-emiteth these exact bytes.
+ 45 | public struct ForwardCopy: Equatable, Sendable {
+ 46 |     public let frame: FrameV2
+    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 47 |     /// The immediate hop it arrived from, which is never offered it back.
+ 48 |     public let fromPeer: Data?
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
+ 37 | 
+ 38 | internal struct DefaultHs3Writer: Hs3Writer {
+ 39 |     let noiseSession: NoiseSession
+    |         `- warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
+ 40 |     func writeHs3(payload: Data) throws -> Data {
+ 41 |         try noiseSession.writeMessage3(payload: payload)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: note: class 'NoiseSession' does not conform to the 'Sendable' protocol
+ 46 | }
+ 47 | 
+ 48 | public final class NoiseSession {
+    |                    `- note: class 'NoiseSession' does not conform to the 'Sendable' protocol
+ 49 | 
+ 50 |     public enum Role { case initiator, responder }
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckDispatcher.swift:323:11: warning: 'catch' block is unreachable because no errors are thrown in 'do' block
 321 |         do {
 322 |             result = admitForeign(encoded, receivedFrom)
@@ -3032,7 +3034,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  44 |         )
  45 |         let sig = try! signingKey.signature(for: preimage)
@@ -3051,48 +3052,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  32 |         )
-  33 |         let sig = try! signingKey.signature(for: preimage)
-  34 |         let binding = try! IdentityBindingV1(
-     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  35 |             generation: generation,
-  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 25 |         )
- 26 |         let sig = try signingKey.signature(for: preimage)
- 27 |         let binding = try IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 28 |             generation: generation,
- 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 38 |     /// the coordinator (which GS-FINAL-002 already proved).
- 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- 40 |         var allows: Bool
-    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 41 |         init(allows: Bool) { self.allows = allows }
- 42 |         func allowsSensitiveUse() -> Bool { allows }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-501 | 
-502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-503 |         let (pubA, _) = realDhKeypair()
-    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-504 |         let a = nodeA()
-505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
-162 |     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-163 |     /// freshly started transport minteth for the first relation of that handle.
-164 |     @discardableResult
-    |     `- warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
-165 |     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-166 |                        aliceHint: Data, bobHint: Data,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 120 | 
 121 |     private func bloomDigest(_ ids: [Data]) -> Data {
@@ -3150,6 +3110,48 @@ Building for debugging...
 186 | 
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  32 |         )
+  33 |         let sig = try! signingKey.signature(for: preimage)
+  34 |         let binding = try! IdentityBindingV1(
+     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  35 |             generation: generation,
+  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 25 |         )
+ 26 |         let sig = try signingKey.signature(for: preimage)
+ 27 |         let binding = try IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 28 |             generation: generation,
+ 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 38 |     /// the coordinator (which GS-FINAL-002 already proved).
+ 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ 40 |         var allows: Bool
+    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 41 |         init(allows: Bool) { self.allows = allows }
+ 42 |         func allowsSensitiveUse() -> Bool { allows }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+501 | 
+502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+503 |         let (pubA, _) = realDhKeypair()
+    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+504 |         let a = nodeA()
+505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
+162 |     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+163 |     /// freshly started transport minteth for the first relation of that handle.
+164 |     @discardableResult
+    |     `- warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
+165 |     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+166 |                        aliceHint: Data, bobHint: Data,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
 272 |         )
 273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -4042,6 +4044,7 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [67 / 69] GodstoneMeshTests-product
 [70 / 74] LabMeshTests-product
+[72 / 76] LabMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC12-ios-the-touch-target-minimum-vanish/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  83 |         // over the caller-named medium still findeth EXACTLY THIS intent. Nothing of the authoring runtime is
  84 |         // consulted -- the medium alone answereth.
@@ -4051,6 +4054,5 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
  87 |         guard case .found = journal.load(intentId) else {
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.23 secs)
+Build complete! (10.35 secs)

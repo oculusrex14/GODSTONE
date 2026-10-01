@@ -1,12 +1,12 @@
-Test Suite 'Selected tests' started at 2026-10-01 09:49:59.816.
-Test Suite 'LabMeshTests.xctest' started at 2026-10-01 09:49:59.822.
-Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 09:49:59.822.
+Test Suite 'Selected tests' started at 2026-10-01 13:56:40.330.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 13:56:40.336.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 13:56:40.336.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 09:49:59.822.
+Test Suite 'Selected tests' passed at 2026-10-01 13:56:40.336.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-10-01 09:49:59.858.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 09:49:59.864.
-Test Suite 'ReadinessT60Tests' started at 2026-10-01 09:49:59.864.
+Test Suite 'Selected tests' started at 2026-10-01 13:56:40.373.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 13:56:40.379.
+Test Suite 'ReadinessT60Tests' started at 2026-10-01 13:56:40.379.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW01TheContractCarriethRequirementClasses]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW01TheContractCarriethRequirementClasses]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW02ContrastIsComputedForReal]' started.
@@ -18,7 +18,7 @@ Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW04AClippedStatusIsRefusedA
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT60Tests.swift:128: error: -[GodstoneMeshTests.ReadinessT60Tests testW04AClippedStatusIsRefusedAtLargeText] : XCTAssertTrue failed - every status survives the largest text scale whole
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT60Tests.swift:129: error: -[GodstoneMeshTests.ReadinessT60Tests testW04AClippedStatusIsRefusedAtLargeText] : XCTAssertTrue failed
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT60Tests.swift:130: error: -[GodstoneMeshTests.ReadinessT60Tests testW04AClippedStatusIsRefusedAtLargeText] : XCTAssertFalse failed
-Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW04AClippedStatusIsRefusedAtLargeText]' failed (0.205 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW04AClippedStatusIsRefusedAtLargeText]' failed (0.029 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW05NoColourOnlyState]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW05NoColourOnlyState]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW06TheTouchTargetMinimumsDifferByPlatform]' started.
@@ -37,18 +37,18 @@ Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW12TheWordsAreTheDurableVoc
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW12TheWordsAreTheDurableVocabulary]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName]' started.
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT60Tests.swift:330: error: -[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName] : XCTAssertFalse failed
-Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName]' failed (0.002 seconds).
-Test Suite 'ReadinessT60Tests' failed at 2026-10-01 09:50:00.074.
-	 Executed 13 tests, with 5 failures (0 unexpected) in 0.209 (0.210) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-10-01 09:50:00.074.
-	 Executed 13 tests, with 5 failures (0 unexpected) in 0.209 (0.210) seconds
-Test Suite 'Selected tests' failed at 2026-10-01 09:50:00.074.
-	 Executed 13 tests, with 5 failures (0 unexpected) in 0.209 (0.216) seconds
-Test Suite 'Selected tests' started at 2026-10-01 09:50:00.124.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 09:50:00.130.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 09:50:00.130.
+Test Case '-[GodstoneMeshTests.ReadinessT60Tests testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName]' failed (0.001 seconds).
+Test Suite 'ReadinessT60Tests' failed at 2026-10-01 13:56:40.412.
+	 Executed 13 tests, with 5 failures (0 unexpected) in 0.033 (0.033) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-10-01 13:56:40.412.
+	 Executed 13 tests, with 5 failures (0 unexpected) in 0.033 (0.033) seconds
+Test Suite 'Selected tests' failed at 2026-10-01 13:56:40.412.
+	 Executed 13 tests, with 5 failures (0 unexpected) in 0.033 (0.039) seconds
+Test Suite 'Selected tests' started at 2026-10-01 13:56:40.462.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 13:56:40.468.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 13:56:40.468.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 09:50:00.130.
+Test Suite 'Selected tests' passed at 2026-10-01 13:56:40.468.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
@@ -209,6 +209,35 @@ Building for debugging...
     | `- note: 'unlock()' declared here
  19 | 
  20 | @end
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 23 | @MainActor
+ 24 | final class ReadinessT48Tests: XCTestCase {
+ 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+    |                        `- note: static property declared here
+ 26 | 
+ 27 |     private var fixturesDirectory: URL {
+    :
+132 |     /// Build (or rebuild) the tier's archive under the application-support
+133 |     /// archives directory, where the production resolver looketh.
+134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
+    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+136 |         var knobs = FixtureKnobs()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 114 | @MainActor
+ 115 | final class ReadinessT50Tests: XCTestCase {
+ 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
+     |                        `- note: static property declared here
+ 117 | 
+ 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
+     :
+ 222 | 
+ 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
+ 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
+     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+ 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
+ 226 |         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleSupersessionAndBudgetTests.swift:178:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
 176 | 
 177 |         func retrieve(question: String) async -> RetrievalResult {
@@ -266,35 +295,6 @@ Building for debugging...
 535 | 
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT48Tests.swift:134:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 23 | @MainActor
- 24 | final class ReadinessT48Tests: XCTestCase {
- 25 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-    |                        `- note: static property declared here
- 26 | 
- 27 |     private var fixturesDirectory: URL {
-    :
-132 |     /// Build (or rebuild) the tier's archive under the application-support
-133 |     /// archives directory, where the production resolver looketh.
-134 |     private func makeArchive(named name: String = ReadinessT48Tests.tierName,
-    |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
-135 |                               _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
-136 |         var knobs = FixtureKnobs()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT50Tests.swift:224:69: warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 114 | @MainActor
- 115 | final class ReadinessT50Tests: XCTestCase {
- 116 |     private static let tierName = Tier.light.archiveDatabaseName   // archive_light.db
-     |                        `- note: static property declared here
- 117 | 
- 118 |     private enum TestError: Error { case fixtureNotFound(String), noSupportDirectory }
-     :
- 222 | 
- 223 |     /// Build (or rebuild) the tier's archive under the resolver's eye.
- 224 |     private func makeArchive(named name: String = ReadinessT50Tests.tierName,
-     |                                                                     `- warning: main actor-isolated static property 'tierName' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
- 225 |                              _ shape: (inout FixtureKnobs) -> Void = { _ in }) throws -> URL {
- 226 |         var knobs = FixtureKnobs()
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT51Tests.swift:171:57: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
 169 |             let rc = sqlite3_exec(db, statement, nil, nil, &err)
 170 |             if rc != SQLITE_OK {
@@ -3035,7 +3035,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  44 |         )
  45 |         let sig = try! signingKey.signature(for: preimage)
@@ -3054,48 +3053,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  32 |         )
-  33 |         let sig = try! signingKey.signature(for: preimage)
-  34 |         let binding = try! IdentityBindingV1(
-     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  35 |             generation: generation,
-  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 25 |         )
- 26 |         let sig = try signingKey.signature(for: preimage)
- 27 |         let binding = try IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 28 |             generation: generation,
- 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 38 |     /// the coordinator (which GS-FINAL-002 already proved).
- 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
- 40 |         var allows: Bool
-    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
- 41 |         init(allows: Bool) { self.allows = allows }
- 42 |         func allowsSensitiveUse() -> Bool { allows }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-501 | 
-502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
-503 |         let (pubA, _) = realDhKeypair()
-    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
-504 |         let a = nodeA()
-505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
-162 |     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-163 |     /// freshly started transport minteth for the first relation of that handle.
-164 |     @discardableResult
-    |     `- warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
-165 |     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-166 |                        aliceHint: Data, bobHint: Data,
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 120 | 
 121 |     private func bloomDigest(_ ids: [Data]) -> Data {
@@ -3153,6 +3111,48 @@ Building for debugging...
 186 | 
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  32 |         )
+  33 |         let sig = try! signingKey.signature(for: preimage)
+  34 |         let binding = try! IdentityBindingV1(
+     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  35 |             generation: generation,
+  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 25 |         )
+ 26 |         let sig = try signingKey.signature(for: preimage)
+ 27 |         let binding = try IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 28 |             generation: generation,
+ 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 38 |     /// the coordinator (which GS-FINAL-002 already proved).
+ 39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
+ 40 |         var allows: Bool
+    |             `- warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
+ 41 |         init(allows: Bool) { self.allows = allows }
+ 42 |         func allowsSensitiveUse() -> Bool { allows }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift:503:14: warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+501 | 
+502 |     func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+503 |         let (pubA, _) = realDhKeypair()
+    |              `- warning: immutable value 'pubA' was never used; consider replacing with '_' or removing it [#NoUsage]
+504 |         let a = nodeA()
+505 |         let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
+162 |     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+163 |     /// freshly started transport minteth for the first relation of that handle.
+164 |     @discardableResult
+    |     `- warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
+165 |     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+166 |                        aliceHint: Data, bobHint: Data,
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
 272 |         )
 273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -3837,65 +3837,6 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: warning: result of call to 'runPendingOnce(_:fault:)' is unused [#NoUsage]
-150 |         var raised = false
-151 |         do {
-152 |             try dying.runPendingOnce(8) { point in
-    |                       `- warning: result of call to 'runPendingOnce(_:fault:)' is unused [#NoUsage]
-153 |                 if point == "signing" { throw NSError(domain: "ReadinessT83", code: 1) }
-154 |             }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:240:54: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-238 |             let batch = r.pump.nextBatch(Data(to.local.id.nodeId), now: now)
-239 |             return batch.copies.map { copy in
-240 |                 let verdict = to.dispatcher.dispatch(try! FrameV2.decode(copy.encodedFrame)!,
-    |                                                      `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-241 |                                                      receivedFrom: Data(r.local.id.nodeId))
-242 |                 r.pump.onForwardOutcome(copy, peer: Data(to.local.id.nodeId), accepted: true, now: now)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:272:10: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-270 | 
-271 |     private func heldFrames(_ store: InMemoryMessageStore) -> Int {
-272 |         (try? store.allHeldMsgIds().count) ?? -1
-    |          `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-273 |     }
-274 | 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:438:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-436 |         XCTAssertEqual(copy.ttl, ackRelayInitialTtl - 1)
-437 |         XCTAssertEqual(copy.hopCount, 1)
-438 |         let decoded = try FrameV2.decode(copy.encodedFrame)!
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-439 |         XCTAssertEqual(decoded.flags, 0)
-440 |         XCTAssertEqual(decoded.payload.count, 80, "the 80-byte payload travelleth whole")
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:601:47: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-599 |         XCTAssertEqual(batch.copies.count, 1)
-600 |         guard let rebornCopy = firstCopy(batch, "the reborn copy") else { return }
-601 |         let verdict = w.a.dispatcher.dispatch(try FrameV2.decode(rebornCopy.encodedFrame)!,
-    |                                               `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-602 |                                              receivedFrom: Data(w.r.local.id.nodeId))
-603 |         XCTAssertTrue(verdict.accepted)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
-162 |     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
-163 |     /// freshly started transport minteth for the first relation of that handle.
-164 |     @discardableResult
-    |     `- warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
-165 |     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
-166 |                        aliceHint: Data, bobHint: Data,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:94:13: warning: variable 'bobIdentity' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 92 |         // right way: alice below bob. Search forward from the requested seed.
- 93 |         var aliceIdentity = try makeIdentity(seedByte: seedA, staticPrivByte: privA)
- 94 |         var bobIdentity = try makeIdentity(seedByte: seedB, staticPrivByte: privB)
-    |             `- warning: variable 'bobIdentity' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 95 |         var candidate = seedA
- 96 |         while ReadinessTrustedPairing.hintOrder(aliceIdentity.nodeHint, bobIdentity.nodeHint) != .orderedAscending {
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT36Tests.swift:538:13: warning: variable 'f' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
  536 |     /// rejections -- failure distinguished from empty/no-op success, nothing mutated.
  537 |     func testUnapprovedRecipientYieldsTypedDistinctRejections() async throws {
@@ -4043,6 +3984,65 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: warning: result of call to 'runPendingOnce(_:fault:)' is unused [#NoUsage]
+150 |         var raised = false
+151 |         do {
+152 |             try dying.runPendingOnce(8) { point in
+    |                       `- warning: result of call to 'runPendingOnce(_:fault:)' is unused [#NoUsage]
+153 |                 if point == "signing" { throw NSError(domain: "ReadinessT83", code: 1) }
+154 |             }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:240:54: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+238 |             let batch = r.pump.nextBatch(Data(to.local.id.nodeId), now: now)
+239 |             return batch.copies.map { copy in
+240 |                 let verdict = to.dispatcher.dispatch(try! FrameV2.decode(copy.encodedFrame)!,
+    |                                                      `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+241 |                                                      receivedFrom: Data(r.local.id.nodeId))
+242 |                 r.pump.onForwardOutcome(copy, peer: Data(to.local.id.nodeId), accepted: true, now: now)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:272:10: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+270 | 
+271 |     private func heldFrames(_ store: InMemoryMessageStore) -> Int {
+272 |         (try? store.allHeldMsgIds().count) ?? -1
+    |          `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+273 |     }
+274 | 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:438:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+436 |         XCTAssertEqual(copy.ttl, ackRelayInitialTtl - 1)
+437 |         XCTAssertEqual(copy.hopCount, 1)
+438 |         let decoded = try FrameV2.decode(copy.encodedFrame)!
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+439 |         XCTAssertEqual(decoded.flags, 0)
+440 |         XCTAssertEqual(decoded.payload.count, 80, "the 80-byte payload travelleth whole")
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT84Tests.swift:601:47: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+599 |         XCTAssertEqual(batch.copies.count, 1)
+600 |         guard let rebornCopy = firstCopy(batch, "the reborn copy") else { return }
+601 |         let verdict = w.a.dispatcher.dispatch(try FrameV2.decode(rebornCopy.encodedFrame)!,
+    |                                               `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+602 |                                              receivedFrom: Data(w.r.local.id.nodeId))
+603 |         XCTAssertTrue(verdict.accepted)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:164:5: warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
+162 |     /// CRYPTO-001: the entries are addressed by the relation's ADMISSION -- by default the one a
+163 |     /// freshly started transport minteth for the first relation of that handle.
+164 |     @discardableResult
+    |     `- warning: '@discardableResult' declared on a function returning 'Void' is unnecessary
+165 |     static func pairUp(_ pair: Pair, viaBob: UUID, viaAlice: UUID,
+166 |                        aliceHint: Data, bobHint: Data,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift:94:13: warning: variable 'bobIdentity' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 92 |         // right way: alice below bob. Search forward from the requested seed.
+ 93 |         var aliceIdentity = try makeIdentity(seedByte: seedA, staticPrivByte: privA)
+ 94 |         var bobIdentity = try makeIdentity(seedByte: seedB, staticPrivByte: privB)
+    |             `- warning: variable 'bobIdentity' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 95 |         var candidate = seedA
+ 96 |         while ReadinessTrustedPairing.hintOrder(aliceIdentity.nodeHint, bobIdentity.nodeHint) != .orderedAscending {
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [67 / 69] GodstoneMeshTests-product
 [70 / 74] LabMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T60-RC11-ios-a-clipped-status-is-accepted/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
@@ -4056,4 +4056,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.61 secs)
+Build complete! (10.97 secs)

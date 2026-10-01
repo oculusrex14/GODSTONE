@@ -1,30 +1,30 @@
-Test Suite 'Selected tests' started at 2026-10-01 10:01:25.639.
-Test Suite 'LabMeshTests.xctest' started at 2026-10-01 10:01:25.645.
-Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 10:01:25.645.
+Test Suite 'Selected tests' started at 2026-10-01 14:08:03.584.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 14:08:03.590.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 14:08:03.590.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 10:01:25.645.
+Test Suite 'Selected tests' passed at 2026-10-01 14:08:03.590.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-10-01 10:01:25.682.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 10:01:25.688.
-Test Suite 'GsIntegration001ScenarioTests' started at 2026-10-01 10:01:25.688.
+Test Suite 'Selected tests' started at 2026-10-01 14:08:03.626.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 14:08:03.632.
+Test Suite 'GsIntegration001ScenarioTests' started at 2026-10-01 14:08:03.632.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison]' passed (0.018 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.057 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck]' passed (0.049 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript]' passed (0.009 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator]' passed (0.009 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.035 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode]' passed (0.036 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.036 seconds).
-Test Suite 'GsIntegration001ScenarioTests' passed at 2026-10-01 10:01:25.852.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.164 (0.164) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 10:01:25.852.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.164 (0.164) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 10:01:25.852.
-	 Executed 6 tests, with 0 failures (0 unexpected) in 0.164 (0.170) seconds
+Test Case '-[GodstoneMeshTests.GsIntegration001ScenarioTests testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens]' passed (0.038 seconds).
+Test Suite 'GsIntegration001ScenarioTests' passed at 2026-10-01 14:08:03.791.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.159 (0.159) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 14:08:03.791.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.159 (0.160) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 14:08:03.791.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.159 (0.165) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
@@ -34,11 +34,11 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-10-01 10:01:25.902.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 10:01:25.907.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 10:01:25.907.
+Test Suite 'Selected tests' started at 2026-10-01 14:08:03.840.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 14:08:03.846.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 14:08:03.846.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 10:01:25.907.
+Test Suite 'Selected tests' passed at 2026-10-01 14:08:03.846.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -132,6 +132,7 @@ Building for debugging...
 555 |     }
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[17 / 21] GodstoneCoreTests-product
 [18 / 22] GodstoneCoreTests-product
 [28 / 32] GodstoneCoreTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/GsFinal007SearchReturnTests.swift:47:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
@@ -514,7 +515,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[33 / 33] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
@@ -3024,6 +3024,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  44 |         )
  45 |         let sig = try! signingKey.signature(for: preimage)
@@ -3042,8 +3043,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[61 / 66] GodstoneMeshTests-product
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC19-ios-egress-is-a-silent-noop/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
   32 |         )
   33 |         let sig = try! signingKey.signature(for: preimage)
@@ -4046,4 +4045,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.33 secs)
+Build complete! (10.35 secs)

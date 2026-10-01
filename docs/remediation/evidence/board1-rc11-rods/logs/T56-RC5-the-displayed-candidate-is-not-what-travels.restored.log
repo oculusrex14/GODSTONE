@@ -1,14 +1,14 @@
-Test Suite 'Selected tests' started at 2026-10-01 09:41:50.247.
-Test Suite 'LabMeshTests.xctest' started at 2026-10-01 09:41:50.253.
-Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 09:41:50.253.
+Test Suite 'Selected tests' started at 2026-10-01 13:48:22.527.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 13:48:22.533.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 13:48:22.533.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 09:41:50.253.
+Test Suite 'Selected tests' passed at 2026-10-01 13:48:22.533.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-10-01 09:41:50.289.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 09:41:50.295.
-Test Suite 'ReadinessT56Tests' started at 2026-10-01 09:41:50.295.
+Test Suite 'Selected tests' started at 2026-10-01 13:48:22.572.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 13:48:22.578.
+Test Suite 'ReadinessT56Tests' started at 2026-10-01 13:48:22.578.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW01UserVerifiedAppearethOnlyAfterTheDurableCas]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW01UserVerifiedAppearethOnlyAfterTheDurableCas]' passed (0.001 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW01UserVerifiedAppearethOnlyAfterTheDurableCas]' passed (0.002 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW02ARefusedCasNeverShowethUserVerified]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW02ARefusedCasNeverShowethUserVerified]' passed (0.000 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW03TheDisplayedCandidateIsTheOneApproved]' started.
@@ -28,22 +28,22 @@ Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW09AStaleConfirmationPromot
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW10RotationAndRevocationInvalidateSessions]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW10RotationAndRevocationInvalidateSessions]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW11NoBiometricSuccessSubstitutesForPeerAuthentication]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW11NoBiometricSuccessSubstitutesForPeerAuthentication]' passed (0.003 seconds).
+Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW11NoBiometricSuccessSubstitutesForPeerAuthentication]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW12TheBindingPayloadIsBounded]' started.
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW12TheBindingPayloadIsBounded]' passed (0.001 seconds).
 Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW13TheIslesShareTheirFixturesAndTheCasContract]' started.
-Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW13TheIslesShareTheirFixturesAndTheCasContract]' passed (0.003 seconds).
-Test Suite 'ReadinessT56Tests' passed at 2026-10-01 09:41:50.308.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.012) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 09:41:50.308.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.012) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 09:41:50.308.
-	 Executed 13 tests, with 0 failures (0 unexpected) in 0.012 (0.018) seconds
-Test Suite 'Selected tests' started at 2026-10-01 09:41:50.356.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 09:41:50.362.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 09:41:50.362.
+Test Case '-[GodstoneMeshTests.ReadinessT56Tests testW13TheIslesShareTheirFixturesAndTheCasContract]' passed (0.004 seconds).
+Test Suite 'ReadinessT56Tests' passed at 2026-10-01 13:48:22.593.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.015 (0.015) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 13:48:22.593.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.015 (0.015) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 13:48:22.593.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.015 (0.021) seconds
+Test Suite 'Selected tests' started at 2026-10-01 13:48:22.644.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 13:48:22.649.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 13:48:22.649.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 09:41:50.362.
+Test Suite 'Selected tests' passed at 2026-10-01 13:48:22.649.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -519,6 +519,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[30 / 34] GodstoneCoreTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
@@ -765,21 +766,6 @@ Building for debugging...
 175 |             }
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 42 |     public let msgId: Data
- 43 |     public let state: DeliveryState
- 44 |     public let frame: FrameV2
-    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 45 |     /// When this node committed the pair, when it remembers; nil when the
- 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: warning: variable 'bloom' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 141 |         let nodeHint = identity.nodeHint
 142 |         var count = 0
@@ -806,6 +792,21 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 42 |     public let msgId: Data
+ 43 |     public let state: DeliveryState
+ 44 |     public let frame: FrameV2
+    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 45 |     /// When this node committed the pair, when it remembers; nil when the
+ 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
  76 |     public let to: Int
  77 |     public let statements: [String]
@@ -857,69 +858,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 40 |         case ignored(reason: String)
- 41 |         case refused(reason: String)
- 42 |         case answered(frame: FrameV2)
-    |              `- warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 43 |         case delivered(frames: [FrameV2])
- 44 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 41 |         case refused(reason: String)
- 42 |         case answered(frame: FrameV2)
- 43 |         case delivered(frames: [FrameV2])
-    |              `- warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 44 |     }
- 45 | 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 44 | /// exactly once -- and every retry re-emiteth these exact bytes.
- 45 | public struct ForwardCopy: Equatable, Sendable {
- 46 |     public let frame: FrameV2
-    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 47 |     /// The immediate hop it arrived from, which is never offered it back.
- 48 |     public let fromPeer: Data?
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
- 37 | 
- 38 | internal struct DefaultHs3Writer: Hs3Writer {
- 39 |     let noiseSession: NoiseSession
-    |         `- warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
- 40 |     func writeHs3(payload: Data) throws -> Data {
- 41 |         try noiseSession.writeMessage3(payload: payload)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: note: class 'NoiseSession' does not conform to the 'Sendable' protocol
- 46 | }
- 47 | 
- 48 | public final class NoiseSession {
-    |                    `- note: class 'NoiseSession' does not conform to the 'Sendable' protocol
- 49 | 
- 50 |     public enum Role { case initiator, responder }
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift:346:12: warning: result of call to function returning 'Int32' is unused [#NoUsage]
  344 |         adoptedConnectionIdentity = owned.connection.connectionIdentity
  345 | 
@@ -1353,6 +1291,69 @@ Building for debugging...
  940 |                 sourceEpoch: responder.ble.currentTransportEpoch)
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 40 |         case ignored(reason: String)
+ 41 |         case refused(reason: String)
+ 42 |         case answered(frame: FrameV2)
+    |              `- warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 43 |         case delivered(frames: [FrameV2])
+ 44 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:43:14: warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 41 |         case refused(reason: String)
+ 42 |         case answered(frame: FrameV2)
+ 43 |         case delivered(frames: [FrameV2])
+    |              `- warning: associated value 'delivered(frames:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 44 |     }
+ 45 | 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift:46:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 44 | /// exactly once -- and every retry re-emiteth these exact bytes.
+ 45 | public struct ForwardCopy: Equatable, Sendable {
+ 46 |     public let frame: FrameV2
+    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ForwardCopy' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 47 |     /// The immediate hop it arrived from, which is never offered it back.
+ 48 |     public let fromPeer: Data?
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift:39:9: warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
+ 37 | 
+ 38 | internal struct DefaultHs3Writer: Hs3Writer {
+ 39 |     let noiseSession: NoiseSession
+    |         `- warning: stored property 'noiseSession' of 'Sendable'-conforming struct 'DefaultHs3Writer' has non-Sendable type 'NoiseSession'; this is an error in the Swift 6 language mode
+ 40 |     func writeHs3(payload: Data) throws -> Data {
+ 41 |         try noiseSession.writeMessage3(payload: payload)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift:48:20: note: class 'NoiseSession' does not conform to the 'Sendable' protocol
+ 46 | }
+ 47 | 
+ 48 | public final class NoiseSession {
+    |                    `- note: class 'NoiseSession' does not conform to the 'Sendable' protocol
+ 49 | 
+ 50 |     public enum Role { case initiator, responder }
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckDispatcher.swift:323:11: warning: 'catch' block is unreachable because no errors are thrown in 'do' block
 321 |         do {
 322 |             result = admitForeign(encoded, receivedFrom)
@@ -3047,23 +3048,6 @@ Building for debugging...
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [62 / 66] GodstoneMeshTests-product
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  32 |         )
-  33 |         let sig = try! signingKey.signature(for: preimage)
-  34 |         let binding = try! IdentityBindingV1(
-     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-  35 |             generation: generation,
-  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 25 |         )
- 26 |         let sig = try signingKey.signature(for: preimage)
- 27 |         let binding = try IdentityBindingV1(
-    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
- 28 |             generation: generation,
- 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
-
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsFinal003AdmissionPointTests.swift:40:13: warning: stored property 'allows' of 'Sendable'-conforming class 'SwitchableWipeGate' is mutable; this is an error in the Swift 6 language mode
  38 |     /// the coordinator (which GS-FINAL-002 already proved).
  39 |     private final class SwitchableWipeGate: WipeSensitiveUseGate {
@@ -3146,6 +3130,97 @@ Building for debugging...
 186 | 
 
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+272 |         )
+273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
+274 |         let driverIdentityBefore = ObjectIdentifier(driverBefore)
+    |             `- warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+275 | 
+276 |         let order = OrderLog()
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:445:13: warning: using '_' to ignore the result of a Void-returning function is redundant
+443 |         let innerTrace = Box<BleTransport.ReductionTrace>()
+444 |         transport.failpointAfterValidationForTest = { _ in
+445 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
+    |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
+446 |             if let inner = transport.lastReductionTraceForTest {
+447 |                 innerTrace.set(inner)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
+346 |         pins.append(req)
+347 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+    |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+348 |                                              sourceEpoch: bob.currentTransportEpoch)
+349 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:371:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+369 |                 ReadinessT17Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
+370 |         ]
+371 |         _ = alice.processCentralDidDiscover(
+    |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+372 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
+373 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:861:13: warning: initialization of variable 'bytesQueued' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+859 | 
+860 |         var verdicts: [TransportResult] = []
+861 |         var bytesQueued = 0
+    |             `- warning: initialization of variable 'bytesQueued' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
+862 |         for i in 0..<260 {
+863 |             let verdict = alice.send(makeFrame([UInt8(i % 251) + 4]), to: peerId)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
+ 346 |         pins.append(req)
+ 347 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 348 |                                              sourceEpoch: bob.currentTransportEpoch)
+ 349 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:372:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 370 |                 ReadinessT19Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
+ 371 |         ]
+ 372 |         _ = alice.processCentralDidDiscover(
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 373 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
+ 374 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:939:13: warning: variable 'accepts' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 937 |                                               remoteHint: pair.aliceIdentity.nodeHint)
+ 938 |         guard let pm = pmOpt else { XCTFail(why); return }
+ 939 |         var accepts = false
+     |             `- warning: variable 'accepts' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 940 |         pm.updateAnswer = { _ in accepts }
+ 941 |         let f = makeFrame([9, 8, 7, 6, 5, 4])
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:1127:34: warning: immutable value 'res' was never used; consider replacing with '_' or removing it [#NoUsage]
+1125 |         let writer = RecordWriter(connection: conn, relationKey: rk)
+1126 |         let answer = writer.reserve(recordType: .data, clearLength: 120, capacity: 512)
+1127 |         guard case .admitted(let res) = answer else {
+     |                                  `- warning: immutable value 'res' was never used; consider replacing with '_' or removing it [#NoUsage]
+1128 |             return XCTFail("the reservation must be admitted: \(answer)")
+1129 |         }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  32 |         )
+  33 |         let sig = try! signingKey.signature(for: preimage)
+  34 |         let binding = try! IdentityBindingV1(
+     |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+  35 |             generation: generation,
+  36 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerTrustEngineTests.swift:27:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 25 |         )
+ 26 |         let sig = try signingKey.signature(for: preimage)
+ 27 |         let binding = try IdentityBindingV1(
+    |                       `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+ 28 |             generation: generation,
+ 29 |             signingPublicKey: signingKey.publicKey.rawRepresentation,
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift:181:13: warning: variable 'hs3Result' was written to, but never read
 179 |         let hsThreadFinished = expectation(description: "HS thread finished")
 180 |         let invalidationFinished = expectation(description: "Invalidation finished")
@@ -3903,80 +3978,6 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-272 |         )
-273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
-274 |         let driverIdentityBefore = ObjectIdentifier(driverBefore)
-    |             `- warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-275 | 
-276 |         let order = OrderLog()
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:445:13: warning: using '_' to ignore the result of a Void-returning function is redundant
-443 |         let innerTrace = Box<BleTransport.ReductionTrace>()
-444 |         transport.failpointAfterValidationForTest = { _ in
-445 |             _ = transport.processCentralDidUpdateState(ctx.central, sourceEpoch: ctx.epoch)
-    |             `- warning: using '_' to ignore the result of a Void-returning function is redundant
-446 |             if let inner = transport.lastReductionTraceForTest {
-447 |                 innerTrace.set(inner)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
-345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
-346 |         pins.append(req)
-347 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-    |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
-348 |                                              sourceEpoch: bob.currentTransportEpoch)
-349 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:371:9: warning: using '_' to ignore the result of a Void-returning function is redundant
-369 |                 ReadinessT17Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
-370 |         ]
-371 |         _ = alice.processCentralDidDiscover(
-    |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
-372 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
-373 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift:861:13: warning: initialization of variable 'bytesQueued' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-859 | 
-860 |         var verdicts: [TransportResult] = []
-861 |         var bytesQueued = 0
-    |             `- warning: initialization of variable 'bytesQueued' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
-862 |         for i in 0..<260 {
-863 |             let verdict = alice.send(makeFrame([UInt8(i % 251) + 4]), to: peerId)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
- 346 |         pins.append(req)
- 347 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 348 |                                              sourceEpoch: bob.currentTransportEpoch)
- 349 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:372:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 370 |                 ReadinessT19Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
- 371 |         ]
- 372 |         _ = alice.processCentralDidDiscover(
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 373 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
- 374 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:939:13: warning: variable 'accepts' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 937 |                                               remoteHint: pair.aliceIdentity.nodeHint)
- 938 |         guard let pm = pmOpt else { XCTFail(why); return }
- 939 |         var accepts = false
-     |             `- warning: variable 'accepts' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 940 |         pm.updateAnswer = { _ in accepts }
- 941 |         let f = makeFrame([9, 8, 7, 6, 5, 4])
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT19Tests.swift:1127:34: warning: immutable value 'res' was never used; consider replacing with '_' or removing it [#NoUsage]
-1125 |         let writer = RecordWriter(connection: conn, relationKey: rk)
-1126 |         let answer = writer.reserve(recordType: .data, clearLength: 120, capacity: 512)
-1127 |         guard case .admitted(let res) = answer else {
-     |                                  `- warning: immutable value 'res' was never used; consider replacing with '_' or removing it [#NoUsage]
-1128 |             return XCTFail("the reservation must be admitted: \(answer)")
-1129 |         }
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T56-RC5-the-displayed-candidate-is-not-what-travels/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT83Tests.swift:152:23: warning: result of call to 'runPendingOnce(_:fault:)' is unused [#NoUsage]
 150 |         var raised = false
 151 |         do {
@@ -4049,4 +4050,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.38 secs)
+Build complete! (11.43 secs)

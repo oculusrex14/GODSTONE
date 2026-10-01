@@ -10,7 +10,7 @@ Execution failed for task ':app:testLightDebugUnitTest'.
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 14s
+BUILD FAILED in 16s
 
 TEST-SUITE TEST-io.godstone.app.readiness.ReadinessT55Test.xml tests=15 skipped=0 failures=2 errors=0
 TEST-CASE PASS test_w01_one_contact_is_verified_only_after_the_compare

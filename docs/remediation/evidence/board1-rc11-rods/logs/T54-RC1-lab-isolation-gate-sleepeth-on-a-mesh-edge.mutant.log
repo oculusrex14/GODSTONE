@@ -12,6 +12,6 @@ Traceback (most recent call last):
 AssertionError: False is not true : []
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.009s
+Ran 1 test in 0.008s
 
 FAILED (failures=1)

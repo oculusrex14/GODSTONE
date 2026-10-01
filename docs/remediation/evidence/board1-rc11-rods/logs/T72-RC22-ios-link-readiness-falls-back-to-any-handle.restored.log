@@ -1,16 +1,16 @@
-Test Suite 'Selected tests' started at 2026-10-01 10:03:48.595.
-Test Suite 'LabMeshTests.xctest' started at 2026-10-01 10:03:48.600.
-Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 10:03:48.601.
+Test Suite 'Selected tests' started at 2026-10-01 14:10:25.502.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 14:10:25.508.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 14:10:25.508.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 10:03:48.601.
+Test Suite 'Selected tests' passed at 2026-10-01 14:10:25.508.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-10-01 10:03:48.637.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 10:03:48.643.
-Test Suite 'GsIntegration001RealTransportTests' started at 2026-10-01 10:03:48.643.
+Test Suite 'Selected tests' started at 2026-10-01 14:10:25.547.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 14:10:25.553.
+Test Suite 'GsIntegration001RealTransportTests' started at 2026-10-01 14:10:25.553.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' passed (0.009 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.007 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' started.
@@ -18,7 +18,7 @@ Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AD
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' passed (0.030 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' passed (0.024 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' started.
@@ -26,37 +26,37 @@ Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AM
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' passed (0.044 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' passed (0.047 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' passed (0.042 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' passed (0.017 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' passed (0.004 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001NoDirectLinkQueuesDurablyRatherThanClaimingARadio]' passed (0.006 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001RecipientAcksAreOfferedThenDrainedForTheLink]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' passed (0.003 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' passed (0.023 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' passed (0.025 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' passed (0.011 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' passed (0.012 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' passed (0.010 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' passed (0.013 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.015 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' passed (0.005 seconds).
-Test Suite 'GsIntegration001RealTransportTests' passed at 2026-10-01 10:03:48.895.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.250 (0.252) seconds
-Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 10:03:48.895.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.250 (0.252) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 10:03:48.895.
-	 Executed 22 tests, with 0 failures (0 unexpected) in 0.250 (0.258) seconds
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' passed (0.006 seconds).
+Test Suite 'GsIntegration001RealTransportTests' passed at 2026-10-01 14:10:25.819.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.264 (0.266) seconds
+Test Suite 'GodstoneMeshTests.xctest' passed at 2026-10-01 14:10:25.819.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.264 (0.266) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 14:10:25.819.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.264 (0.272) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
@@ -74,11 +74,11 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-10-01 10:03:48.945.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 10:03:48.951.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 10:03:48.951.
+Test Suite 'Selected tests' started at 2026-10-01 14:10:25.870.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 14:10:25.876.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 14:10:25.876.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 10:03:48.951.
+Test Suite 'Selected tests' passed at 2026-10-01 14:10:25.876.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Building for debugging...
 [1 / 5]
@@ -554,7 +554,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[33 / 33] GodstoneCoreTests-product
+[33 / 34] GodstoneMeshTests-product
 [34 / 38] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
@@ -801,6 +801,21 @@ Building for debugging...
 175 |             }
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 42 |     public let msgId: Data
+ 43 |     public let state: DeliveryState
+ 44 |     public let frame: FrameV2
+    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 45 |     /// When this node committed the pair, when it remembers; nil when the
+ 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: warning: variable 'bloom' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 141 |         let nodeHint = identity.nodeHint
 142 |         var count = 0
@@ -827,21 +842,57 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 42 |     public let msgId: Data
- 43 |     public let state: DeliveryState
- 44 |     public let frame: FrameV2
-    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 45 |     /// When this node committed the pair, when it remembers; nil when the
- 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
+ 76 |     public let to: Int
+ 77 |     public let statements: [String]
+ 78 |     public let apply: MigrationApply?
+    |                |- warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
+    |                `- note: a function type must be marked '@Sendable' to conform to 'Sendable'
+ 79 |     public init(from: Int, to: Int, statements: [String], apply: MigrationApply? = nil) { self.from = from; self.to = to; self.statements = statements; self.apply = apply }
+ 80 | }
 
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:409:21: warning: result of call to 'removeSlot' is unused [#NoUsage]
+407 |                 guard isActive else {
+408 |                     _ = slot.retire()
+409 |                     removeSlot(admission)
+    |                     `- warning: result of call to 'removeSlot' is unused [#NoUsage]
+410 |                     ctrl.destroy()
+411 |                     return nil
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:443:17: warning: result of call to 'removeSlot' is unused [#NoUsage]
+441 |             }
+442 |             if let doomed = doomed {
+443 |                 removeSlot(admission)
+    |                 `- warning: result of call to 'removeSlot' is unused [#NoUsage]
+444 |                 doomed.destroy()
+445 |             }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:476:21: warning: result of call to 'removeSlot' is unused [#NoUsage]
+474 |                 guard isActive else {
+475 |                     _ = slot.retire()
+476 |                     removeSlot(admission)
+    |                     `- warning: result of call to 'removeSlot' is unused [#NoUsage]
+477 |                     ctrl.destroy()
+478 |                     return nil
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:470:33: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+468 |                     trustAuthority: trustAuthority
+469 |                 )
+470 |                 guard let hs2 = try? ctrl.responderProcessMessage1AndWriteMessage2(hs1: hs1) else {
+    |                                 `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+471 |                     ctrl.destroy()
+472 |                     return nil
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:506:17: warning: result of call to 'removeSlot' is unused [#NoUsage]
+504 |             }
+505 |             if let doomed = doomed {
+506 |                 removeSlot(admission)
+    |                 `- warning: result of call to 'removeSlot' is unused [#NoUsage]
+507 |                 doomed.destroy()
+508 |             }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift:42:14: warning: associated value 'answered(frame:)' of 'Sendable'-conforming enum 'OwnerDecision' contains non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
  40 |         case ignored(reason: String)
  41 |         case refused(reason: String)
@@ -905,57 +956,6 @@ Building for debugging...
     |                    `- note: class 'NoiseSession' does not conform to the 'Sendable' protocol
  49 | 
  50 |     public enum Role { case initiator, responder }
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
- 76 |     public let to: Int
- 77 |     public let statements: [String]
- 78 |     public let apply: MigrationApply?
-    |                |- warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
-    |                `- note: a function type must be marked '@Sendable' to conform to 'Sendable'
- 79 |     public init(from: Int, to: Int, statements: [String], apply: MigrationApply? = nil) { self.from = from; self.to = to; self.statements = statements; self.apply = apply }
- 80 | }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:409:21: warning: result of call to 'removeSlot' is unused [#NoUsage]
-407 |                 guard isActive else {
-408 |                     _ = slot.retire()
-409 |                     removeSlot(admission)
-    |                     `- warning: result of call to 'removeSlot' is unused [#NoUsage]
-410 |                     ctrl.destroy()
-411 |                     return nil
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:443:17: warning: result of call to 'removeSlot' is unused [#NoUsage]
-441 |             }
-442 |             if let doomed = doomed {
-443 |                 removeSlot(admission)
-    |                 `- warning: result of call to 'removeSlot' is unused [#NoUsage]
-444 |                 doomed.destroy()
-445 |             }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:476:21: warning: result of call to 'removeSlot' is unused [#NoUsage]
-474 |                 guard isActive else {
-475 |                     _ = slot.retire()
-476 |                     removeSlot(admission)
-    |                     `- warning: result of call to 'removeSlot' is unused [#NoUsage]
-477 |                     ctrl.destroy()
-478 |                     return nil
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:470:33: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-468 |                     trustAuthority: trustAuthority
-469 |                 )
-470 |                 guard let hs2 = try? ctrl.responderProcessMessage1AndWriteMessage2(hs1: hs1) else {
-    |                                 `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
-471 |                     ctrl.destroy()
-472 |                     return nil
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:506:17: warning: result of call to 'removeSlot' is unused [#NoUsage]
-504 |             }
-505 |             if let doomed = doomed {
-506 |                 removeSlot(admission)
-    |                 `- warning: result of call to 'removeSlot' is unused [#NoUsage]
-507 |                 doomed.destroy()
-508 |             }
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift:346:12: warning: result of call to function returning 'Int32' is unused [#NoUsage]
  344 |         adoptedConnectionIdentity = owned.connection.connectionIdentity
  345 | 
@@ -3064,6 +3064,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  44 |         )
  45 |         let sig = try! signingKey.signature(for: preimage)
@@ -3082,7 +3083,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
   32 |         )
   33 |         let sig = try! signingKey.signature(for: preimage)
@@ -3125,6 +3125,63 @@ Building for debugging...
 166 |                        aliceHint: Data, bobHint: Data,
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+120 | 
+121 |     private func bloomDigest(_ ids: [Data]) -> Data {
+122 |         var b = BloomDigest()
+    |             `- warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+123 |         for id in ids { b.add(id) }
+124 |         return Data(b.toBytes().prefix(BleLinkInfoConstants.shortDigestBytes))
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:89:47: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+ 87 |                 let maxStr = maxToken.split(separator: "=", omittingEmptySubsequences: true).map { String($0) }
+ 88 |                 let mx = Int(maxStr[1]) ?? 4096
+ 89 |                 gov = PeerGovernor(nowMillis: clock(), maxTrackedPeers: mx)
+    |                                               `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+ 90 |                 step = 0
+ 91 |                 continue
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:114:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+112 |     // (2) bounded cache under Sybil churn: tracked set is capped; a known peer is served
+113 |     func testBoundedCacheHoldsUnderSybilChurn() {
+114 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 8)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+115 |         var served = 0
+116 |         for k in 0..<12 {
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:128:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+126 |     // (3) denial leaves EXISTING trusted peers intact (per-identity isolation)
+127 |     func testDenialLeavesExistingTrustedPeersIntact() {
+128 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+129 |         let attacker = node(0xE3)
+130 |         let bystander = node(0xE1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:148:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+146 |     //     peer's calls would begin to drop -- this witness is the T27-SM1 killer.
+147 |     func testAdvertisedHintIsNeverTheAuthenticatedIdentity() {
+148 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+149 |         let sharedHint = Data([0x0B, 0xAD, 0xF0, 0x0D])
+150 |         let a = node(0xF1)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:163:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+161 |     // (5) a malformed/short advertised hint cannot collapse distinct identities
+162 |     func testMalformedHintDoesNotCollapseDistinctIdentities() {
+163 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+164 |         let x = node(0x34)
+165 |         let y = node(0x78)
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:184:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+182 |     func testGSSerialisedTrustMutationsGiveADeterministicScore() {
+183 |         let clock: () -> Int64 = { 1_700_000_000_000 }
+184 |         let g = PeerGovernor(nowMillis: clock, maxTrackedPeers: 8)
+    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
+185 |         let id = Data(repeating: 0x5A, count: 16)
+186 | 
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift:274:13: warning: initialization of immutable value 'driverIdentityBefore' was never used; consider replacing with assignment to '_' or removing it [#NoUsage]
 272 |         )
 273 |         let driverBefore = try XCTUnwrap(transport.centralDriver)
@@ -3396,345 +3453,6 @@ Building for debugging...
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [#WeakMutability]: <https://docs.swift.org/compiler/documentation/diagnostics/weak-mutability>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT25Tests.swift:122:13: warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-120 | 
-121 |     private func bloomDigest(_ ids: [Data]) -> Data {
-122 |         var b = BloomDigest()
-    |             `- warning: variable 'b' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-123 |         for id in ids { b.add(id) }
-124 |         return Data(b.toBytes().prefix(BleLinkInfoConstants.shortDigestBytes))
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:89:47: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
- 87 |                 let maxStr = maxToken.split(separator: "=", omittingEmptySubsequences: true).map { String($0) }
- 88 |                 let mx = Int(maxStr[1]) ?? 4096
- 89 |                 gov = PeerGovernor(nowMillis: clock(), maxTrackedPeers: mx)
-    |                                               `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
- 90 |                 step = 0
- 91 |                 continue
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:114:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-112 |     // (2) bounded cache under Sybil churn: tracked set is capped; a known peer is served
-113 |     func testBoundedCacheHoldsUnderSybilChurn() {
-114 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 8)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-115 |         var served = 0
-116 |         for k in 0..<12 {
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:128:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-126 |     // (3) denial leaves EXISTING trusted peers intact (per-identity isolation)
-127 |     func testDenialLeavesExistingTrustedPeersIntact() {
-128 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-129 |         let attacker = node(0xE3)
-130 |         let bystander = node(0xE1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:148:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-146 |     //     peer's calls would begin to drop -- this witness is the T27-SM1 killer.
-147 |     func testAdvertisedHintIsNeverTheAuthenticatedIdentity() {
-148 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-149 |         let sharedHint = Data([0x0B, 0xAD, 0xF0, 0x0D])
-150 |         let a = node(0xF1)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:163:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-161 |     // (5) a malformed/short advertised hint cannot collapse distinct identities
-162 |     func testMalformedHintDoesNotCollapseDistinctIdentities() {
-163 |         let g = PeerGovernor(nowMillis: clock(), maxTrackedPeers: 64)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-164 |         let x = node(0x34)
-165 |         let y = node(0x78)
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT27Tests.swift:184:41: warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-182 |     func testGSSerialisedTrustMutationsGiveADeterministicScore() {
-183 |         let clock: () -> Int64 = { 1_700_000_000_000 }
-184 |         let g = PeerGovernor(nowMillis: clock, maxTrackedPeers: 8)
-    |                                         `- warning: converting non-Sendable function value to '@Sendable () -> Int64' may introduce data races
-185 |         let id = Data(repeating: 0x5A, count: 16)
-186 | 
-
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
- 346 |         pins.append(req)
- 347 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 348 |                                              sourceEpoch: bob.currentTransportEpoch)
- 349 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:371:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 369 |                 ReadinessT20Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
- 370 |         ]
- 371 |         _ = alice.processCentralDidDiscover(
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 372 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
- 373 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:690:13: warning: result of call to 'publishRelation' is unused [#NoUsage]
- 688 |         }
- 689 |         let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
- 690 |         bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
-     |             `- warning: result of call to 'publishRelation' is unused [#NoUsage]
- 691 |                                         generation: gen))
- 692 |         XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:770:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 768 |         defer { ReadinessTrustedPairing.tearDown(pair) }
- 769 |         let centralId = pair.viaAlice
- 770 |         var now = TimeInterval(1_700_000_000)
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 771 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
- 772 |                                sessions: pair.bobManager, managerFactory: CaptureFactory(),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:801:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 799 |         defer { ReadinessTrustedPairing.tearDown(pair) }
- 800 |         let centralId = pair.viaAlice
- 801 |         var now = TimeInterval(1_700_000_000)
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 802 |         let recorder = T17DelegateSpy()
- 803 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:849:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 847 |         defer { ReadinessTrustedPairing.tearDown(pair) }
- 848 |         let centralId = pair.viaAlice
- 849 |         var now = TimeInterval(1_700_000_000)
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 850 |         let recorder = T17DelegateSpy()
- 851 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:899:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 897 |         defer { ReadinessTrustedPairing.tearDown(pair) }
- 898 |         let centralId = pair.viaAlice
- 899 |         var now = TimeInterval(1_700_000_000)
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 900 |         let recorder = T17DelegateSpy()
- 901 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:935:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 933 |         defer { ReadinessTrustedPairing.tearDown(pair) }
- 934 |         let centralId = pair.viaAlice
- 935 |         var now = TimeInterval(1_700_000_000)
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 936 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
- 937 |                                sessions: pair.bobManager, managerFactory: CaptureFactory(),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:942:19: warning: value 'pm' was defined but never used; consider replacing with boolean test [#NoUsage]
- 940 |                                        remoteHint: pair.aliceIdentity.nodeHint,
- 941 |                                        leaseClock: { now })
- 942 |         guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
-     |                   `- warning: value 'pm' was defined but never used; consider replacing with boolean test [#NoUsage]
- 943 |         guard let conn = bob.connection(for: centralId) else {
- 944 |             XCTFail("the responder has no connection"); return
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:943:19: warning: value 'conn' was defined but never used; consider replacing with boolean test [#NoUsage]
- 941 |                                        leaseClock: { now })
- 942 |         guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
- 943 |         guard let conn = bob.connection(for: centralId) else {
-     |                   `- warning: value 'conn' was defined but never used; consider replacing with boolean test [#NoUsage]
- 944 |             XCTFail("the responder has no connection"); return
- 945 |         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1009:13: warning: result of call to 'publishRelation' is unused [#NoUsage]
-1007 |         guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
-1008 |         let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
-1009 |         bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
-     |             `- warning: result of call to 'publishRelation' is unused [#NoUsage]
-1010 |                                         generation: gen))
-1011 |         XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1000:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 998 |         defer { ReadinessTrustedPairing.tearDown(pair) }
- 999 |         let centralId = pair.viaAlice
-1000 |         var now = TimeInterval(1_700_000_000)
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-1001 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
-1002 |                                sessions: pair.bobManager, managerFactory: CaptureFactory(),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1007:19: warning: value 'pm' was defined but never used; consider replacing with boolean test [#NoUsage]
-1005 |                                        remoteHint: pair.aliceIdentity.nodeHint,
-1006 |                                        leaseClock: { now })
-1007 |         guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
-     |                   `- warning: value 'pm' was defined but never used; consider replacing with boolean test [#NoUsage]
-1008 |         let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
-1009 |         bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1046:13: warning: result of call to 'publishRelation' is unused [#NoUsage]
-1044 |         }
-1045 |         let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
-1046 |         bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
-     |             `- warning: result of call to 'publishRelation' is unused [#NoUsage]
-1047 |                                         generation: gen))
-1048 |         XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1078:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-1076 |         defer { ReadinessTrustedPairing.tearDown(pair) }
-1077 |         let centralId = pair.viaAlice
-1078 |         var now = TimeInterval(1_700_000_000)
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-1079 |         let recorder = T17DelegateSpy()
-1080 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1143:14: warning: result of call to 'publishRelation' is unused [#NoUsage]
-1141 |         }
-1142 |         let genA = bobA.peripheralDriver?.getCentralGeneration(pairA.viaAlice) ?? 0
-1143 |         bobA.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: pairA.viaAlice,
-     |              `- warning: result of call to 'publishRelation' is unused [#NoUsage]
-1144 |                                          generation: genA))
-1145 |         XCTAssertTrue(bobA.isRelationPublished(direction: .inboundPeripheral,
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1255:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-1253 |         defer { ReadinessTrustedPairing.tearDown(pair) }
-1254 |         let centralId = pair.viaAlice
-1255 |         var now = TimeInterval(1_700_000_000)
-     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
-1256 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
-1257 |                                sessions: pair.bobManager, managerFactory: CaptureFactory(),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
- 346 |         pins.append(req)
- 347 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 348 |                                              sourceEpoch: bob.currentTransportEpoch)
- 349 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift:372:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 370 |                 ReadinessT21Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
- 371 |         ]
- 372 |         _ = alice.processCentralDidDiscover(
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 373 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
- 374 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift:938:19: warning: value '_chain' was defined but never used; consider replacing with boolean test [#NoUsage]
- 936 |         let r = try rigT21()
- 937 |         defer { cleanup(r) }
- 938 |         guard let _chain = try driveToReady(r) else { return }
-     |                   `- warning: value '_chain' was defined but never used; consider replacing with boolean test [#NoUsage]
- 939 |         let beforeData = r.capturePeer.writes
- 940 |         let kindsBefore = beforeData.map { typeOfByte($0) }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift:992:19: warning: value '_chain' was defined but never used; consider replacing with boolean test [#NoUsage]
- 990 |         let censusA0 = r.alice.publishedRelationsForTest().count
- 991 |         let censusB0 = r.bob.publishedRelationsForTest().count
- 992 |         guard let _chain = try driveToReady(r) else { return }
-     |                   `- warning: value '_chain' was defined but never used; consider replacing with boolean test [#NoUsage]
- 993 |         XCTAssertTrue(waitUntil2 { !r.bobSpy.handshakeReadyPeers.isEmpty },
- 994 |                       "the completion hook must note the trusted passage")
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:345:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 343 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
- 344 |         pins.append(req)
- 345 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 346 |                                              sourceEpoch: bob.currentTransportEpoch)
- 347 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:369:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 367 |                 ReadinessT22Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
- 368 |         ]
- 369 |         _ = alice.processCentralDidDiscover(
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 370 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
- 371 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:741:23: warning: immutable value 'hs2' was never used; consider replacing with '_' or removing it [#NoUsage]
- 739 |     func testTheResponderIsNotTrustedByTheFirstNorTheSecondAloneAndNoDATARidesTheStream() throws {
- 740 |         let r = try rigT22()
- 741 |         guard let (_, hs2) = try driveToAnswered(r) else { return }
-     |                       `- warning: immutable value 'hs2' was never used; consider replacing with '_' or removing it [#NoUsage]
- 742 |         XCTAssertEqual(r.bob.connection(for: r.handleA)?.state, .handshakeInProgress)
- 743 |         XCTAssertFalse(r.pair.bobManager.isReady(r.handleA), "the first and second alone make no trust")
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:981:13: warning: variable 'bobIdentity' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 979 |         // right way: alice below bob. Search forward from the requested seed.
- 980 |         var aliceIdentity = try ReadinessTrustedPairing.makeIdentity(seedByte: seedA, staticPrivByte: privA)
- 981 |         var bobIdentity = try ReadinessTrustedPairing.makeIdentity(seedByte: seedB, staticPrivByte: privB)
-     |             `- warning: variable 'bobIdentity' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
- 982 |         var candidate = seedA
- 983 |         while ReadinessTrustedPairing.hintOrder(aliceIdentity.nodeHint, bobIdentity.nodeHint) != .orderedAscending {
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:1177:9: warning: using '_' to ignore the result of a Void-returning function is redundant
-1175 |         let adv: [String: Any] = [CBAdvertisementDataServiceDataKey:
-1176 |             [BleTransport.serviceUuid: ReadinessT22Tests.remoteLinkInfoStatic(hint: other)]]
-1177 |         _ = r.alice.processCentralDidDiscover(
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
-1178 |             cm,
-1179 |             peripheral: unsafeBitCast(r.capturePeer, to: CBPeripheral.self),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:289:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 287 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
- 288 |         pins.append(req)
- 289 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 290 |                                             sourceEpoch: bob.currentTransportEpoch)
- 291 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:328:9: warning: using '_' to ignore the result of a Void-returning function is redundant
- 326 |                 ReadinessT23Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
- 327 |         ]
- 328 |         _ = alice.processCentralDidDiscover(
-     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
- 329 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
- 330 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:538:62: warning: conditional downcast from 'ReadinessT23Tests.CapturePeripheralManager?' to 'ReadinessT23Tests.CapturePeripheralManager' does nothing
- 536 |     /// The captures of the responders outlet towards the initiator.
- 537 |     private func responderCaptures(_ r: T23Rig) -> [Data] {
- 538 |         guard let mgr = r.bobFactory.peripheralManagers.last as? CapturePeripheralManager else { return [] }
-     |                                                              `- warning: conditional downcast from 'ReadinessT23Tests.CapturePeripheralManager?' to 'ReadinessT23Tests.CapturePeripheralManager' does nothing
- 539 |         return mgr.capturedUpdates.filter { $0.central == r.handleA }.map { $0.bytes }
- 540 |     }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:547:47: warning: conditional downcast from 'ReadinessT23Tests.CapturePeripheralManager?' to 'ReadinessT23Tests.CapturePeripheralManager' does nothing
- 545 |     }
- 546 |     private func clearResponderCaptures(_ r: T23Rig) {
- 547 |         (r.bobFactory.peripheralManagers.last as? CapturePeripheralManager)?.clearCaptured()
-     |                                               `- warning: conditional downcast from 'ReadinessT23Tests.CapturePeripheralManager?' to 'ReadinessT23Tests.CapturePeripheralManager' does nothing
- 548 |     }
- 549 | 
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:820:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
- 818 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
- 819 |         // every echo it thereafter crafteth is an answer to THAT challenge.
- 820 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
-     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
- 821 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
- 822 |         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:897:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
- 895 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
- 896 |         // every echo it thereafter crafteth is an answer to THAT challenge.
- 897 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
-     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
- 898 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
- 899 |         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:942:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
- 940 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
- 941 |         // every echo it thereafter crafteth is an answer to THAT challenge.
- 942 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
-     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
- 943 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
- 944 |         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:981:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
- 979 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
- 980 |         // every echo it thereafter crafteth is an answer to THAT challenge.
- 981 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
-     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
- 982 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
- 983 |         }
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:1100:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
-1098 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
-1099 |         // every echo it thereafter crafteth is an answer to THAT challenge.
-1100 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
-     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
-1101 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
-1102 |         }
-
-[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
-[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BoundRecipientKeyResolverTests.swift:31:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  29 |         )
  30 |         let sig = try! signingKey.signature(for: preimage)
@@ -4072,6 +3790,288 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
+ 346 |         pins.append(req)
+ 347 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 348 |                                              sourceEpoch: bob.currentTransportEpoch)
+ 349 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:371:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 369 |                 ReadinessT20Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
+ 370 |         ]
+ 371 |         _ = alice.processCentralDidDiscover(
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 372 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
+ 373 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:690:13: warning: result of call to 'publishRelation' is unused [#NoUsage]
+ 688 |         }
+ 689 |         let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
+ 690 |         bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
+     |             `- warning: result of call to 'publishRelation' is unused [#NoUsage]
+ 691 |                                         generation: gen))
+ 692 |         XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:770:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 768 |         defer { ReadinessTrustedPairing.tearDown(pair) }
+ 769 |         let centralId = pair.viaAlice
+ 770 |         var now = TimeInterval(1_700_000_000)
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 771 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+ 772 |                                sessions: pair.bobManager, managerFactory: CaptureFactory(),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:801:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 799 |         defer { ReadinessTrustedPairing.tearDown(pair) }
+ 800 |         let centralId = pair.viaAlice
+ 801 |         var now = TimeInterval(1_700_000_000)
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 802 |         let recorder = T17DelegateSpy()
+ 803 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:849:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 847 |         defer { ReadinessTrustedPairing.tearDown(pair) }
+ 848 |         let centralId = pair.viaAlice
+ 849 |         var now = TimeInterval(1_700_000_000)
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 850 |         let recorder = T17DelegateSpy()
+ 851 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:899:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 897 |         defer { ReadinessTrustedPairing.tearDown(pair) }
+ 898 |         let centralId = pair.viaAlice
+ 899 |         var now = TimeInterval(1_700_000_000)
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 900 |         let recorder = T17DelegateSpy()
+ 901 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:935:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 933 |         defer { ReadinessTrustedPairing.tearDown(pair) }
+ 934 |         let centralId = pair.viaAlice
+ 935 |         var now = TimeInterval(1_700_000_000)
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 936 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+ 937 |                                sessions: pair.bobManager, managerFactory: CaptureFactory(),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:942:19: warning: value 'pm' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 940 |                                        remoteHint: pair.aliceIdentity.nodeHint,
+ 941 |                                        leaseClock: { now })
+ 942 |         guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
+     |                   `- warning: value 'pm' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 943 |         guard let conn = bob.connection(for: centralId) else {
+ 944 |             XCTFail("the responder has no connection"); return
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:943:19: warning: value 'conn' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 941 |                                        leaseClock: { now })
+ 942 |         guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
+ 943 |         guard let conn = bob.connection(for: centralId) else {
+     |                   `- warning: value 'conn' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 944 |             XCTFail("the responder has no connection"); return
+ 945 |         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1009:13: warning: result of call to 'publishRelation' is unused [#NoUsage]
+1007 |         guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
+1008 |         let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
+1009 |         bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
+     |             `- warning: result of call to 'publishRelation' is unused [#NoUsage]
+1010 |                                         generation: gen))
+1011 |         XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1000:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 998 |         defer { ReadinessTrustedPairing.tearDown(pair) }
+ 999 |         let centralId = pair.viaAlice
+1000 |         var now = TimeInterval(1_700_000_000)
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+1001 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+1002 |                                sessions: pair.bobManager, managerFactory: CaptureFactory(),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1007:19: warning: value 'pm' was defined but never used; consider replacing with boolean test [#NoUsage]
+1005 |                                        remoteHint: pair.aliceIdentity.nodeHint,
+1006 |                                        leaseClock: { now })
+1007 |         guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
+     |                   `- warning: value 'pm' was defined but never used; consider replacing with boolean test [#NoUsage]
+1008 |         let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
+1009 |         bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1046:13: warning: result of call to 'publishRelation' is unused [#NoUsage]
+1044 |         }
+1045 |         let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
+1046 |         bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
+     |             `- warning: result of call to 'publishRelation' is unused [#NoUsage]
+1047 |                                         generation: gen))
+1048 |         XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1078:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+1076 |         defer { ReadinessTrustedPairing.tearDown(pair) }
+1077 |         let centralId = pair.viaAlice
+1078 |         var now = TimeInterval(1_700_000_000)
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+1079 |         let recorder = T17DelegateSpy()
+1080 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1143:14: warning: result of call to 'publishRelation' is unused [#NoUsage]
+1141 |         }
+1142 |         let genA = bobA.peripheralDriver?.getCentralGeneration(pairA.viaAlice) ?? 0
+1143 |         bobA.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: pairA.viaAlice,
+     |              `- warning: result of call to 'publishRelation' is unused [#NoUsage]
+1144 |                                          generation: genA))
+1145 |         XCTAssertTrue(bobA.isRelationPublished(direction: .inboundPeripheral,
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT20Tests.swift:1255:13: warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+1253 |         defer { ReadinessTrustedPairing.tearDown(pair) }
+1254 |         let centralId = pair.viaAlice
+1255 |         var now = TimeInterval(1_700_000_000)
+     |             `- warning: variable 'now' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+1256 |         let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+1257 |                                sessions: pair.bobManager, managerFactory: CaptureFactory(),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift:347:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 345 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
+ 346 |         pins.append(req)
+ 347 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 348 |                                              sourceEpoch: bob.currentTransportEpoch)
+ 349 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift:372:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 370 |                 ReadinessT21Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
+ 371 |         ]
+ 372 |         _ = alice.processCentralDidDiscover(
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 373 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
+ 374 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift:938:19: warning: value '_chain' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 936 |         let r = try rigT21()
+ 937 |         defer { cleanup(r) }
+ 938 |         guard let _chain = try driveToReady(r) else { return }
+     |                   `- warning: value '_chain' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 939 |         let beforeData = r.capturePeer.writes
+ 940 |         let kindsBefore = beforeData.map { typeOfByte($0) }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift:992:19: warning: value '_chain' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 990 |         let censusA0 = r.alice.publishedRelationsForTest().count
+ 991 |         let censusB0 = r.bob.publishedRelationsForTest().count
+ 992 |         guard let _chain = try driveToReady(r) else { return }
+     |                   `- warning: value '_chain' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 993 |         XCTAssertTrue(waitUntil2 { !r.bobSpy.handshakeReadyPeers.isEmpty },
+ 994 |                       "the completion hook must note the trusted passage")
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:345:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 343 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
+ 344 |         pins.append(req)
+ 345 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 346 |                                              sourceEpoch: bob.currentTransportEpoch)
+ 347 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:369:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 367 |                 ReadinessT22Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
+ 368 |         ]
+ 369 |         _ = alice.processCentralDidDiscover(
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 370 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
+ 371 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:741:23: warning: immutable value 'hs2' was never used; consider replacing with '_' or removing it [#NoUsage]
+ 739 |     func testTheResponderIsNotTrustedByTheFirstNorTheSecondAloneAndNoDATARidesTheStream() throws {
+ 740 |         let r = try rigT22()
+ 741 |         guard let (_, hs2) = try driveToAnswered(r) else { return }
+     |                       `- warning: immutable value 'hs2' was never used; consider replacing with '_' or removing it [#NoUsage]
+ 742 |         XCTAssertEqual(r.bob.connection(for: r.handleA)?.state, .handshakeInProgress)
+ 743 |         XCTAssertFalse(r.pair.bobManager.isReady(r.handleA), "the first and second alone make no trust")
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:981:13: warning: variable 'bobIdentity' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 979 |         // right way: alice below bob. Search forward from the requested seed.
+ 980 |         var aliceIdentity = try ReadinessTrustedPairing.makeIdentity(seedByte: seedA, staticPrivByte: privA)
+ 981 |         var bobIdentity = try ReadinessTrustedPairing.makeIdentity(seedByte: seedB, staticPrivByte: privB)
+     |             `- warning: variable 'bobIdentity' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+ 982 |         var candidate = seedA
+ 983 |         while ReadinessTrustedPairing.hintOrder(aliceIdentity.nodeHint, bobIdentity.nodeHint) != .orderedAscending {
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift:1177:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+1175 |         let adv: [String: Any] = [CBAdvertisementDataServiceDataKey:
+1176 |             [BleTransport.serviceUuid: ReadinessT22Tests.remoteLinkInfoStatic(hint: other)]]
+1177 |         _ = r.alice.processCentralDidDiscover(
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+1178 |             cm,
+1179 |             peripheral: unsafeBitCast(r.capturePeer, to: CBPeripheral.self),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:289:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 287 |         let req = CaptureRequest(centralId: centralId, pinnedCentral: pinned, value: bytes)
+ 288 |         pins.append(req)
+ 289 |         _ = bob.processPeripheralReceiveWrite(pm, requests: [unsafeBitCast(req, to: CBATTRequest.self)],
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 290 |                                             sourceEpoch: bob.currentTransportEpoch)
+ 291 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:328:9: warning: using '_' to ignore the result of a Void-returning function is redundant
+ 326 |                 ReadinessT23Tests.remoteLinkInfoStatic(hint: serviceDataHint)]
+ 327 |         ]
+ 328 |         _ = alice.processCentralDidDiscover(
+     |         `- warning: using '_' to ignore the result of a Void-returning function is redundant
+ 329 |             cm, peripheral: unsafeBitCast(capturePeer, to: CBPeripheral.self),
+ 330 |             advertisementData: advRecord, rssi: NSNumber(value: -60),
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:538:62: warning: conditional downcast from 'ReadinessT23Tests.CapturePeripheralManager?' to 'ReadinessT23Tests.CapturePeripheralManager' does nothing
+ 536 |     /// The captures of the responders outlet towards the initiator.
+ 537 |     private func responderCaptures(_ r: T23Rig) -> [Data] {
+ 538 |         guard let mgr = r.bobFactory.peripheralManagers.last as? CapturePeripheralManager else { return [] }
+     |                                                              `- warning: conditional downcast from 'ReadinessT23Tests.CapturePeripheralManager?' to 'ReadinessT23Tests.CapturePeripheralManager' does nothing
+ 539 |         return mgr.capturedUpdates.filter { $0.central == r.handleA }.map { $0.bytes }
+ 540 |     }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:547:47: warning: conditional downcast from 'ReadinessT23Tests.CapturePeripheralManager?' to 'ReadinessT23Tests.CapturePeripheralManager' does nothing
+ 545 |     }
+ 546 |     private func clearResponderCaptures(_ r: T23Rig) {
+ 547 |         (r.bobFactory.peripheralManagers.last as? CapturePeripheralManager)?.clearCaptured()
+     |                                               `- warning: conditional downcast from 'ReadinessT23Tests.CapturePeripheralManager?' to 'ReadinessT23Tests.CapturePeripheralManager' does nothing
+ 548 |     }
+ 549 | 
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:820:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 818 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+ 819 |         // every echo it thereafter crafteth is an answer to THAT challenge.
+ 820 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 821 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+ 822 |         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:897:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 895 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+ 896 |         // every echo it thereafter crafteth is an answer to THAT challenge.
+ 897 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 898 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+ 899 |         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:942:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 940 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+ 941 |         // every echo it thereafter crafteth is an answer to THAT challenge.
+ 942 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 943 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+ 944 |         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:981:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 979 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+ 980 |         // every echo it thereafter crafteth is an answer to THAT challenge.
+ 981 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+ 982 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+ 983 |         }
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift:1100:19: warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+1098 |         // this rig no longer issueth one: it READETH the challenge the product put on the wire, and
+1099 |         // every echo it thereafter crafteth is an answer to THAT challenge.
+1100 |         guard let challenge = initiatorConnection(r)?.keyConfirmation.outstanding() else {
+     |                   `- warning: value 'challenge' was defined but never used; consider replacing with boolean test [#NoUsage]
+1101 |             XCTFail("the trusted-ready transition issued no challenge; ring: " + ringOf(r.alice)); return
+1102 |         }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
 [67 / 69] GodstoneMeshTests-product
 [70 / 74] LabMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/LabMeshTests/LabMeshAppTests.swift:85:24: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
@@ -4085,4 +4085,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.29 secs)
+Build complete! (10.40 secs)

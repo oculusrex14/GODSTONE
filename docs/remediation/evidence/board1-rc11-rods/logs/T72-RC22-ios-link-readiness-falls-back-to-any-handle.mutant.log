@@ -1,16 +1,16 @@
-Test Suite 'Selected tests' started at 2026-10-01 10:03:33.613.
-Test Suite 'LabMeshTests.xctest' started at 2026-10-01 10:03:33.618.
-Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 10:03:33.618.
+Test Suite 'Selected tests' started at 2026-10-01 14:10:10.582.
+Test Suite 'LabMeshTests.xctest' started at 2026-10-01 14:10:10.588.
+Test Suite 'LabMeshTests.xctest' passed at 2026-10-01 14:10:10.588.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 10:03:33.618.
+Test Suite 'Selected tests' passed at 2026-10-01 14:10:10.588.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
-Test Suite 'Selected tests' started at 2026-10-01 10:03:33.656.
-Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 10:03:33.661.
-Test Suite 'GsIntegration001RealTransportTests' started at 2026-10-01 10:03:33.661.
+Test Suite 'Selected tests' started at 2026-10-01 14:10:10.624.
+Test Suite 'GodstoneMeshTests.xctest' started at 2026-10-01 14:10:10.630.
+Test Suite 'GsIntegration001RealTransportTests' started at 2026-10-01 14:10:10.630.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' passed (0.009 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable]' passed (0.008 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterCommitLeavesTheRowAndRefusesTheReplay]' passed (0.006 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ADistinctFrameIsStillAdmittedAfterARefusal]' started.
@@ -18,21 +18,21 @@ Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AD
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AFrameForAnotherRecipientIsHeldAndRelayedButNotDelivered]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' passed (0.030 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions]' passed (0.022 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' passed (0.005 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ALoweredWipeGateRefusesSensitiveWorkThroughTheRealTransportNode]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AMalformedFrameIsRefusedRatherThanGuessedAt]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AnInboundDeliveryIsCommittedExactlyOnce]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' started.
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift:1248: error: -[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle] : XCTAssertFalse failed - *** THE SECOND HOP MUST NOT BE READY WHILE ITS HANDSHAKE IS HELD ON THE RADIO QUEUE. THE OLD PREDICATE WOULD HAVE SAID OTHERWISE, and that is the hosted failure. Detail: opener=n2 peer=n3 handle=A9698049-BBA2-42C1-AD57-1911BBAA0243 transportRoster=[E9752981-965A-4947-8E72-F2436453E128] routeEligible=[E9752981-965A-4947-8E72-F2436453E128] epoch=1 fabric=6 ring= ***
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift:1248: error: -[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle] : XCTAssertFalse failed - *** THE SECOND HOP MUST NOT BE READY WHILE ITS HANDSHAKE IS HELD ON THE RADIO QUEUE. THE OLD PREDICATE WOULD HAVE SAID OTHERWISE, and that is the hosted failure. Detail: opener=n2 peer=n3 handle=B2C16744-D324-4124-A50A-6120850A37E4 transportRoster=[322D136A-9A12-4843-AB44-8702FA2EE589] routeEligible=[322D136A-9A12-4843-AB44-8702FA2EE589] epoch=1 fabric=6 ring= ***
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift:1276: error: -[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle] : XCTAssertEqual failed: ("queuedLocally") is not equal to ("handedToRelays(1)") - the frame must be handed to its one relay; observed queuedLocally
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift:1278: error: -[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle] : XCTAssertGreaterThan failed: ("0") is not greater than ("0") - and the egress window must be non-zero
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsIntegration001RealTransportTests.swift:1279: error: -[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle] : XCTAssertTrue failed - *** AND THE FRAME MUST REACH ITS RECIPIENT'S TERMINAL ADMISSION THROUGH THE SECOND HOP. census=Optional(GodstoneMesh.InboxCensus(hintHits: 0, hintMissesUnsealed: 0, unsealedAccepted: 0, verificationRejections: 0, policyRejections: 0, committedNew: 0, committedDuplicate: 0, acksIssued: 0, acksRefusedQuota: 0, acksRefusedKey: 0, acksRefusedSelfVerify: 0, storageFailures: 0)) ring= ***
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' failed (3.128 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle]' failed (2.944 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' passed (0.069 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001ATwoRelationResponderNeverCrossDelivers]' passed (0.065 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001AWrongPeerHintIsRefusedByTheRealHandshakeAndTheRightOneEstablishes]' passed (0.014 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001HarnessStandsOnTheRealTransport]' started.
@@ -44,7 +44,7 @@ Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001Re
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheNodeIsTheRealTransportsDelegate]' passed (0.003 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' passed (0.022 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRigDeallocatesAfterTeardownEvenWithAPendingDelivery]' passed (0.032 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testGSINT001TheRuntimeSurvivesALostLinkAndStillServesItsDurableRoad]' passed (0.004 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneCannotManufactureLinkReadiness]' started.
@@ -52,15 +52,15 @@ Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefault
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' started.
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheDefaultLaneTwinOfTheARBFrameIngestsNothing]' passed (0.010 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.013 seconds).
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheManagerFactoryOverrideIsTheEpochsSourceAndTheTransportStaysProduction]' passed (0.012 seconds).
 Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' started.
-Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' passed (0.005 seconds).
-Test Suite 'GsIntegration001RealTransportTests' failed at 2026-10-01 10:03:37.026.
-	 Executed 22 tests, with 4 failures (0 unexpected) in 3.363 (3.365) seconds
-Test Suite 'GodstoneMeshTests.xctest' failed at 2026-10-01 10:03:37.026.
-	 Executed 22 tests, with 4 failures (0 unexpected) in 3.363 (3.365) seconds
-Test Suite 'Selected tests' failed at 2026-10-01 10:03:37.026.
-	 Executed 22 tests, with 4 failures (0 unexpected) in 3.363 (3.371) seconds
+Test Case '-[GodstoneMeshTests.GsIntegration001RealTransportTests testTheRealCompositionBuildsOnDiskStoresAndTheProductionLifecycle]' passed (0.006 seconds).
+Test Suite 'GsIntegration001RealTransportTests' failed at 2026-10-01 14:10:13.805.
+	 Executed 22 tests, with 4 failures (0 unexpected) in 3.174 (3.175) seconds
+Test Suite 'GodstoneMeshTests.xctest' failed at 2026-10-01 14:10:13.805.
+	 Executed 22 tests, with 4 failures (0 unexpected) in 3.174 (3.175) seconds
+Test Suite 'Selected tests' failed at 2026-10-01 14:10:13.805.
+	 Executed 22 tests, with 4 failures (0 unexpected) in 3.174 (3.181) seconds
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
@@ -78,11 +78,11 @@ CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
 CRYPTO-005 fresh-file step: revision=0 from=0 creatingTables=true statements=6
-Test Suite 'Selected tests' started at 2026-10-01 10:03:37.077.
-Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 10:03:37.082.
-Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 10:03:37.082.
+Test Suite 'Selected tests' started at 2026-10-01 14:10:13.856.
+Test Suite 'GodstoneCoreTests.xctest' started at 2026-10-01 14:10:13.862.
+Test Suite 'GodstoneCoreTests.xctest' passed at 2026-10-01 14:10:13.862.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
-Test Suite 'Selected tests' passed at 2026-10-01 10:03:37.082.
+Test Suite 'Selected tests' passed at 2026-10-01 14:10:13.862.
 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
 Note: Some test targets reported failures:
   - GodstoneMeshTests (XCTest)
@@ -560,8 +560,9 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[33 / 38] GodstoneMesh
 [34 / 38] GodstoneMesh
-[35 / 39] GodstoneMesh/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift:8:16: warning: stored property 'peripheral' of 'Sendable'-conforming struct 'OutboundPhysicalLifetime' contains non-Sendable type 'CBPeripheral'; this is an error in the Swift 6 language mode
    6 |     public let relationKey: RelationKey
    7 |     public let transportEpoch: UInt64
    8 |     public let peripheral: CBPeripheral?
@@ -795,7 +796,7 @@ Building for debugging...
 
 [#AddPreconcurrencyImport]: <https://docs.swift.org/compiler/documentation/diagnostics/add-preconcurrency-import>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
-
+[35 / 39] GodstoneMesh
 [48 / 52] GodstoneMesh
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift:173:27: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
 171 |             if let estateRoot {
@@ -806,6 +807,21 @@ Building for debugging...
 175 |             }
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 42 |     public let msgId: Data
+ 43 |     public let state: DeliveryState
+ 44 |     public let frame: FrameV2
+    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 45 |     /// When this node committed the pair, when it remembers; nil when the
+ 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
+
+/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift:143:13: warning: variable 'bloom' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
 141 |         let nodeHint = identity.nodeHint
 142 |         var count = 0
@@ -832,21 +848,6 @@ Building for debugging...
 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 42 |     public let msgId: Data
- 43 |     public let state: DeliveryState
- 44 |     public let frame: FrameV2
-    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
- 45 |     /// When this node committed the pair, when it remembers; nil when the
- 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
-
-/Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  5 | 
-  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
-  7 | public struct FrameV2: Equatable {
-    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
-  8 |     public static let magic: UInt16 = 0x4753
-  9 |     public static let version: UInt8 = 0x02
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift:78:16: warning: stored property 'apply' of 'Sendable'-conforming struct 'MigrationStep' contains non-Sendable type '(any MigrationExecutor) -> ()'; this is an error in the Swift 6 language mode
  76 |     public let to: Int
  77 |     public let statements: [String]
@@ -3077,7 +3078,6 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [51 / 55] GodstoneMeshTests-product
-[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/GsUx001TrustSurfaceTests.swift:46:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
  44 |         )
  45 |         let sig = try! signingKey.signature(for: preimage)
@@ -3096,6 +3096,7 @@ Building for debugging...
 
 [#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+[62 / 66] GodstoneMeshTests-product
 /Users/oculus/.cache/godstone-mutation-worktrees/wt_T72-RC22-ios-link-readiness-falls-back-to-any-handle/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift:34:23: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
   32 |         )
   33 |         let sig = try! signingKey.signature(for: preimage)
@@ -4098,4 +4099,4 @@ GodstoneMesh.RealTransportHostRig:1:20: note: class 'RealTransportHostRig' does 
 [#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
 [72 / 76] LabMeshTests-product
 [77 / 79] LabMeshTests-product
-Build complete! (10.43 secs)
+Build complete! (10.36 secs)
