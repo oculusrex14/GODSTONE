@@ -184,15 +184,22 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
         sosTab.tap()
         for (identifier, label) in essentialRoster where identifier.hasPrefix("lab.sos") {
-            // *** MEASURED: `lab.sos.cancel` IS A BUTTON, NOT A STATIC TEXT. *** *The first version of this roster
-            // looked only in `staticTexts`/`otherElements`, so the cancel control was reported ABSENT while it had
-            // been rendered the whole time -- a query that looketh in the WRONG PLACE, which is the exact
-            // false-alarm shape the sibling bundle already recorded for the tab bar. So the BUTTON road is tried
-            // first and the container road (the hold gesture) second.*
-            let asButton = app.buttons[identifier]
-            let holdText = app.staticTexts[identifier]
-            let holdOther = app.otherElements[identifier]
-            let control = asButton.exists ? asButton : (holdText.exists ? holdText : holdOther)
+            // *** RESOLVED TYPE-AGNOSTICALLY, AND THAT IS A FIX, NOT A TIDY-UP. ***
+            //
+            // *MEASURED, HOSTED RUN `36826192610`: this arm failed on `lab.sos.hold` with
+            // "THE ESSENTIAL CONTROL 'lab.sos.hold' ('Distress call') MUST BE REACHABLE", after the 20s wait polled
+            // `"lab.sos.hold" Other` the whole time.* **THE OLD CODE PROBED THREE ROADS ONCE -- `asButton.exists ?
+            // asButton : (holdText.exists ? holdText : holdOther)` -- AND BOUND `control` FROM THAT SINGLE SNAPSHOT.**
+            // *When it ran before the SOS surface had rendered, ALL THREE probes were false, so `control` bound to
+            // `otherElements` -- A QUERY THAT CAN NEVER MATCH, because `lab.sos.hold` is rendered as a `Text`
+            // (LabMeshRootApp.swift: it is a `Text("HOLD TO ARM")` with the identifier attached). The 20s wait then
+            // polled the WRONG ROAD for its whole duration and failed.*
+            //
+            // **SO THE ROAD IS NO LONGER GUESSED: `element(_:in:)` matcheth ANY descendant by identifier, so it
+            // cannot bind to a road the control was never rendered on.** *The wait therefore polls the control itself,
+            // and the sibling comment's lesson -- "a query that looketh in the WRONG PLACE is the exact false-alarm
+            // shape" -- is honoured by not having three places to look at all.*
+            let control = element(identifier, in: app)
             XCTAssertTrue(
                 control.waitForExistence(timeout: 20),
                 "*** THE ESSENTIAL CONTROL '\(identifier)' ('\(label)') MUST BE REACHABLE ON THE SOS SURFACE. ***",
