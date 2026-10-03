@@ -1093,10 +1093,17 @@ final class ReadinessT50Tests: XCTestCase {
         XCTAssertNil(scene.error,
                      "*** AND NO WHOLE-ROAD WOE IS SPOKEN: `error`/`.unavailable` are for the DOCUMENT road's "
                          + "failures; a citation woe must not be dressed as one, nor name a search. ***")
-        if case .queryFailed = scene.metadataError! {
+        // Retain the named failure and close the library if the fault was swallowed.
+        // A force unwrap here would abort XCTest before its result tally.
+        guard let carriedFault = scene.metadataError else {
+            XCTFail("the carried fault must be the typed woe the checked path met, got nil")
+            await library.close()
+            return
+        }
+        if case .queryFailed = carriedFault {
             // the taxonomy the checked path met, carried through untouched
         } else {
-            XCTFail("the carried fault must be the typed woe the checked path met, got \(scene.metadataError!)")
+            XCTFail("the carried fault must be the typed woe the checked path met, got \(carriedFault)")
         }
         await library.close()
     }

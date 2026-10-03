@@ -296,11 +296,12 @@ final class NativeConnectionRepairTests: XCTestCase {
         DispatchQueue.global().async {
             _ = try? owned.usingConnection { _ in
                 entered.signal()
-                release.wait()
+                _ = release.wait(timeout: .now() + 5)
             }
             useDone.signal()
         }
-        entered.wait()
+        XCTAssertEqual(.success, entered.wait(timeout: .now() + 2),
+                       "*** the held use must reach the critical section -- bounded, so a mis-driven arm reddens rather than hangs ***")
         XCTAssertEqual(owned.activeUsesForTest, 1, "the use must be observably in flight before close is attempted")
 
         let closeReturned = DispatchSemaphore(value: 0)
@@ -313,17 +314,102 @@ final class NativeConnectionRepairTests: XCTestCase {
         )
 
         release.signal()
-        useDone.wait()
+        XCTAssertEqual(.success, useDone.wait(timeout: .now() + 2),
+                       "the held use must return once released (bounded)")
         XCTAssertEqual(.success, closeReturned.wait(timeout: .now() + 2), "close completes once the use drains")
         XCTAssertTrue(owned.isClosed)
 
         // *** AND A POST-CLOSE USE IS A TYPED REFUSAL, NOT A STALE-HANDLE DISPATCH. ***
         XCTAssertThrowsError(try owned.usingConnection { _ in 0 },
-                             "a use after close must be REFUSED (ownerClosed), never dispatched to SQLite")
+                             "a use after close must be REFUSED (ownerClosed), never dispatched to SQLite") { error in
+            XCTAssertEqual(
+                error as? StoreConnectionError, .ownerClosed,
+                "*** THE POST-CLOSE REFUSAL MUST NAME THE TYPED `.ownerClosed` GATE -- a bare `throws` is not the claim. "
+                    + "The mutant `NCR-03` neuters the admission (`beginUse() || true`), so NO error is thrown at all and "
+                    + "this assertion reddens. ***",
+            )
+        }
         XCTAssertEqual(
             0, owned.activeUsesForTest,
             "and it must not have incremented the use count",
         )
+
+        // ================================================================================================
+        // *** PHASE B -- THE **STORE'S** OWN THROWING ROAD MUST ADMIT ITSELF AGAINST THE OWNER'S USE/CLOSE CRITICAL
+        // SECTION. ***
+        //
+        // *A DIRECT `owned.usingConnection` arm cannot see the SQLITE-REVIEW-2 hole: what `MessageStore.withDbThrowing`
+        // carrieth is that its THROWING operations skip the owner's admission and dispatch `dbSectionThrowing`
+        // directly. So this phase drives the REAL adopted store's intent reader -- through `withDbThrowing` -- and
+        // holds it INSIDE the fault seam (a deterministically bounded in-flight point) while a concurrent `close()` is
+        // attempted.*
+        //
+        // **A STORE OPERATION THAT SKIPS THE ADMISSION LEAVES `activeUsesForTest` AT 0 AND LETS `close()` FREE THE
+        // NATIVE HANDLE IMMEDIATELY -- the two named assertions below then redden (the mutant `NCR-01`).** *The hold
+        // is released before any further statement runs, so the mutant is observed by a bounded use-count/close
+        // discriminator rather than by a crash.*
+        // ================================================================================================
+        let pathB = ncrTempPath("close-wait-store")
+        ncrMakeDir(pathB)
+        defer { _ = SqliteMessageStore.panicWipe(at: URL(fileURLWithPath: pathB)) }
+        let dekB = StoreDEK(bytes: Data(repeating: 0x4D, count: 32))
+        let ownedB = try engine.openOwnedForWriting(path: pathB, dek: dekB)
+        let storeB = SqliteMessageStore(verifiedConnection: ownedB, maxBytes: 64 * 1024 * 1024)
+        guard case .opened = storeB.openOutcome else {
+            return XCTFail("the adopted store must open: \(storeB.openOutcome)")
+        }
+
+        let enteredB = DispatchSemaphore(value: 0)
+        let releaseB = DispatchSemaphore(value: 0)
+        let opDoneB = DispatchSemaphore(value: 0)
+        // SQLITE_DONE -- a real, non-throwing absence answer, so the body runs to its `defer { finalize }` on release.
+        storeB.intentReadFaultForTest = { enteredB.signal(); _ = releaseB.wait(timeout: .now() + 5); return 101 }
+        DispatchQueue.global().async {
+            _ = try? storeB.readIntent(ncrMsgId(0x40))
+            opDoneB.signal()
+        }
+        XCTAssertEqual(.success, enteredB.wait(timeout: .now() + 2),
+                       "*** the held store operation must reach the fault seam -- bounded, so a mis-driven arm reddens rather than hangs ***")
+        XCTAssertEqual(
+            ownedB.activeUsesForTest, 1,
+            "*** A **STORE** THROWING OPERATION MUST ADMIT ITSELF AGAINST THE OWNER'S USE/CLOSE CRITICAL SECTION. "
+                + "*`withDbThrowing` must run its body INSIDE `owner.usingConnection`; a store whose throwing path "
+                + "dispatched `dbSectionThrowing` directly would leave the use count at 0 -- exactly the SQLITE-REVIEW-2 "
+                + "hole this arm witnesses (the mutant `NCR-01`).* ***",
+        )
+        guard ownedB.activeUsesForTest == 1 else {
+            // *** BOUNDED AND ATTRIBUTABLE (NCR-01). *** *The named assertion above IS the witness. A store operation
+            // that SKIPPED the owner's admission has already let a concurrent `close()` free the native handle; do NOT
+            // dispatch another store statement here (it would answer through a closed handle, or hang on the store's
+            // own lock when the peer-transaction mutant is in force). Release the in-flight use and stop at the red we
+            // caused, so the roster reports an assertion failure rather than a timeout.*
+            releaseB.signal()
+            return
+        }
+
+        let closeReturnedB = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async { _ = ownedB.close(); closeReturnedB.signal() }
+        XCTAssertEqual(
+            .timedOut, closeReturnedB.wait(timeout: .now() + 0.3),
+            "*** `close()` MUST WAIT FOR A **STORE** OPERATION, NOT MERELY A DIRECT `usingConnection`. *If the store's "
+                + "throwing body skipped the owner's admission, close would free the native handle out from under an "
+                + "open statement and return at once -- this assertion reddens (the mutant `NCR-01`).* ***",
+        )
+        releaseB.signal()
+        XCTAssertEqual(.success, opDoneB.wait(timeout: .now() + 2),
+                       "the held store operation must return once released (bounded)")
+        storeB.intentReadFaultForTest = nil
+        XCTAssertEqual(.success, closeReturnedB.wait(timeout: .now() + 2),
+                       "close completes once the store operation drains")
+        XCTAssertTrue(ownedB.isClosed)
+
+        // *** AND A POST-CLOSE USE OF THE SECOND OWNER IS THE SAME TYPED REFUSAL (`{ _ in 0 }` -- NO native dispatch). ***
+        XCTAssertThrowsError(try ownedB.usingConnection { _ in 0 },
+                             "*** a use after the second owner's close must be REFUSED ***") { error in
+            XCTAssertEqual(error as? StoreConnectionError, .ownerClosed,
+                           "*** the second owner must surface the SAME typed `.ownerClosed` gate (the mutant `NCR-03`). ***")
+        }
+        XCTAssertEqual(0, ownedB.activeUsesForTest, "and the refused use must not have counted")
     }
 
     // ================================================================================================
@@ -788,11 +874,20 @@ final class NativeConnectionRepairTests: XCTestCase {
             }) ?? -2
             done.signal()
         }
+        let settled = done.wait(timeout: .now() + 5)
         XCTAssertEqual(
-            .success, done.wait(timeout: .now() + 5),
+            .success, settled,
             "*** A REAL PEER `inImmediateTransaction` MUST COMPLETE. *The old body took the store's non-recursive NSLock "
                 + "in `usingConnection` and THEN again in `transactionSection`, so every binding/approve/confirm/revoke "
                 + "HUNG before BEGIN IMMEDIATE. A `close`-from-another-worker test cannot see this reentrant deadlock.* ***")
+        guard settled == .success else {
+            // *** BOUNDED AND ATTRIBUTABLE (NCR-11). *** *The named assertion above IS the witness. On the
+            // reentrant-deadlock mutant the worker thread still HOLDS the store's non-recursive `NSLock`, so
+            // dispatching ANOTHER store verb here (the durability re-read below) would block this thread for ever and
+            // the roster would TIMEOUT instead of reporting an attributable assertion failure. We therefore stop at the
+            // red we caused, with NO further native dispatch.*
+            return
+        }
         XCTAssertEqual(affected, 1, "the transaction must have committed its insert")
         XCTAssertEqual(try store.readRaw(node)?.signingPublicKeyRaw, sign, "and the row must be durable")
         store.close()

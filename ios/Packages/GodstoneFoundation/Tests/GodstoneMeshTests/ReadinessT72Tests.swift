@@ -220,6 +220,26 @@ final class ReadinessT72Tests: XCTestCase {
         XCTAssertTrue(unmeasured.unmeasuredOwners.contains { $0.contains("TimerWheel") },
                       "\(unmeasured.unmeasuredOwners)")
         XCTAssertFalse(unmeasured.failures.contains { $0.contains("TimerWheel") })
+
+        // Exercise the reservation census default rather than a copied sentinel.
+        // A silent owner must remain unmeasured, not silently report zero leaks.
+        let defaulted = StressCampaign(seed: 29, cycles: 64,
+                                       owners: [W15cSilentOwner("TimerWheel(default)")]).run()
+        XCTAssertTrue(defaulted.unmeasuredOwners.contains { $0.contains("TimerWheel(default)") },
+                      "the protocol's own default must answer NOT_MEASURED, never a convenient zero: "
+                      + "\(defaulted.unmeasuredOwners)")
+        XCTAssertTrue(defaulted.unmeasuredInvariants.contains(Invariants.noLeakedReservations),
+                      "and a silent owner leaveth the reservation kind NAMED unmeasured: "
+                      + "\(defaulted.unmeasuredInvariants)")
+        XCTAssertFalse(defaulted.failures.contains { $0.contains("TimerWheel(default)") },
+                       "an unmeasured owner is NAMED, never accused of a leak it did not report: \(defaulted.failures)")
+    }
+
+    /// Leaves the reservation census hook at its protocol default.
+    private final class W15cSilentOwner: ResourceCensusSource {
+        let ownerName: String
+        init(_ name: String) { self.ownerName = name }
+        func liveSessionSlots() -> Int { 0 }
     }
 
     // ------------------------------------------------------------ W10

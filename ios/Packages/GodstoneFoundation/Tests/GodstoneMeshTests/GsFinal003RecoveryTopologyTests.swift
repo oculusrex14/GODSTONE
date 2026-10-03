@@ -320,6 +320,28 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         /// STATED EXPLICITLY: this journal keepeth TYPED values, so it IS readable by construction --
         /// and the protocol's fail-closed default would otherwise report it CORRUPT.
         var isReadable: Bool { true }
+
+        // *** IOS-R3: MODEL THE PRODUCTION MEDIUM'S *UNSYNCHRONIZED* WRITE. ***
+        //
+        // *The production `FileWipeJournal` makes a dropped write's bytes VISIBLE while its DIRECTORY fsync refuses
+        // the receipt -- the finding's own sentence. A court fake that always answered `synchronized: true` could not
+        // express that state, so `dropCheckedAfter` limits how many CHECKED writes really synchronize: later ones leave
+        // the typed state standing (VISIBLE) and answer `synchronized: false`, exactly as the file journal does under a
+        // directory-fsync fault.* **The typed state advancing while the receipt refuses is the whole point: a
+        // coordinator that ignores the refusal sees the ladder advance to IDLE over an unacknowledged record.**
+        var dropCheckedAfter: Int? = nil
+        private var checkedWrites = 0
+        @discardableResult
+        func writeChecked(_ s: WipeState) -> DurableWriteResult {
+            // THE BYTES BECOME VISIBLE REGARDLESS -- that is the medium's honest behaviour, and the reason a
+            // visible-but-unsynchronized record is the dangerous case rather than an absent one.
+            write(s)
+            checkedWrites += 1
+            if let limit = dropCheckedAfter, checkedWrites > limit {
+                return DurableWriteResult(synchronized: false, epoch: durableEpoch)
+            }
+            return DurableWriteResult(synchronized: true, epoch: durableEpoch)
+        }
     }
 
     /// A journal whose DURABLE VALUE cannot be parsed -- the real `UserDefaultsWipeJournal` case, which
@@ -744,6 +766,26 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         XCTAssertTrue(outcome.isComplete,
                       "*** COMPLETE MEANETH BOTH HALVES: the typed decision AND the measured artifacts. Observed: "
                       + "\(outcome.summaryWords) ***")
+        // *** AND THE OTHER HALF IS ASSERTED WHERE IT CAN DISAGREE (IOS-R4). ***
+        //
+        // *The drive above leaves BOTH halves holding, which is the positive control -- but a property is proven by
+        // its NEGATIVE case too, and `isComplete`'s whole meaning is that the two halves are CONJOINED. Here they are
+        // made to disagree: a typed decision that reached `wipeCompleted` while a private artifact still stands. It
+        // must NOT be complete. **A mutant that drops `artifactsRemaining.isEmpty` answers `true` -- a completion
+        // rendered over a store that survived, which is the "plausible-looking success" the doctrine names** -- and a
+        // property that answered `true` for every input would be exactly the always-zero instrument these arms
+        // exist to refuse.* (The sibling court `ReadinessT56Tests` drives the SAME `isComplete` in the same shape,
+        // so this is the type's own established discriminator rather than a court convenience.)*
+        XCTAssertFalse(
+            RecoveryLadderOutcome(decision: .wipeCompleted, rungs: [],
+                                  artifactsRemaining: ["mesh.db"]).isComplete,
+            "*** A `wipeCompleted` DECISION WITH AN ARTIFACT STILL STANDING IS NOT COMPLETE (IOS-R4): the filesystem "
+            + "half is MEASURED, not inferred from the typed rung. A mutant that dropped `artifactsRemaining.isEmpty` "
+            + "would answer `true` here. ***")
+        XCTAssertFalse(
+            RecoveryLadderOutcome(decision: .recoveryPending(reason: "still draining"), rungs: ["REQUESTED"],
+                                  artifactsRemaining: []).isComplete,
+            "and a pending decision with nothing remaining is not complete either -- neither half alone sufficeth")
         XCTAssertFalse(outcome.artifactsRemaining.contains("mesh.db"),
                        "no message store may remain: \(outcome.remainingWords)")
         XCTAssertFalse(outcome.artifactsRemaining.contains("peer.db"),
@@ -1080,8 +1122,17 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
     // MARK: - (8) IOS-R1/R2/R3/R5/R7/R8: THE FOCUSED DISCRIMINATORS
 
     /// A journal that drops every write after the first `committed` one -- the IOS-R3 mutation in a store.
+    ///
+    /// *** THE VISIBLE VALUE AND THE ACKNOWLEDGED VALUE ARE DIFFERENT THINGS (IOS-R3), AND THIS STORE MODELS BOTH. ***
+    /// *`lines` carrieth every rung that REACHED the medium (a dropped write's bytes still stand -- the finding's own
+    /// words: "persist now returns false on file/directory synchronization failure, but write discards it"), while
+    /// `committed` carrieth only the rungs the store ACKNOWLEDGED. `readJournal()` answereth the VISIBLE log, which is
+    /// what the coordinator's `current()` reads; `committedJournal` is the acknowledgment the ladder must not advance
+    /// past.* **So a coordinator that honours the refusal stops at the last COMMITTED rung, and one that ignores it
+    /// walks the whole visible ladder to IDLE and publishes an identity -- measured, not asserted.***
     private final class DroppingJournal: WipeDurabilityStore, WipeEpochReporting {
         private var lines: [String] = []
+        private var committed: [String] = []
         private let commitAtMost: Int
         private var writes = 0
         private var epoch: UInt64 = 0
@@ -1090,20 +1141,24 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         var durableEpoch: UInt64? { epoch }
         func bumpEpoch() -> UInt64? { epoch &+= 1; return epoch }
         func readJournal() -> [String] { lines }
+        /// *** THE ACKNOWLEDGED RUNGS ALONE -- the durable record the ladder may not advance past. ***
+        var committedJournal: [String] { committed }
         func appendJournal(_ stateName: String) -> WipeDurableCheckpoint {
             writes += 1
             guard let rung = WipeJournalState.fromWire(stateName) else {
                 return .refused(rung: nil, reason: "not a ladder stage")
             }
-            guard writes <= commitAtMost else {
-                return .refused(rung: rung, reason: "the durable write was dropped")
-            }
+            // THE BYTES STAND ON THE MEDIUM REGARDLESS: a dropped write is VISIBLE, merely unacknowledged.
             lines.append(stateName)
+            guard writes <= commitAtMost else {
+                return .refused(rung: rung, reason: "the durable write was dropped before it synchronized")
+            }
+            committed.append(stateName)
             return .committed(generation: epoch, rung: rung)
         }
         /// *** AN EXPLICIT TYPED COURT FAKE: it answers its OWN medium, so its commits ARE acknowledged. ***
         func readDurable() -> (state: WipeState, epoch: UInt64?)? {
-            guard let last = lines.last, let s = WipeState(rawValue: last) else { return (.idle, epoch) }
+            guard let last = committed.last, let s = WipeState(rawValue: last) else { return (.idle, epoch) }
             return (s, epoch)
         }
     }
@@ -1163,25 +1218,102 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
             "*** THE RETAINED GATE MUST OBSERVE A WIPE REQUESTED THROUGH ANOTHER OWNER (IOS-R2): the gate answers "
             + "from the LIVE journal, not a birth-time snapshot. A cached-array read would still answer `true`. ***")
         XCTAssertTrue(retained.isWipePending, "and the pending state is read live")
+
+        // *** AND THE ARTIFACT SEAM'S ORACLE IS READ LIVE TOO -- THE OTHER HALF OF IOS-R2. ***
+        //
+        // *The gate above answereth `allowsSensitiveApi()`; the artifact seam answereth `isReadable(_:)`, and the
+        // review's own sentence names THIS one: "an artifact stays readable during another owner's wipe". The
+        // coordinator above carrieth a DEFERRED filesystem (it owns no real paths), so the seam is built here over a
+        // REAL `WipeJournalDurabilityAdapter` on the SAME journal -- a real file stands, and the SAME seam object
+        // must answer readable while the record is clean and UNREADABLE the instant another owner's wipe carrieth
+        // the record past `KEYS_ERASED`, with no new seam constructed in between. **A seam that cached its rung
+        // array (or snapshotted it at birth) would answer `true` after the request and redden exactly here.**
+        let dir = tempDir("retained_artifact")
+        defer { cleanup(dir) }
+        let artifact = dir.appendingPathComponent("mesh.db")
+        try? Data(repeating: 0x44, count: 64).write(to: artifact)
+        // *The seam holds the journal WEAKLY (`[weak journal]`), so the adapter is retained HERE: a seam whose
+        // store had been deallocated would answer `[]` to every oracle question -- readable for ever -- and the
+        // arm would measure a dead reference rather than the live read.*
+        let liveAdapter = WipeJournalDurabilityAdapter(journal: journal)
+        let liveFs = WipeArtifactFileSystemSeam(
+            journal: liveAdapter,
+            realPaths: ["mesh.db": artifact])
+        XCTAssertTrue(liveFs.isReadable("mesh.db"),
+                      "the artifact is readable while the durable record stands below KEYS_ERASED")
+        journal.write(.keyErased)
+        XCTAssertFalse(
+            liveFs.isReadable("mesh.db"),
+            "*** THE ARTIFACT SEAM MUST READ THE DURABLE RECORD LIVE (IOS-R2): after ANOTHER owner's wipe carried the "
+            + "record past KEYS_ERASED, the SAME seam object must report the artifact UNREADABLE -- a cached rung "
+            + "array would still answer `true`, leaving the wiped ciphertext readable to its retained owner. ***")
     }
 
     /// *** IOS-R3: A DROPPED TERMINAL WRITE MUST NOT REACH IDLE NOR PUBLISH AN IDENTITY. ***
     func testGSFINAL003_aDroppedTerminalCheckpointNeverSettles() throws {
-        // REQUESTED commits; every later checkpoint is dropped.
-        let store = DroppingJournal(commitAtMost: 1)
+        // REQUESTED and RUNTIME_DRAINED commit; every later checkpoint is dropped-but-VISIBLE.
+        let store = DroppingJournal(commitAtMost: 2)
         let authority = RecordingIdentityAuthority()
         let wipe = CrashResumableWipe(
             store: store, vault: RecordingVault(),
-            filesystem: WipeDeferredArtifactFileSystemSeam(),
-            runtime: WipeDeferredTransportSeam(), authority: authority)
+            filesystem: SatisfiedFilesystem(),
+            runtime: DrainingTransport(), authority: authority)
         _ = try? wipe.requestWipe()
         XCTAssertTrue(wipe.isWipePending,
                       "*** THE WIPE MUST STAY PENDING: a terminal write that never committed must not advance the "
                       + "cached ladder to IDLE (IOS-R3). ***")
-        XCTAssertEqual(store.readJournal(), ["REQUESTED"],
-                       "and the durable record stands at the last COMMITTED rung")
+        XCTAssertEqual(store.committedJournal, ["REQUESTED", "RUNTIME_DRAINED"],
+                       "and only the COMMITTED rungs may advance the ladder -- the durable record stands at the last "
+                       + "acknowledged rung")
+        XCTAssertEqual(store.readJournal(), ["REQUESTED", "RUNTIME_DRAINED", "KEYS_ERASED"],
+                       "*** AND THE DROPPED WRITE'S BYTES ARE STILL VISIBLE ON THE MEDIUM: *that is what maketh the "
+                       + "refusal load-bearing rather than academic -- the coordinator's `current()` reads this "
+                       + "VISIBLE value, so a mutant that honoured the visible rung instead of the acknowledgment "
+                       + "would walk the rest of the ladder to IDLE and report a settled estate. The committed view "
+                       + "above is the acknowledgment it must obey.* ***")
         XCTAssertEqual(authority.publications, 0,
                        "*** AND NO IDENTITY MAY BE PUBLISHED FROM AN UNCOMMITTED TERMINAL STATE. ***")
+
+        // *** AND THE SAME LAW AT THE *STORE* BOUNDARY -- ON A LADDER THAT REALLY REACHES THE TERMINAL WRITE. ***
+        //
+        // *The block above stops at the DRAIN rung (the deferred transport never drains), so it exercises the
+        // pending clause but NEVER the terminal write -- and it is a TERMINAL write the rod's name and the finding
+        // both name.* **So the `RecoveryJournal` medium is driven again with SATISFIED seams, so the ladder runs past
+        // the drain to `NEW_IDENTITY` -- and there a checked write DROPS (the bytes stay VISIBLE, the receipt
+        // REFUSES). TWO INDEPENDENT GUARDS must then hold:**
+        //   * `WipeJournalDurabilityAdapter.appendJournal` must NOT fabricate `.committed` for an unsynchronized
+        //     write (its `written.synchronized` guard); and
+        //   * `CrashResumableWipe` must NOT advance the cached ladder -- nor allow ordinary use -- on a refusal
+        //     (its `case .committed =` guard).
+        // *A mutant that stubs EITHER guard is caught by this clause: the fabricated receipt by the first, the
+        // uncommitted terminal advance by the second. The terminal rungs are reachable because the drain, key and
+        // artifact seams all satisfy -- the refusal comes from the medium alone.*
+        // The journal starts CLEAN so `requestWipe` records REQUESTED itself; checked writes #1..#4 (REQUESTED,
+        // RUNTIME_DRAINED, KEYS_ERASED, ARTIFACTS_DELETED) synchronize, and the TERMINAL `NEW_IDENTITY` write (#5)
+        // is the one that drops -- so the ladder really reach the terminal rung whose acknowledgment is refused.
+        let terminalJournal = RecoveryJournal()
+        terminalJournal.dropCheckedAfter = 4
+        let terminalAuthority = RecordingIdentityAuthority()
+        let terminalWipe = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: terminalJournal),
+            vault: RecordingVault(),
+            filesystem: SatisfiedFilesystem(),
+            runtime: DrainingTransport(), authority: terminalAuthority)
+        _ = try? terminalWipe.requestWipe()
+        XCTAssertTrue(terminalWipe.isWipePending,
+                      "*** A DROPPED TERMINAL WRITE MUST KEEP THE WIPE PENDING (IOS-R3): the ladder may not advance "
+                      + "past an unacknowledged checkpoint to IDLE. ***")
+        XCTAssertEqual(
+            terminalJournal.writeLog.last, WipeState.newIdentity.rawValue,
+            "*** THE REFUSED RUNG'S BYTES ARE VISIBLE ON THE MEDIUM (the finding's own 'visible but unsynced' case) "
+            + "-- so a cached ladder advancing here would be a REAL defect, not an artifact of an invisible write. "
+            + "Observed: \(terminalJournal.writeLog) ***")
+        XCTAssertFalse(
+            terminalWipe.allowsSensitiveApi(),
+            "*** AND THE GATE MUST STAY CLOSED OVER AN UNCOMMITTED TERMINAL (IOS-R3). *A mutant that fabricates the "
+            + "acknowledgment (or ignores the refusal) writes IDLE over the visible record, and the durable medium "
+            + "then ANSWERETH IDLE -- opening ordinary use over material the wipe never settled.* Observed record: "
+            + "\(terminalJournal.writeLog) ***")
     }
 
     /// *** IOS-R5 / IOS-FOLLOWUP-C5: ONLY A *PHYSICALLY VERIFIED* ESTATE MAY CLAIM COLD. ***
@@ -1365,6 +1497,48 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         func eraseKey(_ name: String) -> KeyDeletionResult { .deleted }
     }
 
+    /// *** IOS-R5: A LIVE RADIO THAT WILL NOT QUIESCE -- `drainTransport()` answereth `.notDrained`. ***
+    ///
+    /// *The IOS-R5 finding's own object: an estate that positively owns a live transport whose barriered drain does
+    /// NOT return. The governing seam must consult THIS (through `estate.liveTransport`) before the owner-drain, so a
+    /// wipe cannot advance over a radio still carrying traffic.*
+    private final class NotDrainingTransport: TransportRuntimeSeam {
+        func drainTransport() -> RuntimeDrainReceipt {
+            .notDrained(reason: "a live radio still carrieth traffic")
+        }
+        func isQuiesced() -> Bool { false }
+        func fireRadio(_ msg: String) -> Bool { false }
+        func sendVia(_ msg: String) -> Bool { false }
+    }
+
+    /// *** THE SATISFIED TRANSPORT: `drainTransport()` answereth `.drained` AND `isQuiesced()` is true. ***
+    ///
+    /// *The IOS-R3 focus arms must reach the TERMINAL rungs -- the coordinator's acknowledgment guard lives there --
+    /// so the drain rung must pass. A deferred transport (which never drains) cannot do that, and using one would
+    /// leave the guard unreachable and the rod unaimable.*
+    private final class DrainingTransport: TransportRuntimeSeam {
+        func drainTransport() -> RuntimeDrainReceipt {
+            .drained(closedTransports: 1, quiescedRuntime: true)
+        }
+        func isQuiesced() -> Bool { true }
+        func fireRadio(_ msg: String) -> Bool { false }
+        func sendVia(_ msg: String) -> Bool { false }
+    }
+
+    /// *** THE SATISFIED FILESYSTEM: every enumerated artifact answereth `.deleted`. ***
+    ///
+    /// *The terminal rungs need the cleanup to satisfy, so the ladder can reach the rung whose write the IOS-R3 guard
+    /// governs. The artifact NAMES are taken from the scope the coordinator iterates, so no deletion exceeds it.*
+    private final class SatisfiedFilesystem: ArtifactFileSystemSeam {
+        private(set) var deleted: [String] = []
+        func deleteArtifact(_ path: String) -> FileDeletionResult {
+            deleted.append(path)
+            return .deleted
+        }
+        func exists(_ path: String) -> Bool { false }
+        func isReadable(_ path: String) -> Bool { false }
+    }
+
     /// *** IOS-R5: A LIVE OWNER THAT CANNOT BE DRAINED MUST KEEP THE WIPE PENDING -- never advance over it. ***
     ///
     /// *THE FINDING: the recovery entry drained a FRESH `BleTransport()` whose barrier "immediately succeeds ... without
@@ -1403,6 +1577,44 @@ final class GsFinal003RecoveryTopologyTests: XCTestCase {
         }
         XCTAssertTrue(FileManager.default.fileExists(atPath: msg.path),
                       "and the live owner's artifact must NOT be deleted while it is still live")
+
+        // *** (b) THE ESTATE'S OWN LIVE TRANSPORT IS THE FIRST AND GOVERNING ANSWER -- IOS-R5's OWN SENTENCE. ***
+        //
+        // *THE FINDING: the recovery entry drained a FRESH `BleTransport()` "without touching the estate's live
+        // transport".* **So here the estate POSITIVELY owns a live transport whose radio will not quiesce, and its
+        // owner-drain (which is consulted SECOND, and only when the live transport agrees) answereth `.cold` -- the
+        // estate owns no registered owner besides the live radio.** *Only the LIVE TRANSPORT may decide this rung:
+        // skip it and the cold owner-drain advances a wipe over a live radio. **The coordinator's wrapper must
+        // therefore consult `estate.liveTransport` FIRST; a mutant that stubs that consultation out reaches
+        // `wipeCompleted` over a radio still carrying traffic, and this arm reddens.***
+        struct LiveRadioEstate: MeshRuntime.RecoveryEstate {
+            let artifactPaths: [String: URL]
+            let keychain: any LocalIdentityKeychain = RecoveryKeychain()
+            let dekProvider: (any PrivateStoreKeyProvider)? = nil
+            var liveTransport: TransportRuntimeSeam? { NotDrainingTransport() }
+            func drainOwners() -> OwnerDrainResult {
+                .cold(reason: "no registered owner besides the live radio")
+            }
+        }
+        let dir2 = tempDir("live_radio")
+        defer { cleanup(dir2) }
+        let msg2 = dir2.appendingPathComponent("mesh.db")
+        let peer2 = dir2.appendingPathComponent("peer.db")
+        try Data(repeating: 0x33, count: 32).write(to: msg2)
+        try Data(repeating: 0x44, count: 32).write(to: peer2)
+        let journal2 = RecoveryJournal()
+
+        let driven2 = MeshRuntime.runRecoveryLadderInternal(
+            journal: journal2,
+            estate: LiveRadioEstate(artifactPaths: MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg2, peerStoreUrl: peer2)),
+            requestFresh: true)
+        XCTAssertNotEqual(
+            driven2.outcome.decision, .wipeCompleted,
+            "*** THE ESTATE'S OWN LIVE TRANSPORT DECIDES THE DRAIN RUNG (IOS-R5): a radio that will not quiesce must "
+            + "keep the wipe PENDING even when the estate's owner-drain would answer cold -- a completion here means "
+            + "`estate.liveTransport` was never consulted. Observed: \(driven2.outcome.decision.name) ***")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: msg2.path),
+                      "and the live radio's artifact must NOT be deleted while its transport stands")
     }
 
     // MARK: - (9) IOS-FOLLOWUP-C2/C3: THE FILE JOURNAL'S OWN RECEIPTS, AND THE RESTART UNDER DRAIN
