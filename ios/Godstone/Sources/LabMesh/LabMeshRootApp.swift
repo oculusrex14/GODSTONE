@@ -1158,22 +1158,13 @@ struct LabDiagnosticsView: View {
                 .font(.footnote)
                 .accessibilityIdentifier("lab.diagnostics.startuprecovery")
 
-            // *** *** GS-UX-001 / IOS-FOLLOWUP-C1, RENDERED: THE DURABLE GENERATION THE MEDIUM ACKNOWLEDGED. *** ***
-            //
-            // *THE GAP THIS CLOSES, MEASURED: the durable-acknowledgment road was asserted only in-process, and **NO
-            // RENDERED SURFACE NAMED THE ACKNOWLEDGED GENERATION**, so no witness driving THIS APP could bind the
-            // number across a terminate/reopen.* **The read is `WipeJournalDurabilityAdapter.durableEpoch` over the
-            // SAME journal the ladder writeth, so it answereth a generation only when the record's phase-stamped suffix
-            // EQUALS the durable floor -- and `unacknowledged` when the record is unreadable or unpinned, which is the
-            // honest word rather than a fabricated 0.** *A fresh process that re-renders the SAME number proveth the
-            // acknowledgment reached the medium; a surface that held it in memory would read `unacknowledged` here.*
-            Text(LabRuntime.acknowledgedGenerationWords())
+            // One medium snapshot binds both readouts across process relaunch.
+            let durableWipe = LabRuntime.durableWipeWords()
+            Text(durableWipe.generation)
                 .font(.footnote)
                 .accessibilityIdentifier("lab.diagnostics.generation")
 
-            // *** AND THE RUNG THE RECORD CARRIETH NOW, WITHOUT THE PERSISTED-OUTCOME FALLBACK -- THE CROSS-PROCESS
-            // INSTRUMENT rather than the human-facing one. ***
-            Text(LabRuntime.durableLiveRungWords())
+            Text(durableWipe.rung)
                 .font(.footnote)
                 .accessibilityIdentifier("lab.diagnostics.liverung")
 

@@ -1129,38 +1129,23 @@ public final class LabRuntime: @unchecked Sendable {
         return decision.requiresOperator ? decision.name + " -- operator required" : decision.name
     }
 
-    /// *** GS-UX-001 / IOS-FOLLOWUP-C1, RENDERED: THE DURABLE GENERATION THE MEDIUM ITSELF ACKNOWLEDGES -- OR THE
-    /// WORDS THAT SAY IT DOES NOT. ***
-    ///
-    /// *THE GAP THIS CLOSES, MEASURED: the whole durable-acknowledgment road (`establishBaseline`'s checked epoch
-    /// rise, `settledSnapshot`'s pinned `(idle, N)`, `bumpEpoch`'s refuse-when-history-cannot-name-a-counter`) lived in
-    /// the module and was asserted only by in-process courts. **NO RENDERED SURFACE NAMED THE ACKNOWLEDGED GENERATION
-    /// AT ALL**, so no process witness could bind it across a terminate/reopen: an arm could see a permit, a rung and
-    /// an artifact list, but never the NUMBER the medium acknowledged -- and a number a surface cannot name is a number
-    /// a fresh process cannot prove it read.*
-    ///
-    /// **THE READ IS THE ADAPTER'S OWN, OVER THE SAME JOURNAL THE LADDER WRITETH** -- `WipeJournalDurabilityAdapter`
-    /// (`durableEpoch` -> `FileWipeJournal.durableEpoch` -> `parseEpoch`), so it answereth a generation ONLY when the
-    /// record's phase-stamped suffix EQUALS the durable floor (CURRENT-01/02: a suffix-less or floor-disagreeing record
-    /// is UNPINNED and names nothing). *`nil` is therefore not an error path but the honest word: an unreadable or
-    /// unpinned record acknowledged no generation, and the surface sayeth so rather than printing a fabricated 0.*
-    public static func acknowledgedGenerationWords() -> String {
-        let adapter = WipeJournalDurabilityAdapter(journal: labWipeJournal())
-        guard let generation = adapter.durableEpoch else { return "generation: unacknowledged" }
-        return "generation: " + String(generation) + " (acknowledged)"
-    }
-
-    /// *** AND THE RUNG THE MEDIUM CARRIETH *RIGHT NOW*, DISTINCT FROM THE TYPED DECISION. ***
-    ///
-    /// *`wipeStateName()` and `recoveryRungWords()` render the rung from the durable journal too, but each carrieth a
-    /// PERSISTED-OUTCOME FALLBACK for the one fact the journal cannot express (a finished ladder collapseth to an empty
-    /// view). That fallback is right for a human reading the screen; it is NOT right for an arm that must bind the
-    /// MEDIUM's own answer across a process, because after a completed wipe it would name the previous process's cached
-    /// outcome rather than the empty record the medium really carrieth.* **So this read is the raw durable view: the
-    /// rung the record standeth at, or a word that sayeth none stands -- never a recollection.***
-    public static func durableLiveRungWords() -> String {
-        let rung = WipeJournalDurabilityAdapter(journal: labWipeJournal()).readJournal().last
-        return rung.map { "rung: " + $0 } ?? "rung: none read"
+    /// Read generation and rung from one durable snapshot, without opening private stores.
+    /// An unpinned record names no acknowledged generation; no persisted outcome is substituted.
+    public static func durableWipeWords() -> (generation: String, rung: String) {
+        let snapshot = labWipeJournal().readDurable()
+        let generation: String
+        if let epoch = snapshot?.epoch {
+            generation = "generation: " + String(epoch) + " (acknowledged)"
+        } else {
+            generation = "generation: unacknowledged"
+        }
+        let rung: String
+        if let state = snapshot?.state, state != .idle {
+            rung = "rung: " + WipeJournalDurabilityAdapter.stage(forState: state)
+        } else {
+            rung = "rung: none read"
+        }
+        return (generation, rung)
     }
 
     /// *** GS-UX-001 `rendered-controls`: THE DISTRESS STATE, READ FROM THE DELIVERY ROW AND SPOKEN IN THE SHARED
