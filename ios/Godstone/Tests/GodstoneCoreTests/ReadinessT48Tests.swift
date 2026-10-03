@@ -388,6 +388,9 @@ final class ReadinessT48Tests: XCTestCase {
                 self.waiting.append(continuation)
             }
         }
+        /// The conformer must say which of the two it meaneth: this rig hath no provenance
+        /// table at all, so every row it could name is genuinely uncited -- absence, not a fault.
+        nonisolated func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata? { nil }
         func arrivedCount() -> Int { waiting.count }
         func complete(_ result: Result<ArchivePage, Error>) {
             guard !waiting.isEmpty else { return }

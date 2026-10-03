@@ -73,9 +73,11 @@ final class ReadinessT23Tests: XCTestCase {
             lk.lock(); stored.append(data); lk.unlock()
         }
         @objc func discoverServices(_ services: [CBUUID]) {}
-        @objc func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
+        @objc(discoverCharacteristics:forService:)
+        func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
         @objc func readRSSI() {}
-        @objc func readCharacter(_ characteristic: CBCharacteristic) {}
+        @objc(readValueForCharacteristic:)
+        func readValue(for characteristic: CBCharacteristic) {}
         @objc(setNotifyValue:forCharacteristic:)
         func setNotifyValue(_ v: Bool, for characteristic: CBCharacteristic) {}
         var writes: [Data] {
@@ -333,7 +335,12 @@ final class ReadinessT23Tests: XCTestCase {
         _ = alice.processCentralConnect(
             peerId: peerId, peripheral: nil,
             sourceEpoch: alice.currentTransportEpoch, from: cm)
-        _ = alice.processPeripheralDiscoverServices(nil, delegate: delegate, error: nil)
+        // *** THE SIMULATED PERIPHERAL MUST EXPOSE THE MESH SERVICE BEFORE THE DISCOVERY IS REPORTED. *** *The
+        // reduction no longer coerces an un-observ'd `services` to success -- that was the defect -- so the peripheral
+        // the walk reports really carrieth the provisioned mesh service.*
+        capturePeer.services = [ReadinessT23Tests.provisionedService()]
+        _ = alice.processPeripheralDiscoverServices(
+            unsafeBitCast(capturePeer, to: CBPeripheral.self), delegate: delegate, error: nil)
         _ = alice.processPeripheralDiscoverCharacteristics(nil, delegate: delegate,
                                                           service: ReadinessT23Tests.provisionedService(), error: nil)
         let linkInfoChar = CBMutableCharacteristic(

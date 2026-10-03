@@ -74,9 +74,29 @@ public protocol PrivateStoreKeyProvider: AnyObject {
     /// Destroy the DEK for `tag`; after this the encrypted stores are cryptographically
     /// erased and MUST NOT be reopenable. Idempotent.
     func deleteDEK(tag: String) throws
+    /// Destroy all private store DEKs across both "message-store" and "peer-identity-store"
+    /// under the authoritative physical capability service. Idempotent.
+    func eraseAllPrivateStoreDEKs() throws
+    /// *** THE DURABLE DEK KEY DOMAIN THIS PROVIDER IS THE AUTHORITY FOR. ***
+    /// *`PhysicalEstateAuthority.beginConstruction` binds a construction lease to ONE key domain, and the factory
+    /// claims every admitted open against `provider.physicalKeyDomain` INSIDE that section -- so a lease issued for
+    /// one key domain cannot ask a DIFFERENT provider for the estate's DEK, and the claim is refused typed before
+    /// any Keychain verb runs.*
+    var physicalKeyDomain: String { get }
     /// Apply `protection` at-rest to the store files at `paths`. MUST NOT swallow an
     /// attribute-set error: a failure returns `ProtectionResult.failure`, never `.success`.
     func applyFileProtection(paths: [String], protection: FileProtectionClass) -> ProtectionResult
+}
+
+extension PrivateStoreKeyProvider {
+    public func eraseAllPrivateStoreDEKs() throws {
+        try deleteDEK(tag: "message-store")
+        try deleteDEK(tag: "peer-identity-store")
+    }
+    /// The default domain is the production DEK service: an unopposed conformer IS that service's shape, and a
+    /// court that drives the sealed lease passes `provider.physicalKeyDomain` to `beginConstruction`, so the pair
+    /// can never silently drift apart.
+    public var physicalKeyDomain: String { "io.godstone.private-store.dek" }
 }
 
 /// The production Keychain adapter. DEK items are stored under the ThisDeviceOnly
@@ -86,12 +106,16 @@ public protocol PrivateStoreKeyProvider: AnyObject {
 /// and its error -- if any -- is returned as a typed failure rather than discarded.
 internal final class DefaultPrivateStoreKeyProvider: PrivateStoreKeyProvider, @unchecked Sendable {
     public var dekByteCount: Int { 32 }   // AES-256 key width
+    internal static let privateStoreService = "io.godstone.private-store.dek"
+    internal var physicalKeyDomain: String { Self.privateStoreService }
+
 
     internal init() {}
 
     internal func fetchDEK(tag: String) throws -> StoreDEK {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.privateStoreService,
             kSecAttrAccount as String: tag,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
@@ -115,6 +139,7 @@ internal final class DefaultPrivateStoreKeyProvider: PrivateStoreKeyProvider, @u
         let dek = Self.randomDEK(byteCount: dekByteCount)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.privateStoreService,
             kSecAttrAccount as String: tag,
             kSecValueData as String: dek.bytes,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
@@ -127,12 +152,18 @@ internal final class DefaultPrivateStoreKeyProvider: PrivateStoreKeyProvider, @u
     internal func deleteDEK(tag: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.privateStoreService,
             kSecAttrAccount as String: tag,
         ]
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw StoreKeyError.keychainUnavailable
         }
+    }
+
+    internal func eraseAllPrivateStoreDEKs() throws {
+        try deleteDEK(tag: "message-store")
+        try deleteDEK(tag: "peer-identity-store")
     }
 
     internal func applyFileProtection(paths: [String], protection: FileProtectionClass) -> ProtectionResult {

@@ -12,7 +12,45 @@ final class ReadinessT34Tests: XCTestCase {
     fileprivate final class T34Store: WipeDurabilityStore {
         var lines: [String] = []
         func readJournal() -> [String] { lines }
-        func appendJournal(_ stateName: String) { lines.append(stateName) }
+        /// *** IOS-R3: THE CHECKED APPEND. *** *`T34Store` keepeth a plain array, so a write always "committeth" --
+        /// but the ack is the SHAPE production consumeth, so the court speaketh it too. The LAST stage is the
+        /// committed rung.*
+        func appendJournal(_ stateName: String) -> WipeDurableCheckpoint {
+            lines.append(stateName)
+            let rung = WipeJournalState.fromWire(stateName)
+            return .committed(generation: 0, rung: rung ?? .requested)
+        }
+        /// Explicit typed court fake: answers its own medium.
+        ///
+        /// *** THE WIRE NAME IS THE COORDINATOR'S ("RUNTIME_DRAINED"); THE JOURNAL'S TYPED STATE IS camelCase
+        /// ("runtimeDrained") -- SO `WipeState(rawValue:)` ALONE PARSED NOTHING HERE. ***
+        ///
+        /// *`lines` carrieth the STAGE names the coordinator appended, so `WipeState(rawValue: "RUNTIME_DRAINED")` was
+        /// `nil`; the guard fell to `(.idle, 0)` and this fake reported EVERY MID-LADDER ESTATE AS IDLE. That made
+        /// `allowsSensitiveApi()`/`allowsStartup()` read a PENDING wipe as a settled one and OPEN the gate -- MEASURED:
+        /// the four arms that assert "the gate stays closed across the retry/pending" reddened at exactly that
+        /// assertion, while the rung-level arms (which read `lines` directly) stayed green. **The mapping is the
+        /// adapter's OWN (`state(forStage:)`), read rather than re-derived -- a second vocabulary here would be a
+        /// second place for the two to disagree.***
+        func readDurable() -> (state: WipeState, epoch: UInt64?)? {
+            guard let last = lines.last else { return (.idle, 0) }
+            return (WipeJournalDurabilityAdapter.state(forStage: last) ?? .idle, 0)
+        }
+        /// *** IOS-R3 (fail-closed) + IOS-FOLLOWUP-H1: A COURT FAKE MUST ANSWER THE MEDIUM, AND *EXPLICITLY* ANSWER
+        /// THE READABILITY QUESTION WITH IT. ***
+        ///
+        /// *`WipeDurabilityStore.isReadable` FAILS CLOSED (`false`), and `CrashResumableWipe.isSupportedJournal()`
+        /// folds it with `readDurable() != nil`. THIS FAKE ANSWERED BOTH `readJournal()` AND `readDurable()` -- its
+        /// medium is its own array -- yet stayed SILENT on readability, so the fold reported the journal
+        /// UNREADABLE and EVERY drive of the ladder refused with "journal carries an unsupported state; refusing to
+        /// guess" (MEASURED: 91 red assertions across 12 of this court's 13 arms). **A double that keeps the medium
+        /// but does not SAY it is readable is indistinguishable from a corrupt journal, and the production reader is
+        /// RIGHT to refuse it.** The medium here is a typed in-memory array that cannot hold an unparseable value, so
+        /// readability is TRUE by construction -- exactly as `RecordingJournal` (CrashStartupResumeTests) and
+        /// `T80Journal` already state. NOTE the distinction from a real corrupt-record arm: those inject
+        /// `isReadable == false` DELIBERATELY (see `testLegacyJournalHonoredAndUnsupportedVersionRefused`, which
+        /// asserts an unsupported journal refuses) -- this fake is simply not one of them.*
+        var isReadable: Bool { true }
     }
 
     // ---- key vault: scripted failures; absent keys are satisfied ---------------------
@@ -181,7 +219,14 @@ final class ReadinessT34Tests: XCTestCase {
     // (4) permanent key failure refuses the wipe: no artifacts deleted, no new runtime
     func testPermanentKeyDeletionFailureRefusesAndKeepsArtifactsAndNoNewRuntime() throws {
         let rig = T34Rig(crashBefore: nil)
-        rig.vault.permanent.insert("store-dek")
+        // *** THE NAME MUST BE ONE `WipeScope.privateKeys` ACTUALLY CARRIETH: IOS-R4 SPLIT THE OLD `"store-dek"` INTO
+        // `"store-dek-message"`/`"store-dek-peer"`, and `PermanentKeyDeletionFailureRefuses…`'s `insert("store-dek")`
+        // therefore matched NO NAME THE LADDER ERASES -- the T34Vault's `eraseKey` was never called with it, so the
+        // "non-retryable key failure" NEVER FIRED and the ladder ran to a FALSE `IDLE` (MEASURED: journal
+        // `[REQUESTED, RUNTIME_DRAINED, KEYS_ERASED, ARTIFACTS_DELETED, NEW_IDENTITY, IDLE]`, `authority.published`
+        // non-empty, `mesh.db` deleted). The court's own subject is "a permanent key failure REFUSES"; the name must
+        // be the real one. (`CrashStartupResumeTests`' `GSFINAL002` fake already carries this exact note.) ***
+        rig.vault.permanent.insert(WipeScope.privateKeys[0])
         let e = rig.engine()
         let r = try e.requestWipe()
         XCTAssertTrue(isRefused(r), "a non-retryable key failure REFUSES")
@@ -330,11 +375,26 @@ final class ReadinessT34Tests: XCTestCase {
         // read a FINISHED wipe's journal, which is why it could not see the checkpoint it was asking about). THE COURT'S
         // OWN TECHNIQUE, READ RATHER THAN REINVENTED: inject the crash where you want the ladder to STOP. ***
         let rig = T34Rig(crashBefore: "KEYS_ERASED")
-        // THE **PRODUCTION** JOURNAL ITSELF, IN ITS OWN SUITE: `UserDefaultsWipeJournal` is the field-proven
-        // implementation the composition carrieth, and putting it in a private suite meaneth this arm measures the REAL
-        // durable object rather than a double -- and touches no other domain.
-        let suite = try XCTUnwrap(UserDefaults(suiteName: "gsstore006-\(UUID().uuidString)"))
-        let journal = UserDefaultsWipeJournal(defaults: suite)
+        // *** THE JOURNAL IS THE PRODUCTION `FileWipeJournal`, NOT `UserDefaultsWipeJournal` (MEASURED, CORRECTED). ***
+        //
+        // *THE ARM'S OWN SUBJECT IS "THE DRAIN IS WRITTEN DOWN IN THE PRODUCTION JOURNAL'S OWN TYPED STATE -- it is
+        // the checkpoint a crash resumeth from" -- and `UserDefaultsWipeJournal` CANNOT VOUCH FOR ITS MEDIUM: its
+        // `readDurable()` takes the protocol's FAIL-CLOSED default (`nil`), so `WipeJournalDurabilityAdapter.isReadable`
+        // is FALSE and the coordinator REFUSES every drive with "journal carries an unsupported state; refusing to
+        // guess" BEFORE the first rung (MEASURED, and CORRECT: a cache cannot vouch). *The comment that stood here
+        // called `UserDefaultsWipeJournal` "the field-proven implementation the composition carrieth" -- but the
+        // composition carrieth `FileWipeJournal` (`MeshRuntime.createArchiveOnlyHostComposition`'s default is
+        // `FileWipeJournal.standard()`), and `FileWipeJournal` is the one that really re-readeth the filesystem and
+        // answers `readDurable()`. **So the arm now uses the journal the composition ACTUALLY runs, and the arm's
+        // subject -- that the drain reach ETH the durable medium in its own typed state -- becometh measurable.***
+        let journalURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gsstore006-real-\(UUID().uuidString).wipe-journal")
+        defer {
+            try? FileManager.default.removeItem(at: journalURL)
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: journalURL.path + ".epoch"))
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: journalURL.path + ".unacked"))
+        }
+        let journal = FileWipeJournal(url: journalURL)
         let adapter = WipeJournalDurabilityAdapter(journal: journal)
         let engine = CrashResumableWipe(store: adapter, vault: rig.vault, filesystem: rig.fs,
                                         runtime: rig.runtime, authority: rig.authority, hooks: rig.hook)
@@ -394,8 +454,27 @@ final class ReadinessT34Tests: XCTestCase {
         let stages: [WipeState] = [.requested, .runtimeDrained, .keyErased, .artifactsDeleted, .newIdentity]
 
         for stage in stages {
-            let suite = try XCTUnwrap(UserDefaults(suiteName: "gsstore006-crash-\(UUID().uuidString)"))
-            let journal = UserDefaultsWipeJournal(defaults: suite)
+            // *** THE JOURNAL IS THE PRODUCTION `FileWipeJournal`, WHICH IS THE ONE THAT CAN VOUCH FOR ITS MEDIUM. ***
+            //
+            // *THIS ARM'S SUBJECT IS THE LADDER, NOT A CACHE. It drove `UserDefaultsWipeJournal`, whose
+            // `readDurable()` takes the protocol's FAIL-CLOSED default (`nil`) -- so `WipeJournalDurabilityAdapter
+            // .isReadable` was FALSE and `resume()` REFUSED every planted checkpoint with "journal carries an
+            // unsupported state; refusing to guess" (MEASURED). **That refusal is production being CORRECT: a
+            // cache cannot vouch for the medium. But it made this arm measure the wrong thing -- it asserted the
+            // ladder's stop for every stage, while the ladder never STARTED.** `FileWipeJournal` is the durable
+            // medium the composition really runs (`MeshRuntime.createArchiveOnlyHostComposition` defaults to
+            // `FileWipeJournal.standard()`), so planting the rung HERE driveth the real ladder: `requested` and
+            // `runtimeDrained` refuse at the deferred DRAIN seam (which owns no live transport), and
+            // `keyErased`/`artifactsDeleted` refuse at the deferred VAULT/FILESYSTEM seams -- all `retryLater`,
+            // with the durable record UNMOVED. ONLY `newIdentity` may finish, exactly as the arm's own prose says.*
+            let journalURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("gsstore006-crash-\(UUID().uuidString).wipe-journal")
+            defer {
+                try? FileManager.default.removeItem(at: journalURL)
+                try? FileManager.default.removeItem(at: URL(fileURLWithPath: journalURL.path + ".epoch"))
+                try? FileManager.default.removeItem(at: URL(fileURLWithPath: journalURL.path + ".unacked"))
+            }
+            let journal = FileWipeJournal(url: journalURL)
             journal.write(stage)
 
             let authority = CrashResumableWipe(

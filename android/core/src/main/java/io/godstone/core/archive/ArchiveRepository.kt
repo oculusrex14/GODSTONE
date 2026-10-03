@@ -118,9 +118,26 @@ interface ArchiveReader {
     fun status(): ArchiveState =
         ArchiveState.Unavailable("this reader carrieth no availability verdict; it was never given one")
 
-    /** T49 (s17): the source/revision projection of one document, or null
-     *  when the reader cannot speak of provenance. */
-    fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? = null
+    /** T49 (s17): the source/revision projection of one document.
+     *
+     *  *** THE PROVENANCE-SWALLOW REMEDIATION (this round, the iOS isle's twin): THERE IS NO DEFAULT HERE,
+     *  AND THE OLD ONE WAS THE DEFECT. ***
+     *
+     *  IT USED TO BE `= null`, "or null when the reader cannot speak of provenance" -- which made THREE
+     *  DIFFERENT WORLDS ONE SENTENCE: a document row that truly carrieth no citation, a road that was never
+     *  armed at all, and a `prepare`/`step` woe at the metadata SELECT were all answered `null`, so a
+     *  storage fault arrive'd at the caller as "this document hath no provenance". The reader's own face
+     *  (`ArchiveRepository.sourceMetadata`) then wrapped its query in `runCatching { … }.getOrNull()`, the
+     *  same collapse one layer down, and `BrowseViewModel` nested a SECOND `runCatching{…}.getOrNull()`
+     *  around that inside its own -- so the fault was folded twice before the UI saw a clean `ReadReady`
+     *  with the citation quietly missing. That is the false green this declaration existeth to forbid.
+     *
+     *  SO: `null` meaneth ONE thing only -- *I queried this row, the road was armed, and it carrieth no
+     *  citation.* Any OTHER failure of the read muset throw, on this face and on every conformer's. An
+     *  implementer that hath no provenance road to offer must SAY so by throwing typed, exactly as
+     *  `status()` above is fail-closed for the same reason; a conformer that sayeth nothing no longer
+     *  answereth "no citation" by silence. */
+    fun sourceMetadata(documentId: Long): ArchiveSourceMetadata?
 }
 
 /** The seam to the android world; the host court drive driveth a filesystem fake. */
@@ -178,7 +195,7 @@ class ArchiveRepository(
      * Ready. The handle's AVAILABILITY is judged separately (the arm); a transient read
      * failure never poisoneth a valid handle.
      */
-    private inline fun <T> checkedRead(road: String, block: () -> List<T>): List<T> =
+    private inline fun <T> checkedRead(road: String, block: () -> T): T =
         try {
             block()
         } catch (exc: ArchiveReadException) {
@@ -282,9 +299,22 @@ class ArchiveRepository(
     // T49 (s17): the reader face speaketh the same typed truth the arm keeps.
     override fun status(): ArchiveState = arm.state
 
+    /** T49 (s17) + the provenance-swallow remediation: the projection of one document, TOLD THREE
+     *  WAYS by the road itself. The query goeth through the very `checkedRead` that `listDocuments`
+     *  and `search` run upon (GS-ARCHIVE-002), so a `prepare`/`step` woe at THIS SELECT cometh out as
+     *  an `ArchiveReadException` NAMING the road -- it is no longer folded to `null` by a
+     *  `runCatching{…}.getOrNull()` for the caller to mistake for an uncited row.
+     *
+     *  `handle == null` is the third state and the one the old face could not express at all: the road
+     *  was never armed, which is neither a citation and neither an absence. It is told as a typed
+     *  read-fault, because an unqualified `null` from here would be the very conflation this file's own
+     *  GS-ARCHIVE-002 comment was written to forbid -- and the caller's next act is to consult
+     *  `status()`, which nameth why there is no handle. */
     override fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? {
-        val h = arm.handle ?: return null
-        return runCatching {
+        val h = arm.handle ?: throw ArchiveReadException(
+            "archive read failed on sourceMetadata: the road is not armed, so nothing was queried -- " +
+                "this is not an uncited row (consult status() for the verdict)")
+        return checkedRead("sourceMetadata") {
             h.rows(
                 "SELECT document_id, title, source_id, licence, revision, is_critical " +
                     "FROM documents WHERE document_id = ?",
@@ -299,7 +329,7 @@ class ArchiveRepository(
                     isCritical = (row[5] as Long) != 0L,
                 )
             }
-        }.getOrNull()
+        }
     }
 
     override fun listDocuments(domain: String?): List<ArchiveDocument> {

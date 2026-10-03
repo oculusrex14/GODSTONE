@@ -854,36 +854,54 @@ class ReadinessT23Test {
 
     // MARK: - case the fourth: the second counsel rehearsed runneth not the gate
 
+    /**
+     * *** T23 (section 13): THE SECOND COUNSEL, TWICE TOLD, RUNNETH NOT THE CONTROLLER TWICE. ***
+     *
+     * **THE LAW, AND THE WITNESS THAT IS CAUSALLY ITS OWN.** *A duplicate HS2 must not re-run the Noise transitions (the
+     * gate), so the discriminator is the controller ITSELF: the transcript that remembreth the tales, and the record the
+     * gate would emit if it ran again. **THE FIRST FORM OF THIS ARM COUNTED EVERY WRITE TO THE OUTLET, WHICH IS A
+     * DIFFERENT AND WEAKER QUESTION -- "did the transport write ANYTHING?" -- AND IT RACED (about one run in five, never
+     * in isolation) AGAINST THE APPLICATION'S OWN KEY-CONFIRMATION CHALLENGE, WHICH IS LEGITIMATE TRAFFIC ON THE SAME
+     * OUTLET AND RUNS ON `Dispatchers.IO`.*** *Turning that challenge off silenced the race but also took the arm's
+     * premise away from production, which is why this round replaces the discriminator rather than the traffic: **the
+     * law names THE THIRD COUNSEL, so the third counsel is what is counted -- and no other writer can satisfy or spoil
+     * that count.***
+     *
+     * *** AND THE COUNTER-PROOF IS IN THE ARM ITSELF. *** *A count of zero is satisfied by a transport that never writes
+     * at all -- the "observer disconnected or always zero" failure. So the arm first asserts the initiator's HS3
+     * genuinely went forth during `driveToReady` (`hs3Before >= 1`), THEN snapshots, THEN re-presents. A court whose
+     * outlet was not wired now REDDENS on the first assertion rather than passing on a vacuous zero.* **The key
+     * confirmation's own issuance keeps its witnesses on the DEFAULT road --
+     * `testAndroid01_theApplicationIssuethTheKeyConfirmationAtTheTrustedHour` and
+     * `testAndroid01_theWholeConfirmationRoundRunnethItself` both AWAIT it -- and this arm no longer needs to turn the
+     * application's begin off, because a challenge is neither an HS2 nor an HS3.**
+     */
     @Test
     fun testTheDuplicateSecondTaleRunnethNotTheControllerTwice() {
         val rig = standDoor()
-        // *** SET BEFORE `driveToReady`, WHICH REACHETH THE TRUSTED HOUR AND THEREFORE ISSUES THE CHALLENGE. ***
-        // *The arm snapshots `writesBefore` and then asserts NO NEW WRITE was emitted for a duplicate counsel. But
-        // at the trusted hour the application ALSO issueth its sealed key-confirmation challenge -- from a
-        // coroutine on `Dispatchers.IO` -- which IS a new write to the same outlet. MEASURED: this arm failed
-        // intermittently (`no second third goeth forth for a tale twice told`) on about one run in five while every
-        // other arm passed, and it PASSES in isolation because the timing then favours the court.*
-        // **THE TWIN SEAM'S OWN DOCUMENTATION NAMETH THIS CASE EXACTLY: it existeth for courts that "DRIVE the
-        // trusted hour BY HAND and then do ARITHMETIC UPON THE RELATION'S WRITER ... they turn this off and say so
-        // in their own name". COUNTING WRITES IS THAT ARITHMETIC.** *Turning it off changes what this arm measures
-        // -- a duplicate counsel emits nothing -- from a race into a measurement. The challenge's own issuance is
-        // witnessed by `testAndroid01_theApplicationIssuethTheKeyConfirmationAtTheTrustedHour` and
-        // `testAndroid01_theWholeConfirmationRoundRunnethItself`, which await it on the DEFAULT road.*
-        rig.alice.applicationIssuesKeyConfirmationForTest = false
-        val hs2 = driveToReady(rig)                            // initiator READY, the second remembred
+        val hs2 = driveToReady(rig)                            // initiator READY, the second remembred, HS3 sent
         val conn = rig.initiatorConnection()
         assertEquals("the initiator standeth ready", BleConnectionState.READY, conn.state)
         val secondSeq = seqOfFragment(hs2[0])
         val secondTale = payloadOfFragment(hs2[0])
-        val writesBefore = rig.aliceOutlet.writesTo(rig.bobAddress).size
+        // *** THE COUNTER-PROOF FIRST: the third counsel really did travel, so a later zero is a MEASUREMENT. ***
+        val hs3Before = rig.aliceOutlet.writesTo(rig.bobAddress).count { isType(it, BleRecordType.HS3) }
+        assertTrue(
+            "*** THE RIG MUST HAVE SENT AN HS3, or the assertion below is satisfied by an outlet that never " +
+                "writes -- the observer-disconnected failure. Observed hs3 writes: $hs3Before ***",
+            hs3Before >= 1,
+        )
         val heardBefore = conn.transcript.heardCountForTest(kindOf(BleRecordType.HS2))
         // the selfsame frame, byte for byte and sequence for sequence, again
         rig.alice.feedInitiatorHandshakeRecordForTest(
             rig.bobAddress, BleReassembledRecord(BleRecordType.HS2, secondSeq, secondTale))
         assertEquals("an idle re-presenting is hearkened not; the gate standeth ready",
                      BleConnectionState.READY, conn.state)
-        assertEquals("no second third goeth forth for a tale twice told",
-                     writesBefore, rig.aliceOutlet.writesTo(rig.bobAddress).size)
+        assertEquals(
+            "*** NO SECOND THIRD COUNSEL MAY GO FORTH FOR A TALE TWICE TOLD. *THE THIRD COUNSEL IS THE RECORD THE LAW " +
+                "NAMES: a duplicate HS2 that re-ran the gate would emit another, and no other writer can produce one.* ***",
+            hs3Before, rig.aliceOutlet.writesTo(rig.bobAddress).count { isType(it, BleRecordType.HS3) },
+        )
         assertEquals("the tale was but once remembred",
                      heardBefore, conn.transcript.heardCountForTest(kindOf(BleRecordType.HS2)))
         assertTrue("the door rang that the duplicate was hearkened",

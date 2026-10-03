@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "run_id": "20260929T170839Z-e574a7",
+  "mode": "crash",
+  "input_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e",
+  "input_files": {
+    "tools/readiness/run_board1_integration.py": "744ecefa3484b86cb42f27515dab72ad6f34b10ea62edd70975ef708b0aae80f",
+    "ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001CrossPlatformWorkerTests.swift": "976b3a96238dbe5cde828e5a6050bfd80b5a8fa22e8745229b496780790f543d",
+    "ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift": "e3d0ac9b0d35d5abb0cf10695f9caf06b718cd9ba76789714210349395654691",
+    "android/mesh/src/test/java/io/godstone/mesh/rig/RealTransportHostRig.kt": "9e2c08eb0ce8926c697d93766adfe045e16911ba8e977e1a726ea4eb52264206",
+    "android/mesh/src/test/java/io/godstone/mesh/rig/RealTransportHostRigWorkerTest.kt": "f2a92e046c2062878b7b60e2af726c366574db9a2ba3e3b1dfce9a5d4922d219",
+    "android/mesh/build.gradle.kts": "0fa82807679df0cd196d1d0d7bf4c6d758f4dfcea38d2bdd210f74d5ef073933"
+  },
+  "toolchain": {
+    "swift": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6",
+    "xcodebuild": "Xcode 27.0 Build version 27A266a",
+    "java": "openjdk version \"17.0.20.1\" 2026-08-18 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1) OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)",
+    "python": "3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)",
+    "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "gradle": "------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191",
+    "android_sdk": "unset"
+  },
+  "worker_launches": [
+    {
+      "name": "android-prepare-outboundEnqueue",
+      "platform": "android",
+      "role": "crash-prepare",
+      "variant": "outboundEnqueue",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=crash-prepare",
+        "-Dgodstone.integration.variant=outboundEnqueue",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-outboundEnqueue",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-prepare-outboundEnqueue.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-prepare-outboundEnqueue.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-outboundEnqueue"
+    },
+    {
+      "name": "android-recover-outboundEnqueue",
+      "platform": "android",
+      "role": "crash-recover",
+      "variant": "outboundEnqueue",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=crash-recover",
+        "-Dgodstone.integration.variant=outboundEnqueue",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-outboundEnqueue",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-recover-outboundEnqueue.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-recover-outboundEnqueue.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-outboundEnqueue"
+    },
+    {
+      "name": "android-prepare-inboundCommit",
+      "platform": "android",
+      "role": "crash-prepare",
+      "variant": "inboundCommit",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=crash-prepare",
+        "-Dgodstone.integration.variant=inboundCommit",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-inboundCommit",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-prepare-inboundCommit.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-prepare-inboundCommit.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-inboundCommit"
+    },
+    {
+      "name": "android-recover-inboundCommit",
+      "platform": "android",
+      "role": "crash-recover",
+      "variant": "inboundCommit",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=crash-recover",
+        "-Dgodstone.integration.variant=inboundCommit",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-inboundCommit",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-recover-inboundCommit.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-recover-inboundCommit.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-inboundCommit"
+    }
+  ],
+  "evidence_binding": {
+    "transcript": {
+      "path": "transcript.bin",
+      "sha256": "6a547ada7b5db6cbae7a00d7046f747fe2a018d31eed77e772475c9e79c9bfeb"
+    },
+    "manifest": {
+      "path": "manifest.json",
+      "sha256": "4dff218feb5eda6a9c965fc78f09794d052efcac9b693707002ea5213e8d9514"
+    },
+    "report": {
+      "path": "integration-report.json",
+      "sha256": "deaea6a1d18515073b608c9dc0065bb2b2d7a338288080c6e2b418baf680f900"
+    }
+  },
+  "producers": [
+    {
+      "sequence": 1,
+      "platform": "android",
+      "producer": "android-recover-outboundEnqueue",
+      "target": "store",
+      "direction": "android-crash",
+      "kind": "complete",
+      "characteristic": "",
+      "epoch": null,
+      "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e"
+    },
+    {
+      "sequence": 2,
+      "platform": "android",
+      "producer": "android-recover-inboundCommit",
+      "target": "store",
+      "direction": "android-crash",
+      "kind": "complete",
+      "characteristic": "",
+      "epoch": null,
+      "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e"
+    }
+  ]
+}

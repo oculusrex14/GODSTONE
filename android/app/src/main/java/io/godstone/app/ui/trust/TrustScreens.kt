@@ -114,6 +114,11 @@ private fun ContactList(contacts: List<ContactProjection>,
                     Text(contact.label, style = MaterialTheme.typography.titleSmall)
                     Text(trustLabel(contact.trust))
                     Text(contact.fingerprintHex.chunked(4).joinToString(" "))
+                    // *** STEP 8: THE ACCEPTED GENERATION IS PART OF WHAT THE READER COMPARES. *** It is rendered
+                    // HERE (not merely handed to the command), because the confirmation now CASes on it -- a control
+                    // that bound an operand the screen never showed would be repeating the very substitution the
+                    // card forbids, one field over.
+                    Text("Accepted generation ${contact.acceptedGeneration}")
                     // *** STEP 4's FINGERPRINT COMPARE/CONFIRM: *'explicit fingerprint compare/confirm'*. ***
                     // MEASURED BEFORE THIS EDIT: the fingerprint was DISPLAYED and THE OPERATOR COULD NOT CONFIRM
                     // IT -- `CompareAndConfirmFingerprint` was handled by the ViewModel and dispatched by NO
@@ -125,6 +130,9 @@ private fun ContactList(contacts: List<ContactProjection>,
                                 ContactVerificationCommand.CompareAndConfirmFingerprint(
                                     nodeId = contact.nodeIdCopy(),
                                     displayedFingerprintHex = contact.fingerprintHex,
+                                    // *** AND THE GENERATION PRINTED ABOVE, so the CAS bindeth on exactly the two
+                                    // operands the reader saw. ***
+                                    displayedAcceptedGeneration = contact.acceptedGeneration,
                                 ),
                             )
                         },

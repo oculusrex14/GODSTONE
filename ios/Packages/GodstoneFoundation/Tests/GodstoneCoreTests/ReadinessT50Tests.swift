@@ -101,14 +101,23 @@ private final class FakeReader: ArchiveReading, @unchecked Sendable {
         }
     }
 
-    func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata? {
-        lock.lock(); metadataCalls += 1; lock.unlock()
+    /// The woe the provenance probe shall meet, in the court's own hand -- a TYPED one, so the
+    /// arm proveth the TAXONOMY TRAVELLETH rather than that one hard-coded string doth. nil
+    /// meaneth the road is sound and the answer cometh from the table.
+    var metadataFault: ArchiveError? = nil
+    func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata? {
+        lock.lock()
+        metadataCalls += 1
+        let fault = metadataFault
+        lock.unlock()
+        if let fault { throw fault }
         return sourceTable[documentId]
     }
 }
 
 private struct MinimalReader: ArchiveReading {
     func read(_ request: ArchiveRequest) async throws -> ArchivePage { .documents([]) }
+    func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata? { nil }
 }
 
 @MainActor
@@ -949,12 +958,12 @@ final class ReadinessT50Tests: XCTestCase {
         // CHECK THAT READETH COMMENTS IS NOT A CHECK ON CODE, which is round 261's species exactly (a comment taken
         // for code), and it was caught the way this programme always catcheth it: BY RUNNING THE THING. ***
         let view = codeOnly(try repoFile(named: "ios/Godstone/Sources/App/ArchiveView.swift"))
-        XCTAssertTrue(view.contains("sourceMetadata(documentId:"),
+        XCTAssertTrue(view.contains("sourceMetadataChecked(documentId:"),
                       "*** THE DOCUMENT DESTINATION MUST PUBLISH ITS OWN CHECKED PROVENANCE: `ArchiveLibrary` "
                       + "(declared at ArchiveReaderModel.swift:24) carrieth `nonisolated public func "
-                      + "sourceMetadata(documentId:)`, and the destination ALREADY receiveth the library -- it merely "
-                      + "DISCARDED it. MEASURED: the route never selecteth on the scene, so the scene-sourced "
-                      + "provenance line rendereth NOTHING (GS-ARCHIVE-005) ***")
+                      + "sourceMetadataChecked(documentId:) throws`, and the destination ALREADY receiveth the "
+                      + "library -- it merely DISCARDED it. MEASURED: the route never selecteth on the scene, so the "
+                      + "scene-sourced provenance line rendereth NOTHING (GS-ARCHIVE-005) ***")
         XCTAssertFalse(view.contains("scene.openedSource"),
                        "and the destination must NOT depend on a scene selection the route never setteth -- the "
                        + "finding's charge is that this line is ABSENT, and a guard nobody can satisfy is how an "
@@ -996,15 +1005,288 @@ final class ReadinessT50Tests: XCTestCase {
         // that never setteth it IS the defect.
         XCTAssertNil(scene.openedSource,
                      "the scene's selection must still be UNSET: the route never setteth it")
-        let source = try XCTUnwrap(library.sourceMetadata(documentId: first.id),
+        let source = try XCTUnwrap(try library.sourceMetadataChecked(documentId: first.id),
                                    "the library's own probe must answer the document's metadata")
         XCTAssertFalse(source.sourceId.isEmpty, "and the metadata must carry the provenance the line displays")
 
         // (B) AND IT ANSWERETH ABOUT THE DOCUMENT ASKED ABOUT -- another identity is never answered with this one,
         // so the line cannot show a NEIGHBOUR'S provenance ("never metadata from a previous selection").
-        let absent = library.sourceMetadata(documentId: first.id &+ 9_999_999)
+        let absent = try library.sourceMetadataChecked(documentId: first.id &+ 9_999_999)
         XCTAssertNotEqual(absent?.sourceId, source.sourceId,
                           "a different document identity must never be answered with this one's provenance")
+    }
+    // MARK: - the provenance-swallow remediation (checked metadata read)
+
+    /// The woe a face actually met, or nil when it answered without crying. Written out rather
+    /// than bought from a helper so the court nameth the typed case it expecteth, never merely
+    /// "something threw".
+    private func metError(_ body: () throws -> Void) -> (any Error)? {
+        do { try body(); return nil } catch { return error }
+    }
+
+    /// W17 -- THE EDGE THIS PROGRAMME WAS BUILT FOR, UPON THE TRUE STOCK.
+    ///
+    /// The provenance road used to be `sourceMetadata(documentId:)`, a face whose body was
+    /// `(try? sourceMetadataChecked(...)) ?? nil`. It conflated TWO DIFFERENT WORLDS: a document
+    /// row that genuinely carrieth no provenance (absence -- nil is the truth) and a prepare/step/
+    /// finalize woe at the metadata SELECT (a storage fault -- nil is a LIE). Under the swallow the
+    /// second world dressed as the first: the reader met a document stripped of its citation, the
+    /// scene claimed `.ready` with a nil `openedSource`, and nothing anywhere said why.
+    ///
+    /// THE FAULT IS INJECTED IN THE ONLY PLACE IT CAN BE INJECTED HONESTLY -- the engine itself. The
+    /// `licence` column is read by the provenance projection and by NO OTHER READ OF THIS ROAD: not
+    /// `passagesChecked` (c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text) and not
+    /// `listDocumentsChecked`. So defacing it woundeth the metadata query ALONE, which is precisely
+    /// "a real SQLite fault at the actual metadata query beyond the normal document read": the
+    /// document is loaded and loadable, and only the provenance SELECT is broken. The view is struck
+    /// first because `chunk_citations` readeth `d.licence`, and a column may not be removed from
+    /// underneath a live view.
+    ///
+    /// WHAT MUST NOT HAPPEN, AND IS THEREFORE ASSERTED FOUR TIMES OVER: the fault may never arrive
+    /// at the caller as nil.
+    func testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence() async throws {
+        let fixture = try makeArchive()
+        let (archive, library, _, scene) = composeTrio()
+        defer { archive.close() }
+        await scene.loadDocuments()
+        await seat(scene)
+        guard case .ready = scene.phase else { return XCTFail("the road must armeth ready first: \(scene.phase)") }
+        let document = try XCTUnwrap(scene.documents.first, "the fixture must carry a document")
+
+        // (A) THE HEALTHY EDGE: the exact projection, and a genuine absent row as absence.
+        let healthy = try XCTUnwrap(try archive.sourceMetadataChecked(documentId: document.id),
+                                    "the provided fixture must answer its own provenance")
+        XCTAssertEqual(healthy,
+                       ArchiveSourceMetadata(documentId: document.id,
+                                             title: "Water purification in the field",
+                                             sourceId: "src-a", licence: "CC0", revision: "r1",
+                                             isCritical: true),
+                       "the loaded document's exact source metadata")
+        let unheardNoError = metError { _ = try archive.sourceMetadataChecked(documentId: 999_999) }
+        XCTAssertNil(unheardNoError, "an unheard row must not be a fault")
+        let unheard = try archive.sourceMetadataChecked(documentId: 999_999)
+        XCTAssertNil(unheard, "and absence alone is what absence returneth: nil")
+
+        // (B) THE FAULT, INJECTED BY THE ENGINE UPON THE VERY FIXTURE BYTES.
+        var injector: OpaquePointer?
+        let opened = sqlite3_open_v2(fixture.path, &injector,
+                                      SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
+        guard opened == SQLITE_OK, let injector else {
+            return XCTFail("the fault injector could not open the fixture: rc \(opened)")
+        }
+        execScript(injector, "DROP VIEW IF EXISTS chunk_citations; "
+                            + "ALTER TABLE documents DROP COLUMN licence;",
+                   from: "the metadata-query fault")
+        sqlite3_close_v2(injector)
+
+        // (C) THE DOCUMENT READ IS WHOLE -- the fault is CONFINED to the metadata query, which is
+        // the whole point of aiming it at a column no other read toucheth. Proving this is what
+        // keeps the next assertion from being a test of the ordinary read road by accident.
+        let stillReadable = try archive.passagesChecked(documentId: document.id)
+        XCTAssertEqual(stillReadable.count, 2, "the passages of the loaded document still come home")
+        let stillListable = try archive.listDocumentsChecked(domain: nil)
+        XCTAssertEqual(stillListable.count, 2, "and the browse projection is undisturbed")
+
+        // (D) THE METADATA QUERY CRIETH, TYPED -- never a value a caller could mistake for absence.
+        let repositoryFault = metError { _ = try archive.sourceMetadataChecked(documentId: document.id) }
+        guard case ArchiveError.queryFailed? = repositoryFault else {
+            return XCTFail("*** THE SWALLOW IS BACK: the metadata fault arrived as "
+                           + "\(String(describing: repositoryFault)) -- a nil here is the defect this "
+                           + "witness existeth to kill (the old face collapsed it to 'no provenance'). ***")
+        }
+        let libraryFault = metError { _ = try library.sourceMetadataChecked(documentId: document.id) }
+        guard case ArchiveError.queryFailed? = libraryFault else {
+            return XCTFail("the library's forwarding face must re-tell the woe, got "
+                           + "\(String(describing: libraryFault))")
+        }
+
+        // (E) AND IT COMETH OUT AT THE SCENE -- *** WITHOUT ERASING THE DOCUMENT THAT OPENED. ***
+        //
+        // *THIS ARM USED TO REQUIRE `scene.phase == .unavailable` HERE, AND THAT ASSERTION WAS ITSELF THE DEFECT
+        // WRITTEN DOWN: an executed UI run measured the consequence -- a citation fault blanked `passages` and
+        // `openedDocumentId`, replaced the whole archive surface with a notice naming a SEARCH woe, and threw a
+        // reader who had opened a perfectly readable document back to an empty home screen.* **THE DOCUMENT READ
+        // AND THE PROVENANCE READ ARE TWO ROADS.** So the corrected contract is asserted instead: the document
+        // STANDETH OPEN with its passages, the citation fault is carried SEPARATELY, and the retry is earned.
+        await scene.open(document: document)
+        await seat(scene)
+        XCTAssertEqual(scene.phase, .ready,
+                       "*** A CITATION FAULT MUST NOT ERASE A READABLE DOCUMENT: the scene standeth READY with the "
+                           + "document open, got \(scene.phase) ***")
+        XCTAssertEqual(scene.openedDocumentId, document.id,
+                       "and the document is STILL the one the reader opened")
+        XCTAssertEqual(scene.passages.count, 2,
+                       "with its passages intact -- the fault touched the CITATION, never the content")
+        XCTAssertNotNil(scene.metadataError,
+                        "*** AND THE CITATION FAULT IS TOLD, NOT SWALLOWED: it is carried on its own field so the "
+                            + "view can render it with the earned retry, while the document abideth. ***")
+        XCTAssertNil(scene.openedSource,
+                     "no citation is claimed for a projection that could not be read")
+        XCTAssertNil(scene.error,
+                     "*** AND NO WHOLE-ROAD WOE IS SPOKEN: `error`/`.unavailable` are for the DOCUMENT road's "
+                         + "failures; a citation woe must not be dressed as one, nor name a search. ***")
+        if case .queryFailed = scene.metadataError! {
+            // the taxonomy the checked path met, carried through untouched
+        } else {
+            XCTFail("the carried fault must be the typed woe the checked path met, got \(scene.metadataError!)")
+        }
+        await library.close()
+    }
+
+    /// W18 -- A stable candidate left stale or closed answereth the metadata probe with the typed
+    /// NO-HANDLE woe, not with the absence of a document that hath no citation.
+    func testTheClosedCandidateAnswerethTheMetadataProbeWithTypedNoHandle() async throws {
+        _ = try makeArchive()
+        let archive = openRepository()
+        XCTAssertNotNil(try archive.sourceMetadataChecked(documentId: 1),
+                        "the same probe answereth while the handle standeth")
+        archive.close()
+        let fault = metError { _ = try archive.sourceMetadataChecked(documentId: 1) }
+        guard case ArchiveError.unreadable? = fault else {
+            return XCTFail("a closed road must say it cannot be read, got \(String(describing: fault))")
+        }
+    }
+
+    /// W19 -- THE INJECTED EDGE, at the seam the scene actually runneth upon: a reader whose
+    /// metadata probe crieth must KEEP THE DOCUMENT IT OPENED, carry the typed citation fault
+    /// separately, and never publish a provenance it did not read; and the SAME road, mended, must
+    /// bring the very projection back through the retry the card already owneth.
+    func testTheScenePresentethTheMetadataWoeAndTheRetryBringethTheProjectionBack() async throws {
+        let fake = FakeReader()
+        let scene = ArchiveSceneModel(reading: fake, model: ArchiveReaderModel(library: fake))
+        await scene.loadDocuments()
+        await seat(scene)
+        guard case .ready = scene.phase else { return XCTFail("the browse must come home ready") }
+
+        fake.metadataFault = .queryFailed("prepare: no such column: licence")
+        await scene.openPassage(fake.first)
+        await seat(scene)
+        // *** THE CORRECTED CONTRACT (an executed UI run measured the old one erasing the document): ***
+        XCTAssertEqual(scene.phase, .ready,
+                       "a citation woe must NOT become a whole-road unavailability -- the reader keepeth its document")
+        XCTAssertEqual(scene.openedDocumentId, fake.first.documentId, "the document standeth open")
+        XCTAssertEqual(scene.passages.count, 2, "with its passages -- the fault was never about the content")
+        XCTAssertNotNil(scene.metadataError, "and the citation fault is carried on its own field")
+        XCTAssertNil(scene.openedSource, "no read, no provenance -- the claim of one is the lie")
+        XCTAssertNil(scene.error, "and no whole-road woe is spoken for a citation fault")
+
+        // The passages of the document were never the woe's: the road is the document's OWN open,
+        // so the mended retry re-rideth it whole and the projection that was withheld cometh back.
+        //
+        // *** AND IT IS THE CITATION SEAM THAT IS DRIVEN, NOT `retry()`. *** *A citation fault leaveth the
+        // whole-road `canRetry` FALSE -- nothing about the DOCUMENT failed -- so `retry()` would guard-and-return,
+        // and an arm that drove it would assert a mend that never happened. This is the CURE discriminator: a
+        // no-op `retryMetadataRead` leaveth `openedSource` nil and faileth the very next assertion.*
+        fake.metadataFault = nil
+        await scene.retryMetadataRead()
+        await seat(scene)
+        XCTAssertEqual(scene.phase, .ready, "the mended road resteth ready again")
+        XCTAssertEqual(scene.openedSource, fake.sourceTable[7], "with the very projection")
+        XCTAssertNil(scene.metadataError, "and the carried fault is cleared by the road that mended it")
+    }
+
+    /// W20 -- THE OTHER DIRECTION, GUARDED BECAUSE AN OVER-CORRECTION IS ITS OWN DEFECT. The remediation
+    /// forbideth dressing a fault as absence; it must NOT purchaseth the converse by inventing a fault
+    /// where the row simply hath no citation. A genuinely uncited document is a READABLE document:
+    /// the road resteth `.ready`, the passages come home, `openedSource` is nil because nil is the
+    /// truth, no woe is spoken, and -- the clause that catches the over-correction specifically -- no
+    /// retry is earned for a state that hath nothing to mend.
+    func testAGenuineAbsenceLeavethTheDocumentReadableWithNoBannerAndNoRetry() async throws {
+        let fake = FakeReader()
+        fake.sourceTable.removeAll()                     // the row existeth; its citation doth not
+        let scene = ArchiveSceneModel(reading: fake, model: ArchiveReaderModel(library: fake))
+        await scene.loadDocuments()
+        await seat(scene)
+        guard case .ready = scene.phase else { return XCTFail("the browse must come home ready") }
+
+        await scene.openPassage(fake.first)
+        await seat(scene)
+        XCTAssertEqual(scene.phase, .ready, "an uncited row is not an unavailable document")
+        XCTAssertEqual(scene.mode, .document, "and the reader standeth in the document still")
+        XCTAssertEqual(scene.passages.count, 2, "the passages come home whole -- absence proveth nothing about them")
+        XCTAssertNil(scene.openedSource, "the citation is genuinely absent, and nil is the honest tale")
+        XCTAssertNil(scene.error, "no woe may be spoken for a state that carryth no woe")
+        XCTAssertFalse(scene.canRetry, "a banner with a button would sell a repair nobody needeth")
+        XCTAssertEqual(fake.metadataCalls, 1,
+                       "AND THE ROAD DID ASK: a nil that was never looked at is a guess, not an absence")
+    }
+
+    /// W21 -- AND THE INVERSE AT THE SAME PROBE: the same face, mended, must be able to tell the
+    /// difference betwixt the two tales it now speaketh. Here the very document is the witness --
+    /// the same road, the same identity, two opposite verdicts, distinguished by the read alone.
+    func testTheSameRoadTellethAbsenceAndFaultApartAtOneProbe() async throws {
+        let fake = FakeReader()
+        let scene = ArchiveSceneModel(reading: fake, model: ArchiveReaderModel(library: fake))
+        await scene.loadDocuments()
+        await seat(scene)
+
+        // tale one: the citation is there.
+        await scene.openPassage(fake.first)
+        await seat(scene)
+        XCTAssertEqual(scene.phase, .ready)
+        XCTAssertEqual(scene.openedSource, fake.sourceTable[7], "the projection standeth")
+
+        // tale two: the citation is genuinely gone -- and the road saith so, quietly.
+        fake.sourceTable.removeAll()
+        await scene.openPassage(fake.first)
+        await seat(scene)
+        XCTAssertEqual(scene.phase, .ready, "absence is told as absence, never as a woe")
+        XCTAssertNil(scene.openedSource)
+        XCTAssertFalse(scene.canRetry)
+
+        // tale three: the citation is there but the way to it gave way -- and THAT is told aloud,
+        // WITH THE DOCUMENT KEPT (the corrected contract an executed UI run forced).
+        fake.metadataFault = .queryFailed("prepare: no such column: licence")
+        await scene.openPassage(fake.first)
+        await seat(scene)
+        XCTAssertEqual(scene.phase, .ready, "the fault is told apart from a whole-road woe; the document abideth")
+        XCTAssertNotNil(scene.metadataError, "and the citation fault is carried aloud, never as an absence")
+        XCTAssertEqual(scene.passages.count, 2, "the content is untouched by a citation woe")
+        XCTAssertNil(scene.openedSource, "while no citation is claimed")
+    }
+
+    /// W22 -- THE TAXONOMY TRAVELLETH UNTOUCHED, AND THE UNTOUCHABLE IS NOT OFFERED A KNOCK. Two
+    /// clauses the remediation must not break while it maketh the fault audible: the told woe must
+    /// be the woe the checked path MET (no invented corruption cause, no flattening of kinds), and
+    /// the earned retry must stay earned (an installation woe is the installer's, not the reader's,
+    /// so a broadened button here would sell a repair that cannot mend).
+    func testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock() async throws {
+        let fake = FakeReader()
+        let scene = ArchiveSceneModel(reading: fake, model: ArchiveReaderModel(library: fake))
+        await scene.loadDocuments()
+        await seat(scene)
+
+        // (A) AN INSTALLATION WOE AT THE PROVENANCE SELECT: told, told as WHAT IT IS, and told WITHOUT
+        // taking the document with it.
+        fake.metadataFault = .corrupt("the body pages are defaced")
+        await scene.openPassage(fake.first)
+        await seat(scene)
+        XCTAssertEqual(scene.phase, .ready, "an installation woe on the CITATION road keepeth the document open")
+        XCTAssertEqual(scene.passages.count, 2, "with its content whole")
+        guard case .corrupt? = scene.metadataError else {
+            return XCTFail("an installation woe must be told on its own field: \(String(describing: scene.metadataError))")
+        }
+        XCTAssertNil(scene.openedSource, "and no citation is claimed for a projection that could not be read")
+        XCTAssertNil(scene.error, "nor is a whole-road woe manufactured for a citation fault")
+
+        // (B) A DIFFERENT WOE UPON THE SAME ROAD: the carried kind changeth WITH the cause, which is
+        // how one proveth the tale is carried from the read and not a stock response recited.
+        fake.metadataFault = .noSuchTable("documents")
+        await scene.openPassage(fake.first)
+        await seat(scene)
+        guard case .noSuchTable? = scene.metadataError else {
+            return XCTFail("the second woe must be told too: \(String(describing: scene.metadataError))")
+        }
+        XCTAssertEqual(scene.phase, .ready, "and the document abideth through it as well")
+
+        // (C) AND THE MENDABLE KIND STILL GETTETH ITS KNOCK, so the contract was not clamped shut
+        // in the trying to keep it honest.
+        fake.metadataFault = nil
+        await scene.openPassage(fake.first)
+        await seat(scene)
+        XCTAssertEqual(scene.phase, .ready, "the mended road resteth ready")
+        XCTAssertEqual(scene.openedSource, fake.sourceTable[7], "with the projection it always owed")
+        XCTAssertNil(scene.metadataError, "and no citation fault is left standing when nothing is to mend")
     }
 
 }

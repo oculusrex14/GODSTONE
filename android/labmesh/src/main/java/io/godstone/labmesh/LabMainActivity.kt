@@ -17,9 +17,14 @@ import io.godstone.mesh.lab.LabRuntime
  * closeth both: it is the door, and behind it standeth a screen whose commands reach the REAL
  * `io.godstone.mesh.lab.LabRuntime`.**
  *
- * *** THE RUNTIME IS THE APPLICATION'S -- NEVER A VIEW'S. *** *`LabMeshApplication.runtime` is composed ONCE at process
- * start (this file contains no `compose(` call, which `ci/check_lab_isolation.py`'s retained-runtime control asserteth:
- * a runtime composed by a view is composed again on every recomposition).*
+ * *** THE RUNTIME IS THE APPLICATION'S -- NEVER A VIEW'S. *** *`LabMeshApplication.composition` is composed ONCE at
+ * process start (this file contains no `compose(` call, which `ci/check_lab_isolation.py`'s retained-runtime control
+ * asserteth: a runtime composed by a view is composed again on every recomposition).*
+ *
+ * *** AND WHEN THE ESTATE REFUSED, THIS ACTIVITY RENDERETH RECOVERY-ONLY -- NOT A CRASHED SCREEN. *** *A
+ * REQUESTED/corrupt/terminal record leaves `LabMeshApplication.runtime` null; the binding then rendereth the SAME
+ * durable record's decision with the estate's own resume and operator-confirmed full-erasure verbs, and the send and
+ * distress controls report that no normal private graph standeth rather than pretending to send.*
  *
  * *** THE BINDING IS TIED TO THIS ACTIVITY'S LIFECYCLE SCOPE, AND THE FLOW IS COLLECTED LIFECYCLE-AWARE. *** *A
  * `suspend` write (`sendDirect`, the SOS commands) runneth on a scope that is CANCELLED with the activity -- an
@@ -30,13 +35,20 @@ import io.godstone.mesh.lab.LabRuntime
  * reacheth `LabRuntime.readinessStatement()`'s compile-time `false`. The lab remaineth EXPERIMENTAL and NONSHIPPING.*
  */
 class LabMainActivity : ComponentActivity() {
-    private val runtime: LabRuntime
-        get() = (application as LabMeshApplication).runtime
+    private val lab: LabMeshApplication
+        get() = application as LabMeshApplication
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // THE BINDING REACHETH THE RETAINED RUNTIME'S OWN AUTHORITY, ON THIS ACTIVITY'S OWN SCOPE.
-        val bindings = LabJourneyBindings(runtime, lifecycleScope)
+        // *** THE WIPE OWNER IS THE PRODUCTION ONE, OVER THIS APPLICATION'S OWN ESTATE AND RECORD. ***
+        // *`LabMeshApplication.wipeJourney` was built at process start over the SAME `FileWipeJournal` the startup
+        // consulted and the SAME `LabEstateWipeAuthority` the send road wrote -- so a rendered stage is a PERSISTED
+        // stage, and the bytes it eraseth are the estate's own (review A6: "wipe does not retire/erase same runtime").*
+        val bindings = LabJourneyBindings(
+            lab.runtime,
+            lifecycleScope,
+            lab.wipeJourney,
+        )
         // *The rendered state is REFRESHED from the runtime's estate at start, so a relaunch renders what the store
         // carrieth rather than a placeholder -- the read is the runtime's, never this activity's memory.*
         bindings.refresh()

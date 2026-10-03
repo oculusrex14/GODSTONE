@@ -1,5 +1,17 @@
 # BOARD 1 — INTERNAL PRODUCTION-READINESS CLOSURE
 
+> *** CURRENT STATUS, DERIVED (2026-10-02): *** the machine-readable record of this board is
+> `docs/production-readiness/BOARD1_CLOSURE.json` -- `status: REMEDIATION_IN_PROGRESS`,
+> `verified_fixed: 0`, ten findings internally OPEN with 35 OPEN obligations -- and it is DERIVED by
+> `scripts/build_structured_closure.py` from the ledger's own entries, whose persisted blocks
+> `--check` re-derives field by field (counts, statuses, `structured_semantics`, prose dispositions).
+> **No terminal status -- `COMPLETE` or `READY_FOR_EXTERNAL_REAUDIT` -- may be asserted by any
+> document this repository carries: a terminal claim is admitted only in the frozen candidate's
+> AUTHENTICATED attestation, read by the A-side authority in `ci/check_candidate_binding.py`, after
+> the hosted full-C proof.** *Everything below this banner is the CANDIDATE-ERA narrative, preserved
+> under explicit historical scope* -- including its `BOARD 1 COMPLETE` sentences, which the A00
+> correction refutes and which are NOT current claims.
+
 ## A00. CORRECTION — rc2 was superseded because its blocked-task boundary was wrong
 
 **THE PREVIOUS DECLARATION WAS `BOARD 1 COMPLETE` AT `1e0ca3a7` (tag

@@ -90,7 +90,7 @@ public class ReadinessT34Test {
     private class FakeAuthority : IdentityAuthoritySeam {
         var current: String? = null
         val published = mutableListOf<String>()
-        override fun publishNewIdentity(): String { val id = "node-${published.size + 1}"; published.add(id); current = id; return id }
+        override fun publishNewIdentity(): String? { val id = "node-${published.size + 1}"; published.add(id); current = id; return id }
         override fun identity(): String? = current
     }
 

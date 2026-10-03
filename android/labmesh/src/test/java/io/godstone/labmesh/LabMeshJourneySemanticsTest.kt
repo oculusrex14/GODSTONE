@@ -29,6 +29,7 @@ import io.godstone.mesh.a11y.ControlRole
 import io.godstone.mesh.a11y.TextScale
 import io.godstone.mesh.a11y.UiNode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -109,6 +110,19 @@ class LabMeshJourneySemanticsTest {
         null
     }
 
+
+    /**
+     * *** THE PUBLISHED ENABLEMENT OF A RENDERED NODE. ***
+     *
+     * *Compose publisheth `SemanticsProperties.Disabled` on an unreachable node and nothing on a reachable one, so this
+     * read is `!Disabled` -- the same evidence a finger and a screen reader both obey.*
+     */
+    private fun isEnabled(tag: String): Boolean {
+        node(tag).performScrollTo()
+        val config = node(tag).fetchSemanticsNode().config
+        return !config.contains(SemanticsProperties.Disabled)
+    }
+
     /**
      * *** THE NODE'S OWN LAID-OUT SIZE, IN dp -- NOT ITS CLIPPED VISIBLE BOX. ***
      *
@@ -142,8 +156,17 @@ class LabMeshJourneySemanticsTest {
         // assigned `readingOrder` from its own list would be asserting its own list back to itself.*** *So each
         // node's vertical offset is read from the tree and the roster is ordered by it -- the order a switch user
         // walketh.*
-        val essentials = LabControl.REQUIRED.filter { AccessibilityContract.ESSENTIAL_CONTROLS.containsKey(it) }
-        val byPosition = LabControl.REQUIRED.sortedBy { tag ->
+        // *** THE ROSTER IS THE UNION OF THE REQUIRED JOURNEY IDS AND THE ESSENTIAL CONTROLS THE CONTRACT NAMES. ***
+        //
+        // *The essential table (`AccessibilityContract.ESSENTIAL_CONTROLS`) names the five controls a screen reader
+        // must find, and `retry` is one of them -- a REQUIRED live control the journey list did not repeat. **A roster
+        // built from `LabControl.REQUIRED` alone would omit `retry` and then claim the essential control was absent,
+        // which is the court losing the control rather than the screen.*** *Every id in the union is genuinely rendered
+        // in every typed state (the retry button is composed unconditionally, only its enablement moveth), so the
+        // union is measured from the real tree.*
+        val roster = (LabControl.REQUIRED + AccessibilityContract.ESSENTIAL_CONTROLS.keys).distinct()
+        val essentials = roster.filter { AccessibilityContract.ESSENTIAL_CONTROLS.containsKey(it) }
+        val byPosition = roster.sortedBy { tag ->
             node(tag).fetchSemanticsNode().positionInRoot.y
         }
         val essentialOrder = essentials.sortedBy { byPosition.indexOf(it) }.withIndex()
@@ -211,13 +234,30 @@ class LabMeshJourneySemanticsTest {
         sosStateWords: String = AccessibilityContract.STATE_WORDS.getValue("CANCELLED"),
         durableMsgId: String? = null,
         durableLabel: String = "UNAVAILABLE",
+        wipeStage: String = "IDLE",
+        wipeDecision: String = "clean_start",
+        wipePending: Boolean = false,
+        wipeRecoveryPermitted: Boolean = false,
+        wipeOperatorRequired: Boolean = false,
+        wipeOperatorResolutionPermitted: Boolean = false,
+        sosRetryPermitted: Boolean = true,
+        normalGraphAvailable: Boolean = true,
+        onBeginWipe: () -> Unit = {},
+        onResumeWipe: () -> Unit = {},
         onArmSos: () -> Unit = {},
         onCancelSos: () -> Unit = {},
         onRetry: () -> Unit = {},
+        onResolveCorrupt: () -> Unit = {},
     ) = LabJourneyState(
         recipients = recipients, outcome = outcome, stateWords = stateWords, sosStateWords = sosStateWords,
         durableMsgId = durableMsgId, durableLabel = durableLabel,
+        wipeStage = wipeStage, wipeDecision = wipeDecision, wipePending = wipePending,
+        wipeRecoveryPermitted = wipeRecoveryPermitted, wipeOperatorRequired = wipeOperatorRequired,
+        wipeOperatorResolutionPermitted = wipeOperatorResolutionPermitted,
+        sosRetryPermitted = sosRetryPermitted, normalGraphAvailable = normalGraphAvailable,
+        onBeginWipe = onBeginWipe, onResumeWipe = onResumeWipe,
         onArmSos = onArmSos, onCancelSos = onCancelSos, onRetry = onRetry,
+        onResolveCorrupt = onResolveCorrupt,
     )
 
     /**
@@ -493,7 +533,8 @@ class LabMeshJourneySemanticsTest {
         // (g) *** THE READING ORDER IS READ FROM THE LAYOUT, NOT ASSIGNED BY THIS COURT. ***
         // *A court that numbered the nodes from its own list would be asserting its own list back to itself. The
         // discriminator is a real geometry inversion: a node LOWER on the screen must carry a LATER traversal rank.*
-        val byLayout = LabControl.REQUIRED.sortedBy { node(it).fetchSemanticsNode().positionInRoot.y }
+        val byLayout = (LabControl.REQUIRED + AccessibilityContract.ESSENTIAL_CONTROLS.keys).distinct()
+            .sortedBy { node(it).fetchSemanticsNode().positionInRoot.y }
         val byRoster = nodes.map { it.controlId }
         assertEquals(
             "*** THE ROSTER'S ORDER MUST BE THE TREE'S OWN GEOMETRIC TRAVERSAL ORDER, NOT THE ORDER THIS COURT " +
@@ -603,4 +644,92 @@ class LabMeshJourneySemanticsTest {
             }
         }
     }
+
+    /**
+     * *** THE CONTROL ENABLEMENT IS BOUND TO THE TYPED STATE, AND EVERY DIRECTION IS MEASURED. ***
+     *
+     * *THE OBLIGATION: "Real buttons enabled/disabled match typed delegibility" and "UI accepted/refused enable
+     * predicate correct while pending/normal blocked".* **A control that remains CLICKABLE while its estate refuses is a
+     * control that lies to a finger as well as to a screen reader, which is the A11 defect exactly.**
+     *
+     * *** EACH TYPED ESTATE GETS ITS OWN TEST, BECAUSE A COMPOSE RULE PERMITTETH EXACTLY ONE `setContent` PER TEST. ***
+     * *The FOUR scenarios were one armed method calling `render()` four times, and Compose rightly refused the second
+     * `setContent` -- so the estate that mattered was never measured. **Splitting them is the repair, NOT a tolerance:
+     * every typed direction the obligation nameth is still asserted, one estate per test, so no scenario is dropped.***
+     *
+     * *The typed estates a rendered surface really meets:*
+     *
+     *   1. **a live normal graph with a standing call** -- the private controls are all reachable;
+     *   2. **a recovery-only estate** (`normalGraphAvailable = false`) -- send and the distress controls are GENUINELY
+     *      disabled, because there is no private owner behind them, while the wipe controls stay live;
+     *   3. **a clean estate with no standing call** -- retry is disabled (nothing to resume) while the wipe request
+     *      stands; and
+     *   4. **a corrupt record** -- the operator's resolution is the one actionable control, and no resume is offered.
+     */
+
+    /** (1) LIVE GRAPH + STANDING CALL: everything private is reachable. */
+    @Test
+    fun test_the_control_enablement_follows_the_live_graph() {
+        render(componentState(sosRetryPermitted = true, normalGraphAvailable = true))
+        // *** THE SEND'S ENABLEMENT IS THE REAL PREDICATE, NOT A GRAPH FLAG. *** *A live graph alone is not enough:
+        // Send also requireth a chosen recipient and a non-empty draft, and the previous arm spelled this `enabled ||
+        // true`, which measured nothing. **Both directions are driven here on the SAME composition.***
+        assertFalse("*** AN EMPTY DRAFT MUST LEAVE SEND DISABLED -- a Send that fires with no body is a control that " +
+            "lies to a finger. ***", isEnabled(LabControl.COMPOSE_SEND))
+        node(LabControl.COMPOSE_BODY).performTextInput("boat")
+        composeRule.waitForIdle()
+        assertTrue("*** A NON-EMPTY DRAFT WITH A CHOSEN RECIPIENT MUST LEAVE SEND REACHABLE. ***",
+            isEnabled(LabControl.COMPOSE_SEND))
+        assertTrue("*** A STANDING CALL MUST ENABLE THE RETRY. ***", isEnabled(LabControl.RETRY))
+        assertTrue("*** AND THE DISTRESS ARM MUST BE REACHABLE THROUGH A LIVE GRAPH. ***", isEnabled(LabControl.SOS_ARM))
+    }
+
+    /** (2) RECOVERY-ONLY: the private controls are disabled, and the WIPE controls remain live. */
+    @Test
+    fun test_the_control_enablement_follows_the_recovery_only_estate() {
+        render(componentState(
+            normalGraphAvailable = false,
+            sosRetryPermitted = false,
+            wipeStage = "REQUESTED", wipeDecision = "recovery_pending", wipePending = true,
+            wipeRecoveryPermitted = true, wipeOperatorRequired = false,
+            wipeOperatorResolutionPermitted = false,
+        ))
+        assertFalse("*** WITH NO NORMAL GRAPH THE RETRY MUST BE DISABLED. ***", isEnabled(LabControl.RETRY))
+        assertFalse("*** AND THE CANCEL MUST BE DISABLED. ***", isEnabled(LabControl.SOS_CANCEL))
+        assertFalse("*** AND THE DISTRESS ARM MUST BE DISABLED -- there is no node to author through. ***",
+            isEnabled(LabControl.SOS_ARM))
+        assertTrue("*** WHILE THE RESUME -- the owner's own repair -- MUST REMAIN ACTIONABLE. ***",
+            isEnabled(LabControl.WIPE_RESUME))
+        assertFalse("*** AND THE OPERATOR CONTROL MUST STAY DISABLED FOR A PENDING RECORD: that repair is for corrupt " +
+            "records only. ***", isEnabled(LabControl.WIPE_RESOLVE_CORRUPT))
+    }
+
+    /** (3) CLEAN ESTATE: nothing to resume, nothing to resolve, but the request stands. */
+    @Test
+    fun test_the_control_enablement_follows_the_clean_estate() {
+        render(componentState(
+            normalGraphAvailable = true, sosRetryPermitted = false,
+            wipeStage = "IDLE", wipeDecision = "clean_start", wipePending = false,
+            wipeRecoveryPermitted = false, wipeOperatorResolutionPermitted = false,
+        ))
+        assertFalse("*** A CLEAN ESTATE HAS NOTHING TO RESUME, SO THE CONTROL MUST BE GENUINELY DISABLED. ***",
+            isEnabled(LabControl.WIPE_RESUME))
+        assertTrue("*** AND THE REQUEST ITSELF MUST REMAIN REACHABLE. ***", isEnabled(LabControl.WIPE_BEGIN))
+    }
+
+    /** (4) CORRUPT: the OPERATOR repair is the actionable one, and no resume may be offered. */
+    @Test
+    fun test_the_control_enablement_follows_the_corrupt_record() {
+        render(componentState(
+            normalGraphAvailable = false,
+            wipeStage = "IDLE", wipeDecision = "corrupt_journal", wipePending = false,
+            wipeRecoveryPermitted = false, wipeOperatorRequired = true,
+            wipeOperatorResolutionPermitted = true,
+        ))
+        assertTrue("*** AN UNREADABLE RECORD MUST OFFER THE OPERATOR'S REAL ERASURE. ***",
+            isEnabled(LabControl.WIPE_RESOLVE_CORRUPT))
+        assertFalse("*** AND MUST NOT OFFER A RESUME -- retrying cannot make it readable. ***",
+            isEnabled(LabControl.WIPE_RESUME))
+    }
 }
+

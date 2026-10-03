@@ -44,6 +44,8 @@ on:
     branches:
       - main
       - 'remediation/**'
+      # Evaluate immutable-candidate commits before main convergence.
+      - 'board1/**'
   pull_request:
 
 permissions:
@@ -86,9 +88,10 @@ jobs:
         run: |
           python -m content.ingest.build_archive \
             --tier MEDIUM --out dist/archive_medium.db --no-embed
-      # Invariant D under --scope all: fails "independent vectors unavailable
-      # or unapproved" while crypto/cacophony_vectors.json holds no approved
-      # EXTERNAL fixture. Stays red until A-06 is closed (Phase K).
+      - name: repository-owned parity prerequisites
+        run: python ci/check_parity.py --scope repo
+      - name: verify independently approved Noise input
+        run: python tools/supplychain/emit_boundary.py --boundary noise_fixture --check-inputs
       - name: Noise conformance (external vector lock)
         run: python ci/check_parity.py --scope all
       - name: provenance (final -- tree still clean)
@@ -203,6 +206,22 @@ jobs:
       # A3: inspect the REAL APK and AAB (not just the static scanner).
       - name: inspect release artifacts (no cross-tier / model / mesh / :llm contamination)
         run: python scripts/inspect_android_artifacts.py android/app/build artifacts/android
+      - name: inspect actual release ABI, page alignment, R8 and backup surface
+        run: |
+          set -euo pipefail
+          inputs="artifacts/android/inspection/build-inputs"
+          mkdir -p "$inputs"
+          cp android/app/build/intermediates/merged_manifest/lightRelease/processLightReleaseMainManifest/AndroidManifest.xml \
+            "$inputs/AndroidManifest.xml"
+          cp android/app/build/outputs/mapping/lightRelease/mapping.txt "$inputs/mapping.txt"
+          cp android/app/proguard-rules.pro "$inputs/proguard-rules.pro"
+          python3 scripts/inspect_android_release.py \
+            android/app/build/outputs/apk/light/release/app-light-release-unsigned.apk \
+            --aab android/app/build/outputs/bundle/lightRelease/app-light-release.aab \
+            --merged-manifest "$inputs/AndroidManifest.xml" \
+            --mapping "$inputs/mapping.txt" --rules "$inputs/proguard-rules.pro" \
+            --dependencies artifacts/android/deps/lightReleaseRuntimeClasspath.txt \
+            --out artifacts/android/release-report.json
       # T52: the step above is EXCLUSION evidence only -- it would pass an app that
       # contains no usable archive at all. The guarded step below is the PRESENCE
       # form: when (and only when) the production content gates have staged real
@@ -225,7 +244,7 @@ jobs:
           cp artifacts/android-presence/artifact-inventory.json \
              artifacts/android-presence/approved-archive-presence.json \
              artifacts/android/presence/
-      - name: record artifact namelists, merged manifest, and checksums
+      - name: record artifact namelists and checksums
         run: |
           set -e
           mkdir -p artifacts/android/inspection
@@ -234,22 +253,6 @@ jobs:
             unzip -l "$a" > "artifacts/android/inspection/${base}.namelist.txt"
             sha256sum "$a" | tee "artifacts/android/inspection/${base}.sha256.txt"
           done
-          manifest=$(find android/app/build/intermediates -path '*lightRelease*' -name AndroidManifest.xml | head -n1 || true)
-          if [ -n "$manifest" ]; then
-            cp "$manifest" artifacts/android/inspection/AndroidManifest-merged.xml
-            # Archive-only: the merged manifest must grant no radio/BLE/location
-            # permission. A uses-permission carrying tools:node="remove" is the
-            # removal directive (consumed by the manifest merger), not a grant.
-            if grep -E '<uses-permission android:name="android.permission.(INTERNET|BLUETOOTH|BLUETOOTH_ADMIN|BLUETOOTH_SCAN|BLUETOOTH_CONNECT|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|ACCESS_BACKGROUND_LOCATION)"' \
-                artifacts/android/inspection/AndroidManifest-merged.xml \
-                | grep -v 'tools:node="remove"'; then
-              echo "::error::Archive-only manifest grants a radio/BLE/location permission"
-              exit 1
-            fi
-            echo "ok: merged lightRelease manifest grants no radio/BLE/location permission"
-          else
-            echo "::warning::merged lightRelease AndroidManifest.xml not found (AGP intermediates path may differ)"
-          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -284,6 +287,11 @@ jobs:
       # It MUST NOT block the Archive-only LIGHT binary above, which links only
       # :core and never configures :llm. (No root clean/test/lint -- those would
       # be configuration-scope, not the native build under test here.)
+      - name: compile repository-owned LLM Kotlin
+        working-directory: android
+        run: ./gradlew --no-daemon --warning-mode=all :llm:compileReleaseKotlin
+      - name: verify approved native stack input
+        run: python tools/supplychain/emit_boundary.py --boundary native_models --check-inputs
       - name: assemble :llm release (requires restored pinned llama.cpp native stack)
         working-directory: android
         run: ./gradlew --no-daemon --warning-mode=all :llm:assembleRelease
@@ -308,40 +316,24 @@ jobs:
       - name: provenance (start -- clean checkout)
         run: python ci/provenance.py --out provenance-start.json
       - run: pip install -r content/requirements.txt
-      # fetch_models.sh fails closed while docs/packaging/MODELS.lock.json is
-      # UNPINNED or any checksum is absent. Red here is the truthful state until
-      # the model is independently verified and pinned.
-      - name: restore pinned model (fails closed while UNPINNED)
-        run: scripts/fetch_models.sh
-      # GS-CONTENT-001 (the card's step 4): the FINAL CHUNK APPROVALS are an EXTERNAL input.
-      # The builder now REFUSETH a release without them, so this lane must OBTAIN the
-      # independently configured reviewer keyset and approval-bundle home and pass BOTH
-      # explicitly -- and when they are absent it STOPPETH at the external content gate,
-      # naming the requirement rather than inventing a fixture or weakening the law.
-      - name: final chunk approvals (external input -- fail closed when absent)
-        id: approvals
+      - name: verify independently approved model weights
+        run: python tools/supplychain/emit_boundary.py --boundary model_weights --check-inputs
+      - name: verify independently approved content inputs
         env:
-          APPROVALS_DIR: ${{ vars.GODSTONE_APPROVALS_DIR }}
-          REVIEWER_KEYSET: ${{ secrets.GODSTONE_REVIEWER_KEYSET }}
-        run: |
-          if [ -z "$APPROVALS_DIR" ] || [ -z "$REVIEWER_KEYSET" ]; then
-            echo "::error::STOPPING at the external content gate: the final chunk approvals are an EXTERNAL input (APPROVED_CONTENT). Configure the repository variable GODSTONE_APPROVALS_DIR and the secret GODSTONE_REVIEWER_KEYSET with the independently reviewed approval bundles and the operator's reviewer keyset. A self-generated fixture is NOT an approval and must never substitute for one."
-            exit 1
-          fi
-          echo "approvals_dir=$APPROVALS_DIR" >> "$GITHUB_OUTPUT"
+          GODSTONE_APPROVALS_DIR: ${{ vars.GODSTONE_APPROVALS_DIR }}
+          GODSTONE_REVIEWER_KEYSET: ${{ secrets.GODSTONE_REVIEWER_KEYSET }}
+        run: python tools/supplychain/emit_boundary.py --boundary approved_content --check-inputs
+      - name: restore pinned model
+        run: scripts/fetch_models.sh
       - name: build MEDIUM archive with embeddings
         env:
-          APPROVALS_DIR: ${{ vars.GODSTONE_APPROVALS_DIR }}
-          REVIEWER_KEYSET: ${{ secrets.GODSTONE_REVIEWER_KEYSET }}
+          GODSTONE_APPROVALS_DIR: ${{ vars.GODSTONE_APPROVALS_DIR }}
+          GODSTONE_REVIEWER_KEYSET: ${{ secrets.GODSTONE_REVIEWER_KEYSET }}
         run: |
-          # T53: production content jobs pass --release -- the builder refuseth examples,
-          # missing approval coverage and unsealed provenance (the default mode warneth only);
-          # the LIGHT no-embed gate build keepeth its own, separate lane above.
-          # GS-CONTENT-001: the approvals are passed EXPLICITLY, because a release without them
-          # is refused outright (the step above proveth they are present).
+          # A release requires independent approvals, provenance and pinned weights.
           python -m content.ingest.build_archive \
             --tier MEDIUM --out dist/archive_medium.db --release \
-            --approvals-dir "$APPROVALS_DIR" --reviewer-keyset "$REVIEWER_KEYSET"
+            --approvals-dir "$GODSTONE_APPROVALS_DIR" --reviewer-keyset "$GODSTONE_REVIEWER_KEYSET"
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -349,3 +341,47 @@ jobs:
         with:
           name: provenance-production-corpus
           path: provenance-*.json
+
+  ios-archive-only-release:
+    name: iOS Archive-only LIGHT unsigned artifact (internal; production content and signing external)
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: install declared inspection and project-generation tools
+        run: |
+          set -euo pipefail
+          pip install -r content/requirements-dev.txt
+          brew install xcodegen
+      - name: verify Archive-only shipping isolation and supply chain
+        run: |
+          set -euo pipefail
+          python3 ci/check_lab_isolation.py --explain
+          python3 ci/check_lab_isolation.py --selftest
+          python3 tools/supplychain/supply_chain.py verify --all
+          python3 scripts/inspect_ios_artifacts.py --selftest
+      - name: build unsigned Archive-only LIGHT product
+        run: |
+          set -euo pipefail
+          xcodegen generate --spec ios/project.yml
+          xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light \
+            -configuration LightRelease -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/board1-light-derived" \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: inspect the actual unsigned iOS artifact
+        run: |
+          python3 scripts/inspect_ios_artifacts.py \
+            "$RUNNER_TEMP/board1-light-derived/Build/Products/LightRelease-iphoneos/Godstone.app" \
+            --out "$RUNNER_TEMP/ios-artifact-report.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ios-archive-only-unsigned
+          path: |
+            ${{ runner.temp }}/ios-artifact-report.json
+            ${{ runner.temp }}/board1-light-derived/Build/Products/LightRelease-iphoneos/Godstone.app/**
+          if-no-files-found: error

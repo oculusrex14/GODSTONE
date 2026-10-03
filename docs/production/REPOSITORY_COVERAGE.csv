@@ -18,26 +18,16 @@ android/gradle.properties,Android,modified or added by remediation overlay,Inclu
 android/llm/src/main/java/io/godstone/llm/rag/AnswerValidator.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
 android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
 android/llm/src/test/java/io/godstone/llm/rag/AnswerValidatorTest.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
-ci/__pycache__/check_content_release_integration.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
-ci/__pycache__/check_oracle_private_draft.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
-ci/__pycache__/check_release_surface.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
-ci/__pycache__/check_repository.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
-ci/__pycache__/no_legacy_wire.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
-ci/__pycache__/no_release_bypasses.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
 ci/check_content_release_integration.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
 ci/check_oracle_private_draft.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
 ci/check_release_surface.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
 ci/check_repository.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
 ci/no_legacy_wire.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
 ci/no_release_bypasses.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
-content/__pycache__/archive_manifest.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
-content/__pycache__/release_gate.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
 content/archive_manifest.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
 content/manifests/README.md,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
 content/manifests/examples/document-manifest.example.yaml,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
 content/release_gate.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
-content/tests/__pycache__/test_archive_manifest.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
-content/tests/__pycache__/test_release_gate.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
 content/tests/test_archive_manifest.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
 content/tests/test_release_gate.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
 docs/architecture/ADR-0001-source-of-truth.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
@@ -96,9 +86,6 @@ sbom/ios.cdx.json,supply chain,modified or added by remediation overlay,Included
 sbom/models.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
 sbom/native.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
 sbom/python-generation-tools.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
-scripts/__pycache__/inspect_android_artifacts.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
-scripts/__pycache__/prepare_release_assets.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
-scripts/__pycache__/sync_ios_foundation_package.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
 scripts/inspect_android_artifacts.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
 scripts/prepare_release_assets.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
 scripts/sync_ios_foundation_package.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable

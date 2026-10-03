@@ -18,7 +18,10 @@ import Foundation
 /// step that is SUPPOSED to erase it.
 public final class WipeArtifactFileSystemSeam: ArtifactFileSystemSeam {
     private let fileManager: FileManager
-    private let journal: WipeDurabilityStore
+    /// *** IOS-R2: A LIVE READ OF WHERE THE RECORD STANDS, so an artifact is readable exactly while the ladder
+    /// standeth BELOW `KEYS_ERASED` **now** -- not as of a birth-time snapshot. *** *The journal is re-read on every
+    /// question; a wipe requested through another owner is therefore observed here.*
+    private let liveRung: () -> [String]
     /// GS-FINAL-002: **`WipeScope.privateArtifacts` NAMETH LOGICAL NAMES, NOT PATHS, AND THE FIRST VERSION OF THIS
     /// SEAM DELETED NOTHING WITH THEM.** `fileManager.removeItem(atPath: "mesh.db")` is measured against the PROCESS's
     /// working directory, where no such file has ever existed — so every deletion answered `.absent`, the ladder read
@@ -30,14 +33,37 @@ public final class WipeArtifactFileSystemSeam: ArtifactFileSystemSeam {
     public init(fileManager: FileManager = .default, journal: WipeDurabilityStore,
                 realPaths: [String: URL] = [:]) {
         self.fileManager = fileManager
-        self.journal = journal
         self.realPaths = realPaths
+        // THE LIVE ORACLE IS THE STORE'S OWN READ, asked each time -- never a snapshot.
+        self.liveRung = { [weak journal] in journal?.readJournal() ?? [] }
     }
 
     /// The URL a logical private-artifact name actually denoteth. **THE MAPPING IS TOTAL OR THE NAME FAILS**: a
     /// logical name with no entry here cannot be addressed, and `deleteArtifact` refuses it rather than reporting the
     /// absence of a file that was never named.
+    /// The URL a logical private-artifact name actually denoteth. **THE MAPPING IS TOTAL OR THE NAME FAILS**: a
+    /// logical name with no entry here cannot be addressed, and `deleteArtifact` refuses it rather than reporting the
+    /// absence of a file that was never named.
     private func url(for path: String) -> URL? { realPaths[path] }
+
+    /// *** IOS-FOLLOWUP-CURRENT-06: THE AUTHORITY'S UNION IS CONSUMED, NOT MERELY PERSISTED. ***
+    ///
+    /// *The finding: `bindInventory` persisteth a never-shrinking union of canonical paths across every root and key
+    /// domain that shares the physical authority, and NOTHING deleted from it -- so wiping root A could report
+    /// completion while root B's cataloged private DB/WAL/SHM persisted (their shared DEK already erased, leaving them
+    /// permanently unopenable).* **So the destructive road taketh its scope from the AUTHORITY-BOUND UNION beside the
+    /// composition's own map: a union entry already covered by a local logical name is not duplicated, and one that is
+    /// NOT is addressed by its own canonical path -- a deletion this seam can perform and measure.**
+    internal static func unionAwarePaths(_ local: [String: URL], union: [String: URL]) -> [String: URL] {
+        var merged = local
+        for (key, url) in union {
+            // The union is keyed "physical:<canonical path>"; the logical name is its last path component, made
+            // unique by the key when two roots happen to share a file name.
+            if merged.values.contains(where: { $0.standardizedFileURL.path == url.standardizedFileURL.path }) { continue }
+            merged[key] = url
+        }
+        return merged
+    }
 
     public func exists(_ path: String) -> Bool {
         guard let target = url(for: path) else { return false }
@@ -72,10 +98,16 @@ public final class WipeArtifactFileSystemSeam: ArtifactFileSystemSeam {
     public func isReadable(_ path: String) -> Bool {
         guard let target = url(for: path) else { return false }
         guard fileManager.fileExists(atPath: target.path) else { return false }
-        // THE JOURNAL IS THE ORACLE, AND IT IS READ-ONLY: once the durable record stands at KEYS_ERASED, the material
-        // that would decrypt this artifact is gone, so an artifact still on disk is NOT readable. NO KEY IS TOUCHED
-        // HERE -- the erasure belongeth to the step that is supposed to erase, and a read that erased would be a
-        // question destroying its own subject.
-        return !journal.readJournal().contains("KEYS_ERASED")
+        // THE JOURNAL IS THE ORACLE, AND IT IS READ **LIVE** ON EVERY QUESTION: once the durable record stands at
+        // KEYS_ERASED (or beyond), the material that would decrypt this artifact is gone, so an artifact still on disk
+        // is NOT readable. NO KEY IS TOUCHED HERE -- the erasure belongeth to the step that is supposed to erase, and
+        // a read that erased would be a question destroying its own subject.
+        //
+        // *** IOS-R2: THE ORACLE IS READ *NOW*, NOT AT INITIALIZATION. *** *A wipe requested through another owner
+        // therefore maketh this artifact unreadable IMMEDIATELY, which is what the retained gate could not see.*
+        let rungs = liveRung()
+        let erased = rungs.contains("KEYS_ERASED") || rungs.contains("ARTIFACTS_DELETED")
+            || rungs.contains("NEW_IDENTITY") || rungs.contains("IDLE")
+        return !erased
     }
 }

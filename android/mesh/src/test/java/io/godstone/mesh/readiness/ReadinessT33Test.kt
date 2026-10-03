@@ -111,6 +111,102 @@ class ReadinessT33Test {
         assertEquals("an aborted transaction fires no observer", 0, fired)
     }
 
+    // (4b) the INBOX and DELIVERY ceilings are DISTINCT typed pressure categories
+    @Test
+    fun testInboxCapRefusesInboxRowsAndDeliveryCapRefusesDeliveryRows() {
+        // the inbox cap with delivery WELL BELOW its own cap must name the INBOX category
+        val inboxAtCap = healthy(deliv = 0L, inbox = StoreQuota.INBOX_ROW_CAP.toLong())
+        val inboxResult = StoreQuota.admit(inboxAtCap, 1L, false, false)
+        assertEquals("an inbox-cap refusal must name the INBOX category, never the delivery one",
+            AdmissionResult.RefusedUnderPressure(Pressure.INBOX_ROWS), inboxResult)
+        // the delivery cap with inbox WELL BELOW its own cap must name the DELIVERY category
+        val delivAtCap = healthy(deliv = StoreQuota.DELIVERY_ROW_CAP.toLong(), inbox = 0L)
+        val delivResult = StoreQuota.admit(delivAtCap, 1L, false, false)
+        assertEquals("a delivery-cap refusal must name the DELIVERY category",
+            AdmissionResult.RefusedUnderPressure(Pressure.DELIVERY_ROWS), delivResult)
+        // one row BELOW either cap is still admitted
+        val below = healthy(deliv = (StoreQuota.DELIVERY_ROW_CAP - 1).toLong(), inbox = (StoreQuota.INBOX_ROW_CAP - 1).toLong())
+        assertTrue("one row below EITHER cap is still admitted -- the ceilings refuse only AT the cap",
+            StoreQuota.admit(below, 1L, false, false).isAccepted())
+        assertTrue("the two ceilings carry DIFFERENT typed categories", inboxResult != delivResult)
+    }
+
+    // (4c) a disposal DURING an in-flight dispatch is honoured for the very callback it targets
+    @Test
+    fun testUnregisterDuringDispatchLeavesTheDisposedObserverInert() {
+        val lease = ObservationLease()
+        var firstFired = 0
+        var disposedFired = 0
+        var disposedToken: ObservationLease.LeaseToken? = null
+        lease.register {
+            firstFired += 1
+            disposedToken?.let { lease.unregisterBy(it) }   // dispose a LATER snapshot entry mid-walk
+        }
+        disposedToken = lease.register { disposedFired += 1 }
+        lease.afterCommit()   // snapshot is [first, disposed]; the first callback disposes the second
+        assertEquals("the dispatching observer fires", 1, firstFired)
+        assertEquals("the observer disposed MID-dispatch must NOT fire in that same round", 0, disposedFired)
+        lease.afterCommit()
+        assertEquals("and it stays inert on every later round", 0, disposedFired)
+    }
+
+    // (4d) releaseAll DURING a dispatch (a store closing mid-notification) leaves the remaining callbacks inert
+    @Test
+    fun testReleaseAllDuringDispatchLeavesRemainingObserversInert() {
+        val lease = ObservationLease()
+        var firstFired = 0
+        var laterFired = 0
+        lease.register { firstFired += 1; lease.releaseAll() }   // the store closes while the dispatch walketh the snapshot
+        lease.register { laterFired += 1 }
+        lease.afterCommit()
+        assertEquals("the in-flight observer fires", 1, firstFired)
+        assertEquals("an observer released MID-dispatch must NOT fire (it would be invoked against already-released handles)", 0, laterFired)
+        assertEquals("and the census returns to zero", 0, lease.registrationCount)
+    }
+
+    // (4e) a NESTED afterCommit during a dispatch does not duplicate callbacks
+    @Test
+    fun testNestedAfterCommitDuringDispatchFiresNoObserverTwice() {
+        val lease = ObservationLease()
+        var calls = 0
+        var nestedDone = false
+        lease.register { calls += 1; if (!nestedDone) { nestedDone = true; lease.afterCommit() } }   // settle once, mid-dispatch
+        lease.afterCommit()
+        assertEquals("a nested afterCommit DURING a dispatch must not re-enter and fire the in-flight callback again", 1, calls)
+        lease.afterCommit()
+        assertEquals("each genuine round still fires the standing observer exactly once", 2, calls)
+    }
+
+    // (4f) the positive lease laws: active flag, in-tx settling, next-round carry, and abort discard
+    @Test
+    fun testLeasePositiveActiveNextRoundAndAbortLaws() {
+        val lease = ObservationLease()
+        var committed = 0
+        var carried = 0
+        lease.register { committed += 1 }
+        assertTrue("outside a transaction the lease is not active", !lease.active)
+        lease.beginTransaction()
+        assertTrue("an open transaction is ACTIVE", lease.active)
+        lease.register { carried += 1 }
+        lease.afterCommit()
+        assertEquals("settling INSIDE an open transaction fires nothing", 0, committed)
+        assertEquals("an in-tx registration has not fired yet", 0, carried)
+        lease.commit()
+        assertTrue("commit ends the transaction", !lease.active)
+        lease.afterCommit()
+        assertEquals("the standing registration fires once the transaction hath committed", 1, committed)
+        assertEquals("a registration made INSIDE the committed tx carries to the next round and fires", 1, carried)
+
+        val aborted = ObservationLease()
+        var abortedFired = 0
+        aborted.beginTransaction()
+        aborted.register { abortedFired += 1 }
+        aborted.abort()
+        aborted.afterCommit()
+        assertEquals("a notification registered within an ABORTED transaction never fires", 0, abortedFired)
+        assertEquals("an abort discards its deferred registrations from the census", 0, aborted.registrationCount)
+    }
+
     // (5) a SQL failure in heldBytes never fabricates 0 and refuses admission (the named falsification)
     @Test
     fun testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission() {

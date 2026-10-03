@@ -5,21 +5,25 @@
     "component": {
       "name": "GODSTONE-corpus",
       "type": "application",
-      "version": "overlay-b7daf5a"
+      "version": "overlay-unpinned"
     },
     "properties": [
       {
-        "name": "release_status",
-        "value": "blocked"
+        "name": "completeness",
+        "value": "derived from docs/supplychain/SBOM.json (the canonical inventory, built from the locked dependency graph)"
+      },
+      {
+        "name": "retired",
+        "value": "true"
       },
       {
         "name": "reason",
-        "value": "no approved licensed reviewed production corpus is bundled"
+        "value": "no approved licensed reviewed production corpus is bundled; the corpus is owned by the external APPROVED_CONTENT gate"
       }
     ],
-    "timestamp": "2026-08-06T10:14:38Z"
+    "timestamp": "2026-10-01T18:40:52+00:00"
   },
-  "serialNumber": "urn:uuid:a1ef5749-f6f8-4588-b95c-dba8a97bb457",
+  "serialNumber": "urn:uuid:9e7c168f-e733-5697-ac4e-6dc8eef71a30",
   "specVersion": "1.5",
   "version": 1
 }

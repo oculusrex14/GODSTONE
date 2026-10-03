@@ -101,7 +101,24 @@ class Identity private constructor(
     companion object {
         internal const val PREFS = "godstone_identity"
 
-        fun loadOrCreate(ctx: Context): Identity =
+        /**
+         * *** GS-FINAL-003 `one-owner` (A13): NORMAL PRIVATE IDENTITY REQUIRES THE OWNER TOKEN. ***
+         *
+         * *THE AUDIT'S FINDING A13: **"Callers can bypass the permit graph using raw private-owner constructors"** --
+         * `Identity.loadOrCreate(Context)` was a public road to real private cryptographic keys with NO permit gate.*
+         * **It is now `internal`, and it CONSUMES the [PrivateOwnerToken] minted from a verified, same-estate permit.**
+         */
+        internal fun loadOrCreate(ctx: Context, token: PrivateOwnerToken): Identity =
+            loadOrCreate(EncryptedSharedPreferencesStorage(ctx.also { token.consumeForConstruction() }), SecureRandom())
+
+        /**
+         * *** GS-FINAL-003 `recovery-identity` (A4/A13): THE RECOVERY-ONLY LOW-LEVEL EFFECT. ***
+         *
+         * *The ladder's last rung regenerates identity material as an EFFECT after keys and artifacts are erased,
+         * NOT as a permit-gated normal construction.* **This is the ONE road for `RecoveryIdentityMaterial` and
+         * the recovery authority: it is `internal`, named for its purpose, and carries NO permit.**
+         */
+        internal fun regenerateForRecovery(ctx: Context): Identity =
             loadOrCreate(EncryptedSharedPreferencesStorage(ctx), SecureRandom())
 
         internal fun loadOrCreate(

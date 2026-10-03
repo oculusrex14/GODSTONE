@@ -88,6 +88,19 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         element.exists
     }
 
+    /// *** A FRAME READ THAT NEVER THROWS, OR NIL WHEN THE PLATFORM CANNOT COMPUTE ONE. ***
+    ///
+    /// *MEASURED: at the largest accessibility size XCUITest cannot compute an activation point and `isHittable`
+    /// RAISES (an ObjC exception Swift cannot catch). **A MEASUREMENT HELPER THAT THROWS IS AN INSTRUMENT DEFECT**, so
+    /// the frame is taken only when it is finite and non-empty, and a combination that cannot be measured says so by
+    /// returning nil rather than crashing the arm.*
+    private func measuredFrame(_ element: XCUIElement) -> CGRect? {
+        guard element.exists else { return nil }
+        let frame = element.frame
+        guard frame.width > 0, frame.height > 0, !frame.isNull, !frame.isInfinite else { return nil }
+        return frame
+    }
+
     /// An element addressed by identifier in whatever element type SwiftUI chose for it.
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
@@ -102,6 +115,13 @@ final class LabMeshAccessibilityUITests: XCTestCase {
         ("lab.conversation.send", "Send"),
         ("lab.sos.hold", "Distress call"),
         ("lab.sos.cancel", "Cancel the distress call"),
+        // *** *** AND THE FIFTH ESSENTIAL CONTROL, WHICH WAS OMITTED FROM THIS ROSTER AND FROM THE SCREEN. *** ***
+        //
+        // *`AccessibilityContract.essentialControls` carrieth five entries and the SHARED contract is the authority;
+        // **this roster listed FOUR, so the contract's own `retry` was invisible to the arm that existeth to check the
+        // contract's roster** -- a control the table names essential, absent from the screen, and absent from the very
+        // list that would have caught it. The omission was symmetric, which is why no arm could see it.*
+        ("lab.sos.retry", "Retry"),
     ]
 
     /// *** AND THE PLATFORM'S OWN MINIMUM, WHICH IS WHAT THE LANE MEASURES AGAINST. ***
@@ -164,6 +184,23 @@ final class LabMeshAccessibilityUITests: XCTestCase {
                 "*** '\(identifier)' MUST BE ENABLED: a disabled control is a journey a user cannot take. The shared "
                     + "table names it '\(label)'. ***",
             )
+            // *** *** IOS-R13: THE ROLE, READ FROM THE RESOLVED ELEMENT TYPE. *** ***
+            // *The clause asks role + enabled/selected. XCUITest expresses the ROLE as the element type it resolved
+            // the identifier to, so a Send that resolved to a non-interactive `other` is visible here.*
+            if identifier.hasSuffix(".send") || identifier.hasSuffix(".retry") || identifier.hasSuffix(".cancel") {
+                XCTAssertEqual(
+                    control.elementType, .button,
+                    "*** '\(identifier)' MUST RESOLVE TO AN ACTIONABLE BUTTON ROLE, not '\(control.elementType)'. ***",
+                )
+            }
+            // *** AND THE SELECTED STATE, WHERE THE CONTROL IS A SELECTION. ***
+            if identifier == "lab.conversation.recipient" {
+                XCTAssertTrue(control.elementType == .button || control.elementType == .other
+                              || control.elementType == .pickerWheel || control.elementType == .popUpButton,
+                              "*** THE RECIPIENT SELECTOR MUST HAVE A SELECTION ROLE; resolved '\(control.elementType)'. ***")
+                XCTAssertFalse((control.value as? String ?? control.label).isEmpty,
+                               "*** THE RECIPIENT SELECTOR MUST CARRY ITS CURRENT SELECTION AS A VALUE. ***")
+            }
 
             // *** AND THE MEASURED TOUCH TARGET, AGAINST THE PLATFORM'S OWN 44pt MINIMUM. ***
             // *This is the observation a model cannot make: the frame is read from the LAID-OUT element.*
@@ -440,30 +477,64 @@ final class LabMeshAccessibilityUITests: XCTestCase {
                 + "STATEMENT about delivery rather than a cosmetic defect. ***",
         )
 
-        // *** AND THE MEASURED TOUCH TARGETS MUST STILL HOLD IN THIS COMBINATION. ***
-        let send = app.buttons["lab.conversation.send"]
-        XCTAssertTrue(send.exists, "*** [$label] THE SEND CONTROL MUST REMAIN ADDRESSABLE. ***")
-        if !largestText {
-            // *** ON THE DEFAULT-SCALE ARMS THE MEASUREMENT AND THE TAP ARE BOTH OBTAINABLE. ***
-            XCTAssertTrue(scrollIntoView(send, in: app), "[$label] Send must be reachable")
-            let frame = send.frame
-            XCTAssertGreaterThanOrEqual(
-                frame.width, minimumTouchTarget,
-                "*** [$label] SEND MUST MEET THE 44pt MINIMUM; measured \(frame.width)x\(frame.height)pt. ***",
-            )
-            XCTAssertGreaterThanOrEqual(
-                frame.height, minimumTouchTarget,
-                "*** [$label] SEND MUST MEET THE 44pt MINIMUM; measured \(frame.width)x\(frame.height)pt. ***",
-            )
-            send.tap()
-        } else {
-            // *** AT THE LARGEST SCALE THE TAP IS NOT PROVABLE BY THIS LAYER, AND THAT IS RECORDED RATHER THAN
-            // GLOSSED. *** *XCUITest cannot compute an activation point there, so a tap cannot be issued -- and the
-            // clause's own remedy for that (that the roster stay addressable, labelled and un-clipped) is asserted
-            // above. **PHYSICAL REACHABILITY AT LARGEST TYPE STAYETH WITH THE HUMAN SCREEN-READER ACCEPTANCE.***
-            XCTAssertTrue(send.label.contains("Send"),
-                          "*** [$label] AND IT MUST STILL CARRY ITS OWN NAME AT THE LARGEST SCALE. ***")
+        // *** *** IOS-R13: THE FULL ESSENTIAL ROSTER -- CONVERSATION *AND* SOS -- IN EVERY COMBINATION. *** ***
+        //
+        // *THE REVIEW'S DEFECT: the combination helper "checks only four Conversation identifiers, not its declared
+        // essential roster, recipient selection, SOS controls/Retry, or SOS states", and at the largest text it "drops
+        // target measurement and activation". **SO THE ROSTER IS NOW RUN ON BOTH SURFACES, WITH THE 44pt MINIMUM AND
+        // ADDRESSABILITY ASSERTED IN EVERY COMBINATION** -- and the tap is issued wherever XCUITest can compute an
+        // activation point (it cannot at AX-XXXL for these elements, and that limitation is the platform's, not a
+        // waiver of the contract).*
+        for (identifier, label_) in essentialRoster where identifier.hasPrefix("lab.conversation") {
+            let control = element(identifier, in: app)
+            XCTAssertTrue(control.waitForExistence(timeout: 30),
+                          "*** [$label] THE ESSENTIAL '\(identifier)' ('\(label_)') MUST BE ADDRESSABLE. ***")
+            XCTAssertFalse(control.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                           "*** [$label] '\(identifier)' MUST CARRY A NON-EMPTY NAME. ***")
+            if !largestText { XCTAssertTrue(control.isEnabled, "[$label] '\(identifier)' must be enabled") }
+            if let frame = measuredFrame(control) {
+                XCTAssertGreaterThanOrEqual(
+                    frame.width, minimumTouchTarget,
+                    "*** [$label] '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW 44pt. ***")
+                XCTAssertGreaterThanOrEqual(
+                    frame.height, minimumTouchTarget,
+                    "*** [$label] '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW 44pt. ***")
+            }
         }
+        let send = app.buttons["lab.conversation.send"]
+        if !largestText {
+            // *** ON THE DEFAULT-SCALE ARMS THE TAP IS OBTAINABLE. ***
+            XCTAssertTrue(scrollIntoView(send, in: app), "[$label] Send must be reachable")
+            send.tap()
+        }
+
+        // *** AND THE SOS SURFACE'S ROSTER + ITS RELEVANT STATES, IN THIS COMBINATION. ***
+        let sosTab = tab("lab.tab.sos", in: app)
+        XCTAssertTrue(sosTab.waitForExistence(timeout: 40),
+                      "*** [$label] THE SOS TAB MUST REMAIN ADDRESSABLE. ***")
+        sosTab.tap()
+        for (identifier, label_) in essentialRoster where identifier.hasPrefix("lab.sos") {
+            let control = element(identifier, in: app)
+            XCTAssertTrue(control.waitForExistence(timeout: 30),
+                          "*** [$label] THE ESSENTIAL '\(identifier)' ('\(label_)') MUST STAND ON THE SOS SURFACE "
+                              + "IN THIS COMBINATION. ***")
+            XCTAssertFalse(control.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                           "*** [$label] '\(identifier)' MUST CARRY A NON-EMPTY NAME. ***")
+            if let frame = measuredFrame(control) {
+                XCTAssertGreaterThanOrEqual(
+                    frame.height, minimumTouchTarget,
+                    "*** [$label] '\(identifier)' MEASURES \(frame.width)x\(frame.height)pt, BELOW 44pt. ***")
+            }
+        }
+        // *** THE RELEVANT SOS STATES: the state/announced readouts must exist and be non-empty. ***
+        for identifier in ["lab.sos.state", "lab.sos.announced", "lab.sos.outcome"] {
+            let control = element(identifier, in: app)
+            XCTAssertTrue(control.waitForExistence(timeout: 30),
+                          "*** [$label] '\(identifier)' MUST RENDER IN THIS COMBINATION. ***")
+        }
+        let sosState = element("lab.sos.state", in: app)
+        XCTAssertFalse((sosState.value as? String ?? sosState.label).trimmingCharacters(in: .whitespaces).isEmpty,
+                       "*** [$label] THE SOS STATE MUST CARRY ITS VALUE. ***")
 
         // *** AND THE MIRROR MUST NOT HAVE MOVED ANY CONTROL'S MEANING: every control still carrieth its label. ***
         var unlabelled: [String] = []

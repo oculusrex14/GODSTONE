@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import io.godstone.core.archive.ArchiveDocument
+import io.godstone.core.archive.ArchiveReadException
 import io.godstone.core.archive.ArchivePassage
 import io.godstone.core.archive.ArchiveReader
 import io.godstone.core.archive.ArchiveSourceMetadata
@@ -473,5 +474,110 @@ class GsFinal006RenderedReadingListTest {
     // assert the thing exists, and say plainly that its effect is not observable today.*
     // See `ci/check_release_surface.py` (SEARCH THIS REPO FOR: GS-FINAL-006 document-key presence).
 
+
+    // ================================================================================================
+    // MARK: - THE RENDERED PROVENANCE ROAD (the provenance-swallow remediation's UI half)
+    // ================================================================================================
+
+    /** A reader whose provenance face answereth in ONE of the three ways the road now knoweth. */
+    private class ProvenanceReader(val mode: Mode) : ArchiveReader {
+        enum class Mode { PROJECTION, ABSENCE, FAULT }
+
+        override fun status(): ArchiveState =
+            ArchiveState.Ready(origin = "installed.bin", sha256 = "a".repeat(64))
+        override fun listDocuments(domain: String?): List<ArchiveDocument> =
+            listOf(ArchiveDocument(7, "Archive guide", "reference", false, "src-001", "r7"))
+        override fun listDomains(): List<String> = emptyList()
+        override fun passages(documentId: Long): List<ArchivePassage> =
+            (1L..3L).map { ArchivePassage(it, 7, "Archive guide", "reference", "S", "passage $it") }
+        override fun search(query: String, limit: Int): List<ArchivePassage> = passages(7)
+        override fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? = when (mode) {
+            Mode.PROJECTION -> ArchiveSourceMetadata(7L, "Archive guide", "src-001", "CC0-BY", "r7", false)
+            Mode.ABSENCE -> null
+            Mode.FAULT -> throw ArchiveReadException("no such column: licence")
+        }
+    }
+
+    private fun openedProvenanceScreen(mode: ProvenanceReader.Mode): BrowseViewModel {
+        val vm = BrowseViewModel(ProvenanceReader(mode), UnconfinedTestDispatcher())
+        vm.open(ArchiveDocument(7, "Archive guide", "reference", false, "src-001", "r7"))
+        return vm
+    }
+
+    private val citationTale: String = "source src-001 . revision r7 . licence CC0-BY"
+
+    /**
+     * *** THE POSITIVE RENDERED CLAUSE: A PROVIDED ARCHIVE SHEWETH ITS EXACT PROVENANCE. ***
+     *
+     * Composed through THE PRODUCTION `BrowseScreen`, not a replica of it -- the same reason the arms above
+     * render `ReadingList` rather than a copy: a court that driveth its own wiring is asserting an architecture
+     * instead of observing the runtime.
+     */
+    @Test
+    fun theCitationLineRenderethForADocumentedRow() {
+        val vm = openedProvenanceScreen(ProvenanceReader.Mode.PROJECTION)
+        compose.setContent {
+            io.godstone.app.ui.theme.GodstoneTheme(redNightMode = false) { BrowseScreen(vm) }
+        }
+        awaitDisplayed(citationTale)
+        compose.onNodeWithText(citationTale).assertIsDisplayed()
+        compose.onNodeWithText("Archive unavailable: the document could not be opened (ArchiveReadException)")
+            .assertDoesNotExist()
+    }
+
+    /**
+     * *** GENUINE ABSENCE IS RENDERED AS ABSENCE -- NO CITATION, AND NO FABRICATED BANNER. ***
+     *
+     * THE OTHER DIRECTION OF THE DEFECT. Once the fault was told as absence, the tempting repair was to answer
+     * absence WITH a banner; that would sell the reader a repair for a state that hath nothing to mend, and it
+     * would be its own lie about the archive. So the uncited row must stay a READABLE document: passages
+     * displayed, no citation, no unavailable notice, no retry affordance.
+     */
+    @Test
+    fun anUncitedRowRenderethNeitherCitationNorAFabricatedBanner() {
+        val vm = openedProvenanceScreen(ProvenanceReader.Mode.ABSENCE)
+        compose.setContent {
+            io.godstone.app.ui.theme.GodstoneTheme(redNightMode = false) { BrowseScreen(vm) }
+        }
+        awaitDisplayed("passage 1")                       // the document is genuinely READABLE
+        // *** WHY THE FIRST PASSAGE AND NOT THE THIRD, MEASURED FROM THE PRODUCTION ROAD RATHER THAN WIDENED
+        // AROUND. *** *My first draft awaited `passage 3` -- an arbitrary member of the three-passage fixture --
+        // and it timed out.* **The UI was not at fault and no timeout was raised to hide it:**
+        //   * `ReadingList` is a `LazyColumn` (`BrowseScreen.kt:322`), so it composeth ONLY what fits the viewport;
+        //   * and on a fresh open the placement road RESOLVETH the target to the FIRST passage by construction --
+        //     `openDocumentInternal` cleareth the cross-document anchor, so `ArchiveReadingAnchor.target(ids, null)`
+        //     yealdeth the first identity and the consume-effect runneth `scrollToItem(0)` (`BrowseScreen.kt:283`).
+        // **So the first passage is the one a reader actually seeth, and awaiting IT observeth the real initial
+        // position instead of a member the layout never compose.** *Had the third passage been REQUIRED, the honest
+        // way to reach it is the list's own navigation (`READING_LIST_TAG` + a real scroll gesture, which the arms
+        // above already exercise) -- never a longer wait, a retry, or a production change made to please a test.*
+        compose.onNodeWithText("passage 1").assertIsDisplayed()
+        compose.onNodeWithText(citationTale).assertDoesNotExist()
+        compose.onNodeWithText("Archive unavailable: the document could not be opened (ArchiveReadException)")
+            .assertDoesNotExist()
+        compose.onNodeWithText("Retry").assertDoesNotExist()
+        assertNull("and the model claimeth no provenance it did not read", vm.state.value.openedSource)
+    }
+
+    /**
+     * *** AND THE FAULT COMETH FORTH ON SCREEN: the UI-omission rod's behavioural pair. ***
+     *
+     * THIS IS THE ARM THAT MUST DIE if the presentation is ever folded back into an omission -- a `case` that
+     * rendereth nothing on a fault is precisely how a citation-stripped document came to look healthy. It is
+     * also the clause that proveth the banner is SANITISED: the engine's own words (`no such column: licence`)
+     * may NOT travel to the reader's eye, only the kind of the woe.
+     */
+    @Test
+    fun aProvenanceFaultRenderethItsCauseAndEarnethItsRetry() {
+        val vm = openedProvenanceScreen(ProvenanceReader.Mode.FAULT)
+        compose.setContent {
+            io.godstone.app.ui.theme.GodstoneTheme(redNightMode = false) { BrowseScreen(vm) }
+        }
+        awaitDisplayed("Archive unavailable: the document could not be opened (ArchiveReadException)")
+        compose.onNodeWithText("Retry").assertIsDisplayed()
+        compose.onNodeWithText(citationTale).assertDoesNotExist()
+        compose.onNodeWithText("no such column: licence").assertDoesNotExist()
+        assertTrue("and the state presenteth no citation it never read", vm.state.value.openedSource == null)
+    }
 
 }

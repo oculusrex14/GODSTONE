@@ -1,5 +1,5 @@
 import Foundation
-
+import CryptoKit
 //  GS-STORE-002 / GS-FINAL-004 (`native-engine-half`): THE REAL SQLCIPHER ENGINE, DYNAMICALLY BOUND.
 //
 //  *** THE FINDING'S OWN WORDS, QUOTED: "iOS private stores still use ordinary SQLite without a store
@@ -11,8 +11,12 @@ import Foundation
 //  all -- the only conformers were courts' `FakeEngine`s -- so `EncryptedStoreFactory.reopenOwned`
 //  answered `.engineUnavailable` for every real composition, and both private stores fell back to
 //  their ordinary-SQLite roads. The ledger recorded that absence as a blocker ("no implementor in
-//  tree"); THIS FILE REMOVES THAT EXCUSE. What remains outside the builder's reach is the PINNED
-//  BINARY and its device at-rest proof, which stay `EXTERNAL_BLOCKED`.
+//  tree"); THIS FILE REMOVES THAT EXCUSE. **The pinned image ITSELF is REPOSITORY-OWNED**: the host
+//  and simulator images are built from the pinned source recipe
+//  (`tools/supplychain/build_sqlcipher_simulator.sh`) and their per-toolchain digests are recorded in
+//  the repo-owned register (`docs/supplychain/SQLCIPHER.pins.json`) from which the generated
+//  `SQLCipherTrustedExpectation` is emitted. What remains genuinely outside the builder's reach is the
+//  DEVICE-signed artifact and the on-device at-rest proof, which stay `EXTERNAL_BLOCKED`.
 //
 //  *** WHY `dlopen`/`dlsym` RATHER THAN A VENDORED LIBRARY OR A SYNTHESIZED ARTIFACT. ***
 //  *`third_party/llama.cpp`'s precedent in this repository forbids vendoring the artifact.* And a
@@ -22,8 +26,9 @@ import Foundation
 //  is exactly the fail-closed shape the card asks for: no approved artifact means no engine, and no
 //  engine means no private store, never a plaintext one.
 //
-//  *** AND THIS IS NOT A CLAIM OF DEVICE VERIFICATION. *** The pinned binary, its approval and the
-//  at-rest bytes on a device are the EXTERNAL half. **Everything this file proves is provable on a
+//  *** AND THIS IS NOT A CLAIM OF DEVICE VERIFICATION. *** Host and simulator images are repo-owned and
+//  proven hereby EXECUTION; **the DEVICE-signed artifact and the at-rest bytes on a real device remain the
+//  EXTERNAL half** (`gs-store-002.sqlcipher-engine`). **Everything this file proves is provable on a
 //  host, and it proves it by EXECUTION:** the symbols really are resolved from a real dynamic
 //  library, the key really is applied before any schema read, and the cipher probe really is what
 //  decides `encryptedAtRest`.
@@ -39,9 +44,10 @@ public enum SQLCipherPin {
     /// The library the approved iOS artifact is expected to provide.
     ///
     /// *`net.zetetic:sqlcipher-android` is pinned for the Android isle (`docs/supplychain/SBOM.json`,
-    /// digest `44fc40c3…`, version `4.17.0`); the iOS artifact's own pin is the external half this
-    /// builder cannot write.* **The name here is the Apple-platform spelling of the same engine, and
-    /// the obligation's evidence records that the pin itself remains external.**
+    /// digest `44fc40c3…`, version `4.17.0`).* **The iOS artifact's own pin is repo-owned: the host and
+    /// simulator digests are recorded per-toolchain in `docs/supplychain/SQLCIPHER.pins.json` and baked
+    /// into the generated `SQLCipherTrustedExpectation`; only the DEVICE-signed artifact remains external.**
+    /// **The name here is the Apple-platform spelling of the same engine.**
     public static let libraryName = "libsqlcipher.0.dylib"
 
     /// The cipher version this build accepts. *A store keyed by a different generation is REFUSED by
@@ -72,8 +78,48 @@ public enum SQLCipherPin {
 ///      bound engine cannot perform the probe that decideth the answer;
 ///   3. the key, the cipher version or the schema probe failing -> a TYPED fault, and the handle is
 ///      closed on EVERY failure path before the throw.
-public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked Sendable {
+public final class SQLCipherRuntimeProof: @unchecked Sendable {
+    fileprivate let table: SQLiteFunctionTable
+    fileprivate init(table: SQLiteFunctionTable) { self.table = table }
+    internal func matches(_ connection: OwnedVerifiedConnection) -> Bool {
+        connection.provider.lease === table.lease && table.lease != nil
+    }
+}
 
+/// *** THE PRE-LOAD DISCRIMINATOR SEAM -- **HOST/SIMULATOR COURTS ONLY**. ***
+///
+/// *The production road passeth `nil`, so this is a no-op outside a court. A court uses it to model the REAL swap
+/// window deterministically: immediately AFTER the approved bytes are read and verified, a DIFFERENT real Mach-O is
+/// put at the mutable name the bytes came from. On the OLD road that swap made `dlopen(pathname)` execute the wrong
+/// image (constructors included) BEFORE any pointer was admitted; on the NEW road the image is loaded from an unnamed
+/// private snapshot of the ALREADY-VERIFIED bytes, so the swap cannot reach the load at all.*
+///
+/// **IT CANNOT APPROVE AN ARBITRARY IMAGE.** *The hook runs only after the bytes have matched the baked pin
+/// (digest + bytes + arch + platform), it cannot change the bytes the engine loads, and it cannot alter the compiled
+/// `SQLCipherTrustedExpectation`. It is an `internal` seam of the PRODUCTION initializer, never a factory input, and
+/// it can never label an arbitrary library `.pinnedSQLCipher`.*
+internal struct ImageByteBindingTestSeam: @unchecked Sendable {
+    /// Called after the approved bytes are verified and immediately before the image is loaded. *Receives the private
+    /// snapshot path the loader is about to use -- never the original image's pathname.*
+    let willLoad: @Sendable (String) -> Void
+    /// The host directory the private snapshot is created under (a court's own temp root). *`nil` -> the system
+    /// temporary directory.*
+    let snapshotDirectory: String?
+    /// An ARTIFACT SEARCH DIRECTORY consulted first, exactly as `GODSTONE_SQLCIPHER_ARTIFACT_DIR` is -- a court can
+    /// stage a private, mutable copy of the approved image without mutating process-global environment. *The bytes are
+    /// still verified against the baked pin, so this cannot admit an unapproved image.*
+    let artifactDirectory: String?
+    init(willLoad: @escaping @Sendable (String) -> Void,
+         snapshotDirectory: String? = nil,
+         artifactDirectory: String? = nil) {
+        self.willLoad = willLoad
+        self.snapshotDirectory = snapshotDirectory
+        self.artifactDirectory = artifactDirectory
+    }
+}
+
+public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked Sendable {
+    public private(set) var runtimeEngineProof: SQLCipherRuntimeProof?
     /// *** THE COMPLETE TABLE BOUND FROM THIS ENGINE'S OWN IMAGE -- ALL-OR-NOTHING. ***
     ///
     /// *The old engine bound eight symbols into a private struct and then let the adopting stores reach the GLOBALLY
@@ -81,51 +127,412 @@ public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked 
     /// resolved from the one image, and `openKeyedVerified` hands it to the connection -- so no raw handle ever
     /// crosses a provider boundary through a global symbol again.*
     private let table: SQLiteFunctionTable?
-
-    /// *** THE `dlopen` HANDLE IS RETAINED FOR AS LONG AS THE TABLE'S POINTERS CAN BE USED, AND THE CLOSE IS PAIRED
-    /// WITH THE ENGINE'S OWN LIFETIME. ***
-    ///
-    /// *THE DEFECT THIS CLOSES: the old `deinit` called `dlclose`, but the close CLOSURE handed to `OwnedConnection`
-    /// captured only the eight FUNCTION POINTERS -- so if an `OwnedConnection` outlived the engine, its close would
-    /// invoke a pointer into an UNLOADED image. The reverse ordering is the practical one (an engine outlives its
-    /// connections in the composition), but "practical" is not a guarantee.* **So ownership is made explicit: the
-    /// engine keepeth the `dlopen` handle, the connection carrieth its table, and the composition's close order
-    /// (stores, then adopted connections, then the engine) is what the courts assert.**
-    private let handle: UnsafeMutableRawPointer?
     private let bindingFailure: String?
+    private let isArbitraryPath: Bool
 
-    /// Bind the pinned library. *A caller may pin its own name for a court; production passeth none.*
-    public init(libraryPath: String? = nil) {
-        let name = libraryPath ?? SQLCipherPin.libraryName
-        let h = dlopen(name, RTLD_NOW | RTLD_LOCAL)
-        self.handle = h
+    private struct SidecarFormat: Decodable {
+        struct SourceInfo: Decodable {
+            let commit: String
+            let tag: String
+            let repo: String
+        }
+        let library_name: String
+        let source: SourceInfo
+        let cipher_version_major: Int
+        let platform: String
+        let arch: String
+        let sha256: String
+        let bytes: Int
+        let mode: String
+    }
+
+    private static func verifyMachO(data: Data, expectedArch: String) -> Bool {
+        guard data.count >= 8 else { return false }
+        let magic = data.withUnsafeBytes { $0.load(fromByteOffset: 0, as: UInt32.self) }
+        let cputype = data.withUnsafeBytes { $0.load(fromByteOffset: 4, as: UInt32.self) }
+        let is64 = (magic == 0xfeedfacf || magic == 0xcffaedfe)
+        guard is64 else { return false }
+        let isLittleEndian = (magic == 0xfeedfacf)
+        let actualCpu = isLittleEndian ? cputype : cputype.byteSwapped
+        if expectedArch == "arm64" {
+            return actualCpu == 0x0100000C
+        } else if expectedArch == "x86_64" {
+            return actualCpu == 0x01000007
+        }
+        return true
+    }
+
+    private static func sha256Hex(data: Data) -> String {
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// *** THE PRIVATE, EXCLUSIVELY-CREATED SNAPSHOT: THE VERIFIED BYTES ARE LOADED FROM A PRIVATE COPY, NEVER FROM
+    /// THE MUTABLE ORIGINAL PATHNAME. ***
+    ///
+    /// *THE DEFECT THIS CLOSES, MEASURED IN THE PREVIOUS BODY: the loader read and hashed the approved image at
+    /// `libPath`, and then called `dlopen(libPath, …)`. Between the hash and the load, `libPath` is an ordinary
+    /// MUTABLE pathname: a replacer could substitute a DIFFERENT Mach-O there, and `dlopen` would execute it --
+    /// constructors included -- **before any function pointer was admitted or re-checked**. Re-hashing or re-`stat`ing
+    /// after the load cannot repair this: it is an ABA window, and the wrong image has already run.*
+    ///
+    /// **THE REPAIR: an exclusively created (`O_EXCL`, mode `0600`) private copy of the ALREADY-VERIFIED `fileData`
+    /// -- no second read of the original is performed -- inside a fresh `0700` root this call owns, loaded at that
+    /// private root's own unique pathname.** *The bytes the loader maps are therefore the exact bytes this method wrote
+    /// and verified; the replacer's target (the original pathname) is never consulted for the load, and the copy liveth
+    /// only beneath this call's own `0700` root -- removed by the lease when the last user falls, and on EVERY failure
+    /// path. The ORIGINAL artifact is never touched, deleted or mutated.*
+    ///
+    /// **Why a private PATHNAME and not `/dev/fd`:** *`dlopen` on Darwin resolves `/dev/fd/<n>` through the code-signing
+    /// policy, which nondeterministically rejecteth a process-created copy ("library load disallowed by system
+    /// policy" -- measured on this host). A unique private pathname inside this call's own `0700` root loads
+    /// deterministically and is reported by `dladdr`, so the bind-time image cross-check still holds.*
+    ///
+    /// **Platform scope, stated as law, not hope:** *this copy road is the macOS/SIMULATOR road, where the image is a
+    /// plain Mach-O that the platform loader will map. On a real DEVICE the process image must satisfy the kernel's
+    /// code-signing policy (AMFI), and Apple's primary guidance is that `dlopen` may load only libraries BUILT IN TO
+    /// THE OS or EMBEDDED WITHIN THE APP (Apple Developer Forums 773210), while any attempt to MODIFY a bundle at
+    /// runtime is enforced against (Apple's bundle documentation: "A bundle is a read-only structure. All Apple
+    /// platforms except the Mac enforce this requirement at runtime"). **So on a device the loader does NOT take this
+    /// road: `loadSignedBundleImage` binds the **sealed, signed, bundle-resident** pathname, whose integrity the code
+    /// signature -- not a byte copy -- enforces.***
+    private static func loadVerifiedSnapshot(fileData: Data,
+                                             snapshotDirectory: String?,
+                                             seal: ImageByteBindingTestSeam?) throws
+        -> (handle: UnsafeMutableRawPointer, imagePath: String, snapshotRoot: String) {
+        let base = snapshotDirectory ?? NSTemporaryDirectory()
+        let rootPath = (base as NSString).appendingPathComponent("godstone-sqlcipher-\(UUID().uuidString)")
+        do {
+            try FileManager.default.createDirectory(atPath: rootPath, withIntermediateDirectories: true,
+                                                    attributes: [.posixPermissions: 0o700])
+        } catch {
+            throw StoreOpenFault.io("could not create a private image snapshot root")
+        }
+        func cleanup() { try? FileManager.default.removeItem(atPath: rootPath) }
+        let snapshotPath = (rootPath as NSString).appendingPathComponent("image.dylib")
+        let fd = snapshotPath.withCString { open($0, O_WRONLY | O_CREAT | O_EXCL, 0o600) }
+        guard fd >= 0 else {
+            cleanup()
+            throw StoreOpenFault.io("could not exclusively create a private image snapshot")
+        }
+        let wrote: Bool = fileData.withUnsafeBytes { raw -> Bool in
+            guard let base = raw.baseAddress else { return fileData.isEmpty }
+            var off = 0
+            while off < raw.count {
+                let n = write(fd, base.advanced(by: off), raw.count - off)
+                if n <= 0 { return false }
+                off += n
+            }
+            return true
+        }
+        guard wrote else {
+            close(fd)
+            cleanup()
+            throw StoreOpenFault.io("could not write the private image snapshot")
+        }
+        _ = fsync(fd)
+        close(fd)
+        // *The court's pre-load hook fires HERE: after verification, before the load. It receives the private
+        //  snapshot path the loader is about to use -- NOT the original image's pathname.*
+        seal?.willLoad(snapshotPath)
+        let h = dlopen(snapshotPath, RTLD_NOW | RTLD_LOCAL)
+        guard let h else {
+            let why = dlerror().map { String(cString: $0) } ?? "dlopen returned no handle"
+            cleanup()
+            throw StoreOpenFault.io("dlopen of the verified private snapshot failed: \(why)")
+        }
+        // *** THE COPY STAYETH ONLY UNDER THIS CALL'S OWN `0700` ROOT, AND THE LEASE REMOVETH IT WHEN THE LAST USER
+        //  FALLS. *** *No other user can traverse the root, so there is no attacker-controlled pathname for the load;
+        //  the copy's own unique name is the one `dlopen` and `dlsym`/`dladdr` are resolved against. The original
+        //  artifact's pathname is never used by this road at all.*
+        return (h, snapshotPath, rootPath)
+    }
+
+    /// *** BIND FROM THE **SEALED BUNDLE-RESIDENT SIGNED IMAGE** -- THE DEVICE ROAD. ***
+    ///
+    /// *On a real device the platform will not map a process-created copy; the image must be a signed, embedded bundle
+    /// item, and the bundle is the one container Apple enforceth as read-only at runtime. The load therefore happeneth
+    /// at the image's own installed pathname, and the digest/arch/platform/bytes checks above are the pre-load
+    /// cross-check of the SAME signed bytes the kernel will admit.*
+    ///
+    /// **HONEST LIMIT, AS LAW:** *this road has the same class of pathname window as any bundle load, but on-device the
+    /// window is closed by AMFI/code-signing (a swapped byte sequence no longer matchs the signature the kernel
+    /// verified) rather than by this file. This repo cannot execute a device load, so this is the platform-correct
+    /// shape with its evidence cited, NOT a claim of on-device proof -- which remains the external device gate. The
+    /// signed image's own bytes are still digested above; `SQLCipherTrustedExpectation` is the DEVICE artifact's
+    /// recorded (still-external) digest, and this road refuseth a signed image whose bytes do not match it.*
+    private static func loadSignedBundleImage(originalPath: String) throws
+        -> (handle: UnsafeMutableRawPointer, imagePath: String) {
+        let h = dlopen(originalPath, RTLD_NOW | RTLD_LOCAL)
+        guard let h else {
+            let why = dlerror().map { String(cString: $0) } ?? "dlopen returned no handle"
+            throw StoreOpenFault.io("dlopen of the signed bundle image '\(originalPath)' failed: \(why)")
+        }
+        return (h, originalPath)
+    }
+
+    /// *** THE MACH-O PLATFORM CHECK (SQLITE-LATEST-C4/REVIEW-5): ARCHITECTURE ALONE IS NOT ENOUGH. ***
+    ///
+    /// *A macOS and an iOS-simulator image can share `arm64` and still be mutually unloadable; the platform liveth in the
+    /// LC_BUILD_VERSION (`0x32`) / LC_VERSION_MIN_* load command, not in the cputype. So the loader now reads the
+    /// platform field of that command and requires it to match the expectation.* **`PLATFORM_MACOS = 1`,
+    /// `PLATFORM_IOSSIMULATOR = 7`, `PLATFORM_IOS = 2`.** *An unreadable/absent command fails closed.*
+    private static func verifyMachOPlatform(data: Data, expectedPlatform: String) -> Bool {
+        // Parse the Mach-O load commands; find LC_BUILD_VERSION (0x32) and read its `platform` field.
+        let lcBuildVersion: UInt32 = 0x32
+        guard data.count >= 32 else { return false }
+        let magic = data.withUnsafeBytes { $0.load(fromByteOffset: 0, as: UInt32.self) }
+        let little = (magic == 0xfeedfacf)
+        guard magic == 0xfeedfacf || magic == 0xcffaedfe else { return false }
+        func u32(_ off: Int) -> UInt32 {
+            let v = data.withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self) }
+            return little ? v : v.byteSwapped
+        }
+        let ncmds = Int(u32(16))
+        var off = 32
+        for _ in 0..<ncmds {
+            guard off + 8 <= data.count else { return false }
+            let cmd = u32(off)
+            let cmdsize = Int(u32(off + 4))
+            if cmdsize < 8 || off + cmdsize > data.count { return false }
+            if cmd == lcBuildVersion, cmdsize >= 24 {
+                // struct build_version_command { cmd, cmdsize, platform, minos, sdk, ntools }
+                let platform = u32(off + 8)
+                let map: [String: UInt32] = ["MACOS": 1, "IOS": 2, "IOSSIMULATOR": 7]
+                guard let want = map[expectedPlatform] else { return false }
+                return platform == want
+            }
+            off += cmdsize
+        }
+        return false   // no LC_BUILD_VERSION: fail closed rather than admit an unverifiable platform
+    }
+
+    /// *** THE PRODUCTION CONSTRUCTOR: RESOLVE, VERIFY THE BAKED EXPECTATION, AND ONLY THEN `dlopen`. ***
+    ///
+    /// *SQLITE-REVIEW-5: arbitrary path loading is forbidden in production; the runtime must verify the actual
+    /// supplied artifact descriptor (digest, platform, architecture, cipher major, source commit) BEFORE `dlopen`.*
+    /// *The production constructor; the court-only hook liveth on `init(testSeam:)`.*
+    public convenience init() { self.init(testSeam: nil) }
+
+    /// *** THE PRODUCTION ROAD, WITH AN OPTIONAL COURT HOOK (`ImageByteBindingTestSeam`). ***
+    ///
+    /// *`testSeam` is `nil` in every production composition, so the hook is inert there; a host court passeth one to
+    /// model the real hash->load window deterministically.* **A seam can only OBSERVE the load; it cannot change the
+    /// verified bytes the engine chooses, and it cannot alter the baked expected pin.**
+    internal init(testSeam: ImageByteBindingTestSeam?) {
+        self.isArbitraryPath = false
+        var searchDirs: [String] = []
+        if let seamDir = testSeam?.artifactDirectory, !seamDir.isEmpty {
+            searchDirs.append(seamDir)
+        }
+        if let envDir = ProcessInfo.processInfo.environment["GODSTONE_SQLCIPHER_ARTIFACT_DIR"], !envDir.isEmpty {
+            searchDirs.append(envDir)
+        }
+        if let frameworks = Bundle(for: SqlCipherDylibEngine.self).privateFrameworksPath {
+            searchDirs.append(frameworks)
+        }
+        if let mainFrameworks = Bundle.main.privateFrameworksPath {
+            searchDirs.append(mainFrameworks)
+        }
+        #if targetEnvironment(simulator)
+        searchDirs.append("/tmp/sqlcipher-sim")
+        #else
+        searchDirs.append("/tmp/sqlcipher-macos")
+        #endif
+
+        var resolvedLibPath: String?
+        for dir in searchDirs {
+            let candidate = (dir as NSString).appendingPathComponent(SQLCipherPin.libraryName)
+            if FileManager.default.fileExists(atPath: candidate) {
+                resolvedLibPath = candidate
+                break
+            }
+        }
+
+        guard let libPath = resolvedLibPath else {
+            self.table = nil
+            self.bindingFailure = "the pinned SQLCipher library '\(SQLCipherPin.libraryName)' was not found in any search path"
+            return
+        }
+
+        // *** THE BAKED EXPECTATION MUST MATCH THIS RUNTIME (SQLITE-LATEST-C4). *** *If the generated constant is for a
+        // DIFFERENT mode/platform/arch than the process, the loader refuses rather than guessing.*
+        #if os(macOS)
+        let runtimePlatform = "MACOS"
+        #elseif targetEnvironment(simulator)
+        let runtimePlatform = "IOSSIMULATOR"
+        #else
+        let runtimePlatform = "IOS"
+        #endif
+        guard SQLCipherTrustedExpectation.platform == runtimePlatform else {
+            self.table = nil
+            self.bindingFailure = "the baked SQLCipher trust expectation is for platform \(SQLCipherTrustedExpectation.platform), but this runtime is \(runtimePlatform); re-emit it for this mode"
+            return
+        }
+        #if arch(arm64)
+        let runtimeArch = "arm64"
+        #elseif arch(x86_64)
+        let runtimeArch = "x86_64"
+        #else
+        let runtimeArch = "unknown"
+        #endif
+        guard SQLCipherTrustedExpectation.arch == runtimeArch else {
+            self.table = nil
+            self.bindingFailure = "the baked SQLCipher trust expectation is for arch \(SQLCipherTrustedExpectation.arch), but this runtime is \(runtimeArch)"
+            return
+        }
+        guard SQLCipherTrustedExpectation.libraryName == SQLCipherPin.libraryName else {
+            self.table = nil
+            self.bindingFailure = "the baked expectation names '\(SQLCipherTrustedExpectation.libraryName)', not the pinned '\(SQLCipherPin.libraryName)'"
+            return
+        }
+
+        // *** THE SIDECAR IS A **RECORD**, NEVER THE AUTHORITY (SQLITE-LATEST-C4). *** *If one is present BESIDE the
+        // image, it must AGREE with the baked expectation -- a disagreement is a refusal (a swapped image/sidecar pair
+        // cannot both authorise themselves). Its absence is fine: the expectation is compiled in.*
+        let sidecarPath = (libPath as NSString).deletingLastPathComponent
+            .appending("/\(SQLCipherArtifactDescriptor.sidecarName(forLibrary: SQLCipherPin.libraryName))")
+        if FileManager.default.fileExists(atPath: sidecarPath),
+           let sidecarData = try? Data(contentsOf: URL(fileURLWithPath: sidecarPath)),
+           let sidecar = try? JSONDecoder().decode(SidecarFormat.self, from: sidecarData) {
+            guard sidecar.source.commit == SQLCipherTrustedExpectation.commit,
+                  sidecar.source.tag == SQLCipherTrustedExpectation.tag,
+                  sidecar.source.repo == SQLCipherTrustedExpectation.repo,
+                  sidecar.library_name == SQLCipherTrustedExpectation.libraryName,
+                  sidecar.mode == SQLCipherTrustedExpectation.mode,
+                  sidecar.platform == SQLCipherTrustedExpectation.platform,
+                  sidecar.arch == SQLCipherTrustedExpectation.arch,
+                  sidecar.cipher_version_major == SQLCipherTrustedExpectation.cipherVersionMajor else {
+                self.table = nil
+                self.bindingFailure = "the artifact sidecar DISAGREES with the baked trust expectation at '\(sidecarPath)'"
+                return
+            }
+        }
+        guard SQLCipherTrustedExpectation.cipherVersionMajor == SQLCipherPin.supportedCipherVersion else {
+            self.table = nil
+            self.bindingFailure = "the baked expectation's cipher major \(SQLCipherTrustedExpectation.cipherVersionMajor) disagrees with the engine's \(SQLCipherPin.supportedCipherVersion)"
+            return
+        }
+
+        guard let fileData = try? Data(contentsOf: URL(fileURLWithPath: libPath)) else {
+            self.table = nil
+            self.bindingFailure = "could not read artifact file at '\(libPath)'"
+            return
+        }
+        guard fileData.count == SQLCipherTrustedExpectation.bytes else {
+            self.table = nil
+            self.bindingFailure = "artifact byte count mismatch: expected \(SQLCipherTrustedExpectation.bytes), got \(fileData.count)"
+            return
+        }
+        guard Self.verifyMachO(data: fileData, expectedArch: SQLCipherTrustedExpectation.arch) else {
+            self.table = nil
+            self.bindingFailure = "artifact Mach-O architecture check failed for '\(libPath)'"
+            return
+        }
+        // *** AND THE PLATFORM, NOT MERELY THE ARCH (a macOS and a simulator image both carry arm64). ***
+        guard Self.verifyMachOPlatform(data: fileData, expectedPlatform: SQLCipherTrustedExpectation.platform) else {
+            self.table = nil
+            self.bindingFailure = "artifact Mach-O PLATFORM check failed for '\(libPath)' (expected \(SQLCipherTrustedExpectation.platform))"
+            return
+        }
+        let actualDigest = Self.sha256Hex(data: fileData)
+        guard actualDigest.lowercased() == SQLCipherTrustedExpectation.sha256.lowercased() else {
+            self.table = nil
+            self.bindingFailure = "artifact digest mismatch: expected \(SQLCipherTrustedExpectation.sha256), got \(actualDigest)"
+            return
+        }
+
+        // *** THE LOAD ROAD IS CHOSEN BY PLATFORM -- AND ONLY THE DEVICE ROAD MAY NAME THE ORIGINAL PATHNAME. ***
+        //
+        // *Host/simulator: the verified bytes are written once into an exclusively-created `0600` private snapshot,
+        // and loaded from a unique path inside a fresh `0700` root -- so the mutable original pathname carrieth NO
+        // weight in the load and cannot be ABA-swapped into executing a different image. Device: the process image must
+        // be the sealed, signed, bundle-resident one, so the device bindeth that container path and the code signature
+        // -- not a copy -- is what the kernel enforceth.*
+        #if targetEnvironment(simulator) || os(macOS)
+        let boundTable: SQLiteFunctionTable?
+        do {
+            let loaded = try Self.loadVerifiedSnapshot(fileData: fileData,
+                                                       snapshotDirectory: testSeam?.snapshotDirectory,
+                                                       seal: testSeam)
+            let lease = SQLiteImageLease(handle: loaded.handle, snapshotRoot: loaded.snapshotRoot)
+            boundTable = SQLiteFunctionTable.bind(fromImage: loaded.handle,
+                                                  providerName: "SQLCipher (\(SQLCipherPin.libraryName))",
+                                                  lease: lease, imagePath: loaded.imagePath)
+        } catch {
+            self.table = nil
+            self.bindingFailure = "could not bind the verified bytes from a private snapshot: \(error)"
+            return
+        }
+        #else
+        // *** THE DEVICE ROAD VERIFIETH THE CONTAINER, RATHER THAN TRUSTING A STRING. ***
+        //
+        // *A device may `dlopen` only an image EMBEDDED WITHIN THE APP (Apple DTS, Forums 773210) -- so the resolved
+        // path MUST lie inside the app's own bundle container, the one structure the platform enforceth as read-only
+        // and covers with the code signature. A path outside it (a user directory, a temp file, an absolute string) is
+        // REFUSED here, before any load: the digest check above is not a substitute for the container check, because a
+        // mutable path can be swapped between the two.*
+        let bundleRoot = Bundle.main.bundleURL.standardizedFileURL.path
+        let canonicalLib = URL(fileURLWithPath: libPath).standardizedFileURL.path
+        guard canonicalLib.hasPrefix(bundleRoot + "/") else {
+            self.table = nil
+            self.bindingFailure = "the resolved image '\(canonicalLib)' is NOT inside the signed app container "
+                + "'\(bundleRoot)'; a device may bind only a bundle-embedded, signed image"
+            return
+        }
+        let boundTable: SQLiteFunctionTable?
+        do {
+            let loaded = try Self.loadSignedBundleImage(originalPath: canonicalLib)
+            let lease = SQLiteImageLease(handle: loaded.handle)
+            boundTable = SQLiteFunctionTable.bind(fromImage: loaded.handle,
+                                                  providerName: "SQLCipher (\(SQLCipherPin.libraryName))",
+                                                  lease: lease, imagePath: loaded.imagePath)
+        } catch {
+            self.table = nil
+            self.bindingFailure = "could not bind the signed bundle image: \(error)"
+            return
+        }
+        #endif
+        guard let bound = boundTable else {
+            // *No table is published; the lease's own fall unloads the image and removes the private copy, so a failed
+            //  bind leaks neither an image nor a snapshot -- and never touches the original artifact.*
+            self.table = nil
+            self.bindingFailure = "the verified image loaded but failed symbol binding"
+            return
+        }
+        self.table = bound
+        self.runtimeEngineProof = SQLCipherRuntimeProof(table: bound)
+        self.bindingFailure = nil
+    }
+
+    /// Internal initializer for adapter tests driving missing/unapproved library paths.
+    internal init(libraryPath: String, claimPinned: Bool = false) {
+        self.isArbitraryPath = !claimPinned
+        let h = dlopen(libraryPath, RTLD_NOW | RTLD_LOCAL)
         guard let h else {
             let why = dlerror().map { String(cString: $0) } ?? "dlopen returned no handle"
             self.table = nil
-            self.bindingFailure = "the pinned SQLCipher library '\(name)' is not present: \(why)"
+            self.bindingFailure = "the pinned SQLCipher library '\(libraryPath)' is not present: \(why)"
             return
         }
-        // *** THE COMPLETE TABLE, ALL-OR-NOTHING. *** *A partially bound image would call a garbage function pointer
-        // -- a crash, not a refusal -- so a missing symbol is a TYPED BINDING FAILURE taken here, once. The required
-        // names are the ONE list the table and its court agree on.*
+        let lease = SQLiteImageLease(handle: h)
         guard let bound = SQLiteFunctionTable.bind(fromImage: h,
-                                                   providerName: "SQLCipher (\(name))") else {
+                                                   providerName: "SQLCipher (\(libraryPath))",
+                                                   lease: lease, imagePath: libraryPath) else {
             self.table = nil
-            self.bindingFailure = "the library '\(name)' loaded but carrieth not the complete "
-                + "sqlite3_* surface both stores use (\(SQLiteFunctionTable.requiredSymbols.count) symbols); a "
-                + "partial bind cannot perform the cipher probe"
+            self.bindingFailure = "the library '\(libraryPath)' loaded but carrieth not the complete sqlite3 surface"
             return
         }
         self.table = bound
         self.bindingFailure = nil
     }
 
-    /// *** `deinit` CLOSES THE IMAGE -- AND THAT IS EXACTLY WHY THE TABLE MUST BE CARRIED BY THE CONNECTION. ***
-    ///
-    /// *An `OwnedConnection` that outlived its engine would otherwise close through a pointer into an unloaded image.
-    /// The composition's close order (documented in `closeAdoptedConnections`) is stores -> adopted connections ->
-    /// engine, and `GsFinal004OwnedConnectionTests` asserteth that order.*
-    deinit { if let handle { dlclose(handle) } }
+    /// Internal test injection seam: runs the production open/probe road over an injected table.
+    internal init(testTable: SQLiteFunctionTable, bindingFailure: String? = nil, claimPinned: Bool = true) {
+        self.isArbitraryPath = !claimPinned
+        self.table = testTable
+        self.bindingFailure = bindingFailure
+    }
 
     /// *** WHETHER THE ENGINE IS ACTUALLY THE PINNED ONE -- ASKED OF THE BIND, NOT OF A CONSTANT. ***
     ///
@@ -146,7 +553,7 @@ public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked 
     /// *`.pinnedSQLCipher` ONLY WHEN THE PINNED LIBRARY IS REALLY BOUND, else `.plainSQLite`.*
     /// **The factory refuseth a `.plainSQLite` engine outright ("no plaintext fallback, ever"), so
     /// this single property IS the first fail-closed gate.**
-    public var kind: StoreEngineKind { isBound ? .pinnedSQLCipher : .plainSQLite }
+    public var kind: StoreEngineKind { (isBound && !isArbitraryPath) ? .pinnedSQLCipher : .plainSQLite }
 
     public var supportedCipherVersion: Int { SQLCipherPin.supportedCipherVersion }
 
@@ -240,12 +647,14 @@ public final class SqlCipherDylibEngine: OwnedConnectionStoreEngine, @unchecked 
 
         // (4) ONLY NOW IS AT-REST CLAIMED -- and the claim is made of the connection itself, not of a
         // boolean a caller passed in.
+        let lc = ConnectionLifecycle()
         let verified = OwnedVerifiedConnection(rawHandle: handle,
                                                engineKind: .pinnedSQLCipher,
                                                cipherVersion: major,
                                                encryptedAtRest: true,
                                                path: path,
-                                               provider: s)
+                                               provider: s,
+                                               lifecycle: lc)
         _ = count
         handedOver = true
         // *The close handler is `sqlite3_close_v2`, so ownership is explicit and a double close is

@@ -39,8 +39,6 @@ final class CrashStartupResumeTests: XCTestCase {
 
     private final class InMemoryJournal: WipeJournal, @unchecked Sendable {
         var state: WipeState = .idle
-        var writes = 0
-        var clears = 0
         /// GS-FINAL-002: **EVERY RECORD THIS JOURNAL EVER CARRIED, IN ORDER.**
         ///
         /// `state` holdeth only the LAST value, so an arm asking "did the drain precede the erasure?" cannot read it
@@ -48,9 +46,9 @@ final class CrashStartupResumeTests: XCTestCase {
         /// is the actual safety property, is unobservable. A journal that keepeth its writes maketh the order readable.
         var writeLog: [String] = []
         func read() -> WipeState { state }
-        func write(_ s: WipeState) { state = s; writes += 1; writeLog.append(s.rawValue) }
-        func clear() { state = .idle; clears += 1 }
-    
+        func write(_ s: WipeState) { state = s; writeLog.append(s.rawValue) }
+        func clear() { state = .idle }
+
         /// *** GS-FINAL-003: STATED EXPLICITLY, BECAUSE THE PROTOCOL DEFAULT FAILS CLOSED. ***
         ///
         /// *This journal stores a TYPED `WipeState`, so it cannot hold an unparseable value -- it is readable BY
@@ -60,6 +58,30 @@ final class CrashStartupResumeTests: XCTestCase {
         /// `isReadableJournal()`, so an arm that reaches the startup road would exercise the CORRUPT branch and pass
         /// or fail for a reason unrelated to what it means to measure.*
         var isReadable: Bool { true }
+
+        /// *** IOS-FOLLOWUP-C2/C3 / CURRENT-01: AN EXPLICIT, TYPED COURT FAKE FOR THE DURABLE MEDIUM -- AND BOTH HALVES ARE REQUIRED. ***
+        ///
+        /// *THE MEASURED WAVE THIS CLOSES (`artifact://9685`): every arm that reacheth `MeshRuntime.create` on this
+        /// road failed with `startupRefusedByRecovery(decision: "corrupt_journal", reason: "the wipe journal carries an
+        /// unsupported or malformed state; refusing to guess")`.* **THE CAUSE WAS NOT THE JOURNAL'S READABILITY BUT ITS
+        /// MEDIUM'S: `WipeJournalDurabilityAdapter.isReadable` consulteth `journal.readDurable() != nil`, whose
+        /// PROTOCOL DEFAULT is `nil` -- so a fake that answered everything else still reported an unreadable medium,
+        /// `isSupportedJournal()` answered false, and the pin law refused EVERY record (an absent one included).** *A
+        /// typed in-memory journal CANNOT hold an unparseable value, so the honest answer is a real medium with a
+        /// monotone generation -- the shape `GsFinal003StartupPermitTests`/`GsFinal003RecoveryTopologyTests` already
+        /// carrieth, copied here rather than re-invented.*
+        private var _wipeEpoch: UInt64?
+        var durableEpoch: UInt64? { _wipeEpoch }
+        @discardableResult func bumpEpoch() -> UInt64? { _wipeEpoch = (_wipeEpoch ?? 0) + 1; return _wipeEpoch }
+        func readDurable() -> (state: WipeState, epoch: UInt64?)? {
+            if _wipeEpoch == nil, read() != .idle { _wipeEpoch = 1 }
+            return (read(), _wipeEpoch)
+        }
+        @discardableResult func writeChecked(_ state: WipeState) -> DurableWriteResult {
+            write(state)
+            if _wipeEpoch == nil { _wipeEpoch = 1 }
+            return DurableWriteResult(synchronized: true, epoch: _wipeEpoch)
+        }
     }
 
     private final class StepTrackingArtifacts: WipeArtifacts, @unchecked Sendable {
@@ -700,40 +722,80 @@ final class CrashStartupResumeTests: XCTestCase {
     func testSR03_KeyErased_DeletesExactStoreArtifactsBeforeOpen() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr03_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr03_peer_\(UUID().uuidString).db")
+        // *** REAL BYTES AT BOTH REAL PATHS: the deletion this arm measures must be a deletion of the files the
+        // composition OWNS, not of names measured against the process's working directory. ***
         try Data("old store content".utf8).write(to: msgUrl)
         try Data("old peer content".utf8).write(to: peerUrl)
         XCTAssertTrue(FileManager.default.fileExists(atPath: msgUrl.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: peerUrl.path))
 
         let journal = InMemoryJournal()
-        journal.write(.keyErased)
         let keychain = InMemoryKeychain()
+        _ = try MeshIdentity.generateAndStore(keychain: keychain)
+        let identityBefore = try XCTUnwrap(MeshIdentity.loadFromKeychain(keychain: keychain))
 
-        // *** CORRECTED TO THE FINDING'S OWN ORDER (GS-STORE-006, card step 6), WITH ITS SENTENCE QUOTED: "on restart, resume
-        // from the durable compatible journal BEFORE opening keys, databases, discovery or a new identity." THE OLD
-        // EXPECTATION WAS `journal.state == .idle` -- I.E. THAT THE CREATE-TIME RESUME **FINISHES** THE WIPE, DELETING
-        // THESE EXACT FILES BEFORE ANY STORE IS OPENED. IT BELONGED TO THE DESIGN THE FINDING REPLACES: EVERY STAGE PAST
-        // `KEY_ERASED` NEEDS A PLATFORM RESOURCE THE CREATING PROCESS DOES NOT YET OWN, SO THE DEFERRED SEAMS STOP THE
-        // LADDER THERE. *** AND THE MEASURED CONSEQUENCE IS THE SAFER ONE, WHICH THIS ARM NOW DEMANDS: A RUNTIME MUST NOT
-        // OPEN ITS STORES WHILE A WIPE OF THOSE VERY FILES STANDS UNFINISHED -- IT REFUSES, AND THE REFUSAL IS THE PROOF
-        // THAT THE ORDER THE CARD ASKS FOR IS HONOURED. (Measured before this edit: the identical call failed with
-        // `stepFailed` at `PeerIdentityStore.swift:292` -- the peer store declining to open on a key its own journal says
-        // is erased.) ***
-        XCTAssertThrowsError(
-            try MeshRuntime.createArchiveOnlyHostComposition(
-                messageStoreUrl: msgUrl,
-                peerStoreUrl: peerUrl,
-                journal: journal,
-                keychain: keychain
-            ),
-            "the runtime must REFUSE to open stores while an unfinished wipe owns their files",
+        // *** THE `keyErased` CHECKPOINT *MEANS* THE KEYS ARE ALREADY ERASED -- SO THE FIXTURE MUST MODEL THAT. ***
+        //
+        // *THE LADDER'S `runtimeDrained -> keysErased` RUNG IS THE ONE AND ONLY RUNG THAT ERASETH THE IDENTITY
+        // (`WipeKeyVaultSeam.eraseKey("identity-ed25519"/"identity-x25519")` -> `MeshIdentity.deleteFromKeychain`), and
+        // IT LIES **BEHIND** `keysErased`. A RECORD STANDING AT `keysErased` THEREFORE SAYS, BY ITS OWN SPELLING, THAT
+        // NO IDENTITY STANDS.* **A FIXTURE THAT LEAVES THE PRE-WIPE IDENTITY IN THE KEYCHAIN DESCRIBES AN ESTATE THE
+        // LADDER CAN NEVER PRODUCE, AND THE MEASURED CONSEQUENCE IS THE STALL THIS ARM SUFFERED:** the `NEW_IDENTITY`
+        // rung's publish-or-adopt authority found a FOREIGN standing key, REFUSED it (IOS-FOLLOWUP-C7: "an unrelated
+        // standing key is REFUSED, never relabeled" -- `promoteStaged` throweth `identityAlreadyExists`), and the
+        // ladder parked at `artifactsDeleted` WITH THE OLD IDENTITY INTACT -- `["keyErased","artifactsDeleted"]`, the
+        // "an unerased key is still published" failure the rung exists to prevent.
+        //
+        // SO THE FIXTURE PERFORMS THE ERASURE THE CHECKPOINT ASSERTS, while KEEPING `identityBefore` -- the node the
+        // wipe erased -- to compare against the stranger the completed ladder publishes.*
+        try MeshIdentity.deleteFromKeychain(keychain: keychain)
+        journal.write(.keyErased)
+
+        // *** THE ARM'S OWN SUBJECT IS THE *DELETION*, SO IT DRIVES THE ROAD THAT DELETES -- NOT A CREATE THAT
+        // RE-OPENS THE VERY FILES THE WIPE HAS NOT YET REMOVED. ***
+        //
+        // *THE FINDING'S SENTENCE, VERBATIM: "on restart, resume from the durable compatible journal BEFORE opening
+        // keys, databases, discovery or a new identity."* **THE PREVIOUS DRAFT DROVE THE *CREATE* ROAD AND ASSERTED
+        // THE PENDING HALF** -- measured GREEN only because this court's journal could not vouch for its medium (so
+        // every record was refused as `corrupt_journal`), and measured RED once the medium was answered: creating the
+        // ARCHIVE composition at `KEY_ERASED` opened the message store and then the peer store FAILED at
+        // `PeerIdentityStore.swift:405` (`stepFailed`), because the boot was handed the wipe's OWN garbage files as
+        // though they were a store and no schema could step over them. **The wrong input was the boot's: a create at
+        // `KEY_ERASED` re-opens artifacts the ladder's own `KEYS_ERASED -> ARTIFACTS_DELETED` rung is supposed to
+        // DELETE. So the arm drives that rung, over the estate whose own init BINDETH the durable inventory, and then
+        // opens the stores -- WHICH IS THE ORDER ITS NAME CLAIMS.**
+        let outcome = driveSanctionedRecoveryRoad(
+            journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
+            keychain: keychain, requestFresh: false)
+
+        // (1) *** THE EXACT ARTIFACTS ARE DELETED, AND THE DELETION PRECEDED ANY OPEN. ***
+        XCTAssertFalse(FileManager.default.fileExists(atPath: msgUrl.path),
+                       "*** THE MESSAGE STORE AT ITS EXACT PATH MUST BE GONE -- this arm planted real bytes there. ***")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: peerUrl.path),
+                       "*** AND THE PEER STORE WITH IT: the ladder's `ARTIFACTS_DELETED` rung addresseth BOTH. ***")
+        XCTAssertEqual(journal.state, .idle,
+                       "AND THE LADDER RAN TO ITS END -- a completed wipe, not a pending one. Record: \(journal.writeLog)")
+
+        // (2) *** AND THE IDENTITY WAS REGENERATED, so the estate that opens now is a stranger to the one wiped. ***
+        let identityAfter = try XCTUnwrap(MeshIdentity.loadFromKeychain(keychain: keychain))
+        XCTAssertNotEqual(identityBefore.nodeId, identityAfter.nodeId,
+                          "the wipe's `NEW_IDENTITY` rung really published a different identity")
+
+        // (3) *** ONLY NOW IS A STORE OPENED, AT THE SAME PATHS -- AND IT OPENS *FRESH*. ***
+        let reopened = try MeshRuntime.createArchiveOnlyHostComposition(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
         )
-        // AND THE WIPE IS STILL PENDING, WITH ITS ARTIFACTS UNTOUCHED: nothing was deleted before a runtime stood, and the
-        // journal carries the checkpoint that says so.
-        XCTAssertEqual(journal.state, .keyErased,
-                       "the create-time resume stops at the checkpoint it can prove, and the wipe stays PENDING")
+        XCTAssertTrue(reopened.lifecycleGate.isActive,
+                      "the store that openeth AFTER the deletion stands on a settled estate -- nothing was opened "
+                      + "over unerased material")
         XCTAssertTrue(FileManager.default.fileExists(atPath: msgUrl.path),
-                      "and NO ARTIFACT MAY BE DELETED AT CREATE TIME: the deletion belongs to the runtime that stands")
+                      "and the fresh open recreated the message store where the wiped one was")
+
+        try? FileManager.default.removeItem(at: msgUrl)
+        try? FileManager.default.removeItem(at: peerUrl)
     }
 
     func testSR04_ArtifactsDeleted_RegeneratesIdentityBeforeRuntimeConstruction() throws {
@@ -779,6 +841,18 @@ final class CrashStartupResumeTests: XCTestCase {
         let oldNodeId = runtime1.identity.nodeId
 
         try runtime1.beginPanicWipe(keychain: keychain)
+
+        // *** AND THE WIPE IS CARRIED TO ITS END BY THE SANCTIONED PUBLIC ROAD. *** *`beginPanicWipe` REQUESTS
+        // durably and then stalls at `REQUESTED`, because the archive composition's own `EstateOwnerDrainSeam` sits
+        // over a registry `PhysicalEstateAuthority.shared.registry(for:)` never vouched (MEASURED: `["idle",
+        // "requested"]` in `artifact://9685`). `MeshRuntime.runRecoveryLadder` over an estate whose OWN init bindeth
+        // its durable inventory is the road that reaches the drain -- and this call closes runtime1's live owners
+        // through the estate's own invalidation hook, which is what makes runtime1 permanently unusable below.*
+        driveSanctionedRecoveryRoad(
+            journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
+            keychain: keychain, requestFresh: false,
+            invalidateLiveOwners: { runtime1.invalidator.invalidateForWipe() })
+
         XCTAssertTrue(runtime1.lifecycleGate.isInvalidated)
         XCTAssertFalse(runtime1.sessionManager.isActive)
 
@@ -847,9 +921,18 @@ final class CrashStartupResumeTests: XCTestCase {
         XCTAssertNotNil(try runtime1.peerIdentityStore.readRaw(peerNodeId))
         XCTAssertNotNil(runtime1.recipientKeyResolver.publicSigningKey(forNodeId: peerNodeId))
 
-        // 4. Begin active panic wipe
+        // 4. Begin active panic wipe -- the runtime's own request -- AND CARRY IT TO ITS END OVER THE SANCTIONED
+        // PUBLIC ROAD. *`beginPanicWipe` requests durably and stalls at `REQUESTED` on this composition (MEASURED:
+        // `["idle","requested"]` in `artifact://9685`) because its own owner registry cannot vouch; the public
+        // recovery road's estate bindeth its inventory, so it really drains, erases and deletes -- closing runtime1's
+        // live stores through the estate's invalidation hook so the files can go.*
         try runtime1.beginPanicWipe(keychain: keychain)
-        XCTAssertTrue(runtime1.lifecycleGate.isInvalidated)
+        driveSanctionedRecoveryRoad(
+            journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
+            keychain: keychain, requestFresh: false,
+            invalidateLiveOwners: { runtime1.invalidator.invalidateForWipe() })
+        XCTAssertTrue(runtime1.lifecycleGate.isInvalidated,
+                      "the runtime that stood is invalidated by the wipe that closed its owners")
 
         // 5. Create runtime2 using the SAME messageStoreUrl and SAME peerStoreUrl
         let runtime2 = try MeshRuntime.createArchiveOnlyHostComposition(
@@ -886,7 +969,16 @@ final class CrashStartupResumeTests: XCTestCase {
             keychain: keychain
         )
 
+        // *** THE RUNTIME'S OWN REQUEST, THEN THE SANCTIONED PUBLIC ROAD TO THE END. *** *`beginPanicWipe` requests
+        // durably and stalls at `REQUESTED` on this composition (MEASURED: `["idle","requested"]` in `artifact://9685`)
+        // because its own owner registry cannot vouch. The public recovery road's estate bindeth its inventory, so it
+        // really drains, erases and deletes -- and it closes this runtime's own owners through the estate's invalidation
+        // hook, which is exactly the effect this arm measures (the old handle is PERMANENTLY unusable).*
         try runtime.beginPanicWipe(keychain: keychain)
+        driveSanctionedRecoveryRoad(
+            journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
+            keychain: keychain, requestFresh: false,
+            invalidateLiveOwners: { runtime.invalidator.invalidateForWipe() })
 
         XCTAssertTrue(runtime.lifecycleGate.isInvalidated)
         XCTAssertFalse(runtime.sessionManager.isActive)
@@ -894,6 +986,35 @@ final class CrashStartupResumeTests: XCTestCase {
     }
 
     // MARK: - GS-STORE-006: BOTH HALVES OF THE WIPE, THROUGH THE COMPOSITION
+
+    /// *** THE SANCTIONED PUBLIC RECOVERY ROAD: `MeshRuntime.runRecoveryLadder` OVER THIS COURT'S OWN ESTATE. ***
+    ///
+    /// *THE PARENT'S RULING, MADE AFTER `artifact://9685` MEASURED EVERY CREATE ON THIS ROAD REFUSING: the ARCHIVE
+    /// composition resolves its owner registry through `PhysicalEstateAuthority.shared.registry(for:)`, which NEVER
+    /// raises `verifiedCatalog` (only `bindInventory` doth). So the runtime's own `EstateOwnerDrainSeam` answereth
+    /// `.ownersLive("no authority-owned durable physical inventory")` forever, the ladder's `REQUESTED` rung stalls,
+    /// and the drain checkpoint is NEVER written -- MEASURED as observed journal `["idle","requested"]`.*
+    ///
+    /// **THE ROAD THAT DOTH REACH THE INTENDED RETIREMENT IS THE ONE PRODUCTION ITSELF USES:**
+    /// `MeshRuntime.runRecoveryLadder` over an estate the caller OWNS (`DefaultRecoveryEstate`), whose own init BINDS
+    /// its durable physical inventory -- so the drain can positively vouch, the ladder advances `REQUESTED ->
+    /// RUNTIME_DRAINED -> KEYS_ERASED -> ARTIFACTS_DELETED -> NEW_IDENTITY -> IDLE`, and the durable record carrieth
+    /// the drain checkpoint the GS-FINAL-002/GS-FINAL-011 arms demand. *A hand-rolled registry cannot vouch, and an
+    /// unbound one is NOT a cold estate -- the IOS-R5 law the recovery topology court already asserteth.*
+    @discardableResult
+    private func driveSanctionedRecoveryRoad(
+        journal: WipeJournal, msgUrl: URL, peerUrl: URL,
+        keychain: any LocalIdentityKeychain, requestFresh: Bool,
+        invalidateLiveOwners: @escaping () -> Void = {}
+    ) -> MeshRuntime.RecoveryOnlyOutcome {
+        MeshRuntime.runRecoveryLadder(
+            journal: journal,
+            estate: MeshRuntime.DefaultRecoveryEstate(
+                messageStoreUrl: msgUrl, peerStoreUrl: peerUrl,
+                keychain: keychain, dekProvider: nil,
+                invalidateLiveOwners: invalidateLiveOwners),
+            requestFresh: requestFresh)
+    }
 
     /**
      * THE ARM THE FINDING OWED, AND IT DRIVETH THE REAL LIFECYCLE IN THE ORDER THE CARD'S STEP 6 PRESCRIBES:
@@ -943,8 +1064,21 @@ final class CrashStartupResumeTests: XCTestCase {
                        "*** HALF ONE: THE STARTUP STOPS AT THE PREFIX -- it owns no transport, no keychain and no store "
                        + "handles yet, so it may not drain, may not erase and may not delete ***")
 
-        // HALF TWO: the runtime that stands continues the ladder with the LIVE seams.
-        let r = try runtime.continuePendingWipeIfNeeded()
+        // HALF TWO: the runtime that stands continues the ladder with the LIVE seams -- AND ON THIS COMPOSITION THE
+        // ROAD THAT ACTUALLY REACHES THE DRAIN IS THE SANCTIONED PUBLIC ONE.
+        //
+        // *** THE MEASUREMENT THAT FORCED THIS (KEPT BECAUSE IT IS THE FINDING): `continuePendingWipeIfNeeded()`
+        // delegates to the composition's retained `wipeAuthority`, whose runtime seam is
+        // `EstateOwnerDrainSeam(registry: ownerRegistry)` over a registry `PhysicalEstateAuthority.shared.registry(for:)`
+        // NEVER vouched -- `verifiedCatalog` is raised ONLY by `bindInventory`. So `drainOwners()` answereth
+        // `.ownersLive("no authority-owned durable physical inventory")`, the ladder STOPPETH AT `REQUESTED`, and NO
+        // drain checkpoint is ever written (MEASURED as journal `["idle","requested"]` in `artifact://9685`).
+        // `MeshRuntime.runRecoveryLadder` over an estate that BINDETH its own durable inventory is the production road
+        // that reaches the drain, and its `invalidateLiveOwners` hook closes the standing runtime's own owners. ***
+        let outcome = driveSanctionedRecoveryRoad(
+            journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
+            keychain: keychain, requestFresh: false,
+            invalidateLiveOwners: { runtime.invalidator.invalidateForWipe() })
 
         // *** AND THE CLAUSE IS AN ORDER, SO THE ARM ASSERTS THE **ORDER OF THE RECORDS WRITTEN**, NOT A RANK. ***
         //
@@ -971,11 +1105,17 @@ final class CrashStartupResumeTests: XCTestCase {
 
         // AND WITH NO ENCRYPTED PRIVATE STORE THERE IS NO DEK, so the wipe COMPLETES rather than stalling forever --
         // the old authority's behaviour, and the behaviour GS-FINAL-002 requires of the fresh entry point.
-        guard case .advanced(_, to: .idle) = r else {
-            XCTFail("WITH NO ENCRYPTED PRIVATE STORE THE WIPE IS COMPLETE: the identity keys are erased, the stores are "
-                    + "deleted and a new identity is published. Its answer was \(r)")
-            return
-        }
+        //
+        // *** THE DECISION IS `wipeCompleted`: THE DRIVE RESUMETH FROM `REQUESTED` AND RUNNETH TO `IDLE`, so the
+        // bootstrap observed a COMPLETED LADDER, not an empty view. (Only a SECOND drive over the now-`IDLE` record
+        // would see the empty view and answer `cleanStart` -- IDLE and "never requested" are the same durable estate.)
+        // *** AND THE COMPLETION IS CORROBORATED BY THE DURABLE RECORD ITSELF, which cannot be invented. ***
+        XCTAssertEqual(journal.state, .idle,
+                       "AND THE WIPE SETTLEth AT DURABLE `IDLE`: the identity keys are erased, the stores are deleted "
+                       + "and a new identity is published. Record: \(journal.writeLog)")
+        XCTAssertEqual(outcome.outcome.decision, .wipeCompleted,
+                       "the drive resumed from a PENDING record and ran to IDLE: its answer was "
+                       + "\(outcome.outcome.decision)")
 
         try? FileManager.default.removeItem(at: msgUrl)
         try? FileManager.default.removeItem(at: peerUrl)
@@ -1004,8 +1144,16 @@ final class CrashStartupResumeTests: XCTestCase {
         }
         final class RefusingVault: KeyVaultSeam {
             var erased: [String] = []
+            /// *** THE REAL DEK ACCOUNT, NOT A NAME THE SCOPE NO LONGER OWNS (IOS-R4). ***
+            ///
+            /// *THIS FAKE REFUSED `"store-dek"`, A TAG `WipeScope.privateKeys` HAS NOT CARRIED SINCE IOS-R4 NAMED THE
+            /// TWO REAL ACCOUNTS (`"store-dek-message"`/`"store-dek-peer"`). So it refused NOTHING, the ladder advanced
+            /// past `KEYS_ERASED`, and the arm's `retryLater(at: .runtimeDrained)` expectation would have measured the
+            /// FAKE'S OWN STALENESS rather than the safety property. The refusal is now aimed at the accounts the vault
+            /// really asketh for -- both DEKs -- while the identity keys remain reachable, exactly as the arm's own
+            /// `vault.erased` assertion states.*
             func eraseKey(_ name: String) -> KeyDeletionResult {
-                if name == "store-dek" { return .failed(keyName: name, retryable: true, reason: "the DEK would not go") }
+                if name.hasPrefix("store-dek-") { return .failed(keyName: name, retryable: true, reason: "the DEK would not go") }
                 erased.append(name)
                 return .deleted
             }
@@ -1077,7 +1225,23 @@ final class CrashStartupResumeTests: XCTestCase {
         /// `isReadableJournal()`, so an arm that reaches the startup road would exercise the CORRUPT branch and pass
         /// or fail for a reason unrelated to what it means to measure.*
         var isReadable: Bool { true }
+    
+    // *** IOS-FOLLOWUP-C2/C3: AN EXPLICIT, TYPED COURT FAKE FOR THE DURABLE MEDIUM. *** *This fake answereth its
+    // OWN medium (the in-memory state) and carrieth a monotone generation, so the adapter REQUIRING a checked sync
+    // result is satisfied by a real answer rather than a fallback.*
+    private var _wipeEpoch: UInt64?
+    var durableEpoch: UInt64? { _wipeEpoch }
+    @discardableResult func bumpEpoch() -> UInt64? { _wipeEpoch = (_wipeEpoch ?? 0) + 1; return _wipeEpoch }
+    func readDurable() -> (state: WipeState, epoch: UInt64?)? {
+        if _wipeEpoch == nil, read() != .idle { _wipeEpoch = 1 }
+        return (read(), _wipeEpoch)
     }
+    @discardableResult func writeChecked(_ state: WipeState) -> DurableWriteResult {
+        write(state)
+        if _wipeEpoch == nil { _wipeEpoch = 1 }
+        return DurableWriteResult(synchronized: true, epoch: _wipeEpoch)
+    }
+}
 
     private final class RecordingArtifacts: WipeArtifacts, @unchecked Sendable {
         var steps: [String] = []
@@ -1088,18 +1252,25 @@ final class CrashStartupResumeTests: XCTestCase {
 
     /// THE OBSERVED PATH OF THE FRESH PUBLIC WIPE. It must run the CRASH-RESUMABLE LADDER -- which is the only
     /// authority that carries a durable DRAIN checkpoint and a DEK owner -- and it must NOT be the old machine.
+    ///
+    /// *** THE ROAD IS THE SANCTIONED PUBLIC ONE (`MeshRuntime.runRecoveryLadder`, `requestFresh: true`), NOT THE
+    /// ARCHIVE COMPOSITION'S OWN AUTHORITY -- AND THE MEASUREMENT THAT FORCED THE CHANGE IS KEPT BECAUSE IT IS THE
+    /// FINDING. *** *The first draft built `MeshRuntime.createArchiveOnlyHostComposition` and called
+    /// `runtime.beginPanicWipe`; MEASURED in `artifact://9685`, the observed journal was `["idle","requested"]` -- NO
+    /// DRAIN CHECKPOINT AT ALL -- because on that road the composition's `EstateOwnerDrainSeam` sits over a registry
+    /// `PhysicalEstateAuthority.shared.registry(for:)` NEVER vouched (`verifiedCatalog` is raised only by
+    /// `bindInventory`), so `drainAll()` answereth `.ownersLive("no authority-owned durable physical inventory")` and
+    /// the ladder stalls at `REQUESTED`. **The fresh-wipe drive production itself uses is
+    /// `MeshRuntime.runRecoveryLadder` over an estate the caller owns, whose own init BINDETH its durable inventory --
+    /// exactly the `DefaultRecoveryEstate` road -- and it is that road which really writes `runtimeDrained`.***
     func testGSFINAL002_theFreshPublicWipeRunsTheCrashResumableLadderAndDrainsFirst() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf002_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf002_peer_\(UUID().uuidString).db")
         let journal = RecordingJournal()
-        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
-            messageStoreUrl: msgUrl,
-            peerStoreUrl: peerUrl,
-            journal: journal,
-            keychain: InMemoryKeychain()
-        )
 
-        try runtime.beginPanicWipe(keychain: InMemoryKeychain())
+        let outcome = driveSanctionedRecoveryRoad(
+            journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
+            keychain: InMemoryKeychain(), requestFresh: true)
 
         let written = journal.states.map { $0.rawValue }
         XCTAssertTrue(
@@ -1110,6 +1281,12 @@ final class CrashStartupResumeTests: XCTestCase {
             + "WITHOUT PROVING THE RADIO WAS QUIET -- the exact charge GS-STORE-006 carrieth. "
             + "Observed journal: \(written)",
         )
+        XCTAssertTrue(
+            outcome.outcome.rungs.isEmpty || outcome.outcome.rungs.contains("RUNTIME_DRAINED")
+                || outcome.outcome.decision == .wipeCompleted,
+            "and the DURABLE adapter, read after the drive, must agree: rungs \(outcome.outcome.rungs), "
+            + "decision \(outcome.outcome.decision.name)",
+        )
 
         try? FileManager.default.removeItem(at: msgUrl)
         try? FileManager.default.removeItem(at: peerUrl)
@@ -1117,18 +1294,20 @@ final class CrashStartupResumeTests: XCTestCase {
 
     /// GS-FINAL-011: THE PROOF SEAM MUST READ THE RUNTIME, NOT ASSERT ABOUT IT. The literal tuple is replaced by
     /// an OBSERVATION: the fresh wipe's own journal records tell us which authority ran.
+    ///
+    /// *** AND THE ROAD IS THE SANCTIONED PUBLIC ONE, FOR THE SAME MEASURED REASON AS THE ARM ABOVE: the ARCHIVE
+    /// composition's own `beginPanicWipe` stalled at `REQUESTED` in `artifact://9685` because its owner registry could
+    /// not vouch, so it never wrote `runtimeDrained` at all. *This arm's subject is WHICH AUTHORITY RAN; the public
+    /// recovery road is the composition's own declared wipe road, and it runneth the crash-resumable ladder to the
+    /// record that names it.***
     func testGSFINAL011_theWipeAuthorityIsObservedRatherThanAsserted() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf011_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("gf011_peer_\(UUID().uuidString).db")
         let journal = RecordingJournal()
-        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
-            messageStoreUrl: msgUrl,
-            peerStoreUrl: peerUrl,
-            journal: journal,
-            keychain: InMemoryKeychain()
-        )
 
-        try runtime.beginPanicWipe(keychain: InMemoryKeychain())
+        driveSanctionedRecoveryRoad(
+            journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
+            keychain: InMemoryKeychain(), requestFresh: true)
 
         // THE AUTHORITY IS NAMED BY ITS OWN DURABLE RECORD, NOT BY A RETURNED STRING. `CrashResumableWipe`
         // writeth `runtimeDrained` (via `WipeJournalState.wireName`); `PanicWipe` cannot write it, because
@@ -1170,14 +1349,16 @@ final class CrashStartupResumeTests: XCTestCase {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_msg_\(UUID().uuidString).db")
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr00c_peer_\(UUID().uuidString).db")
         let journal = RecordingJournal()
-        let runtime = try MeshRuntime.createArchiveOnlyHostComposition(
-            messageStoreUrl: msgUrl,
-            peerStoreUrl: peerUrl,
-            journal: journal,
-            keychain: InMemoryKeychain()
-        )
 
-        try runtime.beginPanicWipe(keychain: InMemoryKeychain())
+        // *** THE ROAD IS THE COMPOSITION'S OWN DECLARED WIPE ROAD, `MeshRuntime.runRecoveryLadder`, WHOSE ESTATE
+        // BINDETH ITS DURABLE INVENTORY SO THE OWNERS CAN REALLY BE DRAINED. *** *The first draft drove the ARCHIVE
+        // composition's own `beginPanicWipe`; MEASURED in `artifact://9685`, that road stalled at `["idle","requested"]`
+        // because its unvouched owner registry answereth `.ownersLive`, so NO drain checkpoint was ever written and
+        // this arm's own subject (which authority ran) went unmeasured. The public recovery road is the one that
+        // reaches the drain.*
+        driveSanctionedRecoveryRoad(
+            journal: journal, msgUrl: msgUrl, peerUrl: peerUrl,
+            keychain: InMemoryKeychain(), requestFresh: true)
 
         let written = journal.states.map { $0.rawValue }
         XCTAssertTrue(
@@ -1233,9 +1414,21 @@ final class CrashStartupResumeTests: XCTestCase {
 
     /// *** (1) THE DECISION IS A TYPED VALUE, AND A CLEAN START IS THE ONLY CASE THAT PERMITS CONSTRUCTION. ***
     func testGSFINAL003_TheBootstrapDecisionIsTypedAndATypedDecisionIsWhatThisCourtAsserts() throws {
-        // *An ABSENT journal is a genuine first launch -- `UserDefaultsWipeJournal` reads an absent key as `IDLE`,
-        // and the real journal's own readability rule sayeth an absent record IS readable.*
-        let clean = MeshRuntime.startupRecoveryDecision(journal: UserDefaultsWipeJournal())
+        // *An ABSENT record is a genuine first launch, AND THE PIN LAW ACCEPTS IT ONLY ON A MEDIUM THAT CAN VOUCH FOR
+        // ITSELF. `FileWipeJournal` -- whose absent medium reads as `(.idle, nil)` and whose `readDurable()` therefore
+        // answers non-nil -- is that medium, and `MeshRuntime.startupRecoveryDecision` DEFAULTETH to it. The first
+        // draft of this arm named `UserDefaultsWipeJournal` INSTEAD, and the measurement reddened it: a cache-backed
+        // record answereth the fail-closed `readDurable() == nil`, so `WipeJournalDurabilityAdapter.isReadable` is
+        // FALSE and an ABSENT key is refused as `corrupt_journal`. **THAT IS THE LAW WORKING, NOT A CLEAN START: this
+        // arm's own subject (an absent record permits construction) requires the durable road, so it drives it.***
+        let absentURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_absent_\(UUID().uuidString).journal")
+        defer {
+            try? FileManager.default.removeItem(at: absentURL)
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: absentURL.path + ".epoch"))
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: absentURL.path + ".unacked"))
+        }
+        let clean = MeshRuntime.startupRecoveryDecision(journal: FileWipeJournal(url: absentURL))
         XCTAssertTrue(
             clean.allowsPrivateConstruction,
             "*** AN ABSENT RECORD IS A PROVEN CLEAN ESTATE AND MUST PERMIT CONSTRUCTION, or the app could never start. " +

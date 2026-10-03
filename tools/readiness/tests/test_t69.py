@@ -492,6 +492,68 @@ class IosArtifactCourt(unittest.TestCase):
         self.assertEqual(1, door([str(self.root / "absent.app")])[0])
         self.assertEqual(1, door([str(self.asset_that_is_not_a_bundle())])[0])
 
+    # -- W27-W28 the symbol scan reads identity, not substrings -----------
+    def test_w27_real_swift_metadata_is_not_the_gnu_mp_library(self):
+        """The shipped false positive, as a court.
+
+        MEASURED on the actual LIGHT image: `_$ss7CVarArgMp` (the stdlib `CVarArg`
+        protocol metadata) lowercases to `_$ss7cvarargmp`, which CONTAINS `gmp`, and the
+        old unqualified-substring scan refused an innocent binary. The names below are
+        REAL mangled symbols read from that image: the scan must accept them, and must
+        still refuse a Swift symbol whose LENGTH-PREFIXED module IS excluded."""
+        legitimate = self.bundle("Legitimate.app", undefined_symbols=(
+            "_$ss7CVarArgMp", "_$s7SwiftUI3AppMp", "_$s12GodstoneCore14ArchiveReadingMp",
+            "_$s12GodstoneCore22OracleAnswerValidatingMp"))
+        report = I.inspect(legitimate)
+        self.assertEqual("PASS", report["verdict"],
+                         f"innocent Swift metadata refused: {report['failures']}")
+        self.assertFalse(any("GMP" in item for item in report["failures"]))
+        # the same SHAPE, with a forbidden module at the same mangling position
+        hostile = self.bundle("Hostile.app", undefined_symbols=(
+            "_$ss7CVarArgMp", "_$s12GodstoneMesh16MeshNode_startyyF"))
+        report = I.inspect(hostile)
+        self.assertEqual("FAIL", report["verdict"])
+        self.assertTrue(any("GodstoneMesh" in item for item in report["failures"]),
+                        report["failures"])
+        # and the real dylib-name road: `libGMP.dylib` is refused, a system dylib
+        # whose NAME merely containeth the letters is not.
+        for library, verdict in (("/usr/lib/libGMP.dylib", "FAIL"),
+                                 ("/usr/lib/libgmp.10.dylib", "FAIL"),
+                                 ("/usr/lib/libGodstoneMeshCore.dylib", "FAIL"),
+                                 ("/System/Library/Frameworks/CoreBluetooth.framework/"
+                                  "CoreBluetooth", "FAIL"),
+                                 ("/usr/lib/libSystem.B.dylib", "PASS"),
+                                 ("/usr/lib/libcompression.dylib", "PASS"),
+                                 ("/System/Library/Frameworks/Combine.framework/"
+                                  "Combine", "PASS")):
+            with self.subTest(library=library):
+                bundle = self.bundle(f"Dylib-{library.rsplit('/', 1)[-1]}.app",
+                                     library=library)
+                self.assertEqual(verdict, I.inspect(bundle)["verdict"])
+
+    def test_w28_the_c_and_objc_family_prefixes_are_read_at_the_boundary(self):
+        """`_llama_*`, `_gmp_*`, `_GodstoneMesh*`, `_OBJC_CLASS_$_CB*` are families.
+
+        A family is a LEADING boundary, so a C symbol of one family is refused while a
+        symbol whose interior merely carrieth the letters is not."""
+        for good, bad, label in (
+                ("_$ss7CVarArgMp", "_gmpz_init", "GMP"),
+                ("_swift_allocObject", "_llama_model_load", "llama"),
+                ("_GodstoneCore_main", "_GodstoneMesh_start", "GodstoneMesh"),
+                ("_CBUUID", "_OBJC_CLASS_$_CBCentralManager", "CoreBluetooth"),
+                ("_godstone_core_ready", "_XCTestCase_main", "XCTest")):
+            with self.subTest(label=label):
+                clean = self.bundle(f"Clean-{label}.app", undefined_symbols=(good,))
+                self.assertEqual("PASS", I.inspect(clean)["verdict"],
+                                 f"{label}: {good!r} refused")
+                dirty = self.bundle(f"Dirty-{label}.app", undefined_symbols=(bad,))
+                dirty_report = I.inspect(dirty)
+                self.assertEqual("FAIL", dirty_report["verdict"],
+                                 f"{label}: {bad!r} accepted")
+                self.assertTrue(any("importeth" in item
+                                    for item in dirty_report["failures"]),
+                                dirty_report["failures"])
+
     def asset_that_is_not_a_bundle(self) -> Path:
         path = self.root / "not-a-bundle.txt"
         path.write_text("plain text")

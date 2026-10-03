@@ -1,0 +1,5 @@
+::error::Bound recipient key resolver control error: Android BoundRecipientKeyResolver missing 16-byte nodeId boundary guard (B03)
+
+FAIL: 1 bound recipient key resolver control issue(s) found.
+
+(the rod aimed at 'Android BoundRecipientKeyResolver missing 16-byte nodeId boundary guard (B03)'; reddened refusals were the aimed one)

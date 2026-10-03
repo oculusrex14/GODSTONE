@@ -16155,7 +16155,24 @@
   },
   "schema_version": 1,
   "task_catalog_sha256": "b7cf90483cde63b67099a996d2139823e79d029e2b2481d81a756da70c3ef97a",
-  "unresolved_defects": [],
+  "unresolved_defects": [
+    {
+      "id": "STRUCTURED-CANONICAL-FRONTIER",
+      "at_utc": "2026-10-02",
+      "derived_by": "scripts/build_structured_closure.py --write",
+      "internal_obligations_open": 17,
+      "findings_internal_open": 6,
+      "obligations_discharged": 18,
+      "external_obligations": 5,
+      "verified_fixed": 0,
+      "builder_status": "REMEDIATION_IN_PROGRESS",
+      "findings": {
+        "GS-FINAL-003": 5, "GS-FINAL-004": 3, "GS-UX-001": 4,
+        "GS-STRESS-001": 2, "GS-STORE-002": 1, "AUDIT-B1-CTRL-001": 2
+      },
+      "note": "Every obligation carries a known_internal_gaps record mapping the canonical reviews (SqliteReview, IosReview, NativeLifetimeReview, LaneControls, manifest-review) by canonical identity; no new finding added and no gap duplicated. rc14 (tag object 2481e66d, commit f76c5ae3, tree 4157f3eb) remains the immutable frozen candidate of record; its blanket internal-completion verdict is NOT a current claim, and no new candidate or READY status is asserted."
+    }
+  ],
   "warnings": [
     "T18 randomized-draw pair-cap flake family struck again in the T37 subsystem campaign (no ascending hint pair within 64 draws); the FAILED record T37-subsystem-gradlew stands in the ledger as history, the green retry -002 rides beside it; the sealed T18 court was NOT edited -- policy: green-retry to 6, never rewrite the ledger, never touch sealed courts.",
     "roster law learned (fixup-1): append-style find/replace rows violate the ledger post-invariant -- the pre-anchor must NOT survive the mutant verbatim; re-express insertions as destructive substitutions (rewrite one shared line, reuse the closer) and simulate the runner gates before launching a campaign.",

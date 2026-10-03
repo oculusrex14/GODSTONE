@@ -1,0 +1,5 @@
+::error::Peer identity store control error: Android DDL missing trust_level IN (1,2,3) CHECK (S12)
+
+FAIL: 1 peer identity store control issue(s) found.
+
+(the rod aimed at 'Android DDL missing trust_level IN (1,2,3) CHECK (S12)'; reddened refusals were the aimed one)

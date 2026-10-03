@@ -49,10 +49,17 @@ sealed class ContactVerificationCommand {
     /**
      * Compare a fingerprint the user read out loud with the durable one, and (on
      * a match) ask the authority to confirm it.
+     *
+     * *** GS-UX-001 STEP 8: THE COMMAND CARRYeth THE EXACT MATERIAL THE SCREEN SHOWED -- the digest AND the accepted
+     * generation displayed beside it. *** A control that re-read the row at tap time could confirm a code the
+     * operator never saw, or promote a row that had moved under the reader; the displayed operands travel instead.
      */
     data class CompareAndConfirmFingerprint(
         val nodeId: ByteArray,
+        /** The digest the screen printed. */
         val displayedFingerprintHex: String,
+        /** The accepted generation the screen printed beside that digest. */
+        val displayedAcceptedGeneration: Long,
     ) : ContactVerificationCommand()
 
     /** Refresh the projection from the durable authority. */
@@ -133,6 +140,17 @@ class IdentityTrustViewModel(
     /// nothing that stood before changeth behaviour. ***
     private val protectedData: ProtectedDataGate = AlwaysAvailableProtectedData,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000L },
+    /**
+     * *** GS-UX-001 STEP 8 (TrustUiCasBuilder): A LOGGING SEAM OVER THIS CLASS'S OWN ACTION ARMS. ***
+     *
+     * *THE PROBLEM IT ANSWERETH, STATED AS IT WAS FOUND: the async actions BELOW this model commit values the screen
+     * (and this model's own prose) never observeth -- an outcome's `acceptedGeneration` and the durable digest the
+     * authority actually promoted are DISCARDED by the projection, so nothing can distinguish "the CAS promoted the
+     * row the user saw" from "some row was promoted".* **This seam carrieth the REAL values the authority returned
+     * (never a rendering of them), defaulted to a no-op so every existing caller and court is unchanged.** The
+     * shipping app bindeth `Log.d`-shaped sinks where the operator can read them; a court bindeth a recorder.
+     */
+    private val logger: (String) -> Unit = {},
 ) {
     // --------------------------------------------------------------------------------------
     // *** GS-UX-001 STEP 3 (round 540): OBSERVABLE STATE -- THE TRUST SIDE OF THE SAME CONTRACT. ***
@@ -174,8 +192,7 @@ class IdentityTrustViewModel(
 
         is ContactVerificationCommand.ImportRecipientBinding -> handleImport(command.payload)
 
-        is ContactVerificationCommand.CompareAndConfirmFingerprint ->
-            handleCompare(command.nodeId, command.displayedFingerprintHex)
+        is ContactVerificationCommand.CompareAndConfirmFingerprint -> handleCompare(command)
 
         is ContactVerificationCommand.ApproveRotation -> handleApprove(command.candidate)
 
@@ -278,11 +295,16 @@ class IdentityTrustViewModel(
         }
     }
 
-    private fun handleCompare(nodeId: ByteArray, displayedHex: String): TrustUiState {
+    private fun handleCompare(command: ContactVerificationCommand.CompareAndConfirmFingerprint): TrustUiState {
+        val nodeId = command.nodeId
+        val displayedHex = command.displayedFingerprintHex
         if (nodeId.size != 16) return withError("that contact is not addressable")
         if (displayedHex.length != 64 || !displayedHex.all { it.isDigit() || it in 'a'..'f' }) {
             return withError("the fingerprint you entered is not a 64-character hex digest")
         }
+        // *** GS-UX-001 STEP 8: THE READER'S OWN MATERIAL IS THE COMPARISON -- NOT A RE-READ OF "WHATEVER STANDS NOW". ***
+        // The projection is refreshed only so the AUTHORITY's current rows can be compared against, never so that a
+        // fresher row could be substituted for the one the user saw.
         val current = project(lastOutcome = null, error = null)
         val contact = current.contact(nodeId) ?: return withError("no such contact")
         if (!contact.fingerprintHex.equals(displayedHex, ignoreCase = true)) {
@@ -291,19 +313,55 @@ class IdentityTrustViewModel(
                 "those fingerprints differ; the contact was NOT verified and trust is unchanged",
             )
         }
+        // *** THE CAS's LOCAL HALF: the ACCEPTED GENERATION the screen printed must still be the row's own. *** A
+        // re-read digest that matcheth a row whose generation moved beneath the reader is NOT the material the user
+        // compared, so the request is refused BEFORE the authority is troubled.
+        if (contact.acceptedGeneration != command.displayedAcceptedGeneration) {
+            return withAuthorityError(
+                "that contact's key changed while you were comparing it; confirm the new one",
+            )
+        }
         // the promotion is DURABLE, and it goeth through the authority's own CAS:
         // a local match is never enough to claim a verification
-        return when (val outcome = port.confirmVerified(nodeId, contact.fingerprintHex)) {
-            is ConfirmOutcome.Confirmed ->
+        val request = FingerprintDisplay(
+            nodeId = nodeId.copyOf(),
+            fingerprintHex = contact.fingerprintHex,
+            acceptedGeneration = contact.acceptedGeneration,
+        )
+        return when (val outcome = port.confirmVerified(request)) {
+            is ConfirmOutcome.Confirmed -> {
+                // *** THE RUNTIME'S REAL ANSWER, OBSERVED RATHER THAN TRUSTED. *** The digest the AUTHORITY promoted
+                // and the generation it accepted are printed here, so a court (and a log reader) can see the durable
+                // values rather than the sentence the UI would like them to be.
+                logger("compare-confirm confirmed node=${nodeId.hexOrDash()} " +
+                    "acceptedGeneration=${outcome.acceptedGeneration} digest=${request.fingerprintHex}")
                 project(lastOutcome = "fingerprint confirmed for " + contact.label, error = null)
-            is ConfirmOutcome.Mismatch -> withAuthorityError(
-                "the durable fingerprint is not the one you compared: trust is unchanged",
-            )
-            is ConfirmOutcome.PeerNotFound -> withAuthorityError("no such contact")
-            is ConfirmOutcome.AlreadyVerified ->
-                project(lastOutcome = "that contact was already verified", error = null)
-            is ConfirmOutcome.Refused ->
+            }
+            is ConfirmOutcome.Mismatch -> {
+                logger("compare-confirm REFUSED node=${nodeId.hexOrDash()} reason=durable-mismatch " +
+                    "displayedDigest=${request.fingerprintHex} displayedGeneration=${request.acceptedGeneration}")
+                withAuthorityError(
+                    "the durable fingerprint is not the one you compared: trust is unchanged",
+                )
+            }
+            is ConfirmOutcome.PeerNotFound ->
+                withAuthorityError("no such contact")
+            is ConfirmOutcome.AlreadyVerified -> {
+                // *** `AlreadyVerified` IS AN OBJECT -- IT RETURNETH NOTHING (MEASURED AT THE SEALED HIERARCHY, NOT
+                // ASSUMED), SO THE ONLY REAL GENERATION HERE IS THE ONE THE AUTHORITY'S OWN PROJECTION CARRIETH. ***
+                // The first form of this line logged `outcome.acceptedGeneration` and did not compile: A NAME THAT
+                // READS PLAUSIBLY IS NOT A FIELD THE TYPE DECLARES. The durable row is re-read and printed instead.
+                val projected = project(lastOutcome = "that contact was already verified", error = null)
+                val durable = projected.contact(nodeId)
+                logger("compare-confirm idempotent node=${nodeId.hexOrDash()} " +
+                    "durableGeneration=${durable?.acceptedGeneration} " +
+                    "durableDigest=${durable?.fingerprintHex}")
+                projected
+            }
+            is ConfirmOutcome.Refused -> {
+                logger("compare-confirm REFUSED node=${nodeId.hexOrDash()} reason=${outcome.reason}")
                 withAuthorityError("confirmation refused: " + outcome.reason)
+            }
         }
     }
 
@@ -312,9 +370,15 @@ class IdentityTrustViewModel(
         // silently approve a different key than the user compared
         val outcome = port.approveRotation(candidate)
         return when (outcome) {
-            is RotationApprovalOutcome.Approved ->
+            is RotationApprovalOutcome.Approved -> {
+                // *** THE REAL ACCEPTED GENERATION, OBSERVED: the authority's own answer, not the screen's hope. ***
+                logger("approve-rotation approved node=${outcome.nodeId.hexOrDash()} " +
+                    "acceptedGeneration=${outcome.acceptedGeneration} " +
+                    "displayedGeneration=${candidate.pendingGeneration} " +
+                    "displayedKeyDigest=${candidate.pendingKeyDigestHex}")
                 project(lastOutcome = "rotation approved at generation " + outcome.acceptedGeneration,
                     error = null)
+            }
             // an AUTHORITY refusal is also NEWS ABOUT THE ESTATE (the pending row
             // moved, the contact was revoked), so these re-project; a LOCAL
             // validation failure (below) never touches the authority at all
@@ -345,7 +409,9 @@ class IdentityTrustViewModel(
 
     private fun handleRevoke(nodeId: ByteArray): TrustUiState {
         if (nodeId.size != 16) return withError("that contact is not addressable")
-        return when (val outcome = port.revoke(nodeId)) {
+        val outcome = port.revoke(nodeId)
+        logger("revoke node=${nodeId.hexOrDash()} outcome=${outcome::class.simpleName}")
+        return when (outcome) {
             is RevokeOutcome.Revoked ->
                 project(lastOutcome = "contact revoked; its sessions are invalidated", error = null)
             is RevokeOutcome.AlreadyRevoked ->
@@ -413,4 +479,14 @@ class IdentityTrustViewModel(
      */
     private fun withAuthorityError(message: String): TrustUiState =
         project(lastOutcome = null, error = message)
+
+    /**
+     * *** THE LOG SEAM's OWN RENDERING: the REAL bytes, made readable -- never a summary of them. ***
+     *
+     * *A log line that said "the confirmation succeeded" would be the prose this round existeth to distrust; the lines
+     * above print the node id, the accepted generation and the 64-hex digest THE AUTHORITY RETURNED, so a reader (or a
+     * court) sees the durable values rather than the sentence the surface would have preferred.*
+     */
+    private fun ByteArray.hexOrDash(): String =
+        if (isEmpty()) "-" else joinToString("") { "%02x".format(it) }
 }

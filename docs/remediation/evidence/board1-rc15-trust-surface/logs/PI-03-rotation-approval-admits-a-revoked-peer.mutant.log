@@ -1,0 +1,7 @@
+::error::Peer identity store control error: Android approval SQL missing trust_level IN (1,2) predicate (S52)
+::error::Peer identity store control error: Android approval SQL missing trust_level IN (1,2) (S74)
+::error::Peer identity store control error: Android approval SQL missing WHERE predicate 'trust_level IN (1,2)' (S82)
+
+FAIL: 3 peer identity store control issue(s) found.
+
+(the rod aimed at 'Android approval SQL missing trust_level IN (1,2) predicate (S52)'; reddened refusals were the aimed one)

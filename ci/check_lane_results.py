@@ -34,6 +34,12 @@ USAGE:
     python3 ci/check_lane_results.py                 # the default lane set
     python3 ci/check_lane_results.py --selftest      # the control's own adversarial mutations
 
+*** AND THE SAME CONTROL REAPETH A DOWNLOADED HOSTED RUN: *** *a fresh reader passeth `--evidence-root <dir>` (or a
+caller passeth `evidence_root=`), and only the EVIDENCE READS -- the lane result XMLs, the iOS logs and their
+`.sha256` sidecars -- resolve under that root. **THE SOURCE CENSUS, THE EXPECTED ARM ROSTERS AND THE SOURCE DIGESTS
+STAY ROOTED AT THE REAL REPOSITORY**, because those ARE the sources each lane claims to have compiled; the checkout
+is NEVER rebased. Absent the flag, every read resolves under the repository exactly as before.*
+
 EXIT: 0 when every lane carries a candidate-bound result with zero skipped/failed/errored arms.
 """
 
@@ -48,6 +54,30 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+
+
+def _evidence_base(evidence_root: Path | None) -> Path:
+    """*** THE ROOT EVERY EVIDENCE READ RESOLVES UNDER -- THE SUPPLIED ONE, OR THE CHECKOUT. ***
+
+    *A fresh reader of a HOSTED run downloads that run's lane logs, result XMLs and digest sidecars into a scratch
+    root, and the canonical verifier hands it here as `evidence_root=`. **THE CHECKOUT MUST NOT BE REBASED:** the
+    SOURCE census, the expected arm rosters and the source digests all keep describing the real `REPO`, because they
+    are the SOURCES the run claims to have compiled -- only the EVIDENCE reads move.* `evidence_root=None` resolves
+    to `REPO`, so the local CLI and every existing caller behave exactly as before.
+    """
+    return Path(evidence_root) if evidence_root is not None else REPO
+
+
+def _evidence_log(default: Path, evidence_root: Path | None) -> Path:
+    """*** THE LANE LOG READ FROM THE EVIDENCE ROOT WHEN ONE IS SUPPLIED, ELSE THE MODULE DEFAULT. ***
+
+    *The hosted runner's scratch root MIRRORS the checkout's layout, so the log keepeth its NAME (`ios-lane.log`,
+    `ios-ui-lane.log`, `ios-simulator-lane.log`) and its digest sidecars (`<log>.sources.sha256`, `<log>.pre.sha256`)
+    sit beside it under the evidence root. The module default is returned untouched when none is supplied -- which is
+    also what the built-in selftests monkeypatch.*
+    """
+    return (Path(evidence_root) / default.name) if evidence_root is not None else default
+
 
 # The lanes the remediation actually runs. Each is (label, task-dir, glob).
 #
@@ -125,7 +155,10 @@ def _ui_target_source_dirs() -> dict[str, list[str]]:
     """The `bundle.ui-testing` targets and their configured source directories, from `project.yml`.
 
     *Read rather than hard-coded, so adding an arm to a UI target automatically becomes a REQUIREMENT here instead
-    of silently widening what the control tolerates.*
+    of silently widening what the control tolerates.* **AND THE PROJECT SPEC IS A SOURCE: `project.yml` SELECTS the
+    targets and the arm roster is the SOURCE population a lane must reproduce, so this is read from `REPO` and is
+    deliberately NOT moved by an evidence root -- only the lane LOG and its digest sidecars come from the evidence
+    root.**
     """
     import yaml  # noqa: PLC0415 - imported here so a host without PyYAML degrades loudly, not at import time
     spec = yaml.safe_load(IOS_PROJECT_SPEC.read_text(encoding="utf-8"))
@@ -137,7 +170,11 @@ def _ui_target_source_dirs() -> dict[str, list[str]]:
 
 
 def required_ui_arms() -> dict[str, list[str]]:
-    """`{suite: [className.armName, ...]}` for every `bundle.ui-testing` target, derived from its own sources."""
+    """`{suite: [className.armName, ...]}` for every `bundle.ui-testing` target, derived from its own sources.
+
+    *The arm declarations are SOURCE: the roster is read from the target's OWN configured source directories under
+    `REPO`, so a downloaded lane's roster still describeth the sources it claims to have been compiled from.*
+    """
     roster: dict[str, list[str]] = {}
     for suite, dirs in sorted(_ui_target_source_dirs().items()):
         arms: list[str] = []
@@ -209,34 +246,23 @@ LOG_LINE_KINDS = {
     "** TEST FAILED ** / ** TEST SUCCEEDED **": re.compile(r"\*\* TEST (FAILED|SUCCEEDED) \*\*"),
     "any 'Testing' / swift-testing run": re.compile(r"Test run with|Testing Library Version"),
 }
-IOS_SUITE = re.compile(r"^Test Suite '(\w+)\.xctest' passed", re.M)
 #: **THE CLASS-LEVEL SUITE LINE -- `Test Suite '<ClassName>' passed` -- IS THE PORTABLE ONE.** *Measured: the BUNDLE
 #: naming differs between toolchains (`<Target>.xctest` per target vs `<Package>PackageTests.xctest` merged), while the
 #: per-class lines are IDENTICAL -- **91 of 91 in both the local and the hosted log.*** *This is what the roster is
 #: compared against.*
 IOS_CLASS_SUITE = re.compile(r"^Test Suite '(\w+)' passed", re.M)
 
-#: *** THE XCTEST AGGREGATE LINE, AND THE OPTIONAL SKIP INFIX (XCODE 27.0). ***
-#:
-#: *MEASURED ON THIS HOST AGAINST THE RAN LANES, AND IT IS THE DEFECT THIS REGEX EXISTETH TO REMOVE:* **Xcode 27.0
-#: printeth a skip-bearing aggregate as**
-#:     `Executed 1341 tests, with 1 test skipped and 0 failures (0 unexpected) in 1507.281 (1507.352) seconds`
-#: **while every skip-free line still reads `Executed 5 tests, with 0 failures (0 unexpected) ...`.** The pattern this
-#: control carried -- `with (\d+) failures? \(` -- REQUIRED the failures figure to sit immediately before the
-#: `(N unexpected)` clause, so the skipped form matchéth NOTHING: *the total SILENTLY COLLAPSED (the foundation lane
-#: reported `115` instead of `1452`, and the simulator lane's per-bundle evidence was empty while its own skip
-#: annotation sat in the log), which is exactly the "a total nobody can reconcile with the artifact" defect class this
-#: file existeth to refuse.*
-#:
-#: **THE INFIX IS `(?:and )?\d+ tests? skipped and ` -- OPTIONAL, so a skip-free line is unchanged** *and the skipped
-#: count is NOT part of the failure figure: `1 test skipped and 0 failures` still reports ZERO failures, which is the
-#: honest reading and the one the skip clause below judges separately.*
-IOS_TOTAL = re.compile(
-    r"^\s*Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures? \(\d+ unexpected\)", re.M)
-
 #: The per-bundle totals (`Test Suite '<bundle>.xctest' passed` followed by ITS OWN outermost aggregate), used by the
 #: foundation and simulator lanes. **NAMED HERE SO THE SIMULATOR LANE AND THE FOUNDATION LANE CANNOT DRIFT**: *they
 #: were two copies of the same expression, and a fix to one would have left the other reading the old shape.*
+#:
+#: **THE `(?:and )?\d+ tests? skipped and ` INFIX IS OPTIONAL (XCODE 27.0).** *MEASURED ON THIS HOST: Xcode 27.0
+#: printeth a skip-bearing aggregate as `Executed 1341 tests, with 1 test skipped and 0 failures (0 unexpected) ...`
+#: while a skip-free line still reads `Executed 5 tests, with 0 failures (0 unexpected) ...`. A pattern REQUIRING the
+#: failures figure immediately before `(N unexpected)` therefore matchéth the skipped form NOTHING, and the total
+#: SILENTLY COLLAPSED -- the "a total nobody can reconcile with the artifact" defect class this file existeth to
+#: refuse. The infix keepeth a skip-free line unchanged and leaveth the FAILURE figure at zero for `1 test skipped and
+#: 0 failures`, which the skip clause below judges separately.*
 BUNDLE_TOTAL = re.compile(
     r"^Test Suite '[\w.]+\.xctest' passed.*?^\s*Executed (\d+) tests?, with (?:\d+ tests? skipped and )?(\d+) failures?",
     re.M | re.S)
@@ -245,18 +271,49 @@ BUNDLE_TOTAL = re.compile(
 #: name -- and the reason for the skip liveth on the ` -] : Test skipped - <REASON>` ANNOTATION XCTest printeth beside
 #: the arm's source path.*
 IOS_SKIPPED_ARM = re.compile(r"^Test Case '-\[([^'\]]+)\]' skipped", re.M)
-#: *** THE ONE SKIP REASON THIS CONTROL ACCEPTS: AN EXTERNAL-BLOCKED ARM. ***
-#:
-#: *MEASURED: the simulator lane's single skip is `ReadinessT30Tests`' pinned-SQLCipher round-trip, whose annotation
-#: reads `Test skipped - EXTERNAL-BLOCKED: the approved pinned SQLCipher library 'libsqlcipher.0.dylib' is not present
-#: on this host`, i.e. **the positive native road the plan itself routes to EXTERNAL** ("the pinned binary, encrypted
-#: pages, correct-key reopen and on-device at-rest proof remain EXTERNAL").* **THAT ARM CANNOT RUN IN THE BUILDER'S
-#: WORLD, SO REFUSING IT REFUSETH A GENUINELY-GREEN LANE** -- *but a skip with ANY OTHER reason still measures
-#: nothing and must be refused.*
+#: **THE ANNOTATION THAT CARRIETH THE SKIP'S REASON** -- `<source>:<line>: -[<Module>.<Class> <arm>] : Test skipped -
+#: <REASON>`. *Read only to DIAGNOSE which arm skipped and why; **it can never excuse one** (see the refusal clauses
+#: below).*
 IOS_SKIP_REASON = re.compile(r"-\[(?P<arm>[^\]]+)\]\s*:\s*Test skipped\s*-\s*(?P<reason>.*)$")
-#: **AND THE REASON MUST NAME THE EXTERNAL BLOCK OR THE ABSENT PINNED ARTIFACT -- NOT MERELY "external".** *A
-#: `reason` naming neither is an internal skip wearing the exemption's shape.*
-IOS_EXTERNAL_SKIP_MARKERS = ("EXTERNAL-BLOCKED", "pinned SQLCipher library")
+#: *** THE "EXTERNAL-BLOCKED" ALLOWANCE IS RETIRED -- NO SKIP IS EXCUSED. ***
+#:
+#: *The control USED TO accept a skip whose reason named BOTH the `EXTERNAL-BLOCKED` disposition AND the absent pinned
+#: SQLCipher artifact (a marker tuple and a `_external_skip_ok` predicate once lived here).* **THAT ALLOWANCE IS GONE:
+#: the pinned SQLCipher library is now REPOSITORY-BUILDABLE (`tools/supplychain/build_sqlcipher_simulator.sh`) and the
+#: native owner REMOVED the last arm that XCTSkip`th for its absence -- WHICH MEANS NO SKIP IS HONEST AND NONE MAY BE
+#: EXCUSED.** *A reason carrieth no weight whatever it sayeth: an `EXTERNAL-BLOCKED: … pinned SQLCipher library …`
+#: reason on a DECLARED arm is refused exactly as an ordinary internal skip is (`_skip_reason_problems`).* **THE
+#: SELFTEST PROVES THIS with a case that constructs exactly that historical reason and requirith it REFUSED; no marker
+#: constant or excusal predicate remaineth to match it.**
+
+
+def _skip_refusal(arm: str, named: str) -> str:
+    """The refusal TEXT for one skipped arm -- the single place the message liveth, so a mutation of it is attributable."""
+    return (
+        f"carrieth a SKIPPED arm ({arm}){named} -- **NO SKIP IS EXCUSABLE**: a skipped witness reporteth as "
+        f"a pass while measuring nothing, and the one external-blocked reason this control once accepted no longer "
+        f"existeth (the pinned SQLCipher library is repository-buildable). Unskip the arm or remove it from the "
+        f"target.")
+
+
+def _skip_reason_problems(label: str, text: str) -> list[str]:
+    """*** EVERY SKIP IS A FAILURE, NAMED BY ARM, REGARDLESS OF REASON. ***
+
+    *THE REQUIREMENT (P1 realUser25): eliminate internal known-red allowances and unaccounted skips. **THERE IS NO
+    EXCUSABLE SKIP:** a skip reporteth as a PASS while measuring NOTHING, and the one reason this control once
+    accepted -- an absent pinned SQLCipher artifact -- no longer existeth, because the library is repository-buildable
+    and the arm that used to skip for its absence was removed.* **SO THE RULE IS ABSOLUTE: any `skipped` verdict line
+    fails the lane, whatever its annotation sayeth.** *The annotation is still read, ONLY to name the reason beside
+    the arm in the refusal, so a reader need not open the log to see why.*
+    """
+    problems: list[str] = []
+    skip_annotation = _skip_annotation_by_arm(text)
+    for m in IOS_SKIPPED_ARM.finditer(text):
+        arm = m.group(1).strip()
+        reason = skip_annotation.get(arm, "")
+        named = f" (reason: {reason[:120]}…)" if reason else " (no `Test skipped - <reason>` annotation)"
+        problems.append(f"{label} {_skip_refusal(arm, named)}")
+    return problems
 
 
 def _skip_annotation_by_arm(text: str) -> dict[str, str]:
@@ -264,9 +321,10 @@ def _skip_annotation_by_arm(text: str) -> dict[str, str]:
 
     *XCTest writes the arm's `skipped` VERDICT line and, beside it, an annotation of the form*
         `<source>:<line>: -[<Module>.<Class> <arm>] : Test skipped - <REASON>`
-    **and the REASON is what distinguishes a skip measuring nothing from an arm routed to EXTERNAL.** *The annotation is
-    one very long physical line, so the reason is read to end-of-line; a later annotation for the same arm overrideth an
-    earlier one, which matches XCTest's own last-writer ordering.*
+    **and the REASON is read only so the refusal can NAME it** -- *it excuseth nothing, because no skip is excusable
+    (see `_skip_reason_problems`).* The annotation is one very long physical line, so the reason is read to
+    end-of-line; a later annotation for the same arm overrideth an earlier one, which matches XCTest's own last-writer
+    ordering.
     """
     out: dict[str, str] = {}
     for line in text.splitlines():
@@ -274,6 +332,33 @@ def _skip_annotation_by_arm(text: str) -> dict[str, str]:
         if ann:
             out[ann.group("arm").strip()] = ann.group("reason")
     return out
+
+
+def _log_observed_arms(text: str) -> set[str]:
+    """Every `func test...` arm the LOG PRINTED A VERDICT FOR, as `<Class>.<arm>`.
+
+    *A passing arm is written `Test Case '-[<Module>.<Class> <arm>]' passed`; **a SKIPPED arm carrieth a `skipped`
+    VERDICT LINE and NO `passed`/`failed` line**, so the verdict pattern (`IOS_UITEST_CASE`) MISSETH it -- and a skip is
+    precisely the shape a control must not read as coverage.* **THIS WALKS EVERY `Test Case '-[...]'` LINE WHATEVER ITS
+    VERDICT, AND MERGES IN THE `skipped` VERDICT LINES**, so an arm that ran, failed OR was skipped is all OBSERVED
+    here and a caller comparing against the source roster can tell a MISSING arm from a skipped one.
+
+    *THE DEFECT THIS CLOSES (the "omitted arm" arm): the checkers reconciled a COUNT (`tests == SOURCES declare`), and
+    a total is not a population -- **an arm missing from the log and an arm skipped out of it BOTH leave the count
+    short by exactly one, so neither was caught as an omission.*** *This is the same by-stable-identity rule the UI lane
+    already carrieth, applied to the two other lanes.*
+    """
+    observed: set[str] = set()
+    for cls, arm, _verdict in IOS_UITEST_CASE.findall(text):
+        observed.add(f"{cls.split('.')[-1]}.{arm}")
+    for full in IOS_SKIPPED_ARM.findall(text):
+        # The skipped verdict line reads `-[<Module>.<Class> <arm>]`, so the class and arm are split on the LAST space.
+        body = full.strip()
+        if " " in body:
+            cls, arm = body.rsplit(" ", 1)
+            if arm.startswith("test"):
+                observed.add(f"{cls.split('.')[-1]}.{arm}")
+    return observed
 
 
 #: *** THE PREPROCESSOR DIRECTIVES THE PLATFORM GUARD IS DERIVED FROM. ***
@@ -412,20 +497,25 @@ def simulator_roster() -> tuple[list[str], int]:
     return sorted(set(classes)), arms
 
 
-def check_ios_simulator_lane() -> tuple[list[str], dict]:
+def check_ios_simulator_lane(*, evidence_root: Path | None = None) -> tuple[list[str], dict]:
     """*** THE SIMULATOR LANE: THE SOURCE ROSTER BY NAME, THE RAW STATUS, SKIPS, UNFINISHED SUITES, PRE/POST DIGESTS. ***
 
     *Each guard below is the replacement for one hole in the inline `>=50` grep the workflow carried.* **A green here
     meaneth: the scheme's own test action ran on a RECORDED device, every source-declared class and arm executed and
     passed, no arm was skipped, no suite was left unfinished, the raw `xcodebuild` status was zero, and the log was
     produced from ONE source revision.**
+
+    *** `evidence_root` MOVETH THE EVIDENCE READS ONLY. *** *The log and its digest sidecars are read from the
+    supplied root; `simulator_roster`, `_required_simulator_arm_names` and `_ios_source_digest` stay rooted at the
+    real `REPO`, because the roster and the compared digest ARE source.*
     """
     problems: list[str] = []
     totals = {"suites": 0, "tests": 0, "failures": 0, "skipped": 0, "required_arms": 0, "evidence": []}
-    if not SIMULATOR_LOG.is_file():
-        return ([f"the iOS simulator lane log is absent at {SIMULATOR_LOG} -- the workflow's step 13 has not been run "
+    log = _evidence_log(SIMULATOR_LOG, evidence_root)
+    if not log.is_file():
+        return ([f"the iOS simulator lane log is absent at {log} -- the workflow's step 13 has not been run "
                  f"here, and AN UNRUN LANE IS NOT A PASS"], totals)
-    text = SIMULATOR_LOG.read_text(encoding="utf-8", errors="replace")
+    text = log.read_text(encoding="utf-8", errors="replace")
 
     # (a) THE RAW STATUS, READ FROM THE CHILD AND NOT FROM A PIPELINE'S LAST ELEMENT.
     m = re.search(r"^raw_xcodebuild_rc=(\d+)$", text, re.M)
@@ -485,6 +575,28 @@ def check_ios_simulator_lane() -> tuple[list[str], dict]:
     if missing:
         problems.append(f"and {len(missing)} of {len(class_roster)} source-declared classes are missing their PASSED "
                         f"line")
+    # *** AND EVERY SOURCE-DECLARED (COMPILABLE) ARM MUST BE OBSERVED BY NAME -- A COUNT IS NOT A POPULATION. ***
+    #
+    # *THE DEFECT THIS CLOSES, the same one the foundation lane carried: the reconciliation below compareth the lane's
+    # TOTAL against the source ARM COUNT, so **an arm that never ran paired with an extra verdict elsewhere leaveth the
+    # total right** -- a count is blind to a substitution and to a swap of identities.* **THE ROSTER IS THE
+    # `#if os(macOS)`-FILTERED ONE, so a host-only arm is not required here; a SKIPPED arm is OBSERVED (its name is in
+    # the skipped verdict line) and is judged by the skip clause instead of being read as an omission.***
+    sim_required_arms: set[str] = _required_simulator_arm_names()
+    sim_observed_arms = _log_observed_arms(text)
+    sim_omitted = sorted(sim_required_arms - sim_observed_arms)
+    if sim_omitted:
+        problems.append(f"the iOS simulator lane carrieth NO verdict for {len(sim_omitted)} source-declared arm(s): "
+                        f"{sim_omitted[:6]} -- *an OMITTED arm cannot be absent from the source roster, and the total "
+                        f"count cannot see it.*")
+    # *** AND AN ARM THE SOURCES DO NOT DECLARE (or that the macOS-only filter EXCLUDES) IS REFUSED TOO. ***
+    # *Gated on a NON-EMPTY roster so an empty derivation does not manufacture a finding against every observed arm.*
+    if sim_required_arms:
+        sim_unexpected = sorted(sim_observed_arms - sim_required_arms)
+        if sim_unexpected:
+            problems.append(f"the iOS simulator lane carrieth {len(sim_unexpected)} UNEXPECTED arm verdict(s) NOT "
+                            f"declared for this target: {sim_unexpected[:6]} -- *an undeclared arm inflates the lane, "
+                            f"and a host-only arm appearing here meaneth the target compiled something it should not.*")
 
     # (e) THE ARMS, BY NAME, WITH DUPLICATES AND SKIPS REFUSED. *A SKIP IS REFUSED UNLESS ITS REASON NAMES THE
     #     EXTERNAL BLOCK (defect D) -- the one honest skip this lane carries is an arm the plan itself routes to
@@ -494,24 +606,23 @@ def check_ios_simulator_lane() -> tuple[list[str], dict]:
     for c, n, _v in cases:
         key = f"{c.split('.')[-1]}.{n}"
         observed[key] = observed.get(key, 0) + 1
+    # *** AND EVERY DUPLICATED VERDICT IS REFUSED -- NOT ONLY THE REQUIRED ARMS'. ***
+    #
+    # *THE DEFECT THIS CLOSES: the duplicate guard was narrowed to `key in _required_simulator_arm_names()`, so a
+    # SECOND verdict for an arm the roster does not declare escaped BOTH this guard and the unexpected-arm guard (the
+    # same verdict was 'expected' once) -- **a double-counted arm with no objection.*** *Measured: the real log carries
+    # zero duplicates, so this broadens the refusal without reddening a green lane.*
     for key, times in sorted(observed.items()):
-        if times > 1 and key in _required_simulator_arm_names():
-            problems.append(f"the iOS simulator lane carrieth {times} verdicts for required arm {key} -- a duplicated "
-                            f"arm would be double-counted")
-    skip_annotation = _skip_annotation_by_arm(text)
-    for m in IOS_SKIPPED_ARM.finditer(text):
-        arm = m.group(1).strip()
-        totals["skipped"] += 1
-        totals.setdefault("skipped_arms", []).append(arm)
-        reason = skip_annotation.get(arm, "")
-        if any(marker in reason for marker in IOS_EXTERNAL_SKIP_MARKERS):
-            totals.setdefault("external_skips", []).append(
-                f"{arm} -- EXTERNAL-BLOCKED ({reason[:80]}…)")
-            continue
-        problems.append(
-            f"the iOS simulator lane carrieth a SKIPPED arm ({arm}) whose reason does NOT name an external block "
-            f"(EXTERNAL-BLOCKED or the absent pinned library) -- a skipped witness reports as a pass while measuring "
-            f"nothing, and only an external-blocked arm is excusable")
+        if times > 1:
+            problems.append(f"the iOS simulator lane carrieth {times} verdicts for arm {key} -- a duplicated arm "
+                            f"would be double-counted")
+    # *** EVERY SKIP IS REFUSED, BY ARM, REGARDLESS OF REASON. *** *The external-blocked allowance is retired: the
+    # pinned SQLCipher library is repository-buildable and the arm that XCTSkip`th for its absence is gone, so NO skip
+    # is honest and none is excused.*
+    skip_problems = _skip_reason_problems("the iOS simulator lane", text)
+    problems.extend(skip_problems)
+    if skip_problems:
+        totals["skipped"] = len(skip_problems)
 
     # (f) NO UNFINISHED SUITE: every `Test Suite 'X' started` must be matched by a terminal line.
     started = re.findall(r"^Test Suite '([\w.]+)' started", text, re.M)
@@ -548,8 +659,8 @@ def check_ios_simulator_lane() -> tuple[list[str], dict]:
         problems.append("the iOS simulator lane log carrieth `error:` lines")
 
     # (i) THE STALENESS AND PRE/POST DIGEST CONTRACT -- the same one the UI lane carrieth.
-    side = Path(str(SIMULATOR_LOG) + ".sources.sha256")
-    pre = Path(str(SIMULATOR_LOG) + ".pre.sha256")
+    side = Path(str(log) + ".sources.sha256")
+    pre = Path(str(log) + ".pre.sha256")
     if not side.is_file():
         problems.append(f"the iOS simulator lane carrieth no digest sidecar at {side.name} -- an undatable log is not "
                         f"evidence about the current tree")
@@ -571,21 +682,15 @@ def check_ios_simulator_lane() -> tuple[list[str], dict]:
 
 
 def _required_simulator_arm_names() -> set[str]:
-    """The source-declared SIMULATOR-COMPILABLE arm names, as `<Class>.<test>` -- used for the duplicate check above.
+    """The source-declared SIMULATOR-COMPILABLE arm names, as `<Class>.<test>`. Kept as the single definition the
+    simulator lane and its selftest both use, so a caller need not remember the filter's exact shape.
 
     *Same filter as `simulator_roster()`: a class (and its arms) wrapped in `#if os(macOS)` is one the simulator build
     compiles to nothing, so it cannot be a "required arm" here either.*
     """
     names: set[str] = set()
-    for f in _simulator_compiled_sources():
-        text = f.read_text(encoding="utf-8", errors="replace")
-        flags = _macos_only_line_flags(text)
-        m = re.search(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase", text, re.M)
-        cls = m.group(1) if m and _compiled_for_simulator(text, flags, m.start()) else None
-        for arm in _UI_TEST_FUNC.finditer(text):
-            if not _compiled_for_simulator(text, flags, arm.start()):
-                continue
-            names.add(f"{cls}.{arm.group(1)}" if cls else arm.group(1))
+    for rel in _simulator_target_source_dirs():
+        names |= _roster_arm_names(REPO / "ios" / rel, simulator_filtered=True)
     return names
 
 
@@ -595,6 +700,27 @@ IOS_TEST_SOURCE_ROOT = REPO / "ios" / "Packages" / "GodstoneFoundation" / "Tests
 #: **An `XCTestCase` subclass DECLARES a suite; `swift test` printeth `Test Suite '<ClassName>' passed` for it in BOTH
 #: measured toolchains** (91 of 91, locally AND hosted), *while the BUNDLE naming differs between them.*
 IOS_TEST_CLASS = re.compile(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase\b", re.M)
+
+
+def _roster_arm_names(root: Path, *, simulator_filtered: bool) -> set[str]:
+    """`{Class.arm}` for every `func test...` declared under `root`, keyed EXACTLY as a log verdict line is.
+
+    *`simulator_filtered` drops arms whose declaration sits inside an `#if os(macOS)` region, which is what the
+    simulator target compiles to nothing -- the same derivation `simulator_roster()` carrieth.* **THE NAMES ARE KEYED
+    `<Class>.<arm>` so a caller can compare them BY STABLE IDENTITY against `_log_observed_arms`, which is the only
+    comparison a count cannot make.**
+    """
+    names: set[str] = set()
+    for f in sorted(root.rglob("*.swift")):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        flags = _macos_only_line_flags(text)
+        cls_m = IOS_TEST_CLASS.search(text)
+        cls = cls_m.group(1) if cls_m else None
+        for arm in _UI_TEST_FUNC.finditer(text):
+            if simulator_filtered and not _compiled_for_simulator(text, flags, arm.start()):
+                continue
+            names.add(f"{cls}.{arm.group(1)}" if cls else arm.group(1))
+    return names
 
 
 def foundation_roster() -> tuple[list[str], int]:
@@ -613,19 +739,25 @@ def foundation_roster() -> tuple[list[str], int]:
     return sorted(set(classes)), arms
 
 
-def check_ios_lane() -> tuple[list[str], dict]:
+def check_ios_lane(*, evidence_root: Path | None = None) -> tuple[list[str], dict]:
     """Parse the iOS log against a SOURCE-DERIVED roster: every declared class must PASS, and the per-bundle
     totals must EQUAL the number of source-declared `func test...` arms.
 
     *The contract names no bundle: WHICH BUNDLES THE TOOLCHAIN EMITS IS THE TOOLCHAIN'S CHOICE, and a control that
     hard-coded the local shape refused a hosted run that executed the same 1400 tests and passed them all.*
+
+    *** `evidence_root` MOVETH THE EVIDENCE READS ONLY. *** *The log and its `<log>.sources.sha256` /
+    `<log>.pre.sha256` sidecars are read from the supplied root (the hosted runner's scratch tree), while the SOURCE
+    roster (`foundation_roster`, `_roster_arm_names`) and the compared source digest (`_ios_source_digest`) stay
+    rooted at the real `REPO` -- because those ARE the sources the lane claims to have compiled.*
     """
     problems: list[str] = []
     totals = {"suites": 0, "tests": 0, "failures": 0}
-    if not IOS_LOG.is_file():
-        return ([f"the iOS lane log is absent at {IOS_LOG} -- the lane has not been run, and AN UNRUN LANE IS NOT A "
+    log = _evidence_log(IOS_LOG, evidence_root)
+    if not log.is_file():
+        return ([f"the iOS lane log is absent at {log} -- the lane has not been run, and AN UNRUN LANE IS NOT A "
                  f"PASS"], totals)
-    text = IOS_LOG.read_text(encoding="utf-8", errors="replace")
+    text = log.read_text(encoding="utf-8", errors="replace")
     # *** THE CONTRACT IS SOURCE-DERIVED, BECAUSE A HARD-CODED BUNDLE NAME IS A TOOLCHAIN'S PRIVATE CHOICE. ***
     #
     # **MEASURED, AND IT COST A HOSTED CYCLE: this used to name three bundles -- `GodstoneMeshTests.xctest`,
@@ -650,6 +782,43 @@ def check_ios_lane() -> tuple[list[str], dict]:
     if missing_classes:
         problems.append(f"and {len(missing_classes)} of {len(class_roster)} source-declared test classes are missing "
                         f"their PASSED line in total")
+    # *** AND EVERY SOURCE-DECLARED ARM MUST BE OBSERVED BY NAME -- A COUNT IS NOT A POPULATION. ***
+    #
+    # *THE DEFECT THIS CLOSES: this checker reconciled the lane's TOTAL against the source ARM COUNT, and **a total is
+    # blind to a SUBSTITUTION and to an OMISSION PAIRED WITH AN EXTRA**: `Executed 1452` against `1453 declared` catcheth
+    # neither a specific arm that never ran while a different one ran twice, nor a renamed arm, because it compareth
+    # NUMBERS rather than IDENTITIES.* **THE UI LANE ALREADY COMPARED BY NAME; THIS GIVES THE FOUNDATION AND SIMULATOR
+    # LANES THE SAME RULE.*** *A skipped arm is OBSERVED here (its `skipped` verdict line carrieth its name), so the
+    # external-blocked arm is not an omission -- it is judged by the skip clause below, which is where an unexcused
+    # skip is refused.*
+    required_arms = _roster_arm_names(IOS_TEST_SOURCE_ROOT, simulator_filtered=False)
+    observed_arms = _log_observed_arms(text)
+    omitted = sorted(required_arms - observed_arms)
+    if omitted:
+        problems.append(f"the iOS lane carrieth NO verdict for {len(omitted)} source-declared arm(s): {omitted[:6]} "
+                        f"-- *an OMITTED arm cannot be absent from the source roster, and a count that reconciles "
+                        f"cannot see it: the same by-stable-identity rule the UI lane keepeth.*")
+    # *** AND AN ARM THE SOURCES DO NOT DECLARE IS REFUSED TOO -- THE "UNEXPECTED" ARM. ***
+    # *A verdict for an arm the roster does not declare (a renamed selector, a foreign class) inflateth the total
+    # unremarked; the pair of checks -- every declared arm OBSERVED, every observed arm DECLARED -- is what maketh the
+    # comparison a population rather than a count.* **GATED ON A NON-EMPTY ROSTER, so an unreadable source tree (which
+    # already reddens via the count reconciliation) does not manufacture a SECOND, misleading unexpected-arm finding.**
+    if required_arms:
+        unexpected_arms = sorted(observed_arms - required_arms)
+        if unexpected_arms:
+            problems.append(f"the iOS lane carrieth {len(unexpected_arms)} UNEXPECTED arm verdict(s) NOT declared in "
+                            f"SOURCE: {unexpected_arms[:6]} -- *an undeclared arm inflates the lane.*")
+    # *** AND A DUPLICATED VERDICT IS REFUSED (the UI and simulator lanes both carry this; the foundation lane did
+    # NOT). *** *A second verdict for one arm double-counteth it -- it would inflate the total while every by-name
+    # check still reconciled. Measured: the real log carries zero duplicates.*
+    counts: dict[str, int] = {}
+    for _c, _n, _v in IOS_UITEST_CASE.findall(text):
+        key = f"{_c.split('.')[-1]}.{_n}"
+        counts[key] = counts.get(key, 0) + 1
+    for key, times in sorted(counts.items()):
+        if times > 1:
+            problems.append(f"the iOS lane carrieth {times} verdicts for arm {key} -- a duplicated arm would be "
+                            f"double-counted")
     # *** AND THE AGGREGATE LINES ARE COUNTED AT THE OUTERMOST LEVEL ONLY (round 695). ***
     #
     # **MEASURED: THE 90 `Executed` LINES IN THE LOG SUM TO 4023 WHILE THE LANE'S TRUE TOTAL IS 1341** -- *XCTest's
@@ -694,23 +863,13 @@ def check_ios_lane() -> tuple[list[str], dict]:
     if re.search(r"^.*error: ", text, re.M):
         problems.append("the iOS lane log carrieth `error:` lines")
 
-    # *** AND A SKIP IS REFUSED UNLESS ITS REASON NAMES AN EXTERNAL BLOCK (the same clause the simulator lane keeps). ***
+    # *** EVERY SKIP IS REFUSED, BY ARM, REGARDLESS OF REASON (the external-blocked allowance is retired). ***
     #
-    # *MEASURED: this lane's own log carries ONE skipped arm whose reason reads `EXTERNAL-BLOCKED ... the pinned
-    # SQLCipher library 'libsqlcipher.0.dylib' is not present on this host` -- the positive native road the plan routes
-    # to EXTERNAL. **THE FOUNDATION LANE CARRIED NO SKIP CLAUSE AT ALL**, so the day a skip appeared it would either be
-    # ignored (a witness reported as coverage while measuring nothing) or the whole lane refused for an arm that cannot
-    # run in the builder's world. **THIS IS THE HONEST MIDDLE: that one reason is accepted, ANY OTHER reason is
-    # refused.***
-    skip_annotation = _skip_annotation_by_arm(text)
-    for m in IOS_SKIPPED_ARM.finditer(text):
-        arm = m.group(1).strip()
-        reason = skip_annotation.get(arm, "")
-        if not any(marker in reason for marker in IOS_EXTERNAL_SKIP_MARKERS):
-            problems.append(
-                f"the iOS lane carrieth a SKIPPED arm ({arm}) whose reason does NOT name an external block "
-                f"(EXTERNAL-BLOCKED or the absent pinned library) -- a skipped witness reports as a pass while "
-                f"measuring nothing, and only an external-blocked arm may be excused")
+    # *THE DEFECT THIS CLOSES: the foundation lane used to accept the ONE reason naming `EXTERNAL-BLOCKED` plus the
+    # absent pinned SQLCipher artifact. **THE PINNED LIBRARY IS NOW REPOSITORY-BUILDABLE AND THE ARM THAT SKIPPED FOR
+    # ITS ABSENCE WAS REMOVED, SO NO SKIP IS HONEST.*** *A reason is read ONLY to name it beside the arm; an
+    # `EXTERNAL-BLOCKED … pinned SQLCipher library …` reason is now refused exactly as any internal skip.*
+    problems.extend(_skip_reason_problems("the iOS lane", text))
 
     # *** AND THE LOG MUST BE FRESHER THAN THE SOURCE IT CLAIMS TO HAVE TESTED (round 697). ***
     #
@@ -727,7 +886,7 @@ def check_ios_lane() -> tuple[list[str], dict]:
     # **THE SIDECAR IS WRITTEN BY THE LANE RUNNER** (`<log>.sources.sha256`), which is the honest place for it: *the
     # runner KNOWETH which tree it compiled, and the control can only CHECK.* **AN ABSENT SIDECAR IS REFUSED**, because
     # a log with no provenance is a log nobody can date.
-    sidecar = IOS_LOG.with_suffix(IOS_LOG.suffix + ".sources.sha256")
+    sidecar = log.with_suffix(log.suffix + ".sources.sha256")
     current = _ios_source_digest()
     if not sidecar.is_file():
         problems.append(
@@ -746,7 +905,7 @@ def check_ios_lane() -> tuple[list[str], dict]:
     # BETWEEN the compile and the sidecar produced a log DESCRIBING a tree the tests never built -- **and the staleness
     # guard above CANNOT see it, because both the late digest and the tree are post-edit.*** *The runner now writes a
     # PRE-RUN digest beside it, and the two must agree.*
-    pre = Path(str(IOS_LOG) + ".pre.sha256")
+    pre = Path(str(log) + ".pre.sha256")
     if not pre.is_file():
         problems.append(
             f"the iOS lane log carrieth NO PRE-RUN digest at {pre.name} -- *a log whose source set was sampled only "
@@ -782,18 +941,37 @@ def parse_suite(path: Path) -> dict:
         counts[name] = int(m.group(1)) if m else 0
 
     bad = []
+    arms: list[tuple[str, str]] = []
     for m in TESTCASE.finditer(text):
         attrs, body = m.group(1), m.group(2)
+        # *** `name` MUST NOT MATCH INSIDE `classname`: a `re.search(r'name="..."')` FINDETH `classname="..."`'s value
+        # whenever `classname` cometh FIRST, so the TEST NAME would be read as its CLASS.*** *MEASURED: the committed
+        # JUnit XML happens to write `name` before `classname`, which is the ONLY reason the count census ever held --
+        # a valid JUnit file with the attributes the other way round parsed the name as the owning class.* An
+        # attribute-boundary lookbehind maketh the extraction independent of order.
+        nm = re.search(r'(?<![\w-])name="([^"]+)"', attrs)
+        cl = re.search(r'(?<![\w-])classname="([^"]+)"', attrs)
+        arms.append((cl.group(1) if cl else "", nm.group(1) if nm else "<unnamed>"))
         if body and ("failure" in body or "error" in body):
-            nm = re.search(r'name="([^"]+)"', attrs)
             bad.append(nm.group(1) if nm else "<unnamed>")
-    return {"counts": counts, "bad": bad, "bytes": len(text)}
+    return {"counts": counts, "bad": bad, "arms": arms, "bytes": len(text)}
 
 
-def check_lane(label: str, pattern: str) -> list[str]:
-    """Returns a list of problems for one lane. An EMPTY list means the lane carried a real result."""
+def check_lane(label: str, pattern: str, declared: set[tuple[str, str]] | None = None, *,
+               evidence_root: Path | None = None) -> list[str]:
+    """Returns a list of problems for one lane. An EMPTY list means the lane carried a real result.
+
+    *`declared` is the lane's SOURCE-DECLARED arm population (`_declared_arm_names`); when supplied, the observed arms
+    are compared to it BY IDENTITY, not merely by count.*
+
+    *** `evidence_root` MOVETH THE RESULT-FILE READS ONLY. *** *The result XMLs live under the runner's scratch tree
+    (`build/test-results/...`), so a fresh reader supplyeth that root here; `declared` is SOURCE (derived from `REPO`
+    by the caller) and the identity comparison therefore still compareth the downloaded results against the real
+    checkout's declared arms.* `evidence_root=None` keepeth the historical behaviour: files read under `REPO`.
+    """
+    base = _evidence_base(evidence_root)
     problems: list[str] = []
-    files = sorted(glob.glob(str(REPO / pattern)))
+    files = sorted(glob.glob(str(base / pattern)))
     if not files:
         # *** A LANE WITH NO RESULT FILE HAS NOT RUN. THAT IS A FAILURE, NOT AN ABSENCE OF NEWS. ***
         problems.append(f"{label}: NO RESULT FILES matched {pattern} -- the lane did not run, or was cleaned")
@@ -802,6 +980,8 @@ def check_lane(label: str, pattern: str) -> list[str]:
     total = {"tests": 0, "skipped": 0, "failures": 0, "errors": 0}
     empty: list[str] = []
     bad_arms: list[str] = []
+    seen: dict[tuple[str, str], int] = {}
+    observed_ids: set[tuple[str, str]] = set()
     for f in files:
         p = Path(f)
         if p.stat().st_size == 0:
@@ -811,9 +991,30 @@ def check_lane(label: str, pattern: str) -> list[str]:
         for k in total:
             total[k] += parsed["counts"][k]
         bad_arms.extend(f"{p.stem.replace('TEST-', '')}#{a}" for a in parsed["bad"])
+        # *** A DUPLICATED `(classname, name)` IS REFUSED -- THE SAME BY-IDENTITY RULE THE iOS LANES CARRY. ***
+        #
+        # *THE DEFECT THIS CLOSES: the Android lanes were checked by COUNT ONLY, so a duplicated row (a re-run that
+        # appended rather than replaced, or two result files carrying the same case) inflateth `tests=` while a
+        # matching omission elsewhere leaveth the source census reconciled -- **the exact substitution a count cannot
+        # see.*** **THE KEY IS `(classname, name)`, NOT THE NAME ALONE: two DIFFERENT classes legitimately carrieth the
+        # same method name (MEASURED: `android:mesh` carrieth 5 such names across `ReadinessT24Test` and
+        # `ReadinessT24PublicationTest`), so keying on the name alone would refuse a green lane.**
+        for key in parsed["arms"]:
+            seen[key] = seen.get(key, 0) + 1
+            # THE CLASS TOKEN IS NORMALIZED TO ITS LAST SEGMENT, so an FQCN `io.godstone.mesh.RouterTest` compareth
+            # against the source roster's simple name -- the same normalization the iOS lanes use.
+            observed_ids.add((key[0].split(".")[-1], key[1]))
 
     if empty:
         problems.append(f"{label}: {len(empty)} EMPTY result file(s): {empty[:3]}")
+    dups = sorted(k for k, v in seen.items() if v > 1)
+    if dups:
+        named = [f"{c}#{n}" if c else n for c, n in dups[:5]]
+        problems.append(f"{label}: {len(dups)} DUPLICATED case(s) -- the same `(classname, name)` carrieth more than "
+                        f"one result: {named} -- *a duplicated arm inflates `tests=` while a matching omission leaves "
+                        f"the source census reconciled.*")
+    # *** AND THE DECLARED-vs-OBSERVED IDENTITY COMPARISON (ManifestReview, critical). ***
+    problems.extend(_roster_identity_problems(label, declared, observed_ids))
     # *** tests=0 IS THE FAILURE SHAPE A BROKEN BUILD, A TRUNCATED MIRROR AND A WRONG FILTER ALL PRODUCE. ***
     if total["tests"] == 0:
         problems.append(
@@ -879,6 +1080,60 @@ def selftest() -> int:
         record_check(parsed["bad"] == ["theRealFailure"],
                      "the failure is attributed to the FAILING arm, not the passing one",
                      f"attribution was shifted -- got {parsed['bad']}")
+
+        # 4b. *** A DUPLICATED `(classname, name)` IS REFUSED. *** *A re-run that appended rather than replaced, or
+        #     two result files carrying the same case, inflateth `tests=` -- and a matching omission elsewhere leaveth
+        #     the source census reconciled, which is the substitution a count cannot see.*
+        (Path(td) / "TEST-x.xml").write_text(
+            '<?xml version="1.0"?><testsuite name="x" tests="2" skipped="0" failures="0" errors="0">'
+            '<testcase classname="C" name="a"/>'
+            '<testcase classname="C" name="a"/>'
+            '</testsuite>', encoding="utf-8")
+        probs = check_lane("dup-arm", "*.xml")
+        record_check(bool(probs and any("DUPLICATED" in p for p in probs)),
+                     "a duplicated (classname, name) is REFUSED", f"a duplicated arm was ACCEPTED: {probs}")
+        # *AND THE KEY IS (classname, name), NOT THE NAME ALONE: two DIFFERENT classes legitimately carrieth the same
+        # method name (MEASURED in android:mesh), so this shape MUST stay green or the guard would refuse a real lane.*
+        (Path(td) / "TEST-x.xml").write_text(
+            '<?xml version="1.0"?><testsuite name="x" tests="2" skipped="0" failures="0" errors="0">'
+            '<testcase classname="C1" name="a"/>'
+            '<testcase classname="C2" name="a"/>'
+            '</testsuite>', encoding="utf-8")
+        probs = check_lane("same-name-two-classes", "*.xml")
+        record_check(not any("DUPLICATED" in p for p in probs),
+                     "the same method name in TWO classes is NOT a duplicate",
+                     f"a legitimate same-name-two-classes lane was refused: {probs}")
+
+        # 4c. *** A UNIQUE UNDECLARED ARM SWAPPED FOR A DECLARED ONE -- THE MANIFESTREVIEW CRITICAL, WHERE THE COUNT
+        #     STILL RECONCILES. *** *The declared population is one arm `C#b`; the observed XML carrieth a DIFFERENT
+        #     arm `C#z` (same size), so the identity comparison is what refuseth it -- a count never could.*
+        (Path(td) / "TEST-x.xml").write_text(
+            '<?xml version="1.0"?><testsuite name="x" tests="1" skipped="0" failures="0" errors="0">'
+            '<testcase classname="C" name="z"/></testsuite>', encoding="utf-8")
+        probs = check_lane("substituted-arm", "*.xml", declared={("C", "b")})
+        record_check(bool(probs and any("OBSERVED arm" in p or "NEVER OBSERVED" in p for p in probs)),
+                     "a same-size class/method SUBSTITUTION is REFUSED by identity",
+                     f"a substituted arm was ACCEPTED: {probs}")
+        # *And the DECLARED set matching EXACTLY must stay GREEN -- else the guard would refuse a real lane.*
+        probs = check_lane("matching-arm", "*.xml", declared={("C", "z")})
+        record_check(not any("NEVER OBSERVED" in p or "OBSERVED arm" in p for p in probs),
+                     "a declared set that matches the observed arms is NOT refused",
+                     f"an exactly-matching roster was refused: {probs}")
+        # *AND A NORMALIZED FQCN OBSERVED NAME MATCHES THE SIMPLE-NAME ROSTER (the XML carrieth `a.b.C`, the sources
+        # say `C`), or every real lane would be refused for the wrong reason.*
+        (Path(td) / "TEST-x.xml").write_text(
+            '<?xml version="1.0"?><testsuite name="x" tests="1" skipped="0" failures="0" errors="0">'
+            '<testcase classname="io.godstone.C" name="z"/></testsuite>', encoding="utf-8")
+        probs = check_lane("fqcn-arm", "*.xml", declared={("C", "z")})
+        record_check(not any("NEVER OBSERVED" in p or "OBSERVED arm" in p for p in probs),
+                     "an FQCN observed name matches the simple-name roster",
+                     f"an FQCN name was not normalized: {probs}")
+        # *And a SIZE MISMATCH is left to the count census, not to the identity diff (no false red on attribution
+        # noise) -- so a declared set of a different size must NOT raise an identity finding.*
+        probs = check_lane("size-mismatch", "*.xml", declared={("C", "z"), ("C", "extra")})
+        record_check(not any("NEVER OBSERVED" in p or "OBSERVED arm" in p for p in probs),
+                     "an unequal-size population is left to the count census",
+                     f"the identity check fired on a size mismatch: {probs}")
 
         # 5. *** A LANE OUTSIDE THE SCOPE MUST NOT BE REPORTED AS A ZERO. ***
         #
@@ -957,24 +1212,41 @@ def foundation_selftest() -> int:
     cases: list[tuple[str, str, str, str]] = []   # mutation, expected, observed, verdict
 
     real_digest = _ios_source_digest()
-    if IOS_LOG.is_file():
+    real_fresh = IOS_LOG.is_file() and Path(str(IOS_LOG) + ".sources.sha256").is_file() and \
+        Path(str(IOS_LOG) + ".sources.sha256").read_text(encoding="utf-8").strip() == real_digest
+    if real_fresh:
         base = IOS_LOG.read_text(encoding="utf-8", errors="replace")
     else:
-        roster, _arms = foundation_roster()
+        # *** THE SYNTHETIC LOG IS BUILT FROM THE SOURCE ROSTER'S OWN ARMS, BY NAME -- AND FROM NOTHING ELSE. ***
+        #
+        # *THE DEFECT THIS CLOSES IN THE FIXTURE (first form): it emitted one `testSomething` per class, so once the
+        # checker required every SOURCE-DECLARED arm BY NAME (`_log_observed_arms`) the synthetic base reddened for
+        # arms it never carried -- a selftest fixture that provokes the very guard it is meant to be NEUTRAL toward.*
+        #
+        # *** AND THE DEFECT THIS CLOSES IN THE FIXTURE (second form): it ALSO fabricated `skipped` verdicts and
+        # skip ANNOTATIONS for a hard-coded EXTERNAL-BLOCKED arm (`ReadinessT30Tests`' pinned-SQLCipher round-trip)
+        # that the sources have SINCE REMOVED -- the pinned library is now repository-buildable, so no arm
+        # XCTSkip`th for its absence.*** *A fixture that invents an arm the sources do not declare violates the
+        # checker's own by-identity rule (`observed - required` = UNEXPECTED), so the unmutated case reddened FOR THE
+        # FIXTURE'S OWN STALE LITERAL rather than for any guard.* **THE POSITIVE CASE NOW CARRIES EXACTLY THE
+        # SOURCE-DECLARED ARMS, EACH PASSING -- the honest minimal shape a green log of THESE sources must have -- and
+        # the checker is NOT relaxed and NO skip is re-pinned.** *The skip clauses (cases 6, 7a, and the simulator
+        # suite's own skip control) construct their own synthetic skip lines inline, so their coverage is unchanged.*
+        arms_by_class: dict[str, list[str]] = {}
+        required_arm_names = _roster_arm_names(IOS_TEST_SOURCE_ROOT, simulator_filtered=False)
+        for key in required_arm_names:
+            cls, arm = key.rsplit(".", 1)
+            arms_by_class.setdefault(cls, []).append(arm)
+        _arms = len(required_arm_names)
         lines = []
-        for cls in roster:
+        for cls in sorted(arms_by_class):
             lines.append(f"Test Suite '{cls}' started at 2026-01-01.")
+            for arm in sorted(arms_by_class[cls]):
+                lines.append(f"Test Case '-[{cls} {arm}]' passed (0.001 seconds).")
             lines.append(f"Test Suite '{cls}' passed at 2026-01-01.")
-            lines.append(f"Test Case '-[{cls} testSomething]' passed (0.001 seconds).")
             lines.append("\t Executed 1 test, with 0 failures (0 unexpected) in 0.0 (0.0) seconds")
-        # One external-blocked skip, annotated and verdict-ed exactly as XCTest writes it.
-        lines.append("/tmp/ReadinessT30Tests.swift:458: -[GodstoneMeshTests.ReadinessT30Tests "
-                     "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent] : Test skipped - EXTERNAL-BLOCKED: "
-                     "the approved pinned SQLCipher library 'libsqlcipher.0.dylib' is not present on this host")
-        lines.append("Test Case '-[GodstoneMeshTests.ReadinessT30Tests "
-                     "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent]' skipped (0.004 seconds).")
         lines.append("Test Suite 'SyntheticPackageTests.xctest' passed at 2026-01-01.")
-        lines.append(f"\t Executed {_arms} tests, with 1 test skipped and 0 failures (0 unexpected) in 1.0 (1.0) seconds")
+        lines.append(f"\t Executed {_arms} tests, with 0 failures (0 unexpected) in 1.0 (1.0) seconds")
         base = "\n".join(lines) + "\n"
 
     def run_case(name: str, text: str, expect: str) -> None:
@@ -1004,6 +1276,11 @@ def foundation_selftest() -> int:
 
     roster, arms = foundation_roster()
     first = roster[0] if roster else "SyntheticTests"
+    # *** THE DECLARED ARMS, SORTED, FOR THE CONTROLS THAT NEED ONE BY NAME. *** *`skip_arm` drives the skip clause's
+    # synthetic fixture and `omitted_arm` the by-identity omission; they are the two ENDS of the same list so they
+    # cannot collide.*
+    _declared_arms_sorted = sorted(_roster_arm_names(IOS_TEST_SOURCE_ROOT, simulator_filtered=False))
+    skip_arm = _declared_arms_sorted[0] if _declared_arms_sorted else "SyntheticTests.testSomething"
     # The mutation must bite on THIS host's log shape. The local shape sums per-target bundles; the hosted shape is
     # one merged bundle. *Whichever the log carries, reduce ONE outermost total by one test.*
     # *** THE MUTATION MUST BITE AN **OUTERMOST BUNDLE TOTAL**, NOT A NESTED SUITE'S. ***
@@ -1030,14 +1307,71 @@ def foundation_selftest() -> int:
     run_case("4. a nonzero failure count on an outermost total", failed_bundle, "red")
     run_case("5. the run truncated to its first third",
              "\n".join(base.splitlines()[: max(1, len(base.splitlines()) // 3)]), "red")
-    # *** THE SKIP GUARD (the clause this lane did not carry until now): an EXTERNAL-BLOCKED skip is accepted, ANY
-    # OTHER reason is refused. *** *This lane's own log carries the pinned-SQLCipher skip; its reason is rewritten
-    # WHOLE so the mutation cannot escape by leaving the marker substring behind.*
-    run_case("6. a skip whose reason does NOT name an external block",
-             re.sub(r"Test skipped - EXTERNAL-BLOCKED: .*$",
-                    "Test skipped - FLAKY: this arm is unstable on this host and was skipped by the runner",
-                    base, flags=re.M), "red")
-    run_case("7. the real log, unmutated -- MUST be accepted",
+    # *** THE SKIP GUARD, NOW ABSOLUTE: EVERY SKIP IS REFUSED, WHATEVER ITS REASON. *** *(P1 realUser25: eliminate
+    # internal known-red allowances and unaccounted skips. The external-blocked allowance that once accepted the pinned
+    # SQLCipher reason is RETIRED -- the library is repository-buildable and the arm that skipped for its absence is
+    # gone, so no skip is honest.)*
+    #
+    # *THE FIXTURE IS CONSTRUCTED HERE, NOT READ FROM `base`: the skip clause must be exercised BY AN ARM THE SOURCES
+    # DECLARE (`skip_arm`), with a `skipped` verdict line AND its `Test skipped - <reason>` annotation, so it passeth
+    # the by-identity roster check and the ONLY guard it provoketh is the skip clause itself.* **THE PREVIOUS FORM WAS
+    # A HARD-CODED `ReadinessT30Tests`/pinned-SQLCipher skip that the sources have SINCE REMOVED** -- *it read `base`
+    # and rewrote a skip line such a log may not carry, so `re.sub` no-opped and the case mutated NOTHING.*
+    def _without_skip_arm_verdicts(text: str) -> str:
+        """Remove EVERY verdict line for `skip_arm` (its `passed` line included) so the ONLY verdict this control adds
+        is the single `skipped` one -- **otherwise the case would redden for a DUPLICATE verdict rather than for the
+        skip clause, a vacuous kill.**"""
+        name = skip_arm.split(".")[-1]
+        return "\n".join(
+            l for l in text.splitlines()
+            if "Test skipped" not in l
+            and not (l.startswith("Test Case '-[") and f" {name}]'" in l))
+
+    def _with_skip(reason: str) -> str:
+        cls, name = skip_arm.split(".", 1)
+        return _without_skip_arm_verdicts(base) + (
+            f"\n/tmp/{cls}.swift:1: -[{cls} {name}] : Test skipped - {reason}\n"
+            f"Test Case '-[{cls} {name}]' skipped (0.004 seconds).\n")
+    # An ORDINARY INTERNAL skip -- refused.
+    run_case("6. an ordinary internal skip (any reason)",
+             _with_skip("FLAKY: this arm is unstable on this host and was skipped by the runner"), "red")
+    # *** 7a. THE HISTORICAL EXTERNAL-BLOCKED REASON -- THE ONE THE RETIRED ALLOWANCE WOULD HAVE EXCUSED -- IS NOW
+    # REFUSED TOO. *** *This is the P1 realUser25 core: a reason naming `EXTERNAL-BLOCKED` AND the pinned SQLCipher
+    # library must NOT buy an exemption. **IF THE ALLOWANCE WERE EVER REPOPULATED, THIS CASE WOULD ESCAPE** -- which
+    # makes it the control that pins the retirement.*
+    run_case("7a. the historical EXTERNAL-BLOCKED + pinned-artifact reason -- STILL REFUSED",
+             _with_skip("EXTERNAL-BLOCKED: the approved pinned SQLCipher library 'libsqlcipher.0.dylib' is not "
+                        "present on this host"), "red")
+    # *** 7a'. A SKIP WEARING THE ARTIFACT'S VOCABULARY WITHOUT THE DISPOSITION -- ALSO REFUSED. ***
+    #
+    # *THE DEFECT THIS PROVES CLOSED: the old rule was a bare substring search, so a reason reading `the pinned
+    # SQLCipher library built fine but this arm is flaky` was ACCEPTED -- **an internal skip dressed in the external
+    # exemption's own words.*** *Now EVERY skip is refused, so this shape is refused for the same reason as any other.*
+    run_case("7a'. a skip naming the artifact without the disposition -- REFUSED",
+             _with_skip("the pinned SQLCipher library built fine but this arm is flaky on this host"), "red")
+    # *** 7b. AND AN ARM OMITTED FROM THE LOG ENTIRELY -- A COUNT IS NOT A POPULATION. ***
+    #
+    # *This is the "omitted arm" case: ONE source-declared arm's verdict line is removed while every OTHER line and
+    # every bundle total stay untouched, so the COUNT still reconciles and ONLY the by-identity roster sees it.* *If
+    # the by-name check were ever dropped, this case would ESCAPE -- which is what makes it a control rather than a
+    # comment.* **THE REMOVED ARM IS CHOSEN FROM THE DECLARED ROSTER AND FROM THE FAR END OF THE SAME SORTED LIST THE
+    # SKIP CONTROL DRAWS ITS ARM FROM, so the two controls cannot operate on the same arm** (removing an arm the skip
+    # control also skipped would make one case's verdict depend on the other's).
+    omitted_arm = _declared_arms_sorted[-1] if _declared_arms_sorted else "SyntheticTests.testSomething"
+    run_case("7b. one source-declared arm omitted from the log (count reconciles)",
+             "\n".join(l for l in base.splitlines()
+                       if not (l.startswith("Test Case '-[") and omitted_arm.split(".")[-1] in l)),
+             "red")
+    # *** 7c. AN ARM THE SOURCES DO NOT DECLARE IS REFUSED. ***
+    run_case("7c. a verdict for an arm the sources do NOT declare (unexpected arm)",
+             base + "\nTest Case '-[GodstoneMeshTests.GodstoneMeshTests testThisArmWasNeverDeclared]' passed "
+                    "(0.001 seconds).\n", "red")
+    # *** 7d. A DUPLICATED VERDICT IS REFUSED (the foundation lane carried no duplicate guard at all). ***
+    dup_arm = omitted_arm  # any arm the base carries a passed line for
+    run_case("7d. a duplicated verdict for one arm",
+             base + f"\nTest Case '-[{dup_arm.split('.')[0]} {dup_arm.split('.')[-1]}]' passed (0.001 seconds).\n",
+             "red")
+    run_case("8. the real log, unmutated -- MUST be accepted",
              base, "green")
 
     width = max(len(c[0]) for c in cases)
@@ -1058,9 +1392,10 @@ def simulator_selftest() -> int:
       * **C (the macOS-only roster):** `GsIntegration001ProcessTests` and `GsIntegration001CrossPlatformWorkerTests` are
         wrapped in `#if os(macOS)` and the simulator build compiles them to nothing. *The mutation asserts the derived
         roster NAMES NEITHER while still naming every simulator-runnable class, and that the derived arm total equals
-        the 1339 the log executed.*
-      * **D (the external-blocked skip):** the lane's one skip is excused ONLY when its reason names `EXTERNAL-BLOCKED`
-        or the absent pinned library; changing that reason to an internal one must redden the lane.
+        the sources' compilable population.*
+      * **D (EVERY skip is refused):** the external-blocked allowance is RETIRED -- the pinned SQLCipher library is
+        repository-buildable and the arm that XCTSkip`th for its absence is gone. *BOTH an ordinary internal skip AND
+        the historical `EXTERNAL-BLOCKED … pinned SQLCipher library …` reason must redden the lane.*
 
     *The real log where one exists on this host, otherwise a shape-faithful synthetic fixture, so the guards are
     exercised either way.*
@@ -1074,30 +1409,78 @@ def simulator_selftest() -> int:
     real_digest = _ios_source_digest()
 
     def synth() -> str:
-        """A shape-faithful simulator log: the COMPILABLE roster, one skipped external arm, one bundle total."""
-        classes, arms = simulator_roster()
-        lines = [f"device_name=iPhone 17 Pro Max", f"device_udid=AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
-                 f"device_runtime=iOS 26.3", "toolchain=Xcode 27.0"]
-        for cls in classes:
+        """A shape-faithful simulator log: EVERY COMPILABLE source-declared arm BY NAME, ALL PASSED, one total."""
+        lines = ["device_name=iPhone 17 Pro Max", "device_udid=AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+                 "device_runtime=iOS 26.3", "toolchain=Xcode 27.0"]
+        # *** EVERY COMPILABLE ARM THE SOURCES DECLARE, keyed EXACTLY as `_required_simulator_arm_names()` derives them,
+        # and EVERY ONE OF THEM PASSING -- ZERO SKIPS.*** *THE FIXTURE IS THEREFORE ENTIRELY SOURCE-DERIVED AND ENTIRELY
+        # GREEN: it provoketh NO by-identity (`unexpected`), count, OR skip guard -- the honest shape a green log of
+        # THESE sources must have once every arm passes (the last XCTSkip-for-absence arm is gone; the pinned library is
+        # repository-buildable).* **THE DEFECT THIS REPLACES: the fixture hard-coded a `ReadinessT30Tests`/pinned-SQLCipher
+        # skip arm the sources have SINCE REMOVED, so the fabricated arm failed the `observed - required` rule and
+        # reddened the unmutated case for the FIXTURE'S OWN stale literal.** *The skip clause is exercised instead by
+        # the adversarial cases, which construct a skip on a DECLARED arm.*
+        required_arms: list[str] = sorted(_required_simulator_arm_names())
+        for cls in sorted({k.rsplit(".", 1)[0] for k in required_arms}):
             lines.append(f"Test Suite '{cls}' started at 2026-01-01.")
-            lines.append(f"Test Case '-[{cls} testSomething]' passed (0.001 seconds).")
             lines.append(f"Test Suite '{cls}' passed at 2026-01-01.")
-        # One external-blocked skip, annotated and verdict-ed exactly as XCTest writes it.
-        lines.append("/tmp/ReadinessT30Tests.swift:458: -[GodstoneMeshTests.ReadinessT30Tests "
-                     "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent] : Test skipped - EXTERNAL-BLOCKED: "
-                     "the approved pinned SQLCipher library 'libsqlcipher.0.dylib' is not present on this host")
-        lines.append("Test Case '-[GodstoneMeshTests.ReadinessT30Tests "
-                     "testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent]' skipped (0.004 seconds).")
+        for key in required_arms:
+            cls, arm = key.rsplit(".", 1)
+            lines.append(f"Test Case '-[{cls} {arm}]' passed (0.001 seconds).")
         lines.append("Test Suite 'GodstoneMeshTests.xctest' passed at 2026-01-01.")
-        lines.append(f"\t Executed {arms} tests, with 1 test skipped and 0 failures (0 unexpected) in 1.0 (1.0) seconds")
+        _classes, arms = simulator_roster()
+        lines.append(f"\t Executed {arms} tests, with 0 failures (0 unexpected) in 1.0 (1.0) seconds")
         lines.append("** TEST SUCCEEDED **")
         lines.append("raw_xcodebuild_rc=0")
         return "\n".join(lines) + "\n"
 
+    # *** THE REAL LOG IS USED ONLY WHEN IT STILL AGREE WITH THE SOURCES. ***
+    #
+    # *THE DEFECT THIS CLOSES IN THE SELFTEST, AND IT BIT: a sibling edited the iOS sources WHILE this file was being
+    # hardened, so the committed `ios-simulator-lane.log` declared 1339 arms while the tree NOW declares more -- and the
+    # real log then REDDENED case 0 ("unmutated MUST be accepted") and disagreed with case 12's derived total.* **A
+    # STALE LOG IS THE CHECKER'S OWN VERDICT, NOT A FAULT IN THE GUARD**; exercising the guard on a stale base would
+    # report a guard failure that is really a stale artifact.* **SO THE BASE IS THE REAL LOG ONLY WHILE ITS SIDECAR
+    # MATCHES THE CURRENT DIGEST, else the shape-faithful SYNTHETIC fixture (whose arm names and total are read from
+    # the SAME source-derived roster the checker uses, so it can never drift).**
+    real_fresh = False
     if SIMULATOR_LOG.is_file():
+        side = Path(str(SIMULATOR_LOG) + ".sources.sha256")
+        real_fresh = side.is_file() and side.read_text(encoding="utf-8").strip().split()[0] == real_digest
+    if real_fresh:
         base = SIMULATOR_LOG.read_text(encoding="utf-8", errors="replace")
     else:
         base = synth()
+
+    # *** THE SKIP CONTROLS ARE BUILT ON AN ARM THE SOURCES DECLARE -- NEVER ON A HARD-CODED ARM OR A `re.sub` THAT
+    # MAY NO-OP. *** *`sim_skip_key` is a declared (simulator-compilable) arm; `_strip_skips` removeth every existing
+    # skip verdict and its annotation, and `_with_skip` addeth back ONE skip for that arm carrying the reason the case
+    # requires. **SO THE ONLY SKIP THE CHECKER SEES IS THE ONE THIS CONTROL CONSTRUCTED**, and the arm it belongeth to
+    # is always in the source roster -- no by-identity or omission guard is provoked by accident, and the case reddens
+    # FOR THE SKIP CLAUSE AND NOTHING ELSE.* **MEASURED DEFECT THIS REPLACES: a hard-coded `ReadinessT30Tests` skip
+    # arm the sources have since removed, and `re.sub` rewrites that no-opped on a base lacking the line -- a vacuous
+    # kill on one host and an outright ESCAPE on another.***
+    sim_req_sorted = sorted(_required_simulator_arm_names())
+    sim_skip_key = sim_req_sorted[0] if sim_req_sorted else "SyntheticTests.testSomething"
+    sim_skip_cls, sim_skip_name = sim_skip_key.rsplit(".", 1)
+
+    def _strip_skips(text: str) -> str:
+        return "\n".join(l for l in text.splitlines()
+                         if "Test skipped" not in l
+                         and not (l.startswith("Test Case '-[") and "]' skipped" in l))
+
+    def _without_skip_arm_verdicts(text: str) -> str:
+        """Remove EVERY verdict line for `sim_skip_key` (its `passed` line included) so the ONLY verdict added back is
+        the single `skipped` one -- **otherwise the case would redden for a DUPLICATE verdict rather than for the skip
+        clause, a vacuous kill.**"""
+        return "\n".join(
+            l for l in _strip_skips(text).splitlines()
+            if not (l.startswith("Test Case '-[") and f" {sim_skip_name}]'" in l))
+
+    def _with_skip(reason: str) -> str:
+        return _without_skip_arm_verdicts(base) + (
+            f"\n/tmp/{sim_skip_cls}.swift:1: -[{sim_skip_cls} {sim_skip_name}] : Test skipped - {reason}\n"
+            f"Test Case '-[{sim_skip_cls} {sim_skip_name}]' skipped (0.004 seconds).\n")
 
     def run_case(name: str, text: str, expect: str, digest: str | None = None) -> None:
         global SIMULATOR_LOG
@@ -1121,30 +1504,77 @@ def simulator_selftest() -> int:
             failures += 1
         results.append((name, expect, got, verdict))
 
-    # *** A: the per-bundle total is READ, not silently dropped by the skip infix. *** *Shrinking the skipped
-    # aggregate by one test must redden the lane -- which it can only do if the aggregate was parsed at all. Applied to
-    # EVERY aggregate line, because XCTest re-prints the outermost total for `All tests` as well as the bundle.*
-    shrunk = re.sub(r"(\n\s*Executed )(\d+)( tests?, with \d+ tests? skipped and )",
-                    lambda m: m.group(1) + str(int(m.group(2)) - 1) + m.group(3), base)
+    # *** A: the per-bundle total is READ, not silently dropped by the OPTIONAL `N tests skipped and` infix (Xcode
+    # 27.0's skip-bearing aggregate shape). *** *A skip-BEARING aggregate must still have its count parsed, so
+    # shrinking that count by one must redden the lane via the arm-total reconciliation -- which can only happen if the
+    # aggregate was parsed at all.* **THE SKIP-BEARING AGGREGATE IS CONSTRUCTED ON THE OUTERMOST (BUNDLE) TOTAL OF A
+    # DETERMINISTIC ALL-PASSED FIXTURE, because the POSITIVE fixture carrieth NO skip** -- *this is an aggregate COUNT
+    # line, not a skipped ARM verdict, so it introduceth no excused skip. AND IT MUST BE THE OUTERMOST LINE: the
+    # checker sums only the `…xctest passed` bundle's own total, so mutating a NESTED suite's line would change nothing
+    # the parser reads (a measured ESCAPE in an earlier round).*
+    _fixture_green = synth()
+    agg = re.search(
+        r"(?sm)^Test Suite '[\w.]+\.xctest' passed.*?^(\s*Executed )(\d+)( tests?, with )0 failures",
+        _fixture_green)
+    skip_infix_base = _fixture_green
+    shrunk = _fixture_green
+    if agg:
+        skipped_shape = (_fixture_green[: agg.start(3)] + "1 test skipped and 0 failures"
+                         + _fixture_green[agg.end(3) + len("0 failures"):])
+        skip_infix_base = skipped_shape
+        shrunk = (skipped_shape[: skipped_shape.index(agg.group(2), agg.start(2))]
+                  + str(int(agg.group(2)) - 1)
+                  + skipped_shape[skipped_shape.index(agg.group(2), agg.start(2)) + len(agg.group(2)):])
 
-    # *** D: the external-blocked reason, mutated to a fully internal one, must be REFUSED. *** *The WHOLE reason is
-    # rewritten -- a mutation that merely prefixed it would still contain `pinned SQLCipher library` and would escape
-    # for the wrong reason, proving nothing about the allowance.*
-    internal = re.sub(r"Test skipped - EXTERNAL-BLOCKED: .*$",
-                      "Test skipped - FLAKY: this arm is unstable on this host and was skipped by the runner",
-                      base, flags=re.M)
+    # *** D: EVERY SKIP IS REFUSED, WHATEVER ITS REASON -- the external-blocked allowance is RETIRED. *** *The pinned
+    # SQLCipher library is repository-buildable and the arm that XCTSkip`th for its absence is gone, so no skip is
+    # honest.* **THE SKIP IS REBUILT ON A DECLARED ARM (`_with_skip`), so the case cannot be vacuous (a `re.sub` on a
+    # base that lacks the line would mutate nothing).**
+    internal = _with_skip("FLAKY: this arm is unstable on this host and was skipped by the runner")
+    # *** AND THE HISTORICAL EXTERNAL-BLOCKED + pinned-artifact REASON -- the one the retired allowance would have
+    # excused -- IS NOW REFUSED TOO. *** *IF THE ALLOWANCE WERE EVER REPOPULATED, THIS CASE WOULD ESCAPE, so it is the
+    # control that pins the retirement.*
+    external_blocked = _with_skip("EXTERNAL-BLOCKED: the approved pinned SQLCipher library 'libsqlcipher.0.dylib' "
+                                  "is not present on this host")
 
     # *** AND A SKIP WHOSE VERDICT LINE CARRIES NO ANNOTATION AT ALL (an internal skip wearing no reason). ***
-    no_annotation = "\n".join(l for l in base.splitlines() if "Test skipped" not in l)
+    no_annotation = _strip_skips(base) + (
+        f"\nTest Case '-[{sim_skip_cls} {sim_skip_name}]' skipped (0.004 seconds).\n")
 
     run_case("0. the real log, unmutated -- MUST be accepted", base, "green")
     run_case("1. (A) the skipped aggregate short by one test (a swallowed arm)", shrunk, "red")
-    run_case("2. (D) the external-blocked reason mutated to an internal one", internal, "red")
+    run_case("2. (D) an ordinary internal skip (any reason)", internal, "red")
+    run_case("2b. (D) the historical EXTERNAL-BLOCKED + pinned-artifact reason -- STILL REFUSED",
+             external_blocked, "red")
     run_case("3. a skipped arm with NO annotation (an internal skip wearing no reason)", no_annotation, "red")
     run_case("4. no raw status line", "\n".join(l for l in base.splitlines() if not l.startswith("raw_xcodebuild_rc="))
              + "\n", "red")
     run_case("5. an empty log", "", "red")
     run_case("6. stale source digest", base, "red", digest="0" * 64)
+    # *** 7. A SKIP WEARING THE EXEMPTION'S VOCABULARY BUT NOT ITS DISPOSITION -- ALSO REFUSED. ***
+    # *Naming the artifact buyeth nothing; every skip is refused.*
+    run_case("7. a skip naming the artifact but NOT the EXTERNAL-BLOCKED disposition",
+             _with_skip("the pinned SQLCipher library built fine but this arm is flaky on this host"), "red")
+    # *** 8. ONE COMPILABLE ARM OMITTED FROM THE LOG -- A COUNT IS NOT A POPULATION. ***
+    #
+    # *ONE source-declared (simulator-compilable) arm's verdict line is removed while every total stays put, so the
+    # arm-total reconciliation still passeth and ONLY the by-name roster sees the omission.* **THE OMITTED ARM IS CHOSEN
+    # FROM THE DECLARED ROSTER AND FROM THE FAR END OF THE SAME SORTED LIST THE SKIP CONTROL DRAWS ITS ARM FROM, so it
+    # cannot be the skipped arm** (whose verdict line is the skip clause's, not this omission's).
+    sim_omit = sim_req_sorted[-1] if sim_req_sorted and sim_req_sorted[-1] != sim_skip_key else sim_skip_key
+    run_case("8. one source-declared arm omitted from the log (count reconciles)",
+             "\n".join(l for l in base.splitlines()
+                       if not (l.startswith("Test Case '-[") and sim_omit.split(".")[-1] in l)), "red")
+    # *** 9. AN ARM THE SOURCES DO NOT DECLARE FOR THIS TARGET IS REFUSED. ***
+    run_case("9. a verdict for an arm the sources do NOT declare (unexpected arm)",
+             base + "\nTest Case '-[GodstoneMeshTests.GodstoneMeshTests testThisArmWasNeverDeclared]' passed "
+                    "(0.001 seconds).\n", "red")
+    # *** 10. A DUPLICATED VERDICT IS REFUSED -- AND FOR AN ARM THE ROSTER DOES NOT DECLARE, which the OLD
+    # narrowed guard (`key in required`) let escape both this check and the unexpected check. ***
+    dup_sim = sim_omit
+    run_case("10. a duplicated verdict (the old guard's narrow window)",
+             base + f"\nTest Case '-[{dup_sim.split('.')[0]} {dup_sim.split('.')[-1]}]' passed (0.001 seconds).\n",
+             "red")
 
     # *** AND THE ROSTER ITSELF: THE MACOS-ONLY CLASSES MUST BE ABSENT, THE RUNNABLE ONES PRESENT. ***
     classes, arms = simulator_roster()
@@ -1177,10 +1607,10 @@ def simulator_selftest() -> int:
                              "required by the roster")
     if roster_faults:
         failures += 1
-        results.append(("7. roster names only simulator-runnable classes", "clean",
+        results.append(("11. roster names only simulator-runnable classes", "clean",
                         "; ".join(roster_faults), "ESCAPED"))
     else:
-        results.append(("7. roster names only simulator-runnable classes", "clean", "clean", "KILLED"))
+        results.append(("11. roster names only simulator-runnable classes", "clean", "clean", "KILLED"))
     # The arm total must equal what the lane's OWN PER-BUNDLE totals sum to -- the target's COMPILABLE population.
     # *The check below uses the SAME `BUNDLE_TOTAL` the checker sums, not the first `Executed` line in the log (which
     # belongs to a NESTED suite and would disagree for that reason alone).* On the real log that is 1339 (1341 declared
@@ -1188,10 +1618,10 @@ def simulator_selftest() -> int:
     expected_total = sum(int(t) for t, _f in BUNDLE_TOTAL.findall(base)) or None
     if expected_total is not None and arms != expected_total:
         failures += 1
-        results.append(("8. roster arm total equals the log's executed count", str(expected_total),
+        results.append(("12. roster arm total equals the log's executed count", str(expected_total),
                         str(arms), "ESCAPED"))
     else:
-        results.append(("8. roster arm total equals the log's executed count", str(expected_total), str(arms),
+        results.append(("12. roster arm total equals the log's executed count", str(expected_total), str(arms),
                         "KILLED"))
 
     width = max(len(c[0]) for c in results)
@@ -1256,9 +1686,14 @@ def ui_selftest() -> int:
     real_digest = _ios_source_digest()
 
     def base_text() -> str:
-        if IOS_UI_LOG.is_file():
+        # *** THE REAL LOG IS USED ONLY WHEN IT STILL AGREETH WITH THE SOURCES *** (the same freshness rule the
+        # foundation and simulator families keep): a stale committed log is the CHECKER'S verdict, not a fault in the
+        # guard, so exercising the guard on it would report a false failure.
+        ui_side = Path(str(IOS_UI_LOG) + ".sources.sha256")
+        if IOS_UI_LOG.is_file() and ui_side.is_file() and \
+                ui_side.read_text(encoding="utf-8").strip().split()[0] == real_digest:
             return IOS_UI_LOG.read_text(encoding="utf-8", errors="replace")
-        # A synthetic but shape-faithful log, used when no lane has been run on this host.
+        # A synthetic but shape-faithful log, used when no lane has been run on this host (or its log is stale).
         roster = required_ui_arms()
         lines = []
         for suite, arms in roster.items():
@@ -1335,6 +1770,16 @@ def ui_selftest() -> int:
     run_case("11. source-declared arm omitted from the log",
              "\n".join(l for l in base.split("\n") if "testGSA005ScrollingRevealsALaterPassage" not in l),
              real_digest, "red")
+    # *** (11b) AN ARM THE SOURCES DO NOT DECLARE IS REFUSED -- THE "UNEXPECTED ARM", which the old lane let pass. ***
+    #
+    # *THE DEFECT THIS CLOSES: this lane checked MISSING and DUPLICATE arms by name but not UNEXPECTED ones, so a
+    # verdict for a renamed selector or a foreign class bundled into a UI target inflated `tests=` unremarked.* *The
+    # invented arm is a class the roster declares but an arm NAME it does not, so it lands in neither the required set
+    # nor the duplicate set -- **only the unexpected check can see it**, which is what makes this case the negative
+    # control for that guard.*
+    run_case("11b. a verdict for an arm the sources do NOT declare (unexpected arm)",
+             base + "\nTest Case '-[LabMeshUITests.LabMeshUITests testGSINT001AnArmThatWasNeverDeclared]' passed (1.0 seconds).\n",
+             real_digest, "red")
     # (12b) *** A NOVEL BREAK WEARING A RECORDED ARM'S NAME MUST NOT BE EXCUSED. ***
     # *This is the hole a name-only allowlist leaves: the fixture hash-guard tripping, the app not launching, or a
     # selector break would each wear a recorded arm's name and read as the known restore gap.*
@@ -1371,7 +1816,7 @@ def ui_selftest() -> int:
     return 1 if failures else 0
 
 
-def check_ios_ui_lane() -> tuple[list[str], dict]:
+def check_ios_ui_lane(*, evidence_root: Path | None = None) -> tuple[list[str], dict]:
     """*** THE `bundle.ui-testing` LANE: EVERY ARM'S OWN LINE, ZERO-EXECUTED REFUSED, STALENESS BOUND. ***
 
     *Modelled on `check_ios_lane`, with the three guards that make a UI log honest:*
@@ -1381,13 +1826,17 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
         `** TEST FAILED **` this session;
       * **ANY SKIP IS A FAILURE**, because a skipped UI arm reports as a pass while measuring nothing;
       * and the log is bound to the SAME SOURCE DIGEST the package lane uses, so a UI edit invalidates it.
+
+    *** `evidence_root` MOVETH THE EVIDENCE READS ONLY. *** *The log and its digest sidecars are read from the
+    supplied root; `required_ui_arms`, the source digest and `IOS_PROJECT_SPEC` stay rooted at the real `REPO`.*
     """
     problems: list[str] = []
     totals = {"suites": 0, "tests": 0, "failures": 0, "evidence": []}
-    if not IOS_UI_LOG.is_file():
-        return ([f"the iOS UI lane log is absent at {IOS_UI_LOG} -- the UI targets have not been run, and AN UNRUN "
+    log = _evidence_log(IOS_UI_LOG, evidence_root)
+    if not log.is_file():
+        return ([f"the iOS UI lane log is absent at {log} -- the UI targets have not been run, and AN UNRUN "
                  f"LANE IS NOT A PASS"], totals)
-    text = IOS_UI_LOG.read_text(encoding="utf-8", errors="replace")
+    text = log.read_text(encoding="utf-8", errors="replace")
 
     # (a) EVERY ARM THAT PRINTED A LINE, BY NAME AND VERDICT.
     cases = IOS_UITEST_CASE.findall(text)
@@ -1412,14 +1861,33 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
     # The log's class token is `<Module>.<Class>`; the roster's is `<Class>`. Compare on `<Class>.<test>`.
     observed = {(c.split(".")[-1], n): v for c, n, v in cases}
     totals["required_arms"] = 0
+    required_keys: set[str] = set()
     for suite in IOS_UI_REQUIRED_SUITES:
         for arm in roster.get(suite, []):
             totals["required_arms"] += 1
             key = arm                      # already "<Class>.<test>"
+            required_keys.add(key)
             if (arm.split(".")[0], arm.split(".")[1]) not in observed:
                 problems.append(f"*** REQUIRED UI ARM ABSENT: {key} is DECLARED IN SOURCE but the log carrieth NO "
                                 f"verdict for it. *** *An arm that never ran is not a passing arm -- this is the "
                                 f"defect a count cannot see.*")
+    # *** AND AN ARM THE SOURCES DO NOT DECLARE IS REFUSED TOO (the "unexpected" arm). ***
+    #
+    # *THE DEFECT THIS CLOSES: this lane checked MISSING arms by name and DUPLICATES, but not UNEXPECTED ones -- so a
+    # verdict for an arm the roster does not declare (a renamed selector, a foreign class bundled into a UI target)
+    # would inflate `tests=` and pass UNREMARKED.* **THE SIMULATOR AND FOUNDATION LANES GET THE SAME PAIR OF
+    # CHECKS: every source-declared arm must be OBSERVED, and every observed arm must be DECLARED.**
+    #
+    # *AND THE CHECK IS GATED ON A NON-EMPTY ROSTER: when the roster could not be derived the UNOBTAINABLE-ROSTER
+    # problem above already reddens the lane, so an empty `required_keys` must not ALSO manufacture an "unexpected"
+    # finding -- which would be a SECOND, misleading red for one cause.*
+    if required_keys:
+        observed_keys = {f"{c.split('.')[-1]}.{n}" for c, n, _v in cases}
+        unexpected = sorted(observed_keys - required_keys)
+        if unexpected:
+            problems.append(f"the iOS UI lane carrieth {len(unexpected)} UNEXPECTED arm verdict(s) NOT declared in "
+                            f"SOURCE: {unexpected[:6]} -- *an arm the roster does not declare cannot be omitted from a "
+                            f"green count, and a verdict for it inflates the lane.*")
     # AND A DUPLICATE VERDICT WOULD DOUBLE-COUNT AN ARM.
     seen: dict[str, int] = {}
     for c, n, _v in cases:
@@ -1469,7 +1937,7 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
         break
 
     # (c) THE STALENESS GUARD, the same one the package lane uses.
-    side = Path(str(IOS_UI_LOG) + ".sources.sha256")
+    side = Path(str(log) + ".sources.sha256")
     if not side.is_file():
         problems.append(f"the iOS UI lane carrieth no digest sidecar at {side} -- an undatable log is not evidence "
                         f"about the current tree")
@@ -1490,7 +1958,7 @@ def check_ios_ui_lane() -> tuple[list[str], dict]:
     # **THE RUNNER NOW WRITETH A PRE-RUN DIGEST BESIDE IT (`<log>.pre.sha256`), AND THIS REQUIREth THE TWO TO AGREE.**
     # *An ABSENT pre-digest is refused too: a log whose runner did not take the before-reading cannot be shown to have
     # compiled one revision, and "we did not check" must not read as "it was fine".*
-    pre = Path(str(IOS_UI_LOG) + ".pre.sha256")
+    pre = Path(str(log) + ".pre.sha256")
     if not pre.is_file():
         problems.append(f"the iOS UI lane carrieth no PRE-RUN digest at {pre.name} -- *a log whose source set was "
                         f"sampled only AFTER the run cannot be shown to describe one revision: a mid-run edit leaves "
@@ -1582,8 +2050,7 @@ def simulator_scope_row(scope: str, sim_totals: dict) -> str:
             f"  {'ios:simulator':<14} suites={sim_totals['suites']:<3} tests={sim_totals['tests']:<5} "
             f"failures={sim_totals['failures']} raw_rc={sim_totals.get('raw_rc')} "
             f"skipped={sim_totals.get('skipped', 0)} unfinished={sim_totals.get('unfinished_suites', 0)}"
-            + ("  <- external-blocked: " + "; ".join(sim_totals["external_skips"])
-               if sim_totals.get("external_skips") else "")
+            # *** NO EXCUSAL IS PRINTED: a skipped arm is a REFUSAL, not a noted allowance (P1 realUser25). ***
             + ("  <- per bundle: " + "; ".join(sim_totals.get("evidence", []))
                if sim_totals.get("evidence") else "")
         )
@@ -1602,6 +2069,17 @@ def main() -> int:
     ap.add_argument("--selftest-ui", action="store_true")
     ap.add_argument("--selftest-foundation", action="store_true")
     ap.add_argument("--selftest-simulator", action="store_true")
+    # *** THE EVIDENCE ROOT: WHERE THE LANE ARTIFACTS LIVE WHEN THEY ARE NOT UNDER THE CHECKOUT. ***
+    #
+    # *A fresh reader of a HOSTED run downloads that run's lane logs, result XMLs and digest sidecars into a scratch
+    # root and passeth it here -- the canonical verifier's `lane results` gate already invokes this CLI with
+    # `--evidence-root {evidence_root}`. **THE CHECKOUT IS NEVER REBASED:** the SOURCE census, the expected arm
+    # rosters and the source digests keep describing the real repository, because those ARE the sources the lanes
+    # claim to have compiled; only the EVIDENCE reads (the XML files, the iOS logs and their `.sha256` sidecars) move.
+    # Absent, every read resolves under the checkout exactly as before.*
+    ap.add_argument("--evidence-root", default=None,
+                    help="read the lane RESULT FILES and LOGS under this root (source census and digests stay at the "
+                         "repository root); defaults to the repository root")
     args = ap.parse_args()
     if args.selftest_foundation:
         return foundation_selftest()
@@ -1612,24 +2090,30 @@ def main() -> int:
     if args.selftest:
         return selftest()
 
+    evidence_root = Path(args.evidence_root) if args.evidence_root else None
+    evidence_base = _evidence_base(evidence_root)
     all_problems: list[str] = []
     summary: list[str] = []
     for label, task_dir, pattern in (LANES if args.scope in ("all", "android") else ()):
-        probs = check_lane(label, pattern)
-        files = glob.glob(str(REPO / pattern))
+        probs = check_lane(label, pattern, declared=_declared_arm_names(label), evidence_root=evidence_root)
+        files = glob.glob(str(evidence_base / pattern))
         # *** AND AN UNEXPECTED SIBLING UNDER `test-results/` IS REFUSED BY NAME (round 745). ***
         #
         # *A sibling means SOMEONE RAN A FILTERED SUITE beside the lane* -- the courts and the mutation harness both do --
         # **and while the glob above no longer sums it, its PRESENCE is the warning that the lane's own directory may be a
         # partial generation.** *This is the same "two trees, one claim" shape that let a stray report directory inflate
         # the mesh lane to 1906 for eight verifications.*
-        results_root = (REPO / pattern).parent.parent
+        results_root = (evidence_base / pattern).parent.parent
         if results_root.is_dir():
             siblings = sorted(d.name for d in results_root.iterdir()
                               if d.is_dir() and d.name != task_dir)
             if siblings:
+                try:
+                    shown_root = results_root.relative_to(evidence_base)
+                except ValueError:
+                    shown_root = results_root
                 all_problems.append(
-                    f"{label}: `{results_root.relative_to(REPO)}` carrieth UNEXPECTED SIBLING DIRECTORIES {siblings} "
+                    f"{label}: `{shown_root}` carrieth UNEXPECTED SIBLING DIRECTORIES {siblings} "
                     f"-- *a filtered run wrote beside the lane's own `{task_dir}`, and a sibling is how this lane's count "
                     f"was inflated before. Clear `build/test-results/` and run the lane alone.*")
         total = {"tests": 0, "skipped": 0, "failures": 0, "errors": 0}
@@ -1650,7 +2134,7 @@ def main() -> int:
         # **`--rerun-tasks` REPLACES the XML on a real run, but nothing ASSERTETH that the replacement happened.**
         # *So the same digest sidecar the iOS lane carrieth is written for each Android lane by
         # `tools/readiness/run_android_lanes.sh`, and an absent or divergent digest is REFUSED.*
-        all_problems.extend(_android_source_digest_problems(label))
+        all_problems.extend(_android_source_digest_problems(label, evidence_root=evidence_root))
         # *** GS-CTRL-002 (round 719): AND THE COUNT IS BOUND TO THE SOURCES, NOT ONLY THE FILES TO THEM. ***
         #
         # **MEASURED: `android:mesh` reported `files=108 tests=1906` WHILE THE MODULE'S TEST SOURCES CARRY EXACTLY
@@ -1668,7 +2152,24 @@ def main() -> int:
                 f"disagreeth with the sources is counting stale result files from a sibling task directory, or did not "
                 f"run them all. Clear `build/test-results/` and re-run the lane.*")
 
-    ios_probs, ios_totals = check_ios_lane() if args.scope in ("all", "ios", "ios-host") else ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
+    # *** AND THE REPORT-BEARING ANDROID LANES (ui / simulator / production), WHICH THIS CONTROL DID NOT JUDGE. ***
+    #
+    # *THE GAP THIS CLOSES, MEASURED: the four historical unit lanes are judged above by their digest sidecars and
+    # their `build/test-results/` XML. **THE THREE LANES THAT RAN A FILTER (the rendered-controls UI lane, the lab
+    # simulator lane, the production-simulation lane) COULD NOT BE: a filtered run writeth BESIDE another task's
+    # directory -- the pollution the sibling rule above refuseth -- so those lanes carry their OWN evidence root, their
+    # OWN report, and this control re-derives their verdict from `tools/readiness/lane_registry.py`.***
+    #
+    # *** AND IT IS A FAIL-CLOSED READ: an ABSENT report is a REFUSAL (an unrun lane is not a pass), the digest is
+    # recomputed from the REAL tree, the counts are re-parsed from the REAL XML, and the raw gradle status must be
+    # zero. NOTHING is taken from the report's own `verdict` field -- the checker re-deriveth it.***
+    if args.scope in ("all", "android"):
+        for lane in _report_lane_ids():
+            all_problems.extend(_report_lane_problems(lane, evidence_root=evidence_root))
+            all_problems.extend(_report_lane_isolation_problems(lane, evidence_root=evidence_root))
+            summary.append(_report_lane_row(lane, evidence_root=evidence_root))
+
+    ios_probs, ios_totals = check_ios_lane(evidence_root=evidence_root) if args.scope in ("all", "ios", "ios-host") else ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
     all_problems.extend(ios_probs)
 
     # *** THE UI LANE IS MANDATORY UNDER `--scope ios` -- NEVER OPTIONAL-WHEN-PRESENT. ***
@@ -1682,7 +2183,7 @@ def main() -> int:
     # wants to judge the foundation lane before the UI step does not exist here, and would need its own named scope
     # rather than a softer meaning of this one.*
     if args.scope in ("all", "ios", "ios-host"):
-        ui_probs, ui_totals = check_ios_ui_lane()
+        ui_probs, ui_totals = check_ios_ui_lane(evidence_root=evidence_root)
     else:
         # *Same rule as `ios:foundation` above, and for the same measured reason: never a zero for a lane this scope
         # did not judge.*
@@ -1699,7 +2200,7 @@ def main() -> int:
     # (invoked early before the simulator build, with simulator marked NOT JUDGED HERE). `--scope ios-simulator`
     # judgeth the simulator lane alone. `--scope all` judgeth all lanes together.*
     if args.scope in ("all", "ios", "ios-simulator"):
-        sim_probs, sim_totals = check_ios_simulator_lane()
+        sim_probs, sim_totals = check_ios_simulator_lane(evidence_root=evidence_root)
         all_problems.extend(sim_probs)
     else:
         sim_probs, sim_totals = ([], {"suites": 0, "tests": 0, "failures": 0, "evidence": []})
@@ -1731,7 +2232,8 @@ def main() -> int:
         # that names the simulator lane -- a missing `device_runtime`, an unparsed aggregate, a roster class absent --
         # forces the next reader to diagnose it, and this lane's log was NOT printed. It is now, and its tail is what
         # shows an `xcodebuild` cut off mid-suite.*
-        for path in (IOS_LOG, IOS_UI_LOG, SIMULATOR_LOG):
+        for path in (_evidence_log(IOS_LOG, evidence_root), _evidence_log(IOS_UI_LOG, evidence_root),
+                     _evidence_log(SIMULATOR_LOG, evidence_root)):
             if not path.is_file():
                 print(f"\n  [evidence] {path} -- ABSENT")
                 continue
@@ -1849,10 +2351,18 @@ def _android_source_digest(label: str) -> str:
     return h.hexdigest()
 
 
-def _android_source_digest_problems(label: str) -> list[str]:
-    """The lane's result files must have been produced from THESE sources, not from a revision nobody can date."""
+def _android_source_digest_problems(label: str, *, evidence_root: Path | None = None) -> list[str]:
+    """The lane's result files must have been produced from THESE sources, not from a revision nobody can date.
+
+    *** THE SIDECARS ARE EVIDENCE AND COME FROM THE EVIDENCE ROOT; THE COMPARED DIGEST IS SOURCE AND COMES FROM
+    `REPO`.*** *The hosted runner writeth `<lane>.sources.sha256` and `<lane>.pre.sha256` at its scratch root, so a
+    reader supplyeth that root here; the digest those files are compared AGAINST is recomputed from the real
+    checkout's Kotlin bytes (`_android_source_digest`), because those ARE the sources the lane claims to have
+    compiled.* `evidence_root=None` keepeth the historical behaviour: sidecars read from `REPO`.
+    """
+    base = _evidence_base(evidence_root)
     safe = label.replace(":", "-")
-    sidecar = REPO / f"{safe}.sources.sha256"
+    sidecar = base / f"{safe}.sources.sha256"
     current = _android_source_digest(label)
     problems: list[str] = []
     if not sidecar.is_file():
@@ -1865,7 +2375,7 @@ def _android_source_digest_problems(label: str) -> list[str]:
     # *** AND THE PRE-RUN DIGEST MUST EQUAL THE POST-RUN ONE. ***
     # *The same contract the iOS lanes carry: a digest sampled only AFTER the run cannot show that one revision was
     # compiled, because a mid-run edit leaves the late digest and the current tree EQUAL.*
-    pre = REPO / f"{safe}.pre.sha256"
+    pre = base / f"{safe}.pre.sha256"
     if not pre.is_file():
         problems.append(f"{label}: no PRE-RUN digest at {pre.name} -- *a result whose source set was sampled only "
                         f"AFTER the run cannot be shown to describe one revision.*")
@@ -1885,6 +2395,259 @@ LANE_TEST_SOURCES = {
     "android:mesh": "android/mesh/src/test",
     "android:labmesh": "android/labmesh/src/test",
 }
+
+#: `.kt` is the file whose FIRST `class`/`object` declaration owns the `@Test`s below it.
+_LANE_CLASS_DECL = re.compile(r"\b(class|object)\s+([A-Za-z_]\w*)")
+#: A `@Test`-bearing method: a bare `@Test`, an indented `@Test fun`, or a bare `@Test` line above a `fun`.
+#: *** KOTLIN ALLOWETH A BACKTICK-QUOTED METHOD NAME (`fun `a sentence with spaces`()`), AND THE JUNIT XML CARRIETH
+#: THAT NAME VERBATIM *** *-- measured in `android:mesh`, where many `@Test` methods are so named; a matcher that
+#: accepted only `[A-Za-z_]\w*` saw NONE of them and the declared roster fell short by exactly those.*
+_LANE_TEST_FUN = re.compile(r"\bfun\s+(?:`([^`\n]+)`|([A-Za-z_]\w*))\s*\(")
+_LANE_TEST_SLICE = 400
+
+
+def _kotlin_class_spans(text: str) -> list[tuple[int, int, str]]:
+    """`[(start, end, className)]` for every `class`/`object` BODY in `text`, by BRACE depth.
+
+    *** KOTLIN SCOPING IS BY BRACES, NOT BY DECLARATION ORDER. *** *MEASURED: `GsFinal006RenderedReadingListTest.kt`
+    declares a helper `TwoDocReader` BETWEEN two of the outer class's methods, so a naive "nearest declaration above"
+    attribution assigns the outer class's LATER methods to the helper -- a false roster that would redden a green lane.*
+    **THIS SCAN therefore strips comments and string/char literals (which may carrieth braces), then followeth the
+    brace stack so a method is owned by the class BODY it actually sits in.**
+    """
+    # A minimal Kotlin lexer for the only thing we need here: the brace structure OUTSIDE comments and literals.
+    stack: list[tuple[int, str | None]] = []   # (brace_depth_at_open, class name or None)
+    spans: list[tuple[int, int, str]] = []
+    depth = 0
+    pending_class: str | None = None
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            j = text.find("\n", i)
+            i = n if j < 0 else j + 1
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "*":
+            j = text.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        if c in "\"'":
+            quote = c
+            i += 1
+            while i < n:
+                if text[i] == "\\":
+                    i += 2
+                    continue
+                if text[i] == quote:
+                    i += 1
+                    break
+                if text[i] == "\n" and quote == "'":
+                    break
+                i += 1
+            continue
+        if c == "{" :
+            stack.append((depth, pending_class))
+            if pending_class is not None:
+                spans.append((i, -1, pending_class))
+            pending_class = None
+            depth += 1
+            i += 1
+            continue
+        if c == "}":
+            if stack:
+                open_depth, name = stack.pop()
+                if name is not None:
+                    for k in range(len(spans) - 1, -1, -1):
+                        if spans[k][2] == name and spans[k][1] == -1:
+                            spans[k] = (spans[k][0], i, name)
+                            break
+            depth = max(0, depth - 1)
+            i += 1
+            continue
+        if c.isalpha() or c == "_":
+            m = _LANE_CLASS_DECL.match(text, i)
+            if m:
+                pending_class = m.group(2)
+                i = m.end()
+                continue
+            # skip an identifier
+            j = i
+            while j < n and (text[j].isalnum() or text[j] == "_"):
+                j += 1
+            i = j
+            continue
+        i += 1
+    return spans
+
+
+def _declared_arm_names(label: str) -> set[tuple[str, str]] | None:
+    """`{(FQCN, method)}` for every `@Test` the lane's own sources declare -- the POPULATION a run must reproduce.
+
+    *** THE DEFECT THIS CLOSES (ManifestReview, critical): the Android lanes were compared by COUNT and DUPLICATE keys
+    only, so `Executed 1324` against a source census of 1324 accepted **a UNIQUE UNDECLARED arm swapped for a declared
+    one -- a class/method substitution that keepeth the total identical.*** *A count is not a population: the iOS lanes
+    were already strengthened to compare declared-vs-observed BY STABLE IDENTITY, and this giveth the Android lanes the
+    same rule.*
+
+    *THE OWNER IS THE innermost class BODY (`_kotlin_class_spans`) whose declaration nameth the FILE's stem -- Kotlin's
+    own convention, which the JUnit XML `classname` also followeth (MEASURED: 1:1 across all four lanes). A file with
+    NO stem-named class returns `None`, so the caller NAMETH it rather than computing a false roster.*
+    """
+    base = REPO / LANE_TEST_SOURCES.get(label, "")
+    if not base.is_dir():
+        return None
+    arms: set[tuple[str, str]] = set()
+    unresolved: list[str] = []
+    for f in base.rglob("*.kt"):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        spans = _kotlin_class_spans(text)
+        stem_spans = [(a, b) for a, b, name in spans if name == f.stem and b >= 0]
+        if text.count("@Test") and not stem_spans:
+            unresolved.append(f.name)
+            continue
+        for m in re.finditer(r"@Test", text):
+            # The innermost stem-named class body that CONTAINS this @Test.
+            if not any(a <= m.start() <= b for a, b in stem_spans):
+                continue
+            fn = _LANE_TEST_FUN.search(text, m.end(), m.end() + _LANE_TEST_SLICE)
+            if fn:
+                arms.add((f.stem, fn.group(1) if fn.group(1) is not None else fn.group(2)))
+    if unresolved:
+        # An `@Test`-bearing file whose test class we could not locate means we cannot compute a trustworthy roster.
+        return None
+    return arms
+
+
+def _roster_identity_problems(label: str, declared: set[tuple[str, str]] | None,
+                              observed: set[tuple[str, str]]) -> list[str]:
+    """Declared-vs-observed arm IDENTITY problems for one Android lane -- a PURE function so a court can refute it.
+
+    *** THE DEFECT THIS CLOSES (ManifestReview, critical): the Android lanes were compared by COUNT and duplicate keys
+    only, so a UNIQUE UNDECLARED class/method swapped for a declared one -- with the total unchanged -- passed.***
+
+    **THE CHECK IS GATED ON EQUAL POPULATION SIZE, WHICH IS EXACTLY THE SUBSTITUTION CASE AND NOTHING ELSE.** *When the
+    declared and observed POPULATIONS carrieth the same number of arms, a substitution is the ONLY thing that can
+    differ, so comparing identities is both MEANINGFUL and SAFE. When the sizes differ, the count census
+    (`_source_test_census`) already nameth the under/over-count, and an identity diff would be dominated by attribution
+    noise (a helper class, a generated name) rather than signal -- so this returneth `[]` and leaves that case to the
+    count, rather than reddening a green lane for a reason the operator cannot act on.*
+    """
+    if declared is None or len(declared) != len(observed):
+        return []
+    problems: list[str] = []
+    missing = sorted(declared - observed)
+    unexpected = sorted(observed - declared)
+    if missing:
+        named = [f"{c}#{n}" for c, n in missing[:5]]
+        problems.append(f"{label}: {len(missing)} source-declared arm(s) NEVER OBSERVED (the count still reconciled): "
+                        f"{named} -- *an OMITTED arm cannot be absent from the source roster.*")
+    if unexpected:
+        named = [f"{c}#{n}" for c, n in unexpected[:5]]
+        problems.append(f"{label}: {len(unexpected)} OBSERVED arm(s) the sources do NOT declare: {named} -- *a "
+                        f"substitution that keepeth the total is exactly what a count cannot see.*")
+    return problems
+
+
+# ================================================================================================
+# *** THE REPORT-BEARING ANDROID LANES: ui / simulator / production. ***
+#
+# *These three run a FILTERED gradle invocation (`--tests ...`), and a filtered run writeth its reports into a SIBLING
+# task directory beside the lane's own -- the exact pollution the unit lanes' sibling rule refuseth. So each carries
+# its OWN evidence root (`android-ui-results/`, `android-simulator-results/`, `android-production-results/`) and its
+# OWN report, and the verdict is re-derived from the REAL sources, the REAL XML and the child's OWN status by
+# `tools/readiness/lane_registry.py`.*
+#
+# **THE ONE IMPORT RULE: the registry is imported LAZILY.** *`check_lane_results` is loaded by many callers (the
+# manifest adapter, the courts, `check_release_gates_status`); a module-level import of a sibling tree would couple
+# them all to a path that need not exist for the unit-lane judgements. A missing registry is a NAMED refusal, never an
+# ImportError at load time.*
+# ================================================================================================
+
+def _lane_registry():
+    """Load `tools/readiness/lane_registry.py` as a module (no package), or raise ImportError with a real message."""
+    import importlib.util
+    registry_path = REPO / "tools" / "readiness" / "lane_registry.py"
+    if not registry_path.is_file():
+        raise ImportError(f"the lane registry is absent at {registry_path} -- *the report-bearing lanes cannot be "
+                          f"judged without the ONE definition of their targets and evidence.*")
+    spec = importlib.util.spec_from_file_location("lane_registry_under_test", registry_path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _report_lane_ids() -> tuple[str, ...]:
+    """The lanes whose verdict comes from a report, from the registry (empty if it cannot be read)."""
+    try:
+        return tuple(_lane_registry().REPORT_LANES)
+    except ImportError:
+        return ()
+
+
+def _report_lane_problems(lane: str, *, evidence_root: Path | None = None) -> list[str]:
+    """Re-derive one report lane's verdict. A registry that cannot be read is a NAMED refusal, never a silent pass."""
+    try:
+        registry = _lane_registry()
+    except ImportError as exc:
+        return [f"{lane}: {exc}"]
+    return list(registry.verify_lane_report(lane, evidence_root=evidence_root))
+
+
+def _report_lane_isolation_problems(lane: str, *, evidence_root: Path | None = None) -> list[str]:
+    """*** THE REPORT LANE'S EVIDENCE DIRECTORY MUST CARRY ONLY ITS OWN COPIED FILES. ***
+
+    *The lane's report nameth every file it copied, with each file's sha256. A file present but UNNAMED is either a
+    stranger (another lane's run leaked in, and a shared denominator is exactly what the sibling rule refuseth by name)
+    or a tampered addition. An UNNAMED file is therefore refused, and a NAMED file whose bytes moved is refused too --
+    a report whose digests no longer describe the directory is a report about nothing.*
+    """
+    try:
+        registry = _lane_registry()
+    except ImportError as exc:
+        return [f"{lane}: {exc}"]
+    registry_spec = registry.LANE_SPECS.get(lane)
+    if not registry_spec or not registry_spec.get("report"):
+        return []
+    base = _evidence_base(evidence_root)
+    doc, problems = registry._load_report(base, registry_spec)
+    if doc is None:
+        return []          # the absent-report refusal already fired in _report_lane_problems
+    results_dir = base / Path(registry_spec["results_glob"]).parent
+    named = dict((doc.get("results") or {}).get("sha256") or {})
+    present = sorted(p.name for p in results_dir.glob("*.xml")) if results_dir.is_dir() else []
+    strangers = [name for name in present if name not in named]
+    if strangers:
+        problems.append(f"{lane}: its evidence directory carrieth file(s) the report does NOT name: {strangers} -- "
+                        f"*a filtered run writeth beside its own task directory, so an unnamed file is another run's "
+                        f"output leaking into this lane's denominator.*")
+    for name, recorded in sorted(named.items()):
+        path = results_dir / name
+        if not path.is_file():
+            problems.append(f"{lane}: the report nameth {name} but it is ABSENT from the evidence directory")
+            continue
+        live = registry._sha256_file(path)
+        if live != recorded:
+            problems.append(f"{lane}: {name} has changed since the report bound it ({str(recorded)[:16]}… vs "
+                            f"{live[:16]}…) -- *a result file edited after binding is not the run's own output.*")
+    return problems
+
+
+def _report_lane_row(lane: str, *, evidence_root: Path | None = None) -> str:
+    """The summary row for a report lane -- its REAL counts, or an explicit NOT JUDGED/ABSENT marker."""
+    try:
+        registry = _lane_registry()
+    except ImportError:
+        return f"  {lane:<18} REGISTRY ABSENT -- not judged"
+    spec = registry.LANE_SPECS.get(lane)
+    base = _evidence_base(evidence_root)
+    doc, _ = registry._load_report(base, spec)
+    if doc is None:
+        return f"  {lane:<18} ABSENT -- no report at {spec['report']} (the lane did not run)"
+    junit = doc.get("junit") or {}
+    return (f"  {lane:<18} files={junit.get('files', 0):<3} tests={junit.get('tests', 0):<5} "
+            f"skipped={junit.get('skipped', 0)} failures={junit.get('failures', 0)} errors={junit.get('errors', 0)} "
+            f"raw_rc={doc.get('raw_rc')}  <- {doc.get('verdict')}")
 
 
 def _source_test_census(label: str) -> int | None:

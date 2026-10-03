@@ -15,6 +15,7 @@ import io.godstone.mesh.crypto.SessionManager
 import io.godstone.mesh.identity.DefaultRuntimeLifecycleGate
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.identity.SqlcipherPeerIdentityStore
+import io.godstone.mesh.identity.MeshRuntimeInvalidator
 import io.godstone.mesh.identity.WipeSensitiveUseGate
 import io.godstone.mesh.identity.WipeGatedAckObligationStore
 import io.godstone.mesh.delivery.DurableAckPump
@@ -125,7 +126,43 @@ internal interface MeshGraphComponent {
     interface Builder {
         @BindsInstance
         fun applicationContext(@ApplicationContext context: Context): Builder
+
+        /**
+         * *** GS-FINAL-003 `pre-private-recovery`: THE SEAM SET THE STARTUP BARRIER DRIVES, AS A BOUND INSTANCE. ***
+         *
+         * *THE REASON IT IS BOUND RATHER THAN DEFAULTED, AND IT IS NOT STYLE: a barrier that ALWAYS drove the REAL
+         * capabilities would COMPLETE a pending wipe at startup -- which is correct production behaviour and makes the
+         * REFUSING-RUNG ROSTER (`GsFinal003ZeroPrivateOpensTest`) UNOBSERVABLE through the graph: there would be no rung
+         * left to refuse at, because startup had already finished the wipe.* **A graph must be able to express BOTH
+         * compositions, so the seams are an INPUT -- exactly like the `Context`, and for the same reason: they are a
+         * runtime value a module cannot invent.***
+         *
+         * *** AND THERE IS NO DEFAULT -- BECAUSE THERE CANNOT BE ONE, WHICH IS A MEASURED FACT RATHER THAN A PREFERENCE. ***
+         * *Dagger supplies NO value for an omitted `@BindsInstance`, so the first form of this comment claimed a default
+         * the generated builder could never provide (review finding A14): a caller that omitted it would have been met with
+         * an unsatisfied-input failure, which reads exactly like a recovery refusal and would have made a zero-opens proof
+         * vacuous.* **EVERY CALLER THEREFORE BINDETH ITS COMPOSITION EXPLICITLY**: production through a provider that
+         * derives the REAL capability set, and a refusal-observation court through `StartupRecoveryGraph.deferred()` --
+         * *and the two are visually distinguishable at the call site rather than hidden behind a comment.*
+         */
+        @BindsInstance
+        fun recoverySeams(seams: WipeRecoverySeams): Builder
+
         fun build(): MeshGraphComponent
+    }
+
+    companion object {
+        /**
+         * *** GS-FINAL-003 (A14): THE CONCRETE ROOT FACTORY WITH EXPLICIT REAL PRE-PRIVATE CAPABILITIES. ***
+         *
+         * *Dagger supplies NO default for an omitted bound instance, so shipped production builds its graph HERE,
+         * with the owner-derived real recovery capabilities rather than relying on a false Dagger default.*
+         */
+        fun production(ctx: Context): MeshGraphComponent =
+            DaggerMeshGraphComponent.builder()
+                .applicationContext(ctx)
+                .recoverySeams(StartupRecoveryGraph.prePrivate(ctx, io.godstone.mesh.identity.FileWipeJournal(ctx)))
+                .build()
     }
 }
 
@@ -180,8 +217,8 @@ internal abstract class MeshGraphMeshModule {
     companion object {
         /** Every provider below DELEGATES to `MeshModule`, so the graph's behaviour is the production behaviour. */
         @Provides @Singleton
-        fun startupWipeBarrier(@ApplicationContext ctx: Context): MeshStartupWipeBarrier =
-            MeshModule.provideStartupWipeBarrier(ctx)
+        fun startupWipeBarrier(@ApplicationContext ctx: Context, seams: WipeRecoverySeams): MeshStartupWipeBarrier =
+            MeshModule.provideStartupWipeBarrier(ctx, seams)
 
         @Provides @Singleton
         fun runtimeLifecycleGate(): DefaultRuntimeLifecycleGate = MeshModule.provideRuntimeLifecycleGate()
@@ -189,8 +226,8 @@ internal abstract class MeshGraphMeshModule {
 
         /// *** THE PERMIT IS ISSUED FROM THE TYPED DECISION, AND `issue` RETURNETH NULL FOR EVERY REFUSING ONE. ***
         ///
-        /// *THIS BINDING IS WHERE THE CLAUSE BITETH: if the ladder decided anything but `CLEAN_START`, there is NO
-        /// permit to inject, so the three private providers CANNOT BE REACHED -- **and Dagger says so at COMPILE TIME,
+        /// *THIS BINDING IS WHERE THE CLAUSE BITETH: if the ladder decided anything that doth not permit private
+        /// construction (i.e. anything but `CLEAN_START`/`WIPE_COMPLETED`), there is NO permit to inject, so the three private providers CANNOT BE REACHED -- **and Dagger says so at COMPILE TIME,
         /// which is the same strength the iOS isle proved with `error: missing argument for parameter 'permit' in
         /// call`.***
         ///
@@ -200,25 +237,47 @@ internal abstract class MeshGraphMeshModule {
         /// construction on this isle), which is why the barrier is provided unconditionally and only the PERMIT is
         /// conditional.*
         @Provides @Singleton
+        fun estateAuthority(barrier: MeshStartupWipeBarrier): EstateAuthority =
+            MeshModule.provideEstateAuthority(barrier)
+
+        @Provides @Singleton
         fun privateStorePermit(barrier: MeshStartupWipeBarrier): PrivateStorePermit =
             MeshModule.issuePrivateStorePermit(barrier)
 
         @Provides @Singleton
-        fun identity(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier, permit: PrivateStorePermit): Identity =
-            MeshModule.provideIdentity(ctx, barrier, permit)
+        fun ownerToken(permit: PrivateStorePermit): io.godstone.mesh.identity.PrivateOwnerToken =
+            io.godstone.mesh.identity.PrivateOwnerToken.forNormalConstruction(permit)
 
         @Provides @Singleton
-        fun messageStore(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier, permit: PrivateStorePermit): SqliteMessageStore =
-            MeshModule.provideSqliteMessageStore(ctx, barrier, permit)
+        fun identity(
+            @ApplicationContext ctx: Context,
+            barrier: MeshStartupWipeBarrier,
+            permit: PrivateStorePermit,
+            token: io.godstone.mesh.identity.PrivateOwnerToken
+        ): Identity =
+            MeshModule.provideIdentity(ctx, barrier, permit, token)
+
+        @Provides @Singleton
+        fun messageStore(
+            @ApplicationContext ctx: Context,
+            barrier: MeshStartupWipeBarrier,
+            permit: PrivateStorePermit,
+            token: io.godstone.mesh.identity.PrivateOwnerToken
+        ): SqliteMessageStore =
+            MeshModule.provideSqliteMessageStore(ctx, barrier, permit, token)
 
         @Provides @Singleton
         fun messageStoreInterface(store: SqliteMessageStore): MessageStore =
             MeshModule.provideMessageStore(store)
 
         @Provides @Singleton
-        fun peerIdentityStore(@ApplicationContext ctx: Context, barrier: MeshStartupWipeBarrier, permit: PrivateStorePermit): SqlcipherPeerIdentityStore =
-            MeshModule.providePeerIdentityStore(ctx, barrier, permit)
-
+        fun peerIdentityStore(
+            @ApplicationContext ctx: Context,
+            barrier: MeshStartupWipeBarrier,
+            permit: PrivateStorePermit,
+            token: io.godstone.mesh.identity.PrivateOwnerToken
+        ): SqlcipherPeerIdentityStore =
+            MeshModule.providePeerIdentityStore(ctx, barrier, permit, token)
         @Provides @Singleton
         fun peerIdentityRepository(store: SqlcipherPeerIdentityStore): PeerIdentityRepository =
             MeshModule.providePeerIdentityRepository(store)
@@ -284,6 +343,15 @@ internal abstract class MeshGraphMeshModule {
          * `PeerIdentityStore`).* **Resolving it here means the widened signature is the one the graph must satisfy, so
          * a future narrowing reddeneth at COMPILE TIME rather than at an off-device court.**
          */
+        @Provides @Singleton
+        fun meshPanicWipe(
+            @ApplicationContext ctx: Context,
+            invalidator: MeshRuntimeInvalidator,
+            node: MeshNode,
+            estate: EstateAuthority,
+        ): MeshPanicWipe =
+            MeshModule.provideMeshPanicWipe(ctx, invalidator, node, estate)
+
         @Provides @Singleton
         fun meshRuntimeInvalidator(
             gate: DefaultRuntimeLifecycleGate,

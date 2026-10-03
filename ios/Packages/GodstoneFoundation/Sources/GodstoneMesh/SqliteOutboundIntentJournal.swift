@@ -11,11 +11,7 @@ import Foundation
 /// caller that must not proceed on a fault can see that it happened -- which is what `SendDirectAuthority` now checketh before deciding
 /// that an intent was never stored.
 ///
-/// *** AND ONE HONEST LIMITATION, STATED RATHER THAN HIDDEN: `readIntent` ANSWERETH `nil` BOTH FOR A ROW THAT IS ABSENT **AND** FOR A
-/// ROW THAT STANDETH BUT CANNOT BE REBUILT THROUGH `JournalEntry`'s FAILABLE `init?` (A SHORT BINDING DIGEST, A MALFORMED NONCE). SO
-/// THIS TYPE MAPS BOTH TO `.notFound`, AND THE SEAM'S `.corrupt` CASE IS **NOT YET REACHED**. THAT IS A REAL GAP -- THE FIFTH PLACE IN
-/// THIS FINDING WHERE THE ABSENT/CORRUPT DISTINCTION IS LOST -- AND IT IS NAMED HERE, IN THE CODE, FOR THE AUDITOR: the repair is to
-/// have `readIntent` distinguish them (a typed store-level read), which is a change to the READER rather than to this seam. ***
+/// Existing malformed rows are reported as corruption, never permission for fresh authoring.
 public final class SqliteOutboundIntentJournal: OutboundIntentJournal, @unchecked Sendable {
     private let store: SqliteMessageStore
 
@@ -27,8 +23,9 @@ public final class SqliteOutboundIntentJournal: OutboundIntentJournal, @unchecke
         do {
             guard let entry = try store.readIntent(intentId) else { return .notFound }
             return .found(entry)
+        } catch SqliteMessageStore.IntentReadFault.corrupt {
+            return .corrupt(reason: "persisted intent violates durable invariants")
         } catch {
-            // A THROW IS A FAULT AND IS REPORTED AS ONE: `.storageFailure`, never folded into absence.
             return .storageFailure(reason: String(describing: error))
         }
     }

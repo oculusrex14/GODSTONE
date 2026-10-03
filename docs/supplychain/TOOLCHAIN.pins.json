@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "note": "The exact build-tool archives the workflows download. Every entry is verified against these bytes BEFORE the archive is unzipped or handed to a tool. No digest here is invented. The sha1 is the one Google's own repository manifest publisheth; the sha256 was measured on the archive and agreed with that manifest's size. A downloaded blob that is not these bytes is a supply-chain substitution and is refused by name.",
+  "archives": [
+    {
+      "id": "android-commandlinetools-macos",
+      "url": "https://dl.google.com/android/repository/commandlinetools-mac-11076708_latest.zip",
+      "filename": "commandlinetools-mac-11076708_latest.zip",
+      "install_subdir": "11076708",
+      "bytes": 153607488,
+      "sha1": "37fb7dd41005b3b4ca6ea48ac27074b6fc4e3236",
+      "sha256": "7bc5c72ba0275c80a8f19684fb92793b83a6b5c94d4d179fc5988930282d7e64",
+      "extracted": {
+        "root": "cmdline-tools",
+        "files": 104,
+        "tree_sha256": "7fec5c631f1e7e792851bb4f85349cac30d8dcf91305d6b0dde9aad4c0ccf39b",
+        "pkg_revision": "12.0",
+        "pkg_path": "cmdline-tools;12.0",
+        "digest_rule": "sha256 over the sorted 'relpath\\0bytes\\0sha256(blob)\\n' of every regular file under the archive's cmdline-tools/ root (symlinks refused); the tree is digested by CONTENT so a preexisting $ANDROID_HOME/cmdline-tools/latest that is not these bytes is refused rather than trusted"
+      },
+      "provenance": {
+        "authority": "https://dl.google.com/android/repository/repository2-1.xml",
+        "authority_package": "cmdline-tools;12.0",
+        "authority_host_os": "macosx",
+        "sha1_source": "the <checksum> Google's repository2-1.xml declares for commandlinetools-mac-11076708_latest.zip (cmdline-tools;12.0, host os macosx)",
+        "sha256_source": "measured on a fresh download of the URL above; the measured size (153607488) equals the size repository2-1.xml declares for this archive, so the measured bytes are the declared bytes",
+        "consumed_by": "the ios job's 'provision the Android command-line SDK' step, which unzippeth this archive into $ANDROID_HOME/cmdline-tools/latest"
+      }
+    }
+  ]
+}

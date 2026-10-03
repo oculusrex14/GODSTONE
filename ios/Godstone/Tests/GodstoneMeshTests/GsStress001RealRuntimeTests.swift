@@ -59,11 +59,19 @@ final class GsStress001RealRuntimeTests: XCTestCase {
 
     /// *The transport's own quarantine register, through ITS hook. A radio resource held after a drain is a leak the
     /// campaign's integers cannot see.*
+    ///
+    /// *** GS-STRESS-001 (round 727): THIS ADAPTER ONCE REPORTED THE QUARANTINE COUNT UNDER `no_leaked_sessions`. ***
+    /// *MEASURED: `liveSessionSlots()` was the protocol's ONLY hook, so this conformance (the first production-shaped
+    /// one) was forced to return a quarantine-register count under a sessions invariant -- and a failure would have
+    /// sent a maintainer to `SessionManager` for a leak in `BleTransport`. The protocol now carrieth the owner's own
+    /// name, so this adapter is used ONLY for its own register and its reading is asserted directly below, NOT through
+    /// a misnamed invariant.* `liveReservations` answereth NOT_MEASURED (this transport is not the reservation owner).
     private final class QuarantineCensus: ResourceCensusSource {
         private let transport: BleTransport
         init(_ transport: BleTransport) { self.transport = transport }
         var ownerName: String { "BleTransport(quarantine register)" }
         func liveSessionSlots() -> Int { transport.quarantineRecordCountForTest() }
+        func liveReservations() -> Int { NOT_MEASURED }
     }
 
     // MARK: - Ported T22 Recipe: CoreBluetooth Stubbing Block
@@ -118,9 +126,11 @@ final class GsStress001RealRuntimeTests: XCTestCase {
             lk.lock(); stored.append(data); lk.unlock()
         }
         @objc func discoverServices(_ services: [CBUUID]) {}
-        @objc func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
+        @objc(discoverCharacteristics:forService:)
+        func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
         @objc func readRSSI() {}
-        @objc func readCharacter(_ characteristic: CBCharacteristic) {}
+        @objc(readValueForCharacteristic:)
+        func readValue(for characteristic: CBCharacteristic) {}
         @objc(setNotifyValue:forCharacteristic:)
         func setNotifyValue(_ v: Bool, for characteristic: CBCharacteristic) {}
         var writes: [Data] {
@@ -283,7 +293,12 @@ final class GsStress001RealRuntimeTests: XCTestCase {
             peerId: peerId, peripheral: nil,
             sourceEpoch: alice.currentTransportEpoch, from: cm)
         walkLog.append("after connect: " + (alice.connection(for: peerId).map { String(describing: $0.state) } ?? "nil"))
-        let a1 = alice.processPeripheralDiscoverServices(nil, delegate: delegate, error: nil)
+        // *** THE SIMULATED PERIPHERAL MUST EXPOSE THE MESH SERVICE BEFORE THE DISCOVERY IS REPORTED. *** *The
+        // reduction no longer coerces an un-observ'd `services` to success -- that was the defect -- so the peripheral
+        // the walk reports really carrieth the provisioned mesh service.*
+        capturePeer.services = [Self.provisionedService()]
+        let a1 = alice.processPeripheralDiscoverServices(
+            unsafeBitCast(capturePeer, to: CBPeripheral.self), delegate: delegate, error: nil)
         walkLog.append("services -> " + String(describing: a1) + " @ " + (alice.connection(for: peerId).map { String(describing: $0.state) } ?? "nil"))
         let a2 = alice.processPeripheralDiscoverCharacteristics(nil, delegate: delegate,
                                                                 service: Self.provisionedService(), error: nil)

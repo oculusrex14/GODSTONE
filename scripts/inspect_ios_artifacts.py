@@ -72,9 +72,54 @@ EXPECTED_BUNDLE_ID = "io.godstone.app"
 MINIMUM_OS = (16, 0)
 
 # The surfaces a LIGHT release excludes. The Android twin carrieth the same
-# list on its own side of the fence.
+# list on its own side of the fence. Each token is a NAMED surface and is
+# matched against a dylib's LEAF-NAME token set -- never as a bare substring --
+# and against a symbol through the families declared below.
 FORBIDDEN_LINK_TOKENS = ("GodstoneMesh", "XCTest", "GMP", "llama", "GodstoneLLM",
                          "libBLE", "CoreBluetooth")
+
+#: The Swift MODULES a LIGHT release excludes. A Swift symbol's module is not a
+#: substring of its mangled text: it is a LENGTH-PREFIXED component of the
+#: mangling, and it is read as such. That is the whole difference between a real
+#: exclusion and a false one -- `_$ss7CVarArgMp`, the standard-library `CVarArg`
+#: protocol metadata, lowercases to `...cvarargmp`, which CONTAINS the letters
+#: `gmp`; read by its mangled module identity it nameth the stdlib substitution
+#: `s`, and the GNU MP library not at all. A module is excluded when it IS one of
+#: these names or BEGINNETH with one (so `GodstoneMeshTests` and
+#: `GodstoneLLMBridge` are families of the same forbidden surface, and the
+#: unqualified-substring scan's real catches are preserved).
+FORBIDDEN_SWIFT_MODULES = ("GodstoneMesh", "GodstoneLLM", "LabMesh", "XCTest")
+
+#: The C/ObjC linkage PREFIX FAMILIES each excluded surface emits when it is
+#: genuinely LINKED into an image: a C function carrieth its library's prefix
+#: (`_llama_*`, `_ggml_*`, the GNU MP `__gmpz_*`/`_gmp_*`), and an ObjC class
+#: carrieth its runtime prefix after the runtime's own marker
+#: (`_OBJC_CLASS_$_CB*`). Matched at a LEADING boundary only -- the family IS
+#: the prefix, and the letters that follow belong to the member name. This is a
+#: C/ObjC family, never a substring of a Swift mangled leaf.
+FORBIDDEN_C_PREFIXES = (
+    "_GodstoneMesh", "_GodstoneLLM", "_GSLlamaBridge", "_LabMesh",
+    "_XCT", "__gmp", "_gmp", "___gmp", "_llama_", "_ggml_", "_ble_",
+    "_OBJC_CLASS_$_CB", "_OBJC_METACLASS_$_CB", "_OBJC_PROTOCOL_$_CB",
+    "_OBJC_CLASS_$_GMP",
+)
+
+#: The markers a Swift-mangled symbol may begin with: the modern `_$s`/`_$S`,
+#: and the legacy nominal/protocol manglings (`_TtC` class, `_TtV` struct,
+#: `_TtO` enum, `_TtP` protocol). After the marker standeth a length-prefixed
+#: module name; a one-letter substitution (`_$ss...` for the standard library)
+#: carrieth no digits and nameth the substitution, never a module.
+_SWIFT_MANGLING_MARKERS = ("_$s", "_$S", "_TtC", "_TtV", "_TtO", "_TtP")
+_SWIFT_MODULE_LENGTH_RE = re.compile(r"(\d+)")
+_DYLIB_NAME_SPLIT_RE = re.compile(r"[^A-Za-z0-9]+")
+
+#: The EXACT set of embedded binaries an Archive-only LIGHT bundle may carry.
+#: The app links GodstoneCore statically and depends on NO external package
+#: (ios/Godstone/Package.swift carrieth no `.package(...)` pin), so the shipping
+#: bundle embeddeth no third-party framework or dylib. An embedded binary outside
+#: this finite set is refused BY NAME: "every present name was declared allowed"
+#: is not the same law as "the allowed set is finite and known".
+ALLOWED_EMBEDDED_BINARIES: tuple[str, ...] = ()
 FORBIDDEN_RESOURCE_PATTERNS = (
     re.compile(r"\.gguf$", re.I), re.compile(r"\.mlmodelc?$", re.I),
     re.compile(r"\.mlpackage$", re.I), re.compile(r"\.xctest$", re.I),
@@ -109,6 +154,10 @@ LC_RPATH = 0x8000001c
 LC_UUID = 0x1b
 LC_VERSION_MIN_IPHONEOS = 0x25
 LC_BUILD_VERSION = 0x32
+LC_SYMTAB = 0x2
+# nlist n_type masks (the symbol-table classifier)
+N_STAB, N_PEXT, N_TYPE, N_EXT = 0xe0, 0x10, 0x0e, 0x01
+N_UNDF, N_ABS, N_SECT, N_PBUD, N_INDR = 0x0, 0x2, 0xe, 0xc, 0xa
 CPU_ARCH = {0x0100000c: "arm64", 0x01000007: "x86_64", 7: "i386", 12: "arm"}
 PLATFORM_NAMES = {1: "macos", 2: "ios", 3: "tvos", 4: "watchos", 6: "maccatalyst",
                   7: "ios-simulator", 8: "tvos-simulator", 9: "watchos-simulator"}
@@ -205,6 +254,11 @@ def _load_commands(data: bytes, offset: int, endian: str, bits: str
             minos, sdk = struct.unpack_from(endian + "II", body, 8)
             entry.update({"platform": "ios", "minos": _version_string(minos),
                           "sdk": _version_string(sdk)})
+        elif cmd == LC_SYMTAB and len(body) >= 24:
+            symoff, nsyms, stroff, strsize = struct.unpack_from(endian + "IIII",
+                                                                body, 8)
+            entry.update({"symoff": symoff, "nsyms": nsyms, "stroff": stroff,
+                          "strsize": strsize})
         commands.append(entry)
         position += cmdsize
     return commands, filetype
@@ -267,7 +321,70 @@ def _parse_slice(blob: bytes, cputype: int | None) -> dict[str, Any]:
             "platform": (build or {}).get("platform"),
             "minos": (build or {}).get("minos"),
             "sdk": (build or {}).get("sdk"),
-            "load_commands": len(commands)}
+            "load_commands": len(commands),
+            "symbols": parse_symbols(blob, commands, endian, bits)}
+
+
+def parse_symbols(blob: bytes, commands: list[dict[str, Any]], endian: str,
+                  bits: str) -> dict[str, Any]:
+    """Classify the symbol table directly from LC_SYMTAB, without `nm`/`otool`.
+
+    A release bundle is JUDGED by what it links and exports, not only by the
+    filename of its executable: a build that linked a lab/mesh/LLM archive or
+    left debug symbols in the shipping image carrieth that fact in its own
+    symbol table. The categories are the ones `nm` names: undefined (external,
+    imported dylib symbols), exported (defined and global), local (defined and
+    non-external), and debug (a stabbing entry, `N_STAB`). Parsing here means the
+    laws are exercisable on a synthetic binary in a court with no Mac in the
+    loop."""
+    symtab = next((c for c in commands if c["cmd"] == LC_SYMTAB), None)
+    empty = {"count": 0, "undefined": [], "exported": [], "local": [],
+             "debug_count": 0, "truncated": False}
+    if symtab is None:
+        return empty
+    symoff = symtab.get("symoff", 0)
+    nsyms = symtab.get("nsyms", 0)
+    stroff = symtab.get("stroff", 0)
+    strsize = symtab.get("strsize", 0)
+    width = 16 if bits == "64" else 12
+    undefined: list[str] = []
+    exported: list[str] = []
+    local: list[str] = []
+    debug = 0
+    truncated = False
+    if symoff <= 0 or nsyms <= 0 or stroff <= 0 or stroff + strsize > len(blob):
+        return dict(empty, truncated=True)
+    strings = blob[stroff:stroff + strsize]
+    for index in range(nsyms):
+        base = symoff + index * width
+        if base + width > len(blob):
+            truncated = True
+            break
+        if bits == "64":
+            n_strx, n_type = struct.unpack_from(endian + "IB", blob, base)[0], \
+                struct.unpack_from(endian + "B", blob, base + 4)[0]
+        else:
+            n_strx = struct.unpack_from(endian + "I", blob, base)[0]
+            n_type = struct.unpack_from(endian + "B", blob, base + 4)[0]
+        name = ""
+        if 0 < n_strx < len(strings):
+            name = strings[n_strx:].split(b"\0", 1)[0].decode("utf-8", "replace")
+        if n_type & N_STAB:
+            debug += 1
+            continue
+        kind = n_type & N_TYPE
+        if kind in (N_UNDF, N_PBUD):
+            if name:
+                undefined.append(name)
+        elif kind in (N_SECT, N_ABS, N_INDR):
+            if n_type & N_EXT:
+                if name:
+                    exported.append(name)
+            elif name:
+                local.append(name)
+    return {"count": len(undefined) + len(exported) + len(local),
+            "undefined": sorted(set(undefined)), "exported": sorted(set(exported)),
+            "local": sorted(set(local)), "debug_count": debug, "truncated": truncated}
 
 
 # ---------------------------------------------------------------------------
@@ -295,6 +412,153 @@ def aggregate_digest(files: Iterable[Mapping[str, Any]]) -> str:
     for entry in sorted(files, key=lambda item: str(item["path"])):
         digest.update(f"{entry['path']}\0{entry['bytes']}\0{entry['sha256']}\n".encode())
     return digest.hexdigest()
+
+
+#: What an archive-only LIGHT release carrieth, by DOMAIN. Each file in the
+#: census belongeth to exactly one domain, and each domain carrieth its own
+#: count, byte total and aggregate digest -- so a model, an executable or a test
+#: bundle is named by its own row rather than dissolved into one bundle total.
+MODEL_SUFFIXES = (".gguf", ".mlmodel", ".mlmodelc", ".mlpackage", ".tflite",
+                  ".onnx", ".safetensors", ".ckpt", ".pt", ".bin")
+ASSET_SUFFIXES = (".car", ".png", ".jpg", ".jpeg", ".pdf", ".ttf", ".otf", ".json",
+                  ".plist", ".strings", ".stringsdict", ".xcprivacy", ".momd",
+                  ".metallib", ".storyboardc", ".nib", ".bundle", ".lproj")
+EXECUTABLE_SUFFIXES = (".dylib", ".so", ".a")
+
+
+def _domain_of(path: str, executable_name: str) -> str:
+    name = Path(path).name
+    lowered = name.lower()
+    if path == executable_name or name == executable_name:
+        return "executable"
+    if "xctest" in lowered or ".xctest/" in path.lower():
+        return "test"
+    suffix = Path(lowered).suffix
+    if suffix in EXECUTABLE_SUFFIXES or path.startswith("Frameworks/"):
+        return "executable"
+    if suffix in (".db", ".sqlite", ".sqlite3"):
+        return "archive"
+    if suffix in MODEL_SUFFIXES:
+        return "model"
+    if suffix in ASSET_SUFFIXES:
+        return "asset"
+    return "data"
+
+
+def content_inventory(files: Sequence[Mapping[str, Any]],
+                      executable_name: str = "") -> dict[str, Any]:
+    """The bundle's content by domain, each domain digested over its own files."""
+    domains: dict[str, dict[str, Any]] = {}
+    for entry in files:
+        domain = _domain_of(str(entry["path"]), executable_name)
+        slot = domains.setdefault(domain, {"count": 0, "bytes": 0, "files": []})
+        slot["count"] += 1
+        slot["bytes"] += int(entry["bytes"])
+        slot["files"].append(entry)
+    for domain, slot in domains.items():
+        slot["sha256"] = aggregate_digest(slot.pop("files"))
+    return {"domains": dict(sorted(domains.items())),
+            "executable_name": executable_name}
+
+
+def declared_link_closure(bundle: Path) -> list[str]:
+    """The binaries ACTUALLY embedded in the bundle (Frameworks/, *.dylib).
+
+    Compared against the load commands' dylib names, this is the binary half of
+    the graph-isolation law: a linked library that no declared binary provideth
+    is either a system library or an exclusion violation, and the difference is
+    decided by the bytes in the bundle rather than by a name search in the
+    sources."""
+    bundle = Path(bundle)
+    declared: list[str] = []
+    frameworks = bundle / "Frameworks"
+    if frameworks.is_dir():
+        for item in sorted(frameworks.iterdir()):
+            declared.append(item.name)
+    for path in bundle.rglob("*.dylib"):
+        declared.append(path.name)
+    return sorted(set(declared))
+
+
+def _link_is_declared(load_name: str, declared: Sequence[str]) -> bool:
+    """Is a load-command dylib name provided by a binary embedded in the bundle?"""
+    base = Path(load_name).name
+    stem = base.split(".")[0]
+    for entry in declared:
+        if base == entry or stem == entry.split(".")[0]:
+            return True
+    return False
+
+
+def _dylib_link_token(name: str) -> str:
+    """The NAMED surface a linked dylib carrieth, or "" if it nameth none.
+
+    A load command nameth a FILE, so its leaf is read as an identifier and split
+    into tokens: `/usr/lib/libGodstoneMesh.dylib` yieldeth `libGodstoneMesh` and,
+    lib-stripped, `GodstoneMesh`; `/usr/lib/libgmp.10.dylib` yieldeth `libgmp` and
+    `gmp`. A token belongeth to a surface's FAMILY when it IS the surface or
+    BEGINNETH with it -- a dylib name is an identifier, never a mangled symbol
+    leaf, so the interior-substring trap of the symbol scan cannot arise here and
+    a longer library of the same family (`GodstoneMeshCore`, `libgmp.10`) stayeth
+    caught. The comparison is case-folded because filenames are not mangled:
+    `libgmp.dylib` (the real GNU MP filename) must be caught by the token `GMP`."""
+    leaf = Path(name).name
+    for suffix in (".dylib", ".framework", ".so", ".tbd"):
+        if leaf.lower().endswith(suffix):
+            leaf = leaf[: -len(suffix)]
+    tokens = {token.lower() for token in _DYLIB_NAME_SPLIT_RE.split(leaf) if token}
+    tokens |= {token[3:] for token in tokens
+               if token.startswith("lib") and len(token) > 3}
+    for surface in FORBIDDEN_LINK_TOKENS:
+        folded = surface.lower()
+        if any(token == folded or token.startswith(folded) for token in tokens):
+            return surface
+    return ""
+
+
+def _swift_mangled_module(name: str) -> str | None:
+    """The MODULE a Swift-mangled symbol belongeth to, or None if it is not one.
+
+    Swift mangling nameth a module as a LENGTH-PREFIXED component: `_$s12GodstoneCore...`
+    carrieth `12GodstoneCore`. The length is the ONLY authority for where the name
+    endeth, so the module is read as `name[3:3+12]` -- never by searching the mangled
+    text for letters. A one-character substitution (`_$ss...`, the standard library)
+    carrieth no digits and therefore nameth NO module: that is what keepeth
+    `_$ss7CVarArgMp`, the stdlib `CVarArg` protocol metadata, from being misread as
+    the GNU MP library by the four letters `cvarar(GMP)`."""
+    marker = next((m for m in _SWIFT_MANGLING_MARKERS if name.startswith(m)), None)
+    if marker is None:
+        return None
+    remainder = name[len(marker):]
+    match = _SWIFT_MODULE_LENGTH_RE.match(remainder)
+    if not match:
+        return None                       # a substitution (`ss`, `sSa`, ...), not a module
+    length = int(match.group(1))
+    return remainder[match.end(): match.end() + length] or None
+
+
+def _prohibited_symbol(name: str) -> str | None:
+    """The excluded module/family a symbol carrieth, judged by its OWN identity.
+
+    Two kinds of name, two kinds of reading:
+      * a SWIFT-MANGLED name is read by its length-prefixed MODULE, so a mangled
+        leaf can never fire on a substring of its text;
+      * a C/ObjC name is matched at a LEADING boundary against the linkage
+        prefix families, so `_llama_*` is caught and a member whose letters merely
+        contain `gmp` is not.
+    A name that is neither (a plain Swift `$s...` symbol, a local label, a
+    compiler-generated `_$s...` operator) carrieth no module identity and no
+    C/ObjC family prefix, and is therefore not a prohibited import."""
+    module = _swift_mangled_module(name)
+    if module is not None:
+        for forbidden in FORBIDDEN_SWIFT_MODULES:
+            if module == forbidden or module.startswith(forbidden):
+                return forbidden
+        return None
+    for prefix in FORBIDDEN_C_PREFIXES:
+        if name.startswith(prefix):
+            return prefix
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -363,10 +627,43 @@ def inspect(bundle: Path, *, expected_archive: Path | None = None,
                 "uuid": slices[0]["uuid"] if slices else None}
 
     for name in dylibs:
-        for token in FORBIDDEN_LINK_TOKENS:
-            if token.lower() in name.lower():
-                failures.append(f"the release binary linketh {name!r}, which "
-                                f"carrieth the excluded token {token!r}")
+        surface = _dylib_link_token(name)
+        if surface:
+            failures.append(f"the release binary linketh {name!r}, which "
+                            f"carrieth the excluded token {surface!r}")
+
+    # ---- the symbol table, and the binary graph isolation ----------------
+    # A release is judged by WHAT IT LINKETH AND EXPORTETH, read from the
+    # Mach-O's own LC_SYMTAB, not by a filename and not by a grep of the
+    # sources. The declared closure is the set of binaries actually embedded in
+    # the bundle; a linked library that no declared binary provideth is either a
+    # system library or an exclusion violation, and is reported by name.
+    declared = declared_link_closure(bundle)
+    symbols = {"undefined": [], "exported": [], "local": [], "debug_count": 0,
+               "count": 0, "truncated": False}
+    for entry in slices:
+        slice_symbols = entry.get("symbols") or {}
+        for key in ("undefined", "exported", "local"):
+            symbols[key] = sorted(set(symbols[key]) | set(slice_symbols.get(key) or []))
+        symbols["debug_count"] += int(slice_symbols.get("debug_count", 0))
+        symbols["count"] += int(slice_symbols.get("count", 0))
+        symbols["truncated"] = symbols["truncated"] or bool(
+            slice_symbols.get("truncated"))
+    for name in symbols["undefined"]:
+        surface = _prohibited_symbol(name)
+        if surface:
+            failures.append(f"the release binary importeth the symbol {name!r} "
+                            f"from {surface!r}: a lab surface linked into LIGHT")
+    for name in symbols["exported"]:
+        surface = _prohibited_symbol(name)
+        if surface:
+            failures.append(f"the release binary EXPORTETH {name!r}, which "
+                            f"nameth an excluded surface {surface!r}")
+    if symbols["debug_count"]:
+        failures.append(f"the release binary carrieth {symbols['debug_count']} debug "
+                        f"(stabbing) symbol(s): a shipping LIGHT image is stripped")
+    undeclared = [name for name in dylibs if not _link_is_declared(name, declared)]
+    graph = {"declared_binaries": declared, "undeclared_links": undeclared}
     if "arm64" not in architectures:
         failures.append(f"the release binary is not arm64: {architectures}")
     # GS-PACKAGE-001: a slice built for ANOTHER PLATFORM (the audit packed an arm64 MACOS
@@ -527,6 +824,9 @@ def inspect(bundle: Path, *, expected_archive: Path | None = None,
         "bundle": str(bundle),
         "classification": classification,
         "hashes": {"aggregate_sha256": aggregate_digest(files), "files": files},
+        "content_inventory": content_inventory(files, metadata["CFBundleExecutable"]),
+        "symbols": symbols,
+        "graph": graph,
         "resources": resources,
         "linkMap": link_map,
         "architectures": {"architectures": architectures, "platform": platform,
@@ -702,20 +1002,132 @@ def _selftest() -> int:
         if not any("excludes" in item for item in poisoned["failures"]):
             failures.append(f"the exclusion failure was not named: "
                             f"{poisoned['failures']}")
+        (bundle / "archive_medium.db").unlink()
+        # The content inventory name every domain by its own digested row.
+        domains = report["content_inventory"]["domains"]
+        if "executable" not in domains or "asset" not in domains:
+            failures.append(f"the content inventory carrieth no executable/asset "
+                            f"domain: {sorted(domains)}")
+        # The symbol table is read: a debug-laden image is refused, and the
+        # imported GodstoneMesh symbol is refused by name.
+        stripped = root / "Stripped.app"
+        stripped.mkdir()
+        _write_synthetic_bundle(stripped)
+        if inspect(stripped)["symbols"]["debug_count"] != 0:
+            failures.append("a clean synthetic bundle reported a debug symbol")
+        debug = root / "Debug.app"
+        debug.mkdir()
+        _write_synthetic_bundle(debug, debug_symbols=3)
+        debug_report = inspect(debug)
+        if debug_report["verdict"] != "FAIL" or not any(
+                "debug (stabbing) symbol" in item for item in debug_report["failures"]):
+            failures.append(f"a debug-laden image was not refused: "
+                            f"{debug_report['failures']}")
+        mesh = root / "Mesh.app"
+        mesh.mkdir()
+        _write_synthetic_bundle(mesh, undefined_symbols=("_GodstoneMesh_start",))
+        mesh_report = inspect(mesh)
+        if mesh_report["verdict"] != "FAIL" or not any(
+                "GodstoneMesh" in item for item in mesh_report["failures"]):
+            failures.append(f"an imported mesh symbol was not refused: "
+                            f"{mesh_report['failures']}")
+        # *** THE REAL-MANGLED-SYMBOL CONTROL: THE FALSE GMP CATCH THAT SHIPPED. ***
+        #
+        # *MEASURED: the ACTUAL LIGHT image imported the Swift standard-library
+        # `_$ss7CVarArgMp`, whose lowercase text (`...cvarargmp`) CONTAINS `gmp`, and the
+        # unqualified-substring scan refused an innocent binary -- a synthetic fixture had
+        # never emitted a real mangled name, so the selftest stayed green while the real
+        # artifact failed. This control useth the REAL names: the stdlib protocol metadata
+        # must be accepted, and the same shape with a FORBIDDEN module (`_$s12GodstoneMesh...`)
+        # must be refused BY MODULE, plus the C prefix families on each side.*
+        legitimate = ("_$ss7CVarArgMp", "_$s7SwiftUI3AppMp", "_$s12GodstoneCore14ArchiveReadingMp")
+        swift_only = root / "SwiftMetadata.app"
+        swift_only.mkdir()
+        _write_synthetic_bundle(swift_only, undefined_symbols=legitimate)
+        swift_report = inspect(swift_only)
+        if swift_report["verdict"] != "PASS":
+            failures.append(f"legitimate Swift protocol metadata was refused (the "
+                            f"GMP-substring false positive): {swift_report['failures']}")
+        # a Swift-mangled name whose MODULE is the excluded one, at the same shape
+        hostile = ("_$s12GodstoneMesh16MeshNode_startyyF", "_$ss7CVarArgMp")
+        hostile_bundle = root / "SwiftHostile.app"
+        hostile_bundle.mkdir()
+        _write_synthetic_bundle(hostile_bundle, undefined_symbols=hostile)
+        hostile_report = inspect(hostile_bundle)
+        if hostile_report["verdict"] != "FAIL" or not any(
+                "GodstoneMesh" in item for item in hostile_report["failures"]):
+            failures.append(f"a Swift symbol from the EXCLUDED module was not refused: "
+                            f"{hostile_report['failures']}")
+        # the C/ObjC prefix families: genuine library prefixes refused, near-Names not
+        for good, bad, label in (
+                ("_$ss7CVarArgMp", "_gmpz_init", "GNU MP C family"),
+                ("_swift_allocObject", "_llama_model_load", "llama.cpp C family"),
+                ("_GodstoneCore_main", "_GodstoneMesh_start", "GodstoneMesh C family"),
+                ("_CBUUIDClass", "_OBJC_CLASS_$_CBCentralManager", "CoreBluetooth ObjC family")):
+            clean = root / f"CLean-{label.split()[0]}.app"
+            clean.mkdir()
+            _write_synthetic_bundle(clean, undefined_symbols=(good,))
+            if inspect(clean)["verdict"] != "PASS":
+                failures.append(f"{label}: the legitimate symbol {good!r} was refused")
+            dirty = root / f"CDirty-{label.split()[0]}.app"
+            dirty.mkdir()
+            _write_synthetic_bundle(dirty, undefined_symbols=(bad,))
+            if inspect(dirty)["verdict"] != "FAIL":
+                failures.append(f"{label}: the family symbol {bad!r} was not refused")
+        shutil.rmtree(swift_only)
+        shutil.rmtree(hostile_bundle)
+        # The content road: a LIGHT fixture carried as the bundle's Archive must
+        # BYTE-MATCH an --expected-archive (a positive usable-content witness),
+        # and a DIFFERENT archive must be refused by name. This is the
+        # discriminator that a disconnected or always-zero observer cannot pass.
+        import sqlite3
+        carrier = root / "Carrier.app"
+        carrier.mkdir()
+        _write_synthetic_bundle(carrier)
+        fixture = root / "fixture_light.db"
+        connection = sqlite3.connect(fixture)
+        connection.execute("CREATE TABLE archive_meta(key TEXT, value TEXT)")
+        connection.execute("INSERT INTO archive_meta VALUES('tier','LIGHT')")
+        connection.commit()
+        connection.close()
+        (carrier / ARCHIVE_NAME).write_bytes(fixture.read_bytes())
+        positive = inspect(carrier, expected_archive=fixture)
+        if (positive["verdict"] != "PASS"
+                or positive["archive"]["status"] != "byte-matched"
+                or positive["archive"].get("tier") != "LIGHT"):
+            failures.append(f"a byte-matched LIGHT fixture was not accepted: "
+                            f"{positive['verdict']} {positive['archive']}")
+        other = root / "other.db"
+        other.write_bytes(b"not the expected archive")
+        negative = inspect(carrier, expected_archive=other)
+        if (negative["verdict"] != "FAIL"
+                or negative["archive"]["status"] != "byte-mismatch"):
+            failures.append(f"a mismatched Archive was not refused: "
+                            f"{negative['verdict']} {negative['archive']}")
         shutil.rmtree(bundle)
+        shutil.rmtree(stripped)
+        shutil.rmtree(debug)
+        shutil.rmtree(mesh)
+        shutil.rmtree(carrier)
     for line in failures:
         print(f"::error::{line}")
     if failures:
         print(f"selftest FAILED ({len(failures)})")
         return 1
-    print("selftest OK: the reader classified a clean bundle and refused an excluded "
-          "archive")
+    print("selftest OK: the reader classified a clean bundle, refused an excluded "
+          "archive, inventoried the content by domain, refused a debug-laden and a "
+          "mesh-importing binary, accepted real Swift protocol metadata while refusing "
+          "a Swift symbol from an excluded module and each C/ObjC family prefix, and "
+          "byte-matched a LIGHT fixture while refusing a mismatch")
     return 0
 
 
 def _write_synthetic_bundle(bundle: Path, *, executable: str = "Fixture",
                             minos: str = "16.0", library: str | None = None,
-                            tracking: Any = False, arch: int = 0x0100000c) -> Path:
+                            tracking: Any = False, arch: int = 0x0100000c,
+                            undefined_symbols: tuple[str, ...] = (),
+                            exported_symbols: tuple[str, ...] = (),
+                            debug_symbols: int = 0) -> Path:
     """A synthetic but structurally real bundle: a Mach-O with load commands."""
     commands = b""
     if library is not None:
@@ -730,9 +1142,39 @@ def _write_synthetic_bundle(bundle: Path, *, executable: str = "Fixture",
     commands += struct.pack("<II", LC_UUID, 24) + uuid_payload
     commands += struct.pack("<IIIIII", LC_BUILD_VERSION, 24, 2,
                             (16 << 16) | (0 << 8), (17 << 16), 0)
+    # A REAL symbol table, so the symbol laws are exercisable on a synthetic
+    # binary: LC_SYMTAB names the offset of the nlist array and the string table,
+    # and the n_type of each entry (undefined, defined-global, defined-local,
+    # stab) is what the inspector classifies.
+    sym_strings = b"\0"
+    nlist: list[tuple[int, int]] = []
+    for symbol in (undefined_symbols or ()):
+        offset = len(sym_strings)
+        sym_strings += symbol.encode() + b"\0"
+        nlist.append((offset, 0x01 | N_UNDF))            # N_EXT | N_UNDF (imported)
+    for symbol in (exported_symbols or ()):
+        offset = len(sym_strings)
+        sym_strings += symbol.encode() + b"\0"
+        nlist.append((offset, 0x01 | N_SECT))            # N_EXT | N_SECT
+    for _ in range(debug_symbols or 0):
+        offset = len(sym_strings)
+        sym_strings += f"_debug_{offset}\0".encode()
+        nlist.append((offset, 0x20))                     # N_STAB
     ncmds = 2 + (1 if library is not None else 0)
+    if nlist:
+        symtab_size = 24
+        symoff = 32 + len(commands) + symtab_size       # header(32) + cmds after symtab
+        stroff = symoff + 16 * len(nlist)
+        commands += struct.pack("<IIIIII", LC_SYMTAB, symtab_size, symoff, len(nlist),
+                                stroff, len(sym_strings))
+        ncmds += 1
     header = struct.pack("<IIIIIIII", 0xfeedfacf, arch, 0, 2, ncmds, len(commands), 0, 0)
-    (bundle / executable).write_bytes(header + commands)
+    blob = header + commands
+    if nlist:
+        blob += b"".join(struct.pack("<IBBHQ", n_strx, n_type, 0, 0, 0)
+                         for n_strx, n_type in nlist)
+        blob += sym_strings
+    (bundle / executable).write_bytes(blob)
     info = {"CFBundleIdentifier": EXPECTED_BUNDLE_ID, "CFBundleExecutable": executable,
             "CFBundleShortVersionString": "1.0.0", "CFBundleVersion": "1",
             "MinimumOSVersion": minos, "DTPlatformName": "iphoneos",

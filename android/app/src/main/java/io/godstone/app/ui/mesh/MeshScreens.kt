@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.godstone.app.mesh.MeshCommand
@@ -48,6 +50,15 @@ const val COMPOSE_TAG = "mesh-compose"
 const val RECIPIENT_CHOICE_TAG = "mesh-recipient"
 /// GS-UX-001 step 6 (round 542): the platform-availability notice's own address.
 const val PROTECTED_DATA_TAG = "mesh-protected-data"
+// *** GS-UX-001 STEP 8 (TrustUiCasBuilder): THE COMPOSE FIELD AND THE SEND BUTTON GET ADDRESSES OF THEIR OWN. ***
+// MEASURED BEFORE THIS EDIT: `ComposeField` printed `Text(state.draft)` -- a READOUT -- and offered NO editable
+// field and NO send control, so the ViewModel's `Draft`/`SendDirect` commands were dispatched by NO control and a
+// durable send could not be driven from this surface at all. **A READOUT OF A DRAFT IS NOT A COMPOSE FIELD, AND A
+// PRINTED BYTE COUNT IS NOT A SEND CONTROL.**
+const val COMPOSE_BODY_TAG = "mesh-compose-body"
+const val SEND_CONTROL_TAG = "mesh-send"
+/// Each conversation row's own address, so a court can name WHICH row it read.
+const val CONVERSATION_ROW_TAG = "mesh-message"
 
 @Composable
 fun MeshScreen(viewModel: MeshViewModel, modifier: Modifier = Modifier) {
@@ -138,8 +149,22 @@ private fun ComposeField(state: MeshUiState, onCommand: (MeshCommand) -> Unit) {
                 )
             }
         }
-        Text(state.draft)
+        // *** STEP 8: THE DRAFT IS EDITED, NOT PRINTED, AND THE SEND IS DISPATCHED, NOT MERELY EXPLAINED. ***
+        // Each keystroke dispatcheth the real `MeshCommand.Draft` (the ViewModel owneth the budget and the draft), and
+        // the button dispatcheth the real `MeshCommand.SendDirect` -- whose enablement is the state's own `canSend`,
+        // so a control cannot promise a send the ViewModel would refuse.
+        OutlinedTextField(
+            value = state.draft,
+            onValueChange = { onCommand(MeshCommand.Draft(it)) },
+            label = { Text("Message") },
+            modifier = Modifier.fillMaxWidth().testTag(COMPOSE_BODY_TAG),
+        )
         Text("${state.bytesRemaining} bytes left")
+        Button(
+            onClick = { onCommand(MeshCommand.SendDirect) },
+            enabled = state.canSend,
+            modifier = Modifier.testTag(SEND_CONTROL_TAG),
+        ) { Text("Send") }
         if (!state.canSend) Text("Nothing to send yet.")
     }
 }
@@ -164,7 +189,8 @@ private fun SosControl(sos: SosProjection?, armed: Boolean) {
 private fun Conversation(messages: List<MessageProjection>) {
     Column(Modifier.fillMaxWidth().testTag(MESH_LIST_TAG)) {
         for (message in messages) {
-            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                .testTag(CONVERSATION_ROW_TAG + "." + message.msgId.joinToString("") { "%02x".format(it) })) {
                 Column(Modifier.padding(12.dp)) {
                     Text(message.peerLabel, style = MaterialTheme.typography.titleSmall)
                     Text(message.body)

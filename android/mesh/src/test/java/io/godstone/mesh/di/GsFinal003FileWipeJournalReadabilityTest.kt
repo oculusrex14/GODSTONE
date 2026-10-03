@@ -5,11 +5,13 @@ import io.godstone.mesh.identity.FileWipeJournal
 import io.godstone.mesh.identity.PanicWipe
 import io.godstone.mesh.identity.WipeDeferredSeams
 import io.godstone.mesh.identity.WipeJournalDurabilityAdapter
+import io.godstone.mesh.identity.WipeReadabilityReporting
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -141,6 +143,136 @@ class GsFinal003FileWipeJournalReadabilityTest {
         )
         assertFalse("so private construction must not be permitted", barrier.permitsStartup)
         assertTrue("and an operator must be told", barrier.decision.requiresOperator)
+        clear()
+    }
+
+    // =================================================================================================================
+    // (A2/A8) THE DURABLE GENERATION -- THE HALF THE LADDER ALONE CANNOT PROVE.
+    // =================================================================================================================
+
+    /**
+     * *** THE KILLING ARM FOR THE ABA: `IDLE -> wipe -> IDLE` MUST YIELD A DIFFERENT REVISION. ***
+     *
+     * *THE TICKET: **"currentdurablegeneration … freshreopen/epoch"** and **"noABA snapshots/wrongestate/stale/reuse"**.*
+     * **THE LADDER ALONE FAILETH HERE, AND IT IS MEASURED, NOT ARGUED:** *a completed wipe returneth the record to the
+     * rung it started at, so a revision built only from the ladder is BYTE-IDENTICAL before and after the wipe, and a
+     * permit minted over the earlier estate would be accepted over the later one.* **A mutation that dropped the epoch
+     * from `liveRevision()` would leave these two strings equal and REDDEN this arm.**
+     */
+    @Test
+    fun aCompletedWipeIsADifferentRevisionNotTheSameRungAgain() {
+        clear()
+        val journal = FileWipeJournal(ctx)
+        val coordinator = CrashResumableWipe(
+            store = WipeJournalDurabilityAdapter(journal),
+            vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
+            filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
+            runtime = WipeDeferredSeams.DeferredTransportRuntimeSeam(),
+            authority = WipeDeferredSeams.DeferredIdentityAuthoritySeam(),
+        )
+        val before = coordinator.liveRevision()
+        // The record is driven across the WHOLE ladder, each rung durably recorded exactly as the coordinator would.
+        for (rung in listOf(
+            PanicWipe.WipeState.REQUESTED,
+            PanicWipe.WipeState.RUNTIME_DRAINED,
+            PanicWipe.WipeState.KEY_ERASED,
+            PanicWipe.WipeState.ARTIFACTS_DELETED,
+            PanicWipe.WipeState.NEW_IDENTITY,
+            PanicWipe.WipeState.IDLE,
+        )) {
+            assertTrue("the rig must land each checkpoint durably", journal.writeDurably(rung))
+        }
+        val after = coordinator.liveRevision()
+        assertNotEquals(
+            "*** A COMPLETED WIPE MUST NOT REPRODUCE THE REVISION IT STARTED FROM. *The ladder returneth to the same rung; " +
+                "only the durable generation can tell the two estates apart, and this is the ABA the obligation names.* ***",
+            before, after,
+        )
+        assertTrue(
+            "*** AND THE GENERATION ITSELF MUST BE READABLE OFF THE RECORD. Observed: $after ***",
+            journal.epoch > 0L,
+        )
+    }
+
+    /**
+     * *** A FRESH REOPEN READS THE GENERATION IT ACTUALLY STANDS AT -- NEVER A SNAPSHOT. ***
+     *
+     * *A NEW `FileWipeJournal` over the SAME preferences (the reopen a process death produceth) must see the SAME
+     * generation the write landed, and an independent write must move it for BOTH readers.* **A cached epoch -- the T65
+     * `StateRecorder` defect class -- would leave the second reader stale and REDDEN this arm.**
+     */
+    @Test
+    fun aFreshReopenReadsTheGenerationItStandsAt() {
+        clear()
+        val first = FileWipeJournal(ctx)
+        first.writeDurably(PanicWipe.WipeState.REQUESTED)
+        val landed = first.epoch
+        assertTrue("the rig must land a generation", landed > 0L)
+
+        // THE REOPEN: a second journal over the same durable file, exactly as a new process would build.
+        val reopened = FileWipeJournal(ctx)
+        assertEquals("a reopen must see the generation the record actually carrieth", landed, reopened.epoch)
+
+        // AND A WRITE THROUGH THE REOPENED HANDLE MOVES IT FOR BOTH READERS.
+        assertTrue(reopened.writeDurably(PanicWipe.WipeState.RUNTIME_DRAINED))
+        assertEquals(
+            "*** THE GENERATION IS READ FRESH, SO THE FIRST HANDLE MUST SEE THE SECOND'S WRITE. A cached value would " +
+                "leave it stale, and a stale generation is a permit that outliveth the estate it judged. ***",
+            reopened.epoch, first.epoch,
+        )
+        assertTrue("and it strictly advanced", first.epoch > landed)
+        clear()
+    }
+
+    /**
+     * *** AND A STORE THAT CANNOT NAME A GENERATION CONTRIBUTES ZERO -- WHICH MATCHETH NO MINTED REVISION. ***
+     *
+     * *The fail-closed direction, on the REAL wire: `EstateRevision.of` over a store that is not a `WipeEpochReporting`
+     * must yield epoch `0`, and a revision with epoch `0` must never equal one read from a real record.* **A fabricated
+     * default (or a silently-skipped epoch) would make the two indistinguishable and REDDEN this arm.**
+     */
+    @Test
+    fun aStoreThatCannotNameAGenerationFailsClosedToZero() {
+        clear()
+        // A journal that answers readability and a rung but NOT a generation -- the courts' own in-memory shape.
+        val rungOnly = object : io.godstone.mesh.identity.WipeJournal, WipeReadabilityReporting {
+            override fun read(): PanicWipe.WipeState = PanicWipe.WipeState.IDLE
+            override fun write(state: PanicWipe.WipeState) {}
+            override fun clear() {}
+            override val isReadable: Boolean get() = true
+        }
+        val coordinator = CrashResumableWipe(
+            store = WipeJournalDurabilityAdapter(rungOnly),
+            vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
+            filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
+            runtime = WipeDeferredSeams.DeferredTransportRuntimeSeam(),
+            authority = WipeDeferredSeams.DeferredIdentityAuthoritySeam(),
+        )
+        assertTrue(
+            "*** A STORE THAT CANNOT SAY MUST CONTRIBUTE ZERO. Observed: ${coordinator.liveRevision()} ***",
+            coordinator.liveRevision().endsWith("|0"),
+        )
+        assertEquals(
+            "and the typed revision must carry that zero rather than invent one",
+            0L, EstateRevision.of(coordinator).epoch,
+        )
+
+        // AND THE CONTRAST: the REAL journal, at its own generation, must NOT read as zero.
+        val real = FileWipeJournal(ctx)
+        real.writeDurably(PanicWipe.WipeState.REQUESTED)
+        val realCoordinator = CrashResumableWipe(
+            store = WipeJournalDurabilityAdapter(real),
+            vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
+            filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
+            runtime = WipeDeferredSeams.DeferredTransportRuntimeSeam(),
+            authority = WipeDeferredSeams.DeferredIdentityAuthoritySeam(),
+        )
+        assertNotEquals(
+            "*** THE REAL RECORD'S REVISION MUST DIFFER FROM THE GENERATION-LESS ONE, or the fail-closed zero proves " +
+                "nothing. ***",
+            "|true|0", realCoordinator.liveRevision(),
+        )
+        assertTrue(realCoordinator.liveRevision().endsWith("|1"))
         clear()
     }
 }

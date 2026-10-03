@@ -63,6 +63,7 @@ import hashlib
 import json
 import os
 import platform as platform_module
+import re
 import select
 import shutil
 import signal
@@ -75,6 +76,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import build_provenance
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -120,25 +123,76 @@ CONTROLS = ("honest", "altered", "mismatched", "replay")
 # a boundary that never fired.***
 CRASH_BOUNDARIES = ("outboundEnqueue", "inboundCommit")
 
+#: The crash roles the committed Android worker dispatch eth to `CrashRoles` by the RAW role name, and whose own
+#: `Marker` (below) is the only party that speaketh them. **The coordinator's requested role and the worker's
+#: reported role are therefore the SAME string, and `require_reported_identity` compareth them directly rather than
+#: through a translation that could hide a substitution.**
+
+# *** THE ANDROID PREPARE JVM'S OWN HALT STATUS, WHICH IS *NOT* THE GRADLE WRAPPER'S EXIT CODE. ***
+#
+# *`Runtime.getRuntime().halt(137)` terminateth the forked test-executor JVM with status 137. **Gradle DOES NOT
+# PROPAGATE THAT CODE**: the build fail-eth with wrapper `rc=1` ("Process 'Gradle Test Executor N' finished with
+# non-zero exit value 137") -- MEASURED on this host. **So demanding `wrapper_rc == 137` would make every honest
+# crash arm fail; what must be proven is that the ACTUAL EXECUTOR CHILD died abruptly with 137, bound to its actual
+# PID, and that the coordinator never supplied the death.***
+GRADLE_EXECUTOR_ABRUPT_STATUS = 137
+GRADLE_EXECUTOR_PID_MARKER = "GS_INTEGRATION_EXECUTOR_PID="
+GRADLE_EXECUTOR_HALT_LINE = "GS_INTEGRATION_ABOUT_TO_HALT"
+#: *** THE MARKER IS A DECLARATION WITH A SHAPE, NOT A WORD ON A LINE. *** *The committed worker prints
+#: `GS_INTEGRATION_ABOUT_TO_HALT boundary=<stage> code=<haltStatus>` from the real JDK `ProcessHandle` pid
+#: immediately BEFORE `Runtime.halt`; a line that merely CONTAINETH the word is a print, not the declaration, and
+#: the parser refuseth it.*
+EXECUTOR_HALT_MARKER_RE = re.compile(
+    r"GS_INTEGRATION_ABOUT_TO_HALT boundary=(\S+) code=(\d+)")
+#: Gradle's own reporting of the abrupt child, as `-i` printeth it. *Named so the log proof is a FACT about the
+#: executor, not a guess about the wrapper.*
+GRADLE_EXECUTOR_ABRUPT_RE = re.compile(
+    r"Gradle Test Executor \d+.*?finished with non-zero exit value (\d+)")
+
+EXECUTOR_STATUS_RE = re.compile(r"GS_INTEGRATION_HALT_STATUS=(\d+)")
+#: The pid `Process.myPid()` returneth under a Robolectric shadow -- NOT a real OS pid. *A marker bound to it
+#: describeth a simulated context, so the coordinator treateth it as the absence of a pid.*
+ROBOLECTRIC_SHADOW_PID = 10000
+INTENTIONAL_HALT_RE = re.compile(r"GS_INTEGRATION_INTENTIONAL_HALT status=(\d+)")
+
+#: *** THE ONLY ACCEPTED NON-ZERO WITNESS EXIT, AND IT IS EVIDENCE-BOUNDED. *** *A worker may end a cross-platform
+#: run with exit 0 after its verdict, or with its OWN typed intentional halt -- which must LEAVE A TRACE in the
+#: worker's retained log: the marker line naming the very status the process then returneth. The finder returneth
+#: the full marker line (so the report carrieth the text), or None when no such line binds the observed death.*
+def _find_intentional_halt(log_path: Path, status: int) -> Optional[str]:
+    if status == 0:
+        return None
+    try:
+        text = Path(log_path).read_text(errors="replace")
+    except OSError:
+        return None
+    for match in INTENTIONAL_HALT_RE.finditer(text):
+        if int(match.group(1)) != status:
+            continue
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        line_end = text.find("\n", match.end())
+        return text[line_start:len(text) if line_end == -1 else line_end].strip()
+    return None
+
 SWIFT_WORKER_SELECTOR = "GodstoneMeshTests.GsIntegration001CrossPlatformWorkerTests/testGSINT001CrossPlatformWorker"
 SWIFT_CRASH_SELECTOR = "GodstoneMeshTests.GsIntegration001ProcessTests/testGSINT001ProcessCrashCampaign"
 SWIFT_BUNDLE_NAME = "GodstoneMeshTests.xctest"
 ANDROID_WORKER_TASK = ":mesh:board1IntegrationWorker"
 ANDROID_WORKER_CLASS = "io.godstone.mesh.rig.RealTransportHostRigWorkerTest"
 
-# *** THE CRASH ROLES MAY LIVE IN A DIFFERENT TASK/CLASS, NAMED BY THE ENVIRONMENT. ***
+# *** THE CRASH ROLES RUN THROUGH THE SAME COMMITTED WORKER TASK AND CLASS AS EVERY OTHER ROLE. ***
 #
-# *THE PLAN PUT THE ANDROID DURABLE-BOUNDARY MIRROR IN THE SAME SLICE AS THIS COORDINATOR, BUT IT BELONGETH TO A
-# SEPARATE WORKER (`AndroidCrashMirror`'s `Board1DurableBoundaryWorkerTest` + `board1DurableBoundaryWorker`), WHICH
-# DRIVETH THE BOUNDARY WITH A PARENT-OWNED KILL RATHER THAN A SELF-HALT.* **So the task and class for the CRASH roles
-# alone are overridable -- the cross-platform roles keep the committed defaults -- and the coordinator reacheth either
-# worker with no edit:**
-#
-#   GS_ANDROID_CRASH_TASK=:mesh:board1DurableBoundaryWorker \
-#   GS_ANDROID_CRASH_CLASS=io.godstone.mesh.rig.Board1DurableBoundaryWorkerTest \
-#     python3 tools/readiness/run_board1_integration.py --mode crash --evidence-dir PATH
-ANDROID_CRASH_TASK = os.environ.get("GS_ANDROID_CRASH_TASK", ANDROID_WORKER_TASK)
-ANDROID_CRASH_CLASS = os.environ.get("GS_ANDROID_CRASH_CLASS", ANDROID_WORKER_CLASS)
+# *THE DEFECT THIS CLOSES: the crash roles were NAMED BY ENVIRONMENT (`GS_ANDROID_CRASH_TASK` /
+# `GS_ANDROID_CRASH_CLASS`), so an ARBITRARY worker could be substituted for the one the plan names WITHOUT anything
+# in the evidence recording it -- and the manifest's `worker_launches` would carry whichever task the environment
+# chose, unverified against the committed one.* **`RealTransportHostRigWorkerTest` (the committed
+# `:mesh:board1IntegrationWorker`) ALREADY carrieth the `crash-prepare` / `crash-recover` roles** (`WorkerFraming
+# .validateLaunch` accepteth them and `CrashRoles` driveth the boundary), *so the separate-worker override was never
+# needed for the coordinator's crash arm.* **THE TASK AND CLASS ARE NOW FIXED CONSTANTS, and the environment can no
+# longer re-point them.** *The standalone `:mesh:board1DurableBoundaryWorker` Gradle task and its worker test remain
+# for direct invocation, but the coordinator no longer reach eth them by an unvalidated name.*
+ANDROID_CRASH_TASK = ANDROID_WORKER_TASK
+ANDROID_CRASH_CLASS = ANDROID_WORKER_CLASS
 
 # The seeds the two workers mint their identities from. **The coordinator re-mints until the production role
 # election seats the SENDER as the initiator** -- see `seat_pair` -- because only the initiator is reachable in the
@@ -149,6 +203,54 @@ ANDROID_SEED = 0xD1
 
 class Refused(RuntimeError):
     """A named refusal. **NEVER a bare exception: every refusal carrieth the reason a reader needeth.**"""
+
+
+@dataclass
+class Termination:
+    """*** THE OBSERVED END OF ONE WORKER PROCESS, BOUND BEFORE ANY CLEANUP CAN SUPPLY ONE. ***
+
+    *THE DEFECT THIS CLOSES, AND IT IS THE COORDINATOR'S OWN: a worker's end was read from `subprocess.Popen.poll()`
+    -- or not read at all -- and NOTHING carried the actual PID, the actual exit status, WHY it ended, or whether the
+    COORDINATOR's own SIGTERM/SIGKILL was what ended it.* **So a HUNG worker, a worker the coordinator killed, and a
+    worker that deliberately halted all looked the same in the report, and the crash verdict could be earned by the
+    coordinator's own cleanup.** *This dataclass is the observed answer, and `Worker.observe_termination` must be
+    called BEFORE `close()` for `observed_before_cleanup` to be true; a termination that `close()` supplied carrieth
+    `forced_kill` and is REFUSED as crash proof.*
+    """
+
+    pid: Optional[int]
+    exit_status: Optional[int]
+    termination_reason: str
+    forced_kill: bool
+    observed_before_cleanup: bool
+    log_path: str
+    #: *** THE ONLY NON-ZERO EXIT A CROSS-PLATFORM WITNESS MAY PRESENT: the worker's OWN typed intentional halt,
+    #: verified by its marker line (`GS_INTEGRATION_INTENTIONAL_HALT status=<n>`) in the worker's retained log. ***
+    #: *A claim without the marker text is not a halt; it is a failed launch.*
+    intentional_halt: bool = False
+    intentional_halt_marker: str = ""
+
+    def as_dict(self, *, log_sha256: str = "") -> dict[str, Any]:
+        return {
+            "pid": self.pid,
+            "exit_status": self.exit_status,
+            "termination_reason": self.termination_reason,
+            "forced_kill": self.forced_kill,
+            "observed_before_cleanup": self.observed_before_cleanup,
+            "log_path": self.log_path,
+            "log_sha256": log_sha256 or sha256_file(Path(self.log_path)) if Path(self.log_path).is_file() else "",
+            "intentional_halt": self.intentional_halt,
+            "intentional_halt_marker": self.intentional_halt_marker,
+        }
+
+    def is_coordinator_kill(self) -> bool:
+        """*** A DEATH THE COORDINATOR SUPPLIED IS NEVER THE WORKER'S DEATH. ***"""
+        return self.forced_kill or self.termination_reason in ("coordinator-sigterm", "coordinator-sigkill")
+
+    def describe(self) -> str:
+        return (f"pid={self.pid} status={self.exit_status} reason={self.termination_reason} "
+                f"forced_kill={self.forced_kill} observed_before_cleanup={self.observed_before_cleanup} "
+                f"log={self.log_path}")
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -166,6 +268,31 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def bundle_digest(bundle: Path) -> tuple[str, dict[str, str]]:
+    """*** THE CONTENT DIGEST OF A BUILT `.xctest` BUNDLE, OVER EVERY FILE INSIDE IT. ***
+
+    *`--skip-build` assumeth an already-built fixture; **an assumption is only evidence when it is bound to the
+    exact bundle it assumes**, and a bundle is a DIRECTORY of files (the executable, its Info.plist, any embedded
+    frameworks), so the digest is over the tree: every regular file's relative path and its sha256, in sorted order.*
+    **A rebuild that changed one byte of the executable therefore produceth a different digest, and a stale bundle
+    cannot be passed off as the candidate's.**
+    """
+    files: dict[str, str] = {}
+    if bundle.is_dir():
+        for path in sorted(bundle.rglob("*")):
+            if path.is_file():
+                files[path.relative_to(bundle).as_posix()] = sha256_file(path)
+    elif bundle.is_file():
+        files[bundle.name] = sha256_file(bundle)
+    h = hashlib.sha256()
+    for rel in sorted(files):
+        h.update(rel.encode())
+        h.update(b"\0")
+        h.update(files[rel].encode())
+        h.update(b"\0")
+    return h.hexdigest(), files
 
 
 def _run(argv: list[str]) -> str:
@@ -202,15 +329,66 @@ def toolchain_versions() -> dict[str, str]:
     return out
 
 
-# *** THE INPUT DIGEST: THE BYTES THIS RUN IS A CLAIM ABOUT. ***
+#: *** THE INPUT DIGEST: THE BYTES THIS RUN IS A CLAIM ABOUT. ***
 #
 # *Taken BEFORE the workers launch and AFTER they finish, and the two must agree -- the same contract every other
 # lane runner in `tools/readiness/` carrieth. An explicit file list rather than a directory walk, so the digest names
 # exactly what the claim depends on and nothing else.*
+#
+# *** THE SET IS THE EXACT TWENTY-SIX SOURCES THIS RUN EXERCISES -- NO MORE, NO LESS. ***
+#
+# *THE DEFECT THIS CLOSES, AND IT IS `Main`'S FINDING + THE CUTOVER AUDIT: the set must NAME every runner whose
+# provisioning the run rides, the FULL pinned SQLCipher supply -- the PIN REGISTER, the BUILDER, the
+# GENERATOR/VERIFIER, the shared build-provenance recorder whose attestation binds them, AND the PINNED TRUSTED
+# EXPECTATION ITSELF (`SQLCipherTrustedExpectation.swift`, the generated compile input the engine compareth the
+# loaded bytes against) -- the ENGINE LOADER and function-table that bind the dlopened image, the native
+# store/wire sources BOTH isles' workers re-enter, and the workers themselves.*
+# **A digest that omiteth them cannot bind the run to the revision it exercised; a set that PADDETH with courts it
+# never executeth diluteth the claim the gate re-hashes.** The named expectation is GENERATED, and its generatedness
+# is what maketh naming it HONEST rather than redundant: `build_provenance.verify_image` regenerates it from the
+# verified image OUTSIDE the repo and compareth the bytes against the tracked copy (the generator is dual-mode and
+# deterministic), the attestation carrieth `expected_source_sha256`, and NO code path here re-writeth a tracked
+# source after a build -- a drift of the compiled expectation from the register is therefore BOTH a manifest-drift
+# refusal (this list) AND an attestation refusal (`expected_source_sha256`).*
+# *Two exclusions are deliberate and each remaineth BOUND by another road: the schema-control court and the UI-lane
+# runner / lanes' own digest helper are judged by their OWN controls; their bytes are bound by the candidate's
+# `whole_source_digest` (every tracked file) and by the attested recipe.*
+# *The Foundation MIRROR under `ios/Packages/…` is generated (`sync_ios_foundation_package.py`); its CANONICAL
+# sources under `ios/Godstone/Sources/GodstoneMesh/` and `ios/Godstone/Tests/GodstoneMeshTests/` are the authority,
+# and the coordinator re-checks the mirror (`--check`) before building -- so the canonical files are what the
+# digest names here.*
 INPUT_FILES_DEFAULT = (
+    # the coordinator itself, and the evidence gate + lane control that judge its output
     "tools/readiness/run_board1_integration.py",
-    "ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001CrossPlatformWorkerTests.swift",
+    "ci/check_integration_evidence.py",
+    "ci/check_lane_results.py",
+    # the provisioning lanes whose staged images and digests this run's claim rides (the UI lane runneth no
+    # provisioning this claim depends on; its own control judgeth it)
+    "tools/readiness/run_ios_lane.sh",
+    "tools/readiness/run_ios_simulator_lane.sh",
+    "tools/readiness/run_android_lanes.sh",
+    # the pinned SQLCipher supply IN FULL: register, builder, the GENERATOR/VERIFIER, the attestation recorder,
+    # and the PINNED TRUSTED EXPECTATION the engine compares the dlopened bytes against
+    "docs/supplychain/SQLCIPHER.pins.json",
+    "tools/supplychain/build_sqlcipher_simulator.sh",
+    "tools/supplychain/verify_sqlcipher_artifact.py",
+    "tools/readiness/build_provenance.py",
+    "ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift",
+    # the engine loader + function table that bind the dlopened image
+    "ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift",
+    "ios/Godstone/Sources/GodstoneMesh/SQLiteFunctionTable.swift",
+    "ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift",
+    # the iOS native store + the wire the worker re-enters
+    "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift",
+    "ios/Godstone/Sources/GodstoneMesh/DeliveryTracker.swift",
+    "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift",
     "ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift",
+    "ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001CrossPlatformWorkerTests.swift",
+    "ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001ProcessTests.swift",
+    # the Android native store/journal + the wire and the worker
+    "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt",
+    "android/mesh/src/main/java/io/godstone/mesh/identity/WipeJournalDurabilityAdapter.kt",
+    "android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryTracker.kt",
     "android/mesh/src/test/java/io/godstone/mesh/rig/RealTransportHostRig.kt",
     "android/mesh/src/test/java/io/godstone/mesh/rig/RealTransportHostRigWorkerTest.kt",
     "android/mesh/build.gradle.kts",
@@ -409,10 +587,34 @@ class Worker:
         # only `wait` -- the forward consumer -- advanceth.
         self._wait_cursor = 0
         self._stop = threading.Event()
-        self.log_path = runtime_dir / f"{spec.name}.worker.log"
+        # *** THE EVIDENCE LOG IS UNIQUE PER ATTEMPT, NOT PER ROLE. ***
+        #
+        # *THE DEFECT THIS CLOSES, MEASURED: `run_direction` launch eth `swift-honest` in EVERY direction and the
+        # replay control's phase A RE-DRIVETH the honest direction, so `swift-honest.worker.log` was opened `"wb"`
+        # TWO TO THREE TIMES IN ONE RUN and each launch OVERWROTE the previous attempt's log -- the failures of the
+        # earlier attempt were destroyed by the later one. **The evidence root must retain EVERY attempt's log, so the
+        # name carrieth a monotonic attempt index as well as the role.*** *(`run_direction` already names the ESTATE
+        # this way for the same reason; the log name is the other half.)*
+        self.attempt = Worker._claim_attempt(spec.name)
+        self.log_path = runtime_dir / f"{spec.name}.{self.attempt:03d}.worker.log"
         self._log_fh = None
         self.process: Optional[subprocess.Popen] = None
         self._reader: Optional[threading.Thread] = None
+        # *** THE OBSERVED END OF THIS WORKER, AND WHETHER THE COORDINATOR SUPPLIED IT. ***
+        self.termination: Optional[Termination] = None
+        self._child_pgids: set[int] = set()
+        # *** A FAILED LOG RETENTION IS AN EVIDENCE FAULT AND MUST REFUSE, NOT PASS SILENTLY. ***
+        self.retention_error: Optional[str] = None
+
+    _attempt_lock = threading.Lock()
+    _attempts: dict[str, int] = {}
+
+    @classmethod
+    def _claim_attempt(cls, name: str) -> int:
+        with cls._attempt_lock:
+            n = cls._attempts.get(name, 0) + 1
+            cls._attempts[name] = n
+            return n
 
     def start(self) -> None:
         env = dict(os.environ)
@@ -442,8 +644,150 @@ class Worker:
             self._pgid: Optional[int] = os.getpgid(self.process.pid)
         except OSError:
             self._pgid = None
+        # *** THE ACTUAL PID OF THE PROCESS THIS OBJECT HOLDS IS EVIDENCE, SO IT IS RECORDED AT LAUNCH. ***
+        # *For the Swift worker this IS the `xctest` process; for the Android worker it is the `gradlew` wrapper,
+        # whose own executor CHILD is a grandchild the log names. Both are recorded so a reader can bind the
+        # observed termination to a real process rather than to a role's name.*
+        self.launch = dict(self.launch or {})
+        self.launch["pid"] = self.process.pid
+        self.launch["pgid"] = self._pgid
+        self.log(f"  [{self.name}] launched pid={self.process.pid} pgid={self._pgid} "
+                 f"attempt={self.attempt} log={self.log_path.name}")
         self._reader = threading.Thread(target=self._drain, name=f"drain-{self.spec.name}", daemon=True)
         self._reader.start()
+
+    # ---- evidence retention ---------------------------------------------------------------------------------
+
+    def _retain_log(self) -> None:
+        """*** COPY THE WORKER'S OWN STDOUT/STDERR BESIDE THE EVIDENCE, AND REFUSE IF THE COPY FAILS. ***
+
+        *THE DEFECT THIS CLOSES: the copy was wrapped in a bare `except: pass`, so a worker whose log could not be
+        retained looked exactly like one that was — the evidence existed only inside the transient runtime dir and
+        the failure was INVISIBLE. **A run whose log proof cannot be retained cannot support its verdict, so the
+        failure is recorded (`retention_error`) and the runner REFUSETH it after the workers are closed.***
+        """
+        try:
+            target = self.runtime_dir.parent / self.log_path.name
+            shutil.copy2(self.log_path, target)
+            # *** AND THE COPY IS VERIFIED, SO A TRUNCATED/SHORT COPY IS NOT MISTAKEN FOR RETENTION. ***
+            if sha256_file(target) != sha256_file(self.log_path):
+                self.retention_error = f"the retained log {target.name} does not hash to the worker log"
+        except Exception as exc:  # noqa: BLE001 -- the failure is RECORDED, never swallowed
+            self.retention_error = f"could not retain worker log {self.log_path.name}: {exc!r}"
+
+    def observe_termination(self, *, forced_kill: bool = False) -> Termination:
+        """*** THE OBSERVED END OF THE WORKER, TAKEN BEFORE (OR WITHOUT) THE COORDINATOR'S OWN CLEANUP. ***
+
+        *A bounded wait for the process itself; `None` from the wait is a HUNG worker, and a HUNG worker is NOT a
+        death. **A negative status is a SIGNAL death; the coordinator's own group-kill is booked separately by
+        `close()` and is REFUSED as crash proof.*** The caller decides the bound; this method never supplies a death.
+        """
+        if self.termination is not None:
+            return self.termination
+        if self.process is None:
+            self.termination = Termination(pid=None, exit_status=None, termination_reason="never-started",
+                                           forced_kill=False, observed_before_cleanup=True,
+                                           log_path=str(self.log_path))
+            return self.termination
+        status = self.process.poll()
+        if status is None:
+            self.termination = Termination(pid=self.process.pid, exit_status=None,
+                                           termination_reason="still-running", forced_kill=False,
+                                           observed_before_cleanup=True, log_path=str(self.log_path))
+        else:
+            reason = "signal" if status < 0 else "cooperative-exit"
+            self.termination = Termination(pid=self.process.pid, exit_status=status,
+                                           termination_reason=reason, forced_kill=forced_kill,
+                                           observed_before_cleanup=True, log_path=str(self.log_path))
+        return self.termination
+
+    def wait_exit(self, timeout: float) -> Optional[int]:
+        """*** BOUNDED WAIT FOR THE PROCESS ITSELF TO EXIT -- return its status, or `None` if still running. ***
+
+        *THE DEFECT THIS CLOSES: `run_crash` read `prepare.status` AFTER `prepare.close()`, and `close()` sendeth the
+        coordinator's OWN SIGTERM/SIGKILL -- so the status observed was frequently the COORDINATOR'S kill, presented
+        as the worker's own abrupt halt.* **THE DEATH MUST BE OBSERVED BEFORE THE COORDINATOR CAN SUPPLY ONE.** *A
+        worker that never exits is HUNG and is refused, never booked as a crash.*
+        """
+        if self.process is None:
+            return None
+        try:
+            status = self.process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            self.termination = Termination(pid=self.process.pid, exit_status=None, termination_reason="hung",
+                                           forced_kill=False, observed_before_cleanup=True,
+                                           log_path=str(self.log_path))
+            return None
+        reason = "signal" if status < 0 else "cooperative-exit"
+        self.termination = Termination(pid=self.process.pid, exit_status=status, termination_reason=reason,
+                                       forced_kill=False, observed_before_cleanup=True,
+                                       log_path=str(self.log_path))
+        return status
+
+    def tail_log(self, lines: int = 80) -> str:
+        try:
+            data = self.log_path.read_text(errors="replace").splitlines()
+        except OSError:
+            return ""
+        return "\n".join(data[-lines:])
+
+    def executor_termination(self) -> dict[str, Any]:
+        """*** THE ACTUAL GRADLE TEST-EXECUTOR CHILD'S TERMINATION, READ FROM THE WORKER'S OWN LOG. ***
+
+        *THE FACT THAT MAKETH DEMANDING `wrapper_rc == 137` WRONG: Gradle reapit its forked executor, observeth the
+        abrupt status, and then REPORTS THE BUILD as `rc=1` -- it does NOT re-exit with 137. **So the honest crash
+        proof is: the wrapper's own rc is recorded (and may be 1/None), AND the log carrieth Gradle's own report of
+        the executor's actual non-zero abrupt status (`Process 'Gradle Test Executor N' finished with non-zero exit
+        value 137`), AND the worker wrote a pre-halt marker (`GS_INTEGRATION_ABOUT_TO_HALT`) and its own PID
+        (`GS_INTEGRATION_EXECUTOR_PID=`) so the death is bound to a real process and a named stage.** A wrapper rc
+        alone proves nothing about the child; a child status with no PID or no pre-halt marker proves nothing about
+        WHICH process died WHERE.*
+        """
+        text = ""
+        try:
+            text = self.log_path.read_text(errors="replace")
+        except OSError:
+            pass
+        pids = [int(m) for m in re.findall(re.escape(GRADLE_EXECUTOR_PID_MARKER) + r"(\d+)", text)]
+        # *** THE PRE-HALT MARKER IS A BOUND DECLARATION, NOT A PRINT. ***
+        #
+        # *THE DEFECT THIS CLOSES: the clause was a bare `in text` substring test on the marker's NAME, so ANY print
+        # of that word -- by any code path, with no stage and no code -- satisfied it. The worker's committed
+        # `markAboutToHalt` prints `GS_INTEGRATION_ABOUT_TO_HALT boundary=<stage> code=<haltStatus>` from the REAL
+        # JDK `ProcessHandle.current().pid()` immediately BEFORE `Runtime.halt`, so the parser here demanbeth the
+        # SAME shape: a named boundary and a declared code, which the crash arm binds to THIS boundary and to the
+        # executor's observed abrupt status.*
+        halt_pairs = EXECUTOR_HALT_MARKER_RE.findall(text)
+        halt_boundaries = [b for b, _ in halt_pairs]
+        halt_codes = [int(c) for _, c in halt_pairs]
+        about_to_halt = bool(halt_pairs)
+        statuses = [int(m) for m in EXECUTOR_STATUS_RE.findall(text)]
+        abrupt = [int(m) for m in GRADLE_EXECUTOR_ABRUPT_RE.findall(text)]
+        # *** THE WORKER'S OWN JVM PID, WRITTEN BY THE WORKER ITSELF BEFORE IT HALTED. *** *The committed marker
+        # resolvesth the real OS pid through the PUBLIC `java.lang.ProcessHandle` interface -- no Robolectric
+        # shadow (the Android `10000`), no hidden JDK internals -- and `check(pid > 0)` maketh a bogus pid a
+        # worker-side failure, not a silent number. The coordinator side valideth the value again.*
+        self_pids = [int(m) for m in re.findall(r"GS_INTEGRATION_SELF_PID=(\d+)", text)]
+        # *** AND WHETHER THE WORKER'S OWN TEST METHOD ACTUALLY COMPLETED. ***
+        #
+        # *MEASURED IN THE FROZEN RC11 LOGS: the prepare JVM's halt leaveth Gradle unable to report a result, so it
+        # recordeth the method `SKIPPED`; the recover JVM returneth normally and Gradle recordeth `PASSED`. **So a
+        # recovery that exited 0 WITHOUT running the worker** (an empty selection, a stale class, a filtered run)
+        # would be indistinguishable from a real one unless the log's own per-method verdict is read.* This is that
+        # reading, and it is a FACT about the worker rather than about the wrapper's status.
+        test_completed = bool(re.search(
+            r"RealTransportHostRigWorkerTest > testGSINT001CrossPlatformWorker PASSED", text))
+        return {
+            "executor_pids": pids or self_pids,
+            "executor_pid": (pids or self_pids or [None])[-1],
+            "about_to_halt_seen": about_to_halt,
+            "about_to_halt_boundaries": halt_boundaries,
+            "about_to_halt_codes": halt_codes,
+            "declared_halt_statuses": statuses,
+            "gradle_reported_abrupt_statuses": abrupt,
+            "worker_self_pids": self_pids,
+            "worker_test_completed": test_completed,
+        }
 
     # ---- the reader -----------------------------------------------------------------------------------------
 
@@ -559,13 +903,23 @@ class Worker:
         if self.process is None:
             # *** A WORKER THAT WAS NEVER STARTED IS STILL CLOSED: its pipes must not leak, and its absence is not
             # an error here -- the caller that declined to start it already refused.***
-            self._reader and self._reader.join(timeout=2)
+            if self._reader:
+                self._reader.join(timeout=2)
             self.from_worker.close()
+            if self.termination is None:
+                self.termination = Termination(pid=None, exit_status=None, termination_reason="never-started",
+                                               forced_kill=False, observed_before_cleanup=False,
+                                               log_path=str(self.log_path))
+            self._retain_log()
             return
+        forced_kill = False
         if self.process.poll() is None:
             try:
                 self.process.wait(timeout=60)
             except subprocess.TimeoutExpired:
+                # *** THE COORDINATOR NOW SUPPLIES THE DEATH: BOOK IT AS SUCH. *** *A termination observed after this
+                # point is the COORDINATOR'S, and both the crash verdict and the report refuse it as worker proof.*
+                forced_kill = True
                 self._signal_group(signal.SIGTERM)
                 try:
                     self.process.wait(timeout=15)
@@ -585,15 +939,21 @@ class Worker:
             pass
         if self._log_fh:
             self._log_fh.close()
+        # *** THE TERMINATION IS BOOKED HERE IF IT WAS NOT OBSERVED BEFORE CLEANUP. ***
+        status = self.process.poll()
+        if self.termination is None:
+            reason = ("coordinator-sigkill" if forced_kill and status == -signal.SIGKILL
+                      else "coordinator-sigterm" if forced_kill
+                      else "signal" if (status is not None and status < 0)
+                      else "cooperative-exit" if status is not None else "still-running")
+            self.termination = Termination(pid=self.process.pid, exit_status=status, termination_reason=reason,
+                                           forced_kill=forced_kill, observed_before_cleanup=False,
+                                           log_path=str(self.log_path))
+        elif forced_kill:
+            # observed earlier but the coordinator then had to kill it: keep the earlier observation, mark the force.
+            self.termination.forced_kill = True
         # *** THE WORKER'S OWN STDOUT/STDERR IS EVIDENCE AND TRAVELS WITH THE RUN. ***
-        try:
-            shutil.copy2(self.log_path, self.runtime_dir.parent / self.log_path.name)
-        except Exception:  # noqa: BLE001
-            pass
-
-    @property
-    def status(self) -> Optional[int]:
-        return None if self.process is None else self.process.poll()
+        self._retain_log()
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -625,14 +985,31 @@ class Evidence:
         self.launches: list[dict[str, Any]] = []
 
     def note_launch(self, name: str, platform: str, role: str, variant: str,
-                    argv: list[str], estate: str) -> None:
+                    argv: list[str], estate: str, launch: Optional[dict[str, Any]] = None) -> None:
+        """*** WHAT WAS LAUNCHED, AND THE ACTUAL PID IT WAS LAUNCHED AS. ***
+
+        *`launch` carrieth the OBSERVED facts (`pid`, `pgid`, the requested vs reported role vocabulary, whether the
+        crash roles ran with `-i`), so the manifest bindeth a role name to a real process rather than to a string.*
+        """
         self.launches.append({"name": name, "platform": platform, "role": role, "variant": variant,
-                              "argv": argv, "estate": estate})
+                              "argv": argv, "estate": estate, **(launch or {})})
 
     def append(self, rec: Record, *, direction: str, producer: str, target: str,
                characteristic: str = "", epoch: Any = None, note: str = "",
                platform: str = "") -> dict[str, Any]:
         framed = rec.framed()
+        # *** THE PAYLOAD'S TRUE OFFSET INSIDE THE TRANSCRIPT, NOT THE FRAME'S. ***
+        #
+        # *THE DEFECT THIS CLOSES, AND IT IS A MEASURED ONE: the entry's `payload_offset` was set to `self.offset`
+        # -- the offset of the FRAMED RECORD'S FIRST OCTET -- and the replay control then sliced
+        # `blob[payload_offset : payload_offset + payload_length]`. **That slice began at the `u32be header_len`, so
+        # what got "replayed" was the FRAME PREAMBLE AND HEADER BYTES, not the session's ciphertext** -- a truncated
+        # payload prefixed with framing metadata, which the receiver would refuse for a reason that had NOTHING to do
+        # with an old-session replay.* **The real payload beginneth after `4 + header_len + 4` octets of preamble, so
+        # that arithmetic is done ONCE, HERE, where the header is in hand.** *`frame_offset` keepeth the old meaning
+        # for a reader that wanteth the whole record.*
+        head = json.dumps(rec.header, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        payload_offset = self.offset + 4 + len(head) + 4
         self.sequence += 1
         entry = {
             "sequence": self.sequence,
@@ -643,10 +1020,11 @@ class Evidence:
             "characteristic": characteristic or rec.header.get("characteristic", ""),
             "kind": rec.kind,
             "epoch": epoch if epoch is not None else rec.header.get("epoch"),
-            "payload_offset": self.offset,
+            "frame_offset": self.offset,
+            "frame_length": len(framed),
+            "payload_offset": payload_offset,
             "payload_length": len(rec.payload),
             "payload_sha256": sha256_bytes(rec.payload),
-            "frame_length": len(framed),
             "source_digest": self.digest,
             "note": note,
         }
@@ -695,11 +1073,21 @@ class Result:
     msg_id: Optional[str] = None
     refusal: Optional[str] = None
     boundary: Optional[str] = None
+    #: *** THE CANCELLATION NEGATIVE'S OWN PROOF: the frame the tracker moved, and the state it moved it to,
+    #: re-read from the REOPENED estate. *** *Carried so the report bindeth the negative to the same run rather than
+    #: to a claim.*
+    cancellation_msg_id: Optional[str] = None
+    cancellation_state: Optional[str] = None
 
 
 class Runner:
     def __init__(self, args: argparse.Namespace):
         self.args = args
+        try:
+            self.identity = build_provenance.source_identity(args.candidate_sha)
+        except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+            raise Refused(f"candidate identity REFUSED: {exc}") from exc
+        args.candidate_sha = self.identity["candidate_sha"]
         self.evidence_dir = Path(args.evidence_dir).resolve()
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
         self.log_fh = (self.evidence_dir / "run.log").open("w")
@@ -713,11 +1101,20 @@ class Runner:
         # *The `replay` control's phase A re-driveth the honest direction, so `(direction, "honest")` occurreth
         # TWICE in one run; an estate named by control alone is therefore shared between the control and the phase.*
         self._invocation = 0
-        self.fixtures_root = REPO / "tools" / "integration-fixtures"
         self.deadline_s = float(args.timeout)
         self.workers: list[Worker] = []
+        # *** EVERY WORKER EVER LAUNCHED, IN LAUNCH ORDER: the log-retention check runs over ALL of them, including
+        # the ones already closed and dropped from `self.workers`. ***
+        self.all_workers: list[Worker] = []
+        # *** THE OBSERVED ANDROID CRASH TERMINATIONS, BOUND INTO THE REPORT SO THE GATE CAN REFUSE A FAKE CRASH. ***
+        self.crash_terminations: list[dict[str, Any]] = []
         self._swift_bundle: Optional[Path] = None
         self._android_ready = False
+        # *** THE DIGEST OF THE BUNDLE THIS RUN ACTUALLY USED, RECORDED WHETHER IT WAS BUILT HERE OR ASSUMED. ***
+        self.bundle_digest_value: Optional[str] = None
+        # *** THE BUILD ATTESTATION: what was built, from which sources, by which recipe, where. ***
+        self.build_attestation_value: Optional[dict[str, Any]] = None
+        self.attestation_verified = False
 
     # ---- plumbing -------------------------------------------------------------------------------------------
 
@@ -737,14 +1134,31 @@ class Runner:
     def build_fixtures(self) -> None:
         """*** "It builds the host fixtures once." ***
 
-        *The macOS test bundle is built by SwiftPM; the Android worker classes are compiled by the Gradle invocation
-        the `board1IntegrationWorker` task performs. This step is what maketh "the built macOS test bundle" a fact
-        rather than an assumption.*
+        *The macOS test bundle is built by SwiftPM; the Android worker classes are compiled by the `board1Integration
+        Worker` task's own classpath, so BOTH host fixtures stand as facts rather than assumptions.*
         """
         if self.args.skip_build:
-            self.log("*** --skip-build: the host fixtures are assumed already built ***")
+            # *** `--skip-build` IS ONLY HONEST WHEN THE BUNDLE IT ASSUMES IS BOUND TO THIS CANDIDATE AND SOURCE. ***
+            #
+            # *THE DEFECT THIS CLOSES: `--skip-build` returned immediately and `resolve_swift_bundle()` accepted
+            # whatever `.xctest` happened to be on disk, so a STALE bundle built from a DIFFERENT candidate -- or a
+            # bundle whose sources had since changed -- could produce a green cross-platform run. **An assumed build
+            # is only evidence if it is bound; so the assumption must be NAMED by digest and REFUSED when it does not
+            # hold.***
+            self._require_skip_build_binding()
             return
         self.log("*** building the host fixtures ONCE (SwiftPM macOS test bundle) ***")
+        # *** THE PINNED IMAGE IS STAGED AND THE TRUST EXPECTATION GENERATED *BEFORE* THE BUILD, so the compiled
+        # binary carrieth the expectation that describes the image this host will actually load. ***
+        self.provision_sqlcipher()
+        # A candidate run checks its committed mirror; generation belongs before C.
+        sync = subprocess.run(
+            [sys.executable, str(REPO / "scripts" / "sync_ios_foundation_package.py"), "--check"],
+            cwd=str(REPO), capture_output=True, text=True, timeout=600)
+        (self.runtime_dir / "swift-sync.log").write_text(sync.stdout + sync.stderr)
+        if sync.returncode != 0:
+            raise Refused(f"*** THE FOUNDATION MIRROR SYNC FAILED (rc={sync.returncode}); see "
+                          f"{self.runtime_dir / 'swift-sync.log'} ***")
         result = subprocess.run(
             ["swift", "build", "--package-path", str(REPO / "ios" / "Packages" / "GodstoneFoundation"),
              "--build-tests"],
@@ -754,8 +1168,118 @@ class Runner:
             raise Refused(f"*** THE macOS FIXTURE BUILD FAILED (rc={result.returncode}); see "
                           f"{self.runtime_dir / 'swift-build.log'} ***")
         self.log(f"  swift build --build-tests: rc={result.returncode}")
-        for name in ("compileDebugUnitTestKotlin", "compileDebugUnitTestJavaWithJavac"):
-            pass  # the Android side is compiled by the worker task's own invocation
+        # *** AND THE ANDROID HALF IS REALLY BUILT HERE, ONCE, RATHER THAN BY A DEAD `pass` LOOP. ***
+        #
+        # *THE DEFECT THIS CLOSES: the loop over `compileDebugUnitTestKotlin`/`compileDebugUnitTestJavaWithJavac`
+        # contained ONLY `pass`, so "it builds the host fixtures once" was true of Swift and FALSE of Android -- the
+        # Android side was compiled only inside the first worker's TIMED window, where a cold compile is charged
+        # against the worker's own bound.* **So the compile now happens HERE, before any worker is launched: a
+        # failure REFUSETH the run by name, and `_android_ready` is a real observation rather than a constant.**
+        self._compile_android_fixtures()
+        # *** THE BUILT BUNDLE'S DIGEST IS RECORDED, SO A LATER `--skip-build` RUN CAN BE BOUND TO IT. ***
+        self.bundle_digest_value = bundle_digest(self.resolve_swift_bundle())[0]
+        self.log(f"  built macOS test bundle digest = {self.bundle_digest_value}")
+        # *** AND THE BUILD'S ATTESTATION IS WRITTEN, SO AN ASSUMED BUILD CAN BE VERIFIED AGAINST WHAT WAS BUILT. ***
+        self.build_attestation_value = self.make_build_attestation("macos")
+        attestation_path = self.evidence_dir / "build-attestation.json"
+        attestation_path.write_text(json.dumps(self.build_attestation_value, indent=2) + "\n")
+        self.log(f"  build attestation = {attestation_path.name} "
+                 f"(library_present={self.build_attestation_value.get('library_present')})")
+
+    def _require_skip_build_binding(self) -> None:
+        """*** `--skip-build` REQUIRES THE REAL BUILD'S ATTESTATION **AND** AN EXACT CANDIDATE SHA. ***"""
+        # *** THE ATTESTATION IS THE PRIMARY BINDING: it carrieth the artifact digest + platform/arch/cipher/source
+        # commit (sourced from the register), the pinned source commit, the recipe digest, the candidate SHA, the
+        # source digest AND the bundle digest -- all produced by the BUILDING runner. ***
+        if not self.args.candidate_sha:
+            raise Refused("*** `--skip-build` REQUIRES `--candidate-sha <sha>`: an assumed build must be bound to an "
+                          "EXACT candidate, not merely to a self-consistent hash set. *** *The candidate is the "
+                          "commit/tree the bundle is claimed to be built at; without it the attestation cannot be "
+                          "checked against a named object.*")
+        self._require_build_attestation_binding()
+        self.bundle_digest_value = bundle_digest(self.resolve_swift_bundle())[0]
+        self.log(f"*** --skip-build: ATTESTED bundle digest {self.bundle_digest_value[:16]}… candidate "
+                 f"{self.args.candidate_sha[:16]}… ***")
+
+
+    def make_build_attestation(self, mode: str) -> dict[str, Any]:
+        try:
+            value = build_provenance.record_build(
+                mode, Path(os.environ["GODSTONE_SQLCIPHER_ARTIFACT_DIR"]),
+                self.resolve_swift_bundle(), self.identity, self.run_id)
+            value["source_digest"] = self.digest
+            return value
+        except (KeyError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+            raise Refused(f"actual build attestation REFUSED: {exc}") from exc
+
+    def provision_sqlcipher(self) -> None:
+        stage = Path(tempfile.mkdtemp(prefix="gs-int-sqlcipher-macos-"))
+        builder = REPO / "tools/supplychain/build_sqlcipher_simulator.sh"
+        built = subprocess.run(["/bin/bash", str(builder), "--mode", "macos", "--out", str(stage)],
+                               cwd=str(REPO), capture_output=True, text=True, timeout=7200)
+        (self.runtime_dir / "sqlcipher-build.log").write_text(built.stdout + built.stderr)
+        if built.returncode:
+            raise Refused(f"pinned macOS image build failed ({built.returncode}); see sqlcipher-build.log")
+        try:
+            build_provenance.verify_image("macos", stage)
+        except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+            raise Refused(f"pinned macOS image verification refused: {exc}") from exc
+        os.environ["GODSTONE_SQLCIPHER_ARTIFACT_DIR"] = str(stage)
+        os.environ["DYLD_LIBRARY_PATH"] = str(stage)
+
+    def _require_build_attestation_binding(self) -> None:
+        path = self.args.expect_build_attestation
+        if not path:
+            raise Refused("--skip-build requires a previous completed coordinator build record")
+        try:
+            record_path = Path(path).resolve()
+            recorded = json.loads(record_path.read_text())
+            previous = json.loads((record_path.parent / "integration-report.json").read_text())
+            if previous.get("skip_build") or previous.get("build_attestation") != recorded:
+                raise ValueError("record was not produced by a completed actual-building coordinator")
+            if recorded.get("producer_attempt") != previous.get("run_id"):
+                raise ValueError("build producer attempt is not the completed run")
+            if previous.get("producer_sha256") != sha256_file(Path(__file__)):
+                raise ValueError("build producer source is not the current coordinator")
+            sys.path.insert(0, str(REPO / "ci"))
+            from check_integration_evidence import check_report
+            problems, _ = check_report(record_path.parent, check_fixture_collision=False)
+            if problems:
+                raise ValueError("previous build evidence refused: " + "; ".join(problems))
+            live = self.make_build_attestation("macos")
+            live["producer_attempt"] = recorded.get("producer_attempt")
+            if live != recorded:
+                raise ValueError("candidate/tree/whole source/recipe/bundle/image/expected source differs")
+        except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+            raise Refused(f"--skip-build attestation REFUSED: {exc}") from exc
+        self._compile_android_fixtures()
+        self.attestation_verified = True
+        self.build_attestation_value = recorded
+
+    def _compile_android_fixtures(self) -> None:
+        java_home = os.environ.get("JAVA_HOME", "/opt/homebrew/opt/openjdk@17")
+        android_home = os.environ.get("ANDROID_HOME", str(Path.home() / "Library" / "Android" / "sdk"))
+        gradlew = REPO / "android" / "gradlew"
+        if not gradlew.exists():
+            raise Refused("*** NO COMMITTED GRADLE WRAPPER: android/gradlew is absent. ***")
+        argv = [
+            str(gradlew), "-p", str(REPO / "android"),
+            ":mesh:compileDebugUnitTestKotlin", ":mesh:compileDebugUnitTestJavaWithJavac",
+            "--no-daemon", "--console=plain",
+        ]
+        env = dict(os.environ)
+        env.update({"JAVA_HOME": java_home, "ANDROID_HOME": android_home})
+        self.log("*** compiling the Android worker's own test classpath ONCE ***")
+        try:
+            result = subprocess.run(argv, cwd=str(REPO), env=env, capture_output=True, text=True, timeout=7200)
+        except subprocess.TimeoutExpired:
+            raise Refused("*** THE ANDROID FIXTURE COMPILE DID NOT FINISH WITHIN ITS BOUND. ***")
+        (self.runtime_dir / "android-compile.log").write_text(result.stdout + result.stderr)
+        if result.returncode != 0:
+            raise Refused(f"*** THE ANDROID FIXTURE COMPILE FAILED (rc={result.returncode}); see "
+                          f"{self.runtime_dir / 'android-compile.log'} ***")
+        self._android_ready = True
+        self.log(f"  gradle compileDebugUnitTest: rc={result.returncode}, android_ready={self._android_ready}")
 
     # ---- the worker launches ----------------------------------------------------------------------------------
 
@@ -810,7 +1334,8 @@ class Runner:
                          "env_keys": [ROLE_ENV, VARIANT_ENV, ROOT_ENV, DEADLINE_ENV, IN_ENV, OUT_ENV]}
         worker.start()
         self.workers.append(worker)
-        self.evidence.note_launch(name, "ios", role, variant, spec.argv, str(estate))
+        self.all_workers.append(worker)
+        self.evidence.note_launch(name, "ios", role, variant, spec.argv, str(estate), worker.launch)
         return worker
 
     def launch_android(self, name: str, role: str, variant: str, estate: Path, timeout_s: float) -> Worker:
@@ -823,6 +1348,10 @@ class Runner:
         gradlew = REPO / "android" / "gradlew"
         if not gradlew.exists():
             raise Refused("*** NO COMMITTED GRADLE WRAPPER: android/gradlew is absent. ***")
+        # *** THE ANDROID CRASH ROLES KEEP THE COORDINATOR'S OWN ROLE NAME. *** *The worker's dispatch (`when (role)`)
+        # and its crash `Marker` both speak `crash-prepare`/`crash-recover` verbatim, so the requested and reported
+        # roles are the same string and the identity comparison is direct -- **no translation stands between the
+        # coordinator's request and the worker's own record.***
         # *** THE FIFOs ARE CREATED BEFORE THE TASK IS LAUNCHED, AND THEIR PATHS TRAVEL AS SYSTEM PROPERTIES. ***
         spec = WorkerSpec(
             name=name, platform="android", role=role, variant=variant, argv=[],
@@ -833,6 +1362,19 @@ class Runner:
         argv = [
             str(gradlew), "-p", str(REPO / "android"), task,
             "--no-daemon", "--console=plain", "--rerun-tasks",
+            # *** THE LAUNCH IS NARROWED TO THE WORKER CLASS ITSELF. ***
+            #
+            # *THE DEFECT THIS CLOSES: the committed task's filter is `*RealTransportHostRig*`, so EVERY worker launch
+            # ALSO ran `RealTransportHostRigTests` -- the rig's own court -- and a red arm THERE made the Gradle build
+            # exit non-zero. **The worker's own exit code therefore did not describe the worker**: a passing worker
+            # behind a failing sibling court read as a failed launch, and the coordinator could neither require a
+            # clean exit nor trust one.* **`--tests` narrows this launch to the exact worker class, so the process
+            # status IS the worker's own -- which is what maketh "the worker exited 0 after ACK" a checkable fact
+            # rather than a coincidence.** *The rig court still runs in its own right in the default suite and in the
+            # crash lane; it is simply no longer charged to the worker's exit.*
+            "--tests", klass,
+        ]
+        argv += [
             f"-D{ANDROID_ROLE_PROP}={role}",
             f"-D{ANDROID_VARIANT_PROP}={variant}",
             f"-D{ANDROID_ROOT_PROP}={estate}",
@@ -842,12 +1384,14 @@ class Runner:
         ]
         worker.spec.argv = argv
         worker.launch = {"executable": str(gradlew), "task": task,
+                         "requested_role": role, "reported_role": role,
                          "test_class": klass,
                          "jvm_args": [a for a in argv if a.startswith("-D")],
-                         "env_keys": ["JAVA_HOME", "ANDROID_HOME"]}
+                         "env_keys": ["JAVA_HOME", "ANDROID_HOME"], "info_log": is_crash}
         worker.start()
         self.workers.append(worker)
-        self.evidence.note_launch(name, "android", role, variant, argv, str(estate))
+        self.all_workers.append(worker)
+        self.evidence.note_launch(name, "android", role, variant, argv, str(estate), worker.launch)
         return worker
 
     # ---- the election and the seat ----------------------------------------------------------------------------
@@ -881,6 +1425,9 @@ class Runner:
         """
         sender_hello = sender.wait(lambda r: r.kind == "hello", timeout_s, "its startup `hello` identity")
         receiver_hello = receiver.wait(lambda r: r.kind == "hello", timeout_s, "its startup `hello` identity")
+        # *** AND THE WORKER'S OWN RECORD MUST CONFIRM THE IDENTITY THE COORDINATOR ASKED FOR. ***
+        self.require_reported_identity(sender, sender_hello)
+        self.require_reported_identity(receiver, receiver_hello)
         attempts = 0
         while attempts <= 16:
             sender_real = str(sender_hello.header.get("real_hint", ""))
@@ -952,6 +1499,33 @@ class Runner:
             self.log(f"  {me.name} seated: {dict(ready.header)}")
 
     # ---- the relay --------------------------------------------------------------------------------------------
+
+    def require_reported_identity(self, worker: Worker, rec: Record) -> None:
+        """*** THE WORKER'S OWN RECORD MUST CONFIRM THE ROLE, VARIANT AND PLATFORM THE COORDINATOR ASKED FOR. ***
+
+        *THE DEFECT THIS CLOSES, AND IT IS THE COORDINATOR'S HALF OF `Main`'s FINDING: the coordinator PASSED a role
+        and variant to each worker (`launch_swift`/`launch_android`) and recorded what it REQUESTED, but **NEVER
+        COMPARED THE WORKER'S OWN REPORTED `role`/`variant`/`platform` HEADERS AGAINST THAT REQUEST** -- so a worker
+        that silently downgraded an unknown variant (the iOS `?? .honest` path) or a substituted worker that reported a
+        different identity would be recorded as the requested one.* **A REQUESTED-vs-REPORTED MISMATCH IS REFUSED BY
+        NAME.** *The workers now also refuse an unknown variant at their own root, so this is defence in depth: the
+        control the manifest claims to have run is the control the worker says it ran.*
+        """
+        rrole = str(rec.header.get("role", ""))
+        rvar = str(rec.header.get("variant", ""))
+        rplat = str(rec.header.get("platform", ""))
+        mismatches: list[str] = []
+        if rrole != worker.spec.role:
+            mismatches.append(f"role requested={worker.spec.role!r} reported={rrole!r}")
+        if rvar != worker.spec.variant:
+            mismatches.append(f"variant requested={worker.spec.variant!r} reported={rvar!r}")
+        if rplat and worker.spec.platform and rplat != worker.spec.platform:
+            mismatches.append(f"platform requested={worker.spec.platform!r} reported={rplat!r}")
+        if mismatches:
+            raise Refused(
+                f"*** THE {worker.name} WORKER'S OWN RECORD DOES NOT MATCH WHAT WAS REQUESTED: "
+                f"{'; '.join(mismatches)}. *** *A worker that is not the one the coordinator asked for (a downgraded "
+                f"variant, a substituted identity) cannot stand as the witness for the requested control.*")
 
     def relay(self, source: Worker, target: Worker, direction: str, *, control: str,
               mutate: Optional[Callable[[bytes], bytes]] = None, note: str = "",
@@ -1046,10 +1620,63 @@ class Runner:
     def summary(self, worker: Worker) -> str:
         return str([r.header for r in worker.all_of("observe")][-3:])
 
+    def _settle_pair(self, sender: Worker, receiver: Worker, direction: str, control: str) -> None:
+        """*** THE WITNESSES' OWN EXIT IS OBSERVED BEFORE THE CLEANUP CAN SUPPLY ONE. ***
+
+        *THE DEFECT THIS CLOSES: `run_direction` sent `bye` and went STRAIGHT to `close()`, which sendeth the
+        coordinator's own SIGTERM/SIGKILL to anything still running -- **so the worker's recorded termination was
+        always the COORDINATOR'S kill, and a cross-platform witness that actually hung would look exactly like one
+        that exited cleanly.*** **Here each witness is given a bounded chance to exit on its OWN after `bye`; the
+        termination is observed, recorded, and -- for a witness -- REQUIRED to be a real exit rather than a cleanup
+        kill.** *The plan's law: a cross-platform worker must exit 0 after ACK (or by a typed intentional halt), never
+        by the coordinator's cleanup.*
+        """
+        for w in (sender, receiver):
+            status = w.wait_exit(min(self.deadline_s, 120.0))
+            term = w.observe_termination()
+            if term.forced_kill or term.termination_reason.startswith("coordinator-"):
+                raise Refused(
+                    f"*** {direction} ({control}): THE {w.name} WITNESS ENDED BY THE COORDINATOR'S OWN CLEANUP "
+                    f"({term.describe()}). *** *A worker must exit 0 after its verdict -- or by a TYPED INTENTIONAL "
+                    f"halt -- rather than being killed by the coordinator whose verdict it witnesses.*")
+            if status is None:
+                raise Refused(
+                    f"*** {direction} ({control}): THE {w.name} WITNESS WAS STILL RUNNING AFTER `bye` AND ITS "
+                    f"{min(self.deadline_s, 120.0):.0f}s GRACE. *** *A hung witness is not a clean exit; refusing "
+                    f"rather than letting `close()` supply the death.* log={w.log_path}")
+            if status != 0:
+                # *** THE ONE ACCEPTED NON-ZERO WITNESS EXIT: the worker's OWN typed intentional halt. ***
+                #
+                # *The plan's law alloweth "exit 0 after ACK **or** a verified typed intentional halt". VERIFIED
+                # means the worker's retained log carrieth the marker line
+                # `GS_INTEGRATION_INTENTIONAL_HALT status=<n>` and `<n>` EQUALS the observed process status --
+                # a claim without the marker text, or a marker that does not name the observed death, is a failed
+                # launch, not a halt.*
+                marker = _find_intentional_halt(w.log_path, status)
+                if marker is None:
+                    raise Refused(
+                        f"*** {direction} ({control}): THE {w.name} WITNESS EXITED {status} AFTER ITS VERDICT "
+                        f"WITH NO TYPED INTENTIONAL-HALT EVIDENCE IN ITS OWN LOG. *** *The normal path is exit 0; "
+                        f"a non-zero status is a failed worker launch, not a verdict.* log={w.log_path}")
+                term.intentional_halt = True
+                term.intentional_halt_marker = marker
+                self.log(f"  {w.name}: typed intentional halt accepted "
+                        f"(marker {marker!r}, status={status}, pid={term.pid})")
+
     # ---- observation helpers ----------------------------------------------------------------------------------
 
     @staticmethod
     def durable_of(worker: Worker) -> Optional[Record]:
+        """*** THE DURABLE ROW, PREFERRING THE ONE READ FROM THE REOPENED ESTATE. ***
+
+        *`observe` returneth the FIRST match, and the live-store observations are emitted BEFORE the reopened ones --
+        so a plain first-match would hand the verdict the RUNNING store's claim. **The reopened record is the durable
+        proof, so it is selected explicitly when it existeth.***
+        """
+        reopened = worker.observe(lambda r: r.kind == "observe" and r.header.get("reopened") is True
+                                  and r.header.get("durable_row") == "present")
+        if reopened is not None:
+            return reopened
         return worker.observe(lambda r: r.kind == "observe" and r.header.get("durable_row") == "present")
 
     @staticmethod
@@ -1060,7 +1687,80 @@ class Runner:
 
     @staticmethod
     def delivered_of(worker: Worker) -> Optional[Record]:
+        """*** THE DELIVERY TRANSITION, PREFERRING THE ONE READ FROM THE REOPENED ESTATE. *** *See `durable_of`.*"""
+        reopened = worker.observe(lambda r: r.kind == "observe" and r.header.get("reopened") is True
+                                  and r.header.get("delivery") == "DELIVERED")
+        if reopened is not None:
+            return reopened
         return worker.observe(lambda r: r.kind == "observe" and r.header.get("delivery") == "DELIVERED")
+
+    @staticmethod
+    def reopened_of(worker: Worker) -> Optional[Record]:
+        return worker.observe(lambda r: r.kind == "observe" and r.header.get("reopened") is True)
+
+    def _reprove_from_reopened_estate(self, sender: Worker, receiver: Worker, direction: str,
+                                       control: str) -> tuple[str, str]:
+        """*** RE-QUERY EACH SIDE'S DURABLE ESTATE AFTER IT HATH BEEN CLOSED AND REOPENED, AND DRIVE THE
+        CANCELLATION NEGATIVE. ***
+
+        *The live-store answers are what the exchange produced; **the durable PROOF must come from the estate the
+        process REACHETH AFTER RELEASING ITS HANDLES, or a `present` row echoeth a running object rather than a
+        surviving one.*** *Both seats are asked because the sender proveth its DELIVERY transition and the recipient
+        its INBOX ROW, and each is re-read from the reopened store of ITS OWN estate.* **AND the cancellation negative
+        is driven on the SAME reopened estate: a fresh frame is committed and cancelled through the owners' own roads,
+        then re-read after a SECOND reopen -- so a cancel that silently did nothing, or moved the wrong row, is
+        observable rather than assumed.**
+        """
+        # *** (1) THE CANCELLATION NEGATIVE IS COMMITTED BEFORE THE FIRST REOPEN. ***
+        sender.send("cancel")
+        cancel_rec = sender.wait(lambda r: r.kind == "observe" and "cancel" in r.header,
+                                 min(self.deadline_s, 120.0), f"its cancellation negative for {control}")
+        self.record_observation(sender, direction, control)
+        cancel_msg_id = str(cancel_rec.header.get("msg_id", ""))
+        state = str(cancel_rec.header.get("state", ""))
+        self.log(f"  {sender.name} cancellation: verdict={cancel_rec.header.get('cancel')} "
+                 f"msg_id={cancel_msg_id} state={state}")
+        if not cancel_msg_id:
+            raise Refused(f"*** {direction} ({control}): THE CANCELLATION NEGATIVE REPORTED NO msgId. ***")
+        if "cancel" not in state.lower():
+            raise Refused(f"*** {direction} ({control}): THE TRACKER'S OWN `cancel` DID NOT MOVE THE ROW TO A "
+                          f"CANCELLED STATE (observed {state!r}). *** *A cancel that left the row queued is not a "
+                          f"cancellation.*")
+
+        # *** (2) THE DURABLE ROW/DELIVERY ARE RE-PROVEN FROM THE REOPENED ESTATE. ***
+        for w in (sender, receiver):
+            w.send("reopen")
+        reopened: dict[str, Record] = {}
+        for w in (sender, receiver):
+            rec = w.wait(lambda r: r.kind == "observe" and r.header.get("reopened") is True,
+                         min(self.deadline_s, 120.0), f"its REOPENED-estate proof for {control}")
+            reopened[w.name] = rec
+            self.record_observation(w, direction, control)
+            self.log(f"  {w.name} reopened estate: row={rec.header.get('durable_row')} "
+                     f"msg_id={rec.header.get('msg_id')} delivery={rec.header.get('delivery')} "
+                     f"cancellation={rec.header.get('cancellation_state')}")
+        # *** THE REOPENED STORE MUST CORROBORATE THE LIVE ANSWER, NOT CONTRADICT IT. ***
+        rec_row, send_row = reopened[receiver.name], reopened[sender.name]
+        if rec_row.header.get("durable_row") != "present":
+            raise Refused(f"*** {direction} ({control}): THE RECIPIENT'S REOPENED ESTATE HOLDS NO DURABLE ROW. *** "
+                          f"*The row did not survive the close/reopen, so the live-store claim was not durable.* "
+                          f"reopened={dict(rec_row.header)}")
+        if send_row.header.get("delivery") != "DELIVERED":
+            raise Refused(f"*** {direction} ({control}): THE SENDER'S REOPENED ESTATE SHOWS DELIVERY "
+                          f"{send_row.header.get('delivery')!r}, NOT DELIVERED. *** *A delivery transition that is "
+                          f"not re-readable from the reopened store is not durable.* "
+                          f"reopened={dict(send_row.header)}")
+        # *** (3) AND THE CANCELLED ROW SURVIVED THE REOPEN IN ITS CANCELLED STATE. ***
+        reopened_cancel_state = str(send_row.header.get("cancellation_state", ""))
+        reopened_cancel_id = str(send_row.header.get("cancellation_msg_id", ""))
+        if reopened_cancel_id and reopened_cancel_id != cancel_msg_id:
+            raise Refused(f"*** {direction} ({control}): THE REOPENED ESTATE NAMES A DIFFERENT CANCELLATION FRAME "
+                          f"({reopened_cancel_id} vs {cancel_msg_id}). ***")
+        if "cancel" not in reopened_cancel_state.lower():
+            raise Refused(f"*** {direction} ({control}): THE CANCELLED ROW DID NOT SURVIVE THE REOPEN (state="
+                          f"{reopened_cancel_state!r}). *** *A cancellation that is not re-readable from the reopened "
+                          f"store is not a durable cancellation.*")
+        return cancel_msg_id, reopened_cancel_state
 
     # ---- one cross-platform direction -------------------------------------------------------------------------
 
@@ -1130,6 +1830,9 @@ class Runner:
             def authored_seen() -> bool:
                 return sender.observe(lambda r: r.kind == "authored") is not None
 
+            # *** THE CANCELLATION NEGATIVE'S OWN PROOF, SET BY THE REOPEN PROOF ON THE HONEST ARM. ***
+            cancel_proof: Optional[tuple[str, str]] = None
+
             if control == "honest":
                 # *The honest control runneth the WHOLE handshake and the DATA record; no release is needed because
                 # nothing is held back.* **`go` is sent anyway, so the producer's DATA dispatch is never gated on a
@@ -1143,6 +1846,15 @@ class Runner:
                 authored = sender.observe(lambda r: r.kind == "authored")
                 msg_id = str(authored.header.get("msg_id", "")) if authored else ""
                 self.log(f"  authored msg_id={msg_id or '(none reported)'}")
+                # *** THE DURABLE ROW IS RE-PROVEN FROM THE REOPENED ESTATE, NOT MERELY FROM THE RUNNING STORE. ***
+                #
+                # *THE DEFECT THIS CLOSES: `durable_row: present`/`delivery: DELIVERED` were read from the LIVE
+                # stores, so a reader could not distinguish a surviving row from a running object's own state -- the
+                # self-attestation the plan forbids. **Each side is now told to stop its owner, release its handles,
+                # and re-read the SAME on-disk estate; the row/delivery the verdict useth is the one the REOPENED
+                # store answereth.*** *This is the "each direction must independently query the reopened durable
+                # estate" clause.*
+                cancel_proof = self._reprove_from_reopened_estate(sender, receiver, direction, control)
             elif control == "mismatched":
                 sender.send("go")
                 self.pump(sender, receiver, direction, control=control, timeout=min(self.deadline_s, 120.0),
@@ -1178,9 +1890,11 @@ class Runner:
             # chain covers both.*
             for w in (sender, receiver):
                 self.record_observation(w, direction, control)
-            result = self.judge(direction, control, sender, receiver, msg_id)
+            result = self.judge(direction, control, sender, receiver, msg_id,
+                                cancellation=(cancel_proof if control == "honest" else None))
             for w in (sender, receiver):
                 w.send("bye")
+            self._settle_pair(sender, receiver, direction, control)
             return result
         finally:
             for w in (sender, receiver):
@@ -1188,17 +1902,30 @@ class Runner:
                 self.workers = [x for x in self.workers if x is not w]
 
     def judge(self, direction: str, control: str, sender: Worker, receiver: Worker,
-              msg_id: str) -> Result:
+              msg_id: str, cancellation: Optional[tuple[str, str]] = None) -> Result:
         """*** THE VERDICT IS READ FROM EACH SIDE'S OWN OWNER, NEVER FROM A BYTES-CROSSED CLAIM. ***"""
         if control == "honest":
             durable = self.durable_of(receiver)
             delivered = self.delivered_of(sender)
+            # *** AND THE REOPENED-ESTATE PROOF *AND* THE CANCELLATION NEGATIVE MUST HAVE STOOD. ***
+            #
+            # *THE DEFECT THIS CLOSES: a `present`/`DELIVERED` claim read from the LIVE stores could not be told from
+            # a running object's own state, and the tracker's OTHER terminal move (cancel) was never exercised at all.
+            # **Both are now REQUIRED before an honest row may be ACCEPTED.***
+            if cancellation is None:
+                raise Refused(f"*** {direction} ({control}): NO REOPENED-ESTATE / CANCELLATION PROOF WAS TAKEN. *** "
+                              f"*An honest row that never re-read the reopened estate and never drove the cancellation "
+                              f"negative is not durable evidence.*")
             if durable is None:
                 raise Refused(f"*** {direction} ({control}): THE RECIPIENT NEVER PROVED ITS DURABLE ROW. *** "
                               f"receiver said: {self.summary(receiver)}")
             if delivered is None:
                 raise Refused(f"*** {direction} ({control}): THE SENDER NEVER PROVED ITS DELIVERY TRANSITION. *** "
                               f"sender said: {self.summary(sender)}")
+            if durable.header.get("reopened") is not True:
+                raise Refused(f"*** {direction} ({control}): THE RECIPIENT'S DURABLE ROW WAS READ FROM A LIVE STORE, "
+                              f"NOT A REOPENED ESTATE. *** *A row that was never re-read after the owner released its "
+                              f"handles is a running object's claim, not a surviving row.*")
             if str(durable.header.get("msg_id")) != msg_id:
                 raise Refused(f"*** {direction} ({control}): THE RECIPIENT'S ROW NAMES A DIFFERENT MESSAGE "
                               f"({durable.header.get('msg_id')} vs {msg_id}). ***")
@@ -1209,11 +1936,15 @@ class Runner:
                 raise Refused(f"*** {direction} ({control}): THE RECIPIENT NEVER ISSUED ITS CANONICAL ACK FOR THIS "
                               f"FRAME. *** *The ACK is drained from production's own outbox; a run whose ACK never "
                               f"left cannot show the return leg.* receiver said: {self.summary(receiver)}")
+            cancel_msg_id, cancel_state = cancellation
             return Result(direction=direction, control=control, outcome="ACCEPTED",
                           detail="the recipient committed the exact msgId and the sender reached DELIVERED after "
-                                 "the recipient's canonical ACK crossed the return leg",
+                                 "the recipient's canonical ACK crossed the return leg; both the durable row and "
+                                 "DELIVERY were re-read from the REOPENED estate, and the cancellation negative "
+                                 f"moved a queued frame to {cancel_state} and survived a reopen",
                           durable_row="present", delivery="DELIVERED", msg_id=msg_id,
-                          boundary="inbox commit + delivery tracker CAS")
+                          boundary="inbox commit + delivery tracker CAS (reopened estate)",
+                          cancellation_msg_id=cancel_msg_id, cancellation_state=cancel_state)
 
         # ---- the refusal controls ----------------------------------------------------------------------
         durable = self.durable_of(receiver)
@@ -1286,8 +2017,23 @@ class Runner:
         if not captured:
             raise Refused(f"*** {direction} (replay): PHASE A CAPTURED NO INBOX RECORD TO REPLAY. ***")
         blob = (self.evidence_dir / "transcript.bin").read_bytes()
-        replays = [(blob[e["payload_offset"]:e["payload_offset"] + e["payload_length"]],
-                    e["characteristic"], e["epoch"]) for e in captured]
+        # *** THE SLICE IS THE RECORD'S TRUE PAYLOAD, AND IT IS VERIFIED AGAINST THE MANIFEST'S OWN DIGEST. ***
+        #
+        # *THE DEFECT THIS CLOSES: `payload_offset` used to point at the FRAME, so the slice carrieth the framing
+        # preamble and a truncated body -- `Evidence.append` now putteth the payload's real offset in, and this
+        # assertion proveth the two agree rather than trusting the arithmetic.* **A slice that does not hash to the
+        # payload the manifest named is a REFUSAL, not a replay of something else.**
+        replays: list[tuple[bytes, str, Any]] = []
+        for e in captured:
+            start = e["payload_offset"]
+            payload = blob[start:start + e["payload_length"]]
+            got = sha256_bytes(payload)
+            if got != e["payload_sha256"]:
+                raise Refused(f"*** {direction} (replay): THE CAPTURED PAYLOAD SLICE DOES NOT HASH TO WHAT THE "
+                              f"MANIFEST RECORDED ({got[:16]}… vs {e['payload_sha256'][:16]}…). *** *The offset "
+                              f"arithmetic and the written bytes disagree, so what would be replayed is not the "
+                              f"session's own ciphertext.*")
+            replays.append((payload, str(e["characteristic"]), e["epoch"]))
         self.log(f"  captured {len(replays)} inbox record(s) from the honest session")
 
         self.log(f"--- direction {direction} control=replay: phase B (fresh session, fresh estate) ---")
@@ -1386,32 +2132,141 @@ class Runner:
         self.log("*** crash mode: the Android durable-boundary recovery worker ***")
         for boundary in CRASH_BOUNDARIES:
             estate = self.fresh_estate(f"crash-{boundary}")
+            # *** THE COORDINATOR'S REQUESTED ROLE IS RECORDED BESIDE THE WORKER'S OWN VOCABULARY. ***
             prepare = self.launch_android(f"android-prepare-{boundary}", "crash-prepare", boundary, estate,
                                           self.deadline_s)
+            prepare_rc: Optional[int] = None
+            prepare_term: Optional[Termination] = None
             try:
                 marker = prepare.wait(lambda r: r.kind in ("at_boundary", "refuse"), self.deadline_s,
                                       f"its AT_BOUNDARY marker for {boundary}")
                 if marker.kind == "refuse":
                     raise Refused(f"*** THE ANDROID WORKER REFUSED THE {boundary} CHECKPOINT: "
                                   f"{marker.header.get('reason')} ***")
+                # *** THE WORKER'S OWN RECORD MUST CONFIRM THE ROLE/VARIANT/PLATFORM THAT WAS REQUESTED. *** *The
+                # alias bridgeth the crash vocabulary to the worker's own; an unknown variant is refused at the
+                # worker's root, and this comparison is the coordinator's half of that contract.*
+                self.require_reported_identity(prepare, marker)
+                if str(marker.header.get("boundary", boundary)) != boundary:
+                    raise Refused(f"*** THE ANDROID PREPARE MARKER FOR {boundary} NAMES A DIFFERENT BOUNDARY: "
+                                  f"{marker.header.get('boundary')!r}. ***")
                 self.log(f"  {boundary}: {dict(marker.header)}")
+                # *** THE DEATH IS OBSERVED *BEFORE* THE COORDINATOR CAN SUPPLY ONE. ***
+                #
+                # *THE DEFECT THIS CLOSES: `prepare.status` was read AFTER `prepare.close()` -- and `close()` sendeth
+                # the coordinator's OWN SIGTERM/SIGKILL -- so the status observed could be the COORDINATOR'S kill, and
+                # `None` (still running) was ACCEPTED as a crash. Both let a HUNG worker, or a worker the coordinator
+                # itself killed, masquerade as an abrupt halt.* **HERE THE CHILD EXITS ON ITS OWN FIRST (`wait_exit`),
+                # inside the guard; only then (in `finally`) is it reaped.**
+                prepare_rc = prepare.wait_exit(self.deadline_s)
             finally:
+                prepare_term = prepare.observe_termination()
                 prepare.close()
                 self.workers = [x for x in self.workers if x is not prepare]
-            # *** THE JVM MUST HAVE DIED ABRUPTLY. *** *A halt carrieth its own status; a clean exit would mean the
-            # worker cooperated, which is not a crash proof.*
-            if prepare.status in (0, None):
-                raise Refused(f"*** THE ANDROID PREPARE JVM FOR {boundary} EXITED {prepare.status}: A COOPERATIVE "
-                              "EXIT IS NOT A CRASH. ***")
+            if prepare_term.forced_kill or prepare_term.termination_reason.startswith("coordinator-"):
+                raise Refused(f"*** THE ANDROID PREPARE JVM FOR {boundary} WAS KILLED BY THE COORDINATOR, NOT BY "
+                              f"ITSELF: {prepare_term.describe()} *** *The death proof must be the worker's, observed "
+                              f"before any coordinator kill.*")
+            if prepare_rc is None:
+                raise Refused(f"*** THE ANDROID PREPARE JVM FOR {boundary} WAS HUNG -- it did not exit on its own "
+                              f"within {self.deadline_s:.0f}s. *** *A HUNG WORKER IS NOT A CRASH, and the coordinator "
+                              f"must never supply the death it then reports.*")
+            if prepare_rc == 0:
+                raise Refused(f"*** THE ANDROID PREPARE JVM FOR {boundary} EXITED 0: A COOPERATIVE EXIT IS NOT A "
+                              f"CRASH. ***")
+            if prepare_rc < 0:
+                raise Refused(f"*** THE ANDROID PREPARE JVM FOR {boundary} EXITED {prepare_rc} -- a SIGNAL death "
+                              f"(SIGTERM -15 / SIGKILL -9) is the COORDINATOR'S OWN CLEANUP, not the worker's abrupt "
+                              f"halt. *** *The death proof must be the worker's, observed before any coordinator kill.*")
+            # *** THE WRAPPER'S RC IS NOT THE PROOF, AND DEMANDING 137 FROM IT IS WRONG. ***
+            #
+            # *`Runtime.halt(137)` terminateth the FORKED EXECUTOR JVM; Gradle reapit it, reporteth "finished with
+            # non-zero exit value 137", and then exits the BUILD with `rc=1` -- it does NOT propagate 137. **So the
+            # proof demanded here is the ACTUAL EXECUTOR CHILD's abrupt status, bound to its actual PID and to the
+            # worker's own `GS_INTEGRATION_ABOUT_TO_HALT` marker, READ FROM THE WORKER'S OWN RETAINED LOG.** A wrapper
+            # rc of 1 is therefore RECORDED (and may be 1 or None), never required to equal 137.*
+            exec_info = prepare.executor_termination()
+            if not exec_info["about_to_halt_seen"]:
+                raise Refused(f"*** THE ANDROID PREPARE LOG FOR {boundary} CARRIES NO BOUND "
+                              f"`{GRADLE_EXECUTOR_HALT_LINE} boundary=<stage> code=<n>` DECLARATION: the executor's "
+                              f"death cannot be bound to a stage. *** log={prepare.log_path}")
+            # *** THE DECLARATION BELONGS TO THIS BOUNDARY AND DECLARES THE DEATH IT PREDICTS. ***
+            #
+            # *THE DEFECT THIS CLOSES: `about_to_halt_seen` was a substring test on the marker's NAME, so a print of
+            # the word from ANY code path -- wrong stage, wrong code, even a different JVM's log -- satisfied it. The
+            # committed worker's `markAboutToHalt` printseth the boundary it is about to halt AT and the code it will
+            # halt WITH, so both must name THIS boundary and the executor's observed abrupt status.*
+            if boundary not in exec_info["about_to_halt_boundaries"]:
+                raise Refused(f"*** THE ANDROID PREPARE LOG FOR {boundary} CARRIES NO PRE-HALT DECLARATION FOR THIS "
+                              f"STAGE: boundaries={exec_info['about_to_halt_boundaries']}. *** "
+                              f"log={prepare.log_path}")
+            abrupt = [s for s in exec_info["gradle_reported_abrupt_statuses"]
+                      if s == GRADLE_EXECUTOR_ABRUPT_STATUS]
+            if not abrupt:
+                raise Refused(f"*** THE ANDROID PREPARE LOG FOR {boundary} DOES NOT REPORT THE FORKED EXECUTOR "
+                              f"DYING WITH STATUS {GRADLE_EXECUTOR_ABRUPT_STATUS}: "
+                              f"gradle_abrupt={exec_info['gradle_reported_abrupt_statuses']} "
+                              f"declared={exec_info['declared_halt_statuses']}. *** *A wrapper `rc` alone proves "
+                              f"nothing about the child; the abrupt status of the ACTUAL executor is the crash.*")
+            if GRADLE_EXECUTOR_ABRUPT_STATUS not in exec_info["about_to_halt_codes"]:
+                raise Refused(f"*** THE PRE-HALT DECLARATION FOR {boundary} DOES NOT DECLARE THE HALT CODE "
+                              f"{GRADLE_EXECUTOR_ABRUPT_STATUS}: codes={exec_info['about_to_halt_codes']}. *** "
+                              f"*The worker must predict the death Gradle then observeth; a declaration about some "
+                              f"other code binds the stage to no observed event.*")
+            executor_pid = exec_info["executor_pid"]
+            if executor_pid is None:
+                raise Refused(f"*** THE ANDROID PREPARE LOG FOR {boundary} NAMES NO EXECUTOR PID, so the abrupt "
+                              f"status cannot be bound to a real process. *** log={prepare.log_path}")
+            # *** THE PID IS A REAL OS PROCESS, NOT A SHADOW AND NOT THE WRAPPER. ***
+            #
+            # *The committed worker resolvesthe pid through the PUBLIC `java.lang.ProcessHandle` interface and
+            # `check(pid > 0)`. A Robolectric-shadowed context reporteth the constant `10000` -- that is a SIMULATED
+            # pid, which is the absence of a real one -- and a pid EQUAL to the wrapper's is the gradlew process
+            # itself, not the forked executor: the death would be bound to a process that observably did not die the
+            # observed death.*
+            if executor_pid <= 0 or executor_pid == ROBOLECTRIC_SHADOW_PID:
+                raise Refused(f"*** THE ANDROID PREPARE FOR {boundary} BOUND ITS DEATH TO pid={executor_pid}, which "
+                              f"is not a real OS pid (non-positive, or the Robolectric shadow). *** "
+                              f"*A death bound to a simulated process is bound to no process.*")
+            if prepare_term.pid is not None and executor_pid == prepare_term.pid:
+                raise Refused(f"*** THE 'EXECUTOR' PID FOR {boundary} EQUALS THE GRADLE WRAPPER ({executor_pid}): "
+                              f"the forked executor child was never observed as a DISTINCT process. ***")
+            self.log(f"  {boundary}: prepare exited on its own with wrapper rc={prepare_rc}; the ACTUAL Gradle Test "
+                     f"Executor pid={executor_pid} (distinct of wrapper={prepare_term.pid}) died abruptly with "
+                     f"status {abrupt[-1]} (pre-halt declaration bound to this stage and code)")
+            crash_termination = {
+                "boundary": boundary,
+                "wrapper_pid": prepare_term.pid,
+                "wrapper_exit_status": prepare_term.exit_status,
+                "wrapper_termination_reason": prepare_term.termination_reason,
+                "forced_kill": prepare_term.forced_kill,
+                "observed_before_cleanup": prepare_term.observed_before_cleanup,
+                "executor_pid": executor_pid,
+                "executor_abrupt_status": abrupt[-1],
+                "about_to_halt_seen": exec_info["about_to_halt_seen"],
+                "about_to_halt_boundary": boundary,
+                "about_to_halt_code": GRADLE_EXECUTOR_ABRUPT_STATUS,
+                "log_path": prepare.log_path.name,
+                "log_sha256": sha256_file(prepare.log_path) if prepare.log_path.is_file() else "",
+            }
+            self.evidence.append(
+                Record(header={"v": PROTOCOL_VERSION, "kind": "termination", "platform": "android",
+                               "role": "crash-prepare", "boundary": boundary}, payload=b""),
+                direction="android-crash", producer=prepare.name, target="coordinator", characteristic="control",
+                epoch=None, platform="android",
+                note=f"crash proof for {boundary}: " + json.dumps(crash_termination, sort_keys=True))
+            self.crash_terminations.append(crash_termination)
 
             recover = self.launch_android(f"android-recover-{boundary}", "crash-recover", boundary, estate,
                                           self.deadline_s)
+            recover_term: Optional[Termination] = None
             try:
                 outcome = recover.wait(lambda r: r.kind in ("complete", "refuse"), self.deadline_s,
                                        f"its COMPLETE marker for {boundary}")
                 if outcome.kind == "refuse":
                     raise Refused(f"*** THE ANDROID RECOVERY FOR {boundary} FAILED: "
                                   f"{outcome.header.get('reason')} ***")
+                self.require_reported_identity(recover, outcome)
                 if outcome.header.get("durable_row") != "present":
                     raise Refused(f"*** THE ANDROID RECOVERY FOR {boundary} FOUND NO SURVIVING ROW. *** "
                                   f"outcome={dict(outcome.header)}")
@@ -1426,12 +2281,35 @@ class Runner:
                     msg_id=str(outcome.header.get("msg_id", "")),
                     boundary=f"durable owner commit at {boundary}"))
                 recover.send("bye")
+                # *** THE RECOVERY'S OWN EXIT IS OBSERVED BEFORE THE CLEANUP SUPPLIES ONE. ***
+                recover.wait_exit(self.deadline_s)
             finally:
-                rc = recover.status
+                recover_term = recover.observe_termination()
                 recover.close()
                 self.workers = [x for x in self.workers if x is not recover]
-            if rc not in (0, None):
-                raise Refused(f"*** THE ANDROID RECOVERY JVM FOR {boundary} EXITED {rc}. ***")
+            self.evidence.append(
+                Record(header={"v": PROTOCOL_VERSION, "kind": "termination", "platform": "android",
+                               "role": "crash-recover", "boundary": boundary}, payload=b""),
+                direction="android-crash", producer=recover.name, target="coordinator", characteristic="control",
+                epoch=None, platform="android",
+                note="recovery termination: " + json.dumps(recover_term.as_dict(
+                    log_sha256=sha256_file(recover.log_path) if recover.log_path.is_file() else ""),
+                    sort_keys=True))
+            if recover_term.forced_kill or recover_term.termination_reason.startswith("coordinator-"):
+                raise Refused(f"*** THE ANDROID RECOVERY JVM FOR {boundary} WAS KILLED BY THE COORDINATOR: "
+                              f"{recover_term.describe()} *** *A recovery whose own exit was never observed is not "
+                              f"proof it finished.*")
+            if recover_term.exit_status != 0:
+                raise Refused(f"*** THE ANDROID RECOVERY JVM FOR {boundary} EXITED {recover_term.exit_status}. ***")
+
+    def _require_retained_logs(self) -> None:
+        """*** EVERY WORKER'S LOG MUST HAVE BEEN RETAINED, OR THE RUN CARRIES NO LOG PROOF. ***"""
+        missing = [w for w in self.all_workers if w.retention_error]
+        if missing:
+            raise Refused("*** THE EVIDENCE ROOT COULD NOT RETAIN " + f"{len(missing)}" + " WORKER LOG(S): " +
+                          "; ".join(f"{w.name}: {w.retention_error}" for w in missing[:4]) + " *** "
+                          "*A worker's own stdout/stderr is its log proof; a run that could not retain it cannot "
+                          "support the verdict it claims.*")
 
     # ---- the report -------------------------------------------------------------------------------------------
 
@@ -1456,18 +2334,54 @@ class Runner:
             "schema_version": SCHEMA_VERSION,
             "mode": mode,
             "run_id": self.run_id,
+            **self.identity,
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "producer": "tools/readiness/run_board1_integration.py",
+            "producer_sha256": sha256_file(Path(__file__)),
             "input_digest": self.digest,
             "input_files": self.input_files,
             "toolchain": self.toolchains,
+            # *** THE BUILT FIXTURE'S OWN DIGEST, SO A READER CAN BIND THE RUN TO THE EXACT BUNDLE IT EXERCISED. ***
+            # *The PATH travelseth too, so the gate re-hasheth the bundle over the bytes on disk rather than trusting
+            # the recorded digest -- a recorded hash is a claim, a recomputed hash is a fact about these bytes.*
+            "bundle_digest": self.bundle_digest_value,
+            "bundle_path": (str(self._swift_bundle.relative_to(REPO)) if self._swift_bundle
+                            and self._swift_bundle.is_relative_to(REPO) else
+                            (str(self._swift_bundle) if self._swift_bundle else None)),
+            "android_fixture_ready": self._android_ready,
+            # *** AND THE BUILD ATTESTATION: the artifact, its descriptor-verified identity, the recipe and the
+            # candidate/source digests -- PRODUCED BY THIS BUILD, or VERIFIED against the build that produced it. ***
+            "build_attestation": self.build_attestation_value,
+            "build_attestation_verified": self.attestation_verified,
+            "skip_build": bool(self.args.skip_build),
             "results": [
                 {"direction": r.direction, "control": r.control, "outcome": r.outcome,
                  "durable_row": r.durable_row, "delivery": r.delivery, "msg_id": r.msg_id,
-                 "refusal": r.refusal, "boundary": r.boundary, "detail": r.detail}
+                 "refusal": r.refusal, "boundary": r.boundary, "detail": r.detail,
+                 "cancellation_msg_id": r.cancellation_msg_id,
+                 "cancellation_state": r.cancellation_state}
                 for r in self.results
             ],
             "manifest": {"path": manifest["transcript"]["path"],
                          "sha256": sha256_file(self.evidence.manifest_path),
                          "record_count": manifest["record_count"]},
+            # *** THE OBSERVED TERMINATION OF EVERY WORKER THIS RUN LAUNCHED. ***
+            #
+            # *THE DEFECT THIS CLOSES: the report carrieth each worker's VERDICT but nothing about HOW IT ENDED, so
+            # a crash row could be earned by a HUNG worker or by the coordinator's own SIGTERM/SIGKILL -- the two
+            # things the plan's own termination clause forbids.* **Every entry carrieth the actual PID, the actual
+            # exit status, WHY it ended, the forced-kill flag, whether the observation preceded cleanup, and the
+            # retained log's sha256; the gate REFUSETH a crash row whose termination was supplied or never
+            # observed.**
+            "worker_terminations": [
+                {"name": w.name, "platform": w.platform, "role": w.role, "variant": w.spec.variant,
+                 "attempt": w.attempt,
+                 **w.termination.as_dict()}
+                for w in self.all_workers if w.termination is not None
+            ],
+            # *** AND THE ANDROID CRASH PROOF ITSELF: the ACTUAL executor child's abrupt status, bound to its PID. ***
+            "crash_terminations": self.crash_terminations,
+            "worker_launches": self.evidence.launches,
             "transcript": {"path": manifest["transcript"]["path"],
                            "sha256": manifest["transcript"]["sha256"],
                            "length": manifest["transcript"]["length"],
@@ -1485,17 +2399,20 @@ class Runner:
                      f"refusal={(row['refusal'] or '-')[:90]}")
         self.log(f"  transcript framing (first 128 octets): {framing_dump}")
 
-    # ---- fixtures ---------------------------------------------------------------------------------------------
+    # ---- the producer binding (current run, inside its evidence dir) ------------------------------------------
 
-    def persist_fixtures(self, mode: str) -> None:
-        """*** "Persist these generated transcripts under `tools/integration-fixtures/` with their producer
-        identities and an evidence binding." ***"""
-        target = self.fixtures_root / self.run_id
-        target.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(self.evidence.blob, target / "transcript.bin")
-        shutil.copy2(self.evidence.manifest_path, target / "manifest.json")
-        shutil.copy2(self.evidence_dir / "integration-report.json", target / "integration-report.json")
-        (target / "producers.json").write_text(json.dumps({
+    def write_producer_binding(self, mode: str) -> None:
+        """*** WRITE THE RUN'S PRODUCER IDENTITIES AND EVIDENCE BINDING INTO ITS OWN EVIDENCE DIR. ***
+
+        *THE DEFECT THIS CLOSES, MEASURED ON THE AUTHENTICATED C14 ARTIFACT: this method copied the fresh run's
+        transcript/manifest/report INTO `tools/integration-fixtures/<run_id>/` -- the HISTORICAL ARCHIVE namespace --
+        so the run's OWN `run_id` became an archived fixture identity and the terminal gate then refused the run's
+        genuine report as a COPIED historical fixture. **`tools/integration-fixtures/` is HISTORICAL ONLY; a CURRENT
+        run's transcript/manifest/report ALREADY live complete in its evidence dir, so the only thing not already
+        there is this producer-identity + evidence-binding sidecar -- and it is written once, in that dir, NEVER into
+        the archive namespace and never as a duplicate copy of the three outputs.** *No tracked path is written.*
+        """
+        (self.evidence_dir / "producers.json").write_text(json.dumps({
             "schema_version": SCHEMA_VERSION,
             "run_id": self.run_id,
             "mode": mode,
@@ -1505,11 +2422,11 @@ class Runner:
             "worker_launches": self.evidence.launches,
             "evidence_binding": {
                 "transcript": {"path": "transcript.bin",
-                               "sha256": sha256_file(target / "transcript.bin")},
+                               "sha256": sha256_file(self.evidence.blob)},
                 "manifest": {"path": "manifest.json",
-                             "sha256": sha256_file(target / "manifest.json")},
+                             "sha256": sha256_file(self.evidence.manifest_path)},
                 "report": {"path": "integration-report.json",
-                           "sha256": sha256_file(target / "integration-report.json")},
+                           "sha256": sha256_file(self.evidence_dir / "integration-report.json")},
             },
             "producers": [
                 {"sequence": e["sequence"], "platform": e["platform"], "producer": e["producer"],
@@ -1519,8 +2436,9 @@ class Runner:
                 for e in self.evidence.records
             ],
         }, indent=2) + "\n")
-        self.log(f"  fixtures persisted under {target.relative_to(REPO)}")
-        return target
+        self.log("  producer identities + evidence binding written to producers.json "
+                 "(HISTORICAL archive namespace untouched)")
+        return self.evidence_dir / "producers.json"
 
     # ---- the entry point --------------------------------------------------------------------------------------
 
@@ -1551,16 +2469,31 @@ class Runner:
             for worker in list(self.workers):
                 worker.close()
 
+        # *** EVERY LAUNCHED WORKER'S LOG MUST HAVE BEEN RETAINED, EVEN ON A RED RUN. ***
+        # *The copy failure was silently swallowed before; now a run whose log proof could not be retained REFUSETH
+        # rather than presenting a verdict it cannot support. Checked AFTER the closes, because that is when every
+        # retained copy is written.*
+        if failure is None:
+            try:
+                self._require_retained_logs()
+            except Refused as exc:
+                failure = str(exc)
+                self.log(f"*** REFUSED: {failure} ***")
+
         post_digest, _ = input_digest(tuple(self.args.extra_input or ()))
-        if post_digest != self.digest:
-            self.log(f"*** REFUSED: an input changed WHILE the run executed ***\n"
-                     f"    pre ={self.digest}\n    post={post_digest}")
+        try:
+            current_identity = build_provenance.source_identity(self.identity["candidate_sha"])
+        except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+            self.log(f"*** REFUSED: candidate source drift: {exc} ***")
+            return 3
+        if post_digest != self.digest or current_identity != self.identity:
+            self.log("*** REFUSED: an input changed WHILE the run executed ***")
             return 3
 
         manifest = self.evidence.close()
         if failure is None:
             self.write_report(mode, manifest)
-            self.persist_fixtures(mode)
+            self.write_producer_binding(mode)
         self.log(f"    input digest (post) = {post_digest} (agrees)")
         if failure is not None:
             self.log("*** FAIL ***")
@@ -1576,7 +2509,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--timeout", type=float, default=300.0,
                     help="bound, in seconds, on every single worker wait and relay phase")
     ap.add_argument("--skip-build", action="store_true",
-                    help="assume the macOS test bundle is already built")
+                    help="assume the macOS test bundle is already built; REQUIRES --expect-build-attestation and "
+                         "--candidate-sha, so the assumption is verified against a real build's record")
+    ap.add_argument("--expect-build-attestation",
+                    help="with --skip-build: the path to a build-attestation.json a REAL BUILD produced; the run "
+                         "VERIFIES bundle/source/recipe/candidate/library digests against it and REFUSES a mismatch")
+    ap.add_argument("--candidate-sha",
+                    help="the exact candidate commit/tree SHA this run is a claim about; REQUIRED with --skip-build")
     ap.add_argument("--extra-input", action="append", default=[],
                     help="extra repo-relative input file to bind into the digest")
     args = ap.parse_args(argv)

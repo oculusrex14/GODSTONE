@@ -1,0 +1,3 @@
+STORE-SCHEMA-CONTROLS GATE: PASS -- all 111 C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3/C7.5/C7.5.1 schema/persistence/atomic ACK-retirement controls present in the test sources.
+
+(the rod aimed at 'dispatchDirect must transport canonicalFrame'; reddened refusals were [])

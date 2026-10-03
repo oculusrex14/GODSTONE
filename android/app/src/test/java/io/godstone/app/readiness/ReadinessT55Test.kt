@@ -20,6 +20,7 @@ import io.godstone.app.trust.ContactTrustLabel
 import io.godstone.app.trust.ConfirmOutcome
 import io.godstone.app.trust.ContactVerificationCommand
 import io.godstone.app.trust.ExactRotationCandidateRef
+import io.godstone.app.trust.FingerprintDisplay
 import io.godstone.app.trust.IdentityTrustViewModel
 import io.godstone.app.trust.OwnIdentityProjection
 import io.godstone.app.trust.QrPayloadPolicy
@@ -162,16 +163,18 @@ class ReadinessT55Test {
             return RotationApprovalOutcome.Approved(ref.nodeIdCopy(), ref.pendingGeneration)
         }
 
-        override fun confirmVerified(nodeId: ByteArray, fingerprintHex: String): ConfirmOutcome {
-            val row = rows[nodeId.toHex()] ?: return ConfirmOutcome.PeerNotFound
+        override fun confirmVerified(request: FingerprintDisplay): ConfirmOutcome {
+            val row = rows[request.nodeIdCopy().toHex()] ?: return ConfirmOutcome.PeerNotFound
             if (row.trust == ContactTrustLabel.USER_VERIFIED) return ConfirmOutcome.AlreadyVerified
             if (row.trust == ContactTrustLabel.REVOKED) return ConfirmOutcome.Refused("revoked")
-            // THE CAS: the digest must be the durable one, or nothing is promoted
-            if (!row.acceptedKeyDigest.equals(fingerprintHex, ignoreCase = true)) {
+            // THE CAS BINDS ON **BOTH** OPERANDS THE READER COMPARED: the accepted generation AND the digest.
+            // A digest that matcheth a row whose generation had moved beneath the reader promoteth NOTHING.
+            if (row.acceptedGeneration != request.acceptedGeneration) return ConfirmOutcome.Mismatch
+            if (!row.acceptedKeyDigest.equals(request.fingerprintHex, ignoreCase = true)) {
                 return ConfirmOutcome.Mismatch
             }
             row.trust = ContactTrustLabel.USER_VERIFIED
-            return ConfirmOutcome.Confirmed(nodeId.copyOf(), row.acceptedGeneration)
+            return ConfirmOutcome.Confirmed(request.nodeIdCopy(), row.acceptedGeneration)
         }
 
         override fun revoke(nodeId: ByteArray): RevokeOutcome {
@@ -227,7 +230,8 @@ class ReadinessT55Test {
             trustLabel(ContactTrustLabel.TOFU_UNVERIFIED), trustLabel(ContactTrustLabel.USER_VERIFIED))
 
         val confirmed = model.onCommand(
-            ContactVerificationCommand.CompareAndConfirmFingerprint(nodeId, tofu.fingerprintHex))
+            ContactVerificationCommand.CompareAndConfirmFingerprint(
+                nodeId, tofu.fingerprintHex, displayedAcceptedGeneration = tofu.acceptedGeneration))
         val after = confirmed.contact(nodeId)!!
         Assert.assertEquals("a matching compare promotes to VERIFIED",
             ContactTrustLabel.USER_VERIFIED, after.trust)
@@ -528,7 +532,8 @@ class ReadinessT55Test {
         val wrong = "f".repeat(64)
         Assert.assertNotEquals(before.fingerprintHex, wrong)
         val refused = model.onCommand(
-            ContactVerificationCommand.CompareAndConfirmFingerprint(nodeId, wrong))
+            ContactVerificationCommand.CompareAndConfirmFingerprint(
+                nodeId, wrong, displayedAcceptedGeneration = before.acceptedGeneration))
         Assert.assertNotNull(refused.error)
         Assert.assertTrue(refused.error!!.contains("NOT verified"))
         Assert.assertEquals("trust is unchanged by a mismatch",
@@ -536,7 +541,8 @@ class ReadinessT55Test {
 
         // a malformed digest is refused before anything is compared
         val malformed = model.onCommand(
-            ContactVerificationCommand.CompareAndConfirmFingerprint(nodeId, "zzzz"))
+            ContactVerificationCommand.CompareAndConfirmFingerprint(
+                nodeId, "zzzz", displayedAcceptedGeneration = before.acceptedGeneration))
         Assert.assertNotNull(malformed.error)
         Assert.assertTrue(malformed.error!!.contains("64-character hex"))
         Assert.assertEquals(ContactTrustLabel.TOFU_UNVERIFIED,
@@ -561,7 +567,7 @@ class ReadinessT55Test {
             ExactRotationCandidateRef(ByteArray(16) { 9 }, 1L, ByteArray(32) { 0x0a })))
         model.onCommand(ContactVerificationCommand.Revoke(ByteArray(5)))
         model.onCommand(ContactVerificationCommand.CompareAndConfirmFingerprint(
-            ByteArray(16) { 9 }, "b".repeat(64)))
+            ByteArray(16) { 9 }, "b".repeat(64), displayedAcceptedGeneration = 1L))
         val after = model.refresh()
 
         Assert.assertEquals("the contact census is unchanged",
@@ -644,7 +650,8 @@ class ReadinessT55Test {
 
         // THE CONTROL'S OWN CALL, with the value the screen PRINTS (`contact.fingerprintHex`).
         val after = model.onCommand(
-            ContactVerificationCommand.CompareAndConfirmFingerprint(nodeId, shown.fingerprintHex))
+            ContactVerificationCommand.CompareAndConfirmFingerprint(
+                nodeId, shown.fingerprintHex, displayedAcceptedGeneration = shown.acceptedGeneration))
         Assert.assertEquals("*** THE DISPLAYED CODE MUST BE THE ONE CONFIRMED ***",
             ContactTrustLabel.USER_VERIFIED, after.contact(nodeId)!!.trust)
 
@@ -656,7 +663,8 @@ class ReadinessT55Test {
         val otherShown = otherModel.refresh().contact(otherNode)!!
         val wrong = otherShown.fingerprintHex.reversed()
         val refused = otherModel.onCommand(
-            ContactVerificationCommand.CompareAndConfirmFingerprint(otherNode, wrong))
+            ContactVerificationCommand.CompareAndConfirmFingerprint(
+                otherNode, wrong, displayedAcceptedGeneration = otherShown.acceptedGeneration))
         Assert.assertNotNull("*** a MISMATCHED fingerprint must NOT verify, and must SAY so ***", refused.error)
         Assert.assertNotEquals("and the contact must not be promoted by a code that was never shown",
             ContactTrustLabel.USER_VERIFIED, refused.contact(otherNode)!!.trust)

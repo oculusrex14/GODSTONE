@@ -28,6 +28,17 @@ android {
         }
     }
 
+    // *** GS-FINAL-003 `same-estate`: THE HOST PLATFORM IS A SHARED FIXTURE. ***
+    //
+    // *The host substitution the LAB COURTS need -- real on-disk SQLite behind the AndroidKeyStore/SQLCipher doors
+    // alone -- is the SAME machinery the `:mesh` courts already carry (`JdbcStoreDb`, `JdbcPeerIdentityStore`).*
+    // **Exposing it as a `testFixtures` source set means `:labmesh` consumes ONE host platform rather than keeping a
+    // second copy; AGP 8.5+ publishes that source set to a consuming module only when Kotlin fixtures support is
+    // enabled (see `gradle.properties`'s `android.experimental.enableTestFixturesKotlinSupport`).**
+    testFixtures {
+        enable = true
+    }
+
     defaultConfig {
         minSdk = 26
         consumerProguardFiles("consumer-rules.pro")
@@ -95,6 +106,17 @@ dependencies {
     // here can obtain a REAL Android `Context` on the host. Test-only; never reaches a shipping classpath.
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("androidx.test.ext:junit:1.2.1")
+
+    // *** THE HOST FIXTURE'S OWN CLASSPATH: real on-disk SQLite, exposed to CONSUMING modules' tests. ***
+    // *`JdbcStoreDb`/`JdbcPeerIdentityStore` live in `src/testFixtures` and are compiled against `org.xerial:sqlite-jdbc`,
+    // which a consumer's test classpath must therefore carry.* **`testFixturesApi` exports it transitively (the fixture's
+    // own public surface names `java.io.File`, but the JDBC driver is loaded by reflection at runtime, so `api` rather
+    // than `implementation` keeps a consumer's host court working without a second declaration).** *The artifact is the
+    // SAME pinned one the module's own tests already use -- no new supply-chain entry.*
+    testFixturesApi("org.xerial:sqlite-jdbc:3.46.1.3")
+    // *The fixture's `HostLabPlatform` also names `:core`'s `Ed25519Keys`/`X25519Keys`, so the fixture compile
+    // classpath carrieth the SAME `:core` the main variant uses -- never a second declaration.*
+    testFixturesImplementation(project(":core"))
 }
 
 // =====================================================================================================================
@@ -212,5 +234,39 @@ tasks.register<Test>("board1DurableBoundaryWorker") {
     }
     // The default JVM's own heap/fork settings are inherited; no daemon is started by this task beyond the wrapper's
     // own, and `--no-daemon` at the command line keeps a Gradle daemon out of the crash lane entirely.
+    maxHeapSize = "2g"
+}
+
+// =====================================================================================================================
+// *** GS-INTEGRATION-001 `scenarios`: THE REPLAY/ROTATION/PARITY LANE. ***
+//
+// *THE CARD (step 6) NAMETH TWO ADDITIONAL COVERS BESIDE THE DURABLE BOUNDARY: **"replay and rotation control
+// coverage"** and **"30 scenarios"**, PLUS **"payload tests across 15 scenarios"** proving **the actual user messages
+// reach the recipients intact.*** **Those arms live in `io.godstone.mesh.lab.replay` and
+// `io.godstone.mesh.lab.payload`, so this task RUNNETH them EXPLICITLY** -- the same shape `board1IntegrationWorker`
+// and `board1DurableBoundaryWorker` already carry, so a lane that selects them is a real selection rather than an
+// empty one.
+//
+//   cd android && ./gradlew :mesh:board1ReplayLane --no-daemon
+//
+// =====================================================================================================================
+tasks.register<Test>("board1ReplayLane") {
+    group = "verification"
+    description = "GS-INTEGRATION-001 scenarios: the replay/rotation control lane (initial handshake replay, the " +
+        "bounded queue overflow, replay-after-reconnect, the rotation paths and the payload round-trip)."
+
+    val debugUnitTest = tasks.named<Test>("testDebugUnitTest")
+    testClassesDirs = debugUnitTest.get().testClassesDirs
+    classpath = debugUnitTest.get().classpath
+    filter { includeTestsMatching("io.godstone.mesh.lab.replay.*") }
+    filter { includeTestsMatching("io.godstone.mesh.lab.payload.*") }
+
+    outputs.upToDateWhen { false }
+    reports.junitXml.required.set(true)
+    reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/board1ReplayLane"))
+    testLogging {
+        events("passed", "failed", "skipped")
+        showStandardStreams = true
+    }
     maxHeapSize = "2g"
 }

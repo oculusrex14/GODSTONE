@@ -142,13 +142,16 @@ fun LabMeshJourneyScreen(state: LabJourneyState, onSend: (String, String) -> Uni
         )
         Button(
             onClick = { onSend(recipient, body) },
-            enabled = body.isNotEmpty() && recipient.isNotEmpty() && octets <= MESSAGE_BODY_MAX,
+            enabled = body.isNotEmpty() && recipient.isNotEmpty() && octets <= MESSAGE_BODY_MAX &&
+                state.normalGraphAvailable,
             modifier = Modifier
                 .testTag(LabControl.COMPOSE_SEND)
                 .heightIn(min = 48.dp)
                 .semantics {
                     contentDescription = AccessibilityContract.ESSENTIAL_CONTROLS.getValue(LabControl.COMPOSE_SEND)
                     role = Role.Button
+                    stateDescription = if (state.normalGraphAvailable) "ready to send"
+                    else "no normal private graph stands"
                 },
         ) { Text(AccessibilityContract.ESSENTIAL_CONTROLS.getValue(LabControl.COMPOSE_SEND)) }
 
@@ -197,26 +200,105 @@ fun LabMeshJourneyScreen(state: LabJourneyState, onSend: (String, String) -> Uni
                 },
         )
 
+        // ---------------------------------------------------------------- the DURABLE WIPE, read from the record
+        //
+        // *** GS-FINAL-003 `durable-authority`: THE WIPE IS RENDERED FROM THE PRODUCTION DURABLE RECORD. ***
+        //
+        // *THE OBLIGATION'S WORDS: "rendered wipe UI uses SAME durable production wipe owner (no composition harness
+        // local state register)".* **EVERY WORD BELOW COMETH FROM `state.wipeStage`/`state.wipeDecision`, which
+        // `LabJourneyBindings` reads from `LabWipeJourney` -> `FileWipeJournal` -> the SAME `SharedPreferences` file the
+        // startup barrier and the runtime-side wipe use.** *A surface with its own register would render a stage the
+        // durable record does not carry, and the relaunch arm of `LabWipeJourneyTest` would find it.*
+        //
+        // *** AND THE STATUS WORDS ARE DERIVED, NOT INVENTED: *** *the stage is a ladder RUNG, the decision is a typed
+        // case, and the two CONSEQUENCES (`retryable`, `operatorRequired`) are the production projections -- so the
+        // screen cannot tell a user a wipe may be retried when the record says it cannot, or hide a case that needs a
+        // person. **THE STATUS NODE CARRIETH NO ROLE, because it is a readout rather than an action (this screen's own
+        // law).***
+        Text(
+            text = "wipe: " + state.wipeStage + " / " + state.wipeDecision +
+                if (state.wipeOperatorRequired) " (needs you)" else "",
+            modifier = Modifier
+                .testTag(LabControl.WIPE_STATE)
+                .semantics {
+                    contentDescription = "Wipe status"
+                    liveRegion = LiveRegionMode.Polite
+                    stateDescription = state.wipeStage
+                },
+        )
+        Button(
+            onClick = state.onBeginWipe,
+            modifier = Modifier
+                .testTag(LabControl.WIPE_BEGIN)
+                .heightIn(min = 48.dp)
+                .semantics {
+                    contentDescription = "Wipe this device"
+                    role = Role.Button
+                    stateDescription = state.wipeStage
+                },
+        ) { Text("Wipe this device") }
+        Button(
+            onClick = state.onResumeWipe,
+            // *** AND THE CONTROL THAT MUST NOT LIE: IT IS ACTUALLY DISABLED WHEN THE CONTRACT SAYS SO. ***
+            // *Its `stateDescription` alone was not enough -- a button that SAYETH "nothing here may be resumed" while
+            // remaining CLICKABLE is a control that lies to a finger as well as to a screen reader.* **Compose's own
+            // `enabled` flag is bound to the PRODUCTION typed decision, so `SemanticsProperties.Disabled` is published and
+            // the node is genuinely unreachable -- which is what a semantics court can read and what a user's tap obeys.**
+            enabled = state.wipeRecoveryPermitted,
+            modifier = Modifier
+                .testTag(LabControl.WIPE_RESUME)
+                .heightIn(min = 48.dp)
+                .semantics {
+                    contentDescription = "Resume the wipe"
+                    role = Role.Button
+                    stateDescription = if (state.wipeRecoveryPermitted) "a wipe may be resumed" else "nothing here may be resumed"
+                },
+        ) { Text("Resume the wipe") }
+        Button(
+            onClick = state.onResolveCorrupt,
+            // *** review A7/A11: OPERATOR CORRUPT RESOLUTION -- ENABLED ONLY FOR AN UNREADABLE RECORD ***
+            enabled = state.wipeOperatorResolutionPermitted,
+            modifier = Modifier
+                .testTag(LabControl.WIPE_RESOLVE_CORRUPT)
+                .heightIn(min = 48.dp)
+                .semantics {
+                    contentDescription = "Resolve corrupt wipe record"
+                    role = Role.Button
+                    stateDescription = if (state.wipeOperatorResolutionPermitted)
+                        "corrupt record requires operator full erasure"
+                    else "no corrupt record to resolve"
+                },
+        ) { Text("Resolve corrupt record") }
+
         // ---------------------------------------------------------------- SOS, two deliberate steps
         Button(
             onClick = state.onArmSos,
+            // *** review A6/A11: WITH NO NORMAL PRIVATE GRAPH THERE IS NO NODE TO AUTHOR A CALL -- THE CONTROL IS
+            // RENDERED DISABLED RATHER THAN REFUSING AFTER A TAP. ***
+            enabled = state.normalGraphAvailable,
             modifier = Modifier
                 .testTag(LabControl.SOS_ARM)
                 .heightIn(min = 48.dp)
                 .semantics {
                     contentDescription = AccessibilityContract.ESSENTIAL_CONTROLS.getValue(LabControl.SOS_ARM)
                     role = Role.Button
-                    stateDescription = AccessibilityContract.SOS_IDLE_HINT
+                    stateDescription = if (state.normalGraphAvailable) AccessibilityContract.SOS_IDLE_HINT
+                    else "no normal private graph stands"
                 },
         ) { Text(AccessibilityContract.ESSENTIAL_CONTROLS.getValue(LabControl.SOS_ARM)) }
         Button(
             onClick = state.onCancelSos,
+            // *** AND THE CANCEL IS BOUND TO A STANDING CALL, NOT MERELY TO A LIVE GRAPH: there is nothing to
+            // cancel until a call stands, so a clickable cancel here would be a control that lies. ***
+            enabled = state.normalGraphAvailable && state.sosRetryPermitted,
             modifier = Modifier
                 .testTag(LabControl.SOS_CANCEL)
                 .heightIn(min = 48.dp)
                 .semantics {
                     contentDescription = AccessibilityContract.SOS_CANCEL_LABEL
                     role = Role.Button
+                    stateDescription = if (state.sosRetryPermitted) "a standing call may be cancelled"
+                    else "no standing distress call to cancel"
                 },
         ) { Text(AccessibilityContract.ESSENTIAL_CONTROLS.getValue(LabControl.SOS_CANCEL)) }
         Text(
@@ -235,12 +317,17 @@ fun LabMeshJourneyScreen(state: LabJourneyState, onSend: (String, String) -> Uni
         // ---------------------------------------------------------------- retry
         Button(
             onClick = state.onRetry,
+            // *** GS-UX-001 retry: STATE-AWARE REQUIRED LIVE CONTROL ***
+            // Enabled ONLY when an active distress call stands to retry (never enabled as a no-op click), AND only
+            // while a normal private graph standeth to resume it through.
+            enabled = state.sosRetryPermitted && state.normalGraphAvailable,
             modifier = Modifier
                 .testTag(LabControl.RETRY)
                 .heightIn(min = 48.dp)
                 .semantics {
                     contentDescription = AccessibilityContract.ESSENTIAL_CONTROLS.getValue(LabControl.RETRY)
                     role = Role.Button
+                    stateDescription = if (state.sosRetryPermitted) "retry standing distress call" else "no standing distress call to retry"
                 },
         ) { Text(AccessibilityContract.ESSENTIAL_CONTROLS.getValue(LabControl.RETRY)) }
 
@@ -283,6 +370,11 @@ object LabControl {
     const val OUTCOME = "delivery_outcome"
     const val ANNOUNCED = "delivery_announced"
     const val DURABLE = "durable_message_state"
+    /** *** GS-FINAL-003 `durable-authority`: THE WIPE'S OWN CONTROLS, RENDERED FROM THE DURABLE RECORD. *** */
+    const val WIPE_STATE = "wipe_state"
+    const val WIPE_BEGIN = "wipe_begin"
+    const val WIPE_RESUME = "wipe_resume"
+    const val WIPE_RESOLVE_CORRUPT = "wipe_resolve_corrupt"
     const val SOS_ARM = "sos_arm"
     const val SOS_CANCEL = "sos_cancel"
     const val SOS_STATE = "sos_state"
@@ -291,8 +383,8 @@ object LabControl {
 
     /** Every id the semantics court must observe a RENDERED node for. */
     val REQUIRED: List<String> = listOf(
-        RECIPIENT_SELECT, COMPOSE_BODY, OCTETS, COMPOSE_SEND, OUTCOME, ANNOUNCED, DURABLE, SOS_ARM, SOS_CANCEL,
-        SOS_STATE, RETRY, RTL_MEANING,
+        RECIPIENT_SELECT, COMPOSE_BODY, OCTETS, COMPOSE_SEND, OUTCOME, ANNOUNCED, DURABLE,
+        WIPE_STATE, WIPE_BEGIN, WIPE_RESUME, WIPE_RESOLVE_CORRUPT, SOS_ARM, SOS_CANCEL,
     )
 
     /**
@@ -335,6 +427,10 @@ object LabControl {
         OUTCOME to null,                 // *a live-region STATUS, not an action*
         ANNOUNCED to null,               // *the announcement record: a readout*
         DURABLE to null,                 // *the durable projection: a readout, never an action*
+        WIPE_STATE to null,              // *the wipe's own status: a readout of the DURABLE record*
+        WIPE_BEGIN to Role.Button,
+        WIPE_RESUME to Role.Button,
+        WIPE_RESOLVE_CORRUPT to Role.Button,
         SOS_ARM to Role.Button,
         SOS_CANCEL to Role.Button,
         SOS_STATE to null,               // *a live-region STATUS*
@@ -351,7 +447,7 @@ object LabControl {
      * of a control.*
      */
     val CONTROLS: List<String> = listOf(RECIPIENT_CANDIDATE, COMPOSE_BODY, COMPOSE_SEND,
-        SOS_ARM, SOS_CANCEL, RETRY)
+        WIPE_BEGIN, WIPE_RESUME, WIPE_RESOLVE_CORRUPT, SOS_ARM, SOS_CANCEL, RETRY)
 
 }
 
@@ -379,7 +475,42 @@ data class LabJourneyState(
     val durableMsgId: String? = null,
     /** The honest label the durable row supporteth; `UNAVAILABLE` when no estate carrieth a row. */
     val durableLabel: String = "UNAVAILABLE",
+    /**
+     * *** GS-FINAL-003 `durable-authority`: THE WIPE'S OWN STAGE, READ FROM THE DURABLE RECORD. ***
+     *
+     * *A RUNG of the wipe ladder (`IDLE`, `REQUESTED`, ...) -- **NOT a word this screen or a view model invented**, and
+     * not a field any surface may set.* **It is read from the SAME `FileWipeJournal` the startup barrier and the
+     * runtime-side wipe use, through `LabWipeJourney`, so a relaunch renders what was PERSISTED rather than what was
+     * remembered.**
+     */
+    val wipeStage: String = "IDLE",
+    /** The production typed decision's name, so the surface renders the CAUSE rather than a local flag. */
+    val wipeDecision: String = "clean_start",
+    /** Whether a wipe is outstanding, read from the durable record. */
+    val wipePending: Boolean = false,
+    /** The production retry contract for the current decision (state-aware, never a local switch). */
+    val wipeRecoveryPermitted: Boolean = false,
+    /** Whether a human must look (`CORRUPT_JOURNAL` / `TERMINAL_FAILURE`). */
+    val wipeOperatorRequired: Boolean = false,
+    /** review A7/A11: whether an unreadable record exists that the operator can resolve via full verified erasure */
+    val wipeOperatorResolutionPermitted: Boolean = false,
+    /** GS-UX-001 retry: whether a standing distress call exists to retry */
+    val sosRetryPermitted: Boolean = false,
+    /**
+     * *** GS-FINAL-003 `same-estate` (review A6): WHETHER A NORMAL PRIVATE GRAPH STANDS AT ALL. ***
+     *
+     * *A refused estate (`REQUESTED`/corrupt/terminal) composeth NO identity, NO store and NO peer node, so the send
+     * and distress controls have NOTHING to reach.* **They are therefore RENDERED DISABLED rather than left clickable
+     * and refused after the tap** -- the enablement IS the admission, which is what review A11 asketh of every control
+     * whose action is conditional on the typed state.
+     */
+    val normalGraphAvailable: Boolean = true,
+    /** *** `beginWipe()` -- REQUEST through the production recovery graph; no local state register. *** */
+    val onBeginWipe: () -> Unit,
+    /** *** `resumeWipe()` -- hand a PERSISTED pending wipe back to the graph that owns the ladder. *** */
+    val onResumeWipe: () -> Unit,
     val onArmSos: () -> Unit,
     val onCancelSos: () -> Unit,
     val onRetry: () -> Unit,
+    val onResolveCorrupt: () -> Unit,
 )

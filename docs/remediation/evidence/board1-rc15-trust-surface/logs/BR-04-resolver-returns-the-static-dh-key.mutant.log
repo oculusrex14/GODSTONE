@@ -1,0 +1,6 @@
+::error::Bound recipient key resolver control error: Both platforms must return signingPublicKey (B06)
+::error::Bound recipient key resolver control error: Android BoundRecipientKeyResolver must not reference static DH keys (B06)
+
+FAIL: 2 bound recipient key resolver control issue(s) found.
+
+(the rod aimed at 'Android BoundRecipientKeyResolver must not reference static DH keys (B06)'; reddened refusals were the aimed one)

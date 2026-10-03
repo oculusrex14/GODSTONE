@@ -17,8 +17,10 @@ The card's law, one witness each where the rule speaketh:
   W10 a FAILED SEED is RECORDED and REPRODUCIBLE: the same seed giveth the same
       failure at the same step, twice
   W11 the campaign is BOUNDED in time: 10k cycles settle inside the court's budget
-  W12 the two isles carrieth the same invariants and the same fault kinds
-  W13 the verification matrix keepeth the stress campaign apart from the device rows
+  W12 the two isles carrieth the same invariants and the same fault kinds -- OWNED BY THE TWIN COURTS; this court no
+      longer copies twin source text, and a source-body read is not semantic proof
+  W13 THE CONDUCTOR claimeth no device observation -- scanned over THIS conductor's own code only; the matrix row is
+      owned by the matrix's own gate, not re-read here
   W14 THE CONDUCTOR BELONGETH TO A **NAMED** CATEGORY, and doth NOT claim to measure the production runtime
       (GS-STRESS-001 step 1 on THIS isle -- before round 521 the category was named on the Android isle alone)
 
@@ -35,10 +37,10 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools" / "readiness"))
 
 from stress import (  # noqa: E402
-    ALL_FAULTS, CONDUCTOR_FAULTS, DEFAULT_CYCLES, DEFECT_TO_INVARIANT, LEASE_CAPACITY,
-    PEER_COUNT, RETRY_CAP, RESOURCE_MODEL_CATEGORY, CampaignDefect, CampaignResult,
-    Fault, FaultKind, FaultSchedule, Invariant, StressCampaign, campaign_report,
-    run_campaign,
+    ALL_FAULTS, CONDUCTOR_FAULTS, CONDUCTOR_SCHEDULE, DEFAULT_CYCLES, DEFECT_TO_INVARIANT,
+    FAULT_CAMPAIGN_INACTIVE, LEASE_CAPACITY, PEER_COUNT, RETRY_CAP, RESOURCE_MODEL_CATEGORY,
+    UNMEASURED_OWNER_KINDS, CampaignDefect, CampaignResult, Category, Fault, FaultKind,
+    FaultSchedule, Invariant, StressCampaign, campaign_report, run_campaign,
 )
 
 
@@ -154,38 +156,128 @@ class T72FaultsTest(unittest.TestCase):
             self.assertLess(fault.at_step, DEFAULT_CYCLES)
 
     def test_w08_the_five_faults_are_applied_at_their_steps(self):
-        observed = {}
-        for kind in ALL_FAULTS:
+        """*** EACH FAULT'S OWN EFFECT, MEASURED -- NOT MERELY "SOMETHING WAS REFUSED". ***
+
+        *MEASURED (round 727 audit): the refusing kinds were asserted `> 0` and the two resource-moving kinds were
+        asserted not at all (the `timers <= 1` arm was a TAUTOLOGY -- the baseline is 1 at end of run regardless).*
+        Here each kind carrieth its own observable effect, with a baseline to compare against.
+        """
+        # (A) THE REFUSING KINDS ARE COUNTED, EXACTLY -- one scheduled fault, one refusal (the card's "refused and
+        # COUNTED", asserted rather than described).
+        for kind in (FaultKind.DISK_FULL, FaultKind.CORRUPTION, FaultKind.MALFORMED):
             campaign = StressCampaign(seed=23, cycles=2_048,
                                       schedule=FaultSchedule((Fault(kind, 1_024),)))
             campaign.run()
-            observed[kind] = campaign.refusals
-        # the three that REFUSE something all count a refusal; the two that move a
-        # resource (a clock jump and a slow ATT) leave the counters bounded
-        self.assertGreater(observed[FaultKind.DISK_FULL], 0)
-        self.assertGreater(observed[FaultKind.CORRUPTION], 0)
-        self.assertGreater(observed[FaultKind.MALFORMED], 0)
-        # a clock jump never leaveth a timer standing
-        jumped = StressCampaign(seed=23, cycles=2_048,
-                                schedule=FaultSchedule((Fault(FaultKind.CLOCK_JUMP, 1_024,
-                                                             3_600_000),)))
-        jumped.run()
-        self.assertLessEqual(jumped.timers, 1)
-        for fault in CONDUCTOR_FAULTS:
-            self.assertTrue(fault.magnitude >= 1 or fault.kind == FaultKind.MALFORMED)
+            self.assertEqual(1, campaign.refusals,
+                             "%s must be REFUSED and COUNTED exactly once" % kind)
+
+        # (B) THE TWO RESOURCE-MOVING KINDS, EACH AGAINST A BASELINE. A timer is armed and cancelled every cycle,
+        # so on the healthy path the count is 1 at end of run no matter what a fault does -- the fault is only
+        # OBSERVABLE against an owner that is NOT releasing, which is exactly the defect below. The run is cut ONE
+        # cycle past the fault, so the count at the fault step IS the final count.
+        def timers_after(schedule, defect=CampaignDefect.NO_TIMER_RELEASE):
+            campaign = StressCampaign(seed=23, cycles=1_025, schedule=schedule, defect=defect)
+            campaign.run()
+            return campaign.timers
+
+        baseline = timers_after(FaultSchedule(()))
+        self.assertEqual(1_025, baseline, "the premise: a standing timer owner accumulates one per cycle")
+        jumped = timers_after(FaultSchedule((Fault(FaultKind.CLOCK_JUMP, 1_024, 3_600_000),)))
+        self.assertEqual(1, jumped, "a clock jump must leave EXACTLY ONE timer standing (min(timers, 1))")
+        slowed = timers_after(FaultSchedule((Fault(FaultKind.SLOW_ATT, 1_024, 250),)))
+        self.assertEqual(baseline - 1, slowed,
+                         "a slow ATT must release exactly one standing timer -- previously UNASSERTED anywhere")
+
+        # (C) THE CONDUCTOR'S OWN SCHEDULE IS WIRED, NOT DEAD: run over it and observe its faults fire. Its fixed
+        # steps (97..1024) all lie inside a 2_048-cycle run, so disk-full, corruption and malformed each refuse once
+        # -- and the clock jump and slow ATT move the timers alongside.
+        conductor = StressCampaign(seed=23, cycles=2_048, schedule=CONDUCTOR_SCHEDULE).run()
+        self.assertTrue(conductor.passed, conductor.failures)
+        self.assertEqual(3, conductor.refusals,
+                         "the conductor's schedule carrieth disk-full, corruption and malformed, each counted once")
+        self.assertEqual(set(ALL_FAULTS), {fault.kind for fault in CONDUCTOR_FAULTS})
+
+    def test_w08b_the_fault_liveness_clause_biteth(self):
+        """*** THE FAULT CAMPAIGN MUST ACTUALLY FIRE -- AND A DEAF SCHEDULE IS REDDENED BY NAME. ***
+
+        *The audit MEASURED that nothing asserted a scheduled fault was ever APPLIED (`CONDUCTOR_FAULTS` was dead, and
+        `density=512` giveth an EMPTY schedule under 512 cycles).* This arm reddens the new clause directly: a refusing
+        fault scheduled BEYOND the horizon is never applied, and the run must say so under its OWN harness token --
+        not under `no_uncaught_malformed`, which would misname a deaf schedule as a malformed record.
+        """
+        deaf = StressCampaign(seed=23, cycles=64,
+                              schedule=FaultSchedule((Fault(FaultKind.DISK_FULL, 10_000),))).run()
+        self.assertFalse(deaf.passed, "a scheduled refusing fault that never fired must redden the run")
+        self.assertTrue(any(FAULT_CAMPAIGN_INACTIVE in failure for failure in deaf.failures),
+                        "the deaf schedule must be named by its own harness token: %r" % deaf.failures)
+        self.assertFalse(any(Invariant.NO_UNCAUGHT_MALFORMED in f for f in deaf.failures),
+                         "a deaf schedule is not a malformed record and must not be called one")
+        # AND THE CLAUSE IS NOT A UNIVERSAL FALSE CHECK: an empty (legitimate) schedule is silent, and a schedule that
+        # fires is silent too.
+        self.assertTrue(StressCampaign(seed=23, cycles=64).run().passed)
+        firing = StressCampaign(seed=23, cycles=64,
+                                schedule=FaultSchedule((Fault(FaultKind.DISK_FULL, 8),))).run()
+        self.assertTrue(firing.passed, firing.failures)
 
     def test_w09_the_named_negative_each_defect_is_caught_by_name(self):
-        """Disabling ONE capacity release or ONE retry cap must break an invariant."""
+        """Disabling ONE capacity release or ONE retry cap must break an invariant.
+
+        *** ROUND 727: ONE DEFECT PER LIFECYCLE OWNER, AND THE UNMEASURED NAMES ARE NO LONGER CALLED "CLEAN". ***
+        *MEASURED before this repair: `DEFECT_TO_INVARIANT` had FIVE entries and the healthy loop swept all ELEVEN
+        names -- so `no_leaked_timers`, `no_leaked_sessions` and the four owner-kind names were asserted "absent from a
+        healthy run" while NOTHING here could ever emit them. A check that cannot fail is not a check.* Now the
+        defect table carrieth a defect per MEASURED invariant, and the healthy loop sweeps `Invariant.MEASURED` only.
+        """
         for defect, invariant in DEFECT_TO_INVARIANT.items():
             result = run_campaign(29, cycles=4_096, defect=defect)
             self.assertFalse(result.passed, "%s must fail" % defect)
             self.assertTrue(any(invariant in failure for failure in result.failures),
                             "%s: expected %s, got %r" % (defect, invariant, result.failures))
-        # and the healthy campaign carrieth NONE of those failures
+        # EVERY MEASURED INVARIANT CARRIETH ITS OWN DEFECT -- otherwise a measured name could ride on another's rod.
+        self.assertEqual(set(DEFECT_TO_INVARIANT.values()), set(Invariant.MEASURED),
+                         "one defect per MEASURED invariant, and no defect for a name this isle cannot emit")
+        # and the healthy campaign carrieth NONE of the MEASURED failures (the four UNMEASURED names are not swept:
+        # nothing here can emit them, so asserting their absence would be the very vacuity this repair removeth)
         healthy = run_campaign(29, cycles=4_096)
         self.assertTrue(healthy.passed, healthy.failures)
-        for invariant in Invariant.ALL:
+        for invariant in Invariant.MEASURED:
             self.assertFalse(any(invariant in f for f in healthy.failures), invariant)
+
+    def test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried(self):
+        """*** THE 11-NAMES/7-MEASURED GAP, TYPED RATHER THAN NARRATED, AND CARRIED ON THE RESULT. ***
+
+        The read-only audit MEASURED that four of the eleven names could never be emitted here, and that a result
+        carried no statement of the gap. This arm pins: the split is exact and disjoint; the four owner-kind names
+        are exactly what is unmeasured; and a RESULT carrieth them BY NAME so "nothing is leaking" is never confused
+        with "nobody asked my kind of owner".
+        """
+        self.assertEqual(len(Invariant.ALL), 11)
+        self.assertEqual(len(Invariant.MEASURED), 7)
+        self.assertEqual(len(Invariant.UNMEASURED), 4)
+        self.assertEqual(set(Invariant.MEASURED) | set(Invariant.UNMEASURED), set(Invariant.ALL))
+        self.assertFalse(set(Invariant.MEASURED) & set(Invariant.UNMEASURED))
+        self.assertEqual(set(Invariant.UNMEASURED),
+                         {Invariant.NO_LEAKED_RESERVATIONS, Invariant.NO_LEAKED_INVENTORY_LEASES,
+                          Invariant.PENDING_ACK_WORK, Invariant.NO_LEAKED_OBSERVERS})
+        # THE MEASURED SET IS DERIVED FROM THE EMITTERS, NOT TYPED: every measured name appeareth in the source of a
+        # failure string, and no unmeasured name is ever emitted (that is WHY it is unmeasured).
+        source = (ROOT / "tools/readiness/stress.py").read_text(encoding="utf-8")
+        result = run_campaign(20_260_915)
+        self.assertEqual(result.unmeasured_invariants, Invariant.UNMEASURED)
+        self.assertEqual(result.unmeasured_owners, UNMEASURED_OWNER_KINDS)
+        self.assertEqual(result.category, Category.RESOURCE_MODEL)
+        self.assertTrue(result.resource_model_category)
+        for invariant in Invariant.MEASURED:
+            self.assertIn(invariant, source, "%s must be emittable here" % invariant)
+
+    def test_w09c_the_report_nameth_the_category_and_the_unmeasured_names(self):
+        """*** A RESULT MUST SAY WHAT IT IS, AT THE POINT A READER MEETETH IT. ***"""
+        report = campaign_report(run_campaign(20_260_915))
+        self.assertIn("category=%s" % Category.RESOURCE_MODEL, report)
+        self.assertNotIn(Category.PRODUCTION_RUNTIME, report)
+        self.assertIn("measured=7/11", report)
+        for invariant in Invariant.UNMEASURED:
+            self.assertIn(invariant, report)
 
     def test_w10_a_failed_seed_is_recorded_and_reproducible(self):
         seed = 31
@@ -222,45 +314,8 @@ class T72FaultsTest(unittest.TestCase):
         self.assertEqual(set(ALL_FAULTS), set(schedule.kinds()))
 
 
-class T72ParityTest(unittest.TestCase):
-    """W12-W13 -- the isles, and the matrix's boundary."""
-
-    def test_w12_the_two_isles_carry_the_same_invariants_and_faults(self):
-        kotlin = ROOT / "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt"
-        swift = ROOT / "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift"
-        self.assertTrue(kotlin.is_file(), "the Android twin must exist")
-        self.assertTrue(swift.is_file(), "the iOS twin must exist")
-        ktext = kotlin.read_text(encoding="utf-8")
-        stext = swift.read_text(encoding="utf-8")
-        for invariant in ("no_leaked_leases", "no_duplicate_inbox", "no_duplicate_delivery",
-                          "no_uncaught_malformed", "bounded_census"):
-            self.assertIn(invariant, ktext, "the Android twin must carry %s" % invariant)
-            self.assertIn(invariant, stext, "the iOS twin must carry %s" % invariant)
-            self.assertIn(invariant, Invariant.ALL)
-        for kind in ALL_FAULTS:
-            self.assertIn(kind, ktext, kind)
-            self.assertIn(kind, stext, kind)
-
-    def test_w13_the_matrix_keepeth_stress_apart_from_the_device_rows(self):
-        matrix = (ROOT / "docs/production/VERIFICATION_MATRIX.md").read_text(encoding="utf-8")
-        self.assertIn("Mesh simulation regression", matrix)
-        self.assertIn("Simulation, not device", matrix)
-        self.assertIn("BLOCKED", matrix)
-        # the conductor itself never claimeth a device observation: its CODE is
-        # scanned, with the docstrings and comments stripped (a comment that NAMETH
-        # the device rows it excludeth is not a claim about a device)
-        source = (ROOT / "tools/readiness/stress.py").read_text(encoding="utf-8")
-        code = "\n".join(line for line in source.splitlines()
-                         if not line.strip().startswith("#"))
-        code = code.split('"""')
-        code = "".join(code[::2])            # keep only the parts OUTSIDE docstrings
-        for forbidden in ("device", "phone", "hardware"):
-            self.assertNotIn(forbidden, code.lower(),
-                             "the conductor must not claim a device observation (%s)" % forbidden)
-
-
 class T72NamedCategoryTest(unittest.TestCase):
-    """W14 -- GS-STRESS-001 step 1 ON THE THIRD ISLE.
+    """W14 -- GS-STRESS-001 step 1 ON THE THIRD ISLE, NOW WITH THE CATEGORY CARRIED.
 
     The card: "Keep the current class under an explicitly named resource-model test category." A conductor whose
     counters describe its own model must never be read as a production stress result -- and the honest way to keep
@@ -269,17 +324,37 @@ class T72NamedCategoryTest(unittest.TestCase):
     MEASURED at round 521: before this arm, this isle carrieth NO name at all -- a reader consulting the conductor's
     evidence could take a model result for a runtime result and had no way to learn otherwise. A CATEGORY THAT
     HOLDETH ON ONE ISLE IS NOT A CATEGORY.
+
+    *** AND MEASURED AT ROUND 727: THE NAME WAS DECLARED AND NOWHERE CARRIED. *** *The constant existed, three courts
+    asserted it against ITSELF, and no `CampaignResult`, no report line and no ledger row carrieth it -- so a reader
+    who held a RESULT still met no name. A DECLARATION IS NOT A CAPABILITY; this arm now asserteth the CARRY.*
     """
 
     def test_w14_the_conductors_category_is_named(self):
         self.assertEqual(
             RESOURCE_MODEL_CATEGORY, "resource-model",
             "the conductor must declare its CATEGORY by name, so no reader mistaketh a model for a runtime")
+        self.assertEqual(Category.RESOURCE_MODEL, RESOURCE_MODEL_CATEGORY)
 
     def test_w14_the_category_does_not_name_the_runtime_it_does_not_measure(self):
         self.assertNotEqual(
             RESOURCE_MODEL_CATEGORY, "production",
             "and it must NOT be named for the production runtime it doth not measure")
+        self.assertNotEqual(Category.RESOURCE_MODEL, Category.PRODUCTION_RUNTIME)
+
+    def test_w14b_the_category_is_carried_on_the_result_and_in_the_report(self):
+        """*** THE CARRY, WHICH IS THE DIFFERENCE BETWEEN A NAME AND A CONTRACT. ***
+
+        A result that carrieth `category=resource-model` cannot be mistaken for the production runtime at the point a
+        reader meeteth it; and a result that carrieth the four UNMEASURED names cannot be mistaken for one that asked
+        every owner and found them clean.
+        """
+        result = run_campaign(20_260_915)
+        self.assertIsInstance(result, CampaignResult)
+        self.assertEqual(result.category, Category.RESOURCE_MODEL)
+        self.assertTrue(result.resource_model_category)
+        self.assertNotEqual(result.category, Category.PRODUCTION_RUNTIME)
+        self.assertIn("category=resource-model", campaign_report(result))
 
 
 if __name__ == "__main__":

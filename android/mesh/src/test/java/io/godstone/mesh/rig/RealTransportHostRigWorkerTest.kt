@@ -198,6 +198,29 @@ internal class RealTransportHostRigWorkerTest {
         private const val COUNTERPART = "android-crash-peer"
         private const val HALT_CODE = 137
 
+        /**
+         * *** THE PRE-HALT MARKERS, WRITTEN TO STDERR SO THE GRADLE LOG CARRIETH THEM BESIDE GRADLE'S OWN REPORT OF
+         * THE EXECUTOR'S ABRUPT STATUS. ***
+         *
+         * *THE DEFECT THIS CLOSES: the coordinator could see ONLY the wrapper's `rc=1` and Gradle's line
+         * `Process 'Gradle Test Executor 1' finished with non-zero exit value 137`; **it could not bind that abrupt
+         * status to a STAGE (`which durable owner was just driven?`) or to a PROCESS (`which JVM halted?`), so the
+         * crash proof was a log grep that any `Runtime.halt` in any test could satisfy.*** *These two lines are the
+         * actual JVM's own PID and the boundary it was about to halt at, printed IMMEDIATELY BEFORE `Runtime.halt`,
+         * so the death is bound to a real process and a named checkpoint rather than to a pattern.*
+         */
+        private fun markAboutToHalt(boundary: String) {
+            // The fixture runs on JDK 17, but the Android compile bootclasspath omits ProcessHandle.
+            // Resolve its public interface, not a Robolectric PID or an inaccessible JVM implementation.
+            val processHandle = Class.forName("java.lang.ProcessHandle")
+            val handle = processHandle.getMethod("current").invoke(null)
+            val pid = (processHandle.getMethod("pid").invoke(handle) as Number).toLong()
+            check(pid > 0) { "The test executor did not expose a real process ID" }
+            System.err.println("GS_INTEGRATION_SELF_PID=$pid")
+            System.err.println("GS_INTEGRATION_ABOUT_TO_HALT boundary=$boundary code=$HALT_CODE")
+            System.err.flush()
+        }
+
         /** The boundaries this isle mirrors (the plan's step-6 table, restricted to the host store's own roads). */
         val BOUNDARIES = listOf("outboundEnqueue", "inboundCommit")
 
@@ -243,6 +266,7 @@ internal class RealTransportHostRigWorkerTest {
                                     "radio work",
                             ),
                         )
+                        markAboutToHalt(boundary)
                         Runtime.getRuntime().halt(HALT_CODE)
                     }
                     // *** AFTER THE ATOMIC held+ACK-OBLIGATION PAIR RETURNS: one inbox row and a PENDING
@@ -270,6 +294,7 @@ internal class RealTransportHostRigWorkerTest {
                                 "detail" to "the atomic held+obligation pair returned success; halting before signing",
                             ),
                         )
+                        markAboutToHalt(boundary)
                         Runtime.getRuntime().halt(HALT_CODE)
                     }
                     else -> throw WorkerFraming.Refused("no prepare road for boundary '$boundary'")
@@ -322,12 +347,22 @@ internal class RealTransportHostRigWorkerTest {
          * coordinator therefore read eth one protocol for every role, and the marker is written and flushed BEFORE
          * the halt so it arriveth even though the JVM die th immediately after.**
          */
-        internal class Marker private constructor(private val output: FileOutputStream?) : AutoCloseable {
+        internal class Marker private constructor(
+            private val output: FileOutputStream?,
+            private val role: String,
+            private val variant: String,
+        ) : AutoCloseable {
             fun emit(kind: String, fields: Map<String, Any?>) {
                 val header = LinkedHashMap<String, Any?>()
                 header["v"] = 1
                 header["kind"] = kind
                 header["platform"] = "android"
+                // *** THE WORKER'S OWN ROLE AND VARIANT TRAVEL ON EVERY CRASH RECORD, SO THE COORDINATOR'S
+                // REQUESTED-VS-REPORTED IDENTITY CHECK CAN SEE THEM. *** *A crash record that named no role would
+                // make the requested role unverifiable -- the same "a worker that is not the one asked for" hole the
+                // cross-platform records close.*
+                header["role"] = role
+                header["variant"] = variant
                 header.putAll(fields)
                 output?.let {
                     it.write(WorkerFraming.frame(header, ByteArray(0)))
@@ -344,6 +379,8 @@ internal class RealTransportHostRigWorkerTest {
                     return Marker(
                         path?.takeIf { File(it).exists() }
                             ?.let { runCatching { FileOutputStream(it) }.getOrNull() },
+                        role = props[WorkerFraming.ROLE] ?: "",
+                        variant = props[WorkerFraming.VARIANT] ?: "",
                     )
                 }
             }
@@ -664,7 +701,19 @@ internal class RealTransportHostRigWorkerTest {
         }
 
         private val role: String = props.getValue(WorkerFraming.ROLE)
-        private val variant: String = props[WorkerFraming.VARIANT] ?: "honest"
+        // *** AN UNKNOWN VARIANT IS REFUSED, NEVER SILENTLY KEPT AS AN OPAQUE STRING. ***
+        //
+        // *THE DEFECT THIS CLOSES: the variant was read as a raw String (`props[VARIANT] ?: "honest"`) and echoed
+        // verbatim at :728, so `variant != "mismatched"` (:1048) sent ANY unknown/misspelled control down the HONEST
+        // road -- a silent downgrade wearing the requested control's name on its records.* **A control the
+        // coordinator asked for and the worker silently replaced is not a control.** The known set is the one the
+        // variants' own dispatch uses (honest / altered / mismatched / replay), matching the iOS worker and the
+        // coordinator's `CONTROLS`.
+        private val variant: String = (props[WorkerFraming.VARIANT] ?: "honest").also {
+            if (it !in setOf("honest", "altered", "mismatched", "replay")) {
+                throw WorkerFraming.Refused("the variant '$it' is not one this worker knoweth")
+            }
+        }
         private val deadline: Long = (props[WorkerFraming.DEADLINE]?.toDoubleOrNull() ?: 300.0).toLong()
         private val rng = SecureRandom()
         private val inbound = LinkedBlockingQueue<ByteArray>()
@@ -690,6 +739,8 @@ internal class RealTransportHostRigWorkerTest {
         private var ringBaseline = 0
         private var trackedMsgId: ByteArray? = null
         private var authoredFrame: io.godstone.mesh.wire.v2.FrameV2? = null
+        /** *** THE FRAME THE CANCELLATION NEGATIVE MOVED, SO THE REOPENED ESTATE CAN RE-READ ITS STATE. *** */
+        private var cancellationMsgId: ByteArray? = null
         private var dispatched = false
 
         init { reader.start() }
@@ -874,6 +925,7 @@ internal class RealTransportHostRigWorkerTest {
             rig = RealTransportHostRig(ctx = ApplicationProvider.getApplicationContext(), fixtureRoot = rootFor(next))
             remoteNodeId = null; remoteAddress = null; remoteHint = null; remoteStaticPub = null
             isInitiator = false; seated = false; ringBaseline = 0; trackedMsgId = null; authoredFrame = null
+            cancellationMsgId = null
             dispatched = false
             inbox.clear()
             buildEndpoint(next)
@@ -1006,6 +1058,53 @@ internal class RealTransportHostRigWorkerTest {
                         emit("ready", header = mapOf("seat" to if (isInitiator) "initiator" else "responder",
                                                      "reconnected" to true, "handle" to address))
                     }
+                    // *** THE DURABLE-ESTATE PROOF: STOP THE OWNER, RELEASE THE HANDLES, AND RE-READ FROM A FRESH
+                    // RIG OVER THE SAME ON-DISK FILES. ***
+                    //
+                    // *THE DEFECT THIS CLOSES, AND IT IS THE COORDINATOR'S MEDIUM FINDING: a `durable_row: present`
+                    // observe was read from the RUNNING store, so it echoed a live object's state rather than a
+                    // SURVIVING ROW -- indistinguishable from a self-attested constant. **A fresh rig over the SAME
+                    // `rootFor(seed)` reopeneth the SAME `_messages.db`/`_peers.db` (the files are named by label,
+                    // and the identity is read from the estate), so the re-query below is the STORE'S OWN reading of
+                    // surviving bytes.***
+                    "reopen" -> {
+                        reopenEstateForProof()
+                        val msgId = durableMsgId()
+                        val cancelId = cancellationMsgId
+                        val cancelRow = cancelId?.let { rig.deliveryRow(ENDPOINT, it) }
+                        emit("observe", header = mapOf(
+                            "reopened" to true,
+                            "durable_row" to if (msgId != null) "present" else "absent",
+                            "msg_id" to (msgId?.let { hex(it) } ?: ""),
+                            "delivery" to (trackedMsgId?.let { m ->
+                                rig.deliveryRow(ENDPOINT, m)?.let { DeliveryState.fromCode(it.state)?.name }
+                            } ?: "none"),
+                            "cancellation_state" to (cancelRow?.let { DeliveryState.fromCode(it.state)?.name } ?: ""),
+                            "cancellation_msg_id" to (cancelId?.let { hex(it) } ?: ""),
+                            "estate" to rootFor(seed).absolutePath,
+                        ))
+                    }
+                    // *** THE CANCELLATION NEGATIVE: A QUEUED FRAME MOVED TO CANCELLED, AND THE ESTATE RE-READ FROM
+                    // DISK MUST SHOW IT. ***
+                    //
+                    // *THE GAP THIS CLOSES: the eight combos proved an honest DELIVERED transition but nothing about
+                    // the tracker's OTHER terminal move, so a `cancel` that silently did nothing (or moved the wrong
+                    // row) would be invisible.* **This author eth a fresh frame, commits it through the store's own
+                    // `enqueueDirectOutbound` (the atomic held+delivery pair), applies the tracker's OWN `cancel`, and
+                    // reports the RESULT the owner returned; the coordinator then asketh for a reopen and requireth
+                    // the SAME cancelled state from the reopened store.**
+                    "cancel" -> {
+                        val committed = enqueueCancellationFrame()
+                        val verdict = rig.nodeOf(ENDPOINT).tracker.cancel(committed)
+                        val state = rig.deliveryRow(ENDPOINT, committed)
+                            ?.let { DeliveryState.fromCode(it.state)?.name } ?: "unknown"
+                        cancellationMsgId = committed
+                        emit("observe", header = mapOf(
+                            "cancel" to verdict::class.simpleName,
+                            "msg_id" to hex(committed),
+                            "state" to state,
+                        ))
+                    }
                     "bye" -> { refreshReports(""); return }
                 }
                 lastReport = refreshReports(lastReport)
@@ -1111,6 +1210,45 @@ internal class RealTransportHostRigWorkerTest {
                     node.transport.send(peer, bytes) is TransportResult.Admitted
                 }
             }
+        }
+
+        /**
+         * *** THE CANCELLATION NEGATIVE'S FRAME: authored and sealed through the PRODUCTION router, then committed
+         * through the STORE'S OWN atomic `enqueueDirectOutbound` -- so the row the tracker later cancel eth is a REAL
+         * queued row, not a hand-made one. *** *Returns the msgId the coordinator's reopen proof re-readeth.*
+         */
+        private fun enqueueCancellationFrame(): ByteArray {
+            val node = rig.nodeOf(ENDPOINT)
+            val recipientId = remoteNodeId
+                ?: throw WorkerFraming.Refused("no remote identity to author the cancellation frame for")
+            val recipientPub = remoteStaticPub
+                ?: throw WorkerFraming.Refused("no remote static key to seal the cancellation frame to")
+            val nonce = ByteArray(16).also { rng.nextBytes(it) }
+            val createdAt = System.currentTimeMillis() / 1000L
+            val container = SignedMessageV1.author(
+                senderIdentityPriv = node.identity.identityPriv,
+                senderIdentityPub = node.identity.identityPub,
+                senderNodeId = node.identity.nodeId,
+                recipientNodeId = recipientId,
+                messageNonce = nonce,
+                createdAtEpochSeconds = createdAt,
+                priority = Priority.DIRECT,
+                timeQuality = TimeQuality.USER_CONFIRMED,
+                bodyUtf8 = "cancellation-negative $variant".toByteArray(Charsets.US_ASCII),
+            )
+            val frame = runBlocking {
+                node.node.router.buildSealedMessage(
+                    plaintext = container,
+                    recipientNodeId = recipientId,
+                    recipientStaticPub = recipientPub,
+                    identity = LogicalMessageIdentity.of(createdAt, nonce),
+                    priority = Priority.DIRECT,
+                )
+            }
+            runBlocking {
+                node.messageStore.enqueueDirectOutbound(frame, recipientId, node.identity.nodeId)
+            }
+            return frame.msgId
         }
 
         /** *** RE-ENTER THE FOREIGN PLATFORM'S EXACT BYTES AT THIS PLATFORM'S REAL OS INGRESS. *** */
@@ -1244,6 +1382,29 @@ internal class RealTransportHostRigWorkerTest {
             val msgId = trackedMsgId ?: return false
             val row: DeliveryRow = rig.deliveryRow(ENDPOINT, msgId) ?: return false
             return DeliveryState.fromCode(row.state) == DeliveryState.ACKNOWLEDGED_BY_RECIPIENT
+        }
+
+        /**
+         * *** STOP THE OWNER, RELEASE ITS HANDLES, AND RE-READ THE SAME ESTATE FROM A FRESH RIG. ***
+         *
+         * *THE DEFECT THIS CLOSES: the durable proofs were read from the RUNNING store, so `durable_row: present`
+         * echoed a live object's state and a reader could not tell it from a self-attested constant.* **This tears
+         * the rig down -- which closes the stores EXPLICITLY -- and rebuilds a fresh rig over the SAME
+         * `rootFor(seed)` directory: `mintIdentity` re-readeth the persisted key material, and the stores reopen the
+         * SAME `_messages.db`/`_peers.db` because the estate files are named by LABEL and the label is unchanged.**
+         * *So the next `heldMsgIds`/`deliveryRow` answer is the store's OWN reading of bytes that survived the close
+         * -- a fact about the DISK rather than about a running object.*
+         *
+         * **NO PRODUCTION SEAM IS ADDED AND NO ORDERING CHANGED: the worker STOPPETH ITSELF and reopeneth through
+         * the rig's own existing `tearDown` and construction roads.**
+         */
+        private fun reopenEstateForProof() {
+            val root = rootFor(seed)
+            runCatching { rig.tearDown() }
+            // *The radio is not needed for a store-level proof, so the reopened rig is left un-opened; the endpoint
+            // node's stores are what the proof readeth.*
+            rig = RealTransportHostRig(ctx = ApplicationProvider.getApplicationContext(), fixtureRoot = root)
+            rig.makeNode(ENDPOINT)
         }
 
         /** *** THE REFUSAL EVIDENCE IS READ FROM THE RECEIVER'S OWN REJECTION RING, BY NAME. *** */

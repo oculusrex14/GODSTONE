@@ -15,11 +15,15 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import io.godstone.mesh.a11y.AccessibilityContract
 import io.godstone.mesh.delivery.DeliveryState
+import io.godstone.mesh.identity.PanicWipe
+import io.godstone.mesh.identity.WipeJournalState
 import io.godstone.mesh.lab.LabRuntime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -38,8 +42,10 @@ import org.robolectric.annotation.Config
  * not the commands. **AND THAT WAS THE SHIPPING STATE: `LabMainActivity` showed a `TextView`, and `LabJourneyState`'s
  * `= {}` defaults meaned a caller could render the whole journey with every command silently absent.***
  *
- * THIS COURT DRIVES THE REAL BINDING: `LabJourneyBindings` over a real `io.godstone.mesh.lab.LabRuntime` (composed by
- * `LabMeshApp.compose()` -- the production `MeshNode` over the real router, store, tracker, inbox and ACK authority).
+ * THIS COURT DRIVES THE REAL BINDING: `LabJourneyBindings` over the LAUNCHABLE application's own retained
+ * `io.godstone.mesh.lab.LabRuntime` (composed by `LabMeshApplication` over its real `ProductionLabEstate`, whose two
+ * unavailable platform doors -- the AndroidKeyStore identity factory and the SQLCipher engine -- this court substitutes
+ * through the application's ONE named `estatePlatform` door with real on-disk SQLite).
  * Then it reads the RENDERED tree, and the discriminator in every arm is that **the rendered value is a READ OF THE
  * RUNTIME'S OWN ROW**: the message id on screen is the `msg_id` the durable enqueue committed, and the label is
  * `MeshNode.deliveryProjection`'s honest `DeliveryLabel`.
@@ -59,7 +65,7 @@ import org.robolectric.annotation.Config
  * boundary and the physical radio remain EXTERNAL, exactly as `LabProfile` stateth.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33])
+@Config(sdk = [33], application = LabHostApplication::class)
 class LabMeshJourneyBoundTest {
 
     @get:Rule
@@ -89,13 +95,44 @@ class LabMeshJourneyBoundTest {
     private fun <T> awaited(block: suspend () -> T): T = runBlocking { block() }
 
     /**
+     * *** THE RETAINED COMPOSITION, OVER THIS COURT'S OWN CLEAN RECORD. ***
+     *
+     * *The durable record is the premise, so the helper clears it BEFORE the application's retained composition
+     * first runs -- a REQUESTED record would (correctly) leave `runtime` null, and the send/SOS arms need the admitted
+     * graph.* **`LabHostApplication` is installed by `@Config(application = ...)`, so Robolectric really calls
+     * `onCreate` on the LAUNCHABLE owner and the ONE retained composition is the application's, never this court's.**
+     */
+    private fun admittedRuntime(ctx: android.content.Context): LabRuntime {
+        val app = androidx.test.core.app.ApplicationProvider.getApplicationContext<LabHostApplication>()
+        ctx.getSharedPreferences("godstone_wipe_journal", android.content.Context.MODE_PRIVATE)
+            .edit().remove("state").remove("epoch").commit()
+        val runtime = app.runtime
+        org.junit.Assert.assertNotNull(
+            "*** A CLEAN HOST RECORD MUST ADMIT THE REAL ESTATE'S NORMAL PRIVATE COMPOSITION. ***",
+            runtime,
+        )
+        return runtime!!
+    }
+
+    /**
      * Bind the REAL runtime to the REAL screen and hand back the bindings.
      *
      * *The screen is rendered with the SAME `StateFlow` the activity collecteth; the court reads the bound values
      * directly, which is what maketh the assertion about the RUNTIME rather than about a composition detail.*
      */
     private fun bind(runtime: LabRuntime): LabJourneyBindings {
-        val bindings = LabJourneyBindings(runtime, CoroutineScope(Dispatchers.Unconfined))
+        // *** THE DURABLE WIPE OWNER IS THE PRODUCTION ONE, OVER THIS COURT'S REAL CONTEXT. *** *`ApplicationProvider`
+        // gives the Robolectric application, so `LabWipeJourney` opens the isle's OWN `FileWipeJournal` -- the same file
+        // the startup barrier uses -- and the wipe arms below are therefore about the durable record rather than about
+        // a register this court kept.*
+        val bindings = LabJourneyBindings(
+            runtime,
+            CoroutineScope(Dispatchers.Unconfined),
+            io.godstone.mesh.lab.LabWipeJourney(
+                androidx.test.core.app.ApplicationProvider.getApplicationContext(),
+                liveEstate = runtime,
+            ),
+        )
         bindings.refresh()
         composeRule.setContent {
             Box(Modifier.width(360.dp)) {
@@ -111,7 +148,7 @@ class LabMeshJourneyBoundTest {
      */
     @Test
     fun test_the_rendered_journey_sendeth_and_renders_the_runtimes_own_durable_id() {
-        val runtime = LabMeshApp.compose()
+        val runtime = admittedRuntime(androidx.test.core.app.ApplicationProvider.getApplicationContext())
         val bindings = bind(runtime)
 
         // (a) THE RECIPIENT LIST IS THE RUNTIME'S OWN LABEL SET (never a list the screen invented).
@@ -183,7 +220,7 @@ class LabMeshJourneyBoundTest {
      */
     @Test
     fun test_the_durable_readout_is_absent_until_the_runtime_committeth() {
-        val runtime = LabMeshApp.compose()
+        val runtime = admittedRuntime(androidx.test.core.app.ApplicationProvider.getApplicationContext())
         val bindings = bind(runtime)
         assertNull(
             "nothing was authored, so the runtime carrieth no message",
@@ -205,7 +242,7 @@ class LabMeshJourneyBoundTest {
      */
     @Test
     fun test_the_rendered_sos_arm_and_cancel_reach_the_nodes_own_durable_row() {
-        val runtime = LabMeshApp.compose()
+        val runtime = admittedRuntime(androidx.test.core.app.ApplicationProvider.getApplicationContext())
         val bindings = bind(runtime)
 
         node(LabControl.SOS_ARM).performScrollTo().performClick()
@@ -238,6 +275,135 @@ class LabMeshJourneyBoundTest {
             stateDescriptionOf(LabControl.SOS_STATE),
         )
     }
+
+    /**
+     * *** GS-FINAL-003 `durable-authority`: THE RENDERED WIPE CONTROL REACHES THE PRODUCTION DURABLE RECORD. ***
+     *
+     * *THE OBLIGATION'S WORDS: **"rendered wipe UI uses SAME durable production wipe owner (no composition harness
+     * local state register)"** -- and the discriminator is a REOPEN.* **A RENDERED click must move the isle's own
+     * `FileWipeJournal`, and a FRESH OWNER over the same file must see it.** *A screen (or a harness) keeping its own
+     * register would render a stage while the durable record stood at `IDLE`, which is what this arm forbids.*
+     */
+    @Test
+    fun test_the_rendered_wipe_reaches_the_durable_record_and_survives_a_reopen() {
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        // *** START FROM A KNOWN CLEAN RECORD: the record IS the premise, so the arm sets it rather than assuming it.
+        ctx.getSharedPreferences("godstone_wipe_journal", android.content.Context.MODE_PRIVATE)
+            .edit().remove("state").commit()
+        val runtime = admittedRuntime(androidx.test.core.app.ApplicationProvider.getApplicationContext())
+        val bindings = bind(runtime)
+
+        // (a) CLEAN: the rendered stage is the DURABLE record's rung, not a placeholder.
+        assertEquals(
+            "*** A CLEAN DEVICE MUST RENDER THE CLEAN RUNG, READ FROM THE RECORD. Observed: " +
+                "${stateDescriptionOf(LabControl.WIPE_STATE)} ***",
+            "IDLE", stateDescriptionOf(LabControl.WIPE_STATE),
+        )
+
+        // (b) WIPE: the RENDERED control drives the production graph, which advances the real ladder.
+        node(LabControl.WIPE_BEGIN).performScrollTo().performClick()
+        composeRule.waitForIdle()
+        // *** THE RUNG IS WHATEVER THE REAL CAPABILITIES REACHED -- NOT A PINNED ONE. *** *The pre-private vault
+        // reacheth the AndroidKeyStore, which a JVM lacks, so the ladder stops at the rung whose owner refused and STAYS
+        // PENDING -- the honest, crash-resumable answer. Pinning `REQUESTED` would be a claim that the graph CANNOT
+        // advance, which is the very defect the obligation names; the recorded run reached `RUNTIME_DRAINED`.* **The
+        // laws that hold on BOTH the host and a device are: the record MOVED off `IDLE`, and the rendered status AGREES
+        // with the record.**
+        val movedOrdinal = ctx.getSharedPreferences("godstone_wipe_journal", android.content.Context.MODE_PRIVATE)
+            .getInt("state", -1)
+        assertNotEquals(
+            "*** THE RENDERED REQUEST MUST MOVE THE DURABLE RECORD OFF `IDLE` -- a register cannot produce it. ***",
+            PanicWipe.WipeState.IDLE.ordinal, movedOrdinal,
+        )
+        assertEquals(
+            "*** AND THE RENDERED STATUS MUST BE THE RECORD'S OWN RUNG -- the stage is a READING, not a message the " +
+                "screen composed. ***",
+            PanicWipe.WipeState.entries[movedOrdinal].name, stateDescriptionOf(LabControl.WIPE_STATE),
+        )
+
+        // (c) REOPEN: a FRESH owner over the same durable record -- what a relaunch is.
+        val reopened = io.godstone.mesh.lab.LabWipeJourney(ctx).progress()
+        assertNotEquals(
+            "*** A RELAUNCH MUST SEE THE PERSISTED WIPE. A surface with its own register would read CLEAN here. ***",
+            WipeJournalState.IDLE, reopened.rung,
+        )
+        assertEquals(
+            "*** AND THE REOPENED OWNER MUST AGREE WITH THE RECORD, not with a remembered stage. ***",
+            PanicWipe.WipeState.entries[movedOrdinal].name, reopened.rung.name,
+        )
+        assertTrue(
+            "*** AND THE PRODUCTION RETRY CONTRACT MUST PERMIT A RESUME OF A PARKED WIPE. ***",
+            reopened.permitsResume,
+        )
+
+        // (d) RESUME: the rendered resume control re-drives the SAME persisted ladder and does not rewind it.
+        node(LabControl.WIPE_RESUME).performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertNotEquals(
+            "*** A RESUME MUST NOT REWIND THE DURABLE RECORD TO CLEAN: a wipe that 'resumed' by forgetting itself " +
+                "would be the worst lie this surface could tell. ***",
+            PanicWipe.WipeState.IDLE.ordinal,
+            ctx.getSharedPreferences("godstone_wipe_journal", android.content.Context.MODE_PRIVATE).getInt("state", -1),
+        )
+    }
+
+    /**
+     * *** review A6/A7: A REFUSED ESTATE RENDERS RECOVERY-ONLY, AND THE PRIVATE CONTROLS ARE GENUINELY DEAD. ***
+     *
+     * *THE REVIEW'S CHARGE: with a REQUESTED/corrupt record the bootstrap must render a recovery-only projection from
+     * the SAME durable owner rather than a normal journey.* **This drives the REAL binding with `runtime = null` -- what
+     * the launchable application handeth a refused estate -- and requires: the rendered decision is the owner's own, the
+     * send and distress controls are DISABLED (there is no private owner behind them), and the wipe request/resume
+     * controls remain reachable so the user can repair the estate.**
+     */
+    @Test
+    fun test_aRefusedEstateRendersRecoveryOnlyWithLiveWipeControls() {
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        // *** THE PREMISE IS THE DURABLE RECORD ITSELF: a parked wipe. ***
+        ctx.getSharedPreferences("godstone_wipe_journal", android.content.Context.MODE_PRIVATE)
+            .edit().putInt("state", PanicWipe.WipeState.REQUESTED.ordinal).commit()
+
+        val bindings = LabJourneyBindings(
+            null,
+            CoroutineScope(Dispatchers.Unconfined),
+            io.godstone.mesh.lab.LabWipeJourney(ctx),
+        )
+        bindings.refresh()
+        composeRule.setContent {
+            Box(Modifier.width(360.dp)) {
+                LabMeshJourneyScreen(state = composeValueOf(bindings.state), onSend = bindings::send)
+            }
+        }
+        composeRule.waitForIdle()
+
+        assertEquals(
+            "*** A REFUSED ESTATE MUST RENDER THE OWNER'S OWN DECISION, NOT A PLACEHOLDER. ***",
+            "REQUESTED", stateDescriptionOf(LabControl.WIPE_STATE),
+        )
+        assertFalse(
+            "*** AND THE DISTRESS ARM MUST BE GENUINELY DISABLED: no normal private graph standeth to author through. ***",
+            enabledOf(LabControl.SOS_ARM),
+        )
+        assertFalse("*** AND THE RETRY MUST BE DISABLED TOO. ***", enabledOf(LabControl.RETRY))
+        assertTrue(
+            "*** WHILE THE RESUME -- the owner's own repair of a parked wipe -- MUST STAY ACTIONABLE. ***",
+            enabledOf(LabControl.WIPE_RESUME),
+        )
+        // *** AND A CLICKED SEND MUST REPORT THE OWNER'S DECISION RATHER THAN PRETENDING TO SEND. ***
+        bindings.send("B", "a body that must never be durably enqueued")
+        composeRule.waitForIdle()
+        assertTrue(
+            "*** A REFUSED SEND MUST SAY SO IN THE OWNER'S OWN WORDS. Observed: ${textOf(LabControl.OUTCOME)} ***",
+            textOf(LabControl.OUTCOME)?.contains("normal private graph is unavailable") == true,
+        )
+    }
+
+    /** *The published enablement of a rendered node: Compose publisheth `Disabled` on an unreachable control.*/
+    private fun enabledOf(tag: String): Boolean {
+        node(tag).performScrollTo()
+        return !node(tag).fetchSemanticsNode().config.contains(SemanticsProperties.Disabled)
+    }
+
 }
 
 /**

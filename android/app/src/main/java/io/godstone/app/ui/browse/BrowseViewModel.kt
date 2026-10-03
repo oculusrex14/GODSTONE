@@ -383,8 +383,31 @@ class BrowseViewModel(
             if (generation.get() != token) return@launch
             val outcome = runCatching {
                 withContext(dispatcher) {
-                    reader.passages(documentId) to
-                        runCatching { reader.sourceMetadata(documentId) }.getOrNull()
+                    val found = reader.passages(documentId)
+                    // *** THE PROVENANCE-SWALLOW REMEDIATION (the iOS isle's twin). *** This road used to
+                    // read `runCatching { reader.sourceMetadata(documentId) }.getOrNull()` NESTED inside the
+                    // outer `runCatching` -- a fault at the metadata SELECT was therefore folded to `null`
+                    // TWICE over before this state was published, and the reader met a document stripped of
+                    // its citation under a clean `ReadReady` that said nothing. The checked face is asked now,
+                    // and its cry travel eth down the SAME `outcome` to the one `publishFailure` road this
+                    // class already owneth (sanitised tale, `recoverable = true`, retry earned).
+                    //
+                    // THE VERDICT IS CONSULTED FIRST, EXACTLY AS `loadDocuments` (:285) AND `refreshArchiveStatus`
+                    // (:179) ALREADY DO -- and it is consulted THROUGH `archiveVerdict()`, the one helper this class
+                    // alreadeth owneth that mapeth a THROWING status probe to a typed `Unavailable`. Asking
+                    // `reader.status()` raw would let that throw escape into THIS `runCatching`, and the road would
+                    // fall to `publishFailure`, whose `recoverable = true` offereth a Repair to a reader whose
+                    // archive merely could not be probed: a BROADENED RETRY, which this card forbiddeth. One verdict
+                    // for the whole road, one typed mapping, and no new abstraction.
+                    //
+                    // An archive that was never armed is told `Unavailable ... recoverable = false` by the branch
+                    // below, so the probe is ask'd only of a `Read y` road. That is why this is not a second swallow:
+                    // an unready road never reacheth the question at all, and no `null` from it can be read as a
+                    // verdict about a row.
+                    val source = if (archiveVerdict() is ArchiveState.Ready)
+                        reader.sourceMetadata(documentId)
+                    else null
+                    found to source
                 }
             }
             if (generation.get() != token) return@launch

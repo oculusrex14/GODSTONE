@@ -50,17 +50,18 @@ class GsFinal003ZeroPrivateOpensTest {
      * ME SO: TWO ARMS FAILED at `NEW_IDENTITY` because the barrier reported `permitsStartup == true` there.*
      *
      * **WHY THAT IS CORRECT AND NOT A HOLE: THE BARRIER RESUMES THE LADDER.** *`NEW_IDENTITY -> IDLE` is the LADDER'S
-     * OWN TERMINAL TRANSITION, so a barrier meeting `NEW_IDENTITY` FINISHES THE WIPE and then answereth `CLEAN_START` --
-     * the honest result of a wipe that completed, not a fail-open.*
+     * OWN TERMINAL TRANSITION, so a barrier meeting `NEW_IDENTITY` FINISHES THE WIPE and then answereth
+     * `WIPE_COMPLETED` -- the honest result of a wipe that finished, not a fail-open, and a DIFFERENT decision from a
+     * first launch (`CLEAN_START`), exactly as the iOS isle distinguisheth `wipeCompleted` from `cleanStart`.*
      *
      * *** MEASURED, EVERY RUNG, WITH A THROWAWAY PROBE: ***
      * ```
-     * IDLE              -> CLEAN_START        permits=true
+     * IDLE              -> WIPE_COMPLETED     permits=true
      * REQUESTED         -> RETRYABLE_FAILURE  permits=false
      * RUNTIME_DRAINED   -> RETRYABLE_FAILURE  permits=false
      * KEY_ERASED        -> RETRYABLE_FAILURE  permits=false
      * ARTIFACTS_DELETED -> RETRYABLE_FAILURE  permits=false
-     * NEW_IDENTITY      -> CLEAN_START        permits=true
+     * NEW_IDENTITY      -> WIPE_COMPLETED     permits=true
      * ```
      * *So the refusing set is EVERY RUNG WHERE THE LADDER CANNOT COMPLETE -- which is exactly the four the probe
      * showed, and NOT a hand-written list.*
@@ -72,7 +73,7 @@ class GsFinal003ZeroPrivateOpensTest {
      * **THAT IS TAUTOLOGICAL TWICE OVER:** the selection criterion IS the assertion, and `permitsStartup` IS `issue`'s
      * gate -- so `assertNull(issue(decision))` merely restateth the criterion that chose the rung.*
      *
-     * *** WORSE, IT IS NOT FALSIFIABLE: if a future edit made `REQUESTED` report `CLEAN_START`, the roster would simply
+     * *** WORSE, IT IS NOT FALSIFIABLE: if a future edit made `REQUESTED` report a PERMITTING decision, the roster would simply
      * DROP that rung, every loop would shrink, and `theRigCarriesRefusingRungsToFault` would still pass because it only
      * checketh the list is NON-EMPTY -- four rungs becoming three is still non-empty. THE COVERAGE WOULD VANISH WHILE
      * THE COURT STAYED GREEN.*** *And the flip is LIVE, not hypothetical: the probe showed `NEW_IDENTITY` already
@@ -131,7 +132,10 @@ class GsFinal003ZeroPrivateOpensTest {
     private fun refusingRungs(): List<PanicWipe.WipeState> =
         PanicWipe.WipeState.entries.filter { state ->
             presetJournal(state)
-            val barrier = MeshStartupWipeBarrier(ctx())   // THE BARRIER RUNS FIRST: it may COMPLETE the ladder
+            // *** A REFUSING SEAM SET IS INJECTED SO THE RUNG STAYS OBSERVABLE: the REAL capabilities would
+            // COMPLETE a pending wipe at startup (which is the point of the recovery graph), so a court that must
+            // witness a REFUSING rung supplies seams that refuse. ***
+            val barrier = MeshStartupWipeBarrier(ctx(), StartupRecoveryGraph.deferred())   // may COMPLETE the ladder
             !MeshModule.provideWipeIsPending(ctx()).allowsSensitiveUse()
         }
 
@@ -159,7 +163,7 @@ class GsFinal003ZeroPrivateOpensTest {
     fun noPermitIsIssuedOnAnyOutstandingRung() {
         for (rung in refusingRungs()) {
             presetJournal(rung)
-            val barrier = MeshStartupWipeBarrier(ctx())
+            val barrier = MeshStartupWipeBarrier(ctx(), StartupRecoveryGraph.deferred())
             assertEquals(
                 "the rig must reach the intended rung, or this arm testeth a different state",
                 false, barrier.permitsStartup,
@@ -168,7 +172,9 @@ class GsFinal003ZeroPrivateOpensTest {
                 "*** $rung MUST YIELD **NO PERMIT**. *A store opened now is a store opened on the key a later resume " +
                     "will erase.* THE PERMIT IS THE AUTHORITY, SO ITS ABSENCE IS THE ZERO-OPENS GUARANTEE -- counted at " +
                     "the seam rather than inferred from a file that was not created. ***",
-                PrivateStorePermit.issue(barrier.decision),
+                StartupRecoveryGraph.issuePermit(
+                    barrier.evidence, StartupRecoveryGraph.revisionOf(barrier.authority),
+                ),
             )
         }
     }
@@ -179,7 +185,9 @@ class GsFinal003ZeroPrivateOpensTest {
         presetJournal(PanicWipe.WipeState.IDLE)
         val barrier = MeshStartupWipeBarrier(ctx())
         assertTrue("the rig must reach the terminal rung", barrier.permitsStartup)
-        val permit = PrivateStorePermit.issue(barrier.decision)
+        val permit = StartupRecoveryGraph.issuePermit(
+            barrier.evidence, StartupRecoveryGraph.revisionOf(barrier.authority),
+        )
         assertNotNull(
             "*** THE TERMINAL RUNG MUST ISSUE A PERMIT, or the repair is a denial of service rather than a gate. ***",
             permit,
@@ -203,7 +211,7 @@ class GsFinal003ZeroPrivateOpensTest {
     fun theCompositionIssuerRefusesOnEveryOutstandingRung() {
         for (rung in refusingRungs()) {
             presetJournal(rung)
-            val barrier = MeshStartupWipeBarrier(ctx())
+            val barrier = MeshStartupWipeBarrier(ctx(), StartupRecoveryGraph.deferred())
             val thrown = runCatching { MeshModule.issuePrivateStorePermit(barrier) }.exceptionOrNull()
             assertNotNull(
                 "*** $rung MUST FAIL TO PRODUCE A PERMIT: the composition's issuer refuseth, so NO private provider " +
@@ -247,23 +255,40 @@ class GsFinal003ZeroPrivateOpensTest {
     )
 
     private fun graph(): MeshGraphComponent =
-        DaggerMeshGraphComponent.builder().applicationContext(ctx()).build()
+        // *** THE REFUSING-RUNG COMPOSITION, SO THE COUNTER ARMS' PREMISE (a pending rung) STAYS TRUE. ***
+        // *The PRODUCTION composition bindeth the REAL pre-private capabilities, which would COMPLETE a pending wipe at
+        // startup (correct for production) and leave no rung to refuse at; a court must therefore bind the deferred set.*
+        DaggerMeshGraphComponent.builder()
+            .applicationContext(ctx())
+            .recoverySeams(StartupRecoveryGraph.deferred())
+            .build()
 
     private fun failureChain(t: Throwable?): String =
         generateSequence(t) { it.cause }.joinToString(" | ") { it::class.java.name + ": " + it.message }
 
     /**
-     * *** (a) THE PERMITTED ROAD: EVERY SEAM IS ATTEMPTED EXACTLY ONCE, UNDER `CLEAN_START`. ***
+     * *** (a) THE PERMITTED ROAD: EVERY SEAM IS ATTEMPTED EXACTLY ONCE, UNDER THE DECISION THAT PERMITS. ***
      *
-     * *The `IDLE` journal is the one rung that permits construction, so each accessor must (1) move its counter by
-     * exactly one, (2) record `CLEAN_START` as the authority, and (3) fail at a REAL PLATFORM wall rather than a DI
-     * fault.* **A court-side short circuit would construct successfully and read as green -- so the throw is asserted,
+     * *The `IDLE` journal is the rung that permits construction, so each accessor must (1) move its counter by
+     * exactly one, (2) record the PERMITTING decision as the authority, and (3) fail at a REAL PLATFORM wall rather than a
+     * DI fault.* **A court-side short circuit would construct successfully and read as green -- so the throw is asserted,
      * not tolerated.**
+     *
+     * *** AND THE AUTHORITY IS READ FROM THE SAME BARRIER THE GRAPH BUILT, NOT PINNED TO A LABEL. *** *An `IDLE` journal
+     * carries NO durable checkpoint at all through this isle's adapter (the documented collapse both isles share), so the
+     * barrier's typed decision at that rung is the CLEAN ESTATE (`CLEAN_START`) -- a pin to `WIPE_COMPLETED` here would
+     * assert a word rather than the property. **The property the arm needs is: the count's authority EQUALS the
+     * permitting decision the composition actually computed, and that decision PERMITS construction.***
      */
     @Test
     fun thePermittedRoadCountsOneAttemptPerSeamAtThePlatform() {
         presetJournal(PanicWipe.WipeState.IDLE)
         PrivateConstructionCounter.reset()
+        val permitting = MeshStartupWipeBarrier(ctx(), StartupRecoveryGraph.deferred()).decision
+        assertTrue(
+            "*** THE RUNG MUST PERMIT CONSTRUCTION, or every assertion below is about a refusal. Observed: $permitting ***",
+            permitting.allowsPrivateConstruction,
+        )
         val g = graph()
 
         for ((seam, accessor) in privateSeams) {
@@ -280,7 +305,7 @@ class GsFinal003ZeroPrivateOpensTest {
                 "*** $seam: THE ATTEMPT MUST CARRY THE AUTHORITY THAT PERMITTED IT. *A count alone sayeth " +
                     "'something was constructed' -- this sayeth WHAT AUTHORISED IT, so a construction under a REFUSING " +
                     "decision could never satisfy this arm.* ***",
-                StartupWipeDecision.CLEAN_START, PrivateConstructionCounter.lastAuthorizedBy(seam),
+                permitting, PrivateConstructionCounter.lastAuthorizedBy(seam),
             )
             assertNotNull(
                 "*** $seam: REACHING PRIVATE STATE ON A HOST MUST FAIL AT THE REAL PLATFORM, NOT CONSTRUCT. " +

@@ -9,15 +9,24 @@ import Foundation
 /// ladder stage EXCEPT `RUNTIME_DRAINED` -- THE MISSING STAGE WAS THE MISSING GUARANTEE -- so the card's FIRST option
 /// applied ("adapt the existing PanicWipe journal compatibly"), that case was added, and this adapter is the mapping.
 ///
-/// **IT LIVES BEHIND THE EXISTING ENTRY POINT, WHICH IS THE CARD'S OWN INSTRUCTION** ("do not leave two competing public
-/// wipe coordinators"): the durable record stayeth `WipeJournal` -- the field-proven `UserDefaultsWipeJournal` with its
-/// own key -- and nothing here inventeth a second store.
+/// **IT LIVES BEHIND THE EXISTING ENTRY POINT** ("do not leave two competing public wipe coordinators"): the durable
+/// record stayeth `WipeJournal` -- the field-proven `UserDefaultsWipeJournal` with its own key -- and nothing here
+/// inventeth a second store.
 ///
 /// **AND IT FAILETH CLOSED ON AN UNKNOWN NAME**: a stage the journal cannot express is NOT silently dropped, because a
 /// dropped checkpoint is a wipe that restarteth later than it should; the append is refused and the caller's step
-/// remaineth pending. The READ direction answers the LAST checkpoint the journal standeth at, which is what "resume"
-/// meaneth.
-public final class WipeJournalDurabilityAdapter: WipeDurabilityStore, WipeReadabilityReporting {
+/// remaineth pending.
+///
+/// *** IOS-R3: THE APPEND IS *CHECKED*. ***
+///
+/// *THE FINDING, VERBATIM: "The UserDefaults implementation only calls set; this route has no durable acknowledgment
+/// boundary. A readable journal that drops a write is enough to authorize private construction from an uncommitted
+/// terminal state."* **SO `appendJournal` NOW WRITETH THROUGH AND *RE-READS* THE DURABLE VALUE: only a round-trip that
+/// observeth the state it just wrote answereth `.committed`. A store that dropped the write (or wrote elsewhere)
+/// answereth `.refused`, the coordinator doth NOT advance, and no private permit issueth.** *The write-then-verify is
+/// the acknowledgment boundary the finding demanded; and the generation is read from the journal's OWN durable counter
+/// so a permit can be bound to it (ABA).*
+public final class WipeJournalDurabilityAdapter: WipeDurabilityStore, WipeEpochReporting {
     private let journal: WipeJournal
     private let lock = NSLock()
 
@@ -64,16 +73,60 @@ public final class WipeJournalDurabilityAdapter: WipeDurabilityStore, WipeReadab
         return state == .idle ? [] : [Self.stage(forState: state)]
     }
 
-    /// GS-FINAL-003: published forward from the journal, so an unreadable durable value is visible
-    /// to the coordinator rather than collapsed into an empty ladder.
-    public var isReadable: Bool { journal.isReadable }
+    /// GS-FINAL-003 / IOS-FOLLOWUP-H1: published forward from the journal, so an unreadable durable value is
+    /// visible to the coordinator -- AND it consulteth the MEDIUM (a journal that cannot vouch for its medium
+    /// cannot vouch for readability either). *The retained gate's `isSupportedJournal()` depends on this.*
+    public var isReadable: Bool {
+        guard journal.isReadable else { return false }
+        return journal.readDurable() != nil
+    }
 
-    /// Appending a stage WRITES IT THROUGH, and REFUSETH an unknown name (`WipeJournal.write` taketh a typed state, so
-    /// an unmappable stage cannot be recorded and must not be pretended).
-    public func appendJournal(_ stateName: String) {
-        guard let state = Self.state(forStage: stateName) else { return }
+    /// *** IOS-R1/R3: THE DURABLE GENERATION, FROM THE JOURNAL'S OWN COUNTER. ***
+    public var durableEpoch: UInt64? { journal.durableEpoch }
+    public func bumpEpoch() -> UInt64? { journal.bumpEpoch() }
+
+    /// *** IOS-R3: THE STORE'S DURABLE-MEDIUM ANSWER, FORWARDED FROM THE JOURNAL. ***
+    public func readDurable() -> (state: WipeState, epoch: UInt64?)? { journal.readDurable() }
+
+    /// *** IOS-R3: WRITE, THEN *VERIFY BY RE-READ*, AND ONLY THEN ACKNOWLEDGE. ***
+    ///
+    /// *An unknown stage name is REFUSED (never written), a dropped write is REFUSED, and a write that landed at a
+    /// different rung than intended is REFUSED. Only a committed, re-observed value answereth `.committed`.*
+    @discardableResult
+    public func appendJournal(_ stateName: String) -> WipeDurableCheckpoint {
+        // AN UNKNOWN NAME IS NOT SILENTLY DROPPED: it never reacheth the journal, and the caller is told.
+        guard let state = Self.state(forStage: stateName) else {
+            return .refused(rung: nil, reason: "'\(stateName)' is not a ladder stage; the checkpoint was refused")
+        }
         lock.lock()
         defer { lock.unlock() }
-        journal.write(state)
+        // *** IOS-FOLLOWUP-C2: THE CHECKED WRITE -- the sync RESULT is required, not merely a matching reread. ***
+        //
+        // *THE REVIEW, VERBATIM: "persist now returns false on file/directory synchronization failure, but write
+        // discards it. If the replacement is visible and directory fsync fails, the adapter rereads the intended state
+        // and acknowledges it anyway."* **So the adapter consumes `writeChecked`'s `synchronized` result, which only a
+        // real medium (or an explicit court fake) can vouch for -- a visible-but-unsynced record is REFUSED.***
+        let rung = WipeJournalState.fromWire(Self.stage(forState: state))
+        let written = journal.writeChecked(state)
+        guard written.synchronized else {
+            return .refused(
+                rung: rung,
+                reason: "the durable write did not synchronize (file or directory fsync failed, or the medium cannot "
+                      + "vouch); the checkpoint is refused")
+        }
+        // AND A SECOND, INDEPENDENT ROUND-TRIP: the acknowledged rung must be what the medium now carrieth.
+        guard let durable = journal.readDurable(), durable.state == state else {
+            return .refused(
+                rung: rung,
+                reason: "the durable record does not carry \(state.rawValue) after the write; the checkpoint is refused")
+        }
+        // *** IOS-FOLLOWUP-C3: NEVER FABRICATE COMMITTED(generation: 0). *** *A missing epoch is REFUSED, not
+        // defaulted -- a committed checkpoint MUST carry the generation that actually reached the medium.*
+        guard let epoch = written.epoch ?? durable.epoch else {
+            return .refused(
+                rung: rung,
+                reason: "the durable record carries no generation; a committed checkpoint requires one (no fabricated 0)")
+        }
+        return .committed(generation: epoch, rung: rung ?? .requested)
     }
 }

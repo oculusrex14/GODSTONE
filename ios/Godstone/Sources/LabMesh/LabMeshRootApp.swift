@@ -29,10 +29,68 @@ struct LabMeshRootApp: App {
     }
 }
 
-/// THE RETAINED RUNTIME OWNER: exactly one canonical runtime for the life of this lab's process.
+/// *** *** IOS-R6: THE RETAINED RUNTIME OWNER -- AND IT CONSULTS RECOVERY BEFORE IT CONSTRUCTS ANYTHING. *** ***
+///
+/// *THE DEFECT THE REVIEW NAMED, VERBATIM: "`LabRuntimeHolder` unconditionally executes `try! LabRuntime.compose()`.
+/// compose creates identities/nodes and opens/reseeds the trust database without checking the wipe journal ... There
+/// is no recovery-only holder topology or operator-confirmed corruption recovery before ordinary SOS/Send/contact
+/// resources become reachable."* **AND ITS REMEDY IS EXACTLY WHAT THIS TYPE NOW DOES:**
+///
+///   1. **READ THE ESTATE FIRST, COMPOSING NOTHING.** `MeshRuntime.recoveryEstateStatus` answereth the typed decision,
+///      the durable generation and the rung -- it opens no store and mints no identity.
+///   2. **RENDER RECOVERY-ONLY / OPERATOR STATES WITHOUT A RUNTIME.** An outstanding or corrupt estate yields NO
+///      `LabRuntime` at all (`runtime == nil`), so no sensitive resource is reachable behind a mere flag.
+///   3. **TRANSITION TO NORMAL ONLY WITH A CONSUMED, ESTATE-BOUND PERMIT.** On a settled estate the holder builds a
+///      permit from the driving bootstrap and requires `.normal(permit)`, then consumes it with
+///      `consumeForConstruction(estateId:liveGeneration:)` **before** `LabRuntime.compose` -- so a permit minted for
+///      one estate, or before the record moved (ABA), is REFUSED at the actual construction boundary.
+///
+/// **`try!` IS GONE.** A composition error is carried as a rendered refusal, not a process termination; the lab that
+/// cannot compose says so rather than dying silently.
 public final class LabRuntimeHolder: ObservableObject {
-    /// The ONE runtime. `LabRuntime.compose()` returneth the canonical one; nothing here manufactureth readiness.
-    public let runtime: LabRuntime
+    /// THE ONE RUNTIME -- present ONLY when the estate settled and its permit was consumed at construction.
+    public var runtime: LabRuntime? { activeRuntime }
+    /// *** THE OBSERVABLE DOOR: a surface repaints when the construction attempt changes the runtime. *** *Published so
+    /// the gate in `LabRootView` re-evaluates after a retry or an operator resolution.*
+    @Published private var activeRuntime: LabRuntime?
+
+    /// The typed estate state this holder read at its last construction attempt. A surface renders THIS.
+    @Published public private(set) var estateDecision: StartupRecoveryDecision
+    @Published public private(set) var estateGeneration: UInt64
+    @Published public private(set) var estateRung: String?
+    /// The outcome of the construction attempt, spoken for a reader (empty when normal construction succeeded).
+    @Published public private(set) var bootstrapWords: String
+    /// *** THE OPERATOR'S OWN RESOLUTION, AS THE RUNTIME ANSWERED IT (G1). *** *A surface must bind the DURABLE
+    /// effect of the operator's act rather than a phrase a view invented, so the typed outcome's own words are
+    /// projected here where the drive happened.*
+    @Published public private(set) var operatorWipeWords: String
+    /// *** THE RETRY'S OWN ANSWER, AS THE RUNTIME ANSWERED IT (G1). *** *Distinct from `bootstrapWords`, which the
+    /// re-attempt overwriteth: this is the typed outcome of the resume drive itself, so a rendered arm can bind the
+    /// effect without racing the re-gate.*
+    @Published public private(set) var retryWords: String
+    /// The lab's canonical estate identifier -- the same value the permit is bound to.
+    public let estateId: String
+
+    // --------------------------------------------------------------------------------------------
+    // *** G1: THE TYPED DECISION'S OWN LAWS, PROJECTED -- THE ONE HOLDER A SURFACE RENDERS FROM. ***
+    //
+    // *THE DEFECT THIS CLOSES, MEASURED: `LabRecoveryOnlyView` rendered BOTH the Retry and the Resolve buttons
+    // whatever the decision said, so during a corrupt record the Retry invited a resume the shared law reserves to
+    // the operator, and after a settled estate it drove a FRESH request the authority never earned. **THE LAWS
+    // ALREADY EXIST ON THE DECISION (`permitsRecoveryConstruction`, `requiresOperator`); no surface consulted them.**
+    // THE GATE IS THEREFORE THE DECISION'S OWN PROPERTIES, PROJECTED HERE -- never a UI-local boolean, which is a
+    // second source of truth beside the durable one.*
+    // --------------------------------------------------------------------------------------------
+
+    /// TRUE only while the DURABLE decision permits a recovery (resume) drive: pending/retryable. The earned-Retry
+    /// law -- corrupt/terminal/settled all answer `false`, so a Retry that would start destruction can never render.
+    public var permitsRecoveryConstruction: Bool { estateDecision.permitsRecoveryConstruction }
+
+    /// TRUE only for an unreadable record or a policy refusal: the road no automatic action may take.
+    public var requiresOperator: Bool { estateDecision.requiresOperator }
+
+    /// The durable REASON the decision carries (nil when settled) -- rendered, never inferred from an error string.
+    public var refusalReason: String? { estateDecision.refusalReason }
 
     /// GS-LAB-001 step 4: THE OWNER HEARETH THE LIFECYCLE. It recordeth the last phase, so that a court (and a reader)
     /// can see that the notification reached THE RUNTIME'S OWNER and not a view -- and so that a later step may pause or
@@ -44,10 +102,154 @@ public final class LabRuntimeHolder: ObservableObject {
     }
 
     public init() {
-        // GS-LAB-001 (round 266): THE REAL BUILD SAITH `compose()` THROWETH -- and round 262's `swiftc -parse` could not
-        // say so, because PARSING IS NOT TYPE-CHECKING. The error is carried rather than swallowed; a lab that cannot
-        // compose its runtime must NOT pretend it did.
-        self.runtime = try! LabRuntime.compose()
+        let root = LabRuntime.labEstateRootURL()
+        try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        // *** THE ESTATE'S CANONICAL IDENTITY, FROM THE INVENTORY THE HOLDER IS ABOUT TO COMPOSE. ***
+        self.estateId = LabRuntime.labEstateIdentifier(root: root)
+        self.estateDecision = .cleanStart
+        self.estateGeneration = 0
+        self.estateRung = nil
+        self.bootstrapWords = ""
+        self.operatorWipeWords = ""
+        self.retryWords = ""
+        // *** G1: THE DEBUG, NONSHIPPING FIXTURE DOOR -- INJECTED BEFORE ANY HOLDER CONSTRUCTION. ***
+        //
+        // *It planteth the REAL durable journal bytes (phase + floor + marker) in the exact medium the ladder
+        // writeth, so the typed decision below is read from a record that really stands -- never a fabricated
+        // `WipeProgressState` or story graph. In a shipping build the door does not exist at all.*
+        #if DEBUG
+        LabRecoveryFixtureDoor.applyFixtureIfPresent(
+            journalURL: LabRuntime.labWipeJournalURL(),
+            estateRoot: root)
+        #endif
+        attemptConstruction()
+    }
+
+    /// *** THE ONE CONSTRUCTION ATTEMPT: READ THE ESTATE, AND BUILD ONLY AGAINST A CONSUMED, BOUND PERMIT. ***
+    ///
+    /// *Called at launch and again after any recovery retry, so the gate is the SAME road every time: no code path
+    /// reaches `compose` without passing `consumeForConstruction`.*
+    private func attemptConstruction() {
+        let root = LabRuntime.labEstateRootURL()
+        // *** FAIL-CLOSED BASELINE: a brand-new estate must carry a durable generation before a permit is minted. ***
+        LabRuntime.establishLabEstateBaselineIfNeeded()
+        // (1) THE TYPED READ -- NO STORE, NO IDENTITY, NO NODE. *Read BEFORE any sensitive resource exists.*
+        let status = MeshRuntime.recoveryEstateStatus(journal: LabRuntime.labWipeJournal())
+        estateDecision = status.decision
+        estateGeneration = status.generation
+        estateRung = status.rung
+
+        switch status.decision {
+        case .cleanStart, .wipeCompleted:
+            // (3) THE PERMIT: MINTED BY A DRIVE, BOUND TO THIS ESTATE, CONSUMED AT CONSTRUCTION.
+            guard LabRuntime.consumeLabConstructionPermit(estateId: estateId,
+                                                          liveGeneration: status.generation) else {
+                activeRuntime = nil
+                bootstrapWords = "private construction refused: no valid permit for this estate and generation"
+                return
+            }
+            do {
+                // *** THE PRIVATE CONSTRUCTION, OVER THE LAB'S RETAINED ESTATE ROOT. ***
+                activeRuntime = try LabRuntime.compose(estateRoot: root)
+                bootstrapWords = ""
+            } catch {
+                activeRuntime = nil
+                bootstrapWords = "composition refused: \(error)"
+            }
+        case .recoveryPending, .retryableFailure:
+            // (2) RECOVERY-ONLY: NO RUNTIME AT ALL -- and no sensitive resource behind a flag.
+            activeRuntime = nil
+            bootstrapWords = "recovery-only: " + status.decision.name
+                + (status.decision.refusalReason.map { " -- " + $0 } ?? "")
+        case .corruptJournal, .terminalFailure:
+            // OPERATOR REQUIRED: no automatic action may resolve an unreadable record.
+            activeRuntime = nil
+            bootstrapWords = status.decision.name + " -- operator required"
+        }
+    }
+
+    /// *** *** G1: THE RETRY ROAD -- GATED BY THE DURABLE DECISION, AND A RESUME RATHER THAN A FRESH REQUEST. *** ***
+    ///
+    /// *THE DEFECT THIS CLOSES, MEASURED: the recovery-only surface drove `runRecoveryForOperator(requestFresh: true)`
+    /// whatever the decision said -- so a Retry from a SETTLED estate WROTE A FRESH `REQUESTED` AND BUMPED THE
+    /// GENERATION (starting destruction rather than resuming the failed operation), and during a CORRUPT record it
+    /// invited a resume the shared law reserves to the operator (`permitsRecoveryConstruction` is FALSE there). **THE
+    /// LAW ALREADY EXISTED ON THE DECISION AND NO SURFACE CONSULTED IT.***
+    ///
+    /// **THE AUTHORITY IS RE-READ AT THE TAP, NOT TRUSTED FROM THE RENDER**: a screen that showed the button cannot
+    /// vouch for the record now, so the typed decision is taken again here and the gate is applied to THAT. And the
+    /// phase is the other half of the repair: a Retry RESUMES (`requestFresh: false`) -- the fresh request belongs to
+    /// the operator's own complete wipe, which carrieth its own restriction.
+    ///
+    /// Returns the words now rendered: the authority's own summary when it permitted, or a TYPED REFUSAL naming the
+    /// decision when it did not.
+    @discardableResult
+    public func recoveryRetry() -> String {
+        let status = MeshRuntime.recoveryEstateStatus(journal: LabRuntime.labWipeJournal())
+        estateDecision = status.decision
+        estateGeneration = status.generation
+        estateRung = status.rung
+        guard status.decision.permitsRecoveryConstruction else {
+            retryWords = "refused: " + status.decision.name + " does not permit a recovery resume"
+                + (status.decision.refusalReason.map { " -- " + $0 } ?? "")
+            bootstrapWords = retryWords
+            return retryWords
+        }
+        let outcome = LabRuntime.runRecoveryForOperator(requestFresh: false)
+        // *** THE RESUME'S OWN TYPED ANSWER (the durable `requestFresh: false` road), RENDERED BESIDE the re-gate. ***
+        retryWords = "recovery retry: " + outcome.summaryWords
+        bootstrapWords = retryWords
+        attemptConstruction()
+        return retryWords
+    }
+
+    /// *** G1: THE OPERATOR'S OWN RESOLUTION, GATED ON `requiresOperator` AND RESTRICTED TO AN UNREADABLE RECORD. ***
+    ///
+    /// *The shared law reserves this road to a genuinely corrupt/terminal estate; offering it beside a Retry (which
+    /// the surface did) invites an operator wipe where a resume was owed. The authority also refuses a readable estate
+    /// BY NAME inside the coordinator -- and this gate never reaches it with one.*
+    @discardableResult
+    public func resolveCorrupt() -> String {
+        let status = MeshRuntime.recoveryEstateStatus(journal: LabRuntime.labWipeJournal())
+        estateDecision = status.decision
+        estateGeneration = status.generation
+        estateRung = status.rung
+        guard status.decision.requiresOperator else {
+            bootstrapWords = "refused: " + status.decision.name + " does not require an operator resolution"
+            return bootstrapWords
+        }
+        return resolveCorruptForOperator().summaryWords
+    }
+
+    /// *** IOS-R6: THE OPERATOR'S OWN RESOLUTION OF A CORRUPT RECORD. ***
+    ///
+    /// *A corrupt journal cannot be retried into parseability, so the honest remedy is an OPERATOR-CONFIRMED full wipe
+    /// over the lab's OWN estate (`MeshRuntime.resolveCorruptRecoveryForOperator`) -- **never a silent
+    /// clear-journal.** After it, the holder re-reads the estate and may build normally. **The rendered control
+    /// reacheth this road only through `resolveCorrupt()`, which applies the `requiresOperator` gate; this method
+    /// itself carries the DURABLE effect and is the door a court drives directly.***
+    @discardableResult
+    public func resolveCorruptForOperator() -> RecoveryLadderOutcome {
+        // *THE ESTATE IS THE LAB'S OWN INVENTORY -- enumerated STATICALLY from the root, since no composition exists
+        // while the record is unreadable (`LabEstateSeam(inventory:)`).*
+        let outcome = LabRuntime.resolveCorruptRecoveryForOperator()
+        // *** THE TYPED OUTCOME OF THE OPERATOR'S OWN ACT, RENDERED -- including WHICH ARTIFACT SURVIVED, if any. ***
+        operatorWipeWords = outcome.summaryWords
+        bootstrapWords = "operator resolution: " + outcome.summaryWords
+        attemptConstruction()
+        return outcome
+    }
+
+    /// *** THE RETRY ROAD FOR AN OUTSTANDING ESTATE: DRIVE THE LADDER AGAIN OVER THE SAME ESTATE, THEN RE-ATTEMPT. ***
+    ///
+    /// *Retained for a caller that already holds an outcome the authority produced (and used by the gated rendered
+    /// road above); the RENDERED control reaches the drive through `recoveryRetry()`, which consults the decision
+    /// first.*
+    @discardableResult
+    public func noteRecoveryRetry(_ outcome: RecoveryLadderOutcome) -> RecoveryLadderOutcome {
+        bootstrapWords = "recovery retry: " + outcome.summaryWords
+        attemptConstruction()
+        return outcome
     }
 }
 
@@ -79,43 +281,165 @@ struct LabRootView: View {
     @State private var selection: Int = 2
 
     var body: some View {
+        // *** *** IOS-R6: THE RECOVERY-ONLY TOPOLOGY -- NO SENSITIVE RESOURCE REACHABLE WITHOUT A SETTLED ESTATE. *** ***
+        //
+        // *THE DEFECT THE REVIEW NAMED: the real lab composed its identities, nodes and trust store unconditionally,
+        // so a pending or corrupt wipe still produced a fully sensitive surface. **THIS GATE IS THE FIX AT THE
+        // SURFACE**: when the holder holds NO runtime (an outstanding wipe, a corrupt record, or a refused
+        // composition), the lab renders ONLY the recovery/operator screen and the TabView's journeys are never
+        // built -- so no Send, no SOS, no contact, and no store is reachable behind a mere flag.*
+        if let runtime = holder.runtime {
+            // *** THE OPERATOR'S LAST RESOLUTION SURVIVES THE RE-GATE. *** *A successful resolution composes the
+            // normal graph in the SAME state update, so the recovery-only surface (and its summary) is replaced before
+            // it can repaint. The holder's readout is written from the authority's OWN typed result and carries into
+            // the normal graph, so the operator's act is VISIBLE rather than lost to the transition it caused.*
+            if !holder.operatorWipeWords.isEmpty {
+                VStack(alignment: .leading) {
+                    Text("operator wipe: " + holder.operatorWipeWords)
+                        .font(.footnote)
+                        .accessibilityIdentifier("lab.recovery.operatorwipe")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding([.horizontal])
+            }
+            journeys(runtime)
+        } else {
+            LabRecoveryOnlyView()
+        }
+    }
+
+    /// The five journeys, reachable ONLY when a runtime was built against a consumed, estate-bound permit.
+    @ViewBuilder
+    private func journeys(_ runtime: LabRuntime) -> some View {
         // GS-LAB-001 step 4's NAVIGATION HALF (round 268): MINIMAL VIEWS FOR THE FIVE JOURNEYS THE CARD NAMETH --
         // identity, contacts, conversation, SOS and diagnostics. They are MINIMAL ON PURPOSE: the card asketh for
         // navigation to them, not for finished screens, and `GS-UX-001` (which dependeth on this finding) carrieth the
         // deeper journeys. Each screen SAYETH what it is and carrieth NO readiness claim.
         TabView(selection: $selection) {
-            LabIdentityView().tabItem {
+            LabIdentityView(runtime: runtime).tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Identity").accessibilityLabel("Identity screen").accessibilityIdentifier("lab.tab.identity")
             }
             .tag(0)
-            LabContactsView().tabItem {
+            LabContactsView(runtime: runtime).tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Contacts").accessibilityLabel("Contacts screen").accessibilityIdentifier("lab.tab.contacts")
             }
             .tag(1)
-            LabConversationView().tabItem {
+            LabConversationView(runtime: runtime).tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Conversation").accessibilityLabel("Conversation screen").accessibilityIdentifier("lab.tab.conversation")
             }
             .tag(2)
-            LabSosView().tabItem {
+            LabSosView(runtime: runtime).tabItem {
                 // GS-UX-001 step 7 (round 277): the CLASS is LabSosView while the LABEL is "SOS" -- two spellings for
                 // one journey, and the navigation invariant asketh for the class while this label is what is HEARD.
                 Text("SOS").accessibilityLabel("SOS screen").accessibilityIdentifier("lab.tab.sos")
             }
             .tag(3)
-            LabDiagnosticsView().tabItem {
+            LabDiagnosticsView(runtime: runtime, lastLifecyclePhase: String(describing: holder.lastLifecyclePhase)).tabItem {
                 // GS-UX-001 step 7 (round 277): A VISIBLE WORD IS NOT A SEMANTIC -- the
                 // screen reader announceth the LABEL, and a test addresseth the IDENTIFIER.
                 Text("Diagnostics").accessibilityLabel("Diagnostics screen").accessibilityIdentifier("lab.tab.diagnostics")
             }
             .tag(4)
         }
-        .environmentObject(holder)
+    }
+}
+
+/// *** *** IOS-R6: THE RECOVERY-ONLY SURFACE -- WHAT A LAB WITH NO SETTLED ESTATE RENDERS. *** ***
+///
+/// *It carrieth NO journey: no Send, no SOS, no trust operation. It NAMES the typed estate state a human must act on,
+/// and -- for a genuinely corrupt record -- offers the ONE legitimate operator action: an explicit, complete, owned
+/// wipe (`resolveCorruptForOperator`), never a silent clear-journal. **THE RETRY ROAD IS FOR AN OUTSTANDING ESTATE;
+/// the OPERATOR ROAD is for an unreadable one.***
+struct LabRecoveryOnlyView: View {
+    @EnvironmentObject private var holder: LabRuntimeHolder
+
+    var body: some View {
+        ScrollView {
+        VStack(alignment: .leading, spacing: 12) {
+            LabBanner()
+            Text("Recovery").font(.title)
+                .accessibilityIdentifier("lab.recovery.title")
+
+            // THE TYPED DECISION, RENDERED -- the words a person acts on.
+            //
+            // *** THE `Text`-CONTENT IDIOM IS DELIBERATE (the same one `lab.diagnostics.wipestate` useth): SwiftUI
+            // treats a `Text`'s content as its accessibility label, so a UI arm reading `.label` sees the WHOLE
+            // rendered string -- which is what maketh these readouts bindeable from outside the process. ***
+            Text("estate: " + holder.estateDecision.name)
+                .font(.footnote)
+                .accessibilityIdentifier("lab.recovery.decision")
+
+            Text("rung: " + (holder.estateRung ?? "none read"))
+                .font(.footnote)
+                .accessibilityIdentifier("lab.recovery.rung")
+
+            Text(holder.bootstrapWords)
+                .font(.footnote)
+                .accessibilityIdentifier("lab.recovery.bootstrap")
+
+            // *** G1: THE RETRY'S OWN TYPED ANSWER, so the arm can bind the resume's effect without racing the
+            // re-gate that a successful drive triggers above. ***
+            if !holder.retryWords.isEmpty {
+                Text(holder.retryWords)
+                    .font(.footnote)
+                    .accessibilityIdentifier("lab.recovery.retrywords")
+            }
+
+            // *** G1: THE TYPED LAWS, RENDERED SO AN ARM CAN BIND THE GATE ITSELF (never a UI-local boolean). ***
+            Text("gate: recovery=" + (holder.permitsRecoveryConstruction ? "permitted" : "denied")
+                 + " operator=" + (holder.requiresOperator ? "required" : "not-required")
+                 + (holder.refusalReason.map { " reason=" + $0 } ?? ""))
+                .font(.footnote)
+                .accessibilityIdentifier("lab.recovery.gate")
+
+            // *** *** G1: ZERO-PRIVATE-OPEN, WITNESSED AT THE REAL STORE-CONSTRUCTION DOORS. *** ***
+            //
+            // *A recovery-only surface with no tab proveth only what the render gate did. This COUNT is raised inside
+            // `LabRuntime.compose` at the two calls that really construct a private store -- so a normal boot after a
+            // settled estate reads NON-ZERO here (the positive control), while a pending/corrupt estate reads zero.*
+            Text("private stores opened: " + String(LabRecoveryOpenProbe.privateStoreOpens))
+                .font(.footnote)
+                .accessibilityIdentifier("lab.recovery.privateopens")
+
+            // *** G1: THE RETRY IS OFFERED *ONLY* WHERE THE DURABLE DECISION EARNS IT (`permitsRecoveryConstruction`:
+            // pending/retryable). It is a RESUME (`requestFresh: false`) through the gated holder door -- so a settled
+            // estate cannot start destruction, and a corrupt record cannot reach the operator's road from here. ***
+            if holder.permitsRecoveryConstruction {
+                Button("Retry recovery") {
+                    _ = holder.recoveryRetry()
+                }
+                .labTouchTarget()
+                .accessibilityIdentifier("lab.recovery.retry")
+                .accessibilityLabel("Retry recovery")
+            }
+
+            // *** G1: THE OPERATOR'S ROAD IS OFFERED *ONLY* WHERE THE DECISION `requiresOperator` (corrupt/terminal),
+            // and it is an EXPLICIT, COMPLETE, OWNED wipe -- never a silent clear-journal. ***
+            if holder.requiresOperator {
+                Button("Resolve corruption (operator wipe)") {
+                    _ = holder.resolveCorrupt()
+                }
+                .labTouchTarget()
+                .accessibilityIdentifier("lab.recovery.resolve")
+                .accessibilityLabel("Resolve corruption with an operator wipe")
+            }
+
+            // *** G1: THE OPERATOR'S OWN RESULT, RENDERED FROM THE TYPED OUTCOME -- including any artifact that
+            // SURVIVED -- so the control's effect is the authority's answer rather than a phrase this view chose. ***
+            if !holder.operatorWipeWords.isEmpty {
+                Text("operator wipe: " + holder.operatorWipeWords)
+                    .font(.footnote)
+                    .accessibilityIdentifier("lab.recovery.operatorwipe")
+            }
+        }
+        .padding()
+        }
     }
 }
 
@@ -145,7 +469,9 @@ private struct LabBanner: View {
 // --------------------------------------------------------------------------------------
 
 struct LabIdentityView: View {
-    @EnvironmentObject private var holder: LabRuntimeHolder
+    /// *** IOS-R6: THE SETTLED RUNTIME, HANDED BY THE GATE. *** *This view is built ONLY when the
+    /// holder holds a runtime (a settled estate with a consumed permit), so it never guards for nil.*
+    let runtime: LabRuntime
 
     var body: some View {
         // *** GS-UX-001 STEP 7: SCROLLED, SO ENLARGED TYPE CANNOT COVER THE TAB BAR. ***
@@ -159,9 +485,9 @@ struct LabIdentityView: View {
             Text("Identity").font(.title)
             // THE RUNTIME'S OWN ANSWER, not a claim written into a label: the labels it was composed with, and
             // whether the real durable authority is reachable through it.
-            Text("labels: " + holder.runtime.labels.joined(separator: ", "))
+            Text("labels: " + runtime.labels.joined(separator: ", "))
                 .accessibilityIdentifier("lab.identity.labels")
-            Text("durable road: " + (holder.runtime.hasDurableRoad ? "reachable" : "absent"))
+            Text("durable road: " + (runtime.hasDurableRoad ? "reachable" : "absent"))
                 .accessibilityIdentifier("lab.identity.durableness")
         }
         .padding()
@@ -170,7 +496,9 @@ struct LabIdentityView: View {
 }
 
 struct LabContactsView: View {
-    @EnvironmentObject private var holder: LabRuntimeHolder
+    /// *** IOS-R6: THE SETTLED RUNTIME, HANDED BY THE GATE. *** *This view is built ONLY when the
+    /// holder holds a runtime (a settled estate with a consumed permit), so it never guards for nil.*
+    let runtime: LabRuntime
     @State private var selectedContact: String = "B"
     @State private var trustOutcome: String = "idle"
     /// *** GS-UX-001 `rendered-controls`: THE DISPLAYED CANDIDATE, HELD WHERE THE SCREEN CAN HAND IT BACK. ***
@@ -186,8 +514,8 @@ struct LabContactsView: View {
 
     /// Re-capture what this screen is standing on: one read of the real facade, stored for the taps.
     private func captureDisplayed() {
-        displayedFingerprint = holder.runtime.trustFingerprint(for: selectedContact) ?? ""
-        displayedCandidate = holder.runtime.displayedRotationCandidate(for: selectedContact)
+        displayedFingerprint = runtime.trustFingerprint(for: selectedContact) ?? ""
+        displayedCandidate = runtime.displayedRotationCandidate(for: selectedContact)
     }
 
     var body: some View {
@@ -200,8 +528,8 @@ struct LabContactsView: View {
             LabBanner()
             Text("Contacts").font(.title)
             // AND THE HOLD COUNTS COME FROM THE RECIPIENTS' OWN STORES, through the runtime.
-            ForEach(holder.runtime.labels, id: \.self) { label in
-                Text(label + " holdeth " + String(holder.runtime.heldCount(label)) + " message(s)")
+            ForEach(runtime.labels, id: \.self) { label in
+                Text(label + " holdeth " + String(runtime.heldCount(label)) + " message(s)")
                     .accessibilityIdentifier("lab.contacts." + label)
             }
 
@@ -211,7 +539,7 @@ struct LabContactsView: View {
 
             // Contact selection picker
             Picker("contact", selection: $selectedContact) {
-                ForEach(holder.runtime.trustContactLabels(), id: \.self) { label in
+                ForEach(runtime.trustContactLabels(), id: \.self) { label in
                     Text(label).tag(label)
                 }
             }
@@ -242,18 +570,18 @@ struct LabContactsView: View {
             // Same construct as the fingerprint, for the same MEASURED reason: a `Text`'s content IS its
             // accessibility label and a modifier cannot replace it, so the semantic label goes on a container.
             HStack(spacing: 0) {
-                Text("status: " + holder.runtime.contactTrustLabel(selectedContact)).font(.footnote)
+                Text("status: " + runtime.contactTrustLabel(selectedContact)).font(.footnote)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityIdentifier("lab.trust.status")
             .accessibilityLabel("Verification status for \(selectedContact)")
-            .accessibilityValue(holder.runtime.contactTrustLabel(selectedContact))
+            .accessibilityValue(runtime.contactTrustLabel(selectedContact))
 
             HStack(spacing: 8) {
                 Button("Compare/Confirm") {
                     // *** THE CAPTURED STRING, NOT A FRESH READ. *** *The user is confirming what they SAW; a read
                     // taken here could differ from the rendered value and would confirm a string nobody compared.*
-                    trustOutcome = holder.runtime.compareAndConfirmFingerprint(
+                    trustOutcome = runtime.compareAndConfirmFingerprint(
                         for: selectedContact, displayedFingerprint: displayedFingerprint)
                 }
                 .labTouchTarget()
@@ -267,7 +595,7 @@ struct LabContactsView: View {
                         trustOutcome = "refused: no rotation candidate was displayed for '\(selectedContact)'"
                         return
                     }
-                    trustOutcome = holder.runtime.approveDisplayedRotation(candidate)
+                    trustOutcome = runtime.approveDisplayedRotation(candidate)
                     // And the screen re-captures afterwards, so the next tap is about what is now shown.
                     captureDisplayed()
                 }
@@ -278,7 +606,7 @@ struct LabContactsView: View {
 
                 Button("Revoke") {
                     let contact = selectedContact
-                    trustOutcome = holder.runtime.revokeContact(for: contact)
+                    trustOutcome = runtime.revokeContact(for: contact)
                 }
                 .labTouchTarget()
                 .accessibilityIdentifier("lab.trust.revoke")
@@ -305,7 +633,7 @@ struct LabContactsView: View {
                 rotationSeedStep += 1
                 let generation = UInt32(rotationSeedStep)
                 let keyByte = UInt8(0xA0 &+ rotationSeedStep)
-                trustOutcome = holder.runtime.seedRotation(for: selectedContact,
+                trustOutcome = runtime.seedRotation(for: selectedContact,
                                                            generation: generation,
                                                            staticDhSeedByte: keyByte)
                 // *** RE-READ ONLY WHEN NOTHING IS UNDER REVIEW YET. ***
@@ -328,7 +656,7 @@ struct LabContactsView: View {
         .padding()
         }
         .onAppear {
-            if let first = holder.runtime.trustContactLabels().first {
+            if let first = runtime.trustContactLabels().first {
                 selectedContact = first
             }
             captureDisplayed()
@@ -337,7 +665,9 @@ struct LabContactsView: View {
 }
 
 struct LabConversationView: View {
-    @EnvironmentObject private var holder: LabRuntimeHolder
+    /// *** IOS-R6: THE SETTLED RUNTIME, HANDED BY THE GATE. *** *This view is built ONLY when the
+    /// holder holds a runtime (a settled estate with a consumed permit), so it never guards for nil.*
+    let runtime: LabRuntime
     @State private var outcome = "nothing sent yet"
     @State private var body_ = "the mill road is cut; send boats"
 
@@ -416,22 +746,29 @@ struct LabConversationView: View {
 
             // *** THE RECIPIENT SELECTOR: A REAL PICKER OVER THE RUNTIME'S OWN LABELS. ***
             Picker("from", selection: $author) {
-                ForEach(holder.runtime.labels, id: \.self) { label in Text(label).tag(label) }
+                ForEach(runtime.labels, id: \.self) { label in Text(label).tag(label) }
             }
             .labTouchTarget()
             .accessibilityIdentifier("lab.conversation.author")
+            // *** A SELECTION CONTROL MUST CARRY ITS CURRENT SELECTION (measured: the roster's selected-state check
+            // found the value EMPTY). SwiftUI's `Picker` does not always publish its selection as the accessibility
+            // value, so it is stated explicitly -- the same law the trust status/octet readouts already obey. ***
+            .accessibilityLabel("Author")
+            .accessibilityValue(author)
 
             Picker("to", selection: $recipient) {
-                ForEach(holder.runtime.recipientsExcluding(author), id: \.self) { label in
+                ForEach(runtime.recipientsExcluding(author), id: \.self) { label in
                     Text(label).tag(label)
                 }
             }
             .labTouchTarget()
             .accessibilityIdentifier("lab.conversation.recipient")
+            .accessibilityLabel("Recipient")
+            .accessibilityValue(recipient)
 
             // *** AND THE LINK STATE, RENDERED: a recipient that cannot be reached must be VISIBLE as such rather
             // than silently failing an action. The register is the runtime's own. ***
-            Text(holder.runtime.isLinked(author, recipient)
+            Text(runtime.isLinked(author, recipient)
                  ? "link: up \(author)->\(recipient)"
                  : "link: down \(author)->\(recipient)")
                 .accessibilityIdentifier("lab.conversation.linkstate")
@@ -452,11 +789,11 @@ struct LabConversationView: View {
             //
             // *It reads `LabRuntime.composeOctetsReadout`, which measures the string in UTF-8 octets against the
             // PROBED cap -- so the number rendered and the number enforced are the same number.*
-            HStack(spacing: 0) { Text(holder.runtime.composeOctetsReadout(body_)).font(.footnote) }
+            HStack(spacing: 0) { Text(runtime.composeOctetsReadout(body_)).font(.footnote) }
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("lab.conversation.octets")
                 .accessibilityLabel("Conversation size")
-                .accessibilityValue(holder.runtime.composeOctetsReadout(body_))
+                .accessibilityValue(runtime.composeOctetsReadout(body_))
 
             Button("Send") {
                 let text = body_
@@ -467,9 +804,9 @@ struct LabConversationView: View {
                 Task {
                     // *** THE TRANSITION ITSELF ANNOUNCETH: the Send's own answer is what a screen-reader user must
                     // hear, and it is posted here rather than left to a change observer.*
-                    announceOutcome(await holder.runtime.sendDirectDurableIntent(
+                    announceOutcome(await runtime.sendDirectDurableIntent(
                         from, recipient: to, plaintext: Data(text.utf8), intentId: intent))
-                    durableVerdict = holder.runtime.durableIntentVerdict(intent)
+                    durableVerdict = runtime.durableIntentVerdict(intent)
                 }
             }
             .labTouchTarget()
@@ -504,14 +841,14 @@ struct LabConversationView: View {
             // id is what maketh `.found` mean something.*
             HStack(spacing: 0) {
                 Text("durable: " + (durableVerdict == "not asked"
-                                    ? holder.runtime.durableVerdictForLastIntent()
+                                    ? runtime.durableVerdictForLastIntent()
                                     : durableVerdict)).font(.footnote)
             }
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("lab.conversation.durable")
                 .accessibilityLabel("Durable intent verdict")
                 .accessibilityValue(durableVerdict == "not asked"
-                                    ? holder.runtime.durableVerdictForLastIntent()
+                                    ? runtime.durableVerdictForLastIntent()
                                     : durableVerdict)
 
             // *** GS-UX-001 STEP 7: A READOUT OF THE RUNTIME'S OWN COUNT, SO THE ARM CAN BIND RUNTIME-OWNED STATE. ***
@@ -521,7 +858,7 @@ struct LabConversationView: View {
             // NEGATIVE on a SwiftUI Text (stale snapshot / KVC). **A CONTROL WHOSE CLOSURE IS REPLACED BY A LOCAL
             // STRING WRITE WOULD STILL PASS IT.*** This readout is `admittedCount()` -- **THE RUNTIME'S OWN COUNTER,
             // which no view can fabricate** -- so an unwired action and a stuck await BOTH redden.*
-            Text("admitted: " + String(holder.runtime.admittedCount()))
+            Text("admitted: " + String(runtime.admittedCount()))
                 .accessibilityIdentifier("lab.conversation.admitted")
 
             // *** AND THE INTENT THE VIEW MINTED, RENDERED SO A RELAUNCH ARM CAN NAME IT. ***
@@ -548,7 +885,9 @@ struct LabSosView: View {
 
     /// *** THE RETAINED RUNTIME, WHICH THE SOS MUST REACH. *** *Its ABSENCE here was the defect: the view could
     /// write a string without one, and did.*
-    @EnvironmentObject private var holder: LabRuntimeHolder
+    /// *** IOS-R6: THE SETTLED RUNTIME, HANDED BY THE GATE. *** *This view is built ONLY when the
+    /// holder holds a runtime (a settled estate with a consumed permit), so it never guards for nil.*
+    let runtime: LabRuntime
 
     @State private var heldSince: ContinuousClock.Instant?
     @State private var armed = false
@@ -585,20 +924,37 @@ struct LabSosView: View {
     /// than a phrase this view chose, and the state line below is read back FROM THE DELIVERY ROW through the shared
     /// vocabulary.*
     private func sendSos() {
-        outcome = holder.runtime.armSos(payload: Data("SOS".utf8))
+        outcome = runtime.armSos(payload: Data("SOS".utf8))
         // *** THE TRANSITION ANNOUNCETH: an armed call must be SPOKEN, not merely repainted. ***
-        announceSosState(holder.runtime.sosStateNames())
+        announceSosState(runtime.sosStateNames())
     }
 
     /// Cancel the standing call by the DURABLE msg_id -- the node's own `.cancel(msgId)` arm.
     private func cancelSos() {
-        guard let msgId = holder.runtime.activeSosMsgId() else {
+        guard let msgId = runtime.activeSosMsgId() else {
             outcome = "refused: nothing to cancel"
             return
         }
-        outcome = holder.runtime.cancelSos(msgId: msgId)
+        outcome = runtime.cancelSos(msgId: msgId)
         // *** AND A CANCELLED CALL TOO -- it is the change a bystander most needeth to hear. ***
-        announceSosState(holder.runtime.sosStateNames())
+        announceSosState(runtime.sosStateNames())
+    }
+
+    /// *** GS-UX-001 `required-retry`: RESUME THE STANDING CALL -- THE NODE'S OWN `.retry(msgId)` ARM. ***
+    ///
+    /// *The id is read from the DURABLE projection at tap time, and the runtime answers a `nil` with the typed refusal a
+    /// user must be told. **THE OUTCOME IS ANNOUNCED LIKE THE OTHER TWO TRANSITIONS**, because a resumed call is a state
+    /// change of the same consequence as an armed or a cancelled one.*
+    ///
+    /// *** AND IT IS PREFIXED `resume:` -- WHICH IT WAS NOT, AND THAT WAS A REAL DEFECT, NOT A COSMETIC ONE. ***
+    /// *The rendered outcome must name WHICH ARM RAN (`LabRuntime` prefixes the other arms with `armed:`/`cancelled:`
+    /// for exactly this reason), and a resume that read as a bare `armed:` would be indistinguishable from a fresh
+    /// arm. **THE `retry` COURT ASSERTS THIS VOCABULARY (`resume:`/`refused:`), and the prefix is what maketh the
+    /// rendered string evidence of the ROAD rather than of a phrase the view chose.***
+    private func retrySos() {
+        let answer = runtime.retrySos(msgId: runtime.activeSosMsgId())
+        outcome = answer.hasPrefix("refused") ? answer : "resume:" + answer
+        announceSosState(runtime.sosStateNames())
     }
 
     var body: some View {
@@ -660,7 +1016,31 @@ struct LabSosView: View {
                 .labTouchTarget()
                 .accessibilityIdentifier("lab.sos.cancel")
 
-            if let outcome { Text(outcome).font(.footnote).accessibilityIdentifier("lab.sos.outcome") }
+            // *** *** GS-UX-001 `required-retry`: THE ESSENTIAL `Retry` CONTROL, WHICH WAS OMITTED ENTIRELY. *** ***
+            //
+            // *THE CONTRACT'S OWN ROSTER NAMES IT ESSENTIAL -- `AccessibilityContract.essentialControls` carrieth
+            // `("retry", "Retry")`, and the SHARED Android lab already renders it (`LabMeshJourneyScreen`'s
+            // `LabControl.RETRY`, bound to `LabJourneyBindings.retry()` -> `SosCommand.Retry`).* **ON THIS ISLE THE
+            // CAPABILITY STOOD (`MeshNode.handleSosCommand(.retry)`) AND NO RENDERED CONTROL COULD REACH IT** -- *so a
+            // user whose call was queued and never left could do nothing to resume it, while a source grep for
+            // "retry" found plenty. That is precisely the omission a control-level check exists to catch and a
+            // text-level check cannot.*
+            //
+            // **AND THE ID COMES FROM THE DURABLE PROJECTION, NOT FROM THIS VIEW'S MEMORY:** *a view that remembered an
+            // id could name work the estate no longer carrieth; the runtime readeth it at the moment of the tap, and a
+            // `nil` is answered with the refusal a user must be told ("no standing distress call to retry").*
+            Button("Retry") { retrySos() }
+                .accessibilityLabel("Retry")
+                .labTouchTarget()
+                .accessibilityIdentifier("lab.sos.retry")
+
+            // *** THE OUTCOME IS ALWAYS RENDERED, EVEN BEFORE ANY ACTION -- a conditional `if let` made the element
+            // ABSENT until an arm drove an action, so a combination that never acted (the roster's default-scale arm)
+            // measured it missing. The placeholder is a non-empty truthful line, and every action still replaces it
+            // with the runtime's own answer. ***
+            Text(outcome ?? "no distress action yet")
+                .font(.footnote)
+                .accessibilityIdentifier("lab.sos.outcome")
 
             // *** AND THE DISTRESS STATE, RENDERED FROM THE DELIVERY ROW IN THE SHARED VOCABULARY. ***
             //
@@ -687,7 +1067,7 @@ struct LabSosView: View {
                 // the state a user must hear on arrival, while the EMPTY initial placeholder is deliberately silent
                 // (announcing "no active call" on launch would be noise rather than a status).*
                 .onAppear {
-                    let words = holder.runtime.sosStateNames()
+                    let words = runtime.sosStateNames()
                     sosState = words
                     if words.hasPrefix("active: ") || words.hasPrefix("terminal: ") {
                         sosAnnounced = words
@@ -705,7 +1085,7 @@ struct LabSosView: View {
                 .accessibilityValue(sosAnnounced.isEmpty ? "nothing yet" : sosAnnounced)
 
             // *** AND THE RUNTIME'S OWN COUNT, SO THE SOS ARM CAN BIND RUNTIME-OWNED STATE TOO. ***
-            Text("sos admitted: " + String(holder.runtime.admittedCount()))
+            Text("sos admitted: " + String(runtime.admittedCount()))
                 .accessibilityIdentifier("lab.sos.admitted")
         }
         }
@@ -713,7 +1093,11 @@ struct LabSosView: View {
 }
 
 struct LabDiagnosticsView: View {
-    @EnvironmentObject private var holder: LabRuntimeHolder
+    /// *** IOS-R6: THE SETTLED RUNTIME, HANDED BY THE GATE. *** *This view is built ONLY when the
+    /// holder holds a runtime (a settled estate with a consumed permit), so it never guards for nil.*
+    let runtime: LabRuntime
+    /// The lifecycle phase the owner last heard, rendered here (the owner is the ONE place the notification lands).
+    let lastLifecyclePhase: String
     /// The wipe control's own report, so the rendered surface NAMES what the action did.
     @State private var wipeNote = "not requested"
     var body: some View {
@@ -728,29 +1112,73 @@ struct LabDiagnosticsView: View {
             Text("Diagnostics").font(.title)
             // THE ONE PLACE THE LAB SHOWETH THE LIFECYCLE IT HEARETH -- so that 'the lifecycle reacheth the same owner'
             // is VISIBLE to a human and to a reader, not merely assertable in a control.
-            Text("last lifecycle phase: " + String(describing: holder.lastLifecyclePhase))
+            Text("last lifecycle phase: " + lastLifecyclePhase)
                 .font(.footnote)
 
-            // *** GS-UX-001 STEP 6: THE WIPE JOURNEY, RENDERED AND TRUTHFUL ABOUT ITS OWN LIMIT. ***
+            // *** GS-UX-001 STEP 6 / GS-FINAL-003 `true-recovery-topology`: THE WIPE JOURNEY, FROM THE PRODUCTION
+            // LADDER'S OWN DURABLE RECORD -- AND THE CONTRADICTION THE OLD COMMENT CONFESSED IS NOW GONE. ***
             //
-            // *The card asks for "wipe progress from the real reopened store". What this control renders is THE
-            // COMPOSITION HARNESS'S OWN WIPE REGISTER (`wipeStateName()`), because that is the register this runtime
-            // has -- **AND IT SAYS SO**, rather than showing a rung it never read. The LADDER-bearing wipe authority
-            // is reached through `MeshRuntime`, not through this harness; a ladder label here would be a SECOND
-            // SOURCE OF TRUTH beside the real one.*
+            // *The comment that stood here said this surface read "THE COMPOSITION HARNESS'S OWN WIPE REGISTER ...
+            // because that is the register this runtime has -- AND IT SAYS SO", while the card's step 6 asks for "wipe
+            // progress from the real reopened store" and the ledger's own sentence forbids "a LABEL THAT CLAIMS A RUNG
+            // IT NEVER READ".* **THE LIMIT IS CLOSED RATHER THAN DOCUMENTED:** *`wipeStateName()` now readeth
+            // `WipeJournalDurabilityAdapter` over the SAME durable journal the shipping ladder writeth, so the string
+            // rendered here and the rung a fresh process resumes from are the same record -- and it surviveth a relaunch,
+            // which the flag never did.*
             //
-            // **THE BUTTON IS A REAL ACTION, NOT A DISPLAY:** `beginWipe()` invokes the harness's own owner, which
-            // erases the durable artifacts it holds. A control that only SET a local flag would be the "static text"
-            // shape this finding charges.*
-            Text("wipe: " + holder.runtime.wipeStateName())
+            // **AND THE BUTTON IS THE REAL LADDER, NOT A FLAG:** `beginWipe()` drives
+            // `MeshRuntime.runRecoveryLadder(requestFresh: true)` -- *the SAME road `MeshRuntime.create` takes before it
+            // opens any private store* -- so this journey exercises drain, key erasure, artifact deletion and identity
+            // publication rather than setting a boolean beside them.
+            Text("wipe: " + runtime.wipeStateName())
                 .accessibilityIdentifier("lab.diagnostics.wipestate")
 
+            // *** THE TYPED OUTCOME, RENDERED: WHICH OF THE SIX ESTATES THE LADDER REACHED, WHICH RUNG IT STANDS AT,
+            // AND WHICH PRIVATE ARTIFACT (IF ANY) SURVIVED. ***
+            //
+            // *A single word ("wiped") cannot carry those three facts, and the finding's own remediation clause is
+            // explicit: "render completion only at durable IDLE". The words below come from `RecoveryLadderOutcome`
+            // itself -- the rung from the JOURNAL's wire spelling, the artifacts from the FILESYSTEM -- so a surface
+            // cannot say "complete" over a store that still stands.*
+            Text("rung: " + runtime.recoveryRungWords())
+                .font(.footnote)
+                .accessibilityIdentifier("lab.diagnostics.wiperung")
+            Text("artifacts: " + runtime.recoveryArtifactWords())
+                .font(.footnote)
+                .accessibilityIdentifier("lab.diagnostics.wipeartifacts")
+
+            // *** GS-FINAL-003 `operator-required`: THE STARTUP DECISION AND WHETHER A HUMAN MUST DECIDE. ***
+            //
+            // *The card asks for "explicit operator-required for genuine corruption", and `requiresOperator` is the
+            // field that CARRIES that requirement -- a bare Boolean cannot express "refused, and a person must
+            // intervene". It is rendered here so the distinction is visible rather than inferable from an error string.*
+            // **THE READ OPENS NO STORE:** `MeshRuntime.startupRecoveryDecision` owns the deferred create-time seams and
+            // answers from the durable record alone.
+            Text("startup recovery: " + LabRuntime.startupRecoveryWords())
+                .font(.footnote)
+                .accessibilityIdentifier("lab.diagnostics.startuprecovery")
+
+            // *** *** G1: ZERO-PRIVATE-OPEN'S POSITIVE CONTROL, RENDERED ON A NORMAL BOOT. *** ***
+            //
+            // *The recovery surface renders the same count while the estate is blocked; THIS render is the control the
+            // arm compares it against -- a normal boot after a settled estate MUST read NON-ZERO, so a count that was
+            // never raised (the constant-zero witness the contract forbids) reddens HERE.*
+            Text("private stores opened: " + String(LabRecoveryOpenProbe.privateStoreOpens))
+                .font(.footnote)
+                .accessibilityIdentifier("lab.diagnostics.privateopens")
+
             Button("Begin wipe") {
-                holder.runtime.beginWipe()
-                wipeNote = holder.runtime.wipeStateName()
+                wipeNote = runtime.beginWipe().summaryWords
             }
             .labTouchTarget()
             .accessibilityIdentifier("lab.diagnostics.beginwipe")
+
+            Button("Resume wipe") {
+                wipeNote = runtime.resumeWipe().summaryWords
+            }
+            .labTouchTarget()
+            .accessibilityIdentifier("lab.diagnostics.resumewipe")
+            .accessibilityLabel("Resume the wipe from its durable record")
 
             Text("wipe result: " + wipeNote)
                 .font(.footnote)

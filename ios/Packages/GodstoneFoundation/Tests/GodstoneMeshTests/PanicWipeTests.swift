@@ -42,7 +42,23 @@ final class PanicWipeTests: XCTestCase {
         /// `isReadableJournal()`, so an arm that reaches the startup road would exercise the CORRUPT branch and pass
         /// or fail for a reason unrelated to what it means to measure.*
         var isReadable: Bool { true }
+    
+    // *** IOS-FOLLOWUP-C2/C3: AN EXPLICIT, TYPED COURT FAKE FOR THE DURABLE MEDIUM. *** *This fake answereth its
+    // OWN medium (the in-memory state) and carrieth a monotone generation, so the adapter REQUIRING a checked sync
+    // result is satisfied by a real answer rather than a fallback.*
+    private var _wipeEpoch: UInt64?
+    var durableEpoch: UInt64? { _wipeEpoch }
+    @discardableResult func bumpEpoch() -> UInt64? { _wipeEpoch = (_wipeEpoch ?? 0) + 1; return _wipeEpoch }
+    func readDurable() -> (state: WipeState, epoch: UInt64?)? {
+        if _wipeEpoch == nil, read() != .idle { _wipeEpoch = 1 }
+        return (read(), _wipeEpoch)
     }
+    @discardableResult func writeChecked(_ state: WipeState) -> DurableWriteResult {
+        write(state)
+        if _wipeEpoch == nil { _wipeEpoch = 1 }
+        return DurableWriteResult(synchronized: true, epoch: _wipeEpoch)
+    }
+}
 
     /// Records the order of completed step calls. `crashBefore` makes the NAMED
     /// step throw on its FIRST invocation only (the call does not complete and

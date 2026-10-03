@@ -26,7 +26,16 @@ sealed class Measured {
 }
 
 /** The resources the store must NEVER silently evict under pressure -- new admission is refused instead. */
-enum class Pressure { UNEXPIRED_TOMBSTONES, VERIFIED_TRUST_PINS, REVOKED_TRUST_PINS, DELIVERY_ROWS }
+enum class Pressure {
+    UNEXPIRED_TOMBSTONES,
+    VERIFIED_TRUST_PINS,
+    REVOKED_TRUST_PINS,
+    DELIVERY_ROWS,
+
+    /** The INBOX row ceiling is its OWN typed category: the inbox cap and the delivery cap are DISTINCT resources,
+     *  and reporting an inbox refusal as DELIVERY_ROWS would name the wrong ceiling. */
+    INBOX_ROWS,
+}
 
 /** The immutable classification of a frame for admission/eviction: priority (0 = SOS, retained last), receipt order, size. */
 data class Frame(val id: String, val priority: Int, val receivedAt: Long, val size: Long)
@@ -119,7 +128,7 @@ object StoreQuota {
         if (total + candidateSize > TOTAL_PRIVATE_STORE_QUOTA) return AdmissionResult.RejectedTotalQuota
         // (c) row caps; at a cap REFUSE new admission rather than delete protected rows.
         if (del >= DELIVERY_ROW_CAP) return AdmissionResult.RefusedUnderPressure(Pressure.DELIVERY_ROWS)
-        if (inbox >= INBOX_ROW_CAP) return AdmissionResult.RefusedUnderPressure(Pressure.DELIVERY_ROWS)
+        if (inbox >= INBOX_ROW_CAP) return AdmissionResult.RefusedUnderPressure(Pressure.INBOX_ROWS)
         if (tomb >= TOMBSTONE_ROW_CAP) return AdmissionResult.RefusedUnderPressure(Pressure.UNEXPIRED_TOMBSTONES)
         if (trust >= TRUST_IDENTITY_CAP) return AdmissionResult.RefusedUnderPressure(Pressure.VERIFIED_TRUST_PINS)
         return AdmissionResult.Accepted
@@ -186,7 +195,22 @@ object StoreQuota {
  * is removed by its own token only.
  */
 class ObservationLease {
-    class LeaseToken internal constructor(val id: Int)
+    /**
+     * A token is LIVE from registration until it is unregistered, released (or its store closes), or the
+     * transaction it was registered within ABORTS. [cancelled] is the O(1) liveness witness a mid-dispatch
+     * mutation flips: the dispatch loop checks it before each callback, so a disposal performed DURING a
+     * dispatch (by an earlier callback) is honoured for the very callback that disposal targeted.
+     * The SETTER is `private`, invalidated ONLY through the one-way [cancel] the owning lease calleth, so no
+     * caller can RESET the flag and resurrect a disposed registration; there is no public mutator.
+     */
+    class LeaseToken internal constructor(val id: Int) {
+        @Volatile
+        internal var cancelled: Boolean = false
+            private set
+
+        /** One-way liveness invalidation, callable only by the owning lease within the module; there is no reset. */
+        internal fun cancel() { cancelled = true }
+    }
 
     private val registrations = ArrayList<Pair<LeaseToken, () -> Unit>>()
     private val deferred = ArrayList<Pair<LeaseToken, () -> Unit>>()   // registered in an open tx (abandoned on abort) or during dispatch (fire NEXT round)
@@ -200,6 +224,7 @@ class ObservationLease {
     // a commit ends the transaction; notifications registered within it stay pending and are promoted by the next afterCommit
     fun commit() { inTx = false }
     // an abort DISCARDS the notifications registered within the transaction -- they must never be promoted/fired
+    // (a deferred token is removed before it can ever enter a dispatch snapshot, so no token check is needed here)
     fun abort() { inTx = false; deferred.clear() }
 
     fun register(observer: () -> Unit): LeaseToken {
@@ -210,7 +235,22 @@ class ObservationLease {
     }
 
     fun unregisterBy(token: LeaseToken) {
+        token.cancel()
         for (b in listOf(registrations, deferred)) { val it = b.iterator(); while (it.hasNext()) if (it.next().first === token) it.remove() }
+    }
+
+    /** GS-STORE-005: THE CENSUS OF THE LIVING REGISTRATIONS (`registrations` + `deferred`); a closed store returneth it to zero. */
+    val registrationCount: Int get() = registrations.size + deferred.size
+
+    /**
+     * Release EVERY registration (a store closing, or a wipe). Every token is invalidated -- cancelled by its
+     * own token only, as [unregisterBy] doeth -- so a release performed DURING a dispatch leaveth the in-flight
+     * snapshot's remaining callbacks INERT.
+     */
+    fun releaseAll() {
+        for ((t, _) in registrations) t.cancel()
+        for ((t, _) in deferred) t.cancel()
+        registrations.clear(); deferred.clear()
     }
 
     /**
@@ -220,14 +260,20 @@ class ObservationLease {
      * an aborted transaction has already discarded its pending notifications so they never fire.
      */
     fun afterCommit() {
-        if (inTx) return
+        // NOT reentrant: a dispatch already in flight must not re-enter and fire the same observers twice. A
+        // nested afterCommit (e.g. a callback itself settling) is a no-op -- the standing set is left to the
+        // in-flight pass, and anything registered during the dispatch carries to the NEXT round.
+        if (inTx || dispatching) return
         registrations.addAll(deferred); deferred.clear()
         dispatching = true
         try {
             val pending = ArrayList(registrations)
-            val fired = HashSet<Int>()
             var i = 0
-            while (i < pending.size) { val e = pending[i]; if (fired.add(e.first.id)) e.second(); i++ }
+            while (i < pending.size) {
+                val (t, fire) = pending[i]
+                if (!t.cancelled) fire()
+                i++
+            }
         } finally { dispatching = false }
     }
 }

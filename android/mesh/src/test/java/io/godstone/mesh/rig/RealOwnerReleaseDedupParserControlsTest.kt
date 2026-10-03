@@ -59,6 +59,7 @@ import io.godstone.mesh.transport.WriteCompletion
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.LogicalMessageIdentity
 import io.godstone.mesh.wire.v2.Priority
+import io.godstone.mesh.wire.v2.SenderVerificationResult
 import io.godstone.mesh.wire.v2.SignedMessageV1
 import io.godstone.mesh.wire.v2.TimeQuality
 import io.godstone.mesh.wire.v2.TypeV2
@@ -466,6 +467,222 @@ class RealOwnerReleaseDedupParserControlsTest {
         } finally {
             store.close()
         }
+    }
+
+    // =================================================================================================================
+    // (4b) THE PAYLOAD ROUND-TRIP: WHAT THE USER ACTUALLY SENT, READ BACK FROM THE RECIPIENT'S OWN DOORS.
+    // =================================================================================================================
+
+    /**
+     * *** ONE REAL USER MESSAGE, CARRIED BY THE REAL PRODUCTION ROAD, AND ITS EXACT BYTES READ BACK AT THE
+     * RECIPIENT -- THE PAYLOAD THE RECIPIENT'S OWN DOORS REACH, NOT A VALUE THIS COURT WROTE BESIDE IT. ***
+     *
+     * *THE DEFECT THIS CLOSETH, AND IT IS THE CLASS THE TASK NAMED: a court may assert only that a decoder's output
+     * equath its OWN re-encoding (`decode(encode(x)) == x`), **which is satisfied by a transform that rewrote the
+     * value and then reported the rewrite back to itself** -- the payload that truly reaches the recipient is never
+     * compared to what the USER sent.* **THIS ARM THEREFORE PINS THE TWO ENDS: the body `SignedMessageV1.author`
+     * signed is the body the frozen verifier reproduces at the RECIPIENT, and the frame the recipient's durable
+     * store holds is the frame the recipient's OWN `Router.openSealedMessage` opens.***
+     *
+     * *** NOTHING HERE IS A COURT HELPER'S ASSERTION ABOUT ITSELF. *** *Every value is read back through a production
+     * door -- [`Router.openSealedMessage`] (the recipient's own decryption and policy core), [`SignedMessageV1.verify`]
+     * (the frozen authorship verifier), the [`RecipientInboxRepository`]'s durable commit, and the
+     * [`io.godstone.mesh.store.SqliteMessageStore`]'s own held rows -- and the SAME call re-run with a MUTATED body
+     * must reproduce THE MUTATION, so the round-trip cannot be a constant that agreeth with itself.*
+     *
+     * *THE BODY IS DELIBERATELY AWKWARD: multibyte UTF-8 (BMP, astral and a combining mark) with newlines and NULs,
+     * so a transform that silently re-encoded, truncated or normaliseth the text would DIVERGE rather than pass.*
+     */
+    @Test
+    fun theUserPayloadSurvivesTheRealRoadAndIsReadBackAtTheRecipient() {
+        val sender = MeshIdentity.generate()
+        val recipient = MeshIdentity.generate()
+        val store = db("payload_roundtrip.db")
+        val ackStore = SqliteAckStore(store.engine)
+        try {
+            // *** THE REAL USER'S MESSAGE -- multibyte, newline and NUL bearing, so a rewrite cannot coincide.***
+            val userBody = (
+                "evacuation notice\n" +
+                    "the bridge at Harrow is under two feet of water -- " +
+                    "mill road cut at both ends\n" +
+                    "send boats + medic to the church hall \u2014 " +
+                    "\u00e9\u00e8\u00ea\u00eb \u0416\u0438\u0432\u0435\u0439 \u6cb3\u5ddd \uD83D\uDEA4\uD83C\uDFE5\n" +
+                    "combining: e\u0301\u0302  zero\u0000nul  tab\there"
+                ).toByteArray(Charsets.UTF_8)
+            // THE OTHER DIRECTION: a MUTATED body under the same road, so the round-trip is proved to carry the VALUE.
+            val mutatedBody = userBody.copyOf().also { it[0] = 0x45 /* 'E' for 'e' */ }
+            assertFalse("the mutation must really differ from the user's own bytes", mutatedBody.contentEquals(userBody))
+
+            val keys = object : RecipientKeyResolver {
+                private val table = HashMap<String, ByteArray>()
+                fun put(nodeId: ByteArray, key: ByteArray) { table[hex(nodeId)] = key }
+                override fun publicSigningKey(nodeId: ByteArray): ByteArray? = table[hex(nodeId)]?.copyOf()
+            }
+            keys.put(recipient.nodeId, recipient.identityPub)
+            val repo = RecipientInboxRepository(
+                router = Router(store, recipient.nodeId, wipeGate = WipeSensitiveUseGate { true }),
+                ourNodeId = recipient.nodeId,
+                localDhPrivate = { recipient.staticDhPriv },
+                signer = object : AckSignerSeam {
+                    override val nodeId: ByteArray get() = recipient.nodeId
+                    override fun generation(): Long = 0L
+                    override fun signingSeed(msgId: ByteArray, recipientNodeId: ByteArray): ByteArray =
+                        recipient.identityPriv
+                },
+                resolver = keys,
+                authenticator = Ed25519AckAuthenticator(keys),
+                pairedStore = ackStore,
+                commitInbound = { f, rf, lr, g, l, t, fault ->
+                    store.commitInboundWithObligationAtWithFault(f, rf, lr, g, l, t, fault)
+                },
+                trustPolicy = AdmitAllSenders,
+                clockSeconds = { 1_700_000_200L },
+                epochDay = { FIXED_DAY },
+                identityGeneration = { 0L },
+            )
+            val hop = ByteArray(16) { (it + 0x50).toByte() }
+
+            // *** (1) THE SENDER AUTHORS THE USER'S EXACT BYTES THROUGH THE FROZEN PRODUCTION ROAD. ***
+            val frame = sealedDirectFromBody(sender, recipient, store, userBody)
+            // The author's own plaintext (the signed container) is what the sender really sent inside the seal.
+            val authoredContainer = SignedMessageV1.author(
+                senderIdentityPriv = sender.identityPriv,
+                senderIdentityPub = sender.identityPub,
+                senderNodeId = sender.nodeId,
+                recipientNodeId = recipient.nodeId,
+                messageNonce = AUTHORED_NONCE,
+                createdAtEpochSeconds = AUTHORED_CREATED_AT,
+                priority = Priority.DIRECT,
+                timeQuality = TimeQuality.USER_CONFIRMED,
+                bodyUtf8 = userBody,
+            )
+
+            // *** (2) THE RECIPIENT'S OWN DOORS OPEN THE FRAME THE RADIO CARRIED. ***
+            val recipientRouter = Router(store, recipient.nodeId, wipeGate = WipeSensitiveUseGate { true })
+            val opened = recipientRouter.openSealedMessage(frame, recipient.staticDhPriv)
+            assertTrue(
+                "*** THE RECIPIENT'S OWN OPEN ROAD MUST ACCEPT THE AUTHOR'S FRAME, not $opened -- a payload that " +
+                    "cannot be opened at the recipient never 'arrives intact'. ***",
+                opened is io.godstone.mesh.router.OpenMessageResult.Accepted,
+            )
+            val message = (opened as io.godstone.mesh.router.OpenMessageResult.Accepted).message
+
+            // *** AND THE FROZEN VERIFIER REPRODUCES THE USER'S EXACT BODY FROM THE OPENED PLAINTEXT. ***
+            val verified = SignedMessageV1.verify(
+                signedPlaintext = message.plaintext,
+                senderNodeId = message.senderNodeId,
+                recipientLocalNodeId = recipient.nodeId,
+                messageNonce = message.messageNonce,
+                createdAtEpochSeconds = message.createdAtEpochSeconds,
+                priorityCode = message.priority.code,
+            )
+            assertTrue(
+                "*** THE FROZEN AUTHORSHIP VERIFIER MUST ACCEPT THE AUTHORED CONTAINER, not $verified. ***",
+                verified is SenderVerificationResult.Verified,
+            )
+            val vm = (verified as SenderVerificationResult.Verified).message
+            assertEquals(
+                "*** THE BODY THE RECIPIENT READS BACK MUST BE THE USER'S OWN BYTES -- OCTET FOR OCTET, multibyte " +
+                    "UTF-8, newlines, tabs and NULs included. Observed ${vm.bodyUtf8.size} octets against the " +
+                    "user's ${userBody.size}. ***",
+                userBody.toList(), vm.bodyUtf8.toList(),
+            )
+
+            // *** (3) THE DURABLE ROAD: THE RECIPIENT COMMITS IT, AND ITS OWN HELD ROW RE-OPENS TO THE USER'S BYTES. ***
+            val accepted = runBlocking { repo.acceptVerifiedAndRequireAck(frame, hop) }
+            assertTrue("*** the recipient must durably admit the user's message, not $accepted ***",
+                accepted is InboxCommitResult.New)
+            val held = runBlocking { store.allHeldMsgIds() }
+            assertEquals("exactly the one authored msgId is durably held at the recipient", 1, held.size)
+            assertEquals("and it is the author's own id", frame.msgId.toList(), held.single().toList())
+
+            // *THE STORED FRAME IS READ BACK FROM THE STORE AND RE-OPENED -- the recipient's truth, not this arm's copy.*
+            val stored = runBlocking { store.allHeldOrderedByPriority() }.single()
+            assertEquals("*** the store's held row must BE the frame the radio carried ***",
+                frame.encode().toList(), stored.encode().toList())
+            val reopened = recipientRouter.openSealedMessage(stored, recipient.staticDhPriv)
+            assertTrue("the DURABLE row must reopen at the recipient", reopened is io.godstone.mesh.router.OpenMessageResult.Accepted)
+            val storedVerified = SignedMessageV1.verify(
+                signedPlaintext = (reopened as io.godstone.mesh.router.OpenMessageResult.Accepted).message.plaintext,
+                senderNodeId = sender.nodeId,
+                recipientLocalNodeId = recipient.nodeId,
+                messageNonce = AUTHORED_NONCE,
+                createdAtEpochSeconds = AUTHORED_CREATED_AT,
+                priorityCode = Priority.DIRECT.code,
+            )
+            val storedBody = (storedVerified as? SenderVerificationResult.Verified)?.message?.bodyUtf8
+            assertEquals(
+                "*** THE PAYLOAD THE RECIPIENT ACTUALLY HOLDS MUST BE THE USER'S OWN MESSAGE -- read back through " +
+                    "the recipient's durable row and its own open road, not from this arm's authoring. ***",
+                userBody.toList(), storedBody?.toList(),
+            )
+            assertEquals(
+                "and the recipient's durable row must re-prove the author's identity, not a rewritten one",
+                authoredContainer.toList(), message.plaintext.toList(),
+            )
+
+            // *** (4) THE NEGATIVE CONTROL: THE MUTATED BODY MUST REPRODUCE AS THE MUTATION. ***
+            val mutatedFrame = sealedDirectFromBody(sender, recipient, store, mutatedBody)
+            val mutatedOpened = recipientRouter.openSealedMessage(mutatedFrame, recipient.staticDhPriv)
+            assertTrue("the mutated body's own frame must still open",
+                mutatedOpened is io.godstone.mesh.router.OpenMessageResult.Accepted)
+            val mutatedVerified = SignedMessageV1.verify(
+                signedPlaintext = (mutatedOpened as io.godstone.mesh.router.OpenMessageResult.Accepted).message.plaintext,
+                senderNodeId = sender.nodeId,
+                recipientLocalNodeId = recipient.nodeId,
+                messageNonce = AUTHORED_NONCE,
+                createdAtEpochSeconds = AUTHORED_CREATED_AT,
+                priorityCode = Priority.DIRECT.code,
+            )
+            val mutatedReadBack = (mutatedVerified as SenderVerificationResult.Verified).message.bodyUtf8
+            assertEquals("*** A MUTATED PAYLOAD MUST SURVIVE AS THE MUTATION -- proof the round-trip carrieth the " +
+                "VALUE rather than a constant that equalth itself. ***", mutatedBody.toList(), mutatedReadBack.toList())
+            assertFalse(
+                "*** AND THE MUTATION MUST DIFFER FROM THE USER'S OWN BODY, or the control above proveth nothing. ***",
+                mutatedReadBack.contentEquals(userBody),
+            )
+        } finally {
+            store.close()
+        }
+    }
+
+    /**
+     * *** AUTHOR ONE SEALED DIRECT FRAME OVER A CALLER-SUPPLIED BODY, UNDER THE FIXED AUTHORED IDENTITY. ***
+     *
+     * *The nonce and `createdAt` are FIXED constants rather than fresh randomness, so this arm can RE-DERIVE the
+     * author's own container ([`SignedMessageV1.author`]) and compare the recipient's opened plaintext to it -- a
+     * comparison a randomised authoring could not make.* **The sealing road is the production `Router.buildSealedMessage`
+     * over the recipient's own static DH key, and the rotating tag is the same `SealedSender.routingTag` the frozen
+     * composer useth, so the frame is byte-for-byte a production frame.**
+     */
+    private fun sealedDirectFromBody(
+        sender: Identity,
+        recipient: Identity,
+        store: SqliteMessageStore,
+        body: ByteArray,
+    ): FrameV2 {
+        val container = SignedMessageV1.author(
+            senderIdentityPriv = sender.identityPriv,
+            senderIdentityPub = sender.identityPub,
+            senderNodeId = sender.nodeId,
+            recipientNodeId = recipient.nodeId,
+            messageNonce = AUTHORED_NONCE,
+            createdAtEpochSeconds = AUTHORED_CREATED_AT,
+            priority = Priority.DIRECT,
+            timeQuality = TimeQuality.USER_CONFIRMED,
+            bodyUtf8 = body,
+        )
+        val author = Router(store, sender.nodeId, wipeGate = WipeSensitiveUseGate { true })
+        val built = runBlocking {
+            author.buildSealedMessage(
+                plaintext = container,
+                recipientNodeId = recipient.nodeId,
+                recipientStaticPub = recipient.staticDhPub,
+                identity = LogicalMessageIdentity.of(AUTHORED_CREATED_AT, AUTHORED_NONCE),
+                priority = Priority.DIRECT,
+            )
+        }
+        return built.copy(routingTag = SealedSender.routingTag(recipient.nodeId, FIXED_DAY))
     }
 
     /**
@@ -964,8 +1181,19 @@ class RealOwnerReleaseDedupParserControlsTest {
         throw AssertionError("the two drawn identities carry the SAME node hint")
     }
 
+    /** *The lowercase hex this court's key directory and its payload arms name node ids by.* */
+    private fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
+
     private companion object {
         const val FIXED_DAY = 12_345L
         const val MTU = 247
+
+        /**
+         * *THE FIXED AUTHORED IDENTITY THE PAYLOAD ROUND-TRIP PINS: one nonce and one `createdAt`, so the arm can
+         * RE-DERIVE the author's own container and compare the recipient's opened plaintext to it. A randomised
+         * authoring could not make that comparison, which is why these are constants and not draws.*
+         */
+        val AUTHORED_NONCE: ByteArray = ByteArray(16) { ((it * 13 + 7) and 0xFF).toByte() }
+        const val AUTHORED_CREATED_AT = 1_700_000_200L
     }
 }

@@ -1,15 +1,24 @@
 # Final status
 
-## Verdict
+> *** HISTORICAL -- STAGE 4 (rc-era). *** *This document describeth the Stage 4 remediation round on branch
+> `remediation/stage-4-link-release` and is kept as HISTORY. It is NOT the current structured closure authority.*
+> **The current authority is `docs/production-readiness/BOARD1_CLOSURE.json` (`status =
+> REMEDIATION_IN_PROGRESS`) together with `docs/remediation/REMEDIATION_STATE.json`
+> (`current_assessment.finding_closure`), which carry the structured canonical reopen of 2026-10-02.**
+> *A reader looking for the board's current state must read those two documents, not this historical verdict.*
+
+## Verdict (historical — Stage 4)
 
 **PARTIALLY REMEDIATED — NOT READY**
 
 The remediation closes the demonstrated Oracle unit-substitution and pre-validation-display defects at source level, implements strong content/archive controls, removes disabled high-risk features from the production application surface, and moves platform execution into repository-owned CI bound to clean commits on branch `remediation/stage-4-link-release`. It does not constitute a full production release because external/device release gates remain open: independent cryptographic vectors (A-06), model/native stack reproducibility, approved production corpus, on-device delivery/radio verification, accessibility, battery/thermal profiling, and production release signing.
 
-## Build status
+## Build status (historical — Stage 4)
 
-> Stage 4 source of truth: the authoritative source is the pushed GitHub
-> repository (`oculusrex14/GODSTONE`, branch `remediation/stage-4-link-release`).
+> Stage 4 source of truth (HISTORICAL): the authoritative source at that time was the pushed GitHub
+> repository (`oculusrex14/GODSTONE`, branch `remediation/stage-4-link-release`). **The current Board 1
+> candidate branch is `board1/external-audit-final-remediation`; the frozen rc14 candidate tag and its
+> attestation remain immutable historical evidence, and the current internal state is REMEDIATION_IN_PROGRESS.**
 
 - **Android (Archive-only LIGHT release):** The scoped Archive-only release binary (`:app:lintLightRelease`, `:app:assembleLightRelease`, `:app:bundleLightRelease`) builds cleanly in release-gates CI (`android-archive-only-release` CLOSED @ `3ddb6f6`) without `:llm`, `:mesh`, llama, or ggml dependencies. Host unit tests (`:mesh:testDebugUnitTest`, `:llm:testDebugUnitTest`, `OracleViewModelTest`) run and pass in repository-owned CI with the committed Gradle 8.9 wrapper. A store-signed production release is an external gate.
 - **iOS (Archive-only LIGHT release):** `xcodebuild` LightRelease Archive-only build passes in CI (the app starts in a truthful local "Archive unavailable" state), and the GodstoneMeshTests pass via `xcodebuild test` on a simulator. The host-side Swift package executes 172 unit tests with 0 failures (`swift test`). A signed production `.xcarchive` is an external release gate.

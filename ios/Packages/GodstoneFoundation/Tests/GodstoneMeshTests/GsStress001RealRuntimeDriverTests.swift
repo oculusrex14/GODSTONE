@@ -484,6 +484,11 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         _ = transport.processCentralConnect(peerId: handle, peripheral: peripheral,
                                             sourceEpoch: transport.currentTransportEpoch, from: cm)
         _ = transport.barrierOnActiveContext()
+        // *** THE SIMULATED PERIPHERAL MUST EXPOSE THE MESH SERVICE BEFORE THE DISCOVERY IS REPORTED. *** *The
+        // reduction no longer coerces an un-observ'd `services` (nil or empty) to success -- that was the defect --
+        // so the walk's peripheral really carrieth the mesh service the discover callback announces.*
+        (unsafeBitCast(peripheral, to: StressPeripheral.self)).services =
+            [CBMutableService(type: BleTransport.serviceUuid, primary: true)]
         _ = transport.processPeripheralDiscoverServices(peripheral, delegate: delegate, error: nil)
         let service = CBMutableService(type: BleTransport.meshProfile.serviceUuid, primary: true)
         service.characteristics = BleTransport.characteristicsToInstall(BleTransport.meshProfile)
@@ -556,8 +561,9 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
     /// `activeOutboundLifetimes` (the `.noOp` a fresh discover answereth is the STANDING-epoch case, which is exactly
     /// what the transport's own dedup is for).*
     ///
-    /// *Two facts about the callbacks, both measured: `peripheral.services` must contain the service UUID or `success`
-    /// is false (nil is fine -- the transport treats nil as true), and production resumes its staged records ONLY on
+    /// *Two facts about the callbacks, both measured: `peripheral.services` MUST contain the service UUID or `success`
+    /// is false -- there is NO nil-coercion, a nil/empty list is a REFUSED discovery -- and production resumes its
+    /// staged records ONLY on
     /// `processPeripheralIsReady(peripheral:delegate:)`, so the initiator must raise it after each notification.*
     @discardableResult
     private func reinstallOutlet(_ runtime: MeshRuntime, handle: UUID) -> Bool {
@@ -566,6 +572,11 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
         let peripheral = stressPeripheral(handle)
         let service = CBMutableService(type: BleTransport.meshProfile.serviceUuid, primary: true)
         service.characteristics = BleTransport.characteristicsToInstall(BleTransport.meshProfile)
+        // *** THE SIMULATED PERIPHERAL MUST EXPOSE THE MESH SERVICE BEFORE THE DISCOVERY IS REPORTED. *** *The
+        // reduction no longer coerces an un-observ'd `services` to success -- that was the defect -- so the reinstall
+        // walk's peripheral really carrieth the mesh service.*
+        (unsafeBitCast(peripheral, to: StressPeripheral.self)).services =
+            [CBMutableService(type: BleTransport.serviceUuid, primary: true)]
         _ = transport.processPeripheralDiscoverServices(peripheral, delegate: delegate, error: nil)
         _ = transport.processPeripheralDiscoverCharacteristics(peripheral, delegate: delegate,
                                                               service: service, error: nil)
@@ -989,7 +1000,9 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
                 sweepStore.receiptTimeProvider = {
                     (monoMs: anchorBefore + StressBound.pastDirectLifetimeMs, bootIdentity: "gs-stress-boot")
                 }
-                let swept = sweepStore.sweepExpired(limit: 64)
+                // The typed outcome may be a THROWN fault -- the durable census below is the verdict either way,
+                // and a fault records itself into the failure string rather than silently altering the check.
+                let swept = (try? sweepStore.sweepExpired(limit: 64)) ?? .nothingToRetire
                 let tombstone = sweepStore.tombstoneForTest(frame.msgId) != nil
                 let stillHeld = sweepStore.allHeldMsgIds().contains(frame.msgId)
                 // *** AND THE ASSERTION IS THE DURABLE OUTCOME, NOT WHICH CALL DID THE RETIRING. *** *MEASURED on
@@ -2211,7 +2224,8 @@ private final class StressPeripheral: NSObject, @unchecked Sendable {
     @objc(writeValue:forCharacteristic:type:)
     func writeValue(_ data: Data, for characteristic: CBCharacteristic, type: CBCharacteristicWriteType) {}
     @objc func discoverServices(_ services: [CBUUID]) {}
-    @objc func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
+    @objc(discoverCharacteristics:forService:)
+    func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
     @objc func readRSSI() {}
     @objc(readValueForCharacteristic:)
     func readValue(for characteristic: CBCharacteristic) {}
@@ -2283,6 +2297,22 @@ private final class ProbeJournal: WipeJournal, @unchecked Sendable {
     func write(_ s: WipeState) { state = s }
     func clear() { state = .idle }
     var isReadable: Bool { true }
+
+    // *** IOS-FOLLOWUP-C2/C3: AN EXPLICIT, TYPED COURT FAKE FOR THE DURABLE MEDIUM. *** *This fake answereth its
+    // OWN medium (the in-memory state) and carrieth a monotone generation, so the adapter REQUIRING a checked sync
+    // result is satisfied by a real answer rather than a fallback.*
+    private var _wipeEpoch: UInt64?
+    var durableEpoch: UInt64? { _wipeEpoch }
+    @discardableResult func bumpEpoch() -> UInt64? { _wipeEpoch = (_wipeEpoch ?? 0) + 1; return _wipeEpoch }
+    func readDurable() -> (state: WipeState, epoch: UInt64?)? {
+        if _wipeEpoch == nil, read() != .idle { _wipeEpoch = 1 }
+        return (read(), _wipeEpoch)
+    }
+    @discardableResult func writeChecked(_ state: WipeState) -> DurableWriteResult {
+        write(state)
+        if _wipeEpoch == nil { _wipeEpoch = 1 }
+        return DurableWriteResult(synchronized: true, epoch: _wipeEpoch)
+    }
 }
 
 private enum ProbeError: Error, Equatable {

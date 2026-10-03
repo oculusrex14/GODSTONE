@@ -40,6 +40,16 @@ class ReadinessT44Test {
     /** A -> relay -> B, all linked, with the relay's own key table trusted. */
     private suspend fun world(): ComposedRuntimeHarness {
         val h = harness()
+        // *** THE COMPOSITION THAT OWNS NO DURABLE ESTATE BINDETH ITS OWN ADMISSION GATE EXPLICITLY. ***
+        //
+        // *`ComposedRuntimeHarness.admitNormalEstate` DEFAULTS TO `NormalEstateGate.Unbound`, WHICH REFUSETH -- "no
+        // same-estate recovery authority is bound to this composition; a normal private estate may not be created
+        // without one" -- so a pure-host court that forgot to bind a gate would meet `NormalEstateRefused` at its very
+        // first `addNode`. THIS COURT IS A RESOURCE MODEL: its nodes live in memory, it writes no journal and it
+        // survives no relaunch, so the honest gate is "this model owns no estate to protect" -- and `Testing` is that
+        // gate, named so rather than hidden.* **NO APPLICATION PATH BINDS IT (`LabMeshApplication` binds the real
+        // decision instead), so allowing it here is a visible act at one call site rather than an ambient default.***
+        h.admitNormalEstate = io.godstone.mesh.runtime.NormalEstateGate.Testing
         h.addNode("A"); h.addNode("R"); h.addNode("B")
         Assert.assertTrue(h.link("A", "R") is ComposedOutcome.Applied)
         Assert.assertTrue(h.link("R", "B") is ComposedOutcome.Applied)
@@ -215,14 +225,33 @@ class ReadinessT44Test {
         val h = world()
         Assert.assertTrue(h.sendDirect("A", "B", plaintext) is ComposedOutcome.Applied)
         val before = h.link.admitted()
+        val heldBefore = h.node("A")!!.store.allHeldMsgIds()
         h.beginWipe()
         Assert.assertTrue(h.isWiped())
         // a send attempted mid-wipe produceth NO link byte
         Assert.assertTrue(h.sendDirect("A", "B", "another".toByteArray()) is ComposedOutcome.Applied)
         Assert.assertEquals("the link admitted nothing while the wipe was in progress",
             before, h.link.admitted())
-        Assert.assertTrue("and the refusal is in the trace",
-            h.traceSnapshot().kinds().contains("send_refused"))
+        // *** THE CONSUMER-VISIBLE EFFECT IS THE DISPATCH'S OWN TYPED REFUSAL, NOT A HARNESS TRACE KIND. ***
+        //
+        // *A send mid-wipe travelleth the PRODUCTION road, and `MeshNode.dispatchDirect`'s wipe gate returneth
+        // `Rejected(StorageFailure)` BEFORE the store is touched -- so the durable estate must NOT grow, and the
+        // dispatch event the harness recorded must NAME a rejection.* **Pinning a harness-internal `"send_refused"`
+        // trace kind measured the FIXTURE rather than the product: the refusal now happeneth INSIDE `dispatchDirect`,
+        // one layer below where the harness used to write that kind, so the kind no longer ariseth even though the
+        // refusal (the law) holdeth.** *The arm therefore asks the durable owner and the dispatch record, which is
+        // what the card's own law is about ("a wipe during a send stops every epoch").*
+        Assert.assertEquals(
+            "*** NO NEW DURABLE WORK MAY BE ADMITTED WHILE A WIPE IS OUTSTANDING: the author's held set must not " +
+                "grow -- observed ${heldBefore.size} -> ${h.node("A")!!.store.allHeldMsgIds().size} ***",
+            heldBefore.size, h.node("A")!!.store.allHeldMsgIds().size,
+        )
+        val lastDispatch = h.traceSnapshot().events().lastOrNull { it.kind == "send_direct" }
+        Assert.assertNotNull("the mid-wipe send must have left its dispatch record", lastDispatch)
+        Assert.assertTrue(
+            "*** AND THE DISPATCH MUST NAME ITS OWN REJECTION -- observed result=${lastDispatch!!.fields["result"]} ***",
+            lastDispatch.fields["result"]?.contains("Rejected") == true,
+        )
     }
 
     // ------------------------------------------------------------ W08

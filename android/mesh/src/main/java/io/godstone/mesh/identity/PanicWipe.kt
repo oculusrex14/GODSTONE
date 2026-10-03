@@ -151,8 +151,51 @@ class PanicWipe(
 /** Crash-safe marker for the wipe state machine. Implementations must persist. */
 interface WipeJournal {
     fun read(): PanicWipe.WipeState
+
+    /** Best-effort write. *The durable verdict is [writeDurably]; this exists for callers that cannot fail.* */
     fun write(state: PanicWipe.WipeState)
+
+    /**
+     * *** GS-FINAL-003 `durable-checkpoints` (A9): THE WRITE THAT REPORTS WHETHER IT ACTUALLY LANDED. ***
+     *
+     * *THE DEFECT THIS CLOSES: `FileWipeJournal.write` called `prefs.edit()....commit()` AND DISCARDED THE BOOLEAN.
+     * `SharedPreferences.commit()` RETURNETH `false` WHEN THE WRITE DID NOT REACH DISK -- **SO THE LADDER ADVANCED ON A
+     * CHECKPOINT THAT WAS NEVER PERSISTED, AND A LATER REBOOT COULD RESUME FROM THE WRONG RUNG OR PERMIT ON A FAILED
+     * TERMINAL COMMIT.*** *A checkpoint nobody can read is not a checkpoint, and the coordinator must STOP before the
+     * next effect rather than trust one.*
+     *
+     * *** THE DEFAULT DELEGATES TO [write] AND REPORTS SUCCESS, so an in-memory journal keeps compiling unchanged; a
+     * journal that CAN fail the commit MUST override (the production [FileWipeJournal] does). ***
+     */
+    fun writeDurably(state: PanicWipe.WipeState): Boolean {
+        write(state)
+        return true
+    }
+
     fun clear()
+}
+
+/**
+ * *** GS-FINAL-003 `same-estate` (A2/A8): THE DURABLE GENERATION OF THE RECORD -- THE EPOCH THE TICKET REQUIRES. ***
+ *
+ * *"currentdurablegeneration … freshreopen/epoch"* -- **and it closeth the one ABA a ladder-derived revision CANNOT: the
+ * ladder is not an estate identity.** *`IDLE → REQUESTED → … → IDLE` RETURNETH THE RECORD TO THE RUNG IT STARTED AT, so
+ * two permits minted at the two `IDLE` readings carry the SAME revision string while the estate between them was
+ * ANNIHILATED and RE-IDENTIFIED.* **A fresh reopen that read only the rung would accept the older permit -- the reuse/ABA
+ * the obligation names.**
+ *
+ * *** THE EPOCH MOVES ON EVERY DURABLE WRITE AND IS READ FRESH FROM THE RECORD, SO NO SNAPSHOT CAN CARRY A STALE ONE: ***
+ * *the production store persisteth state and epoch in ONE `Editor`, so a `commit()` that landeth bindeth them together and
+ * a `commit()` that refuseth leaveth BOTH untouched -- checkpoint and generation cannot disagree.*
+ *
+ * *** IT IS A SEPARATE INTERFACE ON PURPOSE. *** *[WipeJournal] is implemented in production by [FileWipeJournal] AND in
+ * courts by `MemoryJournal`s that own one typed value and NO generation: those keep compiling and keep their deliberate
+ * "one rung, no history" shape, while the revision builder asketh for the epoch through THIS interface and FAILS CLOSED
+ * when it is absent -- the same cast-or-refuse shape [WipeReadabilityReporting] already establisheth.*
+ */
+interface WipeEpochReporting {
+    /** The record's durable generation. *A store that cannot say answereth `0`, which never matchteth a minted revision.* */
+    val epoch: Long
 }
 
 /**
@@ -195,7 +238,7 @@ interface WipeArtifacts {
  * marker is harmless. A non-IDLE marker after a reboot is exactly the signal
  * [PanicWipe.resumeIfPending] acts on.
  */
-internal class FileWipeJournal(ctx: Context) : WipeJournal, WipeReadabilityReporting {
+internal class FileWipeJournal(ctx: Context) : WipeJournal, WipeReadabilityReporting, WipeEpochReporting {
     private val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     override fun read(): PanicWipe.WipeState {
@@ -224,17 +267,50 @@ internal class FileWipeJournal(ctx: Context) : WipeJournal, WipeReadabilityRepor
 
     private fun isOrdinal(ord: Int) = ord >= 0 && ord < PanicWipe.WipeState.entries.size
 
+    /** True iff no durable key exists at all (genuine first launch). */
+    internal val isAbsent: Boolean
+        get() = !prefs.contains(KEY)
+
     override fun write(state: PanicWipe.WipeState) {
+        // *Best-effort: the durable verdict is [writeDurably], which the ladder consults.*
         prefs.edit().putInt(KEY, state.ordinal).commit()
     }
 
+    /**
+     * *** GS-FINAL-003 `durable-checkpoints` (A9) + `same-estate` (A2/A8): ONE COMMIT BINDETH STATE AND GENERATION. ***
+     *
+     * *`commit()` RETURNETH `false` WHEN THE SYNCHRONOUS WRITE DID NOT REACH DISK, AND THE OLD `write` THREW THAT BOOLEAN
+     * AWAY.* **HERE THE VERDICT IS RETURNED -- and the epoch is bumped inside the SAME `Editor`, so a landed checkpoint
+     * ALWAYS carries a NEWER generation than the one that stood before it, and a refused one carrieth the old pair
+     * untouched.** *That is what maketh "no ABA" a property of the storage rather than of a caller's discipline: the
+     * generation moveth exactly when the record does.*
+     */
+    override fun writeDurably(state: PanicWipe.WipeState): Boolean {
+        val next = prefs.getLong(EPOCH, 0L) + 1L
+        return prefs.edit().putInt(KEY, state.ordinal).putLong(EPOCH, next).commit()
+    }
+
+    /**
+     * *** THE DURABLE GENERATION, READ FRESH FROM THE RECORD ON EVERY CALL. ***
+     *
+     * *`0` is the fail-closed answer of a record that carrieth no generation, and it never matchteth a minted revision --
+     * so a store that cannot say cannot admit construction.* **The read is deliberately NOT cached: a cached epoch is the
+     * T65 `StateRecorder` defect class, and it is exactly how a fresh reopen would come to accept a permit minted against
+     * a generation that no longer standeth.**
+     */
+    override val epoch: Long get() = prefs.getLong(EPOCH, 0L)
+
     override fun clear() {
+        // *A clear REMOVETH BOTH: a lingering generation beside an absent state would be a record that remembreth a past
+        // it no longer carrieth.*
         prefs.edit().clear().commit()
     }
 
     private companion object {
         const val PREFS = "godstone_wipe_journal"
         const val KEY = "state"
+        /** *The durable generation's own key, beside the state it belongeth to, in the SAME preference file.* */
+        const val EPOCH = "epoch"
         /** The sentinel for "no durable value at all", distinct from any real ordinal. */
         const val ABSENT = -1
     }
@@ -249,7 +325,7 @@ internal class FileWipeJournal(ctx: Context) : WipeJournal, WipeReadabilityRepor
  * becomes undecryptable regardless of whether its file is later deleted.
  * `deleteArtifacts` reuses the existing, tested store + identity panic-wipe
  * methods (DB + store-key prefs + identity prefs). `regenerateIdentity` builds a
- * fresh master key + identity via [Identity.loadOrCreate], which creates new
+ * fresh master key + identity via [Identity.regenerateForRecovery], which creates new
  * EncryptedSharedPreferences since the old ones were deleted.
  *
  * Each step is idempotent: a Keystore `deleteEntry` on an absent alias is a
@@ -276,7 +352,7 @@ internal class AndroidWipeArtifacts internal constructor(
             Identity.panicWipe(ctx)
         },
         regenerateAction = {
-            Identity.loadOrCreate(ctx)
+            Identity.regenerateForRecovery(ctx)
         }
     )
 

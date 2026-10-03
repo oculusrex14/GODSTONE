@@ -122,6 +122,12 @@ private struct Scene {
     let openedDocumentId: Int64?
     let openedTitle: String?
     let openedSource: ArchiveSourceMetadata?
+    /// *** THE CITATION FAULT, CARRIED APART FROM THE WHOLE-ROAD WOE. ***
+    ///
+    /// *The provenance projection is its OWN road: a fault on it must not erase the document that standeth open.
+    /// This field carrieth that fault so the VIEW can tell it and offer the earned retry, while `openedDocumentId`
+    /// and `passages` abide whole. `error` and `phase == .unavailable` remain for WHOLE-ROAD woes only.*
+    var metadataError: ArchiveError?
     /// *** GS-FINAL-007: WHETHER THIS ROUTE'S PAYLOAD WAS EVER LOADED. ***
     ///
     /// A route stashed from a LIVE screen carrieth what that screen actually held, so it is loaded and `back()`
@@ -185,6 +191,9 @@ public final class ArchiveSceneModel: ObservableObject {
     @Published public private(set) var openedDocumentId: Int64?
     @Published public private(set) var openedTitle: String?
     @Published public private(set) var openedSource: ArchiveSourceMetadata?
+    /// The citation-road fault, told apart from a whole-road woe: the document standeth open, its passages are
+    /// intact, and this carrieth the typed fault for the view to render with its earned retry.
+    @Published public private(set) var metadataError: ArchiveError?
     @Published public private(set) var error: String?
     @Published public private(set) var canRetry: Bool = false
     @Published public private(set) var scrollAnchor: ArchiveScrollAnchor?
@@ -252,6 +261,8 @@ public final class ArchiveSceneModel: ObservableObject {
             openedDocumentId = nil
             openedTitle = nil
             openedSource = nil
+            // the citation fault belongeth to the document it was met in: cleared with it.
+            metadataError = nil
             if let hits, !hits.isEmpty {
                 phase = .ready; mode = .search; error = nil; canRetry = false
             } else {
@@ -299,13 +310,34 @@ public final class ArchiveSceneModel: ObservableObject {
         let found = passagesOf(model.state)
         switch reading.availability {
         case .ready:
-            let source = reading.sourceMetadata(documentId: id)
+            // *** THE DOCUMENT READ AND THE PROVENANCE READ ARE TWO ROADS, AND A WOE ON ONE MUST NOT ERASE THE
+            // OTHER. *** *This is a REAL CONSUMER BUG found by an executed UI run, not a witness artefact: the
+            // throwing projection used to propagate into `publishFailure`, which blanketh `passages`/`openedDocument`
+            // and replaceth the whole ARCHIVE surface with an Unavailable notice naming a SEARCH woe -- so a reader
+            // who opened a perfectly readable document was thrown back to the home screen by a citation fault, with
+            // the document itself erased.*
+            //
+            // THE THREE STATES ARE NOW TOLD APART, CONSISTENTLY ON THIS ROAD:
+            //   * the projection resolved (or the row genuinely carrieth none) -- the document standeth open;
+            //   * the projection FAULTED -- the document STILL standeth open, its passages intact, and the citation
+            //     fault is carried SEPARATELY in `metadataError` so the view can tell it and offer the earned retry;
+            //   * the document read itself failed -- `publishFailure` above, which IS a whole-road woe.
+            var metadataFault: ArchiveError?
+            var source: ArchiveSourceMetadata?
+            do {
+                source = try reading.sourceMetadataChecked(documentId: id)
+            } catch let archiveError as ArchiveError {
+                metadataFault = archiveError
+            } catch {
+                metadataFault = .queryFailed(String(describing: error))
+            }
             mode = .document
             documents = []
             passages = found ?? []
             openedDocumentId = id
             openedTitle = title
             openedSource = source
+            metadataError = metadataFault
             phase = .ready
         case .missing, .corrupt, .incompatible, .readFailure:
             publishAbsent()
@@ -357,6 +389,8 @@ public final class ArchiveSceneModel: ObservableObject {
                 openedDocumentId = nil
                 openedTitle = nil
                 openedSource = nil
+                // the citation fault belongeth to the document it was met in: cleared with it.
+                metadataError = nil
                 error = nil
                 canRetry = false
                 phase = .loading
@@ -432,6 +466,8 @@ public final class ArchiveSceneModel: ObservableObject {
                 openedDocumentId = nil
                 openedTitle = nil
                 openedSource = nil
+                // the citation fault belongeth to the document it was met in: cleared with it.
+                metadataError = nil
                 error = nil
                 canRetry = false
                 phase = .loading
@@ -451,6 +487,8 @@ public final class ArchiveSceneModel: ObservableObject {
         openedDocumentId = nil
         openedTitle = nil
         openedSource = nil
+        // the citation fault belongeth to the document it was met in: cleared with it.
+        metadataError = nil
         error = nil
         canRetry = false
         Task { await self.loadDocuments() }
@@ -458,6 +496,17 @@ public final class ArchiveSceneModel: ObservableObject {
 
     /// Retry only where the road may mend: a failed request is replayable;
     /// an absent archive is the installer's to mend, not the reader's.
+    ///
+    /// *** AND A CITATION FAULT IS REPLAYABLE EVEN THOUGH IT IS NOT A WHOLE-ROAD WOE. *** *The provenance fault
+    /// liveth on its own field and leaveth `canRetry` false (nothing about the DOCUMENT failed), so the view's
+    /// citation-retry cannot route through the whole-road gate -- it would be a button that no-ops. This seam
+    /// re-rideth the road that met the fault, which is what maketh the retry real.*
+    public func retryMetadataRead() async {
+        guard metadataError != nil else { return }
+        guard let id = openedDocumentId else { return }
+        await openDocumentInternal(id: id, title: openedTitle ?? "")
+    }
+
     public func retry() async {
         guard canRetry else { return }
         await lastRequest?()
@@ -604,6 +653,8 @@ public final class ArchiveSceneModel: ObservableObject {
         openedDocumentId = nil
         openedTitle = nil
         openedSource = nil
+        // the citation fault belongeth to the document it was met in: cleared with it.
+        metadataError = nil
         epoch &+= 1
         let mine = epoch
         lastRequest = { [weak self] in await self?.loadDocuments() }
@@ -641,6 +692,8 @@ public final class ArchiveSceneModel: ObservableObject {
         openedDocumentId = nil
         openedTitle = nil
         openedSource = nil
+        // the citation fault belongeth to the document it was met in: cleared with it.
+        metadataError = nil
         error = nil
         canRetry = false
         phase = .unavailable(reason: why, recoverable: false)
@@ -680,6 +733,8 @@ public final class ArchiveSceneModel: ObservableObject {
         openedDocumentId = nil
         openedTitle = nil
         openedSource = nil
+        // the citation fault belongeth to the document it was met in: cleared with it.
+        metadataError = nil
         error = ArchiveUserMessage.spoken(for: archiveError)
         // the kind of the woe decideth whether the road may mend: a momentary
         // query or read failure is retriable; a missing, corrupt or

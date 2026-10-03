@@ -299,6 +299,18 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     /// Whether this store owns the handle it runs on (true) or merely ADOPTED a verified one (false).
     private var ownsConnection = true
 
+    /// *** THE OWNER OF THE CONNECTION THIS STORE ADOPTED, AND THE IMAGE LEASE IT HOLDS (SQLITE-REVIEW-2 / -1). ***
+    /// *The owner gives `usingConnection` its shared use/close critical section; the lease keeps the SQLCipher image
+    /// loaded even after the engine/factory that minted the connection is gone. `nil` on the `url:` road.*
+    private var owner: OwnedConnection?
+    private var imageLease: SQLiteImageLease?
+
+    /// Give back the image reference this store took at adoption. *Idempotent by the single assignment of `imageLease`.*
+    private func releaseAdoptedLease() {
+        // ARC: dropping the last strong reference lets the lease's deinit unload the image (SQLITE-LATEST-C2).
+        imageLease = nil
+    }
+
     /// *** THE OBSERVATION THE AUDIT REQUIRES IN PLACE OF A BOOLEAN. ***
     ///
     /// *The identity of the connection this store was HANDED, or nil when it opened its own. A court asks the store
@@ -333,6 +345,8 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     /// checking `encryptedAtRest` on the value actually handed over is an observation.
     internal init(verifiedConnection owned: OwnedConnection) throws {
         guard owned.connection.encryptedAtRest else {
+            // *The owner can no longer serve this connection: mark it rejected so a court sees a refused adoption.*
+            owned.connection.lifecycle?.markAdoptionRejected()
             throw PeerStoreError.handleMissing
         }
         let db = owned.connection.rawHandle
@@ -341,16 +355,26 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         handle = db
         // The OWNER closes it, never this store: the same explicit close ownership the message store records.
         ownsConnection = false
+        // *** THE OWNER AND THE IMAGE LEASE ARE RETAINED FOR THIS STORE'S WHOLE LIFE (SQLITE-REVIEW-2 / -1). ***
+        // *The owner gives every verb its shared use/close critical section; the lease keeps the image loaded even
+        // after the engine/factory that minted it is gone.*
+        self.owner = owned
+        self.imageLease = owned.connection.provider.lease
         adoptedConnectionIdentity = owned.connection.connectionIdentity
 
-        fn.busyTimeout(db, 5000)
-
         do {
-            try runMigrations(db)
+            // *MIGRATIONS RUN UNDER THE OWNER'S USE LOCK, on the supplied connection -- never a second one.*
+            try owned.usingConnection { raw in
+                self.fn.busyTimeout(raw, 5000)
+                try self.runMigrations(raw)
+            }
         } catch {
-            // A migration failure closes NOTHING -- the owner owns the handle.
+            // A migration failure closes NOTHING -- the owner owns the handle -- but this store releaseth its lease
+            // and drops the owner so it does not keep a session it could not adopt.
             handle = nil
             adoptedConnectionIdentity = nil
+            releaseAdoptedLease()
+            owner = nil
             throw error
         }
     }
@@ -413,6 +437,7 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         if ownsConnection, let db = handle {
             fn.closeV2(db)
         }
+        releaseAdoptedLease()
     }
 
     public func close() {
@@ -425,6 +450,10 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         if !ownsConnection {
             handle = nil
             adoptedConnectionIdentity = nil
+            // *DETACH THE ADOPTED SESSION: release the image reference and drop the owner. The OWNER still owns the
+            // handle (`OwnedConnection.close()` frees it), so this is a detach, not a close.*
+            releaseAdoptedLease()
+            owner = nil
             return
         }
         if let db = handle {
@@ -434,10 +463,19 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     }
 
     func inImmediateTransaction<T>(_ block: (PeerIdentityStore) throws -> T) throws -> T {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let db = handle else { throw PeerStoreError.handleMissing }
+        // *** ONE LOCK ACQUISITION FOR THE WHOLE PEER TRANSACTION (SQLITE-LATEST-C1). ***
+        // *MEASURED DEFECT: this called `usingConnection` whose `lockedBody` took `lock`, and then called
+        // `transactionSection`, which took the SAME non-recursive `NSLock` AGAIN -- so EVERY real peer binding/approve/
+        // confirm/revoke HUNG before running BEGIN IMMEDIATE. The transaction body is now a NO-LOCK helper run INSIDE
+        // the one acquisition `lockedBody` already holds, so the owner use reference and the store lock both span
+        // BEGIN..COMMIT/ROLLBACK exactly once.*
+        try usingConnection { db in try self.transactionSectionLocked(db, block) }
+    }
 
+    /// The transaction body. **THE CALLER (`usingConnection` -> `lockedBody`) ALREADY HOLDS THE STORE LOCK**, so this
+    /// MUST NOT take it again. It holds the owner's use reference for the whole BEGIN..COMMIT/ROLLBACK.
+    private func transactionSectionLocked<T>(_ db: OpaquePointer,
+                                             _ block: (PeerIdentityStore) throws -> T) throws -> T {
         guard fn.exec(db, "BEGIN IMMEDIATE", nil, nil, nil) == SQLITE_OK else {
             throw PeerStoreError.stepFailed
         }
@@ -533,11 +571,31 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         }
     }
 
-    func readRaw(_ nodeId: Data) throws -> PeerIdentityRow? {
+    /// *** THE SHARED USE/CLOSE CRITICAL SECTION -- THE SAME LAW AS THE MESSAGE STORE (SQLITE-REVIEW-2). ***
+    ///
+    /// *MEASURED DEFECT: every peer-store verb took only the store's OWN `NSLock` and dispatched `handle` directly, so
+    /// `OwnedConnection.close()` on another worker -- or a close by the wipe path -- could free the handle under an open
+    /// statement, and a post-close call dispatched a STALE pointer instead of a typed refusal.* **EVERY verb now
+    /// ADMITTETH itself against the owner's lifecycle when one was handed over: `beginUse` refuseth after close, the
+    /// body runneth under the store's own lock INSIDE that use reference (documented order: lifecycle -> store lock),
+    /// and a concurrent close WAIETH for the use to drain rather than freeing mid-statement.** On the `url:` road
+    /// (`owner == nil`) the behaviour is unchanged: the store owns its handle and closeth it itself.*
+    @inline(__always)
+    private func usingConnection<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+        if let owner { return try owner.usingConnection { _ in try self.lockedBody(body) } }
+        return try lockedBody(body)
+    }
+
+    @inline(__always)
+    private func lockedBody<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
         lock.lock()
         defer { lock.unlock() }
         guard let db = handle else { throw PeerStoreError.handleMissing }
-        return try readRawNoLock(db, nodeId)
+        return try body(db)
+    }
+
+    func readRaw(_ nodeId: Data) throws -> PeerIdentityRow? {
+        try usingConnection { db in try self.readRawNoLock(db, nodeId) }
     }
 
     func insertFirstSeen(
@@ -547,17 +605,16 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         acceptedGeneration: Int64,
         trustCode: Int32
     ) throws -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let db = handle else { throw PeerStoreError.handleMissing }
-        return try insertFirstSeenNoLock(
-            db,
-            nodeId: nodeId,
-            signingPub: signingPub,
-            acceptedStatic: acceptedStatic,
-            acceptedGeneration: acceptedGeneration,
-            trustCode: trustCode
-        )
+        try usingConnection { db in
+            try self.insertFirstSeenNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                trustCode: trustCode
+            )
+        }
     }
 
     func setInitialPendingGuarded(
@@ -569,19 +626,18 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         newPendingStatic: Data,
         newPendingGeneration: Int64
     ) throws -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let db = handle else { throw PeerStoreError.handleMissing }
-        return try setInitialPendingNoLock(
-            db,
-            nodeId: nodeId,
-            signingPub: signingPub,
-            acceptedStatic: acceptedStatic,
-            acceptedGeneration: acceptedGeneration,
-            trustLevel: trustLevel,
-            newPendingStatic: newPendingStatic,
-            newPendingGeneration: newPendingGeneration
-        )
+        try usingConnection { db in
+            try self.setInitialPendingNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                trustLevel: trustLevel,
+                newPendingStatic: newPendingStatic,
+                newPendingGeneration: newPendingGeneration
+            )
+        }
     }
 
     func advancePendingGuarded(
@@ -595,21 +651,20 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         newPendingStatic: Data,
         newPendingGeneration: Int64
     ) throws -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let db = handle else { throw PeerStoreError.handleMissing }
-        return try advancePendingNoLock(
-            db,
-            nodeId: nodeId,
-            signingPub: signingPub,
-            acceptedStatic: acceptedStatic,
-            acceptedGeneration: acceptedGeneration,
-            trustLevel: trustLevel,
-            oldPendingStatic: oldPendingStatic,
-            oldPendingGeneration: oldPendingGeneration,
-            newPendingStatic: newPendingStatic,
-            newPendingGeneration: newPendingGeneration
-        )
+        try usingConnection { db in
+            try self.advancePendingNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                trustLevel: trustLevel,
+                oldPendingStatic: oldPendingStatic,
+                oldPendingGeneration: oldPendingGeneration,
+                newPendingStatic: newPendingStatic,
+                newPendingGeneration: newPendingGeneration
+            )
+        }
     }
 
     func approvePendingRotationGuarded(
@@ -621,19 +676,18 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         expectedPendingStatic: Data,
         expectedPendingGeneration: Int64
     ) throws -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let db = handle else { throw PeerStoreError.handleMissing }
-        return try approvePendingRotationNoLock(
-            db,
-            nodeId: nodeId,
-            signingPub: signingPub,
-            acceptedStatic: acceptedStatic,
-            acceptedGeneration: acceptedGeneration,
-            trustLevel: trustLevel,
-            expectedPendingStatic: expectedPendingStatic,
-            expectedPendingGeneration: expectedPendingGeneration
-        )
+        try usingConnection { db in
+            try self.approvePendingRotationNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                trustLevel: trustLevel,
+                expectedPendingStatic: expectedPendingStatic,
+                expectedPendingGeneration: expectedPendingGeneration
+            )
+        }
     }
 
     /// *** THE FINGERPRINT-CONFIRMATION CAS: TOFU -> USER_VERIFIED, GUARDED ON THE EXACT DISPLAYED STATE. ***
@@ -643,16 +697,15 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         acceptedStatic: Data,
         acceptedGeneration: Int64
     ) throws -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let db = handle else { throw PeerStoreError.handleMissing }
-        return try confirmVerifiedNoLock(
-            db,
-            nodeId: nodeId,
-            signingPub: signingPub,
-            acceptedStatic: acceptedStatic,
-            acceptedGeneration: acceptedGeneration
-        )
+        try usingConnection { db in
+            try self.confirmVerifiedNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration
+            )
+        }
     }
 
     func revokePeerGuarded(
@@ -664,19 +717,18 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         oldPendingStatic: Data?,
         oldPendingGeneration: Int64?
     ) throws -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let db = handle else { throw PeerStoreError.handleMissing }
-        return try revokePeerNoLock(
-            db,
-            nodeId: nodeId,
-            signingPub: signingPub,
-            acceptedStatic: acceptedStatic,
-            acceptedGeneration: acceptedGeneration,
-            currentTrustLevel: currentTrustLevel,
-            oldPendingStatic: oldPendingStatic,
-            oldPendingGeneration: oldPendingGeneration
-        )
+        try usingConnection { db in
+            try self.revokePeerNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                currentTrustLevel: currentTrustLevel,
+                oldPendingStatic: oldPendingStatic,
+                oldPendingGeneration: oldPendingGeneration
+            )
+        }
     }
 
     /// Coordinated panic wipe helper for peer identity database artifacts (ADR-004, Phase C8.2C).

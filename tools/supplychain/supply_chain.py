@@ -69,6 +69,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
@@ -1425,9 +1426,14 @@ def verify_sbom(document: Any, *, lock: Mapping[str, Any] | None = None,
         for lane, spec in (lock.get("lanes") or {}).items():
             for entry in spec.get("closure") or []:
                 name = entry.get("name")
-                if not any(key.startswith(f"pypi:{name}:") for key in names):
-                    errors.append(f"the dependency lock nameth pypi:{name} and the "
-                                  f"SBOM carrieth it not")
+                key = f"pypi:{name}:{entry.get('version')}"
+                if key not in names:
+                    # A pin whose version moved without the SBOM being rebuilt is
+                    # exactly how a stale inventory ships a dependency nobody
+                    # re-inventoried. Binding the name alone would acquit it.
+                    errors.append(f"the dependency lock nameth {key} and the SBOM "
+                                  f"carrieth it not (the inventory drifteth from the "
+                                  f"pin)")
     if gradle is not None and gradle.get("present"):
         for entry in gradle.get("components") or []:
             key = (f"maven:{entry.get('group')}:{entry.get('name')}:"
@@ -1437,11 +1443,206 @@ def verify_sbom(document: Any, *, lock: Mapping[str, Any] | None = None,
                               f"carrieth it not")
     if toolchain is not None:
         for entry in toolchain.get("tools") or []:
-            if not any(key.startswith(f"toolchain:{entry.get('name')}:")
-                       for key in names):
-                errors.append(f"the toolchain lock nameth {entry.get('name')} and the "
-                              f"SBOM carrieth it not")
+            key = f"toolchain:{entry.get('name')}:{entry.get('measured') or 'ABSENT'}"
+            if key not in names:
+                errors.append(f"the toolchain lock nameth {key} and the SBOM "
+                              f"carrieth it not (a measured tool that moved without "
+                              f"the inventory being rebuilt)")
     return errors
+
+
+# ---------------------------------------------------------------------------
+# The SBOM's published faces (CycloneDX), derived from the canonical inventory
+# ---------------------------------------------------------------------------
+#: The one inventory per published face. A face with no entry below is a face
+#: the repository does not export, and an export with no inventory to derive
+#: from is a forgery -- so the mapping is explicit rather than inferred.
+SBOM_EXPORTS: tuple[dict[str, str], ...] = (
+    {"file": "sbom/ios.cdx.json", "name": "GODSTONE-ios",
+     "ecosystems": "swift", "retired": "false",
+     "note": "the iOS Swift package surface; the App target's Xcode resolution is "
+             "still pending and this face carrieth only what the pins name"},
+    {"file": "sbom/android.cdx.json", "name": "GODSTONE-android",
+     "ecosystems": "maven", "retired": "false",
+     "note": "the Android Maven surface, resolved from Gradle's own verification "
+             "metadata (the shipping LIGHT variant's resolved graph at pin time)"},
+    {"file": "sbom/python-generation-tools.cdx.json",
+     "name": "GODSTONE-python-generation-tools",
+     "ecosystems": "pypi", "retired": "false",
+     "note": "the Python environment the content and verification lanes run under; "
+             "the canonical SBOM carrieth the resolved closure and every digest it "
+             "pins"},
+    {"file": "sbom/models.cdx.json", "name": "GODSTONE-models",
+     "ecosystems": "model", "retired": "false",
+     "note": "the model register; every entry standeth UNPINNED until the external "
+             "NATIVE_MODELS gate furnisheth an approved artifact with a digest"},
+    {"file": "sbom/native.cdx.json", "name": "GODSTONE-native",
+     "ecosystems": "", "retired": "true",
+     "reason": "llama.cpp/native outputs are absent and unpinned; no component of "
+               "this repository's locked graph belongeth to a native face"},
+    {"file": "sbom/corpus.cdx.json", "name": "GODSTONE-corpus",
+     "ecosystems": "", "retired": "true",
+     "reason": "no approved licensed reviewed production corpus is bundled; the "
+               "corpus is owned by the external APPROVED_CONTENT gate"},
+)
+
+CYCLONEDX_SPEC = "1.5"
+CYCLONEDX_NAMESPACE = uuid.UUID("6f4d0f3a-1b2c-4d5e-8f90-0a1b2c3d4e5f")
+CDX_TYPES = {"model": "data"}
+
+
+def _cdx_license(entry: Mapping[str, Any]) -> dict[str, Any]:
+    """The CycloneDX licence FACT for one component, without touching properties.
+
+    An unknown licence is handled by the caller (recorded as a property), never
+    omitted -- the inventory's own law."""
+    licence = str(entry.get("license") or "unknown")
+    if " OR " in licence or " AND " in licence:
+        return {"licenses": [{"expression": licence}]}
+    return {"licenses": [{"license": {"id": licence}}]}
+
+
+def is_unknown_license(entry: Mapping[str, Any]) -> bool:
+    return str(entry.get("license") or "unknown") in ("unknown", "n/a", "")
+
+
+def _cdx_component(entry: Mapping[str, Any]) -> dict[str, Any]:
+    ecosystem = str(entry["ecosystem"])
+    name = str(entry["name"])
+    version = str(entry.get("version"))
+    qualified = name.replace(":", "/")
+    component: dict[str, Any] = {
+        "type": CDX_TYPES.get(ecosystem, "library"),
+        "bom-ref": f"pkg:{ecosystem}/{qualified}@{version}",
+        "name": name,
+        "version": version,
+        "scope": "required",
+        "properties": [
+            {"name": "godstone:ecosystem", "value": ecosystem},
+            {"name": "godstone:name", "value": name},
+            {"name": "godstone:digest_status", "value": str(entry.get("digest_status"))},
+            {"name": "godstone:supplied_by", "value": str(entry.get("supplied_by"))},
+            {"name": "godstone:license_source",
+             "value": str(entry.get("license_source"))},
+        ],
+    }
+    if ":" in name and ecosystem == "maven":
+        component["group"] = name.split(":", 1)[0]
+        component["name"] = name.split(":", 1)[1]
+    if entry.get("digest"):
+        component["hashes"] = [{"alg": "SHA-256", "content": str(entry["digest"])}]
+    else:
+        component["properties"].append({"name": "godstone:digest", "value": "UNPINNED"})
+    for key in ("lanes", "lane"):
+        if entry.get(key) is not None:
+            value = entry[key]
+            component["properties"].append(
+                {"name": f"godstone:{key}",
+                 "value": ",".join(value) if isinstance(value, list) else str(value)})
+    for key in ("origin", "reason"):
+        if entry.get(key):
+            component["properties"].append({"name": f"godstone:{key}",
+                                            "value": str(entry[key])})
+    if is_unknown_license(entry):
+        component["properties"].append({"name": "license:status", "value": "unknown"})
+    else:
+        component.update(_cdx_license(entry))
+    return component
+
+
+def sbom_to_cyclonedx(document: Mapping[str, Any], *, name: str,
+                      ecosystems: Sequence[str] | None = None,
+                      retired: bool = False, reason: str | None = None) -> dict[str, Any]:
+    """Derive one CycloneDX face from the canonical inventory.
+
+    The face is DERIVED, never authored: the components come from the same locked
+    graph the canonical SBOM carrieth, so a published face cannot drift from the
+    inventory that is verified in CI. A retired face is empty by construction and
+    carrieth the reason it is empty rather than a stale component list.
+    """
+    wanted = set(ecosystems or ())
+    if retired:
+        components: list[dict[str, Any]] = []
+    else:
+        components = [_cdx_component(entry) for entry in document.get("components") or []
+                      if not wanted or str(entry.get("ecosystem")) in wanted]
+        components.sort(key=lambda item: str(item["bom-ref"]))
+    metadata_component: dict[str, Any] = {
+        "type": "application", "name": name,
+        "version": f"overlay-{str(document.get('status', 'UNPINNED')).lower()}"}
+    properties = [
+        {"name": "completeness",
+         "value": "derived from docs/supplychain/SBOM.json (the canonical inventory, "
+                  "built from the locked dependency graph)"},
+        {"name": "retired", "value": "true" if retired else "false"},
+    ]
+    if reason:
+        properties.append({"name": "reason", "value": reason})
+    serial_body = name + "|" + ";".join(str(c.get("bom-ref")) for c in components)
+    return {
+        "bomFormat": "CycloneDX",
+        "specVersion": CYCLONEDX_SPEC,
+        "version": 1,
+        "serialNumber": "urn:uuid:" + str(uuid.uuid5(CYCLONEDX_NAMESPACE, serial_body)),
+        "metadata": {"timestamp": str(document.get("built_utc")),
+                     "component": metadata_component, "properties": properties},
+        "components": components,
+    }
+
+
+def sbom_coverage_problems(canonical: Mapping[str, Any],
+                           faces: Mapping[str, Mapping[str, Any]]) -> list[str]:
+    """Every LOCKED component the canonical inventory nameth must appear on a face.
+
+    This is the dependency/version drift control: a component added to a lock (or
+    a version moved) without the published face being regenerated is a refusal,
+    and a face carrieth the host-derived toolchain rows not at all.
+    """
+    errors: list[str] = []
+    locked = {(str(c["ecosystem"]), str(c["name"]), str(c.get("version")))
+              for c in canonical.get("components") or []
+              if str(c["ecosystem"]) != "toolchain"}
+    seen: set[tuple[str, str, str]] = set()
+    for face_name, face in faces.items():
+        for entry in face.get("components") or []:
+            ecosystem = ""
+            canonical_name = None
+            for prop in entry.get("properties") or []:
+                if prop.get("name") == "godstone:ecosystem":
+                    ecosystem = str(prop.get("value"))
+                if prop.get("name") == "godstone:name":
+                    canonical_name = str(prop.get("value"))
+            name = canonical_name or str(entry.get("name"))
+            if canonical_name is None and entry.get("group"):
+                name = f"{entry.get('group')}:{entry.get('name')}"
+            seen.add((ecosystem, name, str(entry.get("version"))))
+    missing = sorted(locked - seen)
+    for ecosystem, name, version in missing:
+        errors.append(f"the canonical SBOM nameth {ecosystem}:{name}:{version} and no "
+                      f"published CycloneDX face carrieth it: regenerate the face")
+    return errors
+
+
+def write_cyclonedx_exports(document: Mapping[str, Any], *, repo: Path = ROOT) -> list[str]:
+    """Write every face in SBOM_EXPORTS from the canonical inventory. Returns paths."""
+    repo = Path(repo)
+    written: list[str] = []
+    for spec in SBOM_EXPORTS:
+        ecosystems = [e for e in str(spec.get("ecosystems", "")).split(",") if e]
+        retired = spec.get("retired") == "true"
+        face = sbom_to_cyclonedx(document, name=spec["name"], ecosystems=ecosystems,
+                                 retired=retired, reason=spec.get("reason"))
+        target = repo / spec["file"]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        write_document(target, face)
+        written.append(spec["file"])
+    return written
+
+
+def load_cyclonedx_exports(repo: Path = ROOT) -> dict[str, Any]:
+    repo = Path(repo)
+    return {spec["file"]: load_document(repo / spec["file"])
+            for spec in SBOM_EXPORTS if (repo / spec["file"]).is_file()}
 
 
 # ---------------------------------------------------------------------------
@@ -1567,8 +1768,20 @@ def _verify_all(repo: Path, *, toolchain_path: Path, lock_path: Path,
     problems.extend(f"gradle verification: {item}" for item in
                     verify_gradle_metadata(gradle))
     if Path(sbom_path).is_file():
+        canonical = load_document(sbom_path)
         problems.extend(f"SBOM: {item}" for item in verify_sbom(
-            load_document(sbom_path), lock=lock, gradle=gradle, toolchain=toolchain))
+            canonical, lock=lock, gradle=gradle, toolchain=toolchain))
+        faces = load_cyclonedx_exports(repo)
+        problems.extend(f"SBOM face: {item}" for item in
+                        sbom_coverage_problems(canonical, faces))
+        for spec in SBOM_EXPORTS:
+            face = faces.get(spec["file"])
+            if face is None:
+                problems.append(f"SBOM face: {spec['file']} is not published")
+                continue
+            if spec.get("retired") == "true" and face.get("components"):
+                problems.append(f"SBOM face: {spec['file']} is retired and carrieth "
+                                f"{len(face['components'])} component(s)")
     else:
         problems.append(f"the SBOM is missing: {sbom_path}")
     if determinism_path.is_file():
@@ -1614,6 +1827,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     sbom.add_argument("--manifest", type=Path, default=Path(DEPENDENCIES))
     sbom.add_argument("--toolchain", type=Path, default=Path(TOOLCHAIN_LOCK))
     sbom.add_argument("--out", type=Path, default=Path(SBOM))
+
+    export = sub.add_parser(
+        "sbom-export",
+        help="derive the published CycloneDX faces from the canonical SBOM")
+    export.add_argument("--sbom", type=Path, default=Path(SBOM))
+    export.add_argument("--repo", type=Path, default=ROOT)
+    export.add_argument("--check", action="store_true",
+                        help="verify the published faces cover the canonical "
+                             "inventory; write nothing")
 
     verify = sub.add_parser("verify", help="verify every supply-chain document")
     verify.add_argument("--all", action="store_true")
@@ -1676,6 +1898,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_document(args.out, document)
             print(f"SBOM: {len(document['components'])} component(s), "
                   f"{len(document['unknowns'])} unpinned or unlicensed")
+            return 0
+        if args.command == "sbom-export":
+            canonical = load_document(args.sbom)
+            if args.check:
+                problems = sbom_coverage_problems(
+                    canonical, load_cyclonedx_exports(args.repo))
+                for line in problems:
+                    print(f"::error::SBOM face: {line}")
+                if problems:
+                    print(f"{len(problems)} refusal(s)")
+                    return 1
+                print("the published CycloneDX faces carry every component the "
+                      "canonical SBOM nameth")
+                return 0
+            written = write_cyclonedx_exports(canonical, repo=args.repo)
+            problems = sbom_coverage_problems(
+                canonical, load_cyclonedx_exports(args.repo))
+            for line in problems:
+                print(f"::warning::SBOM face: {line}")
+            print(f"wrote {len(written)} CycloneDX face(s): {', '.join(written)}")
             return 0
         if args.command == "verify":
             return _verify_all(ROOT, toolchain_path=args.toolchain,

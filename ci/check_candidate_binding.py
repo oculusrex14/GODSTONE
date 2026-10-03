@@ -44,6 +44,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -111,12 +112,21 @@ def _repository() -> str:
     return m.group(1) if m else "oculusrex14/GODSTONE"
 
 
-#: *** THE SIX EXACT JOB NAMES THE CANONICAL WORKFLOW DEFINES, AS ITS OWN `name:` LINES SPELL THEM. ***
+#: *** THE SEVEN EXACT JOB NAMES THE CANONICAL WORKFLOW DEFINES, AS ITS OWN `name:` LINES SPELL THEM. ***
 #:
 #: *`len(jobs) == 6` is NOT the authority the closure claims: a workflow could carry six jobs of ANY names and satisfy
-#: it, and a renamed job would silently change what was verified.* **So the six are named here, read from
+#: it, and a renamed job would silently change what was verified.* **So the jobs are named here, read from
 #: `.github/workflows/repository-verification.yml`, and the freeze requireth EXACTLY these -- no more, no fewer, no
 #: renames.** *The list is in the workflow's own declaration order so a diff against the file reads the same way.*
+#:
+#: *** AND IT IS SEVEN, NOT SIX: THE TERMINAL JOB IS PART OF THE AUTHORITY. *** *`Board 1 terminal candidate
+#: verification` `needs:` the other six, runs the CURRENT mutation campaign and then the FULL canonical gate set, and
+#: emits the candidate-bound manifest. Omitting it, duplicating it, or renaming it is refused BY NAME -- an authority
+#: that could be satisfied by the six producers alone would accept a candidate whose campaign-and-verify step never
+#: ran, which is precisely the "machinery exists but is not the gate" shape.*
+#:
+#: *The first six names are UNCHANGED, so an rc14-era run remains describable by the same prefix; the seventh is the
+#: new terminal.*
 CANONICAL_JOB_NAMES: tuple[str, ...] = (
     "constraint audit (C1/C2 + tiers + release-gate status)",
     "repo-owned parity + safety invariants (A,B,C,E,F,G,H)",
@@ -124,7 +134,31 @@ CANONICAL_JOB_NAMES: tuple[str, ...] = (
     "mesh simulation (regression guard)",
     "android source compile + unit tests (committed wrapper)",
     "ios core + mesh tests + Archive-only xcodebuild",
+    "Board 1 terminal candidate verification",
 )
+
+#: *** THE EXACT ONE PATH AT WHICH THE NEXT CANDIDATE'S FREEZE ATTESTATION MAY APPEAR. ***
+#:
+#: *A freeze writeth exactly ONE file after the candidate tag: the attestation for the NEXT candidate, `rc15`. The
+#: candidate itself (`C`) MUST NOT already carry it, and the successor (`A`, `C`'s DIRECT CHILD) carries it and
+#: NOTHING else.* **This module OWNS that literal so every road -- the evidence bundle, the gate-manifest validator,
+#: the attestation reader -- adjudicates against ONE path, never a private copy.** *A second copy of this string would
+#: drift from the authority the moment either moved.*
+FREEZE_ATTESTATION_SUCCESSOR_PATH = "docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json"
+
+#: *** THE IMMUTABLE HISTORICAL rc14 ATTESTATION, WHICH NO EXCLUSION MAY EVER NAME. ***
+#:
+#: *rc14 is the FROZEN evidence of the prior candidate, anchored to the original `A14` blob and commit `A14`. Re-hashing
+#: it -- by treating it as a future output, an exclusion, or a re-creatable file -- re-hashes history, so the policy
+#: below refuseth any exclusion that names this path BY NAME.*
+HISTORICAL_ATTESTATION_PATH = "docs/remediation/evidence/FREEZE_ATTESTATION_rc14.json"
+
+#: *** THE DECLARED FUTURE-ATTESTATION POPULATION. ***
+#:
+#: *A tuple so a reader can ENUMERATE the exclusions this policy admits; production carrieth exactly one, and adding a
+#: second is a DELIBERATE change to the authority rather than a caller's convenience.* **Never a wildcard, never a
+#: prefix, never a directory, and never rc14.**
+FUTURE_ATTESTATION_EXCLUSIONS: tuple[str, ...] = (FREEZE_ATTESTATION_SUCCESSOR_PATH,)
 
 
 def _run_facts(run_id: str, *, api=None, attempt: int | None = None) -> dict | None:
@@ -135,7 +169,7 @@ def _run_facts(run_id: str, *, api=None, attempt: int | None = None) -> dict | N
     is `repository-verification`, the event is `push`, the status is `completed`, the conclusion is `success`, all six
     jobs succeeded, and the attempt number is the one the record pins.** *The job list is checked too because a
     conclusion of `success` with a SKIPPED job is the shape a partial run wears -- and four jobs succeeding out of six
-    is not the six-job authority the freeze claims.*
+    is not the named-job authority the freeze claims.*
 
     *** AND WHEN `attempt` IS SUPPLIED, THE FACTS COME FROM THAT ATTEMPT'S OWN ENDPOINTS. ***
     //
@@ -279,6 +313,144 @@ def _next_path_from_link(blob: str) -> str | None:
     return m2.group(1) if m2 else url
 
 
+def _run_artifacts(run_id, attempt: int | None = None, fetch=None) -> list[dict] | None:
+    """*** THE HOSTED ARTIFACTS A RUN (OR ONE ATTEMPT) UPLOADED, WITH GITHUB'S OWN ARCHIVE DIGESTS. ***
+
+    *THE POINT OF FETCHING THIS RATHER THAN TRUSTING A LOCAL FILE: the terminal job's manifest is only evidence if it
+    is the one GITHUB received from THAT RUN. A local `manifest.json` -- however internally consistent -- is
+    caller-created bytes; the run's artifact list carrieth the id, size and (where GitHub supplieth it) the archive
+    `sha256` digest of the very bytes the run uploaded.* **So a freeze can require the supplied manifest to equal the
+    artifact the pinned run uploaded, by archive digest and by contained byte digest.**
+
+    *An UNREADABLE artifact list is `None`, which the caller treateth as a refusal, never as an empty list.*
+    """
+    fetch = fetch or _gh_api
+    # *** THE DOCUMENTED ENDPOINT IS `/actions/runs/R/artifacts` -- there is NO per-attempt artifacts route. ***
+    #
+    # *A URL invented for symmetry (`/attempts/N/artifacts`) answers 404, so an artifact lookup on it would read as
+    # "the run uploaded nothing" and refuse EVERY legitimate freeze. The run's artifacts are listed once; an artifact
+    # belonging to a sibling attempt is distinguished by its own `created_at`, which the caller checks against the
+    # attempt's timing, and by the manifest it contains.*
+    path = f"repos/{_repository()}/actions/runs/{run_id}/artifacts"
+    merged: list[dict] = []
+    seen = 0
+    while path and seen < 20:
+        page = fetch(path)
+        if page is None:
+            return None
+        merged.extend(page.get("artifacts") or [])
+        path = page.get("_next_path") if isinstance(page, dict) else None
+        seen += 1
+    if not seen:
+        return None
+    out = []
+    for art in merged:
+        digest = art.get("digest") or ""
+        if isinstance(digest, str) and digest.startswith("sha256:"):
+            digest = digest.split(":", 1)[1]
+        out.append({"id": art.get("id"), "name": art.get("name"), "size_in_bytes": art.get("size_in_bytes"),
+                    "expired": art.get("expired"), "archive_sha256": digest or None,
+                    "created_at": art.get("created_at")})
+    return out
+
+
+def _artifact_zip(artifact_id, fetch_bytes=None) -> bytes | None:
+    """The artifact's ZIP payload, fetched as BYTES (never decoded as text).
+
+    *`gh api <artifact>/zip` returneth the archive; the sha256 of those bytes is what GitHub's own `digest` field
+    names, MEASURED: artifact 10929230625's digest `sha256:3d10186e…` equals the sha256 of its downloaded zip. So the
+    archive digest is a CHECK on bytes we hold, not a number we take on faith.*
+    """
+    if artifact_id is None:
+        return None
+    fetch_bytes = fetch_bytes or _gh_api_bytes
+    return fetch_bytes(f"repos/{_repository()}/actions/artifacts/{artifact_id}/zip")
+
+
+def _gh_api_bytes(path: str) -> bytes | None:
+    """One GitHub API read whose body is BINARY (the artifact zip)."""
+    try:
+        proc = subprocess.run(["gh", "api", path], capture_output=True, timeout=300)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout or None
+
+
+def hosted_manifest_problems(run_id, *, name: str, manifest_bytes: bytes, attempt: int | None = None,
+                             artifacts=None, zip_fetch=None) -> list[str]:
+    """*** THE SUPPLIED MANIFEST MUST BE THE ARTIFACT *THAT RUN* UPLOADED. ***
+
+    *A `manifest.json` in a caller's scratch directory is bytes the caller wrote, and a manifest authenticated only by
+    hashing what the caller supplied authenticates the caller. **So the freeze fetcheth the pinned run's artifact list,
+    requires EXACTLY ONE unexpired artifact of `name`, downloads its archive, verifies GitHub's own archive digest
+    against the bytes downloaded, and requires the CONTAINED file's sha256 to equal the supplied manifest's.** A wrong
+    run, a missing, duplicated, expired or tampered artifact is refused BY NAME, and an unreadable artifact list is a
+    refusal rather than an empty one.*
+    """
+    problems: list[str] = []
+    rows = artifacts if artifacts is not None else _run_artifacts(run_id, attempt=attempt)
+    if rows is None:
+        return [f"the pinned run {run_id} attempt {attempt}'s artifact list could NOT be read -- a freeze may not "
+                f"bind an artifact it cannot verify"]
+    named = [a for a in rows if a.get("name") == name]
+    if not named:
+        return [f"the pinned run {run_id} attempt {attempt} carrieth NO artifact named {name!r} -- *the terminal "
+                f"job's manifest must be the artifact THE RUN uploaded, never a file a caller supplied on this "
+                f"host*"]
+    if len(named) > 1:
+        problems.append(f"the pinned run carrieth {len(named)} artifacts named {name!r} -- a duplicated name is not "
+                        f"a unique binding")
+    live = [a for a in named if not a.get("expired")]
+    if not live:
+        problems.append(f"the pinned run's artifact {name!r} has EXPIRED -- its bytes are no longer retrievable, so "
+                        f"the binding cannot be re-derived")
+    chosen = (live or named)[0]
+    archive = (zip_fetch or _artifact_zip)(chosen.get("id"))
+    if archive is None:
+        problems.append(f"the artifact {name!r} (id {chosen.get('id')}) could NOT be downloaded -- an unfetchable "
+                        f"artifact cannot be the manifest's authority")
+        return problems
+    archive_digest = hashlib.sha256(archive).hexdigest()
+    if chosen.get("archive_sha256") and chosen["archive_sha256"] != archive_digest:
+        problems.append(f"the artifact {name!r} archive carrieth sha256 {archive_digest} but GitHub reporteth "
+                        f"{chosen['archive_sha256']} -- THE ARCHIVE WAS TAMPERED WITH BETWEEN GITHUB AND HERE")
+        return problems
+    if chosen.get("size_in_bytes") is not None and len(archive) != chosen["size_in_bytes"]:
+        problems.append(f"the artifact {name!r} carrieth {len(archive)} bytes but GitHub reporteth "
+                        f"{chosen['size_in_bytes']}")
+        return problems
+    import io
+    import zipfile
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
+            names = [m for m in bundle.namelist() if not m.endswith("/")]
+            # *** THE MEMBER IS THE JSON THE TERMINAL JOB UPLOADED, WHOSE NAME IS NOT THE ARTIFACT NAME. ***
+            #
+            # *`upload-artifact` names the ARCHIVE `board1-gate-manifest` and the FILE inside it
+            # `board1-gate-manifest.json`, so matching a member against the archive name findeth NOTHING and would
+            # refuse every legitimate freeze. The member is chosen by EXTENSION and by being the single candidate:
+            # one `.json` member, or exactly one member at all.*
+            json_members = [m for m in names if Path(m).suffix == ".json"]
+            members = json_members if len(json_members) == 1 else (names if len(names) == 1 else [])
+            if len(members) != 1:
+                problems.append(f"the artifact {name!r} carrieth {len(names)} file(s) "
+                                f"({names[:5]}) and could not be resolved to ONE uploaded manifest -- "
+                                f"*the terminal job must upload exactly one JSON document*")
+                return problems
+            contained = bundle.read(members[0])
+    except zipfile.BadZipFile:
+        problems.append(f"the artifact {name!r} is not a readable ZIP archive")
+        return problems
+    if hashlib.sha256(contained).hexdigest() != hashlib.sha256(manifest_bytes).hexdigest():
+        problems.append(f"the supplied manifest is NOT the one the pinned run uploaded: the artifact's own bytes "
+                        f"carry sha256 {hashlib.sha256(contained).hexdigest()[:16]}… while the supplied file carrieth "
+                        f"{hashlib.sha256(manifest_bytes).hexdigest()[:16]}… -- a caller-supplied manifest is not "
+                        f"evidence about the run")
+    return problems
+
+
 def _job_annotations(job_id, fetch=None) -> list[dict] | None:
     """*** THE CHECK-RUN ANNOTATIONS FOR A JOB, PAGINATED. ***
 
@@ -325,35 +497,383 @@ def _tree_delta(peeled: str, *, allow: tuple[str, ...] = ()) -> list[str]:
         # read something honest, and the freeze can refuse on it explicitly.
         return [f"<git-diff-failed: {proc.stderr.strip()[:200] or 'no stderr'}>"]
     changed = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
-    return [p for p in changed if not any(p.startswith(a) for a in allow)]
+    # *** THE ALLOWANCE IS EXACT PATHS ONLY. *** *A prefix comparison would excuse `FREEZE_ATTESTATION_rcN.json.extra`
+    # beside the permitted `FREEZE_ATTESTATION_rcN.json`, so an allowance meant to name ONE file would name a family.*
+    allowed = set(allow)
+    return [p for p in changed if p not in allowed]
 
 
 def dirty_tracked_paths(*, allow: tuple[str, ...] = ()) -> list[str]:
-    """*** TRACKED PATHS MODIFIED IN THE WORKING TREE (STAGED OR UNSTAGED) OUTSIDE THE ALLOWLIST. ***
+    """*** EVERY PATH GIT REPORTS AS DIRTY -- TRACKED MODIFICATIONS **AND** UNTRACKED FILES. ***
 
-    *THE DEFECT THIS CLOSES: `_tree_delta` comparess COMMITTED `HEAD` to the candidate, so a freeze run in a dirty
-    working tree -- sources edited but not committed -- passeth the post-tag check while the TREE A READER WOULD BUILD
-    is not the candidate's.* **A candidate freeze must be taken from a clean tree; unrelated untracked files outside
-    the candidate input set are left alone, but a tracked modification is a refusal.** *Untracked directories
-    (`?? AUDIT_FINAL.../`) are deliberately NOT refused: they are not part of any commit and `git diff --name-only`
-    never lists them.*
+    *THE DEFECT THIS CLOSES: this function used to skip `??` lines, so a freeze in a tree carrying UNTRACKED files
+    reported CLEAN. **A CLEAN GIT STATUS IS THE REQUIREMENT, AND AN UNTRACKED FILE IS NOT A CLEAN STATUS** -- the
+    bytes a reader would build are then not the candidate's.* *The honest road to a clean status is a DISPOSABLE
+    WORKTREE, not an exclusion list.*
+
+    *AND THE ALLOWANCE IS EXACT PATHS ONLY: a prefix allowance is how an allowance quietly enlarges itself, since one
+    entry naming a directory would excuse every file a later step dropped into it.*
     """
     proc = _git("status", "--porcelain")
     if proc.returncode != 0:
         return [f"<git-status-failed: {proc.stderr.strip()[:200] or 'no stderr'}>"]
+    allowed = set(allow)
     out: list[str] = []
     for line in proc.stdout.splitlines():
         if len(line) < 4:
             continue
-        code, path = line[:2], line[3:].strip()
-        if code == "??":
-            continue
         # A rename carrieth `old -> new`; the new path is what a reader would build.
+        path = line[3:].strip()
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
         path = path.strip('"')
-        if not any(path.startswith(a) for a in allow):
+        if path not in allowed:
             out.append(path)
+    return out
+
+
+#: *** THE ONE AUTHORITY FOR WHAT A POST-TAG SUCCESSOR MAY CONTAIN. ***
+#
+# *THE POST-TAG DELTA LAW WAS RESTATED IN THREE PLACES -- this reader's `allow=(rel_path,)`, the evidence bundle's
+# `PLANNED_FUTURE_ATTESTATION`, and the freeze's `--attest-out` -- so a change to one drifted silently from the others.
+# **This function is the ONE adjudication of the successor: it nameth the exact single path, refuseth the historical
+# rc14 attestation BY NAME, and admits the exclusion ONLY when the candidate does not already carry the file or when
+# the successor is the candidate's DIRECT CHILD whose delta is EXACTLY that one file and whose attestation
+# authenticates the candidate.*** *No prefix, glob, directory or generic ancestor allowance is ever admitted.*
+def attest_exclusion_policy(*, future_path: str | None = None,
+                            historical_path: str = HISTORICAL_ATTESTATION_PATH,
+                            candidate: str | None = None, successor: str | None = None,
+                            delta: list[str] | None = None,
+                            candidate_carries_future: bool | None = None,
+                            attestation: str | None = None,
+                            tag: str | None = None) -> list[str]:
+    """*** NAMED PROBLEMS FOR ANY FUTURE-ATTESTATION EXCLUSION, EMPTY WHEN THE EXCLUSION IS LAWFUL. ***
+
+    *THE EXCLUSION THIS ADJUDICATES: at candidate `C` the next freeze's attestation must NOT exist yet (the file is
+    written after the tag), and at the successor `A` it is the ONE file by which `A` differs from `C`.* **Only two
+    states are admitted, and each is provable from git alone:**
+
+      1. **CANDIDATE TERRITORY** -- `successor` is absent: `future_path` must be ABSENT at `candidate`. *A candidate
+         that already carrieth its successor's attestation is claiming a result it cannot yet have.*
+      2. **EXACT SUCCESSOR TERRITORY** -- `successor` is supplied: `successor` must be `candidate`'s DIRECT CHILD, the
+         tracked delta `candidate..successor` must be EXACTLY `[future_path]`, the candidate must NOT carry it, the
+         successor MUST carry it, and the attestation must itself bind this candidate -- READ and derived from the
+         document's own bytes, never a caller boolean. *A generic ancestor, a second changed path, or an
+         unauthenticated document is refused BY NAME.*
+
+    *AN UNKNOWABLE FACT IS NOT A PASS: a `candidate_carries_future` of None is derived from git, and a git failure
+    refuses rather than assuming the file absent.* **`historical_path` (rc14) may never be named by the exclusion --
+    re-hashing history is the defect this whole family exists to refuse.**
+    """
+    problems: list[str] = []
+    path = future_path or FREEZE_ATTESTATION_SUCCESSOR_PATH
+    # *** A NO-CONTEXT CALL NEAR A REAL EXISTING ATTESTATION IS REFUSED, NOT AN ADMISSION. ***
+    #
+    # *THE DEFECT THIS CLOSES, FROM THE HOSTILE REVIEW: a caller could invoke the policy with no candidate/successor and
+    # treat the empty result as admission. **A no-context call is only a DECLARATION check; when the future file EXISTS
+    # at HEAD, that is a successor (A) state that CANNOT be adjudicated without the candidate and successor, so it is
+    # refused BY NAME rather than returned as a green.*** *At the CANDIDATE -- the file absent -- the empty result is
+    # the honest "not created yet" state and stays valid.*
+    if future_path is None and candidate is None and successor is None and os.path.isfile(ROOT / path):
+        problems.append(f"the policy was called with NO candidate/successor while {path!r} EXISTS in the working tree "
+                        f"-- *a no-context path check is not successor admission; call executing_successor_problems "
+                        f"with the candidate and successor*")
+        return problems
+    # (1) THE EXCLUSION MUST NAME EXACTLY THE AUTHORITATIVE FUTURE PATH -- one literal, never a family.
+    if not isinstance(path, str) or not path:
+        problems.append("the future-attestation exclusion must name ONE literal path")
+        return problems
+    if path != FREEZE_ATTESTATION_SUCCESSOR_PATH:
+        problems.append(f"the future-attestation exclusion names {path!r}, not the ONE authoritative successor path "
+                        f"{FREEZE_ATTESTATION_SUCCESSOR_PATH!r} -- *a second exclusion would be a second policy*")
+    if path not in FUTURE_ATTESTATION_EXCLUSIONS:
+        problems.append(f"the future-attestation path {path!r} is not a declared member of "
+                        f"FUTURE_ATTESTATION_EXCLUSIONS {FUTURE_ATTESTATION_EXCLUSIONS!r}")
+    if any(ch in path for ch in "*?[]"):
+        problems.append(f"the future-attestation exclusion {path!r} carrieth a wildcard -- the exclusion nameth ONE "
+                        f"exact file, never a prefix, glob or directory")
+    if Path(path).is_absolute() or ".." in Path(path).parts:
+        problems.append(f"the future-attestation exclusion {path!r} must be a repository-relative path inside the tree")
+    # (2) THE HISTORICAL rc14 ATTESTATION IS NEVER AN EXCLUSION'S TARGET.
+    if path == historical_path:
+        problems.append(f"the future-attestation exclusion names the HISTORICAL rc14 attestation {historical_path!r} -- "
+                        f"rc14 is immutable anchored evidence and may never be treated as a re-creatable output")
+    if attestation is not None:
+        att_rel = str(Path(attestation).as_posix())
+        if att_rel != path:
+            problems.append(f"the attestation to be admitted is {att_rel!r}, not the ONE authoritative successor path "
+                            f"{path!r} -- a differently-named attestation is not this exclusion's subject")
+    # (3) CANDIDATE TERRITORY: the file must not already exist at the candidate.
+    if candidate:
+        carried = candidate_carries_future
+        if carried is None:
+            carried = _path_carried(candidate, path)
+        if carried is None:
+            problems.append(f"whether candidate {str(candidate)[:12]}… already carrieth {path!r} could NOT be "
+                            f"measured -- an unmeasurable exclusion is not an admitted one")
+        elif carried:
+            problems.append(f"the candidate {str(candidate)[:12]}… ALREADY carrieth the future attestation {path!r} -- "
+                            f"the successor's output must not exist before the freeze that writes it")
+    if successor is None:
+        return problems
+    # (4) SUCCESSOR TERRITORY: a DIRECT CHILD, one changed file, authenticated.
+    if candidate:
+        parent = _git("rev-parse", f"{successor}^1")
+        if parent.returncode != 0:
+            problems.append(f"the successor {str(successor)[:12]}… does not resolve to a commit -- its relationship "
+                            f"to the candidate cannot be proven")
+        elif parent.stdout.strip() != candidate:
+            problems.append(f"the successor {str(successor)[:12]}… carrieth parent {parent.stdout.strip()[:12]}…, not "
+                            f"the candidate {str(candidate)[:12]}… -- *an attested successor must be the candidate's "
+                            f"DIRECT CHILD, never a generic descendant on another road*")
+    if delta is not None:
+        changed = sorted(delta)
+        if changed != [path]:
+            problems.append(f"the candidate..successor delta is {changed[:6]}, not exactly ['{path}'] -- *a successor "
+                            f"may differ from the candidate in ONE file, and only the attested one*")
+    if candidate:
+        carried = candidate_carries_future if candidate_carries_future is not None else _path_carried(candidate, path)
+        if carried:
+            problems.append(f"the candidate {str(candidate)[:12]}… carrieth {path!r}, so the successor's difference "
+                            f"from it is not the attestation alone")
+    at_successor = _path_carried(successor, path)
+    if at_successor is None:
+        problems.append(f"whether the successor carrieth {path!r} could NOT be measured")
+    elif not at_successor:
+        problems.append(f"the successor {str(successor)[:12]}… carrieth NO {path!r} -- a successor admitted on the "
+                        f"strength of an attestation must actually carry it")
+    # *** AND THE ATTESTATION MUST STRUCTURALLY DECLARE THIS CANDIDATE -- THIS IS NOT AUTHENTICATION. ***
+    #
+    # *THE DEFECT THIS CLOSES: the exclusion was granted on a caller-supplied `attestation_ok=True`, which every
+    # production call site hardcoded. **Removing the boolean is NOT enough** -- a document containing only
+    # `{"candidate_sha": C}` would then excuse the successor. So this STRUCTURAL check (does the committed document's
+    # `candidate_sha` EQUAL the candidate?) is only the cheap prefilter, and it is NAMED as structural: ADMISSION of a
+    # successor requires the FULL canonical terminal authentication, which liveth in `executing_successor_problems`
+    # (and is never granted by this policy alone).**
+    att_rel = attestation or path
+    if candidate:
+        att_problem = _attestation_structural_declaration(att_rel, candidate, successor)
+        if att_problem:
+            problems.append(att_problem)
+    return problems
+
+
+def _attestation_structural_declaration(att_rel: str, candidate: str, successor: str | None) -> str | None:
+    """STRUCTURAL ONLY: does the committed/working document at `att_rel` declare `candidate`?
+
+    *This is NOT authentication -- it checks one self-authored field. A document that passes it must STILL be
+    authenticated by `executing_successor_problems` before any successor exclusion is admitted.* Returns a named
+    problem (or None)."""
+    blob = None
+    if successor:
+        blob = _file_at(successor, att_rel)
+    if blob is None:
+        disk = Path(att_rel)
+        disk = disk if disk.is_absolute() else (ROOT / disk)
+        if disk.is_file():
+            blob = disk.read_text(encoding="utf-8")
+    if blob is None:
+        return (f"the successor's attestation {att_rel!r} could NOT be read -- *an exclusion may not be granted on a "
+                f"document nobody holds, and no caller boolean may stand in for it*")
+    try:
+        doc = json.loads(blob)
+    except ValueError as exc:
+        return f"the successor's attestation {att_rel!r} is not valid JSON: {exc}"
+    if doc.get("candidate_sha") != candidate:
+        return (f"the successor's attestation {att_rel!r} bindeth candidate {str(doc.get('candidate_sha'))[:12]}…, not "
+                f"{str(candidate)[:12]}… -- *the exclusion is for ONE candidate's authenticated successor*")
+    return None
+
+
+def executing_successor_problems(*, candidate: str, successor: str,
+                                 attestation_path: str | None = None,
+                                 rebind=None) -> list[str]:
+    """*** THE ONE SHARED PROOF THAT `successor` IS `candidate`'S AUTHENTICATED ATTESTATION-ONLY DIRECT CHILD. ***
+
+    *Two SEPARATE halves, deliberately kept apart:*
+
+      1. **STRUCTURAL** -- `successor` is `candidate`'s direct child whose tracked delta is EXACTLY `[attestation_path]`,
+         the candidate does not carry it, and the committed document's own `candidate_sha` equals the candidate
+         (`attest_exclusion_policy`). *This alone is NOT admission.*
+      2. **AUTHENTICATION** -- the committed attestation's FULL DOCUMENT is run through the ONE common validator
+         (`attestation_document_problems`): the ENVELOPE (actual tag peel/object/tree, at-C closure/ledger hashes, exact
+         pinned attempt) AND the terminal/release evidence (hosted manifest bytes, seven-job/annotation shape, embedded
+         C manifest in STRICT-C mode, complete release-proof population). *Only when BOTH halves pass is a successor
+         admitted.*
+
+    *THE DEFECT THIS CLOSES, FROM THE HOSTILE REVIEW: the exclusion was granted on the STRUCTURAL half alone -- a
+    committed file containing only `{"candidate_sha": C}` qualified -- AND later a terminal-only authentication let an
+    ALTERED ENVELOPE (tag_object_sha / at_tag_*_sha256 / attempt) survive admission.* **So the authenticated half is
+    mandatory here, the ENVELOPE is checked as well as the terminal evidence, and no boolean stands in for either.**
+    """
+    att_rel = attestation_path or FREEZE_ATTESTATION_SUCCESSOR_PATH
+    problems = list(attest_exclusion_policy(future_path=att_rel, candidate=candidate, successor=successor,
+                                            delta=_tree_delta(candidate), attestation=att_rel))
+    # *** AND THE COMMITTED ATTESTATION'S FULL DOCUMENT IS AUTHENTICATED -- NO RECURSION (the embedded C manifest is
+    # judged in STRICT-C mode inside the common validator, which never re-enters this function). ***
+    att_blob = _file_at(successor, att_rel)
+    if att_blob is None:
+        disk = Path(att_rel)
+        disk = disk if disk.is_absolute() else (ROOT / disk)
+        att_blob = disk.read_text(encoding="utf-8") if disk.is_file() else None
+    if att_blob is None:
+        problems.append(f"the successor's attestation {att_rel!r} could NOT be read for authentication -- *a successor "
+                        f"may not be admitted on a document nobody holds*")
+        return problems
+    # *** THE FULL DOCUMENT (ENVELOPE **AND** TERMINAL) IS AUTHENTICATED BY THE ONE COMMON VALIDATOR. ***
+    problems.extend(attestation_document_problems(att_blob, rebind=rebind, strict_candidate=candidate))
+    return problems
+
+
+def attestation_document_problems(att_text: str, *, rebind=None, strict_candidate: str | None = None,
+                                  run_facts=None, tag_peel=None, tag_object=None, tree_sha=None,
+                                  file_at=None) -> list[str]:
+    """*** THE ONE COMMON FULL-DOCUMENT VALIDATOR OF AN ATTESTATION'S BYTES: ENVELOPE **AND** TERMINAL. ***
+
+    *THE DEFECT THIS CLOSES, FROM THE HOSTILE REVIEW: `executing_successor_problems` authenticated ONLY the terminal
+    evidence (hosted manifest bytes, seven jobs, embedded strict-C manifest, release proofs) but NEVER the ENVELOPE --
+    so an altered `tag_object_sha`, `at_tag_closure_sha256`, `at_tag_ledger_sha256` or pinned run attempt survived
+    STANDALONE CBM `A` admission when the terminal bytes were genuine.* **So the envelope checks (actual tag peel/
+    object/tree, the at-C closure/ledger hashes, the exact pinned attempt) are ONE function that BOTH
+    `validate_attestation` AND `executing_successor_problems` invoke on the COMMITTED bytes -- and the terminal/release
+    pass (strict-C) runneth after them.***
+
+    *It performeth the successor RELATION nowhere (that is the caller's separate, structural job), so it can never
+    recurse back into admission. Read-only, no re-timestamp, no file written.*
+    """
+    try:
+        att = json.loads(att_text)
+    except ValueError as exc:
+        return [f"the attestation is not valid JSON: {exc}"]
+    if not isinstance(att, dict):
+        return ["the attestation is not a JSON object"]
+    problems: list[str] = []
+    peel_fn = tag_peel or _tag_peel
+    obj_fn = tag_object or _tag_object
+    tree_fn = tree_sha or _tree_sha
+    at_fn = file_at or _file_at
+    facts_fn = run_facts or _run_facts
+    # ---- 1. THE ENVELOPE: the ACTUAL tag, its object, the tree, and the at-C file hashes. ----
+    tag = att.get("candidate_ref")
+    if not tag:
+        return ["the attestation names no candidate_ref"]
+    peeled = peel_fn(tag)
+    if not peeled:
+        return [f"the attestation's candidate_ref {tag!r} does not resolve to a commit"]
+    if att.get("candidate_sha") != peeled:
+        problems.append(f"candidate_sha {att.get('candidate_sha')} != the tag's peeled commit {peeled}")
+    obj = obj_fn(tag)
+    if att.get("tag_object_sha") != obj:
+        problems.append(f"tag_object_sha {att.get('tag_object_sha')} != the tag object {obj} (moved or re-pointed?)")
+    if att.get("candidate_tree_sha") != tree_fn(peeled):
+        problems.append(f"candidate_tree_sha {att.get('candidate_tree_sha')} != the tree {tree_fn(peeled)}")
+    for key, rel in (("at_tag_closure_sha256", "docs/production-readiness/BOARD1_CLOSURE.json"),
+                     ("at_tag_ledger_sha256", "docs/remediation/REMEDIATION_STATE.json")):
+        blob = at_fn(peeled, rel)
+        if blob is None:
+            problems.append(f"the candidate carrieth no {rel}")
+            continue
+        got = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+        if att.get(key) != got:
+            problems.append(f"{key} {att.get(key)} != the file at the candidate {got}")
+    # ---- 2. THE PINNED RUN'S ENVELOPE, RE-FETCHED FROM ITS OWN ATTEMPT. ----
+    run = att.get("run") or {}
+    run_facts_row = None
+    if run.get("id") is None or run.get("attempt") is None:
+        problems.append("the attestation names no run id / attempt")
+    else:
+        run_facts_row = facts_fn(str(run["id"]), attempt=run["attempt"])
+        if run_facts_row is None:
+            problems.append(f"run {run['id']} attempt {run['attempt']} could not be re-read")
+        else:
+            if run_facts_row.get("head_sha") != peeled:
+                problems.append(f"run {run['id']} reports head_sha {run_facts_row.get('head_sha')} != {peeled}")
+            if run_facts_row.get("conclusion") != "success":
+                problems.append(f"run {run['id']} conclusion {run_facts_row.get('conclusion')!r} != success")
+            if run_facts_row.get("run_attempt") != run["attempt"]:
+                problems.append(f"run {run['id']} answered with run_attempt={run_facts_row.get('run_attempt')!r}, "
+                                f"not the pinned {run['attempt']!r}")
+    # ---- 3. THE TERMINAL/RELEASE EVIDENCE, STRICT-C WHEN A SUCCESSOR IS BEING ADMITTED. ----
+    problems.extend(_terminal_evidence_problems(att, run_facts=run_facts_row, rebind=rebind,
+                                                strict_candidate=strict_candidate))
+    if strict_candidate and att.get("candidate_sha") != strict_candidate:
+        problems.append(f"the attestation bindeth candidate {str(att.get('candidate_sha'))[:12]}…, not the successor's "
+                        f"frozen candidate {str(strict_candidate)[:12]}…")
+    return problems
+
+
+def _path_carried(rev: str, rel: str) -> bool | None:
+    """Whether `rev`'s tree carrieth `rel`. `None` when git cannot answer -- which is a REFUSAL, never 'absent'."""
+    proc = _git("cat-file", "-e", f"{rev}:{rel}")
+    if proc.returncode == 0:
+        return True
+    # `cat-file -e` is non-zero both for "no such path" and for a bad revision; disambiguate before answering.
+    check = _git("rev-parse", f"{rev}^{{commit}}")
+    if check.returncode != 0:
+        return None
+    return False
+
+
+#: *** THE EXPLICIT READER-SIDE REBIND ROOTS, BY RECORD CLASS. ***
+#:
+#: *A fresh clone does not carry the hosted runner's scratch paths, so a reader is handed the downloaded gate logs, the
+#: campaign tree, the lane evidence root and the release-proof records under ITS OWN directories. The mapping is
+#: EXPLICIT -- one root per class -- and each record is re-read from `root/<basename>` by stable identity.*
+REBIND_CLASSES = ("gates", "campaign", "evidence", "proof")
+
+
+def _rebind_roots(rebind) -> dict:
+    """Normalize a rebind mapping/flags into `{class: Path|None}`.
+
+    *Accepts a mapping (`{"gates": ..., "campaign": ..., "evidence": ..., "proof": ...}`) or an object whose attributes
+    name the same; anything else is an empty map, which meaneth "read at the recorded paths" -- never a guess.*
+    """
+    if not rebind:
+        return {}
+    out: dict = {}
+    if isinstance(rebind, dict):
+        source = rebind
+        out = {k: (Path(v) if v not in (None, "") else None) for k, v in source.items() if k in REBIND_CLASSES}
+    else:
+        for k in REBIND_CLASSES:
+            v = getattr(rebind, k, None)
+            if v not in (None, ""):
+                out[k] = Path(v)
+    return out
+
+
+def _rebind_record_path(recorded: str | None, root: Path | None):
+    """Map a RECORDED path to its reader-side location by stable identity (its basename under `root`).
+
+    *THE DEFECT THIS CLOSES: the hosted runner writeth gate logs and campaign evidence under `RUNNER_TEMP`, so their
+    recorded absolute paths do not exist on a reader's host -- and a validator that demanded them would refuse every
+    legitimate fresh-clone read.* **The mapping is by IDENTITY (the recorded file's own basename under the supplied
+    root), never a prefix rewrite of the recorded path: a caller cannot smuggle an unrelated file past a digest check,
+    because the digest still cometh from the authenticated document. An absent root leaves the recorded path alone.**
+    """
+    if recorded in (None, ""):
+        return None
+    if root is None:
+        return Path(recorded)
+    return Path(root) / Path(recorded).name
+
+
+def rebind_from_environment(environ: dict | None = None) -> dict:
+    """*** READ THE NORMALIZED `GODSTONE_BOARD1_FROZEN_*` ROOTS A GATE SUBPROCESS RECEIVETH. ***
+
+    *A canonical gate (the evidence bundle) run inside `board1 verify` is handed the frozen-C roots by ENVIRONMENT, not
+    by a flag it does not own. This helper turneth that environment back into the rebind map the shared readers use.*
+    """
+    env = os.environ if environ is None else environ
+    names = {"gates": "GODSTONE_BOARD1_FROZEN_ARTIFACTS",
+             "campaign": "GODSTONE_BOARD1_FROZEN_CAMPAIGN_DIR",
+             "evidence": "GODSTONE_BOARD1_FROZEN_EVIDENCE_ROOT",
+             "proof": "GODSTONE_BOARD1_FROZEN_PROOF_DIR"}
+    out: dict = {}
+    for cls, name in names.items():
+        value = env.get(name)
+        if value:
+            out[cls] = Path(value)
     return out
 
 
@@ -463,7 +983,7 @@ def binding_problems(record: dict, *, workdir_record: str | None = None,
             if facts is None:
                 # *** A RUN THAT CANNOT BE READ IS REFUSED, NOT SKIPPED. *** *The head_sha road below is kept as a
                 # fallback so the older `run_head` injection still works, but a freeze that cannot read the run's
-                # SHAPE may not claim the six-job authority.*
+                # SHAPE may not claim the named-job authority.*
                 sha = (run_head or _run_head_sha)(run_id)
                 if sha is None:
                     problems.append(f"hosted run {run_id} could NOT be read -- a freeze may not cite a run it cannot "
@@ -489,20 +1009,20 @@ def binding_problems(record: dict, *, workdir_record: str | None = None,
                 if facts.get("status") != "completed":
                     problems.append(f"hosted run {run_id} carrieth status {facts.get('status')!r}, not 'completed' -- "
                                     f"a run still in progress cannot be a frozen result")
-                # *** AND THE SIX JOBS MUST BE EXACTLY THE CANONICAL SIX, BY NAME -- NOT MERELY SIX ROWS. ***
+                # *** AND THE JOBS MUST BE EXACTLY THE CANONICAL SET, BY NAME -- NOT MERELY THE RIGHT COUNT. ***
                 #
-                # *`len(jobs) != 6` is not the authority the closure claims: a workflow could carry six jobs of ANY
-                # names and satisfy it, and a RENAMED job would silently change what was verified while the count
-                # stayed right.* **So the names are compared to the canonical workflow's own, and a missing, extra or
-                # renamed job is refused BY NAME.**
+                # *A count is not the authority the closure claims: a workflow could carry the same number of jobs
+                # under ANY names, and a RENAMED job would silently change what was verified while the count stayed
+                # right.* **So the names are compared to the canonical workflow's own -- including the terminal job --
+                # and a missing, extra or renamed job is refused BY NAME.**
                 jobs = facts.get("jobs") or []
                 names = [j.get("name") for j in jobs]
                 missing = [n for n in CANONICAL_JOB_NAMES if n not in names]
                 extra = [n for n in names if n not in CANONICAL_JOB_NAMES]
                 duplicates = sorted({n for n in names if names.count(n) > 1})
                 if missing:
-                    problems.append(f"hosted run {run_id} omits canonical job(s): {missing} -- the six-job authority "
-                                    f"is a NAMED set, and a shrunken one proves less than the one the closure names")
+                    problems.append(f"hosted run {run_id} omits canonical job(s): {missing} -- the job authority is a "
+                                    f"NAMED set, and a shrunken one proves less than the one the closure names")
                 if extra:
                     problems.append(f"hosted run {run_id} carrieth job(s) the canonical workflow does not define: "
                                     f"{extra} -- an unexpected job is a workflow that has drifted from the authority "
@@ -514,7 +1034,8 @@ def binding_problems(record: dict, *, workdir_record: str | None = None,
                             if j.get("conclusion") != "success"]
                 if bad_jobs:
                     problems.append(f"hosted run {run_id} carrieth non-successful job(s): {', '.join(bad_jobs)} -- "
-                                    f"ALL SIX must be success, or the run is not the authority it is cited as")
+                                    f"ALL {len(CANONICAL_JOB_NAMES)} must be success, or the run is not the authority "
+                                    f"it is cited as")
                 # *** AND THE REPOSITORY, BRANCH AND WORKFLOW PATH, EACH BY NAME. ***
                 want_repo = (record.get("repository_verification") or {}).get("repository")
                 if want_repo and facts.get("repository") and facts["repository"] != want_repo:
@@ -564,11 +1085,30 @@ def binding_problems(record: dict, *, workdir_record: str | None = None,
         # The record nameth the exact attestation path it permits (`post_tag_attestation`), and the default is that
         # one file; an absent name falls back to the directory ONLY to keep older records valid, and is reported.*
         if peeled and freeze:
+            # *** THE ALLOWANCE IS EXACTLY ONE PATH, AND IT IS NAMED. ***
+            #
+            # *THE DEFECT THIS CLOSES: the fallback was the whole `docs/remediation/evidence/` DIRECTORY, so any file
+            # a later step dropped in there passed the post-tag check -- AN ALLOWANCE THAT CAN QUIETLY ENLARGE
+            # ITSELF.* **So a freeze must NAME the one path it will write (`post_tag_attestation`), and a record that
+            # nameth none is REFUSED rather than granted a directory.**
             named_attestation = record.get("post_tag_attestation")
-            if named_attestation:
-                allow = (named_attestation,)
+            if not named_attestation:
+                problems.append("the freeze record nameth NO `post_tag_attestation` -- *the post-tag allowance must be "
+                                "ONE EXACT PATH the run itself writes, never a directory that later steps could widen*")
+                allow = ()
             else:
-                allow = tuple(record.get("post_tag_allowlist") or ("docs/remediation/evidence/",))
+                allow = (named_attestation,)
+            # *** THE ALLOWANCE IS ADJUDICATED AGAINST THE ONE CANONICAL POLICY. ***
+            #
+            # *A freeze may write exactly ONE file after the tag: the authoritative future attestation. Naming any
+            # other path -- an rc11/rc14-era name, a directory, or a second file -- is refused here, and the candidate
+            # must not already carry it.* **This ties the freeze's allowance to `attest_exclusion_policy`, so the
+            # reader, the writer and the evidence bundle cannot drift apart.**
+            if named_attestation:
+                problems.extend(attest_exclusion_policy(
+                    future_path=named_attestation,
+                    candidate_carries_future=_path_carried(peeled, named_attestation),
+                    candidate=peeled, tag=tag))
             delta = (tree_delta or (lambda p: _tree_delta(p, allow=allow)))(peeled)
             if delta:
                 problems.append(f"the tree has moved since candidate {tag!r} was tagged: {', '.join(delta[:6])}"
@@ -614,15 +1154,29 @@ def audit(path: Path = CLOSURE, *, freeze: bool = False) -> list[str]:
 
 
 def validate_attestation(path: Path, *, tag_peel=None, tag_object=None, tree_sha=None,
-                         run_facts=None, tree_delta=None, file_at=None) -> list[str]:
+                         run_facts=None, tree_delta=None, file_at=None,
+                         rebind=None) -> list[str]:
     """*** READ-ONLY: RE-DERIVE EVERYTHING AN ATTESTATION CLAIMS, RETURNING THE PROBLEMS (empty = valid). ***
 
     *THE DEFECT THIS CLOSES: the only way to check an attestation was to RUN `freeze`, WHICH IS A WRITER -- it
     regenerates the timestamp and rewrites the file, so "checking" an attestation MUTATED it and could not be done on
     a successor commit at all.* **So this recomputeth the tag object, the peeled commit, the tree, the at-tag
     closure/ledger hashes and the pinned attempt's facts, and REFUSETH any disagreement -- taking no timestamp, writing
-    no file, and never regenerating a measured_at.** *It liveth in the shared validator so `board1 freeze --attest-out`
-    and `board1 verify --attestation` derive the SAME facts from the SAME code.*
+    no file, and never regenerating a measured_at.**
+
+    *** THIS IS THE ONE SHARED READER, AND IT AUTHENTICATES THE FULL TERMINAL EVIDENCE. *** *THE DEFECT THIS CLOSES,
+    FROM THE HOSTILE REVIEW: this reader used to stop at the tag/tree/at-tag hashes and a bare run head_sha, so a
+    production caller (`scripts/build_evidence_bundle.py`) that invokes it DIRECTLY -- rather than through
+    `board1.validate_attestation` -- could accept a fabricated one-file successor whose attestation named a real
+    successful run but carrieth NO hosted-manifest bytes, NO seven-job/annotation shape, NO closed semantics and NO
+    exact-candidate release proof.* **So the full authentication liveth HERE, both callers delegate to it, and the
+    successor exclusion is granted ONLY after it passeth -- never on a caller's boolean.**
+
+    *** AND `rebind` LETTETH A FRESH CLONE MAP THE RECORDS BY IDENTITY. *** *The hosted runner writeth gate logs,
+    campaign evidence and release proofs under its own scratch root, so their recorded absolute paths do not exist on a
+    reader's host.* **`rebind` names explicit artifacts/campaign/evidence/proof roots; every record is re-read from the
+    mapped location by stable artifact-relative identity, and the ORIGINAL bound digest is still required -- mapped
+    bytes that differ are refused. The authenticated document itself is never rewritten or re-timestamped.***
     """
     peel_fn = tag_peel or _tag_peel
     obj_fn = tag_object or _tag_object
@@ -643,48 +1197,217 @@ def validate_attestation(path: Path, *, tag_peel=None, tag_object=None, tree_sha
     peeled = peel_fn(tag)
     if not peeled:
         return [f"the attestation's candidate_ref {tag!r} does not resolve to a commit"]
-    if att.get("candidate_sha") != peeled:
-        problems.append(f"candidate_sha {att.get('candidate_sha')} != the tag's peeled commit {peeled}")
-    obj = obj_fn(tag)
-    if att.get("tag_object_sha") != obj:
-        problems.append(f"tag_object_sha {att.get('tag_object_sha')} != the tag object {obj} (moved or re-pointed?)")
     tree = tree_fn(peeled)
-    if att.get("candidate_tree_sha") != tree:
-        problems.append(f"candidate_tree_sha {att.get('candidate_tree_sha')} != the tree {tree}")
-    # at-tag hashes
-    for key, rel in (("at_tag_closure_sha256", "docs/production-readiness/BOARD1_CLOSURE.json"),
-                     ("at_tag_ledger_sha256", "docs/remediation/REMEDIATION_STATE.json")):
-        blob = at_fn(peeled, rel)
-        if blob is None:
-            problems.append(f"the candidate carrieth no {rel}")
-            continue
-        got = hashlib.sha256(blob.encode("utf-8")).hexdigest()
-        if att.get(key) != got:
-            problems.append(f"{key} {att.get(key)} != the file at the candidate {got}")
-    # the run, re-fetched
-    run = att.get("run") or {}
-    if run.get("id") is None or run.get("attempt") is None:
-        problems.append("the attestation names no run id / attempt")
-    else:
-        facts = facts_fn(str(run["id"]), attempt=run["attempt"])
-        if facts is None:
-            problems.append(f"run {run['id']} attempt {run['attempt']} could not be re-read")
-        else:
-            if facts.get("head_sha") != peeled:
-                problems.append(f"run {run['id']} reports head_sha {facts.get('head_sha')} != {peeled}")
-            if facts.get("conclusion") != "success":
-                problems.append(f"run {run['id']} conclusion {facts.get('conclusion')!r} != success")
-            if facts.get("run_attempt") != run["attempt"]:
-                problems.append(f"run {run['id']} answered with run_attempt={facts.get('run_attempt')!r}, not the "
-                                f"pinned {run['attempt']!r}")
+    # *** THE ENVELOPE **AND** THE FULL TERMINAL EVIDENCE ARE RE-DERIVED BY THE ONE COMMON DOCUMENT VALIDATOR. ***
+    # *The same function `executing_successor_problems` call, so a standalone call and an A-admission cannot disagree:
+    # the actual tag object/peel/tree, the at-C closure/ledger hashes, the exact pinned attempt and the terminal/release
+    # evidence are ALL checked here.*
+    problems.extend(attestation_document_problems(
+        path.read_text(encoding="utf-8"), rebind=rebind, run_facts=facts_fn,
+        tag_peel=peel_fn, tag_object=obj_fn, tree_sha=tree_fn, file_at=at_fn))
     # the successor delta: only the attestation itself may differ from the candidate.
+    # *** THE ATTESTATION'S OWN PATH IS RESOLVED BEFORE IT IS RELATIVISED. ***
+    #
+    # *A RELATIVE `--attestation` path is the form the plan's command line uses, and `Path.relative_to(ROOT)` raiseth
+    # `ValueError` on it -- which the previous version caught and then kept as a relative allow-string. Keeping it is
+    # wrong for the DELTA: the allowance must be the path AS GIT SPELLS IT (repository-relative), so a relative input
+    # is resolved against the repository root here and a path OUTSIDE the repository is refused by name, because an
+    # allowance naming a path outside the candidate's tree can never match a tracked delta.*
+    resolved = path if path.is_absolute() else (ROOT / path)
     try:
-        rel_path = str(path.relative_to(ROOT))
+        rel_path = str(resolved.resolve().relative_to(ROOT.resolve()))
     except ValueError:
-        rel_path = str(path)
+        return [f"the attestation path {path} resolveth outside the repository {ROOT} -- the post-tag allowance must "
+                f"name a path inside the candidate's own tree"]
+    # *** THE SUCCESSOR MAY DIFFER FROM THE CANDIDATE IN EXACTLY ONE PATH, AND IT MUST BE THE CANDIDATE'S CHILD. ***
+    #
+    # *THE DEFECT THIS CLOSES, FROM THE HOSTILE REVIEW: a bare name-only diff excused any path a prefix allowed, and a
+    # successor could be on an unrelated branch. **So the reader requires the attestation to be the ONLY difference and
+    # the successor to be the candidate's DIRECT CHILD -- and it authenticates the attestation CONTENT (that it binds
+    # this candidate) before granting the exclusion, deriving that from git rather than trusting a boolean.***
     delta = delta_fn(peeled, allow=(rel_path,))
+    successor = _git("rev-parse", "HEAD").stdout.strip()
+    # *** THE INPUT BYTES MUST BE THE COMMITTED A BYTES, AND THE WORKING TREE COMPLETELY CLEAN. ***
+    #
+    # *THE DEFECT THIS CLOSES, FROM THE HOSTILE REVIEW: the reader validated WORKING-file bytes while separately
+    # authenticating the COMMITTED document, and it EXCLUDED the attestation path from the dirty check -- so an
+    # uncommitted edit to rc15 could coexist with a genuine committed attestation and still read valid.* **So the
+    # working file's bytes are compared to `successor:<rel_path>` and MUST be equal, and the successor's working tree
+    # must be CLEAN INCLUDING the attestation itself (no allowance).**
+    committed_bytes = _git("show", f"{successor}:{rel_path}")
+    if committed_bytes.returncode != 0:
+        problems.append(f"the successor {str(successor)[:12]}… carrieth NO {rel_path!r} in its commit -- *a validated "
+                        f"attestation must be the COMMITTED artifact, not a working-tree file*")
+    else:
+        working = path.read_bytes() if path.is_file() else None
+        if working != committed_bytes.stdout.encode("utf-8", "surrogateescape"):
+            problems.append(f"the attestation file's WORKING bytes differ from the COMMITTED copy at "
+                            f"{str(successor)[:12]}…:{rel_path} -- *an uncommitted edit is not the artifact the "
+                            f"successor carries, so validation must read the committed bytes*")
+    if rel_path != FREEZE_ATTESTATION_SUCCESSOR_PATH:
+        problems.append(f"the validated attestation path {rel_path!r} is NOT the one declared future attestation "
+                        f"{FREEZE_ATTESTATION_SUCCESSOR_PATH!r} -- *an attestation at an undeclared path (including the "
+                        f"historical rc14 file) is not this policy's subject, and no exemption may be invented for it*")
+    else:
+        # *** THE READER PERFORMS ONLY THE STRUCTURAL C→A RELATION HERE. ***
+        # *THE DEFECT THIS CLOSES, FROM THE HOSTILE REVIEW: calling `executing_successor_problems` from the reader would
+        # re-authenticate the SAME committed document (a double terminal pass, and a re-entry hazard).* **So the reader
+        # uses `attest_exclusion_policy` (the STRUCTURAL half: direct child, delta exactly one file, document declares
+        # C) and relies on the ONE `attestation_document_problems` call above for the envelope AND terminal
+        # authentication.***
+        for p in attest_exclusion_policy(future_path=rel_path, candidate=peeled, successor=successor,
+                                         delta=delta_fn(peeled), attestation=rel_path):
+            problems.append(p)
+    # *** AND THE SUCCESSOR'S WORKING TREE MUST BE COMPLETELY CLEAN -- THE ATTESTATION IS NOT EXEMPT. ***
+    #
+    # *THE DEFECT THIS CLOSES: the old allowance excused the attestation path itself, so an uncommitted edit to it was
+    # invisible. **A validated attestation must be read from a totally clean successor; there is no allowance.***
+    try:
+        dirty = dirty_tracked_paths()
+        if dirty:
+            problems.append(f"the working tree carrieth {len(dirty)} uncommitted path(s): {dirty[:5]} -- *a validated "
+                            f"attestation must be read from a COMPLETELY clean successor, the attestation included*")
+    except Exception as exc:  # noqa: BLE001
+        problems.append(f"the working tree could not be inspected: {type(exc).__name__}: {exc}")
     if delta:
         problems.append(f"the tree has moved since {tag}: {delta[:5]}")
+    # *** THE TERMINAL EVIDENCE WAS ALREADY AUTHENTICATED ONCE, BY THE COMMON `attestation_document_problems` ABOVE. ***
+    # *Running it again here would be a second remote recapture for no added proof; the common validator is the ONE
+    # full authority and it always runneth (there is no weaker path).*
+    return problems
+
+
+def _terminal_evidence_problems(att: dict, *, run_facts=None, rebind=None,
+                                strict_candidate: str | None = None) -> list[str]:
+    """*** AUTHENTICATE THE ATTESTATION'S FULL TERMINAL EVIDENCE, READ-ONLY. ***
+
+    *Separated from the identity/delta half so a reader can see exactly WHICH terminal claims are re-derived. It never
+    writes, never re-timestamps and never rewrites the attestation or the embedded manifest.*
+    """
+    problems: list[str] = []
+    bound = att.get("gate_manifest") or {}
+    bound_doc = bound.get("document")
+    hosted = bound.get("hosted_artifact") or {}
+    run = att.get("run") or {}
+    if not bound_doc:
+        problems.append("the attestation carrieth no embedded gate manifest to authenticate")
+    elif run.get("id") is None or run.get("attempt") is None:
+        problems.append("the attestation names no run id/attempt -- the embedded manifest cannot be authenticated")
+    else:
+        canonical_bytes = (json.dumps(bound_doc, indent=1) + "\n").encode("utf-8")
+        for problem in hosted_manifest_problems(
+                str(run["id"]), name=hosted.get("name") or "board1-gate-manifest",
+                manifest_bytes=canonical_bytes, attempt=run["attempt"]):
+            problems.append(f"hosted manifest: {problem}")
+        # *** AND THE RUN'S OWN WHOLE SHAPE IS RE-FETCHED: seven jobs, each success, each clean of failure notes. ***
+        facts = run_facts if run_facts is not None else _run_facts(str(run["id"]), attempt=run["attempt"])
+        if facts is None:
+            problems.append(f"the pinned run {run['id']} attempt {run['attempt']} could NOT be re-read")
+        else:
+            for what, want in (("conclusion", "success"), ("workflow", "repository-verification"),
+                               ("event", "push"), ("status", "completed")):
+                if facts.get(what) != want:
+                    problems.append(f"the pinned run carrieth {what}={facts.get(what)!r}, not {want!r}")
+            if facts.get("head_sha") != att.get("candidate_sha"):
+                problems.append(f"the pinned run reports head_sha {facts.get('head_sha')} but the attestation's "
+                                f"candidate is {att.get('candidate_sha')}")
+            jobs = facts.get("jobs") or []
+            names = [j.get("name") for j in jobs]
+            missing = [n for n in CANONICAL_JOB_NAMES if n not in names]
+            extra = [n for n in names if n not in CANONICAL_JOB_NAMES]
+            duplicates = sorted({n for n in names if names.count(n) > 1})
+            # *** THE EXACT SEVEN-NAME POPULATION IS ENFORCED -- NOT MERELY "NO MISSING NAMES". ***
+            #
+            # *A count is not the authority: a run could carry the right names PLUS extra jobs, or a duplicate, and a
+            # "missing only" check would accept it.* **So a missing, EXTRA or DUPLICATED canonical job is refused, and
+            # the population must be EXACTLY the seven names.**
+            if missing:
+                problems.append(f"the pinned run omits canonical job(s): {missing}")
+            if extra:
+                problems.append(f"the pinned run carrieth job(s) the canonical workflow does not define: {extra}")
+            if duplicates:
+                problems.append(f"the pinned run carrieth duplicated job name(s): {duplicates}")
+            if names and sorted(names) != sorted(CANONICAL_JOB_NAMES):
+                problems.append(f"the pinned run's job population is {len(names)} row(s), not the EXACT seven "
+                                f"canonical names")
+            for j in jobs:
+                if j.get("conclusion") != "success":
+                    problems.append(f"the pinned run carrieth non-successful job {j.get('name')!r}")
+                rows = _job_annotations(j.get("id"))
+                if rows is None:
+                    problems.append(f"the annotations for job {j.get('name')!r} could NOT be re-read")
+                elif any(str(a.get("annotation_level", "")).lower() == "failure" for a in rows):
+                    problems.append(f"job {j.get('name')!r} carrieth FAILURE-level annotations")
+    # *** AND THE EMBEDDED MANIFEST IS RE-DERIVED BY THE ONE MANIFEST CONTRACT, IN STRICT MODE. ***
+    #
+    # *THE DEFECT THIS CLOSES, FROM THE HOSTILE REVIEW: reusing the manifest contract with successor admission enabled
+    # would re-enter the successor law and recurse. **So the embedded `C` manifest is judged in STRICT-C mode -- its own
+    # `candidate` must BE the frozen candidate, with no `frozen`/`executing` successor clause -- which is exactly the
+    # document a phase-3 run carrieth, and it can never re-enter `executing_successor_problems`.**
+    if bound_doc:
+        sys.path.insert(0, str(ROOT / "ci"))
+        import check_board1_manifest as cbm  # noqa: PLC0415 - the ONE manifest contract
+        # *The embedded manifest is the PHASE-3 document, which recordeth the release block's availability rather than
+        # requiring it (the exact-candidate proof does not exist until `C` is pushed); the attestation's OWN
+        # `release_evidence` block is where the proof is required, and it is checked below.*
+        for problem in cbm.check_manifest(bound_doc, base=ROOT, require_candidate=True, rebind=rebind,
+                                          strict_candidate=strict_candidate):
+            problems.append(f"embedded gate manifest: {problem}")
+        doc_cand = bound_doc.get("candidate") or {}
+        if strict_candidate and doc_cand.get("sha") != strict_candidate:
+            problems.append(f"the embedded gate manifest bindeth candidate {doc_cand.get('sha')} instead of the "
+                            f"successor's frozen candidate {strict_candidate}")
+        if doc_cand.get("sha") != att.get("candidate_sha"):
+            problems.append(f"the embedded gate manifest carrieth candidate {doc_cand.get('sha')} but the attestation "
+                            f"carrieth {att.get('candidate_sha')} -- the two describe different trees")
+        if doc_cand.get("tree_sha") != att.get("candidate_tree_sha"):
+            problems.append("the embedded gate manifest and the attestation disagree on the candidate TREE")
+    # *** AND THE EXACT-CANDIDATE RELEASE EVIDENCE IS RE-VERIFIED THROUGH THE OWNER'S OWN BLOCK AUTHORITY. ***
+    #
+    # *THE DEFECT THIS CLOSES, FROM THE HOSTILE REVIEW: the reader iterated the records with its OWN weaker loop, so a
+    # block such as `{"records": []}` executed ZERO verifications and produced NO problem.* **So the SAME
+    # `release_evidence_problems` authority that the manifest contract uses is invoked here (required=True), which
+    # demandeth a present interface, an available verifier and a NON-EMPTY candidate-bound record population -- and each
+    # record is re-verified through `verify_release_record` with the ORIGINAL bound digest. The records are re-read
+    # from their RELATIVE paths under the rebind root, PRESERVING nesting.**
+    sys.path.insert(0, str(ROOT / "ci"))
+    import check_board1_manifest as _cbm  # noqa: PLC0415
+    rel = att.get("release_evidence")
+    if rel is None:
+        problems.append("the attestation carrieth NO release-evidence block -- *the exact-candidate release proof is "
+                        "part of what a freeze asserts, and it must travel WITH the attestation*")
+    else:
+        remap = _rebind_roots(rebind).get("proof") if rebind else None
+        # *** THE COMPLETE REQUIRED POPULATION IS JUDGED BY THE PRIVATE POPULATION HELPER -- NO PUBLIC WEAKER PATH. ***
+        # *This reader then runneth the ONE full per-record authority (`verify_release_record`, which includes the
+        # mandatory hosted authentication) over every record below -- so the remote recapture happens EXACTLY ONCE and
+        # there is no public `authenticate=False` shortcut.*
+        for problem in _cbm._release_population_problems(rel,
+                                                         candidate_sha=att.get("candidate_sha"),
+                                                         candidate_tag=att.get("candidate_ref"),
+                                                         candidate_tree_sha=att.get("candidate_tree_sha")):
+            problems.append(f"release evidence: {problem}")
+        # *AND EACH RECORD'S DIGEST/VERIFIER IS RE-APPLIED HERE, SO A RECORD PRESENT BUT TAMPERED IS CAUGHT EVEN WHEN
+        # THE BLOCK'S OWN SUMMARY AGREES.*
+        for entry in (rel.get("records") or []):
+            rec = entry.get("record") or {}
+            disk = _rebind_record_path(rec.get("path"), remap)
+            if disk is None or not disk.is_file():
+                problems.append(f"release proof {rec.get('path')!r} is NOT PRESENT -- a reader cannot re-derive the "
+                                f"external evidence the attestation binds")
+                continue
+            if hashlib.sha256(disk.read_bytes()).hexdigest() != rec.get("sha256"):
+                problems.append(f"release proof {rec.get('path')!r} does not match the digest the attestation bound")
+                continue
+            try:
+                doc = json.loads(disk.read_text(encoding="utf-8"))
+            except ValueError as exc:
+                problems.append(f"release proof {rec.get('path')!r} is not valid JSON: {exc}")
+                continue
+            for problem in _cbm.verify_release_record(doc, candidate_sha=att.get("candidate_sha"),
+                                                      candidate_tree_sha=att.get("candidate_tree_sha"),
+                                                      repo=_repository()):
+                problems.append(f"release proof {rec.get('path')!r}: {problem}")
     return problems
 
 
@@ -796,7 +1519,7 @@ def selftest() -> int:
     # *rc6's committed record names rc5, so rc6 CANNOT be the positive case -- and that is not a flaw in the test, it
     # is THE DEFECT THE VALIDATOR WAS BUILT TO CATCH, caught live. So the positive case is exercised against a
     # synthetic record written as the freeze commit would write it: the ref it names, the copy at that ref agreeing
-    # with it, the tree stated, no post-tag delta, and the six-job green run.*
+    # with it, the tree stated, no post-tag delta, and the seven-job green run.*
     # *The at-tag copy is patched to agree, so every OTHER check (annotation, peel, tree, run facts) still runs against
     # the REAL rc6 tag -- only the conditions under test are satisfied.*
     real_file_at = _file_at
@@ -810,6 +1533,10 @@ def selftest() -> int:
     try:
         ok = binding_problems(
             {"candidate_ref": tag, "candidate_tree_sha": tree,
+             # *The positive case NAMES the one post-tag path, as a real freeze record must.*
+             # *The positive case NAMES the one post-tag path, as a real freeze record must -- and that path is the
+             # ONE the canonical policy declares, so renaming the successor file cannot pass here by accident.*
+             "post_tag_attestation": FREEZE_ATTESTATION_SUCCESSOR_PATH,
              "repository_verification": {"run_id": "1", "run_attempt": 1}},
             workdir_record="{}", freeze=True,
             run_facts=lambda _r: green_facts, tree_delta=lambda _p: [],
@@ -993,7 +1720,7 @@ def selftest() -> int:
              dirty_paths=lambda: ["ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"])
 
         # 28. *** A POST-TAG DELTA OUTSIDE THE NAMED ALLOWLIST. ***
-        case({**base_rec, "post_tag_attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc11.json"},
+        case({**base_rec, "post_tag_attestation": FREEZE_ATTESTATION_SUCCESSOR_PATH},
              "has moved since candidate",
              "a post-tag edit outside the named attestation path is refused",
              run_facts=lambda _r: green_facts,

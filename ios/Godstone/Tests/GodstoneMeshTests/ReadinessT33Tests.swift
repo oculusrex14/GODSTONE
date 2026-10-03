@@ -198,6 +198,101 @@ final class ReadinessT33Tests: XCTestCase {
         XCTAssertEqual(fired, 0, "an aborted transaction fires no observer")
     }
 
+    // (4b) the INBOX and DELIVERY ceilings are DISTINCT typed pressure categories
+    func testInboxCapRefusesInboxRowsAndDeliveryCapRefusesDeliveryRows() throws {
+        // the inbox cap, with the delivery count WELL BELOW its own cap, must name the INBOX category
+        let inboxAtCap = healthy(deliv: 0, inbox: Int64(StoreQuota.inboxRowCap))
+        let inboxResult = StoreQuota.admit(snapshot: inboxAtCap, candidateSize: 1, isDuplicate: false, isTerminal: false)
+        XCTAssertEqual(inboxResult, .refusedUnderPressure(.inboxRows), "an inbox-cap refusal must name the INBOX category, never the delivery one")
+        // the delivery cap, with the inbox count WELL BELOW its own cap, must name the DELIVERY category
+        let delivAtCap = healthy(deliv: Int64(StoreQuota.deliveryRowCap), inbox: 0)
+        let delivResult = StoreQuota.admit(snapshot: delivAtCap, candidateSize: 1, isDuplicate: false, isTerminal: false)
+        XCTAssertEqual(delivResult, .refusedUnderPressure(.deliveryRows), "a delivery-cap refusal must name the DELIVERY category")
+        // both strictly BELOW their caps, and the admission is accepted
+        let below = healthy(deliv: Int64(StoreQuota.deliveryRowCap - 1), inbox: Int64(StoreQuota.inboxRowCap - 1))
+        XCTAssertTrue(StoreQuota.admit(snapshot: below, candidateSize: 1, isDuplicate: false, isTerminal: false).isAccepted(),
+                      "one row below EITHER cap is still admitted -- the ceilings refuse only AT the cap")
+        XCTAssertNotEqual(inboxResult, delivResult, "the two ceilings carry DIFFERENT typed categories")
+    }
+
+    // (4c) a disposal DURING an in-flight dispatch is honoured for the very callback it targets
+    func testUnregisterDuringDispatchLeavesTheDisposedObserverInert() throws {
+        let lease = ObservationLease()
+        var firstFired = 0
+        var disposedFired = 0
+        var disposedToken: ObservationLease.LeaseToken? = nil
+        lease.register {
+            firstFired += 1
+            if let t = disposedToken { lease.unregisterBy(t) }   // dispose a LATER snapshot entry mid-walk
+        }
+        disposedToken = lease.register { disposedFired += 1 }
+        lease.afterCommit()   // snapshot is [first, disposed]; the first callback disposes the second
+        XCTAssertEqual(firstFired, 1, "the dispatching observer fires")
+        XCTAssertEqual(disposedFired, 0, "the observer disposed MID-dispatch must NOT fire in that same round")
+        lease.afterCommit()
+        XCTAssertEqual(disposedFired, 0, "and it stays inert on every later round")
+    }
+
+    // (4d) releaseAll DURING a dispatch (a store closing mid-notification) leaves the remaining callbacks inert
+    func testReleaseAllDuringDispatchLeavesRemainingObserversInert() throws {
+        let lease = ObservationLease()
+        var firstFired = 0
+        var laterFired = 0
+        lease.register {
+            firstFired += 1
+            lease.releaseAll()   // the store closes while the dispatch walketh the snapshot
+        }
+        lease.register { laterFired += 1 }
+        lease.afterCommit()
+        XCTAssertEqual(firstFired, 1, "the in-flight observer fires")
+        XCTAssertEqual(laterFired, 0, "*** AN OBSERVER RELEASED MID-DISPATCH MUST NOT FIRE: firing it would invoke a callback against a store whose handles are already released ***")
+        XCTAssertEqual(lease.registrationCount, 0, "and the census returns to zero")
+    }
+
+    // (4e) a NESTED afterCommit during a dispatch does not duplicate callbacks
+    func testNestedAfterCommitDuringDispatchFiresNoObserverTwice() throws {
+        let lease = ObservationLease()
+        var calls = 0
+        var nestedDone = false
+        lease.register {
+            calls += 1
+            if !nestedDone { nestedDone = true; lease.afterCommit() }   // settle once, mid-dispatch
+        }
+        lease.afterCommit()
+        XCTAssertEqual(calls, 1, "*** A NESTED afterCommit DURING A DISPATCH MUST NOT RE-ENTER AND FIRE THE IN-FLIGHT CALLBACK AGAIN ***")
+        lease.afterCommit()
+        XCTAssertEqual(calls, 2, "each genuine round still fires the standing observer exactly once")
+    }
+
+    // (4f) the positive lease laws: active flag, in-tx settling, next-round carry, and abort discard
+    func testLeasePositiveActiveNextRoundAndAbortLaws() throws {
+        let lease = ObservationLease()
+        var committed = 0
+        var carried = 0
+        lease.register { committed += 1 }
+        XCTAssertFalse(lease.active, "outside a transaction the lease is not active")
+        lease.beginTransaction()
+        XCTAssertTrue(lease.active, "an open transaction is ACTIVE")
+        lease.register { carried += 1 }
+        lease.afterCommit()
+        XCTAssertEqual(committed, 0, "settling INSIDE an open transaction fires nothing")
+        XCTAssertEqual(carried, 0, "an in-tx registration has not fired yet")
+        lease.commit()
+        XCTAssertFalse(lease.active, "commit ends the transaction")
+        lease.afterCommit()
+        XCTAssertEqual(committed, 1, "the standing registration fires once the transaction hath committed")
+        XCTAssertEqual(carried, 1, "the registration made INSIDE the committed tx carries to the next round and fires")
+
+        let aborted = ObservationLease()
+        var abortedFired = 0
+        aborted.beginTransaction()
+        aborted.register { abortedFired += 1 }
+        aborted.abort()
+        aborted.afterCommit()
+        XCTAssertEqual(abortedFired, 0, "a notification registered within an ABORTED transaction never fires")
+        XCTAssertEqual(aborted.registrationCount, 0, "an abort discards its deferred registrations from the census")
+    }
+
     // (5) a SQL failure in heldBytes never fabricates 0 and refuses admission (the named falsification)
     func testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission() throws {
         let failing = QuotaSnapshot(heldBytes: badV("sql: no such table"), totalBytes: okV(1 << 20), deliveryRows: okV(0), inboxRows: okV(0), tombstoneRows: okV(0), trustPins: okV(0), inActiveTransaction: false, walBytes: 0)

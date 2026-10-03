@@ -1,0 +1,7 @@
+STORE-SCHEMA-CONTROLS GATE: FAIL -- a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3/C7.5/C7.5.1 schema/persist/atomic-ACK fail-closed control is MISSING from the test sources:
+  - ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must transport canonicalFrame
+  - ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must not transport frame directly
+A test or structural invariant that has been silently removed is a regression. Restore the named control or update ci/check_store_schema_controls.py deliberately (and record why).
+(A-03 / A-04 / A-10 / ADR-003 / ADR-004 / ADR-005 remain OPEN: this is repo-owned evidence, not device evidence.)
+
+(the rod aimed at 'dispatchDirect must transport canonicalFrame'; reddened refusals were the aimed one)

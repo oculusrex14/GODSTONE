@@ -1,0 +1,5 @@
+::error::Trusted handshake control error: iOS NoiseSession must NOT contain readMessage2AndWrite3 (H20)
+
+FAIL: 1 trusted handshake control issue(s) found.
+
+(the rod aimed at 'iOS NoiseSession must NOT contain readMessage2AndWrite3 (H20)'; reddened refusals were the aimed one)

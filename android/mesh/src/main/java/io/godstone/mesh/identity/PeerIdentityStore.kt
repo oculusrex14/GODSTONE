@@ -181,8 +181,13 @@ internal object PeerStoreKeyState {
 
 /**
  * Production Android peer identity store backed by dedicated SQLCipher encryption at rest (ADR-003, Phase C8.2B).
+ *
+ * *** GS-FINAL-003 `one-owner` (A13): NORMAL PEER STORE REQUIRES THE OWNER TOKEN. ***
+ * A caller without a validated, same-estate [PrivateOwnerToken] CANNOT open the production SQLCipher engine.
  */
-internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
+internal class SqlcipherPeerIdentityStore(ctx: Context, token: PrivateOwnerToken) : PeerIdentityStore {
+    // *** GS-FINAL-003 (A13): THE RAW CONSTRUCTOR ITSELF CONSUMETH THE AUTHORITY, not only the Dagger provider. ***
+    private val consumed: PrivateOwnerToken = token.consumeForConstruction()
     private val helper: SQLiteOpenHelper
 
     init {

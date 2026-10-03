@@ -2143,6 +2143,211 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.stop()
     }
 
+
+    // *** *** IOS-03-ADJACENT: THE DISCOVERY-CONTROL ARM'S OWN DOUBLES. *** ***
+    //
+    // *A pinned `CBPeripheral` whose `services` a court can set -- `unsafeBitCast` is the established idiom on this
+    // suite (`GsStress001RealRuntimeDriverTests.stressPeripheral`), because `CBPeripheral` cannot be constructed
+    // directly. The pin is retained so the cast object outlives the call.*
+    private final class SubstratePeripheral: NSObject, @unchecked Sendable {
+        @objc let identifier: UUID
+        @objc var state: CBPeripheralState = .connected
+        @objc var services: [CBService]?
+        @objc var delegate: CBPeripheralDelegate?
+        @objc var canSendWriteWithoutResponse = true
+        /// The recorded effect: every `discoverCharacteristics(_:for:)` the reduction ISSUED to this peripheral, in
+        /// order, with the three requested characteristic uuids and the service OBJECT IDENTITY it was issued against.
+        /// *An arm can then prove not merely that no throw occurred, but WHAT discovery the reduction scheduled, for
+        /// WHICH service, and how many times -- the real driver-effect outcome, not a stand-in for it.*
+        private(set) var characteristicDiscoveries: [(uuids: [CBUUID], service: CBService)] = []
+        init(identifier: UUID) { self.identifier = identifier; super.init() }
+        @objc(maximumWriteValueLengthForType:)
+        func maximumWriteValueLength(for type: CBCharacteristicWriteType) -> Int { 512 }
+        @objc(writeValue:forCharacteristic:type:)
+        func writeValue(_ data: Data, for characteristic: CBCharacteristic, type: CBCharacteristicWriteType) {}
+        @objc func discoverServices(_ services: [CBUUID]) {}
+        /// *** THE SELECTOR IS THE PLATFORM'S: `discoverCharacteristics:forService:`. *** *Swift's ObjC inference would
+        /// export the label `for:` VERBATIM as `discoverCharacteristics:for:` -- a DIFFERENT selector from the one
+        /// `CBPeripheral` implementeth -- so the reduction's `p.discoverCharacteristics([inbox, digest, linkInfo],
+        /// for: s)` reached `doesNotRecognizeSelector:` and ABORTED the process. Naming the selector explicitly makes
+        /// this fake answer the very message the real radio answereth, AND the body RECORDS it.*
+        @objc(discoverCharacteristics:forService:)
+        func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {
+            characteristicDiscoveries.append((uuids: characteristics, service: service))
+        }
+        @objc func readRSSI() {}
+        @objc(readValueForCharacteristic:)
+        func readValue(for characteristic: CBCharacteristic) {}
+        @objc(setNotifyValue:forCharacteristic:)
+        func setNotifyValue(_ value: Bool, for characteristic: CBCharacteristic) {}
+    }
+
+    private var substratePins: [SubstratePeripheral] = []
+
+    /// *** *** IOS-03-ADJACENT: A DISCOVERY THAT OBSERVED NO MESH SERVICE MUST NOT BE REPORTED AS SUCCESS. *** ***
+    ///
+    /// *THE DEFECT THIS ARM EXISTS TO REDDEN ON, MEASURED IN THE SOURCE AND FIXED BEHIND IT:*
+    /// `let success = (error == nil && ((p?.services?.contains(where: { $0.uuid == BleTransport.serviceUuid })) ?? true))`
+    /// **The `?? true` answered "the mesh service IS present" for a NIL peripheral or a nil/empty `services` array --
+    /// an event that OBSERVED NOTHING. Worse, the effect beneath it (`for s in p.services ?? []`) is an EMPTY LOOP for
+    /// exactly those cases, so the reduction reported SUCCESS to the driver, scheduled no `discoverCharacteristics`,
+    /// and the relation STALLED UNTIL THE DEADLINE rather than failing fast.**
+    ///
+    /// **AND THE DRIVER'S OWN ANSWER IS THE POINT (`BleOrchestrationDriver.onServicesDiscovered`):** *a `false` closes
+    /// the relation and returns `.disconnectPeripheral(peerId, "Service discovery failed")` -- a FAST, NAMED teardown
+    /// -- while `true` returns `.discoverCharacteristics`. So this arm asserts exactly that difference on the REAL
+    /// reducer, and never on a stand-in for it.*
+    ///
+    /// *** ONE RELATION PER CASE, BECAUSE THE FAILURE CASE TEARS ITS OWN RELATION DOWN. ***
+    ///
+    /// *A `false` makes the driver `removeConnection`, so a second call with the SAME delegate is answered `.noOp` by
+    /// the driver before the reduction can speak again. Reusing one relation across cases would therefore read
+    /// `.noOp` for the later cases and report a defect that was its own fixture's -- so `walkedRelation` walks a FRESH
+    /// relation for every case.*
+    ///
+    /// **THE FIVE CASES:** the nil PERIPHERAL (the observation that never happened), a NIL `services` array, an EMPTY
+    /// service list, a WRONG service uuid, and -- as the POSITIVE control that stops a reduction which simply refused
+    /// everything from passing -- the REAL mesh service uuid.
+    func testGSINT001ADiscoveryThatObservedNoMeshServiceIsNotReportedAsSuccess() throws {
+        /// Walk ONE fresh outbound relation to the discover-services instant and hand back its cast peripheral, the
+        /// reduction's delegate and the transport. *The caller decides what the reduction then SEES.*
+        ///
+        /// *** THE DISCOVERY DOOR IS THE PRODUCTION ONE: `processOutboundDiscover` -> `.connectPeripheral` ->
+        /// `processCentralConnect` -> a relation in `provisionalConnected`. *** *This is the road the suite's own
+        /// `testIosOutboundAdapter_ClosingBlocksSamePeerReplacement` walketh, so no court-only back door is used and
+        /// the relation the reduction validates against is a real one.*
+        func walkedRelation() throws
+            -> (transport: BleTransport, handle: SubstratePeripheral, peripheral: CBPeripheral,
+                delegate: RelationPeripheralDelegate, peerId: UUID) {
+            let transport = BleTransport(identity: try makeIdentity(), store: MockMessageStore())
+            let peerId = UUID()
+            let handle = SubstratePeripheral(identifier: peerId)
+            substratePins.append(handle)
+            let peripheral = unsafeBitCast(handle, to: CBPeripheral.self)
+            transport.start()
+            let cm = transport.requireContextCentralForTest()
+            // *The peripheral is bound to the relation through `processCentralConnect`, NOT through the discover: the
+            // discover's `peripheral` argument would register it in `connectedPeripherals`, and the FAILURE path then
+            // calls the REAL manager's `cancelPeripheralConnection` on a fabricated handle. Binding the lifetime
+            // without that registration keepeth the real radio out of the arm while the relation, delegate and
+            // state machine the reduction validates against remain the production ones.*
+            _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]),
+                                                  sourceEpoch: transport.currentTransportEpoch, from: cm)
+            guard let delegate = transport.getRelationDelegate(peerId) else {
+                throw NSError(domain: "BleLinkSubstrate", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "the rig reached no relation delegate"])
+            }
+            _ = transport.processCentralConnect(peerId: peerId, peripheral: peripheral,
+                                                sourceEpoch: transport.currentTransportEpoch, from: cm)
+            return (transport, handle, peripheral, delegate, peerId)
+        }
+
+        func isDiscoverCharacteristics(_ action: BleCentralAction) -> Bool {
+            if case .discoverCharacteristics = action { return true }
+            return false
+        }
+        func isDisconnect(_ action: BleCentralAction) -> Bool {
+            if case .disconnectPeripheral = action { return true }
+            return false
+        }
+
+        // *** (1) THE NIL PERIPHERAL: THE OBSERVATION THAT NEVER HAPPENED. ***
+        // *The reduction is handed `p == nil` DIRECTLY, which is the exact shape the `?? true` mis-answered. The
+        // delegate is a genuinely valid one, so the reduction RUNS -- this is not a `.noOp` from a stale relation.*
+        let nilCase = try walkedRelation()
+        let nilAction = nilCase.transport.processPeripheralDiscoverServices(nil, delegate: nilCase.delegate, error: nil)
+        nilCase.transport.stop()
+        XCTAssertEqual(nilCase.handle.characteristicDiscoveries.count, 0,
+                       "*** AN OBSERVATION OF NOTHING MUST ISSUE NO DISCOVERY AT ALL -- and here that is measured on the "
+                           + "peripheral the effect would have reached: `discoverCharacteristics` was CALLED "
+                           + "\(nilCase.handle.characteristicDiscoveries.count) time(s) for a NIL peripheral. ***")
+        XCTAssertFalse(isDiscoverCharacteristics(nilAction),
+                       "*** A DISCOVERY THAT OBSERVED NOTHING MUST NOT PROCEED. *With the `?? true` coercion "
+                           + "restored this reddens, because the reduction answers `true` and the driver then returns "
+                           + "`.discoverCharacteristics` on a relation whose GATT tree was never read. Observed: "
+                           + "\(nilAction)* ***")
+        XCTAssertTrue(isDisconnect(nilAction),
+                      "*** AND IT MUST TAKE THE DRIVER'S REAL REFUSAL PATH -- `.disconnectPeripheral` -- rather than "
+                          + "stall; observed: \(nilAction). ***")
+
+        // *** (2) A NIL `services` ARRAY: THE OTHER FACE OF "OBSERVED NOTHING". ***
+        let nilServicesCase = try walkedRelation()
+        nilServicesCase.handle.services = nil
+        let nilServicesAction = nilServicesCase.transport.processPeripheralDiscoverServices(
+            nilServicesCase.peripheral, delegate: nilServicesCase.delegate, error: nil)
+        nilServicesCase.transport.stop()
+        XCTAssertEqual(nilServicesCase.handle.characteristicDiscoveries.count, 0,
+                       "*** NIL SERVICES MUST SCHEDULE NO DISCOVERY; recorded call(s): "
+                           + "\(nilServicesCase.handle.characteristicDiscoveries.count). ***")
+        XCTAssertFalse(isDiscoverCharacteristics(nilServicesAction),
+                       "*** NIL SERVICES OBSERVED NO MESH SERVICE; the driver must not be told a discovery "
+                           + "happened. Observed: \(nilServicesAction) ***")
+        XCTAssertTrue(isDisconnect(nilServicesAction),
+                      "the nil-services absence must take the real refusal path; observed: \(nilServicesAction)")
+
+        // *** (3) AN EMPTY SERVICE LIST: A ZERO-WORK DISCOVERY MUST NOT BE REPORTED AS SUCCESS. ***
+        let emptyCase = try walkedRelation()
+        emptyCase.handle.services = []
+        let emptyAction = emptyCase.transport.processPeripheralDiscoverServices(
+            emptyCase.peripheral, delegate: emptyCase.delegate, error: nil)
+        emptyCase.transport.stop()
+        XCTAssertEqual(emptyCase.handle.characteristicDiscoveries.count, 0,
+                       "*** AN EMPTY SERVICE LIST MUST SCHEDULE NO DISCOVERY; recorded call(s): "
+                           + "\(emptyCase.handle.characteristicDiscoveries.count). ***")
+        XCTAssertFalse(isDiscoverCharacteristics(emptyAction),
+                       "*** AN EMPTY SERVICE LIST OBSERVED NO MESH SERVICE -- zero work done -- so the driver must "
+                           + "NOT be told a discovery happened. Observed: \(emptyAction) ***")
+        XCTAssertTrue(isDisconnect(emptyAction),
+                      "the empty-list absence must take the real refusal path; observed: \(emptyAction)")
+
+        // *** (4) A WRONG SERVICE UUID: PRESENT, BUT NOT OURS. ***
+        let wrongCase = try walkedRelation()
+        wrongCase.handle.services = [CBMutableService(type: CBUUID(string: "FFF0"), primary: true)]
+        let wrongAction = wrongCase.transport.processPeripheralDiscoverServices(
+            wrongCase.peripheral, delegate: wrongCase.delegate, error: nil)
+        wrongCase.transport.stop()
+        XCTAssertEqual(wrongCase.handle.characteristicDiscoveries.count, 0,
+                       "*** A WRONG/foreign UUID MUST NOT ISSUE A DISCOVERY; recorded call(s): "
+                           + "\(wrongCase.handle.characteristicDiscoveries.count). ***")
+        XCTAssertFalse(isDiscoverCharacteristics(wrongAction),
+                       "*** A SERVICE THAT IS NOT THE MESH SERVICE IS NOT A DISCOVERY OF IT. *A `contains` that "
+                           + "matched anything would pass the positive control below while admitting a stranger's GATT "
+                           + "tree. Observed: \(wrongAction)* ***")
+        XCTAssertTrue(isDisconnect(wrongAction),
+                      "*** AND THE STRANGER'S SERVICE MUST TAKE THE REAL REFUSAL PATH rather than a stall; "
+                          + "observed: \(wrongAction). ***")
+
+        // *** (5) THE POSITIVE CONTROL: THE REAL MESH SERVICE IS A DISCOVERY, AND THE RELATION PROCEEDETH. ***
+        // *Without this, a reduction that refused EVERYTHING would satisfy the cases above -- the same class of lie,
+        // pointing the other way.*
+        let goodCase = try walkedRelation()
+        let meshService = CBMutableService(type: BleTransport.serviceUuid, primary: true)
+        goodCase.handle.services = [meshService]
+        let goodAction = goodCase.transport.processPeripheralDiscoverServices(
+            goodCase.peripheral, delegate: goodCase.delegate, error: nil)
+        goodCase.transport.stop()
+        XCTAssertTrue(isDiscoverCharacteristics(goodAction),
+                      "*** THE MESH SERVICE WAS REALLY OBSERVED: the driver must PROCEED to characteristics; "
+                          + "observed: \(goodAction) ***")
+        // *** AND THE EFFECT ITSELF MUST BEAR THE EXACT CHARACTERISTIC TRIPLE, AGAINST THE MATCHED SERVICE. ***
+        // *A reduction that merely did not throw, or issued a call for SOME OTHER uuid set or service, is not the
+        // discovery this relation needeth -- so the arm reads the RECORDED call and compares the whole payload.*
+        XCTAssertEqual(goodCase.handle.characteristicDiscoveries.count, 1,
+                       "*** EXACTLY ONE `discoverCharacteristics` MUST BE ISSUED for an observed mesh service; "
+                           + "recorded: \(goodCase.handle.characteristicDiscoveries.count). ***")
+        guard goodCase.handle.characteristicDiscoveries.count == 1 else { return }
+        let issued = goodCase.handle.characteristicDiscoveries[0]
+        XCTAssertEqual(
+            issued.uuids,
+            [BleTransport.inboxCharacteristicUuid, BleTransport.digestCharacteristicUuid,
+             BleTransport.linkInfoCharacteristicUuid],
+            "*** THE RECORDED DISCOVERY MUST CARRY THE EXACT inbox/digest/linkInfo TRIPLE -- not some other set; "
+                + "recorded: \(issued.uuids). ***")
+        XCTAssertTrue(issued.service === meshService,
+                      "*** THE RECORDED DISCOVERY MUST BE ISSUED AGAINST THE MATCHED MESH SERVICE -- pointer "
+                          + "identity, not merely a service that passeth a uuid test. ***")
+    }
+
     func testIosOutboundAdapter_OldServiceCallbackCannotAdvanceReplacement() throws {
         let identity = try makeIdentity()
         let store = MockMessageStore()

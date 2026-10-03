@@ -917,6 +917,13 @@ public final class SqliteMessageStore: MessageStore {
     public private(set) var openOutcome: StoreOpenOutcome = .failed(.unusable("the store was never opened"))
     private let lock = NSLock()
     private let maxBytes: Int64
+    /// *** THE OWNER OF THE CONNECTION THIS STORE ADOPTED, AND THE IMAGE LEASE IT HOLDS. ***
+    /// *SQLITE-REVIEW-2: an adopted store must hold the SAME owner/session object its connection came from, so the
+    /// owner's use/close critical section covers every migration, query, transaction and statement cleanup.*
+    /// *SQLITE-REVIEW-1: the lease is released by this store's `deinit`, so an adopted store never dispatches through
+    /// an unloaded image even after the engine/factory that minted it is gone.*
+    private var owner: OwnedConnection?
+    private var imageLease: SQLiteImageLease?
     /// GS-STORE-005 STEP TWO: THE REGISTRATIONS ARE THE CONTRACT'S OWN LEASE, not an append-only array. Every
     /// property the T33 courts already exercise cometh with it: a registration is released by ITS handle, a
     /// dispatch runneth ONCE per commit, IN ORDER, NOT REENTRANTLY (a registration made during dispatch is
@@ -945,6 +952,37 @@ public final class SqliteMessageStore: MessageStore {
     /// GS-STORE-005 STEP ONE: the lease is minted and the registration is still APPEND-ONLY, so the arm that
     /// counteth lifetimes and the arm that releaseth both FAIL here. STEP TWO giveth the lease its meaning.
     private var nextLeaseId = 0
+
+    // ================================================================================================
+    // *** SQLITE-REVIEW-8 / SQLITE-REVIEW-2: THE INTERNAL FAULT INJECTION SEAM -- SO THE PRODUCTION ROAD'S
+    // ABSENT-VS-FAULT AND BEGIN/COMMIT BEHAVIOUR CAN BE DRIVEN **WITHOUT A COPIED FAKE STORE**. ***
+    //
+    // *THE DEFECT THESE CLOSE: the courts that claimed to witness intent-read faults and sweep transaction faults
+    // either did not exist or exercised a COPY. A copied fake proves nothing about the production methods. These hooks
+    // wrap the REAL `fn.step`/`fn.exec` at the EXACT production line, so an injected IOERR/BUSY is observed by the same
+    // code path a device would take.* **They are `internal` (module/test scope), default `nil` (production unchanged),
+    // and each wraps ONE statement, returning the engine's own numeric code.**
+    // ================================================================================================
+
+    /// Injects the intent SELECT's `step` result -- **THE INJECTED CODE ISUSED INSTEAD OF RUNNING THE REAL STEP**, so the
+    /// arm drives the production absent-vs-fault branch without a spurious read.
+    internal var intentReadFaultForTest: (() -> Int32)?
+
+    /// Injects the expiry sweep's `BEGIN` result -- **THE REAL `BEGIN` IS NOT RUN**, so the "no mutation outside a
+    /// transaction" arm leaves no dangling transaction behind.
+    internal var sweepBeginFaultForTest: (() -> Int32)?
+
+    /// Injects the expiry sweep's `COMMIT` result -- **THE REAL `COMMIT` IS NOT RUN**, so the "nothing published
+    /// without an acknowledged commit" arm really leaves the step uncommitted rather than committing then pretending.
+    internal var sweepCommitFaultForTest: (() -> Int32)?
+
+    /// Injects the migration edge's durable `user_version` stamp result -- **THE REAL STAMP IS NOT RUN**, for
+    /// SQLITE-REVIEW-4 ("a failed stamp rolls the whole edge back, leaving the durable version unadvanced").
+    internal var migrationStampFaultForTest: (() -> Int32)?
+
+    /// How many row mutations the LAST sweep actually dispatched. *A begin fault must leave this at ZERO -- the
+    /// observable that distinguishes "refused before any DELETE/INSERT/UPDATE" from "ran them outside a transaction".*
+    internal private(set) var sweepMutationCountForTest = 0
 
     @discardableResult
     public func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) -> ObservationLease.LeaseToken? {
@@ -1002,15 +1040,22 @@ public final class SqliteMessageStore: MessageStore {
         // audit forbids, because a Boolean merely asserts the architecture while a false OBSERVATION misreports what
         // the store is actually running on. The assignment now sits after the guard, next to the handle it describes.*
 
+
         // THE ENGINE'S OWN VERDICT IS RE-CHECKED HERE, because a caller could otherwise hand over
         // a connection whose at-rest assertion failed and the store would run on it regardless.
         guard owned.connection.encryptedAtRest else {
+            // *The owner can no longer serve this connection: mark it rejected so a court sees a refused adoption
+            // rather than a live-but-unused session.*
+            owned.connection.lifecycle?.markAdoptionRejected()
             openOutcome = .failed(.unusable(
                 "the supplied connection did not carry an at-rest verification; the private store "
                 + "refuses to run on a connection no engine keyed"))
             return
         }
 
+        // *** THE STORE RETAINETH THE OWNER AND THE IMAGE LEASE FOR ITS WHOLE LIFE. ***
+        self.owner = owned
+        self.imageLease = owned.connection.provider.lease
         let db = owned.connection.rawHandle
         // *** THE PROVIDER TRAVELS WITH THE CONNECTION, AND IS INSTALLED BEFORE ANY STATEMENT RUNS. ***
         fn = owned.connection.provider
@@ -1019,14 +1064,32 @@ public final class SqliteMessageStore: MessageStore {
         adoptedConnectionIdentity = owned.connection.connectionIdentity
         // MIGRATIONS RUN ON THE SUPPLIED CONNECTION -- the audit's "migrations run on that exact
         // verified/keyed connection". A migration failure closes nothing: the OWNER closes.
+        // *AND THEY RUN UNDER THE OWNER'S USE LOCK, so a concurrent owner close cannot free the handle mid-DDL.*
         do {
-            try runMigrations(db)
+            _ = try owned.usingConnection { raw in try self.runMigrations(raw) }
+        } catch let failure as StoreConnectionError {
+            // *The owner closed mid-adoption: refuse TYPED, and do not publish an adopted identity.*
+            _ = failure
+            handle = nil
+            adoptedConnectionIdentity = nil
+            releaseAdoptedLease()
+            openOutcome = .failed(.unusable("the connection owner closed the connection during migration"))
+            return
         } catch {
             handle = nil
+            adoptedConnectionIdentity = nil
+            releaseAdoptedLease()
             openOutcome = .failed(.schemaMigrationFailed)
             return
         }
         openOutcome = .opened
+    }
+
+    /// Give back the image reference this store took at adoption. *Called by `close()` and `deinit`; idempotent by
+    /// the single assignment of `imageLease`.*
+    private func releaseAdoptedLease() {
+        // ARC: dropping the last strong reference lets the lease's deinit unload the image (SQLITE-LATEST-C2).
+        imageLease = nil
     }
 
     /// *** THE PROVIDER TABLE THIS STORE CALLS THROUGH -- THE IMAGE ITS HANDLE CAME FROM. ***
@@ -1054,10 +1117,23 @@ public final class SqliteMessageStore: MessageStore {
 
     /// *** GS-FINAL-004: CAN THIS STORE STILL REACH ITS CONNECTION? ***
     ///
-    /// *The observation that can distinguish "the owner closed it and we let go" from "we closed a handle we do not
+    /// The observation that can distinguish "the owner closed it and we let go" from "we closed a handle we do not
     /// own" -- the second being a double-free. The engine's close counter CANNOT watch the store's own raw
-    /// `sqlite3_close_v2`, so a close-count arm alone passes over a real double-close; this can see it.*
-    internal var canStillUseConnectionForTest: Bool { lock.lock(); defer { lock.unlock() }; return handle != nil }
+    /// `sqlite3_close_v2`, so a close-count arm alone passes over a real double-close; this can see it.
+    /// *** AND IT IS AN OBSERVATION OF USABILITY, NOT OF THE FIELD: an ABANDONED connection (a failed transaction
+    /// whose cleanup also failed) still holdeth a handle but MUST report `false` here -- no later operation may run on
+    /// it (SQLITE-LATEST-I4). ***
+    internal var canStillUseConnectionForTest: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return handle != nil && !connectionAbandoned
+    }
+
+    /// *** WHETHER THE SHARED OPERATIONAL CONNECTION HATH BEEN ABANDONED (SQLITE-LATEST-I4). ***
+    ///
+    /// *Set ONCE, when a failed transaction's own `ROLLBACK` also failed; never cleared. It is the gate `withDbThrowing`
+    /// (and every road funnelling through it) consulteth BEFORE dispatching, and it is what maketh "no later
+    /// insert/advance/read/transaction may run on the abandoned transaction" TRUE rather than merely intended.*
+    private var connectionAbandoned = false
 
     /// Whether this store owns the handle it runs on (true) or merely adopted one (false).
     private var ownsConnection = true
@@ -1129,7 +1205,13 @@ public final class SqliteMessageStore: MessageStore {
     // *** GS-FINAL-004: `deinit` MUST NOT CLOSE A CONNECTION THIS STORE DOES NOT OWN. ***
     // *It closed unconditionally, so on the factory road the store's own deallocation would close a handle the
     // COMPOSITION owns -- and the wipe path closes both, so the same `OpaquePointer` could be freed twice.*
-    deinit { if ownsConnection, let db = handle { fn.closeV2(db) } }
+    // **AND IT GIVETH BACK ITS IMAGE REFERENCE HERE**, so an adopted store that dieth before its owner doth not
+    // hold the last reference to the provider image (SQLITE-REVIEW-1).
+    deinit {
+        if ownsConnection, let db = handle { fn.closeV2(db) }
+        releaseAdoptedLease()
+        owner = nil
+    }
 
     public func close() {
         // GS-STORE-005: closing releaseth EVERY registration -- a store that no longer standeth must hold no
@@ -1150,6 +1232,11 @@ public final class SqliteMessageStore: MessageStore {
         if !ownsConnection {
             handle = nil
             adoptedConnectionIdentity = nil
+            // *** DETACHING THE ADOPTED SESSION: the store releaseth its IMAGE reference and drops the owner. ***
+            // *The OWNER still owns the handle -- `OwnedConnection.close()` is what frees it -- so this is a detach,
+            // not a close. Dropping `owner` here is what makes a later post-close call observe a dead session.*
+            releaseAdoptedLease()
+            owner = nil
             return
         }
         if let db = handle {
@@ -1395,26 +1482,176 @@ public final class SqliteMessageStore: MessageStore {
     /// at all, and whether the database handle answered, are all RECORDED and a court may carry them into its own
     /// message.
     internal private(set) var lastSweepReport: String = "(no sweep yet)"
+    /// *** THE TYPED FAULT OF THE LAST RETIREMENT ATTEMPT, OR `nil` AFTER A CLEAN ONE. ***
+    /// *The repair of the adjacent defect: a `0` returned from the sweep must never be a SILENT green. It is either a
+    /// genuine "nothing was spent" or an error that this field NAMES -- BEGIN, a statement, or COMMIT -- with the rows
+    /// left exactly as they were found.*
+    internal private(set) var lastSweepFault: StoreSweepFault?
 
-    @discardableResult
-    public func sweepExpired(limit: Int = 64) -> Int {
-        // *** THE NOTIFY IS ISSUED HERE, AFTER `withDb` HATH RELEASED THE LOCK. *** *The body no longer dispatcheth
-        // it (see `sweepExpiredNoLock`), so the public road keeps the same observable behaviour while the dispatch
-        // is off the store's non-recursive lock -- which is the law every other call site in this file already
-        // honours.*
-        let retired = withDb { db in sweepExpiredNoLock(db: db, limit: limit) } ?? 0
+    /// *** THE LATCHED CLEANUP FAILURE (SQLITE-LATEST-I4): SET WHEN A FAILED TRANSACTION'S `ROLLBACK` ITSELF FAILED. ***
+    ///
+    /// *Once set, the shared operational connection carrieth an UNRESOLVED transaction. It is NEVER cleared, because
+    /// the store has no safe road back to a clean boundary except an explicit `close()`; every later mutation/read/
+    /// transaction therefore refuseth with THIS value rather than dispatching into the abandoned transaction.*
+    internal private(set) var abandonedFault: StoreAbandonedConnectionFault?
+
+    /// *** THE CLEANUP-FAILURE POLICY OF THE SHARED OPERATIONAL CONNECTION (SQLITE-LATEST-I4). ***
+    ///
+    /// *Distinct from `canStillUseConnectionForTest` (whether this store still holdeth a handle): an adopted store
+    /// still holdeth its `owner`, but `beginUse` refuseth a poisoned lifecycle, so EVERY operation and every
+    /// transaction already faileth closed -- including on the `url:` road, where the store cannot close a handle it
+    /// still owneth without severing the frame it runneth in. The physical `close_v2` therefore followeth the current
+    /// native frame's exit (the owner's deferred/last-use close or the store's `deinit`), exactly as the existing
+    /// owner lifecycle already deferreth it.*
+    ///
+    /// **NO direct `sqlite3` call is made on the handle when a transaction is abandoned** -- the handle may be unowned
+    /// (adopted) and an unresolved transaction is not a safe place to close it; the existing owner lifecycle owns the
+    /// physical close (`close()` / `deinit`).*
+    ///
+    /// Injects the transactional `ROLLBACK` result for the FAILED-transaction cleanup road -- **THE REAL `ROLLBACK` IS
+    /// NOT RUN**, so the "one checked rollback per failed transaction" arm can make the CLEANUP itself fail without a
+    /// dangling transaction left on a live handle. `nil` in production; the seam is consulted ONLY when a transaction
+    /// has already failed and its rollback is being performed.
+    internal var rollbackFaultForTest: (() -> Int32)?
+
+    /// Injects the SWEEP's own `ROLLBACK` result (the sweep owns its BEGIN/COMMIT outside `transactionSection`).
+    internal var sweepRollbackFaultForTest: (() -> Int32)?
+
+    /// THE TYPED FAULT VOCABULARY OF THE RETIREMENT TRANSACTION. *Every branch that can fail carrieth its own case with
+    /// the engine's NUMERIC result code, so a court can demand "no retirement after BEGIN failure" without pattern-
+    /// matching a message -- and a `0` count that hideth a fault is impossible, because the fault is a VALUE.*
+    public enum StoreSweepFault: Error, Equatable {
+        case beginFailed(code: Int32)
+        case deletePrepareFailed(code: Int32)
+        case deleteBindFailed(code: Int32)
+        case deleteStepFailed(code: Int32)
+        case tombstonePrepareFailed(code: Int32)
+        case tombstoneStepFailed(code: Int32)
+        case deliveryPrepareFailed(code: Int32)
+        case deliveryStepFailed(code: Int32)
+        case commitFailed(code: Int32)
+        // SQLITE-LATEST-I4: the tombstone reap now runs INSIDE the retirement transaction, so its faults are typed too.
+        case reapPrepareFailed(code: Int32)
+        case reapBindFailed(code: Int32)
+        case reapStepFailed(code: Int32)
+        // SQLITE-LATEST-I4: the candidate SCAN is not a silent-zero road either.
+        case scanPrepareFailed(code: Int32)
+        case scanStepFailed(code: Int32)
+
+        var stageLabel: String {
+            switch self {
+            case .beginFailed: return "BEGIN"
+            case .deletePrepareFailed: return "delete-prepare"
+            case .deleteBindFailed: return "delete-bind"
+            case .deleteStepFailed: return "delete-step"
+            case .tombstonePrepareFailed: return "tombstone-prepare"
+            case .tombstoneStepFailed: return "tombstone-step"
+            case .deliveryPrepareFailed: return "delivery-prepare"
+            case .deliveryStepFailed: return "delivery-step"
+            case .commitFailed: return "COMMIT"
+            case .reapPrepareFailed: return "reap-prepare"
+            case .reapBindFailed: return "reap-bind"
+            case .reapStepFailed: return "reap-step"
+            case .scanPrepareFailed: return "scan-prepare"
+            case .scanStepFailed: return "scan-step"
+            }
+        }
+        var engineCode: Int32 {
+            switch self {
+            case .beginFailed(let c), .deletePrepareFailed(let c), .deleteBindFailed(let c),
+                    .deleteStepFailed(let c), .tombstonePrepareFailed(let c), .tombstoneStepFailed(let c),
+                    .deliveryPrepareFailed(let c), .deliveryStepFailed(let c), .commitFailed(let c),
+                    .reapPrepareFailed(let c), .reapBindFailed(let c), .reapStepFailed(let c),
+                    .scanPrepareFailed(let c), .scanStepFailed(let c): return c
+            }
+        }
+    }
+
+    /// *** THE TYPED RETIREMENT ANSWER OF THE PUBLIC SWEEP ROADS (SQLITE-LATEST-I4). ***
+    ///
+    /// *THE OLD SURFACE WAS AN `Int` WITH `@discardableResult`: "nothing spent", "the attempt faulted" and "nobody
+    /// looked" all wore the number `0`, and `lastSweepFault` -- an internal field no production caller read -- was the
+    /// only thing that could tell them apart. **HERE THE DISTINCTION IS THE TYPE ITSELF:** a fault is THROWN
+    /// (`StoreSweepFault`, consumed or propagated by every caller -- no `@discardableResult` to ignore), `.nothingToRetire`
+    /// is the CLAIM that the scan ran clean to `SQLITE_DONE` and found nothing spent, and `.retired(n)` is publishable
+    /// ONLY past an acknowledged COMMIT. The internal `lastSweepFault` field remaineth the NoLock body's own bookkeeping;
+    /// no public road reporteth through it.*
+    public enum StoreSweepOutcome: Equatable, Sendable {
+        case retired(Int)
+        case nothingToRetire
+
+        public var retiredCount: Int {
+            switch self { case .retired(let n): return n; case .nothingToRetire: return 0 }
+        }
+    }
+
+    /// *** THE TYPED CLEANUP FAILURE OF A FAILED TRANSACTION (SQLITE-LATEST-I4). ***
+    ///
+    /// *When a transaction fails and its `ROLLBACK` ALSO fails, the shared operational connection carrieth an
+    /// UNRESOLVED transaction. This store cannot resolve it, so it ABANDONETH the connection: this value is
+    /// remembered, and every later insert/advance/read/transaction refuseth with IT rather than running "inside" a
+    /// transaction whose COMMIT never happened -- which would report durable success for a change the file never
+    /// received.* **The abandoned transaction is never silently inherited.**
+    ///
+    /// **`cause` preserveth WHAT the failed rollback was cleaning up** (`"COMMIT"` for a failed commit, or the
+    /// original error's own description for a failed body), **and `cleanupCode` is the ENGINE's ACTUAL numeric
+    /// result for the `ROLLBACK` itself** -- the error a caller must act on, never a substituted `-1`.*
+    public struct StoreAbandonedConnectionFault: Error, Equatable, Sendable {
+        public let cause: String
+        public let cleanupCode: Int32
+    }
+
+    /// *** THE PUBLIC RETIREMENT ROAD: THROWS THE TYPED FAULT, RETURNS THE TYPED RETIREMENT. ***
+    /// *No `@discardableResult`: the outcome is a claim to be consumed, not a count to be dropped.*
+    public func sweepExpired(limit: Int = 64) throws -> StoreSweepOutcome {
+        let retired = try withDbThrowing { db in
+            try self.sweepExpiredNoLockThrowing(db: db, limit: limit)
+        }
+        // The held-set observer firreth only on an acknowledged retirement -- never on a fault road (which threw)
+        // and never on a clean empty scan.
         if retired > 0 { notifyHeldSetChanged() }
+        return retired > 0 ? .retired(retired) : .nothingToRetire
+    }
+
+    /// THE THROWING BODY, ON AN ALREADY-HELD HANDLE, TAKEN BY `withDbThrowing` (the public road's own lock discipline
+    /// round 309 measured: `withDb` inside `withDb` hung the court).
+    internal func sweepExpiredNoLockThrowing(db: OpaquePointer, limit: Int = 64) throws -> Int {
+        lastSweepFault = nil
+        let retired = sweepExpiredNoLock(db: db, limit: limit)
+        // *** THE CLEANUP FAILURE OUTRANKETH THE STAGE FAULT (SQLITE-LATEST-I4). *** *When the sweep's own `ROLLBACK`
+        // failed, `sweepFault` latched this fault AND invalidated the connection; raising the stage fault instead
+        // would hide an UNRECOVERABLE state behind a recoverable-looking one. The stage fault stayeth recorded in
+        // `lastSweepFault` for the store's own bookkeeping.* The caller holdeth the store lock (this is reached only
+        // from `sweepExpired`'s and the cadence path's own locked sections).
+        if let abandoned = abandonedFault { throw abandoned }
+        if let fault = lastSweepFault { throw fault }
         return retired
     }
 
     /// THE SWEEP'S BODY, ON A HANDLE ALREADY HELD -- so it may be reached from the STARTUP path (which holdeth the
     /// lock) as well as from the public wrapper, WITHOUT taking a second lock. Round 309 measured what happeneth
     /// otherwise: `withDb` inside `withDb` hung the court.
-    @discardableResult
+    ///
+    /// *** THE RETIREMENT TRANSACTION IS DURABLE-ACKNOWLEDGED (ADJACENT SWEEP REVIEW). *** *MEASURED DEFECT IN THE
+    /// PREVIOUS BODY: `try? execStrict(db, "BEGIN")` and `try? execStrict(db, "COMMIT")` DISCARDED the transaction
+    /// fault and then returned a POSITIVE `retired` count. A failed BEGIN (BUSY/IOERR/READONLY) therefore ran every
+    /// DELETE/INSERT/UPDATE OUTSIDE any SQL transaction, and a failed COMMIT published rows as retired while the file
+    /// kept them -- after which a caller's "retired 3" and the observer notification were both fiction.*
+    /// **NOW: (a) a BEGIN fault returneth 0 WITH `lastSweepFault` SET and NO mutation runneth at all -- nothing is
+    /// dispatched outside a SQL transaction; (b) any statement fault ROLLBACKS the whole step and is recorded; (c) the
+    /// positive count is publishable ONLY past an acknowledged COMMIT; (d) every statement is finalized on every
+    /// branch.** *Existing rows are intact on any fault: the rollback is the whole step, and the readers still see
+    /// exactly what they saw before the sweep.*
     internal func sweepExpiredNoLock(db: OpaquePointer, limit: Int = 64) -> Int {
-        let provider = receiptTimeProvider
-        let now = provider().monoMs
-        let boot = provider().bootIdentity
+        lastSweepFault = nil
+        let clock = receiptTimeProvider()
+        let now = clock.monoMs
+        let boot = clock.bootIdentity
+        sweepMutationCountForTest = 0
+        let beginRC = sweepBeginFaultForTest?() ?? fn.exec(db, "BEGIN IMMEDIATE", nil, nil, nil)
+        guard beginRC == SQLITE_OK else {
+            return sweepFault(.beginFailed(code: beginRC), db: db, rolledBack: false)
+        }
         do {
             // (1) A BOUNDED SCAN: at most `limit` candidate rows, judged by THE SAME PREDICATE THE READERS USE
             // (so the sweep and the read paths can never disagree about what "spent" meaneth).
@@ -1422,12 +1659,27 @@ public final class SqliteMessageStore: MessageStore {
                 "\(StoreSchema.colRemainingMs), \(StoreSchema.colCheckpointMono), \(StoreSchema.colBootIdentity), " +
                 "\(StoreSchema.colDiscontinuity) FROM \(StoreSchema.table) LIMIT ?"
             var stmt: OpaquePointer?
-            guard fn.prepareV2(db, scan, -1, &stmt, nil) == SQLITE_OK else { fn.finalize(stmt); return 0 }
+            let prepareRC = fn.prepareV2(db, scan, -1, &stmt, nil)
+            guard prepareRC == SQLITE_OK else {
+                fn.finalize(stmt)
+                return sweepFault(.scanPrepareFailed(code: prepareRC), db: db, rolledBack: true)
+            }
             defer { fn.finalize(stmt) }
-            fn.bindInt(stmt, 1, Int32(max(1, limit)))
+            let bindRC = fn.bindInt(stmt, 1, Int32(clamping: max(1, limit)))
+            guard bindRC == SQLITE_OK else {
+                return sweepFault(.scanStepFailed(code: bindRC), db: db, rolledBack: true)
+            }
             var spent: [Data] = []
             var scanned = 0
-            while fn.step(stmt) == SQLITE_ROW {
+            // *** SQLITE-LATEST-I4: THE SCAN MUST TERMINATE WITH `SQLITE_DONE`; ANY OTHER RESULT IS A TYPED FAULT. ***
+            // *The old loop treated ANY non-ROW step as normal completion, so a mid-scan BUSY/IOERR silently truncated
+            // the candidate set and the sweep reported a healthy zero.*
+            while true {
+                let rc = fn.step(stmt)
+                if rc == SQLITE_DONE { break }
+                guard rc == SQLITE_ROW else {
+                    return sweepFault(.scanStepFailed(code: rc), db: db, rolledBack: true)
+                }
                 scanned += 1
                 let budget = fn.columnType(stmt, 3) == SQLITE_NULL
                     ? nil : Int64(fn.columnInt64(stmt, 3))
@@ -1447,53 +1699,103 @@ public final class SqliteMessageStore: MessageStore {
             lastSweepReport = "scanned=\(scanned) spent=\(spent.count) limit=\(limit) boot=\(boot)"
             // GS-STORE-004 (round 341): THE TOMBSTONE'S THIRD ACT -- THE REAP. It is bounded by the SAME limit the
             // sweep carrieth, and it reapeth ONLY tombstones that have outlived their OWN window IN THE BOOT THAT
-            // WROTE THEM: a different boot cannot judge monotonic time, and THE CONSERVATIVE ANSWER IS TO **KEEP**
-            // (reaping too little costeth space; reaping too much would re-open a dedup window that is still owed).
-            reapExpiredTombstonesNoLock(db: db, limit: limit, nowMono: now, boot: boot)
-            guard !spent.isEmpty else { return 0 }
-            // (2) ONE TRANSACTION: THE HELD ROW AND ITS DELIVERY STATE MOVE TOGETHER, or neither doth. `expired`
-            // is code 4 -- READ from `DeliveryState.code`, never guessed -- and no row is DELETED from
-            // delivery_state: the delivery record is what a later reader consulteth.
-            _ = try? execStrict(db, "BEGIN")
+            // WROTE THEM: a different boot cannot judge monotonic time, and THE CONSERVATIVE ANSWER IS TO **KEEP**.
+            //
+            // *** SQLITE-LATEST-I4: THE REAP IS **INSIDE** THE CHECKED TRANSACTION BELOW, NOT BEFORE IT. *** *It used to
+            // run here, BEFORE `BEGIN`, with its bind/step faults silently ignored -- so a refused sweep could still
+            // have durably reaped tombstones. It now runs under the same BEGIN/COMMIT as the retirements, and any fault
+            // unwinds to `sweepFault(...)`.*
+            do {
+                try reapExpiredTombstonesNoLock(db: db, limit: limit, nowMono: now, boot: boot)
+            } catch let fault as StoreSweepFault {
+                return sweepFault(fault, db: db, rolledBack: true)
+            } catch {
+                return sweepFault(.reapStepFailed(code: -1), db: db, rolledBack: true)
+            }
             var retired = 0
             for id in spent {
+                let blob = id as NSData
+                // --- the held row ---
                 let del = "DELETE FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
                 var d: OpaquePointer?
-                guard fn.prepareV2(db, del, -1, &d, nil) == SQLITE_OK else { fn.finalize(d); continue }
-                let blob = id as NSData
-                fn.bindBlob(d, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
-                let deleted = fn.step(d) == SQLITE_DONE
-                fn.finalize(d)
-                // THE TOMBSTONE, WRITTEN INSIDE THE SAME TRANSACTION THAT RETIRETH THE ROW -- because a row
-                // retired without one could be REPLAYED AND RE-ACCEPTED, and a retirement that half-happeneth
-                // would be worse than none. Its lifetime is the POLICY'S OWN `tombstoneMs`, and it carrieth the
-                // boot that retired it, so a later boot can judge the tombstone's own continuity.
-                do {
-                    let handle = db
-                    let ins = "INSERT OR REPLACE INTO \(StoreSchema.tombstoneTable) (" +
-                        "\(StoreSchema.colTMsgId), \(StoreSchema.colTExpiresAtMono), " +
-                        "\(StoreSchema.colTBootIdentity)) VALUES (?,?,?)"
-                    var ts: OpaquePointer?
-                    if fn.prepareV2(handle, ins, -1, &ts, nil) == SQLITE_OK {
-                        fn.bindBlob(ts, 1, blob.bytes, Int32(blob.length), storeSqliteTransient)
-                        fn.bindInt64(ts, 2, now + Int64(RetentionPolicy.tombstoneMs))
-                        boot.withCString { fn.bindText(ts, 3, $0, -1, storeSqliteTransient) }
-                        _ = fn.step(ts)
-                    }
-                    fn.finalize(ts)
+                let prepDel = fn.prepareV2(db, del, -1, &d, nil)
+                guard prepDel == SQLITE_OK else {
+                    if let d { fn.finalize(d) }
+                    return sweepFault(.deletePrepareFailed(code: prepDel), db: db, rolledBack: true)
                 }
+                let bindDel = fn.bindBlob(d, 1, blob.bytes, Int32(id.count), storeSqliteTransient)
+                guard bindDel == SQLITE_OK else {
+                    fn.finalize(d)
+                    return sweepFault(.deleteBindFailed(code: bindDel), db: db, rolledBack: true)
+                }
+                let stepDel = fn.step(d)
+                fn.finalize(d)                                     // <-- finalized on BOTH roads, before the verdict
+                guard stepDel == SQLITE_DONE else {
+                    return sweepFault(.deleteStepFailed(code: stepDel), db: db, rolledBack: true)
+                }
+                // --- THE TOMBSTONE, WRITTEN INSIDE THE SAME TRANSACTION THAT RETIRETH THE ROW --- because a row
+                // retired without one could be REPLAYED AND RE-ACCEPTED, and a retirement that half-happeneth would
+                // be worse than none. Its lifetime is the POLICY'S OWN `tombstoneMs`, and it carrieth the boot that
+                // retired it, so a later boot can judge the tombstone's own continuity.
+                let ins = "INSERT OR REPLACE INTO \(StoreSchema.tombstoneTable) (" +
+                    "\(StoreSchema.colTMsgId), \(StoreSchema.colTExpiresAtMono), " +
+                    "\(StoreSchema.colTBootIdentity)) VALUES (?,?,?)"
+                var ts: OpaquePointer?
+                let prepTs = fn.prepareV2(db, ins, -1, &ts, nil)
+                guard prepTs == SQLITE_OK else {
+                    if let ts { fn.finalize(ts) }
+                    return sweepFault(.tombstonePrepareFailed(code: prepTs), db: db, rolledBack: true)
+                }
+                let blobBind = fn.bindBlob(ts, 1, blob.bytes, Int32(id.count), storeSqliteTransient)
+                let expiryBind = fn.bindInt64(ts, 2, now + Int64(RetentionPolicy.tombstoneMs))
+                let bootBind = boot.withCString { fn.bindText(ts, 3, $0, -1, storeSqliteTransient) }
+                guard blobBind == SQLITE_OK, expiryBind == SQLITE_OK, bootBind == SQLITE_OK else {
+                    fn.finalize(ts)
+                    let rc = blobBind != SQLITE_OK ? blobBind : (expiryBind != SQLITE_OK ? expiryBind : bootBind)
+                    return sweepFault(.tombstoneStepFailed(code: rc), db: db, rolledBack: true)
+                }
+                let stepTs = fn.step(ts)
+                fn.finalize(ts)
+                guard stepTs == SQLITE_DONE else {
+                    // A tombstone that failed to be written would re-open the dedup window the retirement just
+                    // closed, so the WHOLE step is refused rather than half-retired.
+                    return sweepFault(.tombstoneStepFailed(code: stepTs), db: db, rolledBack: true)
+                }
+                // --- the delivery state, in the SAME transaction ---
                 let upd = "UPDATE \(StoreSchema.deliveryTable) SET \(StoreSchema.colDState) = ? " +
                     "WHERE \(StoreSchema.colDMsgId) = ?"
                 var u: OpaquePointer?
-                if fn.prepareV2(db, upd, -1, &u, nil) == SQLITE_OK {
-                    fn.bindInt(u, 1, DeliveryState.expired.code)
-                    fn.bindBlob(u, 2, blob.bytes, Int32(blob.length), storeSqliteTransient)
-                    _ = fn.step(u)
+                let prepUpd = fn.prepareV2(db, upd, -1, &u, nil)
+                guard prepUpd == SQLITE_OK else {
+                    if let u { fn.finalize(u) }
+                    return sweepFault(.deliveryPrepareFailed(code: prepUpd), db: db, rolledBack: true)
                 }
+                let stateBind = fn.bindInt(u, 1, DeliveryState.expired.code)
+                let idBind = fn.bindBlob(u, 2, blob.bytes, Int32(id.count), storeSqliteTransient)
+                guard stateBind == SQLITE_OK, idBind == SQLITE_OK else {
+                    fn.finalize(u)
+                    return sweepFault(.deliveryStepFailed(code: stateBind != SQLITE_OK ? stateBind : idBind), db: db, rolledBack: true)
+                }
+                let stepUpd = fn.step(u)
                 fn.finalize(u)
-                if deleted { retired += 1 }
+                guard stepUpd == SQLITE_DONE else {
+                    // The delivery row must move WITH the held row; a fault here rollbacketh the whole step rather
+                    // than leaving a retired frame whose delivery record still speaketh of an undelivered message.
+                    return sweepFault(.deliveryStepFailed(code: stepUpd), db: db, rolledBack: true)
+                }
+                retired += 1                                  // <-- counted, but NOT yet publishable
+                sweepMutationCountForTest += 1
             }
-            _ = try? execStrict(db, "COMMIT")
+            // *** THE COMMIT IS THE ACKNOWLEDGEMENT. *** *The positive count existeth only past this line: a failed*
+            // *COMMIT rollbacketh the step, recordeth the typed fault, and publisheth NO retirement at all -- the*
+            // *rows that were there before the sweep are still there, and no caller or observer is told otherwise.*
+            let commitRC: Int32
+            if let fault = sweepCommitFaultForTest { commitRC = fault() }
+            else { commitRC = fn.exec(db, "COMMIT", nil, nil, nil) }
+            guard commitRC == SQLITE_OK else {
+                return sweepFault(.commitFailed(code: commitRC), db: db, rolledBack: true)
+            }
+            lastSweepFault = nil                              // an acknowledged step clears the prior fault
             // *** GS-INTEGRATION-001 / GS-STRESS-001: THE NOTIFY MOVES TO THE CALLER, *AFTER* THE LOCK. ***
             //
             // *MEASURED BY A `sample` OF A HUNG 10,000-CYCLE RUN: this line called `notifyHeldSetChanged()` WHILE
@@ -1511,6 +1813,64 @@ public final class SqliteMessageStore: MessageStore {
         }
     }
 
+    /// *** THE FAULT EXIT FOR THE SWEEP: RECORD THE TYPED FAULT, ROLL BACK THE WHOLE STEP, AND PUBLISH NOTHING. ***
+    ///
+    /// *EVERY fault road in `sweepExpiredNoLock` returned through this helper -- but the helper did not exist in this
+    /// file (the calls were present and the definition was not, so the store did not compile). It is the ONE place the
+    /// "a faulted sweep publishETH nothing" law is enforced: `lastSweepFault` is SET (so `sweepExpiredThrowing` can
+    /// re-raise it and `sweepExpired` can report a zero that is NAMED rather than silent), and the transaction is rolled
+    /// back when the fault occurred AFTER `BEGIN` (`rolledBack`), so the rows that stood before the sweep still stand.*
+    private func sweepFault(_ fault: StoreSweepFault, db: OpaquePointer, rolledBack: Bool) -> Int {
+        if rolledBack {
+            // *** ONE CHECKED ROLLBACK (SQLITE-LATEST-I4). *** *The old body discarded this result. A failed
+            // cleanup leaves an UNRESOLVED transaction on the shared connection, so the failure is REPORTED (the
+            // engine's own code) and the connection is marked abandoned + withdrawn -- no later insert/advance/read/
+            // transaction may run inside the transaction this COMMIT never closed.*
+            let rollbackRC: Int32
+            if let fault = sweepRollbackFaultForTest { rollbackRC = fault() }
+            else { rollbackRC = fn.exec(db, "ROLLBACK", nil, nil, nil) }
+            if rollbackRC != SQLITE_OK {
+                lastSweepFault = fault            // keep the STAGE fault for the store's own bookkeeping
+                recordAbandoned(cause: fault.stageLabel, cleanupCode: rollbackRC, db: db)
+                return 0
+            }
+        }
+        lastSweepFault = fault
+        return 0
+    }
+
+    /// *** THE ONE PLACE A FAILED CLEANUP WITHDRAWS *AND PHYSICALLY FREES* THE CONNECTION (SQLITE-LATEST-I4). ***
+    ///
+    /// *`cause` is what the failed rollback was cleaning up; `cleanupCode` is the ENGINE's actual `ROLLBACK` result.
+    /// The fault is LATCHED (so every later operation refuseth with it rather than running on the unresolved
+    /// transaction) and EVERY alias of the shared connection is refused -- and the unresolved transaction is not left
+    /// holding a native connection open.*
+    ///
+    /// **THIS IS ALWAYS CALLED WITH THE STORE LOCK HELD AND EVERY STATEMENT ALREADY FINALIZED**, which is what makes
+    /// the two roads below safe:
+    ///   * **ADOPTED (`owner != nil`)** -- `markAdoptionRejected()` withdraws every adopter, then `owner.close()`
+    ///     SCHEDULES the exactly-once `sqlite3_close_v2` INSIDE the CURRENT USE FRAME: it sets the closed flag and
+    ///     stashes the handler, and because THIS thread holds the frame's use it returneth WITHOUT waiting, so the
+    ///     frame's own `defer { lifecycle.endUse() }` performeth `finishClose` at the CURRENT NATIVE FRAME'S EXIT.
+    ///     No direct sqlite call is made on an unowned handle here, the close handler captureth no `self`, and a
+    ///     second `close()` is a no-op -- the free happeneth EXACTLY ONCE.
+    ///   * **OWNED (`owner == nil`, the `url:` road)** -- there is no owner frame, so the store freeeth the EXACT
+    ///     owned handle IN PLACE (a direct `close_v2`, NEVER `close()`, which would re-take the non-recursive store
+    ///     lock) and droppeth it: no road can dispatch SQLite on it again, and `deinit`/`close()` find `handle == nil`
+    ///     and do NOT double-close.*
+    private func recordAbandoned(cause: String, cleanupCode: Int32, db: OpaquePointer) {
+        abandonedFault = StoreAbandonedConnectionFault(cause: cause, cleanupCode: cleanupCode)
+        connectionAbandoned = true
+        if let owner {
+            owner.connection.lifecycle?.markAdoptionRejected()
+            _ = owner.close()          // exactly-once, deferred to THIS frame's exit (endUse -> finishClose)
+        } else {
+            fn.closeV2(db)             // the owned handle, freed in place at a safe phase (statements finalized)
+            handle = nil
+            adoptedConnectionIdentity = nil
+        }
+    }
+
     /// GS-STORE-004 (round 316): STARTUP MAINTENANCE -- the bounded sweep, CONNECTED. The finding asketh that the
     /// sweep be "connected to startup and runtime scheduling", and A SWEEP THAT ONLY A HAND MAY CALL IS CONNECTED TO
     /// NOTHING. It runneth ONCE per store instance, on the first public read after the store opens.
@@ -1523,20 +1883,21 @@ public final class SqliteMessageStore: MessageStore {
     /// GS-STORE-004 (round 317): the RUNTIME maintenance entry point, for a caller that owneth a run loop and
     /// wanteth to drive the cadence itself (the composition root's own timer, or a test's hand). It taketh the lock
     /// in its turn and runneth the same bounded sweep the automatic path runneth.
-    @discardableResult
-    public func runScheduledMaintenance(limit: Int = 64) -> Int {
-        let retired = sweepExpired(limit: limit)
+    /// *** THE RUNTIME MAINTENANCE ENTRY POINT -- TYPED, NOT DISCARDABLE. ***
+    /// *The cadence fields advance ONLY past an acknowledged sweep: a thrown fault leaves `startupMaintenanceDone`
+    /// and `lastSweepMonoMs` exactly as they stood, so the next use retries on its own merits rather than inheriting
+    /// a pretended success (SQLITE-LATEST-I4).*
+    public func runScheduledMaintenance(limit: Int = 64) throws -> StoreSweepOutcome {
+        let outcome = try sweepExpired(limit: limit)
+        lock.lock()
+        startupMaintenanceDone = true
         lastSweepMonoMs = receiptTimeProvider().monoMs
-        return retired
+        lock.unlock()
+        return outcome
     }
 
-    internal func runStartupMaintenanceIfNeeded() {
-        let alreadyDone = withDb { _ -> Bool in
-            if startupMaintenanceDone { return true }
-            startupMaintenanceDone = true
-            return false
-        } ?? true
-        if !alreadyDone { _ = sweepExpired(limit: StoreSchema.startupSweepLimit) }
+    internal func runStartupMaintenanceIfNeeded() throws {
+        _ = try runScheduledMaintenance(limit: StoreSchema.startupSweepLimit)
     }
 
     /// GS-STORE-004 (round 316): whether this instance's STARTUP sweep hath run.
@@ -1563,19 +1924,36 @@ public final class SqliteMessageStore: MessageStore {
     /// GS-STORE-004 (round 341): reap tombstones that have outlived their window -- BOUNDED, ON THE SAME HANDLE
     /// (round 309's law), and JUDGED BY THE SAME RULE AS THE DEDUP READ rather than by a second opinion: a tombstone
     /// written in ANOTHER boot cannot be judged, and is KEPT.
-    private func reapExpiredTombstonesNoLock(db: OpaquePointer, limit: Int, nowMono: Int64, boot: String) {
+    /// *** SQLITE-LATEST-I4: THE TOMBSTONE REAP NOW THROWETH, SO ITS FAULTS PROPAGATE INSTEAD OF BEING LOST. ***
+    /// *It returned `Void` and IGNORED its bind/step results, and it ran BEFORE the checked `BEGIN` -- so a refused
+    /// sweep could still have durably reaped tombstones. It is now called INSIDE the retirement transaction and any
+    /// fault unwinds to `sweepFault(...)`, so the reap and the retirements commit or roll back together.*
+    private func reapExpiredTombstonesNoLock(db: OpaquePointer, limit: Int, nowMono: Int64, boot: String) throws {
         let sql = "DELETE FROM \(StoreSchema.tombstoneTable) WHERE \(StoreSchema.colTMsgId) IN (" +
             "SELECT \(StoreSchema.colTMsgId) FROM \(StoreSchema.tombstoneTable) " +
             "WHERE \(StoreSchema.colTBootIdentity) = ? AND \(StoreSchema.colTExpiresAtMono) <= ? LIMIT ?)"
         var stmt: OpaquePointer?
         guard fn.prepareV2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            fn.finalize(stmt); return
+            fn.finalize(stmt); throw StoreSweepFault.reapPrepareFailed(code: -1)
         }
         defer { fn.finalize(stmt) }
-        boot.withCString { fn.bindText(stmt, 1, $0, -1, storeSqliteTransient) }
-        fn.bindInt64(stmt, 2, nowMono)
-        fn.bindInt(stmt, 3, Int32(max(1, limit)))
-        _ = fn.step(stmt)
+        // *** THE BOOT-IDENTITY TEXT BIND IS CHECKED AND ITS **ACTUAL** CODE IS RAISED (SQLITE-LATEST-I4). *** *The old
+        // body discarded it (`_ =`), so a REFUSED text bind (e.g. `SQLITE_NOMEM`) left parameter 1 as NULL; the
+        // `boot_identity = NULL` predicate then matched NO rows, `step` reached `DONE`, `COMMIT` succeeded, and the
+        // sweep reported a CLEAN outcome and advanced maintenance cadence while the required expired tombstones were
+        // never reaped. It now throws `StoreSweepFault.reapBindFailed` with the engine's own code BEFORE stepping, so
+        // the existing sweep rollback/error road runs instead.*
+        let bootBind = boot.withCString { fn.bindText(stmt, 1, $0, -1, storeSqliteTransient) }
+        guard bootBind == SQLITE_OK else {
+            throw StoreSweepFault.reapBindFailed(code: bootBind)
+        }
+        let nowBind = fn.bindInt64(stmt, 2, nowMono)
+        let limitBind = fn.bindInt(stmt, 3, Int32(max(1, limit)))
+        guard nowBind == SQLITE_OK, limitBind == SQLITE_OK else {
+            throw StoreSweepFault.reapBindFailed(code: nowBind != SQLITE_OK ? nowBind : limitBind)
+        }
+        let rc = fn.step(stmt)
+        guard rc == SQLITE_DONE else { throw StoreSweepFault.reapStepFailed(code: rc) }
     }
 
     private func liveTombstoneNoLock(_ db: OpaquePointer, _ msgId: Data) -> Bool {
@@ -1719,7 +2097,6 @@ public final class SqliteMessageStore: MessageStore {
     }
 
     public func forEachHeldMsgId(_ visit: (Data) -> Bool) {
-        runStartupMaintenanceIfNeeded()
         withDb { db in
             // GS-STORE-004: the gate readeth the anchor, SO THE ANCHOR MUST BE SELECTED -- reading index 1 of a
             // one-column statement was the fatal `Index out of range` of the first measured attempt.
@@ -2271,22 +2648,57 @@ public final class SqliteMessageStore: MessageStore {
     /// `beginTransaction`, an EXCLUSIVE write lock -- the "or equivalent sqlite
     /// transaction API" the directive allows).
     private func withTransaction<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+        // *** AN ABANDONED CONNECTION REFUSETH *EVERY* TRANSACTION WITH THE TYPED CLEANUP FAILURE (SQLITE-LATEST-I4).
+        // *** *Checked BEFORE the owner's use admission so a LATER transaction answereth the abandonment (the real
+        // reason) rather than a generic closed-owner refusal -- the caller must learn WHAT cleanup failure stands.*
+        if let abandoned = abandonedFault { throw abandoned }
+        // *** THE TRANSACTION RUNS INSIDE THE OWNER'S USE/CRITICAL SECTION (SQLITE-REVIEW-2). *** *A close begun on
+        // another worker whilthis transaction is open WAIETH for it to finish rather than freeing the handle under an
+        // open transaction -- `close_v2` on a handle with unfinalized statements zombieth it, and the commit that
+        // followed would be dispatched into a dead pointer. A post-close call answereth the typed refusal.*
+        if let owner { return try owner.usingConnection { _ in try self.transactionSection(body) } }
+        return try transactionSection(body)
+    }
+
+    private func transactionSection<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
         lock.lock()
         defer { lock.unlock() }
+        if let abandoned = abandonedFault { throw abandoned }   // no transaction may BEGIN on an abandoned connection
         guard let db = handle else { throw StoreTxnError.openFailed }
         if fn.exec(db, "BEGIN IMMEDIATE", nil, nil, nil) != SQLITE_OK {
             throw StoreTxnError.beginFailed
         }
+        // *** EXACTLY ONE CHECKED ROLLBACK PER FAILED TRANSACTION (SQLITE-LATEST-I4). *** *The old body rolled back on
+        // the COMMIT-failure path AND AGAIN in a `catch`, and discarded BOTH results. The body and the COMMIT are now
+        // handled in SEPARATE blocks so neither path can fall into the other's rollback: a body throw rolls back once
+        // and rethrows; a failed COMMIT rolls back once and throws `commitFailed`; a failed CLEANUP throws the typed
+        // abandonment (never a second rollback).*
+        let result: T
         do {
-            let result = try body(db)
-            if fn.exec(db, "COMMIT", nil, nil, nil) != SQLITE_OK {
-                fn.exec(db, "ROLLBACK", nil, nil, nil)
-                throw StoreTxnError.commitFailed
-            }
-            return result
+            result = try body(db)
         } catch {
-            fn.exec(db, "ROLLBACK", nil, nil, nil)
+            try checkedRollback(db: db, cause: "\(error)")
             throw error
+        }
+        if fn.exec(db, "COMMIT", nil, nil, nil) != SQLITE_OK {
+            try checkedRollback(db: db, cause: "COMMIT")
+            throw StoreTxnError.commitFailed
+        }
+        return result
+    }
+
+    /// *** ONE CHECKED ROLLBACK (SQLITE-LATEST-I4). ***
+    ///
+    /// *Performs a single `ROLLBACK` and CHECKETH its result. On failure the connection is withdrawn (latched
+    /// abandonment + poisoned shared lifecycle) and a `StoreAbandonedConnectionFault` carrieth BOTH the cause and the
+    /// engine's ACTUAL cleanup code, so a caller can see the real cleanup error rather than a fabricated one.*
+    private func checkedRollback(db: OpaquePointer, cause: String) throws {
+        let rollbackRC: Int32
+        if let fault = rollbackFaultForTest { rollbackRC = fault() }
+        else { rollbackRC = fn.exec(db, "ROLLBACK", nil, nil, nil) }
+        if rollbackRC != SQLITE_OK {
+            recordAbandoned(cause: cause, cleanupCode: rollbackRC, db: db)
+            throw StoreAbandonedConnectionFault(cause: cause, cleanupCode: rollbackRC)
         }
     }
 
@@ -2685,16 +3097,19 @@ public final class SqliteMessageStore: MessageStore {
         /// fresh file).
         func checkpointedThrough() -> Int { checkpoint }
 
+        /// *** SQLITE-REVIEW-4: THE DURABLE CHECKPOINT WAS WRITTEN **INSIDE `execute`'S TRANSACTION**, SO THIS METHOD
+        /// ONLY ADVANCES THE IN-MEMORY MIRROR -- AND ONLY AFTER THAT TRANSACTION COMMITTED. ***
+        ///
+        /// *MEASURED DEFECT IN THE PREVIOUS BODY: `try? store.setUserVersion(db, Int32(step.to))` ran a SEPARATE,
+        /// UNTRANSACTIONAL `PRAGMA user_version` AFTER `execute` had already committed its DDL, then advanced the
+        /// in-memory `checkpoint` UNCONDITIONALLY even when the stamp failed. On a read-only reopen or an IO fault
+        /// specific to that write, the store published success over an ON-DISK revision that never moved.* **THE STAMP
+        /// IS NOW PART OF `execute`'S ATOMIC STEP (written before ITS commit, its failure rolling the whole edge back),
+        /// so by the time the engine calls this method the durable write is ALREADY ACKNOWLEDGED -- and advancing memory
+        /// here is HONEST rather than hopeful.** `execute` THROWS on a failed stamp, so this method is not reached for a
+        /// failed edge.*
         func markCheckpointed(step: MigrationStep) {
-            // Stamped through `setUserVersion`, which THROWS on failure; the engine's
-            // contract marks without reporting, so a failed stamp is left to the
-            // caller's post-migration observation rather than swallowed into a
-            // success this code cannot prove. Best-effort is honest here only
-            // because the version is re-read and re-validated on every open.
-            if step.to > checkpoint {
-                try? store.setUserVersion(db, Int32(step.to))
-                checkpoint = step.to
-            }
+            if step.to > checkpoint { checkpoint = step.to }
         }
 
         func observeFingerprint() -> SchemaFingerprint { store.observeFingerprint(db) }
@@ -2720,6 +3135,19 @@ public final class SqliteMessageStore: MessageStore {
         func execute(step: MigrationStep, statements: [String]) throws {
             try store.execStrict(db, "BEGIN")
             do {
+                // *** SQLITE-REVIEW-4: THE DURABLE `user_version` STAMP IS WRITTEN **INSIDE THIS SAME TRANSACTION,
+                // BEFORE THE COMMIT** -- NOT IN A LATER, SEPARATE STATEMENT. ***
+                // *MEASURED BEFORE THIS EDIT: `execute` committed the DDL and THEN `markCheckpointed` ran its own
+                // `PRAGMA user_version` OUTSIDE any transaction, with `try?` discarding the fault. So (a) a failure of
+                // that lone write left the DDL committed while the version stayed OLD, and (b) the version write was not
+                // atomic with the DDL it described. **WRITING IT HERE MAKES THE DDL AND ITS REVISION ONE ATOMIC STEP:**
+                // a stamp fault now rolls the WHOLE edge back (the `catch` below), so the file keeps its previous DDL
+                // AND its previous revision -- and `markCheckpointed` only advances memory after the COMMIT that carried
+                // the stamp succeeded.*
+                let stampRC: Int32
+                if let fault = store.migrationStampFaultForTest { stampRC = fault() }
+                else { stampRC = store.fn.exec(db, "PRAGMA user_version = \(step.to)", nil, nil, nil) }
+                guard stampRC == SQLITE_OK else { throw StoreError.execFailed }
                 for statement in statements {
                     if try store.columnIsAlreadyPresent(db, in: statement) { continue }
                     // GS-STORE-004 (round 336): **THE SAME RULE FOR A TABLE**, which revision 9 forced: a
@@ -2787,6 +3215,17 @@ public final class SqliteMessageStore: MessageStore {
         var count = 0
         for name in StoreSchema.allTables where (try? liveDdl(db, name: name)) != nil { count += 1 }
         return count
+    }
+
+    // *** SQLITE-REVIEW-4 TEST SEAM: THE REAL MIGRATION EXECUTOR OVER AN INJECTED HANDLE. ***
+    // *So a court can drive the PRODUCTION `HandleMigrationExecutor` against a torn checkpoint without reaching into the
+    // private type. Production never calls these; they exist for the fault-injection arms.*
+    internal static func makeMigrationExecutorForTest(store: SqliteMessageStore, db: OpaquePointer,
+                                                      checkpoint: Int) -> MigrationExecutor {
+        HandleMigrationExecutor(store: store, db: db, checkpoint: checkpoint)
+    }
+    internal static func observeFingerprintForTest(_ store: SqliteMessageStore, db: OpaquePointer) -> SchemaFingerprint {
+        store.observeFingerprint(db)
     }
 
     /// The live CREATE text of `table`, or nil when the table does not exist.
@@ -2916,7 +3355,23 @@ public final class SqliteMessageStore: MessageStore {
     /// reports failure as nil / 0 / false -- NOT part of the C6.4-A delivery
     /// surface).
     private func withDbThrowing<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+        // *** THE OWNER'S USE/CRITICAL SECTION WRAPS THE STORE LOCK, SO A CONCURRENT `OwnedConnection.close()` WAIETH
+        // FOR THIS BODY AND NEVER FRED THE HANDLE MID-STATEMENT (SQLITE-REVIEW-2). *** *A closed owner answereth a
+        // typed `handleMissing` here rather than dispatching a stale pointer. Lock order: owner lifecycle, then the
+        // store's own `NSLock` -- the owner never taketh the store lock, so the order cannot cycle.*
+        //
+        // *** SQLITE-LATEST-I4: AN ABANDONED CONNECTION REFUSETH EVERY READ/MUTATION BEFORE IT DISPATCHETH. *** *After
+        // a failed transaction whose cleanup also failed, the handle carrieth an UNRESOLVED transaction; a read on it
+        // would see uncommitted state, and a write would run inside it and report a durable success the file never
+        // received. So the latch is consulted FIRST and the typed cleanup failure is thrown.*
+        if let abandoned = abandonedFault { throw abandoned }
+        if let owner { return try owner.usingConnection { _ in try self.dbSectionThrowing(body) } }
+        return try dbSectionThrowing(body)
+    }
+
+    private func dbSectionThrowing<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
         lock.lock(); defer { lock.unlock() }
+        if let abandoned = abandonedFault { throw abandoned }   // re-checked under the lock (BEGIN..ROLLBACK window)
         guard let db = handle else { throw StoreError.handleMissing }
         return try body(db)
     }
@@ -3069,9 +3524,18 @@ public final class SqliteMessageStore: MessageStore {
         return try readIntentRow(db, intentId)
     }
 
-    /// Rebuild one `JournalEntry` from its row through **THE FAILABLE `init?`** -- so a row that breaketh its own invariants
-    /// (a short binding digest, a malformed nonce, an empty payload) IS **NOT** RETURNED AS A VALUE: it becometh `nil` here and
-    /// `.corrupt` at the seam, which is what "fail closed" meaneth for a read.
+    /// Rebuild one `JournalEntry` from its row -- **AND ONLY `SQLITE_DONE` INDICATES ABSENCE** (SQLITE-REVIEW-8).
+    ///
+    /// *MEASURED DEFECT IN THE PREVIOUS BODY: `guard fn.step(stmt) == SQLITE_ROW else { return nil }` collapsed EVERY
+    /// non-ROW result -- INCLUDING `SQLITE_BUSY`/`SQLITE_IOERR`/`SQLITE_NOTADB` -- into `nil`, and
+    /// `SqliteOutboundIntentJournal` translates `nil` to `.notFound`. `SendDirectAuthority` STOPS on
+    /// `.storageFailure`/`.corrupt` but treats `.notFound` as permission to enter FRESH trust resolution and nonce
+    /// creation -- so a storage fault on a stored durable intent became authority to author a new one.* **NOW A STEP
+    /// FAULT THROWS `stepFailed`, which the journal's own `catch` maps to `.storageFailure(reason:)`; only a genuine
+    /// `SQLITE_DONE` answereth `nil` (absence). The statement is finalized on EVERY branch by the `defer` above.**
+    /// *A row that standeth but cannot be rebuilt (`JournalEntry.init?` failing its invariants) still answereth `nil`;
+    /// that residual absent/corrupt collision is the reader's, and it is NOT what this repair is about: a STORAGE FAULT
+    /// is no longer laundered into absence.*
     private func readIntentRow(_ db: OpaquePointer, _ intentId: Data) throws -> JournalEntry? {
         var stmt: OpaquePointer?
         guard fn.prepareV2(db, Self.intentSelectSql, -1, &stmt, nil) == SQLITE_OK else {
@@ -3082,19 +3546,31 @@ public final class SqliteMessageStore: MessageStore {
         guard fn.bindBlob(stmt, 1, (intentId as NSData).bytes, Int32(intentId.count), nil) == SQLITE_OK else {
             throw StoreError.stepFailed
         }
-        guard fn.step(stmt) == SQLITE_ROW else { return nil }
+        let rc: Int32
+        if let fault = intentReadFaultForTest { rc = fault() }   // SQLITE-REVIEW-8: inject IOERR/BUSY at the SELECT
+        else { rc = fn.step(stmt) }
+        if rc == SQLITE_DONE { return nil }        // no row -- absence, NOT a fault
+        guard rc == SQLITE_ROW else { throw StoreError.stepFailed }   // BUSY/IOERR/NOTADB -> typed storage failure
         let intent = blob(stmt, 0), logical = blob(stmt, 1), plaintext = blob(stmt, 2), frame = blob(stmt, 3)
         let recipient = blob(stmt, 4), recipientDh = blob(stmt, 5)
         let generation = UInt32(truncatingIfNeeded: fn.columnInt64(stmt, 6))
         let digest = blob(stmt, 7), nonce = blob(stmt, 9)
         let created = fn.columnInt64(stmt, 8), priority = Int(fn.columnInt(stmt, 10))
-        let rank = IntentStateRank(rawValue: Int(fn.columnInt(stmt, 11))) ?? .authored
-        return JournalEntry(intentId: intent, logicalMessageId: logical, signedPlaintextBytes: plaintext,
-                            canonicalFrameBytes: frame, recipientNodeId: recipient,
-                            recipientStaticDhPub: recipientDh, acceptedGeneration: generation,
-                            bindingDigest: digest, createdAtEpochSeconds: created, messageNonce: nonce,
-                            priorityCode: priority, stateRank: rank)
+        let rawRank = Int(fn.columnInt(stmt, 11))
+        // Failed reconstruction of an existing row is corruption, not a SQLite I/O fault.
+        guard let rank = IntentStateRank(rawValue: rawRank) else { throw IntentReadFault.corrupt }
+        guard let entry = JournalEntry(intentId: intent, logicalMessageId: logical,
+                                       signedPlaintextBytes: plaintext, canonicalFrameBytes: frame,
+                                       recipientNodeId: recipient, recipientStaticDhPub: recipientDh,
+                                       acceptedGeneration: generation, bindingDigest: digest,
+                                       createdAtEpochSeconds: created, messageNonce: nonce,
+                                       priorityCode: priority, stateRank: rank) else {
+            throw IntentReadFault.corrupt
+        }
+        return entry
     }
+
+    internal enum IntentReadFault: Error { case corrupt }
 
     private func blob(_ stmt: OpaquePointer?, _ index: Int32) -> Data {
         guard let bytes = fn.columnBlob(stmt, index) else { return Data() }
@@ -3375,35 +3851,54 @@ public final class SqliteMessageStore: MessageStore {
     // MARK: - sqlite helpers
 
     private func withDb<T>(_ body: (OpaquePointer) -> T) -> T? {
-        lock.lock()
-        guard let db = handle else { lock.unlock(); return nil }
-        // GS-STORE-004 (rounds 316-317): MAINTENANCE AT THE FIRST USE OF ANY KIND -- the STARTUP sweep once, and
-        // thereafter ON THE POLICY'S OWN CADENCE (`RetentionPolicy.checkpointCadenceMs`). The flag is set BEFORE the
-        // sweep runneth, so a sweep that re-entered this entry point could not recurse; the sweep runneth ON THIS
-        // HANDLE (`sweepExpiredNoLock`), so it taketh NO second lock.
+        // *** THE SAME SHARED USE/CRITICAL SECTION AS `withDbThrowing`. *** *An adopted store's readers are gated by
+        // their owner's use count, so a close cannot free the handle under a read in flight; a CLOSED owner answereth
+        // `nil`, which this legacy surface already meaneth "unusable" -- never a fabricated value.*
+        // (`.flatMap { $0 }` flattens the owner road's `T??` -- present-but-unusable vs. owner-closed -- into the single
+        // `T?` this legacy surface promises.)
         //
-        // *** AND THE SWEEP'S NOTIFY IS HOISTED OUT OF THE LOCK (GS-INTEGRATION-001 / GS-STRESS-001). *** *MEASURED
-        // BY `sample` ON A HUNG 10,000-CYCLE RUN: this branch runneth INSIDE `withDb`, i.e. WITH THE STORE'S
-        // NON-RECURSIVE `NSLock` HELD, and a retained-rows sweep used to call `notifyHeldSetChanged()` from there --
-        // so the composition's own `LinkInfoSnapshotAuthority` observer re-entered the store on the SAME THREAD and
-        // `lock.lock()` deadlocked. **THE FLAG BELOW CARRIETH THE DECISION OUT OF THE CRITICAL SECTION, WHERE THE
-        // NOTIFY BELONGETH -- the same "off the store's lock, never reentrantly" law every other call site in this
-        // file already honours.***
-        var retiredInMaintenance = 0
-        if !startupMaintenanceDone {
-            startupMaintenanceDone = true
-            retiredInMaintenance = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
-            lastSweepMonoMs = receiptTimeProvider().monoMs
-        } else if let last = lastSweepMonoMs, let now = Optional(receiptTimeProvider().monoMs),
-                  now - last >= Int64(RetentionPolicy.checkpointCadenceMs) {
-            retiredInMaintenance = sweepExpiredNoLock(db: db, limit: StoreSchema.startupSweepLimit)
-            lastSweepMonoMs = now
+        // *** SQLITE-LATEST-I1: THE MAINTENANCE OBSERVER IS NOTIFIED **AFTER** THE OWNER-USE SCOPE ENDS. *** *MEASURED
+        // DEFECT: the notify ran INSIDE `withDbLocked`, which the owner-use wrapper spanned -- so an observer that
+        // (synchronously) closed its own owner was STILL counted as an active use on the SAME thread, and
+        // `OwnedConnection.close()` waited for that self-reference forever. The retired count is therefore HOISTED OUT
+        // of the use scope and dispatched here, where the owner reference is already given back.*
+        if let owner {
+            // (The owner road answers `(value, retired)?`: `nil` when the owner is already closed -- the "unusable"
+            // this legacy surface already means -- else the body's value plus the maintenance retirement count.)
+            guard let out = owner.usingConnectionIfOpen({ _ in self.withDbLocked(body) }) else { return nil }
+            if out.retired > 0 { notifyHeldSetChanged() }
+            return out.value
         }
-        let out = body(db)
-        lock.unlock()
-        // *** THE DISPATCH STANDETH HERE, OUTSIDE THE Lock AND AFTER THE COMMIT -- NEVER REENTRANTLY. ***
-        if retiredInMaintenance > 0 { notifyHeldSetChanged() }
-        return out
+        let out = withDbLocked(body)
+        if out.retired > 0 { notifyHeldSetChanged() }
+        return out.value
+    }
+
+    /// Returns the body's value AND the number of rows a maintenance sweep retired, so the CALLER can dispatch the
+    /// observer AFTER the owner-use scope has ended (SQLITE-LATEST-I1).
+    private func withDbLocked<T>(_ body: (OpaquePointer) -> T) -> (value: T?, retired: Int) {
+        lock.lock(); defer { lock.unlock() }
+        // *** AN ABANDONED CONNECTION REFUSETH THE READ **AND** THE CADENCE SWEEP (SQLITE-LATEST-I4). *** *A read on
+        // an unresolved transaction would observe uncommitted state, and re-entering the cadence sweep would dispatch
+        // into it; both answer the legacy surface's own "unusable" value rather than dispatching.*
+        if connectionAbandoned { return (nil, 0) }
+        guard let db = handle else { return (nil, 0) }
+        do {
+            let retired = try performMaintenanceNoLock(db)
+            return (body(db), retired)
+        } catch {
+            // Fail closed: the typed maintenance failure refuses the pending operation.
+            return (nil, 0)
+        }
+    }
+
+    private func performMaintenanceNoLock(_ db: OpaquePointer) throws -> Int {
+        let now = receiptTimeProvider().monoMs
+        guard !startupMaintenanceDone || lastSweepMonoMs.map({ now - $0 >= Int64(RetentionPolicy.checkpointCadenceMs) }) == true else { return 0 }
+        let retired = try sweepExpiredNoLockThrowing(db: db, limit: StoreSchema.startupSweepLimit)
+        startupMaintenanceDone = true
+        lastSweepMonoMs = now
+        return retired
     }
 
     private func bindBlob(_ stmt: OpaquePointer?, _ index: Int32, _ data: Data) {

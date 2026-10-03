@@ -1,0 +1,5 @@
+::error::Bound recipient key resolver control error: Android BoundRecipientKeyResolver must accept only TOFU_PINNED/USER_VERIFIED and reject REVOKED (B07)
+
+FAIL: 1 bound recipient key resolver control issue(s) found.
+
+(the rod aimed at 'Android BoundRecipientKeyResolver must accept only TOFU_PINNED/USER_VERIFIED and reject REVOKED (B07)'; reddened refusals were the aimed one)

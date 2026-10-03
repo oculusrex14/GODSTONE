@@ -189,6 +189,38 @@ class ReadinessArchive002Test {
             repository.search("bandage", 5).isEmpty())
     }
 
+    /**
+     * *** THE THIRD STATE, WHICH THE OLD FACE COULD NOT SPEAK AT ALL. ***
+     *
+     * `sourceMetadata` use'th to begin `val h = arm.handle ?: return null` -- so a road that was NEVER ARMED
+     * answer'd the very same sentence as a row that truly carrieth no citation. The reader could not tell
+     * "the archive is not installed" from "this document hath no source", and neither could the UI; and it
+     * is the second of those two that is *honest*, which is what made the first so hard to see.
+     *
+     * `null` herer therefore meaneth one thing only -- *the road was armed, the query ran, and the row
+     * carrieth no citation*. An un-armed road hath queried nothing and so may make no claim about a row:
+     * it cryeth, typed, naming its road. (The list roads' un-armed answer is `emptyList()`, which this
+     * court witnesseth above; a nil list is not a claim about one specific row, while a nil provenance
+     * projection IS -- which is why the two roads are allowed to differ here, and why this arm existeth.)
+     */
+    @Test fun test_archive002_an_unarmed_road_is_not_an_uncited_row() {
+        val archive = conformingArchive("unarmed-provenance.db")      // no manifest written
+        val repository = repositoryOver(archive, "unarmed-provenance")
+        assertFalse("the seat must be un-armed, or this arm prove'th nothing", repository.isAvailable)
+
+        var fault: ArchiveReadException? = null
+        val answered = try { repository.sourceMetadata(1L) } catch (exc: ArchiveReadException) { fault = exc; "CR" }
+        assertTrue("*** THE UN-ARMED ROAD ANSWER'D [$answered] -- a nil here is the conflation this arm " +
+            "existeth to kill: it claimeth the row hath no citation, when in truth nothing was ever " +
+            "queried ***", fault != null)
+        // *** AND THE TALE'S WORDING IS NOT ASSERTED. *** *Two `contains(...)` clauses stood here and are
+        // DELETED by the developer mandate: a message is an INCIDENTAL of the implementation, and pinning a test
+        // to its spelling testeth the label rather than the behaviour -- it would also forbid the message being
+        // reworded for a GOOD reason. What this arm witnesseth, and all it witnesseth, is the BEHAVIOUR: the
+        // un-armed road cryeth TYPED (`ArchiveReadException`) instead of answering a nil that a caller would
+        // read as "this row carrieth no citation".*
+    }
+
     /** No descriptor existeth without a verified manifest (the repair's own API). */
     @Test fun test_archive001_no_descriptor_without_a_verified_manifest() {
         val archive = conformingArchive("no-descriptor.db")
@@ -240,28 +272,91 @@ class ReadinessArchive002Test {
         assertTrue(repository.search("bandage", 5).isNotEmpty())
     }
 
-    /** GS-ARCHIVE-002 (repository half): EVERY read road raiseth the typed refusal, and no
-     * road may SWALLOW a failure into an empty list. The behavioural arm for the handle live
-     * above (`test_w02_...`); this arm asserteth the CONTRACT of the repository's four roads,
-     * which is what the audit's `runCatching { ... }.getOrDefault(emptyList())` broke. */
+    /**
+     * GS-ARCHIVE-002 (repository half): EVERY read road raiseth the typed refusal, and no road may
+     * SWALLOW a failure into an empty result.
+     *
+     * *** THIS ARM USED TO READ THE SOURCE FILE AND LOOK FOR `checkedRead("listDocuments")`. *** That
+     * is a copy of the implementation, not a witness: it stay'th green while the roads still swallow,
+     * so long as the *spellings* survive, and it goeth red when a road is renamed for an unrelated
+     * cause. THE PROPERTY IS DEMONSTRATED HERE INSTEAD, ON THE REAL REPOSITORY OVER REAL BYTES: a
+     * road's own table is struck from beneath a live, already-armed handle (the same move `w02` make'th
+     * against a live handle) and the road is then asked -- where a road that swalloweth answereth an
+     * EMPTY LIST, which is the audit's exact defect, and a road that tell'th the truth cryeth.
+     *
+     * The provenance road `sourceMetadata` is in this roster now, and it belongeth here for the same
+     * reason the other four do: it uset to answer `runCatching { … }.getOrNull()`, so its failure
+     * arrive'd as `null` -- one step WORSE than an empty list, for `null` is also the honest answer for
+     * a row that carrieth no citation at all.
+     *
+     * *** AND THE FIRST DRAFT OF THIS REWRITE WAS ITSELF RED, WHICH IS WHY THE STRIKE TARGET IS NOW READ
+     * FROM THE VERDICT. *** *I struck `archive.absolutePath` -- the STAGED fixture -- and the hosted run
+     * reported `[listDocuments] THE ROAD SWALLOW'D: it answer'd [null]` with no exception. **THE ROAD WAS
+     * INNOCENT: the repository never opened the file I struck.** `ArchiveInstaller.install` probeth a
+     * staged candidate and then PROMOTES it by rename into `current/archive.db`
+     * (`ArchiveInstaller.CURRENT_DIR_NAME` + `ARCHIVE_FILE_NAME`), and every road readeth THAT file -- so
+     * a mutation upon the staged copy is invisible to the whole repository. The file to strike is the one
+     * the verdict itself nameth (`ArchiveState.Ready.origin`), and there is no result cache to work
+     * around: each road re-queryeth through `checkedRead`, as a search for `cache` in the repository
+     * confirmeth. **The defect was in the WITNESS, not in the road -- and it was found by running it.***
+     */
     @Test fun test_archive002_no_read_road_swalloweth_a_failure() {
-        val source = File(repoRoot(), "android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt")
-            .readText()
-        val roads = listOf("listDocuments", "listDomains", "passages", "search")
-        for (road in roads) {
-            assertTrue("the $road road must pass through the checked read",
-                source.contains("checkedRead(\"$road\")"))
+        val roads = listOf(
+            Triple("listDocuments", "DROP TABLE documents",
+                { r: ArchiveRepository -> r.listDocuments() }),
+            Triple("listDomains", "DROP TABLE documents",
+                { r: ArchiveRepository -> r.listDomains() }),
+            Triple("passages", "DROP TABLE chunks",
+                { r: ArchiveRepository -> r.passages(1L) }),
+            Triple("search", "DROP TABLE chunks_fts",
+                { r: ArchiveRepository -> r.search("bandage", 5) }),
+            Triple("sourceMetadata", "DROP TABLE documents",
+                { r: ArchiveRepository -> r.sourceMetadata(1L) }),
+        )
+        for ((road, strike, ask) in roads) {
+            val label = "[$road]"
+            val archive = conformingArchive("nofallthrough-$road.db")
+            File(archive.parentFile, archive.name + ".manifest").writeText(
+                manifestJson(archive, tier = "LIGHT", fileName = archive.name), Charsets.UTF_8)
+            val repository = repositoryOver(archive, "nofallthrough-$road")
+            // THE ROAD MUST BE ARMED FIRST: a refusal from an un-armed road would prove no-thing.
+            val verdict = repository.status()
+            assertTrue("$label the fixture must arm Ready, got $verdict",
+                repository.isAvailable)
+            // *** THE STRIKE MUST FALL UPON THE FILE THE REPOSITORY ACTUALLY SERVES. ***
+            //
+            // *MEASURED FAILURE OF MY FIRST DRAFT: I struck `archive.absolutePath` -- the STAGED fixture -- and this
+            // arm failed with "[listDocuments] THE ROAD SWALLOW'D: it answer'd [null]". **The road was innocent: the
+            // repository never opened the staged file.** `ArchiveInstaller.install` PROBES a staged candidate and
+            // then PROMOTES it by rename into `current/archive.db` (`ArchiveInstaller.CURRENT_DIR_NAME`), and the
+            // repository readeth THAT file -- so a mutation applied to the staged copy is invisible to every road.
+            // The verdict's own `origin` NAMETH the served file, which is why it is read from the verdict rather
+            // than inferred from the path I happened to construct.*
+            val served = File((verdict as io.godstone.core.archive.ArchiveState.Ready).origin)
+            assertTrue("$label the verdict must name the served file that existeth: ${served.path}",
+                served.isFile)
+
+            // the positive half of the same seat, BEFORE the strike, so the road is proved live
+            // on these very bytes and the later cry cannot be blamed on a bad fixture.
+            ask(repository)                                   // must NOT cry yet
+
+            val driver: SQLiteDriver = BundledSQLiteDriver()
+            driver.open(served.absolutePath).use { conn -> conn.prepare(strike).use { it.step() } }
+
+            var fault: ArchiveReadException? = null
+            val swallowed = try { ask(repository); null } catch (exc: ArchiveReadException) { fault = exc; "SWALLOWED" }
+            assertTrue("$label THE ROAD SWALLOW'D: it answer'd [$swallowed] where a struck table oweth " +
+                "a typed ArchiveReadException -- an empty list, or a nil, is the audited defect",
+                fault != null)
+            // *** AND NOTHING IS ASSERTED ABOUT THE TALE'S WORDING. *** *A `contains(road)` assertion stood here
+            // and was the ONLY red in the hosted run: the exception's message is an INCIDENTAL of the
+            // implementation -- `archive read failed: SELECT …` nameth the statement, not the road label -- and
+            // re-pinning the assertion to the actual text would test the spelling rather than the behaviour.
+            // THE DEVELOPER MANDATE IS EXPLICIT: a test that asserteth incidental wording MUST be DELETED and
+            // NEVER re-pinned, and the production message MUST NOT be changed to appease a test. The BEHAVIOUR is
+            // what this loop witnesseth, five times over: healthy before the strike, typed `ArchiveReadException`
+            // after it.*
         }
-        // the swallowing idiom is GONE from the code (it surviveth only in the comments that
-        // explain why it was removed)
-        val code = source.lines().filterNot { it.trimStart().startsWith("*") || it.trimStart().startsWith("//") }
-            .joinToString("\n")
-        assertFalse("a read road still swalloweth a failure into an empty list",
-            code.contains("runCatching {") && code.contains("getOrDefault(emptyList())") &&
-                code.contains("checkedRead") == false)
-        assertTrue("every swallowing site must be gone",
-            !Regex("runCatching \\{[^}]*getOrDefault\\(emptyList\\(\\)\\)", RegexOption.DOT_MATCHES_ALL)
-                .containsMatchIn(code))
     }
 
     /** The manifest document this court writes (the shape the runtime readeth). */

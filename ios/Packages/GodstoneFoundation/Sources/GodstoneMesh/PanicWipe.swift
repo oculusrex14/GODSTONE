@@ -33,6 +33,33 @@ public protocol WipeJournal: AnyObject {
     func write(_ state: WipeState)
     func clear()
 
+    /// *** IOS-R1/R3: THE DURABLE MONOTONE GENERATION, ADVANCED ONCE PER WIPE REQUEST. ***
+    ///
+    /// *It is the basis for ABA detection: a permit minted at generation N is REFUSED once this record standeth at
+    /// generation N+1, even if the rung spelling returned to where it was.* **A journal that carrieth no counter
+    /// answereth `nil` (the protocol's fail-safe default), and the coordinator then keeps its own monotone
+    /// generation.** `bumpEpoch()` ADVANCES and returneth the new value, and is called exactly once, BEFORE the
+    /// `REQUESTED` write, so the committed checkpoint carrieth the new generation.
+    var durableEpoch: UInt64? { get }
+    @discardableResult
+    func bumpEpoch() -> UInt64?
+    /// *** IOS-R3 (fail-closed): THE DURABLE MEDIUM'S OWN ANSWER, OR `nil` WHEN THIS JOURNAL CANNOT VOUCH FOR IT. ***
+    ///
+    /// *A `UserDefaults`-backed journal observeth an IN-PROCESS CACHE, so it CANNOT vouch for the medium and answereth
+    /// the fail-closed default `nil`. Only a journal that really carrieth durable bytes (the production
+    /// `FileWipeJournal`, which re-readeth the filesystem) answereth non-nil -- and a court fake must explicitly
+    /// answer its own medium to be acknowledged.*
+    func readDurable() -> (state: WipeState, epoch: UInt64?)?
+
+    /// *** IOS-FOLLOWUP-C2: THE CHECKED WRITE, WITH THE SYNC RESULT AND THE GENERATION THAT REACHED THE MEDIUM. ***
+    ///
+    /// *A journal that can only `write` and reread cannot distinguish "the bytes are visible" from "the bytes AND
+    /// their directory entry are synchronized". The production `FileWipeJournal` answereth the real result; an
+    /// in-memory court fake answereth `synchronized: true` by construction.* **The adapter REQUIReth
+    /// `synchronized == true`, never merely a matching reread.**
+    @discardableResult
+    func writeChecked(_ state: WipeState) -> DurableWriteResult
+
     /// *** GS-FINAL-003: WHETHER THE DURABLE RECORD COULD BE READ AT ALL. ***
     ///
     /// *The difference this answers is the one the ladder cannot express: `read()` returns a typed
@@ -61,6 +88,28 @@ public protocol WipeJournal: AnyObject {
 public extension WipeJournal {
     /// FAIL-CLOSED DEFAULT. See the declaration above for why this is `false` and not `true`.
     var isReadable: Bool { false }
+
+    /// *** IOS-R1/R3: THE FAIL-SAFE DEFAULT -- A JOURNAL THAT HATH NO COUNTER SAYETH SO. *** *The coordinator then
+    /// keeps its own monotone generation rather than pretending the record carrieth one.*
+    var durableEpoch: UInt64? { nil }
+    @discardableResult
+    func bumpEpoch() -> UInt64? { nil }
+    /// *** FAIL-CLOSED: A JOURNAL THAT HATH NOT ANSWERED THE MEDIUM ADMITTS NOTHING. *** *Only `FileWipeJournal`
+    /// (and an explicit court fake) answereth; `UserDefaultsWipeJournal` deliberately does NOT -- its cache cannot
+    /// vouch for disk.*
+    func readDurable() -> (state: WipeState, epoch: UInt64?)? { nil }
+
+    /// *** FAIL-CLOSED DEFAULT: WRITE, THEN ANSWER `synchronized` ONLY IF THE MEDIUM VOUCHES. *** *A journal whose
+    /// `readDurable()` is `nil` (a cache, or a fake that did not answer) therefore REFUSETH its commits; a real
+    /// durable journal overrides this with its own file+directory fsync result.*
+    @discardableResult
+    func writeChecked(_ state: WipeState) -> DurableWriteResult {
+        write(state)
+        guard let durable = readDurable() else {
+            return DurableWriteResult(synchronized: false, epoch: durableEpoch)
+        }
+        return DurableWriteResult(synchronized: durable.state == state, epoch: durable.epoch)
+    }
 }
 
 /// The three idempotent destroy/rebuild steps, injectable so the state machine
@@ -192,10 +241,29 @@ public final class PanicWipe {
 /// after a reboot is exactly the signal `resumeIfPending` acts on.
 public final class UserDefaultsWipeJournal: WipeJournal {
     private let key = "io.godstone.wipe.state"
+    /// *** IOS-R1/R3: THE DURABLE MONOTONE GENERATION, IN THE SAME DURABLE STORE AS THE LADDER. ***
+    private let epochKey = "io.godstone.wipe.generation"
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+    }
+
+    /// The durable generation, read from the store's own counter. `nil` before the first wipe request -- **ABSENT IS
+    /// NOT ZERO**: a journal that has never been requested carrieth no generation, and answering `0` would wrongly
+    /// compete with a permit's own generation (the coordinator's `?? permit.generation` fallback depends on the
+    /// distinction).
+    public var durableEpoch: UInt64? {
+        guard let raw = defaults.object(forKey: epochKey) as? NSNumber else { return nil }
+        return raw.uint64Value
+    }
+
+    /// Advance the generation and return the new value. *Called ONCE before the `REQUESTED` write.*
+    @discardableResult
+    public func bumpEpoch() -> UInt64? {
+        let next = (durableEpoch ?? 0) &+ 1
+        defaults.set(NSNumber(value: next), forKey: epochKey)
+        return next
     }
 
     public func read() -> WipeState {

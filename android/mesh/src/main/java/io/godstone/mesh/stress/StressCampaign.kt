@@ -14,6 +14,20 @@ package io.godstone.mesh.stress
 const val RESOURCE_MODEL_CATEGORY: String = "resource-model"
 
 /**
+ * *** WHERE A RESULT SAYETH WHAT IT IS, RATHER THAN LEAVING THE READER TO INFER IT (round 727). ***
+ *
+ * `RESOURCE_MODEL_CATEGORY` is the NAME of this campaign's category; `Category.RESOURCE_MODEL` is the VALUE a
+ * `CampaignResult` carrieth, and `PRODUCTION_RUNTIME` is the category it MUST NEVER claim. *MEASURED: the constant
+ * was declared on all three isles and asserted against ITSELF in three courts while appearing in NO result field, NO
+ * report line and NO ledger row -- a name a reader of a RESULT never meeteth.* A CATEGORY IS HONOURED WHERE THE
+ * RESULT IS READ.
+ */
+object Category {
+    const val RESOURCE_MODEL = RESOURCE_MODEL_CATEGORY
+    const val PRODUCTION_RUNTIME = "production-runtime"
+}
+
+/**
  * GS-STRESS-001 step 3: **THE OWNER CENSUS** -- the seam by which the campaign asketh a REAL owner instead of reading
  * its own model.
  *
@@ -118,20 +132,28 @@ interface ResourceCensusSource {
 }
 
 // ---------------------------------------------------------------------------
-// T72 -- bounded production-path stress and deterministic fault campaigns
-// (Android isle).
+// T72 -- bounded RESOURCE-MODEL stress and deterministic fault campaigns (Android isle); CATEGORY: `resource-model`.
 //
 // The twin of tools/readiness/stress.py and of the Swift StressCampaign: the SAME
 // invariants, the SAME fault kinds, the SAME bounds. "Mesh simulation metrics alone
 // do not cover actual adapter/store/native failure modes."
 //
+// *** THIS IS A RESOURCE MODEL, NOT A PRODUCTION-RUNTIME DRIVER. *** Every number it readeth is the model's own
+// bookkeeping; the numbers read from a REAL owner come through `ResourceCensusSource` (the owners' own evidence
+// hooks) and ONLY WHEN AN OWNER IS HANDED IN. The PRODUCTION-RUNTIME campaign is a SEPARATE artefact: the iOS driver
+// over the GS-INTEGRATION-001 composition (`GsStress001RealRuntimeDriverTests`) and the real-owner arms; the matrix
+// carrieth a `resource-model` row sayeth so (round 727).
+//
 // A campaign runneth from an EXPLICIT SEED, every fault is scheduled at an explicit
 // step, and a run that FAILETH recordeth its seed and its failing step so it can be
 // replayed EXACTLY. A red run that cannot be replayed is a rumour, not evidence.
 //
-// The invariants a mesh simulation cannot show:
+// The invariants THIS MODEL measures itself (`Invariants.MEASURED_FROM_THE_MODEL`):
 //   no_leaked_leases, no_leaked_timers, no_leaked_sessions, no_duplicate_inbox,
 //   no_duplicate_delivery, no_uncaught_malformed, bounded_census.
+// And the four it emits ONLY through a real owner (`Invariants.OWNER_KIND`), named in
+// every result's `unmeasuredInvariants` when no owner was handed in:
+//   no_leaked_reservations, no_leaked_inventory_leases, pending_ack_work, no_leaked_observers.
 // ---------------------------------------------------------------------------
 
 /** The fault kinds the schedule may carry. */
@@ -187,6 +209,24 @@ object Invariants {
         NO_LEAKED_RESERVATIONS, NO_LEAKED_INVENTORY_LEASES, PENDING_ACK_WORK, NO_LEAKED_OBSERVERS,
         NO_DUPLICATE_INBOX, NO_DUPLICATE_DELIVERY, NO_UNCAUGHT_MALFORMED, BOUNDED_CENSUS)
 
+    /**
+     * *** GS-STRESS-001 (round 727): WHAT THIS ISLE MEASURES FROM ITS OWN MODEL, AND WHAT IT CAN ONLY MEASURE FROM
+     * A REAL OWNER. ***
+     *
+     * THIS ISLE IS THE STRONGEST OF THE THREE -- it carrieth a `ResourceCensusSource` with eight hooks -- but the
+     * four owner-kind names are emitted ONLY WHEN AN OWNER IS HANDED IN. A campaign run with no owner (the default,
+     * and every arm that driveth the model alone) MEASURES SEVEN and NAMES FOUR. *The read-only audit MEASURED that
+     * the four rode on the seven: `ResourceCensusSource.NOT_MEASURED` and `unmeasuredOwners` existed, but a caller
+     * that passed no owner got an empty `unmeasuredOwners` and could read the four as clean. The result now carrieth
+     * `unmeasuredInvariants`, so the difference between "nobody was asked" and "nothing leaked" is CARRIED.*
+     */
+    val MEASURED_FROM_THE_MODEL = listOf(NO_LEAKED_LEASES, NO_LEAKED_TIMERS, NO_LEAKED_SESSIONS,
+        NO_DUPLICATE_INBOX, NO_DUPLICATE_DELIVERY, NO_UNCAUGHT_MALFORMED, BOUNDED_CENSUS)
+
+    /** The SIX owner-kind names this isle emits ONLY through a real owner's own hook. */
+    val OWNER_KIND = listOf(NO_LEAKED_RESERVATIONS, NO_LEAKED_INVENTORY_LEASES, PENDING_ACK_WORK,
+        NO_LEAKED_OBSERVERS)
+
     /** How many invariant constants this object DEFINETH -- the census `ALL` must reproduce. */
     private const val DEFINED_COUNT = 11
 
@@ -199,8 +239,20 @@ object Invariants {
                 "without being listed, which is exactly how four owners went unmeasured (GS-STRESS-001, round 727).*"
         }
         require(ALL.toSet().size == ALL.size) { "Invariants.ALL carrieth a duplicate" }
+        // and the model-side split covereth ALL exactly -- a name in NEITHER list would be unmeasured and unnamed.
+        require((MEASURED_FROM_THE_MODEL + OWNER_KIND).toSet() == ALL.toSet()) {
+            "the model/owner split must cover Invariants.ALL exactly"
+        }
+        require(MEASURED_FROM_THE_MODEL.none { it in OWNER_KIND }) { "a name cannot be both model- and owner-kind" }
     }
 }
+
+/**
+ * *** A HARNESS-INTEGRITY TOKEN, NOT ONE OF THE ELEVEN NAMED INVARIANTS. *** *The fault-liveness clause reporteth that
+ * the SCHEDULE did not fire -- a property of the harness, not of a runtime owner -- so it carrieth its own name rather
+ * than masquerading as `no_uncaught_malformed` (nothing was malformed; the schedule was deaf).*
+ */
+const val FAULT_CAMPAIGN_INACTIVE: String = "fault_campaign_inactive"
 
 /** The deliberate defects the court injecteth to prove the invariants bite. */
 object CampaignDefect {
@@ -210,6 +262,15 @@ object CampaignDefect {
     const val NO_DEDUP = "no_dedup"
     const val MALFORMED_ESCAPES = "malformed_escapes"
     const val UNBOUNDED_CENSUS = "unbounded_census"
+    // *** ONE DEFECT PER LIFECYCLE OWNER (round 727). *** *MEASURED: the timer and session clauses had NO defect of
+    // their own -- only `NO_LEASE_RELEASE` (named for leases) kept them standing, so a mutation that stopped
+    // releasing ONE owner could not be reddened independently.*
+    const val NO_TIMER_RELEASE = "no_timer_release"
+    const val NO_SESSION_RELEASE = "no_session_release"
+
+    /** The defects the court requireth to be CAUGHT, one per invariant family. */
+    val ALL = listOf(NO_LEASE_RELEASE, NO_TIMER_RELEASE, NO_SESSION_RELEASE, NO_RETRY_CAP, NO_DEDUP,
+        MALFORMED_ESCAPES, UNBOUNDED_CENSUS)
 }
 
 data class Fault(val kind: String, val atStep: Int, val magnitude: Long = 0L) {
@@ -270,8 +331,23 @@ data class CampaignResult(
      * a census that found nothing and one that could not look.
      */
     val unmeasuredOwners: List<String> = emptyList(),
+    /**
+     * *** GS-STRESS-001 (round 727): AND THE INVARIANT NAMES THIS RUN COULD NOT MEASURE, CARRIED WHERE THE OWNER LIST
+     * ALONE WAS NOT ENOUGH. ***
+     *
+     * `unmeasuredOwners` nameth the owner that COULD NOT ANSWER; this nameth the INVARIANT that therefore went
+     * unmeasured. *MEASURED: a caller that passed NO owner got an EMPTY `unmeasuredOwners` -- so the four owner-kind
+     * names read as CLEAN rather than as UNASKED, which is the self-agreeing number the seam existeth to replace.* An
+     * empty owner list now carrieth the four names here, so "nothing is leaking" and "nobody asked my kind of owner"
+     * are distinguishable from any result.
+     */
+    val unmeasuredInvariants: List<String> = emptyList(),
+    /** The category this result belongeth to -- `resource-model`, and NEVER the production runtime. */
+    val category: String = Category.RESOURCE_MODEL,
 ) {
     val passed: Boolean get() = failures.isEmpty()
+
+    val isResourceModel: Boolean get() = category == Category.RESOURCE_MODEL
 
     fun replayHint(): String =
         "seed=$seed cycles=$cycles first_failure=${failures.firstOrNull() ?: "none"}"
@@ -323,9 +399,9 @@ class StressCampaign(
         if (!inFlight && defect != CampaignDefect.NO_LEASE_RELEASE &&
             defect != CampaignDefect.UNBOUNDED_CENSUS) leases = maxOf(0, leases - 1)
         timers++
-        if (!inFlight) timers = maxOf(0, timers - 1)
+        if (!inFlight && defect != CampaignDefect.NO_TIMER_RELEASE) timers = maxOf(0, timers - 1)
         sessions++
-        if (!inFlight) sessions = maxOf(0, sessions - 1)
+        if (!inFlight && defect != CampaignDefect.NO_SESSION_RELEASE) sessions = maxOf(0, sessions - 1)
 
         if (defect == CampaignDefect.NO_DEDUP || !inbox.containsKey(msg)) {
             inbox[msg] = (inbox[msg] ?: 0) + 1
@@ -357,12 +433,19 @@ class StressCampaign(
 
     fun shutdown() {
         if (defect == CampaignDefect.NO_LEASE_RELEASE) return
-        leases = 0; timers = 0; sessions = 0
+        if (defect != CampaignDefect.NO_TIMER_RELEASE) timers = 0
+        if (defect != CampaignDefect.NO_SESSION_RELEASE) sessions = 0
+        leases = 0
     }
 
     fun run(): CampaignResult {
         val failures = ArrayList<String>()
         val unmeasuredOwners = ArrayList<String>()
+        // *** THE INVARIANTS THIS RUN COULD NOT MEASURE, CARRIED RATHER THAN ABSENT. *** If NO owner was handed in,
+        // every owner-kind invariant (and the timer one, which this isle asketh of the model AND of an owner) went
+        // unasked -- so the four owner-kind names are named here, and the caller cannot read them as clean.
+        val unmeasuredInvariants = ArrayList<String>()
+        if (owners.isEmpty()) unmeasuredInvariants.addAll(Invariants.OWNER_KIND)
         var censusHigh = 0
         var step = 0
         while (step < cycles) {
@@ -401,8 +484,10 @@ class StressCampaign(
             // and a census that collapsed them would be the self-agreeing number this seam existeth to replace.
             val reservations = owner.liveReservations()
             when {
-                reservations == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
-                    "${owner.ownerName} (reservations)")
+                reservations == ResourceCensusSource.NOT_MEASURED -> {
+                    unmeasuredOwners.add("${owner.ownerName} (reservations)")
+                    unmeasuredInvariants.add(Invariants.NO_LEAKED_RESERVATIONS)
+                }
                 reservations != 0 -> failures.add(
                     "${Invariants.NO_LEAKED_RESERVATIONS}: $reservations writer reservation(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
@@ -410,8 +495,10 @@ class StressCampaign(
             // THE THIRD OWNER: THE INVENTORY LEASES THE CARD NAMETH -- `admitted`, whose hook already existeth.
             val admittedLeases = owner.liveAdmittedLeases()
             when {
-                admittedLeases == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
-                    "${owner.ownerName} (admitted leases)")
+                admittedLeases == ResourceCensusSource.NOT_MEASURED -> {
+                    unmeasuredOwners.add("${owner.ownerName} (admitted leases)")
+                    unmeasuredInvariants.add(Invariants.NO_LEAKED_INVENTORY_LEASES)
+                }
                 admittedLeases != 0 -> failures.add(
                     "${Invariants.NO_LEAKED_INVENTORY_LEASES}: $admittedLeases admitted lease(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
@@ -419,8 +506,10 @@ class StressCampaign(
             // THE FOURTH OWNER: TIMERS -- an armed deadline that nobody fired leaves NO OTHER TRACE.
             val armedTimers = owner.liveArmedTimers()
             when {
-                armedTimers == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
-                    "${owner.ownerName} (timers)")
+                armedTimers == ResourceCensusSource.NOT_MEASURED -> {
+                    unmeasuredOwners.add("${owner.ownerName} (timers)")
+                    unmeasuredInvariants.add(Invariants.NO_LEAKED_TIMERS)
+                }
                 armedTimers != 0 -> failures.add(
                     "${Invariants.NO_LEAKED_TIMERS}: $armedTimers armed timer(s) still live in the REAL owner " +
                         "'${owner.ownerName}' after shutdown")
@@ -428,8 +517,10 @@ class StressCampaign(
             // THE FIFTH OWNER: OBSERVERS -- a registration that outlives its owner is a callback into a dead object.
             val observers = owner.liveObservers()
             when {
-                observers == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
-                    "${owner.ownerName} (observers)")
+                observers == ResourceCensusSource.NOT_MEASURED -> {
+                    unmeasuredOwners.add("${owner.ownerName} (observers)")
+                    unmeasuredInvariants.add(Invariants.NO_LEAKED_OBSERVERS)
+                }
                 observers != 0 -> failures.add(
                     "${Invariants.NO_LEAKED_OBSERVERS}: $observers observer registration(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
@@ -437,8 +528,10 @@ class StressCampaign(
             // THE SIXTH OWNER: PENDING ACK WORK -- a duty the system owed and did not discharge.
             val pendingAcks = owner.livePendingAcks()
             when {
-                pendingAcks == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
-                    "${owner.ownerName} (pending acks)")
+                pendingAcks == ResourceCensusSource.NOT_MEASURED -> {
+                    unmeasuredOwners.add("${owner.ownerName} (pending acks)")
+                    unmeasuredInvariants.add(Invariants.PENDING_ACK_WORK)
+                }
                 pendingAcks != 0 -> failures.add(
                     "${Invariants.PENDING_ACK_WORK}: $pendingAcks pending ACK obligation(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
@@ -446,8 +539,10 @@ class StressCampaign(
             // THE SEVENTH: THE STORE'S OWN OBSERVER SET -- the same NAME as `observers`, a DIFFERENT owner.
             val storeObservers = owner.liveStoreObservers()
             when {
-                storeObservers == ResourceCensusSource.NOT_MEASURED -> unmeasuredOwners.add(
-                    "${owner.ownerName} (store observers)")
+                storeObservers == ResourceCensusSource.NOT_MEASURED -> {
+                    unmeasuredOwners.add("${owner.ownerName} (store observers)")
+                    unmeasuredInvariants.add(Invariants.NO_LEAKED_OBSERVERS)
+                }
                 storeObservers != 0 -> failures.add(
                     "${Invariants.NO_LEAKED_OBSERVERS}: $storeObservers store observer(s) still live in the REAL " +
                         "owner '${owner.ownerName}' after shutdown")
@@ -459,11 +554,23 @@ class StressCampaign(
         retries.entries.firstOrNull { it.value > RETRY_CAP }?.let {
             failures.add("${Invariants.NO_DUPLICATE_DELIVERY}: msg_id ${it.key} was retried ${it.value} times, over the cap $RETRY_CAP")
         }
+        // *** THE FAULT CAMPAIGN MUST ACTUALLY HAVE FIRED A REFUSING FAULT (round 727). *** *MEASURED: nothing
+        // asserted a scheduled fault was ever APPLIED -- the default density of 512 giveth an EMPTY schedule under
+        // 512 cycles, and every owner arm ran 64 cycles with zero faults.* A refusing kind increaseth `refusals`; a
+        // schedule that carrieth only the two resource-moving kinds is honest about measuring no refusal.
+        val refusalsExpected = schedule.faults.count {
+            it.kind == FaultKind.DISK_FULL || it.kind == FaultKind.CORRUPTION || it.kind == FaultKind.MALFORMED
+        }
+        if (refusalsExpected > 0 && refusals < refusalsExpected) {
+            failures.add("$FAULT_CAMPAIGN_INACTIVE: $refusalsExpected refusing fault(s) were scheduled but only " +
+                "$refusals were refused -- the fault campaign did not fire")
+        }
         if (censusHigh > bound) {
             failures.add("${Invariants.BOUNDED_CENSUS}: the census reached $censusHigh, over the plateau $bound")
         }
         return CampaignResult(seed, cycles, failures, censusHigh, inbox.values.sum(),
-            delivery.values.sum(), refusals, leases, timers, sessions, unmeasuredOwners)
+            delivery.values.sum(), refusals, leases, timers, sessions, unmeasuredOwners,
+            unmeasuredInvariants, Category.RESOURCE_MODEL)
     }
 
     companion object {

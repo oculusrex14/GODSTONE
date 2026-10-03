@@ -57,7 +57,7 @@ private final class HitReader: ArchiveReading, @unchecked Sendable {
         }
     }
 
-    func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata? { nil }
+    func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata? { nil }
 }
 
 @MainActor

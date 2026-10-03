@@ -82,7 +82,8 @@ object PrivateConstructionCounter {
      *
      * *A count alone sayeth "something was constructed"; this sayeth WHAT AUTHORISED IT.* **An arm that reads only the
      * count could be satisfied by a construction under a REFUSING decision -- the very defect the gate exists to
-     * prevent -- so the permitted-road arm asserts both the delta AND that the authority was `CLEAN_START`.**
+     * prevent -- so the permitted-road arm asserts both the delta AND that the authority was the PERMITTING decision
+ * that issued the permit (`WIPE_COMPLETED` at the terminal rung this court drives).**
      */
     fun lastAuthorizedBy(seam: Seam): StartupWipeDecision? = rec(seam).lastDecision
 

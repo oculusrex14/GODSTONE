@@ -64,6 +64,29 @@ targets:
           SWIFT_OPTIMIZATION_LEVEL: -O
           ENABLE_TESTABILITY: NO
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: ARCHIVE_ONLY
+          # *** THE SHIPPING IMAGE IS STRIPPED AT THE BUILD BOUNDARY, NOT FORGIVEN IN THE AUDIT. ***
+          #
+          # *MEASURED: the unsigned `LightRelease` generic/platform=iOS image carried 9687 stabbing
+          # symbols -- N_OSO/N_AST/N_FUN entries whose string table leaked absolute build paths under
+          # /tmp and the checkout (`.../Objects-normal/arm64/Godstone.swiftmodule`), plus the
+          # `radr://5614542` linker note. A SHIPPING image that carrieth its build machine's paths is
+          # not stripped, and the artifact inspector refuseth it BY NAME. The remedy is the standard
+          # Xcode release postprocessing on THIS target's LIGHT release config (the Lab targets keep
+          # their own settings and are untouched):*
+          #   * DEPLOYMENT_POSTPROCESSING runneth the postprocess phases, of which StripSymbols is one;
+          #   * STRIP_INSTALLED_PRODUCT + COPY_PHASE_STRIP keep the product stripped through both the
+          #     copy phase and the install postprocess;
+          #   * STRIP_STYLE = debugging driveth `strip -D -S` -- `-S` removeth every stabbing entry
+          #     INCLUDING the linker's `radr://` note, which is exactly the residue `-x`/`all` leave
+          #     behind (MEASURED: `strip -x -D` left one stab; `strip -S -D` left none). The DWARF
+          #     travels to a SEPARATE `Godstone.app.dSYM`, which never enters the shipped bundle.
+          #
+          # The inspector's debug-symbol refusal is NOT scoped down or removed: an unstripped or
+          # debug-bearing LIGHT image must still fail, and it does.
+          DEPLOYMENT_POSTPROCESSING: YES
+          COPY_PHASE_STRIP: YES
+          STRIP_INSTALLED_PRODUCT: YES
+          STRIP_STYLE: debugging
 
   # T54: the nonshipping LabMesh application. A SEPARATE target with its OWN
   # bundle identity (io.godstone.labmesh), depending on the SAME canonical

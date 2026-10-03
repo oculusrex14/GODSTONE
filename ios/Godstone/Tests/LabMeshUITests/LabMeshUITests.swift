@@ -188,27 +188,76 @@ final class LabMeshUITests: XCTestCase {
         // about a rendered control -- EXISTS, ADDRESSABLE, ACTIONABLE, and WIRED TO A RUNTIME-OWNED READOUT -- and
         // the JOURNEY's completion stays where it can be awaited deterministically. The measurement above is kept in
         // the assertion message, so an auditor reads the evidence rather than a claim.
+        // *** *** IOS-R12: THE COURT NOW ASSERTS A REAL EFFECT, NOT THE EXISTENCE OF AN INSTRUMENT. *** ***
+        //
+        // *THE REVIEW'S DEFECT: this arm "polls the admission witness but only asserts that the readout exists,
+        // explicitly allowing an unchanged 0/0 result" -- so a DISCONNECTED Send action satisfied it.* **THE POSITIVE
+        // WITNESS IS NOW THE DURABLE VERDICT THE VIEW RENDERS**: `lab.conversation.durable` is written from
+        // `durableIntentVerdict(intent)` over the LAB'S OWN AUTHOR STORE, and `lab.conversation.intent` names the exact
+        // id the view minted -- so the rendered verdict must become `found:<the same id>`.* *A no-op Send leaves the
+        // verdict `notFound`/unmoved and reddens.*
+        XCTAssertTrue(admitted.exists, "the runtime-owned readout must stand")
+        let durable = app.descendants(matching: .any)["lab.conversation.durable"]
+        XCTAssertTrue(durable.waitForExistence(timeout: 20), "the durable verdict must render")
+        let intent = app.descendants(matching: .any)["lab.conversation.intent"]
+        XCTAssertTrue(intent.waitForExistence(timeout: 20), "the rendered intent id must stand")
+        let deadline2 = Date().addingTimeInterval(25)
+        var verdict = durable.value as? String ?? durable.label
+        while Date() < deadline2 {
+            verdict = durable.value as? String ?? durable.label
+            if verdict.hasPrefix("found:") { break }
+            usleep(200_000)
+        }
+        let renderedOutcome = outcome.label
         XCTAssertTrue(
-            admitted.exists,
-            "*** THE RUNTIME-OWNED READOUT MUST STAND. It reads `LabRuntime.admittedCount()`, which no view can " +
-                "write, so it is the instrument that WOULD redden on an unwired closure. Measured on this run: " +
-                "\(before) / \(after) -- the send does not complete under XCUITest, which is why the journey's " +
-                "completion is asserted in `LabMeshAppTests` (which awaits `sendDirect` and asserts `applied:` plus " +
-                "the recipient's real inbox commit) rather than here. ***",
+            verdict.hasPrefix("found:"),
+            "*** THE SEND MUST REACH THE DURABLE AUTHORITY: the rendered verdict must name a FOUND intent, not " +
+                "merely exist. Observed: '\(verdict)' (admitted \(before) -> \(after)) ***",
         )
-
-        // AND THE OUTCOME NAMES THE RUNTIME'S ANSWER, which is the human-visible half of the same fact.
-        XCTAssertFalse(
-            outcome.label.isEmpty,
-            "the outcome must name what the runtime said; observed: \(outcome.label)",
-        )
+        // *** *** THE TRUE RELATION, VERIFIED WHERE THE USER SEES IT -- BETWEEN THE TWO RENDERED AUTHORITY ANSWERS. *** ***
+        //
+        // *`lab.conversation.intent` renders the id the VIEW minted (`mintIntentId()` -> a 16-octet NONCE): the
+        // DURABLE JOURNAL KEY the reopen road re-asks by. `lab.conversation.durable` renders the authority's verdict
+        // for that key, whose id is the LOGICAL MESSAGE id the authority DERIVED (`MessageId.logical(nodeId:nonce:
+        // createdAt:)`) -- **a DIFFERENT identity by construction**, so an assertion that the verdict "contains the
+        // minted nonce" conflated a key with the message it names.*
+        //
+        // **SO THE RELATION IS BOUND WHERE IT IS REAL AND VISIBLE: THE SEND'S OWN OUTCOME.** *`lab.conversation.outcome`
+        // renders the authority's reply to THE SAME send (`durable:<logical id>`), so the two rendered answers -- the
+        // send's outcome and the reopen's verdict -- must name the SAME logical id. **THAT is the relation the user
+        // reads on screen, and it proveth the verdict is about THIS send rather than a key echo.***
+        if renderedOutcome.hasPrefix("durable:") {
+            let sentId = renderedOutcome.dropFirst("durable:".count)
+                .split(separator: ":").first.map(String.init) ?? ""
+            XCTAssertFalse(sentId.isEmpty,
+                           "*** THE SEND'S OUTCOME MUST NAME THE AUTHORITY'S LOGICAL MESSAGE ID; observed: '\(renderedOutcome)' ***")
+            XCTAssertTrue(
+                verdict.contains(sentId),
+                "*** THE REOPEN VERDICT MUST NAME THE SAME AUTHORITY LOGICAL ID THE SEND'S OWN OUTCOME NAMED: "
+                    + "the send rendered '\(renderedOutcome)', the reopen rendered '\(verdict)'. Two answers about "
+                    + "THE SAME send must agree on the message identity. ***",
+            )
+        } else {
+            // A REFUSAL carries its own truthful reason; the verdict then answers honestly about the intent key.
+            XCTAssertTrue(renderedOutcome.hasPrefix("refused:"),
+                          "the outcome must name the runtime's own answer; observed: '\(renderedOutcome)'")
+        }
     }
 
     /// *** THE WIPE JOURNEY, DRIVEN: the button must ACT, not merely display. ***
     ///
-    /// *The card asks for "wipe progress from the real reopened store"; what this control renders is the composition
-    /// harness's own register, and the button invokes the harness's OWN owner. **A CONTROL THAT ONLY SET A LOCAL FLAG
-    /// WOULD PASS A SOURCE GREP AND FAIL HERE**, because the rendered state is read back from the runtime.*
+    /// *The card asks for "wipe progress from the real reopened store". **MEASURED BEFORE THIS REPAIR, AND IT WAS THE
+    /// DEFECT: this control read the COMPOSITION HARNESS's own flag (which owns no ladder at all), so the rendered
+    /// state came from a boolean while the real durable record stood untouched.** *`LabRuntime.wipeStateName()` now
+    /// readeth `WipeJournalDurabilityAdapter` over the same journal the shipping ladder writeth, and the buttons drive
+    /// `MeshRuntime.runRecoveryLadder` -- the production road.* **A CONTROL THAT ONLY SET A LOCAL FLAG STILL FAILS
+    /// HERE**, because the rendered state is read back from the durable record and the typed outcome.*
+    ///
+    /// *** AND THE LIVE JOURNEY: DRIVE THE WIPE, RELAUNCH, AND RESUME FROM THE DURABLE RECORD. ***
+    ///
+    /// *A wipe that only worked within one process would be no wipe at all: the whole reason the ladder is durable is
+    /// that a process may die mid-erasure.* **THE RELAUNCH IS THE DISCRIMINATOR** -- *a flag in memory reads "no wipe
+    /// was ever requested" after a fresh launch, while the journal carrieth the rung the ladder reached.*
     func testGSINT001TheWipeControlReportsTheRuntimesOwnState() throws {
         let app = XCUIApplication()
         app.launch()
@@ -223,9 +272,147 @@ final class LabMeshUITests: XCTestCase {
         XCTAssertTrue(state.label.contains("wipe:"),
                       "and it must NAME the state it read; observed: \(state.label)")
 
+        // *** THE TYPED RUNG AND ARTIFACT READOUTS STAND BESIDE IT: a single word cannot carry which estate the ladder
+        // reached, which rung it stands at, and which private artifact survived. ***
+        let rung = app.staticTexts["lab.diagnostics.wiperung"]
+        XCTAssertTrue(rung.waitForExistence(timeout: 20),
+                      "*** THE DURABLE RUNG MUST BE RENDERED, read from the journal rather than recalled. ***")
+        let artifacts = app.staticTexts["lab.diagnostics.wipeartifacts"]
+        XCTAssertTrue(artifacts.waitForExistence(timeout: 20),
+                      "*** THE REMAINING ARTIFACTS MUST BE RENDERED, measured on the filesystem. ***")
+        let startupRecovery = app.staticTexts["lab.diagnostics.startuprecovery"]
+        XCTAssertTrue(startupRecovery.waitForExistence(timeout: 20),
+                      "*** THE STARTUP DECISION MUST BE RENDERED: `operator required` is the field a corrupt record "
+                          + "needs and a Boolean cannot carry. ***")
+
         let begin = app.buttons["lab.diagnostics.beginwipe"]
         XCTAssertTrue(begin.exists, "the wipe action must exist as a CONTROL")
         XCTAssertTrue(begin.isEnabled, "and it must be actionable")
+
+        // *** THE FRESH WIPE, DRIVEN. ***
+        let result = app.staticTexts["lab.diagnostics.wiperesult"]
+        XCTAssertTrue(result.waitForExistence(timeout: 20), "the wipe result must render")
+        begin.tap()
+
+        // A PLAIN BOUNDED POLL on the rendered result, which now carries the TYPED decision and the measured artifacts.
+        let deadline = Date().addingTimeInterval(20)
+        var rendered = result.label
+        while Date() < deadline {
+            rendered = result.label
+            if rendered != "wipe result: not requested" && !rendered.hasSuffix("not requested") { break }
+            usleep(200_000)
+        }
+        XCTAssertFalse(rendered.hasSuffix("not requested"),
+                       "*** THE WIPE CONTROL MUST HAVE ACTED AND REPORTED: the result is written from the TYPED "
+                           + "outcome of the production ladder, not from a local flag. Observed: '\(rendered)' ***")
+
+        // *** AND THE RESUME ROAD, WHICH IS A DIFFERENT PHASE: it reads the durable record and drives it onward. ***
+        let resume = app.buttons["lab.diagnostics.resumewipe"]
+        XCTAssertTrue(resume.exists, "the resume control must exist as a CONTROL")
+        XCTAssertTrue(scrollIntoView(resume, in: app), "and it must be reachable")
+        resume.tap()
+
+        // *** *** IOS-R12: THE WIPE MUST HAVE REALLY DELETED ITS ARTIFACTS. *** ***
+        //
+        // *THE REVIEW'S DEFECT: the old arm "checks changed text and a persisted nonempty wipe record, not artifact
+        // destruction or terminal completion". **THE MEASURED ARTIFACT READOUT (`lab.diagnostics.wipeartifacts`, read
+        // from the FILESYSTEM by `recoveryArtifactWords()`) MUST REACH "no private artifact remains"** -- so a wipe
+        // that merely set text without deleting the lab's real files reddens.*
+        let artifactsAfter = app.staticTexts["lab.diagnostics.wipeartifacts"]
+        XCTAssertTrue(artifactsAfter.waitForExistence(timeout: 20), "the artifact readout must render")
+        let wipeDeadline = Date().addingTimeInterval(25)
+        var artifactLine = artifactsAfter.label
+        while Date() < wipeDeadline {
+            artifactLine = artifactsAfter.label
+            if artifactLine.contains("no private artifact remains") { break }
+            usleep(250_000)
+        }
+        XCTAssertTrue(
+            artifactLine.contains("no private artifact remains"),
+            "*** THE WIPE MUST REALLY DELETE THE LAB'S OWN FILES: the filesystem-measured readout must reach 'no "
+                + "private artifact remains', not merely change text. Observed: '\(artifactLine)' ***",
+        )
+
+        // *** AND THE RELAUNCH: A FRESH PROCESS MUST READ THE SAME DURABLE RECORD. ***
+        app.terminate()
+        app.launch()
+        let relaunchedTab = tab("lab.tab.diagnostics", in: app)
+        XCTAssertTrue(relaunchedTab.waitForExistence(timeout: 30),
+                      "the diagnostics tab must exist after relaunch")
+        relaunchedTab.tap()
+        let afterRelaunch = app.staticTexts["lab.diagnostics.wipestate"]
+        XCTAssertTrue(afterRelaunch.waitForExistence(timeout: 30), "the wipe state must render after relaunch")
+        XCTAssertFalse(
+            afterRelaunch.label.contains("no wipe was ever requested"),
+            "*** THE DURABLE RECORD MUST SURVIVE THE PROCESS: a flag in memory would read 'no wipe was ever "
+                + "requested' here, while the journal carries the rung the ladder reached. Observed: "
+                + "'\(afterRelaunch.label)' ***",
+        )
+    }
+
+    /// *** *** GS-UX-001 `required-retry`: THE ESSENTIAL `Retry` CONTROL, DRIVEN. *** ***
+    ///
+    /// *THE OMISSION THIS ARM CLOSES: `AccessibilityContract.essentialControls` declares `("retry", "Retry")`
+    /// essential, the shared Android lab renders it, and iOS's SOS surface rendered a hold, an accessible alternative
+    /// and a cancel -- **but NO RETRY AT ALL**, while `MeshNode.handleSosCommand(.retry(msgId))` stood wired behind it.
+    /// A source grep for "retry" could not see the omission; a control-level arm can.*
+    ///
+    /// **AND IT TAPS: the control must ACT.** *The runtime answers with the node's own taxonomy ("resumed" or a refusal
+    /// that NAMES its reason, including the honest "no standing distress call to retry"), and the outcome is then
+    /// announced and rendered.*
+    func testGSINT001TheEssentialRetryControlStandsAndActs() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let sosTab = tab("lab.tab.sos", in: app)
+        XCTAssertTrue(sosTab.waitForExistence(timeout: 20), "the SOS tab must exist")
+        sosTab.tap()
+
+        let retry = app.buttons["lab.sos.retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 25),
+                      "*** THE CONTRACT'S OWN ESSENTIAL `retry` CONTROL MUST STAND ON THE SOS SURFACE -- it is in "
+                          + "`AccessibilityContract.essentialControls` and the shared Android lab renders it. ***")
+        XCTAssertTrue(retry.isEnabled, "and it must be actionable")
+        XCTAssertEqual(retry.label, "Retry",
+                       "*** AND IT MUST CARRY THE CONTRACT'S OWN WORD, so a screen reader hears what the table "
+                           + "names. A deleted modifier falls back to the TITLE and this fails. ***")
+        XCTAssertTrue(scrollIntoView(retry, in: app), "the control must be reachable by a user")
+        let frame = retry.frame
+        XCTAssertGreaterThanOrEqual(frame.height, 44,
+                                    "*** AND IT MUST MEET THE 44pt MINIMUM; measured \(frame.width)x\(frame.height)pt. ***")
+
+        // *** ARMED FIRST, SO THE RETRY HAS A STANDING CALL TO RESUME -- AND SO THE POSITIVE ROAD IS WHAT IS MEASURED. ***
+        let alt = app.buttons["lab.sos.send"]
+        XCTAssertTrue(alt.waitForExistence(timeout: 20), "the accessible SOS control must exist")
+        XCTAssertTrue(scrollIntoView(alt, in: app), "and it must be reachable")
+        alt.tap()
+
+        let outcome = app.staticTexts["lab.sos.outcome"]
+        XCTAssertTrue(outcome.waitForExistence(timeout: 25), "the SOS outcome must render")
+        let beforeRetry = outcome.label
+
+        retry.tap()
+
+        // *** A BOUNDED PLAIN POLL ON THE RENDERED OUTCOME: it is written from the RUNTIME'S OWN ANSWER, so a control
+        // whose closure was replaced by a local write would leave it unmoved. ***
+        let deadline = Date().addingTimeInterval(20)
+        var after = outcome.label
+        while Date() < deadline {
+            after = outcome.label
+            if after != beforeRetry { break }
+            usleep(200_000)
+        }
+        XCTAssertNotEqual(
+            after, beforeRetry,
+            "*** THE RETRY MUST REACH THE RUNTIME AND ITS ANSWER MUST RENDER: the outcome is the node's own taxonomy "
+                + "(`resumed` or a refusal NAMING its reason). Observed unchanged: '\(after)' ***",
+        )
+        XCTAssertTrue(
+            after.contains("resume:") || after.contains("refused"),
+            "*** AND THE ANSWER MUST BE THE RUNTIME'S OWN VOCABULARY, never a phrase this view invented. The resumed "
+                + "road renders `resume:` + the node's own taxonomy (`LabRuntime.retrySos`), and a real refusal renders "
+                + "`refused:`. Observed: '\(after)' ***",
+        )
     }
 
     /// *** GS-UX-001 STEP 7's CLOSURE: THE SCREEN TREE UNDER RTL AND A LARGER TEXT SIZE. ***
@@ -781,23 +968,14 @@ final class LabMeshUITests: XCTestCase {
         XCTAssertTrue(activeValue.hasPrefix("active: "),
                       "*** AN ARMED CALL MUST RENDER AS ACTIVE; observed \(activeValue) ***")
 
-        // *** (2) THE CANCEL ROAD, TAKEN WHILE THE DURABLE ROW STILL STANDS. ***
+        // *** (2) *** *** IOS-R9: THE FULL ACTIVE-RELAUNCH-CANCEL-RELAUNCH CYCLE, FOR THE SAME msg_id. *** *** ***
         //
-        // *MEASURED AND CORRECTED HERE: the lab's composition harness composes its nodes over IN-MEMORY stores, so
-        // after a RELAUNCH there is no row to cancel -- a cancel then honestly answereth `unknown-message`. **A CANCEL
-        // IS A JOURNEY OF THE RUNNING PROCESS**, so it is driven here, before the relaunch; what must survive the
-        // relaunch is the STATE, which the durable register carrieth.*
-        let cancel = app.buttons["lab.sos.cancel"]
-        XCTAssertTrue(cancel.waitForExistence(timeout: 20), "the cancel control must exist")
-        cancel.tap()
-        let terminal = NSPredicate(format: "value BEGINSWITH 'terminal: '")
-        expectation(for: terminal, evaluatedWith: state)
-        waitForExpectations(timeout: 20)
-        let terminalValue = state.value as? String ?? state.label
-        XCTAssertTrue(terminalValue.hasPrefix("terminal: "),
-                      "*** A CANCELLED CALL MUST RENDER AS TERMINAL; observed \(terminalValue) ***")
-
-        // *** (3) THE RELAUNCH: the state must survive the process, read from the same register. ***
+        // *THE REVIEW'S DEFECT: the old arm CANCELLED BEFORE TERMINATING, so it narrowed away the requirement --
+        // "arm -> terminate -> relaunch -> active -> cancel -> terminate -> relaunch -> terminal", which is the road
+        // that proves a RELAUNCHED process carries a real obligation rather than a display register. **THE CANCEL IS
+        // NOW DRIVEN IN THE SECOND PROCESS** (the holder composes over a durable estate root, so the row really
+        // survives), and a retry of the SAME authored frame is exercised too.*
+        // *** (2a) TERMINATE AND RELAUNCH: the ACTIVE call must survive. ***
         app.terminate()
         app.launch()
         let relaunchedSosTab = tab("lab.tab.sos", in: app)
@@ -806,11 +984,40 @@ final class LabMeshUITests: XCTestCase {
         let relaunchedState = app.descendants(matching: .any)["lab.sos.state"]
         XCTAssertTrue(relaunchedState.waitForExistence(timeout: 20),
                       "the distress state must render after relaunch")
-        let afterRelaunch = relaunchedState.value as? String ?? relaunchedState.label
+        let relaunchedActive = NSPredicate(format: "value BEGINSWITH 'active: '")
+        expectation(for: relaunchedActive, evaluatedWith: relaunchedState)
+        waitForExpectations(timeout: 20)
+        let activeAfterRelaunch = relaunchedState.value as? String ?? relaunchedState.label
+        XCTAssertTrue(
+            activeAfterRelaunch.hasPrefix("active: "),
+            "*** THE ACTIVE CALL MUST SURVIVE THE RELAUNCH: the durable obligation (held frame + row), not a display "
+                + "register, must re-render it. Observed: '\(activeAfterRelaunch)' ***",
+        )
+
+        // *** (2b) CANCEL THE SAME CALL IN THE SECOND PROCESS -- the id comes from the DURABLE row. ***
+        let cancel = app.buttons["lab.sos.cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 20), "the cancel control must exist")
+        cancel.tap()
+        let terminal = NSPredicate(format: "value BEGINSWITH 'terminal: '")
+        expectation(for: terminal, evaluatedWith: relaunchedState)
+        waitForExpectations(timeout: 20)
+        let terminalValue = relaunchedState.value as? String ?? relaunchedState.label
+        XCTAssertTrue(terminalValue.hasPrefix("terminal: "),
+                      "*** A CANCELLED CALL MUST RENDER AS TERMINAL; observed \(terminalValue) ***")
+
+        // *** (3) THE SECOND RELAUNCH: the TERMINAL state must survive, read from the same durable row. ***
+        app.terminate()
+        app.launch()
+        let thirdSosTab = tab("lab.tab.sos", in: app)
+        XCTAssertTrue(thirdSosTab.waitForExistence(timeout: 20), "the SOS tab must exist after the second relaunch")
+        thirdSosTab.tap()
+        let thirdState = app.descendants(matching: .any)["lab.sos.state"]
+        XCTAssertTrue(thirdState.waitForExistence(timeout: 20), "the distress state must render after relaunch")
+        let afterRelaunch = thirdState.value as? String ?? thirdState.label
         XCTAssertTrue(
             afterRelaunch.hasPrefix("terminal: "),
-            "*** THE DISTRESS STATE MUST SURVIVE A RELAUNCH: a cancelled call must still read terminal in a FRESH "
-                + "process, since nothing of the first process is consulted. Observed: \(afterRelaunch) ***",
+            "*** THE TERMINAL STATE MUST SURVIVE THE SECOND RELAUNCH: a cancelled call must still read terminal in a "
+                + "FRESH process, since nothing of the first process is consulted. Observed: \(afterRelaunch) ***",
         )
         XCTAssertEqual(afterRelaunch, terminalValue,
                        "and the relaunched rendering must be the SAME line, not merely the same prefix")
@@ -866,5 +1073,276 @@ final class LabMeshUITests: XCTestCase {
         XCTAssertTrue(sosState.waitForExistence(timeout: 20), "the distress state must render")
         XCTAssertFalse((sosState.value as? String ?? "").isEmpty,
                        "and it must carry the value it names")
+    }
+
+    // ================================================================================================
+    // *** *** G1: THE RECOVERY-ONLY TOPOLOGY, DRIVEN BY A REAL ON-DISK FIXTURE. *** ***
+    //
+    // *THE REPORT'S GAP, VERBATIM: "ZERO arms reference lab.recovery.* -- the recovery-only topology, the
+    // Retry-recovery/Resolve buttons and deniedRetry have no XCUITest discriminator; no launchEnvironment injection
+    // door exists to reach those states."* **THE DOOR IS NOW A REAL, DEBUG-ONLY FIXTURE** that planteth the lab's
+    // actual journal bytes (phase + floor) beside its real inventory BEFORE the holder constructs -- so the typed
+    // decision these arms read is read from a record that really stands, never a UI value.
+    //
+    // **THE ARMS ARE WRITTEN SO THEY DO NOT DEPEND ON EACH OTHER'S ORDER: every arm that must start CLEAN sets
+    // `LAB_FIXTURE=reset`; the corruption arm ALWAYS plants its own unreadable record.** *And the zero-private-open
+    // count is the PROBE RAISED AT THE REAL STORE-CONSTRUCTION DOORS (`LabRuntime.compose`), not an inference from
+    // the absent tab tree.*
+    // ================================================================================================
+
+    /// *** THE FIXTURE LAUNCH VALUE, AND THE NORMAL BOOT THAT PRECEDES IT. ***
+    ///
+    /// *`installStandardControls()` first CLEARS the estate to a clean first-launch state and lets the app boot
+    /// NORMALLY, so the positive control is established in the SAME test: the real store doors were reached (the
+    /// `reset` run composes the lab) and the normal surfaces render. **Only then is the app relaunched under the
+    /// fixture** -- so the arm proveth the fixture CHANGED the topology rather than that the app never worked.*
+    private func installStandardControls() {
+        let app = XCUIApplication()
+        app.launchEnvironment["GODSTONE_LAB_RECOVERY_FIXTURE"] = "reset"
+        app.launch()
+        XCTAssertTrue(tab("lab.tab.diagnostics", in: app).waitForExistence(timeout: 25),
+                      "*** THE POSITIVE CONTROL: a reset boot MUST reach the normal surfaces, or the recovery-only "
+                          + "arms below prove nothing about what the fixture changed. ***")
+        app.terminate()
+    }
+
+    /// Launch the app with a recovery fixture value in its environment.
+    private func launchFixture(_ value: String) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchEnvironment["GODSTONE_LAB_RECOVERY_FIXTURE"] = value
+        app.launch()
+        return app
+    }
+
+    /// The recovery-only surface's rendered readouts, for an arm to bind.
+    private func recoveryReadouts(_ app: XCUIApplication) -> (decision: XCUIElement, gate: XCUIElement,
+                                                             opens: XCUIElement, rung: XCUIElement,
+                                                             bootstrap: XCUIElement) {
+        (app.staticTexts["lab.recovery.decision"], app.staticTexts["lab.recovery.gate"],
+         app.staticTexts["lab.recovery.privateopens"], app.staticTexts["lab.recovery.rung"],
+         app.staticTexts["lab.recovery.bootstrap"])
+    }
+
+    /// *** *** G1 (SCHEME A): A PENDING RECOVERY BOOTS RECOVERY-ONLY, OPENS ZERO PRIVATE STORES, AND RETRIES A
+    /// RESUME. *** ***
+    ///
+    /// *The journal is planted at a REAL, durable `REQUESTED` phase (pinned to a seeded floor) beside the lab's real
+    /// inventory. The holder reads it BEFORE constructing anything, renders recovery-only, and the arm binds:*
+    ///   * the TYPED decision is a recovery state (never clean/wipe-completed) with a NAMED rung;
+    ///   * **NO normal surface exists** (every `lab.tab.*` absent) **AND the zero-open witness -- raised at the real
+    ///     store-construction doors -- reads 0** (a tab-absence-only claim could not distinguish "gate held" from
+    ///     "never composed");
+    ///   * the GATE renders `recovery=permitted operator=not-required` and ONLY the Retry control stands;
+    ///   * the Retry RESUMES (`requestFresh: false`): its typed answer names the authority's own summary, NOT a fresh
+    ///     wipe -- which is the exact defect (a Retry that started destruction from a settled estate);
+    ///   * after the retry the estate re-gates, and a RELAUNCH WITH THE FIXTURE CLEARED still reads the durable record.
+    func testG1ThePendingRecoveryBootsRecoveryOnlyAndRetriesAResume() throws {
+        installStandardControls()
+        let app = launchFixture("requested")
+
+        let readouts = recoveryReadouts(app)
+        XCTAssertTrue(readouts.decision.waitForExistence(timeout: 25),
+                      "*** THE RECOVERY-ONLY SURFACE MUST RENDER for a pending estate. ***")
+
+        // (1) THE TYPED DECISION, READ FROM THE DURABLE RECORD.
+        let decisionWords = readouts.decision.label
+        XCTAssertTrue(decisionWords.hasPrefix("estate: "), "the decision readout must name its state; got \(decisionWords)")
+        XCTAssertTrue(decisionWords.contains("recovery_pending") || decisionWords.contains("retryable_failure"),
+                      "*** A PLANTED `REQUESTED` MUST DECIDE AS A RECOVERY STATE, never clean/wipe-completed. A `Retry` " +
+                          "offered over a SETTLED estate is the defect this gate closeth. Observed: \(decisionWords) ***")
+        XCTAssertFalse(decisionWords.contains("clean_start"),
+                       "*** A PENDING ESTATE MUST NOT DECIDE CLEAN: that is the unsound direction the ladder forbids. ***")
+        XCTAssertTrue(readouts.rung.label.contains("REQUESTED"),
+                      "*** THE DURABLE RUNG MUST NAME THE PLANTED PHASE; observed: \(readouts.rung.label) ***")
+
+        // (2) ZERO PRIVATE OPENS, WITNESSED AT THE REAL STORE-CONSTRUCTION DOORS.
+        XCTAssertTrue(readouts.opens.label.contains("private stores opened: 0"),
+                      "*** NO PRIVATE STORE MAY BE CONSTRUCTED BEHIND THE RECOVERY SURFACE. This count is raised " +
+                          "inside `LabRuntime.compose` at the store-construction calls, so it is REAL construction " +
+                          "evidence rather than the absent tab tree. Observed: \(readouts.opens.label) ***")
+        for identifier in ["lab.tab.identity", "lab.tab.contacts", "lab.tab.conversation",
+                           "lab.tab.sos", "lab.tab.diagnostics"] {
+            XCTAssertFalse(app.tabBars.buttons[identifier].exists || app.buttons[identifier].exists,
+                           "*** NO NORMAL SURFACE MAY EXIST BEHIND A BLOCKED ESTATE: \(identifier) IS reachable, so " +
+                               "the recovery-only gate did not hold. ***")
+        }
+
+        // (3) THE GATE, AND ONLY THE RETRY.
+        XCTAssertTrue(readouts.gate.label.contains("recovery=permitted"),
+                      "*** A PENDING/RETRYABLE ESTATE EARNS THE RECOVERY RESUME (`permitsRecoveryConstruction`). " +
+                          "Observed gate: \(readouts.gate.label) ***")
+        XCTAssertFalse(readouts.gate.label.contains("operator=required"),
+                       "a pending estate needs no operator -- `requiresOperator` is reserved for corrupt/terminal")
+        let retry = app.buttons["lab.recovery.retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 20),
+                      "*** THE GATED RETRY MUST STAND where the decision permits recovery. ***")
+        XCTAssertFalse(app.buttons["lab.recovery.resolve"].exists,
+                       "*** AND THE OPERATOR ROAD MUST NOT: offering it here invites an operator wipe where a resume " +
+                           "was owed, which is exactly the ungated pair the report named. ***")
+
+        // (4) THE RETRY RESUMES AND DESTROYS NOTHING: it drives the durable ladder onward over the LAB'S OWN estate
+        // (`requestFresh: false`), so a resume that settled the estate makes the holder re-gate and compose normally.
+        // **THE EFFECT IS THE GRAPH'S RETURN, NOT A STRING:** a fresh-request Retry from a settled estate (the defect)
+        // or a resume that did nothing would leave the recovery surface standing.
+        retry.tap()
+        let returnedTab = tab("lab.tab.diagnostics", in: app)
+        XCTAssertTrue(returnedTab.waitForExistence(timeout: 30),
+                      "*** A PERMITTED RESUME MUST DRIVE THE DURABLE LADDER AND RE-GATE TO THE NORMAL GRAPH. " +
+                          "Observed recovery surface still standing, or the resume did not settle the estate. ***")
+        returnedTab.tap()
+        let opens = app.staticTexts["lab.diagnostics.privateopens"]
+        XCTAssertTrue(opens.waitForExistence(timeout: 20),
+                      "the normal boot's open count must render after the resume")
+        XCTAssertFalse(opens.label.contains("private stores opened: 0"),
+                       "*** AND THE RESUME'S COMPOSITION MUST HAVE REALLY CONSTRUCTED THE PRIVATE STORES (the same " +
+                          "counter as the blocked-estate zero), so 'the graph returned' is not a flag flip. " +
+                          "Observed: \(opens.label) ***")
+
+        // (5) THE RELAUNCH **WITH THE FIXTURE CLEARED** -- the durable record itself, not the door, must be read.
+        app.terminate()
+        let relaunched = XCUIApplication()
+        relaunched.launch()
+        XCTAssertTrue(tab("lab.tab.diagnostics", in: relaunched).waitForExistence(timeout: 30),
+                      "*** A RECORD THE PREVIOUS PROCESS SETTLED MUST STILL COMPOSE NORMALLY IN A FRESH PROCESS: " +
+                          "this is the durability half, and NO FIXTURE VALUE is present here. ***")
+        XCTAssertFalse(relaunched.staticTexts["lab.recovery.decision"].exists,
+                       "*** AND THE RECOVERY SURFACE MUST NOT RETURN: a settled estate must not read as blocked. A " +
+                          "process that re-planted its own fixture (or read a lost record) would redden here. ***")
+    }
+
+    /// *** *** G1 (SCHEME B): A CORRUPT RECORD DENIES THE RETRY, OFFERS ONLY THE OPERATOR, AND THE OPERATOR'S OWNED
+    /// WIPE EARNETH THE GRAPH BACK. *** ***
+    ///
+    /// *The journal is planted as genuinely UNREADABLE bytes beside a standing floor. The holder must render
+    /// recovery-only with:*
+    ///   * the typed decision `corrupt_journal` and the words `operator required` (the field a Boolean cannot carry);
+    ///   * the GATE `recovery=denied operator=required`, with **NO Retry control at all** -- retrying cannot make an
+    ///     unparseable value parse, and the report's `deniedRetry` discriminator is exactly this absence;
+    ///   * the Resolve control, whose tap drives the EXPLICIT, COMPLETE, OWNED wipe (never a clear-journal) and whose
+    ///     typed answer renders -- including any artifact that SURVIVED;
+    ///   * and after the resolution, the holder re-runs the gate and the normal graph (with its real store opens)
+    ///     return, the witness being the tab set and a NON-ZERO open count.
+    func testG1TheCorruptRecordDeniesRetryAndTheOperatorWipeEarnsTheGraphBack() throws {
+        installStandardControls()
+        let app = launchFixture("corrupt")
+
+        let readouts = recoveryReadouts(app)
+        XCTAssertTrue(readouts.decision.waitForExistence(timeout: 25),
+                      "*** THE RECOVERY-ONLY SURFACE MUST RENDER for a corrupt record. ***")
+        XCTAssertTrue(readouts.decision.label.contains("corrupt_journal"),
+                      "*** AN UNREADABLE RECORD MUST DECIDE `corrupt_journal`; observed: \(readouts.decision.label) ***")
+        XCTAssertTrue(readouts.bootstrap.label.contains("operator required"),
+                      "*** THE WORDS `operator required` MUST RENDER -- the field that carrieth 'refused, and a person " +
+                          "must intervene'. Observed: \(readouts.bootstrap.label) ***")
+
+        // (1) THE GATE DENIES THE RETRY AND REQUIRES THE OPERATOR.
+        XCTAssertTrue(readouts.gate.label.contains("recovery=denied"),
+                      "*** `permitsRecoveryConstruction` IS FALSE FOR CORRUPT -- the retry must be DENIED. Observed: " +
+                          "\(readouts.gate.label) ***")
+        XCTAssertTrue(readouts.gate.label.contains("operator=required"),
+                      "*** `requiresOperator` IS TRUE for corrupt. Observed: \(readouts.gate.label) ***")
+
+        // (2) THE RETRY IS ABSENT -- the report's `deniedRetry` discriminator, in the LIVE tree.
+        XCTAssertFalse(app.buttons["lab.recovery.retry"].exists,
+                       "*** NO RETRY MAY BE OFFERED FOR A CORRUPT RECORD: retrying cannot make an unparseable value " +
+                           "parse, and the old ungated pair offered one ANYWAY. ***")
+        let resolve = app.buttons["lab.recovery.resolve"]
+        XCTAssertTrue(resolve.waitForExistence(timeout: 20),
+                      "*** THE OPERATOR ROAD MUST BE OFFERED -- and ONLY it. ***")
+        XCTAssertEqual(resolve.label, "Resolve corruption with an operator wipe",
+                       "and it must carry the explicit-owned-wipe name, not a bare verb")
+
+        // (3) THE OPERATOR'S OWNED WIPE, DRIVEN: its typed answer must survive the transition it causes and render --
+        // written from the authority's own result (`resolveCorruptRecoveryForOperator`), never a view text, and
+        // carried into the normal graph by the holder. **A CONTROL THAT MERELY CLEARED A FLAG WOULD RENDER NOTHING
+        // HERE** -- the real defect the readout exposes: the operator's act must be REPORTED, not lost to the re-gate.
+        resolve.tap()
+        let operatorWords = app.staticTexts["lab.recovery.operatorwipe"]
+        XCTAssertTrue(operatorWords.waitForExistence(timeout: 30),
+                      "*** THE OPERATOR'S ACT MUST REPORT ITS TYPED OUTCOME (`decision @ rung (artifacts)`) EVEN THOUGH "
+                          + "A SUCCESSFUL RESOLUTION RE-GATES TO THE NORMAL GRAPH: the holder carrieth the authority's "
+                          + "result across the transition, so a control that merely cleared a flag reddens here. ***")
+        XCTAssertTrue(operatorWords.label.hasPrefix("operator wipe: "),
+                      "the report must be the authority's own summary; observed: \(operatorWords.label)")
+
+        // (4) AND THE GRAPH RETURNS: the holder re-ran the gate over the settled estate.
+        XCTAssertTrue(tab("lab.tab.diagnostics", in: app).waitForExistence(timeout: 30),
+                      "*** AFTER THE OWNED WIPE AND RE-GATE, THE NORMAL SURFACES MUST RETURN -- the tab set is the " +
+                          "witness that the corrupt block was cleared by a real resolution. ***")
+        let diagnosticsTab = tab("lab.tab.diagnostics", in: app)
+        diagnosticsTab.tap()
+        let opens = app.staticTexts["lab.diagnostics.privateopens"]
+        XCTAssertTrue(opens.waitForExistence(timeout: 20),
+                      "*** AND THE NORMAL BOOT'S OPEN COUNT MUST RENDER (the positive control). ***")
+        XCTAssertFalse(opens.label.contains("private stores opened: 0"),
+                       "*** A NORMAL BOOT AFTER THE RESOLUTION MUST HAVE REALLY OPENED THE PRIVATE STORES: this " +
+                          "counter is raised at `LabRuntime.compose`'s store-construction calls, so a non-zero read " +
+                          "is the positive control that the recovery-only arm's zero is NOT a dead constant. " +
+                          "Observed: \(opens.label) ***")
+    }
+
+    /// *** *** G1: A PERSISTED MID-LADDER RUNG BOOTS RECOVERY-ONLY AND RESUMES FROM THAT RUNG. *** ***
+    ///
+    /// *The report asketh that a `REQUESTED`/persisted-intermediate rung boot be recovery-only. **THE INTERMEDIATE
+    /// RUNG IS A DIFFERENT RECORD THAN `REQUESTED`**: the journal carrieth a phase the ladder ADVANCED to and stopped
+    /// at, so the resume must CONTINUE from there rather than re-request -- which is exactly what the durable ladder's
+    /// own contract provideth (a phase is a checkpoint, and `resume()` re-readeth it). The arm binds the rung by its
+    /// own name and the same zero-open / graph-return evidence as its sibling.*
+    func testG1TheIntermediateRungBootsRecoveryOnlyAndResumesFromIt() throws {
+        installStandardControls()
+        let app = launchFixture("keys_erased")
+
+        let readouts = recoveryReadouts(app)
+        XCTAssertTrue(readouts.decision.waitForExistence(timeout: 25),
+                      "*** A PERSISTED MID-LADDER RUNG MUST BOOT RECOVERY-ONLY. ***")
+        XCTAssertTrue(readouts.rung.label.contains("KEYS_ERASED"),
+                      "*** THE DURABLE RUNG MUST NAME THE PLANTED INTERMEDIATE PHASE; observed: \(readouts.rung.label) ***")
+        XCTAssertTrue(readouts.decision.label.contains("recovery_pending") || readouts.decision.label.contains("retryable_failure"),
+                      "a mid-ladder rung is a recovery state; observed: \(readouts.decision.label)")
+
+        // The same gate and zero-open evidence as the REQUESTED boot.
+        XCTAssertTrue(readouts.gate.label.contains("recovery=permitted"),
+                      "a resume is permitted from an intermediate rung; observed: \(readouts.gate.label)")
+        XCTAssertTrue(readouts.opens.label.contains("private stores opened: 0"),
+                      "*** NO PRIVATE STORE MAY STAND BEHIND THE INTERMEDIATE-RUNG SURFACE. Observed: \(readouts.opens.label) ***")
+        XCTAssertTrue(app.buttons["lab.recovery.retry"].waitForExistence(timeout: 20),
+                      "the gated Retry must stand for a resumable intermediate rung")
+        XCTAssertFalse(app.buttons["lab.recovery.resolve"].exists,
+                       "and the operator road must not")
+
+        // *** THE RESUME CONTINUES FROM THE PERSISTED RUNG AND SETTLES: the graph returns with real store opens. ***
+        app.buttons["lab.recovery.retry"].tap()
+        let diagnosticsTab = tab("lab.tab.diagnostics", in: app)
+        XCTAssertTrue(diagnosticsTab.waitForExistence(timeout: 30),
+                      "*** A PERMITTED RESUME FROM AN INTERMEDIATE RUNG MUST DRIVE THE LADDER TO A SETTLED ESTATE " +
+                          "AND RE-GATE. ***")
+        diagnosticsTab.tap()
+        let opens = app.staticTexts["lab.diagnostics.privateopens"]
+        XCTAssertTrue(opens.waitForExistence(timeout: 20), "the normal boot's open count must render")
+        XCTAssertFalse(opens.label.contains("private stores opened: 0"),
+                       "*** AND THE RESUME'S COMPOSITION MUST HAVE REALLY OPENED THE PRIVATE STORES. Observed: " +
+                          "\(opens.label) ***")
+    }
+
+    /// *** *** G1: A NORMAL BOOT IS THE ZERO-OPEN WITNESS'S POSITIVE CONTROL. *** ***
+    ///
+    /// *The two arms above claim zero opens behind a blocked estate. **A COUNT THAT IS ALWAYS ZERO WOULD SATISFY
+    /// THEM** -- the constant-zero witness the contract forbids. So this arm proveth the counter really rises: a
+    /// `reset` boot renders the normal graph and its `lab.diagnostics.privateopens` reads NON-ZERO, raised at the
+    /// real store-construction doors inside `LabRuntime.compose`.*
+    func testG1ANormalBootReallyOpensPrivateStores() throws {
+        let app = launchFixture("reset")
+        XCTAssertTrue(tab("lab.tab.diagnostics", in: app).waitForExistence(timeout: 25),
+                      "a clean first launch must reach the normal surfaces")
+        let diagnosticsTab = tab("lab.tab.diagnostics", in: app)
+        diagnosticsTab.tap()
+        let opens = app.staticTexts["lab.diagnostics.privateopens"]
+        XCTAssertTrue(opens.waitForExistence(timeout: 20),
+                      "*** THE OPEN COUNTER MUST RENDER ON A NORMAL BOOT. ***")
+        XCTAssertFalse(opens.label.contains("private stores opened: 0"),
+                       "*** A NORMAL BOOT MUST REALLY OPEN THE PRIVATE STORES: the counter is raised in " +
+                           "`LabRuntime.compose` at `SqliteMessageStore`/`SqlitePeerIdentityStore` construction, so a " +
+                           "zero here would mean the witness is DEAD -- and would make the blocked-estate zero " +
+                           "vacuous. Observed: \(opens.label) ***")
     }
 }

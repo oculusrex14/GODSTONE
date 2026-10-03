@@ -1,0 +1,6 @@
+::error::Bound recipient key resolver control error: Both platforms must restrict non-null key returns to Verified lookup (B05)
+::error::Bound recipient key resolver control error: Android BoundRecipientKeyResolver Quarantined branch must not return a key (B05)
+
+FAIL: 2 bound recipient key resolver control issue(s) found.
+
+(the rod aimed at 'Both platforms must restrict non-null key returns to Verified lookup (B05)'; reddened refusals were the aimed one)

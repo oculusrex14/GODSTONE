@@ -702,3 +702,363 @@ BleHandshake/BleConnection was ADOPTED after the racing agents produced a cohere
 VERIFIED by the parents own build and full test (800/0) and by the ten dual-isle mutation controls (all
 KILLED), not upon the agents say-so. Where the agents deliverance was unverifiable it was reclaimed; where
 the design was coherent and proven it was kept.
+
+## D-T72-f [PROPOSED — RECOVERY ARCHITECTURE, PROOF PENDING] One pre-private recovery graph, two production roots
+STATUS: PENDING PROOF. Recorded here as the decision the code makes; NO lane has been run at this tree yet,
+so this entry claims an ARCHITECTURE and not a measured result. `docs/production-readiness/BUILD_STATE.json`
+is deliberately NOT updated (it is owned by the closure pass).
+
+`StartupRecoveryGraph` (internal object, `io.godstone.mesh.di`) is the ONE place the wipe coordinator's seam
+mapping lives: `coordinator(journal, seams)`, `decisionOf(coordinator, outcome)`, `decisionAtRest(journal)`,
+`requestWipe(journal)`, `resumeWipe(journal)`, `revisionOf`, `evidenceFor`, `issuePermit`,
+`resolveCorruptJournalForOperator`. BOTH production roots build their coordinator through it — the startup
+barrier's `init` (over `FileWipeJournal(ctx)` and the four DEFERRED seams) and `MeshPanicWipe.wipeAuthority`
+(over the SAME journal and the LIVE transport/keystore/artifacts). The graph owns the journal and the
+coordinator and NOTHING ELSE: it reacheth no identity, no message store and no peer store, because a graph
+that needs those in order to decide whether they may be opened can never decide "no".
+
+The admission gate was moved ONTO this graph: `MeshModule.provideWipeIsPending(ctx)` returns
+`StartupRecoveryGraph.decisionAtRest(FileWipeJournal(ctx)).allowsPrivateConstruction`, replacing a raw
+`read() == IDLE`. `FileWipeJournal.read()` coerces an out-of-range ordinal to `IDLE`, so the raw read
+PERMITTED sensitive use over an unreadable record while the barrier refused the same record — two readers of
+one durable record answering in opposite directions, and the permissive one gating use. The gate's signature
+is unchanged and it still reads per call (a fresh coordinator over the durable file each time), so a wipe
+that completes while the process lives still opens the gate.
+
+## D-T72-g [PROPOSED — RECOVERY ARCHITECTURE, PROOF PENDING] The permit is evidence-bound, not a function of a public enum
+STATUS: PENDING PROOF. Same caveat as D-T72-f.
+
+The previous `PrivateStorePermit` had a private constructor and a PUBLIC `issue(decision: StartupWipeDecision)`.
+Because `StartupWipeDecision` is a public enum, `PrivateStorePermit.issue(StartupWipeDecision.CLEAN_START)`
+compiled anywhere — including inside a normal runtime constructor, which is the mutation the obligation names.
+A private constructor stops constructing the value; it does not stop asking the public factory to.
+
+The door now takes `RecoveryEvidence`, whose constructor is `private` and whose only producer is
+`StartupRecoveryGraph` (over the durable journal): `evidenceFor(coordinator, outcome)` and the barrier's own
+`evidence` field. `issuePermit(evidence, currentRevision)` additionally re-compares the record's revision, so
+a permit minted against one estate is WITHHELD once the record moves — a permit is a judgement about an
+estate, not a permanent badge. The composition's issuer (`issuePrivateStorePermit(barrier)`) uses the
+barrier's evidence and the authority's current revision.
+
+## D-T72-h [PROPOSED — RECOVERY ARCHITECTURE, PROOF PENDING] `wipeCompleted` is distinct from `cleanStart`
+STATUS: PENDING PROOF. Same caveat as D-T72-f.
+
+`StartupWipeDecision` gains `WIPE_COMPLETED`, matching the iOS `StartupRecoveryDecision.wipeCompleted` case
+for case, and carries `wireName` in the iOS spelling (`clean_start`, `wipe_completed`, `recovery_pending`,
+`retryable_failure`, `corrupt_journal`, `terminal_failure`) so a rendered surface and a log speak one
+vocabulary across both isles. `decide()` maps a terminal landing (`Advanced(_, IDLE)` and
+`AlreadyAtOrPast(IDLE)`) to `WIPE_COMPLETED`; an empty journal at rest remains `CLEAN_START` (the barrier and
+the admission gate therefore agree on every rung). A device that WAS wiped is a different fact from a device
+on which nothing ever happened; both permit construction, because neither has anything left to erase.
+
+## D-T72-i [PROPOSED — RECOVERY ARCHITECTURE, PROOF PENDING] The wipe's resume is conditional; a message retry is real
+STATUS: PENDING PROOF. Same caveat as D-T72-f.
+
+The obligation offered a choice — "state/profile-aware if semantically conditional else real runtime retry" —
+and the answer is that there are TWO things, kept distinct on both isles. A message/distress retry is a REAL
+runtime retry: the rendered retry control travels `LabJourneyBindings.retry()` →
+`runtime.sosCommand(author, SosCommand.Retry(msgId))` → `MeshNode.handleSosCommand(.retry)`, resuming the
+authored bytes through the node's own durable row and refusing by name when no standing call exists. A WIPE
+resume IS conditional, on the typed decision: `StartupWipeDecision.permitsRecoveryConstruction()` is true for
+exactly `RECOVERY_PENDING`/`RETRYABLE_FAILURE` (the iOS `permitsRecoveryConstruction`), false for
+`CLEAN_START`/`WIPE_COMPLETED`/`CORRUPT_JOURNAL`/`TERMINAL_FAILURE`. The `when` is exhaustive, so a decision
+added later cannot be silently mis-classified.
+
+## D-T72-j [PROPOSED — RECOVERY ARCHITECTURE, PROOF PENDING] The rendered wipe uses the durable owner, not a harness register
+STATUS: PENDING PROOF. Same caveat as D-T72-f.
+
+`io.godstone.mesh.lab.LabWipeJourney` (in `:mesh`, because `FileWipeJournal` and `StartupRecoveryGraph` are
+`internal` there) reads the isle's own durable journal and drives `requestWipe`/`resume` through the shared
+graph. `LabJourneyBindings` takes it as a required constructor parameter (the activity passes
+`LabWipeJourney(this)`) and the rendered screen gains `wipe_state`/`wipe_begin`/`wipe_resume`. The
+`ComposedRuntimeHarness.beginWipe()` flag is deliberately NOT bound: it moves a private boolean and writes no
+journal, so a journey bound to it would render a wipe nobody performed. A REOPEN over the same record is the
+discriminator — a local register cannot survive it. The rungs past `REQUESTED` belong to the runtime owner
+(`MeshPanicWipe`, whose seams are live) and are NOT reachable from the lab composition; the class's own KDoc
+says so rather than faking them.
+
+## D-T72-k [SUPERSEDED — UNSAFE OPERATOR RESET; REPAIR PROOF PENDING]
+The former corruption-reset proposal below is not an authorized recovery path.
+
+`WipeIdentityAuthoritySeam.publishNewIdentity()` returned the non-null sentinel `"identity-generation-failed"`
+on every failure path, so the coordinator's `publishNewIdentity() == null` guard was UNREACHABLE on the
+production seam: the ladder recorded `NEW_IDENTITY` then `IDLE` over an identity that was never created. It
+now returns the seam's own typed negative channel (`null`), keeping a `GENERATION_FAILED_REASON` prose
+constant for a ring/log only. Clearing an unreadable journal and then declaring `CLEAN_START` would admit
+private resources without proving erasure of the existing estate. Corruption requires an explicit operator
+action that durably records a new wipe generation and completes verified erasure, replacement publication,
+and the terminal checkpoint before private construction. The canonical recovery obligations remain OPEN
+until the production path and its crash/reopen discriminators are exercised.
+ 
+## D-B1-ROSTER — Actual unittest outcomes, not verdict-shaped text
+
+`tools/readiness/check_suite_roster.py --run` now executes the complete discovered suite in a bounded child
+process and records per-test outcomes through `unittest.TextTestResult` lifecycle callbacks. Raw output and
+a SHA-256-bound `.results.json` sidecar are retained outside the source tree. `--log` replays that bound
+report; a plaintext `OK` or `Ran N tests` line alone is not evidence.
+
+Admission requires exact full test identities and a closed discovery/execution denominator. Internal
+skips, expected failures, unexpected successes, failed subtests, missing or duplicate executions, and
+unaccounted identities are refusals. Historical exclusions come from the actual defining source file and
+recognized decorator, not a three-component name suffix or a numerical skip budget.
+
+Builder verification: the old gate accepted an actual expected-failure unittest result; the repaired
+guard refused it and accepted a healthy execution despite verdict-shaped output. The isolated roster
+court passed 12 tests. This does not discharge production recovery or prove a hosted candidate run.
+
+## D-B1-SDK — Verify the bootstrap bytes actually used
+
+The macOS Android bootstrap retains its hash-pinned download outside the checkout and installs only
+the pin's version-addressed directory. Every invocation checks the retained archive and installed
+tree; a mismatched existing directory is refused rather than removed or silently replaced. A user's
+`latest` remains untouched. Licence acceptance checks the SDK manager's exit status, tolerating
+only the producer's expected SIGPIPE.
+
+The helper exports `GODSTONE_BOARD1_SDK_ARCHIVE` and `GODSTONE_BOARD1_SDK_CMDLINE_TOOLS`.
+Canonical Board1 verification has separate actual-archive, actual-tree and negative-control gates.
+An absent or incomplete extracted-tree pin is a refusal, not an empty successful check.
+
+Builder verification: actual provisioning succeeded with CLI 12.0 in `cmdline-tools/11076708`;
+post-use quiet verification and the three canonical SDK gates passed. Copies of the actual archive
+with one byte changed and actual installed `sdkmanager` with bytes appended were refused by their
+SHA-256 and tree digest respectively. This is a local subset, not hosted candidate or terminal proof.
+
+## D-B1-ARTIFACT — Inspect real build products, not only synthetic controls
+
+The iOS inspector now classifies Swift imports by mangled module identity and C/Objective-C
+imports by linkage-family boundaries. Unqualified substring matching mistook Swift's
+`CVarArg` protocol metadata for GMP. The finite dylib and embedded-binary allowlists remain
+unchanged, as does refusal of debug-bearing shipping images. LIGHT `LightRelease` now strips
+debug symbols at its Xcode build boundary; no post-hoc test-only stripping.
+
+Actual local verification: a fresh unsigned arm64 LIGHT build passed inspection after the fix;
+the repaired inspector selftest and 28 T69 behavioral courts passed. Android LIGHT APK/AAB
+builds passed both exclusion inspection and the release inspector with the actual merged
+manifest, R8 mapping/rules and runtime dependency graph. Compile/runtime graphs contained
+`:core`, not shipping `:mesh` or `:llm`. The debug APK separately byte-matched its harmless,
+visibly labelled development Archive. Unsigned release artifacts had no approved Archive;
+these are exclusion proofs, not production-content, device-installation or signing evidence.
+
+Terminal downloads now stay outside the source checkout and name actual artifact inputs
+explicitly. Android staging selects the variant actually built, rather than sweeping stale
+sibling APKs into its presence proof. Release CI retains the manifest, mapping and keep rules
+needed to judge the real release package.
+
+The macOS jobs use the arm64 `xcode-27` runner matching the current SQLCipher toolchain pins,
+not Intel `macos-15` with default Xcode 16. The label and architecture are documented by
+[GitHub's runner announcement](https://github.blog/changelog/2026-07-16-xcode-27-runner-image-now-in-public-preview/).
+Exact hosted image hashes still must pass; a runner label alone is not candidate proof.
+
+## D-B1-ARCHIVE-PROVENANCE — Storage failure is not citation absence
+
+Swift Archive metadata reads now throw through the reader, scene and rendered view;
+Android reads use the repository's checked-read boundary and the view model retains the
+typed unavailable state. An absent row remains absent. An uninstalled Archive does not
+earn a repair affordance; a query fault is presented with a sanitized cause and earned Retry.
+
+Android regression faults strike the installed file named by `ArchiveState.Ready.origin`,
+not the installer’s source fixture. A first smoke exposed that wrong-file witness.
+Further smokes exposed clobbered imports, an unbalanced DEBUG hook and assertions about
+incidental exception wording. Those assertions were deleted, not satisfied by changing
+production messages. The rendered absence arm observes the initially placed first passage,
+not an off-screen third item in a lazy list. The iOS rendered fault witness derives and
+verifies faulty bytes from the committed fixture before using the existing fixture door;
+the unobservable app-side strike hook was removed.
+
+Current local proof: 11 repository courts, 21 view-model courts and 12 actual Compose
+courts passed, with zero failures, errors or skips. The three rendered provenance arms
+executed: supplied citation, absent citation without a fabricated banner, and sanitized
+query failure with Retry. The repaired iOS LIGHT debug app built and launched with the
+committed Archive fixture; its real simulator screen was observed. The iOS fault court
+then exposed a scene-level bug: metadata failure made a readable document unavailable.
+Metadata error now has separate state; document identity and passages survive, restore
+uses the same boundary, and metadata Retry re-queries that boundary. All three rendered
+iOS provenance courts now pass, including the fault and Retry tap. The complete Archive UI
+scheme also passed all 10 journeys. A fresh unsigned arm64 shipping LIGHT build passed
+inspection after the scene repair and fault-hook removal. The T50 cure court, Lab UI,
+complete platform lanes, final mutation campaign and hosted candidate proof remain pending.
+
+## D-B1-RELEASE-AUTHORITY — A seal is integrity, not hosted authentication
+
+Release proof capture and admission now share the exact pinned run, attempt, candidate
+commit and tree. Admission re-collects hosted run, job, artifact and typed boundary facts,
+then compares the canonical proof body. Duplicate artifacts, incomplete job populations,
+unreadable authority and a different candidate tree are refusals. A local JSON seal alone
+cannot authorize release evidence.
+
+Current local proof: the canonical and supply-chain authority suites passed 117 courts
+together. Actual hosted job logs showed command-titled `Run` groups whose execution
+output follows the metadata `endgroup`, not groups named by a human step label. Boundary
+capture now admits markers only from the job's exact allowed `emit_boundary.py` command
+section and still refuses other failed steps and compiler errors. The actual capture CLI
+refused historical run `36133503050`, attempt 1, because its required
+`ios-archive-only-unsigned` job was absent. That is an exercised refusal, not positive
+release proof for the current candidate.
+
+## D-B1-COMMON-ATTESTATION — One full reader at every successor admission
+
+Standalone successor admission and read-only attestation validation now use the same
+full document validator: actual tag peel/object/tree, closure and ledger bytes at C,
+pinned hosted run/attempt, original hosted manifest bytes, all required job authorities
+and candidate-bound release evidence. The common reader performs no successor relation;
+each caller separately requires the exact one-file direct child and committed attestation
+bytes. This avoids recursive admission and a weaker terminal-only shortcut.
+
+Full C manifests now require authenticated exact-candidate release evidence; public
+optional-release knobs and their obsolete CLI flag were removed. The terminal producer
+waits for and captures the exact push candidate's release run before manifest construction,
+and uploads the original proof with the hosted manifest. A successors reuse the authenticated
+frozen C proof, not a fabricated release result for A.
+
+Current local proof: the canonical and supply-chain authority suites passed 117 courts
+together, using transport-shaped fixtures through the real capture and authentication
+readers. The three actual SDK input gates also passed through the canonical CLI. The full
+27-gate run, outside-root native lane replay, hosted producer and C/A verification remain
+pending.
+
+## D-B1-JOURNAL — Durable history survives process reconstruction
+
+`FileWipeJournal` now separates the monotone generation floor from the phase record.
+Admission requires the phase's generation to match that floor. Advancing the floor does
+not rewrite an unreadable phase as IDLE; a failed advance returns refusal, not the old
+generation. Present history with no known counter is never reset to generation 1, and
+the maximum counter never wraps.
+
+A refusal marker is synchronized before replacement becomes visible. Every wrapper
+refuses a standing marker, including corrupt marker bytes; first-launch checks use
+filesystem presence of the phase, floor and marker, not successful parsing. Only a
+verified later write clears the refusal. The checked protocol witness is `writeChecked(_:)`,
+so callers receive the real file-and-directory synchronization receipt.
+
+Builder smoke compiled the actual canonical journal with the repository's actual
+journal protocol and executed 33 distinct process calls. It reproduced then repaired
+the invalid-counter reset, corrupt-floor/absent-phase admission and corrupt-marker
+IDLE admission. All six phases survived separate write/read processes at generation 2;
+clear preserved the generation. File-sync failure, directory-sync failure and an
+advanced-floor/failed-REQUESTED mismatch remained refused on process reconstruction.
+An operator request cured marker refusal only into REQUESTED at a higher generation,
+then a new process observed that pending state. This proves the journal path, not the
+native engine, complete runtime erasure, UI or authenticated terminal candidate.
+
+## D-B1-CLOSURE-COURTS — A mutation needs its own healthy positive subject
+
+The closure courts no longer depend on a live discharged obligation or stale HEAD
+authority. Scratch terminal subjects carry complete structured semantics and the
+canonical prospective attestation path. Unrelated production demotions remain active;
+each seeded positive must pass before its mutation can earn an attributed refusal.
+The current complete court population passed 55 tests, including all 13 mutation
+cases and their seeded baselines. Production obligations remain OPEN; these controls
+do not authorize a discharge or independent verification.
+
+## D-B1-LANE-ROOTS — Evidence location is not source authority
+
+Lane readers now accept explicit `evidence_root=` for downloaded XML, logs and digest
+sidecars. Source census and current-source digests remain rooted at the actual checkout;
+no global REPO rebasing. The CLI exposes the same contract through `--evidence-root`.
+An empty outside root was exercised through the CLI and Android/iOS APIs: all missing
+evidence was refused at that root, while the real source root and digest stayed unchanged.
+A complete Android Core run then produced 22 passing outcomes with zero skips, failures
+or errors. Its original XML files were copied outside the checkout and accepted against
+the 22 identities derived from the real source tree. This exercises populated XML
+resolution; it is not a substitute for a full candidate-bound multi-platform replay.
+
+Repository-owned Foundation, simulator and UI lanes refuse every skipped arm. The old
+SQLCipher-absence exemption is retired: the mandatory image is repository-buildable,
+so an `EXTERNAL-BLOCKED` annotation cannot turn an internal skip into passing coverage.
+The lane contract suite passed all eight courts, including all four adversarial families
+and refusal of the historical artifact-labelled skip. These guard fixtures are not an
+actual platform lane; fresh native, Lab, simulator and hosted downloaded-lane proof
+remain required.
+
+## D-B1-NATIVE-CLEANUP — Failed cleanup withdraws and closes the physical connection
+
+Tombstone-reap bindings now check the provider's actual return code before stepping.
+Failed COMMIT cleanup reports its actual ROLLBACK code, withdraws every retained alias,
+and closes the physical connection exactly once. Adopted ownership defers closure to
+the last active-use exit; owned SQLite closure releases an unresolved write transaction
+before the failing public call returns.
+
+The builder compiled the canonical native courts against the current compiled
+production module and exercised four cleanup consumers successfully. The owned-road
+discriminator retained the abandoned first store while a second real SQLite connection
+acquired a write transaction on the same file; logical refusal alone cannot earn that
+result. The subsequent complete 16-scenario native run first exposed two failing old
+fixture contracts. After their repair, the builder recompiled the same canonical court
+against the unchanged production module and executed all 16 scenarios with zero
+failures in 0.398 seconds. The first-install/reopen arm retains its real private bytes
+and now asserts the typed recovery refusal, while the sweep arm counts tombstones
+through a raw connection so the maintenance sweep cannot alter the measurement. This
+native execution evidence does not authorize native-lane completion, a structured
+discharge, or terminal readiness.
+
+## D-B1-INTEGRATION-ROOTS — A local ignored fixture cannot authorize hosted replay
+
+The integration CLI no longer offers input-binding or fixture-collision bypass flags;
+both removed arguments were exercised and rejected by argparse. The builder then found
+that the producer persisted the current run into the historical fixture namespace under
+its own `run_id`, while the checker matched directory basenames — so a genuine run was
+refused as a copied fixture. The clean cutover removes both defects: the coordinator now
+writes only a `producers.json` binding inside its own evidence directory, and the
+checker keys the collision clause on each fixture report's authored `run_id` through the
+pure predicate `fixture_collision_problems`.
+
+The two historical fixture directories (four files each, hashes recorded by the repair)
+are now controlled source data: `.gitignore` tracks them while still ignoring other
+captures, the workflow uploads the fixture root, and the builder measured that the
+`--fixtures-root` fallback chain and the content-selected selftest base make a clean
+checkout sufficient. The actual downloaded run-36864119928 artifact was judged outside
+the checkout: its local selftest passed 41/41 mutations, its historical whole report was
+refused with the committed-fixture-identity needle, and a byte-identical copy of that
+fixture into a fresh directory was likewise refused by authored identity — renaming or
+copying cannot escape the namespace. The historical report's missing current-schema
+evidence remains an expected refusal, never a current-candidate positive. The local
+selftest, the downloaded-root selftest and the 122-test canonical/release/integration
+court combination were re-run by the builder; none of this substitutes for a fresh
+eight-worker all-mode campaign or a candidate-bound hosted replay.
+
+## D-B1-QUOTA-OBSERVER — An inbox refusal names the inbox and a disposed observer never fires
+
+The quota twins previously reported the inbox-row ceiling as a delivery-row pressure.
+A compiled direct consumer of the canonical iOS source measured the wrong
+`DELIVERY_ROWS` category before the repair and the typed `INBOX_ROWS` category after
+it. The observer lease likewise snapshot its callback list and fired a token that the
+first observer had disposed during the same dispatch; the same consumer measured
+`[first, cancelled]` before and `[first]` after. The Android twin carries the same
+inbox category, per-token one-way cancellation and non-reentrant dispatch, and its
+official 13-test readiness court executed with zero failures. The token's liveness
+flag is module-internal: the lease owns cancellation, and no public reset path can
+revive a disposed observer. This host evidence does not replace the full dual-platform
+court run at the coherent baseline.
+
+## D-B1-ANDROID-LAB-LANE — The launchable application composes the real estate on the host
+
+The JVM lab lanes first refused to build: `LabRuntime.kt` declared the peer-directory
+`get` over the wrong supertype signature, and the recorded compile failure named it.
+The repair made the override match `AbstractMap<String, ComposedPeerMaterial>`, closed
+the estate's write-ahead intent ledgers before byte deletion, and moved the shared
+host SQLite engine into one `testFixtures` home consumed by both courts. The
+substitution door is exactly two device facilities (the identity key factory and the
+SQLCipher engine) under an explicitly HOST-labelled platform; permit issuance,
+file resolution and verification stay real, and the device default remains
+fail-closed.
+
+A retained-estate read then surfaced as the true journey defect: after the rendered
+wipe retired the live estate, `refreshDurable` still queried the closed store and the
+send road reached the retired database, raising the `database connection closed`
+class through the JDBC layer. The fix is the real one: retire-aware durable reads
+consult `harness.isWiped()` and answer the durable record instead of dispatching to
+the closed store, while the send path stops before a retired runtime. The roster
+carries the essential retry control alongside the required controls, and the
+enablement arm now proves the empty-draft denial rather than a tautological
+always-enabled button. The host courts' SQLite data rides the repository's pinned
+jdbc engine at each estate's own file, the single substitution the HOST-labelled
+platform declares.
+
+The builder re-ran the committed wrapper: the mesh courts measured 13, 8 and 8
+tests with zero failures, the labmesh courts 15, 5 and 3 with zero failures, and the
+lab-isolation authority passed with zero errors after the stale empty-argument
+regexps were cut to accept the durable-estate spellings (the guarded owner-composition
+and instantiated-tab properties unchanged). These host lanes stop at the
+AndroidKeyStore/SQLCipher device boundary: the terminal pre-private vault rung and
+on-device key material remain unproven here, crash-resumable and fail-closed by
+construction, not externally verifiable claims.

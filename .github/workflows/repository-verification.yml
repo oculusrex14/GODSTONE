@@ -114,137 +114,20 @@ jobs:
       - run: pip install -r content/requirements-dev.txt
       - name: Board 1 readiness courts (the whole internally executable population)
         run: |
-          # ONE CANONICAL HOSTED WITNESS for the Board 1 readiness suite. Before this
-          # step the eight rc3 courts ran only locally, so the closure's green rested on
-          # a developer's machine rather than on the runner -- and the mission requires
-          # the canonical workflow to execute them.
-          #
-          # NO EXTERNAL ARTEFACT IS NEEDED and none is fetched: the suite runs with no
-          # model, no device and no approval, which is precisely why these courts are
-          # Board 1 work rather than external gates.
-          #
-          # THE COUNT IS ENFORCED, because this repository has repeatedly met tests that
-          # existed but executed ZERO cases. A population that runs nothing is not a pass.
-          # *** `pipefail` IS LOAD-BEARING, NOT DECORATION. ***
-          #
-          # THIS WAS `python -m unittest ... | tee readiness.log` UNDER THE DEFAULT
-          # `bash -e`, WHICH HAS **NO `pipefail`**: a pipeline's status is its LAST
-          # element, so the step's exit code was `tee`'s zero no matter what the
-          # suite reported, and errexit does not fire for a non-final element.
-          #
-          # MEASURED, NOT REASONED: a test was planted to fail, the step was run in
-          # this exact pipeline form, and it reported **exit=0** while the log
-          # carried a `FAILED` line and `Ran 760 tests` -- which also satisfied the
-          # floor below, because a failing run still prints its count. The step
-          # whose ONLY purpose is the hosted witness for these courts could not
-          # fail. That is the exact defect class this mission exists to remove.
-          # *** THE LOG LIVES OUTSIDE THE TREE. ***
-          #
-          # THIS WROTE `readiness.log` INTO THE REPOSITORY, AND THE PROVENANCE STEP
-          # BELOW -- correctly -- REFUSED: "working tree is dirty (git status
-          # --porcelain non-empty) -- evidence from a dirty tree is diagnostic only".
-          # *A stray log is residue, and the remedy is never to teach the provenance
-          # check to ignore it.* The T77 rehearsal step in this same workflow already
-          # writes its report to `RUNNER_TEMP` for exactly this reason, and the
-          # convention is followed rather than re-argued.
           set -euo pipefail
-          READINESS_LOG="${RUNNER_TEMP:-/tmp}/readiness.log"
-          # *** THE SUITE'S OUTPUT GOES TO THE EVIDENCE FILE, NOT THROUGH THE ACTIONS LOG. ***
-          #
-          # *MEASURED, RUN `36846643879`: this step PASSED (`OK`, 804 tests, rc=0) and the job concluded `success` --
-          # yet `check-runs/{job}/annotations` carrieth TEN `failure`-level annotations, every one a NEGATIVE-CONTROL
-          # PROBE'S OWN REFUSAL TEXT (`the bundle is not a directory: …/not-a-bundle.txt`, `the Archive is missing:
-          # …/absent.db`, `SBOM: …org.example:lib:1.0…`, `dependency manifest: lane 'native' is missing`).*
-          # **THOSE PROBES PASS PRECISELY BECAUSE THE TOOL REFUSES -- `test_t69.py` planteth a non-bundle and asserteth
-          # `assertIn("::error::", said)` on the CAPTURED stream -- so that text is EVIDENCE OF A WORKING CONTROL.** *But
-          # `2>&1 | tee` put every `::error::` on the runner's stdout, GitHub harvested each into a check-run
-          # annotation, and `ci/check_candidate_binding.py` refuseth ANY failure-level annotation on ANY job (its "a job
-          # conclusion is success even when a step emitted ::error:: that a later step swallowed" guard).* **THE
-          # CONSEQUENCE WAS THAT NO RUN OF THIS WORKFLOW WAS FREEZABLE -- MEASURED ON ALL THREE GREEN RUNS
-          # (`36789666598`, `36813737384`, `36846643879`), EACH CARRYING THE SAME TEN.**
-          #
-          # **SO THE SUITE WRITETH STRAIGHT TO THE FILE.** *One run, bytes kept VERBATIM -- the probe tokens remain in
-          # `$READINESS_LOG` exactly as before, so the assertions and the evidence are untouched -- and they simply never
-          # pass through the Actions log, which is the only channel GitHub harvests annotations from.* **THE VERDICT IS
-          # STILL READ FROM THAT FILE by the guards below, and THIS STEP'S OWN `::error::` LINES ARE UNTOUCHED: a REAL
-          # failure still annotates the job, which is the signal the freeze guard existeth to read.** *No second suite
-          # run, no swallow, no rewrite of a single byte.*
-          python -m unittest discover -s tools/readiness/tests -v > "$READINESS_LOG" 2>&1
-          # the verdict is read from the log EXPLICITLY: the floor and the presence
-          # checks below both pass on a FAILED run, so this is the guard that matters.
-          if grep -qE '^(FAILED|ERROR)' "$READINESS_LOG"; then
-            echo "::error::the readiness suite reported failures"
-            tail -40 "$READINESS_LOG"
-            exit 1
-          fi
-          grep -qE '^OK' "$READINESS_LOG" || {
-            echo "::error::the readiness suite printed no OK verdict"
-            tail -20 "$READINESS_LOG"
-            exit 1
-          }
-          executed=$(grep -oE "^Ran [0-9]+ tests" "$READINESS_LOG" | grep -oE "[0-9]+" | head -1)
-          echo "readiness suite executed ${executed:-0} tests"
-          if [ -z "$executed" ] || [ "$executed" -lt 700 ]; then
-            echo "::error::the readiness suite executed ${executed:-0} tests; the floor is 700"
-            exit 1
-          fi
-          # *** THE DEFERRALS ARE COUNTED, NOT IGNORED. ***
-          #
-          # The T01 HISTORICAL arms need a preservation capture that lives OUTSIDE
-          # this repository and is absent on a runner, so they raise SkipTest and the
-          # runner prints `OK (skipped=N)`. A skip is now DISTINGUISHABLE from a pass
-          # -- which is the whole point -- but a step that silently accepted N skips
-          # would still be claiming a witness it did not have. The count is therefore
-          # REPORTED and bounded: the reusable arms must all have run.
-          skipped=$(grep -oE "skipped=[0-9]+" "$READINESS_LOG" | grep -oE "[0-9]+" | head -1)
-          echo "readiness suite skipped ${skipped:-0} historical arm(s)"
-          if [ -z "$skipped" ]; then
-            echo "::error::the readiness suite reported no skip count at all; the T01 "
-            echo "::error::historical arms cannot be accounted for"
-            exit 1
-          fi
-          # *** THE BOUND IS THE POPULATION MEASURED ON THIS RUNNER, NOT A LOCAL ESTIMATE. ***
-          #
-          # IT WAS 40, DESCRIBED AS "(T01 historical 20, evidence digests 8, remediation 6)" --
-          # WHICH IS 34, so a SIX-ARM REGRESSION could have slipped through unnoticed.
-          #
-          # *** AND I FIRST "MEASURED" IT AS 16 IN A LOCAL CLONE, WHICH WAS WRONG. *** *A
-          # clone under-reports: the local working tree carries the out-of-repo evidence root as
-          # a sibling directory, so the evidence-digest and remediation arms EXECUTE here and
-          # DEFER on a runner where that root is absent. The hosted step then FAILED against my
-          # 16. THE ONLY VALID MEASUREMENT OF A RUNNER-SIDE POPULATION IS THE RUNNER'S OWN
-          # OUTPUT -- 30, composed of 16 T01 historical (each naming "no preservation capture
-          # beside this checkout") plus 14 evidence-digest/remediation (each naming "the
-          # out-of-repository evidence root is absent"). Both shares are printed by the arms
-          # themselves, so the composition is auditable rather than inferred.*
-          #
-          # The four TAMPER CONTROLS that needed only self-consistency were moved off
-          # `@historical_arm` in this round and now EXECUTE here, which is why the T01 share is
-          # 16 rather than 20.
-          #
-          # A skip count ABOVE this means a control that should execute did not -- the failure
-          # this step exists to refuse -- and the number is not a budget to make room for.
-          if [ "$skipped" -gt 30 ]; then
-            echo "::error::${skipped} arms were skipped; the capture-dependent population is"
-            echo "::error::MEASURED at 30 on a runner (16 T01 historical + 14 evidence/remediation)."
-            echo "::error::A larger number means a control that should execute did not."
-            exit 1
-          fi
-          if [ "$skipped" -gt 0 ]; then
-            echo "::notice::${skipped} capture-dependent arm(s) deferred: they assert the"
-            echo "::notice::REAL preservation capture and the REAL registered evidence, and"
-            echo "::notice::that root lives outside the repository (untracked, by design)."
-            echo "::notice::Their questions are NOT answered here, and this step does not"
-            echo "::notice::claim they were."
-          fi
-          # the courts this mission authored must be PRESENT, not merely counted: a
-          # suite that dropped one would still clear a total-count floor.
-          for court in test_t62 test_t64 test_t65 test_t73 test_t74 test_t75 test_t76 test_t78 test_t79 test_t80 test_t81; do
-            case "$court" in
-              test_t62|test_t64|test_t65) continue ;;   # native courts: Kotlin/Swift lanes
-            esac
-            grep -q "$court" "$READINESS_LOG" || { echo "::error::$court did NOT run"; exit 1; }
-          done
+          READINESS_LOG="$RUNNER_TEMP/readiness.log"
+          # Preserve negative-control output without turning it into Actions annotations.
+          python tools/readiness/check_suite_roster.py --run --log "$READINESS_LOG" \
+            --roster "$RUNNER_TEMP/readiness-roster.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: board1-readiness-courts
+          path: |
+            ${{ runner.temp }}/readiness.log
+            ${{ runner.temp }}/readiness.log.results.json
+            ${{ runner.temp }}/readiness-roster.json
+          if-no-files-found: error
       - name: Board 1 blocker frontier (the classification court)
         run: |
           python tools/readiness/blockers.py --check
@@ -617,6 +500,28 @@ jobs:
             :app:testLightDebugUnitTest \
             :labmesh:testDebugUnitTest \
             --no-daemon
+      # *** THE THREE MISSING ANDROID LANES (ui / simulator / production), FROM THE ONE REGISTRY. ***
+      #
+      # *THE GAP THIS CLOSES: the four unit lanes ran in this job, and the RENDERED-CONTROLS courts, the lab's
+      # LAUNCHABLE composition and the PRODUCTION-SIMULATION lane did not exist as lanes at all -- the Archive/APK
+      # steps below were inline, with no lane identity, no digest binding and no report, so nothing named them and
+      # their absence reddened nothing. **`tools/readiness/lane_registry.py` owns the real gradle target, the evidence
+      # root and the report for each; this step RUNS them and the control judges them.***
+      #
+      # *** AND THE RUNNER PRODUCES EVIDENCE WHILE THE CHECKER DECIDES: a non-PASSED derived verdict is a warning
+      # here, not an abort -- because the `android lane control` step below must still read the evidence and NAME the
+      # failing court. An abort would hide the reason, which is the "a red arm hid the lane" defect already recorded.***
+      - name: android report lanes (ui / simulator / production)
+        run: |
+          set -uo pipefail
+          rc=0
+          tools/readiness/run_android_lanes.sh --report-lanes-only || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::an android report lane's derived verdict was not PASSED (rc=$rc);"
+            echo "::warning::the lane control below names the failing court from its evidence"
+          fi
+          exit 0
+
       # *** THE ANDROID LANES ARE JUDGED BY THE SAME COMMITTED CONTROL, SCOPED TO THIS JOB. ***
       #
       # *THE GAP: the android job ran gradle DIRECTLY and never invoked `check_lane_results.py`, so its lane
@@ -624,9 +529,11 @@ jobs:
       # shape the UI lane had.** The digests are written here by the same tool the committed runner uses, so the
       # control can bind each result to the source bytes it tested.
       #
-      # *** ALL FOUR LANES, POST-RUN, AND THE PRE-RUN DIGESTS ALREADY EXIST: the digest control compares them
-      # pairwise, so a mid-run edit of any module's sources is refused rather than described. `android:labmesh` is
-      # written too -- omitting it turned a judged lane into an undatable one the control refused by name.***
+      # *** ALL SEVEN LANES, POST-RUN, AND THE PRE-RUN DIGESTS ALREADY EXIST: the digest control compares the unit
+      # lanes' pairings, and the three report lanes carry their OWN pre/post digests and reports. `android:labmesh` is
+      # written too -- omitting it turned a judged lane into an undatable one the control refused by name. AND THE
+      # THREE REPORT LANES ARE REFUSED WHEN THEIR REPORT IS ABSENT (an unrun lane is not a pass), so a step that
+      # silently skipped them cannot green this control.***
       - name: android lane control (scoped to this job's lanes)
         run: |
           set -euo pipefail
@@ -653,16 +560,17 @@ jobs:
       - name: prove the selected Archive bytes reached the APK
         run: |
           python scripts/inspect_android_artifacts.py --selftest
-          python scripts/inspect_android_artifacts.py android/app/build/outputs/apk artifacts/android-debug \
-            --expected-archive android/app/src/lightDebug/assets/archive_light.db
-      - name: verify merged manifest has no INTERNET permission
-        run: |
-          manifest=$(find android -name AndroidManifest.xml -path '*merged*' | head -1)
-          if [ -n "$manifest" ] && grep -q 'android.permission.INTERNET' "$manifest"; then
-            echo '::error::INTERNET permission appeared via a library merge'
-            exit 1
-          fi
-          echo 'ok: merged manifest clean'
+          out="$RUNNER_TEMP/board1-android-artifact"
+          mkdir -p "$out"
+          cp -R android/app/build/outputs/apk/light/debug "$out/apks"
+          cp android/app/src/lightDebug/assets/archive_light.db "$out/archive_light.db"
+          python scripts/inspect_android_artifacts.py "$out/apks" "$out/inspection" \
+            --expected-archive "$out/archive_light.db"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-light-artifact-evidence
+          path: ${{ runner.temp }}/board1-android-artifact
+          if-no-files-found: error
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -671,11 +579,29 @@ jobs:
           name: android-test-results
           path: |
             **/build/reports/tests/**
+            **/build/test-results/**/*.xml
+            android-*.pre.sha256
+            android-*.sources.sha256
             provenance-*.json
+            # *** AND THE THREE REPORT LANES' OWN EVIDENCE. ***
+            #
+            # *Their copied JUnit XML lives in lane-owned roots (`android-ui-results/`, `android-simulator-results/`,
+            # `android-production-results/`) and their reports beside the other lane sidecars. **The terminal manifest
+            # job downloads this artifact into its evidence root and `ci/check_lane_results.py --scope all` re-derives
+            # each verdict from THESE bytes -- so a report whose XML was not uploaded is refused as absent.***
+            android-*.lane.json
+            android-ui-results/**
+            android-simulator-results/**
+            android-production-results/**
+            android-ui.log
+            android-simulator.log
+            android-production.log
 
   ios:
     name: ios core + mesh tests + Archive-only xcodebuild
-    runs-on: macos-15
+    # The pinned SQLCipher modes require arm64 Xcode 27, not macos-15's Intel/default Xcode 16.
+    # https://github.blog/changelog/2026-07-16-xcode-27-runner-image-now-in-public-preview/
+    runs-on: xcode-27
     # *** A JOB THAT CAN HANG FOREVER PRODUCETH NO VERDICT. ***
     #
     # *MEASURED, RUN `35962665742`: this job sat 2h08m inside `ios UI lane` with ZERO output and was cancelled by hand.
@@ -785,39 +711,10 @@ jobs:
       - name: provision the Android command-line SDK (accepted licences) for the worker
         run: |
           set -euo pipefail
-          # *** PROVISIONED ONCE, WITHOUT `sdkmanager` INTERACTION: the command-line tools tarball, `--licenses`
-          # accepted non-interactively, and the platform + build-tools this project's `compileSdk = 35` needs. ***
-          # *An unprovisioned SDK is the one launch failure the coordinator cannot report usefully -- the Gradle
-          # invocation would refuse with a message about a missing SDK, which is a TOOLCHAIN absence and not a
-          # transport verdict.*
           export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
-          if [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then
-            mkdir -p "$ANDROID_HOME/cmdline-tools"
-            tmp="$(mktemp -d)"
-            curl -fsSL -o "$tmp/cmdline-tools.zip" \
-              https://dl.google.com/android/repository/commandlinetools-mac-11076708_latest.zip
-            unzip -q "$tmp/cmdline-tools.zip" -d "$tmp"
-            mv "$tmp/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
-          fi
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          # *** AND THE PACKAGES THE BUILD ITSELF DECLARES, NOT MERELY THE ONES `compileSdk` NAMES. ***
-          #
-          # *MEASURED, RUN `36775091464`: `android/llm/build.gradle.kts` carrieth `ndkVersion = "27.0.12077973"`
-          # and the AGP also wanteth build-tools 34 -- NEITHER was provisioned here, so GRADLE DOWNLOADED AND
-          # INSTALLED BOTH LAZILY **INSIDE THE COORDINATOR'S TIMED RUN**, and the
-          # `android-prepare-outboundEnqueue` worker consumed its whole 300s bound on
-          # `Installing NDK (Side by side) 27.0.12077973` + `Install Android SDK Build-Tools 34` and never reached
-          # its `AT_BOUNDARY` marker. The refusal named the marker, not the toolchain, so the log had to be read to
-          # find it.* **A DOWNLOAD THAT LANDS INSIDE A TIMED STEP IS A TIMEOUT THAT LOOKS LIKE A BROKEN PRODUCT --
-          # provisioning is exactly what this step existeth to prevent.**
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" "platforms;android-35" "build-tools;35.0.0" "build-tools;34.0.0" \
-            "ndk;27.0.12077973"
+          # Verify the archive before extraction and the cached tools before use.
+          bash tools/supplychain/provision_android_cmdline_tools.sh
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
-          # *** AND THE TOOLCHAIN IS ASSERTED PRESENT, SO A LATER SILENT ABSENCE CANNOT BECOME A MARKER TIMEOUT. ***
-          test -d "$ANDROID_HOME/ndk/27.0.12077973" || \
-            { echo "::error::the NDK the build declares (27.0.12077973) is NOT installed after provisioning"; exit 1; }
 
       # *** THE iOS FOUNDATION LANE AND THE UI LANE, ONE REPOSITORY-OWNED PATH EACH. ***
       #
@@ -844,16 +741,16 @@ jobs:
       - name: ios UI lane (LabMeshUI + GodstoneArchiveUI)
         run: |
           set -euo pipefail
-          # *** THE RUNNER PRODUCES EVIDENCE AND EXITS 0 WHEN IT PRODUCED A LOG; THE CHECKER DECIDES THE VERDICT. ***
-          # *A raw `xcodebuild` non-zero cannot distinguish the RECORDED known-red obligation from a NOVEL break, so
-          # aborting on it would either suppress the obligation or force it to be hidden.*
+          # Preserve raw results and source digests even on failure; the lane
+          # control rejects every internal failure and unexpected skip.
           tools/readiness/run_ios_ui_lane.sh ios-ui-lane.log
 
       - name: "ios lane control (scoped to host lanes: foundation + UI)"
         run: |
           set -euo pipefail
-          # ONE invocation over both host artifacts: required suites, the SOURCE-DERIVED arm roster BY NAME, zero skips,
-          # the exact failed-arm set, the recorded known-red arm announced, and both digests current.
+          # Reconcile exact source-derived arms, zero internal failures,
+          # ZERO SKIPS (no reason is excusable -- the external-blocked allowance is
+          # retired) and unchanged pre/post source digests.
           python3 ci/check_lane_results.py --scope ios-host
 
       # xcodegen + xcodebuild Archive-only (LightRelease) is repo-owned green:
@@ -863,7 +760,23 @@ jobs:
       - run: >-
           xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light
           -configuration LightRelease -destination 'generic/platform=iOS'
+          -derivedDataPath "$RUNNER_TEMP/board1-light-derived"
           CODE_SIGNING_ALLOWED=NO build
+      - name: inspect the built iOS Archive-only LIGHT artifact
+        run: |
+          python3 scripts/inspect_ios_artifacts.py --selftest
+          out="$RUNNER_TEMP/board1-ios-artifact"
+          mkdir -p "$out"
+          ditto "$RUNNER_TEMP/board1-light-derived/Build/Products/LightRelease-iphoneos/Godstone.app" \
+            "$out/Godstone.app"
+          python3 scripts/inspect_ios_artifacts.py "$out/Godstone.app" \
+            --entitlements ios/Godstone/Godstone.entitlements \
+            --out "$out/inspection.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ios-light-artifact-evidence
+          path: ${{ runner.temp }}/board1-ios-artifact
+          if-no-files-found: error
       # Execute GodstoneMeshTests via xcodebuild on a simulator -- the real iOS
       # test execution, not just the host swift-test mirror.
       #
@@ -1005,7 +918,7 @@ jobs:
             ios-simulator-lane.log
             ios-simulator-lane.log.sources.sha256
             ios-simulator-lane.log.pre.sha256
-          if-no-files-found: warn
+          if-no-files-found: error
 
       # *** AND THE SIMULATOR RESULT BUNDLE, WHICH THE INLINE STEP NEVER KEPT. ***
       # *A `.xcresult` carrieth the per-CASE roster, the suite lifecycle and the skip annotations that a log carrieth
@@ -1016,7 +929,7 @@ jobs:
         with:
           name: ios-simulator-xcresult
           path: ios-simulator-lane.xcresult
-          if-no-files-found: warn
+          if-no-files-found: error
 
       # *** AND THE CROSS-PLATFORM INTEGRATION'S OWN EVIDENCE. ***
       #
@@ -1035,4 +948,143 @@ jobs:
           path: |
             board1-integration-ci/**
             tools/integration-fixtures/**
-          if-no-files-found: warn
+          if-no-files-found: error
+
+  board1-terminal:
+    name: Board 1 terminal candidate verification
+    needs: [constraints, invariants, content, meshsim, android, ios]
+    runs-on: xcode-27
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d
+      - name: provision declared terminal-gate dependencies
+        run: |
+          set -euo pipefail
+          pip install -r content/requirements-dev.txt
+          brew install xcodegen
+          export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+          bash tools/supplychain/provision_android_cmdline_tools.sh
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: android-test-results
+          path: ${{ runner.temp }}/board1-inputs
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-lane-evidence
+          path: ${{ runner.temp }}/board1-inputs
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-simulator-xcresult
+          path: ${{ runner.temp }}/board1-inputs/ios-simulator-lane.xcresult
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: board1-integration-evidence
+          path: ${{ runner.temp }}/board1-inputs
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ios-light-artifact-evidence
+          path: ${{ runner.temp }}/board1-inputs/ios-light
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: android-light-artifact-evidence
+          path: ${{ runner.temp }}/board1-inputs/android-light
+      - name: replay and authenticate frozen candidate evidence on the attestation successor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          attestation="$(python3 -c 'import sys; sys.path.insert(0, "ci"); import check_candidate_binding as c; print(c.FREEZE_ATTESTATION_SUCCESSOR_PATH)')"
+          if [[ -f "$attestation" ]]; then
+            metadata="$(python3 -c 'import json, sys; d = json.load(open(sys.argv[1])); print("\t".join((d["candidate_ref"], str(d["run"]["id"]), str(d["run"]["attempt"]))))' "$attestation")"
+            IFS=$'\t' read -r frozen_tag frozen_run frozen_attempt <<< "$metadata"
+            python3 tools/readiness/run.py board1 replay \
+              --run-id "$frozen_run" --attempt "$frozen_attempt" --tag "$frozen_tag" \
+              --out "$RUNNER_TEMP/board1-frozen" --attestation "$attestation"
+            printf 'GODSTONE_BOARD1_FROZEN_TAG=%s\n' "$frozen_tag" >> "$GITHUB_ENV"
+          fi
+      - name: capture authenticated exact-candidate release evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          proof_root="$RUNNER_TEMP/board1-proof"
+          if [[ -n "${GODSTONE_BOARD1_FROZEN_TAG:-}" ]]; then
+            ditto "$RUNNER_TEMP/board1-frozen/proof" "$proof_root"
+          else
+            release_metadata="$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow release-gates.yml --commit "$GITHUB_SHA" --event push \
+              --limit 100 --json databaseId,attempt \
+              --jq 'sort_by(.databaseId) | last | [.databaseId, .attempt] | @tsv')"
+            IFS=$'\t' read -r release_run release_attempt <<< "$release_metadata"
+            if [[ ! "$release_run" =~ ^[1-9][0-9]*$ || ! "$release_attempt" =~ ^[1-9][0-9]*$ ]]; then
+              echo "::error::no release-gates push run is available for exact candidate $GITHUB_SHA"
+              exit 1
+            fi
+            # Completion is not a verdict: the collector distinguishes internal failure
+            # from a genuine typed external boundary using the pinned attempt's facts.
+            gh run watch "$release_run" --repo "$GITHUB_REPOSITORY" --interval 30 --compact
+            python3 tools/supplychain/capture_release_proof.py \
+              --repo "$GITHUB_REPOSITORY" --run-id "$release_run" --attempt "$release_attempt" \
+              --candidate-sha "$GITHUB_SHA" --tree-sha "$(git rev-parse 'HEAD^{tree}')" \
+              --out "$proof_root"
+          fi
+      - name: run the real exact-candidate Board 1 mutation campaign
+        run: |
+          set -euo pipefail
+          python3 ci/mutations.py --semantic --group board1 \
+            --baseline "$GITHUB_SHA" --emit-dir "$RUNNER_TEMP/board1-campaign"
+      - name: run the complete canonical Board 1 gate set
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GODSTONE_BOARD1_IOS_APP: ${{ runner.temp }}/board1-inputs/ios-light/Godstone.app
+          GODSTONE_BOARD1_ANDROID_APK_ROOT: ${{ runner.temp }}/board1-inputs/android-light/apks
+          GODSTONE_BOARD1_ARCHIVE_LIGHT_DB: ${{ runner.temp }}/board1-inputs/android-light/archive_light.db
+          GODSTONE_BOARD1_INTEGRATION_REPORT: ${{ runner.temp }}/board1-inputs/board1-integration-ci/integration-report.json
+        run: |
+          set -euo pipefail
+          frozen_args=()
+          if [[ -n "${GODSTONE_BOARD1_FROZEN_TAG:-}" ]]; then
+            frozen_args=(
+              --tag "$GODSTONE_BOARD1_FROZEN_TAG"
+              --frozen-artifacts "$RUNNER_TEMP/board1-frozen/gates"
+              --frozen-campaign-dir "$RUNNER_TEMP/board1-frozen/campaign"
+              --frozen-evidence-root "$RUNNER_TEMP/board1-frozen/evidence"
+              --frozen-proof-dir "$RUNNER_TEMP/board1-frozen/proof"
+            )
+          fi
+          python3 tools/readiness/run.py board1 verify \
+            --campaign-dir "$RUNNER_TEMP/board1-campaign" \
+            --evidence-root "$RUNNER_TEMP/board1-inputs" \
+            --proof-dir "$RUNNER_TEMP/board1-proof" \
+            --artifacts "$RUNNER_TEMP/board1-gates" \
+            --manifest-out "$RUNNER_TEMP/board1-gate-manifest.json" \
+            "${frozen_args[@]}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: board1-gate-manifest
+          path: ${{ runner.temp }}/board1-gate-manifest.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: board1-terminal-evidence
+          path: |
+            ${{ runner.temp }}/board1-gates/**
+            ${{ runner.temp }}/board1-campaign/**
+            ${{ runner.temp }}/board1-proof/**
+          if-no-files-found: error

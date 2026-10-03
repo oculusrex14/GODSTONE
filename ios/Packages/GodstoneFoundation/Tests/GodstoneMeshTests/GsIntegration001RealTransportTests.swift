@@ -68,9 +68,20 @@ final class GsIntegration001RealTransportTests: XCTestCase {
             lk.lock(); stored.append(data); lk.unlock()
         }
         @objc func discoverServices(_ services: [CBUUID]) {}
-        @objc func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
+        /// *** THE SELECTOR IS THE PLATFORM'S: `discoverCharacteristics:forService:`. *** *Swift's ObjC inference would
+        /// export the label `for:` VERBATIM as `discoverCharacteristics:for:` -- a DIFFERENT selector from the one
+        /// `CBPeripheral` implementeth -- so the reduction's `p.discoverCharacteristics([inbox, digest, linkInfo],
+        /// for: s)` (BleTransport's own `onServicesDiscovered` arm) reached `doesNotRecognizeSelector:` and ABORTED the
+        /// process. Naming the selector explicitly makes this fake answer the very message the real radio answereth.
+        /// This is the same `@objc(discoverCharacteristics:forService:)` law the substrate's `SubstratePeripheral`
+        /// carrieth; it was applied there and missed here.*
+        @objc(discoverCharacteristics:forService:)
+        func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
         @objc func readRSSI() {}
-        @objc func readCharacter(_ characteristic: CBCharacteristic) {}
+        /// *The link-info read the characteristic walk issues (`p.readValue(for:)`, BleTransport's `.readLinkInfo`
+        /// arm) resolves to `readValueForCharacteristic:`; the label `for:` would export a different selector here too.*
+        @objc(readValueForCharacteristic:)
+        func readValue(for characteristic: CBCharacteristic) {}
         @objc(setNotifyValue:forCharacteristic:)
         func setNotifyValue(_ v: Bool, for characteristic: CBCharacteristic) {}
         var writes: [Data] {
@@ -233,7 +244,12 @@ final class GsIntegration001RealTransportTests: XCTestCase {
             peerId: peerId, peripheral: nil,
             sourceEpoch: alice.currentTransportEpoch, from: cm)
         walkLog.append("after connect: " + (alice.connection(for: peerId).map { String(describing: $0.state) } ?? "nil"))
-        let a1 = alice.processPeripheralDiscoverServices(nil, delegate: delegate, error: nil)
+        // *** THE SIMULATED PERIPHERAL MUST EXPOSE THE MESH SERVICE BEFORE THE DISCOVERY IS REPORTED. *** *The
+        // reduction no longer coerces an un-observ'd `services` to success -- that was the defect -- so the peripheral
+        // the walk reports really carrieth the provisioned mesh service.*
+        capturePeer.services = [Self.provisionedService()]
+        let a1 = alice.processPeripheralDiscoverServices(
+            unsafeBitCast(capturePeer, to: CBPeripheral.self), delegate: delegate, error: nil)
         walkLog.append("services -> " + String(describing: a1) + " @ " + (alice.connection(for: peerId).map { String(describing: $0.state) } ?? "nil"))
         let a2 = alice.processPeripheralDiscoverCharacteristics(nil, delegate: delegate,
                                                                 service: Self.provisionedService(), error: nil)
@@ -557,12 +573,41 @@ final class GsIntegration001RealTransportTests: XCTestCase {
     /// would be reported corrupt.
     final class IntegrationWipeJournal: WipeJournal, @unchecked Sendable {
         private var state: WipeState = .idle
+        /// *** THE MEDIUM'S GENERATION, NAMED FROM BIRTH. ***
+        ///
+        /// *An in-memory court journal IS its own medium, so it must answer a generation the moment it is asked -- `1`
+        /// for the clean baseline, exactly as the production `FileWipeJournal` stampeth a genuinely absent record.*
+        /// **Starting `nil` was the lie: `readDurable()` then answered `(idle, nil)` on a clean estate, and the
+        /// production fold requires a non-nil epoch (`CrashResumableWipe.allowsSensitiveApi()` /
+        /// `WipeJournalDurabilityAdapter.isReadable`), so the gate read a CLEAN journal as unvouchable and refused all
+        /// sensitive work -- the false corruption that reddened "(a) A CLEAN ESTATE PERMITS".** *The generation still
+        /// ADVANCES on a request (see `bumpEpoch`), so the refusal at (b) is a real transition, not a constant.*
+        private var _wipeEpoch: UInt64? = 1
         private let lock = NSLock()
         func read() -> WipeState { lock.lock(); defer { lock.unlock() }; return state }
         func write(_ s: WipeState) { lock.lock(); state = s; lock.unlock() }
         func clear() { lock.lock(); state = .idle; lock.unlock() }
         var isReadable: Bool { true }
-    }
+
+        var durableEpoch: UInt64? { _wipeEpoch }
+        @discardableResult func bumpEpoch() -> UInt64? { _wipeEpoch = (_wipeEpoch ?? 0) + 1; return _wipeEpoch }
+        /// *** THE MEDIUM'S OWN ANSWER: whatever the state, the baseline generation is NAMEABLE. ***
+        ///
+        /// *The old `if _wipeEpoch == nil, read() != .idle` guard named a generation ONLY for a non-idle record, so a
+        /// CLEAN journal answered `(idle, nil)` -- and the production fold (`allowsSensitiveApi`, the durability
+        /// adapter's `isReadable`) requires a non-nil epoch, so a clean estate was read as unvouchable and every
+        /// sensitive road refused. THE BASELINE IS A GENERATION, NOT AN ABSENCE: an absent/clean medium answers
+        /// `(.idle, 1)`, matching `FileWipeJournal`'s own baseline rule, and a genuinely outstanding rung answers its
+        /// bumped generation.* **The `bumpEpoch` below still ADVANCES the counter, so the pending-wipe refusal is a
+        /// real transition rather than a hardwired constant.**
+        func readDurable() -> (state: WipeState, epoch: UInt64?)? {
+            (read(), _wipeEpoch ?? 1)
+        }
+        @discardableResult func writeChecked(_ state: WipeState) -> DurableWriteResult {
+            write(state)
+            return DurableWriteResult(synchronized: true, epoch: _wipeEpoch ?? 1)
+        }
+}
 
 
     /// *** NO DIRECT LINK: AN OUTBOUND FRAME WITH NO CONNECTED RELAY MUST BE QUEUED DURABLY, NOT DROPPED. ***

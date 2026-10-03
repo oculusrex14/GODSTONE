@@ -238,6 +238,12 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
         // ---- the message and the evidence ---------------------------------------------------------------
         private var trackedMsgId: Data?
         private var authoredFrame: FrameV2?
+        /// *** THE LABEL THE DURABLE PROOFS ARE READ FROM: the endpoint, or its reopened successor. ***
+        private var proofLabel: String?
+        /// *** THE FRAME THE CANCELLATION NEGATIVE MOVED, SO THE REOPENED ESTATE CAN RE-READ ITS STATE. ***
+        private var cancellationMsgId: Data?
+        /// *** WHETHER THE ORIGINAL NODE HATH BEEN CLOSED AND REOPENED, so no further live read happeneth. ***
+        private var estateReopened = false
         private var ringBaseline = 0
         private var reported = false
         private var buffer = Data()
@@ -254,7 +260,19 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
                 throw Failure.refused("the output FIFO is absent or was not named")
             }
             self.role = role
-            self.variant = Variant(rawValue: env[WireKey.variant] ?? "honest") ?? .honest
+            // *** AN UNKNOWN VARIANT IS REFUSED, NEVER SILENTLY DOWNGRADED TO `honest`. ***
+            //
+            // *THE DEFECT THIS CLOSES: `Variant(rawValue: env[...] ?? "honest") ?? .honest` ACCEPTED ANY STRING -- a
+            // typo, a renamed control, a foreign value -- and ran the HONEST arm instead, echoing the PARSED value on
+            // its records. So a coordinator that asked for a control it misspelled would be silently handed the honest
+            // arm, and the misconfiguration would read as a passing honest control.* **A control the coordinator asked
+            // for and the worker silently replaced is not a control** -- the same "silent downgrade" class this
+            // repository refuses everywhere else.
+            let requestedVariant = env[WireKey.variant] ?? Variant.honest.rawValue
+            guard let parsedVariant = Variant(rawValue: requestedVariant) else {
+                throw Failure.refused("the variant '\(requestedVariant)' is not one this worker knoweth")
+            }
+            self.variant = parsedVariant
             self.estateRoot = URL(fileURLWithPath: root)
             self.deadline = Double(env[WireKey.deadline] ?? "300") ?? 300
             // *** BOTH ENDS OPENED RDWR, SO NEITHER SIDE BLOCKS ON THE OTHER'S OPEN AND EVERY READ IS BOUNDED. ***
@@ -496,6 +514,42 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
                     emit("ready", header: ["seat": isInitiator ? "initiator" : "responder",
                                            "reconnected": true,
                                            "handle": peerHandle.map { $0.uuidString } ?? ""])
+                case "reopen":
+                    // *** THE DURABLE-ESTATE PROOF: STOP THE OWNER, RELEASE THE HANDLES, AND RE-READ FROM A FRESH
+                    // RUNTIME OVER THE SAME ON-DISK FILES. ***
+                    //
+                    // *THE DEFECT THIS CLOSES, AND IT IS THE COORDINATOR'S MEDIUM FINDING: a `durable_row: present`
+                    // observe was read from the RUNNING store, so it echoed a live object's state rather than a
+                    // SURVIVING ROW -- a `self-attested constant` a reader could not distinguish from a durable
+                    // commit. **Reopening the SAME estate through the production composition root and re-querying the
+                    // owner's own store turneth the claim into a fact about the DISK.*** *`closeAndReopen` is the
+                    // rig's own production-shaped road (it quiesces the links, stops the lifecycle, closes the
+                    // stores, and rebuilds over the same URLs), and the query below is the store's OWN
+                    // `allHeldMsgIds`/`deliveryRow` answer -- never a header this worker was handed.*
+                    try reopenEstateForProof()
+                    var cancelState = ""
+                    if let cancelId = cancellationMsgId,
+                       case .found(let rec) = rig.node(deliveryProofLabel)?.runtime.deliveryTracker.lookup(cancelId) {
+                        cancelState = "\(rec.state)"
+                    }
+                    emit("observe", header: ["reopened": true,
+                                             "durable_row": durableMsgId() != nil ? "present" : "absent",
+                                             "msg_id": durableMsgId().map(hex) ?? "",
+                                             "delivery": deliveryStateName(),
+                                             "cancellation_state": cancelState,
+                                             "cancellation_msg_id": cancellationMsgId.map(hex) ?? "",
+                                             "estate": estateRoot.path])
+                case "cancel":
+                    // *** THE CANCELLATION NEGATIVE: A QUEUED FRAME MOVED TO CANCELLED, AND THE ESTATE RE-READ FROM
+                    // DISK MUST SHOW IT. ***
+                    //
+                    // *THE GAP THIS CLOSES: the eight combos proved an honest DELIVERED transition but nothing about
+                    // the OTHER terminal move the tracker owns -- **so a `cancel` that silently did nothing (or moved
+                    // the wrong row) would be invisible.** This author eth a fresh frame, commits it through the
+                    // store's own `enqueueDirectOutbound` (the atomic held+delivery pair), applies the tracker's OWN
+                    // `cancel`, and reports the RESULT the owner returned; the coordinator then asketh for a reopen
+                    // and requireth the SAME cancelled state from the reopened store.*
+                    try emitCancellationNegative()
                 case "bye":
                     refreshReports(ifChangedFrom: "")
                     return
@@ -636,6 +690,15 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
             }
             _ = node.ble.processCentralConnect(peerId: handle, peripheral: bridged,
                                                sourceEpoch: node.ble.currentTransportEpoch, from: central)
+            // *** A DISCOVERIED SERVICE SET IS AN OBSERVED FACT, NOT AN ABSENCE. ***
+            //
+            // *`BleTransport` no longer coerceth a NIL/empty `services` to a discovery success (the fixed
+            // `reductionProcessPeripheralDiscoverServices` refuseth it to `success:false` -> disconnect, and
+            // `BleLinkSubstrateTests.testGSINT001ADiscoveryThatObservedNoMeshServiceIsNotReportedAsSuccess`
+            // witnesseth it). The simulated positive discovery therefore EXPOSETH the real mesh service on the
+            // bridged peripheral BEFORE the callback -- the same `provisionedService()` the very next line
+            // already demaneth for the characteristic walk.*
+            peripheral.services = [RealTransportHostRig.provisionedService()]
             _ = node.ble.processPeripheralDiscoverServices(bridged, delegate: delegate, error: nil)
             _ = node.ble.processPeripheralDiscoverCharacteristics(
                 bridged, delegate: delegate, service: RealTransportHostRig.provisionedService(), error: nil)
@@ -871,16 +934,94 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
 
         /// The receiver's durable row: **the exact `msgId` the FOREIGN platform authored, as this store holds it.**
         private func durableMsgId() -> Data? {
-            guard let node = rig.node(GsIntegration001CrossPlatformWorkerTests.endpoint) else { return nil }
+            guard let node = proofNode() else { return nil }
             let held = node.messageStore.allHeldMsgIds()
             if let tracked = trackedMsgId, held.contains(tracked) { return tracked }
             return held.first
         }
 
+        /// *** THE NODE THE DURABLE PROOF IS READ FROM: THE REOPENED ONE ONCE `reopen` HATH RUN. ***
+        /// *Before the reopen this is the live endpoint; after it, the fresh runtime over the SAME on-disk store --
+        /// so every store answer below becometh a fact about the DISK rather than about a running object.*
+        private func proofNode() -> RealTransportHostRig.Node? {
+            rig.node(proofLabel ?? GsIntegration001CrossPlatformWorkerTests.endpoint)
+        }
+
+        private var deliveryProofLabel: String { proofLabel ?? GsIntegration001CrossPlatformWorkerTests.endpoint }
+
+        /// *** THE DELIVERY-ROW PROOF, READ FROM THE OWNER (AND FROM THE REOPENED OWNER AFTER `reopen`). ***
+        private func deliveryProofRow(msgId: Data) -> DeliveryRecord? {
+            rig.deliveryRow(deliveryProofLabel, msgId: msgId)
+        }
+
+        /// *** STOP THE OWNER, RELEASE ITS HANDLES, AND RE-READ THE SAME ESTATE FROM A FRESH RUNTIME. ***
+        ///
+        /// *THE DEFECT THIS CLOSES: the durable proofs were read from the RUNNING store, so `durable_row: present`
+        /// echoed a live object's state and a reader could not tell it from a self-attested constant.* **This
+        /// reopeneth the SAME store FILES through the rig's production-shaped `closeAndReopen` (quiesce the links,
+        /// stop the lifecycle, close the stores, rebuild over the same URLs), so the next `durable_row`/`delivery`
+        /// answer is the store's OWN reading of surviving bytes.** *The label changes because a rebuild under the
+        /// same name would collide; the STORE FILES do not, because `closeAndReopen` carrieth the old URLs forward.*
+        private func reopenEstateForProof() throws {
+            let reopenedLabel = "\(GsIntegration001CrossPlatformWorkerTests.endpoint)-reopened"
+            if proofLabel == reopenedLabel { return }
+            _ = try rig.closeAndReopen(GsIntegration001CrossPlatformWorkerTests.endpoint, as: reopenedLabel)
+            proofLabel = reopenedLabel
+            estateReopened = true
+        }
+
+        private func deliveryStateName() -> String {
+            guard let msgId = trackedMsgId, let row = deliveryProofRow(msgId: msgId) else { return "none" }
+            return row.state == .acknowledgedByRecipient ? "DELIVERED" : "QUEUED"
+        }
+
         private func isDelivered() -> Bool {
             guard let msgId = trackedMsgId,
-                  let row = rig.deliveryRow(GsIntegration001CrossPlatformWorkerTests.endpoint, msgId: msgId) else { return false }
+                  let row = deliveryProofRow(msgId: msgId) else { return false }
             return row.state == .acknowledgedByRecipient
+        }
+
+        /// *** THE CANCELLATION NEGATIVE, DRIVEN THROUGH THE OWNERS' OWN ROADS. ***
+        ///
+        /// *The frame is authored and sealed through the PRODUCTION router, committed by the store's own atomic
+        /// `enqueueDirectOutbound`, then moved to CANCELLED by the tracker's own `cancel`. **The result the owner
+        /// RETURNETH is reported verbatim, and the coordinator later re-readeth the state from the REOPENED store, so
+        /// a cancel that did nothing or moved the wrong row is observable.***
+        private func emitCancellationNegative() throws {
+            guard let node = rig.node(GsIntegration001CrossPlatformWorkerTests.endpoint) else {
+                throw Failure.refused("no endpoint node for the cancellation negative")
+            }
+            guard let recipientId = remoteNodeId, let recipientPub = remoteStaticPub else {
+                throw Failure.refused("no remote identity to author the cancellation frame for")
+            }
+            var nonce = Data(count: 16)
+            _ = nonce.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, 16, $0.baseAddress!) }
+            let createdAt = Int64(Date().timeIntervalSince1970)
+            let container = try SignedMessageV1.author(
+                senderIdentityPriv: node.signingSeed,
+                senderIdentityPub: node.identity.signingPublicKey,
+                senderNodeId: node.identity.nodeId,
+                recipientNodeId: recipientId,
+                messageNonce: nonce,
+                createdAtEpochSeconds: createdAt,
+                priority: .direct, timeQuality: .userConfirmed,
+                bodyUtf8: Data("cancellation-negative \(variant.rawValue)".utf8))
+            let frame = try gsAwaitBlocking {
+                try await node.node.router.buildSealedMessage(
+                    plaintext: container, recipientNodeId: recipientId, recipientStaticPub: recipientPub,
+                    identity: LogicalMessageIdentity(createdAtEpochSeconds: createdAt, messageNonce: nonce),
+                    priority: .direct)
+            }
+            let committed = node.messageStore.enqueueDirectOutbound(
+                frame, expectedRecipient: recipientId, localOriginNodeId: node.identity.nodeId)
+            let cancelled = node.runtime.deliveryTracker.cancel(frame.msgId)
+            var state = "unknown"
+            if case .found(let rec) = node.runtime.deliveryTracker.lookup(frame.msgId) {
+                state = "\(rec.state)"
+            }
+            cancellationMsgId = frame.msgId
+            emit("observe", header: ["cancel": "\(cancelled)", "committed": "\(committed)",
+                                     "msg_id": hex(frame.msgId), "state": state])
         }
 
         /// *** THE REFUSAL EVIDENCE IS READ FROM THE RECEIVER'S OWN REJECTION RING, BY NAME -- NEVER BY DECODING A
@@ -910,6 +1051,10 @@ final class GsIntegration001CrossPlatformWorkerTests: XCTestCase {
         /// did changed the answer.*
         @discardableResult
         private func refreshReports(ifChangedFrom previous: String) -> String {
+            // *** ONCE THE ESTATE HATH BEEN REOPENED THE EXCHANGE IS OVER: the ORIGINAL node's stores are CLOSED, so
+            // a further live read would touch a released handle. *** *The reopened node is what the proof reads, and
+            // nothing else is emitted after it.*
+            if estateReopened { return previous }
             guard let node = rig.node(GsIntegration001CrossPlatformWorkerTests.endpoint) else { return previous }
             let held = node.messageStore.allHeldMsgIds()
             if role == "recipient" {

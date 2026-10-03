@@ -169,17 +169,37 @@ public final class RealTransportHostRig {
     /// OWN WORDS: "Preserve wipe-produced key deletion/new identity rather than restoring the original seed or
     /// resetting the journal to IDLE."** *Default (`persistentAt == nil`) is the memory-only dictionary, so no
     /// existing arm changeth.*
+    /// *** THE SHARED-FIXTURE DURABLE MEDIUM: THE FILE (OR THE OBJECT'S OWN MEMORY) IS THE WITNESS. ***
+    ///
+    /// *THE DEFECT THIS CLOSES: this journal declared `isReadable: true` yet implemented NEITHER `readDurable()`
+    /// NOR `writeChecked(_:)`, so it inherited WipeJournal's FAIL-CLOSED defaults (readDurable -> nil,
+    /// writeChecked -> unsynchronized). CrashResumableWipe.isSupportedJournal() folds BOTH answers together
+    /// (WipeJournalDurabilityAdapter: `journal.isReadable && journal.readDurable() != nil`), so every rig road --
+    /// the GS-INT-PROC crash children included -- was classified corrupt_journal at MeshRuntime.create before the
+    /// first marker could be emitted. The lie was here, not in the ladder.* **The medium now answers its own
+    /// bytes: the record is the file (format `state|epoch`, the FileWipeJournal vocabulary; a bare rung name reads
+    /// as that rung with an unknown generation -- history, never a fabricated baseline), and the memory-only mode
+    /// (`persistentAt == nil`, the default) answers from the object that IS the medium -- the GsFinal003 court
+    /// journal's precedent. No production path changed; no trust flag is consulted that the real bytes do not
+    /// answer.**
     internal final class HostJournal: WipeJournal, @unchecked Sendable {
         private let lock = NSLock()
         private var state: WipeState = .idle
         private let file: URL?
+        /// *** THE GENERATION THAT REACHED THE MEDIUM, persisted in the record's own suffix. ***
+        ///
+        /// *`nil` until a checked write (or a bump) names one -- an UNNAMED generation admits nothing: the
+        /// settled/permit roads require `readDurable().epoch != nil`, and the baseline rule stampeth generation 1
+        /// ONLY for a genuinely absent estate (CURRENT-01: present history with no nameable counter is REFUSED,
+        /// never recycled to 1).*
+        private var epoch: UInt64?
         /// *** EVERY RUNG THIS JOURNAL WAS ACTUALLY MOVED TO, IN ORDER, FOR THE LIFETIME OF THE OBJECT. ***
         ///
         /// *THE E ARM MUST PROVE THE ORDERING LAW: "key deletion must not precede the drain". The journal cannot
         /// answer that alone -- a single durable slot readeth only its LAST rung -- so the object that WRITETH the
         /// rungs keepeth their sequence, which is what maketh "ARTIFACTS_DELETED came after the keys" an observation
-        /// on the wipe's own instrument rather than on a court's clock.* **The record is in-memory (the durable slot
-        /// is still the one state); it is never consulted by production.**
+        /// on the wipe's own instrument rather than on a court's clock.* **The record is in-memory (the durable
+        /// slot is still the one state); it is never consulted by production.**
         private var rungs: [WipeState] = []
 
         var rungHistory: [WipeState] { lock.lock(); defer { lock.unlock() }; return rungs }
@@ -187,26 +207,164 @@ public final class RealTransportHostRig {
         init(persistentAt file: URL? = nil) {
             self.file = file
             if let file, let raw = try? String(contentsOf: file, encoding: .utf8) {
-                // AN UNPARSEABLE RECORD READETH AS `idle` HERE, matching `UserDefaultsWipeJournal`'s own coercion --
-                // and `isReadable` below is the honest answer that distinguishes the two.
+                // AN UNPARSEABLE RECORD READETH AS `idle` HERE, matching `UserDefaultsWipeJournal`'s own coercion
+                // -- and `readDurable`/`isReadable` below are the honest answers that distinguish the two.
                 let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                state = WipeState(rawValue: name) ?? .idle
+                if let bar = name.firstIndex(of: "|") {
+                    let head = String(name[..<bar])
+                    state = WipeState(rawValue: head) ?? .idle
+                    epoch = UInt64(name[name.index(after: bar)...])
+                } else {
+                    state = WipeState(rawValue: name) ?? .idle
+                }
             }
         }
 
         func read() -> WipeState { lock.lock(); defer { lock.unlock() }; return state }
         func write(_ s: WipeState) {
-            lock.lock(); state = s; rungs.append(s)
-            if let file { try? s.rawValue.write(to: file, atomically: true, encoding: .utf8) }
-            lock.unlock()
+            lock.lock(); defer { lock.unlock() }
+            state = s; rungs.append(s)
+            persistLocked(s)
         }
         func clear() { write(.idle) }
-        /// *An absent file is a clean first launch; an unparseable one is NOT.*
-        var isReadable: Bool {
-            guard let file, let raw = try? String(contentsOf: file, encoding: .utf8) else { return true }
-            return WipeState(rawValue: raw.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
-        }
         func set(_ s: WipeState) { write(s) }
+
+        /// *** THE MEDIUM'S OWN ANSWER -- the fold isSupportedJournal() consulteth. ***
+        ///
+        /// *Absent record = a proven clean start `(.idle, nil)`; unreadable bytes = `nil` (NEVER a fabricated
+        /// idle); a bare rung name = that rung with an UNKNOWN generation -- history, not a first launch.*
+        func readDurable() -> (state: WipeState, epoch: UInt64?)? {
+            lock.lock(); defer { lock.unlock() }
+            return readDurableLocked()
+        }
+
+        var durableEpoch: UInt64? {
+            lock.lock(); defer { lock.unlock() }
+            if let file {
+                guard let raw = try? String(contentsOf: file, encoding: .utf8) else { return nil }
+                let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard let bar = name.firstIndex(of: "|") else { return nil }
+                return UInt64(name[name.index(after: bar)...])
+            }
+            return epoch
+        }
+
+        /// *The bytes survive, but the generation guard below protects the admissions themselves -- a bare
+        /// legacy name is still READABLE (an operator may register it); it simply names no generation.*
+        var isReadable: Bool {
+            lock.lock(); defer { lock.unlock() }
+            guard let file, let raw = try? String(contentsOf: file, encoding: .utf8) else { return true }
+            let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let bar = name.firstIndex(of: "|") { return WipeState(rawValue: String(name[..<bar])) != nil }
+            return WipeState(rawValue: name) != nil
+        }
+
+        /// *** THE CHECKED COMMIT: write the bytes, then reread the medium and acknowledge by ITS answer. ***
+        ///
+        /// *Never trust the cache (or this object's own fields) for the receipt -- consult the durable read,
+        /// which is the file itself when one is configured. The baseline stamp (generation 1) belongeth ONLY to a
+        /// genuinely absent record; a present record with no nameable generation is HISTORY and is REFUSED, not
+        /// recycled.*
+        @discardableResult
+        func writeChecked(_ s: WipeState) -> DurableWriteResult {
+            lock.lock(); defer { lock.unlock() }
+            var stamp = epoch
+            if let file {
+                if stamp == nil {
+                    if !fileExistsLocked(file) {
+                        stamp = 1
+                    } else {
+                        return DurableWriteResult(synchronized: false, epoch: nil)
+                    }
+                }
+                guard let e = stamp else { return DurableWriteResult(synchronized: false, epoch: nil) }
+                do {
+                    try "\(s.rawValue)|\(e)".write(to: file, atomically: true, encoding: .utf8)
+                } catch {
+                    return DurableWriteResult(synchronized: false, epoch: nil)
+                }
+                epoch = e
+            } else {
+                if stamp == nil { stamp = 1 }
+                epoch = stamp
+            }
+            state = s; rungs.append(s)
+            guard let durable = readDurableLocked(), durable.state == s, durable.epoch == stamp else {
+                return DurableWriteResult(synchronized: false, epoch: nil)
+            }
+            return DurableWriteResult(synchronized: true, epoch: stamp)
+        }
+
+        /// *** THE CHECKED EPOCH RAISE: the generation the medium NAMEth, never a fabricated zero. ***
+        ///
+        /// *An operator's bump raises the floor for the NEXT checked write to name; a record that already
+        /// standeth keeps its own named rung. The successor is computable only from a KNOWN counter (this
+        /// instance's memory or the record's suffix); present history with no nameable counter REFUSETH, and a
+        /// genuinely absent estate beginneth at generation 1 (CURRENT-01).*
+        @discardableResult
+        func bumpEpoch() -> UInt64? {
+            lock.lock(); defer { lock.unlock() }
+            let known: UInt64?
+            if let e = epoch { known = e }
+            else if let file, let raw = try? String(contentsOf: file, encoding: .utf8) {
+                let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard name.isEmpty || name.firstIndex(of: "|") != nil else { return nil }
+                known = name.firstIndex(of: "|").map { UInt64(name[name.index(after: $0)...]) } ?? nil
+            } else { known = nil }
+            guard let k = known else {
+                // A PRESENT record with no nameable counter is unknown history, not a first launch; refuse.
+                if fileExistsLocked(file) { return nil }
+                epoch = 1
+                return 1
+            }
+            guard k < UInt64.max else { return nil }
+            epoch = k + 1
+            persistLocked(state)
+            return epoch
+        }
+
+        // MARK: - the medium's own bytes, read under the lock (never through the lock again)
+        private func readDurableLocked() -> (state: WipeState, epoch: UInt64?)? {
+            if let file {
+                // *** AN ABSENT RECORD IS A PROVEN CLEAN START -- NEVER A FABRICATED CORRUPT ONE. ***
+                //
+                // *THE DEFECT, MEASURED ON THE FIRST GS-INT-PROC CHILD BOOT: `String(contentsOf:)` THROWETH for a
+                // file that does not exist, so this function answered `nil` for the EMPTY estate the crash children
+                // are handed. `WipeJournalDurabilityAdapter.isReadable` folds `journal.isReadable && journal.readDurable()
+                // != nil`, so `isSupportedJournal()` was false over a fresh estate and `MeshRuntime.create` threw
+                // `startupRefusedByRecovery(decision: "corrupt_journal")` BEFORE the child's first marker -- a false
+                // corruption that killed all 8 crash scenarios in ~25ms. The boot's fold was reading the WRONG data
+                // out of the medium: absence is the cleanest possible answer, not an unreadable one.*
+                //
+                // **THE FILE MUST BE PROVEN PRESENT BEFORE ITS BYTES ARE BLAMED:** absent -> `(.idle, nil)`, which is
+                // exactly what `writeChecked` already assumeth (`!fileExistsLocked(file)` stamps generation 1). A
+                // PRESENT-but-unreadable record still answereth `nil` -- that is real corruption and it must stay
+                // refused.*
+                guard fileExistsLocked(file) else { return (.idle, nil) }
+                guard let raw = try? String(contentsOf: file, encoding: .utf8) else { return nil }
+                let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let bar = name.firstIndex(of: "|") {
+                    let head = String(name[..<bar])
+                    guard let s = WipeState(rawValue: head) else { return nil }
+                    return (s, UInt64(name[name.index(after: bar)...]))
+                }
+                guard let s = WipeState(rawValue: name) else { return nil }
+                return (s, nil)
+            }
+            return (state, epoch)
+        }
+        private func fileExistsLocked(_ file: URL?) -> Bool {
+            guard let file else { return false }
+            return FileManager.default.fileExists(atPath: file.path)
+        }
+        private func persistLocked(_ s: WipeState) {
+            guard let file else { return }
+            if let e = epoch {
+                try? "\(s.rawValue)|\(e)".write(to: file, atomically: true, encoding: .utf8)
+            } else {
+                try? s.rawValue.write(to: file, atomically: true, encoding: .utf8)
+            }
+        }
     }
 
     /// A central as the stack resolves one: a real `NSObject` carrying the identifier, bridged by reference.
@@ -241,12 +399,24 @@ public final class RealTransportHostRig {
             onWrite?(data, characteristic.uuid)
         }
         @objc func discoverServices(_ services: [CBUUID]) {}
-        @objc func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
+        /// *** THE SELECTOR IS THE PLATFORM'S, NOT SWIFT'S INFERRED ONE. ***
+        ///
+        /// *`discoverCharacteristics(_:for:)` inferreth the ObjC selector `discoverCharacteristics:for:`, which
+        /// `CBPeripheral` does NOT implement -- so the reduction's `p.discoverCharacteristics([...], for: s)`
+        /// (BleTransport's `onServicesDiscovered` arm) reached `doesNotRecognizeSelector:` and ABORTED the process in
+        /// the REAL CB dispatch, not at the call. The explicit `@objc(discoverCharacteristics:forService:)` makes the
+        /// base protocol (the real CoreBluetooth API the transport actually messages) the authority, rather than the
+        /// label Swift would have guessed. The same law the substrate's `SubstratePeripheral` and the court's own
+        /// `CapturePeripheral` carrieth.*
+        @objc(discoverCharacteristics:forService:)
+        func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
         @objc func readRSSI() {}
-        @objc func readCharacter(_ characteristic: CBCharacteristic) {}
         /// The link-info read the characteristic walk issues (`p.readValue(for:)`) resolves to this selector; the
         /// rig answers it and lets the read RESULT come back through the real `processPeripheralUpdateValue`, which
         /// is where production writes its own LinkInfo back.
+        ///
+        /// *`@objc(readCharacter:)` was the wrong selector entirely -- no such CBPeripheral message existeth -- so it
+        /// could never be dispatched. The REAL selector for `p.readValue(for:)` is `readValueForCharacteristic:`.*
         @objc(readValueForCharacteristic:)
         func readValue(for characteristic: CBCharacteristic) {}
         @objc(setNotifyValue:forCharacteristic:)
@@ -758,6 +928,10 @@ public final class RealTransportHostRig {
         }
         _ = initiator.ble.processCentralConnect(peerId: iHandle, peripheral: iPeripheral,
                                                sourceEpoch: initiator.ble.currentTransportEpoch, from: iCM)
+        // *** THE SIMULATED RADIO MUST EXPOSE THE MESH SERVICE IT CLAIMETH TO HAVE DISCOVERED. *** *The reduction no
+        // longer coerces an un-observ'd `services` to success (a zero-work discovery is refused), so the rig's
+        // peripheral carries the real provisioned service before the discover leg runs.*
+        peripheral.services = [Self.provisionedService()]
         _ = initiator.ble.processPeripheralDiscoverServices(iPeripheral, delegate: iDelegate, error: nil)
         _ = initiator.ble.processPeripheralDiscoverCharacteristics(iPeripheral, delegate: iDelegate,
                                                                    service: Self.provisionedService(), error: nil)

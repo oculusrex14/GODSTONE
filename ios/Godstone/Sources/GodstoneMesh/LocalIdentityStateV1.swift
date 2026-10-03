@@ -88,6 +88,19 @@ internal protocol LocalIdentityKeychain: Sendable {
     func read(tag: String) throws -> Data?
     func add(tag: String, data: Data) throws
     func delete(tag: String) throws
+    /// *** IOS-FOLLOWUP-C5/C7: THE CHECKED UPDATE LIFECYCLE. *** *A SecItemAdd-only road makes a second write to the
+    /// same tag fail as a duplicate, so a physical-inventory catalog or a wipe-publication record could never be
+    /// REFRESHED -- stale forever, or "fixed" by swallowing the error. Upsert is the real production lifecycle: the
+    /// stored bytes for `tag` become `data`, or the call THROWS. Callers still read the value back to confirm it.*
+    func upsert(tag: String, data: Data) throws
+}
+
+internal extension LocalIdentityKeychain {
+    /// DEFAULT (court seams): replace by delete-then-add. The delete tolerates absence; the add's fault travels.
+    func upsert(tag: String, data: Data) throws {
+        try? delete(tag: tag)
+        try add(tag: tag, data: data)
+    }
 }
 
 /// Production Keychain adapter checking OSStatus codes.

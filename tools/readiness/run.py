@@ -1373,7 +1373,13 @@ def build_parser():
     # document, so a reader CANNOT run a subset and mistake it for the whole.* **This subcommand is the single obvious
     # path, and it delegates every decision to that module rather than re-implementing one here.**
     p_board1 = sub.add_parser('board1', help='Board 1: run the internal gate set (verify) or write the freeze attestation (freeze)')
-    p_board1.add_argument('board1_command', choices=('verify', 'freeze'))
+    p_board1.add_argument('board1_command', choices=('verify', 'freeze', 'replay'))
+    p_board1.add_argument('--out', default=None,
+                          help='replay: an out-of-repository root to hydrate the frozen C evidence into')
+    p_board1.add_argument('--release-run-id', default=None,
+                          help='replay (pre-freeze only): the actual RELEASE run id to capture a proof from')
+    p_board1.add_argument('--release-attempt', type=int, default=None,
+                          help='replay (pre-freeze only): the actual RELEASE run attempt')
     p_board1.add_argument('--only', action='append', default=None,
                           help='verify: run only this gate (repeatable)')
     p_board1.add_argument('--run-id', default=None, help='freeze: the hosted run to bind')
@@ -1384,8 +1390,34 @@ def build_parser():
     p_board1.add_argument('--attest-out', default=None, help='freeze: where to write the attestation')
     p_board1.add_argument('--attestation', default=None,
                           help='verify: READ-ONLY re-derivation of a written attestation (never rewrites it)')
-    p_board1.add_argument('--artifacts', default=None,
-                          help='verify: retain EVERY gate\'s full output in this directory, one <slug>.log per gate')
+    p_board1.add_argument('--manifest-out', default=None,
+                          help='verify: after a FULL all-zero gate run, emit the candidate-bound gate manifest here')
+    p_board1.add_argument('--validate-manifest', default=None,
+                          help='verify: READ-ONLY re-derivation of a written gate manifest')
+    p_board1.add_argument('--manifest', default=None,
+                          help='freeze: the candidate-bound gate manifest to bind (default: the canonical path)')
+    p_board1.add_argument('--manifest-artifact', default='board1-gate-manifest',
+                          help='freeze: the hosted artifact NAME the pinned run uploaded the gate manifest as')
+    p_board1.add_argument('--artifacts', '--artifact-dir', dest='artifacts', default=None,
+                          help='verify: retain EVERY gate\'s full output in this directory (the runner may name '
+                               'this its artifact/temp root), one <id>.log/rc/cmd per gate')
+    p_board1.add_argument('--campaign-dir', default=None,
+                          help='verify/freeze: where the mutation campaign lived -- absolute (a runner scratch root) '
+                               'or repository-relative; defaults to the committed evidence directory')
+    p_board1.add_argument('--proof-dir', default=None,
+                          help='verify/freeze: where the exact-candidate release-proof records live (absolute or '
+                               'repository-relative); defaults to the committed evidence directory')
+    p_board1.add_argument('--evidence-root', default=None,
+                          help='verify: where the downloaded LANE artifacts live (absolute or repository-relative); '
+                               'defaults to the repository root')
+    p_board1.add_argument('--frozen-artifacts', default=None,
+                          help='verify: the downloaded FROZEN-C gate-log root (--tag names frozen C on A)')
+    p_board1.add_argument('--frozen-campaign-dir', default=None,
+                          help='verify: the FROZEN-C campaign tree')
+    p_board1.add_argument('--frozen-evidence-root', default=None,
+                          help='verify: the downloaded FROZEN-C lane-evidence root')
+    p_board1.add_argument('--frozen-proof-dir', default=None,
+                          help='verify: the FROZEN-C release-proof records')
     return parser
 
 
@@ -1463,13 +1495,41 @@ def main(argv=None):
             # court, a workflow -- can run the SAME road rather than a copy of it.**
             import board1 as _board1  # noqa: PLC0415 - the runner's own directory
             import pathlib as _pathlib  # noqa: PLC0415
+            if args.board1_command == 'replay':
+                if not (args.run_id and args.attempt and args.tag and args.out):
+                    print('ERROR: board1 replay needs --run-id R --attempt N --tag C --out DIR', file=sys.stderr)
+                    return EXIT_USAGE
+                return (EXIT_OK if _board1.replay(
+                    args.run_id, args.attempt, _pathlib.Path(args.out), candidate_tag=args.tag,
+                    attestation=_pathlib.Path(args.attestation) if args.attestation else None,
+                    release_run_id=args.release_run_id, release_attempt=args.release_attempt) == 0
+                    else EXIT_FAILED)
             if args.board1_command == 'verify':
+                if args.validate_manifest:
+                    import check_board1_manifest as _cbm  # noqa: PLC0415 - the ci/ directory
+                    return _cbm.main(['--manifest', args.validate_manifest])
                 if args.attestation:
-                    return (EXIT_OK if _board1.validate_attestation(_pathlib.Path(args.attestation)) == 0
+                    return (EXIT_OK if _board1.validate_attestation(
+                        _pathlib.Path(args.attestation),
+                        artifact_dir=_pathlib.Path(args.artifacts) if args.artifacts else None,
+                        campaign_dir=_pathlib.Path(args.campaign_dir) if args.campaign_dir else None,
+                        evidence_root=_pathlib.Path(args.evidence_root) if args.evidence_root else None,
+                        proof_dir=_pathlib.Path(args.proof_dir) if args.proof_dir else None) == 0
                             else EXIT_FAILED)
                 return (EXIT_OK if _board1.verify(
                     only=args.only,
-                    artifact_dir=_pathlib.Path(args.artifacts) if args.artifacts else None) == 0
+                    artifact_dir=_pathlib.Path(args.artifacts) if args.artifacts else None,
+                    build_manifest_out=(_pathlib.Path(args.manifest_out) if args.manifest_out else None),
+                    tag=args.tag, campaign_dir=args.campaign_dir,
+                    proof_dir=_pathlib.Path(args.proof_dir) if args.proof_dir else None,
+                    evidence_root=(_pathlib.Path(args.evidence_root) if args.evidence_root else None),
+                    frozen_artifacts=_pathlib.Path(args.frozen_artifacts) if args.frozen_artifacts else None,
+                    frozen_campaign_dir=(_pathlib.Path(args.frozen_campaign_dir)
+                                         if args.frozen_campaign_dir else None),
+                    frozen_evidence_root=(_pathlib.Path(args.frozen_evidence_root)
+                                          if args.frozen_evidence_root else None),
+                    frozen_proof_dir=(_pathlib.Path(args.frozen_proof_dir)
+                                      if args.frozen_proof_dir else None)) == 0
                     else EXIT_FAILED)
             for required in ('run_id', 'tag', 'attest_out'):
                 if not getattr(args, required):
@@ -1480,7 +1540,13 @@ def main(argv=None):
                       'attempt\'s own endpoints are fetched rather than the latest attempt\'s compared',
                       file=sys.stderr)
                 return EXIT_USAGE
-            rc = _board1.freeze(args.run_id, args.tag, _pathlib.Path(args.attest_out), args.attempt)
+            rc = _board1.freeze(args.run_id, args.tag, _pathlib.Path(args.attest_out), args.attempt,
+                                manifest=_pathlib.Path(args.manifest) if args.manifest else None,
+                                campaign_dir=args.campaign_dir,
+                                manifest_artifact=args.manifest_artifact,
+                                proof_dir=(_pathlib.Path(args.proof_dir) if args.proof_dir else None),
+                                artifact_dir=(_pathlib.Path(args.artifacts) if args.artifacts else None),
+                                evidence_root=(_pathlib.Path(args.evidence_root) if args.evidence_root else None))
             return EXIT_OK if rc == 0 else EXIT_FAILED
     except CommandError as exc:
         print(f'ERROR: {exc}', file=sys.stderr)

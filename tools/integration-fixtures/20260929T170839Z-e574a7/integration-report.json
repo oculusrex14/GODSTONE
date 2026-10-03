@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "mode": "crash",
+  "run_id": "20260929T170839Z-e574a7",
+  "input_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e",
+  "input_files": {
+    "tools/readiness/run_board1_integration.py": "744ecefa3484b86cb42f27515dab72ad6f34b10ea62edd70975ef708b0aae80f",
+    "ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001CrossPlatformWorkerTests.swift": "976b3a96238dbe5cde828e5a6050bfd80b5a8fa22e8745229b496780790f543d",
+    "ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift": "e3d0ac9b0d35d5abb0cf10695f9caf06b718cd9ba76789714210349395654691",
+    "android/mesh/src/test/java/io/godstone/mesh/rig/RealTransportHostRig.kt": "9e2c08eb0ce8926c697d93766adfe045e16911ba8e977e1a726ea4eb52264206",
+    "android/mesh/src/test/java/io/godstone/mesh/rig/RealTransportHostRigWorkerTest.kt": "f2a92e046c2062878b7b60e2af726c366574db9a2ba3e3b1dfce9a5d4922d219",
+    "android/mesh/build.gradle.kts": "0fa82807679df0cd196d1d0d7bf4c6d758f4dfcea38d2bdd210f74d5ef073933"
+  },
+  "toolchain": {
+    "swift": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6",
+    "xcodebuild": "Xcode 27.0 Build version 27A266a",
+    "java": "openjdk version \"17.0.20.1\" 2026-08-18 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1) OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)",
+    "python": "3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)",
+    "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "gradle": "------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191",
+    "android_sdk": "unset"
+  },
+  "results": [
+    {
+      "direction": "android-crash",
+      "control": "outboundEnqueue",
+      "outcome": "RECOVERED",
+      "durable_row": "present",
+      "delivery": "QUEUED_DURABLY",
+      "msg_id": "9ef10918ac222f4103ab5a8ef168b351",
+      "refusal": null,
+      "boundary": "durable owner commit at outboundEnqueue",
+      "detail": "a FRESH JVM over the SAME estate read the owners' own durable answers"
+    },
+    {
+      "direction": "android-crash",
+      "control": "inboundCommit",
+      "outcome": "RECOVERED",
+      "durable_row": "present",
+      "delivery": "none",
+      "msg_id": "fe759c8d26a5a2ab5ab962ba0efdfd61",
+      "refusal": null,
+      "boundary": "durable owner commit at inboundCommit",
+      "detail": "a FRESH JVM over the SAME estate read the owners' own durable answers"
+    }
+  ],
+  "manifest": {
+    "path": "transcript.bin",
+    "sha256": "4dff218feb5eda6a9c965fc78f09794d052efcac9b693707002ea5213e8d9514",
+    "record_count": 2
+  },
+  "transcript": {
+    "path": "transcript.bin",
+    "sha256": "6a547ada7b5db6cbae7a00d7046f747fe2a018d31eed77e772475c9e79c9bfeb",
+    "length": 508,
+    "framing": "u32be header_len | header(json,utf8) | u32be payload_len | payload",
+    "first_128_octets_hex": "00 00 00 fc 7b 22 62 6f 75 6e 64 61 72 79 22 3a 22 6f 75 74 62 6f 75 6e 64 45 6e 71 75 65 75 65 22 2c 22 64 65 6c 69 76 65 72 79 22 3a 22 51 55 45 55 45 44 5f 44 55 52 41 42 4c 59 22 2c 22 64 65 74 61 69 6c 22 3a 22 61 20 46 52 45 53 48 20 4a 56 4d 20 6f 76 65 72 20 74 68 65 20 53 41 4d 45 20 65 73 74 61 74 65 20 72 65 61 64 20 74 68 65 20 6f 77 6e 65 72 73 27 20 6f 77 6e 20 64 75",
+    "first_record": {
+      "header_length": 252,
+      "header_json": "{\"boundary\":\"outboundEnqueue\",\"delivery\":\"QUEUED_DURABLY\",\"detail\":\"a FRESH JVM over the SAME estate read the owners' own durable answers\",\"durable_row\":\"present\",\"kind\":\"complete\",\"msg_id\":\"9ef10918ac222f4103ab5a8ef168b351\",\"platform\":\"android\",\"v\":1}",
+      "payload_length": 0
+    }
+  }
+}

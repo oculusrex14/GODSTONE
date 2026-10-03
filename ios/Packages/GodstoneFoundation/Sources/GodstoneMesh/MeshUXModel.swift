@@ -72,6 +72,28 @@ public enum MessageStatus: String, Sendable, Equatable, CaseIterable {
 
     /// True iff the screen may say a recipient received it.
     public var claimsDelivery: Bool { self == .delivered }
+
+    /// *** *** GS-UX-001 `required-retry`: MAY A MESSAGE IN THIS STATE BE RESUMED? *** ***
+    ///
+    /// *THE AUDIT'S CLAUSE IS "retry is a real action for every message whose state permits one" -- SO THE STATE IS
+    /// WHAT PERMITS, AND THE LAW BELONGS IN THE SHARED VOCABULARY RATHER THAN IN A PROJECTION'S BOOLEAN.* **THE
+    /// MEASURED DEFECT: `MeshUXModel.handleRetry` guarded on `MessageProjection.retryable` -- a PROJECTED FLAG -- so a
+    /// projection that carried a stale or defaulted `false` SILENTLY OMITTED THE REQUIRED RETRY and told the user the
+    /// message "cannot be retried from its current state" about a message that was merely queued.**
+    ///
+    /// **AND THE TWO RETRYABLE STATES ARE THE TYPE'S OWN DOCTRINE, NOT AN INVENTION:** *`DeliveryProjection` saith it
+    /// for the durable estate -- "an offer distinguisheth QUEUED from OFFERED; BOTH remain retryable; DELIVERED
+    /// requireth the ACK" -- and `MessageStatus` is that projection's screen vocabulary. QUeued and ATTEMPTING have
+    /// NOT reached a terminal state; DELIVERED (the recipient's authenticated ACK), CANCELLED, EXPIRED and FAILED have.*
+    ///
+    /// *IT IS A PROPERTY OF THE ENUM SO BOTH ISLES' SURFACES CAN ASK THE SAME QUESTION OF THE SAME VOCABULARY -- the
+    /// Android twin carrieth the identical `MessageStatus` enum and the identical clause.*
+    public var permitsResume: Bool {
+        switch self {
+        case .queued, .attempting: return true
+        case .delivered, .cancelled, .expired, .failed: return false
+        }
+    }
 }
 
 /// One conversation row, projected for the screen.
@@ -83,6 +105,16 @@ public struct MessageProjection: Sendable, Equatable {
     public let outgoing: Bool
     public let retryable: Bool
     public let authorityNote: String?
+
+    /// *** GS-UX-001 `required-retry`: MAY THIS ROW BE RESUMED? ***
+    ///
+    /// *THE AUDIT'S CLAUSE IS THAT "retry is a real action for every message whose state permits one", and the
+    /// permission belongeth to the SHARED VOCABULARY (`MessageStatus.permitsResume`) rather than to a projected
+    /// boolean.* **THE MEASURED DEFECT: the caller guarded on `retryable`, a FIELD of a projection, so a stale or
+    /// defaulted `false` SILENTLY OMITTED THE REQUIRED RETRY.** *`retryable` remains -- the projection carrieth it, the
+    /// twin isle carrieth it -- and is now CORROBORATING rather than the gate: a row that says `false` over a
+    /// non-terminal status no longer suppresses the action the user is owed.*
+    public var isRetryable: Bool { status.permitsResume }
 }
 
 /// The trust state of the SELECTED recipient (the vocabulary is T56's).
@@ -441,8 +473,27 @@ public final class MeshUXModel: ObservableObject {
         guard let known = state.messages.first(where: { $0.msgId == msgId }) else {
             return withError("no such message")
         }
-        guard known.retryable else {
-            return withError("that message cannot be retried from its current state")
+        // *** GS-UX-001 `required-retry`: THE GUARD IS STATE-AWARE, AND IT ASKS THE STATE RATHER THAN A STALE FLAG. ***
+        //
+        // *THE ROAD THAT STOOD HERE READ `guard known.retryable else { withError(...) }` -- A SINGLE PROJECTED BOOLEAN,
+        // AND THE AUDIT'S OWN CLAUSE ON IT IS: "a retry is a real action for every message whose state permits one."
+        // THE MEASURED DEFECT: `retryable` is a field of a PROJECTION, so a projection that carried a stale or
+        // defaulted `false` -- or a surface that built its own row -- **SILENTLY OMITTED THE REQUIRED RETRY** and the
+        // user was told "that message cannot be retried from its current state" about a message that was merely
+        // queued. A source grep for `retry` found the guard and the action; neither the control nor its omission was
+        // visible, which is exactly why the failure survived.*
+        //
+        // **SO THE DURABLE STATUS IS THE AUTHORITY AND THE FLAG IS CORROBORATING** (`isRetryable`, below): *a message
+        // that is QUEUED or ATTEMPTING has NOT reached a terminal state, so the original acceptance -- "retry resumes
+        // the same authored bytes" -- APPLIES TO IT. A DELIVERED, CANCELLED, EXPIRED or FAILED row may not be
+        // resumed, and the refusal NAMES that terminal state rather than blaming the projection's flag.*
+        //
+        // *AND THE ACTION IS REAL WHENEVER THE STATE PERMITS IT:* the port's own `retry(msgId:)` is called
+        // immediately below, over the durable obligation, so the resumed bytes are the AUTHORED ones and not a
+        // re-authoring. **A guard that refused before reaching it would be the omission, not the repair.**
+        guard known.isRetryable else {
+            return withError("that message reached \(known.status.rawValue.lowercased()); "
+                             + "it can no longer be resumed")
         }
         switch port().retry(msgId: msgId) {
         case .refused(let reason):

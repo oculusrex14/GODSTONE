@@ -55,6 +55,12 @@ private final class AuthorityDouble: MeshAuthorityPort, @unchecked Sendable {
     var activeSosRow: Row?
     var sends = 0
     var calls = 0
+    /// *** *** GS-UX-001 `required-retry`: HOW MANY RESUMES ACTUALLY REACHED THE AUTHORITY. *** ***
+    ///
+    /// *The arm's discriminator needs a count the MODEL cannot fabricate: a guard that refused before the call would
+    /// leave this UNMOVED while a rendered message still looked like a legitimate refusal. That is exactly why the old
+    /// defect was invisible.*
+    var retries = 0
 
     @discardableResult
     func seedRecipient(_ seed: UInt8, _ label: String, _ trust: ContactTrustLabel) -> RecipientProjection {
@@ -112,11 +118,15 @@ private final class AuthorityDouble: MeshAuthorityPort, @unchecked Sendable {
     }
 
     func retry(msgId: Data) -> RetryOutcome {
+        retries += 1
         guard let row = rows.first(where: { $0.msgId == msgId }) else {
             return .refused("no such row")
         }
         if storageFails { return .refused("the store refused the retry") }
-        if !row.retryable { return .refused("terminal state") }
+        // *** THE AUTHORITY'S OWN GATE IS THE STATE'S, NOT A PROJECTED FLAG -- the twin of the production rule
+        // (`MeshNode.retrySos` refuses a row whose obligation is already terminal). A double that refused on the
+        // projection's `retryable` would let the model's defect hide behind its own. ***
+        if !row.status.permitsResume { return .refused("terminal state") }
         return .accepted(msgId)
     }
 
@@ -554,4 +564,156 @@ final class ReadinessT58Tests: XCTestCase {
                         && voiceLabel(for: .attempting).contains("Delivered"),
                        "the ATT words never claim a delivery")
     }
+
+    // ================================================================================================
+    // *** *** GS-UX-001 `required-retry`: THE RETRY IS A REAL ACTION FOR EVERY STATE THAT PERMITS ONE. *** ***
+    //
+    // *THE FINDING'S CLAUSE, AND THE DEFECT IT NAMES: `handleRetry` guarded on `MessageProjection.retryable` -- A
+    // FIELD OF A PROJECTION -- so a projection that carried a stale or defaulted `false` **SILENTLY OMITTED THE
+    // REQUIRED RETRY** and the user was told "that message cannot be retried from its current state" about a message
+    // that was merely queued. Neither the control nor its omission was visible to a source grep; what is visible here
+    // is the BEHAVIOUR.*
+    //
+    // **THE ARMS BELOW HOLD THE PROJECTION'S FLAG DELIBERATELY WRONG, which is the discriminator:** *the state is what
+    // permits, so a row that is QUEUED or ATTEMPTING must be resumable EVEN WHEN its projected `retryable` says
+    // false -- and a row that has reached a terminal state must NOT be, even if a projection said otherwise.*
+    // ================================================================================================
+
+    /// *** THE DISCRIMINATOR: A PROJECTION THAT UNDER-REPORTS `retryable` MUST NOT SUPPRESS THE ACTION. ***
+    ///
+    /// *THE MUTATION THIS REDDENS ON: restore `guard known.retryable` in `handleRetry` and this arm fails on the
+    /// first assertion -- the resume never reaches the authority and the outcome stays an error. The old shape's
+    /// failure was INVISIBLE (it looked like a legitimate refusal); this arm makes it a named failure.*
+    func testW14ANonTerminalMessageIsResumableEvenWhenTheProjectionUnderReportsIt() throws {
+        let authority = AuthorityDouble()
+        let recipient = authority.seedRecipient(0x11, "B", .verified)
+        let model = model(authority, recipients: [recipient.nodeId])
+        _ = model.onCommand(.selectRecipient(recipient.nodeId))
+        _ = model.onCommand(.draft("the mill road is cut"))
+        _ = model.onCommand(.sendDirect)
+        let sent = model.uiState().messages.first { $0.outgoing }
+        let msgId = try XCTUnwrap(sent).msgId
+
+        // *** THE PROJECTION IS MADE TO LIE, THE WAY A STALE OR DEFAULTED ROW WOULD. ***
+        authority.rows.first { $0.msgId == msgId }?.retryable = false
+        // *** *** AND THE AUTHORITY'S MUTATED STATE IS *PROJECTED* BEFORE IT IS ASSERTED. *** ***
+        //
+        // *THE DEFECT THIS REPAIRS, NAMED BY REVIEW AS `IOS-R15`: the arm mutated the authority and then read
+        // `model.uiState()` -- which answereth the model's CACHED projection, still carrying the pre-mutation `true`.
+        // **AN ASSERTION AGAINST AN UNREFRESHED SNAPSHOT IS AN ASSERTION ABOUT A DIFFERENT STATE, and it would fail
+        // for a reason that has nothing to do with the behaviour under test.*** **`refresh()` is the model's own door
+        // to re-read the authority, so the projection judged below is the one the mutation produced.**
+        _ = model.refresh()
+        let row = try XCTUnwrap(model.uiState().messages.first { $0.msgId == msgId })
+        XCTAssertEqual(row.status, .queued, "the durable status is what permits, and it is QUEUED")
+        XCTAssertFalse(row.retryable, "the projection under-reports -- which is exactly the defect's shape")
+        XCTAssertTrue(row.isRetryable, "*** AND THE STATE-AWARE ANSWER IS TRUE: the status has not reached a terminal state. ***")
+
+        let retriesBefore = authority.retries
+        _ = model.onCommand(.retry(msgId))
+        XCTAssertEqual(
+            authority.retries, retriesBefore + 1,
+            "*** THE REQUIRED RETRY MUST REACH THE AUTHORITY. *A guard on the projection's flag would have refused " +
+                "before this call, telling a user their queued message could not be resumed.* ***",
+        )
+        XCTAssertEqual(model.uiState().lastOutcome, "retrying",
+                       "and the rendered outcome must be the authority's own answer")
+    }
+
+    /// *** AND A TERMINAL STATE IS REFUSED -- NAMING THE STATE, NOT BLAMING A FLAG. ***
+    ///
+    /// *The other direction of the same law, and the reason the guard exists at all: a DELIVERED message has had its
+    /// authenticated ACK, so resuming it would be a second transmission of something the recipient confirmed. A
+    /// projection that claimed `retryable` here must NOT be able to force one.*
+    func testW15ATerminalStateIsRefusedAndTheRefusalNamesIt() throws {
+        let authority = AuthorityDouble()
+        let recipient = authority.seedRecipient(0x12, "B", .verified)
+        let model = model(authority, recipients: [recipient.nodeId])
+        _ = model.onCommand(.selectRecipient(recipient.nodeId))
+        _ = model.onCommand(.draft("the bridge is under two feet"))
+        _ = model.onCommand(.sendDirect)
+        let msgId = try XCTUnwrap(model.uiState().messages.first { $0.outgoing }).msgId
+        authority.recipientAcked(msgId)
+        // *** THE PROJECTION IS MADE TO OVER-REPORT, THE OTHER WAY A PROJECTION CAN LIE. ***
+        authority.rows.first { $0.msgId == msgId }?.retryable = true
+        // *** *** AND THE MUTATED AUTHORITY IS PROJECTED FIRST (`IOS-R15`), FOR THE REASON W14 NAMES. *** ***
+        //
+        // *WITHOUT THIS the model's cached row still read QUEUED and this arm would drive a REAL resume at the
+        // authority before the refusal -- asserting an outcome about a state the authority no longer carried. With the
+        // refresh, the model seeth the DELIVERED row and the state-aware guard refuses BEFORE any call, which is the
+        // behaviour the arm is named for.* (The intended STALE-SNAPSHOT case is exercised separately, below, where its
+        // authoritative refusal is what is asserted.)
+        _ = model.refresh()
+
+        let retriesBefore = authority.retries
+        let after = model.onCommand(.retry(msgId))
+        XCTAssertEqual(
+            authority.retries, retriesBefore,
+            "*** A DELIVERED MESSAGE MUST NOT BE RESUMED: the recipient's authenticated ACK is the only delivery, " +
+                "and a second transmission is not a retry. ***",
+        )
+        let message = after.error ?? ""
+        XCTAssertTrue(
+            message.contains("delivered"),
+            "*** AND THE REFUSAL MUST NAME THE STATE THAT STOPPED IT rather than blaming a projection's flag. " +
+                "Observed: '\(message)' ***",
+        )
+    }
+
+    /// *** *** AND THE STALE-SNAPSHOT CASE, EXERCISED FOR WHAT IT REALLY PRODUCES (`IOS-R15`). *** ***
+    ///
+    /// *THE REVIEW'S OWN PROPOSAL: "Keep a separate intentional stale-snapshot scenario if needed, with consumer-visible
+    /// authoritative refusal expectations rather than an impossible no-call expectation."* **THIS IS THAT SCENARIO.**
+    ///
+    /// *The model's projection is the row the surface rendered (`QUEUED`); the AUTHORITY has since been ACKed
+    /// (`DELIVERED`) and the model was deliberately NOT refreshed -- exactly the race a background ACK creates between
+    /// a render and a tap. **THE MODEL'S OWN STATE-AWARE ANSWER IS THEREFORE `true` (the row it can see has not
+    /// reached a terminal state), SO IT *DOES* CALL THE AUTHORITY -- and the authority refuses with its typed
+    /// `terminal state`.*** **THE OBSERVABLE REFUSAL IS THE POINT: the impossible "no call" expectation of the old
+    /// arm is replaced by the behaviour a user actually seeth, and the authority's own counter proves the call was
+    /// made rather than suppressed.**
+    func testW17AStaleSnapshotReachesTheAuthorityAndCarriesItsTypedRefusal() throws {
+        let authority = AuthorityDouble()
+        let recipient = authority.seedRecipient(0x13, "B", .verified)
+        let model = model(authority, recipients: [recipient.nodeId])
+        _ = model.onCommand(.selectRecipient(recipient.nodeId))
+        _ = model.onCommand(.draft("the ford is impassable"))
+        _ = model.onCommand(.sendDirect)
+        let msgId = try XCTUnwrap(model.uiState().messages.first { $0.outgoing }).msgId
+
+        // *** THE AUTHORITY MOVES; THE MODEL'S PROJECTION IS DELIBERATELY LEFT STALE. ***
+        authority.recipientAcked(msgId)
+        XCTAssertEqual(model.uiState().messages.first { $0.msgId == msgId }?.status, .queued,
+                       "the surface still shows the row it rendered; the ACK arrived after that render")
+
+        let retriesBefore = authority.retries
+        let after = model.onCommand(.retry(msgId))
+        XCTAssertEqual(
+            authority.retries, retriesBefore + 1,
+            "*** THE STALE PROJECTION MAKES THE MODEL'S OWN STATE-AWARE ANSWER TRUE, SO THE RESUME REACHES THE "
+                + "AUTHORITY -- which is where the terminal state is really known. *An arm that asserted a no-call here "
+                + "would be asserting a suppression the model never promises.* ***",
+        )
+        let message = after.error ?? ""
+        XCTAssertTrue(
+            message.contains("refused") && message.contains("terminal state"),
+            "*** AND THE CONSUMER-VISIBLE ANSWER IS THE AUTHORITY'S TYPED REFUSAL, not a silent success and not a "
+                + "projection blame. Observed: '\(message)' ***",
+        )
+    }
+
+    /// *** AND EVERY STATE'S ANSWER IS THE SHARED VOCABULARY'S -- BOTH ISLES ASK THE SAME QUESTION OF THE SAME WORDS. ***
+    func testW16TheRetryPermitIsTheSharedVocabulariesOwnLaw() {
+        XCTAssertTrue(MessageStatus.queued.permitsResume)
+        XCTAssertTrue(MessageStatus.attempting.permitsResume,
+                      "a link took the bytes; NOTHING is confirmed, so the same bytes may be resumed")
+        for terminal: MessageStatus in [.delivered, .cancelled, .expired, .failed] {
+            XCTAssertFalse(terminal.permitsResume,
+                           "\(terminal.rawValue) has reached a terminal state and may not be resumed")
+        }
+        // THE COUNT IS ASSERTED, so a seventh case added without a decision here is visible rather than silently false.
+        XCTAssertEqual(MessageStatus.allCases.count, 6,
+                       "every MessageStatus case must be decided by this law, not fallen through")
+    }
 }
+

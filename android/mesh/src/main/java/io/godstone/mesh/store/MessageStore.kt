@@ -182,6 +182,16 @@ interface MessageStore {
  */
 internal object StoreSchema {
     const val DB_NAME = "godstone_messages.db"
+
+    /**
+     * *** GS-FINAL-003 `full-estate-erasure` (A5/A10): THE STORE'S WRAPPED-KEY PREFERENCE NAME, SINGLE-SOURCED. ***
+     *
+     * *The physical-estate resolution ([`io.godstone.mesh.identity.PrivateEstatePaths`]) must VERIFY this preference file
+     * after deletion -- and it cannot read the `private` constant that used to live inside `SqlcipherStoreDb`.* **SO THE
+     * CANONICAL SPELLING LIVES HERE, ON THE SCHEMA THAT OWNS IT, and `SqlcipherStoreDb` consumeth it -- ONE spelling
+     * rather than two that could drift.***
+     */
+    const val KEY_PREFS = "godstone_store_key"
     // C6.4.1-G: bumped 5 -> 6 to force a destructive recreate that adds the
     // explicit `NOT NULL` to msg_id on BOTH tables (see CREATE_SQL /
     // CREATE_DELIVERY_SQL). No installed base (GMP/1 + V3 never shipped) so the
@@ -1274,8 +1284,14 @@ class SqliteMessageStore internal constructor(
         }
     }
 
-    /** Production constructor: open the SQLCipher engine with a Keystore-held key. */
-    constructor(ctx: Context, maxBytes: Long) : this(SqlcipherStoreDb(ctx.applicationContext), maxBytes, null)
+    /**
+     * *** GS-FINAL-003 `one-owner` (A13): NORMAL MESSAGE STORE REQUIRES THE OWNER TOKEN. ***
+     *
+     * *A caller without a validated, same-estate [io.godstone.mesh.identity.PrivateOwnerToken] CANNOT open the
+     * production SQLCipher engine.*
+     */
+    internal constructor(ctx: Context, maxBytes: Long, token: io.godstone.mesh.identity.PrivateOwnerToken) :
+        this(SqlcipherStoreDb(ctx.applicationContext, token), maxBytes, null)
 
     /** Internal test constructor without a fault seam (kept for existing callers). */
     internal constructor(engine: StoreDb, maxBytes: Long) : this(engine, maxBytes, null)
@@ -1963,7 +1979,9 @@ class SqliteMessageStore internal constructor(
  * behind an Android Keystore-backed preference. The native sqlcipher core is
  * loaded once per process here, before any helper opens a database.
  */
-internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
+internal class SqlcipherStoreDb(ctx: Context, token: io.godstone.mesh.identity.PrivateOwnerToken) : StoreDb {
+    // *** GS-FINAL-003 (A13): THE RAW CONSTRUCTOR ITSELF CONSUMETH THE AUTHORITY, not only the Dagger provider. ***
+    private val consumed: io.godstone.mesh.identity.PrivateOwnerToken = token.consumeForConstruction()
     private val helper: SQLiteOpenHelper
 
     init {
@@ -2473,7 +2491,7 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             val master = MasterKey.Builder(ctx)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
             val prefs = EncryptedSharedPreferences.create(
-                ctx, KEY_PREFS, master,
+                ctx, StoreSchema.KEY_PREFS, master,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
             prefs.getString("k", null)?.let {
@@ -2487,8 +2505,6 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             return k
         }
 
-        private const val KEY_PREFS = "godstone_store_key"
-
         /**
          * Panic wipe (PROTOCOL.md section 2). Destroys the store AND its key, so
          * prior traffic cannot be linked to the regenerated identity. The
@@ -2497,7 +2513,7 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
          */
         fun panicWipe(ctx: Context) {
             ctx.deleteDatabase(StoreSchema.DB_NAME)
-            ctx.deleteSharedPreferences(KEY_PREFS)
+            ctx.deleteSharedPreferences(StoreSchema.KEY_PREFS)
         }
     }
 }

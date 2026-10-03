@@ -120,7 +120,7 @@ private struct ArchiveBrowser: View {
         }
         guard path.last?.id != id else { return }
         // THE DOCUMENT'S OWN TITLE IS WHAT THE SCENE RESTORED; `ArchiveDocument`'s provenance fields are DERIVED BY
-        // THE DESTINATION from the library (`sourceMetadata(documentId:)`), which is round 524's law and the reason
+        // THE DESTINATION from the library (`sourceMetadataChecked(documentId:)`), which is round 524's law and the reason
         // this reconstruction needeth no more than the identity and the title.
         path = [ArchiveDocument(id: id, title: scene.openedTitle ?? "", domain: "", isCritical: false)]
     }
@@ -511,7 +511,7 @@ private struct ArchiveDocumentReader: View {
     /// LIBRARY THAT ANSWERETH -- NOT THE SCENE. *** The library was ALREADY handed to this view and DISCARDED (it
     /// was used onely to build the reader model), while the provenance line was sourced from `scene.openedSource`,
     /// which THE ROUTE NEVER SETTETH. `ArchiveLibrary` conformeth to `ArchiveReading` and carrieth
-    /// `nonisolated public func sourceMetadata(documentId:)`, so the metadata OF THE DOCUMENT ACTUALLY ON SCREEN is
+    /// `nonisolated public func sourceMetadataChecked(documentId:) throws`, so the metadata OF THE DOCUMENT ACTUALLY ON SCREEN is
     /// one synchronous call away -- and it belongeth to the document this view was constructed FOR, so a NEIGHBOUR'S
     /// provenance cannot be displayed by construction ("never metadata from a previous selection").
     private let library: ArchiveLibrary
@@ -624,16 +624,81 @@ private struct ArchiveDocumentReader: View {
         }
     }
 
+    /// The provenance read of the document this destination was constructed for, told three ways:
+    /// a projection that standeth, a genuine absent row, or the storage woe the checked face met --
+    /// never the collapsed absence of the old `try?` road, which answerd a fault as "no provenance".
+    ///
+    /// *** AND WHEN THE SCENE ALREADY CARRIETH A CITATION FAULT FOR THIS VERY DOCUMENT, THAT FAULT IS THE TRUTH
+    /// RENDERED. *** *The scene owneth the journey's typed state and reacheth the citation road on open and on
+    /// restore; re-asking the library here would be a SECOND query that could disagree with it (and would re-fire a
+    /// road the scene already met). So the scene's fault is preferred when it belongeth to the document on screen,
+    /// and the destination's own probe is the fallback for the roads the scene does not walk.*
+    private func readProvenance() -> Result<ArchiveSourceMetadata?, ArchiveError> {
+        if scene.openedDocumentId == document.id, let fault = scene.metadataError {
+            return .failure(fault)
+        }
+        do {
+            return .success(try library.sourceMetadataChecked(documentId: document.id))
+        } catch let archiveError as ArchiveError {
+            return .failure(archiveError)
+        } catch {
+            return .failure(.queryFailed(String(describing: error)))
+        }
+    }
+
+    /// Whether this kind of woe may be mended by knocking again -- the very law the scene's
+    /// `publishFailure` publisheth, kept in one mind so the two surfaces cannot disagree about
+    /// whether a retry is offered. NOT a broadened retry: an installation woe stayeth the installer's.
+    private func provenanceMayMend(_ archiveError: ArchiveError) -> Bool {
+        switch archiveError {
+        case .queryFailed, .unreadable:
+            return true
+        case .missing, .corrupt, .incompatible, .wrongTier, .schemaVersion,
+             .noSuchTable, .integrity, .ftsUnavailable:
+            return false
+        }
+    }
+
     @ViewBuilder private func provenanceLine() -> some View {
         // *** GS-ARCHIVE-005 (round 524): THE LINE IS SOURCED FROM THE DOCUMENT THIS VIEW WAS CONSTRUCTED FOR. ***
         // IT USED TO BE SOURCED FROM `scene.openedSource`, GUARDED BY `scene.openedDocumentId == document.id` -- and
         // MEASURED: `.navigationDestination(for: ArchiveDocument.self)` calleth `scene.open(` NOWHERE, so that guard
         // was NEVER SATISFIED AND THE REQUIRED PROVENANCE LINE RENDERED NOTHING. A guard that cannot be satisfied is
         // not a provenance line; it is an absence with a condition in front of it.
-        if let source = library.sourceMetadata(documentId: document.id) {
+        //
+        // *** AND THE ABSENCE IS NOW TOLD APART FROM THE WOE (the provenance-swallow remediation). ***
+        // THE ROAD USED TO BE `if let source = library.sourceMetadata(documentId:)`, and that face was
+        // `(try? sourceMetadataChecked(...)) ?? nil` -- so a real fault at the provenance SELECT was answered as
+        // "this document hath no provenance" and the reader met a document stripped of its citation with NOBODY
+        // SAYING WHY. Three states, three tales: a projection rendereth the line, a genuine absent row rendereth
+        // nothing (absence is not a failure, and inventing a banner about it would be its own lie), and a fault
+        // rendereth its sanitised tale beside the earned retry. The engine's words stay in the log.
+        switch readProvenance() {
+        case .success(let source?):
             let tale: String = "source " + source.sourceId + " · revision " + source.revision
                 + " · licence " + source.licence
             Text(tale).font(.subheadline).foregroundStyle(.secondary)
+                // THE EXECUTED UI COURT ADDRESSETH THIS LINE BY IDENTITY, never by its prose: an arm that
+                // matched the rendered string would passeth on any line at all.
+                .accessibilityIdentifier("archive.provenance.line")
+        case .success(nil):
+            EmptyView()
+        case .failure(let archiveError):
+            HStack(spacing: 8) {
+                Text(ArchiveUserMessage.spoken(for: archiveError))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("archive.provenance.error")
+                if provenanceMayMend(archiveError) {
+                    // *** THE KNOCK MUST RE-RIDE THE ROAD THAT MET THE FAULT, NOT NO-OP. *** *A citation fault
+                    // leaveth the whole-road `canRetry` false (nothing about the DOCUMENT failed), so routing this
+                    // through the ordinary retry would be a button that doeth nothing -- and the executed court
+                    // TAPPETH it and requireth the road to re-fire.*
+                    Button("Try again") { Task { await scene.retryMetadataRead() } }
+                        .font(.caption)
+                        .accessibilityIdentifier("archive.provenance.retry")
+                }
+            }
         }
     }
 
@@ -672,8 +737,6 @@ private struct ArchiveDocumentReader: View {
                     ArchiveNotice(title: "Document is empty",
                                   detail: "No readable passages were found in this document.")
                 }
-            case .loaded(.documents):
-                EmptyView()
             }
         }
         .navigationTitle(document.title)

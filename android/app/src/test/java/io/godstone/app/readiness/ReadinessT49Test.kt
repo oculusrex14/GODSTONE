@@ -9,6 +9,7 @@ import io.godstone.app.ui.browse.BrowseViewModel
 import io.godstone.core.archive.ArchiveBridge
 import io.godstone.core.archive.ArchiveDrivers
 import io.godstone.core.archive.ArchiveDocument
+import io.godstone.core.archive.ArchiveReadException
 import io.godstone.core.archive.ArchivePassage
 import io.godstone.core.archive.ArchiveReader
 import io.godstone.core.archive.ArchiveRepository
@@ -223,8 +224,19 @@ class ReadinessT49Test {
             if (absent) ArchiveState.Unavailable("no archive installed; the bundle carrieth none")
             else ArchiveState.Ready(origin = "installed.bin", sha256 = "0".repeat(64))
 
-        override fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? =
-            if (documentId == 7L) provenance else null
+        // The provenance face, in the court's own hand: it may answer the projection, answer
+        // ABSENCE honestly (an uncited row), or meet a typed fault -- the three tales the road now
+        // carrieth apart. `uncited` proveth absence is NOT turned into a banner; `metadataFault`
+        // proveth a fault is NOT folded into absence.
+        var uncited = false
+        var metadataFault: ArchiveReadException? = null
+        val provenanceCalls = AtomicInteger(0)
+        override fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? {
+            provenanceCalls.incrementAndGet()
+            metadataFault?.let { throw it }
+            if (uncited) return null
+            return if (documentId == 7L) provenance else null
+        }
 
         override fun listDocuments(domain: String?): List<ArchiveDocument> {
             listCalls.incrementAndGet()
@@ -749,5 +761,165 @@ class ReadinessT49Test {
         assertEquals("*** AN EMPTY HANDLE MUST MEAN A FIRST BROWSE ***", BrowseMode.DOCUMENTS, vm.state.value.mode)
         assertEquals("and the documents must come home", listOf(document), vm.state.value.documents)
         assertNull("and nothing may be claimed as restored", vm.state.value.openedDocumentId)
+    }
+
+    /**
+     * *** THE PROVENANCE-SWALLOW REMEDIATION, UPON THE TRUE STOCK. ***
+     *
+     * `ArchiveRepository.sourceMetadata` used to answere `runCatching { … }.getOrNull()`, which made THREE worlds
+     * one sentence: an uncited row, a road that was never armed, and a `prepare`/`step` woe at the metadata SELECT.
+     * All three came out `null`, so the reader met a document stript of its citation and nothing anywhere said why.
+     * The face now runneth the same `checkedRead` road that `listDocuments` and `search` already run upon.
+     *
+     * THE FAULT IS INJECTED BY THE ENGINE, NOT BY A MOCK: the frozen DDL is executed verbatim, and ONLY the
+     * `licence` column is defaced -- the one column of this projection that NO other read of this road toucheth
+     * (`listDocuments` read `source_id`/`revision`, `passages` read `d.title`/`d.domain`). The citation view is
+     * struck first, because a column may not be removed from underneath a live view. So the document, its browse
+     * row and its passages all still come home at the very moment the provenance query crieth -- which is what
+     * keepeth this from being an accidental test of the ordinary read road.
+     */
+    @Test
+    fun testTheRealMetadataRoadTellethProjectionAbsenceAndFaultApart() {
+        val root = t49TempRoot("t49-prov")
+
+        // ---- the healthy road: the exact projection, and absence as ABSENCE (no cry) ----
+        val good = File(root, "healthy.db")
+        t49BuildArchive(good)
+        val repo = ArchiveRepository(T49Bridge(File(root, "cache-good"), good.readBytes()), T49_ASSET)
+        val verdict = repo.status()
+        requireThat(verdict is ArchiveState.Ready, "the real road must arm ready, got [$verdict]")
+        assertEquals("W23: the provided fixture answereth its EXACT projection",
+            ArchiveSourceMetadata(7L, "Archive guide", "src-001", "CC0-BY", "r7", false),
+            repo.sourceMetadata(7L))
+        var criedOnAbsence: ArchiveReadException? = null
+        val unheard = try { repo.sourceMetadata(404L) } catch (exc: ArchiveReadException) {
+            criedOnAbsence = exc; null
+        }
+        assertNull("W23: an unheard row is NOT a fault -- it was never a cry to make", criedOnAbsence)
+        assertNull("W23: and genuine absence returneth absence, which is what absence oweth", unheard)
+
+        // ---- the defaced twin: ONLY the provenance projection is broken ----
+        val bad = File(root, "provenance-defaced.db")
+        t49BuildArchive(bad)
+        val mender = BundledSQLiteDriver().open(bad.absolutePath)
+        try {
+            mender.speak("DROP VIEW IF EXISTS chunk_citations")
+            mender.speak("ALTER TABLE documents DROP COLUMN licence")
+        } finally {
+            mender.close()
+        }
+        val broken = ArchiveRepository(T49Bridge(File(root, "cache-bad"), bad.readBytes()), T49_ASSET)
+        val brokenVerdict = broken.status()
+        requireThat(brokenVerdict is ArchiveState.Ready,
+            "W23: the road must STILL arm ready -- the woe is at the metadata query, not at the open [$brokenVerdict]")
+
+        // the document read is WHOLE, which is what proves the next cry is the metadata road's own
+        assertEquals("W23: the passages of the loaded document still come home",
+            listOf("Read the full guide.", "Remaining context."), broken.passages(7L).map { it.text })
+        assertEquals("W23: and the browse projection is undisturbed", 1, broken.listDocuments(null).size)
+        assertEquals("W23: the search stock is alive", true, broken.search("guide", 40).isNotEmpty())
+
+        var fault: ArchiveReadException? = null
+        val folded = try { broken.sourceMetadata(7L) } catch (exc: ArchiveReadException) { fault = exc; null }
+        requireThat(fault != null,
+            "*** W23: THE SWALLOW IS BACK -- the metadata fault arrive'd as [$folded] where the road oweth a " +
+                "typed cry. A nil here is the defect this witness existeth to kill. ***")
+        // *** AND THE EXCEPTION'S OWN MESSAGE IS NOT ASSERTED. *** *Three clauses stood here -- the cry must
+        // "name the road", must "name its cause", must not say "corrupt" -- and ALL THREE are DELETED by the
+        // developer mandate: an exception's message is an INCIDENTAL of the implementation, and pinning a test to
+        // its spelling testeth the wording rather than the behaviour (it would also forbid a GOOD reword). The
+        // hosted run proved the point: the road cryeth `archive read failed: SELECT …`, which nameth the
+        // STATEMENT and not the road label, so a `contains(road)` clause was red while the BEHAVIOUR under witness
+        // was exactly right. What this arm witnesseth is that the road CRYETH TYPED instead of answering a value
+        // a caller would mistake for an uncited row -- and the taxonomy that reacheth the USER is witnessed where
+        // it belongeth, on the presentation (W24), not on a diagnostic string.*
+    }
+
+    /**
+     * *** THE SAME THREE TALES, AT THE SURFACE THAT MUST SPEAK THEM. ***
+     *
+     * `BrowseViewModel.openDocumentInternal` nesteth a SECOND fold: the reader face was wrapped in
+     * `runCatching { reader.sourceMetadata(…) }.getOrNull()` INSIDE the road's own `runCatching`, so a fault was
+     * flattend twice before the state was published, and the document arrived `Ready` with its citation quietly
+     * missing. The checked face is asked now, upon the verdict-gated road, so the fault travel eth down the
+     * `outcome` into the ONE `publishFailure` path this class already owneth -- the existing sanitised banner,
+     * the existing earned retry, no new abstraction and no broadened retry.
+     *
+     * THE OTHER DIRECTION IS WITNESSED TOO, because an over-correction is its own defect: a row that truly
+     * carrieth no citation must remain a READABLE document at `Ready`, with no banner and no repair offered.
+     */
+    @Test
+    fun testTheProvenanceFaultComethForthAndTheUncitedRowRestethQuietly() = withMain {
+        // (A) THE FAULT, UPON THE TRUE ENGINE, AT THE PRESENTATION THE READER ACTUALLY SEETH.
+        val root = t49TempRoot("t49-prov-ui")
+        val defaced = File(root, "defaced.db")
+        t49BuildArchive(defaced)
+        val mender = BundledSQLiteDriver().open(defaced.absolutePath)
+        try {
+            mender.speak("DROP VIEW IF EXISTS chunk_citations")
+            mender.speak("ALTER TABLE documents DROP COLUMN licence")
+        } finally {
+            mender.close()
+        }
+        val broken = ArchiveRepository(T49Bridge(File(root, "cache"), defaced.readBytes()), T49_ASSET)
+        val vm = BrowseViewModel(broken, StandardTestDispatcher(testScheduler))
+        advanceUntilIdle()
+        vm.open(document)
+        advanceUntilIdle()
+        val phase = vm.state.value.phase
+        requireThat(phase is BrowsePhase.Unavailable,
+            "*** W24: THE FAULT MUST BE PRESENTED, not hidden behind a citation-stripped document -- got " +
+                "[$phase] with openedSource=[${vm.state.value.openedSource}] ***")
+        assertFalse("W24: a fault may never be dressed as a merely-uncited document", phase is BrowsePhase.Ready)
+        assertNull("W24: no read, no claimed provenance", vm.state.value.openedSource)
+        assertTrue("W24: a way that gave way is mendeable, so the retry is earned", vm.state.value.canRetry)
+        assertTrue("W24: and the banner speaketh a cause", (phase as BrowsePhase.Unavailable).reason.isNotBlank())
+
+        // (B) GENUINE ABSENCE: the SAME road must stay READABLE, quiet, with nothing to repair.
+        val quiet = FakeReader().apply { uncited = true }
+        val quietVm = BrowseViewModel(quiet, StandardTestDispatcher(testScheduler))
+        advanceUntilIdle()
+        quietVm.open(document)
+        advanceUntilIdle()
+        assertEquals("W24: an uncited row is a READABLE document, not a woe",
+            BrowsePhase.Ready, quietVm.state.value.phase)
+        assertEquals("with its passages whole", 2, quietVm.state.value.passages.size)
+        assertNull("no citation, and no claim of one", quietVm.state.value.openedSource)
+        assertNull("no woe may be spoken for a state that carryth no woe", quietVm.state.value.error)
+        assertFalse("and no repair is offered for a state that hath nothing to mend",
+            quietVm.state.value.canRetry)
+
+        // (C) THE TAXONOMY AND THE HEAL, at the seam the view model actually runneth upon.
+        val faulty = FakeReader().apply { metadataFault = ArchiveReadException("no such column: licence") }
+        val faultyVm = BrowseViewModel(faulty, StandardTestDispatcher(testScheduler))
+        advanceUntilIdle()
+        faultyVm.open(document)
+        advanceUntilIdle()
+        val told = faultyVm.state.value.phase
+        requireThat(told is BrowsePhase.Unavailable, "W24: the injected fault must be told, not folded [$told]")
+        assertTrue("and it must earn its retry", faultyVm.state.value.canRetry)
+        val toldReason = (told as BrowsePhase.Unavailable).reason
+        assertTrue("the shown tale is the sanitised road tale, not the engine's words: $toldReason",
+            !toldReason.contains("no such column"))
+        faulty.metadataFault = null
+        faultyVm.retry()
+        advanceUntilIdle()
+        assertEquals("the mended road bringeth the very projection back",
+            BrowsePhase.Ready, faultyVm.state.value.phase)
+        assertEquals(provenance, faultyVm.state.value.openedSource)
+        assertFalse("and the earned retry is spent, not left hanging", faultyVm.state.value.canRetry)
+
+        // (D) A ROAD THAT WAS NEVER ARMED IS NOT AN UNCITED ROW either: the un-installed archive is told
+        // as the Unavailable verdict it is, non-mendeable, and the face refuseth to answer for it at all.
+        val bare = FakeReader().apply { absent = true }
+        val bareVm = BrowseViewModel(bare, StandardTestDispatcher(testScheduler))
+        advanceUntilIdle()
+        bareVm.open(document)
+        advanceUntilIdle()
+        val barePhase = bareVm.state.value.phase
+        requireThat(barePhase is BrowsePhase.Unavailable, "W24: an un-armed road is told unavailable [$barePhase]")
+        assertFalse("and NO retry knocketh upon an absent installation", bareVm.state.value.canRetry)
+        assertNull("the citation is neither claimed nor folded", bareVm.state.value.openedSource)
+        assertEquals("the face was never even asked", 0, bare.provenanceCalls.get())
     }
 }

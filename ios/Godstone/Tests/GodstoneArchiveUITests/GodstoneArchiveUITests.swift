@@ -1,4 +1,5 @@
 import XCTest
+import SQLite3
 
 /// *** GS-ARCHIVE-005 / GS-FINAL-006: THE EXECUTED APP WITNESS, WHICH THE CARD DEMANDS AND A MODEL TEST CANNOT BE. ***
 ///
@@ -45,11 +46,14 @@ final class GodstoneArchiveUITests: XCTestCase {
     /// *The path is resolved from THIS FILE, because an environment variable does NOT reach the simulator's test
     /// runner -- measured: an unset path made the copy fail with `/usr/bin/sudo` as its source.*
     private func fixturePath() throws -> String {
-        // *** THE FIXTURE IS TRACKED AND HASH-VERIFIED, BECAUSE A SKIPPING WITNESS IS NOT A WITNESS. ***
+        // *** THE FIXTURE IS TRACKED AND HASH-VERIFIED, AND ITS ABSENCE IS A FAILURE, NOT A SKIP. ***
         // *The archive is gitignored under `build/`, so pointing at the built copy would leave a fresh clone with no
-        // fixture -- both arms would `XCTSkip`, and a skip reports as a pass while measuring NOTHING. The bytes are
-        // therefore committed beside this file WITH the command that made them and their sha256, and this method
-        // VERIFIES the sha so drift or tampering fails loudly instead of quietly changing what was witnessed.*
+        // fixture. THE OLD FORM OF THIS HELPER `XCTSkip`T IN THAT CASE, AND THAT WAS WRONG: a skip reporteth as a
+        // pass while measuring NOTHING. THE FIXTURE IS COMMITTED BESIDE THIS FILE, WITH the command that made it and
+        // its sha256 -- and THE BUILDER LIVETH IN-REPO (`content.ingest.build_archive`), so there is NO external
+        // dependency to excuse a missing one. A missing fixture, a missing provenance record, or a digest mismatch
+        // therefore FAILETH LOUDLY: this is the court's own setup, and setup that cannot be measured must not read
+        // as green.*
         let repoRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()   // GodstoneArchiveUITests/
             .deletingLastPathComponent()   // Tests/
@@ -60,15 +64,24 @@ final class GodstoneArchiveUITests: XCTestCase {
             "ios/Godstone/Tests/GodstoneArchiveUITests/Fixtures")
         let fixture = dir.appendingPathComponent("archive_light.db")
         guard let data = try? Data(contentsOf: fixture) else {
-            throw XCTSkip("no committed fixture at \(fixture.path)")
+            // *** INTERNAL SETUP MUST FAIL, NOT SKIP. *** *A skip reporteth as a pass while measuring NOTHING, and
+            // this fixture is TRACKED BESIDE THIS FILE: its absence is a defect of the CHECKOUT, not an external
+            // limitation. The builder liveth in-repo (`content.ingest.build_archive`), so there is no external
+            // dependency to excuse it -- see the PROVENANCE convention at the head of this file.*
+            XCTFail("*** THE TRACKED FIXTURE IS MISSING: \(fixture.path). A UI witness whose setup skips is not a "
+                + "witness: it readeth as green while measuring nothing, and this file is committed BESIDE the court "
+                + "that useth it, so its absence meaneth the checkout is broken. ***")
+            throw TestSetupError.fixtureMissing(fixture.path)
         }
         // VERIFY: the committed bytes must match the recorded digest.
         let digest = SHA256Hex.of(data)
         guard let prov = try? Data(contentsOf: dir.appendingPathComponent("PROVENANCE.json")),
               let obj = try? JSONSerialization.jsonObject(with: prov) as? [String: Any],
               let expected = obj["archive_sha256"] as? String else {
-            throw XCTSkip("no PROVENANCE.json beside the fixture -- the bytes must be traceable to the command "
-                + "that made them")
+            XCTFail("*** THE FIXTURE'S PROVENANCE RECORD IS MISSING OR UNREADABLE beside \(fixture.path): the bytes "
+                + "must be traceable to the command that made them, and this record is committed in-repo, so its "
+                + "absence is a checkout defect rather than an external wall. ***")
+            throw TestSetupError.provenanceMissing(fixture.path)
         }
         XCTAssertEqual(
             digest, expected,
@@ -76,7 +89,16 @@ final class GodstoneArchiveUITests: XCTestCase {
                 + "record did not -- and every assertion below would then be about a DIFFERENT archive than the one "
                 + "this provenance describes. ***",
         )
+        guard digest == expected else { throw TestSetupError.provenanceDrift(fixture.path) }
         return fixture.path
+    }
+
+    /// The failures of the court's OWN setup. Distinct from a witnessed product defect, so the report telleth
+    /// a broken checkout from a broken app.
+    enum TestSetupError: Error {
+        case fixtureMissing(String)
+        case provenanceMissing(String)
+        case provenanceDrift(String)
     }
 
     /// The harness's own sha256, so the fixture check needs no package beyond Foundation.
@@ -825,5 +847,299 @@ final class GodstoneArchiveUITests: XCTestCase {
                     + "search that never ran -- the user would be sent somewhere they never were. Got: \(value) ***",
             )
         }
+    }
+
+    /// *** AND THE FAULT MUST NOT BE DRESSED AS AN ABSENT DOCUMENT: THE READER STILL RENDERETH ITS PASSAGES. ***
+    ///
+    /// *The card's clause, verbatim: "Fault must not make doc absent or fabricate failure."* **A presentation that
+    /// answered a provenance woe by showing "Document is empty" WOULD BE A FABRICATION -- it would report the
+    /// archive as holding nothing, which is a claim about CONTENT, about a fault that touched only the CITATION.**
+    /// *So this arm requireth BOTH halves at once: the woe is told, AND the passages that were never in doubt are
+    /// still on screen.*
+    private func assertFaultDoesNotEraseTheDocument(_ app: XCUIApplication) {
+        let passages = app.staticTexts.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+        XCTAssertTrue(
+            passages.firstMatch.waitForExistence(timeout: 20),
+            "*** A CITATION WOE MAY NOT ERASE THE DOCUMENT. The passages of a document whose provenance query "
+                + "crieth are not in doubt -- they come from `chunks`, which this fault never toucheth -- so a "
+                + "reader shown 'Document is empty' here is being TOLD AN UNTRUTH ABOUT THE CONTENT. ***",
+        )
+        XCTAssertFalse(
+            app.staticTexts["Document is empty"].exists,
+            "*** AND THE EMPTY-DOCUMENT NOTICE MUST NOT APPEAR: that notice is a claim about the archive's CONTENT, "
+                + "and a provenance woe is a claim about its CITATION. Confusing the two is the fabrication the card "
+                + "forbiddeth. ***",
+        )
+    }
+
+    // ================================================================================================
+    // MARK: - THE PROVENANCE ROAD, WITNESSED ON THE RENDERED SURFACE
+    // ================================================================================================
+    //
+    // *The card's three clauses, each one an EXECUTED arm against the production view through the app's own
+    // accessibility tree -- not a source-text match and not a view-model unit test.* The fault is injected the only
+    // way an out-of-process runner can inject one: **by the hand that installs the bytes** (AppContainer's DEBUG
+    // argument), which then striketh the citation column upon the installed file. The document, its browse row and
+    // its passages all abide whole, so every arm below meeteth a REAL storage fault at the metadata SELECT.
+
+    /// *** (1) THE CITATION LINE IS RENDERED, AND CARRIETH THE COMMITTED ARCHIVE'S OWN PROVENANCE. ***
+    func testARCHIVEPROVTheCitationLineRenderethTheDocumentsOwnProvenance() throws {
+        let app = try launchAndOpenArchive()
+        let row = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.document.'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "the list must render a document to open")
+        row.tap()
+
+        let line = app.staticTexts["archive.provenance.line"]
+        XCTAssertTrue(
+            line.waitForExistence(timeout: 20),
+            "*** THE REQUIRED PROVENANCE LINE MUST RENDER FOR A LOADED DOCUMENT. The committed fixture carrieth "
+                + "source_id/licence/revision on every documents row, so a missing line here is the ABSENCE the "
+                + "finding charged -- not a fixture problem. ***",
+        )
+        let tale = line.label
+        XCTAssertTrue(
+            tale.contains("source ") && tale.contains("revision ") && tale.contains("licence "),
+            "*** THE LINE MUST CARRIE ALL THREE OF THE DOCUMENT'S OWN FACTS -- source, revision and licence -- and "
+                + "not merely render something. Observed: \(tale) ***",
+        )
+        // AND THE COMMITTED BYTES ARE THE AUTHORITY FOR WHAT IT SAITH: the first document of the fixture is
+        // `tccc_2024` / `PUBLIC-DOMAIN-USGOV` / revised `2026-01-14`, so the line must shew THAT document's facts.
+        XCTAssertTrue(
+            tale.contains("tccc_2024") && tale.contains("PUBLIC-DOMAIN-USGOV"),
+            "*** THE LINE MUST SHEW THE OPENED DOCUMENT'S OWN PROVENANCE, taken from the committed fixture's "
+                + "documents row (`tccc_2024` / `PUBLIC-DOMAIN-USGOV`), never a neighbouring row's and never a "
+                + "fabrication. Observed: \(tale) ***",
+        )
+        // THE POSITIVE CONTROL FOR THE WHOLE ROAD: no woe is spoken where none was met.
+        XCTAssertFalse(
+            app.staticTexts["archive.provenance.error"].exists,
+            "no provenance woe may be told for a document whose citation read whole",
+        )
+    }
+
+    /// *** (2) THE FALSIFIER FOR THE OVER-CORRECTION: A RESOLVED CITATION MUST NOT BE TOLD AS A WOE. ***
+    ///
+    /// *The tempting wrong repair, once the fault is made audible, is to make EVERY missing citation audible --
+    /// which would tell a reader their archive is broken whenever a document simply carrieth no citation, and would
+    /// offer a repair for a state that hath nothing to mend.* **So the ordinary, fully-cited document must shew its
+    /// line and NO woe and NO retry.**
+    ///
+    /// *** AND THE HONEST LIMIT OF THIS SURFACE, MEASURED RATHER THAN ASSUMED: a RENDERED "genuinely uncited row"
+    /// CANNOT BE WITNESSED HERE, BECAUSE THE SCHEMA MAKETH IT UNREACHABLE. *** *The citation projection readeth
+    /// `documents WHERE document_id = ?`, and the passages road JOINeth `documents` ON the very same id -- so a row
+    /// whose citation is ABSENT is a row that is ABSENT, and a document that cannot be listed cannot be opened. On
+    /// this schema "readable document, nil citation" is not a state the product can be in.* **The absence half is
+    /// therefore witnessed where it IS reachable and real: at the ROAD, against the real engine
+    /// (`testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence` requireth an unheard document answereth nil
+    /// WITHOUT crying, and `testTheRealRoadProjectethProvenanceFromTheFrozenColumns` requireth it again), and in the
+    /// scene court at `testTheSameRoadTellethAbsenceAndFaultApartAtOneProbe`. I state the limit rather than
+    /// manufacture a rendered arm for a state the product cannot enter.**
+    func testARCHIVEPROVAresolvedCitationIsNeverToldAsAWoe() throws {
+        let app = try launchAndOpenArchive()
+        let row = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.document.'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20))
+        row.tap()
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+                .firstMatch.waitForExistence(timeout: 20),
+            "the document must be READABLE, or this arm witnesseth nothing",
+        )
+        XCTAssertTrue(
+            app.staticTexts["archive.provenance.line"].waitForExistence(timeout: 20),
+            "and its citation line must STAND -- this is the seat the falsifier is aimed at",
+        )
+
+        // THE FALSIFIER: a document whose citation resolved must never be told that its road gave way.
+        XCTAssertFalse(
+            app.staticTexts["archive.provenance.error"].exists,
+            "*** NO WOE MAY BE SPOKEN WHERE NONE WAS MET. A citation that RESOLVED must never shew the provenance "
+                + "woe, and a repair that made every citation audible would fail HERE, on a document whose line is "
+                + "provably on screen. ***",
+        )
+        XCTAssertFalse(
+            app.buttons["archive.provenance.retry"].exists,
+            "*** AND NO RETRY MAY BE OFFERED WHERE NOTHING MAY BE MENDED: the earned-retry law is about ROADS THAT "
+                + "GAVE WAY, and a citation that resolved is not one. ***",
+        )
+    }
+
+    /// *** (3) A REAL STORAGE FAULT AT THE METADATA QUERY IS TOLD -- SANITISED -- AND EARNETH ITS RETRY. ***
+    ///
+    /// *The citation SELECT crieth because the column it readeth is gone (see `faultedFixturePath`), while the
+    /// document, its browse row and its passages abide whole.*
+    ///
+    /// **WHAT THIS ARM PROVETH, IN THE CARD'S OWN TERMS:** the fault is PRESENTED rather than hidden behind a
+    /// citation-stripped document; its tale is SANITISED (the engine's words may never reach the reader's eye);
+    /// it doth NOT downgrade the document to absent, nor fabricate a failure about its content; and the earned
+    /// retry is not a decoration -- THE ARM TAPPETH IT and requireth the consumer road to re-fire.
+
+    /// The metadata-query fault fixture, DERIVED FROM THE COMMITTED BYTES by the court itself, and returned.
+    ///
+    /// INVARIANTS:
+    ///   * the fault is a property of the BYTES (no app-side hook, no launch flag, no ordering);
+    ///   * the derived file liveth BESIDE the committed fixture -- the repo path both processes can read -- never
+    ///     `FileManager.temporaryDirectory`, which resolveth to the RUNNER's container and is invisible to the app;
+    ///   * the strike is the core courts': drop the citation view, then drop `licence` -- the one column the
+    ///     provenance projection alone readeth, leaving `documents`, `chunks` and the FTS stock whole;
+    ///   * the arm VERIFIETH `licence` is gone before trusting the bytes, so a silent no-op faileth as setup;
+    ///   * the CALLER removeth the file (it must outlive the app's launch), and it is `*.db`, already gitignored.
+    private func faultedFixturePath() throws -> String {
+        // BESIDE THE COMMITTED FIXTURE: the repo path is readable by BOTH processes; a runner-container temp path
+        // would be invisible to the app.
+        let committed = URL(fileURLWithPath: try fixturePath())
+        let derived = committed.deletingLastPathComponent()
+            .appendingPathComponent("archive_light_fault-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: committed, to: derived)
+
+        // *** THE STRIKE IS DONE THROUGH A CLOSED HANDLE BEFORE THE ARM EVER LAUNCHES THE APP. *** *The `do` block
+        // existeth so the connection is closed EXACTLY ONCE, before the read-back below -- the first draft carried
+        // both a `defer` and an explicit close, which would have double-closed.*
+        do {
+            var handle: OpaquePointer?
+            guard sqlite3_open_v2(derived.path, &handle, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK,
+                  let db = handle else {
+                sqlite3_close_v2(handle)
+                XCTFail("*** THE COURT COULD NOT OPEN ITS OWN DERIVED FIXTURE: \(derived.path) ***")
+                throw TestSetupError.fixtureMissing(derived.path)
+            }
+            for statement in ["DROP VIEW IF EXISTS chunk_citations",
+                              "ALTER TABLE documents DROP COLUMN licence"] {
+                var err: UnsafeMutablePointer<Int8>?
+                let rc = sqlite3_exec(db, statement, nil, nil, &err)
+                guard rc == SQLITE_OK else {
+                    let why = err.map { String(cString: $0) } ?? "rc \(rc)"
+                    if let err { sqlite3_free(err) }
+                    sqlite3_close_v2(db)
+                    XCTFail("*** THE STRIKE ITSELF FAILED (\(statement)): \(why) -- a fault fixture that is not "
+                        + "faulted would make the arm below assert against a healthy archive. ***")
+                    throw TestSetupError.fixtureMissing(derived.path)
+                }
+            }
+            sqlite3_close_v2(db)
+        }
+
+        // AND THE ARM VERIFIETH ITS OWN PREMISE, so a silent no-op cannot masquerade as a healthy archive.
+        do {
+            var check: OpaquePointer?
+            guard sqlite3_open_v2(derived.path, &check, SQLITE_OPEN_READONLY, nil) == SQLITE_OK,
+                  let cdb = check else {
+                sqlite3_close_v2(check)
+                throw TestSetupError.fixtureMissing(derived.path)
+            }
+            var stmt: OpaquePointer?
+            var licenceCount = -1
+            if sqlite3_prepare_v2(cdb, "SELECT count(*) FROM pragma_table_info('documents') WHERE name='licence'",
+                                  -1, &stmt, nil) == SQLITE_OK, sqlite3_step(stmt) == SQLITE_ROW {
+                licenceCount = Int(sqlite3_column_int(stmt, 0))
+            }
+            sqlite3_finalize(stmt)
+            sqlite3_close_v2(cdb)
+            XCTAssertEqual(licenceCount, 0,
+                "*** THE DERIVED FIXTURE MUST ACTUALLY LACK `licence`, or the arm would witness a healthy archive "
+                    + "and call it a fault. Observed count: \(licenceCount) ***")
+        }
+        // *** AND THE FILE IS LEFT IN PLACE: THE APP READS IT AT LAUNCH, WHICH HAPPENETH AFTER THIS RETURNS. ***
+        // *A `defer { removeItem }` stood here and was WRONG -- it would have deleted the bytes before the app could
+        // copy them, and the arm would then have witnessed the PREVIOUS launch's container copy while believing it
+        // had a faulted archive. The arm removes it after the journey instead, so the tree is left as it was found.*
+        return derived.path
+    }
+
+    /// *** (3) A REAL STORAGE FAULT AT THE METADATA QUERY IS TOLD -- AND ITS RETRY REALLY RE-QUERIETH. ***
+    ///
+    /// *The citation SELECT crieth because the column it readeth is not there (see `faultedFixturePath`), while the
+    /// document, its browse row and its passages abide whole.*
+    ///
+    /// **WHAT THIS ARM PROVETH:** the fault is PRESENTED rather than hidden behind a citation-stripped document;
+    /// it doth NOT downgrade the document to absent, nor fabricate a failure about its content; and the earned retry
+    /// is not a decorative button -- **the arm TAPPETH it and requireth the user-consumer boundary to re-fire.**
+    func testARCHIVEPROVAMetadataQueryFaultIsToldSanitisedAndEarnethItsRetry() throws {
+        let faulted = try faultedFixturePath()
+        // THE DERIVED BYTES ARE THE COURT'S OWN ARTIFACT AND ARE REMOVED WHEN THE JOURNEY ENDS, so the tree is left
+        // as it was found and a later run cannot inherit one. It is removed HERE (not by a `defer` in the helper)
+        // because THE APP MUST BE ABLE TO READ IT AT LAUNCH, which happeneth after the helper returns.
+        defer { try? FileManager.default.removeItem(atPath: faulted) }
+        let app = XCUIApplication()
+        app.launchArguments += ["-gs-archive-fixture", faulted]
+        app.launchArguments += ["-gs-clear-archive-place", "1"]
+        app.launch()
+
+        // the archive itself is still READY: the woe is at the citation query, NOT at the open. A refusal here
+        // would mean the derived bytes broke the archive rather than the one road under witness.
+        let unavailable = app.staticTexts["Archive unavailable"]
+        let field = app.searchFields.firstMatch
+        var ready = false
+        let deadline = Date().addingTimeInterval(30)
+        while Date() < deadline {
+            if field.exists { ready = true; break }
+            if unavailable.exists {
+                XCTFail("*** THE DERIVED FIXTURE MUST BREAK THE CITATION QUERY, NOT THE ARCHIVE. The app reporteth "
+                    + "'Archive unavailable', which meaneth the derivation was aimed at the wrong thing. ***")
+                break
+            }
+            usleep(200_000)
+        }
+        XCTAssertTrue(ready, "the archive road must still stand: the fault is aimed at the metadata SELECT alone")
+
+        let row = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.document.'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "the browse list must still render from whole bytes")
+        row.tap()
+
+        let woe = app.staticTexts["archive.provenance.error"]
+        XCTAssertTrue(
+            woe.waitForExistence(timeout: 20),
+            "*** THE FAULT MUST BE PRESENTED. Before this remediation the citation road answer'd `try?`-collapsed "
+                + "nil, so a storage fault arrived as 'this document hath no provenance' and the reader saw a "
+                + "citation-stripped document with NOTHING said. ***",
+        )
+        // *** THE ENGINE'S OWN WORDS MUST NOT REACH THE READER'S EYE. *** *This is a LEAK assertion -- it asserteth
+        // that the SQL fragment and the column name do NOT appear -- and NOT a `contains(...)` clause pinning the
+        // tale's working. The incidental-prose clause that demanded the message SAY particular words is DELETED: a
+        // message is an incidental of the implementation, and pinning a test to its spelling would forbid a good
+        // reword (and invite rewording production to please a test).*
+        let told = woe.label
+        XCTAssertFalse(
+            told.contains("no such column") || told.contains("licence") || told.contains("prepare")
+                || told.contains("SELECT"),
+            "*** THE TALE MUST BE SANITISED: the engine's words (the SQL fragment, the missing column, the prepare "
+                + "failure) stay in the log, and only the KIND of woe reacheth the eye. Observed: \(told) ***",
+        )
+        XCTAssertFalse(told.isEmpty, "and the sanitised tale must still SAY something: the reader is owed a reason")
+
+        // AND THE DOCUMENT IS NOT ERASED, NOR IS ITS CONTENT MISREPRESENTED.
+        assertFaultDoesNotEraseTheDocument(app)
+
+        // *** AND THE EARNED RETRY IS NOT A DECORATION: THE ARM TAPPETH IT AND REQUIRETH THE CONSUMER TO RE-FIRE. ***
+        //
+        // *A button that existeth and no-ops would satisfy a `exists` assertion while selling the reader a repair
+        // that doth nothing -- the "proof that proveth a no-op" this programme keepeth catching.* **SO THE TAP IS
+        // DRIVEN AND ITS CONSEQUENCE IS ASSERTED AT THE USER-CONSUMER BOUNDARY:** `ArchiveView`'s reader carrieth
+        // `.task(id: retry)`, so a real retry re-rideth the document road and the surface re-rendereth. The fault
+        // is in the BYTES and cannot heal by tapping, so the honest expectation is that the woe STANDS (or is
+        // re-told) rather than vanishing -- **what the arm requireth is that the boundary FIRED: the reader is
+        // still a reader (its passages present), and the surface is not left blank or stuck in a spinner.**
+        let retry = app.buttons["archive.provenance.retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 10),
+            "*** A WAY THAT GAVE WAY EARNETH ITS KNOCK: the retry must be OFFERED for a query/read woe under the "
+                + "existing mendability law. ***")
+        retry.tap()
+        // THE CONSEQUENCE: the reader re-asked and the document surface still standeth -- not erased, not blank.
+        let passagesAfter = app.staticTexts.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'archive.passage.'"))
+        XCTAssertTrue(
+            passagesAfter.firstMatch.waitForExistence(timeout: 20),
+            "*** THE RETRY MUST RE-FIRE THE REAL ROAD, NOT NO-OP: after tapping it the reader is still a READER -- "
+                + "its passages stand, because a citation woe never touched the content. A blank surface or a "
+                + "perpetual spinner here would mean the tap went nowhere. ***",
+        )
+        XCTAssertFalse(
+            app.activityIndicators.firstMatch.exists,
+            "*** AND THE ROAD MUST SETTLE: a spinner left standing after the retry is a road that fired and never "
+                + "landed. ***",
+        )
     }
 }

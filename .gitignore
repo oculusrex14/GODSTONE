@@ -136,7 +136,27 @@ ios-simulator-lane.log
 # BEFORE the schemes run and writeth it to `<log>.pre.sha256`; the checker requireth it to EQUAL the post-run sidecar,
 # so an edit DURING a run cannot leave a log that describeth a tree the tests never compiled.*
 *.pre.sha256
-tools/integration-fixtures/
+
+# *** AND THE REPORT-BEARING ANDROID LANES' OWN OUTPUT (ui / simulator / production). ***
+#
+# *The three lanes that run a FILTERED gradle invocation cannot write into `build/test-results/` -- a filtered run
+# writeth a SIBLING task directory, which `ci/check_lane_results.py` refuseth by name. **So each carries its OWN
+# evidence root under the repository root, its OWN copied JUnit XML, and its OWN report
+# (`tools/readiness/lane_registry.py`): `android-ui-results/`, `android-simulator-results/`,
+# `android-production-results/` and their `*.lane.json` reports.*** **RUN OUTPUT, like every lane log above: uploaded as
+# an artifact, never committed -- and the checker REFUSES WHEN A REPORT IS ABSENT, so an unrun lane is never a pass.**
+android-*.lane.json
+android-ui.log
+android-simulator.log
+android-production.log
+android-ui-results/
+android-simulator-results/
+android-production-results/
+
+# Historical integration guard inputs are controlled source data, not current-run output.
+tools/integration-fixtures/*
+!tools/integration-fixtures/20260929T211012Z-8f8795/
+!tools/integration-fixtures/20260929T170839Z-e574a7/
 
 # *** AND THE CI CROSS-PLATFORM COORDINATOR'S OWN RUN OUTPUT (2026-09-30). ***
 #
@@ -151,3 +171,15 @@ tools/integration-fixtures/
 # *Same rule as `ios-lane.log` and `*.xcresult` above -- regenerable, uploaded, never committed. The frozen rc11
 # evidence under `docs/remediation/evidence/board1-rc11-integration/` stays byte-identical.*
 board1-integration-ci/
+
+# *** THE PER-LANE SQLCIPHER TRUST EXPECTATION IS RUN OUTPUT TOO (2026-10-03). ***
+#
+# *`tools/supplychain/verify_sqlcipher_artifact.py --emit-swift` regenerates the compiled-in
+# `SQLCipherTrustedExpectation` from the REGISTER over the bytes each lane actually built; the lane scripts place
+# that verified emission at the compile path (sources tree + foundation mirror) before building. A copy checked in
+# would freeze ONE mode's identity into every other mode's build -- the measured 2026-10-03 simulator-lane defect
+# was exactly a stale macos emission mis-binding the ios-simulator runtime's 22 mandatory-native arms. The register
+# (`toolchain-artifacts.json`) and the emitted sidecars are the authorities; these two files are regenerable,
+# uploaded, never committed -- same law as `ios-lane.log` and the integration evidence above.*
+ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift
+ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift

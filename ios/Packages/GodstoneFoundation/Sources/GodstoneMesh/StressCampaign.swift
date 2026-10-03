@@ -31,6 +31,28 @@ import Foundation
 // ---------------------------------------------------------------------------
 public let RESOURCE_MODEL_CATEGORY: String = "resource-model"
 
+/// *** WHERE A RESULT SAYETH WHAT IT IS (round 727). ***
+///
+/// `RESOURCE_MODEL_CATEGORY` is the NAME of this campaign's category; `Category.resourceModel` is the VALUE a
+/// `CampaignResult` carrieth, and `Category.productionRuntime` is the category it MUST NEVER claim. *MEASURED: the
+/// constant was declared here and asserted against ITSELF in a court while appearing in NO result field and NO report
+/// -- a name a reader of a RESULT never meeteth.*
+public enum Category {
+    public static let resourceModel = RESOURCE_MODEL_CATEGORY
+    public static let productionRuntime = "production-runtime"
+}
+
+/**
+ * *** A HARNESS-INTEGRITY TOKEN, NOT ONE OF THE ELEVEN NAMED INVARIANTS. *** *The fault-liveness clause reporteth that
+ * the SCHEDULE did not fire -- a property of the harness, not of a runtime owner -- so it carrieth its own name rather
+ * than masquerading as `no_uncaught_malformed`.*
+ */
+public let FAULT_CAMPAIGN_INACTIVE: String = "fault_campaign_inactive"
+
+/// *** THE SENTINEL FOR AN OWNER WHOSE KIND A SEAM CANNOT CENSUS -- NEVER COUNTED AS ZERO. *** Spelled as the Android
+/// isle spell it (`ResourceCensusSource.NOT_MEASURED`), so ONE GREP FINDETH THE CONTRACT ON EVERY ISLE.
+public let NOT_MEASURED: Int = -1
+
 /**
  * *** GS-STRESS-001 STEP 3 (round 535): THE OWNER CENSUS -- **THE SWIFT TWIN**, BECAUSE THE CONTRACT IS SHARED. ***
  *
@@ -55,6 +77,24 @@ public protocol ResourceCensusSource: AnyObject {
 
     /// How many live session slots the REAL owner holdeth RIGHT NOW, read through its own evidence hook.
     func liveSessionSlots() -> Int
+
+    /// *** GS-STRESS-001 (round 727): THE SECOND OWNER, ASKED OF THIS ISLE TOO. ***
+    ///
+    /// *MEASURED: this protocol carrieth ONE hook, so six of the eleven invariant names on this isle were
+    /// DECLARATIONS ONLY -- `noLeakedReservations` among them, and the ONLY iOS conformance used `liveSessionSlots` to
+    /// report a QUARANTINE count under the sessions invariant.* `liveReservations` asketh the reservation owner the
+    /// project already made askable (`RecordWriter.reservedCountForTest()`), and its DEFAULT IS THE HONEST ONE: an
+    /// owner that carrieth no reservations answereth `NOT_MEASURED`, NOT 0 -- *"nothing is leaking"* and *"nobody asked
+    /// my kind of owner"* are different answers.* The remaining owner-kind names stay in `Invariants.ownerKind` and
+    /// are carried as unmeasured until their owners are made askable (do NOT claim a census this seam cannot take).
+    ///
+    /// The sentinel is spelled `NOT_MEASURED`, the Android isle's own name, so ONE GREP FINDETH IT ON EVERY ISLE.
+    func liveReservations() -> Int
+}
+
+public extension ResourceCensusSource {
+    /// The default is NOT_MEASURED, never zero: a kind this seam cannot census is named, not reported clean.
+    func liveReservations() -> Int { NOT_MEASURED }
 }
 
 public enum FaultKind {
@@ -101,11 +141,26 @@ public enum Invariants {
     /// court, because the defect it preventeth is IN THIS FILE: the name and the list stand lines apart, and only their
     /// COUNT can tell whether they agree.*
     private static let definedCount = 11
+    /// *** GS-STRESS-001 (round 727): WHAT THIS MODEL MEASURES, AND WHAT IT EMITS ONLY THROUGH A REAL OWNER. ***
+    /// *MEASURED by the read-only audit: this isle's `ResourceCensusSource` carrieth ONE hook, so four of the eleven
+    /// names could never be emitted here at all -- and the court looped over `Invariants.all` asserting they were
+    /// absent from a healthy run, which was TRUE BY CONSTRUCTION. A check that cannot fail is not a check.* The split
+    /// is typed here and CARRIED on the result (`unmeasuredInvariants`), so "nothing is leaking" and "nobody asked my
+    /// kind of owner" are distinguishable by any reader.
+    public static let measuredFromTheModel = [noLeakedLeases, noLeakedTimers, noLeakedSessions,
+                                              noDuplicateInbox, noDuplicateDelivery,
+                                              noUncaughtMalformed, boundedCensus]
+    public static let ownerKind = [noLeakedReservations, noLeakedInventoryLeases,
+                                   pendingAckWork, noLeakedObservers]
     private static let censusCheck: Void = {
         precondition(all.count == definedCount,
                      "Invariants.all carrieth \(all.count) of the \(definedCount) defined invariants -- a name was " +
                      "added without being listed, which is how four owners went unmeasured (GS-STRESS-001, round 727).")
         precondition(Set(all).count == all.count, "Invariants.all carrieth a duplicate")
+        precondition(Set(measuredFromTheModel + ownerKind) == Set(all),
+                     "the model/owner split must cover Invariants.all exactly")
+        precondition(Set(measuredFromTheModel).isDisjoint(with: Set(ownerKind)),
+                     "a name cannot be both model- and owner-kind")
     }()
     /// Touch to run the census check.
     public static func censusChecked() -> Int { _ = censusCheck; return all.count }
@@ -118,6 +173,14 @@ public enum CampaignDefect {
     public static let noDedup = "no_dedup"
     public static let malformedEscapes = "malformed_escapes"
     public static let unboundedCensus = "unbounded_census"
+    /// *** ONE DEFECT PER LIFECYCLE OWNER (round 727). *** *MEASURED: the timer and session clauses had NO defect of
+    /// their own -- only `noLeaseRelease` (named for leases) kept them standing. A lifecycle owner that cannot be
+    /// leaked alone is an owner whose invariant is not really measured.*
+    public static let noTimerRelease = "no_timer_release"
+    public static let noSessionRelease = "no_session_release"
+    /// The defects the court requireth to be CAUGHT, one per invariant family.
+    public static let all = [noLeaseRelease, noTimerRelease, noSessionRelease, noRetryCap, noDedup,
+                             malformedEscapes, unboundedCensus]
 }
 
 public struct Fault: Sendable, Equatable {
@@ -177,8 +240,18 @@ public struct CampaignResult: Sendable {
     public let leasesAfterShutdown: Int
     public let timersAfterShutdown: Int
     public let sessionsAfterShutdown: Int
+    /// *** GS-STRESS-001 (round 727): THE OWNERS THIS CENSUS COULD NOT ASK, AND THE INVARIANTS THAT WENT UNMEASURED. ***
+    /// *MEASURED: this struct ended at `sessionsAfterShutdown` -- NO `unmeasuredOwners`, no sentinel, no split -- so on
+    /// this isle "nothing is leaking" and "nobody asked my kind of owner" were INDISTINGUISHABLE. The Android isle
+    /// armed the opposite, and this isle now carrieth the same distinction.*
+    public let unmeasuredOwners: [String]
+    public let unmeasuredInvariants: [String]
+    /// The category this result belongeth to -- `resource-model`, and NEVER the production runtime.
+    public let category: String
 
     public var passed: Bool { failures.isEmpty }
+
+    public var isResourceModel: Bool { category == Category.resourceModel }
 
     public func replayHint() -> String {
         "seed=\(seed) cycles=\(cycles) first_failure=\(failures.first ?? "none")"
@@ -248,9 +321,9 @@ public final class StressCampaign {
             leases = max(0, leases - 1)
         }
         timers += 1
-        if !inFlight { timers = max(0, timers - 1) }
+        if !inFlight && defect != CampaignDefect.noTimerRelease { timers = max(0, timers - 1) }
         sessions += 1
-        if !inFlight { sessions = max(0, sessions - 1) }
+        if !inFlight && defect != CampaignDefect.noSessionRelease { sessions = max(0, sessions - 1) }
 
         if defect == CampaignDefect.noDedup || inbox[msg] == nil {
             inbox[msg] = (inbox[msg] ?? 0) + 1
@@ -285,11 +358,22 @@ public final class StressCampaign {
 
     public func shutdown() {
         if defect == CampaignDefect.noLeaseRelease { return }
-        leases = 0; timers = 0; sessions = 0
+        if defect != CampaignDefect.noTimerRelease { timers = 0 }
+        if defect != CampaignDefect.noSessionRelease { sessions = 0 }
+        leases = 0
     }
 
     public func run() -> CampaignResult {
         var failures: [String] = []
+        var unmeasuredOwners: [String] = []
+        // *** THE INVARIANTS THIS RUN COULD NOT MEASURE, CARRIED RATHER THAN ABSENT (round 727). *** This isle's
+        // protocol carrieth only the session hook plus the reservation hook; the other owner-kind names in
+        // `Invariants.ownerKind` (inventory leases, ACK work, observers) have NO hook here at all -- and with no owner
+        // handed in, NONE of them can be asked. They are named, so a reader cannot take the empty failure list for a
+        // clean census.
+        var unmeasuredInvariants: [String] = [Invariants.noLeakedInventoryLeases,
+                                              Invariants.pendingAckWork, Invariants.noLeakedObservers]
+        if owners.isEmpty { unmeasuredInvariants.insert(Invariants.noLeakedReservations, at: 0) }
         var censusHigh = 0
         var step = 0
         while step < cycles {
@@ -327,6 +411,18 @@ public final class StressCampaign {
                 failures.append("\(Invariants.noLeakedSessions): \(live) session slot(s) still live in the REAL "
                     + "owner '\(owner.ownerName)' after shutdown")
             }
+            // *** GS-STRESS-001 (round 727): THE SECOND OWNER, ASKED OF THIS ISLE TOO -- AND AN UNMEASURABLE ONE IS
+            // NAMED, NOT TREATED AS CLEAN. *** `liveReservations`' DEFAULT is `NOT_MEASURED`, so an owner that carrieth
+            // no reservations is NEVER a false zero. A leak in this kind was previously reported (if at all) under the
+            // SESSIONS invariant by the only existing conformance; it now carrieth its own name.
+            let reservations = owner.liveReservations()
+            if reservations == NOT_MEASURED {
+                unmeasuredOwners.append("\(owner.ownerName) (reservations)")
+                unmeasuredInvariants.append(Invariants.noLeakedReservations)
+            } else if reservations != 0 {
+                failures.append("\(Invariants.noLeakedReservations): \(reservations) writer reservation(s) still live "
+                    + "in the REAL owner '\(owner.ownerName)' after shutdown")
+            }
         }
         // GS-STRESS-001 (round 274): THE REPORTED INSTANCE IS CANONICAL, AND THIS IS A WITNESS REPAIR RATHER
         // THAN A BEHAVIOURAL ONE. `first(where:)` over a Dictionary chooseth WHICHEVER offending entry the
@@ -344,6 +440,16 @@ public final class StressCampaign {
             failures.append("\(Invariants.noDuplicateDelivery): msg_id \(over.key) was retried "
                             + "\(over.value) times, over the cap \(StressCampaign.retryCap)")
         }
+        // *** THE FAULT CAMPAIGN MUST ACTUALLY HAVE FIRED A REFUSING FAULT (round 727). *** *MEASURED: nothing
+        // asserted a scheduled fault was ever APPLIED -- the default density of 512 giveth an EMPTY schedule under 512
+        // cycles, and the T72 owner arm ran 64 cycles with zero faults.*
+        let refusalsExpected = schedule.faults.filter {
+            $0.kind == FaultKind.diskFull || $0.kind == FaultKind.corruption || $0.kind == FaultKind.malformed
+        }.count
+        if refusalsExpected > 0 && refusals < refusalsExpected {
+            failures.append("\(FAULT_CAMPAIGN_INACTIVE): \(refusalsExpected) refusing fault(s) were scheduled but "
+                + "only \(refusals) were refused -- the fault campaign did not fire")
+        }
         if censusHigh > bound {
             failures.append("\(Invariants.boundedCensus): the census reached \(censusHigh), "
                             + "over the plateau \(bound)")
@@ -353,6 +459,9 @@ public final class StressCampaign {
                               inboxRows: inbox.values.reduce(0, +),
                               deliveryAdvances: delivery.values.reduce(0, +),
                               refusals: refusals, leasesAfterShutdown: leases,
-                              timersAfterShutdown: timers, sessionsAfterShutdown: sessions)
+                              timersAfterShutdown: timers, sessionsAfterShutdown: sessions,
+                              unmeasuredOwners: unmeasuredOwners,
+                              unmeasuredInvariants: unmeasuredInvariants,
+                              category: Category.resourceModel)
     }
 }

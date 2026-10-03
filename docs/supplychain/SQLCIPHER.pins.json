@@ -1,0 +1,87 @@
+{
+  "schema": 2,
+  "note": "THE SUPPLY AUTHORITY for the iOS SQLCipher image. The TRUST ANCHOR is THIS REGISTER (a repo file, outside any runner's writable staging dir), never a sidecar co-located with a replaceable image. Each entry is scoped to an EXACT toolchain: the expected_output digest is valid ONLY for the recorded (xcode, sdk_version). A different Xcode/clang produceth different bytes from the same source, so a hosted runner whose toolchain is not listed here MUST be either provisioned to a listed toolchain or ADD its own measured entry (via verify_sqlcipher_artifact.py --record-entry) -- the hash gate is NEVER loosened to accommodate a different toolchain, and a different SDK is never cast as 'external'. The DEVICE build, signing and at-rest proof remain EXTERNAL.",
+  "library_name": "libsqlcipher.0.dylib",
+  "cipher_version_major": 4,
+  "required_symbols": [
+    "sqlite3_open_v2",
+    "sqlite3_close_v2",
+    "sqlite3_busy_timeout",
+    "sqlite3_exec",
+    "sqlite3_changes",
+    "sqlite3_errmsg",
+    "sqlite3_prepare_v2",
+    "sqlite3_step",
+    "sqlite3_finalize",
+    "sqlite3_bind_blob",
+    "sqlite3_bind_int",
+    "sqlite3_bind_int64",
+    "sqlite3_bind_null",
+    "sqlite3_bind_text",
+    "sqlite3_column_blob",
+    "sqlite3_column_bytes",
+    "sqlite3_column_int",
+    "sqlite3_column_int64",
+    "sqlite3_column_text",
+    "sqlite3_column_type"
+  ],
+  "sqlcipher_init_symbols": [
+    "sqlcipher_extra_init",
+    "sqlcipher_extra_shutdown"
+  ],
+  "sources": [
+    {
+      "id": "sqlcipher-ios",
+      "repo": "https://github.com/sqlcipher/sqlcipher.git",
+      "tag": "v4.17.0",
+      "commit": "810db22f575ee7cf94ea96a3e91622b5fcece3dc",
+      "recipe": {
+        "amalgamation": "make sqlite3.c",
+        "cflags": "-DSQLITE_HAS_CODEC -DSQLCIPHER_CRYPTO_CC -DSQLITE_EXTRA_INIT=sqlcipher_extra_init -DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown -DSQLITE_TEMP_STORE=2 -DSQLITE_THREADSAFE=1",
+        "link_frameworks": [
+          "Security",
+          "CoreFoundation"
+        ],
+        "crypto_provider": "CommonCrypto",
+        "install_name": "@rpath/libsqlcipher.0.dylib",
+        "compatibility_version": "4.0.0",
+        "current_version": "4.17.0"
+      },
+      "modes": {
+        "ios-simulator": {
+          "target": "arm64-apple-ios16.0-simulator",
+          "sdk": "iphonesimulator",
+          "platform": "IOSSIMULATOR",
+          "arch": "arm64",
+          "minos": "16.0",
+          "toolchain": {
+            "xcode": "27.0",
+            "sdk_version": "iPhoneSimulator27.0.sdk"
+          },
+          "expected_output": {
+            "sha256": "5361d7db210fb84cbf6caa7cba5985c9a05a6cff2559fa5767e40ef3a9406b04",
+            "bytes": 1224888
+          },
+          "toolchain_scoping": "expected_output is valid ONLY for this exact toolchain; a different Xcode/SDK must record its own measured entry, never substitute or loosen"
+        },
+        "macos": {
+          "target": "arm64-apple-macos13.0",
+          "sdk": "macosx",
+          "platform": "MACOS",
+          "arch": "arm64",
+          "minos": "13.0",
+          "toolchain": {
+            "xcode": "27.0",
+            "sdk_version": "MacOSX.sdk"
+          },
+          "expected_output": {
+            "sha256": "8b352d0155aa96a1b8718b7ec3d3024cf7ae72b764213a13ceaaff120f04b7d1",
+            "bytes": 1225016
+          },
+          "toolchain_scoping": "expected_output is valid ONLY for this exact toolchain; a different Xcode/SDK must record its own measured entry, never substitute or loosen"
+        }
+      }
+    }
+  ],
+  "consumed_by": "the iOS engine loader (SqlCipherDylibEngine) via the GENERATED baked expectation (SQLCipherTrustedExpectation, emitted by verify_sqlcipher_artifact.py --emit-swift) verified before dlopen; and the mandatory native courts. NOTE: the earlier 'bare dlopen(libsqlcipher.0.dylib)' consumption is OBSOLETE -- the production loader consumes the baked constant (commit/tag/repo/libraryName/mode/platform/arch/sha256/bytes) and refuseth any image that is not those bytes."
+}

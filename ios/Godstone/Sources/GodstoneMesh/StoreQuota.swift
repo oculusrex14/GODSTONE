@@ -35,6 +35,10 @@ public enum Pressure: String, CaseIterable, Sendable {
     case verifiedTrustPins = "VERIFIED_TRUST_PINS"
     case revokedTrustPins = "REVOKED_TRUST_PINS"
     case deliveryRows = "DELIVERY_ROWS"
+    /// The INBOX row ceiling is its OWN typed category. The inbox cap and the delivery cap are DISTINCT
+    /// resources: reporting the inbox refusal as `.deliveryRows` would name the wrong resource and hide
+    /// which ceiling was reached.
+    case inboxRows = "INBOX_ROWS"
 }
 
 public enum StoreDeliveryState: String, CaseIterable, Sendable {
@@ -137,7 +141,7 @@ public struct StoreQuota {
         if held + candidateSize > heldFrameHardCap { return .rejectedHeldCap }
         if total + candidateSize > totalPrivateStoreQuota { return .rejectedTotalQuota }
         if del >= Int64(deliveryRowCap) { return .refusedUnderPressure(.deliveryRows) }
-        if inbox >= Int64(inboxRowCap) { return .refusedUnderPressure(.deliveryRows) }
+        if inbox >= Int64(inboxRowCap) { return .refusedUnderPressure(.inboxRows) }
         if tomb >= Int64(tombstoneRowCap) { return .refusedUnderPressure(.unexpiredTombstones) }
         if trust >= Int64(trustIdentityCap) { return .refusedUnderPressure(.verifiedTrustPins) }
         return .accepted
@@ -179,7 +183,17 @@ public struct StoreQuota {
 /// NOT reentrantly: a registration made during dispatch is carried to the NEXT commit round.
 /// An aborted transaction discards the notifications registered within it.
 public final class ObservationLease: @unchecked Sendable {
-    public final class LeaseToken: @unchecked Sendable { public let id: Int; init(_ id: Int) { self.id = id } }
+    /// A token is LIVE from registration until it is unregistered, released (or its store closes), or the
+    /// transaction it was registered within ABORTS. `cancelled` is the O(1) liveness witness a mid-dispatch
+    /// mutation flips -- the dispatch loop checks it before each callback, so a disposal performed DURING a
+    /// dispatch (by an earlier callback) is honoured for the very callback that disposal targeted.
+    /// It is `fileprivate`, NOT public: no caller can read it (the events are the public surface) nor RESET it
+    /// to resurrect a disposed registration; only the owning lease (same file) invalidates it.
+    public final class LeaseToken: @unchecked Sendable {
+        public let id: Int
+        fileprivate var cancelled = false
+        init(_ id: Int) { self.id = id }
+    }
     private var registrations: [(LeaseToken, () -> Void)] = []
     private var deferred: [(LeaseToken, () -> Void)] = []     // registered in an open tx (abandoned on abort) or during dispatch (fire NEXT round)
     private var nextId = 0
@@ -191,6 +205,7 @@ public final class ObservationLease: @unchecked Sendable {
     // a commit ends the transaction; notifications registered within it stay pending and are promoted by the next afterCommit
     public func commit() { inTx = false }
     // an abort DISCARDS the notifications registered within the transaction -- they must never be promoted/fired
+    // (a deferred token is removed before it can ever enter a dispatch snapshot, so no token check is needed here)
     public func abort() { inTx = false; deferred.removeAll() }
     @discardableResult public func register(_ observer: @escaping () -> Void) -> LeaseToken {
         let t = LeaseToken(nextId); nextId += 1
@@ -198,22 +213,35 @@ public final class ObservationLease: @unchecked Sendable {
         return t
     }
     public func unregisterBy(_ token: LeaseToken) {
+        token.cancelled = true
         registrations.removeAll { $0.0 === token }; deferred.removeAll { $0.0 === token }
     }
     /// GS-STORE-005: THE CENSUS OF THE LIVING REGISTRATIONS. A disposed registration must leave this at its
     /// baseline, and a store that closeth must return it to zero -- a count the courts can MEASURE rather than
     /// infer from what did or did not fire.
     public var registrationCount: Int { registrations.count + deferred.count }
-    /// Release EVERY registration (a store closing, or a wipe).
-    public func releaseAll() { registrations.removeAll(); deferred.removeAll() }
+    /// Release EVERY registration (a store closing, or a wipe). Every token is invalidated -- cancelled by its
+    /// own token only, as `unregisterBy` doeth -- so a release performed DURING a dispatch leaveth the in-flight
+    /// snapshot's remaining callbacks INERT.
+    public func releaseAll() {
+        for (t, _) in registrations { t.cancelled = true }
+        for (t, _) in deferred { t.cancelled = true }
+        registrations.removeAll(); deferred.removeAll()
+    }
     public func afterCommit() {
-        if inTx { return }
+        // NOT reentrant: a dispatch already in flight must not re-enter and fire the same observers twice. A
+        // nested afterCommit (e.g. a callback itself settling) is a no-op -- the standing set is left to the
+        // in-flight pass, and anything registered during the dispatch carries to the NEXT round.
+        if inTx || dispatching { return }
         registrations.append(contentsOf: deferred); deferred.removeAll()
         dispatching = true
         let pending = registrations
-        var fired = Set<Int>()
         var i = 0
-        while i < pending.count { if fired.insert(pending[i].0.id).inserted { pending[i].1() }; i += 1 }
+        while i < pending.count {
+            let (t, fire) = pending[i]
+            if !t.cancelled { fire() }
+            i += 1
+        }
         dispatching = false
     }
 }

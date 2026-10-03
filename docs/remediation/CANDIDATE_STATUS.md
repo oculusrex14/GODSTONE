@@ -1,5 +1,16 @@
 # Candidate status — AUDIT-003-R1, COMPUTED at round 122 (every figure re-derived from the ledger)
 
+> **CURRENT STATE (2026-10-02) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
+> candidate narrative from the round-122 era and is preserved verbatim; its SHAs, lane counts and class
+> membership are NOT the current state.* **The current canonical state is DERIVED by
+> `scripts/build_structured_closure.py`: builder status `REMEDIATION_IN_PROGRESS`, 17 internal obligations
+> OPEN across 6 findings, `verified_fixed = 0`, 5 external obligations (`gs-final-004.native-engine-half`,
+> `gs-runtime-001.android-keystore`, `gs-store-002.sqlcipher-engine`, `gs-stress-001.device-radio`,
+> `gs-ux-001.human-accessibility-acceptance`).** *The rc14 candidate, its tag object and its attestation
+> remain immutable historical evidence; the rc14 attestation's blanket internal-completion verdict is NOT a
+> current completion claim.* **NO candidate carries a valid freeze for the current tree, and no READY status
+> is asserted.**
+
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
 control; THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED; NO finding carrieth `closure_evidence`.
 

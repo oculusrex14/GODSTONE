@@ -44,8 +44,8 @@ public actor ArchiveLibrary: ArchiveReading {
 
     /// T50 (s17): the provenance probe, forwarded nonisolated to the
     /// repository's own locked roads -- thread-safe by the repository's lock.
-    nonisolated public func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata? {
-        repository.sourceMetadata(documentId: documentId)
+    nonisolated public func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata? {
+        try repository.sourceMetadataChecked(documentId: documentId)
     }
 
     /// Release the native handle now rather than trust the timing of ARC --

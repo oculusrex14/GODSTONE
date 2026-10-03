@@ -77,14 +77,15 @@ class GsFinal003StartupDecisionTest {
      * *** AND THE GENUINE CLEAN START IS STILL PERMITTED. ***
      *
      * *The positive control. Without it, the arm above would pass trivially if the gate refused EVERYTHING -- the
-     * mirror-image defect. A proven clean estate is the ONLY case that may open private stores.*
+     * mirror-image defect. A proven clean FIRST LAUNCH is one of the two cases that may open private stores; the other
+     * is a wipe that RAN TO ITS END (`WIPE_COMPLETED`), which the arm below distinguishes rather than collapses.*
      */
     @Test
     fun theOnlyCleanEstateIsNothingToResume() {
         val clean = WipeStepResult.Refused(WipeRefusalCause.NOTHING_TO_RESUME, "nothing to resume; ...")
         assertEquals(StartupWipeDecision.CLEAN_START, decisionFor(clean))
         assertTrue(
-            "and CLEAN_START is the ONLY case that may open private stores",
+            "and CLEAN_START is one of the TWO cases that may open private stores (the other is WIPE_COMPLETED)",
             StartupWipeDecision.CLEAN_START.allowsPrivateConstruction,
         )
         assertFalse("and it needs no operator", StartupWipeDecision.CLEAN_START.requiresOperator)
@@ -104,50 +105,88 @@ class GsFinal003StartupDecisionTest {
             WipeRefusalCause.WIPE_ALREADY_PENDING to StartupWipeDecision.RECOVERY_PENDING,
             WipeRefusalCause.TERMINAL_STEP_FAILURE to StartupWipeDecision.TERMINAL_FAILURE,
             WipeRefusalCause.JOURNAL_LOST to StartupWipeDecision.CORRUPT_JOURNAL,
+            // *** A9: A CHECKPOINT THAT DID NOT REACH DISK LEAVETH A WIPE OUTSTANDING AND RESUMABLE -- NOT CLEAN. ***
+            // *The sixth cause joined the enum with the durable-checkpoint repair, and this arm's exhaustiveness check
+            // (`values().size == expected.size + 1`) is what NOTICED it: a cause added to the enum WITHOUT a decision
+            // mapping would silently fall through `decide()`'s `when` -- so the map IS the coverage.*
+            WipeRefusalCause.CHECKPOINT_NOT_DURABLE to StartupWipeDecision.RECOVERY_PENDING,
         )
         for ((cause, decision) in expected) {
             val actual = decisionFor(WipeStepResult.Refused(cause, "text is irrelevant: $cause"))
             assertEquals("cause $cause must map to $decision", decision, actual)
-            assertFalse("nothing but CLEAN_START may open private stores; $cause did", actual.allowsPrivateConstruction)
+            assertFalse("no refusal cause may open private stores; $cause did", actual.allowsPrivateConstruction)
         }
         assertEquals("every cause is covered", WipeRefusalCause.values().size, expected.size + 1)
     }
 
     /**
-     * *** `AlreadyAtOrPast` IS NOT SYNONYMOUS WITH CLEAN -- THE SECOND DEFECT IN THE SAME GATE. ***
+     * *** `AlreadyAtOrPast` IS NOT SYNONYMOUS WITH A FIRST LAUNCH -- THE SECOND DEFECT IN THE SAME GATE. ***
      *
      * *The shipped arm returned `true` UNCONDITIONALLY for `AlreadyAtOrPast`. But that result answers at ANY rung
      * already passed -- including a mid-ladder one, when the journal's last durable entry is a rung reached before a
      * crash. So the old gate permitted private stores over an OUTSTANDING WIPE on the strength of the result's TYPE
-     * alone. Only a terminal IDLE rank is a clean estate.*
+     * alone. Only a terminal IDLE rank is a finished estate.*
+     *
+     * *** AND A FINISHED WIPE IS `WIPE_COMPLETED`, NOT `CLEAN_START` -- THE iOS CONTRACT, WHICH THIS ISLE NOW MATCHETH
+     * CASE FOR CASE. *** **A device that WAS wiped is a different fact from a device on which nothing ever happened**,
+     * *and a rendered surface must be able to tell them apart; both permit construction, because neither has anything
+     * left to erase.*
      */
     @Test
-    fun alreadyAtOrPastIsCleanOnlyAtTheTerminalRung() {
+    fun alreadyAtOrPastIsTerminalOnlyAtTheIdleRung() {
         assertEquals(
-            "a terminal IDLE rank is a clean estate",
-            StartupWipeDecision.CLEAN_START,
+            "a terminal IDLE rank is a finished wipe -- a legitimate estate to start from",
+            StartupWipeDecision.WIPE_COMPLETED,
             decisionFor(WipeStepResult.AlreadyAtOrPast(WipeJournalState.IDLE)),
         )
         for (rung in WipeJournalState.values().filter { it != WipeJournalState.IDLE }) {
             assertEquals(
-                "a wipe parked at $rung is OUTSTANDING, not clean -- the old arm said `true` for this",
+                "a wipe parked at $rung is OUTSTANDING, not finished -- the old arm said `true` for this",
                 StartupWipeDecision.RECOVERY_PENDING,
                 decisionFor(WipeStepResult.AlreadyAtOrPast(rung)),
             )
         }
     }
 
-    /** *** AND AN ADVANCE IS CLEAN ONLY IF IT LANDED ON THE TERMINAL RUNG. *** */
+    /** *** AND AN ADVANCE IS TERMINAL ONLY IF IT LANDED ON THE TERMINAL RUNG. *** */
     @Test
-    fun anAdvanceIsCleanOnlyWhenItReachesIdle() {
+    fun anAdvanceIsTerminalOnlyWhenItReachesIdle() {
         assertEquals(
-            StartupWipeDecision.CLEAN_START,
+            StartupWipeDecision.WIPE_COMPLETED,
             decisionFor(WipeStepResult.Advanced(WipeJournalState.NEW_IDENTITY, WipeJournalState.IDLE)),
         )
         assertEquals(
             StartupWipeDecision.RECOVERY_PENDING,
             decisionFor(WipeStepResult.Advanced(WipeJournalState.REQUESTED, WipeJournalState.KEYS_ERASED)),
         )
+    }
+
+    /**
+     * *** THE TWO PERMITTING CASES ARE DISTINCT, AND BOTH ARE REACHABLE. ***
+     *
+     * *A FIRST LAUNCH (`Refused(NOTHING_TO_RESUME)` with a readable record) and a FINISHED WIPE (`AlreadyAtOrPast(IDLE)`
+     * / `Advanced(_, IDLE)`) both permit -- and they are DIFFERENT decisions, which is the iOS isle's own distinction
+     * between `cleanStart` and `wipeCompleted`.* **A caller that could not tell them apart could not tell a user whether
+     * their device had ever been wiped.**
+     */
+    @Test
+    fun aFirstLaunchAndAFinishedWipeAreDistinctAndBothPermit() {
+        assertEquals(
+            StartupWipeDecision.CLEAN_START,
+            decisionFor(WipeStepResult.Refused(WipeRefusalCause.NOTHING_TO_RESUME, "no wipe was ever requested here")),
+        )
+        assertEquals(
+            StartupWipeDecision.WIPE_COMPLETED,
+            decisionFor(WipeStepResult.AlreadyAtOrPast(WipeJournalState.IDLE)),
+        )
+        assertNotEquals(
+            "*** THE TWO PERMITTING CASES MUST NOT COLLAPSE INTO ONE: they are different facts about a device. ***",
+            StartupWipeDecision.CLEAN_START, StartupWipeDecision.WIPE_COMPLETED,
+        )
+        for (permitted in listOf(StartupWipeDecision.CLEAN_START, StartupWipeDecision.WIPE_COMPLETED)) {
+            assertTrue("$permitted must permit private construction", permitted.allowsPrivateConstruction)
+            assertFalse("$permitted must summon no operator", permitted.requiresOperator)
+        }
     }
 
     /** *** A RETRYABLE FAILURE REFUSES BUT DOES NOT ALARM AN OPERATOR: A LATER COMPOSITION MAY FINISH IT. *** */

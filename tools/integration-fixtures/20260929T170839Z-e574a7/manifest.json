@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "protocol_version": 1,
+  "run_id": "20260929T170839Z-e574a7",
+  "generated_at": "2026-09-29T17:11:12Z",
+  "input_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e",
+  "toolchain": {
+    "swift": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1) Target: arm64-apple-macosx26.0 swift-driver version: 1.168.6",
+    "xcodebuild": "Xcode 27.0 Build version 27A266a",
+    "java": "openjdk version \"17.0.20.1\" 2026-08-18 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1) OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)",
+    "python": "3.14.4 (macOS-26.6.2-arm64-arm-64bit-Mach-O)",
+    "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "gradle": "------------------------------------------------------------ Gradle 8.9 ------------------------------------------------------------  Build time:    2024-07-11 14:37:41 UTC Revision:      d536ef36a191",
+    "android_sdk": "unset"
+  },
+  "worker_launches": [
+    {
+      "name": "android-prepare-outboundEnqueue",
+      "platform": "android",
+      "role": "crash-prepare",
+      "variant": "outboundEnqueue",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=crash-prepare",
+        "-Dgodstone.integration.variant=outboundEnqueue",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-outboundEnqueue",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-prepare-outboundEnqueue.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-prepare-outboundEnqueue.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-outboundEnqueue"
+    },
+    {
+      "name": "android-recover-outboundEnqueue",
+      "platform": "android",
+      "role": "crash-recover",
+      "variant": "outboundEnqueue",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=crash-recover",
+        "-Dgodstone.integration.variant=outboundEnqueue",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-outboundEnqueue",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-recover-outboundEnqueue.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-recover-outboundEnqueue.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-outboundEnqueue"
+    },
+    {
+      "name": "android-prepare-inboundCommit",
+      "platform": "android",
+      "role": "crash-prepare",
+      "variant": "inboundCommit",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=crash-prepare",
+        "-Dgodstone.integration.variant=inboundCommit",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-inboundCommit",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-prepare-inboundCommit.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-prepare-inboundCommit.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-inboundCommit"
+    },
+    {
+      "name": "android-recover-inboundCommit",
+      "platform": "android",
+      "role": "crash-recover",
+      "variant": "inboundCommit",
+      "argv": [
+        "/Users/oculus/Projects/GODSTONE/android/gradlew",
+        "-p",
+        "/Users/oculus/Projects/GODSTONE/android",
+        ":mesh:board1IntegrationWorker",
+        "--no-daemon",
+        "--console=plain",
+        "--rerun-tasks",
+        "-Dgodstone.integration.role=crash-recover",
+        "-Dgodstone.integration.variant=inboundCommit",
+        "-Dgodstone.integration.root=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-inboundCommit",
+        "-Dgodstone.integration.deadlineSeconds=300.0",
+        "-Dgodstone.integration.in=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-recover-inboundCommit.in",
+        "-Dgodstone.integration.out=/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/android-recover-inboundCommit.out"
+      ],
+      "estate": "/Users/oculus/Projects/GODSTONE/docs/remediation/evidence/board1-rc11-crash/gs_int_coord_dyxlkupy/estate-crash-inboundCommit"
+    }
+  ],
+  "transcript": {
+    "path": "transcript.bin",
+    "length": 508,
+    "sha256": "6a547ada7b5db6cbae7a00d7046f747fe2a018d31eed77e772475c9e79c9bfeb",
+    "framing": "u32be header_len | header(json,utf8) | u32be payload_len | payload"
+  },
+  "record_count": 2,
+  "records": [
+    {
+      "sequence": 1,
+      "platform": "android",
+      "producer": "android-recover-outboundEnqueue",
+      "target": "store",
+      "direction": "android-crash",
+      "characteristic": "",
+      "kind": "complete",
+      "epoch": null,
+      "payload_offset": 0,
+      "payload_length": 0,
+      "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "frame_length": 260,
+      "source_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e",
+      "note": "durable-boundary recovery for outboundEnqueue in a fresh JVM"
+    },
+    {
+      "sequence": 2,
+      "platform": "android",
+      "producer": "android-recover-inboundCommit",
+      "target": "store",
+      "direction": "android-crash",
+      "characteristic": "",
+      "kind": "complete",
+      "epoch": null,
+      "payload_offset": 260,
+      "payload_length": 0,
+      "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "frame_length": 248,
+      "source_digest": "90d3973648d99772b588f49e10450553924024bae91016c876b213423836197e",
+      "note": "durable-boundary recovery for inboundCommit in a fresh JVM"
+    }
+  ]
+}

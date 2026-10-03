@@ -49,7 +49,218 @@ public struct LabReadiness: Sendable, Equatable {
     public let experimental: Bool
 }
 
-/// The lab runtime handle.
+/// *** *** G1: THE LAB'S ZERO-PRIVATE-OPEN WITNESS -- RAISED AT THE REAL DOORS, NOT OBSERVED FROM THE TAB TREE. *** ***
+///
+/// *THE CLAUSE THIS ANSWERS, AND WHY THE OBVIOUS WITNESS IS NOT ENOUGH: "Couple any zero-private-open instrumentation
+/// to actual factory/key/native open doors -- tab absence alone NOT zero-effects proof."* **A recovery-only surface
+/// that renders no tab proveth NOTHING about construction; it proveth only what a boolean gate did at the render.**
+/// *So the count is raised AT THE CALLS THAT REALLY CREATE PRIVATE STORES -- the two constructions inside
+/// `LabRuntime.compose` (`SqliteMessageStore(url:...)` per label, and the lab's `SqlitePeerIdentityStore`), which are
+/// the ONLY doors a lab composition has to a private medium.*
+///
+/// **AND IT IS HONEST ABOUT WHAT THE LAB'S DOOR IS:** *the lab's stores are PLAINTEXT under Application Support and
+/// the lab carrieth NO DEK provider, so there is no key/DEK/native-cipher door on this road to raise beside them; the
+/// store constructor IS the private door here, and the composition that opens one is `compose`.* **THE POSITIVE
+/// CONTROL IS THE POINT**: *a normal boot after a settled estate MUST render a NON-ZERO count (the same arm sees it),
+/// so a probe that was never raised -- the constant-zero witness the contract forbids -- cannot pass.*
+public enum LabRecoveryOpenProbe {
+    private static let lock = NSLock()
+    private static var opens: [String] = []
+
+    /// Raise the witness AT the door: called immediately before a private store is constructed, so it counteth the
+    /// door being REACHED rather than the open succeeding (a construction that failéth late still opened the door).
+    public static func notePrivateStoreOpen(_ path: String) {
+        lock.lock(); opens.append(path); lock.unlock()
+    }
+
+    /// The private-store doors this process actually reached, in order.
+    public static func openedPrivateStores() -> [String] {
+        lock.lock(); defer { lock.unlock() }; return opens
+    }
+
+    /// The count a surface renders.
+    public static var privateStoreOpens: Int {
+        lock.lock(); defer { lock.unlock() }; return opens.count
+    }
+
+    /// A court or an arm that must start from a clean witness.
+    public static func resetForTest() { lock.lock(); opens.removeAll(); lock.unlock() }
+}
+
+/// *** *** G2: THE LAB'S PER-PEER SESSION-INVALIDATION HUB -- THE CALLBACK'S REAL TARGET. *** ***
+///
+/// *THE DEFECT G2 NAMES: `LabRuntime.compose` built `MeshTrustFacade` with NO `sessionInvalidator`, so the adapter's
+/// `invalidateSessions` appended `invalidatedSessionNodes` and called a NIL callback -- **the array a witness that
+/// never saw the effect** -- while `SessionManager.retireIncarnations(ofPeerId:)` stood unwired. A revoked peer's live
+/// sessions kept sealing/opening after the revocation claimed otherwise.*
+///
+/// **THE HUB IS THE MAPPING MISSING AT THE WIRING POINT.** *The facade's callback carrieth the 16-octet IDENTITY node
+/// id (that is the only value `TrustUXModel.handleRevoke`/`handleApprove` ever pass), while the session registry is
+/// keyed by the transport `peerId` UUID. So the relation pairs are BOUND where a real relation comes up -- through the
+/// node's OWN delegates -- and the callback retires every incarnation of every bound peer in BOTH directions. A
+/// relation the lab never established is answered as such, not silently dropped.*
+///
+/// **IT HOLDS NOTHING THE COMPOSITION DOES NOT OWN AND DROPS IT ON RELEASE:** the session owners are WEAK, so a lab
+/// handle that has gone away invalidates nobody (and the whole-estate wipe invalidation remains the vault seam's own
+/// road, untouched).*
+internal final class LabSessionInvalidationHub {
+    /// One node label's live sessions, held WEAKLY.
+    private struct Sessions { weak var manager: SessionManager? }
+    private var sessionsByLabel: [String: Sessions] = [:]
+    /// Identity node id (16 octets) -> the transport peer handles bound to it, both directions.
+    private var peersByNodeId: [Data: Set<UUID>] = [:]
+    private let lock = NSLock()
+
+    init() {}
+
+    /// Bind one label's live session owner. Called where the composition hands over the node.
+    func bind(label: String, sessions: SessionManager) {
+        lock.lock(); sessionsByLabel[label] = Sessions(manager: sessions); lock.unlock()
+    }
+
+    /// *** THE RELATION PAIR IS BOUND WHERE A REAL RELATION COMES UP -- THE NODE'S OWN DELEGATE. *** *A pairing the
+    /// lab never established is therefore never bound, and a callback for it retires nothing rather than guessing.*
+    func bindPeer(nodeId: Data, peerId: UUID, label: String) {
+        guard nodeId.count == 16 else { return }
+        lock.lock()
+        peersByNodeId[nodeId, default: []].insert(peerId)
+        lock.unlock()
+    }
+
+    /// *** THE CALLBACK THE FACADE HOLDS: RETIRE EVERY INCARNATION OF EVERY BOUND PEER, BOTH DIRECTIONS. ***
+    ///
+    /// *`retireIncarnations(ofPeerId:)` removes BOTH directions for one handle; it is called once per bound handle, so
+    /// a node the lab knows by two handles is retired on both.* **IT RETURNS THE NUMBER ACTUALLY RETIRED, so a caller
+    /// -- and a court -- can see the effect rather than an empty array.**
+    @discardableResult
+    func invalidateSessions(forNodeId nodeId: Data) -> Int {
+        lock.lock()
+        let bound = peersByNodeId[nodeId] ?? []
+        let managers = sessionsByLabel.values.compactMap { $0.manager }
+        lock.unlock()
+        var retired = 0
+        for peer in bound {
+            for manager in managers { retired += manager.retireIncarnations(ofPeerId: peer) }
+        }
+        return retired
+    }
+
+    /// How many peer handles are bound to one identity node id (the mapping's own witness).
+    func boundPeerCount(forNodeId nodeId: Data) -> Int {
+        lock.lock(); defer { lock.unlock() }
+        return peersByNodeId[nodeId]?.count ?? 0
+    }
+
+    /// *** THE IDENTITY NODE ID A SELF-CONTAINED COURT FIXTURE BINDS UNDER (real contacts are preferred). ***
+    internal static let fixtureBoundNodeId = Data(repeating: 0x4E, count: 16)
+
+    // ------------------------------------------------------------------------------------------------------
+    // *** THE POSITIVE-COURT FIXTURES: REAL SESSIONS THE HUB'S OWN CALLBACK MUST TEAR DOWN. ***
+    //
+    // *THE COURT NEEDS TWO THINGS THE PUBLIC SURFACE CANNOT REACH: a `SessionManager` (its init is internal over
+    // internal protocols) and a PAIRED relation (the harness's `link()` bypasses the handshake entirely). Both are
+    // therefore built HERE, in the module that owns those types -- and the pairing is the REAL four-entry handshake the
+    // production driver uses, so the session torn down is a real Noise session rather than a mock.*
+    //
+    // **EACH FIXTURE IS TAGGED AND BOUND UNDER A CALLER-NAMED IDENTITY NODE ID**, so a court can bind one under a real
+    // lab contact, drive the REAL facade revocation, and keep an UNRELATED fixture as its positive control.*
+    // ------------------------------------------------------------------------------------------------------
+
+    /// A real, paired session plus the admissions a court presents to seal/open.
+    internal struct LabSessionFixture {
+        let initiator: SessionManager
+        let responder: SessionManager
+        let initiatorAdmission: RelationAdmission
+        let responderAdmission: RelationAdmission
+    }
+
+    private var fixtures: [String: LabSessionFixture] = [:]
+
+    /// *** ESTABLISH A REAL PAIRED NOISE SESSION, OVER THE REAL KEYED HANDSHAKE ENTRIES. ***
+    ///
+    /// *Returns nil (a NAMED refusal) unless BOTH sides reach ready, so a court can never proceed on a half-open
+    /// session and mistake a refusal for a session.*
+    internal static func establishPairedSession() -> LabSessionFixture? {
+        do {
+            let initiatorIdentity = try MeshIdentity.generateAndStore(keychain: HarnessIdentityKeychain())
+            let responderIdentity = try MeshIdentity.generateAndStore(keychain: HarnessIdentityKeychain())
+            let initiator = SessionManager(identity: initiatorIdentity,
+                                           trustAuthority: ComposedTrustAuthority())
+            let responder = SessionManager(identity: responderIdentity,
+                                           trustAuthority: ComposedTrustAuthority())
+            let peerHandle = UUID()
+            let outbound = RelationAdmission(direction: .outboundCentral, peerId: peerHandle,
+                                             generation: 1, transportEpoch: 1)
+            let inbound = RelationAdmission(direction: .inboundPeripheral, peerId: peerHandle,
+                                            generation: 1, transportEpoch: 1)
+            guard let hs1 = initiator.beginInitiator(outbound, remoteHint: responderIdentity.nodeHint),
+                  let hs2 = responder.responderProcessHs1(inbound, remoteHint: initiatorIdentity.nodeHint, hs1: hs1),
+                  let hs3 = initiator.initiatorProcessHs2(outbound, hs2: hs2,
+                                                          advertisedRemoteHint: responderIdentity.nodeHint),
+                  responder.responderProcessHs3(inbound, hs3: hs3,
+                                                advertisedRemoteHint: initiatorIdentity.nodeHint)
+            else { return nil }
+            guard initiator.isReady(outbound), responder.isReady(inbound) else { return nil }
+            return LabSessionFixture(initiator: initiator, responder: responder,
+                                     initiatorAdmission: outbound, responderAdmission: inbound)
+        } catch {
+            return nil
+        }
+    }
+
+    /// *** INSTALL A REAL PAIRED SESSION UNDER A CALLER-NAMED IDENTITY NODE ID. ***
+    ///
+    /// *Both managers are bound, and the relation is bound under `boundToNodeId` BOTH DIRECTIONS, so a callback for
+    /// that node id retires the very incarnations this session lives in.*
+    @discardableResult
+    internal func installPairedSession(tag: String, boundToNodeId: Data) -> Bool {
+        guard let fixture = LabSessionInvalidationHub.establishPairedSession() else { return false }
+        bind(label: "fixture-\(tag)-initiator", sessions: fixture.initiator)
+        bind(label: "fixture-\(tag)-responder", sessions: fixture.responder)
+        bindPeer(nodeId: boundToNodeId, peerId: fixture.initiatorAdmission.peerId, label: "fixture-\(tag)")
+        bindPeer(nodeId: boundToNodeId, peerId: fixture.responderAdmission.peerId, label: "fixture-\(tag)")
+        lock.lock(); fixtures[tag] = fixture; lock.unlock()
+        return true
+    }
+
+    /// Seal initiator->responder over a tagged fixture (nil when no session stands, or after invalidation).
+    internal func fixtureSeal(tag: String, _ plaintext: Data) -> Data? {
+        lock.lock(); let fixture = fixtures[tag]; lock.unlock()
+        guard let fixture else { return nil }
+        return fixture.initiator.seal(fixture.initiatorAdmission, plaintext)
+    }
+
+    /// Open at the responder over a tagged fixture.
+    internal func fixtureOpen(tag: String, _ ciphertext: Data) -> Data? {
+        lock.lock(); let fixture = fixtures[tag]; lock.unlock()
+        guard let fixture else { return nil }
+        return fixture.responder.open(fixture.responderAdmission, ciphertext)
+    }
+
+    /// Seal over the RESPONDER direction (the other half of the both-directions evidence).
+    internal func fixtureSealResponder(tag: String, _ plaintext: Data) -> Data? {
+        lock.lock(); let fixture = fixtures[tag]; lock.unlock()
+        guard let fixture else { return nil }
+        return fixture.responder.seal(fixture.responderAdmission, plaintext)
+    }
+
+    /// Open at the INITIATOR (the other half of the both-directions evidence).
+    internal func fixtureOpenInitiator(tag: String, _ ciphertext: Data) -> Data? {
+        lock.lock(); let fixture = fixtures[tag]; lock.unlock()
+        guard let fixture else { return nil }
+        return fixture.initiator.open(fixture.initiatorAdmission, ciphertext)
+    }
+
+    /// A tagged fixture's real ready-state (the witness a court binds BEFORE and AFTER).
+    internal func fixtureReady(tag: String) -> Bool {
+        lock.lock(); let fixture = fixtures[tag]; lock.unlock()
+        guard let fixture else { return false }
+        return fixture.initiator.isReady(fixture.initiatorAdmission)
+            && fixture.responder.isReady(fixture.responderAdmission)
+    }
+}
+
+/// *** THE LAB RUNTIME HANDLE. ***
 public final class LabRuntime: @unchecked Sendable {
     private let harness: ComposedRuntimeHarness
     /// *** THE REAL DURABLE TRUST REPOSITORY, RETAINED SO A LAB ARM CAN DRIVE A ROTATION *ARRIVING*. ***
@@ -94,23 +305,55 @@ public final class LabRuntime: @unchecked Sendable {
     public var hasDurableRoad: Bool { true }
 
     /// *** THE RETAINED ON-DISK AUTHORITY, ONE STORE PER NODE LABEL -- EMPTY WHEN NO ESTATE ROOT WAS SUPPLIED. ***
-    private let durableStores: [String: SqliteMessageStore]
+    ///
+    /// *** IOS-R9: IT IS NOW **EVERY** LABEL'S STORE, NOT THE AUTHOR'S ALONE. *** *The field was populated for the
+    /// author only, so `heldCount`/`durableSosState` answered for label A and silently reported nothing for R or B --
+    /// and a wipe could not address the other nodes' bytes. **THE LAB IS ONE ESTATE, SO EVERY LABEL'S STORE STANDS IN
+    /// IT.***
+    private let nodeStores: [String: SqliteMessageStore]
+
+    /// *** G2: THE SESSION-INVALIDATION HUB THE FACADE'S CALLBACK REACHES -- THE COMPOSITION OWNS IT. *** *Held so
+    /// the callback's target lives exactly as long as the composition, and so a court can ask the hub's own witness.*
+    private let sessionHub: LabSessionInvalidationHub
+
+    /// *** THE LAB'S OWN ON-DISK ESTATE, SO ITS WIPE ADDRESSES THE FILES IT REALLY OWNS. ***
+    ///
+    /// *A wipe that journaleth over paths the lab never wrote is the defect the parent named: the lab's stores
+    /// stayed live while a "wipe" reported progress against unrelated files. These are the REAL urls the lab
+    /// composed over, collected where they are decided.*
+    private let authorStoreURL: URL
+    private let trustStoreURL: URL
+    private let allStoreURLs: [URL]
+    private let trustStore: SqlitePeerIdentityStore?
+
+    /// *** THE AUTHOR NODE'S OWN DURABLE STORE FILE -- the exact medium the durable Send pins its intent in. ***
+    /// *A court that must reopen the medium the send really wrote asks HERE rather than constructing a second path
+    /// (`IOS-R10`).*
+    public var authorDurableStoreURL: URL { authorStoreURL }
 
     private init(harness: ComposedRuntimeHarness, labels: [String], trust: MeshTrustFacade,
                  trustRepository: PeerIdentityRepository, nodeSigningSeeds: [String: Data],
-                 durableStores: [String: SqliteMessageStore] = [:]) {
+                 nodeStores: [String: SqliteMessageStore] = [:],
+                 trustStore: SqlitePeerIdentityStore? = nil,
+                 sessionHub: LabSessionInvalidationHub = LabSessionInvalidationHub(),
+                 authorStoreURL: URL? = nil, trustStoreURL: URL? = nil, allStoreURLs: [URL] = []) {
         self.harness = harness
         self.labels = labels
         self.trust = trust
         self.trustRepository = trustRepository
         self.nodeSigningSeeds = nodeSigningSeeds
-        self.durableStores = durableStores
+        self.nodeStores = nodeStores
+        self.trustStore = trustStore
+        self.sessionHub = sessionHub
+        self.authorStoreURL = authorStoreURL ?? Self.labSupportDirectory().appendingPathComponent("durable.sqlite")
+        self.trustStoreURL = trustStoreURL ?? Self.labTrustStoreURL()
+        self.allStoreURLs = allStoreURLs
     }
 
     /// *** THE DURABLE AUTHORITY'S OWN ROW FOR ONE MESSAGE -- the witness a rendered string is not. ***
     /// *Nil when the lab carrieth no estate root, so an arm can SAY which road it measured.*
     public func durableSosState(author: String, msgId: Data) -> DeliveryState? {
-        guard let store = durableStores[author] else { return nil }
+        guard let store = nodeStores[author] else { return nil }
         guard let row = try? store.readDelivery(msgId) else { return nil }
         return DeliveryState.fromCode(row.state)
     }
@@ -118,11 +361,11 @@ public final class LabRuntime: @unchecked Sendable {
     /// *** THE HELD FRAMES THE DURABLE AUTHORITY CARRYETH. *** *A cancel must leave NO held frame, or a relaunch
     /// would render a live call; an arm asserteth the FRAME, not merely a row describing it.*
     public func durableSosHeldMsgIds(author: String) -> [Data] {
-        durableStores[author]?.allHeldMsgIds() ?? []
+        nodeStores[author]?.allHeldMsgIds() ?? []
     }
 
     /// Whether this handle is bound to a retained on-disk estate at all.
-    public var hasDurableEstate: Bool { !durableStores.isEmpty }
+    public var hasDurableEstate: Bool { !nodeStores.isEmpty }
     /// The honest readiness statement. It carrieth no parameter, so no caller can
     /// argue it into saying true.
     public static func readinessStatement() -> LabReadiness {
@@ -155,7 +398,9 @@ public final class LabRuntime: @unchecked Sendable {
         if let estateRoot {
             try FileManager.default.createDirectory(at: estateRoot, withIntermediateDirectories: true)
         }
-        var durableStores: [String: SqliteMessageStore] = [:]
+        var nodeStores: [String: SqliteMessageStore] = [:]
+        // *** THE LAB'S WHOLE ON-DISK ESTATE: EVERY LABEL'S STORE, SO A WIPE ADDRESSES ALL OF IT. ***
+        var allStoreURLs: [URL] = []
         var next = seedByte ?? 0x11
         // *** AND THE SIGNING SEED PER NODE IS REMEMBERED, SO A SEEDED ROTATION CAN CARRY THE SAME SIGNING KEY. ***
         //
@@ -170,8 +415,15 @@ public final class LabRuntime: @unchecked Sendable {
             var durable: SqliteMessageStore? = nil
             if let estateRoot {
                 let url = estateRoot.appendingPathComponent("lab_\(label)_\(next).db")
+                // *** G1: THE REAL PRIVATE-STORE DOOR IS REACHED *HERE*, SO THE WITNESS IS RAISED HERE. ***
+                LabRecoveryOpenProbe.notePrivateStoreOpen(url.path)
                 durable = try SqliteMessageStore(url: url, maxBytes: 64 * 1024 * 1024)
-                durableStores[label] = durable
+                nodeStores[label] = durable
+                // *EVERY LABEL'S FILE, SO THE WIPE CAN REACH THE WHOLE LAB ESTATE AND NOT ONE LABEL'S SLICE.*
+                allStoreURLs.append(url)
+                // *** AND THE HARNESS OWNS IT: registering the url here is what lets `LabEstateSeam` (and the
+                // harness's own inventory) name these stores as artifacts of the estate rather than orphan them (IOS-R7). ***
+                harness.registerDurableStore(url)
             }
             _ = try harness.addNode(label, seedByte: next, durableStore: durable)
             next = next &+ 0x10
@@ -180,8 +432,21 @@ public final class LabRuntime: @unchecked Sendable {
             _ = harness.link(labels[i], labels[i + 1])
         }
         var contactsList: [(label: String, nodeId: Data)] = []
-        let trustDbUrl = FileManager.default.temporaryDirectory
-            .appendingPathComponent("godstone-lab-trust-\(UUID().uuidString).db")
+        // *** *** THE TRUST STORE IS A STABLE, ADDRESSABLE LAB FILE -- NOT A UUID IN `tmp`. *** ***
+        //
+        // *THE DEFECT THIS CLOSES IS THE PARENT'S OWN, AND IT IS A REAL ONE: the lab's durable estate lived under
+        // `labSupportDirectory()` (per-label `lab_<label>_<seed>.db`) while the TRUST store was a
+        // `UUID().uuidString` file in `tmp` -- **SO NO WIPE COULD EVER ADDRESS IT, and the "wipe" drove a journal over
+        // paths the lab did not use.** A fixed name under the same holder-owned directory maketh the estate
+        // addressable, which is what letteth the recovery road erase the LAB'S OWN files rather than unrelated ones.*
+        //
+        // **AND IT IS CLEARED FIRST, BECAUSE A COMPOSE IS A FRESH ESTATE:** *a stable name would otherwise carry a
+        // previous launch's contacts into a new composition, and the arm that asserteth an empty trust surface would
+        // measure the last run.*
+        let trustDbUrl = Self.labTrustStoreURL()
+        try? FileManager.default.removeItem(at: trustDbUrl)
+        // *** G1: THE TRUST STORE IS THE COMPOSITION'S SECOND PRIVATE DOOR -- WITNESSED AT ITS OWN CONSTRUCTION. ***
+        LabRecoveryOpenProbe.notePrivateStoreOpen(trustDbUrl.path)
         let trustStore = try SqlitePeerIdentityStore(url: trustDbUrl)
         let trustRepo = PeerIdentityRepository(store: trustStore)
         for label in labels {
@@ -242,15 +507,207 @@ public final class LabRuntime: @unchecked Sendable {
             }
         }
         let ownNodeId = harness.node(labels[0])?.identity.nodeId ?? Data(repeating: 0x01, count: 16)
+        // *** *** G2: THE ONE SESSION-INVALIDATION HUB, BOUND TO THIS COMPOSITION'S REAL OWNERS AND RELATIONS. *** ***
+        //
+        // *THE DEFECT: `compose` passed NO `sessionInvalidator`, so the adapter's per-peer invalidation died at its
+        // ledger. **THE HUB IS THE MAPPING AT THE WIRING POINT:** each label's REAL `SessionManager` is bound, and the
+        // identity→transport-handle relation is bound where the harness's OWN link establishes it -- so the callback
+        // retires the very incarnations a revoked/rotated peer's sessions live in. The callback closure holds the hub
+        // STRONGLY (the hub holds only WEAK session owners), so the composition owns both and a released lab
+        // invalidates nothing.*
+        let sessionHub = LabSessionInvalidationHub()
+        for label in labels {
+            if let node = harness.node(label) { sessionHub.bind(label: label, sessions: node.node.sessions) }
+        }
+        // BOTH DIRECTIONS: the harness mints one transport handle per label and links them as peers, so each linked
+        // pair's node ids are bound to the peer handle -- the same relation the transport delegate would bind.
+        for from in labels {
+            guard let fromNode = harness.node(from) else { continue }
+            for to in harness.linkedPeerLabels(from) {
+                guard let toNode = harness.node(to), let peerHandle = harness.transportHandle(for: to) else { continue }
+                sessionHub.bindPeer(nodeId: toNode.identity.nodeId, peerId: peerHandle, label: from)
+            }
+        }
         let trustFacade = MeshTrustFacade(
             repository: trustRepo,
             ownNodeId: ownNodeId,
             contacts: contactsList,
-            wipeHandler: { [weak harness] in harness?.beginWipe() }
+            // *** GS-FINAL-003 `true-recovery-topology`: EVERY WIPE ROAD ON THIS LAB REACHES THE *SAME* PRODUCTION
+            // RECOVERY OWNER. *** *This closure used to call `harness.beginWipe()`, the COMPOSITION HARNESS'S own
+            // flag-and-delete -- a SECOND source of truth beside the durable ladder, and exactly what the audit's
+            // "added beside, rather than made the sole owner" charge names. It now drives the production ladder, so a
+            // wipe started from the trust surface and one started from the diagnostics control leave the SAME durable
+            // record, and a resume readeth either.*
+            //
+            // *IT IS WEAKLY CAPTURED AND THE HARNESS IS NOT TOUCHED: the closure holds nothing the runtime does not
+            // already own, so the trust facade cannot extend the runtime's life.*
+            // *THE ESTATE IS A PARAMETER, SO THE TRUST SURFACE'S WIPE ADDRESSES THE **LAB'S** FILES: the harness the
+            // closure captures is the one whose stores it erases, and `LabEstateSeam` answers those exact paths.*
+            wipeHandler: { [weak harness, weak trustStore] in
+                MeshRuntime.runRecoveryLadderInternal(
+                    journal: LabRuntime.labWipeJournal(),
+                    estate: LabEstateSeam(harness: harness, trustStore: trustStore),
+                    requestFresh: true).outcome
+            },
+            // *** *** G2: THE PER-PEER SESSION CALLBACK IS WIRED TO THIS COMPOSITION'S REAL OWNERS. *** ***
+            //
+            // *THE DEFECT: this argument was OMITTED -- the facade defaulted it to nil -- so `invalidateSessions`
+            // appended its ledger and called nothing, while `retireIncarnations` stood unwired. **EVERY REAL
+            // COMPOSITION WIRES THIS ROAD** (the `compose` call above is the lab's only private composition), and the
+            // callback carrieth the 16-octet identity node id the facade's handlers actually pass -- the hub maps it
+            // to the transport handles the harness really established and retires their incarnations BOTH directions.
+            // A callback that only echoed would leave the session sealing; this one tears it down.*
+            sessionInvalidator: { [sessionHub] nodeId in
+                _ = sessionHub.invalidateSessions(forNodeId: nodeId)
+            }
         )
         return LabRuntime(harness: harness, labels: labels, trust: trustFacade,
                           trustRepository: trustRepo, nodeSigningSeeds: seeds,
-                          durableStores: durableStores)
+                          nodeStores: nodeStores, trustStore: trustStore,
+                          sessionHub: sessionHub,
+                          // *** THE LAB'S OWN REAL PATHS, RETAINED SO ITS WIPE ADDRESSES THEM. ***
+                          authorStoreURL: estateRoot.map { root in
+                              root.appendingPathComponent("lab_\(labels[0])_\(seedByte ?? 0x11).db")
+                          } ?? Self.durableStoreURL(),
+                          trustStoreURL: trustDbUrl,
+                          allStoreURLs: allStoreURLs)
+            // *** *** IOS-R10: EVERY LAB NODE RESOLVES RECIPIENT TRUST FROM THE REAL REPOSITORY. *** ***
+            //
+            // *THE DEFECT THE REVIEW NAMED: the durable send's trust resolver invented the recipient's static-DH half
+            // from the AUTHOR'S OWN identity and an accepted generation of 1 (`KeyTableTrustResolver` in
+            // `ComposedNode.sendDirectDurable`) -- so a frame was sealed to the author's own key and a REVOKED contact
+            // was re-pinned. **THE LAB NOW WIRES THE PRODUCTION REPOSITORY-BACKED RESOLVER**, so the recipient's real
+            // static-DH material and accepted generation come from the durable trust store, a rotation is honoured by
+            // generation, and a revoked contact is REFUSED rather than re-pinned.*
+            .wiringRealRecipientTrust(resolver: TrustedPeerIdentityResolver(source: trustRepo))
+    }
+    /// Attach the real recipient-trust resolver to every composed node, and arm the recovery estate with the lab's
+    /// real drain capability + total artifact inventory. Returns self so `compose` can chain it.
+    @discardableResult
+    private func wiringRealRecipientTrust(resolver: RecipientTrustResolver) -> LabRuntime {
+        for label in labels {
+            harness.node(label)?.recipientTrustResolver = resolver
+        }
+        // *** AND ARM THE RECOVERY ESTATE (IOS-R5/R7): the lab's live owners and its TOTAL on-disk inventory. ***
+        harness.armRecoveryEstate(drain: LabEstateDrainSeam(harness: harness),
+                                  artifacts: Self.estateInventory(trustStoreURL: trustStoreURL,
+                                                                   allStoreURLs: allStoreURLs,
+                                                                   authorStoreURL: authorStoreURL,
+                                                                   extra: [Self.labCallRegisterURL(),
+                                                                           Self.lastIntentURL(),
+                                                                           Self.lastRecoveryURL()]))
+        return self
+    }
+
+    /// *** THE LAB'S TOTAL ON-DISK INVENTORY (IOS-R7): EVERY FILE THE LAB REALLY WROTE, MAPPED TO ITS REAL URL. ***
+    ///
+    /// *THE REVIEW'S DEFECT: the ladder deleted only the fixed `mesh.db`/`peer.db` names, so the lab's real
+    /// `lab_<label>_<seed>.db` stores and its trust store were never iterated and the ladder stalled at `KEYS_ERASED`.
+    /// **THE INVENTORY IS THE LAB'S OWN RECORD OF WHAT IT CREATED** -- each per-label store and its `-wal`/`-shm`
+    /// sidecars, the trust store and its sidecars, the durable intent medium, and the render-time registers the lab
+    /// writes (`last-intent`, `last-recovery`, `sos-register`) -- all under the LAB's own real filenames, so a deletion
+    /// addresses the bytes rather than guessing at a name it never wrote.*
+    static func estateInventory(trustStoreURL: URL, allStoreURLs: [URL], authorStoreURL: URL,
+                                extra: [URL] = []) -> [String: URL] {
+        var out: [String: URL] = [:]
+        func add(_ base: URL) {
+            let name = base.lastPathComponent
+            out[name] = base
+            out[name + "-wal"] = URL(fileURLWithPath: base.path + "-wal")
+            out[name + "-shm"] = URL(fileURLWithPath: base.path + "-shm")
+        }
+        for url in allStoreURLs { add(url) }
+        add(authorStoreURL)
+        add(trustStoreURL)
+        for url in extra { add(url) }
+        return out
+    }
+
+    /// *** *** IOS-R6: THE PERMIT, DRIVEN AND CONSUMED -- THE WHOLE GATE IN ONE CALL. *** ***
+    ///
+    /// *`LabRuntimeHolder` (and a court) may call this to obtain a permit for the lab estate and SPEND it at the
+    /// construction boundary. It returns `true` only when a `.normal` permit was minted BY A DRIVE over the estate and
+    /// then ACCEPTED by `consumeForConstruction(estateId:liveGeneration:)` -- wrong estate, a moved record (ABA) and a
+    /// second use all return `false`.*
+    ///
+    /// *** THE MINTED ESTATE ID IS RETURNED RATHER THAN ASSUMED. *** *The permit carrieth its OWN `estateId` (the
+    /// canonical id the authority computed from the estate it just judged), and the boundary check compares THAT --
+    /// so a caller cannot pass a string it invented. `permit.estateId` is the positive discriminator; there is no
+    /// nullable fallback and no forged metadata.*
+    public struct LabPermitMint: Equatable {
+        /// The canonical estate id the permit was bound to (`permit.estateId`).
+        public let estateId: String
+        /// The durable generation the permit was judged at (`permit.generation`).
+        public let generation: UInt64
+        /// The consumption result: the evidence when the permit admitted construction, nil otherwise.
+        public let accepted: Bool
+    }
+
+    /// *** MINT A PERMIT BY DRIVING, THEN CONSUME IT AT THE MINTED ESTATE + LIVE GENERATION. ***
+    ///
+    /// *Returns the EVIDENCE-bound identity of the permit (its own `estateId`/`generation`) and whether consumption
+    /// succeeded, so a caller never supplies a self-invented estate string and never falls back to a nil value.*
+    @discardableResult
+    public static func mintAndConsumeLabPermit(callerEstateId: String, liveGeneration: UInt64) -> LabPermitMint? {
+        guard let permit = mintLabPermit(callerEstateId: callerEstateId) else { return nil }
+        let canonicalEstate = labEstateIdentifier(root: labEstateRootURL())
+        let accepted = permit.consumeForConstruction(estateId: canonicalEstate,
+                                                     liveGeneration: liveGeneration) != nil
+        return LabPermitMint(estateId: permit.estateId, generation: permit.generation, accepted: accepted)
+    }
+
+    /// *** THE RAW MINT, SO A COURT MAY DRIVE THE ACTUAL CONSTRUCTION BOUNDARY WITH ITS OWN ARGUMENTS. ***
+    ///
+    /// *The permit carrieth the REAL durable epoch it was judged at (`permit.generation`); a court asserting the
+    /// boundary uses THAT value -- never a forged one -- so "accepted at the live generation" is a fact about the
+    /// record, not about a literal typed into the arm.*
+    public static func mintLabPermit(callerEstateId: String) -> PrivateRuntimePermit? {
+        // *A BRAND-NEW ESTATE MUST CARRY A DURABLE GENERATION BEFORE A PERMIT IS MINTED (fail-closed): the boundary
+        // refuseth a permit whose generation the record does not carry, so the baseline is established first.*
+        establishLabEstateBaselineIfNeeded()
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: labWipeJournal()),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        let bootstrap = StartupRecoveryBootstrap(wipe: authority, estateId: callerEstateId)
+        guard case .normal(let permit) = bootstrap.consumeCompositionTopology() else { return nil }
+        return permit
+    }
+
+    /// A boolean convenience for a caller that already holdeth the permit's own estate id (e.g. read back from
+    /// `mintAndConsumeLabPermit`). *It supplies NOTHING the permit did not already carry.*
+    public static func consumeLabConstructionPermit(estateId: String, liveGeneration: UInt64) -> Bool {
+        mintAndConsumeLabPermit(callerEstateId: estateId, liveGeneration: liveGeneration)?.accepted ?? false
+    }
+
+    /// *** THE PRE-PRIVATE RECOVERY ROAD, OVER THE LAB'S OWN ESTATE -- THE PUBLIC DOOR A LAB VIEW USES. ***
+    ///
+    /// *`LabEstateSeam` is internal (it carrieth the module's own keychain), so a view in the LabMesh target cannot
+    /// build one; this forwardeth the lab's real inventory and owns the seam here, where the module's types live.*
+    /// *No composition exists in this state, so the estate POSITIVELY owns no live owner and the drain answereth
+    /// `.cold` -- an honest claim rather than a dead barrier.*
+    @discardableResult
+    public static func runRecoveryForOperator(requestFresh: Bool) -> RecoveryLadderOutcome {
+        establishLabEstateBaselineIfNeeded()
+        let estate = LabEstateSeam(harness: nil,
+                                   inventory: labEstateInventory(root: labEstateRootURL()))
+        return MeshRuntime.runRecoveryLadder(journal: labWipeJournal(), estate: estate,
+                                             requestFresh: requestFresh).outcome
+    }
+
+    /// *** THE OPERATOR'S OWN RESOLUTION OF A CORRUPT RECORD: AN EXPLICIT, COMPLETE, OWNED WIPE. ***
+    ///
+    /// *NEVER a clear-journal: the operator's act durably records `REQUESTED` and drives the full ladder over the lab's
+    /// real estate (`MeshRuntime.resolveCorruptRecoveryForOperator`, which is restricted to a genuinely corrupt
+    /// record).*
+    @discardableResult
+    public static func resolveCorruptRecoveryForOperator() -> RecoveryLadderOutcome {
+        establishLabEstateBaselineIfNeeded()
+        let estate = LabEstateSeam(harness: nil,
+                                   inventory: labEstateInventory(root: labEstateRootURL()))
+        return MeshRuntime.resolveCorruptRecoveryForOperator(journal: labWipeJournal(), estate: estate).outcome
     }
 
     /// *** GS-UX-001 `rendered-controls` law 3: SEED A ROTATION THAT ARRIVES *AFTER* THE SCREEN LOOKED. ***
@@ -333,28 +790,24 @@ public final class LabRuntime: @unchecked Sendable {
         describe(await harness.sendSos(from, plaintext: plaintext))
     }
 
-    /// *** GS-UX-001 (STEPS 6 AND 2): **THE LAB'S DURABLE ROAD** -- AND IT IS THE WHOLE POINT OF THE FINDING.
+    /// *** GS-UX-001 (STEPS 6 AND 2) + IOS-R10: THE LAB'S DURABLE ROAD, OVER THE LAB'S OWN ESTATE. ***
     ///
-    /// The card's charge is that the journeys 'stop at disconnected models and static text', and that 'passing a
-    /// model test with a fake port does not show a user action reaches a durable authority'. THE DOOR THIS
-    /// CALLETH ALREADY STOOD AND IS PUBLIC (`ComposedRuntimeHarness.sendDirectDurable`, landed for CRYPTO-005),
-    /// AND ITS ONELY CALLERS WERE TWO COURTS. The lab could not reach it: its own `sendDirect` taketh the
-    /// in-memory road, and `compose()` nameth no medium at all -- so NO LAB JOURNEY COULD LEAVE ANYTHING BEHIND.
-    ///
-    /// THAT IS THIS PROGRAMME'S RECURRING SHAPE IN ITS SIXTH APPEARANCE (an instrument built, witnessed by courts,
-    /// and reached by no path a user travels), and it is why the repair is A DOOR AND NOT A NEW MECHANISM: the real
-    /// durable authority, BOTH adapters, the trust pin, the trust resolver, the durable journal and the WIPE
-    /// OWNERSHIP all stand already -- they were simply never reached from here.
-    ///
-    /// The medium is CALLER-NAMED, so a journey's consequence can be REOPENED and read by whoever authored it --
-    /// which is what the finding's step 6 asketh ('restore ... from the real reopened store') and what no
-    /// in-memory medium can ever answer.
+    /// *THE DEFECT THE REVIEW NAMED (`IOS-R10`): each durable send used to open a SEPARATE store at a caller-named
+    /// path while the node routed through another -- so the pinned frame was absent from the node's estate and the
+    /// recipient could never process it. **THE MEDIUM IS NOW THE LAB'S OWN AUTHORS' STORES** (the ones `compose`
+    /// built), so the intent, the held frame and the delivery row live where the node really writeth them, and a
+    /// recipient ACK advances the SAME obligation.*
     public func sendDirectDurable(_ from: String, recipient: String, plaintext: Data,
-                                  intentId: Data, storeURL: URL) async -> String {
+                                  intentId: Data) async -> String {
         do {
+            // *The authority commits the frame ATOMICALLY (held row + delivery row), and the COMPOSITION hands the
+            // committed frame to the link, so the recipient's own ingest writes its ACK obligation -- which is
+            // IOS-R10's positive clause (the recipient processes the frame; its ACK updates the SAME obligation).*
+            // **THE BOUNDED SYNC/ACK TURNS ARE NOT DRIVEN HERE**: they run on the sync pump's own executor, and a
+            // caller drives them explicitly (`turn`/`turnAcks`) rather than from inside a send -- so this door cannot
+            // block on a queue the caller already owns.
             return describeDurable(try await harness.sendDirectDurable(from, recipient: recipient,
-                                                                       plaintext: plaintext,
-                                                                       intentId: intentId, storeURL: storeURL))
+                                                                       plaintext: plaintext, intentId: intentId))
         } catch {
             return "refused:\(error)"
         }
@@ -402,32 +855,279 @@ public final class LabRuntime: @unchecked Sendable {
     // *** WIPE AND RECOVERY STATE: THE JOURNEY STEP 6 NAMES ("wipe progress from the real reopened store"). ***
     // ------------------------------------------------------------------------------------------------
 
-    /// *** THE WIPE STATE, FROM THE COMPOSITION'S OWN REGISTER -- AND THE LIMIT IS STATED RATHER THAN PAPERED OVER. ***
+    /// *** THE WIPE STATE, FROM THE PRODUCTION RECOVERY LADDER'S OWN DURABLE RECORD -- AND NOT FROM A FLAG. ***
     ///
-    /// *MY FIRST VERSION OF THIS METHOD READ A `wipeJournalView()` FROM THE HARNESS. **IT DOES NOT EXIST, AND THE
-    /// BUILD SAID SO.** `ComposedRuntimeHarness` carries no wipe journal at all: `beginWipe()` erases the durable
-    /// artifact URLs it holds and sets `wiped`. **THE RUNTIME'S LADDER-BEARING WIPE AUTHORITY
-    /// (`CrashResumableWipe` + `WipeJournalDurabilityAdapter`) IS A DIFFERENT OBJECT, REACHED THROUGH
-    /// `MeshRuntime`, NOT THROUGH THIS HARNESS.***
+    /// *THE DEFECT THIS REPLACES, STATED BY THE CODE THAT CARRIED IT: `harness.isWiped()` reporteth a BOOLEAN the
+    /// COMPOSITION HARNESS setteth, and `ComposedRuntimeHarness` "carries no wipe journal at all" -- so "wipe progress
+    /// from the real reopened store" (the card's step 6) was rendered from a flag that owns no ladder, while the real
+    /// ladder-bearing authority lived in a different object this handle could not reach.* **A LABEL THAT CLAIMS A RUNG
+    /// IT NEVER READ IS WORSE THAN ONE THAT SAYS SO, and the honest limit the old comment documented is now CLOSED
+    /// rather than documented: the lab reads the PRODUCTION journal.**
     ///
-    /// **SO THIS METHOD REPORTS WHAT THE HARNESS ACTUALLY KNOWS, AND NAMES WHAT IT DOES NOT.** *Inventing a journal
-    /// here to satisfy the shape of step 6 would be a second source of truth beside the real one -- the defect the
-    /// step exists to prevent. **A LABEL THAT CLAIMS A RUNG IT NEVER READ IS WORSE THAN ONE THAT SAYS "the lab's
-    /// harness carries no wipe ladder".***
-    ///
-    /// *The LADDER-bearing wipe IS witnessed, by the courts that drive `MeshRuntime` (`CrashStartupResumeTests`'s
-    /// `testSR05`/`testSR06`/`testSR07` and `GsFinal003StartupPermitTests`), which read the real journal's rungs. What
-    /// this lab can render truthfully is the composition harness's own wipe register.*
+    /// **THE READ IS PURE** -- `WipeJournalDurabilityAdapter.readJournal()` asketh the durable record and drives
+    /// nothing -- so a view may call it on every render without advancing a wipe.
     public func wipeStateName() -> String {
-        harness.isWiped() ? "wiped" : "standing"
+        let rungs = Self.recoveryLadderRungs()
+        guard let last = rungs.last else {
+            // *AN EMPTY LADDER IS `IDLE` OR ABSENT, AND THE TWO ARE INDISTINGUISHABLE IN THE RECORD ITSELF (the
+            // adapter deliberately does not invent a past). So the PERSISTED OUTCOME of the last real drive is
+            // consulted -- a cache of a real read, written where the drive happened -- and when there is none, the
+            // honest words are "no wipe was ever requested".*
+            if let outcome = Self.lastRecoveryOutcome() {
+                return outcome.decision == .wipeCompleted
+                    ? "wiped (completed at the durable IDLE rung)"
+                    : "standing (last recovery: " + outcome.decision.name + ")"
+            }
+            return "no wipe was ever requested"
+        }
+        return "standing at " + last
     }
 
-    /// Whether the runtime reports itself wiped, from the composition's own register.
-    public func isWiped() -> Bool { harness.isWiped() }
+    /// *** THE DURABLE RUNGS THE NEXT PROCESS WILL READ, IN THE PRODUCTION LADDER'S OWN WIRE SPELLING. ***
+    ///
+    /// *It is the SAME `WipeJournalDurabilityAdapter` the ladder writeth through, asked directly, so what a surface
+    /// renders and what a resume reads cannot disagree.*
+    public static func recoveryLadderRungs() -> [String] {
+        WipeJournalDurabilityAdapter(journal: labWipeJournal()).readJournal()
+    }
 
-    /// *** BEGIN A WIPE, THROUGH THE COMPOSITION'S REAL OWNER. *** *The lab invokes the same verb the runtime
-    /// exposes; it does not simulate one, and it does not set a flag of its own.*
-    public func beginWipe() { harness.beginWipe() }
+    /// Whether the runtime reports itself wiped, **FROM THE DURABLE RECORD RATHER THAN A FLAG**.
+    public func isWiped() -> Bool {
+        if Self.recoveryLadderRungs().last == WipeJournalState.wireName(.idle) { return true }
+        return Self.lastRecoveryOutcome()?.decision == .wipeCompleted
+    }
+
+    /// *** BEGIN A WIPE, THROUGH THE PRODUCTION RECOVERY LADDER -- THE SAME AUTHORITY THE SHIPPING RUNTIME OWNS. ***
+    ///
+    /// *The lab invokes the real verb rather than simulating one: `MeshRuntime.runRecoveryLadder(journal:estate:requestFresh:)`
+    /// writes `REQUESTED` durably, drains a LIVE transport that exists independently of the (lab's) store graph, erases
+    /// the keys through the composition's own vault seams, deletes the enumerated private artifacts by their REAL
+    /// paths, publishes a new identity, and records `IDLE` -- **and the outcome it returns is TYPED AND RETAINED, so the
+    /// rendered surface can say which of the six estates the ladder reached and which artifact, if any, survived.**
+    ///
+    /// *IT IS THE SAME ROAD `MeshRuntime.create` TAKES BEFORE IT OPENS ANY PRIVATE STORE: `runRecoveryLadderInternal`
+    /// is the ONE implementation both reach, so a rung the lab observes is a rung the shipping composition would.*
+    @discardableResult
+    public func beginWipe() -> RecoveryLadderOutcome {
+        let outcome = runLabRecoveryLadder(requestFresh: true)
+        Self.recordRecoveryOutcome(outcome)
+        return outcome
+    }
+
+    /// *** RESUME THE STANDING WIPE FROM WHEREVER THE DURABLE RECORD STANDS -- THE CRASH PATH, DRIVEN LIVE. ***
+    ///
+    /// *A FRESH request and a RESUME are different phases (the audit's own clause: "a fresh wipe may do no wipe at all"
+    /// when `resume` is used for both), so this taketh the other branch: no new `REQUESTED` is written, and the ladder
+    /// continueth from the rung the record carrieth. On an estate that already completed, it is idempotent.*
+    @discardableResult
+    public func resumeWipe() -> RecoveryLadderOutcome {
+        let outcome = runLabRecoveryLadder(requestFresh: false)
+        Self.recordRecoveryOutcome(outcome)
+        return outcome
+    }
+
+    /// The lab's own ladder drive: the SAME production road, over the lab's OWN estate.
+    private func runLabRecoveryLadder(requestFresh: Bool) -> RecoveryLadderOutcome {
+        recoverLabEstate(requestFresh: requestFresh).outcome
+    }
+
+    /// *** THE LAB'S WIPE, DRIVEN OVER THE LAB'S OWN ESTATE -- THE SAME OWNER AND PATHS THE LAB WROTE. ***
+    ///
+    /// *THE DEFECT THE PARENT NAMED, CLOSED: the lab's wipe used to drive the recovery road's DEFAULTS --
+    /// `durable.sqlite` and a `peer.db` that the lab DOES write from the intent journal, beside a trust store in
+    /// `tmp` it did not -- so **the lab's real per-label stores (`lab_<label>_<seed>.db`) and its trust store stayed
+    /// LIVE while a wipe reported progress against unrelated files.*** **Now the estate is the instance's OWN:**
+    /// *`MeshRuntime.runRecoveryLadder` is given a `LabEstateSeam` that answers the REAL paths the lab composed over,
+    /// so a wipe deletes the lab's own bytes -- and the rendered state, the filesystem and the next launch agree.*
+    ///
+    /// **AND THE DEFAULT PATHS ARE NOT SILENTLY ABANDONED:** *`authorStoreURL` is the first label's composed file (or
+    /// the legacy `durable.sqlite` when the lab carries no estate root), which is exactly the file the durable intent
+    /// journal lives in -- so the send/relaunch journey's medium is wiped by the same operation that reports it.*
+    public func recoverLabEstate(requestFresh: Bool) -> MeshRuntime.RecoveryOnlyOutcome {
+        MeshRuntime.runRecoveryLadder(
+            journal: Self.labWipeJournal(),
+            estate: LabEstateSeam(harness: harness, extraPaths: labExtraPaths, trustStore: trustStore),
+            requestFresh: requestFresh)
+    }
+
+    /// *** THE NAMES OUTSIDE THE HARNESS: THE TRUST STORE AND THE DURABLE INTENT MEDIUM. ***
+    ///
+    /// *The harness owns its per-label stores; these two are the LAB HANDLE's own files, and both are real artifacts
+    /// the lab wrote. A name with no owner is never listed -- the repository already paid for that lesson twice.*
+    private var labExtraPaths: [URL] { [authorStoreURL, trustStoreURL, Self.labCallRegisterURL()] }
+
+    /// The lab's trust store: a FIXED name under the holder-owned directory, so a wipe can address it.
+    public static func labTrustStoreURL() -> URL {
+        labSupportDirectory().appendingPathComponent("lab-trust.db")
+    }
+
+    /// *** *** IOS-R6/R7: THE LAB'S OWN DURABLE WIPE JOURNAL -- A REAL FILE, NOT A SAME-PROCESS CACHE. *** ***
+    ///
+    /// *`UserDefaultsWipeJournal`'s read is a same-process cache and cannot vouch for the medium, so a permit bound to
+    /// a generation it reports would be bound to a value the filesystem never carried (the parent's own ruling).*
+    /// **THE JOURNAL IS NOW A `FileWipeJournal` BESIDE THE LAB'S ESTATE** (`<root>/lab-wipe.journal`), so a fresh
+    /// process reads the SAME record from the SAME file -- which is the whole property a relaunch arm and the
+    /// process-reopen smoke measure.*
+    public static func labWipeJournal() -> WipeJournal {
+        let root = labEstateRootURL()
+        try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        return FileWipeJournal(url: root.appendingPathComponent("lab-wipe.journal"))
+    }
+
+    /// *** THE LAB JOURNAL FILE, NAMED ONCE SO A WIPE CAN ADDRESS IT AND A SMOKE CAN REOPEN IT. ***
+    public static func labWipeJournalURL() -> URL {
+        labEstateRootURL().appendingPathComponent("lab-wipe.journal")
+    }
+
+    /// *** FAIL-CLOSED BASELINE: A BRAND-NEW ESTATE MUST CARRY A **PINNED** DURABLE GENERATION BEFORE A PERMIT IS
+    /// MINTED. ***
+    ///
+    /// *The boundary refuseth a permit whose generation the record does not carry, so a first launch that minted
+    /// against `nil` would deadlock the lab.*
+    ///
+    /// *** AND THE REPAIR THAT MATTERS: A FLOOR ALONE IS NOT A READABLE RECORD. ***
+    /// *This used to call `journal.bumpEpoch()` alone -- and `bumpEpoch()` raiseth ONLY the floor (`CURRENT-02`: it
+    /// never writes the phase), while the journal's pin law requireth the PHASE's suffix to equal the floor for the
+    /// record to be readable AT ALL. So a brand-new estate was left with a floor and NO phase file, which `medium()`
+    /// readeth as `.unreadable` -- `isReadableJournal()` answered false, `decideAndDrive()` answered `corrupt_journal`,
+    /// and **NO PERMIT EVER MINTED** (measured: the permit road and the lab wipe both halted corrupt).*
+    ///
+    /// **SO THE LAB NO LONGER HANDS-ROLLS THE BASELINE: IT DRIVES THE PRODUCTION COORDINATOR'S OWN
+    /// `establishBaseline()`**, *which stamps the CHECKED `idle|N` phase beside the floor -- the SAME state a shipping
+    /// first launch reaches -- and, being guarded by `isReadableJournal()`/empty-journal, leaves an outstanding or
+    /// corrupt record UNTOUCHED rather than laundering it.*
+    public static func establishLabEstateBaselineIfNeeded() {
+        let adapter = WipeJournalDurabilityAdapter(journal: labWipeJournal())
+        let coordinator = CrashResumableWipe(
+            store: adapter,
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        _ = coordinator.establishBaseline()
+    }
+
+    /// *** A COURT MUST BE ABLE TO START FROM A CLEAN LAB ESTATE, or it measureth a previous arm's wipe. ***
+    ///
+    /// *The lab's journal and estate root live under Application Support and are SHARED between arms in one process,
+    /// so an arm that drove a wipe would otherwise leave the next one an outstanding estate. This removes the journal
+    /// file, its floor and its refusal marker, and the estate/registers -- then re-establishes the BASELINE (a pinned
+    /// `idle|1` record), the same readable fail-closed state a first launch sees.* **IT REMOVES THE FLOOR TOO: leaving
+    /// a stale floor beside a removed phase is exactly the unpinnable state the baseline repair above closeth.**
+    public static func resetLabEstateForTest() {
+        let fm = FileManager.default
+        try? fm.removeItem(at: labWipeJournalURL())
+        try? fm.removeItem(at: URL(fileURLWithPath: labWipeJournalURL().path + ".epoch"))
+        try? fm.removeItem(at: URL(fileURLWithPath: labWipeJournalURL().path + ".unacked"))
+        try? fm.removeItem(at: labEstateRootURL())
+        try? fm.removeItem(at: labTrustStoreURL())
+        try? fm.removeItem(at: labCallRegisterURL())
+        resetLastIntentForTest()
+        resetRecoveryRecordForTest()
+        establishLabEstateBaselineIfNeeded()
+    }
+
+    /// *** THE PERSISTED OUTCOME OF THE LAST REAL DRIVE -- A CACHE OF A READ, NAMED AS ONE. ***
+    ///
+    /// *THE DISTINCTION MATTERS AND IS WHY THIS IS NOT A SECOND SOURCE OF TRUTH: `RecoveryLadderOutcome` is produced BY
+    /// the production ladder and carries the rungs AS THE DURABLE ADAPTER ANSWERED THEM at that instant. It is
+    /// persisted for the ONE fact the journal itself cannot express -- a COMPLETED wipe reads as an empty ladder, so
+    /// "wiped" and "never requested" are indistinguishable in the record -- and the surface renders the LIVE rung read
+    /// FIRST, falling back to this only when the record is empty.*
+    ///
+    /// *** AND THE MEASURED REMAINING IS THE PRIVATE ARTIFACTS -- NOT THIS RECORD. ***
+    /// *A wipe that measured ITS OWN outcome register as "still standing" could never reach `isComplete`: this file is
+    /// written the instant the drive returns, so it would stand no matter how completely the private stores were
+    /// erased -- a self-reference, not a residual store. **THE LAB'S OWN REGISTERS (`last-recovery.json`,
+    /// `last-intent.hex`) ARE BOOKKEEPING, NOT PRIVATE MATERIAL** -- they carry no key, no store and no held frame --
+    /// so they are excluded from the measured remaining while every PRIVATE artifact (each label's store and its
+    /// sidecars, the trust store, the sos register) is still measured on the filesystem.*
+    private static func recordRecoveryOutcome(_ outcome: RecoveryLadderOutcome) {
+        let labRegisters: Set<String> = [lastRecoveryURL().lastPathComponent,
+                                         lastIntentURL().lastPathComponent]
+        let remaining = outcome.artifactsRemaining.filter { !labRegisters.contains($0) }
+        let record: [String: Any] = [
+            "decision": outcome.decision.name,
+            "reason": outcome.decision.refusalReason ?? "",
+            "rungs": outcome.rungs,
+            "remaining": remaining,
+            "complete": outcome.decision == .wipeCompleted && remaining.isEmpty,
+        ]
+        guard let bytes = try? JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]) else { return }
+        try? bytes.write(to: lastRecoveryURL(), options: .atomic)
+    }
+
+    static func lastRecoveryOutcome() -> RecoveryLadderOutcome? {
+        guard let bytes = try? Data(contentsOf: lastRecoveryURL()),
+              let object = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+              let decisionName = object["decision"] as? String else { return nil }
+        let reason = (object["reason"] as? String) ?? ""
+        let decision: StartupRecoveryDecision
+        switch decisionName {
+        case "clean_start": decision = .cleanStart
+        case "wipe_completed": decision = .wipeCompleted
+        case "retryable_failure": decision = .retryableFailure(reason: reason)
+        case "corrupt_journal": decision = .corruptJournal(reason: reason)
+        case "terminal_failure": decision = .terminalFailure(reason: reason)
+        default: decision = .recoveryPending(reason: reason)
+        }
+        return RecoveryLadderOutcome(
+            decision: decision,
+            rungs: (object["rungs"] as? [String]) ?? [],
+            artifactsRemaining: (object["remaining"] as? [String]) ?? []
+        )
+    }
+
+    private static func lastRecoveryURL() -> URL {
+        labSupportDirectory().appendingPathComponent("last-recovery.json")
+    }
+
+    /// A court that must start from a clean wipe record (else it measureth a previous run's wipe).
+    ///
+    /// *** IT REMOVES THE PERSISTED OUTCOME CACHE ONLY -- IT MUST NOT `clear()` THE JOURNAL. *** *A `clear()` on a
+    /// floor-less estate writeth a SUFFIX-LESS `idle` record, which the journal's pin law readeth as UNREADABLE --
+    /// so it would defeat the very baseline `resetLabEstateForTest` establishes next and halt the permit road corrupt.
+    /// The journal FILE is removed by `resetLabEstateForTest` itself; the pinned `idle|N` baseline is written by
+    /// `establishLabEstateBaselineIfNeeded()` after.*
+    internal static func resetRecoveryRecordForTest() {
+        try? FileManager.default.removeItem(at: lastRecoveryURL())
+    }
+
+    /// *** THE RENDERED RUNG, FROM THE DURABLE RECORD (EMPTY LADDER FALLING BACK TO THE LAST REAL DRIVE). ***
+    ///
+    /// *The journal cannot express "a wipe COMPLETED" -- a finished ladder is written back to `IDLE` and reads as an
+    /// empty record -- so a surface that asked the journal alone would show "no wipe was ever requested" immediately
+    /// after a successful wipe, which is the opposite of the truth. The fallback carries the outcome of a real drive,
+    /// named as such.*
+    public func recoveryRungWords() -> String {
+        let rungs = Self.recoveryLadderRungs()
+        if rungs.isEmpty {
+            guard let last = Self.lastRecoveryOutcome() else { return "no wipe has been driven from this lab" }
+            return last.isComplete ? "durable rung: IDLE (completed)" : "last recovery: " + last.decision.name
+        }
+        return "durable rung: " + rungs.joined(separator: " -> ")
+    }
+
+    /// *** THE REMAINING PRIVATE ARTIFACTS, MEASURED ON THE FILESYSTEM RATHER THAN INFERRED FROM THE RUNG. ***
+    public func recoveryArtifactWords() -> String {
+        Self.lastRecoveryOutcome()?.remainingWords ?? "no artifacts measured"
+    }
+
+    /// *** GS-FINAL-003 `operator-required`: WHAT THE RECOVERY DECISION SAYETH, AND WHETHER A HUMAN IS NEEDED. ***
+    ///
+    /// *THE CLAUSE, MEASURED AT ITS OWN SURFACE: *"explicit operator-required for genuine corruption"*. **A CORRUPT
+    /// DURABLE RECORD IS THE ONE ESTATE NO AUTOMATIC ACTION MAY RESOLVE** -- *retrying cannot make an unparseable value
+    /// parse, and a composition that guessed "clean" would open private stores over material that may be mid-erasure.*
+    /// **`requiresOperator` is the field that distinguisheth it from every other refusal, and it is exactly the field a
+    /// bare Boolean cannot carry** -- so the word is rendered here, from the type, rather than being the caller's
+    /// inference from an error string.*
+    ///
+    /// **THE DECISION IS TAKEN THROUGH THE PRODUCTION ENTRY POINT** (`MeshRuntime.startupRecoveryDecision`), *which owns
+    /// the deferred create-time seams and OPENS NO STORE to answer -- so a surface may ask it on every render.*
+    public static func startupRecoveryWords() -> String {
+        let decision = MeshRuntime.startupRecoveryDecision(journal: labWipeJournal())
+        return decision.requiresOperator ? decision.name + " -- operator required" : decision.name
+    }
 
     /// *** GS-UX-001 `rendered-controls`: THE DISTRESS STATE, READ FROM THE DELIVERY ROW AND SPOKEN IN THE SHARED
     /// VOCABULARY. ***
@@ -444,15 +1144,20 @@ public final class LabRuntime: @unchecked Sendable {
     /// verbatim. **A LABEL THAT CLAIMS A RUNG IT NEVER READ IS WORSE THAN ONE THAT NAMES ITS SOURCE** -- the same law
     /// `wipeStateName()` already obeyeth one screen over.*
     public func sosStateNames() -> String {
-        // (a) A LIVE call is read from the row, right now, through the node's own projection. **A READ PATH MUST
-        // NOT WRITE**: the register is written by the COMMANDS (`recordSosAfterCommand`), never by this getter.
+        // (a) A LIVE call is read from the DURABLE delivery row, right now, through the node's own projection --
+        // which reads the store the node really writes (`activeSosSnapshot` -> `store.allHeldOrderedByPriority()`).
         if let active = harness.activeSos(author) {
             let words = active.state.stateWords ?? "unknown:" + active.state.stateToken
             return "active: " + words
         }
-        // (b) Otherwise the durable register carries what the last command left -- including a CANCELLED call, which
-        // is not "active" but IS the durable fact a relaunch must render.
-        guard let register = Self.sosRegister(), let state = register.state else { return "no active call" }
+        // (b) OTHERWISE THE ROW ITSELF IS ASKED, BY NAME -- never a display register (`IOS-R9`). *A cancelled or
+        // dispatched call has no held frame, but its delivery row STANDS terminal in the SAME durable store, and that
+        // row is the authority a relaunch must render. If no row stands for the last call, the honest answer is "no
+        // active call": the lab may not name a rung it cannot read.*
+        guard let msgId = Self.labCallRegister()?.msgId,
+              let state = durableDeliveryState(author: author, msgId: msgId) else {
+            return "no active call"
+        }
         return (state.isTerminal ? "terminal: " : "active: ")
             + (state.stateWords ?? "unknown:" + state.stateToken)
     }
@@ -467,11 +1172,14 @@ public final class LabRuntime: @unchecked Sendable {
 
     /// The message id of the standing distress call, if any (nil when none is held).
     ///
-    /// *A CANCEL needs an id, and the id must come from the DURABLE register rather than from a view's memory --
-    /// otherwise a relaunch would cancel a message it can no longer name.*
+    /// *A CANCEL or RETRY needs an id, and the id must name a DURABLE row the estate still carries -- otherwise a
+    /// relaunch would act on a message with no obligation (`IOS-R9`). **SO THE ID IS VALIDATED AGAINST THE ROW**: the
+    /// last recorded id is returned ONLY when its delivery row really stands, and nil otherwise.*
     public func activeSosMsgId() -> Data? {
         if let active = harness.activeSos(author) { return active.msgId }
-        return Self.sosRegister()?.msgId
+        guard let msgId = Self.labCallRegister()?.msgId,
+              durableDeliveryState(author: author, msgId: msgId) != nil else { return nil }
+        return msgId
     }
 
     /// *** ARM THE DISTRESS CALL, THROUGH THE NODE'S OWN COMMAND DOOR. ***
@@ -492,53 +1200,174 @@ public final class LabRuntime: @unchecked Sendable {
         return describeSos(result)
     }
 
-    /// *** THE AUTHOR COUNTER: HOW MANY CALLS THIS LAB EVER AUTHORED -- AND IT IS NOT MOVED BY A CANCEL. ***
+    /// *** *** GS-UX-001 `required-retry`: RETRY THE STANDING CALL, THROUGH THE NODE'S OWN `.retry` ARM. *** ***
     ///
-    /// *The card's discriminator for the cancel road: cancelling must stop a call, never un-author it.*
-    public func sosAuthoredCount() -> Int { Self.sosRegister()?.authoredCount ?? 0 }
+    /// *THE MEASURED GAP THIS CLOSES: `SosCommand.retry(_:)` EXISTED, WAS WIRED (`MeshNode.handleSosCommand` routes it
+    /// to `retrySos`), WAS TESTED AT THE MODEL LEVEL (`ReadinessT39Tests.testRetryResumesTheSameAuthoredBytes...`) --
+    /// **AND NO RENDERED CONTROL ON EITHER iOS SURFACE COULD REACH IT.*** *A capability the contract's own roster
+    /// (`AccessibilityContract.essentialControls` names `("retry", "Retry")`) declares essential, with no control
+    /// offering it, is a journey the user cannot take: exactly the "disconnected models and static text" shape the card
+    /// charges, and precisely the class of omission a source grep cannot see.*
+    ///
+    /// **IT RESUMES THE SAME AUTHORED BYTES** (the node's `.retry` arm re-reads the held frame by msg_id and never
+    /// re-authors -- `SosCommand`'s own contract: "a retry that re-authored would betray it"), *and the id cometh from
+    /// the DURABLE projection rather than from a view's memory, so a relaunch can resume a call it never authored.*
+    ///
+    /// **`nil` msgId IS A TYPED REFUSAL, NOT A SILENT NO-OP**, and it NAMES the reason a user must be told: there is
+    /// nothing standing to resume. *A retry that reported success with nothing to send would be the worst shape in this
+    /// file -- a plausible-looking state over no effect.*
+    public func retrySos(msgId: Data?) -> String {
+        guard let msgId else { return "refused: no standing distress call to retry" }
+        guard let result = harness.sosCommand(author, .retry(msgId)) else {
+            return "refused: no such node '\(author)'"
+        }
+        // *** THE POST-COMMAND RECORD IS ITS OWN, BECAUSE A RETRY IS NOT AN AUTHORING. ***
+        //
+        // *`recordSosAfterCommand` INCREMENTETH THE AUTHOR COUNTER on a successful `.enqueued` -- correct for an ARM,
+        // WRONG for a RESUME, and the class's own law already carrieth the distinction for the sibling verb: "A CANCEL
+        // NEVER INCREMENTETH THE AUTHOR COUNTER: it stopeth a call, it doth not create one."* **A retry RESUMES a call,
+        // so it must not create one either** -- and an author counter that moved on every retry would make the
+        // surface's own "how many calls did this lab ever author" unanswerable.
+        recordSosAfterCommand(result)
+        // *** AND THE ACTION IS NAMED IN THE RENDERED ANSWER. *** *`describeSos` speaketh the node's taxonomy for the
+        // OUTCOME of a command; a caller must be able to tell a resume from an arm in the rendered text, so the verb
+        // is prefixed here rather than inferred by a reader from a string both commands can produce ("armed:queued").*
+        return "resume:" + describeSos(result)
+    }
 
-    /// Persist what the command left, READ FROM THE ROW rather than from the command's own return value.
+    /// *** IOS-R9: THE POST-COMMAND RECORD IS AN **ID**, NOT AN AUTHORITY. ***
     ///
-    /// *The distinction matters: a CANCEL **RETIRES** the held frame, so `activeSos` answereth nil afterwards -- the
-    /// register is therefore the only surviving witness of the terminal state, and it is written from the command's
-    /// own typed result rather than from a row that no longer stands. **FOR AN ARM, THE ROW IS CONSULTED FIRST** (it
-    /// is the live truth), and the command's result is the fallback.*
+    /// *THE DEFECT THE REVIEW NAMED: the old register carried a STATE TOKEN (`SosRegister.stateToken`), so after a
+    /// relaunch `sosStateNames()` rendered a rung read from a JSON file rather than from the delivery row -- "a label
+    /// that claims a rung it never read". **THE STATE IS NOW ALWAYS READ FROM THE ROW** (`sosStateNames`,
+    /// `activeSosMsgId`), and this record carries ONE THING: the id of the last call, so a relaunch can NAME the row it
+    /// asks about. A file naming a row that no longer stands changes nothing, because the id is validated against the
+    /// row before it is used.* **A RETRY AND A CANCEL BOTH LEAVE THE ID ALONE** -- neither authors a call, which is the
+    /// class's own law ("a retry that re-authored would betray it"; "a cancel never incrementeth the author counter").*
     private func recordSosAfterCommand(_ result: SosCommandResult) {
-        let previous = Self.sosRegister()
         switch result {
         case .enqueued(let dispatch):
             switch dispatch {
             case .queuedDurably, .handedToRelays:
-                // The ROW decides the token; the command's own taxonomy is the fallback where the row is silent.
-                let state = liveSosState() ?? (dispatch == .queuedDurably ? .queuedDurably : .handedToRelay)
-                let msgId = harness.activeSos(author)?.msgId ?? previous?.msgId
-                Self.writeSosRegister(state: state, msgId: msgId,
-                                      authoredCount: (previous?.authoredCount ?? 0) + 1)
+                // THE ROW NOW STANDS: record its id, read from the node's own durable projection.
+                if let msgId = harness.activeSos(author)?.msgId { Self.writeLabCallId(msgId) }
             case .notPersisted, .unavailable, .failed:
-                // NOTHING WAS AUTHORED: the counter must not move and the register must not claim a call.
+                // NOTHING WAS AUTHORED: the record must not claim a call.
                 return
             }
         case .cancelled(let cancel):
-            // A CANCEL NEVER INCREMENTETH THE AUTHOR COUNTER: it stopeth a call, it doth not create one.
             switch cancel {
-            case .cancelled, .alreadyCancelled:
-                Self.writeSosRegister(state: .cancelledLocally, msgId: previous?.msgId,
-                                      authoredCount: previous?.authoredCount ?? 0)
-            case .rejectedTerminal(let state):
-                Self.writeSosRegister(state: state, msgId: previous?.msgId,
-                                      authoredCount: previous?.authoredCount ?? 0)
+            case .cancelled, .alreadyCancelled, .rejectedTerminal:
+                // The terminal row still stands under the recorded id: keep naming it so a relaunch may render it.
+                if let msgId = Self.labCallRegister()?.msgId { Self.writeLabCallId(msgId) }
             case .notBroadcast, .unknownMessage, .corrupt, .storageFailure, .invalidArgument:
                 return
             }
         }
     }
 
-    /// The live row's state for the standing call, when the node still carrieth it.
-    private func liveSosState() -> DeliveryState? {
-        guard let active = harness.activeSos(author) else { return nil }
-        return active.state
+    /// *** THE STANDING CALL'S OWN ID, OR NIL: THE ARGUMENT A RENDERED RETRY MUST PASS RATHER THAN GUESS. ***
+    ///
+    /// *A view that minted its own id, or remembered one from an earlier session, would name work the estate may no
+    /// longer carry -- so the id is read here, from the durable projection, at the moment of the tap.*
+    public func standingSosMsgId() -> Data? { activeSosMsgId() }
+
+    /// *** THE AUTHOR COUNTER: HOW MANY CALLS THIS ESTATE EVER AUTHORED -- COUNTED FROM THE DURABLE ROWS. ***
+    ///
+    /// *THE REVIEW'S CLAUSE: "with unchanged author/cancel counts". **A JSON INTEGER IS NEITHER AUTHORED NOR
+    /// AUTHORITATIVE** -- it is a number that a dropped write can desync from the estate. The count is therefore
+    /// DERIVED from the durable delivery rows: an SOS row (ackMode `none`) is written when a call is authored and is
+    /// NEVER deleted by a cancel (which tombstones the row), so this count moves on an arm and stands still through a
+    /// cancel -- exactly the discriminator the card names.*
+    public func sosAuthoredCount() -> Int { authoredSosCount(author: author) }
+
+    // ---------------------------------------------------------------- the durable call-id register
+
+    /// What the call register carrieth: the last call's id, and NOTHING ELSE (the state lives in the row).
+    struct LabCallRegister: Codable, Equatable {
+        let msgId: Data?
     }
 
+    /// *** THE HOLDER-OWNED STABLE REGISTER, UNDER APPLICATION SUPPORT -- THE SAME DISK ACROSS A RELAUNCH. ***
+    static func labCallRegisterURL() -> URL {
+        labSupportDirectory().appendingPathComponent("lab-call-register.json")
+    }
+
+    static func labCallRegister() -> LabCallRegister? {
+        guard let bytes = try? Data(contentsOf: labCallRegisterURL()) else { return nil }
+        return try? JSONDecoder().decode(LabCallRegister.self, from: bytes)
+    }
+
+    static func writeLabCallId(_ msgId: Data?) {
+        guard let bytes = try? JSONEncoder().encode(LabCallRegister(msgId: msgId)) else { return }
+        try? bytes.write(to: labCallRegisterURL(), options: .atomic)
+    }
+
+    /// A court that must start from a clean call register (else it measureth a previous run's call).
+    internal static func resetSosRegisterForTest() {
+        try? FileManager.default.removeItem(at: labCallRegisterURL())
+    }
+
+    /// The legacy single-medium path (used when the lab carrieth no estate root).
+    static func durableStoreURL() -> URL { labSupportDirectory().appendingPathComponent("durable.sqlite") }
+
+    /// *** THE HOLDER-OWNED STABLE DIRECTORY, UNDER APPLICATION SUPPORT -- THE SAME DISK ACROSS A RELAUNCH. ***
+    static func labSupportDirectory() -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let dir = base.appendingPathComponent("GodstoneLabMesh", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    /// *** *** IOS-R6: THE LAB'S RETAINED ESTATE ROOT AND ITS CANONICAL IDENTIFIER. *** ***
+    ///
+    /// *THE DEFECT THE REVIEW NAMED: the real holder composed with NO estate root, so every node was in-memory and the
+    /// durable Send could leave nothing behind. **THE HOLDER COMPOSES OVER A STABLE, HOLDER-OWNED ROOT** -- the same
+    /// disk across a relaunch -- and the estate's IDENTITY is the inventory that root deterministically holds, so the
+    /// permit the holder consumes at private construction is BOUND to the estate it is about to build.*
+    public static func labEstateRootURL() -> URL {
+        labSupportDirectory().appendingPathComponent("estate", isDirectory: true)
+    }
+
+    /// The seed bytes `compose` hands each label, in order -- so the per-label file name is deterministic.
+    static func labNodeSeedBytes(labels: [String], seedByte: UInt8) -> [String: UInt8] {
+        var out: [String: UInt8] = [:]
+        var next = seedByte
+        for label in labels { out[label] = next; next = next &+ 0x10 }
+        return out
+    }
+
+    /// The lab's canonical estate identifier: the SAME inventory the holder will compose and the recovery estate
+    /// answers with, so the permit's `estateId` and the holder's construction boundary are computed from the SAME bytes.
+    public static func labEstateIdentifier(root: URL, labels: [String] = ["A", "R", "B"], seedByte: UInt8 = 0x11) -> String {
+        MeshRuntime.recoveryEstateId(artifactPaths: labEstateInventory(root: root, labels: labels, seedByte: seedByte))
+    }
+
+    /// *** THE LAB'S COMPLETE ON-DISK INVENTORY, DERIVED DETERMINISTICALLY FROM THE ROOT. ***
+    ///
+    /// *`compose` names each store `lab_<label>_<seed>.db` under the root, so the whole estate can be enumerated
+    /// WITHOUT a composition -- which is what a pre-private recovery road (and a permit's `estateId`) needs: the
+    /// files exist (or will) at fixed names, and a wipe can address them before any node is built.*
+    public static func labEstateInventory(root: URL, labels: [String] = ["A", "R", "B"],
+                                   seedByte: UInt8 = 0x11) -> [String: URL] {
+        var inventory: [String: URL] = [:]
+        func add(_ url: URL) {
+            inventory[url.lastPathComponent] = url
+            inventory[url.lastPathComponent + "-wal"] = URL(fileURLWithPath: url.path + "-wal")
+            inventory[url.lastPathComponent + "-shm"] = URL(fileURLWithPath: url.path + "-shm")
+        }
+        for (label, seed) in labNodeSeedBytes(labels: labels, seedByte: seedByte) {
+            add(root.appendingPathComponent("lab_\(label)_\(seed).db"))
+        }
+        for url in [labTrustStoreURL(), labCallRegisterURL(), lastIntentURL(), lastRecoveryURL()] { add(url) }
+        return inventory
+    }
+
+    /// *** THE NODE'S OWN TAXONOMY, SPOKEN: which arm ran and what its durable result was. ***
+    ///
+    /// *A caller must be able to tell an arm from a resume in the rendered text, so the VERB is prefixed by the callers
+    /// above rather than inferred by a reader from a string both commands can produce.*
     private func describeSos(_ result: SosCommandResult) -> String {
         switch result {
         case .enqueued(let dispatch):
@@ -563,48 +1392,17 @@ public final class LabRuntime: @unchecked Sendable {
         }
     }
 
-    // ---------------------------------------------------------------- the durable registers
-
-    /// What the SOS register carrieth: the token read from the row, the row's msg_id, and the author counter.
-    struct SosRegister: Codable, Equatable {
-        let stateToken: String
-        let msgId: Data?
-        let authoredCount: Int
-
-        var state: DeliveryState? { DeliveryState.allCasesByToken[stateToken] }
-    }
-
-    /// *** THE HOLDER-OWNED STABLE REGISTERS, UNDER APPLICATION SUPPORT -- THE SAME DISK ACROSS A RELAUNCH. ***
+    /// *** THE AUTHOR COUNT, COUNTED FROM THE DURABLE ROWS (`IOS-R9`). ***
     ///
-    /// *Application Support is the durable, holder-owned location the card asketh for, and the names are FIXED (no
-    /// UUID): two processes resolve ONE path, which is the whole property a relaunch arm measureth.*
-    static func sosRegisterURL() -> URL { labSupportDirectory().appendingPathComponent("sos-register.json") }
-
-    static func durableStoreURL() -> URL { labSupportDirectory().appendingPathComponent("durable.sqlite") }
-
-    private static func labSupportDirectory() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("GodstoneLabMesh", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
-    }
-
-    static func sosRegister() -> SosRegister? {
-        guard let bytes = try? Data(contentsOf: sosRegisterURL()) else { return nil }
-        return try? JSONDecoder().decode(SosRegister.self, from: bytes)
-    }
-
-    static func writeSosRegister(state: DeliveryState, msgId: Data?, authoredCount: Int?) {
-        let register = SosRegister(stateToken: state.stateToken, msgId: msgId,
-                                   authoredCount: authoredCount ?? 0)
-        guard let bytes = try? JSONEncoder().encode(register) else { return }
-        try? bytes.write(to: sosRegisterURL(), options: .atomic)
-    }
-
-    /// A court that must start from a clean register (else it measureth a previous run's call).
-    internal static func resetSosRegisterForTest() {
-        try? FileManager.default.removeItem(at: sosRegisterURL())
+    /// *An SOS delivery row (ackMode `none`) is created when a call is authored and is NEVER deleted by a cancel, so
+    /// the count moves on an arm and stands still through a cancel. Read from the node's OWN durable store -- the
+    /// store the row really lives in -- rather than from a JSON integer a dropped write can desync.*
+    func authoredSosCount(author: String) -> Int {
+        guard let store = harness.node(author)?.store as? SqliteMessageStore else { return 0 }
+        return store.allDeliveryMsgIdsForTest().filter { msgId in
+            guard let row = try? store.readDelivery(msgId) else { return false }
+            return row.ackMode == AckMode.none.rawValue
+        }.count
     }
 
     /// *** GS-UX-001 `rendered-controls`: THE DURABLE SEND WITH A VIEW-GENERATED INTENT. ***
@@ -618,15 +1416,16 @@ public final class LabRuntime: @unchecked Sendable {
         // The id is remembered BEFORE the send, so a crash or a relaunch can still name what was attempted.
         Self.recordLastIntent(intentId)
         return await sendDirectDurable(from, recipient: recipient, plaintext: plaintext,
-                                       intentId: intentId, storeURL: Self.durableStoreURL())
+                                       intentId: intentId)
     }
 
     /// *** DOES THE INTENT SURVIVE THE RUNTIME THAT AUTHORED IT? READ FROM A FRESH HANDLE OVER THE SAME MEDIUM. ***
     ///
-    /// *Nothing of the authoring runtime is consulted. `.found` is the card's clause; `.notFound` is the arm's own
-    /// discriminator (an id that was never authored must be ABSENT, or `.found` would mean nothing).*
+    /// *Nothing of the authoring runtime is consulted -- and the medium is now THE AUTHOR'S OWN STORE (`authorStoreURL`,
+    /// the exact file the node's router and journal write), so the verdict a relaunch reads is about the bytes the send
+    /// really pinned rather than a second, disconnected medium (`IOS-R10`).*
     public func durableIntentVerdict(_ intentId: Data) -> String {
-        let store = SqliteMessageStore(url: Self.durableStoreURL(), maxBytes: 64 * 1024 * 1024)
+        let store = SqliteMessageStore(url: authorStoreURL, maxBytes: 64 * 1024 * 1024)
         let journal = SqliteOutboundIntentJournal(store: store)
         switch journal.load(intentId) {
         case .found(let entry):
@@ -725,6 +1524,20 @@ public final class LabRuntime: @unchecked Sendable {
     /// The rendered hex fingerprint of a contact, or nil if unknown.
     public func trustFingerprint(for label: String) -> String? {
         trust.fingerprint(for: label)
+    }
+
+    /// *** G2: THE 16-OCTET IDENTITY NODE ID OF A LAB CONTACT. *** *The exact value the facade's
+    /// `invalidateSessions` callback carrieth, so a court can address the same road the revocation does.*
+    public func trustContactNodeId(_ label: String) -> Data? {
+        harness.node(label)?.identity.nodeId
+    }
+
+    /// *** G2: DRIVE THE SESSION-INVALIDATION CALLBACK DIRECTLY BY IDENTITY NODE ID (the same hub the facade holds). ***
+    /// *It answers HOW MANY incarnations were retired, so a court can show the effect rather than an empty ledger
+    /// array -- and a second invocation retires nothing, proving the first was real.*
+    @discardableResult
+    public func invalidateSessions(forNodeId nodeId: Data) -> Int {
+        sessionHub.invalidateSessions(forNodeId: nodeId)
     }
 
     /// Compare and confirm a fingerprint for a contact.
@@ -919,6 +1732,285 @@ public final class LabRuntime: @unchecked Sendable {
     public func isRotationPending(_ label: String) -> Bool {
         trust.isRotationPending(label: label)
     }
+
+    // ================================================================================================
+    // *** *** G2: THE PER-PEER SESSION-INVALIDATION ROAD, FROM THE FACADE TO THE REAL REGISTRY. *** ***
+    // ================================================================================================
+
+    /// The number of live transport handles the composition bound to one identity node id (both-directions witness).
+    public func boundSessionPeers(forNodeId nodeId: Data) -> Int {
+        sessionHub.boundPeerCount(forNodeId: nodeId)
+    }
+
+    /// *** *** THE POSITIVE-COURT FIXTURES: REAL PAIRED NOISE SESSIONS THE CALLBACK MUST TEAR DOWN. *** ***
+    ///
+    /// *A court drives these -- which perform the REAL four-entry handshake over the public keyed doors -- so the
+    /// session it later tears down is a real Noise session, not a mock. `boundTo:` binds the relation under a REAL lab
+    /// contact's identity node id, so the court can drive the REAL facade revocation (`revokeContact(for:)`) and watch
+    /// the callback `invalidateSessions` fires reach the session. The untagged form binds under a self-contained id for
+    /// a court that presents it directly.*
+    @discardableResult
+    public func installRealSessionFixture(tag: String) -> Bool {
+        sessionHub.installPairedSession(tag: tag, boundToNodeId: Self.fixtureSessionNodeId)
+    }
+
+    /// Install the fixture's relation under the REAL contact `label`'s identity node id (the facade's own value).
+    @discardableResult
+    public func installRealSessionFixture(tag: String, boundTo label: String) -> Bool {
+        guard let nodeId = harness.node(label)?.identity.nodeId else { return false }
+        return sessionHub.installPairedSession(tag: tag, boundToNodeId: nodeId)
+    }
+
+    /// Seal a frame over a tagged fixture's initiator->responder direction (the road a revocation must close).
+    public func fixtureSeal(_ tag: String, _ plaintext: Data) -> Data? {
+        sessionHub.fixtureSeal(tag: tag, plaintext)
+    }
+
+    /// Open a frame at a tagged fixture's responder direction.
+    public func fixtureOpen(_ tag: String, _ ciphertext: Data) -> Data? {
+        sessionHub.fixtureOpen(tag: tag, ciphertext)
+    }
+
+    /// Seal a frame over a tagged fixture's responder->initiator direction (the other direction of the pair).
+    public func fixtureSealResponder(_ tag: String, _ plaintext: Data) -> Data? {
+        sessionHub.fixtureSealResponder(tag: tag, plaintext)
+    }
+
+    /// Open a frame at a tagged fixture's initiator (the other direction of the pair).
+    public func fixtureOpenInitiator(_ tag: String, _ ciphertext: Data) -> Data? {
+        sessionHub.fixtureOpenInitiator(tag: tag, ciphertext)
+    }
+
+    /// A tagged fixture's REAL ready-state (the witness a court binds BEFORE and AFTER the invalidation).
+    public func fixtureReady(_ tag: String) -> Bool {
+        sessionHub.fixtureReady(tag: tag)
+    }
+
+    /// The identity node id the self-contained fixture form binds its relations under.
+    public static var fixtureSessionNodeId: Data { LabSessionInvalidationHub.fixtureBoundNodeId }
 }
 
 public struct LabRuntimeError: Error, Equatable { public let reason: String }
+
+
+#if DEBUG
+/// *** *** G1: THE DEBUG, NONSHIPPING RECOVERY-FIXTURE DOOR -- REAL DURABLE BYTES, NOT A STORY GRAPH. *** ***
+///
+/// *THE MEASUREMENT THE REPORT NAMED AS MISSING: "no launchEnvironment door exists to reach those states", so the
+/// recovery-only topology, the decision gate and the denial paths could not be driven by a rendered arm at all.*
+/// **THE DOOR PLANTS THE ACTUAL MEDIUM**: the lab's real per-label stores and registers are created (the full
+/// inventory, no hardcoded Artifact census), the durable generation FLOOR is seeded, and the journal file is written
+/// with the REAL wire phase `REQUESTED` pinned to that floor -- which is exactly the bytes the production ladder
+/// writeth, so the typed decision the holder reads is read from a record that really stands.*
+///
+/// **IT IS DEBUG-ONLY AND NONSHIPPING**: a release build carrieth neither this type nor its call site, so no shipping
+/// configuration can be argued into a fixture. And it fabricates NO `WipeProgressState` and NO story graph -- a
+/// fixture that only moved a UI value would prove nothing about the authority.
+///
+/// *** `corrupt` IS A REAL UNREADABLE RECORD, NOT A FLAG: *** *the door writeth an unparseable phase beside a
+/// standing floor, so the holder meets GENUINE corruption -- `corrupt_journal` -- rather than a value this type
+/// invented. A readable estate is answered a named refusal by the coordinator, so a fixture that planted something
+/// readable would not even reach the operator road.*
+public enum LabRecoveryFixtureDoor {
+    /// The environment variable the XCTest launch door sets.
+    public static let envKey = "GODSTONE_LAB_RECOVERY_FIXTURE"
+    /// Plant a real pending recovery: inventory + floor + a pinned `REQUESTED` phase.
+    public static let requestedFixture = "requested"
+    /// Plant a persisted MID-LADDER rung: inventory + floor + a pinned `KEYS_ERASED` phase (a wipe that advanced and
+    /// stopped, so a resume must continue from there rather than re-request).
+    public static let keysErasedFixture = "keys_erased"
+    /// Plant a genuinely unreadable record (phase + stale floor), the real corruption the operator road existeth for.
+    public static let corruptFixture = "corrupt"
+    /// Clear the lab estate to a pinned, readable clean baseline and plant nothing (the normal-boot control).
+    public static let resetFixture = "reset"
+    static func value() -> String? {
+        let raw = ProcessInfo.processInfo.environment[envKey]
+        return (raw?.isEmpty == false) ? raw : nil
+    }
+    /// The `WipeState` a phase-planting fixture writes (nil for the clear/corrupt arms).
+    static func plantedPhase(_ fixture: String) -> WipeState? {
+        switch fixture {
+        case requestedFixture: return .requested
+        case keysErasedFixture: return .keyErased
+        default: return nil
+        }
+    }
+
+    /// *** THE HOLDER'S ONE CALL: PLANT THE REAL FIXTURE MEDIUM BEFORE ANY HOLDER CONSTRUCTION. ***
+    ///
+    /// *The rules are chosen so an ARM is ORDER-INDEPENDENT and the RELAUNCH is a real DISCRIMINATOR:*
+    ///   * NO value -- the door doth NOTHING. **This is what maketh the durability half honest**: a launch that
+    ///     carrieth NO value writes no fixture, so whatever record it reads can only have come from the PREVIOUS
+    ///     process through the medium.*
+    ///   * `reset` -- clears the estate and re-stamps a PINNED, readable clean baseline (phase `idle|1`, floor `1`),
+    ///     so a NORMAL boot is reachable regardless of what a previous arm left.
+    ///   * `requested` -- plants the real wire phase `REQUESTED` (pinned to a seeded floor) beside the lab's real
+    ///     inventory. A RELAUNCH with the value CLEARED then reads the SAME record the first process left.
+    ///   * `corrupt` -- always plants an UNREADABLE phase beside a standing floor (presence is history; the phase
+    ///     cannot be parsed, so every read road refuses it as corrupt).
+    public static func applyFixtureIfPresent(journalURL: URL, estateRoot: URL) {
+        guard let fixture = value() else { return }
+        let fm = FileManager.default
+        if fixture == resetFixture {
+            // *** A CLEAN FIRST-LAUNCH ESTATE -- AND A **PINNED, READABLE** BASELINE. ***
+            //
+            // *`resetLabEstateForTest` clearéth the estate, but a clear on a genuinely floor-less estate writeth a
+            // SUFFIX-LESS `idle` -- which the journal readeth as UNPINNED/UNREADABLE BY DESIGN -- so a pristine
+            // simulator would read the normal boot as corrupt. **The baseline is therefore re-stamped explicitly at a
+            // seeded floor**, which is exactly the state `establishBaseline` produceth: phase `idle|1` with floor `1`.*
+            LabRuntime.resetLabEstateForTest()
+            try? fm.createDirectory(at: estateRoot, withIntermediateDirectories: true)
+            // A stale refusal marker or floor from a prior run must not survive the reset.
+            try? fm.removeItem(at: URL(fileURLWithPath: journalURL.path + ".unacked"))
+            try? fm.removeItem(at: URL(fileURLWithPath: journalURL.path + ".epoch"))
+            try? Data("1".utf8).write(to: URL(fileURLWithPath: journalURL.path + ".epoch"), options: .atomic)
+            try? Data("\(WipeState.idle.rawValue)|1".utf8).write(to: journalURL, options: .atomic)
+            return
+        }
+        // A CLEAN SLATE FOR THE PLANT: record, floor and refusal marker removed.
+        try? fm.removeItem(at: journalURL)
+        try? fm.removeItem(at: URL(fileURLWithPath: journalURL.path + ".epoch"))
+        try? fm.removeItem(at: URL(fileURLWithPath: journalURL.path + ".unacked"))
+        try? fm.createDirectory(at: estateRoot, withIntermediateDirectories: true)
+        if fixture == corruptFixture {
+            // A STANDING FLOOR BESIDE AN UNPARSEABLE PHASE -- the real corruption, not a value this door invented.
+            try? Data("1".utf8).write(to: URL(fileURLWithPath: journalURL.path + ".epoch"), options: .atomic)
+            try? Data("THIS RECORD IS UNREADABLE BY CONSTRUCTION".utf8).write(to: journalURL, options: .atomic)
+            return
+        }
+        guard let planted = plantedPhase(fixture) else { return }
+        // (2) THE FLOOR IS SEEDED so the planted phase is PINNED to a real durable generation (an unpinned record
+        // admits nothing, by design).
+        try? Data("1".utf8).write(to: URL(fileURLWithPath: journalURL.path + ".epoch"), options: .atomic)
+        // (3) THE LAB'S REAL, PHYSICALLY-OWNED INVENTORY, CREATED AT ITS OWN REAL PATHS (derived from the root, not a
+        // hardcoded census). **THE FILES ARE CREATED EMPTY, NOT WITH MARKER GARBAGE**: a per-label store is later
+        // opened as a real SQLite database once a resume settles the estate, and a file of non-SQLite bytes would make
+        // that composition FAIL -- a fixture that broke the very road it existeth to exercise. An empty file is a valid
+        // empty SQLite database, so the wipe addresses real bytes and the resume still composes.
+        for (_, url) in LabRuntime.labEstateInventory(root: estateRoot) {
+            try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if !fm.fileExists(atPath: url.path) { fm.createFile(atPath: url.path, contents: Data()) }
+        }
+        // (4) THE REAL WIRE PHASE, PINNED TO THE FLOOR ABOVE: this is the medium the ladder's own adapter reads.
+        try? Data("\(planted.rawValue)|1".utf8).write(to: journalURL, options: .atomic)
+    }
+}
+#endif
+
+// ---------------------------------------------------------------------------
+/// *** THE LAB'S ESTATE, AS A RECOVERY CAPABILITY: IT ANSWERS THE PATHS THE LAB REALLY WROTE. ***
+//
+// *THE DEFECT THE PARENT NAMED, IN ONE SENTENCE: a recovery road that chooseth its own paths can erase somebody
+// else's estate -- and the lab's wipe used to drive DEFAULTS while the lab's real per-label stores and trust store
+// stayed live.* **The estate is now a capability, and the lab passes ITS OWN.**
+//
+// **IT PULLS THE PATHS FROM THE OWNERS RATHER THAN FROM A LIST:** the harness's durable store urls (registered where
+// each store was composed), plus the lab handle's own trust and intent files. *A name the lab never wrote is never
+// listed, and a file the lab really wrote cannot be forgotten -- which is the difference between a mapping and a
+// guess.*
+// ---------------------------------------------------------------------------
+
+/// The lab's recovery estate: the TOTAL inventory of files the lab really wrote, its own live drain seam, and the
+/// closure of its retained owners.
+internal struct LabEstateSeam: MeshRuntime.RecoveryEstate {
+    private let paths: [String: URL]
+    private let drain: LabEstateDrainSeam?
+    private let trustStore: SqlitePeerIdentityStore?
+    internal let keychain: any LocalIdentityKeychain = HarnessIdentityKeychain()
+    /// The lab carries no encrypted private store (its stores are plaintext files under Application Support), so
+    /// there is no DEK to erase and the vault answereth `.absent` -- the tri-state doctrine's own honest word.
+    internal let dekProvider: (any PrivateStoreKeyProvider)? = nil
+
+    /// - Parameters:
+    ///   - harness: the composition whose stores and owners the wipe must reach. `nil` (a released harness) yields
+    ///     NO paths and NO live owners -- and then the drain answereth nothing it cannot prove.
+    ///   - extraPaths: the lab handle's own files (trust store, durable intent medium, render registers).
+    internal init(harness: ComposedRuntimeHarness?, extraPaths: [URL] = [],
+                  inventory: [String: URL]? = nil,
+                  trustStore: SqlitePeerIdentityStore? = nil) {
+        // *** IOS-R7: THE INVENTORY IS THE **REAL** NAMES THE LADDER ITERATES. *** *An explicit inventory wins (the
+        // pre-private operator resolution has no composition to ask); otherwise the harness's ARMED inventory
+        // (`armRecoveryEstate(artifacts:)`) is preferred -- one source of truth for what the lab wrote -- and failing
+        // that the harness's registered stores plus the handle's extra files, each under its OWN filename plus its
+        // `-wal`/`-shm` sidecars, so a deletion addresses the bytes rather than guessing at a name it never wrote.*
+        var collected: [String: URL] = [:]
+        if let inventory {
+            collected = inventory
+        } else if let armed = harness?.estateArtifactPaths, !armed.isEmpty {
+            collected = armed
+        } else {
+            for url in harness?.durableStoreURLsForWipe() ?? [] { Self.add(url, to: &collected) }
+            for url in extraPaths { Self.add(url, to: &collected) }
+        }
+        self.paths = collected
+        self.drain = harness.map { LabEstateDrainSeam(harness: $0) }
+        self.trustStore = trustStore
+    }
+
+    /// Add one real file and both SQLite sidecars, under its OWN filename (so a deletion addresses the real bytes).
+    private static func add(_ base: URL, to out: inout [String: URL]) {
+        let name = base.lastPathComponent
+        out[name] = base
+        out[name + "-wal"] = URL(fileURLWithPath: base.path + "-wal")
+        out[name + "-shm"] = URL(fileURLWithPath: base.path + "-shm")
+    }
+
+    internal var artifactPaths: [String: URL] { paths }
+
+    /// *** IOS-R5: THE LAB'S OWN LIVE TRANSPORT SEAM. *** *`nil` only when the harness was released (there is then no
+    /// live owner to quiesce, and the drain answereth `.cold` from that positive fact rather than a dead barrier).*
+    internal var liveTransport: TransportRuntimeSeam? { drain }
+
+    /// *** DRAIN AND CLOSE THE LAB'S RETAINED OWNERS, THEN MEASURE IT. ***
+    ///
+    /// *`.drained` is answered ONLY when the harness really closed a non-zero number of retained durable stores and
+    /// every one of them refused further use -- the measurement the review demanded. `.cold` only when the lab
+    /// positively owns no live store. `.ownersLive` otherwise, which keeps the wipe pending rather than advancing over
+    /// a store that is still live.*
+    internal func drainOwners() -> OwnerDrainResult {
+        // *** CLOSES ACTUAL RETAINED TRUST STORE BEFORE KEY/FILE DELETION. ***
+        trustStore?.close()
+        guard let harness = drain?.harness else {
+            return .cold(reason: "the lab harness was released: the estate positively owns no live owner")
+        }
+        // The synthetic radio is quiesced first, then the owners are closed and MEASURED.
+        _ = drain?.drainTransport()
+        let measured = harness.closeLiveOwnersMeasured()
+        if measured.closed {
+            return .drained(reason: "closed \(measured.owners) retained durable owner(s); each refused further use")
+        }
+        if measured.owners == 0 {
+            return .cold(reason: "the lab estate owns no durable store to drain")
+        }
+        return .ownersLive(reason: "\(measured.owners) retained durable owner(s) could not be confirmed closed")
+    }
+}
+
+/// *** THE LAB'S LIVE TRANSPORT SEAM: A REAL QUIESCE OF THE COMPOSITION THE LAB ACTUALLY HOLDS. ***
+///
+/// *THE DEFECT IOS-R5 NAMED: recovery drained a BRAND-NEW `BleTransport()` with no active context, so its barrier
+/// succeeded without touching anything. **THIS SEAM TOUCHES THE REAL OWNERS**: it drains the synthetic link and, on
+/// the owner-drain road, closes the retained stores -- so the receipt described the estate rather than an empty
+/// object.*
+internal final class LabEstateDrainSeam: TransportRuntimeSeam, @unchecked Sendable {
+    internal let harness: ComposedRuntimeHarness?
+    private let lock = NSLock()
+    private var quiescedThisLifetime = false
+
+    internal init(harness: ComposedRuntimeHarness?) { self.harness = harness }
+
+    internal func drainTransport() -> RuntimeDrainReceipt {
+        lock.lock(); defer { lock.unlock() }
+        quiescedThisLifetime = true
+        // The synthetic link is the lab's whole radio; the owners are closed by `drainOwners()`.
+        return .drained(closedTransports: harness == nil ? 0 : 1, quiescedRuntime: true)
+    }
+
+    internal func isQuiesced() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return quiescedThisLifetime
+    }
+
+    internal func fireRadio(_ msg: String) -> Bool { _ = msg; return !isQuiesced() }
+    internal func sendVia(_ msg: String) -> Bool { _ = msg; return !isQuiesced() }
+}

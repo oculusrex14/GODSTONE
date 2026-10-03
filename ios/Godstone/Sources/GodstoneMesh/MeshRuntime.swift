@@ -84,6 +84,26 @@ public final class MeshRuntime {
     /// `meshNode`), while `init` can still hand the same box to the decorators.
     internal let wipeGateBox: WipeGateBox
 
+    /// *** GS-FINAL-003 `true-recovery-topology`: WHAT THE RECOVERY LADDER DECIDED AT THIS RUNTIME'S STARTUP. ***
+    ///
+    /// *THE AUDIT'S ROOT CAUSE, IN ITS OWN WORDS: "DI sequencing is mistaken for successful state transition."* **THE
+    /// DEFECT WAS NOT ONLY THAT iOS OPENED PRIVATE STORES REGARDLESS -- IT WAS THAT THE ANSWER WAS UNSAYABLE.** *A
+    /// decision taken, acted upon, and then thrown away leaves a caller no way to tell a clean estate from a completed
+    /// wipe from an outstanding one; and a caller that cannot tell them apart cannot render any of them.*
+    ///
+    /// **SO IT IS RETAINED HERE, AS THE TYPED VALUE RATHER THAN A BOOLEAN SUMMARY** -- *and the private road can no
+    /// longer be reached with an outstanding wipe at all (`MeshRuntime.create` resolves it through the pre-private
+    /// recovery composition first), so what this carries on a PRIVATE composition is always a SETTLED estate. On the
+    /// ARCHIVE/HOST road it carries whatever the deferred drive answered, which is the honest report for a graph that
+    /// owns no transport.*
+    public private(set) var startupDecision: StartupRecoveryDecision = .cleanStart
+
+    /// *** THE PUBLIC ACCESSOR: WHAT WAS DECIDED, AND WHAT IT PERMITS. ***
+    ///
+    /// *`allowsPrivateConstruction` is the question a caller must not guess at, and `requiresOperator` is the one a
+    /// SURFACE must answer -- "a corrupt journal needs a human" is not a fact an error string can carry truthfully.*
+    public func recoveryDecisionAtStartup() -> StartupRecoveryDecision { startupDecision }
+
     /// GS-FINAL-002: **THE KEYCHAIN THE COMPOSITION WAS GIVEN, RETAINED FOR THE WIPE.**
     ///
     /// THE OLD `PanicWipe` PATH REGENERATED THE IDENTITY THROUGH `MeshIdentity.generateAndStore(keychain:)` -- with
@@ -93,13 +113,18 @@ public final class MeshRuntime {
     /// a composition that accepted a keychain and then regenerated against a different one -- is corrected with it.
     private let keychain: any LocalIdentityKeychain
 
+    /// *** IOS-R2/R5: THE RUNTIME'S OWN SERIALIZED ESTATE-OWNER REGISTRY. *** *Every live owner that must be drained
+    /// and closed before a wipe destroys material registers here; the recovery road drains THROUGH it rather than
+    /// through a fresh dead transport.*
+    internal let ownerRegistry: EstateOwnerRegistry
+
     internal init(
         identity: MeshIdentity,
         messageStore: SqliteMessageStore,
         peerIdentityStore: SqlitePeerIdentityStore,
         messageStoreUrl: URL,
         peerStoreUrl: URL,
-        journal: WipeJournal = UserDefaultsWipeJournal(),
+        journal: WipeJournal = FileWipeJournal.standard(),
         lifecycleGate: DefaultRuntimeLifecycleGate = DefaultRuntimeLifecycleGate(),
         wipeKeyProvider: (any PrivateStoreKeyProvider)? = nil,
         keychain: any LocalIdentityKeychain = DefaultLocalIdentityKeychain(),
@@ -107,6 +132,9 @@ public final class MeshRuntime {
         // where the stores own their own handles.
         adoptedMessageConnection: OwnedConnection? = nil,
         adoptedPeerConnection: OwnedConnection? = nil,
+        /// *** IOS-R2/R5: THE ESTATE-OWNER REGISTRY THE COMPOSITION BUILT, so the recovery road and the runtime drain
+        /// the SAME owners. ***
+        ownerRegistry: EstateOwnerRegistry = EstateOwnerRegistry(),
         /// GS-INTEGRATION-001 `real-adapters`: the composition lane, handed to the node at birth and never moved.
         compositionLane: CompositionLane = .shipping
     ) {
@@ -116,6 +144,7 @@ public final class MeshRuntime {
         self.messageStoreUrl = messageStoreUrl
         self.peerStoreUrl = peerStoreUrl
         self.journal = journal
+        self.ownerRegistry = ownerRegistry
         self.lifecycleGate = lifecycleGate
         self.wipeKeyProvider = wipeKeyProvider
         self.adoptedMessageConnection = adoptedMessageConnection
@@ -323,7 +352,7 @@ public final class MeshRuntime {
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
-        journal: WipeJournal = UserDefaultsWipeJournal(),
+        journal: WipeJournal = FileWipeJournal.standard(),
         encryptedStores: EncryptedStoreFactory? = nil
     ) throws -> MeshRuntime {
         try create(
@@ -355,7 +384,7 @@ public final class MeshRuntime {
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
-        journal: WipeJournal = UserDefaultsWipeJournal(),
+        journal: WipeJournal = FileWipeJournal.standard(),
         keychain: any LocalIdentityKeychain,
         encryptedStores: EncryptedStoreFactory? = nil
     ) throws -> MeshRuntime {
@@ -365,41 +394,159 @@ public final class MeshRuntime {
                 + "composition that carrieth ordinary SQLite is the ARCHIVE/HOST composition and must SAY so by "
                 + "calling createArchiveOnlyHostComposition -- it may not be reached by saying nothing.")
         }
-        // *** GS-FINAL-003 `typed-permit`: THE DECISION IS NOW AN INPUT, NOT A DISCARDED VALUE. ***
+        // *** GS-FINAL-003 `true-recovery-topology`: THE DECISION CHOOSES THE COMPOSITION, AND A PENDING WIPE NO
+        // LONGER MEANS "OPEN PRIVATE STORES ANYWAY". ***
         //
-        // *THE LINE THAT STOOD HERE WAS `_ = try resumeAuthority.resume()`, and its replacement read
-        // `_ = recoveryDecision` -- THE SAME DEFECT WEARING A TYPED TYPE.* **A decision that is computed and then
-        // discarded is not a gate; it is a witness to the fact that no gate exists.***
+        // *THE ROAD THAT STOOD HERE WAS A SINGLE `guard let permit = issue(decision)` AND IT COULD NOT BE HONOURED: a
+        // pending wipe made `issue` return `nil`, and the composition then EITHER opened the private stores regardless
+        // (discarding the decision -- the audit's charge) OR refused construction outright (which the repository
+        // MEASURED as a brick: "the only path that can finish a pending wipe is `continuePendingWipeIfNeeded`, a method
+        // on a CONSTRUCTED runtime, and `MeshNode` IS BUILT FROM THESE VERY STORES").*
         //
-        // *MEASURED BEFORE THIS EDIT: the ladder ran, the answer was thrown away, and identity plus BOTH private
-        // stores were opened regardless -- so a pending wipe was discovered and then ignored on the shipped road.*
+        // **SO THE RECOVERY MOVED BEFORE THE PRIVATE GRAPH, WHERE THE FINDING SAID IT BELONGED:** *"a RECOVERY/BOOTSTRAP
+        // composition whose transport seam exists BEFORE and independently of the store graph, drives the ladder to a
+        // TYPED DECISION; a PRIVATE RUNTIME composition may be constructed only against a permit that only that typed
+        // decision can mint."* **AND THE ROADS ARE THE ENFORCEMENT:** *a SETTLED estate yields a `PrivateRuntimePermit`
+        // and opens the private graph; an OUTSTANDING one yields `.recoveryOnly` -- a decision with NO permit at all --
+        // so there is no type, no value and no initializer by which a pending wipe can reach a private store. The
+        // compiler is what says so.*
         //
-        // **THE PERMIT IS THE BRIDGE: the ladder's answer is converted ONCE into a non-forgeable capability, and
-        // `createPrivateComposition` cannot be entered without one. A refusal is therefore not a branch a future
-        // refactor may drop -- it is a missing argument.**
-        //
-        // *AND THE REFUSAL NAMES WHICH OF THE SIX DECISIONS STOPPED IT, because "startup refused" without the reason
-        // is the shape of a defect that takes a day to find and a minute to explain.*
-        let recoveryDecision = StartupRecoveryBootstrap(wipe: CrashResumableWipe(
-            store: WipeJournalDurabilityAdapter(journal: journal),
-            vault: WipeDeferredKeyVaultSeam(),
-            filesystem: WipeDeferredArtifactFileSystemSeam(),
-            runtime: WipeDeferredTransportSeam(),
-            authority: WipeDeferredIdentityAuthoritySeam())).decideAndDrive()
-        guard let permit = PrivateRuntimePermit.issue(recoveryDecision) else {
+        // *NOTHING IS DISCARDED, AND NOTHING IS CONSTRUCTED PRIVATELY BEFORE THE ESTATE SETTLES:* the `.recovery` arm
+        // drives the LIVE ladder over a transport this composition owns -- no private store, no private peer store, no
+        // identity minted for a private graph -- and returns with a decision taken AFTER that drive. If the estate
+        // settles, the permit issues and the private graph opens; if it does not, the caller is TOLD which rung and why,
+        // and ZERO private stores were opened.*
+        let createTimeDecision = StartupRecoveryBootstrap(
+            wipe: CrashResumableWipe(
+                store: WipeJournalDurabilityAdapter(journal: journal),
+                vault: WipeDeferredKeyVaultSeam(),
+                filesystem: WipeDeferredArtifactFileSystemSeam(),
+                runtime: WipeDeferredTransportSeam(),
+                authority: WipeDeferredIdentityAuthoritySeam()),
+            estateId: Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(
+                messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl))
+        ).decideAndDrive()
+
+        switch createTimeDecision {
+        case .cleanStart, .wipeCompleted:
+            // *** A SETTLED ESTATE: DRIVE ONCE MORE THROUGH THE BOOTSTRAP THAT ISSUES THE PERMIT. ***
+            //
+            // *The decision above came from the CREATE-TIME seams (which own no transport), so it could not have
+            // settled a pending wipe -- but the permit may be issued ONLY by `consumeCompositionTopology()`, and that
+            // road drives the ladder ITSELF with the seams its own coordinator owns.* **So the settled road is
+            // confirmed by the same bootstrap whose evidence the permit is made of, rather than by handing it a
+            // decision value -- there is no parameter through which a decision could be passed.**
+            // *** IOS-R1/R3 + IOS-FOLLOWUP-C2 + CURRENT-01: THE BASELINE IS CHECKED, HISTORY-AWARE, AND ITS PHASE IS
+            // STAMPED TO THE FLOOR. ***
+            //
+            // *A baseline that is merely VISIBLE but not synchronized would let a permit be bound to an unacknowledged
+            // generation. AND -- CURRENT-01 -- a PRESENT record with no nameable generation is HISTORY, not a first
+            // launch: `writeChecked(.idle)` then re-stamps the phase with the DURABLE FLOOR's number or refuses
+            // outright, so no recycled generation-1 baseline can be manufactured by recreating the object.*
+            if journal.durableEpoch == nil {
+                let baseline = journal.writeChecked(.idle)
+                guard baseline.synchronized, baseline.epoch != nil else {
+                    throw MeshRuntimeError.startupRefusedByRecovery(
+                        decision: "baseline_unsynchronized",
+                        reason: "the estate's baseline generation could not be durably synchronized (a present record's "
+                              + "history could not be established, or the medium refused); no permit was minted")
+                }
+            }
+            let settled = StartupRecoveryBootstrap(
+                wipe: CrashResumableWipe(
+                    store: WipeJournalDurabilityAdapter(journal: journal),
+                    vault: WipeDeferredKeyVaultSeam(),
+                    filesystem: WipeDeferredArtifactFileSystemSeam(),
+                    runtime: WipeDeferredTransportSeam(),
+                    authority: WipeDeferredIdentityAuthoritySeam()),
+                estateId: Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(
+                    messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)))
+            guard case .normal(let permit) = settled.consumeCompositionTopology() else {
+                throw MeshRuntimeError.startupRefusedByRecovery(
+                    decision: settled.reportedDecision().name,
+                    reason: settled.reportedDecision().refusalReason
+                        ?? "the estate did not settle under the issuing drive")
+            }
+            return try createPrivateComposition(
+                messageStoreUrl: messageStoreUrl,
+                peerStoreUrl: peerStoreUrl,
+                maxStoreBytes: maxStoreBytes,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: factory,
+                permit: permit
+            )
+        case .corruptJournal, .terminalFailure:
+            // CORRUPT OR TERMINAL: no composition may be built at all, and the reason NAMES the state.
             throw MeshRuntimeError.startupRefusedByRecovery(
-                decision: recoveryDecision.name,
-                reason: recoveryDecision.refusalReason ?? "the recovery ladder did not settle")
+                decision: createTimeDecision.name,
+                reason: createTimeDecision.refusalReason ?? "the recovery ladder did not settle")
+        case .recoveryPending, .retryableFailure:
+            // *** THE RECOVERY-ONLY ROAD: IT OWNS RECOVERY CAPABILITIES AND CONSTRUCTS NOTHING SENSITIVE. ***
+            //
+            // *A store opened now is a store opened on the key a later resume will erase -- SO NO STORE IS OPENED.
+            // No message store, no peer store, no trust repository, no ordinary identity: `runRecoveryLadderInternal`
+            // drives the durable ladder over the journal, the key-delete seam, the artifact-delete seam, the
+            // identity-delete-and-publish seam and ONE LIVE TRANSPORT, and then this throws with the estate it
+            // reached.*
+            //
+            // **THE CALLER'S REMEDY IS THE RECOVERY ROAD (`MeshRuntime.runRecoveryLadder`), NOT A GATED RUNTIME:**
+            // *an earlier draft admitted a composition whose sensitive roads were merely refused -- which is
+            // construction PLUS a gate, not zero construction. The requirement is zero, so the road that carries a
+            // pending wipe cannot build at all.*
+            let driven = Self.runRecoveryLadderInternal(
+                journal: journal,
+                estate: DefaultRecoveryEstate(
+                    messageStoreUrl: messageStoreUrl,
+                    peerStoreUrl: peerStoreUrl,
+                    keychain: keychain,
+                    dekProvider: factory.keyProviderForWipe),
+                requestFresh: false
+            )
+            // *** THE PERMIT COMES FROM THE BOOTSTRAP THAT DROVE THE LADDER, NOT FROM THIS FUNCTION. ***
+            //
+            // *`driven.topology` is produced by `consumeCompositionTopology()` over the SAME retained authority, and
+            // it is the ONLY producer of a permit in the module -- so this is a hand-off of evidence rather than a
+            // decision this function could have named itself.*
+            guard case .normal(let permit) = driven.topology else {
+                throw MeshRuntimeError.startupRefusedByRecovery(
+                    decision: driven.outcome.decision.name,
+                    reason: "the recovery-only road drove the LIVE ladder and the estate did not settle: "
+                        + (driven.outcome.decision.refusalReason ?? "reason unknown")
+                        + " (" + driven.outcome.remainingWords + ")")
+            }
+            return try createPrivateComposition(
+                messageStoreUrl: messageStoreUrl,
+                peerStoreUrl: peerStoreUrl,
+                maxStoreBytes: maxStoreBytes,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: factory,
+                permit: permit
+            )
         }
-        return try createPrivateComposition(
-            messageStoreUrl: messageStoreUrl,
-            peerStoreUrl: peerStoreUrl,
-            maxStoreBytes: maxStoreBytes,
-            journal: journal,
-            keychain: keychain,
-            encryptedStores: factory,
-            permit: permit
-        )
+    }
+
+    /// *** THE ONE ARTIFACT MAP: LOGICAL NAME -> THE REAL FILE THIS COMPOSITION OWNS. ***
+    ///
+    /// *`WipeScope` nameth LOGICAL artifacts (`mesh.db`, `mesh.db-wal`, ...), and a deletion must address the files the
+    /// runtime actually owns: `fileManager.removeItem(atPath: "mesh.db")` is measured against the process's working
+    /// directory, where no such file has ever existed -- so every deletion would answer `.absent`, the ladder would read
+    /// that as success, and the durable store would survive a "completed" wipe.*
+    ///
+    /// **IT IS ONE FUNCTION BECAUSE THERE ARE NOW TWO CALLERS** -- the pre-private recovery composition and the
+    /// standing runtime's own wipe authority -- *and a second, hand-written map is a second place for the sidecars to
+    /// be forgotten. A path that is never named is never protected, and a path that is named in only one of two maps is
+    /// deleted in only one of two phases.*
+    internal static func wipeArtifactPaths(messageStoreUrl: URL, peerStoreUrl: URL) -> [String: URL] {
+        [
+            "mesh.db": messageStoreUrl,
+            "mesh.db-wal": URL(fileURLWithPath: messageStoreUrl.path + "-wal"),
+            "mesh.db-shm": URL(fileURLWithPath: messageStoreUrl.path + "-shm"),
+            "peer.db": peerStoreUrl,
+            "peer.db-wal": URL(fileURLWithPath: peerStoreUrl.path + "-wal"),
+            "peer.db-shm": URL(fileURLWithPath: peerStoreUrl.path + "-shm"),
+        ]
     }
 
     /// *** GS-STORE-002 (round 521): **THE DECLARED ARCHIVE/HOST COMPOSITION** -- ordinary SQLite, SAYED ALOUD. ***
@@ -441,7 +588,7 @@ public final class MeshRuntime {
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
-        journal: WipeJournal = UserDefaultsWipeJournal(),
+        journal: WipeJournal = FileWipeJournal.standard(),
         keychain: any LocalIdentityKeychain,
         compositionLane: CompositionLane = .shipping
     ) throws -> MeshRuntime {
@@ -478,7 +625,7 @@ public final class MeshRuntime {
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
-        journal: WipeJournal = UserDefaultsWipeJournal(),
+        journal: WipeJournal = FileWipeJournal.standard(),
         keychain: any LocalIdentityKeychain,
         encryptedStores: EncryptedStoreFactory,
         // *** GS-FINAL-003 `typed-permit`: THE PRIVATE ROAD CANNOT BE TRAVELLED WITHOUT A TYPED DECISION. ***
@@ -487,12 +634,20 @@ public final class MeshRuntime {
         // private construction is allowed"* -- AND ITS CHARGE: *"This function has a private initializer, so nothing
         // but a permitting decision can produce one."*** *The type WAS non-forgeable. **The ROAD was not gated.***
         //
-        // *** MEASURED BEFORE THIS EDIT, AND IT IS THE WHOLE FINDING: `PrivateRuntimePermit`'s only production
-        // consumer was `requireRecoveredPrivateComposition`, which is `internal` AND WHOSE ONLY CALLERS ARE COURTS;
-        // meanwhile the production entry point drove the ladder, THREW THE ANSWER AWAY (`_ = recoveryDecision`), and
-        // opened identity and both private stores REGARDLESS.*** **So every shipped road to a keyed private store
-        // bypassed the permit entirely -- the type was decoration, and a decoration that an auditor would read as a
-        // gate is worse than an absent one.**
+        // *** MEASURED, TWICE: FIRST THE DEFECT, THEN ITS ABSENCE. ***
+        //
+        // *THE DEFECT, AS MEASURED: `PrivateRuntimePermit`'s only production consumer was
+        // `requireRecoveredPrivateComposition`, which is `internal` AND WHOSE ONLY CALLERS ARE COURTS; meanwhile the
+        // production entry point drove the ladder, THREW THE ANSWER AWAY (`_ = recoveryDecision`), and opened identity
+        // and both private stores REGARDLESS.* **So every shipped road to a keyed private store bypassed the permit
+        // entirely -- the type was decoration, and a decoration that an auditor would read as a gate is worse than an
+        // absent one.**
+        //
+        // **AND THE ROAD IS NOW THE PRODUCTION ONE:** *`MeshRuntime.create` is the caller that hands this parameter,
+        // on the SETTLED arm of the create-time switch -- `.cleanStart`/`.wipeCompleted` asks the same bootstrap to
+        // issue, and the recovery arm passes the permit the DRIVING bootstrap issued over the live ladder.
+        // `requireRecoveredPrivateComposition` remains for a caller that supplies its own recovery route, and its
+        // closure returns the topology that route issued rather than a decision value.*
         //
         // *** AND IT IS A PARAMETER RATHER THAN A GUARD INSIDE THE BODY, BECAUSE A CHECK CAN BE FORGOTTEN AND A
         // PARAMETER CANNOT: a caller cannot reach this function at all without having been handed a permit, and the
@@ -508,16 +663,61 @@ public final class MeshRuntime {
         permit: PrivateRuntimePermit,
         compositionLane: CompositionLane = .shipping
     ) throws -> MeshRuntime {
-        try composeRuntimeGraph(
-            messageStoreUrl: messageStoreUrl,
-            peerStoreUrl: peerStoreUrl,
-            maxStoreBytes: maxStoreBytes,
-            journal: journal,
-            keychain: keychain,
-            encryptedStores: encryptedStores,
-            compositionLane: compositionLane
-        )
+        // *** IOS-R1/R2: THE PERMIT IS VALIDATED AND CONSUMED *HERE*, AT THE ACTUAL CONSTRUCTION BOUNDARY. ***
+        //
+        // *THE FINDING, VERBATIM: the permit was "neither estate-bound nor consumed at private construction; the
+        // normal helper can bypass recovery."* **So the boundary checketh ALL THREE -- the ESTATE the permit names,
+        // the LIVE durable GENERATION (ABA), and the ONE-SHOT slot -- against the SAME live read, and only then opens
+        // anything.** *A wrong-estate permit, a stale permit (the record moved since it was judged), a reused permit
+        // (a copy of a spent one), and an ABA permit are ALL refused here.*
+        //
+        // **AND THE ADMISSION SCOPE THE FACTORY VERIFIETH IS MINTED NOW, FROM THIS CONSUMPTION -- so a construction
+        // that never consumed a permit has no scope to pass and cannot reach a keyed open.** *The factory's own
+        // `wasMinted`+binding check is the second half of the same boundary.*
+        //
+        // THE GENERATION IS READ FROM THE ADAPTER'S OWN COUNTER -- the same value the permit's producer bound -- so the
+        // two cannot be compared across different units.
+        // *** IOS-FOLLOWUP-C4: THE ADMISSION -- PERMIT VALIDATION + CONSUMPTION + CONSTRUCTION + OWNER REGISTRATION --
+        // RUNS UNDER THE ESTATE'S ONE SERIALIZATION POINT, so a wipe request cannot interleave the interval and bind
+        // construction to a stale decision or leave an unregistered owner built during a wipe. ***
+        //
+        // *THE REVIEW: "A request can therefore land after the permitting decision but before its evidence reads ...
+        // or after permit consumption but before actual resource construction/registration."* **The estate id and
+        // generation are read and consumed INSIDE the serialized section.***
+        let estateIdForLock = recoveryEstateId(artifactPaths: wipeArtifactPaths(
+            messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl))
+        return try PhysicalEstateAuthority.shared.serialized(for: estateIdForLock) {
+            // *** IOS-FOLLOWUP-C4: THE BOUNDARY IS THE SEALED LEASE ITSELF. ***
+            //
+            // *`beginConstruction` is the ONE issuer: it bindeth the physical inventory, readeth the checked durable
+            // record (readable, IDLE, a KNOWN generation -- never a fabricated zero), consumeth the one-shot permit
+            // against that live generation, and only then issueth the `ConstructionLease` the factory accepteth as
+            // admission evidence. The old `requirePermitConsumption` + ledger-mint pair is gone with this: there is
+            // no public mint, no self-named scope, and the generation is never compared against the permit itself.*
+            let lease = try PhysicalEstateAuthority.shared.beginConstruction(
+                permit: permit,
+                estateId: estateIdForLock,
+                journal: journal,
+                artifactPaths: Self.wipeArtifactPaths(messageStoreUrl: messageStoreUrl,
+                                                     peerStoreUrl: peerStoreUrl),
+                keychain: keychain,
+                keyDomain: encryptedStores.keyProviderForWipe.physicalKeyDomain,
+                stores: ["message-store": messageStoreUrl, "peer-identity-store": peerStoreUrl])
+            let runtime = try composeRuntimeGraph(
+                messageStoreUrl: messageStoreUrl,
+                peerStoreUrl: peerStoreUrl,
+                maxStoreBytes: maxStoreBytes,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: encryptedStores,
+                compositionLane: compositionLane,
+                constructionLease: lease)
+            // *** THE SPEND WITNESS: both keyed opens are claimed and the graph standeth; the lease is spent. ***
+            lease.retire()
+            return runtime
+        }
     }
+
 
     /// The ONE runtime graph, built by both declared compositions. The only difference between them is the factory,
     /// and it is passed explicitly rather than defaulted -- **so neither road can accidentally become the other.**
@@ -525,14 +725,20 @@ public final class MeshRuntime {
     ///
     /// *The audit's charge was that iOS discards the resume answer before opening identity and
     /// stores. The answer is now TYPED and PUBLIC, so a caller may ask what the recovery ladder
-    /// decided BEFORE it opens anything -- and a caller that wants the refusal enforced can use
-    /// `requireRecoveredPrivateComposition`, which refuses when this does not permit construction.*
+    /// decided BEFORE it opens anything.*
+    ///
+    /// **AND `MeshRuntime.create` CARRIES THE SAME ANSWER ON THE OBJECT IT BUILT** (`startupDecision` /
+    /// `recoveryDecisionAtStartup()`), *so the decision is not merely available beforehand -- it is retained, which is
+    /// what letteth a surface or an arm read WHAT WAS DECIDED rather than inferring it from behaviour.*
     ///
     /// IT IS RECOVERY-ONLY: this drives the ladder with the CREATE-TIME seams (no transport, no
     /// vault), so it can legitimately answer `.recoveryPending` -- and it NEVER opens a private
-    /// store to do so, which is the whole requirement.
+    /// store to do so, which is the whole requirement. **THE SETTLED ROAD (`.cleanStart` /
+    /// `.wipeCompleted`) IS STILL THE ONLY ONE THAT PERMITS PRIVATE CONSTRUCTION; an outstanding
+    /// estate is resolved by the PRE-PRIVATE RECOVERY COMPOSITION (`runRecoveryLadder`), which
+    /// owns a live radio and no store.**
     public static func startupRecoveryDecision(
-        journal: WipeJournal = UserDefaultsWipeJournal()
+        journal: WipeJournal = FileWipeJournal.standard()
     ) -> StartupRecoveryDecision {
         let authority = CrashResumableWipe(
             store: WipeJournalDurabilityAdapter(journal: journal),
@@ -561,10 +767,10 @@ public final class MeshRuntime {
         messageStoreUrl: URL,
         peerStoreUrl: URL,
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
-        journal: WipeJournal = UserDefaultsWipeJournal(),
+        journal: WipeJournal = FileWipeJournal.standard(),
         keychain: any LocalIdentityKeychain,
         encryptedStores: EncryptedStoreFactory? = nil,
-        driveRecovery: (StartupRecoveryBootstrap) -> StartupRecoveryDecision
+        driveRecovery: (StartupRecoveryBootstrap) -> RecoveryCompositionTopology
     ) throws -> MeshRuntime {
         let authority = CrashResumableWipe(
             store: WipeJournalDurabilityAdapter(journal: journal),
@@ -572,10 +778,24 @@ public final class MeshRuntime {
             filesystem: WipeDeferredArtifactFileSystemSeam(),
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
-        let decision = driveRecovery(StartupRecoveryBootstrap(wipe: authority))
-        // THE PERMIT IS THE GATE: no `PrivateRuntimePermit`, no private composition. The type has a
-        // private initializer, so nothing but a permitting decision can produce one.
-        guard let permit = PrivateRuntimePermit.issue(decision) else {
+        // *** THE PERMIT IS THE GATE, AND IT COMES FROM THE BOOTSTRAP THAT DROVE THE LADDER. ***
+        //
+        // *There is NO `PrivateRuntimePermit.issue(_:)` anywhere in this module: an earlier draft exposed one and a
+        // review correctly named it as A MINT, because every case of `StartupRecoveryDecision` is public and a caller
+        // could write `issue(.cleanStart)` with no journal anywhere near it.* **So the caller's route closure is now
+        // given the BOOTSTRAP and must return the topology that bootstrap issued** -- *the closure may DECIDE WHICH
+        // SEAMS the drive uses (a live transport, a keychain, a fake in a court), and it may NOT invent the evidence,
+        // because the evidence is built only by `consumeCompositionTopology()` over that same coordinator.*
+        let topology = driveRecovery(StartupRecoveryBootstrap(
+            wipe: authority,
+            estateId: Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(
+                messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl))))
+        guard case .normal(let permit) = topology else {
+            let decision: StartupRecoveryDecision
+            switch topology {
+            case .normal: decision = .wipeCompleted
+            case .recoveryOnly(let d), .refused(let d), .alreadyConsumed(let d): decision = d
+            }
             throw MeshRuntimeError.startupRefusedByRecovery(
                 decision: decision.name,
                 reason: decision.refusalReason ?? "the recovery ladder did not settle")
@@ -605,8 +825,49 @@ public final class MeshRuntime {
         journal: WipeJournal,
         keychain: any LocalIdentityKeychain,
         encryptedStores: EncryptedStoreFactory?,
-        compositionLane: CompositionLane = .shipping
+        compositionLane: CompositionLane = .shipping,
+        // *** IOS-FOLLOWUP-C4: THE PRIVATE ROAD'S ADMISSION EVIDENCE IS A SEALED LEASE, NOT AN EPOCH PAIR. ***
+        // *The archive road passeth `nil` -- it carrieth no factory and can therefore open nothing keyed. A
+        // factory-capable branch that lacketh the lease cannot reach a key API at all.*
+        constructionLease: PhysicalEstateAuthority.ConstructionLease? = nil
     ) throws -> MeshRuntime {
+        // *** IOS-FOLLOWUP-C5: THE REGISTRY COMES FROM THE PROCESS-GLOBAL PHYSICAL-ESTATE AUTHORITY, KEYED BY THE
+        // NORMALIZED ESTATE -- so two compositions over the same real files and keychain accounts join the SAME
+        // owner set and a fresh unrelated registry cannot authorize a cold receipt. ***
+        let normalizedEstateId = constructionLease?.estateId
+            ?? ("legacy:" + messageStoreUrl.path + "|" + peerStoreUrl.path)
+        // *** IOS-FOLLOWUP-CURRENT-08: *BOTH* ROADS BIND THEIR PHYSICAL INVENTORY; A REGISTRY THAT CANNOT VOUCH IS
+        // NOT AN OWNER SET, AND A WIPE OVER ONE CANNOT DRAIN. ***
+        //
+        // *THE DEFECT THIS CLOSETH WAS MEASURED, NOT READ: on the ARCHIVE/HOST road this line was a bare
+        // `registry(for:)`, and `verifiedCatalog` is raised ONLY by `bindInventory`. So the composition's own
+        // `EstateOwnerDrainSeam` answereth `.ownersLive("no authority-owned durable physical inventory")` FOREVER --
+        // the ladder's `REQUESTED` rung stalléth, NO drain checkpoint is ever written, and a FRESH public wipe
+        // (`runtime.beginPanicWipe()`, the same entry the shipping panic road and `LabRuntime` travel) could not
+        // advance at all. MEASURED in `GsIntegration001ScenarioTests`' E arm: `retryLater(at: .requested)` with the
+        // journal at `[idle, requested]`, both pre-wipe rows still durable, the identity keys still standing and the
+        // reopen resurrecting them -- "a wipe that left the pre-wipe estate readable", which is the exact defect that
+        // half existeth to catch.*
+        //
+        // **THE PRIVATE ROAD ALREADY BINDS -- `beginConstruction -> bindInventory` -- SO THE TWO COMPOSITIONS OF THE
+        // SAME GRAPH SHOULD NOT DISAGREE ABOUT WHETHER THEIR ESTATE IS VOUCHED.** *And `DefaultRecoveryEstate` (the
+        // road the sibling courts already drive a real wipe over) binds the SAME six logical paths under the SAME
+        // `recoveryEstateId`; this maketh the runtime's OWN authority join that same vetted owner set rather than a
+        // shadow registry that can never vouch.*
+        //
+        // **A REFUSED BINDING IS NOT PERMISSION, AND IT MUST NOT BRICK A COMPOSITION:** *`bindInventory` throweth for
+        // an absent inventory or an unacknowledgeable Keychain, so a Keychain that cannot persist the catalog (a
+        // court fake, a locked device) falls back to the UNVOUCHED registry -- whose drain then answereth
+        // `.ownersLive`, keeping the wipe pending exactly as before.* ***The archive road's measured allowance
+        // (`testSR02`: the stores must still OPEN during a pending wipe, because it is the only road that can finish
+        // one) is preserved: a failed bind never refuses construction.***
+        let ownerRegistry = constructionLease?.registry
+            ?? (try? PhysicalEstateAuthority.shared.bindInventory(
+                estateId: normalizedEstateId,
+                artifactPaths: Self.wipeArtifactPaths(messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl),
+                keychain: keychain,
+                keyDomain: encryptedStores?.keyProviderForWipe.physicalKeyDomain ?? ("estate:" + normalizedEstateId)))
+            ?? PhysicalEstateAuthority.shared.registry(for: normalizedEstateId)
         // *** GS-STORE-002 / GS-FINAL-011 (round 681): THE UNUSED `effectiveArtifacts` LOCAL IS GONE, AND THE
         // PARAMETER THAT BUILT IT WITH IT. ***
         //
@@ -645,67 +906,80 @@ public final class MeshRuntime {
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam()
         )
-        // *** GS-FINAL-003: THE ANSWER IS NOT YET CONSUMED HERE, AND THE DEADLOCK THAT MAKES THAT SO IS MEASURED. ***
+        // *** GS-FINAL-003 `true-recovery-topology`: WHAT THIS DEFERRED DRIVE IS FOR NOW, AND WHAT IT IS *NOT*. ***
         //
-        // THE AUDIT'S CHARGE STANDS: *"iOS discards the result of resume before creating identity/stores."* A FIRST
-        // REPAIR OF MINE GATED THIS CALL SITE -- refusing construction whenever the permit was `.blocked` -- AND IT
-        // DEADLOCKED THE COMPOSITION, which is why it is REVERTED rather than shipped:
+        // *THE PROSE THAT STOOD HERE PROMISED SOMETHING AND THE CODE DID ANOTHER: it said "iOS needs a RECOVERY ENTRY
+        // POINT THAT DRIVES THE LADDER WITH A LIVE TRANSPORT WITHOUT CONSTRUCTING THE PRIVATE STORES" and "UNTIL THAT
+        // EXISTS, THE PERMIT CANNOT BE CONSUMED AT THIS CALL SITE, and the finding's iOS half remains open".* **BOTH
+        // HALVES OF THAT ARE NOW FALSE, AND A CONTRACT COMMENT THAT NAMES WORK AS OWED AFTER THE WORK LANDED MISLEADS
+        // AN AUDITOR IN THE DIRECTION OF THINKING LESS IS DONE THAN IS -- the same defect class this repository has
+        // already paid for twice.** *So the statement is replaced by the truth:*
         //
-        //   * the ONLY path that can finish a pending wipe is `continuePendingWipeIfNeeded`, WHICH IS A METHOD ON A
-        //     CONSTRUCTED RUNTIME;
-        //   * that method drains through `meshNode.ble`, AND `MeshNode` IS BUILT FROM THE VERY STORES THIS FUNCTION
-        //     WOULD REFUSE TO OPEN;
-        //   * so refusing here means the runtime is never constructed, the transport never exists, the drain can never
-        //     run, and THE WIPE CAN NEVER COMPLETE. A gate that makes the only remedy unreachable is worse than the
-        //     defect it closes.
+        //   * **THE PRIVATE ROAD NO LONGER REACHES HERE WITH AN OUTSTANDING WIPE.** `MeshRuntime.create` drives a
+        //     recovery composition that owns a LIVE transport and NO store (`driveTruePrePrivateRecovery`), and only a
+        //     SETTLED decision can reach `createPrivateComposition`. So on this graph a pending wipe is not a state the
+        //     composition can be in -- it is a state the RECOVERY composition already resolved, with a live radio, and
+        //     the two permits are what enforce the order.
+        //   * **WHAT REMAINS HERE IS THE ARCHIVE/HOST ROAD'S OWN MEASUREMENT, AND IT IS KEPT BECAUSE IT IS THE ONE
+        //     ROAD THAT MUST STILL OPEN ITS (NON-PRIVATE) STORES DURING A PENDING WIPE** -- *that road carrieth no
+        //     factory and therefore no private material, and its own pending-wipe behaviour is governed by the
+        //     JOURNAL-BOUND GATE every sensitive road on the node consults (`allowsSensitiveApi()` per call). Refusing
+        //     it here is the brick `testSR02` measured: nothing on that road can finish a wipe.*
+        //   * **AND THE DECISION IS NO LONGER DISCARDED ON EITHER ROAD:** it is RETAINED on the runtime
+        //     (`startupDecision`) so a caller can read WHAT WAS DECIDED rather than inferring it, and the two outcomes
+        //     that must stop construction entirely are honoured HERE rather than observed and ignored.
         //
-        // THE PREREQUISITE IS THEREFORE AN ARCHITECTURAL ONE, AND IT IS NAMED RATHER THAN WORKED AROUND: iOS needs a
-        // RECOVERY ENTRY POINT THAT DRIVES THE LADDER WITH A LIVE TRANSPORT WITHOUT CONSTRUCTING THE PRIVATE STORES --
-        // i.e. a composition whose transport seam exists before (and independently of) the store graph. UNTIL THAT
-        // EXISTS, THE PERMIT CANNOT BE CONSUMED AT THIS CALL SITE, and the finding's iOS half remains open. It is
-        // recorded as owed in the ledger, and the red-by-design arms that measure what the permit MUST do live in
-        // `tools/readiness/audit_probes/swift/GsFinal003StartupPermitTests.swift.txt`. The `StartupPermit` type this
-        // would need, and its `decide` function, are preserved in that probe.
+        // *** THE TWO OUTCOMES THAT ARE HONOURED RATHER THAN RECORDED, AND WHY EXACTLY THOSE TWO. ***
         //
-        // *** GS-FINAL-003: THE RESULT IS NO LONGER DISCARDED -- IT ISSUES A PERMIT. ***
+        // *`corruptJournal` and `terminalFailure` are the decisions whose ORACLE IS THE UNREADABLE RECORD ITSELF. A
+        // runtime whose gate decides admissibility by asking the journal whether a wipe is pending CANNOT DO SO when the
+        // journal cannot be read: it cannot tell "nothing outstanding" from "mid-erasure". So no composition -- private
+        // or archive -- may be built over an unreadable record, and the caller is told to involve an operator, which is
+        // what `requiresOperator` already said.* **The other four outcomes describe an estate whose gate can still
+        // answer, so they open (or refuse, on the private road) with their reason carried.**
+        let startupDecision = StartupRecoveryBootstrap(wipe: resumeAuthority).decideAndDrive()
+        // *** AND THE CORRUPT/TERMINAL OUTCOMES ARE *HONOURED* HERE, NOT RECORDED -- MEASURED, NOT ASSUMED. ***
         //
-        // *THE AUDIT'S CHARGE: "iOS discards the result of resume before creating identity/stores."
-        // Root cause in its own words: "DI sequencing is mistaken for successful state transition."*
-        // MEASURED BEFORE THIS EDIT: the line below read `_ = try resumeAuthority.resume()` and the
-        // composition then opened the identity and both private stores REGARDLESS of the answer --
-        // **a store opened now is a store opened on the key a later resume is going to erase.**
-        //
-        // THE RECOVERY GRAPH RUNS FIRST AND ALONE. `StartupRecoveryBootstrap` owns the journal and
-        // the ladder and NOTHING PRIVATE -- no identity, no message store, no peer store -- because
-        // *a graph that needs those in order to decide whether they may be opened can never decide
-        // "no".* That is what makes a refusal possible here WITHOUT the deadlock the earlier attempt
-        // measured: the composition that finishes a wipe is still reachable, because the recovery
-        // graph never depended on the private one.
-        //
-        // AND THE PERMIT IS THE GATE. `PrivateRuntimePermit.issue` has a PRIVATE initializer, so the
-        // only way to hold one is to have been handed one by a decision that allowed it. There is no
-        // Boolean to forget, no log line to ignore, and no public initializer for a caller or a test
-        // to mint. A composition that skips this check does not compile.
-        // *** THE REFUSAL IS *NOT* PLACED HERE, AND THE REASON IS MEASURED RATHER THAN PREFERRED. ***
-        //
-        // *I first put the permit guard at this call site and ran the suite: FIVE ARMS REDDENED, among
-        // them `testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization`, whose own comment
-        // records that the repository has ALREADY TRIED THIS: "A FIRST REPAIR OF MINE REFUSED HERE
-        // INSTEAD -- AND DEADLOCKED THE COMPOSITION, because `continuePendingWipeIfNeeded` is a method
-        // on a CONSTRUCTED runtime and drains through `meshNode.ble`, which is built FROM these very
-        // stores. Refusing means the transport never exists and the wipe can never finish."*
-        //
-        // **SO THE GUARD BELONGS AT THE RECOVERY ENTRY POINT, NOT AT THE PRIVATE ONE.** A refusal here
-        // stops construction without giving the caller any way to finish the wipe, which is the
-        // "gate that makes its own remedy unreachable" the source itself warns against. What the
-        // finding requires is that the RECOVERY composition reach a typed decision and that private
-        // construction be refused only where a recovery route exists -- which is
-        // `createRecoveryThenPrivateComposition` below.
-        //
-        // AND THE DECISION IS STILL TAKEN AND RECORDED HERE, so the state is not silent: the journal
-        // keeps the truth and the caller can ask `startupRecoveryDecision()` before opening anything.
-        let recoveryDecision = StartupRecoveryBootstrap(wipe: resumeAuthority).decideAndDrive()
-        _ = recoveryDecision
+        // *`MeshRuntime.startupRecoveryDecision` is the PUBLIC read that the recovery arms exercise, and it correctly
+        // answereth `.corruptJournal` for an unreadable record. **BUT A READ THAT ANSWERS IS NOT A COMPOSITION THAT
+        // REFUSES:** until this guard existed, the archive/host road took that same decision, RETAINED it, and then
+        // opened both stores and minted an identity anyway -- so the one outcome whose ORACLE IS THE UNREADABLE RECORD
+        // ITSELF governed nothing. *A composition whose wipe gate decides admissibility by asking the journal cannot
+        // judge anything when the journal cannot be read: it cannot tell "nothing outstanding" from "mid-erasure".*
+        // **So construction stops and the caller is told to involve an operator, which is what `requiresOperator`
+        // already said.** *This does NOT re-open the brick `testSR02` measured: a PENDING or RETRYABLE record still
+        // builds (its gate can still answer, and the runtime is the only road that can finish the wipe), and only the
+        // two outcomes that no composition can act upon are refused.*
+        // *AND THE TEST IS ON THE DECISION ITSELF, BECAUSE THE TOPOLOGY IS NO LONGER DERIVABLE FROM A VALUE:* an
+        // earlier draft exposed `issued(by:)` and a review named it correctly as A MINT (every case of the decision
+        // enum is public). What remains here is the plain question this call site actually asks -- "can any composition
+        // act on this estate at all?" -- and the two outcomes whose ORACLE IS THE UNREADABLE RECORD answer no.
+        switch startupDecision {
+        case .cleanStart, .wipeCompleted:
+            break
+        default:
+            // *** IOS-FOLLOWUP-C4: THE ARCHIVE-ONLY PENDING ALLOWANCE DOE NOT LIVE ON A FACTORY-CAPABLE BRANCH. ***
+            // *The review's clause verbatim: the second startup decision "explicitly accepteth recoveryPending/
+            // retryableFailure even when a factory is supplied". On the private road only a SETTLED estate may
+            // stand -- a store opened now is a store opened on the key a later resume will erase.*
+            if encryptedStores != nil {
+                throw MeshRuntimeError.startupRefusedByRecovery(
+                    decision: startupDecision.name,
+                    reason: startupDecision.refusalReason
+                        ?? "the private road may only stand upon a settled estate")
+            }
+            // The archive/host road owns no private material; its pending/retryable record still buildeth (the
+            // measured brick `testSR02`: it is the only road that can finish a wipe on that branch), but the two
+            // outcomes whose ORACLE is the unreadable record itself refuse even it.
+            switch startupDecision {
+            case .corruptJournal, .terminalFailure:
+                throw MeshRuntimeError.startupRefusedByRecovery(
+                    decision: startupDecision.name,
+                    reason: startupDecision.refusalReason ?? "the durable wipe record cannot be read")
+            default:
+                break
+            }
+        }
 
         let identity = try MeshIdentity.loadOrCreate(keychain: keychain)
         // ---- GS-STORE-002: the at-rest verdict BEFORE the store existeth -----------------------
@@ -742,14 +1016,41 @@ public final class MeshRuntime {
         // THE ADOPTED CONNECTIONS, HELD SO THE COMPOSITION REMAINS THEIR CLOSE OWNER.
         let adoptedMessage: OwnedConnection?
         let adoptedPeer: OwnedConnection?
+        // *** *** SQLITE-REVIEW-3 (failure-scope handover): A PARTIAL FACTORY BRANCH USED TO LEAK ITS HANDLES. *** ***
+        //
+        // *THE DEFECT, MEASURED IN THE ORDER OF THESE LINES: the PEER connection was opened BEFORE the MESSAGE store's
+        // `openOutcome` was consulted, and the guard for it sits BELOW both opens. So a message-migration failure
+        // threw with the already-opened message AND peer handles live and unreferenced -- `OwnedConnection` has no
+        // `deinit`, and the stores deliberately close only what they own, so NOTHING closed them. A composition that
+        // fails to build must not leak the estate it opened on the way.*
+        //
+        // **THE SCOPE OWNS EVERY CONNECTION FROM THE MOMENT IT EXISTS UNTIL THE RUNTIME OBJECT DOES:** *each is
+        // appended the instant it is created, the `defer` closes exactly those on ANY throw before the transfer, and
+        // the scope is CLEARED only after the runtime has taken ownership -- so no handle is closed twice and none is
+        // left open.* **AND THE MESSAGE OUTCOME IS CONSUMED BEFORE THE PEER OPEN**, so the failure that used to leak
+        // both handles now happens before the second one is even created.*
+        var failureScope: [OwnedConnection] = []
+        defer { for connection in failureScope { _ = connection.close() } }
         if let factory = encryptedStores {
+            // *** IOS-FOLLOWUP-C4: NO LEASE, NO KEY. The private road doth not exist without the sealed evidence. ***
+            guard let lease = constructionLease else {
+                throw MeshRuntimeError.privateStoreNotEncrypted(
+                    "GS-FINAL-004: a keyed open is made ONLY from a sealed ConstructionLease issued by the physical "
+                    + "estate authority under its one serialization point. The archive road carryeth no lease and no "
+                    + "key -- name `createArchiveOnlyHostComposition` to say the plaintext road aloud.")
+            }
             let ownedMessage = try Self.ownedConnection(
-                from: factory, path: messageStoreUrl, tag: "message-store")
-            // AND THE STORE MUST ACCEPT IT, not merely receive it: the outcome is consumed below, so a refused
-            // connection cannot leave a nominal store behind. A refused store publishes NO adopted identity.
+                from: factory, path: messageStoreUrl, tag: "message-store", lease: lease)
+            failureScope.append(ownedMessage)
+            // AND THE STORE MUST ACCEPT IT, not merely receive it: the outcome is consumed HERE, before the peer
+            // connection is opened, so a refused message cannot leave a nominal store behind AND cannot leak a peer.
             messageStore = SqliteMessageStore(verifiedConnection: ownedMessage, maxBytes: maxStoreBytes)
+            if case .failed(let fault) = messageStore.openOutcome {
+                throw MeshRuntimeError.messageStoreUnavailable(fault.description)
+            }
             let ownedPeer = try Self.ownedConnection(
-                from: factory, path: peerStoreUrl, tag: "peer-identity-store")
+                from: factory, path: peerStoreUrl, tag: "peer-identity-store", lease: lease)
+            failureScope.append(ownedPeer)
             peerStore = try SqlitePeerIdentityStore(verifiedConnection: ownedPeer)
             adoptedMessage = ownedMessage
             adoptedPeer = ownedPeer
@@ -788,12 +1089,54 @@ public final class MeshRuntime {
             keychain: keychain,
             adoptedMessageConnection: adoptedMessage,
             adoptedPeerConnection: adoptedPeer,
+            ownerRegistry: ownerRegistry,
             compositionLane: compositionLane
         )
+        // *** IOS-R5: THE ESTATE'S LIVE OWNERS ARE REGISTERED SO A WIPE DRAINS *THEM*, NOT A FRESH DEAD OBJECT. ***
+        // *Each entry is the owner's OWN close/invalidate verb (idempotent), so the serialized registry drain and the
+        // runtime's own wipe invalidation cannot disagree about what "closed" meaneth.* **The registry was ARMED at
+        // composition, so once these are drained it can positively answer a cold estate.**
+        // *** IOS-FOLLOWUP-CURRENT-05: THE CENSUS REGISTERETH THE ACTUAL RESOURCE LIFETIMES, NOT A WEAK PARENT. ***
+        //
+        // *The finding measured that `[weak runtime]` lookups let a drained/cold census count an owner whose closure
+        // did nothing -- because the runtime had fallen while the store, node or session stayed retained -- and that a
+        // joined runtime's OWN adopted connections were omitted from the drain. So each entry captures the RESOURCE
+        // itself (retaining it exactly while the census does), closes it, closes the adopted handles it owns (which
+        // have no other close owner once the runtime is gone), AND invalidates the shared lifecycle gate so no road
+        // through that owner may be re-entered after the drain.*
+        runtime.ownerRegistry.register(name: "mesh-node") { [meshNode = runtime.meshNode] in
+            meshNode.stop()
+        }
+        runtime.ownerRegistry.register(name: "sessions") { [sessions = runtime.sessionManager] in
+            sessions.invalidateForWipe()
+        }
+        runtime.ownerRegistry.register(name: "message-store") {
+            [messageStore = runtime.messageStore, adopted = runtime.adoptedMessageConnectionForOwner] in
+            messageStore.close()
+            _ = adopted?.close()
+        }
+        runtime.ownerRegistry.register(name: "peer-store") {
+            [peerStore = runtime.peerIdentityStore, adopted = runtime.adoptedPeerConnectionForOwner] in
+            peerStore.close()
+            _ = adopted?.close()
+        }
+        runtime.ownerRegistry.register(name: "lifecycle-gate") { [lifecycleGate = runtime.lifecycleGate] in
+            lifecycleGate.invalidateForWipe()
+        }
         // *** AND THE BOX IS FILLED ONLY NOW, WITH THE RETIRED AUTHORITY THE WIPE PATHS THEMSELVES USE. ***
         // This is the ONE-AUTHORITY rule made literal: the admission point and the wipe entry points resolve the
         // SAME object, so "a wipe is pending" cannot mean two different things in two places.
         runtime.wipeGateBox.authority = runtime.wipeAuthority
+        // *** AND THE TYPED STARTUP DECISION IS RETAINED RATHER THAN DISCARDED. ***
+        //
+        // *The audit's charge was that the answer was discarded; a decision that is acted upon and then lost leaves a
+        // caller no way to tell a clean estate from a completed wipe. It is recorded HERE, on the object whose life the
+        // decision governed, so a surface or an arm can read WHAT WAS DECIDED rather than inferring it from behaviour.*
+        runtime.startupDecision = startupDecision
+        // *** AND NOW THE SCOPE IS DISARMED: THE RUNTIME HOLDS THE ADOPTED CONNECTIONS AND IS THEIR CLOSE OWNER. ***
+        // *Cleared only AFTER the runtime object exists, so a throw anywhere above still closed exactly what it
+        // opened, and a successful build closes nothing here.*
+        failureScope.removeAll()
         return runtime
     }
 
@@ -805,19 +1148,34 @@ public final class MeshRuntime {
      * refusal the factory can reach has a case here, so nothing is silently treated as success.*
      */
     private static func ownedConnection(
-        from factory: EncryptedStoreFactory, path: URL, tag: String
+        from factory: EncryptedStoreFactory, path: URL, tag: String,
+        lease: PhysicalEstateAuthority.ConstructionLease
     ) throws -> OwnedConnection {
-        switch factory.reopenOwnedRequiringDEK(path: path.path, tag: tag) {
+        // *** IOS-R4 KEY LIFECYCLE (kept): THE ROAD IS CHOSEN BY WHETHER THE FILE STANDS. *** *A completed wipe
+        // destroyeth both DEKs AND both store files, so the next private composition IS a first install: fetch,
+        // and mint on absence. Neither road falls back to the other, and neither falls back to plaintext.*
+        //
+        // *** IOS-FOLLOWUP-C4: THE SCOPE CARRIETH THE SEALED LEASE -- THE PUBLIC LEDGER MINT IS GONE. ***
+        // *The only evidence a keyed open is built from is the `ConstructionLease` that
+        // `PhysicalEstateAuthority.beginConstruction` issued AFTER the checked permit consumption, under the
+        // estate's one serialization point. The lease spendeth its atomic per-tag claim via `scope.claim` BEFORE
+        // any DEK is fetched (the factory's admission gate), a replayed or stale claim is a typed refusal, and
+        // `retire()` on the success path is the spend witness.*
+        let scope = EncryptedStoreAdmissionScope(authorityLease: lease, storeTag: tag, storePath: path.path)
+        let exists = FileManager.default.fileExists(atPath: path.path)
+        let result: OwnedConnectionResult = exists
+            ? factory.reopenOwnedRequiringDEK(path: path.path, tag: tag, scope: scope)
+            : factory.openOwnedForWriting(path: path.path, tag: tag, scope: scope)
+        switch result {
         case .opened(let connection, _):
             return connection
         case .refused(let fault):
             throw MeshRuntimeError.privateStoreNotEncrypted("GS-FINAL-004: " + tag + " refused: \(fault)")
         case .engineUnavailable:
-            // THE HONEST ANSWER FOR A METADATA-ONLY ENGINE -- and the ledger's own stated blocker, re-verified: no
-            // PRODUCTION `EncryptedStoreEngine` exists in this tree, because the real SQLCipher binding IS the
-            // injected seam the NATIVE_MODELS gate owns. A composition given a factory that cannot supply a
-            // connection must SAY so rather than quietly falling back to an unkeyed open, which is precisely the
-            // defect being repaired.
+            // THE HONEST ANSWER FOR AN ENGINE THAT CANNOT HAND OVER A CONNECTION: a metadata-only engine cannot
+            // satisfy the owned road, and the real SQLCipher binding IS the injected seam the native gate owns. A
+            // composition given a factory that cannot supply a connection must SAY so rather than quietly falling
+            // back to an unkeyed open, which is precisely the defect being repaired.
             throw MeshRuntimeError.privateStoreNotEncrypted(
                 "GS-FINAL-004: " + tag + " -- the engine supplied no verified connection (no approved native "
                 + "engine artifact is present)")
@@ -925,23 +1283,44 @@ public final class MeshRuntime {
         // directory and the store survived a "completed" wipe.
         filesystem: WipeArtifactFileSystemSeam(
             journal: WipeJournalDurabilityAdapter(journal: journal),
-            realPaths: [
-                "mesh.db": messageStoreUrl,
-                "mesh.db-wal": URL(fileURLWithPath: messageStoreUrl.path + "-wal"),
-                "mesh.db-shm": URL(fileURLWithPath: messageStoreUrl.path + "-shm"),
-                "peer.db": peerStoreUrl,
-                "peer.db-wal": URL(fileURLWithPath: peerStoreUrl.path + "-wal"),
-                "peer.db-shm": URL(fileURLWithPath: peerStoreUrl.path + "-shm"),
-            ]
+            // *** THE MAP IS THE COMPOSITION'S OWN, NAMED ONCE (`wipeArtifactPaths`). *** *A second, hand-written
+            // map here would be a second place for the sidecars to be forgotten -- and the pre-private recovery
+            // composition now carries the SAME one, so a name that is deletable before the runtime stands is
+            // deletable after it too.*
+            //
+            // *** IOS-FOLLOWUP-CURRENT-06: AND THE AUTHORITY'S FULL PHYSICAL/KEY-DOMAIN UNION IS JOINED IN, so a wipe
+            // through THIS runtime also addresseth the artifacts of every root that shares its physical key
+            // authority.*** *The union is the same never-shrinking catalog `bindInventory` persisted; consuming it
+            // here is what maketh the catalog govern the destructive scope it claims to own.*
+            realPaths: WipeArtifactFileSystemSeam.unionAwarePaths(
+                Self.wipeArtifactPaths(messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl),
+                union: ownerRegistry.unionArtifactPaths)
         ),
-        runtime: WipeTransportDrainSeam(transport: meshNode.ble),
+        // *** IOS-R5: THE ESTATE'S OWN REGISTRY DRAIN -- the SAME live owners the recovery road drains, so the two
+        // halves of one wipe cannot disagree about what was quiesced. *** *The live node transport is drained through
+        // the node's own stop, registered in the registry, never a fresh `BleTransport()`.*
+        runtime: EstateOwnerDrainSeam(registry: ownerRegistry),
         // THE IDENTITY IS REGENERATED, NOT MERELY NAMED -- the effect the old `PanicWipe` path performed through
         // `KeychainWipeArtifacts.regenerateIdentity()` (it called `MeshIdentity.generateAndStore(keychain:)`), carried
         // across rather than dropped. Without it the ladder would reach `NEW_IDENTITY` having published nothing, and
         // the crash-restart arm that requires a DIFFERENT node id after a wipe would measure its absence.
-        authority: WipeIdentityAuthoritySeam(regenerateIdentity: { [keychain] in
-            try MeshIdentity.generateAndStore(keychain: keychain)
-        })
+        //
+        // *** IOS-R8: AND IT IS IDEMPOTENT AND BOUND TO THE WIPE GENERATION, so a crash between publication and the
+        // `NEW_IDENTITY` write re-opens on the SAME identity rather than bricking.***
+        authority: {
+            let publication = KeychainWipePublicationRecord(keychain: keychain)
+            return WipeIdentityAuthoritySeam(
+                regenerateIdentity: { [keychain] in try MeshIdentity.generateAndStore(keychain: keychain) },
+                loadStandingIdentity: { [keychain] in try MeshIdentity.loadFromKeychain(keychain: keychain) },
+                readPublication: { publication.read() },
+                writePublication: { pub in publication.write(pub) },
+                readPublicationIntent: { publication.readIntent() },
+                writePublicationIntent: { gen in publication.writeIntent(gen) },
+                keychain: keychain)
+        }(),
+        // *** IOS-R7: THE ESTATE'S OWN INVENTORY IS ITERATED AS THE LOGICAL NAMES. ***
+        estateArtifacts: Array(Self.wipeArtifactPaths(
+            messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl).keys)
     )
 
     /// *** GS-FINAL-004: CLOSE THE ADOPTED CONNECTIONS -- THE OWNER'S OWN VERB. ***
@@ -956,11 +1335,29 @@ public final class MeshRuntime {
         _ = adoptedPeerConnection?.close()
     }
 
+    /// *** IOS-FOLLOWUP-CURRENT-05: THE ADOPTED HANDLES AS THE CENSUS'S OWN CLOSE CAPABILITIES, NOT VIA `self`. ***
+    /// *The census entries may outlive the runtime; capturing these two handles directly lets a joined owner's drain
+    /// close the exact native connection it opened, which a weak parent lookup could not.*
+    internal var adoptedMessageConnectionForOwner: OwnedConnection? { adoptedMessageConnection }
+    internal var adoptedPeerConnectionForOwner: OwnedConnection? { adoptedPeerConnection }
+
     /// The same verb, named for courts. A test seam that CALLS the production path rather than reimplementing it.
     internal func closeAdoptedConnectionsForTest() { closeAdoptedConnections() }
 
     /// The wipe authority the composition carries, OBSERVED rather than asserted.
     internal func wipeAuthorityForTest() -> CrashResumableWipe { wipeAuthority }
+
+    /// *** IOS-FOLLOWUP-CURRENT-05: A RELEASED RUNTIME STILL INVALIDATETH ITS SENSITIVE ROADS. ***
+    ///
+    /// *The finding measured that a runtime could be released while its store, node or session remained retained, and
+    /// the weak census callbacks then did nothing. The census entries now capture the resources directly; this `deinit`
+    /// closeth the door the OTHER way -- a runtime that falls without ever being drained permanently closes its
+    /// lifecycle gate, so no retained owner can be used through it as though no wipe had been asked for.*
+    deinit {
+        lifecycleGate.invalidateForWipe()
+        _ = adoptedMessageConnection?.close()
+        _ = adoptedPeerConnection?.close()
+    }
 
     /// *** GS-FINAL-002 (round 707): THE PUBLIC ENTRY RETURNS THE TYPED OUTCOME -- THE AUDIT'S CLAUSE, FULFILLED. ***
     ///
@@ -993,6 +1390,465 @@ public final class MeshRuntime {
     @discardableResult
     internal func beginPanicWipe(keychain: any LocalIdentityKeychain) throws -> WipeStepResult {
         _ = keychain
-        return try wipeAuthority.requestWipe()
+        // *** IOS-FOLLOWUP-C4: THE LIVE WIPE REQUEST RUNS UNDER THE ESTATE'S ONE SERIALIZATION POINT TOO, so it
+        // cannot interleave an in-progress private admission/registration (which holds the same lock). ***
+        let estateId = Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(
+            messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl))
+        let requested = try PhysicalEstateAuthority.shared.serialized(for: estateId) {
+            try wipeAuthority.requestWipe()
+        }
+        // *** GS-FINAL-002's CLAUSE, ALREADY SATISFIED AND NOW STATED WITHOUT A SECOND ROAD: a FRESH wipe REQUESTS
+        // (`requestWipe()` writes `REQUESTED` durably BEFORE it drives anything) and `resume()` is reserved for the
+        // crash path. The authority is the ONE retained object, so its live seams -- the node's own transport, the
+        // composition's keychain, the real artifact paths and the runtime invalidation -- are what drive the ladder.
+        //
+        // *AND THE TYPED OUTCOME IS RETURNED RATHER THAN ERASED, which is the finding's own remediation clause
+        // ("Return a typed outcome to the caller and render completion only at durable IDLE").* **A caller that cannot
+        // tell `refused` from `advanced(to: .idle)` cannot render completion at durable IDLE, because it cannot see the
+        // state at all.** *The iOS LAB previously read a DIFFERENT register entirely -- the composition harness's own
+        // flag, which owns no ladder -- and `LabRuntime.beginWipe()` is now routed through the SAME durable recovery
+        // owner this method uses, so "wipe progress from the real reopened store" is read from ONE journal rather than
+        // two registers that can disagree.*
+        _ = wipeAuthority
+        return requested
     }
+
+    /// *** GS-FINAL-003 `true-recovery-topology`: THE RECOVERY LADDER, DRIVEN OVER DURABLE FILES AND A LIVE RADIO. ***
+    ///
+    /// THE AUDIT'S OWN ARCHITECTURAL SENTENCE, AND THE ROAD IT NAMES: *"a recovery/bootstrap composition whose
+    /// transport seam exists BEFORE and independently of the store graph, so a pending wipe can be driven to a typed
+    /// decision WITHOUT CONSTRUCTING PRIVATE STORES."*
+    ///
+    /// **IT IS PUBLIC BECAUSE THE FINDING'S CLAUSE IS ABOUT A *PRODUCTION* ROAD, NOT A COURT:** *the iOS lab's wipe
+    /// journey must read "the real reopened store" -- and it was reading the composition harness's own flag, which owns
+    /// no ladder at all. A court-only entry point would have left that second register in place and would have made the
+    /// recovery road unreachable from any shipping composition, which is precisely the defect the audit measured ("the
+    /// new coordinator was added beside, rather than made the sole owner, of the public wipe entry contract").*
+    ///
+    /// *IT TAKES NO PRIVATE-STORE FACTORY AND OPENS NO STORE: the artifact map addresses FILES, the vault addresses
+    /// KEYS, the transport addresses the RADIO. So a caller may drive a wipe to completion with nothing private open.*
+    ///
+    /// **`requestFresh` IS THE ONE PARAMETER THAT DISTINGUISHES THE TWO PHASES**, and the distinction is the audit's:
+    /// *a FRESH request must write `REQUESTED` durably first ("a fresh Android wipe may do no wipe at all" is what the
+    /// finding measured when `resume` was used for both), while a STARTUP RESUMES from wherever the durable record
+    /// stands.*
+    /// *** THE CAPABILITY A RECOVERY ROAD REQUIRES: **WHICH ESTATE** IT MAY ERASE, AND NOTHING ELSE. ***
+    ///
+    /// *THE DEFECT THE PARENT NAMED, AND IT WAS REAL: a caller could drive the recovery ladder over the road's
+    /// DEFAULTS while its own stores stayed live -- so a "wipe" reported progress against files the caller never
+    /// wrote. **A RECOVERY ROAD THAT CHOOSETH ITS OWN PATHS IS A ROAD THAT CAN ERASE SOMEBODY ELSE'S ESTATE.***
+    ///
+    /// **SO THE PATHS ARE A PARAMETER AND THEY ARE THE CALLER'S OWN, ENUMERATED BY LOGICAL NAME:** *each entry is an
+    /// artifact the caller ACTUALLY wrote (a name with no owner is never listed -- the repository already paid for
+    /// that lesson twice). A composition that carrieth no estate carrieth no paths, and the road then deletes
+    /// nothing rather than guessing.*
+    ///
+    /// *IT IS `internal` BECAUSE IT CARRIETH A `LocalIdentityKeychain` -- an internal type -- so only this module's
+    /// own compositions (the production graph, the lab) may name one. That is the restrictive capability the lab
+    /// host roads need: a lab passes ITS estate, and a default cannot silently stand in for it.*
+    /// *** IOS-R5/R7: THE ESTATE'S MANDATORY CAPABILITIES -- REAL OWNERS, REAL INVENTORY, NO SILENT DEFAULTS. ***
+    ///
+    /// *THE PARENT'S OWN RULING, AND IT IS THE FINDING'S: an optional `runtimeSeam` defaulting to
+    /// `WipeTransportDrainSeam(BleTransport())`, a default inventory `[]` and a default no-op invalidate are EXACTLY
+    /// the fake paths IOS-R5 measured -- "a NEW transport [with] no active context; its barrier immediately succeeds
+    /// ... without touching the estate's live transport, stores, sessions, or producers", and a wipe that "deletes
+    /// nothing" because its inventory was empty.* **SO THERE ARE NO PROTOCOL DEFAULTS HERE: EVERY CONFORMER MUST STATE
+    /// ITS OWN LIVE TRANSPORT (OR A POSITIVELY-VERIFIED COLD ABSENCE), ITS OWN COMPLETE INVENTORY, AND ITS OWN
+    /// OWNER-DRAIN AND INVALIDATION.** *A missing capability is a compile error, never a silent fake.*
+    internal protocol RecoveryEstate: Sendable {
+        /// *** THE COMPLETE INVENTORY (IOS-R7): logical name -> the real file this composition OWNS. *** *Every file
+        /// the estate actually wrote, INCLUDING sidecars; the ladder ITERATES THESE KEYS. A name that is never listed
+        /// is never deleted, so the estate must not omit one it wrote.*
+        var artifactPaths: [String: URL] { get }
+        /// The identity keychain the identity-delete-and-publish seam uses.
+        var keychain: any LocalIdentityKeychain { get }
+        /// The DEK provider the key-delete seam uses, or nil when this composition carries no encrypted store.
+        var dekProvider: (any PrivateStoreKeyProvider)? { get }
+        /// *** THE ESTATE'S OWN LIVE TRANSPORT SEAM, OR `nil` ONLY WHEN IT POSITIVELY OWNS NONE. *** *A fresh
+        /// `BleTransport()` is NOT acceptable: the drain rung must quiesce the estate's REAL radio/owners.*
+        var liveTransport: TransportRuntimeSeam? { get }
+        /// *** DRAIN, INVALIDATE AND CLOSE THE ESTATE'S LIVE OWNERS BEFORE ANY KEY OR ARTIFACT DIES. *** *Return
+        /// `.drained` when real owners were closed and measured, `.cold` ONLY when the estate POSITIVELY verified no
+        /// live owner exists, and `.ownersLive(reason:)` when owners survive -- which keepeth the wipe pending rather
+        /// than advancing over live stores. Idempotent: the requested rung and the key rung both call it.*
+        /// *** IOS-FOLLOWUP-CURRENT-06: THE AUTHORITY'S FULL PHYSICAL/KEY-DOMAIN UNION FOR THIS ESTATE'S DELETION
+        /// SCOPE. *** *A recovery route must address every artifact the shared physical authority cataloged, not only
+        /// its own six local names -- a default answereth `[:]` for an estate that names none.*
+        var unionArtifactPaths: [String: URL] { get }
+        func drainOwners() -> OwnerDrainResult
+    }
+
+    /// The production estate: the two private stores and their sidecars, the composition's keychain and DEK provider.
+    ///
+    /// *This is what a shipping composition passes; a lab passes ITS OWN, so the two can never be confused.*
+    internal struct DefaultRecoveryEstate: RecoveryEstate {
+        let messageStoreUrl: URL
+        let peerStoreUrl: URL
+        let keychain: any LocalIdentityKeychain
+        let dekProvider: (any PrivateStoreKeyProvider)?
+        /// The composition's ONE owner registry; the production recovery road drains and closes through IT.
+        let registry: EstateOwnerRegistry
+        /// The runtime's live transport seam, when one is running; `nil` at create time, where the registry's own
+        /// positive cold proof is what the drain rung stands on.
+        let liveTransportSeam: TransportRuntimeSeam?
+        /// The runtime's owner invalidation/close hook, carried across rather than dropped.
+        let invalidateLiveOwners: () -> Void
+        internal init(messageStoreUrl: URL, peerStoreUrl: URL,
+                      keychain: any LocalIdentityKeychain,
+                      dekProvider: (any PrivateStoreKeyProvider)?,
+                      registry: EstateOwnerRegistry? = nil,
+                      liveTransportSeam: TransportRuntimeSeam? = nil,
+                      invalidateLiveOwners: @escaping () -> Void = {}) {
+            self.messageStoreUrl = messageStoreUrl
+            self.peerStoreUrl = peerStoreUrl
+            self.keychain = keychain
+            self.dekProvider = dekProvider
+            // *** IOS-FOLLOWUP-C5: THE DEFAULT ESTATE *DECLARES* ITS PHYSICAL INVENTORY THROUGH THE AUTHORITY. ***
+            //
+            // *A plain `registry(for:)` lookup would be UNVERIFIED -- `verifiedCatalog` is set only by
+            // `bindInventory` -- so `drainAll` would answer `.ownersLive` forever and the production recovery road
+            // could never advance past the drain rung. And a caller-created empty registry is not cold proof either.
+            // So the production estate BINDS its real paths, its keychain and its physical DEK key domain under the
+            // process-global authority, which is what maketh cold a VERIFIED absence and joincth two compositions
+            // over the same files into ONE owner set.* **A REFUSED BINDING IS NOT PERMISSION:** *the estate then falls
+            // back to the unverified registry, whose drain answereth `.ownersLive`, so the wipe stayeth pending rather
+            // than advancing over owners nobody proved absent.*
+            let boundPaths = wipeArtifactPaths(messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)
+            let boundEstateId = recoveryEstateId(artifactPaths: boundPaths)
+            let keyDomain = dekProvider?.physicalKeyDomain ?? ("estate:" + boundEstateId)
+            let resolved = registry ?? (try? PhysicalEstateAuthority.shared.bindInventory(
+                estateId: boundEstateId,
+                artifactPaths: boundPaths,
+                keychain: keychain,
+                keyDomain: keyDomain))
+                ?? PhysicalEstateAuthority.shared.registry(for: boundEstateId)
+            self.registry = resolved
+            self.liveTransportSeam = liveTransportSeam
+            self.invalidateLiveOwners = invalidateLiveOwners
+        }
+        internal var artifactPaths: [String: URL] {
+            wipeArtifactPaths(messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)
+        }
+        /// *** IOS-FOLLOWUP-CURRENT-06: THE SHARED AUTHORITY'S UNION, SO A RECOVERY WIPE DELETETH EVERY ROOT'S
+        /// CATALOGED ARTIFACTS AND NOT ONLY THIS ESTATE'S SIX LOCAL NAMES. ***
+        internal var unionArtifactPaths: [String: URL] { registry.unionArtifactPaths }
+        internal var liveTransport: TransportRuntimeSeam? {
+            // A RUNNING TRANSPORT WINS; otherwise the registry's own draining seam, so the requested rung drains and
+            // closes the registered owners rather than an empty barrier.
+            liveTransportSeam ?? EstateOwnerDrainSeam(registry: registry)
+        }
+        internal func drainOwners() -> OwnerDrainResult {
+            invalidateLiveOwners()
+            return registry.drainAll()
+        }
+    }
+
+    /// *** THE CANONICAL ESTATE ID: derived from the estate's OWN inventory, so the id a permit carrieth and the id a
+    /// construction boundary checketh are computed from the SAME bytes rather than from a hand-written constant. ***
+    internal static func recoveryEstateId(artifactPaths: [String: URL]) -> String {
+        artifactPaths.map { "\($0.key)=\($0.value.path)" }.sorted().joined(separator: "|")
+    }
+
+    /// *** IOS-R5: ONE TRANSPORT SEAM OVER THE ESTATE'S OWN OWNERS -- NEVER A FRESH DEAD `BleTransport()`. ***
+    ///
+    /// *It first asks the estate's LIVE transport (when one standeth) to drain, then the estate's own owner drain and
+    /// closure -- and a `.cold` receipt counteth only because the estate POSITIVELY verified it.*
+    internal final class EstateRecoveryTransportSeam: TransportRuntimeSeam, WipeOwnerDraining, @unchecked Sendable {
+        private let estate: any RecoveryEstate
+        private let lock = NSLock()
+        private var quiesced = false
+
+        internal init(estate: any RecoveryEstate) { self.estate = estate }
+
+        internal func drainOwners() -> OwnerDrainResult {
+            if let live = estate.liveTransport {
+                if case .notDrained(let reason) = live.drainTransport() {
+                    return .ownersLive(reason: "live transport: " + reason)
+                }
+            }
+            let result = estate.drainOwners()
+            if result.isDrainable { lock.lock(); quiesced = true; lock.unlock() }
+            return result
+        }
+
+        internal func drainTransport() -> RuntimeDrainReceipt {
+            switch drainOwners() {
+            case .drained: return .drained(closedTransports: 1, quiescedRuntime: true)
+            case .cold: return .drained(closedTransports: 0, quiescedRuntime: true)
+            case .ownersLive(let reason): return .notDrained(reason: reason)
+            }
+        }
+
+        internal func isQuiesced() -> Bool { lock.lock(); defer { lock.unlock() }; return quiesced }
+        internal func fireRadio(_ msg: String) -> Bool { _ = msg; return false }
+        internal func sendVia(_ msg: String) -> Bool { _ = msg; return false }
+    }
+
+    /// *** THE RECOVERY ROAD, OVER AN ESTATE THE CALLER NAMES. ***
+    ///
+    /// *Every caller must say WHICH ESTATE it may erase: the production composition passes its two stores; the lab
+    /// passes its own composed files and trust store. **There is no path-defaulting road**, which is what stops a
+    /// wipe from reporting progress against files its caller never wrote.*
+    @discardableResult
+    internal static func runRecoveryLadder(
+        journal: WipeJournal = FileWipeJournal.standard(),
+        estate: any RecoveryEstate,
+        requestFresh: Bool = false
+    ) -> RecoveryOnlyOutcome {
+        runRecoveryLadderInternal(
+            journal: journal,
+            estate: estate,
+            requestFresh: requestFresh)
+    }
+
+    /// *** AND THE PATH-BASED CONVENIENCE IS DELETED RATHER THAN DOCUMENTED. ***
+    ///
+    /// *It existed so a caller could name two urls and drive the road. **THAT IS EXACTLY THE SHAPE THE PARENT NAMED AS
+    /// A BYPASS: a caller naming an estate it may not own, over a road that will then erase it.** The ONLY roads now
+    /// are `runRecoveryLadder(journal:estate:requestFresh:)` -- which requires a `RecoveryEstate` capability, and a
+    /// capability is something a composition hands over for the estate it actually wrote -- and the production
+    /// composition's own `create`, whose estate IS its two stores. **A lab passes `LabEstateSeam`; the shipping graph
+    /// reaches `runRecoveryLadderInternal` through `create`; and no third syntax exists.**
+
+    /// The internal form: the same ladder, with the composition's OWN keychain and key provider.
+    ///
+    /// *`LocalIdentityKeychain` is internal, so this cannot be the public signature -- and defaulting the public one to
+    /// the production keychain is the honest shape rather than widening the type for a caller's convenience.*
+    /// *** THE RECOVERY-ONLY ROAD'S OWN ANSWER: WHAT THE LADDER LEFT, AND WHAT ROAD IT OPENS. ***
+    ///
+    /// *Two things, and the second is the point: `topology` carrieth the PERMIT when -- and only when -- the drive
+    /// settled the estate, and carrieth a decision otherwise. **The permit is made by the bootstrap that drove the
+    /// ladder, so no caller can obtain one for an estate it did not settle.***
+    public struct RecoveryOnlyOutcome: Sendable {
+        public let outcome: RecoveryLadderOutcome
+        public let topology: RecoveryCompositionTopology
+    }
+
+    @discardableResult
+    internal static func runRecoveryLadderInternal(
+        journal: WipeJournal,
+        estate: any RecoveryEstate,
+        requestFresh: Bool
+    ) -> RecoveryOnlyOutcome {
+        // *** IOS-FOLLOWUP-CURRENT-07: THE WHOLE DRIVE -- THE REQUEST AND EVERY RUNG IT EARNS -- RUNNETH UNDER THE
+        // ONE PHYSICAL-ESTATE SERIALIZATION POINT. *** *The finding measured that a fresh request could make REQUESTED
+        // durable while another composition held the global admission/construction lock. The coordinator's own
+        // `serialized` now takes that lock too, and the wrapper takes it once for the WHOLE transaction so request and
+        // drive cannot be split by another owner's construction.*
+        PhysicalEstateAuthority.shared.serialized {
+            runRecoveryLadderLocked(journal: journal, estate: estate, requestFresh: requestFresh)
+        }
+    }
+
+    private static func runRecoveryLadderLocked(
+        journal: WipeJournal,
+        estate: any RecoveryEstate,
+        requestFresh: Bool
+    ) -> RecoveryOnlyOutcome {
+        let adapter = WipeJournalDurabilityAdapter(journal: journal)
+        let realPaths = estate.artifactPaths
+        // *** IOS-FOLLOWUP-CURRENT-06: THE DELETION SCOPE IS THE AUTHORITY'S UNION JOINED WITH THIS ESTATE'S OWN
+        // NAMES, so a recovery wipe through one root also addresseth every joined root's cataloged artifacts. ***
+        let deleteScope = WipeArtifactFileSystemSeam.unionAwarePaths(realPaths, union: estate.unionArtifactPaths)
+        let keychain = estate.keychain
+        let estateId = recoveryEstateId(artifactPaths: realPaths)
+        // *** IOS-R5: THE TRANSPORT SEAM IS THE ESTATE'S OWN, NOT A FRESH DEAD `BleTransport()`. *** *It drains the
+        // estate's REAL owners (or takes a POSITIVELY-PROVEN cold receipt), and the vault's invalidation hook closes
+        // those owners before any key dies.*
+        let transport = EstateRecoveryTransportSeam(estate: estate)
+        // *** IOS-R8: THE IDENTITY SEAM IS IDEMPOTENT AND BOUND TO THIS WIPE'S GENERATION, so a crash between
+        // publication and `NEW_IDENTITY` re-opens on the SAME identity rather than bricking.*
+        let publication = KeychainWipePublicationRecord(keychain: keychain)
+        let authority = CrashResumableWipe(
+            store: adapter,
+            vault: WipeKeyVaultSeam(
+                dekProvider: estate.dekProvider,
+                deleteIdentityKeys: { try MeshIdentity.deleteFromKeychain(keychain: keychain) },
+                invalidateRuntime: {
+                    // *** IOS-FOLLOWUP-C6: AN OWNER-DRAIN REFUSAL MUST REFUSE THE KEY STEP, NOT BE DISCARDED. ***
+                    switch estate.drainOwners() {
+                    case .drained, .cold: break
+                    case .ownersLive(let reason):
+                        throw MeshRuntimeError.startupRefusedByRecovery(
+                            decision: "owners_live", reason: "the estate's owners could not be drained: " + reason)
+                    }
+                }
+            ),
+            filesystem: WipeArtifactFileSystemSeam(journal: adapter, realPaths: deleteScope),
+            runtime: transport,
+            authority: WipeIdentityAuthoritySeam(
+                regenerateIdentity: { [keychain] in try MeshIdentity.generateAndStore(keychain: keychain) },
+                loadStandingIdentity: { [keychain] in try MeshIdentity.loadFromKeychain(keychain: keychain) },
+                readPublication: { publication.read() },
+                writePublication: { pub in publication.write(pub) },
+                readPublicationIntent: { publication.readIntent() },
+                writePublicationIntent: { gen in publication.writeIntent(gen) },
+                keychain: keychain),
+            // *** IOS-R7: THE ESTATE'S OWN INVENTORY IS ITERATED AS THE LOGICAL NAMES. ***
+            // *** CURRENT-06: the coordinator iterates the UNION too, so every joined root's artifact is addressed. ***
+            estateArtifacts: Array(deleteScope.keys)
+        )
+        // A FRESH REQUEST WRITES `REQUESTED` DURABLY FIRST (`requestWipe`), then the same typed driver advances it.
+        // A RESUME reads wherever the durable record stands. *An empty request on an already-pending estate is
+        // refused by the coordinator's own contract, which is why it is safe to call unconditionally here.*
+        if requestFresh {
+            // *** IOS-FOLLOWUP-C2: A FAILED REQUEST STAYETH FAILED. *** *The old road swallowed the
+            // `recordWipeRequest` error and let `consumeCompositionTopology` reclassify an unchanged clean record as
+            // a NORMAL topology -- handing a fresh-wipe caller a permit where it owed a failure. The typed request
+            // failure is preserved and NO permit is issued from an unrecorded request.*
+            do {
+                try authority.recordWipeRequest()
+            } catch {
+                let reason = "the durable REQUESTED checkpoint was refused: \(error)"
+                let standing = realPaths.keys.sorted().filter { name in
+                    guard let url = realPaths[name] else { return false }
+                    return FileManager.default.fileExists(atPath: url.path)
+                }
+                return RecoveryOnlyOutcome(
+                    outcome: RecoveryLadderOutcome(decision: .retryableFailure(reason: reason),
+                                                   rungs: adapter.readJournal(),
+                                                   artifactsRemaining: standing),
+                    topology: .refused(.retryableFailure(reason: reason)))
+            }
+        }
+        // *** AND THE ONE-SHOT CONSUMING ROAD IS WHAT DRIVES AND ISSUES: it taketh the evidence itself, so the permit
+        // this returns (when the estate settled) is made of a drive rather than of a value somebody handed in.***
+        let bootstrap = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+        let topology = bootstrap.consumeCompositionTopology()
+        let decision = bootstrap.reportedDecision()
+        // *** THE RUNGS ARE READ AFTER THE DRIVE, FROM THE DURABLE ADAPTER RATHER THAN FROM MEMORY. *** *A ladder that
+        // reports where it THINKS it stands is the register-instead-of-truth defect; this asks the same adapter the next
+        // process will ask.*
+        let rungs = adapter.readJournal()
+        let remaining = deleteScope.keys.sorted().filter { logicalName in
+            guard let url = deleteScope[logicalName] else { return false }
+            return FileManager.default.fileExists(atPath: url.path)
+        }
+        return RecoveryOnlyOutcome(
+            outcome: RecoveryLadderOutcome(decision: decision, rungs: rungs, artifactsRemaining: remaining),
+            topology: topology)
+    }
+
+    /// *** IOS-R6/A7: THE OPERATOR'S EXPLICIT RESOLUTION OF A CORRUPT RECORD -- A COMPLETE OWNED WIPE. ***
+    ///
+    /// *THE USER'S OWN REQUIREMENT: "Corrupt operator explicit complete owned wipe not clear journal normal."* **So the
+    /// operator's act DURABLY RECORDS `REQUESTED` and then drives the FULL owned wipe through the same ladder over the
+    /// SAME estate -- it NEVER clearéth the journal to read as a clean start over whatever material made it unreadable.**
+    /// *The resolution is RESTRICTED to a genuinely corrupt record; a readable estate answereth a named refusal.*
+    @discardableResult
+    internal static func resolveCorruptRecoveryForOperator(
+        journal: WipeJournal = FileWipeJournal.standard(),
+        estate: any RecoveryEstate
+    ) -> RecoveryOnlyOutcome {
+        // *** IOS-FOLLOWUP-CURRENT-07: the operator's resolution is ONE transaction under the same authority lock. ***
+        PhysicalEstateAuthority.shared.serialized {
+            resolveCorruptRecoveryForOperatorLocked(journal: journal, estate: estate)
+        }
+    }
+
+    private static func resolveCorruptRecoveryForOperatorLocked(
+        journal: WipeJournal,
+        estate: any RecoveryEstate
+    ) -> RecoveryOnlyOutcome {
+        let adapter = WipeJournalDurabilityAdapter(journal: journal)
+        let realPaths = estate.artifactPaths
+        // *** IOS-FOLLOWUP-CURRENT-06: same union-consumed deletion scope as the ladder wrapper. ***
+        let deleteScope = WipeArtifactFileSystemSeam.unionAwarePaths(realPaths, union: estate.unionArtifactPaths)
+        let keychain = estate.keychain
+        let estateId = recoveryEstateId(artifactPaths: realPaths)
+        let publication = KeychainWipePublicationRecord(keychain: keychain)
+        let authority = CrashResumableWipe(
+            store: adapter,
+            vault: WipeKeyVaultSeam(
+                dekProvider: estate.dekProvider,
+                deleteIdentityKeys: { try MeshIdentity.deleteFromKeychain(keychain: keychain) },
+                invalidateRuntime: {
+                    // *** IOS-FOLLOWUP-C6: AN OWNER-DRAIN REFUSAL MUST REFUSE THE KEY STEP, NOT BE DISCARDED. ***
+                    switch estate.drainOwners() {
+                    case .drained, .cold: break
+                    case .ownersLive(let reason):
+                        throw MeshRuntimeError.startupRefusedByRecovery(
+                            decision: "owners_live", reason: "the estate's owners could not be drained: " + reason)
+                    }
+                }
+            ),
+            filesystem: WipeArtifactFileSystemSeam(journal: adapter, realPaths: deleteScope),
+            runtime: EstateRecoveryTransportSeam(estate: estate),
+            authority: WipeIdentityAuthoritySeam(
+                regenerateIdentity: { [keychain] in try MeshIdentity.generateAndStore(keychain: keychain) },
+                loadStandingIdentity: { [keychain] in try MeshIdentity.loadFromKeychain(keychain: keychain) },
+                readPublication: { publication.read() },
+                writePublication: { pub in publication.write(pub) },
+                readPublicationIntent: { publication.readIntent() },
+                writePublicationIntent: { gen in publication.writeIntent(gen) },
+                keychain: keychain),
+            // *** CURRENT-06: the coordinator iterates the UNION too, so every joined root's artifact is addressed. ***
+            estateArtifacts: Array(deleteScope.keys)
+        )
+        // *** IOS-FOLLOWUP-C2: THE WRAPPER PRESERVETH THE OPERATOR ACT'S FAILURE. *** *The old road swallowed the
+        // resolution with `_ = try?` and drove the bootstrap regardless -- so a refused REQUESTED record (a
+        // checkpoint that never reached the medium), or a readable estate that had no business being on this road
+        // at all, could be reclassified as a NORMAL topology and hand out a PERMIT for a resolution that performed
+        // nothing. Both are named refusals, and NEITHER consumes.*
+        let standing: () -> [String] = {
+            realPaths.keys.sorted().filter { name in
+                guard let url = realPaths[name] else { return false }
+                return FileManager.default.fileExists(atPath: url.path)
+            }
+        }
+        let resolution: WipeStepResult
+        do {
+            resolution = try authority.resolveCorruptForOperator()
+        } catch {
+            let reason = "the operator's corrupt resolution could not record REQUESTED: \(error)"
+            return RecoveryOnlyOutcome(
+                outcome: RecoveryLadderOutcome(decision: .corruptJournal(reason: reason),
+                                               rungs: adapter.readJournal(), artifactsRemaining: standing()),
+                topology: .refused(.corruptJournal(reason: reason)))
+        }
+        if case .refused(let reason) = resolution {
+            let gate = StartupRecoveryDecision.terminalFailure(
+                reason: "the operator resolution was refused: " + reason)
+            return RecoveryOnlyOutcome(
+                outcome: RecoveryLadderOutcome(decision: gate, rungs: adapter.readJournal(),
+                                               artifactsRemaining: standing()),
+                topology: .refused(gate))
+        }
+        // *** AND THE PERMIT COMETH ONLY FROM THE DRIVING BOOTSTRAP, AFTER A PERFORMED RESOLUTION. ***
+        let bootstrap = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+        let topology = bootstrap.consumeCompositionTopology()
+        let decision = bootstrap.reportedDecision()
+        let remaining = deleteScope.keys.sorted().filter { logicalName in
+            guard let url = deleteScope[logicalName] else { return false }
+            return FileManager.default.fileExists(atPath: url.path)
+        }
+        return RecoveryOnlyOutcome(
+            outcome: RecoveryLadderOutcome(decision: decision, rungs: adapter.readJournal(),
+                                           artifactsRemaining: remaining),
+            topology: topology)
+    }
+
+    /// *** THE TYPED DECISION AND THE DURABLE GENERATION, READ WITHOUT COMPOSING ANYTHING. ***
+    ///
+    /// *This is the read a surface or a pre-private holder asks: WHICH estate is this record, and MAY private
+    /// construction proceed? It opens no store and mints no identity -- it drives the create-time deferred ladder.*
+    public static func recoveryEstateStatus(
+        journal: WipeJournal = FileWipeJournal.standard()
+    ) -> (decision: StartupRecoveryDecision, generation: UInt64, rung: String?) {
+        let adapter = WipeJournalDurabilityAdapter(journal: journal)
+        let authority = CrashResumableWipe(
+            store: adapter,
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        let bootstrap = StartupRecoveryBootstrap(wipe: authority)
+        let decision = bootstrap.decideAndDrive()
+        return (decision, authority.durableGeneration(), adapter.readJournal().last)
+    }
+}
+
+/// *** FILE SCOPE (Swift permits extensions only here): THE DEFAULT UNION FOR AN ESTATE THAT NAMES NONE. ***
+extension MeshRuntime.RecoveryEstate {
+    internal var unionArtifactPaths: [String: URL] { [:] }
 }

@@ -1,5 +1,6 @@
 import XCTest
 @testable import GodstoneMesh
+import SQLite3
 
 // ---------------------------------------------------------------------------
 // T30 - the CANONICAL designated regression court, iOS side. The manifest
@@ -32,6 +33,12 @@ private enum MigrationTestFault: Error { case unverifiedSelect }
 private final class FakeKeychain: PrivateStoreKeyProvider, @unchecked Sendable {
     var stored: [String: StoreDEK] = [:]
     var dekByteCount: Int { 32 }
+    /// *** A PER-INSTANCE KEY DOMAIN (the sealed-lease convention). *** *The capability alias IS the physical-key
+    /// authority's identity, so a SHARED domain would let the process-global alias registry merge this arm's estate
+    /// with another's -- the cross-test merge that made `beginConstruction` refuse (the 107-consumer probe's
+    /// `startupRefusedByRecovery(permit_refused)`). A per-instance domain keepeth every arm its own owner set.*
+    private let domain = "test.t30.\(UUID().uuidString)"
+    var physicalKeyDomain: String { domain }
     var failFetch: StoreKeyError?
     var failCreate: StoreKeyError?
     var failDelete: StoreKeyError?
@@ -146,7 +153,8 @@ final class ReadinessT30Tests: XCTestCase {
     func testEncryptedStoreOpensAvailableViaPinnedSQLCipher() throws {
         let kc = FakeKeychain(); dek(kc, tag)
         let e = FakeEngine(kind: .pinnedSQLCipher)
-        let r = pair(kc, e).openStore(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, e).openStore(path: "/var/db/msg", tag: tag,
+                                      scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertTrue(r.isAvailable, "a genuine encrypted store opens Available")
         guard case .available(let h) = r else { XCTAssert(false, "expected .available, got \(r)"); return }
         XCTAssertTrue(h.encryptedAtRest); XCTAssertEqual(h.kind, .pinnedSQLCipher)
@@ -156,7 +164,8 @@ final class ReadinessT30Tests: XCTestCase {
     func testWrongDEKYieldsLockedNeverEmptyHealthyStore() throws {
         let kc = FakeKeychain(); dek(kc, tag)
         let e = FakeEngine(); e.throwOpen = StoreOpenFault.wrongKey
-        let r = pair(kc, e).openStore(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, e).openStore(path: "/var/db/msg", tag: tag,
+                                      scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertEqual(r, .locked, "a wrong-key open is Locked")
         XCTAssertFalse(r.isAvailable, "a wrong-key open must never surface an empty healthy store")
     }
@@ -164,7 +173,8 @@ final class ReadinessT30Tests: XCTestCase {
     // (3) Keychain unavailable -> .unavailable, never a usable store
     func testKeychainUnavailableIsFailClosed() throws {
         let kc = FakeKeychain(); kc.failFetch = .keychainUnavailable
-        let r = pair(kc, FakeEngine()).openStore(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, FakeEngine()).openStore(path: "/var/db/msg", tag: tag,
+                                                scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertEqual(r, .unavailable)
         XCTAssertFalse(r.isAvailable)
     }
@@ -172,7 +182,8 @@ final class ReadinessT30Tests: XCTestCase {
     // (4) locked device -> .unavailable (locked-device behaviour not weakened for availability)
     func testLockedDeviceIsFailClosedNotWeakened() throws {
         let kc = FakeKeychain(); kc.failFetch = .deviceLocked
-        let r = pair(kc, FakeEngine()).openStore(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, FakeEngine()).openStore(path: "/var/db/msg", tag: tag,
+                                                scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertEqual(r, .unavailable, "a locked device must fail closed, not open a weaker store")
         XCTAssertFalse(r.isAvailable)
     }
@@ -181,7 +192,8 @@ final class ReadinessT30Tests: XCTestCase {
     func testOpenedHandleMustAssertEncryptedAtRestElseRejected() throws {
         let kc = FakeKeychain(); dek(kc, tag)
         let e = FakeEngine(); e.assertEncrypted = false            // the engine lies about at-rest encryption
-        let r = pair(kc, e).openStore(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, e).openStore(path: "/var/db/msg", tag: tag,
+                                      scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertFalse(r.isAvailable, "a store that does not assert encrypted-at-rest is never accepted")
         XCTAssertEqual(r, .locked)
     }
@@ -190,7 +202,8 @@ final class ReadinessT30Tests: XCTestCase {
     func testNoFallbackToPlainSQLiteEngine() throws {
         let kc = FakeKeychain(); dek(kc, tag)
         let e = FakeEngine(kind: .plainSQLite)
-        let r = pair(kc, e).openStore(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, e).openStore(path: "/var/db/msg", tag: tag,
+                                      scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertEqual(r, .unavailable, "a plain SQLite engine is never the encrypted store path")
         XCTAssertEqual(e.openCalls, 0, "the plain engine must not even be asked to open")
     }
@@ -198,7 +211,8 @@ final class ReadinessT30Tests: XCTestCase {
     // (7) reopen WITHOUT the DEK must fail (required_semantic_negative half)
     func testReopenWithoutDEKIsRejectedNeverEmptyHealthy() throws {
         let kc = FakeKeychain()                                      // Keychain has NO DEK for the tag
-        let r = pair(kc, FakeEngine()).reopenExisting(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, FakeEngine()).reopenExisting(path: "/var/db/msg", tag: tag,
+                                                    scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertFalse(r.isAvailable, "reopening without the DEK must never yield a healthy store")
         XCTAssertEqual(r, .unavailable)
     }
@@ -207,7 +221,8 @@ final class ReadinessT30Tests: XCTestCase {
     func testProtectionFailureIsNeverSwallowed() throws {
         let kc = FakeKeychain(); dek(kc, tag)
         kc.protectionResult = .failure(.protectionFailure(status: -1, operation: "setAttributes"))
-        let r = pair(kc, FakeEngine()).openStore(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, FakeEngine()).openStore(path: "/var/db/msg", tag: tag,
+                                                scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertFalse(r.isAvailable, "a failed file-protection apply must not be swallowed to a usable store")
         XCTAssertEqual(r, .unavailable)
         XCTAssertGreaterThanOrEqual(kc.protectionCalls, 1)
@@ -217,7 +232,8 @@ final class ReadinessT30Tests: XCTestCase {
     func testReopenProtectionFailureIsNeverSwallowed() throws {
         let kc = FakeKeychain(); dek(kc, tag)                 // DEK present -> fetch succeeds on reopen
         kc.protectionResult = .failure(.protectionFailure(status: -1, operation: "setAttributes"))
-        let r = pair(kc, FakeEngine()).reopenExisting(path: "/var/db/msg", tag: tag)
+        let r = pair(kc, FakeEngine()).reopenExisting(path: "/var/db/msg", tag: tag,
+                                                    scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertFalse(r.isAvailable, "a failed file-protection apply on reopen must not be swallowed to a usable store")
         XCTAssertEqual(r, .unavailable)
         XCTAssertGreaterThanOrEqual(kc.protectionCalls, 1)
@@ -348,9 +364,11 @@ final class ReadinessT30Tests: XCTestCase {
     func testEraseDEKMakesStoresNonReopenable() throws {
         let kc = FakeKeychain(); dek(kc, tag)
         let f = pair(kc, FakeEngine())
-        XCTAssertTrue(f.reopenExisting(path: "/var/db/msg", tag: tag).isAvailable)
+        XCTAssertTrue(f.reopenExisting(path: "/var/db/msg", tag: tag,
+                      scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain)).isAvailable)
         try kc.deleteDEK(tag: tag)                                   // panic-wipe / erasure path
-        let r = f.reopenExisting(path: "/var/db/msg", tag: tag)
+        let r = f.reopenExisting(path: "/var/db/msg", tag: tag,
+                               scope: try t30Scope(msgPath: "/var/db/msg", tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertFalse(r.isAvailable, "after the DEK is destroyed the encrypted store must not be reopenable")
         XCTAssertEqual(r, .unavailable)
     }
@@ -398,7 +416,8 @@ final class ReadinessT30Tests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.path))
 
         let f = EncryptedStoreFactory(provider: kc, engine: unboundEngine())
-        let opened = f.openStore(path: store.path, tag: tag)
+        let opened = f.openStore(path: store.path, tag: tag,
+                                 scope: try t30Scope(msgPath: store.path, tag: tag, keyDomain: kc.physicalKeyDomain))
         XCTAssertEqual(
             opened, .unavailable,
             "*** AN UNBOUND ENGINE MUST YIELD `.unavailable`, NEVER A PLAINTEXT-OPENED STORE. *This is the clause "
@@ -407,7 +426,8 @@ final class ReadinessT30Tests: XCTestCase {
         )
         XCTAssertFalse(opened.isAvailable)
         // *** AND THE OWNED ROAD REFUSES TYPED TOO -- `.engineUnavailable`, never a fabricated connection. ***
-        let owned = f.reopenOwnedRequiringDEK(path: store.path, tag: tag)
+        let owned = f.reopenOwnedRequiringDEK(path: store.path, tag: tag,
+                                             scope: try t30Scope(msgPath: store.path, tag: tag, keyDomain: kc.physicalKeyDomain))
         if case .engineUnavailable = owned {} else {
             XCTFail("*** THE OWNED ROAD MUST ANSWER `.engineUnavailable` FOR AN UNBOUND ENGINE. *A `.opened` here "
                     + "would mean a connection was fabricated -- the exact 'nominal store with a nil handle' the "
@@ -442,46 +462,193 @@ final class ReadinessT30Tests: XCTestCase {
         }
     }
 
-    // (17) AND THE POSITIVE PATH, RUN ONLY WHEN THE PINNED BINARY IS REALLY PRESENT ON THIS HOST.
+    // (17) *** THE MANDATORY POSITIVE ROAD: POPULATED, EXACT-BYTES, REOPENED, PLATFORM-UNREADABLE. ***
     //
-    // *** THE DEFECT THIS REPLACES, NAMED: `guard e.isBound else { ...; return }` REPORTED A PASSED TEST WITHOUT
-    // EXERCISING ANY POSITIVE ROAD -- the classic "a test that cannot fail" -- and the closure cited it beside the
-    // engine's native claims. *** *The plan requires the optional approved-native roundtrip to be an EXPLICITLY
-    // external probe and a MISSING APPROVAL to be recorded as EXTERNAL-BLOCKED, never a green native result.*
-    //
-    // **SO WHEN THE LIBRARY IS ABSENT THIS ARM THROWS `XCTSkip` WITH THE BLOCKING REASON** -- a skip is DISTINGUISHABLE
-    // from a pass and is COUNTED, which is exactly what the lane's skip accounting exists for. The INTERNAL
-    // adapter/ownership refusals above remain mandatory and always run.
-    func testTheDylibEngineRoundTripsWhenThePinnedLibraryIsPresent() throws {
+    // *** SQLITE-LATEST-I6: THE ORIGINAL EMPTY-FILE WRONG-KEY WITNESS IS RETIRED. *** *It opened/probed/closed a NEW
+    // database through the metadata road and then changed the key -- an empty SQLCipher file answers a wrong key
+    // without any encryption defect either way, so the assertion could fail while the cipher behaved perfectly. The
+    // replacement writes REAL message and peer rows through the sealed, admitted, keyed road; CLOSES; reopens with
+    // the exact bytes; demands the typed wrong-key/no-key refusals on the POPULATED file; and demands that stock
+    // platform SQLite cannot read the rows.* **The pinned image is repository-built
+    // (`tools/supplychain/build_sqlcipher_simulator.sh`) and staged by this lane's host supply, so a missing binding
+    // here is a COURT/SYSTEM failure (XCTFail) -- never a distinguishable skip and never an "EXTERNAL-BLOCKED" label
+    // over builder-owned work. Physical-device at-rest proof remains the separate device gate.***
+    func testTheDylibEnginePopulatesBothStoresReopensExactAndRefusesWithoutTheKey() throws {
         let e = SqlCipherDylibEngine()
-        guard e.isBound else {
-            throw XCTSkip(
-                "EXTERNAL-BLOCKED: the approved pinned SQLCipher library '\(SQLCipherPin.libraryName)' is not "
-                + "present on this host, so the POSITIVE native road is NOT exercised. The fail-closed adapter arms "
-                + "above RAN and are the internal obligation; the pinned binary, encrypted pages, correct-key reopen "
-                + "and on-device at-rest proof remain EXTERNAL. Reason: \(e.bindingFailureReason ?? "unknown")")
-        }
+        guard t30RequirePinnedImage(e, lane: "t30 populated positive") else { return }
         let dir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("t30-bound-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let store = dir.appendingPathComponent("msg.db")
-        let kc = FakeKeychain(); dek(kc, tag)
+        let msgURL = dir.appendingPathComponent("mesh.db")
+        let peerURL = dir.appendingPathComponent("peer.db")
+        let peerTag = "store-peer"
+        let kc = FakeKeychain()
+        dek(kc, tag); dek(kc, peerTag)
         let f = EncryptedStoreFactory(provider: kc, engine: e)
-        let opened = f.openStore(path: store.path, tag: tag)
-        XCTAssertTrue(opened.isAvailable, "*** A BOUND PINNED ENGINE MUST OPEN THE STORE: \(opened) ***")
-        // *** AND THE SAME KEY RE-OPENS IT WITH THE SAME CIPHER VERSION -- the round trip. ***
-        guard case .available(let h) = f.reopenExisting(path: store.path, tag: tag) else {
-            XCTFail("the keyed store must re-open with its own DEK"); return
+
+        // (1) POPULATE BOTH ACTUAL PRIVATE STORES THROUGH THE OWNED, ADMITTED ROAD, THEN CLOSE FOR REAL.
+        let frame = FrameV2(type: .message, msgId: t30Seed(0x31), routingTag: Data([1, 2, 3, 4]),
+                            ttl: 12, hopCount: 0, flags: Priority.toFlags(.direct) | UInt16(FrameV2.Flags.sealed),
+                            payload: Data((0..<256).map { UInt8(truncatingIfNeeded: $0 &* 11 &+ 5) }))
+        do {
+            guard case .opened(let msgOwned, _) = f.openOwnedForWriting(path: msgURL.path, tag: tag,
+                  scope: try t30Scope(msgPath: msgURL.path, tag: tag, keyDomain: kc.physicalKeyDomain)) else {
+                return XCTFail("the first-install owned road must create and hand over the message store")
+            }
+            let msg = SqliteMessageStore(verifiedConnection: msgOwned, maxBytes: 64 * 1024 * 1024)
+            guard case .opened = msg.openOutcome else { return XCTFail("the message store must adopt the owned connection") }
+            XCTAssertEqual(.heldNew, msg.persist(frame, receivedFrom: Data(repeating: 0xAB, count: 8)))
+            msg.close(); _ = msgOwned.close()
+
+            guard case .opened(let peerOwned, _) = f.openOwnedForWriting(path: peerURL.path, tag: peerTag,
+                  scope: try t30Scope(msgPath: peerURL.path, tag: peerTag, keyDomain: kc.physicalKeyDomain)) else {
+                return XCTFail("the first-install owned road must create and hand over the peer store")
+            }
+            let peer = try SqlitePeerIdentityStore(verifiedConnection: peerOwned)
+            XCTAssertEqual(1, try peer.insertFirstSeen(nodeId: t30Seed(0x32), signingPub: Data(repeating: 0x44, count: 32),
+                                                      acceptedStatic: Data(repeating: 0x55, count: 32),
+                                                      acceptedGeneration: 3, trustCode: 1))
+            peer.close(); _ = peerOwned.close()
         }
-        XCTAssertEqual(h.cipherVersion, SQLCipherPin.supportedCipherVersion)
-        XCTAssertTrue(h.encryptedAtRest)
-        // *** AND A WRONG KEY IS REFUSED, WHICH IS WHAT PROVES THE KEY WAS REALLY APPLIED. ***
+
+        // (2) THE POPULATED FILE DOES NOT CARRY THE PLAINTEXT SQLITE HEADER.
+        let header = try FileHandle(forReadingFrom: msgURL).readData(ofLength: 16)
+        XCTAssertNotEqual(header, Data("SQLite format 3\0".utf8),
+                          "*** A POPULATED PRIVATE STORE MUST NOT PRESENT THE PLAINTEXT SQLITE HEADER. ***")
+
+        // (3) STOCK, STATICALLY LINKED PLATFORM SQLITE CANNOT READ THE POPULATED ROWS.
+        var plain: OpaquePointer?
+        let openRC = sqlite3_open_v2(msgURL.path, &plain, SQLITE_OPEN_READONLY, nil)
+        defer { if let plain { sqlite3_close_v2(plain) } }
+        var stockReadable = false
+        var stockCount = -1
+        if openRC == SQLITE_OK, let plain {
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(plain, "SELECT count(*) FROM held_frames", -1, &stmt, nil) == SQLITE_OK, let stmt {
+                stockReadable = sqlite3_step(stmt) == SQLITE_ROW
+                if stockReadable { stockCount = Int(sqlite3_column_int(stmt, 0)) }
+                sqlite3_finalize(stmt)
+            }
+        }
+        XCTAssertFalse(stockReadable && stockCount >= 1,
+            "*** STOCK SQLite MUST NOT READ THE POPULATED MESSAGE ROWS (open rc=\(openRC), count=\(stockCount)). "
+                + "A plaintext-capable read of the private store is the exact at-rest defect this engine exists to "
+                + "prevent -- a non-SQLite header ALONE is not this refusal: the SELECT must fail too. ***")
+
+        // (4) THE SAME KEYS RE-OPEN AND ANSWER THE EXACT BYTES AFTER A REAL CLOSE/REOPEN.
+        guard case .opened(let msgOwned2, let cipherVersion) = f.reopenOwnedRequiringDEK(path: msgURL.path, tag: tag,
+              scope: try t30Scope(msgPath: msgURL.path, tag: tag, keyDomain: kc.physicalKeyDomain)) else {
+            return XCTFail("the correct key must re-open the message store")
+        }
+        XCTAssertEqual(cipherVersion, SQLCipherPin.supportedCipherVersion)
+        let msg2 = SqliteMessageStore(verifiedConnection: msgOwned2, maxBytes: 64 * 1024 * 1024)
+        XCTAssertEqual(msg2.allHeldOrderedByPriority().first?.payload, frame.payload,
+                       "*** THE EXACT PAYLOAD BYTES SURVIVE THE ACTUAL CLOSE/REOPEN. ***")
+        msg2.close(); _ = msgOwned2.close()
+        guard case .opened(let peerOwned2, _) = f.reopenOwnedRequiringDEK(path: peerURL.path, tag: peerTag,
+              scope: try t30Scope(msgPath: peerURL.path, tag: peerTag, keyDomain: kc.physicalKeyDomain)) else {
+            return XCTFail("the correct key must re-open the peer store")
+        }
+        let peer2 = try SqlitePeerIdentityStore(verifiedConnection: peerOwned2)
+        XCTAssertEqual(try peer2.readRaw(t30Seed(0x32))?.signingPublicKeyRaw, Data(repeating: 0x44, count: 32),
+                       "the exact peer row survives the actual close/reopen")
+        peer2.close(); _ = peerOwned2.close()
+
+        // (5) THE METADATA ROAD ON THE POPULATED FILE: WRONG KEY IS TYPED `.locked`; ABSENCE IS NOT A STORE.
         kc.stored[tag] = StoreDEK(bytes: Data(repeating: 0x5A, count: 32))
-        let wrong = EncryptedStoreFactory(provider: kc, engine: e).reopenExisting(path: store.path, tag: tag)
-        XCTAssertFalse(
-            wrong.isAvailable,
-            "*** A WRONG DEK MUST BE REFUSED. *If it opened, the key was never really applied and the store is "
-                + "readable by anyone holding the file -- the exact at-rest defect this engine exists to prevent.* ***",
-        )
+        XCTAssertEqual(f.reopenExisting(path: msgURL.path, tag: tag,
+                       scope: try t30Scope(msgPath: msgURL.path, tag: tag, keyDomain: kc.physicalKeyDomain)),
+                       .locked,
+                       "*** A WRONG DEK ON THE POPULATED KEYED FILE MUST REFUSE AS `.locked` -- the original court "
+                           + "demanded this of an EMPTY file, which proves nothing about the cipher. ***")
+        kc.stored[tag] = nil
+        XCTAssertFalse(f.reopenExisting(path: msgURL.path, tag: tag,
+                       scope: try t30Scope(msgPath: msgURL.path, tag: tag, keyDomain: kc.physicalKeyDomain)).isAvailable,
+                       "NO key must not answer an empty healthy store")
     }
 }
+
+// ---------------------------------------------------------------------------
+// *** THE SEALED LEASE ROAD AND THE MANDATORY IMAGE GATE (SQLITE-LATEST-C3 / I6). ***
+//
+// *The court obtains admission ONLY through the production boundary: a settled, generation-known journal; the
+// real ladder driven for a permit; and `PhysicalEstateAuthority.beginConstruction` -- the sole issuer -- presenting
+// that permit against the live record. `EncryptedStoreAdmissionLedger` and `EncryptedStoreAdmissionScope.forTest`
+// are DELETED; there is no court convenience to route around.*
+// ---------------------------------------------------------------------------
+
+private func t30RequirePinnedImage(_ engine: SqlCipherDylibEngine, lane: String) -> Bool {
+    if engine.isBound { return true }
+    XCTFail("*** MANDATORY NATIVE LANE '\(lane)' (SQLITE-LATEST-I6): the pinned image '\(SQLCipherPin.libraryName)' "
+            + "is not staged or did not bind. It is repository-built: run "
+            + "tools/supplychain/build_sqlcipher_simulator.sh and stage it where the loader searches, or export "
+            + "GODSTONE_SQLCIPHER_ARTIFACT_DIR. Reason: \(engine.bindingFailureReason ?? "unknown") ***")
+    return false
+}
+
+private func t30Seed(_ seed: UInt8) -> Data { Data((0..<16).map { UInt8(truncatingIfNeeded: Int($0) &+ Int(seed)) }) }
+
+private final class T30Journal: WipeJournal, @unchecked Sendable {
+    var state: WipeState = .idle
+    func read() -> WipeState { state }
+    func write(_ s: WipeState) { state = s }
+    func clear() { state = .idle }
+    var isReadable: Bool { true }
+    private var _wipeEpoch: UInt64?
+    var durableEpoch: UInt64? { _wipeEpoch }
+    @discardableResult func bumpEpoch() -> UInt64? { _wipeEpoch = (_wipeEpoch ?? 0) + 1; return _wipeEpoch }
+    func readDurable() -> (state: WipeState, epoch: UInt64?)? { (read(), _wipeEpoch) }
+    @discardableResult func writeChecked(_ state: WipeState) -> DurableWriteResult {
+        write(state)
+        if _wipeEpoch == nil { _wipeEpoch = 1 }
+        return DurableWriteResult(synchronized: true, epoch: _wipeEpoch)
+    }
+}
+
+private final class T30Keychain: LocalIdentityKeychain, @unchecked Sendable {
+    var storage: [String: Data] = [:]
+    func read(tag: String) throws -> Data? { storage[tag] }
+    func add(tag: String, data: Data) throws { storage[tag] = data }
+    func delete(tag: String) throws { storage.removeValue(forKey: tag) }
+}
+
+/// One admitted scope, issued by the sealed sole issuer against a settled, generation-known estate.
+private func t30Scope(msgPath: String, tag: String, keyDomain: String) throws -> EncryptedStoreAdmissionScope {
+    let declaredURL = URL(fileURLWithPath: msgPath)
+    let companionURL = URL(fileURLWithPath: msgPath + "-companion")
+    let artifactPaths = MeshRuntime.wipeArtifactPaths(messageStoreUrl: declaredURL, peerStoreUrl: companionURL)
+    let estateId = MeshRuntime.recoveryEstateId(artifactPaths: artifactPaths)
+    let journal = T30Journal()
+    _ = journal.writeChecked(.idle)              // settled record with a KNOWN generation -- never a fabricated zero
+    let authority = CrashResumableWipe(
+        store: WipeJournalDurabilityAdapter(journal: journal),
+        vault: WipeDeferredKeyVaultSeam(),
+        filesystem: WipeDeferredArtifactFileSystemSeam(),
+        runtime: WipeDeferredTransportSeam(),
+        authority: WipeDeferredIdentityAuthoritySeam())
+    guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+            .consumeCompositionTopology() else {
+        XCTFail("*** '\(laneName(msgPath))': a driven clean estate must issue the permit; the ladder refused for "
+                + "estate '\(estateId)' ***")
+        throw StoreKeyError.keychainUnavailable
+    }
+    do {
+        let lease = try PhysicalEstateAuthority.shared.beginConstruction(
+            permit: permit, estateId: estateId, journal: journal,
+            artifactPaths: artifactPaths, keychain: T30Keychain(),
+            keyDomain: keyDomain, stores: [tag: declaredURL])
+        return EncryptedStoreAdmissionScope(authorityLease: lease, storeTag: tag, storePath: msgPath)
+    } catch let fault as MeshRuntime.MeshRuntimeError {
+        // *** THE TYPED DECISION AND REASON ARE CARRIED VERBATIM, so a future runner reads the ACTUAL cause rather
+        //     than the bare `MeshRuntimeError error 2` the 107-consumer probe printed. ***
+        if case .startupRefusedByRecovery(let decision, let reason) = fault {
+            XCTFail("*** '\(laneName(msgPath))': the sealed issuer REFUSED estate '\(estateId)' for tag '\(tag)': "
+                    + "decision=\(decision) reason=\(reason) ***")
+        } else {
+            XCTFail("*** '\(laneName(msgPath))': the sealed issuer refused with an unexpected MeshRuntimeError: \(fault) ***")
+        }
+        throw fault
+    }
+}
+
+private func laneName(_ path: String) -> String { (path as NSString).lastPathComponent }

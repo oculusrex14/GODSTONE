@@ -28,6 +28,101 @@ import SQLite3
 //  either holds the table or it holds nothing.*
 //  ================================================================================================
 
+/// *** THE UNLOADABLE-IMAGE LEASE: THE `dlopen` HANDLE, KEPT ALIVE BY **ARC** AND UNLOADED EXACTLY ONCE. ***
+///
+/// *SQLITE-REVIEW-1 / SQLITE-LATEST-C2, MEASURED: the image's lifetime was governed by a MANUAL `references` counter,
+/// while the function table held the lease by STRONG REFERENCE. Ordinary struct copies therefore did NOT increment the
+/// counter, so an escaped `provider`/connection copy could outlive a manually-released reference and dispatch into an
+/// UNLOADED image -- and every manual `retain`/`release` pair was a lifetime bug waiting to happen.*
+///
+/// **SO THE MANUAL COUNTER IS GONE. THE LEASE'S LIFETIME IS ITS ARC LIFETIME:** *every function-table value and every
+/// class that means to keep the image (the engine, each `OwnedConnection`, each adopting store) holds this object
+/// STRONGLY, so the object lives until the LAST of them falls -- and `deinit` (plus the owner's explicit
+/// `unloadIfNeeded`) `dlclose`es it exactly once, only when no user remains.* **A value copy of the table keeps the
+/// lease alive exactly as long as the copy does, which is the invariant the counter was trying (and failing) to
+/// approximate.***
+internal final class SQLiteImageLease: @unchecked Sendable {
+    private let handle: UnsafeMutableRawPointer
+    /// *** THE PRIVATE SNAPSHOT'S **ROOT DIRECTORY**, REMOVED ON UNLOAD -- AND **NEVER THE ORIGINAL ARTIFACT'S**. ***
+    ///
+    /// *When the image was bound from an exclusively-created, byte-verified private copy (see `SqlCipherDylibEngine`),
+    /// that copy's name is `unlink`ed right after the load and only this root remaineth. Cleanup deleteth ONLY the copy
+    /// this lease created; the original image's path is never touched, deleted or mutated. `nil` when the load did not
+    /// create a copy (a bundle-resident/signed load).*
+    private let snapshotRoot: String?
+    private let lock = NSLock()
+    private var unloaded = false
+
+    internal init(handle: UnsafeMutableRawPointer, snapshotRoot: String? = nil) {
+        self.handle = handle
+        self.snapshotRoot = snapshotRoot
+    }
+
+    /// Unload the image exactly once. *Called by the OWNER's `deinit` (which also holds the lease strongly) and by this
+    /// object's own `deinit`; idempotent, so the image is `dlclose`d precisely once and never while a user remains.*
+    /// **The same single pass removeth the private root, so no failure path can leak the copy and no cleanup can reach
+    /// the original artifact.**
+    private func unloadIfNeeded() {
+        lock.lock(); defer { lock.unlock() }
+        guard !unloaded else { return }
+        unloaded = true
+        dlclose(handle)
+        if let snapshotRoot { try? FileManager.default.removeItem(atPath: snapshotRoot) }
+    }
+
+    deinit { unloadIfNeeded() }
+
+    /// For a court: whether the image has been unloaded. *A witness that the last user's fall is what unloads it.*
+    internal var isUnloadedForTest: Bool { lock.lock(); defer { lock.unlock() }; return unloaded }
+}
+
+/// *** THE SUPPLIED-ARTIFACT DESCRIPTOR: WHAT THE RUNTIME IMAGE MUST BE, BEFORE IT IS LOADED. ***
+///
+/// *SQLITE-REVIEW-5, MEASURED: the public constructor accepted ANY `libraryPath` or bare filename, complete symbol
+/// binding established only AVAILABILITY, and cipher major 4 established only a MAJOR GENERATION -- so an unapproved
+/// SQLCipher-4 image could be labelled `.pinnedSQLCipher` and publish owners indistinguishable from the approved
+/// supply.*
+///
+/// **SO THE PIN IS CONSUMED RATHER THAN MERELY NAMED.** *`SqlCipherDylibEngine`'s production initializer resolves one
+/// of these beside the library, verifies the loaded image against the digest/platform/architecture/cipher-major/source
+/// fields, and only then loads it. A missing or mismatching descriptor is a TYPED UNAVAILABLE, never a silent load of
+/// whatever the search path happened to find.* **The arbitrary-path/function-table injection initializers remain
+/// INTERNAL so a court can drive the adapter; they are not the production road.**
+public struct SQLCipherArtifactDescriptor: Equatable, Sendable, Codable {
+    /// The leaf name the loader expects (`libsqlcipher.0.dylib`).
+    public let libraryName: String
+    /// The source repository the image was built from, and the exact content-addressed commit (the authority).
+    public let sourceRepo: String
+    public let sourceCommit: String
+    public let sourceTag: String
+    /// The cipher major the descriptor's source provides. *Checked against `SqlCipherDylibEngine.supportedCipherVersion`.*
+    public let cipherVersionMajor: Int
+    /// The platform the bytes are FOR ("MACOS"/"IOSSIMULATOR") and the architecture ("arm64"). *A macOS process must
+    /// not dlopen an IOSSIMULATOR image and vice versa -- the same separation the build script stages separately.*
+    public let platform: String
+    public let arch: String
+    /// The RECORDED sha256 of the built dylib, the cross-check applied to the bytes actually loaded.
+    public let sha256: String
+    /// The recorded byte count, a second cheap cross-check.
+    public let bytes: Int
+
+    public init(libraryName: String, sourceRepo: String, sourceCommit: String, sourceTag: String,
+                cipherVersionMajor: Int, platform: String, arch: String, sha256: String, bytes: Int) {
+        self.libraryName = libraryName
+        self.sourceRepo = sourceRepo
+        self.sourceCommit = sourceCommit
+        self.sourceTag = sourceTag
+        self.cipherVersionMajor = cipherVersionMajor
+        self.platform = platform
+        self.arch = arch
+        self.sha256 = sha256
+        self.bytes = bytes
+    }
+
+    /// The sidecar filename the builder-emitted descriptor is expected to carry, beside the staged library.
+    public static func sidecarName(forLibrary libraryName: String) -> String { libraryName + ".artifact.json" }
+}
+
 /// *** THE COMPLETE SQLITE SURFACE BOTH PRIVATE STORES USE, BOUND FROM ONE IMAGE. ***
 ///
 /// *Every entry point is listed EXPLICITLY, so the surface is auditable at a glance and an unlisted function cannot
@@ -37,44 +132,36 @@ import SQLite3
 public struct SQLiteFunctionTable: @unchecked Sendable {
 
     // --- connection ---------------------------------------------------------------------------
-    public let openV2: @convention(c) (UnsafePointer<CChar>?, UnsafeMutablePointer<OpaquePointer?>?, Int32,
-                                       UnsafePointer<CChar>?) -> Int32
-    public let closeV2: @convention(c) (OpaquePointer?) -> Int32
-    public let busyTimeout: @convention(c) (OpaquePointer?, Int32) -> Int32
-    public let exec: @convention(c) (OpaquePointer?, UnsafePointer<CChar>?,
-                                     (@convention(c) (UnsafeMutableRawPointer?, Int32,
-                                                      UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?,
-                                                      UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> Int32)?,
-                                     UnsafeMutableRawPointer?, UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> Int32
-    public let changes: @convention(c) (OpaquePointer?) -> Int32
-    public let errmsg: @convention(c) (OpaquePointer?) -> UnsafePointer<CChar>?
-
-    // --- statements ---------------------------------------------------------------------------
-    public let prepareV2: @convention(c) (OpaquePointer?, UnsafePointer<CChar>?, Int32,
-                                          UnsafeMutablePointer<OpaquePointer?>?,
-                                          UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> Int32
-    public let step: @convention(c) (OpaquePointer?) -> Int32
-    public let finalize: @convention(c) (OpaquePointer?) -> Int32
-
-    // --- binding ------------------------------------------------------------------------------
-    public let bindBlob: @convention(c) (OpaquePointer?, Int32, UnsafeRawPointer?, Int32,
-                                         (@convention(c) (UnsafeMutableRawPointer?) -> Void)?) -> Int32
-    public let bindInt: @convention(c) (OpaquePointer?, Int32, Int32) -> Int32
-    public let bindInt64: @convention(c) (OpaquePointer?, Int32, Int64) -> Int32
-    public let bindNull: @convention(c) (OpaquePointer?, Int32) -> Int32
-    public let bindText: @convention(c) (OpaquePointer?, Int32, UnsafePointer<CChar>?, Int32,
-                                         (@convention(c) (UnsafeMutableRawPointer?) -> Void)?) -> Int32
-
-    // --- columns ------------------------------------------------------------------------------
-    public let columnBlob: @convention(c) (OpaquePointer?, Int32) -> UnsafeRawPointer?
-    public let columnBytes: @convention(c) (OpaquePointer?, Int32) -> Int32
-    public let columnInt: @convention(c) (OpaquePointer?, Int32) -> Int32
-    public let columnInt64: @convention(c) (OpaquePointer?, Int32) -> Int64
-    public let columnText: @convention(c) (OpaquePointer?, Int32) -> UnsafePointer<UInt8>?
-    public let columnType: @convention(c) (OpaquePointer?, Int32) -> Int32
+    internal let openV2: @convention(c) (UnsafePointer<CChar>?, UnsafeMutablePointer<OpaquePointer?>?, Int32, UnsafePointer<CChar>?) -> Int32
+    internal let closeV2: @convention(c) (OpaquePointer?) -> Int32
+    internal let busyTimeout: @convention(c) (OpaquePointer?, Int32) -> Int32
+    internal let exec: @convention(c) (OpaquePointer?, UnsafePointer<CChar>?, (@convention(c) (UnsafeMutableRawPointer?, Int32, UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?, UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> Int32)?, UnsafeMutableRawPointer?, UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) -> Int32
+    internal let changes: @convention(c) (OpaquePointer?) -> Int32
+    internal let errmsg: @convention(c) (OpaquePointer?) -> UnsafePointer<CChar>?
+    internal let prepareV2: @convention(c) (OpaquePointer?, UnsafePointer<CChar>?, Int32, UnsafeMutablePointer<OpaquePointer?>?, UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> Int32
+    internal let step: @convention(c) (OpaquePointer?) -> Int32
+    internal let finalize: @convention(c) (OpaquePointer?) -> Int32
+    internal let bindBlob: @convention(c) (OpaquePointer?, Int32, UnsafeRawPointer?, Int32, (@convention(c) (UnsafeMutableRawPointer?) -> Void)?) -> Int32
+    internal let bindInt: @convention(c) (OpaquePointer?, Int32, Int32) -> Int32
+    internal let bindInt64: @convention(c) (OpaquePointer?, Int32, Int64) -> Int32
+    internal let bindNull: @convention(c) (OpaquePointer?, Int32) -> Int32
+    internal let bindText: @convention(c) (OpaquePointer?, Int32, UnsafePointer<CChar>?, Int32, (@convention(c) (UnsafeMutableRawPointer?) -> Void)?) -> Int32
+    internal let columnBlob: @convention(c) (OpaquePointer?, Int32) -> UnsafeRawPointer?
+    internal let columnBytes: @convention(c) (OpaquePointer?, Int32) -> Int32
+    internal let columnInt: @convention(c) (OpaquePointer?, Int32) -> Int32
+    internal let columnInt64: @convention(c) (OpaquePointer?, Int32) -> Int64
+    internal let columnText: @convention(c) (OpaquePointer?, Int32) -> UnsafePointer<UInt8>?
+    internal let columnType: @convention(c) (OpaquePointer?, Int32) -> Int32
 
     /// The human-readable name of the image this table was bound from, for an operator or a court.
     public let providerName: String
+
+    /// *** THE IMAGE LEASE THIS TABLE'S POINTERS ARE ONLY VALID INSIDE -- `nil` FOR THE STATICALLY LINKED TABLE. ***
+    ///
+    /// *A `struct` cannot release an unloadable image when its last copy dieth, so the lease is released by the CLASS
+    /// owners that hold it: the engine, the owned connection, and each adopting store. `linkedPlatform` carrieth
+    /// `nil`: its functions ARE the process image and cannot be unloaded.*
+    internal let lease: SQLiteImageLease?
 
     /// *** THE TABLE OVER THE **STATICALLY LINKED** SQLITE3 -- the archive-only / legacy provider. ***
     ///
@@ -84,6 +171,7 @@ public struct SQLiteFunctionTable: @unchecked Sendable {
     /// visibly the plaintext/archive road rather than the pinned-engine one.**
     public static let linkedPlatform = SQLiteFunctionTable(
         providerName: "platform-sqlite3 (statically linked)",
+        lease: nil,
         openV2: sqlite3_open_v2,
         closeV2: sqlite3_close_v2,
         busyTimeout: sqlite3_busy_timeout,
@@ -118,6 +206,7 @@ public struct SQLiteFunctionTable: @unchecked Sendable {
     ]
 
     internal init(providerName: String,
+                 lease: SQLiteImageLease? = nil,
                  openV2: @escaping @convention(c) (UnsafePointer<CChar>?, UnsafeMutablePointer<OpaquePointer?>?,
                                                   Int32, UnsafePointer<CChar>?) -> Int32,
                  closeV2: @escaping @convention(c) (OpaquePointer?) -> Int32,
@@ -149,6 +238,7 @@ public struct SQLiteFunctionTable: @unchecked Sendable {
                  columnText: @escaping @convention(c) (OpaquePointer?, Int32) -> UnsafePointer<UInt8>?,
                  columnType: @escaping @convention(c) (OpaquePointer?, Int32) -> Int32) {
         self.providerName = providerName
+        self.lease = lease
         self.openV2 = openV2
         self.closeV2 = closeV2
         self.busyTimeout = busyTimeout
@@ -178,9 +268,21 @@ public struct SQLiteFunctionTable: @unchecked Sendable {
     /// alive for as long as the table is used (see `SqlCipherDylibEngine`), because these pointers are only valid while
     /// the image remaineth loaded.**
     internal static func bind(fromImage handle: UnsafeMutableRawPointer,
-                              providerName: String) -> SQLiteFunctionTable? {
+                              providerName: String,
+                              lease: SQLiteImageLease? = nil,
+                              imagePath: String? = nil) -> SQLiteFunctionTable? {
+        let expectedPath = imagePath.map { URL(fileURLWithPath: $0).resolvingSymlinksInPath().standardizedFileURL.path }
+        var imageBase: UnsafeMutableRawPointer?
         func sym<T>(_ name: String, _ type: T.Type) -> T? {
             guard let p = dlsym(handle, name) else { return nil }
+            var origin = Dl_info()
+            guard dladdr(p, &origin) != 0, let filename = origin.dli_fname, let base = origin.dli_fbase else { return nil }
+            if let expectedPath {
+                let actualPath = URL(fileURLWithPath: String(cString: filename)).resolvingSymlinksInPath().standardizedFileURL.path
+                guard actualPath == expectedPath else { return nil }
+            }
+            if let imageBase { guard base == imageBase else { return nil } }
+            else { imageBase = base }
             return unsafeBitCast(p, to: T.self)
         }
         guard let openV2 = sym("sqlite3_open_v2", OpenV2Fn.self),
@@ -205,7 +307,8 @@ public struct SQLiteFunctionTable: @unchecked Sendable {
               let columnType = sym("sqlite3_column_type", ColumnTypeFn.self)
         else { return nil }
         return SQLiteFunctionTable(
-            providerName: providerName, openV2: openV2, closeV2: closeV2, busyTimeout: busyTimeout, exec: exec,
+            providerName: providerName, lease: lease,
+            openV2: openV2, closeV2: closeV2, busyTimeout: busyTimeout, exec: exec,
             changes: changes, errmsg: errmsg, prepareV2: prepareV2, step: step, finalize: finalize,
             bindBlob: bindBlob, bindInt: bindInt, bindInt64: bindInt64, bindNull: bindNull, bindText: bindText,
             columnBlob: columnBlob, columnBytes: columnBytes, columnInt: columnInt, columnInt64: columnInt64,

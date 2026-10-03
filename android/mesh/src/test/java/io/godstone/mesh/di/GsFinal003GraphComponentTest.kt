@@ -60,7 +60,16 @@ class GsFinal003GraphComponentTest {
 
     /** A constructed graph over the real module, with the application Context BOUND as an instance. */
     private fun graph(): MeshGraphComponent =
-        DaggerMeshGraphComponent.builder().applicationContext(ctx()).build()
+        // *** THE REFUSING-RUNG COMPOSITION: `StartupRecoveryGraph.deferred()` IS BOUND SO A PENDING WIPE STAYS
+        // OBSERVABLE. *** *The PRODUCTION composition bindeth the REAL pre-private capabilities
+        // (`StartupRecoveryGraph.prePrivate`), which would COMPLETE a pending wipe at startup -- correct for production,
+        // but it would leave no rung to refuse at. **BOTH compositions are therefore exercised on this isle, and the
+        // production one's own behaviour is courted by `GsFinal003PrePrivateRecoveryGraphTest` and
+        // `CrashStartupResumeTest`.***
+        DaggerMeshGraphComponent.builder()
+            .applicationContext(ctx())
+            .recoverySeams(StartupRecoveryGraph.deferred())
+            .build()
 
     @Before fun clearJournal() = presetJournal(null)
     @After fun tearDown() = presetJournal(null)

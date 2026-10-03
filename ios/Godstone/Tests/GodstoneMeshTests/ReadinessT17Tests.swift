@@ -74,9 +74,11 @@ final class ReadinessT17Tests: XCTestCase {
             lk.lock(); stored.append(data); lk.unlock()
         }
         @objc func discoverServices(_ services: [CBUUID]) {}
-        @objc func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
+        @objc(discoverCharacteristics:forService:)
+        func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
         @objc func readRSSI() {}
-        @objc func readCharacter(_ characteristic: CBCharacteristic) {}
+        @objc(readValueForCharacteristic:)
+        func readValue(for characteristic: CBCharacteristic) {}
         @objc(setNotifyValue:forCharacteristic:)
         func setNotifyValue(_ v: Bool, for characteristic: CBCharacteristic) {}
         var writes: [Data] {
@@ -379,7 +381,12 @@ final class ReadinessT17Tests: XCTestCase {
             peerId: peerId, peripheral: nil,
             sourceEpoch: alice.currentTransportEpoch, from: cm)
         walkLog.append("after connect: " + (alice.connection(for: peerId).map { String(describing: $0.state) } ?? "nil"))
-        let a1 = alice.processPeripheralDiscoverServices(nil, delegate: delegate, error: nil)
+        // *** THE SIMULATED PERIPHERAL MUST EXPOSE THE MESH SERVICE BEFORE THE DISCOVERY IS REPORTED. *** *The
+        // reduction no longer coerces an un-observ'd `services` to success -- that was the defect -- so the peripheral
+        // the walk reports really carrieth the provisioned mesh service.*
+        capturePeer.services = [ReadinessT17Tests.provisionedService()]
+        let a1 = alice.processPeripheralDiscoverServices(
+            unsafeBitCast(capturePeer, to: CBPeripheral.self), delegate: delegate, error: nil)
         walkLog.append("services -> " + String(describing: a1) + " @ " + (alice.connection(for: peerId).map { String(describing: $0.state) } ?? "nil"))
         let a2 = alice.processPeripheralDiscoverCharacteristics(nil, delegate: delegate,
                                                           service: ReadinessT17Tests.provisionedService(), error: nil)

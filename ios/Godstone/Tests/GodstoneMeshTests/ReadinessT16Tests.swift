@@ -87,11 +87,14 @@ final class ReadinessT16Tests: XCTestCase {
         // The stack messages the whole family to the handle; the present
         // answers each selector with an empty body and remembers nothing.
         @objc func discoverServices(_ services: [CBUUID]) {}
-        @objc func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
+        @objc(discoverCharacteristics:forService:)
+        func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
         @objc func readRSSI() {}
-        @objc func readCharacter(_ characteristic: CBCharacteristic) {}
+        @objc(readValueForCharacteristic:)
+        func readValue(for characteristic: CBCharacteristic) {}
         @objc func writeValue(_ data: Data, for characteristic: CBCharacteristic, type: CBCharacteristicWriteType) {}
-        @objc func setNotifyValue(_ v: Bool, for characteristic: CBCharacteristic) {}
+        @objc(setNotifyValue:forCharacteristic:)
+        func setNotifyValue(_ v: Bool, for characteristic: CBCharacteristic) {}
     }
 
     private final class OpeningFactory: TransportManagerFactory, @unchecked Sendable {

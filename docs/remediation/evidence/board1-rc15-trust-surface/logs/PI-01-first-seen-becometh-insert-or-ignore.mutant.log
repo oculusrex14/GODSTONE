@@ -1,0 +1,5 @@
+::error::Peer identity store control error: Android first-seen must use standard INSERT, not OR IGNORE/REPLACE (S27)
+
+FAIL: 1 peer identity store control issue(s) found.
+
+(the rod aimed at 'Android first-seen must use standard INSERT, not OR IGNORE/REPLACE (S27)'; reddened refusals were the aimed one)

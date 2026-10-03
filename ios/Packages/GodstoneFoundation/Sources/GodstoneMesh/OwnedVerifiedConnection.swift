@@ -39,6 +39,83 @@ import Foundation
 //  connection it is using, and that answer can be compared BY IDENTITY against what the engine
 //  returned -- which is an observation.*
 
+/// *** THE SHARED USE/CLOSE LIFECYCLE: ONE OBJECT PER CONNECTION, HELD BY THE OWNER AND EVERY ADOPTING STORE. ***
+///
+/// *SQLITE-REVIEW-2, MEASURED: stores retained only `rawHandle` + `provider`, never the owner; their `NSLock`s did not
+/// participate in `OwnedConnection.close()`, and no query checked the owner's closed state. A store could dispatch a
+/// STALE handle to SQLite after the owner closed it, and a close mid-statement could zombie or free a handle a worker
+/// was using.*
+///
+/// **SO THE CLOSED FLAG, THE ACTIVE-USE COUNT AND THE WAIT SHARE ONE SYNCHRONISATION POINT.** *An operation ADMITTETH
+/// itself (refused after close), close MARKS CLOSED (no new admission) then WAITS for the count to drain before it
+/// frees the handle, and the wait is exactly-once with the close.* **`NSLock` + `NSCondition` rather than the store's
+/// `NSLock` alone, because close must block on other threads' uses, not merely exclude them.**
+internal final class ConnectionLifecycle: @unchecked Sendable {
+    private let condition = NSCondition()
+    private var closed = false
+    private var physicallyClosed = false
+    private var adoptionRejected = false
+    private var activeUsers = 0
+    private var threadUses: [ObjectIdentifier: Int] = [:]
+    private var pendingClose: (() -> Void)?
+
+    func markAdoptionRejected() {
+        condition.lock(); adoptionRejected = true; condition.unlock()
+    }
+
+    func beginUse() -> Bool {
+        condition.lock(); defer { condition.unlock() }
+        guard !closed && !adoptionRejected else { return false }
+        activeUsers += 1
+        threadUses[ObjectIdentifier(Thread.current), default: 0] += 1
+        return true
+    }
+
+    func endUse() {
+        condition.lock()
+        let thread = ObjectIdentifier(Thread.current)
+        let remaining = (threadUses[thread] ?? 1) - 1
+        if remaining == 0 { threadUses.removeValue(forKey: thread) }
+        else { threadUses[thread] = remaining }
+        activeUsers -= 1
+        let action = activeUsers == 0 ? pendingClose : nil
+        if action != nil { pendingClose = nil }
+        condition.unlock()
+        if let action { finishClose(action) }
+    }
+
+    // Close inside any transaction callback must not wait for its own statement.
+    // The last admitted use performs deferred cleanup; other threads wait for physical closure.
+    func close(_ action: @escaping () -> Void) -> Bool {
+        condition.lock()
+        let first = !closed
+        if first { closed = true; pendingClose = action }
+        if threadUses[ObjectIdentifier(Thread.current), default: 0] > 0 {
+            condition.unlock()
+            return false
+        }
+        if activeUsers == 0, let pending = pendingClose {
+            pendingClose = nil
+            condition.unlock()
+            finishClose(pending)
+            return first
+        }
+        while !physicallyClosed { condition.wait() }
+        condition.unlock()
+        return first
+    }
+
+    private func finishClose(_ action: () -> Void) {
+        action()
+        condition.lock(); physicallyClosed = true; condition.broadcast(); condition.unlock()
+    }
+
+    var activeUsersForTest: Int { condition.lock(); defer { condition.unlock() }; return activeUsers }
+    var isClosed: Bool { condition.lock(); defer { condition.unlock() }; return closed }
+    var isPhysicallyClosed: Bool { condition.lock(); defer { condition.unlock() }; return physicallyClosed }
+    var isUsable: Bool { condition.lock(); defer { condition.unlock() }; return !closed && !adoptionRejected }
+}
+
 /// *** THE VERIFIED, OWNED OPERATIONAL CONNECTION. ***
 ///
 /// Carries the engine's own verdict AND the live database handle, so a consumer cannot possess the
@@ -74,16 +151,32 @@ public struct OwnedVerifiedConnection: @unchecked Sendable {
     /// construction.*
     public let provider: SQLiteFunctionTable
 
+    /// *** THE SHARED CLOSE/USE LIFECYCLE -- THE OWNER'S OWN OBJECT, ALSO HELD BY EVERY ADOPTING STORE. ***
+    /// *SQLITE-REVIEW-2: a store must be able to admit itself against the SAME closed flag the owner's `close()` sets.*
+    internal let lifecycle: ConnectionLifecycle?
+
+    /// *** THE OWNER, WHEN ONE WAS HANDED OVER -- SO A STORE CAN CHECK "CLOSED?" AND TAKE A USE REFERENCE. ***
+    /// *Held WEAK: the owner owns the connection; the connection must not keep the owner alive, or a close order that
+    /// dropped the owner would never release the handle. `nil` for a connection an engine minted without a wrapper.*
+    internal weak var owner: OwnedConnection?
+
     /// *** INTERNAL ON PURPOSE: AN ENGINE, NOT A CALLER, MINTS ONE OF THESE. ***
+    ///
+    /// *The IMAGE LEASE is deliberately NOT a field here: an `OwnedVerifiedConnection` is a `struct`, and a `struct`
+    /// cannot release an unloadable image when its last copy dieth. **The lease is owned by the CLASS owners instead --
+    /// the engine, the `OwnedConnection` wrapper, and each adopting store** -- which is where a `deinit` existeth to
+    /// release it.*
     internal init(rawHandle: OpaquePointer, engineKind: StoreEngineKind,
                   cipherVersion: Int, encryptedAtRest: Bool, path: String,
-                  provider: SQLiteFunctionTable = .linkedPlatform) {
+                  provider: SQLiteFunctionTable = .linkedPlatform,
+                  lifecycle: ConnectionLifecycle? = nil) {
         self.rawHandle = rawHandle
         self.engineKind = engineKind
         self.cipherVersion = cipherVersion
         self.encryptedAtRest = encryptedAtRest
         self.path = path
         self.provider = provider
+        self.lifecycle = lifecycle
     }
 
     /// Identity of the CONNECTION ITSELF, for a court that must prove the repository is running on
@@ -117,32 +210,103 @@ public enum OwnedConnectionResult {
 /// double-closing the handle -- *which is undefined behaviour in SQLite and the reason
 /// "double close / ownership violation -> fail" is on the audit's negative list.*
 public final class OwnedConnection: @unchecked Sendable {
-    public let connection: OwnedVerifiedConnection
+    /// *** `private(set) var` RATHER THAN `let`: the owner back-reference is written after full initialization (a
+    /// `let` field cannot be assigned a value that itself needs `self`), and the public read access is unchanged. ***
+    public private(set) var connection: OwnedVerifiedConnection
     private let closeHandler: (OpaquePointer) -> Void
     private let lock = NSLock()
     private var closed = false
+    /// *** THE IMAGE LEASE OWNED BY THIS WRAPPER, SO THE IMAGE OUTLIVETH BOTH THE ENGINE AND THIS CONNECTION. ***
+    /// *SQLITE-REVIEW-1: `deinit` releases the reference taken on the provider's lease, so the image is unloaded only
+    /// after the LAST owner (engine, connection, store) falls.*
+    private let imageLease: SQLiteImageLease?
+    /// *** THE SHARED LIFECYCLE: THE CLOSED FLAG THE ADOPTING STORES ALSO ADMIT THEMSELVES AGAINST. *** *When an
+    /// engine handed this wrapper over, the verified connection carrieth the SAME object (see `connection.lifecycle`),
+    /// so `close()` and a store's `beginUse()` observe one another.*
+    private let lifecycle: ConnectionLifecycle
 
     internal init(connection: OwnedVerifiedConnection,
                   close: @escaping (OpaquePointer) -> Void) {
-        self.connection = connection
+        // *EVERY STORED PROPERTY IS INITIALIZED BEFORE `self` IS USED AS A VALUE -- Swift forbids passing `self` while a
+        // field is unset, and writing the owner back-reference NEEDS `self`. So the connection is stored first, and the
+        // (value-type) connection's `owner` is written through the stored property afterwards.*
         self.closeHandler = close
+        let lc = connection.lifecycle ?? ConnectionLifecycle()
+        self.lifecycle = lc
+        // *TAKE A REFERENCE ON THE IMAGE so the pointers in `connection.provider` stay valid while this wrapper lives.*
+        self.imageLease = connection.provider.lease
+                self.connection = connection
+        // *The connection is handed its owner WEAKLY here, so a store can ask `isClosed` and take a use reference.
+        // Weak, so this link never keeps the owner alive and a forgotten close order cannot leak the handle.*
+        self.connection.owner = self
+    }
+
+    /// *** SQLITE-LATEST-I2: THE FINAL OWNER CLOSES ITS LIVE DATABASE IN `deinit`, NOT ONLY ITS IMAGE REFERENCE. ***
+    ///
+    /// *MEASURED DEFECT: `deinit` released the image lease but never closed the SQLite handle, and both adopted stores
+    /// deliberately do not close what they do not own -- so an owner dropped WITHOUT an explicit `close()` (a leaked
+    /// runtime, a dropped factory result, a failed direct adoption) LEAKED its connection, and the image could unload
+    /// while a leaked native handle remained live.* **`close()` is idempotent and exactly-once, so calling it here is
+    /// safe: an owner that was explicitly closed already has `closed == true` and this is a no-op; a dropped owner gets
+    /// its one close on the way out.** *The image reference is released after, so the last owner's exit unloads the
+    /// image only after the connection is freed.*
+    deinit {
+        _ = close()             // exactly-once by the same lifecycle guard; a no-op if already explicitly closed
+        // (the `imageLease` strong reference is released by ARC when this owner deallocates; if it was the last user,
+        // the lease's deinit unloads the image)
     }
 
     /// Close the connection, exactly once. Returns whether this call was the one that closed it,
     /// so a court can observe that ownership was honoured.
+    ///
+    /// *** AND IT WAITS FOR ACTIVE USE, WHICH IS SQLITE-REVIEW-2'S OWN LAW. *** *The previous body marked closed and
+    /// freed immediately; a worker between `prepare`/`step`/`finalize` then dispatched through a freed or zombied
+    /// handle. Now the close marks closed (no NEW use may enter), DRAINS the active users, and only then frees --
+    /// so a real statement or transaction in flight is never freed out from under.*
     @discardableResult
     public func close() -> Bool {
-        lock.lock()
-        if closed { lock.unlock(); return false }
-        closed = true
         let handle = connection.rawHandle
-        lock.unlock()
-        closeHandler(handle)
-        return true
+        let handler = closeHandler
+        let lease = imageLease
+        return lifecycle.close {
+            // *** THE IMAGE STAYETH LOADED THROUGH THE CLOSE DISPATCH: the closure capture itself holdeth a
+            // strong reference on the lease, so the lease's `deinit` `dlclose` cannot run before `closeHandler`
+            // hath returned -- the `withExtendedLifetime` helper this line referenced never existed in the tree. ***
+            handler(handle)
+            _ = lease
+        }
     }
 
-    public var isClosed: Bool { lock.lock(); defer { lock.unlock() }; return closed }
+    public var isClosed: Bool { lifecycle.isClosed }
+    public var isPhysicallyClosed: Bool { lifecycle.isPhysicallyClosed }
+    /// *** ADOPT A USE OF THIS CONNECTION FOR THE DURATION OF `body`, OR REFUSE WITH THE NAMED REASON. ***
+    ///
+    /// *The one admission every store operation and every transaction goeth through: it checketh the owner's CLOSED
+    /// state before any raw handle is dispatched, so a post-owner-close call becometh a TYPED REFUSAL rather than a
+    /// stale-handle dispatch. It holdeth a use reference for the whole body, so a concurrent `close()` WAITS rather
+    /// than frees mid-operation.* **`body` is called WITHOUT the lifecycle's lock held**, so the store may take its own
+    /// lock inside (documented lock order: lifecycle -> store lock) without a cycle.
+    internal func usingConnection<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+        guard lifecycle.beginUse() else { throw StoreConnectionError.ownerClosed }
+        defer { lifecycle.endUse() }
+        return try body(connection.rawHandle)
+    }
+
+    /// *** THE NON-THROWING ADMISSION FOR THE LEGACY NIL-ON-FAILURE SURFACE. *** *A closed connection answereth nil
+    /// here, which the `withDb` readers already treat as "unusable" -- never a fabricated value.*
+    internal func usingConnectionIfOpen<T>(_ body: (OpaquePointer) -> T) -> T? {
+        guard lifecycle.beginUse() else { return nil }
+        defer { lifecycle.endUse() }
+        return body(connection.rawHandle)
+    }
+
+    /// The uses in flight, for a court that must observe that a close waited rather than raced.
+    internal var activeUsesForTest: Int { lifecycle.activeUsersForTest }
 }
+
+/// *** THE TYPED REFUSAL A STORE RAISETH WHEN THE OWNER ALREADY CLOSED THE CONNECTION. *** *Distinct from the store's
+/// own `handleMissing` so a caller (and a court) can tell "the owner closed it" from "this store never had a handle".*
+internal enum StoreConnectionError: Error, Equatable { case ownerClosed }
 
 /// *** THE ENGINE CONTRACT, EXTENDED TO HAND OVER THE CONNECTION. ***
 ///

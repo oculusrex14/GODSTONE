@@ -1,0 +1,3 @@
+TRUSTED HANDSHAKE CONTROLS GATE: PASS -- typed inspection, trust gate, seal/open boundary, defensive immutability, zero-call semantics, Noise establishment invariant (H01-H30), and link flags satisfied.
+
+(the rod aimed at 'Android HandshakeReadResult constructor must copy input payload (H21)'; reddened refusals were [])

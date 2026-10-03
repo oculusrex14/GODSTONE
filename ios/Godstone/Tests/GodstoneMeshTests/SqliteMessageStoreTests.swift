@@ -1364,6 +1364,10 @@ final class SqliteMessageStoreTests: XCTestCase {
         sqlite3_exec(db, StoreSchema.createDeliverySqlIfNotExists, nil, nil, nil)
         sqlite3_exec(db, StoreSchema.createObligationSqlIfNotExists, nil, nil, nil)
         sqlite3_exec(db, StoreSchema.createAckFrameSqlIfNotExists, nil, nil, nil)
+        // *** THE TOMBSTONE TABLE, WHICH THIS SEED OMITTED (the read path's maintenance sweep reapeth it on every
+        // read, so a current-version file without it refuses every read with `reapPrepareFailed`). ***
+        sqlite3_exec(db, StoreSchema.createTombstoneSql.replacingOccurrences(
+            of: "CREATE TABLE ", with: "CREATE TABLE IF NOT EXISTS "), nil, nil, nil)
         // *** GS-FINAL-005: A SEEDED ROW NEEDS A REAL RETENTION BUDGET, OR THE STORE (CORRECTLY) JUDGES IT EXPIRED. ***
         //
         // THIS SEED WROTE NO RETENTION COLUMNS AT ALL. WHILE THE CLOCK WAS OPTIONAL THAT WAS HARMLESS, because the
@@ -1944,7 +1948,7 @@ final class SqliteMessageStoreTests: XCTestCase {
         let f = frame(10, .direct, 48)
         XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
         XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
-        XCTAssertEqual(s.sweepExpired(limit: 8), 1,
+        XCTAssertEqual(try s.sweepExpired(limit: 8), .retired(1),
                        "the sweep must retire the spent row and SAY how many it retired -- IT SAW: " + s.lastSweepReport)
         XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET ttl = 0", []), 0,
                        "the row must be GONE FROM STORAGE -- a hidden row is not a retired one")
@@ -2002,7 +2006,7 @@ final class SqliteMessageStoreTests: XCTestCase {
         let f = frame(13, .direct, 48)
         XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
         XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
-        XCTAssertEqual(s.sweepExpired(limit: 8), 1, "the sweep retires the spent row")
+        XCTAssertEqual(try s.sweepExpired(limit: 8), .retired(1), "the sweep retires the spent row")
         XCTAssertNil(s.retentionCheckpointForTest(f.msgId).remainingMs, "and the row is gone from storage")
 
         let tomb = s.tombstoneForTest(f.msgId)
@@ -2023,7 +2027,7 @@ final class SqliteMessageStoreTests: XCTestCase {
         let f = frame(14, .direct, 48)
         XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
         XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
-        XCTAssertEqual(s.sweepExpired(limit: 8), 1, "the row is retired and a tombstone is left")
+        XCTAssertEqual(try s.sweepExpired(limit: 8), .retired(1), "the row is retired and a tombstone is left")
         XCTAssertNotNil(s.tombstoneForTest(f.msgId), "the tombstone stands")
 
         // THE REPLAY: the same frame, while the tombstone liveth.
@@ -2049,7 +2053,7 @@ final class SqliteMessageStoreTests: XCTestCase {
         let f = frame(15, .direct, 48)
         XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
         XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
-        XCTAssertEqual(s.sweepExpired(limit: 8), 1, "the row is retired and a tombstone is left")
+        XCTAssertEqual(try s.sweepExpired(limit: 8), .retired(1), "the row is retired and a tombstone is left")
         XCTAssertEqual(s.tombstoneRowCount(), 1,
                        "the store must MEASURE what it holdeth -- an unmeasured quota kind cannot be enforced")
     }
@@ -2066,12 +2070,12 @@ final class SqliteMessageStoreTests: XCTestCase {
         let f = frame(16, .direct, 48)
         XCTAssertEqual(s.persist(f, receivedFrom: Data([7])), .heldNew)
         XCTAssertEqual(s.execRawUpdate("UPDATE held_frames SET remaining_ms = 0", []), 1)
-        XCTAssertEqual(s.sweepExpired(limit: 8), 1, "the row is retired and a tombstone is left")
+        XCTAssertEqual(try s.sweepExpired(limit: 8), .retired(1), "the row is retired and a tombstone is left")
         XCTAssertEqual(s.tombstoneRowCount(), 1)
 
         // PAST the policy's own tombstone lifetime: the tombstone is no longer a dedup window, it is litter.
         now += Int64(RetentionPolicy.tombstoneMs) + 1
-        _ = s.sweepExpired(limit: 8)
+        _ = try s.sweepExpired(limit: 8)
         XCTAssertEqual(s.tombstoneRowCount(), 0,
                        "a tombstone past its OWN lifetime must be reaped -- `tombstoneMs` is a lifetime, not a motto")
         XCTAssertNil(s.tombstoneForTest(f.msgId), "and it must be gone from storage, not merely uncounted")

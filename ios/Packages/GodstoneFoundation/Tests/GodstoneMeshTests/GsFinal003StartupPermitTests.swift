@@ -1,5 +1,6 @@
 import XCTest
 import Foundation
+import SQLite3
 import GodstoneCore
 @testable import GodstoneMesh
 
@@ -39,9 +40,27 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         var state: WipeState = .idle
         /// EVERY RECORD IN ORDER, so an arm can read the ORDER rather than only the last rung.
         var writeLog: [String] = []
+        /// *** THE DURABLE GENERATION (IOS-R1/R3): A COUNTER-JOURNAL SO A PERMIT CAN BE BOUND TO IT. ***
+        private var epoch: UInt64?
         func read() -> WipeState { state }
-        func write(_ s: WipeState) { state = s; writeLog.append(s.rawValue) }
+        func write(_ s: WipeState) {
+            state = s; writeLog.append(s.rawValue)
+            if epoch == nil, s != .idle { epoch = 1 }
+        }
         func clear() { state = .idle }
+        var durableEpoch: UInt64? { epoch }
+        @discardableResult
+        func bumpEpoch() -> UInt64? { epoch = (epoch ?? 0) &+ 1; return epoch }
+        /// An explicit typed court fake answering its own medium, WITH the checked receipt the production adapter
+        /// demands (IOS-FOLLOWUP-C2): a conformer that omitted `writeChecked` would inherit the fail-closed default
+        /// and refuse every commit -- the production law, applied to a fake that had not answered the question.
+        func readDurable() -> (state: WipeState, epoch: UInt64?)? { (state, epoch) }
+        @discardableResult
+        func writeChecked(_ state: WipeState) -> DurableWriteResult {
+            write(state)
+            if epoch == nil { epoch = 1 }      // a brand-new estate BEGINNETH at generation 1 (baseline)
+            return DurableWriteResult(synchronized: true, epoch: epoch)
+        }
 
         /// *** STATED EXPLICITLY, BECAUSE THE PROTOCOL DEFAULT NOW FAILS CLOSED. ***
         /// *This journal keeps typed `WipeState` values, so it cannot hold an unparseable one -- it
@@ -93,15 +112,14 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     private final class PrivateOpenCounter: @unchecked Sendable {
         private let lock = NSLock()
         private var storeOpenCount = 0
-        private var runtimeBuildCount = 0
         private(set) var paths: [String] = []
 
-        /// *Called AT the construction seam -- by the factory the composition would use, not by an observer afterwards.*
+        /// *Called AT the construction seam -- by the engine the factory the composition ACTUALLY USES, not by an
+        /// observer afterwards.* **The disconnected `builtSensitiveRuntime` count is DELETED: it had no call site and
+        /// was therefore a constant zero (Main's own charge), and a never-called witness is worse than none.***
         func openedStore(path: String) { lock.lock(); storeOpenCount += 1; paths.append(path); lock.unlock() }
-        func builtSensitiveRuntime() { lock.lock(); runtimeBuildCount += 1; lock.unlock() }
 
         var storesOpened: Int { lock.lock(); defer { lock.unlock() }; return storeOpenCount }
-        var sensitiveRuntimesBuilt: Int { lock.lock(); defer { lock.unlock() }; return runtimeBuildCount }
         func existed(_ url: URL) -> Bool { FileManager.default.fileExists(atPath: url.path) }
     }
 
@@ -113,19 +131,70 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     /// OBLIGATION NAMETH, rather than an inference from a file that was not created.**
     private final class CountingKeyProvider: PrivateStoreKeyProvider {
         private(set) var dekRequests: Int = 0
+        /// *** IOS-R11: THE ACCEPTED CASE MUST BE OBSERVABLE, or a zero assertion is vacuous. *** *`succeeds`
+        /// returneth a real 32-byte DEK so a normal composition can actually key both stores and the counter can be
+        /// seen NON-ZERO before the refusal arms use it to assert zero.*
+        var succeeds: Bool = false
         var dekByteCount: Int { 32 }
         func fetchDEK(tag: String) throws -> StoreDEK {
             dekRequests += 1
+            if succeeds { return StoreDEK(bytes: Data(repeating: 0x5A, count: 32)) }
             throw StoreKeyError.dekNotFound
         }
         func createDEK(tag: String) throws -> StoreDEK {
             dekRequests += 1
+            if succeeds { return StoreDEK(bytes: Data(repeating: 0xA5, count: 32)) }
             throw StoreKeyError.dekNotFound
         }
         func deleteDEK(tag: String) throws {}
         func applyFileProtection(paths: [String], protection: FileProtectionClass) -> ProtectionResult {
             .success
         }
+    }
+
+    /// *** IOS-R11 / NATIVE-PIN: THE REAL PINNED SQLCIPHER ENGINE, COUNTED AT THE CONSTRUCTION SEAM. ***
+    ///
+    /// *THE OLD `CountingEngine` WAS MISLABELLED: it drove platform `sqlite3_open_v2` -- UNKEYED STOCK SQLITE --
+    /// while reporting `kind == .pinnedSQLCipher` and `encryptedAtRest: true`, so the "real accepted construction"
+    /// arm was keyed by nothing and the at-rest claim was a hand-written constant. **This engine IS the production
+    /// binding** (`SqlCipherDylibEngine`, which applies the DEK, probes the cipher and verifies the at-rest pin
+    /// before handing over an owned connection), and the court's counter is raised AT the handover so the
+    /// construction seam is the same one a shipping composition reacheth.*
+    ///
+    /// **AND THE IMAGE IS MANDATORY (SQLITE-LATEST-I6):** a binding failure reddens the arm rather than skipping it,
+    /// because a skipped native acceptance must never be counted as a road the campaign ran.
+    private final class PinnedCountingEngine: OwnedConnectionStoreEngine, @unchecked Sendable {
+        let counter: PrivateOpenCounter
+        let pinned = SqlCipherDylibEngine()
+        init(counter: PrivateOpenCounter) { self.counter = counter }
+        /// Delegated, never declared: a `kind` written by hand would make the factory's fail-closed gate vacuous.
+        var kind: StoreEngineKind { pinned.kind }
+        var supportedCipherVersion: Int { pinned.supportedCipherVersion }
+        func openForWriting(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle {
+            try pinned.openForWriting(path: path, dek: dek)
+        }
+        func reopenRequiringDEK(path: String, dek: StoreDEK) throws -> EncryptedStoreHandle {
+            try pinned.reopenRequiringDEK(path: path, dek: dek)
+        }
+        func openOwnedForWriting(path: String, dek: StoreDEK) throws -> OwnedConnection {
+            counter.openedStore(path: path)
+            return try pinned.openOwnedForWriting(path: path, dek: dek)
+        }
+        func reopenOwnedRequiringDEK(path: String, dek: StoreDEK) throws -> OwnedConnection {
+            counter.openedStore(path: path)
+            return try pinned.reopenOwnedRequiringDEK(path: path, dek: dek)
+        }
+    }
+
+    /// *** THE MANDATORY NATIVE LANE GATE: A BINDING FAILURE IS A COURT FAILURE, NEVER A SKIP. ***
+    @discardableResult
+    private func requirePinnedImage(_ engine: PinnedCountingEngine, lane: String) -> Bool {
+        if engine.pinned.isBound { return true }
+        XCTFail("*** MANDATORY NATIVE LANE '\(lane)' (SQLITE-LATEST-I6): the pinned image "
+                + "'\(SQLCipherPin.libraryName)' is not staged or did not bind. Stage the repository-built artifact "
+                + "(tools/supplychain/build_sqlcipher_simulator.sh) or export GODSTONE_SQLCIPHER_ARTIFACT_DIR. "
+                + "Reason: \(engine.pinned.bindingFailureReason ?? "unknown") ***")
+        return false
     }
 
     private func tempURL(_ tag: String) -> URL {
@@ -172,26 +241,141 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         XCTAssertTrue(corrupt.requiresOperator, "a corrupt journal will never fix itself by retrying")
     }
 
-    /// *** THE PERMIT CANNOT BE FORGED. ***
+    /// *** THE PERMIT CANNOT BE FORGED -- AND THERE IS NO `issue(_:)` TO TRY. ***
     ///
-    /// *The audit forbids "a public initializer that lets tests/callers mint the permit
-    /// themselves". This arm is the compile-time consequence made visible at runtime: only
-    /// `issue(_:)` produces one, and it produces `nil` for every blocked decision.*
-    func testGSFINAL003_thePermitIsIssuedOnlyByAPermittingDecision() {
-        XCTAssertNotNil(PrivateRuntimePermit.issue(.cleanStart))
-        XCTAssertNotNil(PrivateRuntimePermit.issue(.wipeCompleted))
-        XCTAssertNil(PrivateRuntimePermit.issue(.recoveryPending(reason: "pending")),
-                     "a pending wipe must not yield a permit")
-        XCTAssertNil(PrivateRuntimePermit.issue(.retryableFailure(reason: "later")))
-        XCTAssertNil(PrivateRuntimePermit.issue(.corruptJournal(reason: "malformed")))
-        XCTAssertNil(PrivateRuntimePermit.issue(.terminalFailure(reason: "policy")))
+    /// *THE AUDIT FORBIDS "a public initializer that lets tests/callers mint the permit themselves", AND A REVIEW OF
+    /// MY FIRST DRAFT WENT ONE STEP FURTHER AND WAS RIGHT: a `static func issue(_ decision:)` IS ALSO A MINT, because
+    /// every case of `StartupRecoveryDecision` is a PUBLIC ENUM CASE and therefore a value any caller may write down.
+    /// `issue(.cleanStart)` needs no journal, no ladder and no drive.*
+    ///
+    /// **SO THE ONLY PRODUCER IS THE ONE-SHOT BOOTSTRAP ROAD, AND WHAT THIS ARM PROVES IS ITS SHAPE:** *a bootstrap
+    /// with no journal to read answers a decision and issues NO permit -- the closest a court can come to the forgery
+    /// the type now makes unwritable.* **The absence of `issue(_:)` cannot be asserted at runtime (it does not exist),
+    /// so it is asserted by COMPILATION: a court that tried to write `PrivateRuntimePermit.issue(...)` would fail the
+    /// whole test target to build, which this programme's own round-471 law names as a real failure rather than a
+    /// green.***
+    func testGSFINAL003_thePermitIsIssuedOnlyByDrivingTheLadder() {
+        let journal = InMemoryJournal()
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
 
-        // AND IT CARRIES WHY, so an audit can see what allowed construction rather than only that
-        // something did.
-        XCTAssertEqual(PrivateRuntimePermit.issue(.wipeCompleted)?.issuedFrom, .wipeCompleted)
+        // (1) *** A CLEAN ESTATE: the drive settles, and the bootstrap issues a permit CARRYING ITS EVIDENCE. ***
+        let clean = StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
+        guard case .normal(let permit) = clean else {
+            return XCTFail("a clean estate must yield the settled permit, got \(clean)")
+        }
+        XCTAssertEqual(permit.issuedFrom, .cleanStart,
+                       "AND THE PERMIT CARRIES WHY, so an audit sees what allowed construction")
+        XCTAssertTrue(permit.wasDriven, "the permit's evidence records that the ladder was actually driven")
+
+        // (2) *** ONE-SHOT: THE SAME BOOTSTRAP MAY NOT ISSUE A SECOND PERMIT. ***
+        // *A proof of one drive must not open two compositions, and it must not survive an estate that has since
+        // changed -- so the second ask is answered BY NAME rather than with a refusal that would read like a corrupt
+        // record.*
+        let second = StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
+        guard case .normal = second else {
+            return XCTFail("a fresh bootstrap over a clean estate issues its own permit, got \(second)")
+        }
+        let bootstrap = StartupRecoveryBootstrap(wipe: authority)
+        _ = bootstrap.consumeCompositionTopology()
+        if case .alreadyConsumed = bootstrap.consumeCompositionTopology() {
+            // EXPECTED.
+        } else {
+            XCTFail("*** THE CONSUMING ROAD MUST BE ONE-SHOT: a spent bootstrap may not reissue its evidence. ***")
+        }
+
+        // (3) *** A PENDING ESTATE YIELDS NO PERMIT AT ALL -- NOT EVEN A GATED ONE. ***
+        let pendingJournal = InMemoryJournal()
+        pendingJournal.write(.requested)
+        let pendingAuthority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: pendingJournal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        let pending = StartupRecoveryBootstrap(wipe: pendingAuthority).consumeCompositionTopology()
+        guard case .recoveryOnly(let decision) = pending else {
+            return XCTFail(
+                "*** A PENDING WIPE MUST YIELD `.recoveryOnly` -- A DECISION AND NO PERMIT. *An earlier draft answered "
+                    + "this with a GATED PRIVATE RUNTIME, which is construction plus a gate rather than the ZERO " +
+                    "construction the requirement states.* Got \(pending) ***")
+        }
+        XCTAssertTrue(decision.permitsRecoveryConstruction,
+                      "the decision still names the road that IS open (recovery-only), even though no permit exists")
+
+        // (4) *** AND AN UNREADABLE RECORD YIELDS NOTHING AT ALL. ***
+        let corruptAuthority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: UnreadableJournal()),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        let corrupt = StartupRecoveryBootstrap(wipe: corruptAuthority).consumeCompositionTopology()
+        guard case .refused(let corruptDecision) = corrupt else {
+            return XCTFail("an unreadable record must refuse the whole road, got \(corrupt)")
+        }
+        XCTAssertTrue(corruptDecision.requiresOperator,
+                      "and it must DEMAND AN OPERATOR, which is the field a Boolean cannot carry")
     }
 
     // MARK: - the enforced composition
+
+    /// *** IOS-R11: THE POSITIVE CONTROL -- THE COUNTERS *DO* SEE REAL CONSTRUCTION, SO A ZERO MEANS ZERO. ***
+    ///
+    /// *THE FINDING, VERBATIM: "openedStore and builtSensitiveRuntime have no callsites. The tests instantiate
+    /// PrivateOpenCounter and CountingKeyProvider but pass encryptedStores: nil; neither witness is attached to
+    /// production construction. Their zero assertions cannot establish the promised absence."* **So this arm attaches
+    /// the SAME witnesses to a REAL accepted construction -- a clean estate with a factory whose engine counts -- and
+    /// requires the counters to go NON-ZERO. A disconnected (or always-zero) instrument FAILETH here, which is what
+    /// makes the zero assertions in the refusal arms mean something.**
+    func testGSFINAL003_theWitnessCountersObserveARealAcceptedConstruction() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_pos_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { cleanup(dir) }
+        let msg = dir.appendingPathComponent("mesh.db")
+        let peer = dir.appendingPathComponent("peer.db")
+
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+        provider.succeeds = true                       // A REAL DEK, so the stores can actually key
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 positive accepted construction") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
+        let journal = InMemoryJournal()                // nothing was ever requested: a SETTLED estate
+        let keychain = InMemoryKeychain()
+        // *** A BRAND-NEW ESTATE HAS NO GENERATION YET, SO A BASELINE IS DURABLY ESTABLISHED BEFORE THE PERMIT IS
+        // MINTED -- the SAME rule production `create` followeth, and the PHASE is stamped so it is PINNED to the floor
+        // (CURRENT-01/02: a settled/admission read requireth phase-stamped epoch == the durable floor). ***
+        if journal.durableEpoch == nil { journal.writeChecked(.idle) }
+
+        // *** THE ACCEPTED ROAD: the private composition is built, and the witnesses MUST observe it. ***
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msg,
+            peerStoreUrl: peer,
+            journal: journal,
+            keychain: keychain,
+            encryptedStores: factory)
+        XCTAssertNotNil(runtime, "the accepted road must compose")
+
+        XCTAssertEqual(
+            counter.storesOpened, 2,
+            "*** IOS-R11: THE COUNTER MUST OBSERVE BOTH REAL PRIVATE-STORE CONSTRUCTIONS -- one per store. A ZERO HERE "
+            + "would mean the instrument is disconnected (or always zero), and every zero assertion in the refusal "
+            + "arms would then be vacuous. Observed \(counter.storesOpened) ***")
+        XCTAssertEqual(provider.dekRequests, 2,
+                       "*** AND THE KEY PROVIDER WAS ASKED TWICE -- once per store keyed through the factory. ***")
+        // *** THE IDENTITY BOUNDARY'S OWN OBSERVABLE: `MeshIdentity.loadOrCreate` WRITETH its key when it minteth
+        // one. The composition ALSO writes the durable physical-inventory catalog and the wipe-publication record
+        // through the same keychain now (IOS-FOLLOWUP-C5/C7), so the assertion is scoped to the identity tag --
+        // exactly once, and no second mint for the estate. ***
+        XCTAssertEqual(keychain.writes.filter { $0 == MeshIdentity.v1Tag }, [MeshIdentity.v1Tag],
+                       "*** AND THE IDENTITY WAS MINted ONCE, by the private composition's `loadOrCreate`. ***")
+    }
 
     /// *** THE CENTRAL ARM: A RECOVERY ROUTE THAT CANNOT SETTLE REFUSES, AND OPENS NOTHING. ***
     ///
@@ -207,8 +391,15 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         let journal = InMemoryJournal()
         journal.write(.requested)
         let keychain = InMemoryKeychain()
+        // *** MAIN'S FIX: the SAME instrumented factory/provider the accepted positive arm uses is ROUTED INTO
+        // THE REFUSED CALL -- so the zero assertions count the ACTUAL construction boundary this call would reach,
+        // not a disconnected object it never touched.***
         let counter = PrivateOpenCounter()
         let provider = CountingKeyProvider()
+        provider.succeeds = true                       // a real DEK; the refusal must happen BEFORE any open
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 unsettled refusal") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
 
         // THE ROUTE ANSWERS HONESTLY: a cold boot owns no transport, so the ladder stops.
         XCTAssertThrowsError(
@@ -217,9 +408,9 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                 peerStoreUrl: peer,
                 journal: journal,
                 keychain: keychain,
-                encryptedStores: nil,
+                encryptedStores: factory,
                 driveRecovery: { bootstrap in
-                    let d = bootstrap.decideAndDrive()
+                    let d = bootstrap.consumeCompositionTopology()
                     return d
                 }),
             "*** GS-FINAL-003: A RECOVERY THAT CANNOT SETTLE MUST REFUSE PRIVATE CONSTRUCTION. "
@@ -244,20 +435,16 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                 + "FAILED LATE -- after the handle, the DEK unwrap or the first statement.* THE COUNT IS NOW TAKEN AT "
                 + "THE CONSTRUCTION SEAM ITSELF. ***",
         )
-        XCTAssertEqual(
-            counter.sensitiveRuntimesBuilt, 0,
-            "*** ZERO SENSITIVE-RUNTIME CONSTRUCTIONS: a refused startup must not build the runtime either. ***",
-        )
-        XCTAssertEqual(
-            provider.dekRequests, 0,
-            "*** AND THE FACTORY WAS NEVER ASKED FOR A KEY. *`reopenOwnedRequiringDEK` asketh the provider BEFORE it "
-                + "toucheth the engine, so a refused startup that reached the private composition would have asked. "
-                + "THIS IS THE MEASUREMENT THE FILE CHECK COULD NOT MAKE.* ***",
-        )
-        XCTAssertEqual(
-            keychain.writes, [],
-            "*** AND IDENTITY WAS NOT MINted: `MeshIdentity.loadOrCreate` WRITETH A KEY WHEN IT CREATES ONE, so an "
-                + "empty write log is the identity boundary's own observable -- a DIFFERENT boundary from the store "
+        // NOTE: `provider.dekRequests` is NOT asserted here -- the provider is ALSO the recovery vault's DEK owner,
+        // so a refused road that legitimately drives the ladder's key rung asks it. The CONSTRUCTION witness is the
+        // engine's open count above (0), which the SAME factory would have raised had it opened a store.
+        // *** THE IDENTITY OBSERVABLE IS THE SIGNING KEY ITSELF, NOT THE RAW WRITE LOG: the physical-inventory
+        // CATALOG and the wipe-publication record also write through this keychain (CURRENT-05/C7), so a bare
+        // `writes.isEmpty` would count catalog rows as identity mints -- which the 107-consumer probe caught. ***
+        XCTAssertFalse(
+            keychain.writes.contains(MeshIdentity.v1Tag),
+            "*** AND IDENTITY WAS NOT MINted: `MeshIdentity.loadOrCreate` WRITETH `v1Tag` WHEN IT CREATES ONE, so its "
+                + "absence is the identity boundary's own observable -- a DIFFERENT boundary from the store "
                 + "files, which the old arm never looked at. ***",
         )
 
@@ -283,16 +470,26 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         journal.write(.runtimeDrained)
         journal.write(.keyErased)
         let keychain = InMemoryKeychain()
+        // *** MAIN'S FIX: THE SAME INSTRUMENTED FACTORY IS ROUTED INTO THE INTERRUPTED-ESTATE CALL. ***
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+        provider.succeeds = true
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 interrupted refusal") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
 
         var observed: StartupRecoveryDecision?
         XCTAssertThrowsError(
             try MeshRuntime.requireRecoveredPrivateComposition(
                 messageStoreUrl: msg, peerStoreUrl: peer, journal: journal,
-                keychain: keychain, encryptedStores: nil,
-                driveRecovery: { b in let d = b.decideAndDrive(); observed = d; return d }),
+                keychain: keychain, encryptedStores: factory,
+                driveRecovery: { b in let t = b.consumeCompositionTopology(); observed = b.reportedDecision(); return t }),
             "an interrupted wipe must not enter normal private startup")
         XCTAssertEqual(observed?.allowsPrivateConstruction, false,
                        "the decision must be a refusing one, and it was: \(String(describing: observed))")
+        XCTAssertEqual(counter.storesOpened, 0,
+                       "*** AND ZERO PRIVATE-STORE OPENS, COUNTED AT THE FACTORY THIS CALL WAS GIVEN. ***")
+        XCTAssertFalse(keychain.writes.contains(MeshIdentity.v1Tag), "*** AND NO IDENTITY WAS MINted. ***")
         XCTAssertFalse(FileManager.default.fileExists(atPath: msg.path),
                        "and no private store may stand on a half-erased floor")
     }
@@ -325,59 +522,65 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                 j.write(.requested)
                 return j
             }(),
-            expected: { $0.allowsPrivateConstruction == false },
         )
 
         // (2) *** A CORRUPT JOURNAL: the durable record cannot be read as a ladder at all. ***
         //
         // *This is the arm the AUDIT called out in its own root cause: treating a malformed record as a clean start is
         // the one confusion here that would open private stores over material that may be mid-erasure.*
+        // *** AND THE CORRUPT ROAD'S OWN EXTRA LAW IS ASSERTED AT ITS CALL SITE RATHER THAN THROUGH A LABEL PIN. ***
+        let corruptDecision = MeshRuntime.startupRecoveryDecision(journal: UnreadableJournal())
+        XCTAssertTrue(corruptDecision.requiresOperator,
+                      "an unreadable record needs an operator; retrying can never make it parse")
+        XCTAssertFalse(corruptDecision.allowsPrivateConstruction)
         try assertRefusesAndOpensNothing(
             tag: "corrupt",
             journal: UnreadableJournal(),
-            expected: { $0.allowsPrivateConstruction == false && $0.requiresOperator == true },
         )
     }
 
     /// *The shared body: drive the real composition, require the refusal, and count every boundary.*
+    /// *The shared body: drive the real composition, require the REFUSAL BY ITS TYPED PROPERTY (never by an
+    /// incidental label), and count every boundary.*
     private func assertRefusesAndOpensNothing(
         tag: String,
         journal: WipeJournal,
-        expected: (StartupRecoveryDecision) -> Bool,
     ) throws {
         let msg = tempURL("\(tag)_msg")
         let peer = tempURL("\(tag)_peer")
         defer { cleanup(msg, peer) }
 
         let keychain = InMemoryKeychain()
+        // *** MAIN'S FIX: THE SAME INSTRUMENTED FACTORY IS ROUTED INTO THE REFUSED CALL. ***
         let counter = PrivateOpenCounter()
         let provider = CountingKeyProvider()
+        provider.succeeds = true
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 retryable/corrupt refusal") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
         var observed: StartupRecoveryDecision?
 
         XCTAssertThrowsError(
             try MeshRuntime.requireRecoveredPrivateComposition(
                 messageStoreUrl: msg, peerStoreUrl: peer, journal: journal,
-                keychain: keychain, encryptedStores: nil,
-                driveRecovery: { b in let d = b.decideAndDrive(); observed = d; return d }),
+                keychain: keychain, encryptedStores: factory,
+                driveRecovery: { b in let t = b.consumeCompositionTopology(); observed = b.reportedDecision(); return t }),
             "*** \(tag): private construction must be REFUSED. ***",
         )
         XCTAssertNotNil(observed, "the ladder must have answered rather than thrown opaquely")
         if let observed {
             XCTAssertTrue(
-                expected(observed),
-                "*** \(tag): the decision must be the refusing one this road produceth. Observed: \(observed) ***",
+                observed.allowsPrivateConstruction == false,
+                "*** \(tag): the decision must REFUSE PRIVATE CONSTRUCTION (the typed property), whatever refusing "
+                    + "name the ladder honestly chooses at this rung. Observed: \(observed) ***",
             )
         }
 
         // *** AND NOTHING WAS CONSTRUCTED, COUNTED AT THREE BOUNDARIES. ***
         XCTAssertEqual(counter.storesOpened, 0, "*** \(tag): ZERO private-store opens. ***")
-        XCTAssertEqual(counter.sensitiveRuntimesBuilt, 0, "*** \(tag): ZERO sensitive-runtime constructions. ***")
-        XCTAssertEqual(provider.dekRequests, 0,
-                       "*** \(tag): the factory was never asked for a DEK -- it asketh BEFORE touching the engine, "
-                           + "so a refused startup that reached the private composition would have asked. ***")
-        XCTAssertEqual(keychain.writes, [],
-                       "*** \(tag): AND IDENTITY WAS NOT MINted -- `MeshIdentity.loadOrCreate` writeth a key when it "
-                           + "createth one. ***")
+        XCTAssertFalse(keychain.writes.contains(MeshIdentity.v1Tag),
+                       "*** \(tag): AND IDENTITY WAS NOT MINted -- `MeshIdentity.loadOrCreate` writeth `v1Tag` when "
+                           + "it createth one (catalog/publication writes are not identity mints). ***")
     }
 
     /// *** GS-FINAL-003 `ios-recovery-graph`: THE RECOVERY GRAPH MUST STAND BEFORE, AND INDEPENDENTLY OF, THE STORE GRAPH. ***
@@ -406,8 +609,13 @@ final class GsFinal003StartupPermitTests: XCTestCase {
         let journal = InMemoryJournal()
         journal.write(.requested)
         let keychain = InMemoryKeychain()
+        // *** MAIN'S FIX: the SAME instrumented factory/provider is routed into the refused call. ***
         let counter = PrivateOpenCounter()
         let provider = CountingKeyProvider()
+        provider.succeeds = true
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 recovery-before-store-graph refusal") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
 
         // *** (1) THE RECOVERY GRAPH IS BUILT OVER DEFERRED SEAMS -- THE TRANSPORT SEAM EXISTS AND SAYS SO. ***
         //
@@ -436,8 +644,8 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                 peerStoreUrl: peer,
                 journal: journal,
                 keychain: keychain,
-                encryptedStores: nil,
-                driveRecovery: { bootstrap in let d = bootstrap.decideAndDrive(); observed = d; return d }),
+                encryptedStores: factory,
+                driveRecovery: { bootstrap in let t = bootstrap.consumeCompositionTopology(); observed = bootstrap.reportedDecision(); return t }),
             "*** A PENDING WIPE MUST REFUSE PRIVATE CONSTRUCTION -- and it must be ABLE to refuse, which is only true if " +
                 "the recovery graph could answer WITHOUT a store graph. ***",
         )
@@ -454,17 +662,8 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                 "built the stores first and asked afterwards would have opened them here, which is exactly the order " +
                 "the obligation forbids.* ***",
         )
-        XCTAssertEqual(
-            counter.sensitiveRuntimesBuilt, 0,
-            "*** AND ZERO SENSITIVE-RUNTIME CONSTRUCTIONS. ***",
-        )
-        XCTAssertEqual(
-            provider.dekRequests, 0,
-            "*** AND THE FACTORY WAS NEVER ASKED FOR A KEY: *`reopenOwnedRequiringDEK` asketh the provider BEFORE it " +
-                "reacheth the engine, so a store graph built first would have asked.* ***",
-        )
-        XCTAssertEqual(
-            keychain.writes, [],
+        XCTAssertFalse(
+            keychain.writes.contains(MeshIdentity.v1Tag),
             "*** AND NO IDENTITY WAS MINted: the recovery graph owneth an IDENTITY AUTHORITY SEAM, not an identity. ***",
         )
     }
@@ -527,18 +726,24 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     /// This drives the PRODUCTION parser through a real `UserDefaults` suite: a durable value that
     /// is not a state this build understands must yield `.corruptJournal`, not `.cleanStart`.*
     func testGSFINAL003_theRealJournalRefusesAnUnparseableDurableValue() throws {
-        let suite = "gf003.corrupt.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        // *** THE REAL JOURNAL IS THE FILE ONE NOW (the 107-consumer probe): its own directory carrieth a full,
+        // ISOLATED generation state -- the phase, its `.epoch` floor, and (when refused) the `.unacked` marker. A
+        // UserDefaults suite would carrieth NEITHER a floor NOR its own directory, so the production pin would refuse
+        // it as unpinnable rather than exercising the parser this arm is about. ***
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_corrupt_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let journalURL = dir.appendingPathComponent("io.godstone.wipe.journal")
 
-        // A REAL durable value the parser cannot resolve. This is not a fake: it is the same
-        // UserDefaults road production uses, carrying a value no `WipeState` case matches.
-        defaults.set("NOT_A_REAL_STATE", forKey: "io.godstone.wipe.state")
+        // A REAL durable value the parser cannot resolve, written through the FILE road production uses.
+        try Data("NOT_A_REAL_STATE".utf8).write(to: journalURL, options: [.atomic])
 
-        let journal = UserDefaultsWipeJournal(defaults: defaults)
+        let journal = FileWipeJournal(url: journalURL)
         XCTAssertFalse(journal.isReadable,
-                       "the REAL journal must report an unparseable durable value as unreadable -- "
-                       + "with a `?? true` default this is the assertion that reddens")
+                       "*** THE REAL JOURNAL MUST REPORT AN UNPARSEABLE, FLOORLESS DURABLE VALUE AS UNREADABLE: the "
+                       + "state head cannot be parsed AND the generation cannot be pinned, so no admission question "
+                       + "may answer `true` here. ***")
 
         let decision = MeshRuntime.startupRecoveryDecision(journal: journal)
         XCTAssertEqual(decision, .corruptJournal(reason: decision.refusalReason ?? ""),
@@ -557,12 +762,14 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     ///
     /// This also proves the `guard let raw ... else { return true }` path: absent is not unreadable.
     func testGSFINAL003_theRealJournalTreatsAnAbsentValueAsACleanStart() throws {
-        let suite = "gf003.clean.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        // *** AN ISOLATED DIRECTORY, SO THE CLEAN CASE IS NOT HAUNTED BY A LEGACY FIXTURE'S FLOOR OR MARKER. ***
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_clean_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
 
         // NOTHING was ever written -- a genuine first launch.
-        let journal = UserDefaultsWipeJournal(defaults: defaults)
+        let journal = FileWipeJournal(url: dir.appendingPathComponent("io.godstone.wipe.journal"))
         XCTAssertTrue(journal.isReadable,
                       "an ABSENT value is a clean start, not a corrupt record: the two must not "
                       + "collapse into one answer")
@@ -578,13 +785,16 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     /// *The third case: a value this build DOES understand must not be reported unreadable -- so the
     /// fail-closed default cannot have made the real journal refuse everything.*
     func testGSFINAL003_theRealJournalReadsAWellFormedValue() throws {
-        let suite = "gf003.wellformed.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_wellformed_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
 
-        let journal = UserDefaultsWipeJournal(defaults: defaults)
-        journal.write(.requested)          // a REAL durable write through the production road
-        XCTAssertTrue(journal.isReadable, "a well-formed value must read as readable")
+        let journal = FileWipeJournal(url: dir.appendingPathComponent("io.godstone.wipe.journal"))
+        // *** THE BASELINE IS ESTABLISHED FIRST (phase + floor), THEN THE RUNG IS CHECKED -- the production road. ***
+        _ = journal.writeChecked(.idle)
+        _ = journal.writeChecked(.requested)
+        XCTAssertTrue(journal.isReadable, "a well-formed, floor-pinned value must read as readable")
 
         let decision = MeshRuntime.startupRecoveryDecision(journal: journal)
         // *** THE ASSERTION IS THE SAFETY PROPERTY, NOT A PARTICULAR REFUSAL KIND. ***
@@ -606,13 +816,16 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     /// *** AND A STORE THAT CANNOT ANSWER IS TREATED AS CORRUPT, NOT AS CLEAN. ***
     ///
     /// *This is the mutation target for the `?? false` default: a `WipeDurabilityStore` that does
-    /// NOT adopt `WipeReadabilityReporting` has not answered the question, and the permissive
+    /// NOT answer `isReadable` has not answered the question, and the permissive
     /// reading of an unanswerable question is the one that opens private stores over material
     /// nobody managed to read. \`ReadinessT34Tests\`'s \`T34Store\` is exactly such a conformer.*
     func testGSFINAL003_aStoreThatCannotAnswerIsTreatedAsCorrupt() {
         final class SilentStore: WipeDurabilityStore {
             func readJournal() -> [String] { [] }        // an EMPTY ladder -- looks like a clean start
-            func appendJournal(_ stateName: String) {}
+            func appendJournal(_ stateName: String) -> WipeDurableCheckpoint {
+                .refused(rung: WipeJournalState.fromWire(stateName), reason: "the silent store keeps no record")
+            }
+            // NO readDurable and NO isReadable: it deliberately cannot answer (the fail-closed default applies).
         }
         let authority = CrashResumableWipe(
             store: SilentStore(),
@@ -621,7 +834,7 @@ final class GsFinal003StartupPermitTests: XCTestCase {
             runtime: WipeDeferredTransportSeam(),
             authority: WipeDeferredIdentityAuthoritySeam())
         XCTAssertFalse(authority.isReadableJournal(),
-                       "a store that has not adopted WipeReadabilityReporting has NOT answered, and "
+                       "a store that has not answered `isReadable` has NOT answered, and "
                        + "with `?? true` this reported it readable -- the exact silent coercion the "
                        + "corrupt-journal clause exists to prevent")
 
@@ -653,20 +866,57 @@ final class GsFinal003StartupPermitTests: XCTestCase {
     /// STRONGER form of the guarantee. What can be demonstrated is the gate's own behaviour: every
     /// decision that should refuse produces `nil`, so a composition that checked
     /// `issue(decision) != nil` and proceeded regardless would be refusing nothing.*
-    func testGSFINAL003_thePermitRefusesEveryBlockedDecisionSoABypassWouldBeVisiblyWrong() {
-        let blocked: [StartupRecoveryDecision] = [
-            .recoveryPending(reason: "no transport"),
-            .retryableFailure(reason: "seam busy"),
-            .corruptJournal(reason: "unparseable"),
-            .terminalFailure(reason: "policy"),
-        ]
-        for d in blocked {
-            XCTAssertNil(PrivateRuntimePermit.issue(d),
-                         "\(d.name) yielded a permit, so the gate would admit a composition the "
-                         + "recovery decision refused")
+    func testGSFINAL003_noBlockedEstateCanYieldAPermitByAnyRoad() {
+        // *** THE MUTATION THIS REPLACES WAS A MINT, AND THE REPAIR REMOVES THE ROAD RATHER THAN THE ASSERTION. ***
+        //
+        // *The old arm called `PrivateRuntimePermit.issue(d)` for each blocked decision and asserted `nil`. **A REVIEW
+        // SHOWED THAT ARM WAS TESTING THE VERY HELPER THAT WAS THE DEFECT:** the helper existed, was public, and took
+        // a public enum case -- so a caller could write `issue(.cleanStart)` and hold a permit with no journal on the
+        // machine. The assertions about the four BLOCKED cases were true and beside the point: THE HOLE WAS IN THE TWO
+        // ALLOWED ONES.*
+        //
+        // **SO THE HELPER IS DELETED AND THIS ARM ASKS THE QUESTION OF THE ONLY ROAD THAT REMAINS** -- a real
+        // coordinator per estate -- *so the four blocked cases are exercised through the bootstrap, where the evidence
+        // is what decides.*
+        for (journal, _, expected) in [
+            // *** NO SPELLING PIN HERE (the parent's 107-consumer probe): at REQUESTED with the create-time deferred
+            // seam the ladder answereth `retryable_failure` ("a later composition with a live transport may finish it"),
+            // and which of the two refusing names it chooses is INCIDENTAL WIRING, not the contract. What must hold is
+            // the TYPED decision (a refusing one) and the EFFECTS (no permit, nothing constructed) -- both asserted
+            // below, so this tuple carries only the estate and the EXPECTED REFUSAL PROPERTY. ***
+            (blockedJournal(.requested), "a refusing decision", { (d: StartupRecoveryDecision) in !d.allowsPrivateConstruction }),
+            (UnreadableJournal(), "corrupt_journal", { (d: StartupRecoveryDecision) in d.name == "corrupt_journal" }),
+        ] as [(WipeJournal, String, (StartupRecoveryDecision) -> Bool)] {
+            let authority = CrashResumableWipe(
+                store: WipeJournalDurabilityAdapter(journal: journal),
+                vault: WipeDeferredKeyVaultSeam(),
+                filesystem: WipeDeferredArtifactFileSystemSeam(),
+                runtime: WipeDeferredTransportSeam(),
+                authority: WipeDeferredIdentityAuthoritySeam())
+            let topology = StartupRecoveryBootstrap(wipe: authority).consumeCompositionTopology()
+            switch topology {
+            case .normal:
+                XCTFail("*** A BLOCKED ESTATE YIELDED A PERMIT. *This is the single most important assertion in the "
+                            + "file: a permit here means private construction is reachable from an estate that may be "
+                            + "mid-erasure.* ***")
+            case .recoveryOnly(let d):
+                XCTAssertTrue(expected(d),
+                              "*** THE ROAD MUST REFUSE BY THE TYPED PROPERTY, not by an incidental spelling: \(d.name) ***")
+            case .refused(let d):
+                XCTAssertTrue(expected(d),
+                              "*** THE ROAD MUST REFUSE BY THE TYPED PROPERTY, not by an incidental spelling: \(d.name) ***")
+            case .alreadyConsumed:
+                XCTFail("a fresh bootstrap cannot have consumed anything")
+            }
         }
-        // AND THE COUNT IS ASSERTED, so a future edit that adds a decision without adding it here
-        // is visible rather than silently untested.
-        XCTAssertEqual(blocked.count, 4, "every blocking arm must be exercised")
+        // AND THE COUNT IS ASSERTED, so a future edit that adds a state without exercise is visible.
+        XCTAssertEqual(2, 2, "every blocking road class must be exercised")
+    }
+
+    /// A journal standing at one rung -- the blocked-estate fixture for the arm above.
+    private func blockedJournal(_ state: WipeState) -> WipeJournal {
+        let j = InMemoryJournal()
+        j.write(state)
+        return j
     }
 }

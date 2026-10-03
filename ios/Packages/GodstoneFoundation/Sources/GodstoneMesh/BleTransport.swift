@@ -3433,17 +3433,34 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
         let peerId = delegate.relationKey.peerId
         guard validateOutboundDelegate(delegate, peerId: peerId) else { return .noOp }
-        let success = (error == nil && ((p?.services?.contains(where: { $0.uuid == BleTransport.serviceUuid })) ?? true))
+        // *** *** THE COERCION THIS REPLACES REPORTED A DISCOVERY THAT NEVER HAPPENED. *** ***
+        //
+        // *THE DEFECT, IN THE LINE THAT STOOD HERE:*
+        //   `let success = (error == nil && ((p?.services?.contains(where: { ... })) ?? true))`
+        // **The `?? true` answered "the mesh service IS present" for a peripheral that was NIL, or whose `services`
+        // was NIL -- i.e. for an event that OBSERVED NOTHING.** *Worse, the effect below it is `for s in p.services ??
+        // []` -- AN EMPTY LOOP for exactly those cases -- so the reduction reported SUCCESS to the central driver,
+        // scheduled NO `discoverCharacteristics`, and the relation then STALLED UNTIL THE DEADLINE rather than failing.
+        // A success that observeth nothing is the same species as a gate that answereth from a flag no ladder wrote.*
+        //
+        // **SO SUCCESS NOW REQUIRES THE SERVICE ITSELF: a real peripheral, a real `services` array, and a match on the
+        // mesh profile's UUID.** *An error, a nil peripheral, a nil/empty service list and a WRONG UUID all answer
+        // `false`, which the driver already knows how to turn into a teardown (`disconnectPeripheral`) -- so the
+        // failure is fast and named rather than slow and silent.*
+        let observedService = p?.services?.first(where: { $0.uuid == BleTransport.serviceUuid })
+        // *The `?? true` is gone: `first(where:)` yieldeth `nil` for a nil peripheral, a nil `services` array, an
+        // empty list or a list carrieth no mesh service -- and NOTHING is coerced here, so an observ'd absence
+        // stayeth an absence and the driver is told so. Only an OBSERVED mesh service can turn this `true`.*
+        let success = (error == nil && observedService != nil)
         let action = snapshotCentral?.onServicesDiscovered(peerId: peerId, success: success) ?? .noOp
         switch action {
         case .discoverCharacteristics:
-            if let p = p {
-                for s in p.services ?? [] where s.uuid == BleTransport.serviceUuid {
-                    p.discoverCharacteristics(
-                        [BleTransport.inboxCharacteristicUuid, BleTransport.digestCharacteristicUuid, BleTransport.linkInfoCharacteristicUuid],
-                        for: s
-                    )
-                }
+            // *The effect reuseth the service already SELECTED above, so no second `p.services` scan is performed.*
+            if let p = p, let s = observedService {
+                p.discoverCharacteristics(
+                    [BleTransport.inboxCharacteristicUuid, BleTransport.digestCharacteristicUuid, BleTransport.linkInfoCharacteristicUuid],
+                    for: s
+                )
             }
         case .disconnectPeripheral:
             purgeCentralConnection(peerId: peerId, cancelPeripheral: true)

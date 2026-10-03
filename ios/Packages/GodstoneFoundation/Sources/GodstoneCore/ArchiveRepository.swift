@@ -171,12 +171,6 @@ public final class ArchiveRepository: @unchecked Sendable {
         return rows.first
     }
 
-    /// The compat shim: the checked face's woe collapseth to nil, as the old
-    /// roads taught. The scene useth this; the court proveth the checked.
-    public func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata? {
-        (try? sourceMetadataChecked(documentId: documentId)) ?? nil
-    }
-
     public func listDomainsChecked() throws -> [String] {
         try run("SELECT DISTINCT domain FROM documents ORDER BY domain") { stmt in
             columnString(stmt, 0)

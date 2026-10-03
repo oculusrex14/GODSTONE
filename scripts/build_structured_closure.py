@@ -255,7 +255,13 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "text": "The encrypted engine must yield an OWNED OPERATIONAL connection/session with "
                  "restricted construction and explicit close ownership -- not descriptive "
                  "metadata that is discarded.",
-         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift`, `path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift`, `test:testGF004TheStoreRunsOnTheEnginesOwnVerifiedConnection`. The engine yields an OWNED OPERATIONAL connection: `OwnedVerifiedConnection` carries an `internal init(rawHandle:engineKind:...)` (line 68) so ONLY the module can mint one, `OwnedConnection` exposes `public func close() -> Bool` (line 122) as the explicit close owner, and `EncryptedStoreFactory.reopenOwnedRequiringDEK` returns an `OwnedConnectionResult` -- never descriptive metadata that is discarded"]},
+         # *** REOPENED 2026-10-02 (SqliteReview): THE CLOSE OWNERSHIP RACES THE CONNECTION'S OWN USE. ***
+         # *MEASURED BY A SOURCE AUDIT (`agent://SqliteReview`, 2 critical + 8 important): the image-lease engine
+         # UNLOADS the CFN while live connections may still exist, and the owner `close()` races outstanding use -- a
+         # use-after-free shape. The owned handle existeth (the prior discharge below is kept); what is NOT established
+         # is that closing is safe against in-flight operations, which is the whole of "explicit close ownership". Not
+         # discharged until the native owner provides the real proof.*
+         "status": "OPEN", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift`, `path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift`, `test:testGF004TheStoreRunsOnTheEnginesOwnVerifiedConnection`. The engine yields an OWNED OPERATIONAL connection: `OwnedVerifiedConnection` carries an `internal init(rawHandle:engineKind:...)` (line 68) so ONLY the module can mint one, `OwnedConnection` exposes `public func close() -> Bool` (line 122) as the explicit close owner, and `EncryptedStoreFactory.reopenOwnedRequiringDEK` returns an `OwnedConnectionResult` -- never descriptive metadata that is discarded"]},
         {"id": "gs-final-004.no-second-open",
          "text": "No second independent path-based `sqlite3_open_v2` in the private composition: "
                  "the repository must run on the EXACT connection the engine returned.",
@@ -267,10 +273,25 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift`, `test:testGF004TheCompositionRunsItsStoresOnTheEnginesConnections`. PROVEN BY RAW-HANDLE IDENTITY, NOT A BOOLEAN: `adoptedConnectionIdentity` is a `UInt` (the raw `OpaquePointer` value) published only AFTER the store accepts the connection, and the court compares `identity(of: engine.handover(for: \"message-store\"))` against `runtime.messageStore.adoptedConnectionIdentity`. No `messageStoreWasBuiltFromVerifiedHandle`-style Boolean exists in the tree"]},
         {"id": "gs-final-004.migrations-on-verified",
          "text": "Migrations must run on that exact verified/keyed connection.",
-         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift`. `init(verifiedConnection:)` performs NO `sqlite3_open_v2` of its own and calls `try runMigrations(db)` on the SUPPLIED handle (MessageStore line 1021, PeerIdentityStore line 308); the legacy `init(url:)` roads run migrations on their own handles (lines 1086 and 336), so each road migrates the connection it actually owns"]},
+         # *** REOPENED 2026-10-02 (SqliteReview): THE MIGRATION ROAD USES `try?` AND MAY PROCEED ON A FALSE RESULT. ***
+         # *MEASURED BY THE SOURCE AUDIT: `user_version` is read with `try?`, so a read FAILURE becometh a default and
+         # the migration can run as if the version were known -- migrations may proceed on a FALSE result. The road is
+         # on the verified connection (the prior discharge below is kept); what is NOT established is that a failed
+         # version read REFUSES rather than defaulting, so this is not discharged.*
+         "status": "OPEN", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift`. `init(verifiedConnection:)` performs NO `sqlite3_open_v2` of its own and calls `try runMigrations(db)` on the SUPPLIED handle (MessageStore line 1021, PeerIdentityStore line 308); the legacy `init(url:)` roads run migrations on their own handles (lines 1086 and 336), so each road migrates the connection it actually owns"]},
         {"id": "gs-final-004.provider-dispatch",
          "text": "A pointer created by one SQLite implementation must not be passed to another: the complete function surface a store uses must be bound from the SAME image the handle came from, carried with the connection, and used for every operation; no global raw-pointer-to-provider map; a partial bind must refuse; a failed open must close its partial handle; and the key road must not echo the DEK.",
          # *** DISCHARGED -- THE PROVIDER TABLE TRAVELS WITH THE CONNECTION, AND THE LOADER/ERROR PATHS ARE REPAIRED. ***
+         # *** REOPENED 2026-10-02 (SqliteReview) -- TWO CLAUSES OF THIS OBLIGATION ARE NOT MET ON THE REAL ENGINE. ***
+         #
+         # *THE CLAUSE THIS OBLIGATION CARRIES: "a partial bind must refuse; a failed open must close its partial
+         # handle".* **THE AUDIT MEASURED THAT THE REAL NATIVE ENGINE DOES NOT SATISFY THEM: partial-graph failure
+         # LEAKS, the runtime takes an ARBITRARY SQLCipher path mislabeled as PINNED, and an EMPTY FILE / WRONG KEY is
+         # misjudged (the court's own engine was FAKE/COPIED for that case).** *The instrumented-table court below is
+         # real, but it exercises a HOST-provided table; the pinned native engine's own bind/close is what the clause
+         # names, and it is not proven until the native owner supplies a real native host/sim proof.* *Prior DISCHARGED
+         # prose kept, HISTORICAL scope.*
+         "status": "OPEN", "evidence": [
          #
          # *THE DEFECT THIS CLOSES, MEASURED BY READING THE TREE: `SqlCipherDylibEngine` obtained its handles by `dlsym`
          # on a library IT loaded, and the adopting stores then called the GLOBALLY LINKED `sqlite3_*` functions on
@@ -278,7 +299,6 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          # matching major version doth NOT establish provider compatibility: two builds of the same version can carry
          # different compile options, struct layouts and VFS assumptions, and the failure that followeth is a silent
          # corruption rather than a clean refusal.***
-         "status": "DISCHARGED", "evidence": [
              "`path:ios/Godstone/Sources/GodstoneMesh/SQLiteFunctionTable.swift` -- the ONE immutable per-provider function table: the COMPLETE 20-entry-point surface both stores use, bound all-or-nothing from one image (`requiredSymbols`), with `.linkedPlatform` for the archive/legacy road where the handle and the functions come from the same image by construction. **NO GLOBAL RAW-POINTER->PROVIDER MAP: the table is carried BY VALUE with the connection, so a recycled pointer cannot be answered by a dead provider's table.** *`GsFinal004OwnedConnectionTests` also checks the two sources' `sqlite3_*` usage against this set, so an unlisted entry point cannot be reached.*",
              "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift` -- the connection carrieth `provider: SQLiteFunctionTable`, so a store that adopteth one calls through the image the handle came from.",
              "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift` -- BOTH stores carry `fn` (the provider) and install it from the adopted connection BEFORE any statement runs; every `sqlite3_*` call site (467 across the two files) now goeth through the table. *The legacy `url:` roads keep `.linkedPlatform`, where the handle and the functions are the same image.*",
@@ -467,7 +487,18 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          # gate into a false-accept failed to compile.* **THE FIX WAS TO STOP TRYING TO MUTATE THE PARSER AND TO
          # INSTEAD BUILD THE VECTORS FROM ONE VALID FRAME, EACH MUTATING EXACTLY ONE DECODER GATE -- so every vector
          # is attributable to the gate it breaks, and the valid frame's acceptance is the same-run control.***
-         "status": "DISCHARGED", "evidence": [
+         # *** REOPENED 2026-10-02 -- THE FOUR NAMED CLAUSES ARE MET, AND THE INVARIANT SET THEY BELONG TO IS NOT. ***
+         #
+         # *`Invariant.ALL` declares ELEVEN names, and a read-only audit (`agent://LaneControls.StressAudit`,
+         # `local://LaneControls-findings.json`) MEASURED that `StressCampaign` models NEITHER
+         # `NO_LEAKED_RESERVATIONS` NOR `NO_LEAKED_INVENTORY_LEASES` NOR `PENDING_ACK_WORK` NOR
+         # `NO_LEAKED_OBSERVERS` -- `check()` never references them.* **So `test_w09`'s loop
+         # `for invariant in Invariant.ALL: assertFalse(any(invariant in f ...))` is VACUOUS for those four: they can
+         # never appear in `failures` because nothing measures them -- the same "assertions over names, not over
+         # measurements" shape this obligation exists to refuse.** *Only SEVEN of the eleven are actually measured on
+         # this isle, so the obligation is not discharged until the four unmodelled owners are modelled and their
+         # invariants are real.* *Prior DISCHARGED prose kept below with HISTORICAL scope.*
+         "status": "OPEN", "evidence": [
              "*** no-uncaught-malformed, FROM THE REAL PARSER AND NOW SENSITIVE: eight deterministic vectors V-G0..V7 built from ONE valid frame F (truncate 31B; xor byte 0 with 0xFF; version byte = 0x03; type byte = 0x00; ttl byte = 17; hop byte = 17; xor the CRC byte with 0x01; declared length += 8). EACH decodes to nil WHILE F decodes non-nil -- so a decoder gate that stopped working would ACCEPT one vector and redden its own arm. ***",
              "*** no-duplicate-inbox, FROM THE REAL OWNER: A2 replays the last-K msg_ids and requires `committedDuplicate` +1 with `committedNew` +0 and the rows unchanged -- the owner's OWN census, read on the real sealed container (the node road counts DUPLICATE, the direct accept counts NEW; both readings taken). ***",
              "*** no-duplicate-delivery, FROM THE REAL TRACKER: a second enqueue of the same binding answers `alreadyQueuedSameBinding`, a different recipient `conflictRecipient`, a terminal row `rejectedTerminalState`, and `DeliveryTracker.classifyExisting` agrees -- all read from `SqliteDeliveryStore`/`DeliveryTracker`. ***",
@@ -492,14 +523,33 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
         {"id": "gs-stress-001.classification",
          "text": "`StressCampaign` must remain EXPLICITLY classified `resource-model`, not "
                  "production runtime stress.",
-         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift`, `path:ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift`, `test:testW14TheCampaignIsANamedResourceModel`. `RESOURCE_MODEL_CATEGORY` is a top-level constant on BOTH isles (`StressCampaign.swift:32`, and its KOTLIN twin), so one grep findeth the contract everywhere; and `ReadinessT72Tests.testW14TheCampaignIsANamedResourceModel` asserts it BOTH WAYS -- `XCTAssertEqual(RESOURCE_MODEL_CATEGORY, \"resource-model\")` AND `XCTAssertNotEqual(RESOURCE_MODEL_CATEGORY, \"production\")` -- so the model cannot be mistaken for, or quietly renamed to, the production runtime it does not measure"]},
+         # *** REOPENED 2026-10-02 -- THE CONSTANT IS DECLARED AND THE CATEGORY IS CARRIED NOWHERE. ***
+         #
+         # *The constant is real and three courts assert it BOTH WAYS (that is the prior discharge, kept below).* **BUT
+         # THE AUDIT MEASURED THAT THE CATEGORY IS NOT CARRIED BY ANY OUTPUT: no result field, no report line, no ledger
+         # row carrieth `resource-model`, while module/isle headers, the ledger objective ("driven through the real
+         # compositions") and the courts field still say "production-path" / "driven by the real conductor".** *A model
+         # result therefore remains QUOTABLE AS A RUNTIME RESULT because the label is asserted in courts and printed
+         # nowhere -- which is the class this obligation exists to prevent.* *So it is not discharged until the category
+         # is CARRIED by the typed result/report/ledger, and that change follows the implementation (StressHonesty
+         # owns it).* *Prior DISCHARGED prose kept, HISTORICAL scope.*
+         "status": "OPEN", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift`, `path:ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift`, `test:testW14TheCampaignIsANamedResourceModel`. `RESOURCE_MODEL_CATEGORY` is a top-level constant on BOTH isles (`StressCampaign.swift:32`, and its KOTLIN twin), so one grep findeth the contract everywhere; and `ReadinessT72Tests.testW14TheCampaignIsANamedResourceModel` asserts it BOTH WAYS -- `XCTAssertEqual(RESOURCE_MODEL_CATEGORY, \"resource-model\")` AND `XCTAssertNotEqual(RESOURCE_MODEL_CATEGORY, \"production\")` -- so the model cannot be mistaken for, or quietly renamed to, the production runtime it does not measure"]},
     ],
     "GS-UX-001": [
         {"id": "gs-ux-001.facade",
          "text": "A public facade/adapter implemented INSIDE `GodstoneMesh` that wraps the real "
                  "owners and preserves module encapsulation, rather than publishing "
                  "`MeshAuthorityPort`/`TrustAuthorityPort`.",
-         "status": "DISCHARGED", "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MeshTrustFacade.swift`, `path:ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift`, `path:ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift`, `path:ios/project.yml`. `MeshTrustFacade` is `public final class` INSIDE GodstoneMesh (`MeshTrustFacade.swift:9`), carrying plain `String`/`Bool`/`[String]` verbs, with the adapter over the REAL `PeerIdentityRepository` internal to the module; and BOTH ports remain UNPUBLISHED -- `protocol TrustAuthorityPort` (`TrustUXModel.swift:329`) and `protocol MeshAuthorityPort` (`MeshUXModel.swift:275`) carry NO access modifier, so nothing outside the module can name them. **MEASURED that this costs LIGHT nothing: `Godstone` (Shipping/Light) declares exactly ONE dependency, `GodstonePackages/GodstoneCore` -- NO mesh edge -- and `ci/check_lab_isolation.py` passes (rc=0).**"]},
+         # *** REOPENED 2026-10-02 (IosReview ALL-15): ENCAPSULATION ALONE IS NOT FULL OBLIGATION. ***
+         # *Audit exact definition: ordinary facade, root stores, and trust commands must operate over the ACTUAL SAME
+         # ESTATE (IOS-R6/IOS-R10). A facade wrapping a disconnected in-memory store or authoring disjoint Send rows
+         # does not satisfy the obligation.*
+         "status": "OPEN",
+         "known_internal_gaps": [
+             "disjointSend (IOS-R10): facade/lab send opens disconnected SQLite store, bypasses contact trust authority, and uses author's own DH key",
+             "estate-fragmentation (IOS-R6): facade and root runtime composition do not share a single coherent estate lifecycle",
+         ],
+         "evidence": ["`path:ios/Godstone/Sources/GodstoneMesh/MeshTrustFacade.swift`, `path:ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift`, `path:ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift`, `path:ios/project.yml`. `MeshTrustFacade` is `public final class` INSIDE GodstoneMesh (`MeshTrustFacade.swift:9`), carrying plain `String`/`Bool`/`[String]` verbs, with the adapter over the REAL `PeerIdentityRepository` internal to the module; and BOTH ports remain UNPUBLISHED -- `protocol TrustAuthorityPort` (`TrustUXModel.swift:329`) and `protocol MeshAuthorityPort` (`MeshUXModel.swift:275`) carry NO access modifier, so nothing outside the module can name them. **MEASURED that this costs LIGHT nothing: `Godstone` (Shipping/Light) declares exactly ONE dependency, `GodstonePackages/GodstoneCore` -- NO mesh edge -- and `ci/check_lab_isolation.py` passes (rc=0).**"]},
         {"id": "gs-ux-001.rendered-controls",
          "text": "The rendered LabMesh UI must exercise the real authority/projection for the complete internally testable journey: recipient selection; UTF-8 bounded compose; Send; fingerprint compare/confirmation; exact rotation-candidate approval; revoke; visible durable state after recreation; visible wipe/recovery state. Displayed state must derive from the real authority/projection.",
          # *** DISCHARGED -- EVERY NAMED JOURNEY NOW CARRIETH A RENDERED ARM, AND THE TRUST ROAD IS A CLEAN CUTOVER. ***
@@ -648,7 +698,12 @@ PARTIAL_OBLIGATIONS: dict[str, list[dict]] = {
          # its own receipt condition).* **AND THE DELTA IS IMPLEMENTED BELOW THE LINE, NOT ARGUED AWAY: the connection
          # the composition runs on, the identity the stores report, and the road the permit gates are all in the tree
          # and all measured.**
-         "status": "DISCHARGED",
+         # *** REOPENED 2026-10-02 (SqliteReview): THE STORE'S OWN MIGRATION ROAD SHARES THE `try?` DEFECT. ***
+         # *The internal architecture is shared with GS-FINAL-004 and its sibling `gs-final-004.migrations-on-verified`
+         # is reopened for the same measured cause: a `try?` `user_version` read can make a migration proceed on a
+         # FALSE result. Until the store's migration refusal is proven against a real native host, this shares the
+         # sibling's status rather than claiming otherwise.*
+         "status": "OPEN",
          "evidence": [
              "`path:ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift`, `path:ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift` -- THE SAME ARTIFACTS CITE THE SIBLING'S `gs-final-004.owned-connection`: the factory returneth an `OwnedConnectionResult` carrying an `OwnedConnection`, and the stores ADOPT it rather than opening by path.",
              "`path:ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, `path:ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift` -- BOTH stores take a verified connection (the sibling's `gs-final-004.identity-proof` and `gs-final-004.migrations-on-verified` cite these same two files), so migrations run on the verified/owned connection.",
@@ -691,6 +746,38 @@ def load(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _with_authored_discharges(obligations: list[dict]) -> list[dict]:
+    """Preserve historical claims without discharging the current candidate.
+
+    Current source obligations remain OPEN until externally measured current-C
+    production controls establish their behavior. Review gaps stay attached by
+    canonical obligation identity; source wording and historical results are not
+    current execution evidence.
+    """
+    out: list[dict] = []
+    for o in obligations:
+        copy = dict(o)
+        oid = o.get("id")
+        if copy.get("status") == "DISCHARGED":
+            copy["historical_status"] = "DISCHARGED"
+            copy["status"] = "OPEN"
+        history = HISTORICAL_DISCHARGES.get(oid)
+        if history is not None:
+            copy["historical_discharge"] = dict(history)
+        inline = copy.get("known_internal_gaps") or []
+        merged = [dict(g) if isinstance(g, dict) else {"defect": str(g)} for g in inline]
+        merged.extend(dict(g) for g in KNOWN_INTERNAL_GAPS.get(oid, []))
+        merged.append({"defect": "CURRENTC-PROOF-REQUIRED", "source": "current candidate acceptance",
+                       "canonical_obligation": oid,
+                       "canonical_defect": copy.get("text"),
+                       "what_must_land": "Actual production path, positive, negative, independent-count and fault "
+                                         "controls bound to the supplied current candidate SHA/tree. Historical "
+                                         "rc14 evidence and source authoring cannot discharge changed source."})
+        copy["known_internal_gaps"] = merged
+        out.append(copy)
+    return out
+
+
 def build(ledger: dict) -> dict:
     """Derive the structured closure from the ledger's STATUSES and the authored obligations."""
     original = ledger["findings"]
@@ -716,7 +803,7 @@ def build(ledger: dict) -> dict:
                 "recorded_status": status,
                 "internal_status": recorded_internal,
                 "internal_status_source": "recorded_status",
-                "internal_obligations": [dict(o) for o in PARTIAL_OBLIGATIONS.get(fid, [])],
+                "internal_obligations": _with_authored_discharges(PARTIAL_OBLIGATIONS.get(fid, [])),
                 "external_obligations": list(entry.get("external_obligations") or []),
             }
             # *** THE OBLIGATION SET GOVERNS THE FINDING'S INTERNAL STATUS WHEN OBLIGATIONS EXIST. ***
@@ -762,7 +849,7 @@ def build(ledger: dict) -> dict:
     # AUDIT-B1-CTRL-001 is an independent-audit finding that is not yet in the ledger's
     # populations; it is this mission's own control-plane repair and must be represented.
     if "AUDIT-B1-CTRL-001" not in closure:
-        aud_obls = [dict(o) for o in PARTIAL_OBLIGATIONS["AUDIT-B1-CTRL-001"]]
+        aud_obls = _with_authored_discharges(PARTIAL_OBLIGATIONS["AUDIT-B1-CTRL-001"])
         entry_out = {
             "group": "external_audit_2026_09_20",
             "severity": "High",
@@ -774,6 +861,7 @@ def build(ledger: dict) -> dict:
             # independent auditor rather than being overwritten.*** *The LEDGER status is the separate, durable
             # expression of the same fact and is flipped with the mission's other status work.*
             "internal_status": "COMPLETE" if obligations_are_terminal({"internal_obligations": aud_obls}) else "OPEN",
+            "internal_status_source": "derived_from_obligations",
             "internal_obligations": aud_obls,
             "external_obligations": [],
         }
@@ -877,6 +965,22 @@ def finding_state_problems(closure: dict) -> list[str]:
                 f"{len(live)} of its obligations are UNRESOLVED ({', '.join(str(x) for x in live[:3])}"
                 f"{'...' if len(live) > 3 else ''}) -- a finding declared complete over live internal work is the "
                 f"overclaim this control plane existeth to refuse")
+        # *** AND THE LEDGER'S OWN `recorded_status` MAY NOT CLAIM COMPLETE OVER LIVE OBLIGATIONS. ***
+        #
+        # *THE MISSION'S REQUIRED KILL #4: "a FIX_SUBMITTED finding with an OPEN obligation -> REFUSE".* **WHY THIS IS A
+        # SEPARATE RULE FROM THE ONE ABOVE: `internal_status` is now DERIVED from the obligations, so an obligation
+        # reopened inside a finding the ledger still records as FIX_SUBMITTED would derive OPEN and the derived-value
+        # rule could never fire -- the guard would lose exactly the case it was written for.** *So the RECORDED status
+        # is checked too, against the SAME obligation set: a ledger that says a finding is fixed while its own
+        # obligations are unresolved is the overclaim, and the disagreement is visible in `recorded_status` beside the
+        # derived value.*
+        recorded = f.get("recorded_status")
+        if obls and STATUS_TO_INTERNAL.get(recorded) not in (None, "OPEN") and not obligations_are_terminal(f):
+            live = [o.get("id") for o in obls if o.get("status") in UNRESOLVED_OBLIGATION_STATES]
+            problems.append(
+                f"{fid}: recorded_status is {recorded!r} (which maps to internal COMPLETE) while "
+                f"{len(live)} of its obligations are UNRESOLVED ({', '.join(str(x) for x in live[:3])}"
+                f"{'...' if len(live) > 3 else ''}) -- the ledger claimeth this finding fixed over live internal work")
     return problems
 
 
@@ -934,38 +1038,965 @@ def structured_semantics(closure: dict) -> dict:
     would be the builder's own report of its work; naming the gaps as well is what makes the report falsifiable by a
     reader who compares the two.*
 
-    **`known_internal_gaps` IS POPULATED ONLY WHILE A FINDING IS INTERNALLY OPEN.** *A discharged finding's gap prose
-    is HISTORICAL and is preserved under an explicit historical scope rather than being counted as outstanding work --
-    that is the "keep the incriminating evidence without erasing it" rule the mission states.*
+    *** THE THREE DEFECTS THIS NOW REFUSES, EACH MEASURED RATHER THAN ARGUED. ***
+
+      1. **A "PRESENT CONTROL" WAS INFERRED FROM THE STATUS.** The old `present` list appended every obligation whose
+         status was not unresolved -- **so any obligation marked DISCHARGED became a "required control present" with
+         no semantic proof at all: the field measured the status it was meant to justify.** *A control must be
+         MEASURED: only an obligation carrying an authored `structured_discharge` (behaviour, implementation,
+         reachability, test, positive control, mutation, exact result) is a present control, because only that block
+         names what the discharge actually exercised. A DISCHARGED obligation with NO block is listed under
+         `refused_controls` -- *a control this instrument could not measure* -- and NEVER as present.*
+      2. **`unresolved_internal_dependencies` WAS POPULATED FROM `external_obligations`.** *The two name different
+         populations: an INTERNAL dependency is internal work that must land first (an unresolved obligation); an
+         EXTERNAL obligation is something the builder cannot do at all (a pinned artifact, a device, an independent
+         audit).* **Folding the external list into the internal one made an EXTERNAL blocker read as an internal
+         dependency, which is exactly the confusion that lets external work be claimed "handled internally" or
+         internal work be excused as "external".** *They are emitted as separate fields.*
+      3. **`known_internal_gaps` IS POPULATED ONLY WHILE A FINDING IS INTERNALLY OPEN.** *A discharged finding's gap
+         prose is HISTORY, preserved under an explicit historical scope rather than counted as outstanding work.*
     """
-    controls: dict[str, list[str]] = {}
+    controls: dict[str, list[dict]] = {}
     gaps: dict[str, list[dict]] = {}
-    deps: dict[str, list[str]] = {}
+    internal_deps: dict[str, list[str]] = {}
+    external: dict[str, list] = {}
+    refused: list[dict] = []
     for fid, f in sorted(closure.items()):
         obls = f.get("internal_obligations") or []
         terminal = obligations_are_terminal(f) if obls else f.get("internal_status") != "OPEN"
-        # The positive half: a control is "present" when a DISCHARGED obligation cites a typed token resolving in the
-        # tree. This is DELIBERATELY the same evidence rule the law already enforces -- it is reported, not re-judged.
-        present = []
+        # *** THE POSITIVE HALF, MEASURED FROM THE AUTHORED SEMANTICS, NOT READ OFF THE STATUS. ***
+        present: list[dict] = []
         for o in obls:
             if o.get("status") in UNRESOLVED_OBLIGATION_STATES:
                 continue
-            present.append(o.get("id"))
-        controls[fid] = present
+            sd = o.get("structured_discharge")
+            if sd is None:
+                # A TERMINAL CLAIM WITH NO SEMANTICS IS NOT A CONTROL THIS INSTRUMENT CAN NAME.
+                refused.append({
+                    "finding": fid,
+                    "obligation": o.get("id"),
+                    "why": "DISCHARGED with NO `structured_discharge`: the control cannot be measured, so it is "
+                           "NEVER reported as present",
+                })
+                continue
+            present.append({
+                "obligation": o.get("id"),
+                "reachability": sd.get("reachability"),
+                "control": sd.get("positive"),
+                "behavior": sd.get("behavior"),
+                "exact_result": sd.get("exact_result"),
+            })
+        if present:
+            controls[fid] = present
+        # *** THE NEGATIVE HALF: the OPEN obligations, by identity, with each one's own scan roster. ***
         if not terminal:
-            # The negative half: the OPEN obligations, by identity, with each one's own scan roster.
             g = []
             for o in obls:
                 if o.get("status") in UNRESOLVED_OBLIGATION_STATES:
                     g.append({"id": o.get("id"), "text": o.get("text"),
+                              "known_internal_gaps": [dict(x) for x in (o.get("known_internal_gaps") or [])],
                               "discharge_text_scan": _discharge_text_scan(o)})
-            gaps[fid] = g
-        deps[fid] = list(f.get("external_obligations") or [])
+            if g:
+                gaps[fid] = g
+        # *** INTERNAL DEPENDENCIES ARE UNRESOLVED INTERNAL WORK -- NEVER THE EXTERNAL LIST. ***
+        live = [o.get("id") for o in obls if o.get("status") in UNRESOLVED_OBLIGATION_STATES]
+        if live:
+            internal_deps[fid] = live
+        if f.get("external_obligations"):
+            external[fid] = list(f["external_obligations"])
     return {"required_controls_present": controls,
+            "refused_controls": refused,
             "known_internal_gaps": gaps,
-            "unresolved_internal_dependencies": deps,
-            "note": ("known_internal_gaps is populated ONLY for findings that are internally OPEN; a discharged "
-                     "finding's gap prose is historical and not counted as outstanding work")}
+            "unresolved_internal_dependencies": internal_deps,
+            "external_obligations": external,
+            "note": ("required_controls_present carrieth ONLY obligations whose authored `structured_discharge` names "
+                     "what was exercised; a DISCHARGED obligation with no such block is listed in `refused_controls` "
+                     "and is NOT present. `unresolved_internal_dependencies` is INTERNAL work that must land first; "
+                     "`external_obligations` is the separate population the builder cannot discharge. "
+                     "known_internal_gaps is populated ONLY for findings that are internally OPEN.")}
+
+
+#: *** EVERY OBLIGATION CARRIES AN EXPLICIT DISPOSITION -- THERE IS NO LEGACY BYPASS. ***
+#:
+#: *THE DEFECT THIS CLOSES: `structured_discharge_problems` SKIPPED every obligation without a
+#: `structured_discharge` block (`if sd is None: continue`) and made `candidate_binding` optional inside the block.
+#: **The whole register of DISCHARGED obligations therefore bypassed the semantic schema: a terminal claim needed
+#: neither a behaviour, an implementation, a reachability, a test, a positive control, a mutation, an exact result nor
+#: an external candidate binding. The instrument could describe the schema it did not enforce.*** *A legacy exemption
+#: was the mechanism -- "the legacy discharges predate the schema" -- which is the same shape as a prose classifier:
+#: an unexamined population that reads as examined.*
+#:
+#: **SO THE SCHEMA IS MANDATORY AT THE TERMINAL BOUNDARY, AND EVERY TERMINAL OBLIGATION MUST CARRY `structured_discharge`
+#: WITH EVERY REQUIRED FIELD AND AN EXTERNAL `candidate_binding`.** *A terminal claim whose semantics are absent is a
+#: status without a subject; it is refused BY NAME.* **`external_manifest` and `attestation` are EXTERNAL identities --
+#: the frozen rc14 tag object and its attestation path -- so the binding never embeds the candidate's own hash, which
+#: would have to contain itself.**
+DISCHARGE_REQUIRED_FIELDS = (
+    "behavior", "implementation", "reachability", "test", "positive", "mutation", "exact_result",
+)
+DISCHARGE_REACHABILITY = ("production", "court-only", "external-blocked")
+#: *** A DISCHARGE MAY NOT STAND ON A COURT ALONE. *** *"court-only"/"external-blocked" reachability beside
+#: DISCHARGED is the contradiction a prose review cannot see: the status claimeth a completed internal discharge while
+#: the structured field claimeth the discharge reaches no production road. The two cannot both be true.*
+DISCHARGE_TERMINAL_REACHABILITY = ("production",)
+#: *** THE EXTERNAL SIDE OF A BINDING: NAMED FILES/IDENTITIES, NEVER A HASH OF THE CANDIDATE. ***
+DISCHARGE_BINDING_KEYS = ("external_manifest", "attestation")
+
+#: *** THE MANDATORY SEMANTIC SCHEMA, AUTHORED PER OBLIGATION. ***
+#:
+#: *A `structured_discharge` cannot be derived from prose without repeating the exact defect this programme exists to
+#: refuse (an inferred claim wearing a structured field), and this builder may not self-assert a terminal claim.* **So
+#: the semantics are AUTHORED only where a discharge is REAL, and every authoring site is listed here so the register
+#: can be read in one place.** *While the internal frontier is non-empty this map is EMPTY BY DESIGN: the obligations
+#: are OPEN, `structured_discharge_problems` refuseth a terminal obligation with no semantics, and `--check` therefore
+#: fails until each obligation is either re-opened or authored with the fields its own clause requires.*
+#: *`ci/check_candidate_binding.py::validate_attestation` is the INDEPENDENT reader of this schema on the frozen side;
+#: the internal side may not claim a terminal state the frozen side would refuse, so the two readers agree by
+#: construction rather than by convention.*
+STRUCTURED_DISCHARGES: dict[str, dict] = {}
+HISTORICAL_DISCHARGES: dict[str, dict] = {}
+
+
+#: *** THE EXTERNAL CANDIDATE BINDING. ***
+#:
+#: *A discharge is bound to the FROZEN candidate its evidence was captured against -- never to the record's own
+#: current tree, whose hash would have to contain itself.* **rc14 is the frozen candidate of record (tag object
+#: `2481e66d...`, commit `f76c5ae3...`, tree `4157f3eb...`), and its attestation and the evidence bundle are the
+#: external artifacts the binding NAMES.** *A binding names files/identities, never a hash of the record describing
+#: them.*
+RC14_BINDING = {
+    "candidate_ref": "production-readiness-board1-rc14",
+    "tag_object": "2481e66d7dad7417d142507d74bdce0b06a8ec24",
+    "candidate_commit": "f76c5ae3cd54a19ca7489f492441e91af50edddc",
+    "external_manifest": "docs/remediation/evidence/board1-evidence-bundle.json",
+    "attestation": "docs/remediation/evidence/FREEZE_ATTESTATION_rc14.json",
+}
+
+
+def _binding() -> dict:
+    return dict(RC14_BINDING)
+
+
+#: *** THE MEASURED INTERNAL GAPS BEHIND RE-OPENED OBLIGATIONS, BY CANONICAL IDENTITY. ***
+#:
+#: *A hostile source review (`agent://SqliteReview`: SQLITE-REVIEW-1..8; `local://manifest-review-findings.json`;
+#: `local://LaneControls-findings.json`) reproduced defects that the re-opened obligations' own prose names as LIVE.
+#: The mission requires the finding identity to be CARRIED -- **mapped to the canonical obligation it belongs to, never
+#: a new finding and never a duplicated one -- and kept OPEN pending proof.*** *Each entry nameth the review source, the
+#: canonical defect it corresponds to, and what must land for the obligation to close. These are REVIEW findings, not
+#: runtime proof, and they are recorded as OPEN gaps rather than discharges.*
+#: **The four `NativeLifetimeReview` critical findings are mapped here as well, to the SAME canonical obligations
+#: (never as new findings): C1 -> `gs-final-004.owned-connection`/`gs-store-002` close-versus-use, C2 ->
+#: `gs-final-004.provider-dispatch` image lease, C3 -> the permit obligations, C4 -> `gs-final-004.provider-dispatch`'s
+#: pinned-image clause.**
+KNOWN_INTERNAL_GAPS: dict[str, list[dict]] = {
+    "gs-final-003.ios-recovery-graph": [
+        {"source": "SqliteReview / IosReview IOS-R1,IOS-R5", "defect": "IOSR1-permit-replay-aba",
+         "canonical_defect": "ios-recovery-graph: the production road (MeshRuntime) still mints its create-time "
+                              "decision over DEFERRED seams; a court-time order over deferred seams is not production "
+                              "reachability.",
+         "what_must_land": "A production composition whose transport seam exists before and independently of the store "
+                           "graph, driving a LIVE transport to a typed decision."},
+    ],
+    "gs-final-003.typed-permit": [
+        {"source": "NativeLifetimeReview SQLITE-LATEST-C3", "defect": "IOSR1-estate-scope-metadata",
+         "canonical_defect": "typed-permit: the registered scope is metadata, not a frozen recovery capability; the "
+                              "public shared ledger mint accepts caller-supplied estate/generation/tag without recovery "
+                              "evidence, factory opens are replayable before consumption, and the claim's Bool is "
+                              "discarded.",
+         "what_must_land": "A frozen typed permit tied to the actual estate authority and live epoch, atomically "
+                           "claimed at factory admission BEFORE key fetch/open, spending attempts even on failure, "
+                           "rejecting stale/unknown epochs instead of substituting the permit's own."},
+        {"source": "NativeLifetimeReview SQLITE-LATEST-I8", "defect": "GF004-courts-empty-estate-permit",
+         "canonical_defect": "Both GF004 composition courts mint an empty-estate permit that the actual boundary "
+                              "rejects, so they cannot be counted as current positive controls.",
+         "what_must_land": "Positive permits obtained through the real same-estate bootstrap road, with a separate "
+                           "empty/wrong-estate refusal arm; the production estate check is not weakened to pass."},
+    ],
+    "gs-final-003.android-provider-court": [
+        {"source": "ClosureAuthority", "defect": "ANDROID-PROVIDER-COURT-PRODUCTION-UNUSED",
+         "canonical_defect": "android-provider-court: the component exists and the miswiring mutation ran, but the "
+                              "SHIPPING composition (AppModule -> MeshModule) is never checked by it.",
+         "what_must_land": "The production composition consumes the component at its own use site."},
+    ],
+    "gs-final-003.zero-private-opens": [
+        {"source": "IosReview IOS-R11 / NativeLifetimeReview SQLITE-LATEST-I9", "defect": "IOSR11-COUNTERS-DISCONNECTED",
+         "canonical_defect": "zero-private-opens: `openedStore`/`builtSensitiveRuntime` have no callsites; the refusal "
+                              "arms pass `encryptedStores: nil` and measure objects the road never touches.",
+         "what_must_land": "Every refused construction passes the actual instrumented factory/provider and counts "
+                           "fetch/create/native-open at the invoked boundaries; a real construction observation "
+                           "replaces the disconnected counter."},
+    ],
+    "gs-final-003.bootstrap-permit-unit": [
+        {"source": "IosReview IOS-R14", "defect": "IOSR14-ENUM-CASE-COMPARE",
+         "canonical_defect": "bootstrap-permit-unit: the topology court compares an associated-value enum case as if "
+                              "it were a value, which does not compile.",
+         "what_must_land": "Pattern-match the corruptJournal case or assert the semantic predicate, then an unfiltered "
+                           "test compilation and court."},
+        {"source": "ClosureAuthority", "defect": "BOOTSTRAP-TYPED-SHAPE-NO-ROD",
+         "canonical_defect": "The typed-shape assertions are asserted but not mutation-witnessed by any BOARD1 rod.",
+         "what_must_land": "A named rod striking the court's typed assertions."},
+    ],
+    "gs-final-004.owned-connection": [
+        {"source": "SqliteReview SQLITE-REVIEW-2/3 + NativeLifetimeReview SQLITE-LATEST-C1", "defect": "SQLITE-REVIEW-2-CLOSE-VS-USE",
+         "canonical_defect": "owned-connection: close ownership races outstanding use. The peer store's new shared-use "
+                              "cutover double-acquires the nonrecursive store lock in every transaction (a regression), "
+                              "and owner close does not participate in the stores' use locks.",
+         "what_must_land": "One store-lock acquisition for the entire peer transaction; every migration/query/transaction "
+                           "under the owner's shared use/close critical section; close waits for active use and is "
+                           "exactly-once; the peer transaction is driven through the real repository."},
+        {"source": "SqliteReview SQLITE-REVIEW-3 + NativeLifetimeReview SQLITE-LATEST-I2", "defect": "SQLITE-REVIEW-3-OWNER-DEINIT",
+         "canonical_defect": "OwnedConnection deinit releases the image but never closes its live database; adopted "
+                              "stores deliberately do not close on deinit, so the final-owner road leaks the handle.",
+         "what_must_land": "Final-owner cleanup through the same exactly-once close path before releasing image "
+                           "ownership, with explicit close idempotence preserved."},
+        {"source": "NativeLifetimeReview SQLITE-LATEST-I1", "defect": "SQLITE-LATEST-I1-REENTRANT-CLOSE",
+         "canonical_defect": "A synchronous maintenance observer that calls owner.close() deadlocks waiting for its "
+                              "own active use.",
+         "what_must_land": "End the database-use lifetime before invoking user observers, or make reentrant-close "
+                           "semantics explicitly safe, with a named bounded callback-completion assertion."},
+        {"source": "IosReview IOS-R4", "defect": "IOSR4-WRONG-DEK-TAG-WITHDRAWN-ON-TAG",
+         "canonical_defect": "The wrong-DEK-tag defect is WITHDRAWN as a canonical finding: the seam now deletes the "
+                              "message-store and peer-identity-store accounts through the provider that owns "
+                              "`io.godstone.private-store.dek`, following each deletion with `fetchDEK` requiring "
+                              "`dekNotFound`. *This is a SOURCE REPAIR, not observed physical Keychain absence or "
+                              "retained-ciphertext unreadability proof, so the connection-ownership obligation stays "
+                              "open on the close-vs-use ground above.*",
+         "what_must_land": "Physical absent-key and old-ciphertext-unreadable proof for the real service/account pairs "
+                           "on a real Keychain (external device boundary)."},
+    ],
+    "gs-final-004.migrations-on-verified": [
+        {"source": "SqliteReview SQLITE-REVIEW-4", "defect": "SQLITE-REVIEW-4-UNDURABLE-VERSION-STAMP",
+         "canonical_defect": "migrations-on-verified: the migration road used `try?` and could proceed on a FALSE "
+                              "result; the version stamp must be durable before publication.",
+         "what_must_land": "Stamp `user_version` in the same transaction as the migration and propagate failure; "
+                           "advance the memory checkpoint only after durable success."},
+    ],
+    "gs-final-004.provider-dispatch": [
+        {"source": "SqliteReview SQLITE-REVIEW-5 + NativeLifetimeReview SQLITE-LATEST-C4", "defect": "SQLITE-REVIEW-5-APPROVED-ARTIFACT-PIN",
+         "canonical_defect": "provider-dispatch: production accepts any libraryPath or a bare search-path filename; an "
+                              "editable co-located sidecar can self-certify any same-named SQLCipher-4 image as pinned "
+                              "before dlopen, and the source-commit check is only a prefix.",
+         "what_must_land": "Bind production loading to a trusted builder/package artifact manifest outside the "
+                           "replaceable image/sidecar boundary; verify full source identity, exact version, platform, "
+                           "architecture and trusted digest before dlopen."},
+        {"source": "SqliteReview SQLITE-REVIEW-1 + NativeLifetimeReview SQLITE-LATEST-C2", "defect": "SQLITE-REVIEW-1-IMAGE-LEASE",
+         "canonical_defect": "provider-dispatch: the image lease can unload while a public function-table copy is "
+                              "alive; dlclose follows a manual reference counter rather than ARC, so escaped "
+                              "table/statement copies are unprotected.",
+         "what_must_land": "Image lifetime follows a real shared ARC owner whose deinit performs dlclose, retained by "
+                           "every table value and connection/statement owner; statements retain the owner to "
+                           "finalization."},
+        {"source": "SqliteReview SQLITE-REVIEW-7 / NativeLifetimeReview SQLITE-LATEST-I7", "defect": "SQLITE-REVIEW-7-COPIED-FAKE-PROOF",
+         "canonical_defect": "provider-dispatch: the partial-open witness invokes a COPIED fake cleanup rather than "
+                              "`SqlCipherDylibEngine.openKeyedVerified`.",
+         "what_must_land": "Operation-bound instrumentation on the production engine seam with nonempty durable rows, "
+                           "exact bytes/version and real finalize/close counts."},
+        {"source": "SqliteReview SQLITE-REVIEW-6 / NativeLifetimeReview SQLITE-LATEST-I6", "defect": "SQLITE-REVIEW-6-EMPTY-FILE-ROUNDTRIP",
+         "canonical_defect": "provider-dispatch: the native roundtrip opens/probes/closes a fresh EMPTY file and then "
+                              "expects a different key to fail; mandatory native courts may still skip.",
+         "what_must_land": "Persist known nonempty payloads, close all owners, reopen with the correct key and read the "
+                           "exact payload; binding failure is a court failure, not a skip."},
+        {"source": "SqliteReview SQLITE-REVIEW-8 / NativeLifetimeReview SQLITE-LATEST-I5", "defect": "SQLITE-REVIEW-8-INTENT-ERROR-AS-ABSENT",
+         "canonical_defect": "provider-dispatch: an intent read converts SQLite errors and a corrupt existing row into "
+                              "'not found', permitting fresh authoring.",
+         "what_must_land": "Absence only for DONE; row reconstruction failure and invalid persisted rank become typed "
+                           "corruption, routed to the existing authority gate."},
+        {"source": "NativeLifetimeReview SQLITE-LATEST-I4", "defect": "SQLITE-LATEST-I4-SWEEP-BEFORE-BEGIN",
+         "canonical_defect": "The expiry sweep writes tombstones BEFORE the checked BEGIN and hides errors from public "
+                              "and automatic callers.",
+         "what_must_land": "Every sweep mutation inside the checked transaction, faults propagated and consumed at "
+                           "every caller, fault state scoped per attempt."},
+        {"source": "NativeLifetimeReview SQLITE-LATEST-I3", "defect": "SQLITE-LATEST-I3-PROTECTION-BEFORE-CREATE",
+         "canonical_defect": "File protection is applied to missing DB/WAL/SHM files before first-install open, so "
+                              "fresh and post-wipe composition is refused before SQLCipher can create the file.",
+         "what_must_land": "Protect/create the parent first, create the keyed database under it, then verify protection "
+                           "on the files that exist."},
+        {"source": "ClosureAuthority", "defect": "PROVIDER-DISPATCH-STRUCTURED-DISCHARGE-BYPASS",
+         "canonical_defect": "The discharge machinery skipped any obligation without a `structured_discharge` block "
+                              "and made `candidate_binding` optional, so terminal claims needed no semantics.",
+         "what_must_land": "The schema is mandatory at the terminal boundary (now enforced); the obligation remains "
+                           "open on its own native engine clause."},
+    ],
+    "gs-store-002.internal-architecture": [
+        {"source": "SqliteReview SQLITE-REVIEW-4", "defect": "SQLITE-REVIEW-4-UNDURABLE-VERSION-STAMP",
+         "canonical_defect": "The store's migration road shared the `try?` `user_version` defect with GS-FINAL-004.",
+         "what_must_land": "The store's migration refusal proven against a real native host with the durable version "
+                           "readback."},
+    ],
+    "gs-stress-001.real-owner-invariants": [
+        {"source": "LaneControls StressAudit", "defect": "STRESS-4-UNMODELLED-OWNER-INVARIANTS",
+         "canonical_defect": "`StressCampaign` models NEITHER NO_LEAKED_RESERVATIONS NOR NO_LEAKED_INVENTORY_LEASES "
+                              "NOR PENDING_ACK_WORK NOR NO_LEAKED_OBSERVERS, so the by-name court is vacuous for them.",
+         "what_must_land": "The four unmodelled owners modelled and their invariants real."},
+    ],
+    "gs-stress-001.classification": [
+        {"source": "LaneControls StressAudit", "defect": "STRESS-CLASSIFICATION-NOT-CARRIED",
+         "canonical_defect": "The `resource-model` category is declared and asserted in courts but carried by no "
+                              "result field, report line or ledger row, so a model result remains quotable as a "
+                              "runtime result.",
+         "what_must_land": "The category CARRIED by the typed result/report/ledger."},
+    ],
+    "gs-ux-001.facade": [
+        {"source": "IosReview IOS-R10", "defect": "IOSR10-DISJOINT-SEND",
+         "canonical_defect": "The facade/lab send opens a disconnected SQLite store, bypasses the contact trust "
+                              "authority, and uses the author's own DH key.",
+         "what_must_land": "The same owned durable store for node routing, delivery/ACK state, intents and SOS; "
+                           "recipient DH material and accepted generation from the actual trust repository."},
+        {"source": "IosReview IOS-R6", "defect": "IOSR6-ESTATE-FRAGMENTATION",
+         "canonical_defect": "The facade and the root runtime composition do not share a single coherent estate "
+                              "lifecycle.",
+         "what_must_land": "One estate authority the facade and the root both compose through."},
+        {"source": "IosReview IOS-R9", "defect": "IOSR9-SOS-DISPLAY-REGISTER",
+         "canonical_defect": "Live SOS restoration is a JSON display register over a lost in-memory obligation.",
+         "what_must_land": "Reconstruct SOS state solely from the durable authority; remove the register as fallback."},
+    ],
+    "gs-ux-001.rendered-controls": [
+        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C1", "defect": "IOS-FOLLOWUP-C1-DURABLE-ACK-PROOF",
+         "canonical_defect": "The production helper cutover to `FileWipeJournal.standard()` has LANDED (measured in "
+                              "`MeshRuntime.swift`: the `create`/composition helpers default to it, and `PanicWipe` "
+                              "documents that the retained `UserDefaultsWipeJournal` is the retired non-resumable "
+                              "ladder, instantiated only by courts). **What is NOT established is the DURABLE-"
+                              "ACKNOWLEDGMENT behaviour the review's clause names: no independent-process proof exists "
+                              "that a clean private composition requires an acknowledged baseline generation, nor that "
+                              "a default wipe completes through acknowledged REQUESTED and every checkpoint.**",
+         "what_must_land": "An independent-process witness: acknowledged baseline generation, real identity/runtime "
+                           "construction and both store attempts, then terminate/reopen and verify the exact generation "
+                           "and persisted rows -- plus a default production wipe completing through acknowledged "
+                           "REQUESTED and every checkpoint. *Review-inferred; no runtime proof executed.*"},
+        {"source": "IosReview IOS-R3 / RecoveryDurabilityReview IOS-FOLLOWUP-C2", "defect": "IOS-FOLLOWUP-C2-SYNC-FAILURE-ACKNOWLEDGED",
+         "canonical_defect": "`FileWipeJournal.persist` returns false on sync failure but `write` discards it, so the "
+                              "adapter rereads the intended state and acknowledges it anyway; the journal also unlinks "
+                              "the old record before moving the temporary file, leaving a record-loss crash window "
+                              "that parse treats as a clean estate.",
+         "what_must_land": "One atomic replacement without unlinking first; the checked write/epoch result propagated; "
+                           "ENOENT distinguished from unreadable/corrupt; a crash at each replacement boundary must "
+                           "leave the old committed record or the complete new one."},
+        {"source": "IosReview IOS-R3 / RecoveryDurabilityReview IOS-FOLLOWUP-C3", "defect": "IOS-FOLLOWUP-C3-GENERATION-RESET",
+         "canonical_defect": "Corrupt/operator recovery can reset the generation to a previously issued value: `parse` "
+                              "discards a valid generation suffix when the state head is malformed, `clear` removes the "
+                              "epoch, and the adapter turns a missing durable epoch into committed(generation: 0).",
+         "what_must_land": "A durable monotonic generation authority preserved across corruption, operator resolution "
+                           "and clear; missing/unsupported epoch evidence refused rather than fabricated."},
+        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C4", "defect": "IOS-FOLLOWUP-C4-NOT-ONE-TRANSACTION",
+         "canonical_defect": "Permit minting, validation, construction and registration are not one serialized estate "
+                              "transaction; a request can land between the permitting decision and its evidence reads, "
+                              "or after consumption before registration.",
+         "what_must_land": "One physical-estate authority lock across decision/epoch observation, mint/consume, actual "
+                           "construction, owner registration and rung advancement."},
+        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C5", "defect": "IOS-FOLLOWUP-C5-COLD-SELF-MINT",
+         "canonical_defect": "A newly armed EMPTY registry self-mints cold evidence while other owners of the physical "
+                              "estate remain live; the registry is per-graph and `arm()` is a caller-set bit, while "
+                              "production DEKs are global service/account pairs.",
+         "what_must_land": "The registry bound to the actual physical estate/key capability, including aliases and "
+                           "shared service/account ownership; cold a VERIFIED absence under that authority."},
+        {"source": "IosReview IOS-R5 / RecoveryDurabilityReview IOS-FOLLOWUP-C6", "defect": "IOS-FOLLOWUP-C6-RESUME-SKIPS-DRAIN",
+         "canonical_defect": "Resume from RUNTIME_DRAINED skips re-drain for the new estate seam and ignores "
+                              "owner-drain failure before key erasure, so keys can be erased while the current "
+                              "process's transport/producer cannot drain.",
+         "what_must_land": "Current-lifetime owner/transport quiescence re-proven on every resume before destruction, "
+                           "including WipeOwnerDraining seams; owner-drain refusal a checked failure."},
+        {"source": "RecoveryDurabilityReview IOS-FOLLOWUP-C7", "defect": "IOS-FOLLOWUP-C7-IDENTITY-ADOPTION",
+         "canonical_defect": "Identity adoption accepts an unknown or mismatching standing key, and its publication "
+                              "record is not checked or updateable (Void `try?` Keychain add).",
+         "what_must_land": "Durable association of the full replacement identity with the wipe generation; unknown, "
+                           "wrong-generation or mismatching keys refused rather than relabelled."},
+        {"source": "IosReview IOS-R2 / RecoveryDurabilityReview IOS-FOLLOWUP-H1", "defect": "IOS-FOLLOWUP-H1-RETAINED-GATE-UNREADABLE",
+         "canonical_defect": "The retained sensitive-use gate still treats an unreadable journal as permission: "
+                              "`allowsSensitiveApi` returns only `!isWipePending` and an unreadable value is coerced "
+                              "to idle.",
+         "what_must_land": "Retained admission uses the same readable/supported/current-generation terminal evidence as "
+                           "private construction, with permanent per-owner invalidation."},
+        {"source": "IosReview IOS-R7", "defect": "IOSR7-LAB-WIPE-DELETION-LADDER",
+         "canonical_defect": "Lab wipe paths never match the deletion ladder, so the exposed wipe cannot delete its "
+                              "artifacts or finish -- not withdrawn by the follow-up review.",
+         "what_must_land": "An estate-owned artifact inventory the ladder actually iterates, with a positive live-lab "
+                           "wipe reaching committed terminal state."},
+        {"source": "IosReview IOS-R8 / RecoveryDurabilityReview IOS-FOLLOWUP-C7", "defect": "IOSR8-BRICK-AFTER-IDENTITY-PUBLICATION",
+         "canonical_defect": "A crash after identity publication but before NEW_IDENTITY can brick recovery; "
+                              "same-generation recorded adoption now exists, but adoption provenance and publication "
+                              "durability/update remain (see IOS-FOLLOWUP-C7).",
+         "what_must_land": "Replacement publication idempotent and durably associated with the wipe generation."},
+        {"source": "IosReview IOS-R12", "defect": "IOSR12-NOOP-COMMANDS-PERMITTED",
+         "canonical_defect": "Rendered command courts permit no-op Send, permanently pending wipe and always-refused "
+                              "Retry; the roster moved without the lane being re-bound to this candidate.",
+         "what_must_land": "Command effects observed on the actual owned authority, and the lane executing the CURRENT "
+                           "source-derived roster bound to this candidate."},
+    ],
+    "gs-ux-001.ui-test-target": [
+        {"source": "IosReview IOS-R12", "defect": "IOSR12-NOOP-COMMANDS-PERMITTED",
+         "canonical_defect": "Rendered command courts permit no-op Send, permanently pending wipe and always-refused "
+                              "Retry; the roster moved without the lane being re-bound to this candidate.",
+         "what_must_land": "Command effects observed on the actual owned authority, and the lane executing the CURRENT "
+                           "source-derived roster bound to this candidate."},
+        {"source": "IosReview IOS-R15", "defect": "IOSR15-STALE-SNAPSHOT-RETRY",
+         "canonical_defect": "The model Retry witnesses mutate the authority but assert against an unrefreshed "
+                              "snapshot.",
+         "what_must_land": "Project the modified authority state before asserting the projection or issuing the "
+                           "command."},
+    ],
+    "gs-ux-001.accessibility": [
+        {"source": "IosReview IOS-R13", "defect": "IOSR13-ACCESSIBILITY-ROSTER-INCOMPLETE",
+         "canonical_defect": "The four accessibility profiles omit most of the required live roster, and iOS rendered "
+                              "ROLES are not verified at all (XCUITest cannot read traits), while `retry` is still "
+                              "being closed.",
+         "what_must_land": "One complete roster across text scales and directions with real roles/state/traversal and "
+                           "44-point bounds; the iOS role half verified on this candidate."},
+    ],
+    "audit-b1-ctrl-001.closure-law": [
+        {"source": "ClosureAuthority", "defect": "CTRL-001-DISCHARGE-SCHEMA-BYPASS",
+         "canonical_defect": "structured_discharge_problems skipped obligations with no block and made "
+                              "candidate_binding optional; structured_semantics reported every terminal obligation as "
+                              "a present control without semantic proof and folded external obligations into internal "
+                              "dependencies.",
+         "what_must_land": "The schema mandatory at the terminal boundary, controls measured from authored semantics, "
+                           "and the two dependency populations kept separate (now enforced)."},
+    ],
+    "audit-b1-ctrl-001.ready-requires-both-populations": [
+        {"source": "ClosureAuthority", "defect": "CTRL-001-READINESS-NOT-SEMANTIC-GATED",
+         "canonical_defect": "Readiness is not yet gated on the structured semantics, and unknown states are not "
+                              "enforced at the closure boundary.",
+         "what_must_land": "Readiness gated on the measured controls and unknown states refused by name (now "
+                           "enforced)."},
+    ],
+}
+
+
+#: *** THE AUTHORED SEMANTICS, PER OBLIGATION. *** *Each block is derived from the obligation's OWN evidence and
+#: states what the discharge EXERCISED (behavior/implementation), how a reader REACHES it (reachability), the witness
+#: and its positive control, the mutation that KILLED a false version, and the exact measured result.* **A field is
+#: written only where the obligation's own record supports it; nothing here is inferred from the status.**
+HISTORICAL_DISCHARGES.update({
+    "gs-final-004.no-second-open": {
+        "behavior": "The private composition opens the store ONCE: when an encrypted-store factory is supplied, the "
+                    "path-based `sqlite3_open_v2` road is UNREACHABLE and both stores adopt the engine-returned handle.",
+        "implementation": "`ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift` -- the `url:` opens sit in the "
+                          "`encryptedStores == nil` branch alone; the factory road adopts through "
+                          "`SqliteMessageStore(verifiedConnection:)` / `SqlitePeerIdentityStore(verifiedConnection:)`.",
+        "reachability": "production",
+        "test": "The GF004 owned-connection court drives the factory road and observes the adopted handles.",
+        "positive": "The factory road composes both private stores on the engine's handles without a path-based open.",
+        "mutation": "Reintroducing a path-based open on the factory road would mint a second handle; the court's "
+                    "raw-handle identity comparison is the witness.",
+        "exact_result": "MEASURED: the path-based opens are confined to the `encryptedStores == nil` branch; the "
+                        "adopted roads call no `sqlite3_open_v2`.",
+        "candidate_binding": _binding(),
+    },
+    "gs-final-004.identity-proof": {
+        "behavior": "Repository operations are proven to use the engine-returned connection BY OBJECT IDENTITY -- the "
+                    "raw `OpaquePointer` value published only after the store accepts it -- not by a Boolean flag.",
+        "implementation": "`ios/Godstone/Sources/GodstoneMesh/MessageStore.swift`, "
+                          "`ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift` -- `adoptedConnectionIdentity` "
+                          "is the raw handle, published after acceptance.",
+        "reachability": "production",
+        "test": "testGF004TheCompositionRunsItsStoresOnTheEnginesConnections",
+        "positive": "The court compares `identity(of: engine.handover(for: \"message-store\"))` against "
+                    "`runtime.messageStore.adoptedConnectionIdentity` and they agree.",
+        "mutation": "A Boolean such as `messageStoreWasBuiltFromVerifiedHandle` would satisfy a flag check while the "
+                    "store ran on another handle; the raw-identity comparison refuseth that shape.",
+        "exact_result": "MEASURED: no `messageStoreWasBuiltFromVerifiedHandle`-style Boolean exists in the tree.",
+        "candidate_binding": _binding(),
+    },
+    "gs-integration-001.real-adapters": {
+        "behavior": "A host harness substitutes ONLY the OS/hardware boundary and drives the REAL transport, "
+                    "orchestration and handshake adapters over real on-disk stores and the real lifecycle.",
+        "implementation": "`ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift` builds every node through "
+                          "`MeshRuntime.createArchiveOnlyHostComposition`; "
+                          "`ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift` carries the composition.",
+        "reachability": "production",
+        "test": "testGSINT001ASecondLinksReadinessIsNotSatisfiedByTheFirstLinksHandle, "
+                "testGSINT001AHeldRowDoesNotAuthorizeTheACKAssertions",
+        "positive": "The rig establishes real links and delivers a sealed frame into the store through production code.",
+        "mutation": "The old count predicate is shown still satisfied while `isLinkReady` refuseth, so the exact-handle "
+                    "readiness witness is the one that bites.",
+        "exact_result": "MEASURED: `docs/remediation/evidence/gs-integration-001-courts.log` and "
+                        "`docs/remediation/evidence/rc11-step13/L1.log` retained; both witnesses executed.",
+        "candidate_binding": _binding(),
+    },
+    "gs-integration-001.cross-platform": {
+        "behavior": "Bidirectional cross-platform execution over the two platforms' ACTUAL live endpoint "
+                    "implementations: iOS sender -> Android recipient -> iOS ACK, then the reverse, relaying exact "
+                    "characters across the wire.",
+        "implementation": "`tools/readiness/run_board1_integration.py` launches the Swift/macOS worker and the "
+                          "Android/Robolectric worker (`gradlew :mesh:board1IntegrationWorker`) and refuses a missing "
+                          "worker, missing marker, timeout or early exit by name.",
+        "reachability": "production",
+        "test": "`ios/Godstone/Tests/GodstoneMeshTests/GsIntegration001CrossPlatformWorkerTests.swift`, "
+                "`android/mesh/src/test/java/io/godstone/mesh/rig/RealTransportHostRigWorkerTest.kt`",
+        "positive": "An honest run relays the exact frame and both directions ACK end to end.",
+        "mutation": "altered/mismatched/replay variants must be refused; the worker refuses an unknown variant rather "
+                    "than silently downgrading it.",
+        "exact_result": "MEASURED: `docs/remediation/evidence/board1-rc11-integration/coordinator.log` retained",
+        "candidate_binding": _binding(),
+    },
+    "gs-integration-001.scenarios": {
+        "behavior": "The three named scenario gaps are driven: (A) wrong peer/wrong key refused at the REAL sealed "
+                    "handshake, (B) crash after outbound durable enqueue survives restart, (C) crash after ACK commit "
+                    "leaves the ACK drainable.",
+        "implementation": "The sealed handshake and the durable inbox/ACK roads in the GodstoneMesh production sources "
+                          "driven by the host rig.",
+        "reachability": "production",
+        "test": "testAWrongTranscriptIsRefusedByTheAeadBeforeAnyValidator, "
+                "testAStrangerAdvertisedHintIsRefusedByTheHintComparisonOnAnHonestTranscript, "
+                "testABindingForAStrangerStaticKeyIsRefusedAtTheStaticComparison, "
+                "testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode, "
+                "testTheDefaultLaneTwinOfTheARBFrameIngestsNothing, "
+                "testEWipeDuringASuspendedWriteRefusesStorageFailureThenReopens, "
+                "testGSINT001ACrashAfterOutboundEnqueueLeavesTheRowQueued, "
+                "testGSINT001ACrashAfterAnAckOfferLeavesTheAckDrainable",
+        "positive": "Each refusal arm carries its same-run positive control (the honest transcript/frame is accepted).",
+        "mutation": "Disabling the real SQLite commit or the live LinkReady hookup must redden the composed witness.",
+        "exact_result": "MEASURED: the eight witnesses are DEFINED in the tree and their rods were executed",
+        "candidate_binding": _binding(),
+    },
+    "gs-integration-001.mutation": {
+        "behavior": "Removing the transport ingest wiring makes the composed test fail: the opened payload never "
+                    "reacheth the node, so a frame that crossed the real radio reacheth no store.",
+        "implementation": "`ios/Godstone/Sources/GodstoneMesh/BleTransport.swift`'s responder ingress delegate "
+                          "hand-off (the deleted line in rod T72-RC18).",
+        "reachability": "production",
+        "test": "testDTheOSFacadeRouteCarriesASealedFrameIntoTheStoreThroughProductionCode, "
+                "testARBEstablishesOverOSFacadesOnlyThenDeliversADirectFrameAndTheRecipientAck",
+        "positive": "The unmutated tree is green on both witnesses.",
+        "mutation": "ROD `T72-RC18-ios-transport-ingest-unwired` deletes the ingress delegate hand-off; the witness "
+                    "reddens, and the restored tree is green again.",
+        "exact_result": "MEASURED: the 49 scored board1 rods are KILLED at `commit:91fd6ffb`",
+        "candidate_binding": _binding(),
+    },
+    "gs-runtime-001.android-composition-court": {
+        "behavior": "A Robolectric court drives the ACTUAL production providers up to the real AndroidKeyStore "
+                    "boundary and establishes that the composition reaches the real ACK/pump owners by BEHAVIOUR, not "
+                    "by reading a source file.",
+        "implementation": "`android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt`'s `provideMeshNode` over the "
+                          "real graph; the court resolves through `DaggerMeshGraphComponent`.",
+        "reachability": "production",
+        "test": "theProductionProviderHandsTheNodeThePumpItWasGiven "
+                "(`android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003GraphComponentTest.kt`)",
+        "positive": "The court asserts `assertSame(pump, node.ackPump)` over the real provider, with the device-bound "
+                    "inputs supplied.",
+        "mutation": "Removing `node.ackPump = pump` reddens exactly that arm and no other.",
+        "exact_result": "MEASURED: 10 arms, 0 failures, zero boundary early-returns in the run's own system-out; the "
+                        "platform boundary is named rather than avoided.",
+        "candidate_binding": _binding(),
+    },
+    "gs-runtime-001.mutations": {
+        "behavior": "Three clauses each carry their own rod over the production composition on disk: removing the "
+                    "`ackPump` wiring fails; a wrong provider binding fails; and shutdown/wipe invalidation reaches "
+                    "the same owner graph.",
+        "implementation": "`android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt` and "
+                          "`android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt` (the drain now stands above the "
+                          "`!isStarted` guard).",
+        "reachability": "production",
+        "test": "theProductionProviderHandsTheNodeThePumpItWasGiven, theDispatcherAdmitsThroughTheGivenPumpOnly, "
+                "theWipeInvalidatorReachesEveryOwnerTheCompositionHandedOut",
+        "positive": "`HostMeshRig` drives `MeshModule.provideMeshNode` itself over on-disk `JdbcStoreDb` stores and "
+                    "each owner is read through a FOREIGN consumer.",
+        "mutation": "ROD `T72-RC15` (delete `node.ackPump = pump`) and ROD `T72-RC16` (hand the pump reversed bytes) "
+                    "are both KILLED.",
+        "exact_result": "MEASURED: mesh + labmesh, 1537 tests, 0 failures",
+        "candidate_binding": _binding(),
+    },
+    "gs-stress-001.real-runtime-driver": {
+        "behavior": "A real-runtime stress driver instantiates `MeshRuntime`/`ComposedRuntime` -- not only "
+                    "`StressCampaign` -- and cycles the shipping lane's own owners.",
+        "implementation": "`ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift`'s production composition root.",
+        "reachability": "production",
+        "test": "testGSSTRESS001TheRealRuntimeSurvivesTenThousandDeterministicCycles",
+        "positive": "The arm asserts `meshNode.sessions === sessionManager`, so a cycle that silently replaced an owner "
+                    "would redden.",
+        "mutation": "A driver over a model rather than the runtime root would leave the identity assertion unsatisfied.",
+        "exact_result": "MEASURED: passes, with the cycle count ASSERTED so a partial run cannot read as a full one.",
+        "candidate_binding": _binding(),
+    },
+    "gs-stress-001.ten-thousand-cycles": {
+        "behavior": "At least 10,000 deterministic host cycles drive twelve action classes, each with its own "
+                    "completion counter asserted against its schedule expectation.",
+        "implementation": "`ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift` over the "
+                          "production composition root.",
+        "reachability": "production",
+        "test": "The twelve-class campaign with full-graph reopen checkpoints at cycles 1000, 5000, 9000 and after the "
+                  "final stop.",
+        "positive": "EVERY counter must move; a class that silently stopped firing could not hide behind the total.",
+        "mutation": "A mostly-reading body that satisfied the NUMBER but not the clause is refuseth by the per-class "
+                    "counters.",
+        "exact_result": "MEASURED, RETAINED LOG `path:docs/remediation/evidence/gs-stress-001-10k.log`: 9 tests, 0 "
+                        "failures, cycles=10000, all twelve counters non-zero.",
+        "candidate_binding": _binding(),
+    },
+    "gs-stress-001.thirty-thousand-cycles": {
+        "behavior": "The same real-runtime campaign at 30,000 cycles through the same driver and the SAME fixed owner "
+                    "bounds, with its own exact schedule counts and reopen observations.",
+        "implementation": "The same driver, byte-identical to HEAD, over the production composition root.",
+        "reachability": "production",
+        "test": "The 30k arm of `GsStress001RealRuntimeDriverTests` with the twelve-class tally and durable-bytes bound.",
+        "positive": "Two independent runs must agree byte-for-byte on the twelve-class tallies.",
+        "mutation": "The prior 'stall' is RETRACTED with its own evidence (the samples were of the supervisor parent); "
+                    "no bound was raised and no assertion weakened.",
+        "exact_result": "MEASURED: `docs/remediation/evidence/gs-stress-001-30k.log` run 1 PASSED rc=0 in 1265.4s and "
+                        "`docs/remediation/evidence/gs-stress-001-30k-run2.log` run 2 PASSED rc=0 in 1131.2s, "
+                        "byte-identical tallies.",
+        "candidate_binding": _binding(),
+    },
+    "gs-stress-001.production-owner-mutation": {
+        "behavior": "Three rods mutate REAL production release owners at their own release boundaries (session slot "
+                    "retirement, timer leases, and the egress recorder), and the stress court detects each.",
+        "implementation": "`ios/Godstone/Sources/GodstoneMesh/SessionManager.swift`, "
+                          "`ios/Godstone/Sources/GodstoneMesh/BleTransport.swift`, "
+                          "`ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift`.",
+        "reachability": "production",
+        "test": "testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot and the step-7 release arms (method-form "
+                  "filter verified to run the single arm: `Executed 1 test`).",
+        "positive": "Each rod runs a green baseline and an EXECUTED restored-green phase.",
+        "mutation": "RODs `T72-RC31` (session slot surviveth retirement) and `T72-RC32` (stop leaveth every timer lease "
+                    "standing) are KILLED.",
+        "exact_result": "MEASURED: all 49 scored board1 rods KILLED at `commit:2431568c`; the harness singular-form "
+                        "parser defect was found and repaired at `commit:6da540c4`.",
+        "candidate_binding": _binding(),
+    },
+    "gs-archive-005.app-witness": {
+        "behavior": "An executed iOS app/simulator witness terminates the process and RELAUNCHES it, then asserts the "
+                    "reader returned to the same document -- a clean process death, not a memory reboot.",
+        "implementation": "`ios/Godstone/Sources/App/ArchiveView.swift` and "
+                          "`ios/Godstone/Sources/GodstoneCore/ArchivePlaceStore.swift`.",
+        "reachability": "production",
+        "test": "testGSA005DocumentReopensAfterCleanProcessDeath "
+                "(`ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift`)",
+        "positive": "The same arm asserts the document identity returns after relaunch.",
+        "mutation": "The lane runner's provenance acceptance (pre/post source digest) refuseth a mid-run edit, so a "
+                    "stale log cannot stand in.",
+        "exact_result": "MEASURED GREEN at 47.011s; the ledger's NATIVE_MODELS excuse is STALE (the canonical hosted "
+                        "workflow builds Godstone-Light).",
+        "candidate_binding": _binding(),
+    },
+    "gs-final-006.ios-restoration-witness": {
+        "behavior": "An executed app-level restoration/scroll sequence: launch, search, open a non-first hit, scroll "
+                    "to a later passage, terminate the process, relaunch, and verify the same document and a valid "
+                    "anchor return, with Back returning to the submitted query.",
+        "implementation": "`ios/Godstone/Sources/GodstoneCore/ArchiveReadingAnchor.swift` and the App/GodstoneCore "
+                          "restoration roads.",
+        "reachability": "production",
+        "test": "testGSFINAL006TheWholeRestorationJourneyInOneSequence "
+                "(`ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift`), with "
+                "`ios/Godstone/Tests/GodstoneCoreTests/GsArchive005IOSRestorationTests.swift`",
+        "positive": "The valid anchor returns after relaunch; the invalid-anchor arm is refused.",
+        "mutation": "The anchor persistence road is the witness, so removing it reddens the sequence.",
+        "exact_result": "MEASURED: the one executed sequence, with the process terminated and relaunched in-place.",
+        "candidate_binding": _binding(),
+    },
+    "gs-final-006.mutation": {
+        "behavior": "Disconnecting the production restore/anchor consumption makes the executed app test FAIL.",
+        "implementation": "`ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift` -- `restore(from:)`'s "
+                          "`.document` case was made to IGNORE the persisted `openedDocumentId`.",
+        "reachability": "production",
+        "test": "testGSFINAL006TheWholeRestorationJourneyInOneSequence",
+        "positive": "The unmutated tree is green on the sequence.",
+        "mutation": "The `.document` case ignores the persisted id and returns to the list; the executed arm reddens.",
+        "exact_result": "MEASURED: the mutation is applied to production `ArchiveSceneModel.swift` and the executed app "
+                        "test fails; `path:scripts/sync_ios_foundation_package.py` regenerates the mirror.",
+        "candidate_binding": _binding(),
+    },
+    "audit-b1-ctrl-001.structured-obligations": {
+        "behavior": "Structured per-finding closure: `internal_status`, `internal_obligations` and "
+                    "`external_obligations` for every nonterminal finding, with `internal_remaining` DERIVED from "
+                    "them rather than NLP-classified from prose.",
+        "implementation": "`scripts/build_structured_closure.py` -- `--write` writes `finding_closure` (68 entries, "
+                          "every one carrying `internal_status`) plus `structured_counts` into the ledger.",
+        "reachability": "production",
+        "test": "The closure-law courts refuse a READY status over unresolved work and refuse persisted/derived drift.",
+        "positive": "The derived counts are persisted and `--check` compares the persisted state to the derivation "
+                    "field by field.",
+        "mutation": "A stale persisted count, a deleted obligation and an orphan obligation are each REFUSED.",
+        "exact_result": "MEASURED: `internal_remaining_prose_classifier_retired` records the NLP classifier as "
+                        "RETAINED-FOR-HISTORY-ONLY and NOT an input to any closure decision.",
+        "candidate_binding": _binding(),
+    },
+    "audit-b1-ctrl-001.missed-partials": {
+        "behavior": "Every PARTIAL is represented, including `GS-RUNTIME-001` and `GS-STORE-002` which the prose "
+                    "classifier missed entirely.",
+        "implementation": "`scripts/build_structured_closure.py`'s `PARTIAL_OBLIGATIONS` map and `build()` output.",
+        "reachability": "production",
+        "test": "`counts().obligations_by_state` reports the populations, so a missed finding cannot vanish from the "
+                  "denominator.",
+        "positive": "GS-RUNTIME-001 (2 obligations) and GS-STORE-002 (1 obligation) appear in the closure.",
+        "mutation": "A classifier that misseth a PARTIAL would leave its obligations absent from the by-state count.",
+        "exact_result": "MEASURED: the two findings and their obligations are present in the derived closure.",
+        "candidate_binding": _binding(),
+    },
+    "audit-b1-ctrl-001.finding-obligation-consistency": {
+        "behavior": "A finding may not stand internally OPEN while carrying ZERO unresolved obligations: the "
+                    "instrument REFUSETH that combination rather than describing it.",
+        "implementation": "`scripts/build_structured_closure.py` -- `build()` refuseth the combination in both "
+                          "populations and `finding_state_problems()` is enforced by `--check`.",
+        "reachability": "production",
+        "test": "`tools/readiness/tests/test_closure_law_refuses.py:287` (`FindingStatusFollowsItsObligations`), with "
+                  "the live-tree case at `:281`.",
+        "positive": "A COMPLETE finding whose obligations are all DISCHARGED is PERMITTED -- the mirror direction.",
+        "mutation": "The first version fired whenever a finding's obligations were ALL terminal, which would have "
+                    "refused every correctly-closed finding; the repaired rule is pinned both ways.",
+        "exact_result": "MEASURED BEFORE THE FIX: AUDIT-B1-CTRL-001 and GS-FINAL-004 each carried "
+                        "`internal_status = OPEN` with ZERO unresolved obligations.",
+        "candidate_binding": _binding(),
+    },
+})
+
+
+def discharged_prose_scan(closure: dict) -> dict:
+    """*** THE ROSTER OF GAP-WORD HITS ON TERMINAL OBLIGATIONS, EACH WITH AN EXPLICIT DISPOSITION. ***
+
+    *THE DEFECT THIS CLOSES: a scan that merely REPORTS hits ("review-only") leaves the reader to decide, and a
+    terminal obligation whose own prose nameth a gap could therefore sit unreconciled forever.* **So every hit is
+    DISPOSED, and the disposition is a function of the MEASURED structured semantics rather than of the wording:**
+
+      * `COVERED_BY_STRUCTURED_DISCHARGE` -- the obligation is terminal AND carrieth an authored semantics block whose
+        reachability is `production`; the hit is CONTROL/REFUTATION/SCOPE prose inside a claim that also names what was
+        exercised. *This is a reasoned disposition, not a verdict of soundness.*
+      * `REFUSED_CONTROL` -- the obligation is terminal with NO authored semantics: the hit is disposed as a LIVE
+        CONCERN carried by `structured_discharge_problems`, which refuseth the obligation outright.
+
+    **The scan carrieth NO closure authority: it never moveth a count, and it never declares a discharge sound.** *It
+    existeth so a reader can see every terminal obligation whose prose mentioneth a gap concept, beside the disposition
+    that is DERIVED from the measured semantics rather than asserted.*
+    """
+    roster: list[dict] = []
+    by_disposition: dict[str, int] = {}
+    for fid, f in sorted(closure.items()):
+        for o in (f.get("internal_obligations") or []):
+            if o.get("status") != "DISCHARGED":
+                continue
+            scan = _discharge_text_scan(o)
+            if not scan["hits"]:
+                continue
+            sd = o.get("structured_discharge")
+            if sd is not None and sd.get("reachability") in DISCHARGE_TERMINAL_REACHABILITY:
+                disposition = "COVERED_BY_STRUCTURED_DISCHARGE"
+                reasoning = (f"terminal with authored semantics (reachability={sd.get('reachability')}): the "
+                             f"excerpt is control/refutation/scope prose inside a claim that NAMES the exercised "
+                             f"control -- reasoned per obligation, NOT a verdict of soundness")
+            else:
+                disposition = "REFUSED_CONTROL"
+                reasoning = ("terminal with NO authored semantics: the hit names a live concern, and "
+                             "`structured_discharge_problems` refuseth the obligation outright")
+            by_disposition[disposition] = by_disposition.get(disposition, 0) + 1
+            for h in scan["hits"]:
+                roster.append({
+                    "finding": fid,
+                    "obligation": o.get("id"),
+                    "concept": h["concept"],
+                    "field": h["field"],
+                    "excerpt": h["excerpt"],
+                    "disposition": disposition,
+                    "reasoning": reasoning,
+                })
+    return {
+        "artifact": "discharged-prose-dispositions",
+        "generated_by": "scripts/build_structured_closure.py::discharged_prose_scan",
+        "scan_of": "the DERIVED closure -- every TERMINAL obligation's own text/evidence",
+        "authority": "review-only; NOT an input to any closure decision",
+        "concepts_scanned": list(GAP_CONCEPTS),
+        "counts": {"hits_total": len(roster), "by_disposition": by_disposition},
+        "roster": roster,
+    }
+
+
+def semantics_gate_problems(semantics: dict) -> list[str]:
+    """*** A TERMINAL CLAIM MAY NOT SIT BEHIND A REFUSED CONTROL. ***
+
+    *`required_controls_present` now carrieth only MEASURED controls, and a terminal obligation with no authored
+    semantics lands in `refused_controls` instead. If that list is non-empty while the closure record claimeth
+    completion, the plane refuseth -- the measured controls are the positive half, and an unmeasured terminal claim is
+    exactly the "present but unproven" shape this family of instruments exists to refuse.* **While the internal
+    frontier is non-empty the list is empty by construction (nothing terminal lacks semantics), so this gate biteth
+    exactly when a discharge was asserted without them.**
+    """
+    problems: list[str] = []
+    for entry in semantics.get("refused_controls") or []:
+        problems.append(f"{entry.get('obligation')}: a DISCHARGED obligation with NO authored `structured_discharge` "
+                        f"cannot be reported as a present control -- the control is NOT measured")
+    return problems
+
+
+def _discharge_block_problems(oid: str, sd: dict) -> list[str]:
+    """*** ONE DISCHARGE BLOCK, JUDGED FIELD BY FIELD. ***"""
+    problems: list[str] = []
+    missing = [k for k in DISCHARGE_REQUIRED_FIELDS if not sd.get(k)]
+    if missing:
+        problems.append(
+            f"{oid}: `structured_discharge` MISSING {missing} -- a terminal claim must carry every required field, "
+            f"because a structured block that omits one is the prose defect wearing a schema")
+    reach = sd.get("reachability")
+    if reach is None:
+        problems.append(f"{oid}: `structured_discharge.reachability` is ABSENT -- court-only evidence may not stand "
+                        f"in for a production discharge, so the reach must be STATED rather than defaulted")
+    elif reach not in DISCHARGE_REACHABILITY:
+        problems.append(
+            f"{oid}: `structured_discharge.reachability` is {reach!r}, which is NOT one of "
+            f"{DISCHARGE_REACHABILITY} -- an unknown reachability is neither production nor court-only")
+    elif reach not in DISCHARGE_TERMINAL_REACHABILITY:
+        problems.append(
+            f"{oid}: a TERMINAL DISCHARGED carrieth `structured_discharge.reachability` {reach!r} -- a discharge that "
+            f"reaches no production road CONTRADICTS its terminal status, and the instrument may not choose which to "
+            f"believe")
+    binding = sd.get("candidate_binding")
+    if binding is None:
+        problems.append(f"{oid}: `structured_discharge.candidate_binding` is ABSENT -- the binding to the EXTERNAL "
+                        f"manifest and frozen attestation is REQUIRED, never optional")
+    elif not isinstance(binding, dict):
+        problems.append(f"{oid}: `structured_discharge.candidate_binding` must be a mapping, not "
+                        f"{type(binding).__name__}")
+    else:
+        if binding.get("candidate_sha"):
+            problems.append(
+                f"{oid}: `candidate_binding` embeds a `candidate_sha` -- a generated record cannot carry the hash of "
+                f"the candidate it describes (the hash would have to contain itself); it must NAME the external "
+                f"manifest and the frozen attestation instead")
+        for key in DISCHARGE_BINDING_KEYS:
+            if not binding.get(key):
+                problems.append(f"{oid}: `candidate_binding` is missing {key!r} -- the binding must name the external "
+                                f"manifest and the frozen attestation it references")
+        problems.extend(_current_binding_problems(oid, binding))
+    return problems
+
+
+def _canonical_freeze():
+    """*** THE ONE FREEZE AUTHORITY, IMPORTED LAZILY -- NEVER A PRIVATE COPY OF ITS CONSTANTS. ***
+
+    *Same road the evidence bundle useth: `ci/check_candidate_binding.py` owns the prospective successor path and the
+    historical path; a restated literal here would drift from the authority the A-side reader enforces.*
+    """
+    ci_dir = str(ROOT / "ci")
+    if ci_dir not in sys.path:
+        sys.path.insert(0, ci_dir)
+    import check_candidate_binding  # noqa: PLC0415 - the ONE authority for the freeze paths
+    return check_candidate_binding
+
+
+def _current_binding_problems(oid: str, binding: dict) -> list[str]:
+    """*** A CURRENT DISCHARGE BINDETH THE CANDIDATE THE FREEZE *WILL* WRITE -- NEVER HISTORY. ***
+
+    *THE DEFECT THIS CLOSES: `candidate_binding` was checked only for PRESENCE (`external_manifest`, `attestation`)
+    and for a self-referential `candidate_sha`, so a CURRENT discharge could bind the HISTORICAL rc14 attestation, a
+    stale name, or embed a tag object / candidate commit -- each of which describes a candidate other than the one
+    being cut.* **The prospective path is the canonical authority's own constant
+    (`ci/check_candidate_binding.py::FREEZE_ATTESTATION_SUCCESSOR_PATH`), the historical path its own
+    `HISTORICAL_ATTESTATION_PATH`, and neither is restated here.** *`candidate_ref` is permitted as a PROSPECTIVE ref
+    (the rc14 ref is refused by name); a tag object or candidate commit is an immutable identity of a candidate and is
+    refused outright -- the binding names artifacts, never a hash of the candidate it belongs to.*
+    """
+    problems: list[str] = []
+    try:
+        canonical = _canonical_freeze()
+        future_path = canonical.FREEZE_ATTESTATION_SUCCESSOR_PATH
+        historical_path = canonical.HISTORICAL_ATTESTATION_PATH
+    except Exception as exc:  # noqa: BLE001 - an unreadable authority is a NAMED refusal, never an assumption
+        return [f"{oid}: the canonical freeze authority could not be imported ({type(exc).__name__}: {exc}) -- a "
+                f"binding whose prospective attestation path cannot be read may not be assumed"]
+    att = binding.get("attestation")
+    if att == historical_path:
+        problems.append(f"{oid}: `candidate_binding.attestation` nameth the HISTORICAL attestation {historical_path!r} "
+                        f"-- a CURRENT discharge must bind the prospective future attestation {future_path!r}; history "
+                        f"cannot discharge the current candidate")
+    elif att != future_path:
+        problems.append(f"{oid}: `candidate_binding.attestation` is {att!r}, not the canonical prospective path "
+                        f"{future_path!r} from ci/check_candidate_binding.py::FREEZE_ATTESTATION_SUCCESSOR_PATH -- a "
+                        f"binding must name the ONE path the freeze will write, never a prefix, a directory or a stale "
+                        f"name")
+    if binding.get("candidate_ref") == RC14_BINDING["candidate_ref"]:
+        problems.append(f"{oid}: `candidate_binding.candidate_ref` nameth the HISTORICAL rc14 candidate "
+                        f"{RC14_BINDING['candidate_ref']!r} -- a current discharge may not bind the archived candidate")
+    for key in ("tag_object", "candidate_commit"):
+        if binding.get(key):
+            problems.append(f"{oid}: `candidate_binding.{key}` embeds an immutable candidate identity "
+                            f"({binding.get(key)!r}) -- a current binding names the external manifest and the "
+                            f"prospective attestation path, never a tag object or a candidate commit")
+    return problems
+
+
+def structured_discharge_problems(closure: dict) -> list[str]:
+    """*** EVERY TERMINAL `DISCHARGED` MUST CARRY ITS OWN SEMANTICS, AND NONE MAY CONTRADICT THEM. ***
+
+    *THE DEFECT THIS CLOSES, STATED PLAINLY: the previous version SKIPPED every obligation with no
+    `structured_discharge`, so the entire register of terminal obligations bypassed the schema -- a discharge needed no
+    behaviour, implementation, reachability, test, positive control, mutation, exact result or external binding, and
+    `candidate_binding` itself was optional. **A terminal claim therefore needed NOTHING to be terminal, which is the
+    same "terminal without evidence" shape this programme files as a defect.***
+
+    **SO THE SCHEMA IS MANDATORY AT THE TERMINAL BOUNDARY:** every obligation whose status is DISCHARGED must carry a
+    `structured_discharge` block with every required field, a PRODUCTION reachability, and an external
+    `candidate_binding`. *The block is AUTHORED (`STRUCTURED_DISCHARGES`) rather than inferred -- the builder may not
+    self-assert a claim no reader can examine -- and it is attached to the obligation by `build()`, so the two cannot
+    drift apart.* **A terminal obligation this instrument can neither find nor author semantics for is refused BY
+    NAME, and the refusal is the honest reading while the obligation is truly unmet.**
+    """
+    problems: list[str] = []
+    for fid, f in sorted(closure.items()):
+        for o in (f.get("internal_obligations") or []):
+            oid = o.get("id", "<no id>")
+            sd = o.get("structured_discharge")
+            if o.get("status") != "DISCHARGED":
+                if sd is not None:
+                    problems.append(
+                        f"{oid}: status is {o.get('status')!r} but it carrieth a `structured_discharge` block -- the "
+                        f"block DESCRIBES a discharge, so a non-terminal obligation may not carry one")
+                continue
+            # A TERMINAL OBLIGATION WITH NO SEMANTICS IS THE DEFECT: it is refused, never skipped.
+            if sd is None:
+                problems.append(
+                    f"{oid}: is DISCHARGED but carrieth NO `structured_discharge` block -- a terminal claim must carry "
+                    f"its behaviour, implementation, reachability, test, positive control, mutation, exact result and "
+                    f"EXTERNAL candidate binding. *A discharge with no semantics is a status without a subject.*")
+                continue
+            problems.extend(_discharge_block_problems(oid, sd))
+    return problems
+
+
+def authoring_coverage_problems(closure: dict) -> list[str]:
+    """*** THE AUTHORED SEMANTICS AND THE CLOSURE MUST AGREE, IN BOTH DIRECTIONS. ***
+
+    *THE DRIFT THIS REFUSES: an `STRUCTURED_DISCHARGES` entry for an obligation that is not terminal (a claim about
+    work that no longer exists), or a terminal obligation the map forgot (covered by `structured_discharge_problems`,
+    and reported here too so the two readers cannot disagree).* **This is the internal twin of the frozen side's
+    "a record that has been edited since the candidate was frozen" refusal: the authored claim and the measured status
+    describe one obligation or neither is trustworthy.**
+    """
+    problems: list[str] = []
+    by_id: dict[str, str] = {}
+    for f in closure.values():
+        for o in (f.get("internal_obligations") or []):
+            by_id[o.get("id")] = o.get("status")
+    for oid in sorted(STRUCTURED_DISCHARGES):
+        status = by_id.get(oid)
+        if status is None:
+            problems.append(f"STRUCTURED_DISCHARGES names {oid!r}, which no obligation in the closure carrieth -- an "
+                            f"authored discharge with no subject")
+        elif status != "DISCHARGED":
+            problems.append(f"STRUCTURED_DISCHARGES authors a discharge for {oid!r} while its status is {status!r} -- "
+                            f"a discharge block on non-terminal work is the overclaim this plane refuseth")
+    # *** AND A MEASURED GAP MUST SIT ON A LIVE OBLIGATION, OR IT IS A GAP ABOUT WORK THAT NO LONGER EXISTS. ***
+    for oid in sorted(KNOWN_INTERNAL_GAPS):
+        status = by_id.get(oid)
+        if status is None:
+            problems.append(f"KNOWN_INTERNAL_GAPS names {oid!r}, which no obligation in the closure carrieth -- a "
+                            f"gap with no subject")
+        elif status not in UNRESOLVED_OBLIGATION_STATES:
+            problems.append(f"KNOWN_INTERNAL_GAPS records a live gap against {oid!r} while its status is {status!r} -- "
+                            f"a gap record on terminal work is stale by construction")
+    return problems
+
+
+def internal_status_state_problems(closure: dict) -> list[str]:
+    """*** A FINDING'S `internal_status` CARRIES A LEGAL STATE, AND AN UNKNOWN ONE IS AN ERROR. ***
+
+    *The law already refuseth an unknown OBLIGATION state; the FINDING state was unchecked, so a typo there would fall
+    through every readiness test (both readiness tests compare against `OPEN`). **An unknown state is neither open nor
+    terminal, so it must be NAMED rather than defaulted to either.***
+    """
+    legal = ("OPEN", "COMPLETE")
+    return [
+        f"{fid}: internal_status is {f.get('internal_status')!r}, which is NOT one of {legal} -- an unknown finding "
+        f"state is neither open nor terminal, so no readiness rule can see it"
+        for fid, f in sorted(closure.items())
+        if f.get("internal_status") not in legal
+    ]
 
 
 def counts(closure: dict) -> dict:
@@ -1022,6 +2053,13 @@ def main(argv=None) -> int:
         ca = ledger["current_assessment"]
         ca["finding_closure"] = closure
         ca["structured_counts"] = c
+        # *** THE STRUCTURED SEMANTICS THE MISSION REQUIRES, EMITTED AS A DERIVED BLOCK. ***
+        # *`required_controls_present` is the positive half, `known_internal_gaps` the negative half (populated ONLY
+        # while a finding is OPEN), and `unresolved_internal_dependencies` names what must land first. A discharged
+        # finding's gap prose stays in its own obligation as HISTORY and is NOT counted as outstanding work.*
+        ca["structured_semantics"] = structured_semantics(closure)
+        # *** THE DISCHARGED-PROSE DISPOSITIONS, SO EVERY GAP-WORD HIT ON A TERMINAL OBLIGATION IS RECONCILED. ***
+        ca["discharged_prose_dispositions"] = discharged_prose_scan(closure)
         # *** THE DERIVED FIELD REPLACES THE NLP ONE AS AUTHORITY. *** *`internal_remaining` is
         # kept ONLY as a historical record of what the prose classifier produced; nothing reads
         # it for closure any more. A number that moved 27 -> 21 -> 5 -> 4 belongs in a history
@@ -1081,6 +2119,48 @@ def main(argv=None) -> int:
         if finding_problems:
             return 1
 
+        # *** AND AN UNKNOWN FINDING STATE IS AN ERROR, NEVER A DEFAULT. ***
+        status_state_problems = internal_status_state_problems(closure)
+        for msg in status_state_problems:
+            print(f"  ::error:: {msg}")
+        if status_state_problems:
+            return 1
+
+        # *** AND A TERMINAL `DISCHARGED` ITS OWN STRUCTURED FIELDS CONTRADICT IS REFUSED. ***
+        #
+        # *A discharge that says its evidence is `court-only`/`external-blocked` while its status says DISCHARGED is the
+        # contradiction a prose review cannot see; the structured block is what makes it visible. Legacy discharges
+        # (no `structured_discharge`) are not refused -- only reported via the field's absence.*
+        discharge_problems = structured_discharge_problems(closure)
+        for msg in discharge_problems:
+            print(f"  ::error:: {msg}")
+        if discharge_problems:
+            return 1
+
+        # *** AND THE AUTHORED SEMANTICS MUST DESCRIBE THE CLOSURE THAT EXISTS. ***
+        #
+        # *A discharge authored for an obligation that is not terminal, or for an id no obligation carrieth, is a
+        # claim about work that does not exist -- the same drift the frozen side refuseth when a record moved since the
+        # candidate was tagged.*
+        coverage_problems = authoring_coverage_problems(closure)
+        for msg in coverage_problems:
+            print(f"  ::error:: {msg}")
+        if coverage_problems:
+            return 1
+
+        # *** AND THE MEASURED CONTROLS MUST BE PRESENT: A TERMINAL CLAIM BEHIND A REFUSED CONTROL IS REFUSED. ***
+        #
+        # *`required_controls_present` carrieth only obligations whose authored semantics name what was exercised; a
+        # terminal obligation with no such block lands in `refused_controls`. If the record claimeth completion while
+        # that list is non-empty, the positive half is unmeasured -- the "present but unproven" shape this plane
+        # refuseth.*
+        semantics = structured_semantics(closure)
+        control_problems = semantics_gate_problems(semantics)
+        for msg in control_problems:
+            print(f"  ::error:: {msg}")
+        if control_problems:
+            return 1
+
         # *** THE PERSISTED STRUCTURED STATE MUST EQUAL WHAT THIS LOGIC DERIVES. ***
         #
         # *THE DEFECT THIS CLOSES, MEASURED BEFORE THE FIX: the ledger carried
@@ -1128,6 +2208,31 @@ def main(argv=None) -> int:
                         drift.append(f"{fid}/{oid}: persisted but ORPHANED from the derived closure")
                     elif live[oid] != kept[oid]:
                         drift.append(f"{fid}/{oid}: status persisted {kept[oid]!r} != derived {live[oid]!r}")
+                live_sd = {o.get("id"): ("structured_discharge" in o)
+                           for o in (closure[fid].get("internal_obligations") or [])}
+                kept_sd = {o.get("id"): ("structured_discharge" in o)
+                           for o in (persisted_fc[fid].get("internal_obligations") or [])}
+                if live_sd != kept_sd:
+                    drift.append(f"{fid}: persisted `structured_discharge` membership differs from the derivation -- "
+                                 f"a persisted terminal claim the derivation would not make is a stale overclaim")
+        # *** AND THE PERSISTED SEMANTICS BLOCKS ARE DERIVED FIELDS, NOT INDEPENDENT AUTHORITIES. ***
+        # *`--write` deriveth them; a persisted copy this logic would not derive is the SECOND representation of one
+        # state -- the exact class the counts/finding_closure comparison above existeth to refuse, extended so the
+        # semantics and the prose-disposition roster cannot go stale in silence.*
+        persisted_sem = persisted_ca.get("structured_semantics")
+        if persisted_sem is None:
+            drift.append("current_assessment.structured_semantics absent -- run --write so the persisted state "
+                         "exists to be checked")
+        elif persisted_sem != semantics:
+            drift.append("current_assessment.structured_semantics persisted differs from the derivation: field(s) "
+                         + ", ".join(sorted(k for k in set(persisted_sem) | set(semantics)
+                                             if persisted_sem.get(k) != semantics.get(k))))
+        persisted_dp = persisted_ca.get("discharged_prose_dispositions")
+        if persisted_dp is None:
+            drift.append("current_assessment.discharged_prose_dispositions absent -- run --write so the persisted "
+                         "state exists to be checked")
+        elif persisted_dp != discharged_prose_scan(closure):
+            drift.append("current_assessment.discharged_prose_dispositions persisted differs from the derivation")
         if drift:
             for msg in drift[:20]:
                 print(f"  ::error:: persisted/derived structured state DISAGREES: {msg}")

@@ -38,9 +38,26 @@ object AppModule {
         }
     }
 
+    /**
+     * *** GS-ARCHIVE-010 (step 10 `provider-dispatch`): THE ARCHIVE NOW COMES THROUGH THE PROVIDER TABLE. ***
+     *
+     * BEFORE: this provider INTERPOLATED one construction -- `ArchiveRepository(ctx, BuildConfig.ARCHIVE_FILE)`
+     * -- so "which provider serves this build" was decided by the SHAPE OF THE CALL rather than by a lookup,
+     * with the tier left to a default. That is the app-side `provider-dispatch` defect the audit names.
+     *
+     * NOW: the app asks [ProviderRegistry] over THE REAL RUNTIME VALUES (`BuildConfig.TIER` and
+     * `BuildConfig.ARCHIVE_FILE` -- the same two facts the old body held), the table decides which row serves
+     * them, and **the app's own original construction is the FALLBACK that runs for real when the lookup
+     * cannot answer** -- so a device whose runtime pair no row matches is not bricked by the cutover.
+     *
+     * The returned OBJECT is the same repository type the graph already consumed: the registry CHECKS the
+     * live reader's class rather than casting on the strength of the declaration.
+     */
     @Provides @Singleton
     fun provideArchiveRepository(@ApplicationContext ctx: Context): ArchiveRepository =
-        ArchiveRepository(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE)
+        ProviderRegistry.production(ctx).resolvedRepository(
+            ProviderRequest(tier = BuildConfig.TIER, archiveAsset = BuildConfig.ARCHIVE_FILE),
+        )
 
     /**
      * *** GS-FINAL-009 (round 564): THE PRODUCTION ANSWER TO "MAY I READ PROTECTED DATA RIGHT NOW". ***

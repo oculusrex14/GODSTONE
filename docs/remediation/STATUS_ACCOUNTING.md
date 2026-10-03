@@ -1,5 +1,15 @@
 # Status accounting — AUDIT-003-R1 (counts derived at round 88; narrative carried to round 97)
 
+> **CURRENT STATE (2026-10-02) — DERIVED, NOT CARRIED.** *Everything below this banner is HISTORICAL
+> audit-trail narrative from the round-88/97 era and is preserved verbatim; it must NOT be read as the
+> current state.* **The current canonical state is DERIVED from the structured obligations by
+> `scripts/build_structured_closure.py`: 17 internal obligations OPEN across 6 findings
+> (GS-FINAL-003, GS-FINAL-004, GS-UX-001, GS-STRESS-001, GS-STORE-002, AUDIT-B1-CTRL-001), 18 DISCHARGED,
+> 5 external obligations; `findings_with_internal_status_open = 6`; `verified_fixed = 0`; builder status
+> `REMEDIATION_IN_PROGRESS`.** *No finding carrieth `closure_evidence`, no finding is `VERIFIED_FIXED`
+> (only an independent audit may write it), and no READY/COMPLETE claim is made.* The `PARTIAL`/`OPEN`
+> classes in the historical narrative below describe an earlier era and are superseded.
+
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the
 classes the remediation requires, in the audit's own terms, and it is regenerated rather than

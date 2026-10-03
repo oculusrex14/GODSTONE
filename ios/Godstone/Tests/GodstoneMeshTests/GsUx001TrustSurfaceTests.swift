@@ -533,11 +533,12 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
     /// handle; without it, a reader that answereth `.found` to anything would satisfy clause one.*
     func test06TheRenderedSendPinsADurableIntentThatOutlivesItsAuthor() async throws {
         LabRuntime.resetLastIntentForTest()
-        // A CLEAN MEDIUM, so the arm cannot read a previous run's row.
-        let storeURL = LabRuntime.durableStoreURL()
-        for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: storeURL.path + suffix) }
-
-        let lab = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x42)
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lab-intent-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // *** IOS-R10: THE MEDIUM IS THE AUTHOR NODE'S OWN STORE -- clean it so the arm cannot read a previous row. ***
+        let lab = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x42, estateRoot: dir)
         let intentId = LabRuntime.mintIntentId()
         let verdict = await lab.sendDirectDurableIntent("A", recipient: "B", plaintext: Data("boats".utf8),
                                                        intentId: intentId)
@@ -561,66 +562,6 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
     // 7. SOS: durable arm and cancel through the node's own command surface
     // -------------------------------------------------------------------------
 
-    /// *** GS-UX-001 `rendered-controls` step 3: THE DISTRESS CALL IS DURABLE, CANCELLABLE, AND RELAUNCH-READABLE. ***
-    ///
-    /// *The card's step 3 asketh the SOS journey be durable; the plan's instruction is that it use **THE EXISTING
-    /// COMMAND SURFACE** (`handleSosCommand(.author)` / `.cancel(msgId)`), never a new mechanism. So this arm driveth
-    /// the rendered road and REQUIREth:*
-    ///  1. **an arm ENQUEUES DURABLY** -- the authority's own taxonomy, not a view's string;
-    ///  2. **the state renders in the SHARED VOCABULARY** -- every word must come from
-    ///     `AccessibilityContract.stateWords`, which is the mutation-bite against an invented phrase;
-    ///  3. **a cancel retires the call AND DOES NOT MOVE THE AUTHOR COUNTER** -- the card's own discriminator
-    ///     between stopping a call and un-authoring one;
-    ///  4. **the state survives a relaunch** -- a FRESH `LabRuntime` over the same register renders what the first
-    ///     one left, which is what no view-local `@State` can do.
-    func test07TheDistressCallIsDurableCancellableAndRelaunchReadable() throws {
-        LabRuntime.resetSosRegisterForTest()
-        let first = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x43)
-
-        // (1) ARM, through the node's own command door.
-        let armed = first.armSos(payload: Data("SOS".utf8))
-        XCTAssertTrue(armed.hasPrefix("armed:"),
-                      "*** THE DISTRESS ARM MUST REACH THE DURABLE AUTHORITY (got \(armed)) ***")
-        let authoredAfterArm = first.sosAuthoredCount()
-        XCTAssertEqual(authoredAfterArm, 1, "exactly one call was authored")
-
-        // (2) THE STATE RENDERS IN THE SHARED VOCABULARY, not in invented words.
-        let liveState = first.sosStateNames()
-        XCTAssertTrue(liveState.hasPrefix("active: "), "a live call must render as active: \(liveState)")
-        let spoken = String(liveState.dropFirst("active: ".count))
-        XCTAssertTrue(
-            AccessibilityContract.stateWords.contains { $0.1 == spoken },
-            "*** EVERY RENDERED STATE WORD MUST COME FROM THE SHARED VOCABULARY (`AccessibilityContract.stateWords`); " +
-                "got \(spoken) ***",
-        )
-
-        // (3) CANCEL BY ITS DURABLE ID.
-        guard let msgId = first.activeSosMsgId() else {
-            XCTFail("the standing call must have a durable msg_id to cancel")
-            return
-        }
-        let cancelled = first.cancelSos(msgId: msgId)
-        XCTAssertTrue(cancelled.hasPrefix("cancelled"), "the cancel must report its durable result: \(cancelled)")
-        XCTAssertEqual(first.sosAuthoredCount(), authoredAfterArm,
-                       "*** A CANCEL MUST NOT MOVE THE AUTHOR COUNTER: it stopeth a call, it doth not un-author one ***")
-        // *** AND THE DURABLE ROW ITSELF SAYETH SO -- not merely the rendered string. ***
-        //
-        // *A cancel RETIRES the held frame but LEAVES the delivery row in its terminal state, which is the durable
-        // witness a relaunch reads. Asking the ROW maketh the arm bite on the store rather than on the label.*
-        XCTAssertEqual(first.durableDeliveryState(author: first.author, msgId: msgId), .cancelledLocally,
-                       "*** THE DURABLE ROW MUST BE TERMINAL AFTER A CANCEL, or the rendered state is a claim ***")
-        let terminal = first.sosStateNames()
-        XCTAssertTrue(terminal.hasPrefix("terminal: "), "the retired call must render as terminal: \(terminal)")
-        XCTAssertTrue(AccessibilityContract.stateWords.contains { $0.1 == String(terminal.dropFirst("terminal: ".count)) },
-                      "and the terminal word must come from the same vocabulary")
-
-        // (4) THE STATE SURVIVES A RELAUNCH: a FRESH runtime, nothing of the first consulted.
-        let relaunched = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x43)
-        XCTAssertEqual(relaunched.sosStateNames(), terminal,
-                       "*** THE RENDERED STATE MUST SURVIVE A RELAUNCH (register read, not view memory) ***")
-        XCTAssertEqual(relaunched.sosAuthoredCount(), authoredAfterArm,
-                       "and a cancel must still leave the author counter unmoved after a relaunch")
-    }
 
     /// *** GS-UX-001 `rendered-controls` step 4: THE SOS JOURNEY OVER A **RETAINED ON-DISK ESTATE**. ***
     ///
@@ -685,6 +626,44 @@ final class GsUx001TrustSurfaceTests: XCTestCase {
                       "and the rendered state must be terminal: \(third.sosStateNames())")
         XCTAssertEqual(third.sosAuthoredCount(), authoredAfterArm,
                        "and the author counter must remain unmoved across both relaunches")
+    }
+
+    /// *** *** IOS-R9: THE RUNG IS READ FROM THE ROW, AND A RETRY RESUMES BY ITS DURABLE ID. *** ***
+    ///
+    /// *`test07b` proves the ARM/CANCEL/RELAUNCH cycle reads the ROW; this arm adds the two effects the review named
+    /// as missing from the rendered courts -- an ACTIVE call read back from disk after a relaunch, and a RETRY that
+    /// resumes the SAME call by its DURABLE id (rather than a view remembering one).* **It is the host witness for
+    /// `activeSosMsgId` (a display register would answer an id with no row) and for `retrySos` (a constant refusal
+    /// would carry no `resume:`).**
+    func test07cARelaunchedActiveCallIsReadFromTheRowAndRetriedByItsDurableId() throws {
+        LabRuntime.resetSosRegisterForTest()
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lab-retry-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let first = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x61, estateRoot: root)
+        let armed = first.armSos(payload: Data("SOS".utf8))
+        XCTAssertTrue(armed.hasPrefix("armed:"), "the arm must reach the durable authority; got \(armed)")
+        guard let msgId = first.activeSosMsgId() else {
+            return XCTFail("the standing call must have a durable msg_id")
+        }
+        XCTAssertEqual(first.durableDeliveryState(author: first.author, msgId: msgId), .queuedDurably,
+                       "the row must be durable BEFORE the relaunch")
+
+        // *** RELAUNCH: the ACTIVE call must be read from the ROW and its id must be the SAME. ***
+        let second = try LabRuntime.compose(labels: ["A", "R", "B"], seedByte: 0x61, estateRoot: root)
+        XCTAssertTrue(second.sosStateNames().hasPrefix("active: "),
+                      "an active call must re-render from the durable row: \(second.sosStateNames())")
+        XCTAssertEqual(second.activeSosMsgId(), msgId,
+                       "*** `activeSosMsgId` MUST ANSWER THE DURABLE ROW'S ID, so a relaunched process can act on a "
+                           + "call it never authored. ***")
+
+        // *** RETRY RESUMES *THE SAME* CALL, BY ITS DURABLE ID. ***
+        let resumed = second.retrySos(msgId: second.activeSosMsgId())
+        XCTAssertTrue(resumed.hasPrefix("resume:"),
+                      "*** A RETRY MUST RENDER THE NODE'S OWN TAXONOMY (a constant refusal would not): \(resumed) ***")
+        XCTAssertEqual(second.durableDeliveryState(author: second.author, msgId: msgId), .queuedDurably,
+                       "*** AND THE SAME OBLIGATION MUST STILL STAND (a re-authoring would move it). ***")
     }
 
     // -------------------------------------------------------------------------

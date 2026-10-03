@@ -1395,22 +1395,26 @@ extension ReadinessT36Tests {
      * MAKES THAT COMMENT TRUE, AND THEN REOPENS THE STORE FROM THE SAME PATH.
      */
     func testCRYPTO005_theCompositionPinsTheIntentBeforeTheRadioAndSurvivesAReopen() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("crypto005_composition_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        // *** IOS-R10: THE NODES OWN REAL DURABLE STORES, SO THE INTENT LIVES WHERE THE NODE WRITETH IT. ***
+        let aliceStore = try SqliteMessageStore(url: root.appendingPathComponent("alice.db"), maxBytes: 64 * 1024 * 1024)
         let harness = ComposedRuntimeHarness()
-        _ = try harness.addNode("alice", seedByte: 0x11)
+        _ = try harness.addNode("alice", seedByte: 0x11, durableStore: aliceStore)
         _ = try harness.addNode("bob", seedByte: 0x22)
         guard case .applied = harness.link("alice", "bob") else {
             XCTFail("the fixture must link the two nodes"); return
         }
-        let storeURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("crypto005_composition_\(UUID().uuidString).db")
-        defer { try? FileManager.default.removeItem(at: storeURL) }
+        let storeURL = root.appendingPathComponent("alice.db")
 
         let intentId = bytesOf(7, 16)
         let body = Data("the intent must outlive the process".utf8)
 
         // *** INVOKE THE EXPOSED COMMAND -- AND OBSERVE ITS OWN ANSWER RATHER THAN A GUESS AT IT. ***
         let result = try await harness.sendDirectDurable("alice", recipient: "bob", plaintext: body,
-                                                         intentId: intentId, storeURL: storeURL)
+                                                         intentId: intentId)
         if case let .rejected(reason) = result {
             XCTFail("the composition's durable command must not refuse: \(reason)"); return
         }
@@ -1441,47 +1445,45 @@ extension ReadinessT36Tests {
      * crossed; and a NEW PROCESS, holding only the path, must find the intent AND reproduce the SAME logical identity.
      */
     func testCRYPTO005_theSendBoundaryAfterTheDurableEnqueueIsRestartableFromDisk() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("crypto005_sendboundary_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let aliceStore = try SqliteMessageStore(url: root.appendingPathComponent("alice.db"), maxBytes: 64 * 1024 * 1024)
         let harness = ComposedRuntimeHarness()
-        _ = try harness.addNode("alice", seedByte: 0x51)
+        _ = try harness.addNode("alice", seedByte: 0x51, durableStore: aliceStore)
         _ = try harness.addNode("bob", seedByte: 0x52)
         guard case .applied = harness.link("alice", "bob") else {
             XCTFail("the fixture must link the two nodes"); return
         }
-        let storeURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("crypto005_sendboundary_\(UUID().uuidString).db")
-        defer { try? FileManager.default.removeItem(at: storeURL) }
+        let storeURL = root.appendingPathComponent("alice.db")
 
         let intentId = bytesOf(31, 16)
         let body = Data("the send boundary must be restartable".utf8)
         let admittedBefore = harness.link.admitted()
 
         let first = try await harness.sendDirectDurable("alice", recipient: "bob", plaintext: body,
-                                                        intentId: intentId, storeURL: storeURL)
+                                                        intentId: intentId)
         guard case let .durablyEnqueued(firstId, fromRetry) = first else {
             XCTFail("*** the durable command must reach the boundary: \(first) ***"); return
         }
         XCTAssertFalse(fromRetry, "a first send is not a retry")
 
-        // *** THE BOUNDARY ITSELF -- AND THE HONEST READING OF IT, WHICH I CHECKED RATHER THAN ASSUMED. ***
+        // *** *** IOS-R10: THE COMMITTED FRAME IS REALLY DISPATCHED -- THE RECIPIENT PROCESSED IT. *** ***
         //
-        // MY FIRST DRAFT ASSERTED `admitted() == admittedBefore` HERE AND CALLED IT "the process died at the
-        // boundary". **I THEN MEASURED THE PREMISE AND FOUND IT VACUOUS: `sendDirectDurable` NEVER REACHES THE RADIO
-        // AT ALL** (grep over its body: no `hand(`, no `link.offer`), so the equality is true whether or not the
-        // command sent anything, and an arm resting on it would be the emptiest kind of green. **THE ARCHITECTURAL
-        // FACT IS THE STRONGER STATEMENT AND IT IS WHAT THE FINDING'S OWN DESIGN SAYS: THE DURABLE COMMAND PINS THE
-        // INTENT AND COMMITETH THE FRAME, AND THE RADIO IS REACHED LATER BY THE ORDINARY TURN MACHINERY.** So the
-        // assertion is the REAL one -- the command does not send, and the committed frame is nonetheless HELD for
-        // whoever sends it.
-        XCTAssertEqual(
+        // *THE REVIEW'S DEFECT: the old durable command returned after the durable enqueue and "never handed it into
+        // the node's owned delivery path", so the recipient never processed the frame.* **THE REPAIR DISPATCHES THE
+        // COMMITTED FRAME OVER THE LINK, so the count MOVES and the recipient's own ingest commits it.** *This is the
+        // positive architectural fact the finding demands, and it is stronger than the vacuous "does not send"
+        // equality it replaces.*
+        XCTAssertGreaterThan(
             harness.link.admitted(), admittedBefore,
-            "the durable command performeth no link traffic -- asserted below as the architectural fact it is")
-        // *** THE FRAME IS HELD IN THE STORE THAT OWNS IT, WHICH I HAD TO MEASURE. ***
-        // MY FIRST VERSION ASKED `harness.node("alice").store` AND IT ANSWERED **0 HELD FRAMES** -- which looked
-        // like a defect and is the architecture: the durable command createth its OWN `SqliteMessageStore` over the
-        // caller-named path (the node's own store is the IN-MEMORY one the lab path useth), so **THE FRAME LIVES IN
-        // THE DURABLE STORE AND NOWHERE ELSE** -- which is exactly right, because the in-memory store does not
-        // survive the process death this arm is about. **A HELD COUNT READ FROM THE WRONG OWNER IS NOT A
-        // MEASUREMENT OF THE RIGHT ONE.** The assertion therefore sits below, on the REOPENED store.
+            "*** THE DURABLE COMMAND MUST HAND THE COMMITTED FRAME TO THE LINK: a send that pins an intent and "
+                + "never dispatches proves nothing about delivery (IOS-R10). ***")
+        XCTAssertTrue(
+            harness.node("bob")!.store.allHeldMsgIds().contains(firstId),
+            "*** AND THE RECIPIENT MUST HAVE PROCESSED IT, so an ACK can advance the SAME obligation. ***")
+        // *THE FRAME IS HELD IN THE NODE'S OWN DURABLE STORE, which is the medium the reopen below asks.*
 
         // *** AND NOW A NEW PROCESS: NOTHING BUT THE PATH SURVIVES. ***
         let reopened = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
@@ -1531,20 +1533,24 @@ extension ReadinessT36Tests {
      * NOTHING THAT COULD ERASE A ROW. ***
      */
     func testGSINTEGRATION001_afterAWipeTheDurableIntentMustBeGone() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gsint001_wipe_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let aliceStore = try SqliteMessageStore(url: root.appendingPathComponent("alice.db"), maxBytes: 64 * 1024 * 1024)
         let harness = ComposedRuntimeHarness()
-        _ = try harness.addNode("alice", seedByte: 0x31)
+        _ = try harness.addNode("alice", seedByte: 0x31, durableStore: aliceStore)
         _ = try harness.addNode("bob", seedByte: 0x32)
         guard case .applied = harness.link("alice", "bob") else {
             XCTFail("the fixture must link the two nodes"); return
         }
-        let storeURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("gsint001_wipe_\(UUID().uuidString).db")
-        defer { try? FileManager.default.removeItem(at: storeURL) }
+        let storeURL = root.appendingPathComponent("alice.db")
+        harness.registerDurableStore(storeURL)
 
         let intentId = bytesOf(21, 16)
         let sent = try await harness.sendDirectDurable("alice", recipient: "bob",
                                                        plaintext: Data("a durable intent must not outlive a wipe".utf8),
-                                                       intentId: intentId, storeURL: storeURL)
+                                                       intentId: intentId)
         if case let .rejected(reason) = sent { XCTFail("the durable send must not refuse: \(reason)"); return }
 
         // THE ROW MUST STAND **BEFORE** THE WIPE, OR THE ARM PROVES NOTHING (round 460's law: establish the subject was present).

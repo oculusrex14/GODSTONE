@@ -5,21 +5,25 @@
     "component": {
       "name": "GODSTONE-native",
       "type": "application",
-      "version": "overlay-b7daf5a"
+      "version": "overlay-unpinned"
     },
     "properties": [
       {
-        "name": "release_status",
-        "value": "blocked"
+        "name": "completeness",
+        "value": "derived from docs/supplychain/SBOM.json (the canonical inventory, built from the locked dependency graph)"
+      },
+      {
+        "name": "retired",
+        "value": "true"
       },
       {
         "name": "reason",
-        "value": "llama.cpp/native outputs are absent and unpinned"
+        "value": "llama.cpp/native outputs are absent and unpinned; no component of this repository's locked graph belongeth to a native face"
       }
     ],
-    "timestamp": "2026-08-06T10:14:38Z"
+    "timestamp": "2026-10-01T18:40:52+00:00"
   },
-  "serialNumber": "urn:uuid:808bcb54-c7f7-47f4-bf93-75aed931c19f",
+  "serialNumber": "urn:uuid:249e6531-699c-50d3-9232-53bec9324603",
   "specVersion": "1.5",
   "version": 1
 }

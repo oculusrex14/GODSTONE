@@ -9,6 +9,8 @@ import io.godstone.mesh.crypto.SessionManager
 import io.godstone.mesh.identity.PeerTrustApplyResult
 import io.godstone.mesh.identity.ValidatedPeerBinding
 import io.godstone.mesh.stress.CampaignDefect
+import io.godstone.mesh.stress.Category
+import io.godstone.mesh.stress.FAULT_CAMPAIGN_INACTIVE
 import io.godstone.mesh.stress.Fault
 import io.godstone.mesh.stress.FaultKind
 import io.godstone.mesh.stress.ResourceCensusSource
@@ -28,14 +30,19 @@ class ReadinessT72Test {
      *
      * The card: "Keep the current class under an explicitly named resource-model test category." A campaign whose counters
      * describe its own model must never be read as a production stress result -- and the honest way to keep that so is to
-     * NAME the category in the class and ASSERT it here, where the results are read.
+     * NAME the category WHERE THE RESULT IS READ. *The name was declared on all three isles and asserted against itself,
+     * while being CARRIED nowhere -- so this arm asserteth the CARRY.*
      */
     @Test
-    fun test_w00_the_campaign_is_a_named_resource_model() {
-        Assert.assertEquals("the campaign must declare its CATEGORY by name, so no reader mistaketh a model for a runtime",
-            "resource-model", io.godstone.mesh.stress.RESOURCE_MODEL_CATEGORY)
-        Assert.assertNotEquals("and it must NOT be named for the production runtime it doth not measure",
-            "production", io.godstone.mesh.stress.RESOURCE_MODEL_CATEGORY)
+    fun test_w00_the_result_carrieth_the_resource_model_category() {
+        // *** THE CARRY IS THE CONSUMER-VISIBLE FACT (round 727): a reader who holdeth a RESULT meeteth the category and
+        // never the production runtime's name. The DECLARED CONSTANTS are NOT re-asserted -- *a name compared against
+        // its own members is not a proof of anything*, and the top-level `RESOURCE_MODEL_CATEGORY` is not a `Category`
+        // member. ***
+        val result = StressCampaign(seed = 7L, cycles = 8).run()
+        Assert.assertEquals(Category.RESOURCE_MODEL, result.category)
+        Assert.assertTrue(result.isResourceModel)
+        Assert.assertNotEquals(Category.PRODUCTION_RUNTIME, result.category)
     }
 
     // ------------------------------------------------------------ W01
@@ -191,6 +198,8 @@ class ReadinessT72Test {
     fun test_w09_each_defect_is_caught_by_name() {
         val expected = mapOf(
             CampaignDefect.NO_LEASE_RELEASE to Invariants.NO_LEAKED_LEASES,
+            CampaignDefect.NO_TIMER_RELEASE to Invariants.NO_LEAKED_TIMERS,
+            CampaignDefect.NO_SESSION_RELEASE to Invariants.NO_LEAKED_SESSIONS,
             CampaignDefect.NO_RETRY_CAP to Invariants.NO_DUPLICATE_DELIVERY,
             CampaignDefect.NO_DEDUP to Invariants.NO_DUPLICATE_INBOX,
             CampaignDefect.MALFORMED_ESCAPES to Invariants.NO_UNCAUGHT_MALFORMED,
@@ -202,12 +211,56 @@ class ReadinessT72Test {
             Assert.assertTrue("$defect: expected $invariant, got ${result.failures}",
                 result.failures.any { it.contains(invariant) })
         }
-        // and a healthy campaign carrieth NONE of them
+        // *** EVERY MODEL-MEASURED INVARIANT CARRIETH ITS OWN DEFECT (round 727) -- otherwise a measured name could
+        // ride on a sibling's rod. AND THE HEALTHY SWEEP COVERS ONLY THE MEASURED SET: with no owner handed in, the
+        // owner-kind names cannot be emitted here at all, so asserting their absence would be the vacuity this removes.
+        Assert.assertEquals(Invariants.MEASURED_FROM_THE_MODEL.toSet(), expected.values.toSet())
+        Assert.assertEquals(CampaignDefect.ALL.toSet(), expected.keys.toSet())
         val clean = StressCampaign(seed = 29L, cycles = 4_096).run()
         Assert.assertTrue(clean.failures.toString(), clean.passed)
-        for (invariant in Invariants.ALL) {
+        for (invariant in Invariants.MEASURED_FROM_THE_MODEL) {
             Assert.assertFalse(clean.failures.any { it.contains(invariant) })
         }
+    }
+
+    /**
+     * *** W09b -- THE PER-OWNER DEFECTS ARE INDEPENDENT: a timer-only leak reddens ONLY the timer clause. ***
+     *
+     * *MEASURED (round 727): before this, `NO_LEASE_RELEASE` was the only defect that kept a lifecycle owner standing,
+     * and it kept ALL THREE -- so a mutation that stopped releasing ONE owner could not be reddened alone.*
+     */
+    @Test
+    fun test_w09b_the_lifecycle_defects_are_independent() {
+        val timer = StressCampaign(seed = 29L, cycles = 2_048, defect = CampaignDefect.NO_TIMER_RELEASE).run()
+        Assert.assertTrue(timer.failures.any { it.contains(Invariants.NO_LEAKED_TIMERS) })
+        Assert.assertTrue("and it must NOT accuse the session owner", timer.failures.none { it.contains(Invariants.NO_LEAKED_SESSIONS) })
+        Assert.assertTrue("nor the lease owner", timer.failures.none { it.contains(Invariants.NO_LEAKED_LEASES) })
+        val session = StressCampaign(seed = 29L, cycles = 2_048, defect = CampaignDefect.NO_SESSION_RELEASE).run()
+        Assert.assertTrue(session.failures.any { it.contains(Invariants.NO_LEAKED_SESSIONS) })
+        Assert.assertTrue(session.failures.none { it.contains(Invariants.NO_LEAKED_TIMERS) })
+        Assert.assertTrue(session.failures.none { it.contains(Invariants.NO_LEAKED_LEASES) })
+    }
+
+    /**
+     * *** W09c -- THE CATEGORY AND THE UNMEASURED SET ARE CARRIED ON THE RESULT, AND THE FAULT CAMPAIGN MUST FIRE. ***
+     */
+    @Test
+    fun test_w09c_the_result_carrieth_its_category_and_its_unmeasured_set() {
+        Assert.assertEquals(11, Invariants.ALL.size)
+        Assert.assertEquals(7, Invariants.MEASURED_FROM_THE_MODEL.size)
+        Assert.assertEquals(4, Invariants.OWNER_KIND.size)
+        val result = StressCampaign(seed = 29L, cycles = 64).run()
+        Assert.assertEquals(Category.RESOURCE_MODEL, result.category)
+        Assert.assertTrue(result.isResourceModel)
+        Assert.assertNotEquals(Category.PRODUCTION_RUNTIME, result.category)
+        Assert.assertEquals("with no owner handed in every owner-kind invariant is NAMED",
+            Invariants.OWNER_KIND.toSet(), result.unmeasuredInvariants.toSet())
+        // and the fault-liveness clause biteth under its OWN harness token, not a misnamed invariant.
+        val deaf = StressCampaign(seed = 29L, cycles = 64,
+            schedule = FaultSchedule(listOf(Fault(FaultKind.DISK_FULL, 10_000)))).run()
+        Assert.assertFalse(deaf.passed)
+        Assert.assertTrue(deaf.failures.any { it.contains(FAULT_CAMPAIGN_INACTIVE) })
+        Assert.assertTrue(deaf.failures.none { it.contains(Invariants.NO_UNCAUGHT_MALFORMED) })
     }
 
     // ------------------------------------------------------------ W10
@@ -250,49 +303,22 @@ class ReadinessT72Test {
         Assert.assertEquals(FaultKind.ALL.toSet(), schedule.kinds())
     }
 
-    // ------------------------------------------------------------ W12
+    // ------------------------------------------------------------ W12/W13
 
-    /** W12 -- the isles carrieth the SAME invariants and fault kinds. */
-    @Test
-    fun test_w12_the_isles_carry_the_same_invariants_and_faults() {
-        val swift = java.io.File("../../ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift")
-        Assert.assertTrue("the iOS twin must exist: ${swift.path}", swift.isFile)
-        val stext = swift.readText()
-        for (invariant in Invariants.ALL) {
-            Assert.assertTrue("the iOS twin must carry $invariant", stext.contains(invariant))
-        }
-        for (kind in FaultKind.ALL) {
-            Assert.assertTrue("the iOS twin must carry $kind", stext.contains(kind))
-        }
-        val python = java.io.File("../../tools/readiness/stress.py")
-        Assert.assertTrue(python.isFile)
-        val ptext = python.readText()
-        for (invariant in Invariants.ALL) {
-            Assert.assertTrue("the conductor must carry $invariant", ptext.contains(invariant))
-        }
-        Assert.assertTrue(ptext.contains("10_000"))
-    }
-
-    // ------------------------------------------------------------ W13
-
-    /** W13 -- the conductor never claimeth a device observation. */
-    @Test
-    fun test_w13_the_conductor_never_claimeth_a_device() {
-        val python = java.io.File("../../tools/readiness/stress.py").readText()
-        val code = python.lines().filterNot { it.trimStart().startsWith("#") }
-            .joinToString("\n").split("\"\"\"")
-            .filterIndexed { index, _ -> index % 2 == 0 }
-            .joinToString("")
-        for (forbidden in listOf("device", "phone", "hardware")) {
-            Assert.assertFalse("the conductor must not claim a device observation ($forbidden)",
-                code.lowercase().contains(forbidden))
-        }
-        // and the matrix keepeth the simulation apart from the device rows
-        val matrix = java.io.File("../../docs/production/VERIFICATION_MATRIX.md").readText()
-        Assert.assertTrue(matrix.contains("Mesh simulation regression"))
-        Assert.assertTrue(matrix.contains("Simulation, not device"))
-        Assert.assertTrue(matrix.contains("BLOCKED"))
-    }
+    /**
+     * *** W12/W13 ARE THE TWIN COURTS' TO EXECUTE, AND THIS ISLE NO LONGER COPIES THEIR SOURCE TEXT (round 727). ***
+     *
+     * *MEASURED: the parity arm here read the Swift and python FILES and asserted `contains(name)` -- a source-body
+     * read is not semantic proof, and it stayed GREEN while the Python isle emitted none of the four owner-kind
+     * invariants and the Swift isle's one conformance misnamed its number under the sessions invariant. The matrix arm
+     * re-read `docs/production/VERIFICATION_MATRIX.md` (a file this task does not own) and asserted strings belonging
+     * to UNRELATED rows. Both are DELETED rather than re-pinned: the twins' own courts (`ReadinessT72Tests`,
+     * `tools/readiness/tests/test_t72.py`) and the matrix's own gate are the executable contracts, and each asserts
+     * the same names against its OWN model.*
+     *
+     * THE CONSUMER-VISIBLE FACTS THIS ISLE'S COURT KEEPS ARE THE BEHAVIOURAL ONES: `result.category`, the carried
+     * unmeasured names, the per-owner faults and the native owner census (W14 and the GSSTRESS001 arms below).
+     */
 
     // ------------------------------------------------------------ W14
 

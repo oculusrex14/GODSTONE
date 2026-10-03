@@ -116,21 +116,29 @@ public enum ArchivePage: Sendable, Equatable {
 /// pause, wound and resurrect a library without a disk in sight.
 public protocol ArchiveReading: Sendable {
     func read(_ request: ArchiveRequest) async throws -> ArchivePage
-    // T50 (s17): optional requirements -- declared here, so the existential
-    // dispatcheth dynamically to the concrete witness, not statically to the
-    // extension default. Sealed conformations are served by the defaults
-    // provided below and compile unchanged.
+    /// The whole provenance projection of one document, or nil when the row is unheard of.
+    /// THE THROWN ROAD IS THE WHOLE POINT: a conformer that cannot tell a prepare/step woe
+    /// from an absent row museth not answer this face at all, for `nil` meaneth "I looked, and
+    /// there is no citation here" -- never "the way gave way". There is no default for it below.
+    func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata?
+    // T50 (s17): `availability` keepeth the optional-requirement shape it always had -- declared
+    // HERE, so the existential dispatcheth dynamically to the concrete witness and not statically
+    // to the extension default below. Drop the declaration and a court's `.missing` fake reporteth
+    // itself ready: the stored property still existeth, but the protocol witness is the default.
     var availability: ArchiveAvailability { get }
-    func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata?
 }
 
-/* T50 (s17): the typed verdict of the stock, defaulting to ready that the
- * sealed fakes compile unchanged; the real faces override it, and a court
- * may make a fake report otherwise -- an unavailable archive must never
- * masquerade as an honest empty result, and the scene consulteth this first. */
+/* T50 (s17): the typed verdict of the stock, defaulting to ready that the sealed fakes compile
+ * unchanged; the real faces override it, and a court may make a fake report otherwise -- an
+ * unavailable archive must never masquerade as an honest empty result, and the scene consulteth
+ * this first.
+ *
+ * THE PROVENANCE FACE HATH NO DEFAULT HERE, DELIBERATELY (the provenance-swallow remediation).
+ * It used to answer `{ nil }`, which made "this conformer never spoke about provenance at all"
+ * and "this document hath no citation" the SAME SENTENCE -- the very conflation the road existeth
+ * to forbid. Every conformer now sayeth which of the two it meaneth. */
 public extension ArchiveReading {
     var availability: ArchiveAvailability { .ready(origin: "the reader reporteth itself ready") }
-    func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata? { nil }
 }
 
 

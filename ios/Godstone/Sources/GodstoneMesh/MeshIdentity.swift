@@ -150,6 +150,56 @@ public struct MeshIdentity: Sendable {
         return MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0)
     }
 
+    /// *** IOS-FOLLOWUP-CURRENT-04 (a): GENERATE A REPLACEMENT PAIR WITHOUT STORING IT. ***
+    ///
+    /// *The staged replacement must exist as a PAIR BEFORE it is published -- otherwise the only thing an interrupted
+    /// publication can be recognized by is the generation number this very attempt just wrote, which is exactly the
+    /// hole the finding names ("a newly written generation number must not establish provenance for an identity that
+    /// already existed"). This produceth the pair and its encodable private state, and writes NOTHING.*
+    internal static func generateStaged() -> (state: LocalIdentityStateV1, identity: MeshIdentity) {
+        let signing = Curve25519.Signing.PrivateKey()
+        let agreement = Curve25519.KeyAgreement.PrivateKey()
+        // swiftlint:disable:next force_try
+        let state = try! LocalIdentityStateV1(
+            generation: 0,
+            ed25519Seed: signing.rawRepresentation,
+            x25519PrivateKey: agreement.rawRepresentation)
+        return (state, MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0))
+    }
+
+    /// *** IOS-FOLLOWUP-CURRENT-04 (b): PROMOTE A STAGED PAIR INTO THE STANDING SLOT -- OR REFUSE. ***
+    ///
+    /// *THE ONLY AUTHORIZED ADOPTION. If nothing stands, the staged pair becometh the standing identity. If something
+    /// stands, it is adopted ONLY when it reproduces the STAGED pair's private state exactly (the interrupted
+    /// publication of this very replacement) -- **an unrelated standing key is REFUSED, never relabeled.***
+    internal static func promoteStaged(
+        state staged: LocalIdentityStateV1,
+        keychain: any LocalIdentityKeychain
+    ) throws -> MeshIdentity {
+        let existing = try keychain.read(tag: v1Tag)
+        if let existing {
+            let standing = try LocalIdentityStateV1.parse(existing)
+            guard standing.ed25519Seed == staged.ed25519Seed,
+                  standing.x25519PrivateKey == staged.x25519PrivateKey else {
+                throw MeshError.identityAlreadyExists      // a FOREIGN key: refusal, not adoption
+            }
+            // The staged pair IS what stands: the publication is finished; the staged copy is retired by the caller.
+            return try makeIdentity(from: standing)
+        }
+        guard try keychain.read(tag: legacySigningTag) == nil,
+              try keychain.read(tag: legacyAgreementTag) == nil else {
+            throw MeshError.identityAlreadyExists          // partial legacy state: not our replacement
+        }
+        try keychain.add(tag: v1Tag, data: staged.encode())
+        return try makeIdentity(from: staged)
+    }
+
+    private static func makeIdentity(from state: LocalIdentityStateV1) throws -> MeshIdentity {
+        let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: state.ed25519Seed)
+        let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: state.x25519PrivateKey)
+        return MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: state.generation)
+    }
+
     public static func loadFromKeychain() throws -> MeshIdentity {
         try loadFromKeychain(keychain: DefaultLocalIdentityKeychain())
     }

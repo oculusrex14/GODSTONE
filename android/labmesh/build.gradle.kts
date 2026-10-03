@@ -112,6 +112,11 @@ dependencies {
     // third-party artifact to the pinned supply-chain set
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.20")
+    // *** GS-FINAL-003 `same-estate`: THE LAB'S JVM COURTS DRIVE THE REAL ESTATE OVER THE SHARED HOST PLATFORM. ***
+    // *The `:mesh` `testFixtures` source set carrieth `HostLabPlatform` -- the two-door substitution plus real on-disk
+    // SQLite -- so a `:labmesh` court can stand a subclass of `LabMeshApplication` that overrides ONLY
+    // `estatePlatform(ctx)` and composes the SAME `ProductionLabEstate` the device would, never a second platform.*
+    testImplementation(testFixtures(project(":mesh")))
     // *** THE SEMANTICS COURT'S OWN INSTRUMENTS, IDENTICAL TO `:app`'s. *** *`createComposeRule` really composes,
     // really lays out and really publishes a semantics tree, so the assertions read the RENDERED tree rather than a
     // source declaration -- and Robolectric 4.13 lets it run in the host unit-test task.*

@@ -540,7 +540,12 @@ def check_the_lab_navigateth_the_five_journeys():
                  ("Conversation", "LabConversationView"), ("SOS", "LabSosView"),
                  ("Diagnostics", "LabDiagnosticsView"))
     missing = [journey for journey, cls in reachable
-               if not re.search(re.escape(cls) + r"\(\)\s*\.tabItem\s*\{", text)]
+               # GS-FINAL-003's durable-estate cutover hands the composed runtime INTO each screen, so an
+               # instantiated tab carries constructor arguments; a gate pinned to the empty-`()` spelling would
+               # go RED for a repair rather than for a defect (the Android twin, line 630, records the same law).
+               # The guarded property is UNCHANGED: the class appears as an INSTANTIATED `.tabItem`, on one line,
+               # never a bare `struct` declaration -- the search still refuseth declarations and `{}`-bounded captures.
+               if not re.search(re.escape(cls) + r"\b\s*\(.*?\)\s*\.tabItem\s*\{", text)]
     if missing:
         return False, "no TAB reacheth: " + ", ".join(missing) + " (a declaration is not a journey)"
     return True, "the lab navigateth all five journeys (identity, contacts, conversation, SOS, diagnostics)"
@@ -589,7 +594,12 @@ def check_the_ios_lab_is_launchable():
         return False, "the iOS lab's @main carrieth no WindowGroup for the lab root"
     # THE CALL MAY BE THROWING -- round 266's own fix added `try!`, WHICH BROKE THIS REGEX, AND THE CONTROL WENT RED FOR A
     # REASON THAT HAD NOTHING TO DO WITH THE LAB. A CONTROL MUST SURVIVE THE REPAIRS MADE BESIDE IT, so the `try` is optional.
-    if not re.search(r"runtime\s*=\s*(?:try!?\s*)?LabRuntime\.compose\(\)", text):
+    # THE GS-FINAL-003 SAME-ESTATE ROAD (precedent: the Android twin at line 630): the holder's assignment is
+    # `activeRuntime = try LabRuntime.compose(estateRoot: root)` -- the durable estate root is the composition's
+    # argument and the retained property is `activeRuntime`, so BOTH the labelled-argument and empty-argument
+    # spellings are accepted, with or without `try`. The property is UNCHANGED: an OWNER-side assignment of a
+    # real LabRuntime.compose call; a comment or a bare declaration still satisfieth nothing.
+    if not re.search(r"(?:active)?[Rr]untime\s*=\s*(?:try!?\s*)?LabRuntime\.compose\((?:[^)]*)\)", text):
         return False, "the iOS lab owns no runtime composed by an OWNER (LabRuntime.compose() must appear in a holder)"
     shipping = root / "ios/Godstone/Sources/App/GodstoneApp.swift"
     if not shipping.exists():
@@ -618,11 +628,20 @@ def check_the_lab_runtime_is_retained():
     # `LabMeshApp.compose()` -- AND THE FILE'S OWN DOC COMMENT QUOTES IT -- so the invariant was satisfied by a COMMENT.
     # THE NEGATIVE CASE CAUGHT IT (the composition was replaced and the control still passed), which is the whole reason
     # this file insisteth on negative cases. The same trap was recorded at rounds 163 and 208 for other controls.
+    #
+    # *** AND THE COMPOSITION'S OWN FORM MOVED WITH THE SAME-ESTATE CUTOVER (GS-FINAL-003): *** *the launchable road is
+    # now `LabMeshApp.composeRealEstate(ctx, estate)`, which consults the durable recovery owner over THIS application's
+    # own `FileWipeJournal` BEFORE it composes anything private -- the retained `LabRuntime` is its `.runtime`, and a
+    # REFUSED estate carries none.* **A gate pinned to the RESOURCE-MODEL spelling (`compose()`) would go RED for a
+    # repair rather than for a defect -- the very "a control must survive the repairs made beside it" law the iOS check
+    # records below -- so BOTH the same-estate road and the pure-host spelling are accepted, and the property guarded is
+    # unchanged: the application OWNS the one retained composition and the activity composes nothing.**
     text = strip_kotlin_comments(owner.read_text(encoding="utf-8"))
-    if not re.search(r"by lazy \{ *LabMeshApp\.compose\(\)", text):
+    compose_site = r"by lazy \{\s*LabMeshApp\.(?:composeRealEstate\(|compose\(\))"
+    if not re.search(compose_site, text):
         return False, "the Application owner " + m.group(1) + " never COMPOSES the runtime (a comment mentioning it is not a composition)"
     activity = root / "android/labmesh/src/main/java/io/godstone/labmesh/LabMainActivity.kt"
-    if activity.exists() and re.search(r"LabMeshApp\.compose\(\)", strip_kotlin_comments(activity.read_text(encoding="utf-8"))):
+    if activity.exists() and re.search(r"LabMeshApp\.(?:composeRealEstate\(|compose\(\))", strip_kotlin_comments(activity.read_text(encoding="utf-8"))):
         return False, "the ACTIVITY composeth the runtime: it must be the Application owner's, not a view's"
     return True, "one retained lab runtime, owned by " + m.group(1) + " and composed nowhere else"
 

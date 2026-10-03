@@ -1,7 +1,10 @@
 package io.godstone.labmesh
 
+import android.content.Context
+import io.godstone.mesh.lab.LabEstateWipeAuthority
 import io.godstone.mesh.lab.LabProfile
 import io.godstone.mesh.lab.LabRuntime
+import io.godstone.mesh.lab.RealEstateComposition
 
 // ---------------------------------------------------------------------------
 // T54 -- the LabMesh Android target's application seam.
@@ -31,12 +34,28 @@ object LabMeshApp {
     /** True iff this build can manufacture crypto readiness. It cannot. */
     const val MANUFACTURES_READINESS: Boolean = LabProfile.MANUFACTURES_READINESS
 
-    /** Compose the real runtime the lab driveth (the default A <-> R <-> B chain). */
-    fun compose(): LabRuntime = LabRuntime.compose()
+    /**
+     * *** GS-FINAL-003 `same-estate` (review A6): THE LAUNCHABLE LAB APPLICATION'S OWN COMPOSITION ROAD. ***
+     *
+     * *THE OBLIGATION: "Use production normal owner with actual on-disk stores/real identity and same runtime authority
+     * Send/SOS operate. No fake in-memory under real app."* **SO THE ESTATE IS NOT A PARAMETER WITH A NULLABLE DEFAULT:
+     * it is the REQUIRED capability whose files the send road writes and the wipe erases.** *A caller cannot reach this
+     * road without naming the estate -- which is exactly the A6 defect made unexpressible.*
+     *
+     * The same-estate recovery owner is consulted BEFORE any normal private composition (inside
+     * `LabRuntime.composeRealEstateOrRefuse`), so a REQUESTED/corrupt/terminal record yields a runtime-less
+     * [RealEstateComposition] and a rendered recovery-only projection.
+     */
+    fun composeRealEstate(
+        ctx: Context,
+        estate: LabEstateWipeAuthority,
+    ): RealEstateComposition = LabRuntime.composeRealEstateOrRefuse(ctx, estate)
 
-    /** Compose the real runtime with the caller's own peer labels. */
-    fun compose(labels: List<String>): LabRuntime = LabRuntime.compose(labels)
+    /** Compose the host resource-model runtime (pure JVM tests only; explicitly NOT on the application path). */
+    fun compose(): LabRuntime = LabRuntime.composeForHostTests()
 
+    /** Compose the host resource-model runtime with caller's own peer labels. */
+    fun compose(labels: List<String>): LabRuntime = LabRuntime.composeForHostTests(labels)
     /** The honest readiness statement (all platform fields false). */
     fun readiness() = LabRuntime.readinessStatement()
 }

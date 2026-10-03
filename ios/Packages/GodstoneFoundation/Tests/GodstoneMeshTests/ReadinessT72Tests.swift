@@ -141,6 +141,8 @@ final class ReadinessT72Tests: XCTestCase {
     func testW09EachDefectIsCaughtByName() {
         let expected: [(String, String)] = [
             (CampaignDefect.noLeaseRelease, Invariants.noLeakedLeases),
+            (CampaignDefect.noTimerRelease, Invariants.noLeakedTimers),
+            (CampaignDefect.noSessionRelease, Invariants.noLeakedSessions),
             (CampaignDefect.noRetryCap, Invariants.noDuplicateDelivery),
             (CampaignDefect.noDedup, Invariants.noDuplicateInbox),
             (CampaignDefect.malformedEscapes, Invariants.noUncaughtMalformed),
@@ -152,8 +154,72 @@ final class ReadinessT72Tests: XCTestCase {
             XCTAssertTrue(result.failures.contains { $0.contains(invariant) },
                           "\(defect): expected \(invariant), got \(result.failures)")
         }
+        // *** EVERY MEASURED INVARIANT CARRIETH ITS OWN DEFECT -- otherwise a measured name could ride on a sibling's
+        // rod (round 727). *** And the healthy run carrieth NONE of the MEASURED names: the owner-kind names are NOT
+        // swept, because with the model alone they cannot be emitted at all (their measurement liveth in W15).
+        XCTAssertEqual(Set(expected.map { $0.1 }), Set(Invariants.measuredFromTheModel))
         let clean = StressCampaign(seed: 29, cycles: 4_096).run()
         XCTAssertTrue(clean.passed, "\(clean.failures)")
+        for invariant in Invariants.measuredFromTheModel {
+            XCTAssertFalse(clean.failures.contains { $0.contains(invariant) }, invariant)
+        }
+    }
+
+    /// *** W15b -- GS-STRESS-001 (round 727): THE CATEGORY AND THE UNMEASURED SET ARE CARRIED ON THE RESULT. ***
+    func testW15bTheResultCarriethItsCategoryAndItsUnmeasuredSet() {
+        XCTAssertEqual(Invariants.all.count, 11)
+        XCTAssertEqual(Invariants.measuredFromTheModel.count, 7)
+        XCTAssertEqual(Invariants.ownerKind.count, 4)
+        XCTAssertEqual(Set(Invariants.measuredFromTheModel + Invariants.ownerKind), Set(Invariants.all))
+        XCTAssertTrue(Set(Invariants.measuredFromTheModel).isDisjoint(with: Set(Invariants.ownerKind)))
+        _ = Invariants.censusChecked()
+        let result = StressCampaign(seed: 29, cycles: 64).run()
+        XCTAssertEqual(result.category, Category.resourceModel)
+        XCTAssertTrue(result.isResourceModel)
+        XCTAssertNotEqual(result.category, Category.productionRuntime)
+        XCTAssertEqual(Set(result.unmeasuredInvariants), Set(Invariants.ownerKind),
+                       "with no owner handed in, every owner-kind invariant is UNMEASURED and named: "
+                       + "\(result.unmeasuredInvariants)")
+        // *** AND THE FAULT CAMPAIGN MUST ACTUALLY FIRE: a refusing fault beyond the horizon reddens under its OWN
+        // harness token. ***
+        let deaf = StressCampaign(seed: 29, cycles: 64,
+                                  schedule: FaultSchedule([Fault(kind: FaultKind.diskFull, atStep: 10_000)])).run()
+        XCTAssertFalse(deaf.passed)
+        XCTAssertTrue(deaf.failures.contains { $0.contains(FAULT_CAMPAIGN_INACTIVE) }, "\(deaf.failures)")
+        XCTAssertFalse(deaf.failures.contains { $0.contains(Invariants.noUncaughtMalformed) })
+    }
+
+    /// *** W15c -- THE SECOND OWNER ON THIS ISLE: A LEAK IN `reservations` IS NAMED, AND AN UNMEASURABLE ONE IS NOT
+    /// TREATED AS CLEAN. ***
+    private final class W15cReservations: ResourceCensusSource {
+        let ownerName: String
+        private let slots: Int
+        private let reservations: Int?
+        init(_ name: String, slots: Int = 0, reservations: Int?) {
+            self.ownerName = name; self.slots = slots; self.reservations = reservations
+        }
+        func liveSessionSlots() -> Int { slots }
+        func liveReservations() -> Int { reservations ?? NOT_MEASURED }
+    }
+
+    func testW15cTheReservationOwnerIsCensusedOnThisIsleToo() {
+        let accused = StressCampaign(seed: 29, cycles: 64,
+                                     owners: [W15cReservations("RecordWriter", reservations: 3)]).run()
+        XCTAssertTrue(accused.failures.contains {
+            $0.contains(Invariants.noLeakedReservations) && $0.contains("RecordWriter")
+        }, "\(accused.failures)")
+        XCTAssertFalse(accused.unmeasuredInvariants.contains(Invariants.noLeakedReservations))
+        let measured = StressCampaign(seed: 29, cycles: 64,
+                                      owners: [W15cReservations("RecordWriter", reservations: 0)]).run()
+        XCTAssertFalse(measured.failures.contains { $0.contains("RecordWriter") })
+        XCTAssertFalse(measured.unmeasuredOwners.contains { $0.contains("reservations") },
+                       "a MEASURED clean owner must not be listed as unmeasured: \(measured.unmeasuredOwners)")
+        // AND THE DEFAULT IS THE HONEST ONE: an owner that overrideth nothing is NOT_MEASURED, never a false zero.
+        let unmeasured = StressCampaign(seed: 29, cycles: 64,
+                                        owners: [W15cReservations("TimerWheel", reservations: nil)]).run()
+        XCTAssertTrue(unmeasured.unmeasuredOwners.contains { $0.contains("TimerWheel") },
+                      "\(unmeasured.unmeasuredOwners)")
+        XCTAssertFalse(unmeasured.failures.contains { $0.contains("TimerWheel") })
     }
 
     // ------------------------------------------------------------ W10
@@ -190,57 +256,19 @@ final class ReadinessT72Tests: XCTestCase {
         XCTAssertEqual(schedule.kinds(), Set(FaultKind.all))
     }
 
-    // ------------------------------------------------------------ W12
+    // ------------------------------------------------------------ W12/W13
 
-    func testW12TheIslesCarryTheSameInvariantsAndFaults() throws {
-        var repo = URL(fileURLWithPath: #filePath)
-        var hops = 0
-        while repo.path != "/" && hops < 12 {
-            if FileManager.default.fileExists(atPath: repo.appendingPathComponent("android").path) { break }
-            repo.deleteLastPathComponent(); hops += 1
-        }
-        let kotlin = try String(contentsOf: repo.appendingPathComponent(
-            "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt"), encoding: .utf8)
-        let python = try String(contentsOf: repo.appendingPathComponent(
-            "tools/readiness/stress.py"), encoding: .utf8)
-        for invariant in Invariants.all {
-            XCTAssertTrue(kotlin.contains(invariant), invariant)
-            XCTAssertTrue(python.contains(invariant), invariant)
-        }
-        for kind in FaultKind.all {
-            XCTAssertTrue(kotlin.contains(kind), kind)
-            XCTAssertTrue(python.contains(kind), kind)
-        }
-        XCTAssertTrue(python.contains("10_000"))
-        XCTAssertTrue(kotlin.contains("10_000"))
-    }
-
-    // ------------------------------------------------------------ W13
-
-    func testW13TheConductorNeverClaimethADevice() throws {
-        var repo = URL(fileURLWithPath: #filePath)
-        var hops = 0
-        while repo.path != "/" && hops < 12 {
-            if FileManager.default.fileExists(atPath: repo.appendingPathComponent("android").path) { break }
-            repo.deleteLastPathComponent(); hops += 1
-        }
-        let python = try String(contentsOf: repo.appendingPathComponent(
-            "tools/readiness/stress.py"), encoding: .utf8)
-        let withoutDocstrings = python.components(separatedBy: "\"\"\"")
-            .enumerated().filter { $0.offset % 2 == 0 }.map { $0.element }.joined()
-        let code = withoutDocstrings.split(separator: "\n")
-            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
-            .joined(separator: "\n")
-        for forbidden in ["device", "phone", "hardware"] {
-            XCTAssertFalse(code.lowercased().contains(forbidden),
-                           "the conductor must not claim a device observation (\(forbidden))")
-        }
-        let matrix = try String(contentsOf: repo.appendingPathComponent(
-            "docs/production/VERIFICATION_MATRIX.md"), encoding: .utf8)
-        XCTAssertTrue(matrix.contains("Mesh simulation regression"))
-        XCTAssertTrue(matrix.contains("Simulation, not device"))
-        XCTAssertTrue(matrix.contains("BLOCKED"))
-    }
+    /// *** W12/W13 ARE THE TWIN COURTS' TO EXECUTE, AND THIS ISLE NO LONGER COPIES THEIR SOURCE TEXT (round 727). ***
+    ///
+    /// *MEASURED: this arm read the Kotlin and python FILES and asserted `contains(name)` -- a source-body read is NOT
+    /// semantic proof, and it stayed GREEN while the python isle emitted none of the four owner-kind invariants. The
+    /// matrix arm re-read `docs/production/VERIFICATION_MATRIX.md` (a file this task does not own) and asserted strings
+    /// belonging to UNRELATED rows. Both are DELETED rather than re-pinned: the twins' own courts
+    /// (`ReadinessT72Test`, `tools/readiness/tests/test_t72.py`) and the matrix's own gate are the executable
+    /// contracts, and each asserts the same names against its OWN model.*
+    ///
+    /// THE CONSUMER-VISIBLE FACTS THIS ISLE'S COURT KEEPS ARE ITS OWN: `result.category`, the carried unmeasured set,
+    /// the per-owner defects, and the real-owner reservation census (W15b/W15c below).
 
     // ------------------------------------------------------------ W14
 

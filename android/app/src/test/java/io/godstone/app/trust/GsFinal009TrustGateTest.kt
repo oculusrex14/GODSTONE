@@ -46,7 +46,7 @@ class GsFinal009TrustGateTest {
 
         override fun importBinding(payload: String): BindingImportOutcome { commands += 1; boom() }
         override fun approveRotation(ref: ExactRotationCandidateRef): RotationApprovalOutcome { commands += 1; boom() }
-        override fun confirmVerified(nodeId: ByteArray, fingerprintHex: String): ConfirmOutcome { commands += 1; boom() }
+        override fun confirmVerified(request: FingerprintDisplay): ConfirmOutcome { commands += 1; boom() }
         override fun revoke(nodeId: ByteArray): RevokeOutcome { commands += 1; boom() }
         override fun beginWipe(): WipeProgressState { commands += 1; boom() }
         override fun resumeWipe(): WipeProgressState { commands += 1; boom() }
@@ -65,7 +65,7 @@ class GsFinal009TrustGateTest {
         ContactVerificationCommand.Refresh,
         ContactVerificationCommand.ClearError,
         ContactVerificationCommand.ImportRecipientBinding("payload"),
-        ContactVerificationCommand.CompareAndConfirmFingerprint(nodeId(1), "ab"),
+        ContactVerificationCommand.CompareAndConfirmFingerprint(nodeId(1), "ab", displayedAcceptedGeneration = 1L),
         ContactVerificationCommand.ApproveRotation(candidate(2)),
         ContactVerificationCommand.DismissRotation(candidate(3)),
         ContactVerificationCommand.Revoke(nodeId(4)),

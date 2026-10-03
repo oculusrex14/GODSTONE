@@ -19,7 +19,7 @@ public final class MeshTrustFacade: @unchecked Sendable {
         repository: PeerIdentityRepository,
         ownNodeId: Data,
         contacts: [(label: String, nodeId: Data)] = [],
-        wipeHandler: (() -> Void)? = nil,
+        wipeHandler: (() -> RecoveryLadderOutcome)? = nil,
         sessionInvalidator: ((Data) -> Void)? = nil
     ) {
         self.ownNodeId = ownNodeId

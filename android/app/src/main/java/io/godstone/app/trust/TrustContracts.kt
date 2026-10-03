@@ -197,6 +197,41 @@ sealed class RotationApprovalOutcome {
 }
 
 /**
+ * *** GS-UX-001 STEP 8 (TrustUiCasBuilder): THE EXACT MATERIAL THE SCREEN DISPLAYED WHEN THE USER TAPPED CONFIRM. ***
+ *
+ * THE LAW: *a trust decision is made on WHAT THE USER SAW, not on what the durable row happeneth to hold when the tap
+ * arriveth.* The screen rendereth a contact's `fingerprintHex` AND its `acceptedGeneration`; a confirmation that
+ * carried only the digest could still be promoted against a row whose accepted generation (or pending candidate) had
+ * moved underneath the reader -- **the displayed material would no longer name the row it was compared against.**
+ *
+ * SO THE DISPLAYED OPERANDS TRAVEL WITH THE REQUEST, exactly as [ExactRotationCandidateRef] maketh the displayed
+ * rotation candidate travel with an approval. The authority compareth BOTH: the digest AND the accepted generation the
+ * reader saw. `displayedStaticDhPublicKey` is deliberately ABSENT -- the app projection carrieth a DERIVED digest, not
+ * the key, so the app layer cannot bind on key bytes it was never shown; that operand belongeth to the repository CAS
+ * (the rotation path, where the screen really carrieth the key).
+ */
+data class FingerprintDisplay(
+    val nodeId: ByteArray,
+    /** The 64-character hex digest the screen printed for this contact. */
+    val fingerprintHex: String,
+    /** The accepted generation the screen printed beside that digest. */
+    val acceptedGeneration: Long,
+) {
+    init {
+        require(nodeId.size == 16) { "a contact names a 16-octet node id" }
+        require(fingerprintHex.length == 64) { "a fingerprint is 32 octets of hex" }
+    }
+
+    fun nodeIdCopy(): ByteArray = nodeId.copyOf()
+
+    /** The displayed material and a durable row name the SAME thing only if both operands agree. */
+    fun sameAsDurableRow(row: ContactProjection): Boolean =
+        row.nodeIdCopy().contentEquals(nodeId) &&
+            row.acceptedGeneration == acceptedGeneration &&
+            row.fingerprintHex.equals(fingerprintHex, ignoreCase = true)
+}
+
+/**
  * The fingerprint-confirmation outcome. Promoting first-use trust to VERIFIED is
  * a DURABLE decision, so it goeth through the authority's own compare-and-set --
  * a matching digest and nothing else.
@@ -244,10 +279,14 @@ interface TrustPort {
     fun approveRotation(ref: ExactRotationCandidateRef): RotationApprovalOutcome
 
     /**
-     * Confirm a contact's fingerprint against the DURABLE one and, on a match,
-     * promote its trust. The authority compareth; a mismatch promoteth nothing.
+     * Confirm a contact's fingerprint against the DURABLE one and, on a match, promote its trust.
+     *
+     * *** GS-UX-001 STEP 8: THE REQUEST CARRYeth THE OPERANDS THE READER WAS SHOWN -- `nodeId` (the row),
+     * `fingerprintHex` (the digest) and `acceptedGeneration` (the generation printed beside it). *** The authority
+     * compare-and-swappeth on ALL of them: a digest that matcheth a row whose accepted generation had already moved
+     * beneath the reader promoteth NOTHING, so a confirmation can never be attributed to a row the user never saw.
      */
-    fun confirmVerified(nodeId: ByteArray, fingerprintHex: String): ConfirmOutcome
+    fun confirmVerified(request: FingerprintDisplay): ConfirmOutcome
 
     /** Revoke a contact; its sessions must be invalidated by the authority. */
     fun revoke(nodeId: ByteArray): RevokeOutcome
@@ -278,7 +317,7 @@ object UnavailableTrustPort : TrustPort {
         BindingImportOutcome.Refused("the mesh lab is not composed in this build")
     override fun approveRotation(ref: ExactRotationCandidateRef): RotationApprovalOutcome =
         RotationApprovalOutcome.Refused("the mesh lab is not composed in this build")
-    override fun confirmVerified(nodeId: ByteArray, fingerprintHex: String): ConfirmOutcome =
+    override fun confirmVerified(request: FingerprintDisplay): ConfirmOutcome =
         ConfirmOutcome.Refused("the mesh lab is not composed in this build")
     override fun revoke(nodeId: ByteArray): RevokeOutcome =
         RevokeOutcome.Refused("the mesh lab is not composed in this build")

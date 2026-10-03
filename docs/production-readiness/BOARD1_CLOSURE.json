@@ -1,7 +1,7 @@
 {
  "board": "BOARD1_INTERNAL_PRODUCTION_READINESS",
  "status": "REMEDIATION_IN_PROGRESS",
- "status_scope": "The rc14 candidate and attestation remain immutable historical evidence. Its blanket internal-completion claim has been reopened: GS-FINAL-003 recovery liveness and connected construction observers, GS-UX-001 live control contracts and durable wipe authority, and Board-1 full-verification/freeze/candidate-integration controls require new production-reachable proof. No new candidate or terminal builder verdict is asserted during remediation. Independent verified_fixed remains zero. STRUCTURED CANONICAL REOPEN (2026-10-02, `scripts/build_structured_closure.py --write`): 10 explicit internal obligations stand OPEN across 3 findings -- GS-FINAL-003 (ios-recovery-graph, typed-permit, zero-private-opens, android-provider-court, bootstrap-permit-unit), GS-UX-001 (rendered-controls, ui-test-target, accessibility), AUDIT-B1-CTRL-001 (closure-law, ready-requires-both-populations). The generator now DERIVES each finding's internal_status from its obligation set, so a reopened obligation makes its finding internally OPEN rather than leaving a COMPLETE-over-live-work overclaim; the ledger's recorded_status is preserved unchanged beside it. HISTORICAL-SCOPE RULE: the reopened obligations' prior DISCHARGED prose is KEPT verbatim and explicitly marked historical rather than erased.",
+ "status_scope": "The rc14 candidate and attestation remain immutable historical evidence. Its blanket internal-completion claim has been reopened: GS-FINAL-003 recovery liveness and connected construction observers, GS-UX-001 live control contracts and durable wipe authority, and Board-1 full-verification/freeze/candidate-integration controls require new production-reachable proof. No new candidate or terminal builder verdict is asserted during remediation. Independent verified_fixed remains zero. STRUCTURED CANONICAL REOPEN (2026-10-02, `scripts/build_structured_closure.py --write`): 17 explicit internal obligations stand OPEN across 6 findings -- GS-FINAL-003 (ios-recovery-graph, typed-permit, zero-private-opens, android-provider-court, bootstrap-permit-unit), GS-FINAL-004 (owned-connection, provider-dispatch, migrations-on-verified), GS-UX-001 (facade, rendered-controls, ui-test-target, accessibility), GS-STRESS-001 (real-owner-invariants, classification), GS-STORE-002 (internal-architecture), AUDIT-B1-CTRL-001 (closure-law, ready-requires-both-populations). The generator now DERIVES each finding's internal_status from its obligation set, so a reopened obligation makes its finding internally OPEN rather than leaving a COMPLETE-over-live-work overclaim; the ledger's recorded_status is preserved unchanged beside it. HISTORICAL-SCOPE RULE: the reopened obligations' prior DISCHARGED prose is KEPT verbatim and explicitly marked historical rather than erased.",
  "repository_verification": {
   "run_id": null,
   "conclusion": null,
@@ -336,8 +336,18 @@
   "tag_policy": "the rc3 tag is IMMUTABLE and is NOT rewritten; this correction is recorded forward"
  },
  "internal_work_by_finding": {
-  "derived_total": 0,
-  "source": "*** DERIVED FROM THE STRUCTURED OBLIGATIONS, NOT FROM PROSE. *** `scripts/build_structured_closure.py` reports `internal obligations OPEN : 0` and `findings INTERNAL OPEN : 0` across 68 findings; ten internal obligations were DISCHARGED with resolving citations. *The prose classifier that produced 27/21/5/4 was RETIRED (see `internal_remaining_prose_classifier_retired` in the ledger) and is no longer an input to any closure decision.*",
+  "derived_total": 17,
+  "findings_internal_open": 6,
+  "source": "*** DERIVED FROM THE STRUCTURED OBLIGATIONS, NOT FROM PROSE. *** `scripts/build_structured_closure.py` reports `internal obligations OPEN : 17` across `findings INTERNAL OPEN : 6` of 68 findings, with 18 obligations DISCHARGED and 5 external obligations. *The prose classifier that produced 27/21/5/4 was RETIRED (see `internal_remaining_prose_classifier_retired` in the ledger) and is no longer an input to any closure decision.*",
+  "reopened_2026_10_02": {
+   "GS-FINAL-003": ["ios-recovery-graph", "typed-permit", "zero-private-opens", "android-provider-court", "bootstrap-permit-unit"],
+   "GS-FINAL-004": ["owned-connection", "migrations-on-verified", "provider-dispatch"],
+   "GS-UX-001": ["facade", "rendered-controls", "ui-test-target", "accessibility"],
+   "GS-STRESS-001": ["real-owner-invariants", "classification"],
+   "GS-STORE-002": ["internal-architecture"],
+   "AUDIT-B1-CTRL-001": ["closure-law", "ready-requires-both-populations"]
+  },
+  "gap_mapping_note": "Each re-opened obligation carrieth its `known_internal_gaps` in the ledger (derived from `KNOWN_INTERNAL_GAPS` in the generator), mapping the canonical source reviews -- `agent://SqliteReview` (2 critical + 8 important), `agent://IosReview` (IOS-R1..R15), `agent://NativeLifetimeReview` (4 critical + 9 important, mapped to the SAME canonical obligations and never as new findings), `local://LaneControls-findings.json` and `local://manifest-review-findings.json` -- by CANONICAL IDENTITY. No new finding was added and no gap was duplicated; every mapped gap stays OPEN pending actual proof.",
   "historical_rc4_era": {
    "value": {
     "derived_total": 21,

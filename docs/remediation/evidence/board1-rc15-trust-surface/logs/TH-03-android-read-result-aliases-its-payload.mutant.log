@@ -1,0 +1,5 @@
+::error::Trusted handshake control error: Android HandshakeReadResult constructor must copy input payload (H21)
+
+FAIL: 1 trusted handshake control issue(s) found.
+
+(the rod aimed at 'Android HandshakeReadResult constructor must copy input payload (H21)'; reddened refusals were the aimed one)

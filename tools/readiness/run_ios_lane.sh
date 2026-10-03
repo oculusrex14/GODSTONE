@@ -26,6 +26,62 @@ LOG="${1:-ios-lane.log}"
 python3 tools/readiness/ios_source_digest.py >"$LOG.pre.sha256"
 
 python3 scripts/sync_ios_foundation_package.py
+
+# *** STAGE THE PINNED SQLCIPHER MACOS IMAGE, BECAUSE THE HOST LANE IS WHERE THE NATIVE ROAD CAN RUN. ***
+#
+# *THE OBLIGATION THIS ANSWERETH: the pinned SQLCipher library was recorded EXTERNAL, so the Foundation host lane's
+# `ReadinessT30Tests`/`NativeConnectionRepairTests` native arms SKIPped -- **a skip reports as a pass while measuring
+# NOTHING.** The source is repository-owned and buildable here, so the lane BUILDS the pinned MACOS image
+# (`tools/supplychain/build_sqlcipher_simulator.sh --mode macos`, exact commit `810db22f…`/v4.17.0) and STAGEth it.*
+#
+# *** AND IT REFUSES IF THE STAGE CANNOT BE DONE. *** *The macOS process cannot `dlopen` an IOSSIMULATOR image and
+# vice versa, so this is the MACOS image -- and a lane that could not stage it is a FAILED STAGE, not an external
+# exemption.*
+#
+# `SqlCipherDylibEngine.init` resolveth the artifact from `GODSTONE_SQLCIPHER_ARTIFACT_DIR` FIRST, verifying the
+# sidecar's sha256/platform/arch/cipher-major/source-commit BEFORE `dlopen`; `DYLD_LIBRARY_PATH` is exported as well
+# so the host dynamic loader can satisfy the image's own dependencies from the same stage.
+SQLCIPHER_STAGE="${GS_SQLCIPHER_STAGE:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/board1-sqlcipher-macos}"
+tools/supplychain/build_sqlcipher_simulator.sh --mode macos --out "$SQLCIPHER_STAGE" >"$LOG.sqlcipher" 2>&1 || {
+    echo "::error::*** THE PINNED SQLCIPHER MACOS IMAGE COULD NOT BE BUILT/STAGED. ***" >&2
+    echo "::error::the pinned library is repository-buildable from an exact commit; its absence is a FAILED STAGE," >&2
+    echo "::error::not an external exemption -- a skipped native arm measured nothing" >&2
+    exit 3
+}
+if [ ! -f "$SQLCIPHER_STAGE/libsqlcipher.0.dylib" ] || [ ! -f "$SQLCIPHER_STAGE/libsqlcipher.0.dylib.artifact.json" ]; then
+    echo "::error::*** THE SQLCIPHER STAGE CARRIETH NO libsqlcipher.0.dylib + .artifact.json PAIR AT $SQLCIPHER_STAGE ***" >&2
+    exit 3
+fi
+GODSTONE_SQLCIPHER_ARTIFACT_DIR="$SQLCIPHER_STAGE"
+DYLD_LIBRARY_PATH="$SQLCIPHER_STAGE${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+export GODSTONE_SQLCIPHER_ARTIFACT_DIR DYLD_LIBRARY_PATH
+SQLCIPHER_SHA="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['sha256'])" \
+    "$SQLCIPHER_STAGE/libsqlcipher.0.dylib.artifact.json")"
+# *** THE VERIFIER RUNS OVER THE ACTUAL BUILT IMAGE, AND ITS PASSING IS WHAT AUTHORISES THE SWIFT EXPECTATION. ***
+# *The engine compareth the loaded bytes against the COMPILED-IN `SQLCipherTrustedExpectation`, which must therefore
+# describe THIS mode's image; the generator RUNS the register verifier over the built bytes and REFUSES an unlisted
+# toolchain -- so a mismatch is a FAILED BUILD, never a skip.*
+# *The expectation is emitted into a temp file ($SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift) by the
+# verifier -- AND THEN PLACED WHERE THE BUILD ACTUALLY READS IT: the engine compares the loaded bytes against the
+# COMPILED-IN `SQLCipherTrustedExpectation`, which the compiler takes from the SOURCES tree, so a stale last-run
+# copy (of ANY mode) would mis-bind every native-mandatory arm. THE LANE'S OWN VERIFIED EMISSION IS THE SOURCE OF
+# TRUTH FOR ITS RUN; the temp file checks the build contract, the sources copy serves the build.*
+python3 tools/supplychain/verify_sqlcipher_artifact.py --mode macos --dir "$SQLCIPHER_STAGE" \
+    --emit-swift "$SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift" \
+    >>"$LOG.sqlcipher" 2>&1 || {
+    echo "::error::*** THE BUILT SQLCIPHER IMAGE DID NOT VERIFY AGAINST THE TRUSTED REGISTER (macos). ***" >&2
+    exit 3
+}
+cp "$SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift" \
+    ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift || {
+    echo "::error::the verified macos trust expectation could not be placed at the compile path" >&2
+    exit 3
+}
+python3 scripts/sync_ios_foundation_package.py >>"$LOG.sqlcipher" 2>&1 || {
+    echo "::error::the foundation mirror could not re-sync the verified trust expectation" >&2
+    exit 3
+}
+echo "sqlcipher_stage=$SQLCIPHER_STAGE sqlcipher_sha256=$(printf '%s' "$SQLCIPHER_SHA" | cut -c1-16)…"
 # *** THE VERDICT COMES FROM THE CHECKER, NOT THE RAW `swift test` STATUS -- AND THE DIGEST IS WRITTEN EITHER WAY. ***
 #
 # *THE DEFECT THIS CLOSES, MEASURED: the runner exited the script the moment `swift test` returned non-zero, so THE

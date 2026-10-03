@@ -115,6 +115,15 @@ enum class WipeRefusalCause {
 
     /** THE JOURNAL VANISHED MID-LADDER. It was readable and then was not; treat as unsound, never as clean. */
     JOURNAL_LOST,
+
+    /**
+     * *** GS-FINAL-003 `durable-checkpoints` (A9): A CHECKPOINT DID NOT REACH DISK. ***
+     *
+     * *A STEP PERFORMED BUT NOT DURABLY RECORDED MUST NOT BE FOLLOWED BY ANOTHER EFFECT: a later reboot would resume from
+     * the wrong rung -- or permit on a terminal commit that never landed.* **The step is idempotent and the ladder stays
+     * PENDING, so a later composition with a writable journal RESUMES it honestly.**
+     */
+    CHECKPOINT_NOT_DURABLE,
 }
 
 /** Idempotent step result: a repeat call on a passed state reports AlreadyAtOrPast, never re-effects. */
@@ -134,6 +143,18 @@ sealed class WipeStepResult {
 interface WipeDurabilityStore {
     fun readJournal(): List<String>
     fun appendJournal(stateName: String)
+
+    /**
+     * *** GS-FINAL-003 `durable-checkpoints` (A9): APPEND AND REPORT WHETHER THE CHECKPOINT ACTUALLY LANDED. ***
+     *
+     * *The default delegates to [appendJournal] and reporteth success, so an in-memory store compiles unchanged; the
+     * production store overrides it with the commit's own verdict.* **The coordinator consults THIS, so a checkpoint the
+     * disk never accepted stops the ladder before the next effect.**
+     */
+    fun appendJournalDurably(stateName: String): Boolean {
+        appendJournal(stateName)
+        return true
+    }
 }
 
 interface KeyVaultSeam {
@@ -230,8 +251,63 @@ class CrashResumableWipe(
     var bypassAttempts: Int = 0
         private set
 
+    /**
+     * *** GS-FINAL-003 `one-owner` (A8): THIS COORDINATOR REFUSES A REENTRANT DRIVE ON ITSELF. ***
+     *
+     * *Two drives in one thread would step the SAME ladder twice -- duplicate effects, and a checkpoint regression when
+     * the second read a stale `current()`.* **A `synchronized` block cannot stop this (the lock is reentrant), so the
+     * flag is explicit; a hook or an injected seam that re-enters finds a REFUSAL rather than a second effect.**
+     */
+    private var driving = false
+
+    /**
+     * *** GS-FINAL-003 `one-owner` (A8): AND THE LAST CHECKPOINT TO FAIL DURABLY ABORTS THE LADDER. ***
+     *
+     * *Once a step has been EFFECTED but its checkpoint did NOT land, no further effect may follow* -- *otherwise the
+     * record and the estate diverge by more than the one idempotent step a later resume re-runs.*
+     */
+    private var aborted = false
+
+    /**
+     * *** GS-FINAL-003 `same-estate` (A2/A8): THE LIVE REVISION OF THE DURABLE RECORD -- LADDER **AND** GENERATION. ***
+     *
+     * *The permit's staleness check must ask THIS, not a coordinator's in-memory snapshot:* **a fresh coordinator over the
+     * same journal -- OR a coordinator whose own instance has not moved while ANOTHER instance wrote -- therefore
+     * observeth the wipe, which is exactly the ABA this finding names** (*"revision derived from in-memory list -- stale
+     * after other write"*). **The store is re-read on every call and readability is re-asked of it, so the string moveth
+     * with the durable record and nothing else.**
+     *
+     * *** AND THE EPOCH IS APPENDED, WHICH IS THE ONE ABA THE LADDER ALONE CANNOT SEE: *** *a completed wipe returneth the
+     * record to `IDLE`, so without a generation the revision after a wipe would be BYTE-IDENTICAL to the revision before
+     * it -- and a permit minted over the earlier estate would be accepted over the later one.* **The format is
+     * `<ladderNames>|true|<epoch>`, so the typed revision, the permit, the evidence and the owner-token all carrieth the
+     * same generation, and a store that cannot name one contributes `0` -- which admiteth nothing.**
+     */
+    fun liveRevision(): String {
+        val readable = (store as? WipeReadabilityReporting)?.isReadable ?: false
+        if (!readable) return "<unreadable>"
+        val lines = store.readJournal()
+        val view = lines.map { WipeJournalState.fromWire(it) }
+        if (view.any { it == null }) return "<unreadable>"
+        val epoch = (store as? WipeEpochReporting)?.epoch ?: 0L
+        return view.joinToString(",") { it!!.name } + "|true|" + epoch
+    }
+
     /** The current durable state, or null when the journal is empty (nothing ever requested). */
     private fun current(): WipeJournalState? = journal.lastOrNull()?.let { WipeJournalState.fromWire(it) }
+
+    /**
+     * *** GS-FINAL-003 `same-estate` (A2/A8): THE WORKING MIRROR IS THE RECORD, NOT A CONSTRUCTION-TIME SNAPSHOT. ***
+     *
+     * *The in-memory `journal` is reloaded from the durable store at the start of every drive.* **A second coordinator
+     * instance over the same record -- or a raw journal write -- therefore cannot be stepped over, which is the
+     * "second owner checkpoint regression" the review's A8 names.**
+     */
+    private fun refreshFromStore() {
+        val fresh = store.readJournal()
+        journal.clear()
+        journal.addAll(fresh)
+    }
 
     /** True while any ladder state is outstanding: the gate must stay closed across the whole span. */
     val isWipePending: Boolean
@@ -294,58 +370,110 @@ class CrashResumableWipe(
         }
 
     /** Begin a wipe. From IDLE/empty this records REQUESTED and drives the ladder as far as it can. */
-    fun requestWipe(): WipeStepResult {
-        if (!isSupportedJournal()) return WipeStepResult.Refused(
+    fun requestWipe(): WipeStepResult = drive {
+        if (!isSupportedJournal()) return@drive WipeStepResult.Refused(
                 WipeRefusalCause.MALFORMED_JOURNAL,
                 "journal carries an unsupported state; refusing to guess",
             )
-        if (isWipePending) return WipeStepResult.Refused(
+        if (isWipePending) return@drive WipeStepResult.Refused(
                 WipeRefusalCause.WIPE_ALREADY_PENDING,
                 "a wipe is already outstanding; one composition root drives the ladder",
             )
-        persistRequest()
-        return runLadder()
+        if (!persistRequest()) return@drive refusedForFailedCheckpoint(WipeJournalState.REQUESTED)
+        runLadder()
     }
 
     /** Resume after death: drive strictly from the durable journal. */
-    fun resume(): WipeStepResult {
-        if (!isSupportedJournal()) return WipeStepResult.Refused(
+    fun resume(): WipeStepResult = drive {
+        if (!isSupportedJournal()) return@drive WipeStepResult.Refused(
                 WipeRefusalCause.MALFORMED_JOURNAL,
                 "journal carries an unsupported state; refusing to guess",
             )
-        val c = current() ?: return WipeStepResult.Refused(
+        val c = current() ?: return@drive WipeStepResult.Refused(
                 WipeRefusalCause.NOTHING_TO_RESUME,
                 "nothing to resume; no wipe was ever requested",
             )
-        if (c == WipeJournalState.IDLE) return WipeStepResult.AlreadyAtOrPast(c)
-        return runLadder()
+        if (c == WipeJournalState.IDLE) return@drive WipeStepResult.AlreadyAtOrPast(c)
+        runLadder()
     }
 
     /** Drive the ladder one call, advancing as far as the seams allow. */
-    fun step(): WipeStepResult {
-        if (!isSupportedJournal()) return WipeStepResult.Refused(
+    fun step(): WipeStepResult = drive {
+        if (!isSupportedJournal()) return@drive WipeStepResult.Refused(
                 WipeRefusalCause.MALFORMED_JOURNAL,
                 "journal carries an unsupported state; refusing to guess",
             )
-        val c = current() ?: return WipeStepResult.Refused(
+        val c = current() ?: return@drive WipeStepResult.Refused(
                 WipeRefusalCause.NOTHING_TO_RESUME,
                 "no journal entry",
             )
-        if (c == WipeJournalState.IDLE) return WipeStepResult.AlreadyAtOrPast(c)
-        return runLadder()
+        if (c == WipeJournalState.IDLE) return@drive WipeStepResult.AlreadyAtOrPast(c)
+        runLadder()
     }
 
-    private fun persistRequest() {
+    /**
+     * *** GS-FINAL-003 `one-owner` (A8): THE ONE DRIVE GATE. ***
+     *
+     * *EVERY ladder verb travelleth here, so reentrancy and the durable-abort law liveth in ONE place rather than in each
+     * verb.* **A reentrant call is REFUSED WITH A NAMED CAUSE rather than stepping the ladder twice**, *and a ladder
+     * already aborted by a failed durable checkpoint is PENDING rather than restarting its effects.*
+     */
+    private inline fun drive(body: () -> WipeStepResult): WipeStepResult {
+        if (driving) return WipeStepResult.Refused(
+            WipeRefusalCause.WIPE_ALREADY_PENDING,
+            "a drive of this ladder is already in progress; one owner serializes the estate",
+        )
+        if (aborted) return WipeStepResult.Refused(
+            WipeRefusalCause.CHECKPOINT_NOT_DURABLE,
+            "a checkpoint did not reach disk; the ladder is held pending until a writable retry",
+        )
+        driving = true
+        try {
+            // *** A2: THE DRIVE RE-READS THE ACTUAL JOURNAL BEFORE STEPPING. *** *The in-memory copy is a working
+            // mirror of the durable record, NOT a snapshot taken at construction: a second owner (or a raw journal edit)
+            // that moved the record since this instance stood would otherwise be stepped over.*
+            refreshFromStore()
+            return body()
+        } finally {
+            driving = false
+        }
+    }
+
+    /** *A step was effected but its durable checkpoint did not land: hold the ladder pending at the current rung.* */
+    private fun refusedForFailedCheckpoint(at: WipeJournalState): WipeStepResult {
+        aborted = true
+        return WipeStepResult.Refused(
+            WipeRefusalCause.CHECKPOINT_NOT_DURABLE,
+            "the durable checkpoint ${at.name} did not reach disk; no further effect may follow",
+        )
+    }
+
+    /**
+     * *** GS-FINAL-003 (A7): DURABLY RECORD `REQUESTED` OVER WHATEVER THE RECORD NOW SAYS. ***
+     *
+     * *Used ONLY by the operator's resolution of a CORRUPT record ([EstateAuthority.resolveCorruptForOperator]):* **the
+     * unreadable marker is OVERWRITTEN by a real request, so the following `resume()` drives the FULL ladder rather than
+     * merely clearing the marker and claiming a clean start.** *The write is refused if it cannot land, so a resolution
+     * that erased without recording is impossible.*
+     */
+    internal fun recordRequestDurably(): Boolean {
+        if (aborted) return false
+        return persistRequest()
+    }
+
+    private fun persistRequest(): Boolean {
         hooks.beforeWrite(WipeJournalState.REQUESTED.name)
-        store.appendJournal(WipeJournalState.REQUESTED.name)
+        if (!store.appendJournalDurably(WipeJournalState.REQUESTED.name)) return false
         journal.add(WipeJournalState.REQUESTED.name)
+        return true
     }
 
-    private fun persist(from: WipeJournalState, to: WipeJournalState) {
+    private fun persist(from: WipeJournalState, to: WipeJournalState): Boolean {
         require(to.rank == from.rank + 1) { "illegal ladder step ${from.name} -> ${to.name}" }
         hooks.beforeWrite(to.name)
-        store.appendJournal(to.name)
+        if (!store.appendJournalDurably(to.name)) return false
         journal.add(to.name)
+        return true
     }
 
     private fun runLadder(): WipeStepResult {
@@ -360,7 +488,9 @@ class CrashResumableWipe(
                     if (!receipt.isDrained) {
                         return WipeStepResult.RetryLater(from, (receipt as RuntimeDrainReceipt.NotDrained).reason)
                     }
-                    persist(from, WipeJournalState.RUNTIME_DRAINED)
+                    if (!persist(from, WipeJournalState.RUNTIME_DRAINED)) {
+                        return refusedForFailedCheckpoint(WipeJournalState.RUNTIME_DRAINED)
+                    }
                 }
                 WipeJournalState.RUNTIME_DRAINED -> {
                     // the drain is a THIS-lifetime property: after a reboot the volatile queues are live again,
@@ -383,7 +513,9 @@ class CrashResumableWipe(
                     if (failed.isNotEmpty()) {
                         return WipeStepResult.RetryLater(from, failed.joinToString(",") { it.keyName })
                     }
-                    persist(from, WipeJournalState.KEYS_ERASED)
+                    if (!persist(from, WipeJournalState.KEYS_ERASED)) {
+                        return refusedForFailedCheckpoint(WipeJournalState.KEYS_ERASED)
+                    }
                 }
                 WipeJournalState.KEYS_ERASED -> {
                     val failed = WipeScope.filterPrivatePaths(WipeScope.PRIVATE_ARTIFACTS)
@@ -392,7 +524,9 @@ class CrashResumableWipe(
                     if (failed.isNotEmpty()) {
                         return WipeStepResult.RetryLater(from, failed.joinToString(",") { it.path })
                     }
-                    persist(from, WipeJournalState.ARTIFACTS_DELETED)
+                    if (!persist(from, WipeJournalState.ARTIFACTS_DELETED)) {
+                        return refusedForFailedCheckpoint(WipeJournalState.ARTIFACTS_DELETED)
+                    }
                 }
                 WipeJournalState.ARTIFACTS_DELETED -> {
                     // THE TYPED REFUSAL IS HONOURED HERE, WHICH THE COMPILER CANNOT ENFORCE: a nullable result used as a
@@ -402,10 +536,17 @@ class CrashResumableWipe(
                     if (authority.publishNewIdentity() == null) {
                         return WipeStepResult.RetryLater(from, "no identity could be published")
                     }
-                    persist(from, WipeJournalState.NEW_IDENTITY)
+                    if (!persist(from, WipeJournalState.NEW_IDENTITY)) {
+                        return refusedForFailedCheckpoint(WipeJournalState.NEW_IDENTITY)
+                    }
                 }
                 WipeJournalState.NEW_IDENTITY -> {
-                    persist(from, WipeJournalState.IDLE)
+                    // *** A9: THE TERMINAL COMMIT'S VERDICT IS HONOURED LAST OF ALL. *** *A failed terminal commit means
+                    // the record still stands at `NEW_IDENTITY` while the estate believes the wipe finished -- so the
+                    // ladder STOPS PENDING rather than reporting `Advanced(_, IDLE)` over a checkpoint that never landed.*
+                    if (!persist(from, WipeJournalState.IDLE)) {
+                        return refusedForFailedCheckpoint(WipeJournalState.IDLE)
+                    }
                     return WipeStepResult.Advanced(from, WipeJournalState.IDLE)
                 }
                 WipeJournalState.IDLE -> return WipeStepResult.AlreadyAtOrPast(from)

@@ -1,0 +1,6 @@
+::error::Trusted handshake control error: Android NoiseSession must define class HandshakeReadResult with authenticatedRemoteStaticKey (H01)
+::error::Trusted handshake control error: Android NoiseSession must define 'internal class HandshakeReadResult' (H21)
+
+FAIL: 2 trusted handshake control issue(s) found.
+
+(the rod aimed at 'Android NoiseSession must define class HandshakeReadResult with authenticatedRemoteStaticKey (H01)'; reddened refusals were the aimed one)

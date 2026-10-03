@@ -149,13 +149,24 @@ public final class LinkFacade: @unchecked Sendable {
 final class ComposedNode: @unchecked Sendable {
     let label: String
     let identity: MeshIdentity
-    let store: InMemoryMessageStore
+    /// *** IOS-R9/R10: THE NODE'S OWN STORE, WHICH MAY BE THE DURABLE ONE. *** *It was the concrete
+    /// `InMemoryMessageStore`, so a durable composition kept a SECOND, in-memory field beside the real store the node
+    /// wrote -- and a caller judging "what this node holdeth" read the wrong one. **Widened to the `MessageStore`
+    /// protocol so the field is the store the node REALLY writeth.***
+    let store: MessageStore
     let tracker: DeliveryTracker
     let node: MeshNode
     let inbox: RecipientInboxRepository
-    let ackStore: InMemoryAckStore
+    /// *** AND THE ACK NAMESPACE, WHICH MAY BE THE DURABLE `SqliteAckStore` (IOS-R9). *** *A durable node that
+    /// composed over an `InMemoryAckStore` lost every ACK obligation at process death while its delivery rows
+    /// survived -- the split-brain the review named.*
+    let ackStore: any AckObligationStore
     let keys: MutableKeyTable
     let ackPump: DurableAckPump
+    /// *** IOS-R10: THE RECIPIENT TRUST AUTHORITY, WHEN THE COMPOSITION WIRES A REAL ONE. *** *Nil means the
+    /// composition trusts only its own key table (the courts' route); a lab passes the real repository-backed
+    /// resolver, so a revoked contact is refused rather than re-pinned.*
+    internal var recipientTrustResolver: RecipientTrustResolver?
     private let signingSeed: Data
     /// The harness this node belongeth to, if any -- so a durable store this node createth is **OWNED** by the composition rather than orphaned.
     internal weak var ownerHarness: ComposedRuntimeHarness?
@@ -163,8 +174,8 @@ final class ComposedNode: @unchecked Sendable {
     var nodeId: Data { identity.nodeId }
 
     init(label: String, identity: MeshIdentity, signingSeed: Data,
-                  store: InMemoryMessageStore, tracker: DeliveryTracker, node: MeshNode,
-                  inbox: RecipientInboxRepository, ackStore: InMemoryAckStore,
+                  store: MessageStore, tracker: DeliveryTracker, node: MeshNode,
+                  inbox: RecipientInboxRepository, ackStore: any AckObligationStore,
                   keys: MutableKeyTable, ackPump: DurableAckPump) {
         self.label = label
         self.identity = identity
@@ -323,6 +334,25 @@ public final class ComposedRuntimeHarness {
     /// *** GS-INTEGRATION-001: THE DURABLE STORES THIS HARNESS HATH HANDED OUT -- AND IT MUST **OWN** THEM, BECAUSE **A WIPE THAT OWNS NOTHING
     /// HATH NOTHING TO REACH** (round 514's measured RED: `beginWipe()` setteth a flag and eraseth no row, so the intent ledger stood after a wipe). ***
     private var durableStoreURLs: Set<URL> = []
+    /// *** *** IOS-R5/R7: THE LIVE OWNERS A RECOVERY WIPE MUST RETAIN AND CLOSE. *** ***
+    ///
+    /// *THE DEFECT THE REVIEW NAMED: the recovery lander drained a BRAND-NEW `BleTransport()` with no active context and
+    /// never touched the retained nodes, so its "drain" proved nothing. **THESE FIELDS ARE THE HARNESS'S OWN RECORD OF
+    /// WHAT IT COMPOSED:** the durable stores it opened over the estate, and the live drain/invalidate capabilities the
+    /// recovery estate answers with. **THE CLOSURES ARE `nil` UNTIL A CALLER ARMS THEM, so an unwired harness answereth
+    /// the same fresh-transport road as before and no existing arm changeth.***
+    private var estateDrain: TransportRuntimeSeam?
+    private var estateInvalidate: (() -> Void)?
+    /// The logical artifacts this estate's wipe must delete -- the harness's OWN stores plus whatever the lab handle
+    /// adds. `nil` means "not armed": the estate then falls back to the harness's store urls alone.
+    private var estateArtifacts: [String: URL] = [:]
+    /// *** THE MEASURED OWNER-CLOSURE: TRUE ONLY WHEN THE HANDLES THE COMPOSITION REALLY HELD WERE CLOSED. *** *A
+    /// surface cannot claim `liveOwnerDrained` from a new object; it reads the boolean the closure set.*
+    public private(set) var liveOwnersClosed = false
+    /// A monotone estate generation, bumped on every live-owner closure, so a permit minted before a wipe is detectable.
+    public private(set) var estateGeneration: UInt64 = 0
+    /// What the estate asked a wipe to delete, for the recovery lander's own inventory report.
+    internal var estateArtifactPaths: [String: URL] { estateArtifacts }
 
     /// The composition seam a crash can be fixed at, before the radio.
     public static let seamBeforeLink: String = "before_link"
@@ -363,7 +393,11 @@ public final class ComposedRuntimeHarness {
         let store = InMemoryMessageStore()
         // *** THE NODE'S OWN STORE: the durable one when supplied, else the in-memory composition. ***
         let nodeStore: MessageStore = durableStore ?? store
-        let ackStore = InMemoryAckStore()
+        // *** IOS-R9: AND THE ACK NAMESPACE FOLLOWS THE MESSAGE STORE. *** *When a durable store is supplied, the
+        // node's ACK obligations must live in the SAME durable file -- otherwise the delivery rows survive a process
+        // while the obligations beside them evaporate, and a relaunched node cannot answer for a call it queued.*
+        let ackStore: any AckObligationStore = durableStore.map { SqliteAckStore(engine: $0) }
+            ?? InMemoryAckStore()
         let keys = MutableKeyTable()
         // a node pinnaleth its OWN authentic signing key first: the inbox
         // self-verifieth every ACK it produceth, so a directory without our own
@@ -438,7 +472,7 @@ public final class ComposedRuntimeHarness {
         node.recipientInbox = inbox
 
         let composed = ComposedNode(label: label, identity: identity, signingSeed: seed,
-                                    store: store, tracker: tracker, node: node, inbox: inbox,
+                                    store: nodeStore, tracker: tracker, node: node, inbox: inbox,
                                     ackStore: ackStore, keys: keys, ackPump: ackPump)
         // GS-INTEGRATION-001: THE NODE KNOWETH ITS HARNESS, SO WHAT IT CREATETH IS **OWNED** BY THE COMPOSITION (and a wipe can therefore reach it).
         composed.ownerHarness = self
@@ -497,17 +531,34 @@ public final class ComposedRuntimeHarness {
     }
 
     /// Fix a crash at a named composition seam (nil cleareth it).
-    /// *** CRYPTO-005: **THE COMPOSITION'S EXPOSED DURABLE COMMAND** -- the harness's own door to `ComposedNode.sendDirectDurable`, because the
-    /// harness's `nodes` map is PRIVATE and the audit's closure test invoketh a command ON THE RUNTIME, not on a node it cannot reach. ***
+    /// *** CRYPTO-005 + IOS-R10: **THE COMPOSITION'S EXPOSED DURABLE COMMAND** -- now over the node's OWN store,
+    /// resolved by the node's REAL trust authority, and DISPATCHED after the durable commit. ***
     ///
-    /// THE CARD'S OWN WORDS: "Composition test invokes the **EXPOSED RUNTIME COMMAND** and observes exactly one ...". IT IS THE ONLY METHOD IN
-    /// PRODUCTION THAT REACHETH A SEND PATH WHOSE JOURNAL IS THE DURABLE ONE, AND IT RETURNETH THE AUTHORITY'S OWN `SendDirectResult` LOSSLESSLY.
+    /// *THE REVIEW'S IOS-R10: the old form opened its own store beside the node and NEVER handed the committed frame to
+    /// the links, so a recipient never processed it and no ACK could ever advance the obligation. **THE HELD FRAME IS
+    /// NOW READ BACK FROM THE NODE'S OWN STORE AND HANDED TO THE LINK** -- so a recipient's ACK updates the SAME
+    /// obligation the send created, which is what the finding's own positive clause requireth.*
+    ///
+    /// *THE RETURN IS THE AUTHORITY'S OWN TYPED `SendDirectResult`, so a court seeeth the logical id and the
+    /// retry flag rather than a string.*
     public func sendDirectDurable(_ from: String, recipient recipientLabel: String, plaintext: Data,
-                                  intentId: Data, storeURL: URL) async throws -> SendDirectResult {
+                                  intentId: Data) async throws -> SendDirectResult {
         guard let a = nodes[from] else { return .rejected(reason: .enqueueInvalidArgument) }
         guard let b = nodes[recipientLabel] else { return .rejected(reason: .enqueueInvalidArgument) }
-        return try await a.sendDirectDurable(intentId, recipient: b, plaintext: plaintext, storeURL: storeURL)
+        let result = try await a.sendDirectDurable(intentId, recipient: b, plaintext: plaintext)
+        guard case let .durablyEnqueued(logicalMessageId, fromRetry) = result else { return result }
+        // *** *** ACTUAL DISPATCH: THE COMMITTED FRAME REACHETH THE LINKS. *** ***
+        // *Only on a FRESH commit or a genuine resume; a frame that was refused is never offered. The recipient's own
+        // `ingestInbound` writes its ACK obligation, so `turnAcks` can then carry a receipt that advances the sender's
+        // delivery row.*
+        if let frame = a.heldFrame(logicalMessageId) {
+            _ = hand(a, toLabel: recipientLabel, bytes: frame.encode())
+        }
+        _ = fromRetry
+        return result
     }
+    // *IOS-R10: the dispatch's own `msgId` is the LOGICAL id the authority derived, so a court can pair the send with
+    // the recipient's held row directly.*
 
     public func crashAfter(_ boundary: String?) { crashAt = boundary }
 
@@ -515,17 +566,144 @@ public final class ComposedRuntimeHarness {
     /// GS-INTEGRATION-001: the composition TAKETH OWNERSHIP of a durable store it created.
     internal func registerDurableStore(_ url: URL) { durableStoreURLs.insert(url) }
 
+    /// *** THE DURABLE STORES THIS HARNESS HANDED OUT, SO A CALLER'S WIPE CAN ADDRESS THEM. ***
+    ///
+    /// *`LabEstateSeam` needs the REAL paths the composition wrote -- a wipe that guessed at them would erase
+    /// somebody else's estate or none at all. The set is the harness's own record of what it created.*
+    internal func durableStoreURLsForWipe() -> [URL] { Array(durableStoreURLs) }
+
+    // ------------------------------------------------------------------------------------------------
+    // *** *** IOS-R5: THE LIVE-OWNER DRAIN/CLOSE CAPABILITY THE RECOVERY ESTATE ANSWERS WITH. *** ***
+    //
+    // *THE REVIEW'S CLAUSE: "Have the recovery estate own the actual transport/producer drain capabilities, identity
+    // key owner, and invalidation/closure registry, including all retained owners." **THIS IS THAT REGISTRY.** The
+    // harness is the ONE object that already holdeth every retained node, its durable store and its identity, so it is
+    // the only honest owner of "close what I composed".*
+    //
+    // **AND THE CLOSURE IS MEASURED RATHER THAN ASSERTED:** *`closeRetainedOwners()` closes each node's real durable
+    // store, then asks the FILESYSTEM whether the handle really let go (a `close()` that silently failed while a byte
+    // survived is still a failure), and it bumpeth `estateGeneration` so a permit minted before this wipe is
+    // stale.* ***AN UNARMED HARNESS ANSWERETH `nil`, SO THE RECOVERY LANDER FALLS BACK TO THE PRE-EXISTING
+    // FRESH-TRANSPORT ROAD AND NO SHIPPING OR EXISTING COURT ARM CHANGETH.***
+    // ------------------------------------------------------------------------------------------------
+
+    /// Arm the recovery estate with the real drain/invalidation capabilities and the artifact inventory.
+    /// - Parameters:
+    ///   - drain: the live `TransportRuntimeSeam` over the composition's real owners (a lab passes a seam that
+    ///     quiesces the retained nodes); `nil` leaves the fresh-transport fallback.
+    ///   - artifacts: logical name -> the real file, the TOTAL inventory the estate wipe must delete.
+    internal func armRecoveryEstate(drain: TransportRuntimeSeam?,
+                                    artifacts: [String: URL]) {
+        self.estateDrain = drain
+        self.estateArtifacts = artifacts
+        self.estateInvalidate = { [weak self] in
+            guard let self else { return }
+            _ = self.closeRetainedOwners()
+            self.estateGeneration &+= 1
+        }
+    }
+
+    /// The armed drain seam, or nil when the estate was never armed.
+    internal var armedEstateDrain: TransportRuntimeSeam? { estateDrain }
+    /// The armed invalidation/closure hook, or nil when the estate was never armed.
+    internal var armedEstateInvalidate: (() -> Void)? { estateInvalidate }
+
+    /// *** CLOSE WHAT THIS COMPOSITION REALLY HELD -- AND MEASURE THAT IT LET GO. ***
+    ///
+    /// *`close()` on the store is the verb that drops the handle (the SQLite connection is freed by its owner); this
+    /// then asks the filesystem whether the durable file still refuses a write, which is the observable a swallowed
+    /// error cannot forge.* **Only when EVERY retained durable store refuses further use is `liveOwnersClosed` true** --
+    /// so a surface reading that boolean is reading a measurement, not a hope.
+    private func closeRetainedOwners() -> Bool {
+        var allClosed = true
+        let probe = Data(repeating: 0, count: 16)
+        var reached = 0
+        for node in nodes.values {
+            guard let durable = node.store as? SqliteMessageStore else { continue }
+            reached += 1
+            durable.close()
+            var stillReachable = false
+            do {
+                _ = try durable.readDelivery(probe)
+                stillReachable = true          // the handle answered: it did not let go
+            } catch {
+                stillReachable = false         // `handleMissing`: the store really closed
+            }
+            if stillReachable { allClosed = false }
+        }
+        ownersClosedCount = reached
+        liveOwnersClosed = allClosed && reached > 0
+        return liveOwnersClosed
+    }
+
+    /// The number of retained durable owners the last close reached (for the drain receipt's own count).
+    private var ownersClosedCount = 0
+
+    /// Whether the live owners were really closed by the last estate invalidation.
+    public func liveOwnerDrainCompleted() -> Bool { liveOwnersClosed }
+
+    /// The retained durable owners this composition can close.
+    internal var retainedDurableOwnerCount: Int {
+        nodes.values.filter { $0.store is SqliteMessageStore }.count
+    }
+
+    /// *** THE MEASURED CLOSURE, EXPOSED SO `LabEstateSeam` CAN BUILD AN HONEST DRAIN RECEIPT. ***
+    /// *`closed` is true only when every retained durable store refused further use AND there was at least one to
+    /// close; `owners` is how many were reached.*
+    internal func closeLiveOwnersMeasured() -> (closed: Bool, owners: Int) {
+        _ = closeRetainedOwners()
+        return (closed: liveOwnersClosed && ownersClosedCount > 0, owners: ownersClosedCount)
+    }
+
     /// GS-INTEGRATION-001: **THE WIPE NOW REACHETH THE REAL OWNER.** Round 514's RED measured that `beginWipe()` set a flag and erased NO row, so a
     /// durable intent stood after a wipe. IT NOW ERASETH THE DURABLE ARTIFACTS IT OWNS -- which is the artifact-filesystem erasure GS-STORE-006 built,
     /// applied to the stores this composition handed out -- AND THE FLAG REMAINS THE SECOND LINE OF DEFENCE RATHER THAN THE ONLY ONE.
     public func beginWipe() {
-        for url in durableStoreURLs { try? FileManager.default.removeItem(at: url) }
-        durableStoreURLs.removeAll()
-        wiped = true
-        trace.append(TraceEvent(kind: "wipe_begin", atMonoMillis: clock.monoMillis(), fields: [:]))
+        // *** *** THE SELF-REPORTED COMPLETION IS FIXED: `try?` SWALLOWED EVERY FAILURE AND `wiped = true` CLAIMED AN
+        // ERASURE NOBODY VERIFIED. *** ***
+        //
+        // *THE DEFECT, MEASURED IN THE SOURCE: `for url in durableStoreURLs { try? FileManager.default.removeItem(at: url) }`
+        // -- **a `try?` that discards the error, followed by an unconditional `wiped = true`.** A file that survived
+        // (a lock, a permission, a path that was never addressable) left a harness reporting "wiped" while the bytes
+        // stood.* **A FALSE COMPLETE IS THE WORST CLASS: it looks exactly like the real thing from every caller.**
+        //
+        // **SO THE ANSWER IS MEASURED, THE SURVIVORS ARE KEPT, AND COMPLETION REQUIRES AN EMPTY REMAINDER:** *each url
+        // is removed, then the FILESYSTEM is asked whether it is really gone (`removeItem` that did not throw while
+        // the file surviveth is still a failure -- the same check the production `WipeArtifactFileSystemSeam` makes).*
+        // A survivor stays registered, so a later attempt can reach it and no caller is told the estate is gone.*
+        var survivors: Set<URL> = []
+        for url in durableStoreURLs {
+            do {
+                if FileManager.default.fileExists(atPath: url.path) {
+                    try FileManager.default.removeItem(at: url)
+                }
+            } catch {
+                // THE FAILURE IS KEPT, NOT SWALLOWED: the url stays registered and the completion stays false.
+            }
+            if FileManager.default.fileExists(atPath: url.path) { survivors.insert(url) }
+        }
+        durableStoreURLs = survivors
+        // *** COMPLETE ONLY WHEN NOTHING SURVIVED, AND THE MEASUREMENT IS WHAT SAYS SO. ***
+        let wipedNow = survivors.isEmpty
+        if wipedNow {
+            wiped = true
+        } else {
+            // A wipe that could not finish must NOT open the send gate: the surviving bytes are the estate.
+            wiped = false
+        }
+        trace.append(TraceEvent(kind: "wipe_begin", atMonoMillis: clock.monoMillis(),
+                                fields: ["complete": String(wipedNow),
+                                         "survivors": String(survivors.count)]))
     }
 
     public func isWiped() -> Bool { wiped }
+
+    /// *** THE MEASURED WIPE OUTCOME: WHICH ARTIFACTS SURVIVED, AND WHETHER THE WIPE REALLY COMPLETED. ***
+    ///
+    /// *A caller that renders "wiped" must read this rather than the boolean: `isWiped()` is now backed by the same
+    /// measurement, but the survivors are the diagnostic a stuck wipe needs.*
+    public func wipeArtifactsRemaining() -> [URL] { Array(durableStoreURLs) }
+    public func wipeCompleted() -> Bool { durableStoreURLs.isEmpty && wiped }
 
     /// The seam every send passeth through: the durable commit, then the link.
     @discardableResult
@@ -759,14 +937,18 @@ public final class ComposedRuntimeHarness {
         nodes.values.first { $0.nodeId == nodeId }?.label
     }
 
-    /// Compose a real `MeshIdentity` through the production keychain road (the OS
-    /// keystore is the facade this harness substitutes).
     /// A transport handle's LABEL: the peer it reacheth, or the handle itself when
     /// the harness carrieth no link for it. It nameth the LINK, never a recipient.
     func transportLabel(_ peer: UUID) -> String {
         handleLabels[peer] ?? "link:\(peer.uuidString)"
     }
 
+    /// *** G2: THE TRANSPORT HANDLE THE HARNESS REALLY MINTED FOR ONE LABEL. *** *The identity→handle relation a
+    /// callback must map through lives HERE (the map is private); this is the one reader the wiring point needs.*
+    func transportHandle(for label: String) -> UUID? { transports[label] }
+
+    /// Compose a real `MeshIdentity` through the production keychain road (the OS
+    /// keystore is the facade this harness substitutes).
     static func makeIdentity(seed: Data, xSeed: Data) throws -> MeshIdentity {
         let kc = HarnessIdentityKeychain()
         let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: seed, x25519PrivateKey: xSeed)
@@ -945,49 +1127,63 @@ final class ComposedDeliveryRepository: DeliveryRepository, @unchecked Sendable 
 // MARK: - CRYPTO-005: THE DURABLE SEND PATH (the composition's exposed command)
 
 extension ComposedNode {
-    /// *** CRYPTO-005: **THE COMPOSITION'S DURABLE SEND** -- the send path that PINS THE INTENT BEFORE THE FRAME REACHETH THE RADIO, which is what
-    /// this lab's own comment above its in-memory path already claimeth ("the durable enqueue happeneth FIRST") and what `SendDirectAuthority` --
-    /// with an `OutboundIntentJournal` -- is FOR. ***
+    /// *** CRYPTO-005 + IOS-R10: **THE COMPOSITION'S DURABLE SEND** -- over the node's OWN store, resolved by the
+    /// node's REAL trust authority, and DISPATCHED after the durable commit. ***
     ///
-    /// IT IS **ADDITIVE**: the existing `sendDirect` path is untouched, so nothing that stood before this finding changes behaviour; this method is
-    /// the one that carrieth the durable property, and it is the one the audit's closure test invoketh.
-    ///
-    /// AND IT USES **ONLY WHAT THE NODE ALREADY HOLDETH** -- `identity`, `signingKeySeed()`, `node.router`, `keys` -- BESIDE A DURABLE STORE BESIDE
-    /// THE COMPOSITION, WHICH IS THE ONE SUBSTITUTION THIS FINDING MUST MAKE (an in-memory store cannot carry an intent across a process).
-    func sendDirectDurable(_ intentId: Data, recipient b: ComposedNode, plaintext: Data,
-                           storeURL: URL) async throws -> SendDirectResult {
-        // *** THE TRUST PIN -- AND IT IS THE LINE ROUND 509's COURT NAMED: the lab's OWN in-memory path maketh this explicit
-        // (`a.trust(nodeId: b.nodeId, signingKey: b.identity.signingPublicKey)` at :486) WHILE THE DURABLE PATH ASSUMED IT, SO THE AUTHORITY'S
-        // RESOLVER ANSWERED `.absent` AND THE SEND REFUSED WITH `recipientAbsent` -- THE VERY SYMPTOM THAT OPENED THIS FINDING AT ROUND 430.
-        // THE PIN BELONGETH HERE, IN THE COMPOSITION, RATHER THAN IN A COURT: A SEND PATH THAT DEPENDETH ON A CALLER HAVING TRUSTED THE
-        // RECIPIENT IS A PATH THAT CAN BE CALLED UNTRUSTED. ***
+    /// *THE REVIEW'S IOS-R10, ANSWERED HERE RATHER THAN IN A SECOND MECHANISM:*
+    ///   1. **ONE STORE.** The send runs over the NODE'S OWN durable store (the one its router, tracker and inbox
+    ///      already use). The old form opened a `SqliteMessageStore` at a caller-named path while the node routed
+    ///      through another -- **a durable row written beside a node that never held it** -- so the frame was absent
+    ///      from the node's estate and a reopen of the named path proved nothing about delivery.
+    ///   2. **THE REAL TRUST AUTHORITY.** When the composition wired a `recipientTrustResolver` (the lab's
+    ///      `PeerIdentityRepository`), the recipient's static-DH material and accepted generation come from THERE, so a
+    ///      REVOKED or unapproved recipient is refused instead of re-pinned. *When no resolver is wired (the courts'
+    ///      key-table composition), the node's own key table answers -- the documented lab-only fallback, named
+    ///      here rather than smuggled in.*
+    ///   3. **ACTUAL DISPATCH.** The authority pins the intent and commits the frame; the CALLER (the harness) then
+    ///      hands the HELD FRAME to the linked peers, and the recipient's own ingest writes its ACK obligation -- so
+    ///      a recipient ACK can advance the SAME obligation the send created.
+    func sendDirectDurable(_ intentId: Data, recipient b: ComposedNode, plaintext: Data) async throws -> SendDirectResult {
+        // *** THE NODE MUST REALLY OWN A DURABLE STORE. *** *The whole property is that the intent and the frame
+        // outlive the process; an in-memory node cannot carry that, and silently opening a second store is the defect
+        // IOS-R10 names.*
+        guard let durableStore = store as? SqliteMessageStore else {
+            return .rejected(reason: .enqueueStorageFailure)
+        }
+        // *** AND THE TRUST PIN HAPPENETH BEFORE RESOLUTION, SO A DIRECTLY-INVOKED PATH IS NOT UNTRUSTED. ***
+        // *This is the node's OWN pin for the in-memory fallback; the LAB wires the real repository resolver below,
+        // which rejecteth a revoked contact REGARDLESS of this pin.*
         trust(nodeId: b.nodeId, signingKey: b.identity.signingPublicKey)
 
-        // WIRING 1: THE DURABLE STORE -- the same `SqliteMessageStore` the runtime uses, over a caller-named path (so a court can REOPEN it).
-        let durableStore = try SqliteMessageStore(url: storeURL, maxBytes: 64 * 1024 * 1024)
-        // AND THE COMPOSITION TAKETH **OWNERSHIP** OF WHAT IT CREATED, so that ITS OWN WIPE can reach it (GS-INTEGRATION-001: a wipe that owns nothing
-        // has nothing to reach -- which is exactly the measured RED of round 514).
-        ownerHarness?.registerDurableStore(storeURL)
-        // WIRING 2: THE AUTHORITY ON THE NODE'S OWN MATERIAL, over both adapters and THE DURABLE JOURNAL.
+        let resolver: RecipientTrustResolver
+        if let real = recipientTrustResolver {
+            resolver = real
+        } else {
+            // *THE DOCUMENTED LAB/COURT FALLBACK: the node's own key table carries a signing key per node id and
+            // nothing else, so the static-DH half comes from the node's own binding material and the first generation
+            // is named AS A DECISION.*
+            resolver = KeyTableTrustResolver(
+                signingKeyForNodeId: { [keys] nodeId in keys.publicSigningKey(forNodeId: nodeId) },
+                staticDhForNodeId: { _ in self.identity.staticDhPublicKey },
+                generationForNodeId: { _ in 1 })
+        }
+
         let authority = SendDirectAuthority(
             identity: identity,
             signingKeys: SigningKeysAdapter(seed: signingKeySeed(), pub: identity.signingPublicKey),
             router: node.router,
             store: durableStore,
-            trustResolver: KeyTableTrustResolver(
-                signingKeyForNodeId: { [keys] nodeId in keys.publicSigningKey(forNodeId: nodeId) },
-                // THE LAB'S TRUST TABLE CARRIETH A SIGNING KEY PER NODE ID AND NOTHING ELSE, so the static-DH half cometh from the NODE'S OWN
-                // BINDING MATERIAL -- the same accessor the lab's in-memory path already useth for a recipient's static half.
-                staticDhForNodeId: { _ in self.identity.staticDhPublicKey },
-                // AND A TABLE THAT CARRIETH NO GENERATION CANNOT INVENT ONE: the lab trusteth a node id and a signing key with no version of
-                // that binding, so the FIRST generation is named here AS A DECISION rather than smuggled in as a fact.
-                generationForNodeId: { _ in 1 }),
-            // THE DURABLE JOURNAL: the property the audit found absent from BOTH the runtime and this composition.
+            trustResolver: resolver,
             journal: SqliteOutboundIntentJournal(store: durableStore))
-        // WIRING 3: THE SEND THROUGH THE AUTHORITY -- the intent is pinned in `outbound_intents` before the frame is authored.
         guard let command = SendDirectCommand.of(intentId: intentId, recipientTrustRef: b.nodeId, bodyUtf8: [UInt8](plaintext)) else {
             return .rejected(reason: .enqueueInvalidArgument)
         }
         return await authority.sendDirect(command)
+    }
+
+    /// The held frame the authority committed for `msgId`, read from the node's OWN store -- the bytes a dispatch
+    /// must hand to the links.
+    func heldFrame(_ msgId: Data) -> FrameV2? {
+        store.allHeldOrderedByPriority().first { $0.msgId == msgId }
     }
 }

@@ -1,25 +1,231 @@
 {
   "bomFormat": "CycloneDX",
-  "components": [],
+  "components": [
+    {
+      "bom-ref": "pkg:model/embedding-base@UNPINNED",
+      "name": "embedding-base",
+      "properties": [
+        {
+          "name": "godstone:ecosystem",
+          "value": "model"
+        },
+        {
+          "name": "godstone:name",
+          "value": "embedding-base"
+        },
+        {
+          "name": "godstone:digest_status",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:supplied_by",
+          "value": "docs/packaging/MODELS.lock.json"
+        },
+        {
+          "name": "godstone:license_source",
+          "value": "the register standeth UNPINNED"
+        },
+        {
+          "name": "godstone:digest",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:lane",
+          "value": "models"
+        },
+        {
+          "name": "license:status",
+          "value": "unknown"
+        }
+      ],
+      "scope": "required",
+      "type": "data",
+      "version": "UNPINNED"
+    },
+    {
+      "bom-ref": "pkg:model/embedding-small@UNPINNED",
+      "name": "embedding-small",
+      "properties": [
+        {
+          "name": "godstone:ecosystem",
+          "value": "model"
+        },
+        {
+          "name": "godstone:name",
+          "value": "embedding-small"
+        },
+        {
+          "name": "godstone:digest_status",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:supplied_by",
+          "value": "docs/packaging/MODELS.lock.json"
+        },
+        {
+          "name": "godstone:license_source",
+          "value": "the register standeth UNPINNED"
+        },
+        {
+          "name": "godstone:digest",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:lane",
+          "value": "models"
+        },
+        {
+          "name": "license:status",
+          "value": "unknown"
+        }
+      ],
+      "scope": "required",
+      "type": "data",
+      "version": "UNPINNED"
+    },
+    {
+      "bom-ref": "pkg:model/generation-large@UNPINNED",
+      "name": "generation-large",
+      "properties": [
+        {
+          "name": "godstone:ecosystem",
+          "value": "model"
+        },
+        {
+          "name": "godstone:name",
+          "value": "generation-large"
+        },
+        {
+          "name": "godstone:digest_status",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:supplied_by",
+          "value": "docs/packaging/MODELS.lock.json"
+        },
+        {
+          "name": "godstone:license_source",
+          "value": "the register standeth UNPINNED"
+        },
+        {
+          "name": "godstone:digest",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:lane",
+          "value": "models"
+        },
+        {
+          "name": "license:status",
+          "value": "unknown"
+        }
+      ],
+      "scope": "required",
+      "type": "data",
+      "version": "UNPINNED"
+    },
+    {
+      "bom-ref": "pkg:model/generation-light@UNPINNED",
+      "name": "generation-light",
+      "properties": [
+        {
+          "name": "godstone:ecosystem",
+          "value": "model"
+        },
+        {
+          "name": "godstone:name",
+          "value": "generation-light"
+        },
+        {
+          "name": "godstone:digest_status",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:supplied_by",
+          "value": "docs/packaging/MODELS.lock.json"
+        },
+        {
+          "name": "godstone:license_source",
+          "value": "the register standeth UNPINNED"
+        },
+        {
+          "name": "godstone:digest",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:lane",
+          "value": "models"
+        },
+        {
+          "name": "license:status",
+          "value": "unknown"
+        }
+      ],
+      "scope": "required",
+      "type": "data",
+      "version": "UNPINNED"
+    },
+    {
+      "bom-ref": "pkg:model/generation-medium@UNPINNED",
+      "name": "generation-medium",
+      "properties": [
+        {
+          "name": "godstone:ecosystem",
+          "value": "model"
+        },
+        {
+          "name": "godstone:name",
+          "value": "generation-medium"
+        },
+        {
+          "name": "godstone:digest_status",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:supplied_by",
+          "value": "docs/packaging/MODELS.lock.json"
+        },
+        {
+          "name": "godstone:license_source",
+          "value": "the register standeth UNPINNED"
+        },
+        {
+          "name": "godstone:digest",
+          "value": "UNPINNED"
+        },
+        {
+          "name": "godstone:lane",
+          "value": "models"
+        },
+        {
+          "name": "license:status",
+          "value": "unknown"
+        }
+      ],
+      "scope": "required",
+      "type": "data",
+      "version": "UNPINNED"
+    }
+  ],
   "metadata": {
     "component": {
       "name": "GODSTONE-models",
       "type": "application",
-      "version": "overlay-b7daf5a"
+      "version": "overlay-unpinned"
     },
     "properties": [
       {
-        "name": "release_status",
-        "value": "blocked"
+        "name": "completeness",
+        "value": "derived from docs/supplychain/SBOM.json (the canonical inventory, built from the locked dependency graph)"
       },
       {
-        "name": "reason",
-        "value": "no approved model artifact, hash, model card, or licence is bundled"
+        "name": "retired",
+        "value": "false"
       }
     ],
-    "timestamp": "2026-08-06T10:14:38Z"
+    "timestamp": "2026-10-01T18:40:52+00:00"
   },
-  "serialNumber": "urn:uuid:791fb90e-5318-4a92-bf20-3cab933c620d",
+  "serialNumber": "urn:uuid:0e85bc49-30ee-58d9-a4f0-07cd6f382ebb",
   "specVersion": "1.5",
   "version": 1
 }

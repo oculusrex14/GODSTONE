@@ -274,6 +274,14 @@ persistence and its production `snapshot`/`restore` caller are **untouched**, an
 is not satisfied**. The finding stays **`PARTIAL`**. Measured: iOS lane `SWIFT_RC=0`, `GodstoneCoreTests` **84/0** (82 →
 84: the +2 are the new arms), `GodstoneMeshTests` 1190/0; parity `--scope repo` 7/0; symbols 0 unresolved; digests PASSED.
 
+> **[2026-10-02 — READ THIS BEFORE THE FACE ABOVE.]** The `nonisolated public func sourceMetadata(documentId:)`
+> this round installed as the repair **was itself the defect's next house**: its body was
+> `(try? sourceMetadataChecked(...)) ?? nil`, so a storage fault at the provenance `SELECT` was delivered to
+> both consumers — the scene's `openedSource` and the destination's provenance line — as *absence*. The line
+> went silent, the scene stayed `.ready`, and nothing anywhere said why. The face is now
+> `sourceMetadataChecked(documentId:) throws`; see **ROUNDS 664–665** at the foot of this ledger for the
+> three-tale repair and its witnesses.
+
 ## ROUND 525, PHASE TWO — THE RECORD GAINS ITS FIRST PRODUCTION CALLER, AND A HYPOTHESIS IS REFUTED
 
 **GS-ARCHIVE-005 step 4's defect was the "no production caller" one:** `snapshot(into:)` and `restore(from:)` had
@@ -1296,3 +1304,121 @@ current state after the state had moved. The audit's own report 09 had already f
 still refers to eight partial findings"; it was right, and this is its repair.)*
 
 **Readiness flags remain FALSE and the five external gates remain OPEN. Acquisition never closes a gate.**
+
+---
+
+## ROUNDS 664–665 — THE PROVENANCE ROAD GETTETH TONGUE: ABSENCE, FAULT AND PRESENTATION TOLD APART
+
+**THE DEFECT, IN ITS OWN BODY.** The repair of round 524 kept the right *source* (the destination's own library
+probe) but the wrong *grammar*: `ArchiveRepository.sourceMetadata(documentId:)` was a compat shim whose every
+failure mode was `nil` — `(try? sourceMetadataChecked(documentId:)) ?? nil` — and `ArchiveLibrary` forwarded it
+nonisolated under the same shape, with `ArchiveReading`'s extension defaulting to `{ nil }`. Two worlds therefore
+arrived at the caller as one: a document row that truly carrieth no citation, and a `prepare`/`step`/`finalize`
+woe at the metadata query. The second is a storage fault; the shim dressed it as the first. On screen that is a
+document **stripped of its provenance with no announcement**, and in the scene a `.ready` phase over a `nil`
+`openedSource` — a false green, in this programme's own vocabulary.
+
+**THE REPAIR IS A TYPE, NOT A HEURISTIC.** The convenience face is *gone* (no alias, no default), and every
+consumer moveth upon the checked throwing read:
+
+| Surface | Now |
+|---|---|
+| `ArchiveRepository` | `sourceMetadataChecked(documentId:) throws` onely — the `try?` shim is deleted; the four array-returning compat shims of the *other* roads are untouched, being other roads |
+| `ArchiveReading` | requirement is `sourceMetadataChecked(documentId:) throws -> ArchiveSourceMetadata?`; the `nil` default that let a conformer omit the road is removed, so MinimalReader and PausedLibrary now state it |
+| `ArchiveLibrary` | forwards `try repository.sourceMetadataChecked(...)`, still `nonisolated` upon the repository's own lock (the T50 shape is kept; no new executor hop, no new abstraction) |
+| `ArchiveSceneModel.openDocumentInternal` | a fault `publishFailure`s — the scene's EXISTING typed failure road — so the banner, the sanitised spoken tale, the kind-suffix and the earned `canRetry` all come from the contract that already existed; absence still meaneth `.ready` with no line |
+| `ArchiveView.provenanceLine` | `readProvenance()` returneth `Result<ArchiveSourceMetadata?, ArchiveError>` and the builder switcheth three ways: a projection rendereth the line, `.success(nil)` rendereth nothing (absence is not a failure, and a banner about it would be its own lie), `.failure` rendereth the sanitised tale at `archive.provenance.error` with the retry offered exactly where the road may mend |
+
+**NO CORRUPTION IS INVENTED, AND NO RETRY IS BROADENED.** The taxonomy come wholly from the checked path — a
+`prepare` woe is `queryFailed`, a stale or closed candidate is `unreadable` — and the mendability test is the
+scene's own `publishFailure` law, written once more at the view so the two surfaces cannot disagree about
+whether a knock is worth another try. An installation woe remaineth the installer's.
+
+**MEASURED, NOT ASSERTED.** FIVE arms were added to the designated court (`GodstoneCoreTests` **111 / 0**,
+skipped 0 — it stood at 106 before them; the SwiftPM lane, `--skip-build` after a targeted build), and each edge
+is witnessed once, by behaviour, upon the true engine:
+
+* **the exact projection** for a provided fixture's loaded document, and **absence for an unheard row** — `nil`
+  without a cry, which is what absence oweth;
+* **a real SQLite fault at the actual metadata query, beyond the normal document read** — `DROP VIEW
+  chunk_citations; ALTER TABLE documents DROP COLUMN licence` upon the very fixture bytes, aimed at the one
+  column no other read of this road toucheth, so `passagesChecked` and `listDocumentsChecked` are proved to
+  come home WHOLE at the moment the metadata `SELECT` crieth. That confinement is what keeps the witness from
+  being a test of the ordinary read road by accident;
+* **the closed candidate**, which answereth `unreadable` — a typed *no handle*, never an absence;
+* **and the visible presentation**: the scene refuseth `.ready`, `openedSource` stayeth `nil`, the banner carrieth
+  the spoken tale and not the SQL (`licence` must NOT appear in it), `canRetry` is the earned bit — and the
+  mended road, knocked upon through the retry the card already owned, bringeth the very projection back;
+* **and BOTH directions at one probe** — the same road, the same document identity, three opposite verdicts
+  (projection / absence / fault) told apart by the read alone: an uncited row leaveth the document READABLE at
+  `.ready`, with no banner, **no spoken woe and no earned retry** (the over-correction guard — a fault invented
+  where none is would be its own defect), and the same probe crieth aloud when the way to the citation giveth
+  way. The absence arm also counteth the probe, so a `nil` that was never looked at is refuse'd as the guess
+  it is;
+
+**THE NEGATIVE CONTROLS WERE RUN — SIX OF THEM, EACH UPON A PRODUCTION FUNCTION — AND EACH DID DIE.**
+Reinstating the swallow at the forwarding face failed with *"the library's forwarding face must re-tell the woe,
+got nil"*; collapsing the fault to absence in the scene failed with *"the fault must be presented, not hidden:
+ready with openedSource=nil"* — the false green named aloud; answering the probe with a blind `nil` (never
+consulting the stock) killed THREE arms at once — the positive projection, the W15 semantic and the real-fault
+witness — which is what proveth those arms are not vacuous; mapping the told woe to a fabricated `.corrupt`
+cause failed with *`("the archive is corrupt (corrupt)") is not equal to ("the search could not be completed
+(query-failed)")`*; broadening the mendability law (`case .queryFailed, .unreadable, .corrupt, .missing,
+.noSuchTable: mendable = true`) failed with *"a defaced stock is not mended by a reader's knock"* AND *"AND THE
+RENDERED RETRY CONTRACT ABIDETH BY THAT SAME LAW"*; and omitting the failure from the destination's rendering
+killed the structural clause that the fault be **addressable on screen**. All six were restored and the lane
+run green again.
+
+**AND THE RENDERED SURFACE IS NOW WITNESSED BY AN EXECUTED COURT, NOT BY THOSE STRUCTURAL CLAUSES.** *I had
+first written the omission control as `readText()` matches on `ArchiveView.swift`, and I REMOVED them: a
+source-copy oracle is not a behaviour witness.* The real instrument already existed on this isle and I had
+wrongly declared it absent — `ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift`, a genuine
+XCUITest that launchath the app and walketh its accessibility tree. Three arms are added there, each against the
+PRODUCTION view: the citation line rendereth the committed fixture's own facts (`tccc_2024` /
+`PUBLIC-DOMAIN-USGOV` / `2026-01-14`), addressed by a NEW identity `archive.provenance.line` rather than by its
+prose; a resolved citation is never told as a woe (the over-correction falsifier); and a REAL storage fault —
+the `licence` column struck upon the INSTALLED bytes by `-gs-archive-strike-provenance`, the app being the only
+hand that can reach its own container — is told with a SANITISED tale and earneth its retry **while the
+document's passages still render and the empty-document notice doth NOT** ("fault must not make doc absent").
+Two supporting changes make that possible: the strike liveth beside the SQL it defaceth
+(`ArchiveRepository.strikeProvenanceProjection`, DEBUG-only), and the court's fixture guards now **FAIL rather
+than `XCTSkip`** — a skipping witness reporteth as a pass while measuring nothing, and this fixture is committed
+in-repo, so its absence is a checkout defect, never an external wall.
+
+**AND THE REWRITTEN ANDROID ARM WAS RED BEFORE IT WAS RIGHT — THE ROAD WAS INNOCENT.** *I replaced a source-copy arm in `ReadinessArchive002Test` with a behavioural one that strikes each read road's own table from beneath a live armed handle. It reported `[listDocuments] THE ROAD SWALLOW'D: it answer'd [null]` with no exception, and for one step I had the wrong suspect.* **THE MEASUREMENT: the repository never opened the file I struck.** `ArchiveInstaller.install` PROBETH a staged candidate and then PROMOTES it by rename into `current/archive.db` (`ArchiveInstaller.CURRENT_DIR_NAME` / `ARCHIVE_FILE_NAME`), and every road readeth THAT file — so a mutation upon the staged fixture is invisible to the whole repository. *(The court's own `w02` arm striketh a live handle it opened itself, which is why that one never met this.)* **There is no result cache to blame and none was changed: each road re-queryeth through `checkedRead`.** The strike target is now read from the verdict itself (`ArchiveState.Ready.origin`) rather than inferred from the path I happened to construct. **The defect was in the WITNESS, not in the production road, and it was found by running it — which is the only way a vacuous witness is ever found.**
+
+**AND ONE CLAIM I HAVE WITHDRAWN RATHER THAN DRESS UP.** I had written a rendered arm for "a genuinely uncited
+row rendereth no line and no banner". *Measured against the frozen DDL, that state is UNREACHABLE and the arm
+would have been vacuous:* the citation projection readeth `documents WHERE document_id = ?` and the passages
+road JOINeth `documents` ON that same id, so **a row whose citation is absent is a row that is absent** — a
+document that cannot be listed cannot be opened (verified: `chunks LEFT JOIN documents` findeth no orphan
+chunks). The absence half is therefore witnessed where it is real and reachable — the ROAD, against the real
+engine, where an unheard document answereth `nil` **without crying** (W12 and W17), and at one probe in
+`testTheSameRoadTellethAbsenceAndFaultApartAtOneProbe`. The rendered arm was replaced by the falsifier that
+CAN run (`testARCHIVEPROVAresolvedCitationIsNeverToldAsAWoe`), and the limit is recorded in the arm's own doc
+comment instead of hidden. **An arm for a state the product cannot enter is not coverage; it is a vacancy with
+a green light in front of it.**
+
+
+**AND THE COURT CAUGHT ITS OWN REPAIR, WHICH IS THE ONLY REASON THIS PARAGRAPH EXISTS.** Mid-edit I rewrote
+the `ArchiveReading` requirement block and *inadvertently dropt the `var availability: ArchiveAvailability { get }`
+declaration itself*, keeping only the extension's `.ready` default. Every conformer still compiled, every stored
+`availability` property still existeth — and the existential silently witness'd **the default** instead of the
+conformer, so a court's `.missing` fake reporteth itself ready and the scene said `.noResults` where it oweth
+`unavailable`. Two pre-existing arms (`testTheHonestEmptyAndTheAbsentAreTalesToldApart`,
+`testTypedPhasesReportThemselvesAtTheScene`) went red at once and named it. **THE SHAPE OF THE TRAP, FOR THE NEXT
+READER:** an optional requirement's *declaration* is what buyeth dynamic dispatch; delete it and the default
+becometh the witness with no error anywhere in the build. The requirement is now annotated as load-bearing at
+the site, because a comment three files away did not save it.
+
+**RECORDED RATHER THAN QUIETLY FIXED, BECAUSE IT IS ANOTHER CARD'S GROUND:** the Android isle twin carrieth the
+same grammar — `BrowseViewModel.openDocumentInternal` nesteth `runCatching { reader.sourceMetadata(documentId)
+}.getOrNull()` inside the outer `runCatching`, and `ArchiveRepository.kt` answereth `null` for both absence and
+fault. It is named here and left to the Android lane's own owner, as the iOS half was measured first in this
+programme's other campaigns. **THE APP LANE WAS COMPILED, NOT MERELY PARSED:** the whole of
+`Sources/App/*.swift` was typecheck'd against the iOS-simulator SDK (`arm64-apple-ios18.0-simulator`, iPhoneSimulator
+27.0) with `-I` at the built `GodstoneCore`/`GodstoneMesh` modules — `0 errors`, the onely diagnostic in the touched
+hunk being the pre-existing duplicate-`case` warning at `:724`. That is the same instrument round 524 lacked.
+**WHAT IS STILL NOT CLAIMED:** the executed UI smoke over the three-way rendering — that the fault row ACTUALLY
+COMETH FORTH on screen with its identifier, and that a genuinely uncited document shew neither line nor banner —
+belongeth to the parent's serialised build-and-run, and no `VERIFIED_FIXED` is written by this span.

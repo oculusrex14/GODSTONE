@@ -200,6 +200,32 @@ final class ReadinessT14Tests: XCTestCase {
         )
     }
 
+    /// *** A PINNED PERIPHERAL THAT REALLY CARRIETH THE MESH SERVICE. *** *`unsafeBitCast` is the established idiom on
+    /// this suite (`GsStress001RealRuntimeDriverTests.stressPeripheral`), because `CBPeripheral` cannot be constructed
+    /// directly. The pin is retained so the cast object outlives the reduction.*
+    private final class T14Peripheral: NSObject, @unchecked Sendable {
+        @objc let identifier: UUID
+        @objc var state: CBPeripheralState = .connected
+        @objc var services: [CBService]?
+        @objc var delegate: CBPeripheralDelegate?
+        @objc var canSendWriteWithoutResponse = true
+        init(identifier: UUID) { self.identifier = identifier; super.init() }
+        @objc(maximumWriteValueLengthForType:)
+        func maximumWriteValueLength(for type: CBCharacteristicWriteType) -> Int { 512 }
+        @objc(writeValue:forCharacteristic:type:)
+        func writeValue(_ data: Data, for characteristic: CBCharacteristic, type: CBCharacteristicWriteType) {}
+        @objc func discoverServices(_ services: [CBUUID]) {}
+        @objc(discoverCharacteristics:forService:)
+        func discoverCharacteristics(_ characteristics: [CBUUID], for service: CBService) {}
+        @objc func readRSSI() {}
+        @objc(readValueForCharacteristic:)
+        func readValue(for characteristic: CBCharacteristic) {}
+        @objc(setNotifyValue:forCharacteristic:)
+        func setNotifyValue(_ value: Bool, for characteristic: CBCharacteristic) {}
+    }
+
+    private var t14Pins: [T14Peripheral] = []
+
     /// The composition sequence that takes an outbound relation from
     /// nothing to link-info acknowledged and the role bound, on the public
     /// entry points only - adapter included, no driver-level shortcuts.
@@ -227,7 +253,14 @@ final class ReadinessT14Tests: XCTestCase {
             peerId: peerId, peripheral: nil,
             sourceEpoch: transport.currentTransportEpoch, from: centralManager
         )
-        _ = transport.processPeripheralDiscoverServices(nil, delegate: delegate, error: nil)
+        // *** THE SIMULATED PERIPHERAL MUST EXPOSE THE MESH SERVICE BEFORE THE DISCOVERY IS REPORTED. *** *The
+        // reduction no longer coerces an un-observ'd `services` (nil or empty) to success -- that was the defect --
+        // so the walk's peripheral really carries the provisioned mesh service here.*
+        let t14Object = T14Peripheral(identifier: peerId)
+        t14Pins.append(t14Object)
+        t14Object.services = [ReadinessT14Tests.provisionedService()]
+        _ = transport.processPeripheralDiscoverServices(
+            unsafeBitCast(t14Object, to: CBPeripheral.self), delegate: delegate, error: nil)
         _ = transport.processPeripheralDiscoverCharacteristics(nil, delegate: delegate, service: ReadinessT14Tests.provisionedService(), error: nil)
         let linkInfoChar = CBMutableCharacteristic(
             type: BleTransport.linkInfoCharacteristicUuid,

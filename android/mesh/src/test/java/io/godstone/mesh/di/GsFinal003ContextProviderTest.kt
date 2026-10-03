@@ -299,7 +299,13 @@ class GsFinal003ContextProviderTest {
                 io.godstone.mesh.delivery.Ed25519AckAuthenticator(io.godstone.mesh.readiness.EmptyKeyTable()),
             ),
         )
-        return MeshPanicWipe(ctx(), invalidator, node)
+        // *** GS-FINAL-003 `one-owner` (A8): THE ESTATE AUTHORITY IS NOW A CONSTRUCTOR INPUT AND IS *NOT* DEFAULTED. ***
+        // *A defaulted parameter here would have been a SECOND estate owner created beside the composition's -- exactly
+        // the two-owners defect A8 names -- so the callsite binds the REAL owner over the REAL journal, as production
+        // does through `provideEstateAuthority`.*
+        val journal = io.godstone.mesh.identity.FileWipeJournal(ctx())
+        val estate = EstateAuthority.over(journal, StartupRecoveryGraph.prePrivate(ctx(), journal))
+        return MeshPanicWipe(ctx(), invalidator, node, estate)
     }
 
     /**

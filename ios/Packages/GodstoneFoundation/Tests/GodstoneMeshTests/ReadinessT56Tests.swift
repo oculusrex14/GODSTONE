@@ -596,6 +596,118 @@ final class ReadinessT56Tests: XCTestCase {
                        "if this ever starteth passing, the iOS isle gained a durable "
                        + "confirmation road and T56's boundary must be revisited")
     }
+
+    // ------------------------------------------------------------ W14
+
+    /// *** *** GS-FINAL-003 `true-recovery-topology`: THE TRUST SURFACE'S WIPE IS THE DURABLE LADDER'S. *** ***
+    ///
+    /// *THE DEFECT THIS ARM IS SHAPED AGAINST, MEASURED IN `TrustAuthorityAdapter` BEFORE THE REPAIR:*
+    /// ```
+    /// func beginWipe()  -> WipeProgressState { currentWipeState = .complete; wipeHandler?(); return currentWipeState }
+    /// func resumeWipe() -> WipeProgressState { currentWipeState = .complete; return currentWipeState }
+    /// ```
+    /// *THE FIRST CLAIMED A COMPLETED WIPE **BEFORE** ANYTHING WAS ATTEMPTED, AND THE SECOND RETURNED `.complete`
+    /// **WITHOUT CALLING ANYTHING AT ALL.** From every surface that read `wipeState()`, a facade with a broken (or
+    /// absent) recovery owner was INDISTINGUISHABLE from one that had erased the estate -- the "plausible-looking
+    /// success over no effect" this repository's own doctrine names as the worst class.*
+    ///
+    /// **THE LAW THIS ARM DRIVES THROUGH THE REAL TYPES (`TrustAuthorityAdapter` + a real
+    /// `PeerIdentityRepository` + the REAL `RecoveryLadderOutcome`):** *`complete` may be rendered ONLY from an
+    /// outcome whose `isComplete` holds (the durable rung ran to its end AND nothing it was to delete survived); every
+    /// other answer is `.inProgress` CARRYING THE RUNG AND THE REASON.* **AND AN UNWIRED HANDLER IS A NAMED PENDING
+    /// STATE, never a silent completion.**
+    func testW14AWipeMayReportCompleteOnlyFromTheDurableOutcome() throws {
+        let store = try SqlitePeerIdentityStore(url: tempStoreURL())
+        let repo = PeerIdentityRepository(store: store)
+
+        // *** (1) AN UNWIRED HANDLER PERFORMS NOTHING AND SAYS SO. ***
+        let unwired = TrustAuthorityAdapter(repository: repo)
+        let unwiredState = unwired.beginWipe()
+        XCTAssertNotEqual(unwiredState, .complete,
+                          "*** A TRUST SURFACE WITH NO RECOVERY OWNER HAS WIPED NOTHING and may not claim otherwise. ***")
+        if case .inProgress(let stage, _, let resumable, let error) = unwiredState {
+            XCTAssertTrue(stage.contains("no-recovery-owner"), "and it must NAME that, observed: \(stage)")
+            XCTAssertFalse(resumable, "with no owner there is nothing to resume")
+            XCTAssertNotNil(error)
+        } else {
+            XCTFail("an unwired wipe must be in progress, got \(unwiredState)")
+        }
+
+        // *** (2) A HANDLER THAT COULD NOT SETTLE MAY NOT RENDER COMPLETE EITHER -- THE NEGATIVE DISCRIMINATOR. ***
+        let pendingOutcome = RecoveryLadderOutcome(
+            decision: .recoveryPending(reason: "the ladder stopped at RUNTIME_DRAINED"),
+            rungs: [WipeJournalState.wireName(.requested)],
+            artifactsRemaining: ["mesh.db"])
+        XCTAssertFalse(pendingOutcome.isComplete, "a pending ladder is not complete by construction")
+        let pending = TrustAuthorityAdapter(repository: repo, wipeHandler: { pendingOutcome })
+        let pendingState = pending.beginWipe()
+        XCTAssertNotEqual(pendingState, .complete,
+                          "*** A WIPE THAT DID NOT COMPLETE MUST NOT BE RENDERED COMPLETE. *This is the assertion that " +
+                              "reddens on the old `= .complete` line, and it is the whole finding.* ***")
+        if case .inProgress(let stage, _, let resumable, let error) = pendingState {
+            XCTAssertEqual(stage, WipeJournalState.wireName(.requested),
+                           "AND IT MUST CARRY THE DURABLE RUNG rather than a phrase -- so a surface can say WHERE it stands")
+            XCTAssertTrue(resumable, "a pending wipe is resumable: the ladder may be driven again")
+            XCTAssertNotNil(error, "and the reason must be preserved")
+            XCTAssertTrue(pendingState.blocksOrdinaryUse,
+                          "AND AN UNFINISHED WIPE MUST BLOCK ORDINARY USE -- which a bare `.complete` never did")
+        } else {
+            XCTFail("a pending wipe must be in progress, got \(pendingState)")
+        }
+
+        // *** (3) A CORRUPT RECORD IS NOT RESUMABLE -- the audit's own distinction, carried into the progress state. ***
+        let corrupt = TrustAuthorityAdapter(repository: repo, wipeHandler: {
+            RecoveryLadderOutcome(decision: .corruptJournal(reason: "the durable value is unreadable"),
+                                  rungs: [], artifactsRemaining: [])
+        })
+        if case .inProgress(_, _, let resumable, let error) = corrupt.resumeWipe() {
+            XCTAssertFalse(resumable,
+                           "*** RETRYING CANNOT MAKE AN UNPARSEABLE VALUE PARSE: a corrupt record is NOT resumable. ***")
+            XCTAssertNotNil(error)
+        } else {
+            XCTFail("a corrupt record must be an in-progress refusal, not a completion")
+        }
+
+        // *** (4) AND A GENUINELY COMPLETE WIPE IS THE ONE ROAD TO `.complete`, WHICH IS THE POSITIVE CONTROL. ***
+        let completeOutcome = RecoveryLadderOutcome(
+            decision: .wipeCompleted, rungs: [], artifactsRemaining: [])
+        XCTAssertTrue(completeOutcome.isComplete,
+                      "the positive control: a settled decision with nothing remaining IS complete")
+        let done = TrustAuthorityAdapter(repository: repo, wipeHandler: { completeOutcome })
+        XCTAssertEqual(done.beginWipe(), .complete,
+                       "*** AND ONLY THAT ROAD MAY RENDER COMPLETE -- without this control, the arms above would be " +
+                           "satisfied by a facade that could never report success at all. ***")
+        XCTAssertFalse(done.beginWipe().blocksOrdinaryUse, "a finished wipe is when ordinary use may resume")
+
+        store.close()
+    }
+
+    /// *** AND THE TWO RETRY LAWS ARE DIFFERENT THINGS: a WIPE RESUME is a recovery road, a MESSAGE RETRY is an
+    /// authoring road, and a surface that confused them could resume erased material. ***
+    ///
+    /// *This arm asserts the SHARED vocabulary's law (the thing both isles' surfaces ask), so the distinction cannot
+    /// drift: `MessageStatus.permitsResume` decides the message road, and `StartupRecoveryDecision.permitsRecoveryConstruction`
+    /// decides the wipe road -- **NEITHER IS THE OTHER.***
+    func testW15TheWipeResumeAndTheMessageRetryAreDifferentLaws() {
+        // THE MESSAGE ROAD: only non-terminal delivery states may be resumed.
+        XCTAssertTrue(MessageStatus.queued.permitsResume)
+        XCTAssertFalse(MessageStatus.delivered.permitsResume)
+        XCTAssertFalse(MessageStatus.cancelled.permitsResume)
+
+        // THE WIPE ROAD: only an OUTSTANDING record may be driven onward; a settled estate and an unreadable one may not.
+        XCTAssertTrue(StartupRecoveryDecision.recoveryPending(reason: "x").permitsRecoveryConstruction)
+        XCTAssertTrue(StartupRecoveryDecision.retryableFailure(reason: "x").permitsRecoveryConstruction)
+        XCTAssertFalse(StartupRecoveryDecision.corruptJournal(reason: "x").permitsRecoveryConstruction,
+                       "an unreadable record is the operator's, not a resume's")
+        XCTAssertFalse(StartupRecoveryDecision.wipeCompleted.permitsRecoveryConstruction,
+                       "AND A COMPLETED WIPE MUST NOT BE RESUMED: there is nothing outstanding to drive")
+        XCTAssertFalse(StartupRecoveryDecision.cleanStart.permitsRecoveryConstruction)
+    }
+
+    private func tempStoreURL() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("t56_wipe_\(UUID().uuidString).db")
+    }
 }
 
 // ------------------------- internal test fixtures ---------------------------

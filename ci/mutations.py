@@ -30,16 +30,45 @@ Two lineages, kept apart on the page and in the tally:
 
     python3 ci/mutations.py                 # structural lineage (fast, default)
     python3 ci/mutations.py --semantic      # semantic lineage (runs harnesses)
+    python3 ci/mutations.py --semantic --group board1 --baseline SHA --emit-dir DIR
+                                            # THE BOARD 1 CAMPAIGN: run every required
+                                            # rod in a disposable worktree at SHA and
+                                            # write `manifest.json` + `logs/` (the phase
+                                            # blobs) under DIR. The rows' paths are
+                                            # RELATIVE TO DIR, so the downloaded artifact
+                                            # is re-readable under any root.
     python3 ci/mutations.py --semantic --id T72-RC13   # only this rod (repeatable)
     python3 ci/mutations.py --all           # both, reported separately
     python3 ci/mutations.py --report        # do not fail on findings
-    python3 ci/mutations.py --emit-dir DIR  # write logs/ beside the manifest
+    python3 ci/mutations.py --selftest-manifest --manifest-dir DIR
+                                            # prove a campaign RAN: validate the envelope
+                                            # at DIR (no stale default; also reads
+                                            # $GODSTONE_BOARD1_CAMPAIGN_DIR). Refuseth a
+                                            # stale manifest, a missing / DUPLICATE /
+                                            # RENAMED rod, an absent restoration, a phase
+                                            # log whose bytes moved, a path that escapes
+                                            # DIR, or a tested tree that is not the bound
+                                            # head's. Only `KILLED` is a catch.
     python3 ci/mutations.py --baseline SHA  # pin the audited head for a run
 
 No aggregate is ever printed as a single killed percentage. The two lineages
 are never summed. Every result row carries the section 21 schema fields
 verbatim: id, baseline_sha, mutant_patch_sha, category, anchor_count,
 build_exit, target_tests, tests_run, outcome, failed_assertion, log_sha.
+
+A rod may also carry `type_enforced` -- BUT ONLY WHEN THE MUTANT BREAKS A
+PRODUCTION, UNFORGEABLE CAPABILITY BOUNDARY (e.g. dropping a required
+`PrivateRuntimePermit` parameter so a bad consumer surface cannot compile).
+The compiler refusing the mutant is then the kill, recorded with
+`kill_channel: "compiler"` against a `KILLED` row. **A test-source typo or a
+compile regression in a TEST file is `BUILD_INVALID`, NEVER a semantic kill**
+and never carrieth `type_enforced`. A rod also names its `platform` for the
+witness: `python`, `swift`, `jvm`, `ios-ui`, `selftest` (a committed in-repo
+selftest whose exit code is the witness), or `shell` (an INVOKED guard fixture,
+never a source grep). A `swift` rod may also name `swift_target` (e.g.
+`GodstoneCoreTests`): the harness then builds ONLY that target and runs its own
+`xcrun xctest` bundle, so a sibling target's in-flight compile error in another
+test file cannot report a phantom red against this rod.
 
 A control that has never been observed failing is not a control.
 """
@@ -86,15 +115,103 @@ def _now_utc():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# --------------------------------------------------------------------------
+# PORTABLE CAMPAIGN PATHS -- RELATIVE TO THE CAMPAIGN ROOT, AND REFUSING TO
+# ESCAPE IT.
+#
+# *** THE DEFECT THIS CLOSES, AND WHY IT MATTERS OFF-MACHINE. *** *A phase log's
+# absolute path is portable only on the machine that wrote it: the hosted runner
+# emits its campaign under `$RUNNER_TEMP/board1-campaign`, an auditor who
+# downloads the artifact unzips it UNDER ANOTHER ROOT, and a row that carried
+# `/Users/...` or `/private/var/...` could not be re-read from the downloaded
+# evidence at all.* **SO EVERY PATH A ROW CARRIETH IS RELATIVE TO THE CAMPAIGN
+# ROOT, and a reader resolves it against whichever root the artifact landed in.**
+#
+# *AND A RELATIVE PATH IS ALSO AN ATTACK SURFACE: `../../../etc/passwd` would make
+# a manifest describable as naming evidence outside its own tree. So the resolver
+# REFUSETH any path that escapes the root -- empty, absolute, or carrying a `..`
+# component -- and says WHY, rather than silently joining it.*
+# --------------------------------------------------------------------------
+
+def _relative_to_campaign(path, campaign_root):
+    """`path` as a POSIX path relative to `campaign_root`; refuses an escape.
+
+    Returneth `None` for an absent path. Raiseth `ValueError` when the path is
+    not inside the root (an absolute path under another root, a path whose
+    resolution escapes it, or a non-relative result containing `..`).
+    """
+    if not path:
+        return None
+    root = os.path.abspath(str(campaign_root))
+    target = os.path.abspath(str(path))
+    if target != root and not target.startswith(root + os.sep):
+        raise ValueError(f"path {path!r} is OUTSIDE the campaign root {root!r}")
+    rel = os.path.relpath(target, root)
+    if rel == os.pardir or rel.startswith(os.pardir + os.sep):
+        raise ValueError(f"path {path!r} escapes the campaign root {root!r} via '..'")
+    return rel.replace(os.sep, "/")
+
+
+def _resolve_campaign_path(relative, campaign_root):
+    """Resolve a RELATIVE campaign path against `campaign_root`, REFUSING ESCAPES.
+
+    A reader calleth this with the row's recorded relative path and the root it
+    downloaded the campaign into. An absolute path, an empty path, or any path
+    whose `..` components would leave the root is refused BY NAME -- *so a
+    manifest cannot be written that points at bytes outside its own evidence
+    tree, and a tampered relative path is a named refusal rather than a read.*
+    """
+    if not relative:
+        raise ValueError("an empty campaign path cannot be resolved")
+    if os.path.isabs(relative):
+        raise ValueError(f"campaign path {relative!r} is ABSOLUTE -- paths are relative to the campaign root")
+    root = os.path.abspath(str(campaign_root))
+    joined = os.path.normpath(os.path.join(root, relative))
+    if joined != root and not joined.startswith(root + os.sep):
+        raise ValueError(f"campaign path {relative!r} escapes the campaign root {root!r}")
+    return joined
+
+
+def _tested_tree_sha():
+    """The canonical tree sha of the audited head: WHICH BLOB SET THIS RAN AGAINST.
+
+    *`baseline_sha` is the COMMIT a campaign bound; `tested_tree_sha` is the TREE
+    its bytes resolved to. The two are the exact candidate identity a reader
+    needs, and a tree alone (or a commit alone) can be re-pointed or re-tagged --
+    so both travel in the envelope and both can be re-derived read-only
+    (`git rev-parse <sha>^{tree}`) without trusting the manifest's own field.*
+    """
+    for rev in ("HEAD^{tree}",):
+        proc = subprocess.run(["git", "rev-parse", rev], cwd=ROOT,
+                              capture_output=True, text=True)
+        if proc.returncode == 0 and proc.stdout.strip():
+            return proc.stdout.strip()
+    return None
+
+
 def _row(entry, baseline_sha, category, anchor_count, build_exit, target_tests,
-         tests_run, outcome, failed_assertion, log_path, restored_green=None):
+         tests_run, outcome, failed_assertion, log_path, restored_green=None,
+         campaign_root=None, kill_channel=None, structural=False):
+    # *** A GUARD-ONLY ROD IS STRUCTURAL: ITS CATEGORY IS OVERRIDDEN SO THE TWO
+    # POPULATIONS CANNOT BE SUMMED. ***
+    if structural:
+        category = "structural"
+    # *** THE ROW'S PATHS ARE RELATIVE TO THE CAMPAIGN ROOT, SO A DOWNLOADED
+    # ARTIFACT IS RE-READABLE UNDER ANY ROOT. *** *When the caller names a
+    # campaign root the stored path is portable; an escape is refused here too,
+    # so a manifest cannot be written that points outside its own evidence tree.*
+    stored_log = log_path
+    if log_path and campaign_root:
+        stored_log = _relative_to_campaign(log_path, campaign_root)
     row = {"id": entry["id"], "baseline_sha": baseline_sha,
            "mutant_patch_sha": entry["patch_sha"], "category": category,
            "anchor_count": anchor_count, "build_exit": build_exit,
            "target_tests": list(target_tests), "tests_run": tests_run,
            "outcome": outcome, "failed_assertion": failed_assertion,
-           "log_sha": _sha_file(log_path), "log_path": log_path,
+           "log_sha": _sha_file(log_path), "log_path": stored_log,
            "started_utc": entry.get("started_utc"), "ended_utc": entry.get("ended_utc")}
+    if kill_channel is not None:
+        row["kill_channel"] = kill_channel
     if restored_green is not None:
         # *** A KILL CARRIETH ITS RESTORATION, WITH A DIGEST PER PHASE LOG. ***
         # *Three full blobs (baseline, mutant, restored) are registered beside
@@ -105,9 +222,12 @@ def _row(entry, baseline_sha, category, anchor_count, build_exit, target_tests,
         if log_path:
             stem = log_path[:-len(".mutant.log")] if log_path.endswith(".mutant.log") \
                 else log_path
-            row["phase_logs"] = {ph: {"path": stem + "." + ph + ".log",
-                                      "sha256": _sha_file(stem + "." + ph + ".log")}
-                                 for ph in ("baseline", "mutant", "restored")}
+            phases = {}
+            for ph in ("baseline", "mutant", "restored"):
+                full = stem + "." + ph + ".log"
+                stored = _relative_to_campaign(full, campaign_root) if campaign_root else full
+                phases[ph] = {"path": stored, "sha256": _sha_file(full)}
+            row["phase_logs"] = phases
     return row
 
 
@@ -269,7 +389,7 @@ def run_structural(report_only, emit_dir, baseline_sha):
 BOARD1_REQUIRED_IDS: tuple[str, ...] = (
     # --- STEP 3: the three construction counters and the permit refusal (Android, zero private opens) ---
     "T72-RC13-android-private-construction-uncounted",
-    "T72-RC14-android-private-permit-may-be-bypassed",
+    "T72-RC14-android-permit-door-staleness-disabled",
     # --- STEP 4: the runtime-owner witnesses (pump, dispatcher admission, origin, invalidator, idle) ---
     "T72-RC15-android-ack-pump-not-handed-to-the-node",
     "T72-RC16-android-ack-dispatcher-admits-elsewhere",
@@ -332,6 +452,178 @@ BOARD1_REQUIRED_IDS: tuple[str, ...] = (
     "T54-RC2-lab-isolation-gate-sleepeth-on-a-readiness-override",
     "T54-RC3-lab-may-masquerade-as-the-shipping-identity",
     "T59-RC9-the-light-profile-claimeth-the-radio",
+    "RS-CAP-01-forged-marker-laundered-an-internal-red",
+    "RS-CAP-02-external-block-allowed-while-internal-red",
+    "RS-REG-01-corrupt-register-classified-as-missing-input",
+    "RS-NATIVE-01-native-stack-conflated-with-model-weights",
+    "RS-NATIVE-02-absent-llama-source-tolerated",
+    "RS-TRUST-01-replaced-image-digest-trusted-from-sidecar",
+    "IOS-R10-second-store",
+    "IOS-R10-no-dispatch",
+    "IOS-R15-unrefreshed-snapshot",
+    "IOS-R15-impossible-no-call",
+    "NCR-01-swift-the-store-drops-the-owners-use-lock",
+    "NCR-02-swift-the-owner-close-frees-without-draining",
+    "NCR-03-swift-the-admission-always-admits",
+    "NCR-04-swift-the-intent-read-folds-every-fault-into-absence",
+    "NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction",
+    "NCR-06-swift-the-sweep-begin-fault-is-not-refused",
+    "NCR-07-swift-the-sweep-publishes-without-an-acknowledged-commit",
+    "NCR-08-swift-the-factory-admits-a-replayed-scope",
+    "NCR-09-swift-the-engine-reports-a-generic-io-for-a-wrong-key",
+    "NCR-10-swift-the-partial-open-handle-leaks",
+    "NCR-11-swift-the-peer-transaction-reacquires-the-store-lock",
+    "NCR-13-swift-the-corrupt-intent-row-is-absence-again",
+    "ARCHIVE-PROV-001",
+    "ARCHIVE-PROV-002",
+    "ARCHIVE-PROV-003",
+    "ARCHIVE-PROV-004",
+    "ARCHIVE-PROV-005",
+    "ARCHIVE-PROV-006",
+    "ARCHIVE-PROV-007",
+    "MUT-IOS-R1-PERMIT-NOT-CONSUMED",
+    "MUT-IOS-R1-PERMIT-GENERATION-IGNORED",
+    "MUT-IOS-R1-NORMAL-HELPER-BYPASS",
+    "MUT-IOS-R2-GATE-CACHED-SNAPSHOT",
+    "MUT-IOS-R2-ARTIFACT-ORACLE-CACHED",
+    "MUT-IOS-R3-APPEND-IGNORES-COMMIT",
+    "MUT-IOS-R3-COORDINATOR-IGNORES-ACK",
+    "MUT-IOS-R4-WRONG-DEK-TAG",
+    "MUT-IOS-R4-ERASE-UNVERIFIED",
+    "MUT-IOS-R5-FRESH-DEAD-TRANSPORT",
+    "MUT-IOS-R5-UNARMED-COLD",
+    "MUT-IOS-R7-INVENTORY-IGNORED",
+    "MUT-IOS-R8-PUBLISH-NOT-IDEMPOTENT",
+    "MUT-IOS-R8-PUBLICATION-UNBOUND",
+    "MUT-IOS-R11-WITNESS-DISCONNECTED",
+    "ANDE-A9-01-CHECKPOINT-VERDICT-DISCARDED",
+    "ANDE-A9-02-PERSISTED-RUNG-VERDICT-DISCARDED",
+    "ANDE-A2-03-ABA-EPOCH-DROPPED-FROM-REVISION",
+    "ANDE-A2-04-REVISION-FROM-COORDINATOR-SNAPSHOT",
+    "ANDE-A2-05-PERMIT-NOT-REVALIDATED-AT-CONSUMPTION",
+    "ANDE-A2-06-ADAPTER-LEGAL-NEXT-CHECK-DROPPED",
+    "ANDE-A3-07-PUBLIC-PERMIT-FROM-A-BARE-DECISION",
+    "ANDE-A13-08-PUBLIC-RAW-IDENTITY-FACTORY",
+    "ANDE-A8-09-REENTRANCY-GUARD-DROPPED",
+    "ANDE-A7-10-OPERATOR-RESOLUTION-SKIPS-THE-DURABLE-REQUEST",
+    "IOS-TRANSPORT-001-nil-services-coerced-to-discovery-success",
+    "LANE-ROD-6-android-runner-aborts-before-digests",
+    "SH-R01-python-the-timer-release-defect-is-a-no-op",
+    "SH-R02-python-shutdown-stops-releasing-the-timer-owner",
+    "SH-R03-python-shutdown-stops-releasing-the-session-owner",
+    "SH-R04-python-the-fault-liveness-clause-is-asleep",
+    "SH-R05-python-the-category-is-carried-as-the-production-runtime",
+    "SH-R06-python-the-unmeasured-invariant-set-is-silently-empty",
+    "SH-R07-python-the-unmeasured-owner-kinds-are-unnamed",
+    "SH-R08-jvm-the-not-measured-sentinel-collapses-into-zero",
+    "SH-R09-jvm-the-unmeasured-invariants-set-is-never-filled",
+    "SH-R10-jvm-the-category-is-carried-as-the-production-runtime",
+    "SH-R11-jvm-the-missing-observer-unmeasured-branch-is-removed",
+    "SH-R12-swift-shutdown-stops-releasing-the-timer-owner",
+    "SH-R13-swift-the-unmeasured-set-omits-the-reservation-owner",
+    "SH-R14-swift-the-protocol-default-answereth-a-constant-zero",
+
+    # --- THE TERMINAL BOARD 1 ROUND: the guards landed after rc14 -- the recovery
+    #     topology's post-landing arms (AndroidRecoveryUi), the true pre-private
+    #     recovery rods (IosRecoveryUi), the lane control's own guards (LaneControls),
+    #     the supply-chain surfaces (ReleaseSupply) and the gate-manifest/freeze
+    #     contract (VerifyFreeze). ---
+    "T72-RC35-android-identity-publication-sentinel-restored",
+    "T72-RC36-android-admission-gate-raw-enum-restored",
+    "T72-RC37-android-startup-decision-ignores-readability",
+    "T72-RC38-android-lab-wipe-local-state-register",
+    "T72-RC39-android-wipe-resume-offered-unconditionally",
+    "T72-RC40-android-lab-wipe-progress-not-read-from-record",
+    "T72-RC41-android-composition-issuer-mints-from-a-constant-decision",
+    "T72-RC42-android-completed-wipe-collapsed-into-first-launch",
+    "IOS-RECOVERY-001",
+    "IOS-RECOVERY-002",
+    "IOS-RECOVERY-003",
+    "IOS-RECOVERY-004",
+    "IOS-RECOVERY-005",
+    "IOS-RECOVERY-006",
+    "IOS-RECOVERY-007",
+    "IOS-RECOVERY-008",
+    "IOS-RECOVERY-009",
+    "IOS-RETRY-001",
+    "IOS-RETRY-002",
+    "IOS-WIPE-UX-001",
+    "IOS-WIPE-UX-002",
+    "IOS-SOS-RETRY-001",
+    "LANE-ROD-1-skip-refusal-disabled",
+    "LANE-ROD-2-foundation-arm-omission-unguarded",
+    "LANE-ROD-3-foundation-duplicate-arm-unrefused",
+    "LANE-ROD-4-simulator-duplicate-narrowed-to-required",
+    "LANE-ROD-5-known-red-allowance-repopulated",
+    "RS-IOS-01-debug-symbols-asleep",
+    "RS-IOS-02-undefined-mesh-import-asleep",
+    "RS-IOS-03-excluded-resource-pattern-asleep",
+    "RS-PROOF-01-fabricated-internal-verdict-tolerated",
+    "RS-PROOF-02-record-self-digest-asleep",
+    "RS-PROOF-03-misclassified-external-tolerated",
+    "RS-PROOF-04-borrowed-sha-tolerated",
+    "RS-DL-01-wrong-download-digest-asleep",
+    "RS-DL-02-cached-tool-tree-digest-asleep",
+    "RS-SBOM-01-face-coverage-asleep",
+    "RS-SBOM-02-lock-version-drift-tolerated",
+    "T86-B1M1-manifest-may-omit-a-required-gate",
+    "T86-B1M2-nonzero-gate-reads-as-pass",
+    "T86-B1M3-campaign-tested-inputs-may-move",
+    "T86-B1M4-escaped-rod-counts-as-killed",
+    "T86-B1M5-tampered-gate-log-is-believed",
+    "T86-B1M6-a-narrowed-campaign-population-passes",
+    "T86-B1M7-absent-lane-artifact-is-ignored",
+    "T86-B1M8-stale-lane-digest-is-believed",
+    "T86-B1M9-mid-run-lane-drift-is-ignored",
+    "T86-B1M10-candidate-tree-need-not-be-stated",
+    "T86-B1M11-dirty-freeze-tree-is-accepted",
+    "T86-B1M12-lightweight-candidate-tag-is-accepted",
+    "T86-B1M13-closure-counts-may-disagree",
+    "T86-B1M14-builder-emits-a-partial-manifest",
+    "T86-B1M15-relative-attest-path-crasheth",
+    "T86-B1M16-bound-manifest-is-not-re-derived",
+    "T86-B1M17-foreign-candidate-manifest-is-bound",
+)
+
+
+# --------------------------------------------------------------------------
+# *** THE BOARD 1 SECURITY-CRITICAL SURFACE GROUP, WHICH `--group board1-trust-surface`
+# SELECTETH. ***
+#
+# *The audit names four surfaces whose whole purpose is to be the LAST line of defence:
+# the TRUST-HANDSHAKE controls (H01-H30 -- the typed inspection, the trust gate, the
+# seal/open boundary), the PEER-IDENTITY store (the guarded CAS SQL, the trust-level
+# encoding, fail-closed migrations), the BOUND RECIPIENT key resolver (read-only,
+# verified-only, fail-closed) and the STORE-SCHEMA/quota controls (the fail-closed schema
+# and the atomic authenticated ACK -- the "quota" the store enforces through its capacity
+# and retire laws). Each rod below MUTATES the production control so that the REAL values
+# that reach the validation -- a revoked key, an aliased payload, a caller's frame -- are
+# the ones that change, and its witness is the guard's own refusal, EXECUTED against the
+# mutant rather than grepped for.*
+#
+# **EVERY ROD NAMES THE EXACT REFUSAL THE GUARD MUST PRINT (`refusal_line`), AND IT MUST
+# NAME A DIFFERENT ONE FROM EVERY SIBLING: an escape in one control may not be laundered
+# by a co-reddening refusal in another, so the kills are ATTRIBUTABLE by construction.**
+TRUST_SURFACE_REQUIRED_IDS: tuple[str, ...] = (
+    # --- trust-handshake controls (ci/check_trusted_handshake_controls.py; H01-H30) ---
+    "TH-01-ios-trusted-controller-restores-the-collapsed-hs2-hs3",
+    "TH-02-android-noise-drops-the-typed-read-result",
+    "TH-03-android-read-result-aliases-its-payload",
+    "TH-04-ios-noise-restores-the-collapsed-hs2-hs3",
+    # --- peer-identity store (ci/check_peer_identity_store_controls.py; S01-S83) ---
+    "PI-01-first-seen-becometh-insert-or-ignore",
+    "PI-02-ddl-admits-an-unrecognised-trust-level",
+    "PI-03-rotation-approval-admits-a-revoked-peer",
+    # --- bound recipient key resolver (ci/check_bound_recipient_key_resolver_controls.py; B01-B16) ---
+    "BR-01-android-revoked-identity-resolveth-its-key",
+    "BR-02-android-node-id-boundary-guard-removed",
+    "BR-03-ios-node-id-boundary-guard-removed",
+    "BR-04-resolver-returns-the-static-dh-key",
+    "BR-05-quarantined-lookup-resolveth-a-key",
+    # --- store-schema / quota (ci/check_store_schema_controls.py; C6.4.1/C6.6/C7.4) ---
+    "SS-01-android-dispatch-transporteth-the-uncommitted-frame",
+    "SS-02-ios-dispatch-transporteth-the-uncommitted-frame",
+    "SS-03-ios-store-applyeth-a-literal-protection-class",
 )
 
 
@@ -342,14 +634,26 @@ def _group_ids(name: str) -> list[str]:
     ran while never running that one, which is the "a control that has never been observed failing is not a control"
     defect wearing a group's name.*
     """
-    if name != "board1":
-        raise SystemExit(f"::error::unknown group {name!r}; the only group is `board1`")
+    # *** TWO NAMED GROUPS, AND BOTH ARE REFUSED BY NAME RATHER THAN SKIPPED. *** *The
+    # `board1` group is the plan's required population; `board1-trust-surface` is the
+    # security-critical subset above, selectable WITHOUT the whole ledger. An id either
+    # group names that the ledger does not carry is a hole, and a hole that reads as a
+    # pass is worse than a missing rod.*
+    groups: dict[str, tuple[str, ...]] = {
+        "board1": BOARD1_REQUIRED_IDS,
+        "board1-trust-surface": TRUST_SURFACE_REQUIRED_IDS,
+    }
+    if name not in groups:
+        raise SystemExit(f"::error::unknown group {name!r}; the known groups are `board1` and "
+                         f"`board1-trust-surface`")
+    ids = groups[name]
+    # *** AN ALIAS IS A KNOWN ID: its control is carried by its target rod. ***
     known = {s["id"] for s in SEMANTIC}
-    missing = [i for i in BOARD1_REQUIRED_IDS if i not in known]
+    missing = [i for i in ids if i not in known]
     if missing:
-        raise SystemExit(f"::error::the `board1` group names {len(missing)} id(s) that are NOT in SEMANTIC: "
+        raise SystemExit(f"::error::the `{name}` group names {len(missing)} id(s) that are NOT in the ledger: "
                          f"{missing} -- a group entry with no rod is a hole in the campaign, never a pass")
-    return list(BOARD1_REQUIRED_IDS)
+    return list(ids)
 
 
 # --------------------------------------------------------------------------
@@ -1466,7 +1770,7 @@ SEMANTIC = [
     {"id": "T68-PM16-same-version-bytes-tolerated", "platform": "python", "file": "tools/supplychain/supply_chain.py", "court": "tools/readiness/tests/test_t68.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t68.py", "find": "    if actual not in declared:\n", "replace": "    if False and actual not in declared:\n", "witness": "test_w22_a_same_version_artifact_with_different_bytes_is_refused", "why": "a same-version artifact with different bytes is accepted against the verification manifest: the card's named semantic negative, in its maven half", "baseline": "green (T68 court: 26 python in tools/readiness/tests/test_t68.py; the subsystem walketh 246 OK; the reviewed documents verify at rc=0)", "kind": "functional"},
     {"id": "T68-PM17-unexplained-divergence-tolerated", "platform": "python", "file": "tools/supplychain/supply_chain.py", "court": "tools/readiness/tests/test_t68.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t68.py", "find": "            if not reason or reason.startswith(\"no cause recorded\"):\n", "replace": "            if False:\n", "witness": "test_w23_two_runs_are_compared_by_content", "why": "a divergence with no recorded cause is tolerated: an unexplained difference between two runs would be filed as a note instead of a defect", "baseline": "green (T68 court: 26 python in tools/readiness/tests/test_t68.py; the subsystem walketh 246 OK; the reviewed documents verify at rc=0)", "kind": "functional"},
     {"id": "T68-PM18-interrupted-write-leaveth-a-partial-document", "platform": "python", "file": "tools/supplychain/supply_chain.py", "court": "tools/readiness/tests/test_t68.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t68.py", "find": "        os.replace(handle.name, path)\n", "replace": "        shutil.copyfile(handle.name, path)\n", "witness": "test_w26_an_interrupted_write_leaveth_the_previous_document", "why": "the document is copied over its predecessor instead of being replaced: a reader could observe a half-written lock, and an interruption would leave the authoritative document destroyed rather than intact", "baseline": "green (T68 court: 26 python in tools/readiness/tests/test_t68.py; the subsystem walketh 246 OK; the reviewed documents verify at rc=0)", "kind": "functional"},
-    {"id": "T69-PM01-mesh-token-asleep", "platform": "python", "file": "scripts/inspect_ios_artifacts.py", "court": "tools/readiness/tests/test_t69.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t69.py", "find": "    for name in dylibs:\n        for token in FORBIDDEN_LINK_TOKENS:\n            if token.lower() in name.lower():", "replace": "    for name in dylibs:\n        for token in FORBIDDEN_LINK_TOKENS:\n            if False and token.lower() in name.lower():", "witness": "test_w10_the_mesh_linked_into_light_is_refused", "why": "the exclusion of a lab surface by its linked library is asleep: GodstoneMesh could be linked into the LIGHT release and the artifact would be called a candidate -- the card's named semantic negative, first limb", "baseline": "green (T69 court: 26 python in tools/readiness/tests/test_t69.py; the subsystem walketh 272 OK; the real bundle inspecteth at PASS)", "kind": "functional"},
+    {"id": "T69-PM01-mesh-token-asleep", "platform": "python", "file": "scripts/inspect_ios_artifacts.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t69.py", "find": "    for name in dylibs:\n        surface = _dylib_link_token(name)\n        if surface:", "replace": "    for name in dylibs:\n        surface = _dylib_link_token(name)\n        if False and surface:", "witness": "test_w10_the_mesh_linked_into_light_is_refused", "why": "the exclusion of a lab surface by its linked library is asleep: GodstoneMesh could be linked into the LIGHT release and the artifact would be called a candidate -- the card's named semantic negative, first limb"},
     {"id": "T69-PM02-resource-exclusions-asleep", "platform": "python", "file": "scripts/inspect_ios_artifacts.py", "court": "tools/readiness/tests/test_t69.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t69.py", "find": "        for pattern in FORBIDDEN_RESOURCE_PATTERNS:\n            if pattern.search(name):", "replace": "        for pattern in FORBIDDEN_RESOURCE_PATTERNS:\n            if False and pattern.search(name):", "witness": "test_w09_models_dylibs_and_test_bundles_are_refused_resources", "why": "the resource exclusions are asleep: a model, a dylib, a test bundle or an excluded tier archive would travel inside the release bundle unnoticed", "baseline": "green (T69 court: 26 python in tools/readiness/tests/test_t69.py; the subsystem walketh 272 OK; the real bundle inspecteth at PASS)", "kind": "functional"},
     {"id": "T69-PM03-absent-archive-tolerated", "platform": "python", "file": "scripts/inspect_ios_artifacts.py", "court": "tools/readiness/tests/test_t69.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t69.py", "find": "        if expected_digest is not None:\n            failures.append(\"the expected Archive is absent from the package\")", "replace": "        if False and expected_digest is not None:\n            failures.append(\"the expected Archive is absent from the package\")", "witness": "test_w04_an_absent_expected_archive_is_refused", "why": "an absent expected Archive is tolerated: a package that promiseth content and carrieth none would pass the presence law by silence", "baseline": "green (T69 court: 26 python in tools/readiness/tests/test_t69.py; the subsystem walketh 272 OK; the real bundle inspecteth at PASS)", "kind": "functional"},
     {"id": "T69-PM04-mismatched-archive-tolerated", "platform": "python", "file": "scripts/inspect_ios_artifacts.py", "court": "tools/readiness/tests/test_t69.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t69.py", "find": "            archive[\"status\"] = \"byte-mismatch\"\n            failures.append(\"the bundled Archive is not the approved Archive: \"\n                            f\"{archive['bundled_sha256']} != {expected_digest}\")", "replace": "            archive[\"status\"] = \"byte-mismatch\"", "witness": "test_w05_a_mismatched_archive_is_refused", "why": "a bundled Archive whose bytes are not the approved bytes is recorded but not refused: the very substitution the approval existeth to catch", "baseline": "green (T69 court: 26 python in tools/readiness/tests/test_t69.py; the subsystem walketh 272 OK; the real bundle inspecteth at PASS)", "kind": "functional"},
@@ -1794,17 +2098,17 @@ SEMANTIC = [
     #   release or retry cap: stress invariant fails." Each rod striketh one
     #   campaign line on ONE lane and is witnessed by its OWN named case.
     # ----------------------------------------------------------------------
-    {"id": "T72-RC1-the-shutdown-releaseth-no-lease", "platform": "python", "file": "tools/readiness/stress.py", "court": "tools/readiness/tests/test_t72.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if self.defect == CampaignDefect.NO_LEASE_RELEASE:\n            return\n        self.leases = 0\n        self.timers = 0\n        self.sessions = 0", "replace": "        # (mutant) shutdown releaseth NOTHING: every owned resource leaketh\n        return", "witness": "test_w02_zero_leaked_leases_timers_sessions_after_shutdown", "why": "shutdown no longer releaseth the leases, timers or sessions it owned, so every campaign would leak its capacity -- the card's named negative in its first limb. The leak witness condemneth", "baseline": "green (the T72 python court: 13 witnesses in tools/readiness/tests/test_t72.py, driven by the real conductor: 10k cycles pass, and each of the five defects is caught)", "kind": "functional"},
+    {"id": "T72-RC1-the-shutdown-releaseth-no-lease", "platform": "python", "file": "tools/readiness/stress.py", "court": "tools/readiness/tests/test_t72.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if self.defect == CampaignDefect.NO_LEASE_RELEASE:\n            return\n        if self.defect != CampaignDefect.NO_TIMER_RELEASE:\n            self.timers = 0\n        if self.defect != CampaignDefect.NO_SESSION_RELEASE:\n            self.sessions = 0\n        self.leases = 0", "replace": "        # (mutant) shutdown releaseth NOTHING: every owned resource leaketh\n        return", "witness": "test_w02_zero_leaked_leases_timers_sessions_after_shutdown", "why": "shutdown no longer releaseth the leases, timers or sessions it owned, so every campaign would leak its capacity -- the card's named negative in its first limb. The leak witness condemneth", "baseline": "green (the T72 python court: 13 witnesses in tools/readiness/tests/test_t72.py, driven by the real conductor: 10k cycles pass, and each of the five defects is caught)", "kind": "functional"},
     {"id": "T72-RC2-the-retry-cap-is-disabled", "platform": "python", "file": "tools/readiness/stress.py", "court": "tools/readiness/tests/test_t72.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if self.defect == CampaignDefect.NO_RETRY_CAP or used < RETRY_CAP:", "replace": "        if True:   # (mutant) the retry cap is disabled: retries grow without bound", "witness": "test_w04_no_duplicate_delivery_under_the_retry_cap", "why": "the retry cap is disabled, so a delivery row is advanced without limit -- the card's named negative in its second limb. The retry-cap witness condemneth", "baseline": "green (the T72 python court: 13 witnesses in tools/readiness/tests/test_t72.py, driven by the real conductor: 10k cycles pass, and each of the five defects is caught)", "kind": "functional"},
     {"id": "T72-RC3-the-inbox-dedup-is-asleep", "platform": "python", "file": "tools/readiness/stress.py", "court": "tools/readiness/tests/test_t72.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if self.defect == CampaignDefect.NO_DEDUP or msg not in self.inbox:", "replace": "        if True:   # (mutant) dedup is asleep: one msg_id entereth the inbox many times", "witness": "test_w03_no_duplicate_inbox_row", "why": "the inbox dedup is asleep, so one msg_id entereth the inbox as many times as it arriveth -- a duplicate delivery the card forbiddeth. The dedup witness condemneth", "baseline": "green (the T72 python court: 13 witnesses in tools/readiness/tests/test_t72.py, driven by the real conductor: 10k cycles pass, and each of the five defects is caught)", "kind": "functional"},
     {"id": "T72-RC4-malformed-input-escapeth-the-loop", "platform": "python", "file": "tools/readiness/stress.py", "court": "tools/readiness/tests/test_t72.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "            if self.defect == CampaignDefect.MALFORMED_ESCAPES:\n                raise ValueError(\"the malformed record escaped the loop\")", "replace": "            # (mutant) a malformed record throweth out of the loop, uncaught\n            raise ValueError(\"the malformed record escaped the loop\")", "witness": "test_w05_no_uncaught_malformed_input", "why": "a malformed record throweth out of the lifecycle loop, so malformed input would kill a campaign rather than being refused and counted. The malformed-input witness condemneth", "baseline": "green (the T72 python court: 13 witnesses in tools/readiness/tests/test_t72.py, driven by the real conductor: 10k cycles pass, and each of the five defects is caught)", "kind": "functional"},
     {"id": "T72-RC5-the-census-groweth-with-the-cycles", "platform": "python", "file": "tools/readiness/stress.py", "court": "tools/readiness/tests/test_t72.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if self.defect == CampaignDefect.UNBOUNDED_CENSUS or self.leases < LEASE_CAPACITY:\n            self.leases += 1\n        if not in_flight and self.defect not in (CampaignDefect.NO_LEASE_RELEASE,\n                                                CampaignDefect.UNBOUNDED_CENSUS):\n            self.leases = max(0, self.leases - 1)", "replace": "        # (mutant) the CAPACITY and the RELEASE are both gone: the live census\n        # groweth with the CYCLE COUNT and never plateaueth\n        self.leases += 1", "witness": "test_w06_the_census_plateau_is_a_structural_formula", "why": "the lease capacity AND the per-cycle release are both removed, so the live census groweth with the CYCLE COUNT and never plateaueth -- the resource bound the card requireth. The plateau witness condemneth. (The campaign taught that a RELEASE-ONLY defect cannot grow the census: the capacity boundeth it, which is a finding about WHERE the plateau cometh from.)", "baseline": "green (the T72 python court: 13 witnesses in tools/readiness/tests/test_t72.py, driven by the real conductor: 10k cycles pass, and each of the five defects is caught)", "kind": "functional"},
     {"id": "T72-RC6-the-seed-no-longer-determineth-the-trace", "platform": "python", "file": "tools/readiness/stress.py", "court": "tools/readiness/tests/test_t72.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        self.rng = random.Random(seed)", "replace": "        self.rng = random.Random()   # (mutant) the seed no longer determineth the trace", "witness": "test_w10_a_failed_seed_is_recorded_and_reproducible", "why": "the campaign no longer seedeth its generator, so a red run cannot be replayed and the failure is a rumour rather than evidence. The reproducible-seed witness condemneth", "baseline": "green (the T72 python court: 13 witnesses in tools/readiness/tests/test_t72.py, driven by the real conductor: 10k cycles pass, and each of the five defects is caught)", "kind": "functional"},
     {"id": "T72-RC7-the-fault-schedule-is-ignored", "platform": "python", "file": "tools/readiness/stress.py", "court": "tools/readiness/tests/test_t72.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        for fault in self.schedule.at(step):\n            self.apply(fault)", "replace": "        pass   # (mutant) the fault schedule is never applied", "witness": "test_w08_the_five_faults_are_applied_at_their_steps", "why": "the fault schedule is never applied, so the campaign would report a clean run while exercising NO fault at all -- the adapter failure modes it existeth to cover. The fault witness condemneth", "baseline": "green (the T72 python court: 13 witnesses in tools/readiness/tests/test_t72.py, driven by the real conductor: 10k cycles pass, and each of the five defects is caught)", "kind": "functional"},
-    {"id": "T72-RC8-android-the-shutdown-releaseth-nothing", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt", "gradle_filter": "*ReadinessT72Test*", "find": "        if (defect == CampaignDefect.NO_LEASE_RELEASE) return\n        leases = 0; timers = 0; sessions = 0", "replace": "        // (mutant) shutdown releaseth NOTHING on this isle\n        return", "witness": "test_w02_zero_leaks_after_shutdown", "why": "the Android isle's shutdown releaseth nothing, so every campaign leaketh its capacity there. The Android leak witness condemneth", "baseline": "green (the T72 Android court: 13 witnesses in android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt, driven by io.godstone.mesh.stress.StressCampaign)", "kind": "functional"},
+    {"id": "T72-RC8-android-the-shutdown-releaseth-nothing", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt", "gradle_filter": "*ReadinessT72Test*", "find": "        if (defect == CampaignDefect.NO_LEASE_RELEASE) return\n        if (defect != CampaignDefect.NO_TIMER_RELEASE) timers = 0\n        if (defect != CampaignDefect.NO_SESSION_RELEASE) sessions = 0\n        leases = 0", "replace": "        // (mutant) shutdown releaseth NOTHING on this isle\n        return", "witness": "test_w02_zero_leaks_after_shutdown", "why": "the Android isle's shutdown releaseth nothing, so every campaign leaketh its capacity there. The Android leak witness condemneth", "baseline": "green (the T72 Android court: 13 witnesses in android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt, driven by io.godstone.mesh.stress.StressCampaign)", "kind": "functional"},
     {"id": "T72-RC9-android-the-retry-cap-is-disabled", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt", "gradle_filter": "*ReadinessT72Test*", "find": "        if (defect == CampaignDefect.NO_RETRY_CAP || used < RETRY_CAP) {", "replace": "        if (true) {   // (mutant) the retry cap is disabled on this isle", "witness": "test_w04_no_duplicate_delivery_under_the_retry_cap", "why": "the Android retry cap is disabled, so a delivery row advances without limit there. The Android retry witness condemneth", "baseline": "green (the T72 Android court: 13 witnesses in android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt, driven by io.godstone.mesh.stress.StressCampaign)", "kind": "functional"},
     {"id": "T72-RC10-android-the-inbox-dedup-is-asleep", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt", "gradle_filter": "*ReadinessT72Test*", "find": "        if (defect == CampaignDefect.NO_DEDUP || !inbox.containsKey(msg)) {", "replace": "        if (true) {   // (mutant) dedup is asleep on this isle", "witness": "test_w03_no_duplicate_inbox_row", "why": "the Android inbox dedup is asleep, so one msg_id entereth the inbox many times there. The Android dedup witness condemneth", "baseline": "green (the T72 Android court: 13 witnesses in android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt, driven by io.godstone.mesh.stress.StressCampaign)", "kind": "functional"},
-    {"id": "T72-RC11-ios-the-shutdown-releaseth-nothing", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift", "swift_filter": "ReadinessT72Tests", "find": "        if defect == CampaignDefect.noLeaseRelease { return }\n        leases = 0; timers = 0; sessions = 0", "replace": "        // (mutant) shutdown releaseth NOTHING on this isle\n        return", "witness": "testW02ZeroLeaksAfterShutdown", "why": "the iOS isle's shutdown releaseth nothing, so every campaign leaketh its capacity there. The iOS leak witness condemneth", "baseline": "green (the T72 iOS court: 13 witnesses in ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift, driven by the Swift twin)", "kind": "functional"},
+    {"id": "T72-RC11-ios-the-shutdown-releaseth-nothing", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift", "swift_filter": "ReadinessT72Tests", "find": "        if defect == CampaignDefect.noLeaseRelease { return }\n        if defect != CampaignDefect.noTimerRelease { timers = 0 }\n        if defect != CampaignDefect.noSessionRelease { sessions = 0 }\n        leases = 0", "replace": "        // (mutant) shutdown releaseth NOTHING on this isle\n        return", "witness": "testW02ZeroLeaksAfterShutdown", "why": "the iOS isle's shutdown releaseth nothing, so every campaign leaketh its capacity there. The iOS leak witness condemneth", "baseline": "green (the T72 iOS court: 13 witnesses in ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift, driven by the Swift twin)", "kind": "functional"},
     {"id": "T72-RC12-ios-the-retry-cap-is-disabled", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift", "swift_filter": "ReadinessT72Tests", "find": "        if defect == CampaignDefect.noRetryCap || used < StressCampaign.retryCap {", "replace": "        if true {   // (mutant) the retry cap is disabled on this isle", "witness": "testW04NoDuplicateDeliveryUnderTheRetryCap", "why": "the iOS retry cap is disabled, so a delivery row advances without limit there. The iOS retry witness condemneth", "baseline": "green (the T72 iOS court: 13 witnesses in ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift, driven by the Swift twin)", "kind": "functional"},
     # ----------------------------------------------------------------------
     # GS-FINAL-003 `zero-private-opens` (Board 1): the ANDROID CONSTRUCTION COUNTERS.
@@ -1813,8 +2117,8 @@ SEMANTIC = [
     #   rather than the decision or the permit -- both of which had arms before
     #   this obligation was written, and neither of which is the clause.*
     # ----------------------------------------------------------------------
-    {"id": "T72-RC13-android-private-construction-uncounted", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.IDENTITY, permit.issuedFrom)\n        return Identity.loadOrCreate(ctx)", "replace": "        // (mutant) the identity construction is NOT counted at the seam\n        return Identity.loadOrCreate(ctx)", "witness": "thePermittedRoadCountsOneAttemptPerSeamAtThePlatform", "why": "the identity construction waveth past the counter, so the permitted road moveth no count and EVERY refusal arm reads zero for a reason that has nothing to do with the gate. The permitted-road counter witness condemneth.", "baseline": "green (the GS-FINAL-003 zero-private-opens court: 6 arms in android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt, driven through DaggerMeshGraphComponent over the real journal)", "kind": "semantic"},
-    {"id": "T72-RC14-android-private-permit-may-be-bypassed", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        requireNotNull(PrivateStorePermit.issue(barrier.decision)) {", "replace": "        requireNotNull(PrivateStorePermit.issue(StartupWipeDecision.CLEAN_START)) {", "witness": "theCompositionIssuerRefusesOnEveryOutstandingRung", "why": "the composition's issuer minteth its permit from a CONSTANT rather than from the ladder's answer, so every refusing rung is satisfied -- and the graph would construct the estate a later resume is going to erase. The refusal witness condemneth.", "baseline": "green (the GS-FINAL-003 zero-private-opens court, driven through the real component)", "kind": "semantic"},
+    {"id": "T72-RC13-android-private-construction-uncounted", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.IDENTITY, permit.issuedFrom)\n        return Identity.loadOrCreate(ctx, ownerToken)", "replace": "        // (mutant) the identity construction is NOT counted at the seam\n        return Identity.loadOrCreate(ctx, ownerToken)", "witness": "thePermittedRoadCountsOneAttemptPerSeamAtThePlatform", "why": "unchanged law, re-anchored to the CURRENT source: the same production guard, struck byte-exact (the permit is now consumed as a parameter and the member renamed, but the law is the same)."},
+    {"id": "T72-RC14-android-permit-door-staleness-disabled", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003PrePrivateRecoveryGraphTest.kt", "gradle_filter": "*GsFinal003PrePrivateRecoveryGraphTest*", "find": "        if (evidence.estateRevision == currentRevision) PrivateStorePermit.issue(evidence) else null", "replace": "        PrivateStorePermit.issue(evidence)", "witness": "aPermitIsWithheldWhenTheDurableEstateMoved", "why": "unchanged law, re-anchored to the CURRENT source: the same production guard, struck byte-exact (the permit is now consumed as a parameter and the member renamed, but the law is the same)."},
     # ----------------------------------------------------------------------
     # GS-RUNTIME-001 `mutations` (Board 1): the ANDROID RUNTIME-OWNERSHIP WIRING.
     #   *Each rod deleteth ONE owner assignment from the production provider and
@@ -1828,7 +2132,7 @@ SEMANTIC = [
     #   the "an enum value called pinnedSQLCipher is not engine verification"
     #   defect, in code rather than in a name.*
     # ----------------------------------------------------------------------
-    {"id": "T72-RC17-ios-engine-claims-pinned-without-binding", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT30Tests.swift", "swift_filter": "ReadinessT30Tests/testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent", "find": "    public var kind: StoreEngineKind { isBound ? .pinnedSQLCipher : .plainSQLite }", "replace": "    public var kind: StoreEngineKind { .pinnedSQLCipher }   // (mutant) the name is asserted, never earned", "witness": "testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent", "why": "the engine CLAIMETH `.pinnedSQLCipher` whether or not the pinned library bound -- the named defect 'an enum value called pinnedSQLCipher is not engine verification'. The unbound-engine witness condemneth.", "baseline": "green (the T30 court: 22 arms in ios/Godstone/Tests/GodstoneMeshTests/ReadinessT30Tests.swift, the fail-closed engine arms over the real adapter)", "kind": "semantic"},
+    {"id": "T72-RC17-ios-engine-claims-pinned-without-binding", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT30Tests.swift", "swift_filter": "ReadinessT30Tests", "find": "    public var kind: StoreEngineKind { (isBound && !isArbitraryPath) ? .pinnedSQLCipher : .plainSQLite }", "replace": "    public var kind: StoreEngineKind { isBound ? .pinnedSQLCipher : .plainSQLite }", "witness": "testTheDylibEngineReportethPlainWhenThePinnedLibraryIsAbsent", "why": "re-anchored: the engine's own pinned/plain claim stops discriminating the ARBITRARY path, so a dylib bound at a non-canonical path still claims pinned SQLCipher. Same guard, byte-exact against today's source."},
     # ----------------------------------------------------------------------
     # GS-INTEGRATION-001 (Board 1): the REAL-TRANSPORT RIG and the ingress fix.
     #   *RC18 makes the transport ingest NOTHING (the delegate wiring deleted);
@@ -1917,19 +2221,8 @@ SEMANTIC = [
     #   counting the MESSAGE_STORE or PEER_STORE seam would escape it, because the identity delta would still move.**
     #   *Each rod is witnessed by `thePermittedRoadCountsOneAttemptPerSeamAtThePlatform`, whose per-seam loop asserteth
     #   a delta of exactly 1 AND the authority -- so the seam it strikes reddens by name.*
-    {"id": "T72-RC29-android-message-store-construction-uncounted", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.MESSAGE_STORE, permit.issuedFrom)\n        return SqliteMessageStore(ctx, STORE_MAX_BYTES)", "replace": "        // (mutant) the MESSAGE-STORE construction is NOT counted at its own seam\n        return SqliteMessageStore(ctx, STORE_MAX_BYTES)", "witness": "thePermittedRoadCountsOneAttemptPerSeamAtThePlatform", "why": "the message-store construction waveth past its own counter, so a private DB open on a refusing rung would leave the MESSAGE_STORE delta at zero -- the exact 'a construction nothing counteth' the obligation forbids. The per-seam positive witness condemneth (its MESSAGE_STORE delta readeth 0 while its authority asserteth a decision).", "baseline": "green (GsFinal003ZeroPrivateOpensTest: 8 arms, 0 failures)"},
-    {"id": "T72-RC30-android-peer-store-construction-uncounted", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.PEER_STORE, permit.issuedFrom)\n        return SqlcipherPeerIdentityStore(ctx)", "replace": "        // (mutant) the PEER-STORE construction is NOT counted at its own seam\n        return SqlcipherPeerIdentityStore(ctx)", "witness": "thePermittedRoadCountsOneAttemptPerSeamAtThePlatform", "why": "the peer-identity-store construction waveth past its own counter, so the third seam is unguarded while the other two still move. The per-seam positive witness condemneth by name.", "baseline": "green (GsFinal003ZeroPrivateOpensTest: 8 arms, 0 failures)"},
-    # *** rc11, STEP 7: THE REAL-OWNER RESOURCE-RELEASE RODS (`gs-stress-001.production-owner-mutation`). ***
-    #
-    #   *THE CLAUSE ASKETH FOR "AT LEAST ONE MUTATION IN A REAL PRODUCTION RESOURCE GUARD/OWNER (LEAKED SESSION SLOT,
-    #   UNRELEASED WRITER RESERVATION, UNCANCELLED OBSERVER/TIMER, UNRETIRED ACK WORK) THAT THE STRESS COURT
-    #   DETECTS".* **THE ROD IT USED TO CITE MUTATED `slotCountForTest()`, A TEST-ONLY ACCESSOR: that maketh the
-    #   MEASUREMENT LIE, proveth the detector can fire, and proveth NOTHING about a real leak.**
-    #
-    #   *** THESE THREE STRIKE THE OWNERS' OWN RELEASE VERBS -- the code that actually frees the resource -- AND EACH
-    #   IS WITNESSED BY ITS OWN NAMED ARM IN `GsStress001RealRuntimeDriverTests`, WHICH DRIVES THAT VERB AND READETH
-    #   THAT OWNER'S OWN CENSUS. *** *So each leak is observable in the owner's own terms: a live `SessionManager`
-    #   registry entry, an armed-and-registered timer lease, a standing writer reservation.*
+    {"id": "T72-RC29-android-message-store-construction-uncounted", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.MESSAGE_STORE, permit.issuedFrom)\n        return SqliteMessageStore(ctx, STORE_MAX_BYTES, ownerToken)", "replace": "        // (mutant) the MESSAGE-STORE construction is NOT counted at its own seam\n        return SqliteMessageStore(ctx, STORE_MAX_BYTES, ownerToken)", "witness": "thePermittedRoadCountsOneAttemptPerSeamAtThePlatform", "why": "unchanged law, re-anchored to the CURRENT source: the same production guard, struck byte-exact (the permit is now consumed as a parameter and the member renamed, but the law is the same)."},
+    {"id": "T72-RC30-android-peer-store-construction-uncounted", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003ZeroPrivateOpensTest.kt", "gradle_filter": "*GsFinal003ZeroPrivateOpensTest*", "find": "        PrivateConstructionCounter.noteAttempt(PrivateConstructionCounter.Seam.PEER_STORE, permit.issuedFrom)\n        return SqlcipherPeerIdentityStore(ctx, ownerToken)", "replace": "        // (mutant) the PEER-STORE construction is NOT counted at its own seam\n        return SqlcipherPeerIdentityStore(ctx, ownerToken)", "witness": "thePermittedRoadCountsOneAttemptPerSeamAtThePlatform", "why": "unchanged law, re-anchored to the CURRENT source: the same production guard, struck byte-exact (the permit is now consumed as a parameter and the member renamed, but the law is the same)."},
     {"id": "T72-RC31-ios-retirement-leaveth-the-session-slot-standing", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift", "swift_filters": ["GsStress001RealRuntimeDriverTests/testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot"], "find": "                if let slot = controllers.removeValue(forKey: handle) { doomed.append(slot) }", "replace": "                // (mutant) the registry entry is LEFT STANDING: the departed peer's slot leaketh\n                _ = handle", "witness": "testGSSTRESS001RelationRetirementReleasesTheOwnersOwnSlot", "why": "THE PRODUCTION RELEASE VERB `retireIncarnations(ofPeerId:)` STOPS REMOVING THE RELATION FROM ITS OWN REGISTRY: the `SessionSlot` -- and the `TrustedHandshakeController` it holdeth -- surviveth the departure it was called for, so a live session slot is leaked in exactly the owner that allocateth it. **Nothing downstream observeth it: the transport's retire notice is a different road, so only the owner's own `slotCountForTest()` census condemneth** -- and the named arm driveth that verb and requireth the census to return to zero, so a STANDING slot reddeneth it by name"},
     {"id": "T72-RC32-ios-stop-leaveth-every-timer-lease-standing", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift", "swift_filters": ["GsStress001RealRuntimeDriverTests/testGSSTRESS001TransportStopReleasesEveryHeldTimerLease"], "find": "    private func cancelAllTimerLeasesLocked() {\n        for (_, lease) in timerLeases {\n            lease.timer.invalidate()\n        }\n        timerLeases.removeAll()\n        timerSlots.removeAll()\n    }", "replace": "    private func cancelAllTimerLeasesLocked() {\n        // (mutant) the terminal and lifecycle sweep releaseth NOTHING: every lease\n        // (and its armed Timer) standeth past the stop it was swept by\n    }", "witness": "testGSSTRESS001TransportStopReleasesEveryHeldTimerLease", "why": "THE TERMINAL SWEEP `cancelAllTimerLeasesLocked()` -- the release `BleTransport.stop()` reacheth -- IS STRUCK ENTIRE: the armed `Timer` is never invalidated and never evicted, so a stopped transport keepeth BOTH its lease registration and its pending fire. **The reading is the transport's OWN `timerLeaseCountForTest()` census, and the named arm armeth a lease through the REAL admission road, stoppeth the lifecycle owner and requireth the register to empty -- a standing lease reddeneth it by name**"},
     {"id": "T72-RC33-ios-shutdown-leaveth-the-reservations-standing", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsStress001RealRuntimeDriverTests.swift", "swift_filters": ["GsStress001RealRuntimeDriverTests/testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations"], "find": "        reserved.removeAll()\n        reservationCapacity.removeAll()\n        closed = true", "replace": "        // (mutant) the close path releaseth NO reservation: the tickets stand past shutdown\n        closed = true", "witness": "testGSSTRESS001WriterShutdownReleasesTheOwnersOwnReservations", "why": "THE WRITER'S OWN CLOSE PATH `shutdown()` STOPS RELEASING ITS RESERVATION TABLE: a closed relation that accepteth nothing further still HOLDETH the tickets it admitted -- the exact leak class `Invariants.noLeakedReservations` nameth. **The reading is the writer's own `reservedCountForTest()`, and the named arm bindeth a writer through the REAL send road (a ready session over a standing connection), filleth its bound, callth `shutdown()` and requireth zero -- the standing tickets redden it by name**"},
@@ -1951,6 +2244,324 @@ SEMANTIC = [
     {"id": "T82-RC10-the-ledger-forgetteth-the-bulk-plane", "platform": "python", "file": "tools/readiness/promises.py", "court": "tools/readiness/tests/test_t82.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t82.py", "find": "    Capability(\n        id=\"bulk_transfer\",", "replace": "    Capability(\n        id=\"bulk_transfer_renamed_away\",", "witness": "test_w01_every_capability_carrieth_its_enabling_code_and_status", "why": "the bulk-plane capability vanish eth from the ledger, so nothing would report that the repository discusseth a capability its code disableth. The ledger witness condemneth", "baseline": "green (the T82 court: 13 witnesses in tools/readiness/tests/test_t82.py, driven by the real promise ledger over this repository's own manifests, tier table, ADR, stub, release manifest and blocker register)", "kind": "functional"},
     {"id": "T82-RC11-the-media-tier-promise-is-silent", "platform": "python", "file": "tools/readiness/promises.py", "court": "tools/readiness/tests/test_t82.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t82.py", "find": "        external_decision=\"APPROVED_CONTENT\",\n    ),\n    Capability(\n        id=\"large_tier\",", "replace": "    ),\n    Capability(\n        id=\"large_tier\",", "witness": "test_w10_every_open_decision_is_recorded", "why": "the MEDIUM tier loseth its named open decision, so the ledger would claim a closed capability whose design nobody hath decided. The open-decision witness condemneth", "baseline": "green (the T82 court: 13 witnesses in tools/readiness/tests/test_t82.py, driven by the real promise ledger over this repository's own manifests, tier table, ADR, stub, release manifest and blocker register)", "kind": "functional"},
     {"id": "T82-RC12-a-media-tier-may-be-marked-shipping", "platform": "python", "file": "tools/readiness/promises.py", "court": "tools/readiness/tests/test_t82.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t82.py", "find": "    for tier in (\"MEDIUM\", \"LARGE\"):", "replace": "    for tier in []:   # (mutant) a research-only tier need not stay research-only", "witness": "test_w06_exactly_one_shipping_tier_and_it_is_light", "why": "a research-only tier's own `shipping: false` is no longer asserted, so the tier table's second product could drift into a shippable one. The tier witness condemneth", "baseline": "green (the T82 court: 13 witnesses in tools/readiness/tests/test_t82.py, driven by the real promise ledger over this repository's own manifests, tier table, ADR, stub, release manifest and blocker register)", "kind": "functional"},
+    # ----------------------------------------------------------------------
+    # *** THE TERMINAL BOARD 1 ROUND (AndroidRecoveryUi): THE RECOVERY TOPOLOGY'S
+    # POST-LANDING GUARDS. *** *Each rod strikes ONE production guard in the
+    # recovery/startup/private composition or the rendered lab wipe, witnessed by
+    # a named arm of the court the repair landed with.*
+    # ----------------------------------------------------------------------
+    {"id": "T72-RC35-android-identity-publication-sentinel-restored", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/identity/WipePrivateEstate.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003PrePrivateRecoveryGraphTest.kt", "gradle_filter": "*GsFinal003PrePrivateRecoveryGraphTest*", "find": "    } catch (e: Throwable) {\n        // NOT PUBLISHED, NAMED AS SUCH BY THE SEAM'S `null` -- never a sentinel string the ladder could mistake.\n        null\n    }", "replace": "    } catch (e: Throwable) {\n        // (mutant) a failed regeneration answers a NON-NULL sentinel the ladder mistakes for a published identity\n        \"identity-generation-failed\"\n    }", "witness": "aFailedPublicationKeepsTheWipePending", "why": "the production identity material answers a NON-NULL sentinel on a failed regeneration, so the coordinator cannot branch on `null`: the ladder records NEW_IDENTITY then IDLE over an identity that was never created."},
+    {"id": "T72-RC36-android-admission-gate-raw-enum-restored", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003PrePrivateRecoveryGraphTest.kt", "gradle_filter": "*GsFinal003PrePrivateRecoveryGraphTest*", "find": "        StartupRecoveryGraph.decisionAtRest(FileWipeJournal(ctx)).allowsPrivateConstruction", "replace": "        io.godstone.mesh.identity.FileWipeJournal(ctx).read() == io.godstone.mesh.identity.PanicWipe.WipeState.IDLE", "witness": "anUnreadableDurableRecordIsCorruptAndRefusedOnBothRoads", "why": "the admission gate returns to reading the RAW coerced enum, so an UNREADABLE record (ordinal 9999 read as IDLE) PERMITS sensitive use while the barrier refuses the same record."},
+    {"id": "T72-RC37-android-startup-decision-ignores-readability", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003PrePrivateRecoveryGraphTest.kt", "gradle_filter": "*GsFinal003PrePrivateRecoveryGraphTest*", "find": "        get() = StartupRecoveryGraph.decisionOf(authority, outcome)", "replace": "        get() = decide(outcome, readable = true)", "witness": "anUnreadableDurableRecordIsCorruptAndRefusedOnBothRoads", "why": "the startup decision is derived from the ladder's coerced answer alone, so an unreadable record reads as Refused(NOTHING_TO_RESUME) and is judged CLEAN_START -- opening private stores over material that may be mid-erasure."},
+    {"id": "T72-RC41-android-composition-issuer-mints-from-a-constant-decision", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003PrePrivateRecoveryGraphTest.kt", "gradle_filter": "*GsFinal003PrePrivateRecoveryGraphTest*", "find": "            permit.requireLiveFor(live, PrivateOwnerToken.forNormalConstruction(permit))", "replace": "            requireNotNull(permit)", "witness": "aPermitIsWithheldWhenTheDurableEstateMoved", "why": "unchanged law, re-anchored to the CURRENT source: the same production guard, struck byte-exact (the permit is now consumed as a parameter and the member renamed, but the law is the same)."},
+    {"id": "T72-RC39-android-wipe-resume-offered-unconditionally", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/lab/LabWipeJourneyTest.kt", "gradle_filter": "*LabWipeJourneyTest*", "find": "    StartupWipeDecision.CLEAN_START,\n    StartupWipeDecision.WIPE_COMPLETED,\n    StartupWipeDecision.CORRUPT_JOURNAL,\n    StartupWipeDecision.TERMINAL_FAILURE -> false", "replace": "    StartupWipeDecision.CLEAN_START,\n    StartupWipeDecision.WIPE_COMPLETED,\n    StartupWipeDecision.CORRUPT_JOURNAL,\n    StartupWipeDecision.TERMINAL_FAILURE -> true,", "witness": "theRecoveryContractIsStateAwareAndExhaustive", "why": "the recovery contract stops being state-aware and permits a resume for EVERY decision, so a rendered resume control offers to resume work that cannot be resumed."},
+    {"id": "T72-RC42-android-completed-wipe-collapsed-into-first-launch", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003PrePrivateRecoveryGraphTest.kt", "gradle_filter": "*GsFinal003PrePrivateRecoveryGraphTest*", "find": "        if (reachedTerminal) return StartupWipeDecision.WIPE_COMPLETED", "replace": "        if (reachedTerminal) return StartupWipeDecision.CLEAN_START", "witness": "aWipeThatRanToItsEndReadsAsWipeCompleted", "why": "a wipe that RAN to its end is reported as a FIRST LAUNCH, so a surface can no longer tell a user whether their device was ever wiped -- the iOS contract's `wipeCompleted` collapses into `cleanStart`."},
+    {"id": "T72-RC38-android-lab-wipe-local-state-register", "platform": "jvm", "module": "labmesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/lab/LabWipeJourney.kt", "court": "android/labmesh/src/test/java/io/godstone/labmesh/LabMeshJourneyBoundTest.kt", "gradle_filter": "*LabMeshJourneyBoundTest*", "find": "    fun begin(): Step {\n        // *** (1) OLD WORK REFUSED, BEFORE THE LADDER MOVES. ***\n        live()?.retireLiveOwners()\n        // *** (2) AND THE LADDER, OVER THE REAL CAPABILITIES. ***\n        return fromDrive(StartupRecoveryGraph.requestWipe(journal, seams()))\n    }", "replace": "    fun begin(): Step {\n        // (mutant) the rendered REQUEST becomes a harness-local register: the durable journal is never written\n        live()?.retireLiveOwners()\n        return progress().copy(rung = WipeJournalState.REQUESTED, pending = true)\n    }", "witness": "test_the_rendered_wipe_reaches_the_durable_record_and_survives_a_reopen", "why": "re-anchored: the rendered wipe's REQUEST becomes a harness-local register, so the durable journal is never written and a relaunch finds a clean device."},
+    {"id": "T72-RC40-android-lab-wipe-progress-not-read-from-record", "platform": "jvm", "module": "labmesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/lab/LabWipeJourney.kt", "court": "android/labmesh/src/test/java/io/godstone/labmesh/LabMeshJourneyBoundTest.kt", "gradle_filter": "*LabMeshJourneyBoundTest*", "find": "    fun progress(): Step {\n        val decision = StartupRecoveryGraph.decisionAtRest(journal)", "replace": "    fun progress(): Step {\n        val decision = StartupWipeDecision.CLEAN_START", "witness": "test_the_rendered_wipe_reaches_the_durable_record_and_survives_a_reopen", "why": "the rendered progress stops DERIVING its decision from the durable record and answers a constant, so a device mid-wipe renders a clean status forever."},
+    # ----------------------------------------------------------------------
+    # *** THE TERMINAL BOARD 1 ROUND (IosRecoveryUi): THE TRUE PRE-PRIVATE
+    # RECOVERY TOPOLOGY AND THE RENDERED RETRY/WIPE SURFACES. *** *Anchors are
+    # byte-exact against the post-landing tree; IOS-RECOVERY-006 is the
+    # type-enforcement rod (the compiler refusing the mutant IS the kill).*
+    # ----------------------------------------------------------------------
+    {"id": "IOS-RECOVERY-001", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift", "swift_filter": "GsFinal003RecoveryTopologyTests/testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot", "find": "        guard self.estateId == estateId else { return nil }", "replace": "        // estate guard struck: a wrong-estate permit is accepted", "witness": "testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot", "why": "re-anchored to the CURRENT source: the same production guard, struck byte-exact after the landing moved it (no fabricated old anchor, no old baseline)."},
+    {"id": "IOS-RECOVERY-002", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift", "swift_filter": "GsFinal003RecoveryTopologyTests", "find": "        case .recoveryPending, .retryableFailure:\n            // *** AN OUTSTANDING WIPE: A DECISION AND NOTHING ELSE. *** *No permit exists for this case, so no", "replace": "        case .recoveryPending, .retryableFailure:\n            if let permit = PrivateRuntimePermit(evidence: RecoveryEvidence(decision: .cleanStart, durableRung: nil, droveTheLadder: false)) {\n                return .normal(permit)\n            }\n            // *** AN OUTSTANDING WIPE: A DECISION AND NOTHING ELSE. *** *No permit exists for this case, so no", "witness": "testGSFINAL003_theTypedTopologyIssuesTheRightPermitAndRefusesTheThirdRoad", "why": "an outstanding estate yields a permit-bearing road: construction-before-terminal returns and the private graph opens over the key a later resume will erase"},
+    {"id": "IOS-RECOVERY-003", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift", "swift_filter": "GsFinal003RecoveryTopologyTests", "find": "        case .corruptJournal, .terminalFailure:\n            return .refused(decision)\n        }\n    }", "replace": "        case .corruptJournal, .terminalFailure:\n            return .recoveryOnly(decision)\n        }\n    }", "witness": "testGSFINAL003_aCorruptJournalRefusesConstructionAndRequiresAnOperator", "why": "an unreadable record stops refusing: a runtime is built over a record whose gate oracle cannot be read, instead of demanding an operator"},
+    {"id": "IOS-RECOVERY-004", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift", "swift_filter": "GsFinal003RecoveryTopologyTests/testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph", "find": "    public var isComplete: Bool {\n        decision == .wipeCompleted && artifactsRemaining.isEmpty\n    }", "replace": "    public var isComplete: Bool {\n        decision == .wipeCompleted\n    }", "witness": "testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph", "why": "isComplete stops requiring the filesystem half, so a ladder that reached IDLE while a private artifact still stands renders a completed wipe."},
+    {"id": "IOS-RECOVERY-005", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift", "swift_filter": "GsFinal003RecoveryTopologyTests", "find": "        case .recoveryPending, .retryableFailure:\n            // *** THE RECOVERY-ONLY ROAD: IT OWNS RECOVERY CAPABILITIES AND CONSTRUCTS NOTHING SENSITIVE. ***\n            //", "replace": "        case .recoveryPending, .retryableFailure:\n            throw MeshRuntimeError.startupRefusedByRecovery(\n                decision: createTimeDecision.name,\n                reason: \"MUTANT: no recovery-only drive\")\n            // *** THE RECOVERY-ONLY ROAD: IT OWNS RECOVERY CAPABILITIES AND CONSTRUCTS NOTHING SENSITIVE. ***\n            //", "witness": "testGSFINAL003_aPendingWipeResolvesThroughThePrePrivateRecoveryBeforeAnyPrivateStore", "why": "an outstanding wipe skips the live pre-private drive, so the journal is never advanced and the ladder's drain guarantee is lost while the composition still answers"},
+    {"id": "IOS-RECOVERY-006", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift", "swift_filter": "GsFinal004OwnedConnectionTests", "find": "        permit: PrivateRuntimePermit,\n        compositionLane: CompositionLane = .shipping\n    ) throws -> MeshRuntime {", "replace": "        permit: PrivateRuntimePermit? = nil,\n        compositionLane: CompositionLane = .shipping\n    ) throws -> MeshRuntime {", "witness": "testGF004TheCompositionRunsItsStoresOnTheEnginesConnections", "why": "the private road loses its permit parameter, so a caller reaches a keyed private composition without a typed decision: the compiler refuses the mutant, which IS the kill for a type-enforced guard", "type_enforced": True},
+    {"id": "IOS-RECOVERY-007", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift", "swift_filter": "GsFinal003RecoveryTopologyTests/testGSFINAL003_aCorruptJournalRefusesConstructionAndRequiresAnOperator", "find": "        switch startupDecision {\n        case .corruptJournal, .terminalFailure:\n            throw MeshRuntimeError.startupRefusedByRecovery(\n                decision: startupDecision.name,\n                reason: startupDecision.refusalReason ?? \"the durable wipe record cannot be read\")\n        case .cleanStart, .wipeCompleted, .recoveryPending, .retryableFailure:", "replace": "        switch startupDecision {\n        case .corruptJournal, .terminalFailure:\n            break\n        case .cleanStart, .wipeCompleted, .recoveryPending, .retryableFailure:", "witness": "testGSFINAL003_aCorruptJournalRefusesConstructionAndRequiresAnOperator", "why": "re-anchored to the CURRENT source: the same production guard, struck byte-exact after the landing moved it (no fabricated old anchor, no old baseline)."},
+    {"id": "IOS-RECOVERY-008", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift", "swift_filter": "GsFinal003RecoveryTopologyTests/testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph", "find": "            runtime: transport,", "replace": "            runtime: WipeDeferredTransportSeam(),", "witness": "testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph", "why": "re-anchored to the CURRENT source: the same production guard, struck byte-exact after the landing moved it (no fabricated old anchor, no old baseline)."},
+    {"id": "IOS-RECOVERY-009", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003RecoveryTopologyTests.swift", "swift_filter": "GsFinal003RecoveryTopologyTests/testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph", "find": "            \"mesh.db-wal\": URL(fileURLWithPath: messageStoreUrl.path + \"-wal\"),\n            \"mesh.db-shm\": URL(fileURLWithPath: messageStoreUrl.path + \"-shm\"),\n            \"peer.db\": peerStoreUrl,\n            \"peer.db-wal\": URL(fileURLWithPath: peerStoreUrl.path + \"-wal\"),\n            \"peer.db-shm\": URL(fileURLWithPath: peerStoreUrl.path + \"-shm\"),", "replace": "            \"mesh.db-wal\": URL(fileURLWithPath: messageStoreUrl.path + \"-wal\"),\n            \"mesh.db-shm\": URL(fileURLWithPath: messageStoreUrl.path + \"-shm\"),", "witness": "testGSFINAL003_theRecoveryTransportStandsBeforeAndIndependentlyOfTheStoreGraph", "why": "The artifact map stops naming the sidecars (the GS-STORE-002 step-5 clause and the measured 'every deletion answered .absent' defect), so a wipe completes with mesh.db-wal still holding the rows the main file lacks."},
+    {"id": "IOS-RETRY-001", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT58Tests.swift", "swift_filter": "ReadinessT58Tests/testW14ANonTerminalMessageIsResumableEvenWhenTheProjectionUnderReportsIt", "find": "        guard known.isRetryable else {", "replace": "        guard known.retryable else {", "witness": "testW14ANonTerminalMessageIsResumableEvenWhenTheProjectionUnderReportsIt", "why": "The retry guard returns to a projected boolean, so a stale/defaulted projection flag silently omits the retry the user is owed for a non-terminal message."},
+    {"id": "IOS-RETRY-002", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT58Tests.swift", "swift_filter": "ReadinessT58Tests", "find": "    public var permitsResume: Bool {\n        switch self {\n        case .queued, .attempting: return true\n        case .delivered, .cancelled, .expired, .failed: return false\n        }\n    }", "replace": "    public var permitsResume: Bool { true }", "witness": "testW15ATerminalStateIsRefusedAndTheRefusalNamesIt", "why": "A terminal state becomes resumable: the state law is inverted so DELIVERED/CANCELLED rows may be transmitted again."},
+    {"id": "IOS-WIPE-UX-001", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/TrustAuthorityAdapter.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT56Tests.swift", "swift_filter": "ReadinessT56Tests/testW14AWipeMayReportCompleteOnlyFromTheDurableOutcome", "find": "        currentWipeState = Self.progress(from: wipeHandler())\n        return currentWipeState\n    }\n\n    /// *** AND THE RESUME IS A REAL RESUME, NOT A SECOND `.complete`. ***", "replace": "        _ = wipeHandler\n        currentWipeState = .complete\n        return currentWipeState\n    }\n\n    /// *** AND THE RESUME IS A REAL RESUME, NOT A SECOND `.complete`. ***", "witness": "testW14AWipeMayReportCompleteOnlyFromTheDurableOutcome", "why": "The trust surface claims a completed wipe it never performed (the measured pre-repair shape): state set before the handler runs, and resume returning .complete without calling anything."},
+    {"id": "IOS-WIPE-UX-002", "platform": "ios-ui", "file": "ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift", "court": "ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift", "find": "    public func wipeStateName() -> String {\n        let rungs = Self.recoveryLadderRungs()", "replace": "    public func wipeStateName() -> String {\n        if harness.isWiped() { return \"wiped\" }\n        let rungs = Self.recoveryLadderRungs()", "witness": "testGSINT001TheWipeControlReportsTheRuntimesOwnState", "why": "The lab's rendered wipe state returns to a register that owns no ladder, so 'wipe progress from the real reopened store' is a label claiming a rung it never read."},
+    {"id": "IOS-SOS-RETRY-001", "platform": "ios-ui", "file": "ios/Godstone/Sources/LabMesh/LabMeshRootApp.swift", "court": "ios/Godstone/Tests/LabMeshUITests/LabMeshUITests.swift", "find": "            Button(\"Retry\") { retrySos() }\n                .accessibilityLabel(\"Retry\")\n                .labTouchTarget()\n                .accessibilityIdentifier(\"lab.sos.retry\")", "replace": "", "witness": "testGSINT001TheEssentialRetryControlStandsAndActs", "why": "The contract's fifth essential control is omitted: no rendered Retry reaches the wired MeshNode.handleSosCommand(.retry) arm, so a user whose call never left can do nothing while a source grep still finds 'retry'."},
+    # ----------------------------------------------------------------------
+    # *** THE TERMINAL BOARD 1 ROUND (LaneControls / ReleaseSupply /
+    # VerifyFreeze): THE LANE CONTROL'S OWN GUARDS, THE POST-RC14 SUPPLY-CHAIN
+    # SURFACES, AND THE GATE-MANIFEST/FREEZE CONTRACT. *** *Each rod strikes
+    # one production guard; the witness is a committed selftest family, a named
+    # court arm, or (for the runner script) an asserted shell invariant.*
+    # ----------------------------------------------------------------------
+    {"id": "LANE-ROD-1-skip-refusal-disabled", "expect_escaped": ["6", "7a"], "platform": "selftest", "file": "ci/check_lane_results.py", "control": "ci/check_lane_results.py", "selftest_flag": "--selftest-foundation", "find": "    for m in IOS_SKIPPED_ARM.finditer(text):\n        arm = m.group(1).strip()\n        reason = skip_annotation.get(arm, \"\")", "replace": "    for m in []:  # (mutant) the skip refusal is DISABLED: every skipped arm is silently tolerated again\n        arm = m.group(1).strip()\n        reason = skip_annotation.get(arm, \"\")", "witness": "lane-selftest:--selftest-foundation", "why": "EVERY skip must be refused, whatever its reason (the external-blocked allowance is retired). Disabling the refusal loop lets any skipped arm slip through; cases 6 and 7a (an ordinary internal skip, and the historical EXTERNAL-BLOCKED + pinned-artifact reason) both escape."},
+    {"id": "LANE-ROD-2-foundation-arm-omission-unguarded", "expect_escaped": ["7b"], "platform": "selftest", "file": "ci/check_lane_results.py", "control": "ci/check_lane_results.py", "selftest_flag": "--selftest-foundation", "find": "    omitted = sorted(required_arms - observed_arms)", "replace": "    omitted = []  # (mutant) the count reconciliation alone is trusted again", "witness": "lane-selftest:--selftest-foundation", "why": "The foundation lane must observe every source-declared arm BY NAME, not merely reconcile a total against a count."},
+    {"id": "LANE-ROD-3-foundation-duplicate-arm-unrefused", "expect_escaped": ["7d"], "platform": "selftest", "file": "ci/check_lane_results.py", "control": "ci/check_lane_results.py", "selftest_flag": "--selftest-foundation", "find": "            problems.append(f\"the iOS lane carrieth {times} verdicts for arm {key} -- a duplicated arm would be \"\n                            f\"double-counted\")", "replace": "            pass  # (mutant) a duplicated arm is tolerated", "witness": "lane-selftest:--selftest-foundation", "why": "A duplicated verdict for one arm must be refused (the foundation lane carried no duplicate guard)."},
+    {"id": "LANE-ROD-4-simulator-duplicate-narrowed-to-required", "expect_escaped": ["10"], "platform": "selftest", "file": "ci/check_lane_results.py", "control": "ci/check_lane_results.py", "selftest_flag": "--selftest-simulator", "find": "            problems.append(f\"the iOS simulator lane carrieth {times} verdicts for arm {key} -- a duplicated arm \"\n                            f\"would be double-counted\")", "replace": "            pass  # (mutant) only required arms were guarded before", "witness": "lane-selftest:--selftest-simulator", "why": "The simulator duplicate guard must cover EVERY verdict, not only roster-declared arms -- otherwise a duplicated UNDECLARED arm escapes both this guard and the unexpected-arm guard."},
+    {"id": "LANE-ROD-5-known-red-allowance-repopulated", "expect_escaped": ["6c"], "platform": "selftest", "file": "ci/check_lane_results.py", "control": "ci/check_lane_results.py", "selftest_flag": "--selftest-ui", "find": "IOS_UI_KNOWN_RED: dict[str, dict] = {}", "replace": "IOS_UI_KNOWN_RED: dict[str, dict] = {\"GodstoneArchiveUITests.testGSA005DocumentReopensAfterCleanProcessDeath\": {\"obligation\": \"x\", \"signature\": \"y\"}}  # (mutant) the stale allowance restored", "witness": "lane-selftest:--selftest-ui", "why": "The retired known-red UI allowance must stay EMPTY: repopulating it would swallow a NEW break of a formerly-known-red arm, and the retirement is enforced by the court."},
+    {"id": "LANE-ROD-6-android-runner-aborts-before-digests", "platform": "shell", "file": "tools/readiness/run_android_lanes.sh", "script": "tools/readiness/run_android_lanes.sh", "find": "    --rerun-tasks --no-daemon --console=plain || rc=$?", "replace": "    --rerun-tasks --no-daemon --console=plain\nrc=$?", "witness": "the-runner-keeps-the-lane-alive-under-set-e", "why": "Under `set -e`, a non-zero gradle must NOT abort the runner before it writes post-run digests and runs the pre/post drift check -- the runner PRODUCES evidence and the checker DECIDES.", "guard_only": True, "category_expect": ["structural"], "guard_command": "sh tools/readiness/tests/mutation_runner_keepalive_probe.sh tools/readiness/run_android_lanes.sh"},
+    {"id": "RS-IOS-01-debug-symbols-asleep", "platform": "python", "file": "scripts/inspect_ios_artifacts.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    if symbols[\"debug_count\"]:\n", "replace": "    if False and symbols[\"debug_count\"]:\n", "witness": "test_a_debug_laden_image_is_refused", "why": "the debug (stabbing) symbol census is struck: a debug-laden LIGHT image would be called a release candidate instead of being refused as unstripped"},
+    {"id": "RS-IOS-02-undefined-mesh-import-asleep", "platform": "python", "file": "scripts/inspect_ios_artifacts.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    for name in symbols[\"undefined\"]:\n        surface = _prohibited_symbol(name)\n        if surface:\n", "replace": "    for name in symbols[\"undefined\"]:\n        surface = _prohibited_symbol(name)\n        if False and surface:\n", "witness": "IosContentInventoryCourt.test_a_mesh_importing_image_is_refused_by_its_symbol_table", "why": "the undefined-symbol exclusion is asleep: a binary that IMPORTS a GodstoneMesh symbol would ride into LIGHT because its load-command dylib list was clean"},
+    {"id": "RS-IOS-03-excluded-resource-pattern-asleep", "platform": "python", "file": "scripts/inspect_ios_artifacts.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "        for pattern in FORBIDDEN_RESOURCE_PATTERNS:\n            if pattern.search(name):\n", "replace": "        for pattern in FORBIDDEN_RESOURCE_PATTERNS:\n            if False and pattern.search(name):\n", "witness": "IosContentInventoryCourt.test_an_excluded_binary_resource_is_refused", "why": "the excluded-resource scan is asleep: a GodstoneMesh.dylib, an excluded tier archive or a model would travel inside the release bundle unnamed"},
+    {"id": "RS-PROOF-01-fabricated-internal-verdict-tolerated", "platform": "python", "file": "tools/supplychain/verify_release_proof.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "            if step.get(\"name\") == \"artifact-inspection\" and sv == \"SKIPPED\":\n", "replace": "            if False and step.get(\"name\") == \"artifact-inspection\" and sv == \"SKIPPED\":\n", "witness": "ReleaseProofCourt.test_a_skipped_internal_inspection_is_refused", "why": "the skipped-internal-control gate is struck: a job that SKIPPED its artifact inspection would still be believed under an internal PASS"},
+    {"id": "RS-PROOF-02-record-self-digest-asleep", "platform": "python", "file": "tools/supplychain/verify_release_proof.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    elif filed != canonical_document_sha256(document):\n", "replace": "    elif False:\n", "witness": "ReleaseProofCourt.test_an_edited_body_is_caught_by_its_self_digest", "why": "the self-digest recomputation is asleep: a record edited after it was sealed would recompute nothing and be believed"},
+    {"id": "RS-PROOF-03-misclassified-external-tolerated", "platform": "python", "file": "tools/supplychain/verify_release_proof.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "            if boundary not in EXTERNAL_BOUNDARIES:\n", "replace": "            if False and boundary not in EXTERNAL_BOUNDARIES:\n", "witness": "ReleaseProofCourt.test_an_internal_failure_misclassified_as_external_is_refused", "why": "the external-boundary allowlist is struck: an internal prerequisite failure (an unrelated compile error) could wear an external name and be filed as an external blocker"},
+    {"id": "RS-PROOF-04-borrowed-sha-tolerated", "platform": "python", "file": "tools/supplychain/verify_release_proof.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    elif run.get(\"head_sha\") != candidate.get(\"sha\"):\n", "replace": "    elif False:\n", "witness": "ReleaseProofCourt.test_a_borrowed_sha_is_refused", "why": "the run-head-equals-candidate gate is struck: a run that built a BORROWED other sha would be bound to the candidate it did not build"},
+    {"id": "RS-DL-01-wrong-download-digest-asleep", "platform": "python", "file": "tools/supplychain/verify_toolchain_download.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    if actual_sha256 != entry[\"sha256\"]:\n", "replace": "    if False and actual_sha256 != entry[\"sha256\"]:\n", "witness": "ToolchainDownloadCourt.test_a_wrong_digest_is_refused_by_name", "why": "the archive's digest comparison is struck: a substituted command-line-tools tarball (same URL, different bytes) would be unzipped and handed to sdkmanager"},
+    {"id": "RS-SBOM-01-face-coverage-asleep", "platform": "python", "file": "tools/supplychain/supply_chain.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    missing = sorted(locked - seen)\n", "replace": "    missing = []\n", "witness": "CycloneDxCoverageCourt.test_a_face_that_omits_a_locked_component_is_refused", "why": "the face-coverage control is muzzled: a published CycloneDX face that omiteth a locked component would pass, so the inventory could quietly lose a dependency"},
+    {"id": "RS-SBOM-02-lock-version-drift-tolerated", "platform": "python", "file": "tools/supplychain/supply_chain.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "                key = f\"pypi:{name}:{entry.get('version')}\"\n                if key not in names:\n", "replace": "                key = f\"pypi:{name}:{entry.get('version')}\"\n                if False and key not in names:\n", "witness": "SbomVersionDriftCourt.test_a_moved_version_is_refused_by_name", "why": "the exact-version binding is asleep: a lock pin whose VERSION moved without the SBOM being rebuilt would pass because only the name is matched"},
+    {"id": "RS-DL-02-cached-tool-tree-digest-asleep", "platform": "python", "file": "tools/supplychain/verify_toolchain_download.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    if digest != extracted.get(\"tree_sha256\"):\n", "replace": "    if False and digest != extracted.get(\"tree_sha256\"):\n", "witness": "ToolchainDownloadCourt.test_a_cached_tree_that_is_not_the_pinned_contents_is_refused", "why": "the extracted-tree content digest is struck: a preexisting $ANDROID_HOME/cmdline-tools/<version> that is NOT the pinned contents would be silently trusted instead of refused"},
+    {"id": "T86-B1M1-manifest-may-omit-a-required-gate", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "    missing = [g for g in expected if g not in recorded]", "replace": "    missing = []  # (mutant) a manifest may omit a required gate and still PASS", "witness": "test_a_manifest_omitting_a_required_gate_is_refused", "why": "THE CENTRAL DEFECT THIS CONTRACT EXISTS TO REFUSE: a manifest that dropped a required gate row would read as a COMPLETE run while the omitted gate never ran. A reader would re-run the manifest and reproduce four of five gates. The witness `test_a_manifest_omitting_a_required_gate_is_refused` condemneth: an omitted gate must be named, not tolerated."},
+    {"id": "T86-B1M2-nonzero-gate-reads-as-pass", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "        if row.get(\"verdict\") != \"PASS\" or row.get(\"rc\") != 0:", "replace": "        if False:  # (mutant) a non-zero gate exit passeth for a PASS manifest", "witness": "test_a_gate_that_returned_nonzero_is_refused", "why": "A FAILING GATE IS THE ONE THING A PASS MANIFEST MUST NEVER CARRIED. Muzzled, a run in which the readiness suites returned 1 would emit a green manifest naming that gate, and the freeze would bind it. The witness `test_a_gate_that_returned_nonzero_is_refused` condemneth; the builder-side companion `test_the_builder_refuses_to_emit_after_a_nonzero_gate` proves the EMISSION door is shut too."},
+    {"id": "T86-B1M3-campaign-tested-inputs-may-move", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "            elif tested[key] != current[key]:", "replace": "            elif False:  # (mutant) a campaign may have run against other bytes", "witness": "test_a_campaign_whose_tested_input_moved_is_refused", "why": "A KILL RECORDED AGAINST A DIFFERENT TREE IS NOT EVIDENCE ABOUT THIS ONE. Muzzled, a campaign whose Swift sources, Kotlin sources, `ios/project.yml` or `ci/mutations.py` changed AFTER it ran still reads as bound. The witness `test_a_campaign_whose_tested_input_moved_is_refused` condemneth."},
+    {"id": "T86-B1M4-escaped-rod-counts-as-killed", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "    bad = sorted(i for i in required if outcomes.get(i) != \"KILLED\")", "replace": "    bad = []  # (mutant) a rod that ESCAPED counteth as a kill", "witness": "test_a_rod_that_escaped_is_refused", "why": "AN ESCAPED ROD IS THE HONEST NAME OF A CONTROL THAT DOES NOT BITE; counting it as a kill is the false-green the ledger's own rules spend their length refusing. The witness `test_a_rod_that_escaped_is_refused` condemneth."},
+    {"id": "T86-B1M5-tampered-gate-log-is-believed", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "        if sha256_bytes(blob) != log.get(\"sha256\"):", "replace": "        if False:  # (mutant) a gate log edited after binding is believed", "witness": "test_a_gate_log_edited_after_binding_is_refused", "why": "THE LOG IS THE GATE'S ONLY RETAINED EVIDENCE; a digest that is recorded but never recomputed is a digest that only LOOKS like a binding. The witness `test_a_gate_log_edited_after_binding_is_refused` condemneth."},
+    {"id": "T86-B1M6-a-narrowed-campaign-population-passes", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "    omitted = sorted(required - selected)", "replace": "    omitted = []  # (mutant) a campaign may select a subset of the required ids", "witness": "test_a_campaign_population_that_disagrees_with_the_ledger_is_refused", "why": "*** A NARROWED POPULATION THAT STILL PASSES IS THE FALSE-GREEN THE MANIFEST CONTRACT NAMES IN ITS OWN DOCSTRING. *** A campaign that ran twelve of fifty rods and recorded twelve killed rows would read as 'the campaign passed'. The witness `test_a_campaign_population_that_disagrees_with_the_ledger_is_refused` condemneth on the required_ids leg and the selected_ids leg alike."},
+    {"id": "T86-B1M7-absent-lane-artifact-is-ignored", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "    missing = [l for l in REQUIRED_LANES if l not in recorded]", "replace": "    missing = []  # (mutant) a lane that produced no artifact may be silently absent", "witness": "test_a_manifest_omitting_a_required_lane_is_refused", "why": "A LANE THAT PRODUCED NOTHING IS EXACTLY WHAT A GREEN SUMMARY HIDES: the simulator lane is the one whose absence was measured before. The witness `test_a_manifest_omitting_a_required_lane_is_refused` condemneth, and the companion `test_a_lane_absent_from_the_artifact_but_unidentified_is_refused` proves the artifact level too."},
+    {"id": "T86-B1M8-stale-lane-digest-is-believed", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "                if lane.get(\"digest\") != live:", "replace": "                if False:  # (mutant) a lane whose sources moved since it ran is believed", "witness": "test_a_stale_lane_source_digest_is_refused", "why": "A LANE LOG WHOSE SOURCE DIGEST NO LONGER MATCHES THE TREE DESCRIBES A REVISION NOBODY CAN NAME. The witness `test_a_stale_lane_source_digest_is_refused` condemneth."},
+    {"id": "T86-B1M9-mid-run-lane-drift-is-ignored", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "        if pre_text and post_text and pre_text != post_text:", "replace": "        if False:  # (mutant) a lane input that changed mid-run is ignored", "witness": "test_a_lane_whose_pre_and_post_digests_disagree_is_refused", "why": "THE PRE/POST DIGEST PAIR IS THE ONLY THING THAT DISTINGUISHES 'one revision was compiled' FROM 'the sidecar was rewritten after an edit'. The witness `test_a_lane_whose_pre_and_post_digests_disagree_is_refused` condemneth."},
+    {"id": "T86-B1M10-candidate-tree-need-not-be-stated", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "        if not _is_full_sha(tree):", "replace": "        if False:  # (mutant) an unstaked tree is accepted", "witness": "test_a_manifest_with_no_candidate_sha_or_tree_is_refused", "why": "A CANDIDATE BINDING THAT NAMES A COMMIT WHOSE BYTES NOBODY STATED IS UNFALSIFIABLE -- the reader has no tree to compare and the freeze's own tree clause has nothing to bite on. The witness `test_a_manifest_with_no_candidate_sha_or_tree_is_refused` condemneth on the tree leg."},
+    {"id": "T86-B1M11-dirty-freeze-tree-is-accepted", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "        if not block.get(\"ok\"):", "replace": "        if False:  # (mutant) a dirty working tree may still be frozen", "witness": "test_a_dirty_start_or_end_is_refused", "why": "A FREEZE TAKEN WITH UNCOMMITTED TRACKED CHANGES COMPILES BYTES THE CANDIDATE NEVER HAD. The witness `test_a_dirty_start_or_end_is_refused` condemneth for both the start and the end."},
+    {"id": "T86-B1M12-lightweight-candidate-tag-is-accepted", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "            if not ident.get(\"annotated\"):", "replace": "            if False:  # (mutant) a lightweight candidate tag is accepted", "witness": "test_a_lightweight_candidate_tag_is_refused", "why": "A LIGHTWEIGHT TAG CARRIETH NO TAG OBJECT AND CAN BE RE-POINTED WITHOUT TRACE, so the SHA binding the whole design rests on would be a bare pointer. The witness `test_a_lightweight_candidate_tag_is_refused` condemneth."},
+    {"id": "T86-B1M13-closure-counts-may-disagree", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "                    problems.append(f\"structured counts DISAGREE: manifest {key}={derived.get(key)!r} != derived \"\n                                    f\"{live.get(key)!r} -- the closure ledger mismatch this contract refuses\")", "replace": "                    pass  # (mutant) two structured representations of one state may disagree", "witness": "test_a_manifest_whose_structured_counts_drift_from_the_ledger_is_refused", "why": "THE CLOSURE LEDGER MISMATCH NAMED IN THE ASSIGNMENT: persisted counts that no longer agree with the derivation are a second, stale representation of the same state -- and a reader cannot tell which is authority. The witness `test_a_manifest_whose_structured_counts_drift_from_the_ledger_is_refused` condemneth."},
+    {"id": "T86-B1M14-builder-emits-a-partial-manifest", "platform": "python", "file": "ci/check_board1_manifest.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "    if missing or unreadable or nonzero or unlogged:\n        raise ManifestRefused(_accounting_problems(missing, unreadable, nonzero, unlogged))", "replace": "    if False:  # (mutant) a partial run may still emit a PASS manifest\n        raise ManifestRefused(_accounting_problems(missing, unreadable, nonzero, unlogged))", "witness": "test_the_builder_refuses_to_emit_from_an_incomplete_gate_run", "why": "*** 'NO PARTIAL SUCCESS' IS ENFORCED BY CONSTRUCTION: THE BUILDER IS THE ONLY DOOR TO A PASS DOCUMENT. *** *Opened, a subset or failing run EMITS a manifest and every downstream reader treats it as the whole gate set.* The witness `test_the_builder_refuses_to_emit_from_an_incomplete_gate_run` condemneth (the builder must RAISE, so an accepted document fails the `assertRaises`)."},
+    {"id": "T86-B1M15-relative-attest-path-crasheth", "platform": "python", "file": "tools/readiness/board1.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "    attest_abs = attest_out if attest_out.is_absolute() else (ROOT / attest_out)\n    try:\n        attest_rel = str(attest_abs.resolve().relative_to(ROOT.resolve()))", "replace": "    attest_abs = attest_out\n    try:\n        attest_rel = str(attest_abs.relative_to(ROOT))", "witness": "test_a_relative_attestation_path_is_resolved_and_never_crashes", "why": "*** THE MEASURED PRODUCTION DEFECT: `attest_out.relative_to(ROOT)` RAISETH `ValueError` ON THE RELATIVE `--attest-out docs/remediation/evidence/FREEZE_ATTESTATION_rcNN.json` THE PLAN'S OWN COMMAND LINE USES, SO THE FREEZE DIED WITH A PYTHON TRACEBACK BEFORE ANY CHECK COULD SPEAK. *** *Restored, the freeze crashes instead of writing the attestation, so the witness fails.* The witness `test_a_relative_attestation_path_is_resolved_and_never_crashes` condemneth; its companion `test_an_attestation_path_outside_the_repository_is_refused_by_name` proves the outside-tree leg is a NAMED refusal rather than a crash."},
+    {"id": "T86-B1M16-bound-manifest-is-not-re-derived", "platform": "python", "file": "tools/readiness/board1.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "            if _sha256(manifest_path) != bound.get(\"sha256\"):", "replace": "            if False:  # (mutant) the attestation's bound manifest is never re-derived", "witness": "test_a_manifest_edited_after_the_attestation_bound_it_is_refused", "why": "AN ATTESTATION THAT NAMETH A MANIFEST WHOSE BYTES MOVED IS CLAIMING INTERNAL GATE EVIDENCE THAT IS NO LONGER THERE. The witness `test_a_manifest_edited_after_the_attestation_bound_it_is_refused` condemneth."},
+    {"id": "T86-B1M17-foreign-candidate-manifest-is-bound", "platform": "python", "file": "tools/readiness/board1.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_board1_gate_manifest.py", "find": "    if m_cand.get(\"sha\") != peeled:", "replace": "    if False:  # (mutant) a manifest describing another tree may be bound", "witness": "test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze", "why": "THE STALE-AUTHORITY DEFECT THE WHOLE BINDING EXISTS TO REFUSE, ONE LAYER UP: a freeze that bound a manifest whose `candidate.sha` is not the tag's peel would certify internal gates that ran against some OTHER tree. The witness `test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze` condemneth."},
+    # ----------------------------------------------------------------------
+    # *** THE TERMINAL BOARD 1 ROUND (StressHonesty): THE T72 RESOURCE-MODEL
+    # CONDUCTOR AND ITS JVM/SWIFT TWINS. *** *Each rod strikes a named defect class
+    # (vacuous measured/unmeasured census, relabelled category, self-agreeing number,
+    # constant-zero observer, deaf fault campaign); the witness is a named court arm.*
+    # ----------------------------------------------------------------------
+    {"id": "SH-R01-python-the-timer-release-defect-is-a-no-op", "platform": "python", "file": "tools/readiness/stress.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if not in_flight and self.defect != CampaignDefect.NO_TIMER_RELEASE:\n            self.timers = max(0, self.timers - 1)", "replace": "        # (mutant) the PER-OWNER timer defect is a no-op: the timer owner can no longer be leaked alone\n        self.timers = max(0, self.timers - 1)", "witness": "test_w09_the_named_negative_each_defect_is_caught_by_name", "why": "Per-owner negative control: the timer owner's own defect must actually leak it, or `no_leaked_timers` has no independent falsifier."},
+    {"id": "SH-R02-python-shutdown-stops-releasing-the-timer-owner", "platform": "python", "file": "tools/readiness/stress.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if self.defect != CampaignDefect.NO_TIMER_RELEASE:\n            self.timers = 0", "replace": "        # (mutant) shutdown releases the timer owner unconditionally: the defect is masked\n        self.timers = 0", "witness": "test_w09_the_named_negative_each_defect_is_caught_by_name", "why": "Shutdown must release EACH owner by its own clause; a masked owner is an unmeasured one."},
+    {"id": "SH-R03-python-shutdown-stops-releasing-the-session-owner", "platform": "python", "file": "tools/readiness/stress.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if self.defect != CampaignDefect.NO_SESSION_RELEASE:\n            self.sessions = 0", "replace": "        # (mutant) shutdown releases the session owner unconditionally: the defect is masked\n        self.sessions = 0", "witness": "test_w09_the_named_negative_each_defect_is_caught_by_name", "why": "Same class as SH-R02, for the session owner."},
+    {"id": "SH-R04-python-the-fault-liveness-clause-is-asleep", "platform": "python", "file": "tools/readiness/stress.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "        if refusals_expected and result.refusals < refusals_expected:", "replace": "        if False and refusals_expected and result.refusals < refusals_expected:", "witness": "test_w08b_the_fault_liveness_clause_biteth", "why": "A scheduled refusing fault that never fired (a DEAF campaign) must be reported; a control gap must not pass as a clean run."},
+    {"id": "SH-R05-python-the-category-is-carried-as-the-production-runtime", "platform": "python", "file": "tools/readiness/stress.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "    category: str = Category.RESOURCE_MODEL", "replace": "    category: str = Category.PRODUCTION_RUNTIME  # (mutant) the model carrieth the runtime's name", "witness": "test_w14b_the_category_is_carried_on_the_result_and_in_the_report", "why": "The category must be CARRIED as `resource-model`; the audit asked by name for a rod that makes a model result quotable as a runtime result."},
+    {"id": "SH-R06-python-the-unmeasured-invariant-set-is-silently-empty", "platform": "python", "file": "tools/readiness/stress.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "    unmeasured_invariants: tuple = Invariant.UNMEASURED", "replace": "    unmeasured_invariants: tuple = ()  # (mutant) nobody was asked, and the result sayeth nothing", "witness": "test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried", "why": "The four owner-kind names must be CARRIED as unmeasured when nothing can ask them -- 'nothing is leaking' must not be collapsed with 'nobody asked my kind of owner'."},
+    {"id": "SH-R07-python-the-unmeasured-owner-kinds-are-unnamed", "platform": "python", "file": "tools/readiness/stress.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t72.py", "find": "    unmeasured_owners: tuple = UNMEASURED_OWNER_KINDS", "replace": "    unmeasured_owners: tuple = ()  # (mutant) the unasked owner kinds are unnamed", "witness": "test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried", "why": "The result must NAME the owner kinds it could not ask, not merely the invariants."},
+    {"id": "SH-R08-jvm-the-not-measured-sentinel-collapses-into-zero", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt", "gradle_filter": "*ReadinessT72Test*", "find": "        const val NOT_MEASURED: Int = -1", "replace": "        const val NOT_MEASURED: Int = 0   // (mutant) unmeasured collapses into a convenient zero", "witness": "testGSSTRESS001aMeasuredCleanOwnerIsNeitherAccusedNorUnmeasured", "why": "An owner whose kind cannot be censused must answer NOT_MEASURED (-1), never a convenient zero; collapsing the sentinel makes an unmeasured owner indistinguishable from a clean one."},
+    {"id": "SH-R09-jvm-the-unmeasured-invariants-set-is-never-filled", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt", "gradle_filter": "*ReadinessT72Test*", "find": "        if (owners.isEmpty()) unmeasuredInvariants.addAll(Invariants.OWNER_KIND)", "replace": "        if (false) unmeasuredInvariants.addAll(Invariants.OWNER_KIND)   // (mutant) the unasked are unnamed", "witness": "test_w09c_the_result_carrieth_its_category_and_its_unmeasured_set", "why": "A campaign that asked no owner must NAME the four owner-kind invariants unmeasured."},
+    {"id": "SH-R10-jvm-the-category-is-carried-as-the-production-runtime", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt", "gradle_filter": "*ReadinessT72Test*", "find": "    val category: String = Category.RESOURCE_MODEL,", "replace": "    val category: String = Category.PRODUCTION_RUNTIME,   // (mutant) the model weareth the runtime's name", "witness": "test_w09c_the_result_carrieth_its_category_and_its_unmeasured_set", "why": "The carried category must be `resource-model`."},
+    {"id": "SH-R11-jvm-the-missing-observer-unmeasured-branch-is-removed", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt", "gradle_filter": "*ReadinessT72Test*", "find": "                observers == ResourceCensusSource.NOT_MEASURED -> {\n                    unmeasuredOwners.add(\"${owner.ownerName} (observers)\")\n                    unmeasuredInvariants.add(Invariants.NO_LEAKED_OBSERVERS)\n                }", "replace": "                observers == -2 -> {   // (mutant) the observer kind's unmeasured branch is unreachable\n                    unmeasuredOwners.add(\"${owner.ownerName} (observers)\")\n                    unmeasuredInvariants.add(Invariants.NO_LEAKED_OBSERVERS)\n                }", "witness": "testGSSTRESS001anUnmeasurableOwnerIsNamedRatherThanAssumedClean", "why": "An owner that answers NOT_MEASURED for the observer kind must be NAMED unmeasured, never accused and never treated clean."},
+    {"id": "SH-R12-swift-shutdown-stops-releasing-the-timer-owner", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift", "swift_filter": "ReadinessT72Tests", "find": "        if defect != CampaignDefect.noTimerRelease { timers = 0 }", "replace": "        timers = 0   // (mutant) shutdown releases the timer owner unconditionally: the defect is masked", "witness": "testW09EachDefectIsCaughtByName", "why": "Shutdown must release each owner by its own clause."},
+    {"id": "SH-R13-swift-the-unmeasured-set-omits-the-reservation-owner", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift", "swift_filter": "ReadinessT72Tests", "find": "        if owners.isEmpty { unmeasuredInvariants.insert(Invariants.noLeakedReservations, at: 0) }", "replace": "        if false { unmeasuredInvariants.insert(Invariants.noLeakedReservations, at: 0) }   // (mutant) unasked, unnamed", "witness": "testW15bTheResultCarriethItsCategoryAndItsUnmeasuredSet", "why": "With no owner handed in, the reservation kind must be NAMED unmeasured."},
+    {"id": "SH-R14-swift-the-protocol-default-answereth-a-constant-zero", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift", "swift_filter": "ReadinessT72Tests", "find": "    func liveReservations() -> Int { NOT_MEASURED }", "replace": "    func liveReservations() -> Int { 0 }   // (mutant) an unmeasurable owner answereth a convenient zero", "witness": "testW15cTheReservationOwnerIsCensusedOnThisIsleToo", "why": "An owner that carrieth no reservations must answer NOT_MEASURED, never 0."},
+    # ----------------------------------------------------------------------
+    # *** IOS-TRANSPORT-001 (IosRecoveryUi, retained scope): the BLE service-discovery
+    # nil-coercion defect. ***
+    # ----------------------------------------------------------------------
+    {"id": "IOS-TRANSPORT-001-nil-services-coerced-to-discovery-success", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift", "swift_filter": "BleLinkSubstrateTests", "swift_target": "GodstoneMeshTests", "find": "        let observedService = p?.services?.first(where: { $0.uuid == BleTransport.serviceUuid })\n        // *The `?? true` is gone: `first(where:)` yieldeth `nil` for a nil peripheral, a nil `services` array, an\n        // empty list or a list carrieth no mesh service -- and NOTHING is coerced here, so an observ'd absence\n        // stayeth an absence and the driver is told so. Only an OBSERVED mesh service can turn this `true`.*\n        let success = (error == nil && observedService != nil)", "replace": "        let observedService = p?.services?.first(where: { $0.uuid == BleTransport.serviceUuid })\n        let success = (error == nil && ((p?.services?.contains(where: { $0.uuid == BleTransport.serviceUuid })) ?? true))", "witness": "testGSINT001ADiscoveryThatObservedNoMeshServiceIsNotReportedAsSuccess", "why": "an observed absence (nil peripheral / nil or empty services / wrong-uuid list) is coerced back to discovery SUCCESS by the `?? true`, so the driver is told a mesh service was found and proceeds without characteristics until the deadline. Only an OBSERVED mesh service may turn the verdict true."},
+    # ----------------------------------------------------------------------
+    # *** ANDROID ESTATE-AUTHORITY CUTOVER (AndroidEstateAuthority): A2/A3/A7/A8/A9/A13.
+    # *** *Supersedes the prose-only AndroidAuthority set; every witness is an arm of
+    # GsFinal003EstateAuthorityCourtsTest.kt.*
+    # ----------------------------------------------------------------------
+    {"id": "ANDE-A9-01-CHECKPOINT-VERDICT-DISCARDED", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        if (!store.appendJournalDurably(WipeJournalState.REQUESTED.name)) return false", "replace": "        store.appendJournalDurably(WipeJournalState.REQUESTED.name)", "witness": "aFailedCheckpointStopsTheLadderBeforeAnyEffect", "why": "A9: the request checkpoint's verdict is discarded, so a record that never reached disk is treated as durable and the ladder runs its effects (drain, key erase, artifact delete) over an estate the record still describes as untouched. The court counts the real seam effects and reddens."},
+    {"id": "ANDE-A9-02-PERSISTED-RUNG-VERDICT-DISCARDED", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        if (!store.appendJournalDurably(to.name)) return false", "replace": "        store.appendJournalDurably(to.name)", "witness": "aFailedCheckpointStopsTheLadderBeforeAnyEffect", "why": "A9: a NON-terminal rung's checkpoint is not consulted, so the ladder steps to the NEXT rung after a write that never landed -- the coordinator and the record disagree about how far the erasure has advanced. Reddens the same effect-counting arm."},
+    {"id": "ANDE-A2-03-ABA-EPOCH-DROPPED-FROM-REVISION", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        return view.joinToString(\",\") { it!!.name } + \"|true|\" + epoch", "replace": "        return view.joinToString(\",\") { it!!.name } + \"|true\"", "witness": "aCompletedWipeIsADifferentEstate", "why": "A2/A8 noABA: the durable generation is dropped from the live revision, so IDLE -> wipe -> IDLE yields the SAME revision string and a permit minted over the pre-wipe estate is accepted over the post-wipe one. The court asserts before != after across a full ladder."},
+    {"id": "ANDE-A2-04-REVISION-FROM-COORDINATOR-SNAPSHOT", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        val lines = store.readJournal()", "replace": "        val lines = journal.toList()", "witness": "aCompletedWipeIsADifferentEstate", "why": "A2: the revision is derived from the in-memory mirror instead of re-reading the store, so a write by ANOTHER instance (or an operator) leaves the revision unchanged -- the exact 'revisionOf reads coordinator snapshot not live journal' defect."},
+    {"id": "ANDE-A2-05-PERMIT-NOT-REVALIDATED-AT-CONSUMPTION", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/EstateAuthority.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        require(estateRevision == executingRevision) {", "replace": "        require(true) {", "witness": "aCompletedWipeIsADifferentEstate", "why": "A2 stale/wrongestate: the consumption-time estate equality check is disabled, so a permit minted before a wipe admits construction after it. The court requires that requireLiveFor FAILS against the moved estate."},
+    {"id": "ANDE-A2-06-ADAPTER-LEGAL-NEXT-CHECK-DROPPED", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/identity/WipeJournalDurabilityAdapter.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "            if (!isLegalNext(current, state)) return false", "replace": "            if (false) return false", "witness": "theProductionJournalReportsItsCommitVerdict", "why": "A2/A8 second-owner checkpoint regression: the strict-monotone guard is struck, so a stale writer moves the single durable value BACKWARD and the record stops describing the erasure that actually ran. The court asserts a backward write is refused and the record stays put."},
+    {"id": "ANDE-A3-07-PUBLIC-PERMIT-FROM-A-BARE-DECISION", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/EstateAuthority.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        fun issue(evidence: RecoveryEvidence): PrivateStorePermit? =", "replace": "        fun issue(decision: StartupWipeDecision, revision: String): PrivateStorePermit =\n            PrivateStorePermit(decision, revision)\n\n        fun issue(evidence: RecoveryEvidence): PrivateStorePermit? =", "witness": "thePermitDoorAdmitsOnlyNonConstructibleEvidence", "why": "A3 self-mint: a public door that takes a bare enum (+ string) is restored, so any :mesh caller -- including a runtime constructor -- can mint the authority the gate exists to withhold. The court asserts the PUBLIC overload set is exactly [RecoveryEvidence]."},
+    {"id": "ANDE-A13-08-PUBLIC-RAW-IDENTITY-FACTORY", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/identity/Identity.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        internal fun loadOrCreate(ctx: Context, token: PrivateOwnerToken): Identity =", "replace": "        fun loadOrCreate(ctx: Context): Identity =\n            loadOrCreate(EncryptedSharedPreferencesStorage(ctx), SecureRandom())\n\n        internal fun loadOrCreate(ctx: Context, token: PrivateOwnerToken): Identity =", "witness": "thePermitDoorAdmitsOnlyNonConstructibleEvidence", "why": "A13 raw bypass: the public single-argument private-identity factory is restored, so a caller opens real Keystore-backed identity material without ever consulting the durable estate. The court asserts NO public onearg loadOrCreate exists."},
+    {"id": "ANDE-A8-09-REENTRANCY-GUARD-DROPPED", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/EstateAuthority.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        require(!inDrive) { \"GS-FINAL-003: a drive of this estate is already in progress on this thread\" }", "replace": "        require(true) { \"unused\" }", "witness": "aReentrantDriveOnTheOneOwnerIsRefused", "why": "A8 duplicate effects: a reentrant drive on the one owner is no longer refused, so an injected hook/seam re-enters and runs the ladder twice over one durable record. The court asserts the inner drive is refused AND that the guard clears in a finally."},
+    {"id": "ANDE-A7-10-OPERATOR-RESOLUTION-SKIPS-THE-DURABLE-REQUEST", "platform": "jvm", "module": "mesh", "test_task": "testDebugUnitTest", "file": "android/mesh/src/main/java/io/godstone/mesh/di/EstateAuthority.kt", "court": "android/mesh/src/test/java/io/godstone/mesh/di/GsFinal003EstateAuthorityCourtsTest.kt", "gradle_filter": "*GsFinal003EstateAuthorityCourtsTest*", "find": "        if (!coordinator.recordRequestDurably()) {", "replace": "        if (false) {", "witness": "theCorruptResolutionErasesAndNeverClaimsCleanStart", "why": "A7 clear-then-clean: the operator's resolution no longer durably records REQUESTED over the corrupt marker, so the following resume refuses the unreadable record and NOTHING is erased while the UI is told an operator acted. The court counts the real key/artifact effects."},
+    # ----------------------------------------------------------------------
+    # *** IOS RECOVERY/ESTATE AUTHORITY (IosRecoveryAuthority): IOS-R1,R2,R3,R4,R5,
+    # R7,R8,R11,R14. *** *Witnesses in GsFinal003RecoveryTopologyTests /
+    # GsFinal003StartupPermitTests; MUT-IOS-R14-CORRUPT-ARG is the compile-negative.*
+    # ----------------------------------------------------------------------
+    {"id": "MUT-IOS-R1-PERMIT-NOT-CONSUMED", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot", "find": "        guard consumption.consume() else { return nil }", "replace": "        _ = consumption.consume()", "witness": "testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot", "why": "the one-shot consumption no longer refuses a replay, so the REUSED clause of the permit witness must fail"},
+    {"id": "MUT-IOS-R1-PERMIT-GENERATION-IGNORED", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot", "find": "        guard let liveGeneration, self.generation == liveGeneration else { return nil }", "replace": "        // generation guard removed: unknown/stale generations are accepted", "witness": "testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot", "why": "the stale/ABA clause of the permit witness reddens"},
+    {"id": "MUT-IOS-R1-NORMAL-HELPER-BYPASS", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aRecoveryThatCannotSettleRefusesAndOpensNothing", "find": "            let admission = try Self.requirePermitConsumption(\n                permit: permit,\n                messageStoreUrl: messageStoreUrl,\n                peerStoreUrl: peerStoreUrl,\n                generation: liveGeneration)", "replace": "            let admission = (estateId: Self.recoveryEstateId(artifactPaths: Self.wipeArtifactPaths(messageStoreUrl: messageStoreUrl, peerStoreUrl: peerStoreUrl)), generation: liveGeneration ?? 0)", "witness": "testGSFINAL003_aRecoveryThatCannotSettleRefusesAndOpensNothing", "why": "a refused permit no longer stops construction (the bypass), so the zero-opens arm reddens"},
+    {"id": "MUT-IOS-R2-GATE-CACHED-SNAPSHOT", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aRetainedOwnerObservesAnotherOwnersWipe", "find": "    private func liveJournal() -> [String] { store.readJournal() }", "replace": "    private func liveJournal() -> [String] { journal }", "witness": "testGSFINAL003_aRetainedOwnerObservesAnotherOwnersWipe", "why": "the gate reads the birth-time mirror, so another owner's wipe is invisible and the witness fails"},
+    {"id": "MUT-IOS-R2-ARTIFACT-ORACLE-CACHED", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/WipeArtifactFileSystemSeam.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aRetainedOwnerObservesAnotherOwnersWipe", "find": "        let rungs = liveRung()", "replace": "        let rungs = [String]()   // cached: the live oracle is never consulted", "witness": "testGSFINAL003_aRetainedOwnerObservesAnotherOwnersWipe", "why": "an artifact stays readable during another owner's wipe (the mutation the review named)"},
+    {"id": "MUT-IOS-R3-APPEND-IGNORES-COMMIT", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/WipeJournalDurabilityAdapter.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aDroppedTerminalCheckpointNeverSettles", "find": "        guard written.synchronized else {", "replace": "        guard true else {", "witness": "testGSFINAL003_aDroppedTerminalCheckpointNeverSettles", "why": "a dropped write always reports .committed, so the ladder advances to a terminal state it never committed"},
+    {"id": "MUT-IOS-R3-COORDINATOR-IGNORES-ACK", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aDroppedTerminalCheckpointNeverSettles", "find": "        guard case .committed = checkpoint else {", "replace": "        guard case .committed = checkpoint || true else {", "witness": "testGSFINAL003_aDroppedTerminalCheckpointNeverSettles", "why": "the coordinator advances even when the append refused (uncommitted terminal reaches IDLE and publishes)"},
+    {"id": "MUT-IOS-R4-WRONG-DEK-TAG", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/WipeKeyVaultSeam.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aPendingWipeResolvesThroughThePrePrivateRecoveryBeforeAnyPrivateStore", "find": "            return eraseStoreDEK(name: name, tag: Self.messageStoreDEKTag)", "replace": "            return eraseStoreDEK(name: name, tag: \"godstone.store.dek\")", "witness": "testGSFINAL003_aPendingWipeResolvesThroughThePrePrivateRecoveryBeforeAnyPrivateStore", "why": "the message store's real DEK survives (the original IOS-R4 defect); the two-real-account assertion reddens"},
+    {"id": "MUT-IOS-R4-ERASE-UNVERIFIED", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/WipeKeyVaultSeam.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aDEKThatSurvivesItsDeletionIsNotReportedErased", "find": "            return .failed(keyName: name, retryable: true,\n                           reason: \"the DEK for '\\(tag)' surviveth its own deletion\")", "replace": "            return .verifiedAbsent(name: name)", "witness": "testGSFINAL003_aDEKThatSurvivesItsDeletionIsNotReportedErased", "why": "a surviving DEK is reported erased, so the survival witness reddens"},
+    {"id": "MUT-IOS-R5-FRESH-DEAD-TRANSPORT", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aLiveOwnerThatCannotBeDrainedKeepsTheWipePending", "find": "            if let live = estate.liveTransport {", "replace": "            if false, let live = estate.liveTransport {", "witness": "testGSFINAL003_aLiveOwnerThatCannotBeDrainedKeepsTheWipePending", "why": "the estate's live transport is never consulted, so a cold/dead path could advance over live owners"},
+    {"id": "MUT-IOS-R5-UNARMED-COLD", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/EstateOwnerRegistry.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_coldRequiresAPositivelyVerifiedEstate", "find": "            return armed\n                ? .cold(reason: \"the estate registry is armed and positively holds no live owner\")", "replace": "            return .cold(reason: \"empty registry\")", "witness": "testGSFINAL003_coldRequiresAPositivelyVerifiedEstate", "why": "an unarmed registry claims cold (the exact IOS-R5 defect), so the unarmed-witness reddens"},
+    {"id": "MUT-IOS-R7-INVENTORY-IGNORED", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_theCoordinatorIteratesTheEstatesOwnArtifacts", "find": "                for name in estateArtifacts where !inventory.contains(name) { inventory.append(name) }", "replace": "                // the estate's own inventory is ignored", "witness": "testGSFINAL003_theCoordinatorIteratesTheEstatesOwnArtifacts", "why": "the lab's own names are never deleted and the ladder stalls (the IOS-R7 stall)"},
+    {"id": "MUT-IOS-R8-PUBLISH-NOT-IDEMPOTENT", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aCrashAfterIdentityPublicationStillSettlesOnOneIdentity", "find": "        if let record = readPublication(), record.generation == wipeGeneration {", "replace": "        if false, let record = readPublication(), record.generation == wipeGeneration {", "witness": "testGSFINAL003_aCrashAfterIdentityPublicationStillSettlesOnOneIdentity", "why": "the adopt-by-record branch is removed; a re-opened drive no longer adopts and can refuse (brick)"},
+    {"id": "MUT-IOS-R8-PUBLICATION-UNBOUND", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift", "court": "GsFinal003RecoveryTopologyTests", "swift_filter": "testGSFINAL003_aCrashAfterIdentityPublicationStillSettlesOnOneIdentity", "find": "        let raw = \"\\(publication.generation)|\\(publication.hint)|\\(publication.signingPublicKeyHex)|\\(publication.staticDhPublicKeyHex)\"", "replace": "        let raw = \"\\(publication.hint)\"", "witness": "testGSFINAL003_aCrashAfterIdentityPublicationStillSettlesOnOneIdentity", "why": "the publication record is not bound to the generation, so adoption cannot verify and the boundary witness reddens"},
+    {"id": "MUT-IOS-R11-WITNESS-DISCONNECTED", "platform": "swift", "file": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift", "court": "GsFinal003StartupPermitTests", "swift_filter": "testGSFINAL003_theWitnessCountersObserveARealAcceptedConstruction", "find": "            counter.openedStore(path: path)", "replace": "            // witness disconnected from the real construction boundary", "witness": "testGSFINAL003_theWitnessCountersObserveARealAcceptedConstruction", "why": "the open witness no longer observes construction, so the positive control must redden (counter stuck at 0)"},
+    # ----------------------------------------------------------------------
+    # *** ARCHIVE PROVENANCE (ArchiveProvenance): the archive library/repository/
+    # scene/view provenance road. *** *Witnesses in GodstoneCoreTests/ReadinessT50Tests;
+    # ARCHIVE-PROV-007 is guard_only (structural-plus-executed-smoke: its semantic
+    # proof is the parent's executed iOS UI smoke, never the structural kill).*
+    # ----------------------------------------------------------------------
+    {"id": "ARCHIVE-PROV-001", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneCore/ArchiveReaderModel.swift", "court": "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift", "swift_filter": "ReadinessT50Tests/testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence", "swift_target": "GodstoneCoreTests", "find": "        try repository.sourceMetadataChecked(documentId: documentId)", "replace": "        (try? repository.sourceMetadataChecked(documentId: documentId)) ?? nil", "witness": "testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence", "why": "Reinstate the swallow: the provenance probe again answereth a storage fault as absence (the card's own defect, in the face the scene and the destination both consult)."},
+    {"id": "ARCHIVE-PROV-002", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneCore/ArchiveReaderModel.swift", "court": "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift", "swift_filter": "ReadinessT50Tests/(testTheRealRoadProjectethProvenanceFromTheFrozenColumns|testW15TheLibrariesProvenanceProbeAnswerethTheDocumentsOwnMetadata|testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence)", "swift_target": "GodstoneCoreTests", "find": "        try repository.sourceMetadataChecked(documentId: documentId)", "replace": "        return nil", "witness": "testTheRealRoadProjectethProvenanceFromTheFrozenColumns", "why": "Answer the probe without ever consulting the stock (a blind nil). This is the vacuity control: it proveth the POSITIVE arms -- the exact projection over the provided fixture, and W15's semantic -- are witnesses and not decorations."},
+    {"id": "ARCHIVE-PROV-003", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift", "court": "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift", "swift_filter": "ReadinessT50Tests/(testTheScenePresentethTheMetadataWoeAndTheRetryBringethTheProjectionBack|testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence|testTheSameRoadTellethAbsenceAndFaultApartAtOneProbe)", "swift_target": "GodstoneCoreTests", "find": "            } catch let archiveError as ArchiveError {\n                publishFailure(archiveError)\n            } catch {\n                publishFailure(.queryFailed(String(describing: error)))\n            }\n", "replace": "            } catch {\n                mode = .document\n                documents = []\n                passages = found ?? []\n                openedDocumentId = id\n                openedTitle = title\n                openedSource = nil\n                phase = .ready\n            }\n", "witness": "testTheScenePresentethTheMetadataWoeAndTheRetryBringethTheProjectionBack", "why": "Collapse the metadata fault to absence at the STATE OWNER: the scene keepeth the document open, claims .ready and publisheth no provenance -- the false green the card names, with the reader shown a citation-stripped document and no word of why."},
+    {"id": "ARCHIVE-PROV-004", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift", "court": "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift", "swift_filter": "ReadinessT50Tests/(testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence|testTheScenePresentethTheMetadataWoeAndTheRetryBringethTheProjectionBack|testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock)", "swift_target": "GodstoneCoreTests", "find": "            } catch let archiveError as ArchiveError {\n                publishFailure(archiveError)\n", "replace": "            } catch let archiveError as ArchiveError {\n                publishFailure(.corrupt(\"the archive could not be read\"))\n", "witness": "testTheRealMetadataFaultIsToldAsTypedWoeAndNeverAsAbsence", "why": "Fabricate a cause the checked path never met: tell every metadata fault as a corrupt archive (the card's 'metadata error must not fabricate a corruption cause')."},
+    {"id": "ARCHIVE-PROV-005", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneCore/ArchiveRepository.swift", "court": "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift", "swift_filter": "ReadinessT50Tests", "swift_target": "GodstoneCoreTests", "find": "    public func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata? {\n        let sql = \"SELECT document_id, title, source_id, licence, revision, is_critical \"\n", "replace": "    public func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata? {\n        if closed { return nil }\n        let sql = \"SELECT document_id, title, source_id, licence, revision, is_critical \"\n", "witness": "testTheClosedCandidateAnswerethTheMetadataProbeWithTypedNoHandle", "why": "A stale/closed candidate answereth the probe with ABSENCE instead of the typed no-handle woe -- the 'stable candidate, stale/closed state, typed no handle' edge. The document read and the probe now disagree about whether the road is walkable at all."},
+    {"id": "ARCHIVE-PROV-006", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift", "court": "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift", "swift_filter": "ReadinessT50Tests/testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock", "swift_target": "GodstoneCoreTests", "find": "        case .queryFailed, .unreadable:\n            mendable = true\n", "replace": "        case .queryFailed, .unreadable, .corrupt, .missing, .noSuchTable:\n            mendable = true\n", "witness": "testTheMetadataTaxonomyTravellethUntouchedAndTheUntouchableIsNotOfferedAKnock", "why": "Broaden the retry: offer a knock for woes no reader can mend (installation woes become retriable again at the provenance road)."},
+    {"id": "ARCHIVE-PROV-007", "platform": "swift", "file": "ios/Godstone/Sources/App/ArchiveView.swift", "court": "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT50Tests.swift", "swift_filter": "ReadinessT50Tests/testW14TheDocumentDestinationPublishethItsOwnCheckedProvenance", "swift_target": "GodstoneCoreTests", "find": "        case .failure(let archiveError):\n            HStack(spacing: 8) {\n                Text(ArchiveUserMessage.spoken(for: archiveError))\n                    .font(.subheadline)\n                    .foregroundStyle(.secondary)\n                    .accessibilityIdentifier(\"archive.provenance.error\")\n                if provenanceMayMend(archiveError) {\n                    Button(\"Try again\") { retry &+= 1 }\n                        .font(.caption)\n                        .accessibilityIdentifier(\"archive.provenance.retry\")\n                }\n            }\n", "replace": "        case .failure:\n            EmptyView()\n", "witness": "testW14TheDocumentDestinationPublishethItsOwnCheckedProvenance", "why": "The destination OMITETH the failure: the checked face crieth and the reader is shewn a citation-stripped document with neither the line nor a telling (the UI-omission half of the card's negative control).", "guard_only": True},
+    # ----------------------------------------------------------------------
+    # *** NATIVE CONNECTION/ENCRYPTION REPAIRS (NativeConnectionRepair): SQLITE-REVIEW-1..8.
+    # *** *Witnesses in NativeConnectionRepairTests (swift_target GodstoneMeshTests);
+    # pinned-image arms XCTSkip DISTINGUISHABLY on a host without the library, never a
+    # green pass.*
+    # ----------------------------------------------------------------------
+    {"id": "NCR-01-swift-the-store-drops-the-owners-use-lock", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "        if let owner { return try owner.usingConnection { _ in try self.dbSectionThrowing(body) } }\n        return try dbSectionThrowing(body)", "replace": "        return try dbSectionThrowing(body)", "witness": "testReview2OwnerCloseWaitsForActiveUseAndRefusesAfterwards", "why": "every throwing store operation stops admitting itself against the owner's shared use/close critical section, so a concurrent OwnedConnection.close() can free the handle under an open statement; the close-vs-use witness reddens (and the post-close use becomes a stale dispatch rather than a typed refusal)."},
+    {"id": "NCR-02-swift-the-owner-close-frees-without-draining", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "        lifecycle.markClosed()          // refuse NEW use, so the drain below terminates\n        lifecycle.waitUntilUnused()     // wait for the uses already in flight", "replace": "        lifecycle.markClosed()          // refuse NEW use, so the drain below terminates", "witness": "testReview2OwnerCloseWaitsForActiveUseAndRefusesAfterwards", "why": "close stops waiting for active uses, so it frees the handle while a worker is between prepare/step/finalize; the 'close has not returned while a use is in flight' assertion reddens."},
+    {"id": "NCR-03-swift-the-admission-always-admits", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "        guard lifecycle.beginUse() else { throw StoreConnectionError.ownerClosed }", "replace": "        guard lifecycle.beginUse() || true else { throw StoreConnectionError.ownerClosed }", "witness": "testReview2OwnerCloseWaitsForActiveUseAndRefusesAfterwards", "why": "the closed-state admission always admits, so a post-owner-close call dispatches a STALE handle to SQLite instead of the typed ownerClosed refusal; the post-close refusal assertion reddens."},
+    {"id": "NCR-04-swift-the-intent-read-folds-every-fault-into-absence", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "        if rc == SQLITE_DONE { return nil }        // no row -- absence, NOT a fault\n        guard rc == SQLITE_ROW else { throw StoreError.stepFailed }   // BUSY/IOERR/NOTADB -> typed storage failure", "replace": "        guard rc == SQLITE_ROW else { return nil }", "witness": "testReview8IntentReadFaultIsStorageFailureNeverAbsence", "why": "every non-ROW step result (BUSY/IOERR/NOTADB) is folded into nil, and SqliteOutboundIntentJournal translates nil to .notFound -- which SendDirectAuthority treats as permission to enter fresh trust resolution and nonce creation; the 'a storage fault THROWS (not nil)' assertion and the journal's .storageFailure mapping both redden."},
+    {"id": "NCR-05-swift-the-migration-stamp-runs-outside-the-edge-transaction", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "                guard stampRC == SQLITE_OK else { throw StoreError.execFailed }", "replace": "                _ = stampRC", "witness": "testReview4TornMigrationStampLeavesDurableVersionUnadvanced", "why": "a failed durable stamp no longer rolls the edge back or refuses it, so the DDL commits while user_version never moves and the store publishes success over an unadvanced revision; the 'durable user_version still 9' assertion reddens."},
+    {"id": "NCR-06-swift-the-sweep-begin-fault-is-not-refused", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "            guard beginRC == SQLITE_OK else {\n                return sweepFault(.beginFailed(code: beginRC), db: db, rolledBack: false)\n            }", "replace": "            _ = beginRC", "witness": "testReviewSweepRefusesWithoutTransactionAndWithoutCommit", "why": "a refused BEGIN no longer stops the sweep, so every DELETE/INSERT/UPDATE runs outside a SQL transaction (autocommitting one-by-one, the half-retirement the repair existeth to prevent); the 'refused BEGIN -> 0 mutations dispatched' assertion reddens."},
+    {"id": "NCR-07-swift-the-sweep-publishes-without-an-acknowledged-commit", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "            guard commitRC == SQLITE_OK else {\n                return sweepFault(.commitFailed(code: commitRC), db: db, rolledBack: true)\n            }", "replace": "            _ = commitRC", "witness": "testReviewSweepRefusesWithoutTransactionAndWithoutCommit", "why": "a failed COMMIT no longer refuses the step, so the swept rows are published as retired while the file keeps them and an observer is notified of a retirement that never happened; the 'failed COMMIT -> typed fault' assertion reddens."},
+    {"id": "NCR-08-swift-the-factory-admits-a-replayed-scope", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "        guard EncryptedStoreAdmissionLedger.shared.claimIfAvailable(\n            scope.mint, estateId: scope.estateId, generation: scope.generation,\n            storeTag: scope.storeTag, storePath: scope.storePath) else {\n            return .notMinted          // never issued, bound elsewhere, or already spent -- all a fail-closed refusal\n        }", "replace": "        _ = EncryptedStoreAdmissionLedger.shared.claimIfAvailable(\n            scope.mint, estateId: scope.estateId, generation: scope.generation,\n            storeTag: scope.storeTag, storePath: scope.storePath)", "witness": "testAdmissionRefusesASpentMintAndAnUnissuedOne", "why": "the factory stops validating AND atomically claiming the scope, so a replayed permit opens a private store a second time; the admission-replay witness reddens."},
+    {"id": "NCR-09-swift-the-engine-reports-a-generic-io-for-a-wrong-key", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "            if stepRC == 26 { throw StoreOpenFault.wrongKey } // SQLITE_NOTADB\n            // *** THE LABEL NAMES THE PROBE, SO A LIBRARY THAT ANSWERETH `DONE` WITH NO ROWS IS DIAGNOSABLE. ***", "replace": "            if stepRC == 26 { throw StoreOpenFault.io(\"notadb at step (rc=\\(stepRC))\") }\n            // *** THE LABEL NAMES THE PROBE, SO A LIBRARY THAT ANSWERETH `DONE` WITH NO ROWS IS DIAGNOSABLE. ***", "witness": "testReview6RealPinnedRoundTripExactBytesAndWrongKeyRefusal", "why": "SQLite's NOTADB from a wrong key stops being normalised to the typed .wrongKey; the 'wrong DEK refused as typed .wrongKey' assertion reddens."},
+    {"id": "NCR-10-swift-the-partial-open-handle-leaks", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/GsFinal004OwnedConnectionTests.swift", "swift_filter": "GsFinal004OwnedConnectionTests", "swift_target": "GodstoneMeshTests", "find": "            if let partial = db { _ = s.closeV2(partial) }", "replace": "            // (mutant) the partial handle is leaked rather than closed", "witness": "testGF004APartialProviderBindIsRefusedAndAKeyFaultIsTyped", "why": "a failed sqlite3_open_v2 that returned a NONNULL (partial) handle no longer closes it before the throw, leaking a connection; the instrumented table's close-count assertion (close > 0) reddens. Needs no pinned library, so this rod always fires."},
+    # ----------------------------------------------------------------------
+    # *** IOS LAB ESTATE/PRODUCTION (IosLabProduction): IOS-R10 durable send
+    # composition and IOS-R15 model projection witnesses. ***
+    # ----------------------------------------------------------------------
+    {"id": "IOS-R10-second-store", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift", "swift_target": "GodstoneMeshTests", "swift_filter": "ReadinessT36Tests", "find": "        let nodeStore: MessageStore = durableStore ?? store", "replace": "        let nodeStore: MessageStore = store", "witness": "testCRYPTO005_theCompositionPinsTheIntentBeforeTheRadioAndSurvivesAReopen", "why": "The node must run on the durable store it owns; an in-memory node cannot carry a durable intent."},
+    {"id": "IOS-R10-no-dispatch", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift", "swift_target": "GodstoneMeshTests", "swift_filter": "ReadinessT36Tests", "find": "            _ = hand(a, toLabel: recipientLabel, bytes: frame.encode())", "replace": "            _ = frame", "witness": "testCRYPTO005_theSendBoundaryAfterTheDurableEnqueueIsRestartableFromDisk", "why": "A send that pins an intent and never dispatches proves nothing about delivery (IOS-R10)."},
+    {"id": "IOS-R15-unrefreshed-snapshot", "platform": "swift", "file": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT58Tests.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT58Tests.swift", "swift_target": "GodstoneMeshTests", "swift_filter": "ReadinessT58Tests", "find": "        _ = model.refresh()\n        let row = try XCTUnwrap(model.uiState().messages.first { $0.msgId == msgId })", "replace": "        let row = try XCTUnwrap(model.uiState().messages.first { $0.msgId == msgId })", "witness": "testW14ANonTerminalMessageIsResumableEvenWhenTheProjectionUnderReportsIt", "why": "Proves the projection witness is real: without the refresh the under-reported flag assertion cannot hold. Mutant stays compilable."},
+    {"id": "IOS-R15-impossible-no-call", "platform": "swift", "file": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT58Tests.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT58Tests.swift", "swift_target": "GodstoneMeshTests", "swift_filter": "ReadinessT58Tests", "find": "            authority.retries, retriesBefore + 1,\n            \"*** THE STALE PROJECTION MAKES THE MODEL'S OWN STATE-AWARE ANSWER TRUE", "replace": "            authority.retries, retriesBefore,\n            \"*** THE STALE PROJECTION MAKES THE MODEL'S OWN STATE-AWARE ANSWER TRUE", "witness": "testW17AStaleSnapshotReachesTheAuthorityAndCarriesItsTypedRefusal", "why": "Proves the stale-snapshot arm asserts a real call (not an impossible no-call). Mutant stays compilable."},
+    {"id": "NCR-11-swift-the-peer-transaction-reacquires-the-store-lock", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "        try usingConnection { db in try self.transactionSectionLocked(db, block) }", "replace": "        lock.lock()\n        defer { lock.unlock() }\n        guard let db = handle else { throw PeerStoreError.handleMissing }\n        try self.transactionSectionLocked(db, block)", "witness": "testPeerTransactionCompletesWithoutDeadlock", "why": "the peer transaction re-acquires the store's non-recursive NSLock (the pre-C1 shape), so every binding/approve/confirm/revoke self-deadlocks; the bounded 'transaction completes' assertion reddens."},
+    {"id": "NCR-13-swift-the-corrupt-intent-row-is-absence-again", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/NativeConnectionRepairTests.swift", "swift_filter": "NativeConnectionRepairTests", "swift_target": "GodstoneMeshTests", "find": "        guard let entry = JournalEntry(intentId: intent, logicalMessageId: logical,\n                                       signedPlaintextBytes: plaintext, canonicalFrameBytes: frame,\n                                       recipientNodeId: recipient, recipientStaticDhPub: recipientDh,\n                                       acceptedGeneration: generation, bindingDigest: digest,\n                                       createdAtEpochSeconds: created, messageNonce: nonce,\n                                       priorityCode: priority, stateRank: rank) else {\n            // *The row STANDETH but cannot be rebuilt -- a corruption, never an absence.*\n            throw StoreError.stepFailed\n        }\n        return entry", "replace": "        return JournalEntry(intentId: intent, logicalMessageId: logical, signedPlaintextBytes: plaintext,\n                            canonicalFrameBytes: frame, recipientNodeId: recipient,\n                            recipientStaticDhPub: recipientDh, acceptedGeneration: generation,\n                            bindingDigest: digest, createdAtEpochSeconds: created, messageNonce: nonce,\n                            priorityCode: priority, stateRank: rank)", "witness": "testIntentCorruptExistingRowIsStorageFailureNotAbsence", "why": "a malformed existing intent row is collapsed back into nil/absence, so SendDirectAuthority enters fresh authoring instead of stopping; the corruption-refusal assertion reddens."},
+    # ----------------------------------------------------------------------
+    # *** RELEASE SUPPLY CHAIN AND TRUST EXPANSION (ReleaseSupply): RS-CAP, REG, NATIVE, TRUST. ***
+    # ----------------------------------------------------------------------
+    {"id": "RS-CAP-01-forged-marker-laundered-an-internal-red", "platform": "python", "file": "tools/supplychain/capture_release_proof.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    text = log_text or \"\"\n", "replace": "    text = \"\"\n", "witness": "test_an_internal_compile_failure_with_a_forged_marker_is_not_external", "why": "the internal-failure evidence detector is blinded (text forced empty): a TRUE failed :llm:compileReleaseKotlin carrying a well-formed boundary marker would be filed BLOCKED_EXTERNAL, laundering an internal red as external; note a HEALTHY run that merely PRINTS the task name must still be accepted, so the detector must key on FAILURE markers (FAILED/BUILD FAILED/compiler error), not the task name"},
+    {"id": "RS-CAP-02-external-block-allowed-while-internal-red", "platform": "python", "file": "tools/supplychain/capture_release_proof.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    if not internal_ok:\n", "replace": "    if False:\n", "witness": "test_no_external_block_is_allowed_while_the_internal_road_is_red", "why": "the ordering gate is struck: an external job could be filed BLOCKED_EXTERNAL while an internal prerequisite never succeeded, so a job that never reached any boundary blamesth an external input for its own failure"},
+    {"id": "RS-REG-01-corrupt-register-classified-as-missing-input", "platform": "python", "file": "tools/supplychain/emit_boundary.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "        except RegisterError as exc:\n", "replace": "        except KeyboardInterrupt as exc:\n", "witness": "test_a_corrupt_register_is_an_error_never_a_missing_input", "why": "the unjudgeable-register guard is struck: a CORRUPT lock would fall through and be reported as an absent external input (exit 1, a boundary) instead of exit 2 -- a parse failure is not evidence that content is missing"},
+    {"id": "RS-NATIVE-01-native-stack-conflated-with-model-weights", "platform": "python", "file": "tools/supplychain/emit_boundary.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    revision = native.get(\"llama_revision\")\n", "replace": "    revision = \"pinned\"\n", "witness": "test_the_native_stack_is_not_the_model_weights", "why": "the native.llama_revision pin is assumed: the native boundary would pass on a UNPINNED llama.cpp revision and the model-weight register would stand in for the native prerequisite -- the exact conflation the split existeth to forbid"},
+    {"id": "RS-NATIVE-02-absent-llama-source-tolerated", "platform": "python", "file": "tools/supplychain/emit_boundary.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    if not source.is_dir():\n", "replace": "    if False:\n", "witness": "test_a_pinned_revision_with_absent_source_is_a_measured_absence", "why": "the source-tree presence check is struck: a pinned llama_revision whose third_party/llama.cpp tree is ABSENT would be judged present, so the native stack would be claimed buildable while nothing is there"},
+    {"id": "RS-TRUST-01-replaced-image-digest-trusted-from-sidecar", "platform": "python", "file": "tools/supplychain/verify_sqlcipher_artifact.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_audit_supplychain_harness.py", "find": "    if actual_sha != want[\"sha256\"]:\n", "replace": "    if False:\n", "witness": "test_a_replaced_image_is_refused_by_name", "why": "the trusted-output digest gate is struck: a REPLACED image (any bytes) would pass because the expectation was not enforced against the register -- the exact 'sidecar/image trust the staging dir' defect. The register, not a co-located sidecar, must authorize the bytes."},
+    # ----------------------------------------------------------------------
+    # *** CANONICAL TERMINAL MANIFEST/FREEZE/BINDING (CanonicalTerminalRepair):
+    # the executing-successor relation, hosted-manifest authentication, evidence-root
+    # derivation and gate-log rebind. ***
+    # ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    # *** BOARD 1 SECURITY-CRITICAL SURFACES (--group board1-trust-surface): the
+    # trust handshake, the peer-identity store, the bound recipient key resolver
+    # and the store-schema/quota controls. ***
+    #
+    # *These rods MUTATE THE PRODUCTION CONTROL, NOT the guard, and the guard's
+    # committed checker is RUN against the mutant as the oracle. The kill is
+    # ATTRIBUTED BY NAME -- each rod names a `refusal_line` no sibling can raise, so
+    # a non-zero rc from a co-reddening invariant is EXEC_INVALID, never a catch.*
+    # ----------------------------------------------------------------------
+    {'id': 'TH-01-ios-trusted-controller-restores-the-collapsed-hs2-hs3', 'platform': 'swift',
+     'file': 'ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift',
+     'guard_file': 'ci/check_trusted_handshake_controls.py',
+     'refusal_line': 'iOS TrustedHandshakeController must NOT call readMessage2AndWrite3 (H04)',
+     'witness': 'check_trusted_handshake_controls:H04-ios-collapsed-hs2-hs3-restored',
+     'find': '        let readResult: HandshakeReadResult\n        do {\n            readResult = try noiseSession.readMessage2(hs2)\n        } catch {',
+     'replace': '        let readResult: HandshakeReadResult\n        do {\n            readResult = try noiseSession.readMessage2AndWrite3(hs2)   // (mutant) HS2+HS3 collapsed into the untrusted helper\n        } catch {',
+     'why': 'THE TRUSTED HANDSHAKE CONTROLLER FALLS BACK TO THE COLLAPSED readMessage2AndWrite3 HELPER THAT ADR-003 SPLIT APART. The helper reads message 2 AND writes message 3 in one untrusted call, so the authentication of the remote static (and the identity binding it must validate) is no longer a separate, inspectable step - the exact reversion the H04/H20 zero-call controls exist to refuse.'},
+    {'id': 'TH-02-android-noise-drops-the-typed-read-result', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt',
+     'guard_file': 'ci/check_trusted_handshake_controls.py',
+     'refusal_line': 'Android NoiseSession must define class HandshakeReadResult with authenticatedRemoteStaticKey (H01)',
+     'witness': 'check_trusted_handshake_controls:H01-android-typed-read-result',
+     'find': 'class HandshakeReadResult',
+     'replace': 'class LegacyHandshakeResult   // (mutant) the typed read result perishes',
+     'why': 'THE TYPED HandshakeReadResult VANISHES FROM NoiseSession, so the authenticated remote static (and the payload it carries) can no longer be inspected before trust is applied - the handshake degrades to an untyped read and the whole C8.4A typed-inspection boundary is gone.'},
+    {'id': 'TH-03-android-read-result-aliases-its-payload', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt',
+     'guard_file': 'ci/check_trusted_handshake_controls.py',
+     'refusal_line': 'Android HandshakeReadResult constructor must copy input payload (H21)',
+     'witness': 'check_trusted_handshake_controls:H21-android-aliased-payload',
+     'find': '_payload: ByteArray = payload.copyOf()',
+     'replace': '_payload: ByteArray = payload   // (mutant) the payload is aliased, not defensively copied',
+     'why': 'THE READ RESULT ALIASES THE CALLER-OWNED PAYLOAD INSTEAD OF DEFENSIVELY COPYING IT, so a holder can mutate the buffer AFTER the validation that cleared it - the trusted binding is validated against bytes that can then be changed under it. H21 exists precisely so the validated bytes cannot move.'},
+    {'id': 'TH-04-ios-noise-restores-the-collapsed-hs2-hs3', 'platform': 'swift',
+     'file': 'ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift',
+     'guard_file': 'ci/check_trusted_handshake_controls.py',
+     'refusal_line': 'iOS NoiseSession must NOT contain readMessage2AndWrite3 (H20)',
+     'witness': 'check_trusted_handshake_controls:H20-ios-collapsed-helper-restored',
+     'find': 'import GodstoneCore\n\n/// Noise_XX_25519_ChaChaPoly_BLAKE2s.',
+     'replace': 'import GodstoneCore\n\n// (mutant) the collapsed readMessage2AndWrite3 helper returneth to the noise core\npublic func readMessage2AndWrite3(_ x: Data) throws -> Data { fatalError() }\n\n/// Noise_XX_25519_ChaChaPoly_BLAKE2s.',
+     'why': 'THE COLLAPSED readMessage2AndWrite3 HELPER RETURNS TO THE NOISE CORE, reopening the untrusted one-shot call the ADR-003 split retired. Any production path that reaches it can complete the handshake without a separate, validated message-3 step.'},
+    {'id': 'PI-01-first-seen-becometh-insert-or-ignore', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentitySchema.kt',
+     'guard_file': 'ci/check_peer_identity_store_controls.py',
+     'refusal_line': 'Android first-seen must use standard INSERT, not OR IGNORE/REPLACE (S27)',
+     'witness': 'check_peer_identity_store_controls:S27-first-seen-insert-or-ignore',
+     'find': '        INSERT INTO peer_identities (',
+     'replace': '        INSERT OR IGNORE INTO peer_identities (   -- (mutant) a re-pinned first-seen is silently ignored',
+     'why': 'THE FIRST-SEEN INSERT BECOMES INSERT OR IGNORE, so a peer whose identity CHANGED is silently accepted with its OLD pinned key left standing (the new binding is dropped as a conflict). TOFU loses its teeth: a key rotation that should pin-first-seen or quarantine instead reads as a benign no-op.'},
+    {'id': 'PI-02-ddl-admits-an-unrecognised-trust-level', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentitySchema.kt',
+     'guard_file': 'ci/check_peer_identity_store_controls.py',
+     'refusal_line': 'Android DDL missing trust_level IN (1,2,3) CHECK (S12)',
+     'witness': 'check_peer_identity_store_controls:S12-unrecognised-trust-level',
+     'find': 'trust_level IN (1,2,3)',
+     'replace': 'trust_level IN (0,1,2,3)',
+     'why': 'THE DDL TRUST-LEVEL CHECK IS WIDENED TO ADMIT 0, a value the trust model does not define. A corrupted or adversarially written trust_level=0 row can then persist and be read back as an unrecognised state, defeating the store-owns-the-encoding invariant the resolver depends on to fail closed.'},
+    {'id': 'PI-03-rotation-approval-admits-a-revoked-peer', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentitySchema.kt',
+     'guard_file': 'ci/check_peer_identity_store_controls.py',
+     'refusal_line': 'Android approval SQL missing trust_level IN (1,2) predicate (S52)',
+     'witness': 'check_peer_identity_store_controls:S52-revoked-peer-approves',
+     'find': '          AND pending_generation = ?\n          AND trust_level IN (1,2)\n    """',
+     'replace': '          AND pending_generation = ?\n          AND 1 = 1   -- (mutant) a REVOKED peer can approve a rotation\n    """',
+     'why': 'THE ROTATION-APPROVAL CAS LOSES ITS live-level (IN (1,2)) GUARD, so a peer that was REVOKED (level 3) can still promote a pending rotation - a revoked identity re-authorises itself, the exact resurrection the trust-level predicate forbids.'},
+    {'id': 'BR-01-android-revoked-identity-resolveth-its-key', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/delivery/BoundRecipientKeyResolver.kt',
+     'guard_file': 'ci/check_bound_recipient_key_resolver_controls.py',
+     'refusal_line': 'Android BoundRecipientKeyResolver must accept only TOFU_PINNED/USER_VERIFIED and reject REVOKED (B07)',
+     'witness': 'check_bound_recipient_key_resolver_controls:B07-revoked-identity-resolves',
+     'find': '                    PeerTrustLevel.REVOKED -> null',
+     'replace': '                    PeerTrustLevel.REVOKED -> lookup.identity.signingPublicKey.clone()   // (mutant) a REVOKED identity still resolveth a key',
+     'why': 'THE RESOLVER RETURNS A SIGNING KEY FOR A REVOKED IDENTITY. The real ACK-signing path would then accept frames signed by a key its owner has revoked - a revoked peer keeps its delivery authority, which is the whole failure the fail-closed matrix exists to prevent.'},
+    {'id': 'BR-02-android-node-id-boundary-guard-removed', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/delivery/BoundRecipientKeyResolver.kt',
+     'guard_file': 'ci/check_bound_recipient_key_resolver_controls.py',
+     'refusal_line': 'Android BoundRecipientKeyResolver missing 16-byte nodeId boundary guard (B03)',
+     'witness': 'check_bound_recipient_key_resolver_controls:B03-android-boundary-guard',
+     'find': '        if (nodeId.size != 16) {\n            return null\n        }',
+     'replace': '        // (mutant) the 16-byte nodeId boundary guard is REMOVED',
+     'why': 'THE 16-BYTE nodeId BOUNDARY GUARD IS REMOVED, so a malformed (short/long) node id is handed straight to the durable lookup. The boundary is the store-independent shape check that keeps a truncated recipient id from matching some other row.'},
+    {'id': 'BR-03-ios-node-id-boundary-guard-removed', 'platform': 'swift',
+     'file': 'ios/Godstone/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift',
+     'guard_file': 'ci/check_bound_recipient_key_resolver_controls.py',
+     'refusal_line': 'iOS BoundRecipientKeyResolver missing 16-byte nodeId boundary guard (B03)',
+     'witness': 'check_bound_recipient_key_resolver_controls:B03-ios-boundary-guard',
+     'find': '        guard nodeId.count == 16 else {\n            return nil\n        }',
+     'replace': '        // (mutant) the 16-byte nodeId boundary guard is REMOVED',
+     'why': 'THE iOS TWIN LOSES THE 16-BYTE nodeId BOUNDARY GUARD, so a malformed recipient id reaches the lookup - the isle-symmetric half of BR-02.'},
+    {'id': 'BR-04-resolver-returns-the-static-dh-key', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/delivery/BoundRecipientKeyResolver.kt',
+     'guard_file': 'ci/check_bound_recipient_key_resolver_controls.py',
+     'refusal_line': 'Android BoundRecipientKeyResolver must not reference static DH keys (B06)',
+     'witness': 'check_bound_recipient_key_resolver_controls:B06-static-dh-key-returned',
+     'find': 'PeerTrustLevel.USER_VERIFIED -> lookup.identity.signingPublicKey.clone()',
+     'replace': 'PeerTrustLevel.USER_VERIFIED -> lookup.identity.acceptedStaticDhPublicKey.clone()   // (mutant) the ACK signer is bound to the static DH key',
+     'why': 'THE RESOLVER BINDS THE ACK SIGNER TO THE STATIC DH KEY RATHER THAN THE Ed25519 SIGNING KEY. Every recipient resolves to a key that never signed the ACK, so the delivery authentication is bound to the wrong identity material - exactly what B06 names.'},
+    {'id': 'BR-05-quarantined-lookup-resolveth-a-key', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/delivery/BoundRecipientKeyResolver.kt',
+     'guard_file': 'ci/check_bound_recipient_key_resolver_controls.py',
+     'refusal_line': 'Both platforms must restrict non-null key returns to Verified lookup (B05)',
+     'witness': 'check_bound_recipient_key_resolver_controls:B05-quarantined-resolves',
+     'find': '            is PeerIdentityLookup.Verified -> {',
+     'replace': '            is PeerIdentityLookup.Quarantined -> {   // (mutant) a QUARANTINED lookup resolveth a key',
+     'why': 'A QUARANTINED PEER NOW RESOLVES A KEY: the branch that must fail closed on a key change instead treats quarantine as verified, so a peer whose identity is under dispute signs the ACK.'},
+    {'id': 'SS-01-android-dispatch-transporteth-the-uncommitted-frame', 'platform': 'jvm', 'module': 'mesh',
+     'file': 'android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt',
+     'guard_file': 'ci/check_store_schema_controls.py',
+     'refusal_line': 'dispatchDirect must encode canonicalFrame',
+     'witness': 'check_store_schema_controls:android-dispatch-canonical-frame',
+     'find': '        val bytes = canonicalFrame.encode()',
+     'replace': '        val bytes = frame.encode()   // (mutant) the caller frame travels, not the store-returned canonical frame',
+     'why': 'dispatchDirect TRANSPORTS THE CALLER FRAME INSTEAD OF THE STORE-RETURNED CANONICAL FRAME, so what leaves the device is not the frame the store committed (its msgId/provenance binding is bypassed) - the C6.6.1 canonical-frame law is broken at the transmit seam.'},
+    {'id': 'SS-02-ios-dispatch-transporteth-the-uncommitted-frame', 'platform': 'swift',
+     'file': 'ios/Godstone/Sources/GodstoneMesh/MeshNode.swift',
+     'guard_file': 'ci/check_store_schema_controls.py',
+     'refusal_line': 'dispatchDirect must transport canonicalFrame',
+     'witness': 'check_store_schema_controls:ios-dispatch-canonical-frame',
+     'find': 'send(canonicalFrame, peer)',
+     'replace': 'send(frame, peer)   // (mutant) the caller frame travels, not the store-returned canonical frame',
+     'why': 'THE iOS TWIN SENDS THE CALLER FRAME RATHER THAN THE CANONICAL ONE - the isle-symmetric half of SS-01.'},
+    {'id': 'SS-03-ios-store-applyeth-a-literal-protection-class', 'platform': 'swift',
+     'file': 'ios/Godstone/Sources/GodstoneMesh/MessageStore.swift',
+     'guard_file': 'ci/check_store_schema_controls.py',
+     'refusal_line': 'the init must APPLY the `fileProtection` it was given (`protectionKey: fileProtection`)',
+     'witness': 'check_store_schema_controls:ios-at-rest-applied-protection',
+     'find': '                [.protectionKey: fileProtection], ofItemAtPath: path)',
+     'replace': '                [.protectionKey: FileProtectionType.none], ofItemAtPath: path)   // (mutant) applies .none while still declaring .complete',
+     'why': 'THE iOS STORE APPLIES .none WHILE ITS `fileProtection` STILL DECLARES .complete - the store lies about the at-rest protection it gave the file. The behavioural arm cannot see this (a read-back returns the host default either way), so this is the structural at-rest control the audit names.'},
 ]
 
 #: Rods documented as an EXPECTED escape. There are NONE: an escape is a finding,
@@ -2033,6 +2644,49 @@ def _run_harness(entry, wt_path, timeout=2400):
         failed = {n for _c, n, v in cases if v == "failed"}
         return {"build_exit": build_exit, "run": run, "skipped": skipped,
                 "failed": failed, "blob": blob}
+    if entry.get("guard_file") and entry.get("refusal_line"):
+        # *** A ROD WHOSE WITNESS IS A COMMITTED REGRESSION CONTROL, EXECUTED AS THE ORACLE. ***
+        #
+        # *This branch standeth FIRST, before every platform branch, because the oracle is
+        # the same whatever the mutated file's platform: the guard reads the REAL bytes in
+        # the worktree and decides its family of invariants. The four Board 1 security-surface
+        # guards (`ci/check_trusted_handshake_controls.py`, `check_peer_identity_store_controls.py`,
+        # `check_bound_recipient_key_resolver_controls.py`, `check_store_schema_controls.py`) each
+        # decide a whole family at once, so a rod here MUTATES that production control (not the
+        # guard) and the guard is RUN against the mutant: it exits non-zero iff the invariant it
+        # owns is actually broken.
+        #
+        # **THE KILL IS ATTRIBUTED BY NAME, NOT BY EXIT CODE.** *A guard decides MANY invariants
+        # at once, so a non-zero rc from ANY of them is not this rod's claim: the mutant could
+        # redden an invariant the rod never aimed at while the one it aimed at slept. So the rod
+        # NAMES the exact refusal line the guard must print (`refusal_line`), and a non-zero rc
+        # WITHOUT that line is EXEC_INVALID -- an unattributed failure is never a catch. Each
+        # refusal line is DISTINCT across the group, so each kill is provably its own.*
+        guard_path = os.path.join(wt_path, entry["guard_file"])
+        if not os.path.isfile(guard_path):
+            return {"build_exit": 0, "run": None, "skipped": 0, "failed": set(),
+                    "blob": f"the guard control {entry['guard_file']} is ABSENT from the tree -- cannot aim the rod"}
+        try:
+            compile(open(guard_path, encoding="utf-8").read(), guard_path, "exec")
+        except SyntaxError as exc:
+            return {"build_exit": 1, "run": None, "skipped": 0, "failed": set(),
+                    "blob": f"the guard control does not parse: {exc}"}
+        proc = subprocess.run([sys.executable, "-B", entry["guard_file"]], cwd=wt_path,
+                              capture_output=True, text=True, timeout=timeout)
+        blob = (proc.stdout or "") + (proc.stderr or "")
+        # the guard speaks one line per invariant; strip the `::error::<Label> control error: `
+        # (or the store-schema `  - ` bullet) prefix so a rod names the invariant's own sentence.
+        refusals = {ln.split("control error: ", 1)[1].strip()
+                    for ln in blob.splitlines() if "::error::" in ln and "control error: " in ln}
+        refusals |= {ln.split("- ", 1)[1].strip() for ln in blob.splitlines()
+                     if ln.strip().startswith("- ")}
+        aimed = entry["refusal_line"]
+        hit_line = any(aimed in r or r in aimed for r in refusals)
+        failed = {entry["witness"]} if (proc.returncode != 0 and hit_line) else set()
+        # *** ONLY THE AIMED REFUSAL IS A KILL; ANY OTHER non-zero rc (or a green guard) is not. ***
+        return {"build_exit": 0, "run": 1, "skipped": 0, "failed": failed,
+                "blob": blob + ("\n(the rod aimed at %r; reddened refusals were %s)"
+                                % (aimed, sorted(refusals) if not hit_line else "the aimed one"))}
     if entry["platform"] == "jvm":
         # the module axis: sealed rows name no module and keep the mesh
         # road byte-identical; a :core court declaréth "module": "core"
@@ -2115,6 +2769,127 @@ def _run_harness(entry, wt_path, timeout=2400):
             blob = blob + "\n" + "\n".join(roster_lines) + "\n"
         return {"build_exit": build_exit, "run": (run if run else None),
                 "skipped": skipped, "failed": failed, "blob": blob}
+    if entry["platform"] in ("shell", "selftest"):
+        # *** A CONTROL WHOSE WITNESS IS A COMMITTED SELFTEST, OR A SHELL GUARD. ***
+        #
+        # *Some production controls prove themselves with an in-repo selftest -- e.g.
+        # `ci/check_lane_results.py --selftest-foundation` runs a family of mutations
+        # against the control and requirith each to be REFUSED.* **The witness is the
+        # selftest's EXIT CODE: the baseline exiteth 0, the mutant exiteth non-zero
+        # (a mutation ESCAPED its guard), and the named-case line is captured so the
+        # failure is attributable rather than a bare rc.**
+        #
+        # *** A SHELL ROD'S WITNESS IS A STATIC GUARD ASSERTION, NEVER A RUN OF THE
+        # SCRIPT. *** *The runner script compiles the whole Android tree when
+        # executed -- running it inside a mutation harness would be slow and would
+        # touch the live environment. So the shell witness is a pair of static
+        # checks the rod names: `sh -n` (the mutated script still PARSES) plus a
+        # `guard_pattern` that MUST be present in the mutated file. An omission rod
+        # that removes the guard makes the pattern vanish, and the witness reddens
+        # -- an asserted invariant of the script, measured without executing it.*
+        if entry["platform"] == "selftest":
+            # *** A MUTANT THAT DOES NOT PARSE IS NOT A KILL. ***
+            #
+            # *MEASURED, FROM A REAL DEFECT: a rod whose `find` was TRUNCATED to the
+            # first line of a two-line statement produced an `IndentationError` -- the
+            # control exited non-zero because the FILE WAS BROKEN, not because a
+            # mutation ESCAPED its guard, and the rod was booked KILLED. **A mutation
+            # that only breaks the parser proves nothing.** So the mutated control is
+            # compiled FIRST; a parse failure is BUILD_INVALID (a bad mutant), never a
+            # catch, whichever platform the witness belongs to.*
+            control = os.path.join(wt_path, entry["control"])
+            try:
+                compile(open(control, encoding="utf-8").read(), control, "exec")
+            except SyntaxError as exc:
+                return {"build_exit": 1, "run": None, "skipped": 0, "failed": set(),
+                        "blob": f"the mutated control does not parse: {exc}"}
+            argv = [sys.executable, "-B", entry["control"], entry["selftest_flag"]]
+            proc = subprocess.run(argv, cwd=wt_path, capture_output=True, text=True,
+                                  timeout=timeout)
+            blob = (proc.stdout or "") + (proc.stderr or "")
+            # *** THE PER-CASE TABLE IS `<label>. <name>  expect=… got=… <VERDICT>`.
+            # THE LABEL IS AT LINE START; the rod names which labels must go red. ***
+            failed = set()
+            for line in blob.splitlines():
+                if "ESCAPED" not in line and "FAIL" not in line:
+                    continue
+                # `<label>. <name>  expect=… got=… <VERDICT>` (lane selftests)
+                m = re.match(r"\s*([0-9]+[a-z]?)\.", line)
+                if m:
+                    failed.add(m.group(1))
+                # `FAIL: <label> -- ...` (the manifest module selftest)
+                f = re.match(r"\s*FAIL:\s*(.+?)\s*--", line)
+                if f:
+                    failed.add(f.group(1).strip())
+            # the alternate shapes
+            failed |= {m for m in re.findall(r"^\s*ESCAPED\s+([0-9]+[a-z]?)", blob, re.M)}
+            failed |= {m.strip() for m in re.findall(r"^\s*FAIL:\s*(.+?)\s*--", blob, re.M)}
+            # *** THE RUN COUNT: the lane selftests print `expect=… got=…` per case;
+            # the manifest module selftest instead prints `N/M mutations killed`. ***
+            run = len(re.findall(r"expect=\S+\s+got=\S+", blob)) or None
+            if run is None:
+                msum = re.search(r"(\d+)\s*/\s*(\d+)\s+mutations killed", blob)
+                if msum:
+                    run = int(msum.group(2))
+            build_exit = 0
+            # *** THE KILL MUST BE ATTRIBUTED TO THE INTENDED NAMED CONTROL. ***
+            #
+            # *A rod's whole claim is "mutate THIS guard and THIS negative fixture goes
+            # red". A non-zero rc from ANY control is not that claim: the intended
+            # fixture could still be green while some unrelated case reddened (a host
+            # quirk, a moved anchor). So when the rod names `expect_escaped`, the
+            # executor requirith one of those labels in the ESCAPED set -- the witness
+            # that reddened must be the one the rod was built to provoke, or the rod is
+            # EXEC_INVALID (unattributed), never a catch.*
+            #
+            # *** THE LABELS ARE PER-FAMILY, AND THAT IS WHY EACH ROD RUNS EXACTLY ONE
+            # FAMILY: `foundation` and `simulator` each carry their own `7a`/`7b`/`10`
+            # with DIFFERENT meanings. A rod's `expect_escaped` is therefore read
+            # against ITS OWN `selftest_flag`'s output alone -- a label of the same
+            # number in another family can never satisfy it, because that family's
+            # process is not what this rod ran. ***
+            expected = set(entry.get("expect_escaped") or [])
+            if expected:
+                if proc.returncode != 0 and (expected & failed):
+                    # the INTENDED negative fixture escaped: a genuine kill
+                    return {"build_exit": 0, "run": run, "skipped": 0,
+                            "failed": {entry["witness"]}, "blob": blob}
+                return {"build_exit": 0, "run": None, "skipped": 0, "failed": set(),
+                        "blob": blob + f"\n(the intended control(s) {sorted(expected)} did NOT escape -- "
+                                       f"observed ESCAPED={sorted(failed)}; an unattributed failure is not a kill)"}
+            if proc.returncode != 0 and not failed:
+                return {"build_exit": 0, "run": None, "skipped": 0, "failed": set(),
+                        "blob": blob + "\n(the control exited non-zero but no ESCAPED fixture was named -- an "
+                                       "unattributed failure is not a kill)"}
+            return {"build_exit": build_exit, "run": run if run is not None else 0,
+                    "skipped": 0, "failed": failed, "blob": blob}
+        # *** THE SHELL WITNESS RUNS THE RUNNER'S OWN GUARD, UNDER A CONTROLLED
+        # FIXTURE, RATHER THAN GREPPING ITS SOURCE. ***
+        #
+        # *"A pattern is present in the file" is a WIRING assertion, not a
+        # behavioural one, and the user's sections 8/37 forbid counting it as a
+        # semantic kill. So the guard is EXECUTED: the rod names a `guard_command`
+        # that drives the runner's protection under a controlled fixture and exits
+        # non-zero when the protection is absent. A source greple is deliberately
+        # NOT accepted here.*
+        guard = entry.get("guard_command")
+        if not guard:
+            # a shell rod with no invoked guard cannot make a semantic claim
+            return {"build_exit": 0, "run": None, "skipped": 0, "failed": set(),
+                    "blob": "the shell rod names no guard_command -- a source grep is not a behavioural witness"}
+        target = os.path.join(wt_path, entry["script"])
+        syntax = subprocess.run(["sh", "-n", target], capture_output=True, text=True,
+                                timeout=120)
+        proc = subprocess.run(["sh", "-c", guard], cwd=wt_path, capture_output=True,
+                              text=True, timeout=timeout)
+        blob = (f"sh -n rc={syntax.returncode}\nguard: {guard}\nguard rc={proc.returncode}\n"
+                + (syntax.stdout or "") + (syntax.stderr or "")
+                + (proc.stdout or "") + (proc.stderr or ""))
+        failed = set()
+        # the guard FAILING against the mutant is the witness reddening
+        if proc.returncode != 0:
+            failed.add(entry["witness"])
+        return {"build_exit": 0, "run": 1, "skipped": 0, "failed": failed, "blob": blob}
     if entry["platform"] == "python":
         # the py court sits in whichever home the row names; the single
         # witness is chosen by -k, and its verdict is read from unittest's
@@ -2156,11 +2931,74 @@ def _run_harness(entry, wt_path, timeout=2400):
                 "failed": failed, "blob": blob}
     # the class-form filter is this harness's dialect: the method-form
     # filter answers 'Test run with 0 tests' and blinds the oracle
+    # *** THE TWO-STEP LANE: BUILD THE ROD'S OWN TARGET, THEN RUN IT WITHOUT
+    # REBUILDING THE WHOLE PACKAGE. ***
+    #
+    # *MEASURED: an unscoped `swift test` compiles EVERY target, so a sibling's
+    # in-flight test file in ANOTHER target (e.g. a GodstoneMeshTests file that does
+    # not yet compile) reports a BUILD failure that is NOT this rod's -- a phantom
+    # red that would masquerade as a non-catch. So a rod may name the `swift_target`
+    # it lives in; the harness builds JUST that target, then runs with `--skip-build`
+    # so the foreign target is never compiled. A rod without `swift_target` keeps the
+    # one-shot `swift test` (unchanged for the existing ledger).*
+    swift_target = entry.get("swift_target")
+    pre_blob = ""
     argv = ["swift", "test", "--package-path", "ios/Packages/GodstoneFoundation"]
+    if swift_target:
+        # *** BUILD JUST THIS TARGET, THEN RUN ITS OWN xctest BUNDLE DIRECTLY. ***
+        #
+        # *`swift test --skip-build` still ENUMERATES every test bundle and dies when a
+        # SIBLING target's bundle was never built ("...LabMeshTests.xctest doesn't exist
+        # in file system") -- so it is not a lane. Running the built bundle with
+        # `xcrun xctest` touches ONLY this target's tests: a foreign target's in-flight
+        # compile error can no longer report a phantom red against this rod.*
+        build = subprocess.run(
+            ["swift", "build", "--package-path", "ios/Packages/GodstoneFoundation",
+             "--target", swift_target],
+            cwd=wt_path, capture_output=True, text=True, timeout=timeout)
+        pre_blob = ("=== swift build --target %s ===\n" % swift_target
+                    + (build.stdout or "") + (build.stderr or "") + "\n")
+        if SWIFT_COMPILE_RE.search(pre_blob) or build.returncode != 0:
+            # the rod's OWN target did not compile: a bad mutant, not an escape
+            return {"build_exit": 1, "run": None, "skipped": 0, "failed": set(),
+                    "blob": pre_blob}
+        import glob as _glob
+        root = os.path.join(wt_path, "ios", "Packages", "GodstoneFoundation", ".build",
+                            "out", "Products")
+        bundles = _glob.glob(os.path.join(root, "*", swift_target + ".xctest"))
+        # *** THE BUNDLE MUST BE UNAMBIGUOUS, AND THE HOST'S. *** *`.build/out/Products/`
+        # can carrieth BOTH `Debug/` and `Debug-iphonesimulator/`; an unguarded `*` would
+        # bind whichever the filesystem returneth first, quietly handing the host
+        # `xcrun xctest` a SIMULATOR bundle. So the host bundle (`Debug/`) is preferred,
+        # and ANY residual ambiguity is a NAMED refusal rather than a silent pick.*
+        host = os.path.join(root, "Debug", swift_target + ".xctest")
+        if os.path.isdir(host):
+            chosen = host
+        elif len(bundles) == 1:
+            chosen = bundles[0]
+        else:
+            return {"build_exit": 1, "run": None, "skipped": 0, "failed": set(),
+                    "blob": pre_blob + f"\n(no unambiguous host bundle for {swift_target!r}: "
+                                       f"candidates={sorted(bundles)})"}
+        # *THE BUNDLE TAKES A CLASS-LEVEL `-XCTest` SELECTOR, not a `--filter` path:
+        # the class part of the rod's filter is selected, and the named witness is then
+        # attributed from the case lines. A method-path selector matches ZERO tests.*
+        flt = entry.get("swift_filters", [entry.get("swift_filter")])[0] or ""
+        klass = flt.split("/")[0] or swift_target
+        proc = subprocess.run(["xcrun", "xctest", "-XCTest", klass, chosen],
+                              cwd=wt_path, capture_output=True, text=True, timeout=timeout)
+        blob = pre_blob + (proc.stdout or "") + (proc.stderr or "")
+        build_exit = 1 if SWIFT_COMPILE_RE.search(blob) else 0
+        totals = [int(a) for a, b in EXEC_RE.findall(blob) if int(a) >= 1]
+        run = max(totals) if totals else None
+        failed = {n for n in FAILED_CASE_RE.findall(blob) if n}
+        return {"build_exit": build_exit, "run": run,
+                "skipped": len(re.findall(r"Test Case '.*' skipped", blob)),
+                "failed": failed, "blob": blob}
     for flt in entry.get("swift_filters", [entry.get("swift_filter", "ReadinessT20Tests")]):
         argv += ["--filter", flt]
     proc = subprocess.run(argv, cwd=wt_path, capture_output=True, text=True, timeout=timeout)
-    blob = (proc.stdout or "") + (proc.stderr or "")
+    blob = pre_blob + (proc.stdout or "") + (proc.stderr or "")
     build_exit = 1 if SWIFT_COMPILE_RE.search(blob) else 0
     totals = [int(a) for a, b in EXEC_RE.findall(blob) if int(a) >= 1]
     run = max(totals) if totals else None
@@ -2243,6 +3081,18 @@ def _classify_with(policy, entry, build_exit, run, failed, baseline_ok, anchor_c
         note = "the baseline itself did not pass unmutated"
         return ("KILLED", note) if policy.invalid_is_killed else ("BASELINE_INVALID", note)
     if policy.require_build and build_exit != 0:
+        # *** A COMPILE FAILURE IS A KILL ONLY WHEN THE PROPERTY THE ROD STRIKES
+        # **IS** TYPE ENFORCEMENT. *** *A rod whose whole mechanism is "a caller
+        # cannot reach this without the parameter" is PROVEN by the compiler
+        # refusing the mutant -- and only such a rod may claim it. Any other rod
+        # whose mutant happens not to compile is BUILD_INVALID, a bad mutant, not
+        # a catch. The distinction is data on the entry (`type_enforced`), so it is
+        # declared where the rod is written rather than inferred from a log. The
+        # OUTCOME stays `KILLED` -- the vocabulary is unchanged -- and the row's
+        # `kill_channel` sayeth the compiler did it.*
+        if entry.get("type_enforced"):
+            return "KILLED", ("the mutant did not compile -- and TYPE ENFORCEMENT is the property this rod strikes, "
+                              "so the compiler's refusal IS the kill")
         note = "the mutant did not compile"
         return ("KILLED", note) if policy.invalid_is_killed else ("BUILD_INVALID", note)
     witness_tail = entry["witness"].rpartition("/")[2].rpartition(".")[2]
@@ -2313,6 +3163,19 @@ def _tested_input_digests() -> dict:
     for rel in ("ci/mutations.py", "ios/project.yml", "android/settings.gradle.kts"):
         path = os.path.join(ROOT, rel)
         out[rel] = _sha_file(path) or "absent"
+    # *** EVERY OTHER FILE A ROD MUTATES, BY ITS OWN DIGEST. ***
+    #
+    # *The family digests above cover the Swift/Kotlin source trees, but a rod may
+    # strike a PYTHON control, a SUPPLY-CHAIN tool, a SHELL runner or the lane
+    # checker -- and a manifest that bound none of those would not notice one of
+    # them changing under a kill. So each rod's own `file` is digested by its
+    # repo-relative path, and a rod whose target is not otherwise covered becomes
+    # a bound input the moment the rod exists.*
+    for spec in SEMANTIC:
+        for rel in (spec.get("file"), spec.get("guard_file")):
+            if not rel or rel in out:
+                continue
+            out[rel] = _sha_file(os.path.join(ROOT, rel)) or "absent"
     return out
 
 
@@ -2357,6 +3220,32 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
     rows = []
     tally = {k: 0 for k in ("KILLED", "SKIPPED", "BUILD_INVALID", "EXEC_INVALID",
                             "BASELINE_INVALID", "INCOMPLETE", "TIMEOUT", "ESCAPED")}
+    # *** EVERY ROW'S PATH IS STORED RELATIVE TO THE CAMPAIGN ROOT. *** *A
+    # downloaded artifact lands under an arbitrary root, so a path relative to
+    # the emit-dir is the only form a reader can resolve; the binding is done
+    # once here rather than at each of the seven row sites.*
+    campaign_root = emit_dir
+    tested_tree = _tested_tree_sha()
+
+    # *** `guard_only` RODS ARE STRUCTURAL, NOT SEMANTIC, AND COUNTED SEPARATELY. ***
+    #
+    # *A rod whose witness is a SOURCE-SHAPE assertion (a wiring/pattern check) may NOT
+    # be booked as a semantic kill: the user's sections 8/37 require a MEANINGFUL
+    # behavioural mutation, and "the pattern vanished from the file" proves nothing
+    # about behaviour. Such a rod is recorded with category="structural" and is kept
+    # OUT of the semantic counts -- the two populations are never summed.*
+    def _mrow(*args, **kwargs):
+        kwargs.setdefault("campaign_root", campaign_root)
+        entry = args[0]
+        if entry.get("guard_only"):
+            kwargs["structural"] = True
+        row = _row(*args, **kwargs)
+        # *** THE ROW CARRIETH THE EXACT CANDIDATE TREE IT RAN AGAINST. *** *The
+        # envelope names it once; each row repeats it so a row lifted out of its
+        # envelope still says which bytes its kill is about.*
+        row["tested_tree_sha"] = tested_tree
+        return row
+
     print("SEMANTIC lineage (oracle: the readiness suites' named witnesses; "
           "disposable worktrees; the live tree is never touched)")
     if only_ids:
@@ -2379,21 +3268,54 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
                 shutil.copyfile(prov, os.path.join(wt_path, "android", "local.properties"))
             # the mirrored package is the compiler's true input on the swift
             # side; regenerate it in the lab so the run reads the very sources
-            # under audit, and let any drift show rather than be hidden
-            subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
-                           cwd=wt_path, capture_output=True, timeout=300, check=True)
+            # under audit, and let any drift show rather than be hidden.
+            # *** A GUARD-SCRIPT ROD COMPILES NOTHING: its oracle is the guard's
+            # own process, which reads the worktree directly, so re-syncing the
+            # Swift mirror would be pure cost on a rod whose file is not a mirror
+            # source at all. ***
+            sync_needed = not entry.get("guard_file")
+            if sync_needed:
+                subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                               cwd=wt_path, capture_output=True, timeout=300, check=True)
             target = os.path.join(wt_path, entry["file"])
             text = open(target, encoding="utf-8").read()
             anchor_count = text.count(entry["find"])
             if anchor_count != 1:
                 tally["SKIPPED"] += 1
-                rows.append(_row(entry, head, "semantic", anchor_count, None,
+                rows.append(_mrow(entry, head, "semantic", anchor_count, None,
                                 [entry["witness"]], None, "SKIPPED",
                                 "anchor seen %d times; never counted as a catch" % anchor_count,
                                 None))
                 print("  SKIPPED  %-34s anchor %d -- the needle moved on"
                       % (entry["id"], anchor_count))
                 continue
+            # *** WITNESS-PRESENCE PREFLIGHT: THE NAMED ARM MUST EXIST IN THE COURT
+            # AT THE AUDITED COMMIT, OR THE ROD CANNOT BE AIMED. ***
+            #
+            # *A witness that is ABSENT from a court bundle runs ZERO tests that match
+            # it, so the "baseline green" is a green over a class that never contained
+            # the witness -- the exact false-green section 21 refuses. This is also the
+            # MIRROR-DRIFT signal: a lane built from the GENERATED package will present
+            # a stale class if the sync did not run, so a missing witness is refused BY
+            # NAME here rather than emerging later as an innocent-looking SKIP.*
+            court = entry.get("court")
+            witness = entry.get("witness")
+            if court and witness and not witness.startswith("COMPILE_NEGATIVE"):
+                court_path = os.path.join(wt_path, court)
+                if os.path.isfile(court_path):
+                    body = open(court_path, encoding="utf-8").read()
+                    # swift `func`, python `def`, kotlin `fun` -- the named arm's decl
+                    present = any(("%s %s(" % (kw, witness)) in body
+                                  for kw in ("func", "def", "fun"))
+                    if not present:
+                        tally["SKIPPED"] += 1
+                        rows.append(_mrow(entry, head, "semantic", 0, None,
+                                        [witness], None, "SKIPPED",
+                                        f"the named witness {witness!r} is ABSENT from {court} at this commit -- "
+                                        f"a court that never contained the witness cannot be aimed (a missing sync "
+                                        f"or an unlanded arm), never a catch", None))
+                        print("  SKIPPED  %-34s witness ABSENT from the court" % entry["id"])
+                        continue
             # 1. the baseline must pass unmutated, or nothing below may claim a kill
             #
             # *** A BASELINE THAT HANGS OR THROWS IS RECORDED, NOT DROPPED. ***
@@ -2408,7 +3330,7 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
                 base = _run_harness(entry, wt_path)
             except subprocess.TimeoutExpired as exc:
                 tally["TIMEOUT"] += 1
-                row = _row(entry, head, "semantic", anchor_count, None,
+                row = _mrow(entry, head, "semantic", anchor_count, None,
                            [entry["witness"]], None, "TIMEOUT",
                            "the BASELINE harness did not settle inside the bound", None)
                 if emit_dir:
@@ -2425,7 +3347,7 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
                 continue
             except Exception as exc:  # noqa: BLE001 - a baseline exception must be a ROW, never a lost rod
                 tally["BASELINE_INVALID"] += 1
-                rows.append(_row(entry, head, "semantic", anchor_count, None,
+                rows.append(_mrow(entry, head, "semantic", anchor_count, None,
                                  [entry["witness"]], None, "BASELINE_INVALID",
                                  f"the baseline harness raised {type(exc).__name__}: {exc}", None))
                 print("  BASELINE_INVALID  %s :: %s" % (entry["id"], exc))
@@ -2436,15 +3358,25 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
             open(target, "w", encoding="utf-8").write(
                 text.replace(entry["find"], entry["replace"], 1))
             post = open(target, encoding="utf-8").read()
-            assert post.count(entry["replace"]) == 1 and post.count(entry["find"]) == 0, \
-                "the mutation did not install cleanly"
+            if entry["replace"]:
+                assert post.count(entry["replace"]) == 1 and post.count(entry["find"]) == 0, \
+                    "the mutation did not install cleanly"
+            else:
+                # *** AN OMISSION ROD DELETES ITS ANCHOR. *** *A control that
+                # strikes a rendered control by REMOVING it has an empty
+                # replacement, so the install proof is that the anchor is gone
+                # and the file SHRANK by exactly its length -- never that the
+                # empty string "appears once".*
+                assert post.count(entry["find"]) == 0 and len(post) == len(text) - len(entry["find"]), \
+                    "the omission did not install cleanly"
             # the island's compiler reads the mirrored package: after any
             # mutation of a canonical source the mirror must be re-synced,
             # or the mutant never reaches the binary and a false escape is
             # recorded against a witness that never saw the mutation
-            subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
-                           cwd=wt_path, capture_output=True, timeout=300, check=True)
-            if entry["platform"] == "swift":
+            if sync_needed:
+                subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                               cwd=wt_path, capture_output=True, timeout=300, check=True)
+            if entry["platform"] == "swift" and sync_needed:
                 # a witness may only swear upon the mirrored package it saw
                 # with its own eyes: confirm the mutation is in the compiler's
                 # true input, retrying the sync once should a racing teardown
@@ -2453,7 +3385,13 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
                     "ios/Godstone/Sources/", "ios/Packages/GodstoneFoundation/Sources/"))
                 for _ in range(2):
                     mt = open(mir, encoding="utf-8").read()
-                    if mt.count(entry["replace"]) == 1 and mt.count(entry["find"]) == 0:
+                    # *** THE MIRROR MUST BE THE MUTANT SOURCE, BYTE FOR BYTE. ***
+                    # *For an insertion rod that meaneth the replacement is present
+                    # once and the anchor gone; for an OMISSION rod (empty
+                    # replacement) it meaneth the anchor is gone and the file is
+                    # exactly the mutant target -- an "the empty string appears
+                    # once" test would be vacuous.*
+                    if mt == open(target, encoding="utf-8").read():
                         break
                     subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
                                    cwd=wt_path, capture_output=True, timeout=300, check=True)
@@ -2464,7 +3402,7 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
                 mutant = _run_harness(entry, wt_path)
             except subprocess.TimeoutExpired:
                 tally["TIMEOUT"] += 1
-                rows.append(_row(entry, head, "semantic", anchor_count, None,
+                rows.append(_mrow(entry, head, "semantic", anchor_count, None,
                                 [entry["witness"]], None, "TIMEOUT",
                                 "the harness did not settle inside the bound", None))
                 print("  TIMEOUT  %s" % entry["id"])
@@ -2478,8 +3416,9 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
             # the restore is EXECUTED, not asserted, and a row without it is
             # INCOMPLETE rather than KILLED.**
             open(target, "w", encoding="utf-8").write(text)
-            subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
-                           cwd=wt_path, capture_output=True, timeout=300, check=True)
+            if sync_needed:
+                subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                               cwd=wt_path, capture_output=True, timeout=300, check=True)
             try:
                 restr = _run_harness(entry, wt_path)
                 restored_green = {
@@ -2495,6 +3434,13 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
             outcome, note = _classify(entry, mutant["build_exit"], mutant["run"],
                                       mutant["failed"], baseline_ok, anchor_count,
                                       mutant["skipped"], restored_green)
+            # *** WHICH INSTRUMENT DID THE KILLING: `compiler` OR `witness`. ***
+            # *A type-enforcement rod is killed by the compiler refusing the mutant
+            # (build_exit != 0); every other kill is the named witness failing. The
+            # two are recorded so a reader can see the compiler carried the kill
+            # rather than having to infer it from a green test log.*
+            kill_channel = ("compiler" if (outcome == "KILLED" and mutant["build_exit"] != 0)
+                            else ("witness" if outcome == "KILLED" else None))
             tally[outcome] += 1
             entry["ended_utc"] = _now_utc()
             log_path = None
@@ -2512,9 +3458,9 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
                     open(os.path.join(log_dir, entry["id"] + "." + phase + ".log"),
                          "w", encoding="utf-8").write(payload)
                 log_path = os.path.join(log_dir, entry["id"] + ".mutant.log")
-            rows.append(_row(entry, head, "semantic", anchor_count, mutant["build_exit"],
+            rows.append(_mrow(entry, head, "semantic", anchor_count, mutant["build_exit"],
                             [entry["witness"]], mutant["run"], outcome, note, log_path,
-                            restored_green=restored_green))
+                            restored_green=restored_green, kill_channel=kill_channel))
             print("  %-14s %-34s run=%s skipped=%s failed=%d restored_green=%s :: %s"
                   % (outcome, entry["id"], mutant["run"], mutant["skipped"],
                      len(mutant["failed"]), restored_green.get("ok"), note[:120]))
@@ -2527,7 +3473,7 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
             # rods it DID carry are all KILLED.** So the failure is recorded as an explicit row with the exception's
             # type and text, and the tally carrieth it.*
             tally["EXEC_INVALID"] += 1
-            rows.append(_row(entry, head, "semantic", 0, None, [entry.get("witness")], None,
+            rows.append(_mrow(entry, head, "semantic", 0, None, [entry.get("witness")], None,
                              "EXEC_INVALID",
                              f"the rod body raised {type(exc).__name__}: {exc}", None))
             print("  EXEC_INVALID  %s :: %s" % (entry["id"], exc))
@@ -2549,6 +3495,12 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
             "schema": 1,
             "lineage": "semantic",
             "baseline_sha": head,
+            # *** THE EXACT CANDIDATE IDENTITY: THE COMMIT **AND** THE TREE IT
+            # RESOLVED TO. *** *A commit can be re-pointed by a tag and a tree
+            # alone does not name a commit, so BOTH travel -- and both can be
+            # re-derived read-only (`git rev-parse <sha>^{tree}`) so a validator
+            # need not trust either field's shape.*
+            "tested_tree_sha": _tested_tree_sha(),
             "group": group,
             "required_ids": list(BOARD1_REQUIRED_IDS) if group == "board1" else [],
             "selected_ids": [s["id"] for s in selected],
@@ -2556,6 +3508,10 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent, only_ids=None
             "inputs": _tested_input_digests(),
             "toolchain": _toolchain_probe(),
             "generated_utc": _now_utc(),
+            # *** THE PATHS IN `rows` ARE RELATIVE TO THIS ROOT. *** *A reader
+            # resolves them against wherever the downloaded artifact landed,
+            # so the same evidence is re-readable off the machine that ran it.*
+            "campaign_root": ".",
             "rows": rows,
         }
         open(os.path.join(emit_dir, "manifest.json"), "w", encoding="utf-8").write(
@@ -2674,10 +3630,121 @@ def classify_selftest():
     return mismatches, checks
 
 
-MANIFEST_DIR_DEFAULT = os.path.join(ROOT, "docs", "remediation", "evidence", "board1-rc11-rods")
+# *** NO STALE FIXED DIRECTORY. *** *The board1 campaign used to be validated
+# from a hard-coded `docs/remediation/evidence/board1-rc11-rods` path, so a
+# terminal run that emitted a FRESH campaign under `$RUNNER_TEMP` was never the
+# thing the gate judged -- the gate blessed a stale committed artifact while the
+# run it was supposed to prove went unexamined.* **SO THE CAMPAIGN DIR IS NOW
+# EXPLICIT: named on `--manifest-dir`, or through the environment, and a run with
+# NO dir is REFUSED BY NAME rather than silently falling back to a tracked path.**
+#
+# *THE HISTORICAL rc11 EVIDENCE IS PRESERVED, NOT DELETED: a reader may still
+# point `--manifest-dir` at it, and its bytes are untouched. What changed is that
+# the DEFAULT no longer resolves there -- the campaign a gate validates must be the
+# campaign the run just produced.*
+MANIFEST_DIR_ENV = "GODSTONE_BOARD1_CAMPAIGN_DIR"
+#: Retained for callers that import the historical location for READ-ONLY
+#: reference (evidence preservation). It is NEVER used as a validation default.
+MANIFEST_DIR_HISTORICAL = os.path.join(ROOT, "docs", "remediation", "evidence", "board1-rc11-rods")
 
 
-def validate_campaign_manifest(emit_dir=None, group="board1") -> int:
+def resolve_campaign_dir(manifest_dir=None):
+    """The explicit campaign directory, or a NAMED refusal -- never a stale default.
+
+    Resolution order: the `--manifest-dir` argument, then `$GODSTONE_BOARD1_CAMPAIGN_DIR`.
+    A RELATIVE path is resolved against the CURRENT WORKING DIRECTORY (not the
+    repository), so the same command works from a downloaded artifact root. *An
+    unset dir is REFUSED rather than quietly pointing at the committed rc11
+    evidence -- the "a stale artifact is not a pass" rule, applied to the path.*
+    """
+    chosen = manifest_dir or os.environ.get(MANIFEST_DIR_ENV)
+    if not chosen:
+        raise SystemExit(
+            "::error::no campaign directory named -- pass `--manifest-dir DIR` (or set "
+            f"${MANIFEST_DIR_ENV}). A campaign manifest is validated WHERE THE RUN WROTE IT; "
+            "there is no default because a stale committed evidence directory is not the campaign "
+            "the gate existeth to prove.")
+    return os.path.abspath(chosen)
+
+
+def _campaign_row_problems(env, required_ids, baseline, expected_tree, campaign_dir):
+    """The per-row hostile controls, each refusal BY NAME.
+
+    *** A ROW IS NOT EVIDENCE BY BEING PRESENT: it must carry its own restoration,
+    its own phase-log digests, and the same candidate the envelope names. ***
+    """
+    problems: list[str] = []
+    rows_raw = env.get("rows") or []
+    # *** DUPLICATE ROD: two rows for one id is an ambiguous population -- one of
+    # them a KILLED, the other not -- and a reader cannot tell which ran. ***
+    seen: dict[str, int] = {}
+    for r in rows_raw:
+        rid = r.get("id")
+        seen[rid] = seen.get(rid, 0) + 1
+    duplicated = sorted(i for i, n in seen.items() if n > 1)
+    if duplicated:
+        problems.append(f"the manifest carrieth DUPLICATE row(s) for id(s): {duplicated[:6]} -- a duplicated rod is "
+                        f"an ambiguous population, never a pass")
+    rows = {r.get("id"): r for r in rows_raw}
+    known = {s["id"]: s for s in SEMANTIC}
+    ledger = known
+    unknown = sorted(set(rows) - set(ledger))
+    if unknown:
+        problems.append(f"the manifest carrieth row(s) for id(s) the ledger does NOT know: {unknown[:6]} -- a renamed "
+                        f"rod leaves the required id unrun while a stranger fills its place")
+    for rid in required_ids:
+        r = rows.get(rid)
+        if r is None:
+            problems.append(f"required rod {rid} has NO row in the manifest")
+            continue
+        # *** A REQUIRED ROD MUST BE KILLED **AND** RECORDED UNDER THE CATEGORY THE
+        # LEDGER DECLARES FOR IT. *** *The expected category is read from the rod's
+        # own `guard_only` flag, so a STRUCTURAL guard may not be counted among the
+        # semantic population and a SEMANTIC rod may not be filed as structural to
+        # escape the behavioural-KILLED requirement.*
+        spec = ledger.get(rid) or {}
+        expected_category = spec.get("category_expect") or (
+            ["structural"] if spec.get("guard_only") else ["semantic"])
+        if r.get("category") not in expected_category:
+            problems.append(f"rod {rid} is recorded category {r.get('category')!r}, but the ledger declares it "
+                            f"{expected_category} -- a rod must be counted under the population it belongs to")
+        if r.get("outcome") != "KILLED":
+            problems.append(f"required rod {rid} is {r.get('outcome')!r}, not KILLED")
+        if r.get("baseline_sha") != baseline:
+            problems.append(f"rod {rid} carries baseline_sha {r.get('baseline_sha')} != the manifest's {baseline}")
+        if r.get("tested_tree_sha") not in (None, expected_tree):
+            problems.append(f"rod {rid} carries tested_tree_sha {r.get('tested_tree_sha')} != the envelope's "
+                            f"{expected_tree}")
+        rg = r.get("restored_green")
+        if not (isinstance(rg, dict) and rg.get("ok")):
+            problems.append(f"rod {rid} has no GREEN restored-green companion -- a kill without its restoration is "
+                            f"not provable")
+        # *** THE THREE PHASE LOGS, EACH PRESENT, PORTABLE AND DIGEST-CHECKED. ***
+        phases = r.get("phase_logs")
+        if not isinstance(phases, dict):
+            problems.append(f"rod {rid} carrieth NO phase_logs -- the baseline/mutant/restored blobs are the kill's "
+                            f"evidence and cannot be asserted away")
+            continue
+        for ph in ("baseline", "mutant", "restored"):
+            rec = phases.get(ph)
+            if not isinstance(rec, dict) or not rec.get("sha256"):
+                problems.append(f"rod {rid}: phase log {ph!r} is absent or carries no digest")
+                continue
+            try:
+                resolved = _resolve_campaign_path(rec.get("path"), campaign_dir)
+            except ValueError as exc:
+                problems.append(f"rod {rid}: phase log {ph!r} path is not portable: {exc}")
+                continue
+            if not os.path.isfile(resolved):
+                problems.append(f"rod {rid}: phase log {ph!r} ({rec.get('path')!r}) is NOT PRESENT under the "
+                                f"campaign root")
+            elif _sha_file(resolved) != rec.get("sha256"):
+                problems.append(f"rod {rid}: phase log {ph!r} does not recompute its digest -- the blob was edited "
+                                f"after it was bound")
+    return problems
+
+
+def validate_campaign_manifest(manifest_dir=None, group="board1") -> int:
     """*** `board1 verify` GATE: PROVE A CAMPAIGN RAN, NOT MERELY THAT THE HARNESS DECIDETH. ***
 
     *THE DEFECT THIS CLOSES: `board1 verify` ran `ci/mutations.py --selftest` and nothing else -- **so it passed while
@@ -2685,18 +3752,22 @@ def validate_campaign_manifest(emit_dir=None, group="board1") -> int:
     selftest proveth the CLASSIFIER; this proveth the CAMPAIGN.*
 
     It refuseth, BY NAME:
-      * an ABSENT manifest (an unrun campaign is not a pass);
+      * an UNNAMED campaign dir (no stale default) or an ABSENT manifest;
       * a manifest whose `group` is not the required one, or whose `required_ids` differ from the source set;
       * any required id missing, or not KILLED, or without its restored-green companion;
-      * any row whose `baseline_sha` disagrees with the manifest's own;
+      * a DUPLICATE or RENAMED/unknown rod row (an ambiguous or shifted population);
+      * any row whose candidate (`baseline_sha` / `tested_tree_sha`) disagrees with the envelope's;
+      * any phase log that is missing, whose digest does not recompute, or whose path ESCAPES the campaign root;
       * a `selected_ids` set that omits a required id (a narrowed campaign that still passed);
-      * a manifest whose `inputs` do not match the tree's (a campaign against other bytes).
+      * a manifest whose `inputs` do not match the tree's (a campaign against other bytes);
+      * a manifest whose recorded tested tree is not the tree of the bound head (a source change after the run).
     """
-    emit_dir = emit_dir or MANIFEST_DIR_DEFAULT
-    path = os.path.join(emit_dir, "manifest.json")
+    campaign_dir = resolve_campaign_dir(manifest_dir)
+    path = os.path.join(campaign_dir, "manifest.json")
     if not os.path.isfile(path):
         print(f"::error::no campaign manifest at {path} -- an unrun campaign is not a pass; run "
-              f"`ci/mutations.py --semantic --group {group} --baseline <SHA> --emit-dir {emit_dir}`", file=sys.stderr)
+              f"`ci/mutations.py --semantic --group {group} --baseline <SHA> --emit-dir {campaign_dir}`",
+              file=sys.stderr)
         return 1
     try:
         env = json.load(open(path, encoding="utf-8"))
@@ -2710,6 +3781,29 @@ def validate_campaign_manifest(emit_dir=None, group="board1") -> int:
         return 1
     if env.get("lineage") != "semantic":
         problems.append(f"the manifest's lineage is {env.get('lineage')!r}, not 'semantic'")
+    required_ids = list(BOARD1_REQUIRED_IDS) if group == "board1" else []
+    baseline = env.get("baseline_sha")
+    if not baseline:
+        problems.append("campaign.baseline_sha is absent -- a campaign bound to no commit proves nothing")
+    # *** THE EXACT CANDIDATE: the commit AND the tree. *** *A commit's tree is
+    # re-derived READ-ONLY from git rather than trusted from the field's shape,
+    # and the envelope's recorded tree must be the one that commit resolves to --
+    # so a manifest written against other bytes than the commit it names is
+    # refused even when every field is well-formed.*
+    expected_tree = env.get("tested_tree_sha")
+    derived_tree = None
+    if baseline:
+        proc = subprocess.run(["git", "rev-parse", f"{baseline}^{{tree}}"], cwd=ROOT,
+                              capture_output=True, text=True)
+        if proc.returncode != 0:
+            problems.append(f"campaign.baseline_sha {baseline!r} does not resolve to a commit in this repository")
+        else:
+            derived_tree = proc.stdout.strip()
+            if expected_tree and expected_tree != derived_tree:
+                problems.append(f"campaign.tested_tree_sha {expected_tree} does not match the tree {derived_tree} "
+                                f"that baseline {baseline} resolves to -- the manifest names bytes its commit never had")
+    if not expected_tree:
+        problems.append("campaign.tested_tree_sha is absent -- a campaign that names no tree is an unfalsifiable binding")
     if group == "board1":
         required = set(BOARD1_REQUIRED_IDS)
         if set(env.get("required_ids") or []) != required:
@@ -2720,36 +3814,34 @@ def validate_campaign_manifest(emit_dir=None, group="board1") -> int:
         omitted = sorted(required - selected)
         if omitted:
             problems.append(f"the campaign OMITTED {len(omitted)} required id(s) from its selection: {omitted[:6]}")
-    rows = {r.get("id"): r for r in (env.get("rows") or [])}
-    baseline = env.get("baseline_sha")
-    for rid in (BOARD1_REQUIRED_IDS if group == "board1" else []):
-        r = rows.get(rid)
-        if r is None:
-            problems.append(f"required rod {rid} has NO row in the manifest")
-            continue
-        if r.get("outcome") != "KILLED":
-            problems.append(f"required rod {rid} is {r.get('outcome')!r}, not KILLED")
-        if r.get("baseline_sha") != baseline:
-            problems.append(f"rod {rid} carries baseline_sha {r.get('baseline_sha')} != the manifest's {baseline}")
-        rg = r.get("restored_green")
-        if not (isinstance(rg, dict) and rg.get("ok")):
-            problems.append(f"rod {rid} has no GREEN restored-green companion -- a kill without its restoration is "
-                            f"not provable")
-    # tested-input equality
+    problems.extend(_campaign_row_problems(env, required_ids, baseline, derived_tree or expected_tree, campaign_dir))
+    # tested-input equality: the campaign ran against THESE bytes
     current = _tested_input_digests()
     recorded = env.get("inputs") or {}
-    for key, val in sorted(recorded.items()):
-        if key not in current:
+    if not recorded:
+        problems.append("the manifest binds NO tested-input digests -- a campaign that bound no input family is a "
+                        "claim about nothing in particular")
+    for key in sorted(set(recorded) | set(current)):
+        val = recorded.get(key)
+        if key not in recorded:
+            problems.append(f"the manifest omits input family {key!r} (the tree derives one)")
+        elif key not in current:
             problems.append(f"the manifest binds input family {key!r} that no longer exists")
         elif current[key] != val:
             problems.append(f"input family {key!r} has MOVED since the campaign: manifest {str(val)[:16]}… != tree "
                             f"{str(current[key])[:16]}… -- the campaign ran against other bytes")
+    # *** STRUCTURAL AND SEMANTIC COUNTS ARE REPORTED SEPARATELY, NEVER SUMMED. ***
+    rows_all = env.get("rows") or []
+    semantic_rows = [r for r in rows_all if r.get("category") == "semantic"]
+    structural_rows = [r for r in rows_all if r.get("category") == "structural"]
     if problems:
         for p in problems:
             print(f"::error::{p}", file=sys.stderr)
         return 1
-    print(f"campaign manifest OK: {len(rows)} row(s), group={env.get('group')}, {len(BOARD1_REQUIRED_IDS if group == 'board1' else [])} "
-          f"required id(s) all KILLED with restorations, inputs match the tree, baseline {str(baseline)[:12]}…")
+    print(f"campaign manifest OK: group={env.get('group')}, {len(semantic_rows)} semantic row(s) "
+          f"({len(required_ids)} required, all KILLED with restorations) and {len(structural_rows)} structural row(s) "
+          f"reported SEPARATELY, phase logs digest-checked and portable under {campaign_dir}, inputs match the tree, "
+          f"candidate {str(baseline)[:12]}… tree {str(derived_tree or expected_tree)[:12]}…")
     return 0
 
 
@@ -2890,9 +3982,11 @@ def main(argv=None):
                     help="prove the harness's own classifier and worktree discipline")
     ap.add_argument("--selftest-manifest", action="store_true",
                     help="prove a real CAMPAIGN ran: validate the board1 campaign manifest (required ids all KILLED "
-                         "with restorations, phase hashes, tested-input equality)")
+                         "with restorations, phase hashes, tested-input equality). Requires --manifest-dir.")
     ap.add_argument("--manifest-dir", default=None,
-                    help="with --selftest-manifest: the campaign's emit-dir (defaults to the board1 path)")
+                    help="with --selftest-manifest: the campaign's emit-dir, EXPLICIT (no stale default; also reads "
+                         f"${MANIFEST_DIR_ENV}); a relative path resolves against the current directory so a "
+                         "downloaded campaign is re-readable under any root")
     ap.add_argument("--report", action="store_true", help="do not fail on findings")
     ap.add_argument("--semantic", action="store_true", help="run the semantic lineage")
     ap.add_argument("--id", action="append", default=None,

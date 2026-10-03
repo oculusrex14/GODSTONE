@@ -39,6 +39,15 @@ The inventory and the approved-archive presence report are published
 deterministically (sorted keys, fixed fields) under the output directory --
 only upon complete success; a rejected inspection publisheth nothing.
 
+The PACKAGED BYTES are the authority, in every lane. For each .apk/.aab the
+binary (AXML) AndroidManifest.xml is parsed in Python -- no aapt2 -- and its
+granted permissions are recorded; a radio/network grant without the merger's
+``node="remove"`` directive is refused. Every dex entry's class descriptors are
+read from the packaged bytes and a forbidden mesh/sos/llm package prefix is
+refused BY NAME (descriptor and prefix). A manifest that is absent or
+unparseable is a REFUSAL, never a skip. An AAB's protobuf manifest is read by a
+minimal, clearly-scoped string scan that nameth the same permissions.
+
 Usage:
     python3 scripts/inspect_android_artifacts.py <build_root> <out_dir>
     python3 scripts/inspect_android_artifacts.py <build_root> <out_dir> \
@@ -51,9 +60,11 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import io
 import json
 import re
 import sqlite3
+import struct
 import tempfile
 import zipfile
 from collections import Counter
@@ -90,6 +101,18 @@ RADIO_GRANTS = {
     "android.permission.ACCESS_COARSE_LOCATION",
     "android.permission.ACCESS_BACKGROUND_LOCATION",
 }
+# The mesh/sos/llm/labmesh/oracle class packages: no LIGHT release may carry
+# them. The packaged dex is the authority; a descriptor whose package prefix
+# is listed here is refused, and BOTH the descriptor and the prefix are named.
+FORBIDDEN_CLASS_PREFIXES = (
+    "Lcom/godstone/mesh/",
+    "Lio/godstone/mesh/",
+    "Lio/godstone/labmesh/",
+    "Lio/godstone/llm/",
+    "Lio/godstone/oracle/",
+    "Lio/godstone/sos/",
+    "Lcom/godstone/sos/",
+)
 FIXTURE_PROSE_MARKERS = (b"development fixture", b"development-fixture", b"not survival guidance")
 APPROVED_SCHEMA = 1
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
@@ -145,6 +168,285 @@ def _dangerous_mode(info: zipfile.ZipInfo) -> bool:
     return bool(mode & 0o002) or bool(mode & 0o4000) or bool(mode & 0o2000)
 
 
+# ---------------------------------------------------------------------------
+# The packaged-manifest authority: a committed Android BINARY XML (AXML) parser
+# and a committed DEX class-descriptor scan. Both are pure stdlib, because the
+# package's own bytes -- not an adjacent build-tree AndroidManifest.xml -- are
+# what a shipping artifact must be judged by.
+# ---------------------------------------------------------------------------
+_AXML_HEADER = 0x0003        # RES_XML_TYPE: the document header chunk
+_AXML_STRING_POOL = 0x0001   # RES_STRING_POOL_TYPE
+_AXML_START_ELEMENT = 0x0102
+_AXML_END_ELEMENT = 0x0103
+# The attribute value type tags of Res_value (the low byte of a typed value).
+_ATTR_TYPE_REFERENCE = 0x01
+_ATTR_TYPE_STRING = 0x03
+_ATTR_TYPE_INT_DEC = 0x10
+_ATTR_TYPE_INT_HEX = 0x11
+_ATTR_TYPE_INT_BOOLEAN = 0x12
+_AXML_NO_INDEX = 0xFFFFFFFF
+
+
+def _decode_string_pool(data: bytes, pool_start: int) -> list[str]:
+    """Decode a RES_STRING_POOL chunk into its string list.
+
+    Both encodings are honoured: the UTF-16 form (lengths in characters) and
+    the UTF-8 form (lengths in bytes) that aapt2 leaveth in a modern manifest.
+    """
+    if pool_start + 28 > len(data):
+        raise ValueError("string pool chunk is truncated")
+    _, header_size, _ = struct.unpack_from("<HHI", data, pool_start)
+    if header_size < 28:
+        raise ValueError("string pool header is too thin")
+    string_count, _style_count, flags, strings_start, _styles_start = struct.unpack_from(
+        "<IIIII", data, pool_start + 8)
+    if string_count > 0x10000:
+        raise ValueError("string pool claimeth an impossible string count")
+    offset_table = pool_start + header_size
+    string_data = pool_start + strings_start
+    if offset_table + 4 * string_count > len(data) or string_data > len(data):
+        raise ValueError("string pool extendeth past the document")
+    utf8 = bool(flags & (1 << 8))
+    strings: list[str] = []
+    for i in range(string_count):
+        offset = struct.unpack_from("<I", data, offset_table + 4 * i)[0]
+        base = string_data + offset
+        try:
+            if utf8:
+                length = data[base]
+                cursor = base + 1
+                if length & 0x80:
+                    length = ((length & 0x7F) << 8) | data[base + 1]
+                    cursor = base + 2
+                utf16_len = data[cursor]            # the UTF-16 count, unused here
+                cursor += 1
+                if utf16_len & 0x80:
+                    cursor += 1
+                strings.append(data[cursor:cursor + length].decode("utf-8"))
+            else:
+                length = struct.unpack_from("<H", data, base)[0]
+                strings.append(data[base + 2:base + 2 + 2 * length].decode("utf-16-le"))
+        except (struct.error, IndexError, UnicodeDecodeError) as exc:
+            raise ValueError(f"string pool entry {i} is malformed: {exc}") from exc
+    return strings
+
+
+def parse_axml(data: bytes) -> list[dict]:
+    """Parse a binary AndroidManifest.xml (AXML) into its start elements.
+
+    Returns one dict per START_ELEMENT, in document order:
+    ``{"name": <local name>, "attributes": {<attr local name>: value}}``.
+    Values are strings, or integers where the type tag carrieth an integer or
+    a boolean. A document that is truncated, mis-chunked or hostile raiseth
+    ``ValueError`` -- which inspect() turneth into a REJECT, never a skip.
+    """
+    if len(data) < 8:
+        raise ValueError("binary manifest is shorter than its header")
+    magic, header_size, declared = struct.unpack_from("<HHI", data, 0)
+    if magic != _AXML_HEADER:
+        raise ValueError(f"not an AXML document (magic {magic:#06x})")
+    if header_size < 8 or header_size > len(data):
+        raise ValueError("AXML header size is out of bounds")
+    if declared > len(data):
+        raise ValueError("AXML document declareth more bytes than it carrieth")
+
+    strings: list[str] = []
+    elements: list[dict] = []
+    offset = header_size
+    while offset + 8 <= declared:
+        chunk_type, _chunk_header, chunk_size = struct.unpack_from("<HHI", data, offset)
+        if chunk_size < 8 or offset + chunk_size > declared:
+            raise ValueError("a chunk overrunneth the document")
+        if chunk_type == _AXML_STRING_POOL and not strings:
+            strings = _decode_string_pool(data, offset)
+        elif chunk_type == _AXML_START_ELEMENT:
+            # ResXMLTree_node header (16 bytes) then ResXMLTree_attrExt (20).
+            if offset + 36 > declared:
+                raise ValueError("start element chunk is truncated")
+            name_index = struct.unpack_from("<I", data, offset + 20)[0]
+            attribute_start = struct.unpack_from("<H", data, offset + 24)[0]
+            attribute_count = struct.unpack_from("<H", data, offset + 28)[0]
+            if name_index >= len(strings):
+                raise ValueError("start element nameth a string outside the pool")
+            attributes: dict = {}
+            for a in range(attribute_count):
+                base = offset + 16 + attribute_start + 20 * a
+                if base + 20 > offset + chunk_size:
+                    raise ValueError("an attribute overrunneth its start element")
+                attr_name_index, raw_index, _value_size = struct.unpack_from(
+                    "<IIH", data, base + 4)
+                value_type, value_data = struct.unpack_from("<BI", data, base + 15)
+                if attr_name_index >= len(strings):
+                    raise ValueError("an attribute nameth a string outside the pool")
+                attr_name = strings[attr_name_index]
+                if value_type == _ATTR_TYPE_STRING:
+                    value: object = (strings[value_data]
+                                     if value_data < len(strings) else f"@{value_data:#x}")
+                elif raw_index != _AXML_NO_INDEX and raw_index < len(strings):
+                    value = strings[raw_index]      # the raw (untyped) spelling
+                elif value_type in (_ATTR_TYPE_INT_DEC, _ATTR_TYPE_INT_HEX):
+                    value = value_data
+                elif value_type == _ATTR_TYPE_INT_BOOLEAN:
+                    value = bool(value_data)
+                elif value_type == _ATTR_TYPE_REFERENCE:
+                    value = f"@{value_data:#010x}"
+                else:
+                    value = value_data
+                attributes[attr_name] = value
+            elements.append({"name": strings[name_index], "attributes": attributes})
+        offset += chunk_size
+    if offset != declared:
+        raise ValueError("chunks do not consume the declared document")
+    if not strings:
+        raise ValueError("AXML document carrieth no string pool")
+    return elements
+
+
+def _uleb128(data: bytes, offset: int) -> tuple[int, int]:
+    """Read an unsigned LEB128 integer; the DEX string lengths use this form."""
+    result = 0
+    shift = 0
+    while True:
+        if offset >= len(data) or shift > 28:
+            raise ValueError("malformed LEB128")
+        byte = data[offset]
+        offset += 1
+        result |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return result, offset
+        shift += 7
+
+
+def _dex_mutf8(data: bytes, cursor: int) -> tuple[str, int]:
+    """Read one DEX string: ``utf16_size`` (ULEB128) then MUTF-8 to a NUL.
+
+    DEX strings are MUTF-8, whose declared length counteth UTF-16 code units,
+    not bytes -- so the byte slice must run to the terminating NUL rather than
+    to that count. Surrogate pairs are reassembled; a malformed sequence
+    raiseth ``ValueError``."""
+    utf16_size, cursor = _uleb128(data, cursor)
+    end = data.find(b"\x00", cursor)
+    if end < 0:
+        raise ValueError("a dex string is not NUL-terminated")
+    raw = data[cursor:end]
+    units: list[int] = []
+    i = 0
+    while i < len(raw):
+        byte = raw[i]
+        if byte < 0x80:
+            units.append(byte)
+            i += 1
+        elif byte & 0xE0 == 0xC0:
+            if i + 1 >= len(raw):
+                raise ValueError("a dex string is truncated in MUTF-8")
+            units.append(((byte & 0x1F) << 6) | (raw[i + 1] & 0x3F))
+            i += 2
+        elif byte & 0xF0 == 0xE0:
+            if i + 2 >= len(raw):
+                raise ValueError("a dex string is truncated in MUTF-8")
+            units.append(((byte & 0x0F) << 12) | ((raw[i + 1] & 0x3F) << 6)
+                         | (raw[i + 2] & 0x3F))
+            i += 3
+        else:
+            raise ValueError("a dex string carrieth an invalid MUTF-8 lead byte")
+    text = "".join(chr(u) for u in units)
+    return text, end + 1
+
+
+def dex_class_descriptors(data: bytes) -> set[str]:
+    """The ``L...;`` class descriptors named by a DEX string_ids table.
+
+    A malformed dex (bad magic, table beyond the file, unreadable string)
+    raiseth ``ValueError``; it never sileth into an empty -- and therefore
+    falsely clean -- result.
+    """
+    if len(data) < 0x70:
+        raise ValueError("dex is shorter than its header")
+    if data[:4] != b"dex\n" or data[7] != 0:
+        raise ValueError("not a dex image")
+    try:
+        string_count, string_offset = struct.unpack_from("<II", data, 0x38)
+    except struct.error as exc:
+        raise ValueError(f"dex header is truncated: {exc}") from exc
+    if string_count == 0:
+        return set()
+    if string_count > 0x1000000 or string_offset + 4 * string_count > len(data):
+        raise ValueError("dex string_ids table extendeth past the image")
+    descriptors: set[str] = set()
+    for i in range(string_count):
+        cursor = struct.unpack_from("<I", data, string_offset + 4 * i)[0]
+        if cursor >= len(data):
+            raise ValueError("a dex string offset is out of bounds")
+        text, cursor = _dex_mutf8(data, cursor)
+        if text.startswith("L") and text.endswith(";"):
+            descriptors.add(text)
+    return descriptors
+
+
+def _pb_varint(data: bytes, offset: int) -> tuple[int, int]:
+    """Read a protobuf base-128 varint; a truncation raiseth."""
+    result = 0
+    shift = 0
+    while True:
+        if offset >= len(data) or shift > 63:
+            raise ValueError("truncated protobuf varint")
+        byte = data[offset]
+        offset += 1
+        result |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return result, offset
+        shift += 7
+
+
+def _aab_manifest_strings(data: bytes, depth: int = 0) -> list[str]:
+    """The printable strings of an AAB's protobuf manifest -- a MINIMAL scan.
+
+    The AAB manifest is a protobuf ``XmlNode`` tree, not AXML; a full deep
+    parse is out of scope here. This walk surfaceth every length-delimited
+    field's bytes that read as printable UTF-8 (recursing into nested messages
+    so a leaf permission string is reached) -- which is exactly enough to name
+    a granted ``android.permission.*``. A malformed wire image raiseth, so an
+    unreadable AAB manifest is a REFUSAL, never a silent pass."""
+    if depth > 16:
+        raise ValueError("protobuf nesting is too deep")
+    found: list[str] = []
+    offset = 0
+    fields = 0
+    while offset < len(data):
+        key, offset = _pb_varint(data, offset)
+        wire = key & 0x07
+        if wire == 0:
+            _, offset = _pb_varint(data, offset)
+        elif wire == 1:
+            offset += 8
+        elif wire == 5:
+            offset += 4
+        elif wire == 2:
+            length, offset = _pb_varint(data, offset)
+            if offset + length > len(data):
+                raise ValueError("a protobuf field overrunneth the manifest")
+            chunk = data[offset:offset + length]
+            offset += length
+            fields += 1
+            try:
+                text = chunk.decode("utf-8")
+            except UnicodeDecodeError:
+                text = None
+            if text and text.isprintable():
+                found.append(text)
+            try:
+                found.extend(_aab_manifest_strings(chunk, depth + 1))
+            except ValueError:
+                pass                       # not a nested message: a plain string
+        else:
+            raise ValueError(f"unknown protobuf wire type {wire}")
+        if offset > len(data):
+            raise ValueError("a protobuf field overrunneth the manifest")
+    if fields == 0 and data:
+        raise ValueError("the manifest carrieth no protobuf field")
+    return found
+
+
 class ApprovedArchivePresenceReport:
     """The presence report of one artifact: what was seen, sworn and found."""
 
@@ -171,6 +473,11 @@ class ApprovedArchivePresenceReport:
         self.native_libraries: list[str] = []
         self.dex_entries = 0
         self.radio_grants: list[str] = []
+        # The packaged-bytes manifest/dex witnesses (the new authority).
+        self.manifest_permissions: list[str] = []
+        self.forbidden_classes: list[str] = []
+        self.dex_class_count = 0
+        self.manifest_source: str | None = None
         self.errors: list[str] = []
 
     def reject(self, why: str) -> None:
@@ -322,6 +629,91 @@ def _publish_rejections(artifact: Path, report: ApprovedArchivePresenceReport) -
         print(f"  - {why}")
 
 
+def _check_packaged_manifest_and_dex(
+        kind: str, zf: zipfile.ZipFile, infos: list[zipfile.ZipInfo],
+        report: ApprovedArchivePresenceReport) -> None:
+    """The authority is the PACKAGED BYTES, in every lane.
+
+    For .apk/.aab: parse the binary manifest the package carrieth, record its
+    granted permissions and refuse any radio/network grant without the merger's
+    removal semantics; scan every dex's class descriptors and refuse a forbidden
+    package prefix by name. A missing or unparseable binary manifest is a
+    REFUSAL -- never a silent skip."""
+    if kind == ".apk":
+        manifest_entry = "AndroidManifest.xml"
+        report.manifest_source = "apk:AndroidManifest.xml"
+    elif kind == ".aab":
+        manifest_entry = "base/manifest/AndroidManifest.xml"
+        report.manifest_source = "aab:base/manifest/AndroidManifest.xml"
+    else:
+        return
+
+    raw = next((zf.read(info) for info in infos
+                if info.filename == manifest_entry and not _entry_is_directory(info)), None)
+    if raw is None:
+        report.reject(f"the package carrieth no binary manifest ({manifest_entry})")
+    elif kind == ".aab":
+        # The AAB manifest is protobuf, not AXML. A minimal string scan nameth
+        # the granted permissions; an unreadable protobuf image REFUSETH.
+        try:
+            strings = _aab_manifest_strings(raw)
+        except ValueError as exc:
+            report.reject(f"the packaged AAB manifest is unreadable: {exc}")
+        else:
+            granted = {text for text in strings if text.startswith("android.permission.")}
+            report.manifest_permissions = sorted(granted)
+            for permission in sorted(granted):
+                if permission in RADIO_GRANTS:
+                    report.radio_grants.append(permission)
+            if report.radio_grants:
+                report.reject("the packaged AAB manifest granteth radio/network "
+                              "permission(s): " + ", ".join(sorted(set(report.radio_grants))))
+    else:
+        try:
+            elements = parse_axml(raw)
+        except ValueError as exc:
+            report.reject(f"the packaged binary manifest is unparseable: {exc}")
+        else:
+            granted: set[str] = set()
+            for element in elements:
+                if element["name"] != "uses-permission":
+                    continue
+                attributes = element["attributes"]
+                named = attributes.get("name")
+                if not isinstance(named, str) or not named:
+                    continue
+                granted.add(named)
+                removal = attributes.get("node")
+                if named in RADIO_GRANTS and removal != "remove":
+                    report.radio_grants.append(named)
+            report.manifest_permissions = sorted(granted)
+            if report.radio_grants:
+                report.reject("the packaged binary manifest granteth radio/network "
+                              "permission(s): " + ", ".join(sorted(set(report.radio_grants))))
+
+    # -- the dexes' class descriptors, read from the packaged bytes -----------
+    for info in infos:
+        if not info.filename.endswith(".dex") or _entry_is_directory(info):
+            continue
+        blob = zf.read(info)
+        if not blob or blob[:4] != b"dex\n":
+            continue                 # not a dex image; the name checks own it
+        try:
+            descriptors = dex_class_descriptors(blob)
+        except ValueError as exc:
+            report.reject(f"the packaged dex {info.filename} is malformed: {exc}")
+            continue
+        report.dex_class_count += len(descriptors)
+        for descriptor in sorted(descriptors):
+            for prefix in FORBIDDEN_CLASS_PREFIXES:
+                if descriptor.startswith(prefix):
+                    report.forbidden_classes.append(f"{descriptor} (prefix {prefix})")
+    if report.forbidden_classes:
+        report.forbidden_classes = sorted(set(report.forbidden_classes))
+        report.reject("the package carrieth forbidden mesh/sos/llm class(es): "
+                      + ", ".join(report.forbidden_classes))
+
+
 def inspect(build_root: Path, out: Path, expected_archive: Path | None = None,
             approved_manifest_path: Path | None = None,
             release_candidate: bool = False) -> tuple[int, list[dict]]:
@@ -417,6 +809,15 @@ def inspect(build_root: Path, out: Path, expected_archive: Path | None = None,
                     if "/lib/" in f"/{info.filename}" and info.filename.endswith(".so")})
                 report.dex_entries = sum(1 for n in names if n.endswith(".dex"))
 
+                # -- the packaged manifest and dex: the bytes' own word -------
+                # (in every lane; a missing or unparseable binary manifest is a
+                # refusal, never a skip)
+                if kind in (".apk", ".aab"):
+                    try:
+                        _check_packaged_manifest_and_dex(kind, zf, infos, report)
+                    except (OSError, RuntimeError, ValueError, zipfile.BadZipFile) as exc:
+                        report.reject(f"the packaged manifest/dex could not be read: {exc}")
+
                 if report.status == "rejected":
                     _publish_rejections(artifact, report)
                     return 1, []
@@ -495,7 +896,14 @@ def inspect(build_root: Path, out: Path, expected_archive: Path | None = None,
             return 1, []
         inventories.append({"path": str(artifact), "kind": kind,
                             "bytes": artifact.stat().st_size, "sha256": digest(artifact),
-                            "entries": sorted(names), "archive": report.to_dict()})
+                            "entries": sorted(names), "archive": report.to_dict(),
+                            # the packaged-manifest/dex witnesses (the new
+                            # authority) ride on the inventory record, so the
+                            # presence report's own shape stays untouched
+                            "manifest_permissions": sorted(report.manifest_permissions),
+                            "forbidden_classes": sorted(report.forbidden_classes),
+                            "dex_class_count": report.dex_class_count,
+                            "manifest_source": report.manifest_source})
 
     (out / "artifact-inventory.json").write_text(
         json.dumps(inventories, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -572,8 +980,112 @@ def _make_archive_bytes(tier: str = "LIGHT", *, fixture: bool = False,
         return path.read_bytes()
 
 
+def _make_axml_manifest(permissions: tuple[str, ...] = (),
+                        *, package: str = "io.godstone.app",
+                        removed: tuple[str, ...] = ()) -> bytes:
+    """A minimal, VALID binary AndroidManifest.xml (AXML), UTF-16 encoded.
+
+    It carrieth exactly one ``uses-permission`` per named permission (and per
+    name in ``removed``, each with the merger's ``node="remove"`` directive),
+    so the inspector's binary-manifest scan can be exercised end to end."""
+    strings = ["manifest", "package", "uses-permission", "name", "node", "remove", package]
+    for permission in (*permissions, *removed):
+        strings.append(permission)
+    indices = {text: i for i, text in enumerate(strings)}
+    count = len(strings)
+    blob = b""
+    offsets: list[int] = []
+    for text in strings:
+        offsets.append(len(blob))
+        encoded = text.encode("utf-16-le")
+        blob += struct.pack("<H", len(text)) + encoded + b"\x00\x00"
+    offset_table = b"".join(struct.pack("<I", off) for off in offsets)
+    while len(blob) % 4:                       # keep the pool word-aligned
+        blob += b"\x00"
+    pool_chunk_size = 28 + len(offset_table) + len(blob)
+    pool = (struct.pack("<HHI", _AXML_STRING_POOL, 28, pool_chunk_size)
+            + struct.pack("<IIIII", count, 0, 0, 28 + len(offset_table), 0)
+            + offset_table + blob)
+    assert len(pool) == pool_chunk_size
+
+    def start_element(name_index: int, attributes: list[tuple[int, int, int]]) -> bytes:
+        # ResXMLTree_attrExt: ns, name, attributeStart (20, from attrExt start),
+        # attributeSize (20), attributeCount, idIndex, classIndex, styleIndex.
+        body = struct.pack("<IIHHHHHH", 0xFFFFFFFF, name_index, 20, 20, len(attributes),
+                           0, 0, 0)
+        for attr_index, raw_index, value_index in attributes:
+            body += struct.pack("<IIIHBBI", 0xFFFFFFFF, attr_index, raw_index, 8, 0,
+                                _ATTR_TYPE_STRING, value_index)
+        size = 16 + len(body)
+        # ResXMLTree_node: type, headerSize, size, lineNumber, comment (16 bytes).
+        return struct.pack("<HHIII", _AXML_START_ELEMENT, 16, size,
+                           0xFFFFFFFF, 0xFFFFFFFF) + body
+
+    manifest_attrs = [(indices["package"], indices["package"], indices[package])]
+    xml = start_element(indices["manifest"], manifest_attrs)
+    for permission in permissions:
+        xml += start_element(indices["uses-permission"],
+                             [(indices["name"], indices["name"], indices[permission])])
+    for permission in removed:
+        xml += start_element(indices["uses-permission"],
+                             [(indices["name"], indices["name"], indices[permission]),
+                              (indices["node"], indices["remove"], indices["remove"])])
+    xml += (struct.pack("<HHIII", _AXML_END_ELEMENT, 16, 24, 0xFFFFFFFF, 0xFFFFFFFF)
+            + struct.pack("<II", 0xFFFFFFFF, 0))
+    xml_size = 8 + len(pool) + len(xml)
+    return struct.pack("<HHI", _AXML_HEADER, 8, xml_size) + pool + xml
+
+
+def _make_dex(descriptors: tuple[str, ...]) -> bytes:
+    """A minimal DEX image: the header plus a string_ids table of the strings.
+
+    The class descriptors (``L...;``) ride in that table, which is the only
+    thing the inspector's dex scan readeth; this is a real, parseable image,
+    not a stub."""
+    strings = ["Lcom/godstone/app/Main;", *descriptors]
+    offset_table_size = 4 * len(strings)
+    strings_offset = 0x70
+    data_offset = strings_offset + offset_table_size
+    blob = b""
+    offsets: list[int] = []
+    for text in strings:
+        offsets.append(data_offset + len(blob))
+        encoded = text.encode("utf-8")
+        blob += bytes([len(encoded)]) + encoded + b"\x00"
+        while len(blob) % 4:                   # DEX string data is word-aligned
+            blob += b"\x00"
+    string_ids = b"".join(struct.pack("<I", off) for off in offsets)
+    header = bytearray(0x70)
+    header[0:8] = b"dex\n035\x00"
+    struct.pack_into("<I", header, 0x38, len(strings))
+    struct.pack_into("<I", header, 0x3C, strings_offset)
+    return bytes(header) + string_ids + blob
+
+
+def _is_real_dex(data: bytes) -> bool:
+    """A dex image is at least a header long and carrieth the dex magic."""
+    return len(data) >= 0x70 and data[:4] == b"dex\n"
+
+
 def _make_package(path: Path, entries: dict[str, bytes], *, symlink: str | None = None,
-                  dupe: str | None = None, writable_mode: bool = False) -> None:
+                  dupe: str | None = None, writable_mode: bool = False,
+                  defaults: bool = True) -> None:
+    # Every caller's .apk/.aab getteth a VALID binary manifest and a real dex
+    # UNLESS it deliberately supplied its own -- so the packaged-manifest
+    # authority is exercised, not bypassed, and the existing fixtures gain a
+    # lawful manifest without changing their own bytes. `defaults=False` is the
+    # fail-closed arm: a package built with no manifest at all must be REFUSED.
+    entries = dict(entries)
+    suffix = path.suffix.lower()
+    if defaults and suffix == ".apk":
+        entries.setdefault("AndroidManifest.xml", _make_axml_manifest())
+        if "classes.dex" in entries and not _is_real_dex(entries["classes.dex"]):
+            entries["classes.dex"] = _make_dex(())
+    elif defaults and suffix == ".aab":
+        # a valid, empty protobuf message: no permission is granted
+        entries.setdefault("base/manifest/AndroidManifest.xml", b"\x0a\x00")
+        if "base/classes.dex" in entries and not _is_real_dex(entries["base/classes.dex"]):
+            entries["base/classes.dex"] = _make_dex(())
     with zipfile.ZipFile(path, "w") as zf:
         for name, data in entries.items():
             info = zipfile.ZipInfo(name)
@@ -717,6 +1229,76 @@ def selftest() -> int:
         rc, _ = inspect(build, root / "out")
         if rc != 0:
             failures.append("[merged manifest with removal directive] expected PASS, got FAIL")
+
+    # -- the packaged binary manifest and dex: the bytes' own word ------------
+    # (a) a dex carrying a forbidden mesh descriptor is REFUSED, naming it
+    mesh = _make_dex(("Lio/godstone/mesh/MeshRuntime;",))
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        build = root / "build"
+        build.mkdir()
+        _make_package(build / "app.apk", {**ANDROID_OK, "classes.dex": mesh})
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc, _ = inspect(build, root / "out")
+        report = buf.getvalue()
+        if rc == 0:
+            failures.append("[forbidden mesh descriptor in the packaged dex] expected FAIL, got PASS")
+        elif "Lio/godstone/mesh/MeshRuntime;" not in report or "prefix Lio/godstone/mesh/" not in report:
+            failures.append("[forbidden mesh descriptor] expected the refusal to NAME the "
+                            "descriptor and the prefix")
+
+    # (b) a binary manifest granting INTERNET is REFUSED
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        build = root / "build"
+        build.mkdir()
+        _make_package(build / "app.apk", {
+            **ANDROID_OK, "classes.dex": _make_dex(()),
+            "AndroidManifest.xml": _make_axml_manifest(("android.permission.INTERNET",))})
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc, _ = inspect(build, root / "out")
+        if rc == 0:
+            failures.append("[packaged binary manifest granteth INTERNET] expected FAIL, got PASS")
+        elif "granteth radio/network permission" not in buf.getvalue():
+            failures.append("[packaged binary manifest granteth INTERNET] expected a named refusal")
+        _make_package(build / "app.apk", {
+            **ANDROID_OK, "classes.dex": _make_dex(()),
+            "AndroidManifest.xml": _make_axml_manifest(
+                removed=("android.permission.INTERNET",))})
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc, _ = inspect(build, root / "out")
+        if rc != 0:
+            failures.append("[packaged manifest with the removal directive] expected PASS, got FAIL")
+
+    # (c) an absent or unparseable binary manifest is REFUSED (never a skip)
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        build = root / "build"
+        build.mkdir()
+        # a package with no binary manifest at all: the fail-closed refusal
+        _make_package(build / "app.apk",
+                      {**ANDROID_OK, "classes.dex": _make_dex(())}, defaults=False)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc, _ = inspect(build, root / "out")
+        if rc == 0:
+            failures.append("[absent packaged binary manifest] expected FAIL, got PASS")
+        elif "carrieth no binary manifest" not in buf.getvalue():
+            failures.append("[absent packaged binary manifest] expected a named refusal")
+        # a manifest that existeth but is not a parseable AXML document
+        _make_package(build / "app.apk", {**ANDROID_OK, "classes.dex": _make_dex(()),
+                                          "AndroidManifest.xml": b"\x03\x00hostile\x00"},
+                      defaults=False)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc, _ = inspect(build, root / "out")
+        if rc == 0:
+            failures.append("[unparseable packaged binary manifest] expected FAIL, got PASS")
+        elif "unparseable" not in buf.getvalue():
+            failures.append("[unparseable packaged binary manifest] expected a named refusal")
 
     # -- no artifacts at all --------------------------------------------------
     with tempfile.TemporaryDirectory() as td:
