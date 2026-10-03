@@ -2195,7 +2195,7 @@ final class GsStress001RealRuntimeDriverTests: XCTestCase {
 
         // (G) EVERY RELEASE VERB EMPTIES THE OWNERS' OWN CENSUSES -- so (B)..(F) are about RETAINED resources.
         writer.shutdown()
-        _ = runtime.ackStore.retireObligation(obligation.msgId, obligation.recipientNodeId)
+        _ = runtime.ackStore.retireObligation(obligation.msgId, recipientNodeId: obligation.recipientNodeId)
         _ = runtime.sessionManager.retireIncarnations(ofPeerId: handle)
         runtime.messageStore.removeHeldSetObserver(token)
         XCTAssertEqual(owners.liveAdmittedLeases(), 0, "*** the writer's close path releases its admitted leases. ***")
