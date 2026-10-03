@@ -276,13 +276,65 @@ class SupplyAuthorityCourt(unittest.TestCase):
         with self.assertRaises(self.V.AuthorityError):
             self.V._mode(self.register, "windows")
 
+    def _attacker_image(self, mode):
+        """A REPLACED image that is internally consistent with an attacker-controlled
+        sidecar: the register's own byte COUNT, a real arm64 Mach-O header whose
+        LC_BUILD_VERSION carrieth the register's own platform+minos, and the register's
+        own required and init SYMBOLS in a real LC_SYMTAB. Every gate EXCEPT the output
+        digest is satisfied, so ONLY the trusted digest can refuse it."""
+        import struct
+        V = self.V
+        src, expected = V._mode(self.register, mode)
+        want = expected["expected_output"]
+        symbols = list(self.register["required_symbols"]) + \
+            list(self.register["sqlcipher_init_symbols"])
+        platform = {"MACOS": 1, "IOSSIMULATOR": 7}[expected["platform"]]
+        arch = {"arm64": 0x0100000C, "x86_64": 0x01000007}[expected["arch"]]
+        minos = int(str(expected["minos"]).split(".")[0])
+        commands = struct.pack("<IIIIII", V.LC_BUILD_VERSION, 24, platform,
+                               (minos << 16), (17 << 16), 0)
+        strings = b"\0"
+        nlist = []
+        for symbol in symbols:
+            offset = len(strings)
+            strings += symbol.encode() + b"\0"
+            nlist.append((offset, 0x01 | 0x0e))     # N_EXT | N_SECT (exported)
+        symoff = 32 + len(commands) + 24            # header(32) + cmds + symtab_command
+        stroff = symoff + 16 * len(nlist)
+        commands += struct.pack("<IIIIII", V.LC_SYMTAB, 24, symoff, len(nlist),
+                                stroff, len(strings))
+        header = struct.pack("<IIIIIIII", 0xFEEDFACF, arch, 0, 2, 2, len(commands), 0, 0)
+        blob = header + commands + b"".join(
+            struct.pack("<IBBHQ", strx, ntype, 0, 0, 0) for strx, ntype in nlist) + strings
+        self.assertLessEqual(len(blob), want["bytes"],
+                             "the forged fixture must fit the register's byte count")
+        return blob + b"\0" * (want["bytes"] - len(blob))
+
     def test_a_replaced_image_is_refused_by_name(self):
-        """A sidecar beside a replaceable image cannot authorize it: the register
-        digest is the authority, so ANY other bytes are refused."""
-        image = self.root / "libsqlcipher.0.dylib"
-        image.write_bytes(b"a substituted image whose sidecar would say otherwise")
-        with self.assertRaisesRegex(self.V.AuthorityError, "sweareth|byte"):
-            self.V.verify_artifact(image, "macos", register=self.register)
+        """*** THE REGISTER, NOT A CO-LOCATED SIDECAR, IS THE AUTHORITY. ***
+
+        *A swapped image AND a sidecar describing it cannot authorize each other: the
+        register digest is the authority. The fixture is built to satisfy EVERY OTHER
+        gate -- the register's byte count, platform, arch, minos, required symbols and
+        init symbols -- so a verifier that consulteth the sidecar (or that no longer
+        enforceth the output digest) ACCEPTETH attacker bytes, and only the trusted
+        digest refuseth them.*"""
+        for mode in ("macos", "ios-simulator"):
+            src, expected = self.V._mode(self.register, mode)
+            image = self.root / f"{mode}-libsqlcipher.0.dylib"
+            image.write_bytes(self._attacker_image(mode))
+            # the attacker's internally consistent sidecar: it names the replaced
+            # image's OWN bytes and echoes every register field it can read.
+            (self.root / f"{mode}-libsqlcipher.0.dylib.artifact.json").write_text(
+                json.dumps({"library_name": self.register["library_name"],
+                            "source": {"commit": src["commit"], "tag": src["tag"],
+                                       "repo": src["repo"]},
+                            "cipher_version_major": self.register["cipher_version_major"],
+                            "platform": expected["platform"], "arch": expected["arch"],
+                            "sha256": self.V.sha256_file(image),
+                            "bytes": image.stat().st_size, "mode": mode}))
+            with self.assertRaises(self.V.AuthorityError):
+                self.V.verify_artifact(image, mode, register=self.register)
 
     def test_a_commit_prefix_is_not_a_pin(self):
         """The register stores a full commit; a 8-char prefix must never match."""
@@ -434,19 +486,27 @@ class ReleaseProofCaptureCourt(unittest.TestCase):
                                     jobs=jobs, artifacts=arts, logs=logs)
 
     def test_an_internal_compile_failure_with_a_forged_marker_is_not_external(self):
-        """The contract arm Main named: a marker does not launder a real internal red."""
+        """The contract arm Main named: a marker does not launder a real internal red.
+
+        *** THE ONLY INTERNAL-FAILURE EVIDENCE IS THE LOG'S OWN FAILURE MARKERS. ***
+        *A bare task name (`> Task :llm:compileReleaseKotlin`) is not failure evidence --
+        a HEALTHY run PRINTETH it -- so this arm maketh EVERY recorded step succeed and
+        carrieth the red ONLY in the log text (`> Task … FAILED`, a compiler error). It
+        therefore exercises the detector that readeth the LOG, not the recorded-step
+        arm: a blinded text reader would accept the forged marker and file an internal
+        compile red as BLOCKED_EXTERNAL.*"""
         C, run, jobs, arts, logs = self.facts()
         red = [dict(j) for j in jobs]
         red[3] = dict(red[3], steps=[
-            {"name": "compile repository-owned LLM Kotlin", "conclusion": "failure"},
-            {"name": "verify approved native stack input", "conclusion": "failure"}])
+            {"name": "compile repository-owned LLM Kotlin", "conclusion": "success"},
+            {"name": "verify approved native stack input", "conclusion": "success"}])
         forged = dict(logs, **{"4": (
             _run_section("cd android && ./gradlew :llm:compileReleaseKotlin",
                          "> Task :llm:compileReleaseKotlin FAILED\n"
                          "e: file:///x/Y.kt:1:1 unresolved reference: foo")
             + _marker_log("native_models", "docs/packaging/MODELS.lock.json",
                           "UNPINNED"))})
-        with self.assertRaisesRegex(C.CaptureError, "internally executable"):
+        with self.assertRaises(C.CaptureError):
             C.map_facts_to_document(candidate_sha="c" * 40, tree_sha="d" * 40, run=run,
                                     jobs=red, artifacts=arts, logs=forged)
 
@@ -776,11 +836,24 @@ class ExternalRegisterCourt(unittest.TestCase):
             self.E.check_native_models(self.root)
 
     def test_a_corrupt_register_is_an_error_never_a_missing_input(self):
-        """A broken lock is not evidence that content is away."""
+        """A broken lock is not evidence that content is away.
+
+        *** THE CLASSIFICATION IS `main`'s, NOT THE CHECKER's. *** *A checker that
+        RAISETH `RegisterError` is judged where `main` carrieth the `--check-inputs`
+        command, so this arm RUNNETH `emit_boundary.main` against a corrupt register
+        and demandeth exit 2 (UNJUDGEABLE) -- distinct from exit 1 (a measured ABSENCE)
+        and from 0 (present). A struck `except RegisterError` propagateth out of `main`
+        as a traceback rather than the typed exit 2, which is the refusal this arm
+        exists to catch.*"""
+        import contextlib
+        import io
         (self.root / "crypto").mkdir(parents=True)
         (self.root / "crypto" / "cacophony_vectors.json").write_text("{not json")
-        with self.assertRaises(self.E.RegisterError):
-            self.E.check_noise_fixture(self.root)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            rc = self.E.main(["--boundary", "noise_fixture", "--check-inputs",
+                              "--root", str(self.root)])
+        self.assertEqual(2, rc)
 
     def test_exit_codes_separate_present_absent_and_unjudgeable(self):
         import subprocess

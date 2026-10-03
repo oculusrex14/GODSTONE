@@ -1,0 +1,34 @@
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+test_a_campaign_whose_tested_input_moved_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_campaign_whose_tested_input_moved_is_refused)
+*** THE CAMPAIGN MUST HAVE RUN AGAINST THESE BYTES. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpfrd8dn74/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+FAIL
+
+======================================================================
+FAIL: test_a_campaign_whose_tested_input_moved_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_campaign_whose_tested_input_moved_is_refused)
+*** THE CAMPAIGN MUST HAVE RUN AGAINST THESE BYTES. ***
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M3-campaign-tested-inputs-may-move/tools/readiness/tests/test_board1_gate_manifest.py", line 324, in test_a_campaign_whose_tested_input_moved_is_refused
+    self.assertTrue(any("has MOVED since the campaign" in p
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        for p in self.fx.check(bad)))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 4.043s
+
+FAILED (failures=1)

@@ -10,6 +10,16 @@
 > remain immutable historical evidence; the rc14 attestation's blanket internal-completion verdict is NOT a
 > current completion claim.* **NO candidate carries a valid freeze for the current tree, and no READY status
 > is asserted.**
+> **Current rc15 work:** the Board1 campaign at `1d352a24` did **not** pass:
+> 74 `KILLED`, 14 `ESCAPED`, 64 `BASELINE_INVALID`, 4 `EXEC_INVALID`, 1 `BUILD_INVALID`,
+> and 17 `SKIPPED`. These outcome counts are not an aggregate killed percentage across lineages.
+> The simulator stock-SQLite oracle now stages the resolved device's runtime image, validates its export
+> surface, and checks the copied digest; missing supply remains a named failure, never a skip.
+> SQLCipher expectation generation now produces one source for both approved host/simulator modes,
+> selected at compile time, so preparing one lane does not invalidate its sibling's source digest.
+> Staging and the real host-image verifier were exercised successfully; the strengthened replacement-image
+> refusal witness passed. Full simulator re-sealing, campaign remediation, and release freeze remain pending.
+
 
 **BOTH CANDIDATES REMAIN NO-GO.** The readiness flags are FALSE and enforced false by a passing canonical
 control; THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED; NO finding carrieth `closure_evidence`.

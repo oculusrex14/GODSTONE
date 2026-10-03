@@ -1,0 +1,20 @@
+test_w14b_the_category_is_carried_on_the_result_and_in_the_report (test_t72.T72NamedCategoryTest.test_w14b_the_category_is_carried_on_the_result_and_in_the_report)
+*** THE CARRY, WHICH IS THE DIFFERENCE BETWEEN A NAME AND A CONTRACT. *** ... FAIL
+
+======================================================================
+FAIL: test_w14b_the_category_is_carried_on_the_result_and_in_the_report (test_t72.T72NamedCategoryTest.test_w14b_the_category_is_carried_on_the_result_and_in_the_report)
+*** THE CARRY, WHICH IS THE DIFFERENCE BETWEEN A NAME AND A CONTRACT. ***
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_SH-R05-python-the-category-is-carried-as-the-production-runtime/tools/readiness/tests/test_t72.py", line 354, in test_w14b_the_category_is_carried_on_the_result_and_in_the_report
+    self.assertEqual(result.category, Category.RESOURCE_MODEL)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'production-runtime' != 'resource-model'
+- production-runtime
++ resource-model
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.010s
+
+FAILED (failures=1)

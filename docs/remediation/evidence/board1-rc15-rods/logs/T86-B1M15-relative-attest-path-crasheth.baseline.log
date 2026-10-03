@@ -1,0 +1,26 @@
+FREEZE: board1-court-rc -> 492f1a418f0990f3dc5ef337b9a7e222842f420b (tree 27005d38b20d86fa49d5630c95de6cb11cd9f298) bound to run 1 attempt 1 7/7 jobs success
+  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
+  auditor block stays NULL: the terminal builder verdict is READY_FOR_EXTERNAL_REAUDIT, NEVER VERIFIED_FIXED
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+test_a_relative_attestation_path_is_resolved_and_never_crashes (test_board1_gate_manifest.AttestationBindingTests.test_a_relative_attestation_path_is_resolved_and_never_crashes)
+*** THE MEASURED CRASH: `--attest-out <repo-relative>` RAISED `ValueError` FROM `relative_to`. *** ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp7g3oy1ea/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+::error::--attest-out resolves to 'RELATIVE_ATTESTATION.json', not the ONE authoritative future attestation 'docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json' -- *a freeze writeth exactly one artifact, at the exact path the binding authority declares; an rc11/rc14-era name, a prefix or a directory is not admitted*
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 4.493s
+
+OK

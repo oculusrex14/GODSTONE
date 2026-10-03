@@ -47,6 +47,10 @@ private final class FakeReader: ArchiveReading, @unchecked Sendable {
     var failSearch = false
     var failList = false
     var failPassages = false
+    /// *** A TYPED WHOLE-ROAD FAULT (not merely a `queryFailed` boolean): the browse road throweth THIS error, so
+    /// an arm can drive `publishFailure` with an INSTALLATION woe and observe the mendability law that switcheth
+    /// on the woe's KIND -- the exact gate a broadened-retry mutation would strike. ***
+    var listFault: ArchiveError? = nil
     var searchBlock: ((String) -> [ArchivePassage])? = nil
 
     // record what really happened -------------------------------------------
@@ -76,7 +80,8 @@ private final class FakeReader: ArchiveReading, @unchecked Sendable {
     func read(_ request: ArchiveRequest) async throws -> ArchivePage {
         switch request {
         case .browse:
-            lock.lock(); listCalls += 1; lock.unlock()
+            lock.lock(); listCalls += 1; let injected = listFault; lock.unlock()
+            if let injected { throw injected }
             if failList { throw ArchiveError.queryFailed("no such table: documents") }
             return .documents([guide])
         case .search(let phrase):
@@ -932,44 +937,6 @@ final class ReadinessT50Tests: XCTestCase {
 
     // MARK: - GS-ARCHIVE-005: the destination's own provenance
 
-    /// *** GS-ARCHIVE-005 (step 1's SECOND option -- MEASURED at round 524 to be the right one): THE DOCUMENT
-    /// DESTINATION MUST PUBLISH ITS **OWN** CHECKED PROVENANCE. RUN RED BEFORE ITS REPAIR. ***
-    ///
-    /// WHY THE SECOND OPTION AND NOT THE FIRST: the card offereth two. The first -- "route destination selection
-    /// through `scene.open(document:)`" -- would make the destination drive the SCENE's model while the reader
-    /// driveth its OWN, i.e. TWO LOADS OF ONE DOCUMENT. The second -- "replace the destination with a model that
-    /// owns and publishes its own checked metadata" -- is BOTH the smaller change AND the more honest one, because
-    /// the metadata shown must belong to the document ACTUALLY ON SCREEN, and `ArchiveDocumentReader` already
-    /// holdeth an `ArchiveReaderModel` whose `sourceMetadata(documentId:)` is `nonisolated public`
-    /// (`ArchiveReaderModel.swift:47`). IT NEEDETH THE SCENE NOT AT ALL.
-    ///
-    /// WHAT WAS MEASURED BEFORE THIS ARM WAS WRITTEN, so that it is AIMED and not guessed:
-    ///   * `.navigationDestination(for: ArchiveDocument.self)` (`ArchiveView.swift:88`) constructeth
-    ///     `ArchiveDocumentReader(document:library:scene:)` and calleth `scene.open(` **NOWHERE**;
-    ///   * so `openedDocumentId`/`openedSource` are **never set by the route**, and `provenanceLine()`'s guard
-    ///     (`scene.openedDocumentId == document.id`, `:187`) is **never satisfied**;
-    ///   * therefore **THE REQUIRED PROVENANCE LINE RENDERETH NOTHING** -- which is the finding's own charge:
-    ///     "the required document provenance line is absent".
-    ///
-    /// A GUARD THAT CAN NEVER BE SATISFIED IS NOT A PROVENANCE LINE; IT IS AN ABSENCE WITH A CONDITION IN FRONT OF IT.
-    func testW14TheDocumentDestinationPublishethItsOwnCheckedProvenance() throws {
-        // *** THE COMMENTS ARE STRUCK FIRST, AND THIS IS NOT PEDANTRY: the FIRST draft of this arm asserted on the
-        // RAW SOURCE, and IT FAILED ON ITS OWN REPAIR'S COMMENT -- which quoteth the very spelling it forbiddeth. A
-        // CHECK THAT READETH COMMENTS IS NOT A CHECK ON CODE, which is round 261's species exactly (a comment taken
-        // for code), and it was caught the way this programme always catcheth it: BY RUNNING THE THING. ***
-        let view = codeOnly(try repoFile(named: "ios/Godstone/Sources/App/ArchiveView.swift"))
-        XCTAssertTrue(view.contains("sourceMetadataChecked(documentId:"),
-                      "*** THE DOCUMENT DESTINATION MUST PUBLISH ITS OWN CHECKED PROVENANCE: `ArchiveLibrary` "
-                      + "(declared at ArchiveReaderModel.swift:24) carrieth `nonisolated public func "
-                      + "sourceMetadataChecked(documentId:) throws`, and the destination ALREADY receiveth the "
-                      + "library -- it merely DISCARDED it. MEASURED: the route never selecteth on the scene, so the "
-                      + "scene-sourced provenance line rendereth NOTHING (GS-ARCHIVE-005) ***")
-        XCTAssertFalse(view.contains("scene.openedSource"),
-                       "and the destination must NOT depend on a scene selection the route never setteth -- the "
-                       + "finding's charge is that this line is ABSENT, and a guard nobody can satisfy is how an "
-                       + "absence hid behind a condition")
-    }
-
     /// The source with its LINE COMMENTS struck -- because a comment is not code. A `://` inside a URL literal is
     /// kept whole, so a line is never truncated at a scheme by mistake.
     private func codeOnly(_ source: String) -> String {
@@ -982,7 +949,8 @@ final class ReadinessT50Tests: XCTestCase {
     }
 
     /// AND THE STRUCTURAL ARM RESTS ON A MEASURED SEMANTIC, NOT ON HOPE: the provenance probe really answereth
-    /// THE DOCUMENT'S OWN METADATA, so the assertion above is not a claim about a method that answereth nil.
+    /// THE DOCUMENT'S OWN METADATA -- the semantic the executed UI arm (`GodstoneArchiveUITests`) and the ARCHIVE-PROV
+    /// rods lean upon.
     ///
     /// AND THE PROBE BELONGETH TO THE **LIBRARY**, NOT THE READER MODEL -- AN ERROR OF MINE, RECORDED BECAUSE IT
     /// NEARLY BECAME A WRONG REPAIR: this arm was FIRST written as `model.sourceMetadata(...)`, and the COMPILER
@@ -1287,6 +1255,36 @@ final class ReadinessT50Tests: XCTestCase {
         XCTAssertEqual(scene.phase, .ready, "the mended road resteth ready")
         XCTAssertEqual(scene.openedSource, fake.sourceTable[7], "with the projection it always owed")
         XCTAssertNil(scene.metadataError, "and no citation fault is left standing when nothing is to mend")
+
+        // (D) *** THE WHOLE-ROAD MENDABILITY LAW, DRIVEN BY THE WOE'S OWN KIND. ***
+        //
+        // *THE SAME TAXONOMY, AT THE OTHER ROAD.* The citation-road field above proveth the KIND travelleth with
+        // the woe. This arm proveth the KIND decideth the KNOCK at the whole-road gate `publishFailure` owns: an
+        // INSTALLATION woe must publish `.unavailable(recoverable: false)` and earn NO retry, while a momentary
+        // QUERY woe must publish `recoverable: true` and EARN one. **A broadened-retry mutation that adds the
+        // installation kinds to the mendable switch flips the first assertion; the second proveth the gate was not
+        // clamped shut in the keeping of it. No source text is read: the verdict is the scene's own published state.**
+        let installScene = ArchiveSceneModel(reading: fake, model: ArchiveReaderModel(library: fake))
+        fake.listFault = .noSuchTable("documents")
+        await installScene.loadDocuments()
+        await seat(installScene)
+        guard case .unavailable(let installReason, let installRecoverable) = installScene.phase else {
+            return XCTFail("an installation woe on the browse road must be told unavailable, got \(installScene.phase)")
+        }
+        XCTAssertFalse(installReason.isEmpty, "the installation woe must be named, not blank")
+        XCTAssertFalse(installRecoverable, "an installation woe is the installer's to mend -- no knock is earned")
+        XCTAssertFalse(installScene.canRetry, "and no whole-road retry may be offered for it")
+
+        let queryScene = ArchiveSceneModel(reading: fake, model: ArchiveReaderModel(library: fake))
+        fake.listFault = .queryFailed("prepare: no such table: documents")
+        await queryScene.loadDocuments()
+        await seat(queryScene)
+        guard case .unavailable(_, let queryRecoverable) = queryScene.phase else {
+            return XCTFail("a momentary query woe must be told unavailable, got \(queryScene.phase)")
+        }
+        XCTAssertTrue(queryRecoverable, "a momentary query woe earneth its knock -- the gate is not clamped shut")
+        XCTAssertTrue(queryScene.canRetry, "and the whole-road retry standeth earned")
+        fake.listFault = nil
     }
 
 }

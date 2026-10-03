@@ -193,34 +193,129 @@ def verify_artifact(path: Path, mode: str, *,
     }
 
 
+#: The two Apple modes the register authoriseth for the host/simulator isles. Their
+#: expectations are emitted into ONE source and SELECTED AT COMPILE TIME, so the
+#: generated compile input is byte-identical whichever lane emitted it -- a lane can
+#: no longer leave the OTHER lane's committed compile input stale.
+SWIFT_APPROVED_MODES = ("ios-simulator", "macos")
+
+
+def _mode_outputs(register: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """The register's own per-mode output authority, read STRICTLY.
+
+    *The Swift expectation is the COMPILED-IN trust anchor, so every field it bakes
+    (mode, platform, arch, output digest, byte count) MUST come from the trusted
+    register -- never from a co-located sidecar, never from the mutable staging dir.
+    A missing or malformed field is a REFUSAL, not a silent default.*"""
+    source = (register.get("sources") or [None])[0]
+    if not isinstance(source, Mapping):
+        raise AuthorityError("the register carrieth no source identity")
+    outputs: dict[str, dict[str, Any]] = {}
+    for mode in SWIFT_APPROVED_MODES:
+        entry = (source.get("modes") or {}).get(mode)
+        if not isinstance(entry, Mapping):
+            raise AuthorityError(f"the register carrieth no approved mode {mode!r}; the "
+                                 f"Swift expectation cannot be emitted")
+        expected = entry.get("expected_output") or {}
+        sha = expected.get("sha256")
+        nbytes = expected.get("bytes")
+        if not isinstance(sha, str) or not SHA256_RE.fullmatch(sha):
+            raise AuthorityError(f"mode {mode} carrieth no trusted output SHA-256")
+        if not isinstance(nbytes, int) or nbytes <= 0:
+            raise AuthorityError(f"mode {mode} carrieth no positive output byte count")
+        for key in ("platform", "arch"):
+            if not entry.get(key):
+                raise AuthorityError(f"mode {mode} carrieth no {key!r}")
+        outputs[mode] = {"mode": mode, "platform": entry["platform"],
+                         "arch": entry["arch"], "sha256": sha, "bytes": nbytes}
+    return outputs
+
+
 def swift_constant(facts: Mapping[str, Any], *, register: Mapping[str, Any] | None = None
                    ) -> str:
     """The GENERATED Swift expectation (option 4a: a baked-in, non-staging trust).
 
     Emitted at the build/package boundary by a TRUSTED step (this tool), so the
     loader importeth a compiled-in constant rather than reading any file beside a
-    replaceable image. One value per mode; the host/sim lane compiles THE one for
-    its platform+arch."""
+    replaceable image.
+
+    *** ONE REGISTER-AUTHORITY SOURCE FOR BOTH APPROVED APPLE MODES. *** *The host
+    (macos) and simulator (ios-simulator) lanes place the SAME compiled input at the
+    SAME canonical path, so an emission that baked only the emitting lane's mode left
+    the other lane's committed source stale the moment its sibling ran -- a single
+    mutable tracked file two lanes wrote with different content. The expectation now
+    bakes EVERY approved mode and SELECTETH the active one at COMPILE TIME
+    (`targetEnvironment(simulator)` / `os(macOS)`), so the bytes are mode-independent
+    and the compile input can never describe the wrong lane.* **A device build is left
+    with NO approved authority: the device branch bakes a platform the engine's
+    `IOS` runtime guard cannot match, so the device road stayeth fail-closed rather
+    than inventing a device digest.**
+
+    `facts` is the verified artifact's fact set (the caller MUST have verified the
+    actual built image against the register first); every value baked here cometh from
+    the TRUSTED REGISTER, never from the sidecar or the staging dir."""
     register = register or load_register()
+    outputs = _mode_outputs(register)
+    # *** THE EXPECTATION MAY ONLY BE EMITTED FOR AN ARTIFACT THE REGISTER AUTHORISES. ***
+    #
+    # *The caller has already verified the built bytes; this bindeth that verified fact
+    # set BACK to the register, so a stale or unapproved `facts` can no longer be baked
+    # into the compiled-in anchor. A mismatch is a refusal, never a silent emission.*
+    mode = facts.get("mode")
+    if mode not in outputs:
+        raise AuthorityError(f"the verified artifact's mode {mode!r} is not an approved "
+                             f"register mode {sorted(outputs)}: refusing to emit the trust "
+                             f"expectation")
+    out = outputs[mode]
+    if (facts.get("sha256") != out["sha256"] or facts.get("bytes") != out["bytes"]
+            or facts.get("platform") != out["platform"] or facts.get("arch") != out["arch"]):
+        raise AuthorityError(f"the artifact facts do not match the register's mode {mode!r}: "
+                             f"refusing to emit a trust expectation from unapproved bytes")
+    source = register["sources"][0]
     symbols = ",\n".join(f'        "{name}"' for name in register["required_symbols"])
+    recipe_sha = hashlib.sha256(
+        json.dumps(source["recipe"], sort_keys=True).encode()).hexdigest()
+
+    def branch(mode: str) -> str:
+        out = outputs[mode]
+        return (f'    public static let mode = "{out["mode"]}"\n'
+                f'    public static let platform = "{out["platform"]}"\n'
+                f'    public static let arch = "{out["arch"]}"\n'
+                f'    public static let sha256 = "{out["sha256"]}"\n'
+                f'    public static let bytes = {out["bytes"]}')
+
     return f"""// GENERATED by tools/supplychain/verify_sqlcipher_artifact.py --emit-swift.
-// DO NOT EDIT BY HAND. The value is baked at the build/package boundary from
-// docs/supplychain/SQLCIPHER.pins.json, outside any runner-writable staging dir.
+// DO NOT EDIT BY HAND. The value is baked at the build/package boundary from the
+// TRUSTED register docs/supplychain/SQLCIPHER.pins.json -- never from a co-located
+// sidecar and never from the runner-writable staging dir. It carrieth EVERY approved
+// Apple mode in ONE source and SELECTETH the active mode at COMPILE TIME, so a host
+// and a simulator lane emit BYTE-IDENTICAL bytes and neither can leave the other's
+// committed compile input stale.
 public enum SQLCipherTrustedExpectation {{
-    public static let commit = "{facts['source']['commit']}"
-    public static let tag = "{facts['source']['tag']}"
-    public static let repo = "{facts['source']['repo']}"
-    public static let libraryName = "{facts['library_name']}"
-    public static let mode = "{facts['mode']}"
-    public static let platform = "{facts['platform']}"
-    public static let arch = "{facts['arch']}"
-    public static let sha256 = "{facts['sha256']}"
-    public static let bytes = {facts['bytes']}
-    public static let recipeSha256 = "{facts['recipe_sha256']}"
-    public static let cipherVersionMajor = {facts['cipher_version_major']}
+    public static let commit = "{source['commit']}"
+    public static let tag = "{source['tag']}"
+    public static let repo = "{source['repo']}"
+    public static let libraryName = "{register['library_name']}"
+    public static let recipeSha256 = "{recipe_sha}"
+    public static let cipherVersionMajor = {register['cipher_version_major']}
     public static let requiredSymbols = [
 {symbols}
     ]
+#if targetEnvironment(simulator)
+{branch("ios-simulator")}
+#elseif os(macOS)
+{branch("macos")}
+#else
+    // *** NO DEVICE AUTHORITY IS EMITTED. *** *The device-signed artifact is the
+    // register's still-EXTERNAL half; this source carrieth no device digest, so the
+    // engine's runtime `IOS` platform guard cannot match and the device road stayeth
+    // fail-closed rather than trusting an invented expectation.*
+    public static let mode = "unapproved-device"
+    public static let platform = "UNAPPROVED_DEVICE"
+    public static let arch = "none"
+    public static let sha256 = ""
+    public static let bytes = 0
+#endif
 }}
 """
 

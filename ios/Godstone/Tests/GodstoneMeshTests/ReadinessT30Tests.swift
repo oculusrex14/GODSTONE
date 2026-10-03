@@ -406,6 +406,70 @@ final class ReadinessT30Tests: XCTestCase {
         XCTAssertNotNil(e.bindingFailureReason, "the refusal must be NAMED, not merely true")
     }
 
+    /// *** (14b) A BOUND ARBITRARY-PATH LIBRARY IS NOT THE PINNED ENGINE -- AND `kind` MUST SAY SO. ***
+    ///
+    /// *T72-RC17: the previous arm bound only a NAME THAT CANNOT EXIST, so it exercised the ABSENT branch and never
+    /// the ARBITRARY-PATH branch -- and the mutation `isBound ? .pinnedSQLCipher : .plainSQLite` (which drops
+    /// `isArbitraryPath`) stayed green against it. This arm binds the REAL staged pinned dylib through the
+    /// ARBITRARY-PATH constructor (`claimPinned: false`), so `isBound` is TRUE while the path is NOT the canonical
+    /// one: `kind` must be `.plainSQLite`, else a dylib loaded from any path would claim pinned SQLCipher and the
+    /// factory's 'no plaintext fallback' gate would be satisfied by a lie.* **The image is the lane's mandatory,
+    /// repository-built pinned dylib -- a missing stage is a COURT/SYSTEM failure (XCTFail), never a skip. No fake
+    /// symbol and no mock: the SAME bytes the production constructor verifies are loaded through the arbitrary-path
+    /// door the mutation leaves open.***
+    func testTheArbitraryPathLibraryIsBoundYetNeverClaimsPinned() throws {
+        // THE STAGED PINNED IMAGE, resolved by the same searches as the production loader (env, test bundle,
+        // main bundle, lane fallback). XCTest's device process inheriteth no lane environment, so requiring the
+        // env name alone would turn a correctly staged bundle into a false supply failure.
+        var searchDirs: [String] = []
+        if let envDir = ProcessInfo.processInfo.environment["GODSTONE_SQLCIPHER_ARTIFACT_DIR"], !envDir.isEmpty {
+            searchDirs.append(envDir)
+        }
+        if let frameworks = Bundle(for: SqlCipherDylibEngine.self).privateFrameworksPath { searchDirs.append(frameworks) }
+        if let mainFrameworks = Bundle.main.privateFrameworksPath { searchDirs.append(mainFrameworks) }
+        #if targetEnvironment(simulator)
+        searchDirs.append("/tmp/sqlcipher-sim")
+        #else
+        searchDirs.append("/tmp/sqlcipher-macos")
+        #endif
+        guard let stage = searchDirs.first(where: { dir in
+            FileManager.default.fileExists(atPath: (dir as NSString).appendingPathComponent(SQLCipherPin.libraryName),
+                                          isDirectory: nil)
+        }) else {
+            XCTFail("*** MANDATORY NATIVE LANE 't30 arbitrary-path': '\(SQLCipherPin.libraryName)' was found in "
+                    + "none of the loader's search roots \(searchDirs). The pinned image is repository-built: run "
+                    + "tools/supplychain/build_sqlcipher_simulator.sh and stage it where the loader searches. ***")
+            return
+        }
+        let image = (stage as NSString).appendingPathComponent(SQLCipherPin.libraryName)
+
+        // (1) THE ARBITRARY-PATH BIND: the real dylib, loaded from a NON-CANONICAL path (claimPinned stays false).
+        let arbitrary = SqlCipherDylibEngine(libraryPath: image)
+        XCTAssertTrue(
+            arbitrary.isBound,
+            "*** THE REAL PINNED BYTES MUST LOAD, or this arm measureth the absent branch it existeth to "
+                + "distinguish: \(arbitrary.bindingFailureReason ?? "unknown") ***",
+        )
+        XCTAssertEqual(
+            arbitrary.kind, .plainSQLite,
+            "*** A LIBRARY BOUND AT AN ARBITRARY PATH MUST NOT CLAIM `.pinnedSQLCipher`. *`kind` is the factory's "
+                + "FIRST fail-closed gate; if it returned pinned for any bound path, a dylib loaded from anywhere "
+                + "would satisfy it and the private stores could open outside the verified, canonical image. The "
+                + "mutation that drops `isArbitraryPath` makes THIS assertion red.* ***",
+        )
+        XCTAssertNil(arbitrary.bindingFailureReason, "the bind itself succeeded -- the refusal is the CLAIM, not the load")
+
+        // (2) THE HEALTHY OPPOSITE: the canonical constructor on the same staged bytes claims `.pinnedSQLCipher`,
+        // so the arm proveth the discriminator rather than a `kind` that answers `plainSQLite` unconditionally.
+        let canonical = SqlCipherDylibEngine()
+        guard t30RequirePinnedImage(canonical, lane: "t30 arbitrary-path (opposite control)") else { return }
+        XCTAssertEqual(
+            canonical.kind, .pinnedSQLCipher,
+            "*** THE VERIFIED CANONICAL IMAGE STILL CLAIMETH PINNED -- the arbitrary-path refusal is a "
+                + "DISCRIMINATOR, not a `kind` clamped to plainSQLite. ***",
+        )
+    }
+
     // (15) the factory over the unbound engine answers .unavailable -- TYPED, and touching no file
     func testTheFactoryRefusethAnUnboundEngineWithoutTouchingDisk() throws {
         let kc = FakeKeychain(); dek(kc, tag)

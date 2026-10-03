@@ -1,0 +1,585 @@
+*** DEFERRED CTR ROD ANCHORS — stored source-only, NOT in the population. ***
+
+Parent directive: defer the terminal manifest/freeze/binding (CTR) rods until the
+source is finalized with a stable identity/auth/replay implementation and a
+meaningful witness. Do NOT register a weakened metadata-SHA admission as authority.
+29f is under active repair (two auth review cycles), so it is NOT a final witness.
+The six anchors below are recorded here for RE-REGISTRATION once Main calls the
+coherent baseline. They were NOT in the ledger when this file was written.
+
+Delta law (ci/check_candidate_binding.py):
+  find:     "        changed = sorted(delta)\n        if changed != [path]:"
+  witness:  ExecutingSuccessorEndpointTests.test_the_structural_half_refuses_a_successor_differing_in_TWO_files
+
+Hosted-manifest authentication / binding (ci/check_candidate_binding.py):
+  find:     "for problem in hosted_manifest_problems("
+  witness:  SharedReaderAuthenticationTests.test_the_shared_reader_refuses_an_embedded_manifest_that_was_never_hosted
+  find:     "_attestation_structural_declaration(att_rel, candidate, successor)"   # renamed from _attestation_binds_candidate
+  witness:  ExecutingSuccessorEndpointTests.test_the_structural_half_admits_the_exact_one_file_direct_child_and_refuses_a_wrong_binding
+
+Endpoint / evidence-root / rebind (ci/check_board1_manifest.py):
+  find:     "exec_expected_sha = proven_a or sha"
+  witness:  ExecutingSuccessorEndpointTests.test_a_manifest_whose_executing_endpoint_drifted_from_a_is_refused
+  find:     "            totals = android_lane_totals(lane_id, base, evidence_root=evr)"
+  witness:  LaneEvidenceRootDerivationTests.test_the_android_lane_counts_come_from_the_supplied_evidence_root
+  find:     "on_disk = (Path(remap_gates) / Path(path).name) if remap_gates is not None else (base / path)"
+  witness:  FreshReaderRebindTests.test_a_rebound_gate_log_with_the_same_bytes_is_accepted_and_a_swapped_one_refused
+
+Module-selftest 29f case (if it is green after the fixture repair):
+  expect_escaped: ["a successor differing in TWO files is refused"]
+
+
+*** ARCHIVE-PROV UPDATES (ArchiveProvenance rev 2) — STORED, NOT YET APPLIED. ***
+
+iOS Core (local://ArchiveProvenance-rods.json rev 2, NINE rods, every anchor count==1, EVERY ROD SINGLE-HUNK):
+  * The ledger currently holds ARCHIVE-PROV-001..007 (007 registered as guard_only/structural).
+    Rev 2 changes that:
+      - 007 RECUT as a RUNNABLE single-hunk mutation: find = the whole `.failure` case,
+        replace = "case .failure:\n            EmptyView()"; the switch over readProvenance()
+        stays exhaustive so the mutant builds. SHAPE-ONLY caveat REMOVED. Witness:
+        GodstoneArchiveUITests.testARCHIVEPROVAMetadataQueryFaultIsToldSanitisedAndEarnethItsRetry
+        ("*** THE FAULT MUST BE PRESENTED ***"). => MOVE 007 from guard_only to SEMANTIC.
+      - 008 SPLIT into two independent rods: 008 = the SEPARATION (citation fault routed
+        back into whole-road publishFailure; ArchiveSceneModel.swift; witnessed by three
+        T50 arms at the clauses the fix addeth); 009 = the RETRY NO-OP
+        (retryMetadataRead() -> bare return; witnessed by W19's mend clause,
+        openedSource stayeth nil).
+      - The COVERAGE-PRESENCE rod (old 009 expecting green) is DROPPED; no rod carrieth that shape.
+      - 003/004 re-pinned after the scene fix removed their catch block: 003 witnesses the
+        new silent-discard swallow (metadataFault = nil); 004 a fabricated .corrupt cause.
+  * CHECK WHEN PINNING: 009's arm driveth `scene.retryMetadataRead()`, NOT `scene.retry()`
+    (a citation fault leaves canRetry false). A rod whose arm drives scene.retry() is a stale draft.
+  * Targets: 001-006, 008, 009 -> swift_target GodstoneCoreTests, court ReadinessT50Tests
+    (two-step --target build then host bundle). 007 -> xcode-ui, scheme Godstone-Light,
+    executed XCUITest (ios/Godstone/Tests/GodstoneArchiveUITests/GodstoneArchiveUITests.swift).
+    New accessibility id: archive.provenance.line.
+
+LAYER ATTRIBUTION (parent-measured; fold into the pass — changes COUNTING, not cutting):
+the T50 host court ADDS a layer, it does NOT replace the rendered UI witness.
+  * rods 003/004/005/006/008/009 -> witnessed at the HOST layer (GodstoneCoreTests/ReadinessT50Tests):
+    the state owner's typed behaviour (separation, taxonomy, absence-vs-fault, retry cure).
+  * rod 007 -> witnessed at the RENDERED layer (GodstoneArchiveUITests, scheme Godstone-Light):
+    the surface actually SAYS the fault and the tap reacheth the real road.
+  Measured: T50 29/29 consumer methods PASS (0.144s); Archive UI 10 PASS.
+  => Each kill is attributable to ITS OWN layer: do NOT read the T50 pass as rendering proof, nor
+     the UI pass as covering the scene's typed separation. 008/009 = "carries it"; 007 = "shows it".
+
+Android set (local://ArchiveProvenance-rods-android.json rev 2): 6 rods, all
+single-hunk/single-occurrence re-cut (001 now one contiguous sourceMetadata body).
+  003/004 re-pinned to `if (archiveVerdict() is ArchiveState.Ready)`.
+  005 compiles UNVERIFIED (no midflight build): if the applier reports non-zero build
+  exit, record 005 INVALID (a wasted rod, not a catch) and ask for a re-cut.
+  Targets: module:core / :core:testDebugUnitTest, court
+  io.godstone.core.readiness.ReadinessArchive002Test (001/002/005); module:app /
+  :app:testDebugUnitTest, courts io.godstone.app.readiness.ReadinessT49Test (003/004),
+  io.godstone.app.ui.browse.GsFinal006RenderedReadingListTest (006).
+  Withdrawn by owner as unreachable (no orphan chunks): a "genuinely uncited row
+  rendereth nothing" arm — do NOT add it.
+
+
+*** CTR-CBM FINAL AUTH ROD SET (CanonicalTerminalRepair) — STORED, NOT APPLIED. ***
+
+Owner states this is the final set for the new public protocol/auth changes; court
+count is 57 (owner-reported). NOT anchors still unverified against the live tree —
+verify at the coherent-baseline pass before registering. All python rods against
+tools/readiness/tests/test_board1_gate_manifest.py.
+
+1) CTR-CBM-envelope-auth-once (ci/check_candidate_binding.py)
+   find:    "    problems.extend(attestation_document_problems(att_blob, rebind=rebind, strict_candidate=candidate))"
+   replace: "    problems.extend(_terminal_evidence_problems(json.loads(att_blob), strict_candidate=candidate))"
+   witness: test_a_forged_envelope_with_genuine_terminal_bytes_is_refused_at_standalone_admission
+2) CTR-CBM-validate-delegates-common (ci/check_candidate_binding.py)
+   find:    "    problems.extend(attestation_document_problems(\n        path.read_text(encoding=\"utf-8\"), rebind=rebind, run_facts=facts_fn,"
+   replace: "    problems.extend([])  # (mutant) skip the common envelope+terminal authority\n    _ = (rebind, facts_fn,"
+   witness: test_the_shared_reader_refuses_an_embedded_manifest_that_was_never_hosted
+3) CTR-CBM-mandatory-hosted-auth (ci/check_board1_manifest.py)
+   find:    "        problems.extend(list(authenticator(doc, repo=repo, candidate_sha=candidate_sha,"
+   replace: "        _ = authenticator  # (mutant) drop the mandatory hosted recapture\n        if False:\n            problems.extend(list(authenticator(doc, repo=repo, candidate_sha=candidate_sha,"
+   witness: test_a_forged_self_sealed_proof_is_refused_by_the_real_authenticator
+4) CTR-CBM-schema2-run-keys (ci/check_board1_manifest.py)
+   find:    "            entry[\"run_id\"] = run.get(\"id\")\n            entry[\"run_attempt\"] = run.get(\"attempt\")"
+   replace: "            entry[\"run_id\"] = doc.get(\"run_id\")\n            entry[\"run_attempt\"] = doc.get(\"run_attempt\")"
+   witness: test_release_proof_facts_reads_run_id_attempt_and_optional_tag
+5) CTR-CBM-executing-A-endpoints (ci/check_board1_manifest.py)
+   find:    "    exec_expected_sha = proven_a or sha"
+   replace: "    exec_expected_sha = sha"
+   witness: test_a_manifest_whose_executing_endpoint_drifted_from_a_is_refused
+6) CTR-B1M-rebind-evidence-root-gate-log (ci/check_board1_manifest.py)
+   find:    "        on_disk = (Path(remap_gates) / Path(path).name) if remap_gates is not None else (base / path)"
+   replace: "        on_disk = base / path"
+   witness: test_a_rebound_gate_log_with_the_same_bytes_is_accepted_and_a_swapped_one_refused
+7) (carry-over) CTR-B1M-29e lane evidence root: "            totals = android_lane_totals(lane_id, base, evidence_root=evr)"
+   witness: test_the_android_lane_counts_come_from_the_supplied_evidence_root
+
+NOTE: rod 5 duplicates the earlier CTR-B1M-29f-endpoint-ignores-proven-a mutation
+(exec_expected_sha) — register ONE, not both.
+
+
+*** RECOVERY JOURNAL/IDENTITY FINAL ROD SET (RecoveryJournalIdentity) — STORED, NOT APPLIED. ***
+
+swift_target=GodstoneMeshTests for all; court files MID-EDIT by the test owner, so
+every witness is subject to the witness-presence preflight at the coherent baseline.
+Caveats stated by owner: (a) no main-tree reference to EncryptedStoreAdmissionLedger /
+requirePermitConsumption remains — those OLD rod anchors are dead by cutover, do NOT
+re-pin them (this covers the current count==0 anchors NCR-08-style and the old
+MUT-IOS-R1-* / R5 / R7 anchors); (b) private composition now flows through
+PhysicalEstateAuthority.beginConstruction + EncryptedStoreAdmissionScope(authorityLease:storeTag:storePath:);
+(c) aCrashAfterIdentityPublication... and coldRequires... exist today per grep.
+
+Re-pin/register (platform "swift" with swift_target GodstoneMeshTests):
+  IOS-RECOVERY-001   FileWipeJournal.swift / GsFinal003StartupPermitTests
+    find:    "if let unvouchedRaw, raw == unvouchedRaw { return .unreadable }"
+    replace: "if let unvouchedRaw, raw == unvouchedRaw, unvouchedRaw.isEmpty { return .unreadable }"
+    witness: testGSFINAL003_aStoreThatCannotAnswerIsTreatedAsCorrupt
+  IOS-RECOVERY-001b  WipeJournalDurabilityAdapter.swift / GsFinal003StartupPermitTests
+    find:    "guard written.synchronized else {"
+    replace: "guard written.synchronized || written.epoch != nil else {"
+    witness: testGSFINAL003_aDroppedTerminalCheckpointNeverSettles
+  IOS-RECOVERY-002   FileWipeJournal.swift / GsFinal003RecoveryTopologyTests
+    find:    "seen = Swift.max(seen ?? 0, onMedium)"
+    replace: "seen = onMedium"
+    witness: testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot
+  IOS-RECOVERY-002b  CrashResumableWipe.swift / GsFinal003RecoveryTopologyTests
+    find:    "guard let advanced = reporting.bumpEpoch() else {"
+    replace: "guard let advanced = (reporting.bumpEpoch() ?? Optional(localGeneration &+ 1)) else {"
+    witness: testGSFINAL003_aDroppedTerminalCheckpointNeverSettles
+  IOS-RECOVERY-003   EstateOwnerRegistry.swift / GsFinal003RecoveryTopologyTests
+    find:    "guard census.verifiedCatalog else {"
+    replace: "guard census.verifiedCatalog || census.entries.isEmpty else {"
+    witness: testGSFINAL003_coldRequiresAPositivelyVerifiedEstate
+  IOS-RECOVERY-007   WipeIdentityAuthoritySeam.swift / GsFinal003RecoveryTopologyTests
+    find:    "guard readPublicationIntent() == wipeGeneration,"
+    replace: "guard readPublicationIntent() != nil,"
+    witness: testGSFINAL003_aCrashAfterIdentityPublicationStillSettlesOnOneIdentity
+  MUT-IOS-BASELINE-01 CrashResumableWipe.swift / GsFinal003StartupPermitTests
+    find:    "return (store as? WipeEpochReporting)?.bumpEpoch() != nil"
+    replace: "return true"
+    witness: testGSFINAL003_aCleanLaunchIsPermittedRatherThanRefused
+  MUT-IOS-BASELINE-02 MeshRuntime.swift / GsFinal003StartupPermitTests
+    find:    "guard baseline.synchronized, baseline.epoch != nil else {"
+    replace: "guard baseline.synchronized || baseline.epoch != nil, baseline.epoch != nil || baseline.synchronized else {"
+    witness: testGSFINAL003_noBlockedEstateCanYieldAPermitByAnyRoad
+  MUT-IOS-LEASE-01   MeshRuntime.swift / GsFinal003StartupPermitTests
+    find:    "lease.retire()"
+    replace: "if false { lease.retire() }"
+    witness: testGSFINAL003_theWitnessCountersObserveARealAcceptedConstruction
+  MUT-IOS-LEASE-02   EstateOwnerRegistry.swift / GsFinal003RecoveryTopologyTests
+    find:    "permit.consumeForConstruction(estateId: estateId, liveGeneration: generation) != nil else {"
+    replace: "permit.consumeForConstruction(estateId: estateId, liveGeneration: generation) != nil || permit.generation == permit.generation else {"
+    witness: testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot
+  MUT-IOS-RESUMEDRAIN-01 CrashResumableWipe.swift / GsFinal003RecoveryTopologyTests
+    find:    "if let owners = runtime as? WipeOwnerDraining {\n                    switch owners.drainOwners() {\n                    case .drained, .cold:\n                        break\n                    case .ownersLive(let reason):\n                        return .retryLater(at: from, reason: reason)\n                    }\n                } else if !runtime.isQuiesced() {"
+    replace: "if let owners = runtime as? WipeOwnerDraining {\n                    switch owners.drainOwners() {\n                    case .drained, .cold, .ownersLive:\n                        break\n                    }\n                } else if !runtime.isQuiesced() {"
+    witness: testGSFINAL003_aLiveOwnerThatCannotBeDrainedKeepsTheWipePending
+  MUT-IOS-GATE-01    CrashResumableWipe.swift / GsFinal003RecoveryTopologyTests
+    find:    "return durable.state == .idle"
+    replace: "return true"
+    witness: testGSFINAL003_aRetainedOwnerObservesAnotherOwnersWipe
+  MUT-IOS-REQSWALLOW-01 MeshRuntime.swift / GsFinal003StartupPermitTests
+    find:    "try authority.recordWipeRequest()"
+    replace: "try? authority.recordWipeRequest()"
+    witness: testGSFINAL003_anInterruptedWipeDoesNotEnterPrivateStartup
+  MUT-IOS-SEAL-01    EstateOwnerRegistry.swift / GsFinal003RecoveryTopologyTests
+    find:    "fileprivate init(estateId: String, generation: UInt64, journal: WipeJournal,"
+    replace: "public init(estateId: String, generation: UInt64, journal: WipeJournal,"
+    witness: testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot
+    type_enforced: true   (unforgeable capability boundary)
+
+ADDENDUM (source re-verified; new arms now EXIST in GsFinal003RecoveryTopologyTests):
+  MUT-IOS-FJ-FILEFAULT-SEAM  FileWipeJournal.swift
+    find:    "if syncFaultForTest == .file {"
+    replace: "if false, syncFaultForTest == .file {"
+    witness: testGSFINAL003_aFailedFileSyncLeavesTheOldCommittedRecordStanding
+  MUT-IOS-FJ-DIRFAULT-SEAM   FileWipeJournal.swift
+    find:    "if syncFaultForTest == .directory {"
+    replace: "if false, syncFaultForTest == .directory {"
+    witness: testGSFINAL003_aFailedDirectorySyncIsRefusedAndNeverAcknowledged
+  MUT-IOS-FJ-POISONCLEAR     FileWipeJournal.swift
+    find:    "unvouchedRaw = nil"
+    replace: "unvouchedRaw = unvouchedRaw"
+    witness: testGSFINAL003_aFailedDirectorySyncIsRefusedAndNeverAcknowledged
+  MUT-IOS-IDENTITY-INTENTGATE WipeIdentityAuthoritySeam.swift
+    find:    "guard writePublicationIntent(wipeGeneration) else {"
+    replace: "guard true, writePublicationIntent(wipeGeneration) || true else {"
+    witness: testGSFINAL003_identityAdoptionDemandsTheFullReplacementKeys
+
+CORRECTIONS/confirmations to the 14-rod set:
+  - IOS-RECOVERY-002b find exactly "guard let advanced = reporting.bumpEpoch() else {" (unique).
+  - MUT-IOS-RESUMEDRAIN-01 keeps the MULTI-LINE find (the tail `} else if !runtime.isQuiesced() {` makes it unique).
+  - MUT-IOS-SEAL-01 find "fileprivate init(estateId: String, generation: UInt64, journal: WipeJournal," count==1; type_enforced true.
+  - IOS-RECOVERY-003 witness caveat RESOLVED (binds via PhysicalEstateAuthority.bindInventory).
+  - Re-pin candidates (new arms): aFailedDirectorySyncIsRefusedAndNeverAcknowledged,
+    aFailedFileSyncLeavesTheOldCommittedRecordStanding, theDurableGenerationNeverRegresses,
+    aRefusedEpochAdvanceStopsTheRequestBeforeAnyEffect, aRestartFromRuntimeDrainedReDrainsTheLiveOwners,
+    rootsSharingTheKeyDomainJoinOneOwnerSet, identityAdoptionDemandsTheFullReplacementKeys,
+    aRetainedOwnerRefusesSensitiveUseOnACorruptOracle, everyPersistedStateSurvivesAReopenWithItsGeneration.
+  - Court-side: pinned engine is now the REAL SqlCipherDylibEngine in both courts (no platform-sqlite
+    mislabel); binding failure is XCTFail via the mandatory lane helper/init, never a skip.
+
+ADDENDUM #2 (post-CURRENT-01..07 repair) — SUPERSEDES affected rows; DO NOT register yet.
+SUPERSEDED: IOS-RECOVERY-002 `seen = Swift.max(seen ?? 0, onMedium)` is GONE (parseEpoch now
+floor-pinned — use MUT-IOS-FJ-PIN-FLOOR). MUT-IOS-FJ-POISONCLEAR valid but its marker-clear line
+is the extra target. Anything anchored on `writeChecked(state:` -> label is now `writeChecked(_:)`.
+NEW rods (byte-exact, count==1 verified by owner):
+  MUT-IOS-FJ-PIN-FLOOR   FileWipeJournal.swift / GsFinal003RecoveryTopologyTests
+    find:    "let pinned = suffix != nil && suffix == floor"
+    replace: "let pinned = suffix != nil || floor != nil"
+    witness: testGSFINAL003_theDurableGenerationNeverRegresses
+  MUT-IOS-FJ-MARKER-PRECEDE FileWipeJournal.swift
+    find:    "if !writeMarkerDurably(raw) {"
+    replace: "if false, !writeMarkerDurably(raw) {"
+    witness: testGSFINAL003_aFailedDirectorySyncIsRefusedAndNeverAcknowledged
+  MUT-IOS-FJ-MARKER-CLEAR   FileWipeJournal.swift
+    find:    "clearMarkerDurably()"
+    replace: "clearMarkerDurably(); _ = writeMarkerDurably(raw)"
+    witness: testGSFINAL003_aFailedDirectorySyncIsRefusedAndNeverAcknowledged
+  MUT-IOS-FJ-HISTORY-BASELINE FileWipeJournal.swift / GsFinal003StartupPermitTests
+    find:    "if !recordPresent, readFloor() == nil {"
+    replace: "if true {"
+    witness: testGSFINAL003_aCleanLaunchIsPermittedRatherThanRefused
+  MUT-IOS-MR-UNION-SCOPE   MeshRuntime.swift
+    find:    "let deleteScope = WipeArtifactFileSystemSeam.unionAwarePaths(realPaths, union: estate.unionArtifactPaths)"
+    replace: "let deleteScope = realPaths"
+    witness: testGSFINAL003_rootsSharingTheKeyDomainJoinOneOwnerSet
+  MUT-IOS-MR-OWNER-CENSUS  MeshRuntime.swift
+    find:    "runtime.ownerRegistry.register(name: \"message-store\") {"
+    replace: "runtime.ownerRegistry.register(name: \"message-store\") { [weak runtime] in _ = runtime;"
+    witness: testGSFINAL003_aLiveOwnerThatCannotBeDrainedKeepsTheWipePending
+  MUT-IOS-IVY-STAGE-PAIR   MeshIdentity.swift
+    find:    "guard standing.ed25519Seed == staged.ed25519Seed,"
+    replace: "guard true, standing.ed25519Seed == staged.ed25519Seed,"
+    witness: testGSFINAL003_identityAdoptionDemandsTheFullReplacementKeys
+  MUT-IOS-IDENTITY-INTENTGATE (SUPERSEDES earlier) WipeIdentityAuthoritySeam.swift
+    find:    "guard writePublication(staging) else {"
+    replace: "guard true, writePublication(staging) else {"
+    witness: testGSFINAL003_identityAdoptionDemandsTheFullReplacementKeys
+  MUT-IOS-COORD-AUTH-LOCK   CrashResumableWipe.swift
+    find:    "try PhysicalEstateAuthority.shared.serialized {\n            driveLock.lock()"
+    replace: "try { () -> T in\n            driveLock.lock()"
+    witness: testGSFINAL003_aRetainedOwnerObservesAnotherOwnersWipe
+KEEP as sent (re-verified count==1): IOS-RECOVERY-001/001b/002b/003/007, MUT-IOS-BASELINE-01/02,
+LEASE-01/02, RESUMEDRAIN-01, GATE-01, REQSWALLOW-01, SEAL-01.
+
+POST-HANDOFF COMPILE-RISK REPAIRS (RecoveryJournalIdentity; no build run): unionAwarePaths is
+now STATIC (called type-level from MeshRuntime's destructive paths); WipeIdentityAuthoritySeam
+init is now INTERNAL (takes the internal LocalIdentityKeychain). Re-verify MUT-IOS-MR-UNION-SCOPE
+find count==1 at landing (WipeArtifactFileSystemSeam.swift moved). All Board1 claims remain OPEN,
+verified_fixed=0 until the parent's focused repro + native/runtime smokes.
+
+ADDENDUM #3 (RETIRED/REPLACED — see replacement below):
+  MUT-IOS-FJ-UNKNOWN-HISTORY retired: its find "} else if recordPresent {" no longer exists.
+  MUT-IOS-FJ-HISTORY-BASELINE's find changed from "if !recordPresent, readFloor() == nil {" to "if !historyPresent {".
+REPLACEMENTS (byte-exact, count==1 verified by owner):
+  MUT-IOS-FJ-UNKNOWN-HISTORY-2 FileWipeJournal.swift / GsFinal003RecoveryTopologyTests
+    find:    "} else if historyPresent {"
+    replace: "} else if false {"
+    witness: testGSFINAL003_aPresentRecordWithNoKnownCounterNeverResetsToGenerationOne
+  MUT-IOS-FJ-HISTORY-BASELINE-2 FileWipeJournal.swift / GsFinal003StartupPermitTests
+    find:    "if !historyPresent {"
+    replace: "if true {"
+    witness: testGSFINAL003_aCleanLaunchIsPermittedRatherThanRefused
+  note: history predicate is now ONE property `historyPresent` (phase OR floor OR refusal marker)
+  used by raise/checked write/ordinary write/clear/absent read; successor computation allocates
+  nothing (scalar + hasKnown flag). Witness gained corrupt-floor/no-phase and UInt64.max-ceiling
+  assertions, so no extra rod needed for those.
+  DISTINCTNESS CONFIRMED by owner: "} else if historyPresent {" is line 445 inside bumpEpoch
+  (raise's no-known-counter refusal branch); "if !historyPresent {" is line 472 inside writeChecked
+  (checked write's first-launch baseline branch). Different lines/branches, neither a substring of
+  the other. No collision. Ordinary write(_:) / clear() reuse the guard via different strings, so no third rod.
+  ADDENDUM #4 (one rod, nothing retired):
+  MUT-IOS-FJ-MARKER-PRESENCE FileWipeJournal.swift / GsFinal003RecoveryTopologyTests
+    find:    "if FileManager.default.fileExists(atPath: unackedURL.path) { return .unreadable }"
+    replace: "if false, FileManager.default.fileExists(atPath: unackedURL.path) { return .unreadable }"
+    witness: testGSFINAL003_aPresentRecordWithNoKnownCounterNeverResetsToGenerationOne
+  STILL VALID (owner re-verified count==1): MUT-IOS-FJ-UNKNOWN-HISTORY-2, MUT-IOS-FJ-HISTORY-BASELINE-2,
+  MUT-IOS-FJ-POISONCLEAR, IOS-RECOVERY-001 (marker rule now precedes them as a separate presence check,
+  so independently killable). Court arm asserts the repaired contract in-process only (not independent process).
+
+
+
+
+
+
+
+RS PROTOCOL-CHANGE NOTE (ReleaseHostedAuthority, Main P1 fix): RS-PROOF-01..04 and
+RS-CAP-01/02 anchors are UNCHANGED and still unique; no repoint needed. Only the WITNESS
+courts' internal expectations changed (typed external marker admissible only from the job's
+named boundary step banner; per-job RP.EXTERNAL_JOB_BOUNDARIES; REQUIRED_EXTERNAL_BOUNDARIES
+now noise_fixture/native_models/model_weights/approved_content). Those courts are owned by
+ReleaseSupply/ReleaseHostedAuthority; if any registered RS witness asserted the old
+all-steps-failed / one-entry-per-boundary shape, its owner updates it — I do not edit that
+court. Verify the witness still exists/passes at the coherent-baseline pass.
+
+
+
+
+*** EVIDENCE REGISTRY/CLOSURE SPECS (EvidenceRegistryClosure) — STORED, NOT APPLIED. ***
+
+RULING: tools/readiness/tests/test_closure_state_mutations.py and
+test_closure_law_refuses.py are the closure plane's OWN adversarial courts (each arm
+already a kill-assertion). Leave them as their own courts; do NOT register their arms
+as scored Board1 rods (that conflates instrument with subject). Use those arms as
+WITNESSES for generator-striking rods instead.
+
+SCORED-READY (existing unittest witnesses; verify find count==1 at landing, siblings move bytes):
+  CLOS-PARTIAL-BLIND  scripts/build_structured_closure.py
+    find:    'UNRESOLVED_OBLIGATION_STATES = ("OPEN", "PARTIAL")'
+    replace: 'UNRESOLVED_OBLIGATION_STATES = ("OPEN",)'
+    witness: test_closure_law_refuses.ObligationStateMachine.test_one_partial_obligation_prevents_zero
+  CLOS-DRIFT-BLIND    scripts/build_structured_closure.py
+    find:    "        if drift:"
+    replace: "        if False:"
+    witness: test_closure_law_refuses.PersistedStateAgreesWithDerivation.test_a_stale_count_is_refused
+  CLOS-SCHEMA-BYPASS  scripts/build_structured_closure.py
+    find:    "problems.extend(_discharge_block_problems(oid, sd))"
+    replace: "pass"
+    witness: test_closure_law_refuses.StructuredDischargeContradiction.test_a_missing_required_field_is_refused
+
+RUNNER-WITNESS CANDIDATES (witness is an instrument --check, NOT a unittest arm;
+register ONLY under that tolerance, else drop — a runner check is not a per-arm kill):
+  REG-ACCOUNT-TRUSTED scripts/evidence_registry.py
+    find:    'counts["counts_accounted"] = counts["registered"] == counts["accounted"]'
+    replace: 'counts["counts_accounted"] = True'
+    witness: scripts/build_evidence_bundle.py --check section (4)
+  REG-ANCHOR-REWRITE  scripts/evidence_registry.py
+    find:    "data = _git(root, \"cat-file\", \"blob\", f\"{anchor_commit}:{rel}\", binary=True)"
+    replace: "data = (root / rel).read_bytes() if (root / rel).is_file() else None"
+    witness: scripts/build_evidence_bundle.py --check section (3)
+  BUNDLE-WALK-ABSORB  scripts/build_evidence_bundle.py
+    find:    'proc = _git("ls-files", "-z", "--", EVIDENCE_REL)'
+    replace: "os.walk population over EVIDENCE_DIR (untracked included)"
+    witness: scripts/build_evidence_bundle.py --check sections (1)/(2)
+
+NOTE: the three RUNNER-WITNESS rods need a runner-exit-code oracle (platform akin to
+"selftest" but driving build_evidence_bundle.py --check); decide at the coherent
+baseline whether that is a legitimate per-arm kill or must be dropped.
+post_tag/candidate-binding/freeze rods are parent + CanonicalTerminalRepair territory.
+
+*** INTEGRATION-EVIDENCE GATE RODS (IntegrationTerminalFinish) — STORED, NOT APPLIED. ***
+
+Both single-hunk python rods against ci/check_integration_evidence.py; witness = the gate's own
+`python3 ci/check_integration_evidence.py --selftest` (canonical gate id `integration-evidence`).
+Owner supplied PROSE for A and a block-deletion sketch for B, NOT byte-exact find/replace — request
+exact strings before registering.
+
+ROD A (register-truth, not self-claim): weaken `check_build_attestation`'s register comparison so
+`library_sha256` is no longer compared (e.g. exempt `.get('library_sha256')`, or
+`want.pop('library_sha256', None)` after `want = {...}`).
+  witness: selftest case "25. the attestation's library digest is not the register's" must go red.
+  (Owner replaced the old vacuous case 25, which mutated the self-claim boolean
+  `library_agrees_with_register` and was refused for the WRONG reason.)
+ROD B (typed intentional halt needs its marker): strike the marker cross-check in `check_terminations`
+so a bare `intentional_halt: true` is accepted (delete the block matching
+`if re.search(rf"GS_INTEGRATION_INTENTIONAL_HALT status={re.escape(str(status))}(?:\b|$)", marker) is None:`).
+  witness: selftest case "29. a witness claims a typed halt with no marker text" must go red, and
+  "29b. a witness with a matching typed-halt marker is accepted" must STAY GREEN.
+Both target Python control source only (owner's file); no product/canonical source.
+
+BYTE-EXACT (owner-supplied; count==1 asserted by owner — re-verify at coherent-baseline pass):
+ROD A  id pending (e.g. INTEG-EV-LIBDIGEST-UNCOMPARED), platform selftest,
+  control "ci/check_integration_evidence.py", selftest_flag "--selftest", file same,
+  find:
+        for key, authority in want.items():
+            if att.get(key) in (None, "") or att.get(key) != authority:
+  replace:
+        want.pop("library_sha256", None)
+        for key, authority in want.items():
+            if att.get(key) in (None, "") or att.get(key) != authority:
+  expect_escaped: ["25. the attestation's library digest is not the register's"]
+ROD B  id pending (e.g. INTEG-EV-TYPED-HALT-NO-MARKER),
+  find: the whole block
+            marker = str(term.get("intentional_halt_marker", ""))
+            if re.search(rf"GS_INTEGRATION_INTENTIONAL_HALT status={re.escape(str(status))}(?:\b|$)",
+                          marker) is None:
+                problems.append(f"integration evidence: {term.get('name')}: claims a typed intentional halt at "
+                                f"status {status!r} but the log marker {marker[:80]!r} does not NAME that status "
+                                f"-- *the claim must quote the line the worker printed before halting*")
+  replace: "" (delete)
+  expect_escaped: ["29. a witness claims a typed halt with no marker text"]
+  must_stay_green: ["29b. a witness with a matching typed-halt marker is accepted"]
+
+LABEL-FORM CORRECTION (IntegrationTerminalFinish follow-up): the selftest prints each row as
+`   {name:<width}  {expect:6s} {got:6s} {verdict}` (THREE leading spaces; label at column 3).
+My executor strips leading whitespace and captures the SHORT label form `([0-9]+[a-z]?)\.`,
+i.e. "29" / "29b" (not the full name). So at the pass, register these rods with
+expect_escaped = ["29"] (ROD B) and ["25"] (ROD A) — the short form — OR extend the executor
+to also record the full left-justified name. The `b` disambiguates 29 from 29b.
+
+
+
+
+REFINEMENT (owner follow-up): carry FOUR normal python rods —
+  CLOS-PARTIAL-BLIND, CLOS-DRIFT-BLIND, CLOS-SCHEMA-BYPASS,
+  BUNDLE-WALK-ABSORB  scripts/build_evidence_bundle.py
+    find:    'proc = _git("ls-files", "-z", "--", EVIDENCE_REL)'
+    witness: test_evidence_bundle.TheBundleRefusesWhatItCannotProve.test_an_untracked_digest_entry_is_refused
+CONDITIONAL (register only with the stated witness, else record as named gap):
+  R4  REG-ACCOUNT-TRUSTED      find: counts["counts_accounted"] = counts["registered"] == counts["accounted"]
+      honest witness = the board1 manifest "evidence bundle" gate (argv `build_evidence_bundle.py --check`,
+      registered at ci/check_board1_manifest.py:243) — NOT a unittest arm; R4's unittest arm reads the
+      STORED doc, so it does not redden. Accept the gate or drop.
+  R5  REG-ANCHOR-REWRITE       witness: test_evidence_bundle.TheBundleRefusesWhatItCannotProve.test_a_tampered_historical_digest_is_refused
+      precondition: the mutant only reddens when working bytes DIFFER from the anchor.
+
+WITNESS-CONTRACT UPDATE (EvidenceRegistryClosure; source landed): NAMES PRESERVED for all
+four carried rods (CLOS-PARTIAL-BLIND / CLOS-DRIFT-BLIND / CLOS-SCHEMA-BYPASS /
+BUNDLE-WALK-ABSORB) — witnesses resolve by name. Re-verify find count==1 at landing (both
+court files moved). Subjects shifted to SYNTHETIC fixtures: every
+StructuredDischargeContradiction arm starts from VALID_DISCHARGE and mutates exactly one
+falsifier (control: test_the_valid_baseline_carries_no_contradiction);
+test_closure_state_mutations seeds its own synthetic DISCHARGED obligation into the
+SCRATCH gate. PRODUCTION tree stays 35 OPEN / verified_fixed 0. Drop or re-point any rod
+anchored to deleted helpers (_first_with_a_discharged, _first_discharged_obligation_id,
+_finding_of_obligation) to the seeded path. The 13 mutation cases + expected refusal
+categories are preserved (1-5 seeded, 6-11 live/persisted, 12-13 authored-unresolved).
+
+WITNESS-CONTRACT DELTA #2 (EvidenceRegistryClosure; both files moved again, re-verify at landing):
+  1. CitationTokens arm renamed: test_every_citation_in_the_map_carries_a_typed_token ->
+     test_every_discharged_obligation_carries_a_typed_token.
+  2. FindingStatusFollowsItsObligations.test_the_live_reopened_findings_derive_open: KeyError
+     fixed (reads the DERIVED closure from independent_audit_new_findings.findings).
+  3. StructuredDischargeContradiction: VALID_DISCHARGE now binds the PROSPECTIVE attestation
+     path (FUTURE_ATTESTATION_PATH = _load().FREEZE_ATTESTATION_SUCCESSOR_PATH) + candidate_ref
+     production-readiness-board1-rc15; new arms test_the_prospective_binding_is_admitted,
+     test_the_historical_attestation_cannot_discharge_the_current_candidate,
+     test_a_non_prospective_attestation_path_is_refused, test_the_historical_candidate_ref_is_refused,
+     test_an_embedded_candidate_identity_is_refused. CLOS-SCHEMA-BYPASS witness name UNCHANGED
+     (test_a_missing_required_field_is_refused).
+  4. test_closure_state_mutations: _run failure detail now carries rc + seeded flag + BOTH streams;
+     _Fixture.rederive raises with rc + both streams. No expected-category strings changed; 13 cases + floor intact.
+
+
+
+
+
+
+
+
+*** MAIN DIRECTIVES — HOLD (this round). ***
+
+W01/W02 RETIREMENT: ReadinessArchive004Tests.swift deleted the forbidden W01 SourceScrollView-text
+and W02 proxy-Source-text arms + the private Source helper; retained behavioural W03/W04/W05
+exact-anchor Decision courts. Actual ArchiveUI is 10 PASS + fresh LIGHT inspection observed.
+=> Retire/repoint any rod whose expected witness was old W01/W02 to the ACTUAL rendered UI; do NOT
+re-pin source asserts. CHECK DONE (read-only): NO rod in ci/mutations.py references W01/W02,
+ReadinessArchive004, or any Source-text witness — nothing to retire there. (ArchiveProvenance's
+rev-2 rods already target rendered GodstoneArchiveUITests arms, not W01/W02.)
+
+Queued while hold stands: 2 NativeMessageStore P1s (NativeTransactionClosureFix), last Recovery 3
+boundary rods, mandatory release-auth set, integration-evidence rods A/B, and the Quota/Observer
+T33 courts (owner QuotaObserverTerminalFix editing twins + meaningful courts). All mutations pending
+the final coherent baseline; 35 obligations OPEN; fresh-8-combo report not yet produced.
+
+*** T33 RESIDUAL RODS (QuotaObserverTerminalFix) — STORED, NOT APPLIED. ***
+
+swift arm: ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift; Kotlin twins analogous in the
+existing ci/mutations.py T33 section (android/mesh/.../store/StoreQuota.kt). Owner anchor lines cited;
+re-verify count==1 at the pass (owner is still editing twins/courts).
+1) T33-RES-inbox-names-delivery-rows  StoreQuota.swift:144
+   find:    "if inbox >= Int64(inboxRowCap) { return .refusedUnderPressure(.inboxRows) }"
+   replace: same with .inboxRows -> .deliveryRows
+   witness: testInboxCapRefusesInboxRowsAndDeliveryCapRefusesDeliveryRows
+2) T33-RES-late-disposal-ignored    StoreQuota.swift:241
+   find:    "            if !t.cancelled { fire() }"
+   replace: "            fire()"
+   witness: testUnregisterDuringDispatchLeavesTheDisposedObserverInert
+3) T33-RES-release-leaves-late-callbacks  StoreQuota.swift (~225-228)
+   find (verbatim, count==1, 8-space indent):
+        for (t, _) in registrations { t.cancelled = true }
+        for (t, _) in deferred { t.cancelled = true }
+        registrations.removeAll(); deferred.removeAll()
+   replace (clear-only mutant):
+        registrations.removeAll(); deferred.removeAll()
+   witness: testReleaseAllDuringDispatchLeavesRemainingObserversInert
+4) T33-RES-nested-dispatch-reenters  StoreQuota.swift:234
+   find:    "        if inTx || dispatching { return }"
+   replace: "        if inTx { return }"
+   witness: testNestedAfterCommitDuringDispatchFiresNoObserverTwice
+KOTLIN TWINS (owner-supplied anchors; NOT yet in ci/mutations.py — T33-RES-* are ADDITIVE beside T33-RC*):
+  inbox:          StoreQuota.kt:131  "if (inbox >= INBOX_ROW_CAP) return AdmissionResult.RefusedUnderPressure(Pressure.INBOX_ROWS)" -> "...Pressure.DELIVERY_ROWS"
+  late-disposal:  StoreQuota.kt:265  "                if (!t.cancelled) fire()" -> "                fire()"
+  releaseAll:     StoreQuota.kt:250-253 block "        for ((t, _) in registrations) t.cancel()\n        for ((t, _) in deferred) t.cancel()\n        registrations.clear(); deferred.clear()" -> "        registrations.clear(); deferred.clear()"
+  nested guard:   StoreQuota.kt:262  "        if (inTx || dispatching) return" -> "        if (inTx) return"
+  witnesses (android ReadinessT33Test.kt): same 4 as the swift arm.
+NOTE: existing T33 section holds 10 rods (RC1..RC5, 5 android + 5 iOS); T33-RES-* supersede NONE of them.
+
+
+*** ANDROID LAB/ESTATE RODS (AndroidLabTerminalFinish) — STORED, NOT APPLIED. ***
+
+Byte-exact single-hunk; re-verify count==1 at the pass (owner editing lab/labmesh).
+R1 LabRuntime.kt (PRODUCTION; COMPILE-LEVEL discriminator — parent's measured failure)
+  find:    "        override fun get(key: String): io.godstone.mesh.runtime.ComposedPeerMaterial? =\n            identities[key]?.let { peerMaterial(it) }"
+  replace: "        override fun get(key: Any?): io.godstone.mesh.runtime.ComposedPeerMaterial? =\n            (key as? String)?.let { identities[it] }?.let { peerMaterial(it) }"
+  kill: :mesh:compileDebugKotlin fails with "'get' overrides nothing" => type_enforced (compiler is the witness)
+R2 LabRuntime.kt (PRODUCTION; estate retirement / recorded CloseGuard leak)
+  find: the intent-ledger close block (comment + `for ((_, ledger) in intentLedgers) { … }`) verbatim
+  replace: "" (delete)
+  witness: LabEstateSameEstateTest.retireAndCloseDrainsTheOwnersAndRefusesOldWork (positive);
+           negative = CloseGuard "Explicit termination method 'close' not called" at LabSqliteIntentJournal
+R3 LabDurableDirectSend.kt (PRODUCTION; ledger closure)
+  find:    "    override fun close() {\n        runCatching { helper.close() }\n    }\n\n"
+  replace: "" (delete)  => LabSqliteIntentJournal no longer AutoCloseable
+  witness: same as R2
+R4 LabWipeJourneyTest.kt (COURT; over-pinned rung)
+  find:    "        val journeyRung = LabWipeJourney(ctx()).progress().rung"
+  replace: "        val journeyRung = LabWipeJourney(ctx()).progress().rung; org.junit.Assert.assertEquals(io.godstone.mesh.identity.WipeJournalState.REQUESTED, journeyRung)"
+  witness: theJourneyTravelsTheSameRecoveryGraphAsTheStartup + theRenderedJourneyIsDurableAcrossAReopen
+R5 LabEstateSameEstateTest.kt (COURT; non-self-proving ledger fixture)
+  find:    "        val logicalId = io.godstone.mesh.wire.v2.MessageId.derive(identity.nodeId, createdAt, nonce, signedPlaintext)"
+  replace: "        val logicalId = ByteArray(16) { 3 }"
+  witness: theEstatesLedgerReProvesTheAuthoredBytesAcrossAReopen
+R6 HostLabPlatform.kt (HOST FIXTURE; shared platform) — owner flags LOWER PRIORITY / weak kill
+  find:    "        return SqliteMessageStore(JdbcStoreDb(f), maxBytes)"
+  replace: "        return SqliteMessageStore(JdbcStoreDb(f), maxBytes).also { it.close() }"
+  witness: theProductSendResolvesTheEstatesTrustDirectory + LabMeshJourneyBoundTest.test_the_rendered_journey_sendeth_and_renders_the_runtimes_own_durable_id
+Prefer R1/R2/R4/R5. NOT rods (avoid alias padding): LabMeshApp.estatePlatform default, LabProfile
+constants, app onCreate.
+
+FINAL SELECTION (owner-confirmed): REGISTER R1 (type_enforced, compiler witness), R2, R4, R5.
+OMIT R6 (weak plausible kill — a DELIBERATE named omission, not padding) and R3 (redundant with
+R2's kill surface; include only if a separate ledger-close half is wanted — default: omit).
+
+*** ANDROID LAB DISCRIMINATORS, BATCH 2 (AndroidLabTerminalFinish) — STORED, NOT APPLIED.
+    SEVERAL ARE PROSE-ONLY OR NON-UNIQUE; BYTE-EXACT find/replace REQUIRED BEFORE REGISTRATION. ***
+
+ROD 1 LabRuntime.kt — retire-aware durable reads: guard `if (retired())` in heldMsgIdOf (and the
+  sibling readers heldMsgIdsOf/deliveryLabelOf/durableStateOf/heldCount/sendDirectResult).
+  Discriminator: read of a closed JDBC store throws `java.sql.SQLException: database connection closed`
+  (JdbcStoreDb.forEachMsgId); with the guard -> null/empty. Kill: DROP `if (retired())` in heldMsgIdOf.
+  -> NEED exact find (the guard line) + replace (unguarded form) for ONE unique occurrence; prose only.
+ROD 2 LabWipeJourney.kt — wipe retires live estate BEFORE the ladder: begin():221 / resume():234 /
+  resolveCorruptForOperator():264 each `live()?.retireLiveOwners()` then the graph drive.
+  Discriminator: harness.isWiped() true AND ProductionLabEstate.retireAndClose() count>0 after begin().
+  Kill: reorder retire AFTER the drive. -> NEED exact find/replace (a reorder = 2-line swap block).
+ROD 3 LabMeshJourneySemanticsTest.kt — roster = REQUIRED UNION ESSENTIAL_CONTROLS.keys, at lines 167
+  AND 536: `val roster = (LabControl.REQUIRED + AccessibilityContract.ESSENTIAL_CONTROLS.keys).distinct()`
+  (and a `byLayout` twin). Kill: revert to `LabControl.REQUIRED` alone.
+  -> NON-UNIQUE (2+ occurrences): scope to ONE occurrence (line 167 vs 536) or give the exact line context.
+ROD 4 same file — one setContent per scenario (merge-back -> IllegalStateException "Cannot call setContent
+  twice per test!"). PROSE only -> NEED exact find/replace.
+ROD 5 same file, live_graph arm — Send enablement is the real predicate: assertFalse(isEnabled(COMPOSE_SEND))
+  on empty draft; performTextInput then assertTrue. PROSE only -> NEED exact find/replace.
+
+BYTE-EXACT (owner-supplied; classes: ROD1/ROD2 PRODUCTION; ROD3/4/5 COURT; none host-fixture;
+all host-runnable under Robolectric JDK17 @Config(sdk=33)):
+ROD1 LabRuntime.kt
+  find:    "    suspend fun heldMsgIdOf(nodeLabel: String): ByteArray? =\n        if (retired()) null else harness.node(nodeLabel)?.store?.allHeldMsgIds()?.lastOrNull()"
+  replace: "    suspend fun heldMsgIdOf(nodeLabel: String): ByteArray? =\n        harness.node(nodeLabel)?.store?.allHeldMsgIds()?.lastOrNull()"
+  witness: LabMeshJourneyBoundTest.test_the_rendered_wipe_reaches_the_durable_record_and_survives_a_reopen
+ROD2 LabWipeJourney.kt
+  find:    "    fun begin(): Step {\n        // *** (1) OLD WORK REFUSED, BEFORE THE LADDER MOVES. ***\n        live()?.retireLiveOwners()\n        // *** (2) AND THE LADDER, OVER THE REAL CAPABILITIES. ***\n        return fromDrive(StartupRecoveryGraph.requestWipe(journal, seams()))\n    }"
+  replace: "    fun begin(): Step {\n        // *** (1) THE LADDER FIRST (the mutant). ***\n        val step = fromDrive(StartupRecoveryGraph.requestWipe(journal, seams()))\n        // *** (2) RETIRED AFTERWARDS. ***\n        live()?.retireLiveOwners()\n        return step\n    }"
+  HONEST NOTE: in-slice witnesses assert retire was CALLED/COUNTED, NOT its ORDER -> this mutant may
+  SURVIVE the current courts (would be ESCAPED, never KILLED); order is a production obligation not
+  strongly witnessed in-slice.
+ROD3a LabMeshJourneySemanticsTest.kt  find: "        val roster = (LabControl.REQUIRED + AccessibilityContract.ESSENTIAL_CONTROLS.keys).distinct()"
+                                     replace: "        val roster = LabControl.REQUIRED"
+ROD3b same file  find: "        val byLayout = (LabControl.REQUIRED + AccessibilityContract.ESSENTIAL_CONTROLS.keys).distinct()\n            .sortedBy { node(it).fetchSemanticsNode().positionInRoot.y }"
+                 replace: "        val byLayout = LabControl.REQUIRED.sortedBy { node(it).fetchSemanticsNode().positionInRoot.y }"
+  witness (3a/3b): test_the_shared_contract_is_applied_to_the_rendered_roster; apply each ALONE.
+ROD4 same file  find: "    @Test\n    fun test_the_control_enablement_follows_the_live_graph() {\n        render(componentState(sosRetryPermitted = true, normalGraphAvailable = true))"
+                replace: same + an extra render(...) line -> IllegalStateException "Cannot call setContent twice per test!"
+ROD5 same file  find: the empty-draft assertFalse / performTextInput("boat") / assertTrue block (verbatim)
+                replace: "        assertTrue(\"a live graph must leave Send reachable\", isEnabled(LabControl.COMPOSE_SEND) || true)"
+  witness: test_the_control_enablement_follows_the_live_graph (|| true tautology passes vacuously on an empty draft)
+

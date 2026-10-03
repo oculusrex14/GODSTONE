@@ -4,7 +4,7 @@ test_w03_a_readiness_override_in_the_light_flavour_is_refused (test_t54.T54Light
 FAIL: test_w03_a_readiness_override_in_the_light_flavour_is_refused (test_t54.T54LightIsolationTest.test_w03_a_readiness_override_in_the_light_flavour_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work/wt_T54-RC2-lab-isolation-gate-sleepeth-on-a-readiness-override/tools/readiness/tests/test_t54.py", line 154, in test_w03_a_readiness_override_in_the_light_flavour_is_refused
+  File "/private/tmp/board1-campaign-rc15-work2/wt_T54-RC2-lab-isolation-gate-sleepeth-on-a-readiness-override/tools/readiness/tests/test_t54.py", line 154, in test_w03_a_readiness_override_in_the_light_flavour_is_refused
     self.assertTrue(any("readiness override MESH_ENABLED" in e
     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                         for e in findings.errors), findings.errors)
@@ -12,6 +12,6 @@ Traceback (most recent call last):
 AssertionError: False is not true : []
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.007s
+Ran 1 test in 0.009s
 
 FAILED (failures=1)

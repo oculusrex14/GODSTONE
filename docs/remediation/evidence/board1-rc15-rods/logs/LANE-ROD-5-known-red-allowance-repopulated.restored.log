@@ -12,10 +12,11 @@
    9. stale digest sidecar                        red    red    KILLED
    10. duplicate verdict for one arm              red    red    KILLED
    11. source-declared arm omitted from the log   red    red    KILLED
-   12b. known-red arm fails with a FOREIGN signature red    green  ESCAPED
+   11b. a verdict for an arm the sources do NOT declare (unexpected arm) red    red    KILLED
+   12b. a recorded arm failing for a FOREIGN reason is REFUSED red    red    KILLED
    12. empty log (no arm verdicts at all)         red    red    KILLED
    13. a source changed while the lane ran (pre != post) red    red    KILLED
 
-ui selftest: 14/15 mutations killed
+ui selftest: 16/16 mutations killed
 
-(the intended control(s) ['6c'] did NOT escape -- observed ESCAPED=['12b']; an unattributed failure is not a kill)
+(the intended control(s) ['6c'] did NOT escape -- observed ESCAPED=[]; an unattributed failure is not a kill)

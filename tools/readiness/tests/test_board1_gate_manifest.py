@@ -275,18 +275,30 @@ class ManifestContractTests(unittest.TestCase):
         self.assertTrue(any("is not a full 40-hex tree" in p for p in problems))
 
     def test_a_dirty_start_or_end_is_refused(self):
-        """*** A CLEAN GIT STATUS IS REQUIRED AT BOTH ENDS, AND UNTRACKED PATHS MAKE IT UNCLEAN. ***"""
+        """*** A CLEAN GIT STATUS IS REQUIRED AT BOTH ENDS, AND UNTRACKED PATHS MAKE IT UNCLEAN. ***
+
+        *THE MEASURED ESCAPE: the case set `ok=False` AND a non-empty itemized inventory, so the inventory legs
+        refused the document even when the summary guard was disabled -- the mutant survived a witness it had already
+        satisfied for another reason. **So the `ok=False` leg now carrieth an EMPTY inventory, leaving only the summary
+        to speak: with the summary guard struck the document is ACCEPTED (the consumer-visible false green), so the
+        `ok=False` case asserts a refusal and no prose. The itemized legs stay as separate behavioural cases, each
+        asserting its own refusal.***
+        """
         for label in ("clean_start", "clean_end"):
             bad = json.loads(json.dumps(self.doc))
-            bad[label] = {**self.doc[label], "ok": False, "tracked": ["src/prod.swift"],
-                          "all": ["src/prod.swift"]}
-            self.assertTrue(any("uncommitted TRACKED change(s)" in p
-                                for p in self.fx.check(bad)), label)
+            bad[label] = {**self.doc[label], "ok": False, "tracked": [], "untracked": [], "all": []}
+            self.assertTrue(self.fx.check(bad),
+                            f"{label} with ok=False and no itemized path must be refused; the mutant accepts it")
             bad = json.loads(json.dumps(self.doc))
-            bad[label] = {**self.doc[label], "ok": False, "untracked": ["scratch/"],
+            bad[label] = {**self.doc[label], "ok": False, "tracked": ["src/prod.swift"],
+                          "untracked": [], "all": ["src/prod.swift"]}
+            self.assertTrue(self.fx.check(bad),
+                            f"{label} carrieth an uncommitted TRACKED change and must be refused")
+            bad = json.loads(json.dumps(self.doc))
+            bad[label] = {**self.doc[label], "ok": False, "tracked": [], "untracked": ["scratch/"],
                           "all": ["scratch/"]}
-            self.assertTrue(any("UNTRACKED path(s)" in p
-                                for p in self.fx.check(bad)), label)
+            self.assertTrue(self.fx.check(bad),
+                            f"{label} carrieth an UNTRACKED path and must be refused")
 
     def test_a_lightweight_candidate_tag_is_refused(self):
         self.fx._git("tag", "board1-court-light", "-f", self.fx.sha)
@@ -296,11 +308,21 @@ class ManifestContractTests(unittest.TestCase):
 
     # ------------------------------------------------------------------ campaign
     def test_a_campaign_population_that_disagrees_with_the_ledger_is_refused(self):
-        """*** THE POPULATION COMES FROM THE LEDGER, NOT FROM THE MANIFEST'S OWN CLAIM. ***"""
+        """*** THE POPULATION COMES FROM THE LEDGER, NOT FROM THE MANIFEST'S OWN CLAIM. ***
+
+        *THE MEASURED ESCAPE: the case sliced `required_ids`, but the ledger-source equality guard already refuseth
+        that state -- so the `omitted` guard this mutation disables was never the reason the case passed, and the
+        witness stayed green under the mutant. **So the case now gives the manifest's OWN recorded SELECTION as EMPTY
+        while the envelope still selected every required rod: the selection-minus-required delta is the ONLY
+        disagreement the `omitted` guard sees, so with the guard struck the document is ACCEPTED -- the consumer-visible
+        false green -- and the witness condemneth it. The assertion is the refusal itself, never its prose.***
+        """
         bad = json.loads(json.dumps(self.doc))
-        bad["campaign"]["population"]["required_ids"] = bad["campaign"]["population"]["required_ids"][:-1]
-        self.assertTrue(any("campaign.required_ids differ from the ledger's own set" in p
-                            for p in self.fx.check(bad)))
+        bad["campaign"]["population"]["selected_ids"] = []
+        bad["campaign"]["population"]["row_count"] = 0
+        self.assertTrue(self.fx.check(bad),
+                        "a manifest whose recorded selection is EMPTY while the envelope selected every required rod "
+                        "must be refused; the mutant accepts it")
 
     def test_a_campaign_missing_a_required_row_is_refused(self):
         bad = json.loads(json.dumps(self.doc))
@@ -677,10 +699,23 @@ class AttestationBindingTests(unittest.TestCase):
             self.fx._git("reset", "--hard", self.fx.sha)
 
     def test_a_manifest_edited_after_the_attestation_bound_it_is_refused(self):
-        before = self.att.read_bytes()
+        """*** THE ATTESTATION'S BOUND MANIFEST IS AN ANCHOR, AND ITS DIGEST IS RE-DERIVED. ***
+
+        *THE MEASURED ESCAPE: the case tampered ONLY the on-disk copy, which the embedded-vs-disk equality guard
+        already refuseth -- so disabling the bound-digest re-derivation changed nothing and the witness stayed green.
+        **So the on-disk manifest AND the embedded copy are now edited TOGETHER (the two agree, and the hosted bytes
+        still match), leaving the STALE BOUND DIGEST as the sole disagreement -- exactly the anchor the mutation
+        removes.***
+        """
         tampered = json.loads(self.fx.manifest_path.read_text())
-        tampered["schema"] = 3
+        tampered["producer"] = {**tampered["producer"], "tool_sha256": "0" * 64}
         self.fx.write(tampered)
+        att = json.loads(self.att.read_text())
+        att["gate_manifest"]["document"] = tampered       # embedded == on-disk, so only the bound digest can speak
+        self.att.write_text(json.dumps(att, indent=1) + "\n")
+        self.fx._git("add", "--", ccb.FREEZE_ATTESTATION_SUCCESSOR_PATH)
+        self.fx._git("commit", "-q", "--amend", "-m", "attestation")
+        before = self.att.read_bytes()
         try:
             self.assertNotEqual(board1.validate_attestation(self.att), 0)
             self.assertEqual(self.att.read_bytes(), before)
@@ -688,34 +723,57 @@ class AttestationBindingTests(unittest.TestCase):
             self.fx.write(self.doc)
 
     def test_a_manifest_bound_to_another_candidate_is_refused_by_the_freeze(self):
+        """*** A FREEZE MAY NOT BIND A MANIFEST WHOSE CANDIDATE IS NOT THE TAG'S OWN PEEL. ***
+
+        *THE MEASURED ESCAPE: the case put a foreign SHA on a manifest that still NAMED the candidate tag, so the
+        manifest contract's candidate-resolution guard refused it before the tag-versus-`candidate.sha` peel guard --
+        the guard this mutation disables -- could matter. **So the case now keeps `candidate.sha` at the candidate `C`
+        and names a SECOND annotated tag that peels to a DIFFERENT same-tree commit: the ONLY disagreement left is the
+        tag's peel versus the manifest's stated sha, which the disabled guard no longer sees. With the guard struck the
+        freeze SUCCEEDS and writes a false-green attestation about a tree the tag does not name; the witness asserts the
+        live consumer outcome -- a non-zero verdict and NO attestation written -- never the refusal's prose.***
+        """
+        self.fx._git("reset", "--hard", self.fx.sha)
+        self.fx._git("commit", "-q", "--allow-empty", "-m", "foreign same-tree candidate")
+        foreign = self.fx._git("rev-parse", "HEAD").stdout.strip()
+        self.fx._git("reset", "--hard", self.fx.sha)
+        self.fx._git("tag", "-a", "board1-court-other", "-m", "the foreign tag", foreign)
+        self.assertEqual(self.fx._git("rev-parse", f"{foreign}^{{tree}}").stdout.strip(), self.fx.tree)
         other = json.loads(json.dumps(self.doc))
-        other["candidate"] = {**other["candidate"], "sha": "f" * 40}
+        other["candidate"] = {**other["candidate"], "tag": "board1-court-other"}
         self.fx.write(other)
+        if self.att.is_file():
+            self.att.unlink()
         try:
-            self.assertNotEqual(board1.freeze("1", "board1-court-rc", self.att, 1,
-                                          manifest=self.fx.manifest_path,
-                                          campaign_dir=self.fx.campaign_dir,
-                                          proof_dir=self.proof_dir), 0)
+            rc = board1.freeze("1", "board1-court-rc", self.att, 1,
+                               manifest=self.fx.manifest_path,
+                               campaign_dir=self.fx.campaign_dir,
+                               proof_dir=self.proof_dir)
+            self.assertNotEqual(rc, 0,
+                                "a tag that peels to another commit than the manifest's stated sha must be refused")
+            self.assertFalse(self.att.is_file(),
+                             "the freeze must write NO attestation when the tag and the manifest disagree")
         finally:
             self.fx.write(self.doc)
+            self.fx._git("tag", "-d", "board1-court-other")
 
     def test_a_relative_attestation_path_is_resolved_and_never_crashes(self):
         """*** THE MEASURED CRASH: `--attest-out <repo-relative>` RAISED `ValueError` FROM `relative_to`. ***
 
-        *The falsifier is the CRASH, not the verdict: with the old expression the call raised `ValueError` before any
-        check could speak. With the fix it returns an integer verdict -- and the successor state here is not clean
-        (the setUp attestation is committed), so a non-zero verdict is a correct, honest outcome. What MUST NOT happen
-        is an exception.*
+        *THE MEASURED ESCAPE: the case used a NON-canonical basename and only asserted "no crash", so the mutant's
+        NAMED outside-the-repository refusal satisfied it -- the witness stayed green under the mutant. **So the case
+        now passes the EXACT canonical SUCCESSOR path, RELATIVE, which the fixed code resolves and accepts, and the
+        mutant refuseth by name -- so `rc == 0` and the written file discriminate the two.***
         """
         import os
-        saved_att = self.att
         if self.att.is_file():
             self.att.unlink()
+        rel = Path(ccb.FREEZE_ATTESTATION_SUCCESSOR_PATH)
         previous = os.getcwd()
         try:
             os.chdir(self.fx.repo)
             try:
-                rc = board1.freeze("1", "board1-court-rc", Path("RELATIVE_ATTESTATION.json"), 1,
+                rc = board1.freeze("1", "board1-court-rc", rel, 1,
                                    manifest=self.fx.manifest_path,
                                    campaign_dir=self.fx.campaign_dir,
                                    proof_dir=self.proof_dir)
@@ -723,14 +781,10 @@ class AttestationBindingTests(unittest.TestCase):
                 self.fail(f"a RELATIVE --attest-out raised ValueError instead of refusing or writing: {exc}")
         finally:
             os.chdir(previous)
-            self.att = saved_att
-            stray = self.fx.repo / "RELATIVE_ATTESTATION.json"
-            if stray.is_file():
-                stray.unlink()
-        self.assertIn(rc, (0, 1))
-        if rc == 0:
-            self.assertTrue((self.fx.repo / "RELATIVE_ATTESTATION.json").is_file()
-                            or True)   # the file is cleaned above; the point is the absence of a crash
+        self.assertEqual(rc, 0,
+                         "the canonical future attestation named RELATIVELY must be RESOLVED and written; the "
+                         "mutant refuseth it as outside the repository")
+        self.assertEqual(self.att.resolve(), (self.fx.repo / rel).resolve())
 
     def test_an_attestation_path_outside_the_repository_is_refused_by_name(self):
         outside = Path(tempfile.mkdtemp()) / "ELSEWHERE.json"

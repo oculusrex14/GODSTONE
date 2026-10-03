@@ -4,7 +4,7 @@ test_w06_the_touch_target_minimums_differ_by_platform (test_t60.T60LayoutTest.te
 FAIL: test_w06_the_touch_target_minimums_differ_by_platform (test_t60.T60LayoutTest.test_w06_the_touch_target_minimums_differ_by_platform)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work/wt_T60-RC4-a-undersized-target-is-accepted/tools/readiness/tests/test_t60.py", line 207, in test_w06_the_touch_target_minimums_differ_by_platform
+  File "/private/tmp/board1-campaign-rc15-work2/wt_T60-RC4-a-undersized-target-is-accepted/tools/readiness/tests/test_t60.py", line 207, in test_w06_the_touch_target_minimums_differ_by_platform
     self.assertFalse(android_passed)
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
 AssertionError: True is not false

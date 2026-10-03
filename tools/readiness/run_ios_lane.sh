@@ -17,13 +17,6 @@ set -eu
 cd "$(dirname "$0")/../.."
 LOG="${1:-ios-lane.log}"
 
-# *** THE PRE-RUN SOURCE DIGEST, SO A MID-RUN EDIT CANNOT DESCRIBE A TREE THE TESTS NEVER RAN. ***
-#
-# *THE SAME HOLE THE UI LANE CLOSED, AND IT WAS OPEN HERE: the lane wrote ONE digest AFTER `swift test`, so an edit to a
-# Swift source BETWEEN the compile and the sidecar produced a log that DESCRIBED a tree the tests never built -- and
-# `ci/check_lane_results.py` would then compare that late digest to the current tree and find them EQUAL, because both
-# are post-edit.* **THE DIGEST IS THEREFORE TAKEN TWICE -- BEFORE the compile and AFTER -- AND THE TWO MUST AGREE.**
-python3 tools/readiness/ios_source_digest.py >"$LOG.pre.sha256"
 
 python3 scripts/sync_ios_foundation_package.py
 
@@ -58,14 +51,14 @@ export GODSTONE_SQLCIPHER_ARTIFACT_DIR DYLD_LIBRARY_PATH
 SQLCIPHER_SHA="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['sha256'])" \
     "$SQLCIPHER_STAGE/libsqlcipher.0.dylib.artifact.json")"
 # *** THE VERIFIER RUNS OVER THE ACTUAL BUILT IMAGE, AND ITS PASSING IS WHAT AUTHORISES THE SWIFT EXPECTATION. ***
-# *The engine compareth the loaded bytes against the COMPILED-IN `SQLCipherTrustedExpectation`, which must therefore
-# describe THIS mode's image; the generator RUNS the register verifier over the built bytes and REFUSES an unlisted
-# toolchain -- so a mismatch is a FAILED BUILD, never a skip.*
-# *The expectation is emitted into a temp file ($SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift) by the
-# verifier -- AND THEN PLACED WHERE THE BUILD ACTUALLY READS IT: the engine compares the loaded bytes against the
-# COMPILED-IN `SQLCipherTrustedExpectation`, which the compiler takes from the SOURCES tree, so a stale last-run
-# copy (of ANY mode) would mis-bind every native-mandatory arm. THE LANE'S OWN VERIFIED EMISSION IS THE SOURCE OF
-# TRUTH FOR ITS RUN; the temp file checks the build contract, the sources copy serves the build.*
+# *The engine compareth the loaded bytes against the COMPILED-IN `SQLCipherTrustedExpectation`; the generator RUNS the
+# register verifier over the built bytes and REFUSES an unlisted toolchain -- so a mismatch is a FAILED BUILD, never a
+# skip.*
+# *** AND THE EMISSION IS MODE-INDEPENDENT NOW. *** *The generator emiteth EVERY approved Apple mode into ONE source
+# and the compiler SELECTETH the active one (`targetEnvironment(simulator)`/`os(macOS)`), so this host lane and the
+# simulator lane place BYTE-IDENTICAL bytes at the SAME canonical compile path -- a stale last-run copy of ANY mode
+# (the MEASURED case) can no longer miss-bind the native-mandatory arms. THE LANE'S OWN VERIFIED EMISSION SERVES ITS
+# RUN; the sources copy is the compile input.*
 python3 tools/supplychain/verify_sqlcipher_artifact.py --mode macos --dir "$SQLCIPHER_STAGE" \
     --emit-swift "$SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift" \
     >>"$LOG.sqlcipher" 2>&1 || {
@@ -74,7 +67,7 @@ python3 tools/supplychain/verify_sqlcipher_artifact.py --mode macos --dir "$SQLC
 }
 cp "$SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift" \
     ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift || {
-    echo "::error::the verified macos trust expectation could not be placed at the compile path" >&2
+    echo "::error::the verified trust expectation could not be placed at the compile path" >&2
     exit 3
 }
 python3 scripts/sync_ios_foundation_package.py >>"$LOG.sqlcipher" 2>&1 || {
@@ -82,6 +75,13 @@ python3 scripts/sync_ios_foundation_package.py >>"$LOG.sqlcipher" 2>&1 || {
     exit 3
 }
 echo "sqlcipher_stage=$SQLCIPHER_STAGE sqlcipher_sha256=$(printf '%s' "$SQLCIPHER_SHA" | cut -c1-16)…"
+# *** THE PRE-RUN SOURCE DIGEST, SO A MID-RUN EDIT CANNOT DESCRIBE A TREE THE TESTS NEVER RAN. ***
+#
+# *THE SAME HOLE THE UI LANE CLOSED, AND IT WAS OPEN HERE: the lane wrote ONE digest AFTER `swift test`, so an edit to a
+# Swift source BETWEEN the compile and the sidecar produced a log that DESCRIBED a tree the tests never built -- and
+# `ci/check_lane_results.py` would then compare that late digest to the current tree and find them EQUAL, because both
+# are post-edit.* **THE DIGEST IS THEREFORE TAKEN TWICE -- BEFORE the compile and AFTER -- AND THE TWO MUST AGREE.**
+python3 tools/readiness/ios_source_digest.py >"$LOG.pre.sha256"
 # *** THE VERDICT COMES FROM THE CHECKER, NOT THE RAW `swift test` STATUS -- AND THE DIGEST IS WRITTEN EITHER WAY. ***
 #
 # *THE DEFECT THIS CLOSES, MEASURED: the runner exited the script the moment `swift test` returned non-zero, so THE

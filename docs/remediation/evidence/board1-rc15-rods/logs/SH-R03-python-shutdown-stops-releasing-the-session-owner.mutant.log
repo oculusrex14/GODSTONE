@@ -1,0 +1,19 @@
+test_w09_the_named_negative_each_defect_is_caught_by_name (test_t72.T72FaultsTest.test_w09_the_named_negative_each_defect_is_caught_by_name)
+Disabling ONE capacity release or ONE retry cap must break an invariant. ... FAIL
+
+======================================================================
+FAIL: test_w09_the_named_negative_each_defect_is_caught_by_name (test_t72.T72FaultsTest.test_w09_the_named_negative_each_defect_is_caught_by_name)
+Disabling ONE capacity release or ONE retry cap must break an invariant.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_SH-R03-python-shutdown-stops-releasing-the-session-owner/tools/readiness/tests/test_t72.py", line 234, in test_w09_the_named_negative_each_defect_is_caught_by_name
+    self.assertTrue(any(invariant in failure for failure in result.failures),
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    "%s: expected %s, got %r" % (defect, invariant, result.failures))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : no_session_release: expected no_leaked_sessions, got ['bounded_census: the census reached 6108, over the plateau 2124']
+
+----------------------------------------------------------------------
+Ran 1 test in 0.011s
+
+FAILED (failures=1)

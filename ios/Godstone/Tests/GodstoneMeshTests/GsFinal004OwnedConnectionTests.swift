@@ -165,6 +165,56 @@ private func gf004RealPinnedTable(_ engine: SqlCipherDylibEngine) throws -> SQLi
 /// A per-arm key-domain suffix, so this court's capability alias cannot merge with another arm's owner set.
 private func gf004Domain(_ suffix: String) -> String { "test.gf004.\(suffix).\(UUID().uuidString)" }
 
+/// *** THE STOCK-SQLITE ORACLE: A REALLY BOUND, NON-CIPHER IMAGE FROM THE SIMULATOR RUNTIME (OR THE HOST). ***
+///
+/// *THE DEFECT THIS CLOSES: this court hardcoded `/usr/lib/libsqlite3.dylib` for the empty-DEK and stock-cipher
+/// refusals. **On the iOS SIMULATOR that path is NOT a plain file** -- the runtime resolve it THROUGH
+/// `$SIMULATOR_ROOT`, where it IS a real Mach-O carrying all twenty `sqlite3_*` symbols -- and
+/// `SQLiteFunctionTable.bind` validateth every `dlsym` against `dladdr`'s REALPATH, so the literal could never bind
+/// and the arm reddened as a supply failure.*
+///
+/// **THE RESOLUTION ORDER IS STATED, SO A SUPPLY FAILURE IS DIAGNOSABLE:** the staged copy
+/// (`GODSTONE_STOCK_SQLITE_DIR/libsqlite3-stock.dylib`), the TEST BUNDLE's own `Frameworks/` copy (the same
+/// convention the pinned SQLCipher image uses -- it surviveth a `test-without-building` whose environment carrieth no
+/// custom variable and whose `Bundle(for:)` is the running `.xctest`), the simulator runtime's image
+/// (`SIMULATOR_ROOT/usr/lib/libsqlite3.dylib`), and finally the non-simulator host literal (`/usr/lib/libsqlite3.dylib`).
+///
+/// *A candidate that does not load or does not bind is skipped (its `dlopen` simply faileth), and if none of them
+/// bindeth this returneth `nil` with EVERY candidate it tried -- so the caller can name a HOST-SUPPLY FAILURE
+/// instead of skipping.* **The host literal is deliberately NOT gated on a file existence check: on modern macOS
+/// `/usr/lib/libsqlite3.dylib` liveth only in the dyld shared cache, so `dlopen` resolveth it while
+/// `fileExists` answereth false.** *The returned engine is bound from a real image and the cipher probe still
+/// refuseth it below, so it can never be mistaken for the pinned engine.*
+private func gf004StockSQLiteImage() -> (engine: SqlCipherDylibEngine?, tried: [String]) {
+    let env = ProcessInfo.processInfo.environment
+    var candidates: [String] = []
+    if let dir = env["GODSTONE_STOCK_SQLITE_DIR"], !dir.isEmpty {
+        candidates.append((dir as NSString).appendingPathComponent("libsqlite3-stock.dylib"))
+    }
+    if let frameworks = Bundle(for: GsFinal004OwnedConnectionTests.self).privateFrameworksPath {
+        candidates.append((frameworks as NSString).appendingPathComponent("libsqlite3-stock.dylib"))
+    }
+    #if targetEnvironment(simulator)
+    // *** THE RUNTIME'S OWN IMAGE. *** *`/usr/lib/libsqlite3.dylib` is not a plain file on the simulator, so the
+    // runtime ROOT is what resolveth to a real Mach-O -- and the REALPATH `dladdr` reporteth is this same path.*
+    if let root = env["SIMULATOR_ROOT"] ?? env["IPHONE_SIMULATOR_ROOT"], !root.isEmpty {
+        candidates.append((root as NSString).appendingPathComponent("usr/lib/libsqlite3.dylib"))
+    }
+    #else
+    // *The non-simulator runtime: on macOS the literal `/usr/lib/libsqlite3.dylib` `dlopen`s from the dyld shared
+    // cache and `dladdr` reporteth that same literal; on a DEVICE it is the system image's own installed path. Either
+    // way the literal IS a real resolution there -- unlike on the simulator, where it resolve only through the root.*
+    candidates.append("/usr/lib/libsqlite3.dylib")
+    #endif
+    var tried: [String] = []
+    for candidate in candidates {
+        tried.append(candidate)
+        let engine = SqlCipherDylibEngine(libraryPath: candidate)
+        if engine.isBound { return (engine, tried) }
+    }
+    return (nil, tried)
+}
+
 /// *** GS-FINAL-004 CLAUSES (a) AND (b): ONE CONNECTION, VERIFIED, AND THE STORE ACTUALLY RUNS ON IT. ***
 ///
 /// THE AUDIT'S CHARGE, VERBATIM: *"MeshRuntime checks an EncryptedStoreFactory result, then creates a new
@@ -380,15 +430,15 @@ final class GsFinal004OwnedConnectionTests: XCTestCase {
         // (c) *** THE EMPTY DEK, CHECKED AGAINST A **REALLY BOUND** IMAGE. ***
         // *This is the arm my first version got wrong: it used the UNBOUND engine, where the binding guard fires
         // first and the `.io` fault arrives before the key check can -- so the arm measured the binding, not the key.
-        // A bound image is needed, and macOS ships one (`/usr/lib/libsqlite3.dylib`) carrying the whole sqlite3
-        // surface.* **If that library is somehow unbindable on this host, the arm SAYS SO rather than passing
-        // vacuously.**
-        let bound = SqlCipherDylibEngine(libraryPath: "/usr/lib/libsqlite3.dylib")
-        guard bound.isBound else {
-            XCTFail("*** HOST-SUPPLY FAILURE (SQLITE-LATEST-I6): /usr/lib/libsqlite3.dylib -- which macOS ships to the "
-                    + "lane -- did not bind, so the empty-DEK refusal and the stock-cipher probe cannot be reached. "
-                    + "A lane missing its own system SQLite is broken; record it RED, do not skip. "
-                    + "Reason: \(bound.bindingFailureReason ?? "unknown") ***")
+        // A bound image is needed, and the ORACLE is resolved from the simulator runtime's own SQLite (or the host
+        // literal on the non-simulator host), because `/usr/lib/libsqlite3.dylib` is NOT a plain file on the simulator
+        // and `SQLiteFunctionTable.bind` validateth `dladdr`'s REALPATH.* **If no candidate bindeth, the arm NAMES
+        // EVERY PATH IT TRIED and REDDENS -- a HOST-SUPPLY FAILURE, never a skip.**
+        let stock = gf004StockSQLiteImage()
+        guard let bound = stock.engine else {
+            XCTFail("*** HOST-SUPPLY FAILURE (SQLITE-LATEST-I6): no stock SQLite oracle bound, so the empty-DEK "
+                    + "refusal and the stock-cipher probe cannot be reached. A lane missing its own system SQLite is "
+                    + "broken; record it RED, do not skip. Candidate paths tried: \(stock.tried.joined(separator: ", ")) ***")
             return
         }
         do {

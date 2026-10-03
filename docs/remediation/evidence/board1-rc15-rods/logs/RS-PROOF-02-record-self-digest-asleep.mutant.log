@@ -1,0 +1,17 @@
+test_an_edited_body_is_caught_by_its_self_digest (test_audit_supplychain_harness.ReleaseProofCourt.test_an_edited_body_is_caught_by_its_self_digest) ... FAIL
+
+======================================================================
+FAIL: test_an_edited_body_is_caught_by_its_self_digest (test_audit_supplychain_harness.ReleaseProofCourt.test_an_edited_body_is_caught_by_its_self_digest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-PROOF-02-record-self-digest-asleep/tools/readiness/tests/test_audit_supplychain_harness.py", line 182, in test_an_edited_body_is_caught_by_its_self_digest
+    self.assertTrue(any("does not recompute" in item
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        for item in RP.verify_release_proof(document)))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

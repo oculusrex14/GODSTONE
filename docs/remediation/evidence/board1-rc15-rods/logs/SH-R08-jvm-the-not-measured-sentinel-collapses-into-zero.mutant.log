@@ -5,18 +5,18 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':mesh:testDebugUnitTest'.
-> There were failing tests. See the report at: file:///private/tmp/board1-campaign-rc15-work/wt_SH-R08-jvm-the-not-measured-sentinel-collapses-into-zero/android/mesh/build/reports/tests/testDebugUnitTest/index.html
+> There were failing tests. See the report at: file:///private/tmp/board1-campaign-rc15-work2/wt_SH-R08-jvm-the-not-measured-sentinel-collapses-into-zero/android/mesh/build/reports/tests/testDebugUnitTest/index.html
 
 * Try:
 > Run with --scan to get full insights.
 
-BUILD FAILED in 13s
+BUILD FAILED in 14s
 
 TEST-SUITE TEST-io.godstone.mesh.readiness.ReadinessT72Test.xml tests=24 skipped=0 failures=1 errors=0
 TEST-CASE PASS testGSSTRESS001theFifthOwnerObserversIsCensused
+TEST-CASE PASS test_w00_the_result_carrieth_the_resource_model_category
 TEST-CASE PASS test_w04_no_duplicate_delivery_under_the_retry_cap
 TEST-CASE PASS testGSSTRESS001theThirdOwnerAdmittedLeasesIsCensused
-TEST-CASE PASS test_w13_the_conductor_never_claimeth_a_device
 TEST-CASE PASS test_w10_a_failed_seed_is_recorded_and_reproducible
 TEST-CASE PASS test_w09_each_defect_is_caught_by_name
 TEST-CASE PASS test_w14_the_session_invariant_is_asked_of_a_real_owner
@@ -30,9 +30,9 @@ TEST-CASE PASS testGSSTRESS001theFourthOwnerTimersIsCensused
 TEST-CASE PASS testGSSTRESS001anUnmeasurableOwnerIsNamedRatherThanAssumedClean
 TEST-CASE PASS testGSSTRESS001theThirdOwnerIsDistinctFromTheSecond
 TEST-CASE PASS testGSSTRESS001theStoreObserversAreADistinctOwnerFromTheAuthoritys
-TEST-CASE PASS test_w00_the_campaign_is_a_named_resource_model
-TEST-CASE PASS test_w12_the_isles_carry_the_same_invariants_and_faults
+TEST-CASE PASS test_w09b_the_lifecycle_defects_are_independent
 TEST-CASE PASS test_w02_zero_leaks_after_shutdown
+TEST-CASE PASS test_w09c_the_result_carrieth_its_category_and_its_unmeasured_set
 TEST-CASE PASS test_w11_the_campaign_is_bounded_in_time
 TEST-CASE PASS test_w05_no_uncaught_malformed_input
 TEST-CASE PASS testGSSTRESS001theSecondOwnerIsCensusedAndAccused

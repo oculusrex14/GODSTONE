@@ -36,6 +36,56 @@ LOG="${1:-ios-ui-lane.log}"
 # **SO THE DIGEST IS TAKEN TWICE -- BEFORE the schemes run and AFTER -- and the two must AGREE.** *A mismatch meaneth
 # an input changed while the lane was running, so the log is not evidence about ANY single revision; the lane sayeth
 # so and exiteth 3 rather than leaving a log that looketh current.*
+#
+# *** 0. THE PINNED SQLCIPHER SUPPLY, BEFORE ANY COMPILE AND BEFORE THE PRE-RUN DIGEST. ***
+#
+# *THE MEASURED DEFECT THIS CLOSES: this lane compiles the LabMesh app and its XCUITest bundle, and the app embeds
+# the canonical `GodstoneMesh` package -- whose engine importeth the IGNORED, GENERATED
+# `SQLCipherTrustedExpectation.swift`. On a fresh clone that file is ABSENT (it is gitignored; only a lane that
+# staged a verified image ever wrote it), so the app failed to compile with `cannot find 'SQLCipherTrustedExpectation'
+# in scope` and the lane produced no arm verdicts at all.*
+#
+# **SO THE LANE STAGES ITS OWN PINNED IOSSIMULATOR IMAGE AND EMITS THE STABLE COMPILE CONSTANT FIRST**, exactly as the
+# foundation and simulator lanes do: it BUILDS the pinned artifact from the register's exact commit, VERIFIES the
+# built bytes against the trusted register (`verify_sqlcipher_artifact.py`), and writes the mode-independent
+# generated expectation to the canonical source path. *The emission is mode-independent -- one source carrying every
+# approved Apple mode, selected at compile time -- so the same bytes serve this simulator build and the host lanes.*
+# **A stage that cannot be done is a FAILED STAGE, named, never a silent skip** -- and it happens BEFORE the pre-run
+# digest so the digest describeth the tree that is then compiled.
+SQLCIPHER_STAGE="${GS_SQLCIPHER_STAGE:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/board1-sqlcipher-ios-simulator}"
+tools/supplychain/build_sqlcipher_simulator.sh --mode ios-simulator --out "$SQLCIPHER_STAGE" >"$LOG.sqlcipher" 2>&1 || {
+    echo "::error::*** THE PINNED SQLCIPHER IOSSIMULATOR IMAGE COULD NOT BE BUILT/STAGED. ***" >&2
+    echo "::error::the pinned library is repository-buildable from an exact commit; its absence is a FAILED STAGE," >&2
+    echo "::error::not an external exemption -- without the generated constant NOTHING in this lane compiles" >&2
+    exit 3
+}
+if [ ! -f "$SQLCIPHER_STAGE/libsqlcipher.0.dylib" ]; then
+    echo "::error::*** THE SQLCIPHER STAGE CARRIETH NO libsqlcipher.0.dylib AT $SQLCIPHER_STAGE ***" >&2
+    exit 3
+fi
+python3 tools/supplychain/verify_sqlcipher_artifact.py --mode ios-simulator --dir "$SQLCIPHER_STAGE" \
+    --emit-swift "$SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift" >>"$LOG.sqlcipher" 2>&1 || {
+    echo "::error::*** THE BUILT SQLCIPHER IMAGE DID NOT VERIFY AGAINST THE TRUSTED REGISTER (ios-simulator). ***" >&2
+    exit 3
+}
+cp "$SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift" \
+    ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift || {
+    echo "::error::the verified trust expectation could not be placed at the compile path" >&2
+    exit 3
+}
+echo "sqlcipher_stage=$SQLCIPHER_STAGE" >>"$LOG.sqlcipher"
+# *** AND THE LANE'S OWN STAGE IS EXPORTED, SO `xcodebuild` NEVER INHERITS A
+# STALE macOS STAGE FROM AN ENCLOSING SHELL. *** *This lane builds for the
+# SIMULATOR: a macOS image cannot be `dlopen`ed there, so handing the toolchain a
+# host artifact dir would make the native road refuse for the wrong reason.*
+export GODSTONE_SQLCIPHER_ARTIFACT_DIR="$SQLCIPHER_STAGE"
+
+# 1b. *** THE PRE-RUN SOURCE DIGEST, NOW THAT THE LANE'S OWN SOURCE PLACEMENT HAS HAPPENED AND IMMEDIATELY BEFORE THE
+#     BUILD. ***
+#
+# *The digest is written AFTER the verified expectation is placed, exactly as the simulator lane's own digest is: the
+# digest carrieth every `*.swift` under the source trees (so the placed constant is IN the digest the log recordeth),
+# and taking it before the placement would make the log's own digest a claim about bytes it did not compile.*
 python3 tools/readiness/ios_source_digest.py >"$LOG.pre.sha256"
 pre_digest="$(cat "$LOG.pre.sha256")"
 
@@ -111,6 +161,7 @@ fi
 # failure that is not the exact recorded known-red arm.*
 rc=0
 : >"$LOG"
+echo "sqlcipher_stage=$SQLCIPHER_STAGE" >>"$LOG"
 schemes_run=0
 for scheme in LabMeshUI GodstoneArchiveUI; do
     echo "=== scheme $scheme ===" >>"$LOG"

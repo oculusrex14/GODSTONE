@@ -1,0 +1,17 @@
+test_no_external_block_is_allowed_while_the_internal_road_is_red (test_audit_supplychain_harness.ReleaseProofCaptureCourt.test_no_external_block_is_allowed_while_the_internal_road_is_red)
+Ordering: a prerequisite that never succeeded reached no boundary. ... FAIL
+
+======================================================================
+FAIL: test_no_external_block_is_allowed_while_the_internal_road_is_red (test_audit_supplychain_harness.ReleaseProofCaptureCourt.test_no_external_block_is_allowed_while_the_internal_road_is_red)
+Ordering: a prerequisite that never succeeded reached no boundary.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-CAP-02-external-block-allowed-while-internal-red/tools/readiness/tests/test_audit_supplychain_harness.py", line 496, in test_no_external_block_is_allowed_while_the_internal_road_is_red
+    with self.assertRaisesRegex(C.CaptureError, "internal road is not green"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: CaptureError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)

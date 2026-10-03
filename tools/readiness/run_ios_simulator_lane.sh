@@ -38,9 +38,33 @@ cd "$(dirname "$0")/../.."
 LOG="${1:-ios-simulator-lane.log}"
 RESULT_BUNDLE="${2:-$(pwd)/ios-simulator-lane.xcresult}"
 
-# 1. THE PRE-RUN SOURCE DIGEST, SO A MID-RUN EDIT CANNOT DESCRIBE A TREE THE TESTS NEVER RAN.
-python3 tools/readiness/ios_source_digest.py >"$LOG.pre.sha256"
-pre_digest="$(cat "$LOG.pre.sha256")"
+# *** THE BOUNDED BOOT WAIT -- THE UI LANE'S OWN PATTERN, REUSED RATHER THAN RE-INVENTED. ***
+#
+# *MEASURED, HOSTED RUN `35962665742`: `simctl bootstatus -b` NEVER RETURNED, and the UI lane's log stopped for 2h08m
+# with ZERO output -- so an UNBOUNDED wait is worse than the false red it existeth to cure ("a lane that hangeth
+# produceth no log and no verdict").* **The wait MUST be bounded, and the bound MUST be longer than the settle it
+# waiteth for (`bootstatus -b` taketh LONG precisely when the device is still settling, so a short bound killeth the
+# wait exactly when it is needed).** *`timeout` is spelled through `perl` rather than assumed: macOS ships no GNU
+# `timeout`, and the alarm surviveth the `exec`, so it KILLETH the `simctl` child at the bound. 900s is past the
+# realistic settle and remaineth a bound: THE POINT IS "NOT FOREVER", NOT "SHORT".*
+#
+# *** AND THIS COPY RETURNETH ITS STATUS, WHERE THE UI LANE'S SWALLOWeth IT. *** *That lane degradeth to the old
+# behaviour by design; here an unbooted device would make every later step (the stock oracle's SIMULATOR_ROOT in
+# particular) fail for a reason no reader could see, so a non-settling boot is REFUSED loudly instead.*
+_bounded_boot_wait() {
+    local udid="$1"
+    perl -e 'alarm shift; exec @ARGV' 900 xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1
+}
+
+# 1. *** THE PRE-RUN SOURCE DIGEST IS TAKEN LATER (STEP 4c), NOT HERE. ***
+#
+# *MEASURED DEFECT, NOW CLOSED: this lane PLACES its own verified `SQLCipherTrustedExpectation.swift` at the canonical
+# compile path (step 4b) BEFORE it builds, and that file is inside the digested source trees. A pre-digest taken HERE
+# therefore hashed the PRELUDING run's emission, so a macOS->ios-simulator mode transition changed the lane's OWN
+# hashed source and the lane then rejected its own run ("the SOURCE SET CHANGED WHILE IT RAN").* **The pre-digest is
+# moved to immediately BEFORE the build -- still before `xcodebuild`, so a mid-run edit cannot describe a tree the
+# tests never ran, and the generated expectation REMAINS inside the digest rather than being omitted to paper over
+# the drift.**
 
 # 2. THE SPEC IS THE AUTHORITY.
 xcodegen generate --spec ios/project.yml
@@ -74,6 +98,41 @@ if [ -z "$RUNTIME" ]; then
     echo "::error::could not derive the RUNTIME for '$SIM' from 'xcrun simctl list devices available' -- *the runtime"
     echo "::error::is the group header above the device line; an empty device_runtime is a lane that cannot be" >&2
     echo "::error::re-executed on the same device, so it is refused rather than recorded empty*" >&2
+    exit 3
+fi
+
+# 3b. *** THE DESTINATION MUST BE SETTLED BEFORE ANY STAGING OR TEST RUN IS ASKED OF IT -- AND THE WAIT IS BOUNDED. ***
+#
+# *MEASURED: a freshly resolved UDID is often SHUTDOWN on a cold host, and `simctl getenv <udid> SIMULATOR_ROOT`
+# requireth a BOOTED device -- so resolving the runtime root for the stock oracle BEFORE the device settled returned
+# EMPTY and the lane refused with rc=3 before `xcodebuild` (which booteth the destination implicitly) could ever run,
+# leaving no lane log at all.* **The bounded wait below is taken immediately after UDID/RUNTIME validation, so every
+# later step -- the stock oracle stage included -- seeth a booted device.**
+#
+# *** AND HERE THE WAIT FAILETH LOUDLY IF THE DEVICE CANNOT SETTLE. *** *The UI lane swalloweth the status and
+# degradeth to the old behaviour; a lane that cannot reach its device would then produce a false red whose cause is
+# invisible. This lane instead NAMES a non-settling boot and exits -- bounded by the same 900s alarm, never forever.*
+if [ -z "$UDID" ]; then
+    echo "::error::could not derive a UDID for '$SIM' from its device line -- a lane with no device cannot boot or" >&2
+    echo "::error::run, and a lane that never ran is not a pass" >&2
+    exit 3
+fi
+_bounded_boot_wait "$UDID" || {
+    echo "::error::*** DEVICE $UDID DID NOT SETTLE WITHIN THE BOUNDED BOOT WAIT (900s). ***" >&2
+    echo "::error::the stock oracle cannot resolve SIMULATOR_ROOT on an unbooted device and xcodebuild cannot boot it" >&2
+    echo "::error::either; a device that never settled is a FAILED LANE, not a skip" >&2
+    exit 3
+}
+
+# *** THE RUNTIME ROOT IS RESOLVED ONCE, HERE, FOR THE **BOOTED** DEVICE -- AND IT IS THE DEVICE'S OWN ROOT, NOT ONE
+#     ARBITRARY "last available" RUNTIME. *** *`simctl getenv <udid> SIMULATOR_ROOT` is the device's own answer; an
+#     EMPTY answer after a successful boot is a lane whose oracle cannot be staged, and it is REFUSED with the
+#     not-booted/no-answer reason rather than being conflated with a wrong-runtime refusal.*
+SIMULATOR_ROOT="$(xcrun simctl getenv "$UDID" SIMULATOR_ROOT 2>/dev/null || true)"
+if [ -z "$SIMULATOR_ROOT" ]; then
+    echo "::error::*** DEVICE $UDID REPORTED NO SIMULATOR_ROOT (the device is not booted, or simctl getenv could not" >&2
+    echo "::error::answer) -- the stock SQLite oracle cannot be resolved without it. ***" >&2
+    echo "::error::this is a DEVICE-BOOT/RESOLUTION failure, distinct from a wrong-runtime refusal; the lane is RED" >&2
     exit 3
 fi
 TOOLCHAIN="$(xcodebuild -version 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g')"
@@ -115,14 +174,14 @@ if [ ! -f "$SQLCIPHER_STAGE/libsqlcipher.0.dylib" ] || [ ! -f "$DESCRIPTOR" ]; t
 fi
 # *** THE VERIFIER RUNS OVER THE ACTUAL BUILT IMAGE, AND ITS PASSING IS WHAT AUTHORISES THE SWIFT EXPECTATION. ***
 # *`SqlCipherTrustedExpectation` is the COMPILED-IN authority the engine compareth the image against (the sidecar is
-# only a record), so it MUST describe THIS mode's image. The generator RUNS the register verifier over the built bytes
-# and refuses an unlisted toolchain, so a failure here is a FAILED BUILD, not a skip.*
-# *The expectation is emitted into a temp file ($SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift) by the
-# verifier -- AND THEN PLACED WHERE THE BUILD ACTUALLY READS IT: the engine compares the loaded bytes against the
-# COMPILED-IN `SQLCipherTrustedExpectation`, which xcodebuild takes from the SOURCES tree, so a stale last-run copy
-# (of ANY mode -- a macos emission left by the foundation lane minutes earlier is the MEASURED case) mis-bound every
-# native-mandatory arm and the fail-closed platform guard reddened them all. THE LANE'S OWN VERIFIED EMISSION IS THE
-# SOURCE OF TRUTH FOR ITS RUN; the temp file checks the build contract, the sources copy serves the build.*
+# only a record), so the artifact MUST verify against the register before any expectation is emitted. The generator
+# RUNS the register verifier over the built bytes and refuses an unlisted toolchain, so a failure here is a FAILED
+# BUILD, not a skip.*
+# *** AND THE EMISSION IS MODE-INDEPENDENT NOW. *** *The generator emiteth EVERY approved Apple mode into ONE source
+# and the compiler SELECTETH the active one (`targetEnvironment(simulator)`/`os(macOS)`), so a host and a simulator
+# lane place BYTE-IDENTICAL bytes at the SAME canonical compile path -- neither can leave the other's committed
+# compile input stale (the MEASURED case where a macos emission left by the foundation lane mis-bound every
+# native-mandatory arm here). THE LANE'S OWN VERIFIED EMISSION SERVES ITS RUN; the sources copy is the compile input.*
 python3 tools/supplychain/verify_sqlcipher_artifact.py --mode ios-simulator --dir "$SQLCIPHER_STAGE" \
     --emit-swift "$SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift" \
     >>"$LOG" 2>&1 || {
@@ -131,11 +190,41 @@ python3 tools/supplychain/verify_sqlcipher_artifact.py --mode ios-simulator --di
 }
 cp "$SQLCIPHER_STAGE/SQLCipherTrustedExpectation.swift" \
     ios/Godstone/Sources/GodstoneMesh/SQLCipherTrustedExpectation.swift || {
-    echo "::error::the verified ios-simulator trust expectation could not be placed at the compile path" >&2
+    echo "::error::the verified trust expectation could not be placed at the compile path" >&2
     exit 3
 }
 echo "sqlcipher_descriptor=$DESCRIPTOR" >>"$LOG"
 export GODSTONE_SQLCIPHER_ARTIFACT_DIR="$SQLCIPHER_STAGE"
+
+# 4c. *** STAGE THE STOCK (PLAIN) SQLITE ORACLE THE GF-004 COURTS BIND. ***
+#
+# *THE OBLIGATION THIS ANSWERETH: `GsFinal004OwnedConnectionTests` needs a REALLY BOUND image carrying the whole
+# `sqlite3_*` surface but NO cipher, to exercise the empty-DEK refusal and the stock-cipher probe. It hardcoded
+# `/usr/lib/libsqlite3.dylib`, which is ABSENT as a plain file on the SIMULATOR -- the runtime resolve that path
+# THROUGH `$SIMULATOR_ROOT`, where it is a real Mach-O carrying all twenty required symbols -- and
+# `SQLiteFunctionTable.bind` validates `dlsym` against `dladdr`'s REALPATH, so the literal failed the bind.*
+#
+# The oracle is the resolved runtime's OWN image (`simctl getenv <udid> SIMULATOR_ROOT`, resolved ONCE after the
+# bounded boot wait in 3b) -- NOT one arbitrary "last available" runtime -- validated against
+# `docs/supplychain/STOCK_SQLITE.pins.json`'s export contract with BOTH `dyld_info -exports` and `nm`, copied into a
+# stage, digest-verified after the copy, AND placed into the built test bundle's `Frameworks/` so the on-device TEST
+# PROCESS can `dlopen` it (the resolver also consulteth the test bundle's Frameworks directory, so a court reach it
+# even when no environment variable can be passed into XCTest). **A missing or unbound oracle is a HOST-SUPPLY
+# FAILURE that reddens, never a skip.**
+STOCK_STAGE="${GS_STOCK_SQLITE_STAGE:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/board1-stock-sqlite-oracle}"
+tools/supplychain/stage_stock_sqlite.sh --runtime-root "$SIMULATOR_ROOT" --out "$STOCK_STAGE" >>"$LOG" 2>&1 || {
+    echo "::error::*** THE STOCK SQLITE ORACLE COULD NOT BE STAGED FROM THE RESOLVED RUNTIME. ***" >&2
+    echo "::error::the GF-004 empty-DEK and stock-cipher refusals cannot be reached without a bound stock image; a" >&2
+    echo "::error::missing system SQLite is a FAILED STAGE, not a skip" >&2
+    exit 3
+}
+echo "stock_sqlite_stage=$STOCK_STAGE" >>"$LOG"
+export GODSTONE_STOCK_SQLITE_DIR="$STOCK_STAGE"
+
+# *** 4d. THE PRE-RUN SOURCE DIGEST -- NOW THAT EVERY LANE-OWNED SOURCE PLACEMENT (the verified expectation above)
+#     AND EVERY STAGE HAS HAPPENED, AND IMMEDIATELY BEFORE THE BUILD. ***
+python3 tools/readiness/ios_source_digest.py >"$LOG.pre.sha256"
+pre_digest="$(cat "$LOG.pre.sha256")"
 
 # 5. *** THE RAW PROCESS STATUS IS CAPTURED FROM THE CHILD DIRECTLY, NEVER FROM A PIPELINE'S LAST ELEMENT. ***
 #
@@ -151,6 +240,7 @@ export GODSTONE_SQLCIPHER_ARTIFACT_DIR="$SQLCIPHER_STAGE"
     echo "pre_source_digest=$pre_digest"
     echo "result_bundle=$RESULT_BUNDLE"
     echo "sqlcipher_stage=$SQLCIPHER_STAGE"
+    echo "stock_sqlite_stage=$STOCK_STAGE"
 } >"$LOG"
 SQLCIPHER_TARGET="$SQLCIPHER_STAGE"
 
@@ -184,15 +274,28 @@ else
         mkdir -p "$XCTEST_BUNDLE/Frameworks"
         cp "$SQLCIPHER_TARGET/libsqlcipher.0.dylib" "$XCTEST_BUNDLE/Frameworks/"
         cp "$DESCRIPTOR" "$XCTEST_BUNDLE/Frameworks/"
+        # *** AND THE STOCK ORACLE TRAVELS WITH THE BUNDLE TOO: the TEST PROCESS on the simulator readeth the bundle
+        #     it runneth from, so placing the runtime image at `Frameworks/` is what maketh it reachable even when no
+        #     environment variable can be passed into XCTest. *The resolver consulteth that directory by name.* ***
+        stock_ok=1
+        tools/supplychain/stage_stock_sqlite.sh --runtime-root "$SIMULATOR_ROOT" --out "$STOCK_STAGE" \
+            --bundle "$XCTEST_BUNDLE" >>"$LOG" 2>&1 || stock_ok=0
         # *** AND THE STAGE IS VERIFIED IN PLACE, BY DIGEST, BEFORE THE RUN. *** *An image that did not survive the
         # copy must REFUSE here rather than produce a lane whose native arm skipped for an unexplained reason.*
         staged_digest="$(shasum -a 256 "$XCTEST_BUNDLE/Frameworks/libsqlcipher.0.dylib" | awk '{print $1}')"
         sidecar_digest="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['sha256'])" "$DESCRIPTOR")"
-        if [ "$staged_digest" != "$sidecar_digest" ]; then
+        staged_stock="$XCTEST_BUNDLE/Frameworks/libsqlite3-stock.dylib"
+        if [ "$stock_ok" -ne 1 ] || [ ! -f "$staged_stock" ]; then
+            echo "::error::*** THE STOCK SQLITE ORACLE COULD NOT BE PLACED INTO THE BUILT TEST BUNDLE AT $STOCK_STAGE. ***" >&2
+            echo "::error::the GF-004 empty-DEK and stock-cipher refusals need a bound stock image; a missing system" >&2
+            echo "::error::SQLite is a FAILED STAGE, not a skip" >&2
+            rc=3
+        elif [ "$staged_digest" != "$sidecar_digest" ]; then
             echo "::error::*** THE STAGED SQLCIPHER IMAGE DOES NOT MATCH ITS DESCRIPTOR ($staged_digest vs $sidecar_digest). ***" >&2
             rc=3
         else
             echo "staged_sqlcipher_sha256=$staged_digest" >>"$LOG"
+            echo "staged_stock_sqlite_sha256=$(shasum -a 256 "$staged_stock" | awk '{print $1}')" >>"$LOG"
             xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light \
                 -configuration LightDebug \
                 -destination "platform=iOS Simulator,id=${UDID}" \

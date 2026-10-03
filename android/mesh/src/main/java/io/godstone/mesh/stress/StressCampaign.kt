@@ -342,8 +342,17 @@ data class CampaignResult(
      * are distinguishable from any result.
      */
     val unmeasuredInvariants: List<String> = emptyList(),
-    /** The category this result belongeth to -- `resource-model`, and NEVER the production runtime. */
-    val category: String = Category.RESOURCE_MODEL,
+    /**
+     * *** THE CATEGORY THIS RESULT BELONGETH TO -- `resource-model`, AND NEVER THE PRODUCTION RUNTIME. ***
+     *
+     * **NO DEFAULT.** The sole construction site (`run()`) carrieth it EXPLICITLY, and a DEFAULT here would be a DEAD
+     * copy of that carry: *MEASURED (round 727 audit), a rod that relabelled THIS default ESCAPED, because `run()`
+     * overrode it at its own construction site and no reader ever saw the default at all.* **A CATEGORY CARRIED IN TWO
+     * PLACES DIVERGES FROM ITSELF; THE LIVE AUTHORITY IS THE CARRY IN `run()`, AND THIS FIELD CARRIETH IT WITHOUT A
+     * SECOND, STALE OPINION.** A classification this result must never claim is refused where it is MADE, not where it
+     * is defaulted.
+     */
+    val category: String,
 ) {
     val passed: Boolean get() = failures.isEmpty()
 

@@ -377,6 +377,84 @@ final class GsFinal003StartupPermitTests: XCTestCase {
                        "*** AND THE IDENTITY WAS MINted ONCE, by the private composition's `loadOrCreate`. ***")
     }
 
+    /// *** THE ONE-SHOT BOUNDARY *AT THE COMPOSITION*: A SPENT PERMIT MUST NOT OPEN A SECOND RUNTIME. ***
+    ///
+    /// *THE FINDING'S TWO HALVES ARE DIFFERENT OBSERVABLES AND NEED DIFFERENT ARMS. `testGSFINAL003_thePermitIsEstateBoundGenerationBoundAndOneShot`
+    /// proveth the permit's OWN `consumeForConstruction`; but the review's charge was that the ROAD was ungated --
+    /// "the normal helper can bypass recovery" -- i.e. a permit refused at the type boundary might still be accepted
+    /// by a composition that FORGOT to consult it.*
+    ///
+    /// **SO THIS ARM DRIVES THE PRODUCTION COMPOSITION TWICE WITH THE SAME (STRUCT-COPIED) PERMIT.** *A permit is a
+    /// struct whose one-shot slot is a shared reference (`PermitConsumptionLedger`), so the second call presents the
+    /// SAME proof. On the honest tree the first call consumes the slot and the second is REFUSED at
+    /// `PhysicalEstateAuthority.beginConstruction` (`permit_refused`) with ZERO further opens; a composition that
+    /// dropped the permit consumption -- or a permit whose one-shot clause was struck -- would build a SECOND runtime
+    /// over the first one's key material, and the open count would DOUBLE. That is the consumer-visible
+    /// discriminator.*
+    func testGSFINAL003_aSpentPermitCannotOpenASecondComposition() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gf003_reuse_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { cleanup(dir) }
+        let msg = dir.appendingPathComponent("mesh.db")
+        let peer = dir.appendingPathComponent("peer.db")
+
+        let counter = PrivateOpenCounter()
+        let provider = CountingKeyProvider()
+        provider.succeeds = true
+        let engine = PinnedCountingEngine(counter: counter)
+        guard requirePinnedImage(engine, lane: "gf003 spent-permit boundary") else { return }
+        let factory = EncryptedStoreFactory(provider: provider, engine: engine)
+
+        let journal = InMemoryJournal()
+        if journal.durableEpoch == nil { journal.writeChecked(.idle) }
+        // ONE keychain for both calls, so the estate's owner set is the SAME root: a second bind cannot raise the
+        // registry revision, and the one-shot slot is therefore the ONLY thing that can refuse the replay.
+        let keychain = InMemoryKeychain()
+
+        // *** THE PERMIT IS ISSUED BY A REAL DRIVE over THIS estate's own id -- the production road. ***
+        let artifactPaths = MeshRuntime.wipeArtifactPaths(messageStoreUrl: msg, peerStoreUrl: peer)
+        let estateId = MeshRuntime.recoveryEstateId(artifactPaths: artifactPaths)
+        let authority = CrashResumableWipe(
+            store: WipeJournalDurabilityAdapter(journal: journal),
+            vault: WipeDeferredKeyVaultSeam(),
+            filesystem: WipeDeferredArtifactFileSystemSeam(),
+            runtime: WipeDeferredTransportSeam(),
+            authority: WipeDeferredIdentityAuthoritySeam())
+        guard case .normal(let permit) = StartupRecoveryBootstrap(wipe: authority, estateId: estateId)
+                .consumeCompositionTopology() else {
+            return XCTFail("a settled estate must issue the permit; the drive refused the normal road")
+        }
+
+        // (1) ACCEPTED: the first composition stands, and BOTH real stores are opened once each.
+        _ = try MeshRuntime.createPrivateComposition(
+            messageStoreUrl: msg,
+            peerStoreUrl: peer,
+            journal: journal,
+            keychain: keychain,
+            encryptedStores: factory,
+            permit: permit)
+        let openedAfterFirst = counter.storesOpened
+        XCTAssertEqual(openedAfterFirst, 2,
+                       "*** THE POSITIVE CONTROL: the first (admitted) composition opens both stores. ***")
+
+        // (2) *** REUSED: THE SAME PROOF MUST NOT OPEN A SECOND COMPOSITION. ***
+        XCTAssertThrowsError(
+            _ = try MeshRuntime.createPrivateComposition(
+                messageStoreUrl: msg,
+                peerStoreUrl: peer,
+                journal: journal,
+                keychain: keychain,
+                encryptedStores: factory,
+                permit: permit),
+            "*** A SPENT PERMIT MUST BE REFUSED AT THE COMPOSITION BOUNDARY: a proof of ONE drive cannot open TWO "
+            + "runtimes. A composition that did not consume the permit would build over the first one's key material. ***")
+        XCTAssertEqual(
+            counter.storesOpened, openedAfterFirst,
+            "*** AND NO FURTHER STORE MAY OPEN ON THE REFUSED REPLAY -- counted at the real construction seam. "
+            + "Observed \(counter.storesOpened), expected \(openedAfterFirst). ***")
+    }
+
     /// *** THE CENTRAL ARM: A RECOVERY ROUTE THAT CANNOT SETTLE REFUSES, AND OPENS NOTHING. ***
     ///
     /// *This is the finding's invariant, tested where it is true rather than where it deadlocks. The

@@ -4,7 +4,7 @@ test_w03_an_essential_control_without_a_label_is_refused (test_t60.T60NamedNegat
 FAIL: test_w03_an_essential_control_without_a_label_is_refused (test_t60.T60NamedNegativeTest.test_w03_an_essential_control_without_a_label_is_refused)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/private/tmp/board1-campaign-rc15-work/wt_T60-RC1-a-label-less-essential-control-is-accepted/tools/readiness/tests/test_t60.py", line 128, in test_w03_an_essential_control_without_a_label_is_refused
+  File "/private/tmp/board1-campaign-rc15-work2/wt_T60-RC1-a-label-less-essential-control-is-accepted/tools/readiness/tests/test_t60.py", line 128, in test_w03_an_essential_control_without_a_label_is_refused
     self.assertFalse(passed, "a control with no visible label must be refused")
     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: True is not false : a control with no visible label must be refused

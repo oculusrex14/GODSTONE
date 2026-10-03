@@ -1,0 +1,15 @@
+test_a_pinned_revision_with_absent_source_is_a_measured_absence (test_audit_supplychain_harness.ExternalRegisterCourt.test_a_pinned_revision_with_absent_source_is_a_measured_absence) ... FAIL
+
+======================================================================
+FAIL: test_a_pinned_revision_with_absent_source_is_a_measured_absence (test_audit_supplychain_harness.ExternalRegisterCourt.test_a_pinned_revision_with_absent_source_is_a_measured_absence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-NATIVE-02-absent-llama-source-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 754, in test_a_pinned_revision_with_absent_source_is_a_measured_absence
+    self.assertFalse(verdict["present"])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.003s
+
+FAILED (failures=1)

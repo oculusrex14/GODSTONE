@@ -202,6 +202,39 @@ class GsFinal003EstateAuthorityCourtsTest {
                 "untouched, so a reboot re-runs the wipe rather than believing it finished. Observed: ${store.readJournal()} ***",
             emptyList<String>(), store.readJournal(),
         )
+
+        // *** AND A MID-LADDER (NON-TERMINAL) CHECKPOINT'S VERDICT IS CONSULTED TOO -- WHICH THE REQUEST ARM ABOVE
+        // CANNOT REACH. *** *The request checkpoint (`persistRequest`) and the ladder's own steps (`persist`) are
+        // SEPARATE write paths; a rod that struck only the request path would leave the ladder's later rungs
+        // unguarded.* **So the SAME store is allowed exactly ONE landing: `REQUESTED` lands, and the FIRST ladder step's
+        // checkpoint (`RUNTIME_DRAINED`) is refused. The drain MUST have run (it is the effect that precedes that write),
+        // and NO effect beyond it may follow -- no key erased, no artifact deleted, no identity published.** *This is the
+        // "commit failure blocks next effect" clause measured at the rung the request arm cannot see.*
+        val midJournal = EpochJournal(PanicWipe.WipeState.IDLE)
+        val midSeams = CountingSeams()
+        val midStore = RefusingCheckpointStore(landingsBeforeRefusal = 1, adapter = WipeJournalDurabilityAdapter(midJournal))
+        val mid = CrashResumableWipe(
+            store = midStore, vault = midSeams.seams().vault, filesystem = midSeams.seams().filesystem,
+            runtime = midSeams.seams().runtime, authority = midSeams.seams().authority,
+        )
+        val midOutcome = mid.requestWipe()
+        assertTrue(
+            "*** A REFUSED *MID-LADDER* CHECKPOINT MUST BE THE TYPED `CHECKPOINT_NOT_DURABLE` TOO. Observed: $midOutcome ***",
+            midOutcome is WipeStepResult.Refused && midOutcome.cause == WipeRefusalCause.CHECKPOINT_NOT_DURABLE,
+        )
+        assertEquals(
+            "*** AND THE EFFECT THAT PRECEDES THE REFUSED WRITE MUST HAVE RUN -- otherwise this arm is measuring a " +
+                "ladder that stopped for some earlier reason. ***",
+            1, midSeams.drains.get(),
+        )
+        assertEquals("no key may be erased after a refused mid-ladder checkpoint", 0, midSeams.keyErases.get())
+        assertEquals("no artifact may be deleted after it", 0, midSeams.artifactDeletes.get())
+        assertEquals("no identity may be published after it", 0, midSeams.publishes.get())
+        assertEquals(
+            "*** AND THE DURABLE RECORD MUST STAND AT THE LAST LANDED RUNG -- NOT ONE FURTHER, which would be a " +
+                "checkpoint the disk never accepted. Observed: ${midStore.readJournal()} ***",
+            listOf("REQUESTED"), midStore.readJournal(),
+        )
     }
 
     /**
@@ -243,8 +276,9 @@ class GsFinal003EstateAuthorityCourtsTest {
     @Test
     fun aCompletedWipeIsADifferentEstate() {
         val journal = EpochJournal(PanicWipe.WipeState.IDLE)
+        val store = WipeJournalDurabilityAdapter(journal)
         val coordinator = CrashResumableWipe(
-            store = WipeJournalDurabilityAdapter(journal),
+            store = store,
             vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
             filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
             runtime = WipeDeferredSeams.DeferredTransportRuntimeSeam(),
@@ -258,6 +292,34 @@ class GsFinal003EstateAuthorityCourtsTest {
         }
         assertNotNull("the rig must obtain a permit over the clean estate", minted)
         val permit = requireNotNull(minted)
+
+        // *** A2's OWN DEFECT, STATED AS A MEASUREMENT: A WRITE BY *ANOTHER OWNER* MUST MOVE THIS COORDINATOR'S
+        // REVISION. *** *Finding A2 is exactly "revisionOf reads coordinator snapshot not live journal": this
+        // coordinator copies the record's lines into an in-memory mirror AT CONSTRUCTION, so a write performed by a
+        // SECOND coordinator over the SAME store leaveth the mirror stale.* **A stale mirror is what accepteth a permit
+        // minted over an estate that has since moved.**
+        //
+        // **SO A SECOND OWNER WRITES THE SAME DURABLE RECORD AND THIS INSTANCE MUST SEE IT:** *a fresh coordinator built
+        // AFTER the write necessarily re-reads the store, so it is the CORRECT revision; a coordinator that answers from
+        // its construction-time mirror would disagree with it.* **On the shipped code the two agree; under the
+        // mirror-derived mutant the stale one reporteth the pre-write ladder and the arm reddeneth.**
+        assertTrue("the rig must be able to land the foreign write", store.appendJournalDurably("REQUESTED"))
+        val fresh = CrashResumableWipe(
+            store = store,
+            vault = WipeDeferredSeams.DeferredKeyVaultSeam(),
+            filesystem = WipeDeferredSeams.DeferredArtifactFileSystemSeam(),
+            runtime = WipeDeferredSeams.DeferredTransportRuntimeSeam(),
+            authority = WipeDeferredSeams.DeferredIdentityAuthoritySeam(),
+        )
+        assertEquals(
+            "*** A WRITE THIS COORDINATOR DID NOT MAKE MUST BE VISIBLE TO IT: the revision must be READ FROM THE STORE, " +
+                "never from the mirror copied at construction (finding A2). Observed a fresh owner saw " +
+                "${fresh.liveRevision()} while this one saw ${coordinator.liveRevision()} ***",
+            fresh.liveRevision(), coordinator.liveRevision(),
+        )
+        // The rig's own record is reset so the ladder below still starts from the clean estate (the foreign write moved
+        // the STORE, not the coordinator's construction-time mirror).
+        journal.write(PanicWipe.WipeState.IDLE)
 
         // THE WHOLE LADDER, EVERY RUNG DURABLY RECORDED, LANDING BACK ON `IDLE`.
         for (rung in listOf(
@@ -338,12 +400,25 @@ class GsFinal003EstateAuthorityCourtsTest {
                 .filterNot { it.isSynthetic }
                 .none { java.lang.reflect.Modifier.isPublic(it.modifiers) },
         )
+        // *** AND NO PUBLIC SINGLE-ARGUMENT RAW FACTORY MAY REMAIN (finding A13's own road). ***
+        //
+        // *THE FIRST VERSION OF THIS CHECK READ `Identity::class.java` -- THE OUTER CLASS -- SO IT SAW NO `loadOrCreate`
+        // AT ALL AND WAS VACUOUSLY GREEN: a companion's members are compiled onto `Identity$Companion`, and a sealed
+        // companion's `internal` members are compiled PUBLIC WITH A MANGLED NAME (`loadOrCreate$mesh_debug`).* **THE
+        // MEASUREMENT ITSELF HAD TO BE CORRECTED, or the rod aimed here could never be killed.*** *So BOTH surfaces are
+        // read, and the match is by PREFIX so the `internal` spelling cannot hide a re-opened raw road.*
+        val rawFactories = listOf(
+            io.godstone.mesh.identity.Identity::class.java,
+            io.godstone.mesh.identity.Identity.Companion::class.java,
+        ).flatMap { it.declaredMethods.toList() }
+            .filter { java.lang.reflect.Modifier.isPublic(it.modifiers) }
+            .filter { it.name == "loadOrCreate" || it.name.startsWith("loadOrCreate\$") }
         assertTrue(
-            "*** AND NO PUBLIC SINGLE-ARGUMENT RAW FACTORY MAY REMAIN (finding A13's own road). ***",
-            io.godstone.mesh.identity.Identity::class.java.declaredMethods.none {
-                java.lang.reflect.Modifier.isPublic(it.modifiers) &&
-                    it.name == "loadOrCreate" && it.parameterCount == 1
-            },
+            "*** AND NO PUBLIC SINGLE-ARGUMENT RAW FACTORY MAY REMAIN (finding A13's own road). *The scan readeth the " +
+                "COMPANION, and it matched the MANGLED `internal` spelling, so a raw one-argument road could not hide " +
+                "behind either the outer class or the mangling.* Observed: " +
+                rawFactories.joinToString { it.name + "(" + it.parameterTypes.size + " arg(s))" } + " ***",
+            rawFactories.none { it.parameterCount == 1 },
         )
     }
 

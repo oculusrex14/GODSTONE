@@ -536,12 +536,15 @@ def check_ios_simulator_lane(*, evidence_root: Path | None = None) -> tuple[list
             problems.append(f"the iOS simulator lane carrieth no `{key}` -- *a lane that does not name the device it "
                             f"ran on cannot be re-executed on the same one, and `name=iPhone` is not an identity.*")
 
-    # (c) THE OUTERMOST VERDICT: `** TEST SUCCEEDED **` AND NO `** TEST FAILED **`.
-    if "** TEST SUCCEEDED **" not in text:
-        problems.append("the iOS simulator lane carrieth NO `** TEST SUCCEEDED **` banner -- *a run that died "
+    # (c) THE OUTERMOST VERDICT: EITHER xcodebuild success banner, and NEITHER failure banner.
+    # *Modern simctl/xcodebuild test sessions close with `** TEST EXECUTE SUCCEEDED **`; the older/plain
+    # `** TEST SUCCEEDED **` remains accepted for logs produced by the same checker contract.*
+    if "** TEST SUCCEEDED **" not in text and "** TEST EXECUTE SUCCEEDED **" not in text:
+        problems.append("the iOS simulator lane carrieth NEITHER `** TEST SUCCEEDED **` NOR "
+                        "`** TEST EXECUTE SUCCEEDED **` banner -- *a run that died "
                         "mid-suite can still print a `0 failures` line for the suites it reached.*")
-    if "** TEST FAILED **" in text:
-        problems.append("the iOS simulator lane carrieth `** TEST FAILED **`")
+    if "** TEST FAILED **" in text or "** TEST EXECUTE FAILED **" in text:
+        problems.append("the iOS simulator lane carrieth a terminal `TEST FAILED` banner")
 
     # (d) EVERY ARM'S OWN VERDICT, BY STABLE IDENTITY -- NOT A COUNT.
     cases = IOS_UITEST_CASE.findall(text)
@@ -1430,7 +1433,7 @@ def simulator_selftest() -> int:
         lines.append("Test Suite 'GodstoneMeshTests.xctest' passed at 2026-01-01.")
         _classes, arms = simulator_roster()
         lines.append(f"\t Executed {arms} tests, with 0 failures (0 unexpected) in 1.0 (1.0) seconds")
-        lines.append("** TEST SUCCEEDED **")
+        lines.append("** TEST EXECUTE SUCCEEDED **")
         lines.append("raw_xcodebuild_rc=0")
         return "\n".join(lines) + "\n"
 

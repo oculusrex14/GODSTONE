@@ -1,0 +1,27 @@
+test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried (test_t72.T72FaultsTest.test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried)
+*** THE 11-NAMES/7-MEASURED GAP, TYPED RATHER THAN NARRATED, AND CARRIED ON THE RESULT. *** ... FAIL
+
+======================================================================
+FAIL: test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried (test_t72.T72FaultsTest.test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried)
+*** THE 11-NAMES/7-MEASURED GAP, TYPED RATHER THAN NARRATED, AND CARRIED ON THE RESULT. ***
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_SH-R07-python-the-unmeasured-owner-kinds-are-unnamed/tools/readiness/tests/test_t72.py", line 267, in test_w09b_the_measured_and_unmeasured_sets_are_typed_and_carried
+    self.assertEqual(result.unmeasured_owners, UNMEASURED_OWNER_KINDS)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: () != ('writer reservations', 'admitted inventor[58 chars]ons')
+
+Second tuple contains 4 additional elements.
+First extra element 0:
+'writer reservations'
+
+- ()
++ ('writer reservations',
++  'admitted inventory leases',
++  'pending ACK obligations',
++  'observer registrations')
+
+----------------------------------------------------------------------
+Ran 1 test in 0.010s
+
+FAILED (failures=1)

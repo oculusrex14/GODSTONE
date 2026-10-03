@@ -1,0 +1,41 @@
+*** HISTORICAL PROPOSAL -> REAL CONTROL MAPPING (NOT A GATE POPULATION). ***
+
+This is a ROD REPORT, not a manifest, and it is deliberately OUTSIDE the required
+campaign population. The required population (`BOARD1_REQUIRED_IDS`) names ONLY
+controls that are actually EXECUTED: each carries a byte-exact `find`/`replace`
+and a witness that exists. A superseded proposal is recorded HERE by its
+intent, mapped to the real rod that implements the same fault intent, so no
+control is dropped in spirit and no virtual id inflates the executed count.
+
+WHY THIS FILE EXISTS. The cancelled `AndroidAuthority` agent proposed seven rods
+whose `mutation`/`expected_kill` were prose only and whose courts
+(`GsFinal003EstateAuthorityDurabilityTest`, `...PermitTest`, `...CorruptOperatorTest`)
+NEVER EXISTED -- those rods could not have been executed or killed. The current
+source owner (`AndroidEstateAuthority`) re-expressed the same fault intents as
+executable rods against the landed source. So the seven proposal ids are NOT in
+the gate population; their INTENTS are carried by the ten ANDE rods below.
+
+MAPPING (proposal intent -> executing control):
+
+  MUT-AND-1-A9  durable-checkpoint verdict discarded      -> ANDE-A9-01-CHECKPOINT-VERDICT-DISCARDED
+  MUT-AND-2-A2  stale/ABA permit reused                   -> ANDE-A2-05-PERMIT-NOT-REVALIDATED-AT-CONSUMPTION
+  MUT-AND-3-A3  self-mint permit door                     -> ANDE-A3-07-PUBLIC-PERMIT-FROM-A-BARE-DECISION
+  MUT-AND-4-A13 public raw identity factory               -> ANDE-A13-08-PUBLIC-RAW-IDENTITY-FACTORY
+  MUT-AND-5-A2  checkpoint regression (illegal next)      -> ANDE-A2-06-ADAPTER-LEGAL-NEXT-CHECK-DROPPED
+  MUT-AND-6-A8  reentrant drive on the one owner          -> ANDE-A8-09-REENTRANCY-GUARD-DROPPED
+  MUT-AND-7-A7  corrupt resolved without durable request  -> ANDE-A7-10-OPERATOR-RESOLUTION-SKIPS-THE-DURABLE-REQUEST
+
+REMOVED FROM THE POPULATION (not executable as a SEMANTIC control):
+
+  MUT-IOS-R14-CORRUPT-ARG -- reverting a TEST source's associated-enum pattern
+  (`XCTAssertNotEqual(first.decision, .corruptJournal, ...)`) is a COMPILE error in
+  TEST source, i.e. a BUILD_INVALID regression, NOT a semantic capability kill. It
+  does not prove an unforgeable production capability. Removed; the topology
+  target's own compilation is covered by the ordinary build, not by a mutation rod.
+  The ONLY legitimate `type_enforced` rod retained is IOS-RECOVERY-006, where the
+  PRODUCTION road's `permit: PrivateRuntimePermit` parameter makes the mutant
+  uncompilable at the CAPABILITY boundary (a bad consumer surface), not a test typo.
+
+FAULT INTENTS PRESERVED. The iOS R1..R14 fault intents remain carried by the
+executing MUT-IOS-R1..R11 rods plus IOS-TRANSPORT-001; no user-facing original
+control (the 49 legacy rc11 rods included) was narrowed or removed by this report.

@@ -1,0 +1,20 @@
+
+5 tests completed, 2 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':labmesh:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///private/tmp/board1-campaign-rc15-work2/wt_T72-RC40-android-lab-wipe-progress-not-read-from-record/android/labmesh/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 14s
+
+TEST-SUITE TEST-io.godstone.labmesh.LabMeshJourneyBoundTest.xml tests=5 skipped=0 failures=2 errors=0
+TEST-CASE PASS test_the_rendered_sos_arm_and_cancel_reach_the_nodes_own_durable_row
+TEST-CASE PASS test_the_durable_readout_is_absent_until_the_runtime_committeth
+TEST-CASE PASS test_the_rendered_journey_sendeth_and_renders_the_runtimes_own_durable_id
+TEST-CASE FAIL test_aRefusedEstateRendersRecoveryOnlyWithLiveWipeControls
+TEST-CASE FAIL test_the_rendered_wipe_reaches_the_durable_record_and_survives_a_reopen

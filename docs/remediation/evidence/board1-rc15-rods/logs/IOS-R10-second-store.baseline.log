@@ -1,0 +1,353 @@
+=== swift build --target GodstoneMeshTests ===
+Building for debugging...
+[Planning deferred tasks]
+[33 / 64]
+[34 / 65] GodstoneCore
+[47 / 114]
+[54 / 114]
+[55 / 114]
+[60 / 114]
+[64 / 114]
+[68 / 114]
+[70 / 114]
+[71 / 114]
+[83 / 114] GodstoneCore
+[84 / 114] GodstoneCore
+[92 / 115] GodstoneCore
+[92 / 115] GodstoneMesh
+[104 / 127] GodstoneMesh
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
+ 56 | 
+ 57 | public struct BundleMetadata: Sendable {
+ 58 |     public let values: [String: Any]
+    |                `- warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
+ 59 | 
+ 60 |     public init(values: [String: Any]) { self.values = values }
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ReleaseIntake.swift:58:16: warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
+ 56 | 
+ 57 | public struct BundleMetadata: Sendable {
+ 58 |     public let values: [String: Any]
+    |                `- warning: stored property 'values' of 'Sendable'-conforming struct 'BundleMetadata' contains non-Sendable type 'Any'; this is an error in the Swift 6 language mode
+ 59 | 
+ 60 |     public init(values: [String: Any]) { self.values = values }
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:217:23: warning: result of call to 'withCString' is unused [#NoUsage]
+215 |             let bound = Int64(ArchiveSearchQuery.bound(limit))
+216 |             return try run(sql, binds: { stmt in
+217 |                 match.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
+    |                       `- warning: result of call to 'withCString' is unused [#NoUsage]
+218 |                 sqlite3_bind_int64(stmt, 2, bound)
+219 |             }) { stmt in
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:234:62: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+232 |     public func versionString() throws -> String {
+233 |         try run("SELECT sqlite_version()") { stmt in columnString(stmt, 0) }
+234 |             .first ?? (String(cString: sqlite3_libversion()) ?? "unknown")
+    |                                                              `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+235 |     }
+236 | 
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:428:68: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+426 |         let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
+427 |         guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK else {
+428 |             let why = db.map { String(cString: sqlite3_errmsg($0)) ?? "?" } ?? "open refused"
+    |                                                                    `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+429 |             return refuse(db, .corrupt("the file at \(path) could not be opened read-only: \(why)"))
+430 |         }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:439:67: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+437 |             let rc = sqlite3_exec(handle, pragma, nil, nil, nil)
+438 |             if rc != SQLITE_OK {
+439 |                 let why = String(cString: sqlite3_errmsg(handle)) ?? "rc \(rc)"
+    |                                                                   `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+440 |                 return refuse(handle, .readFailure("the seal \(pragma) would not seat: \(why)"))
+441 |             }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:483:59: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+481 |             return refuse(handle, .incompatible(ArchiveError.ftsUnavailable(fault).localizedDescription))
+482 |         }
+483 |         let stock = String(cString: sqlite3_libversion()) ?? "unknown"
+    |                                                           `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+484 |         return (handle, .ready(origin: "file \(path) | sqlite \(stock) | read-only"))
+485 |     }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:497:28: warning: result of call to 'withCString' is unused [#NoUsage]
+495 |             sqlite3_finalize(stmt); return nil
+496 |         }
+497 |         if let bind { bind.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) } }
+    |                            `- warning: result of call to 'withCString' is unused [#NoUsage]
+498 |         var out: String?
+499 |         if sqlite3_step(stmt) == SQLITE_ROW, let value = sqlite3_column_text(stmt, 0) {
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:525:64: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+523 |         for verse in verses {
+524 |             if sqlite3_exec(mem, verse, nil, nil, nil) != SQLITE_OK {
+525 |                 let why = String(cString: sqlite3_errmsg(mem)) ?? "?"
+    |                                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+526 |                 return "\(ellipsis(verse)) cried: \(why)"
+527 |             }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:532:60: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+530 |         guard sqlite3_prepare_v2(mem, "SELECT rowid FROM t48_canary WHERE t48_canary MATCH 'generate'",
+531 |                                  -1, &stmt, nil) == SQLITE_OK else {
+532 |             let why = String(cString: sqlite3_errmsg(mem)) ?? "?"
+    |                                                            `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+533 |             sqlite3_finalize(stmt)
+534 |             return "the stem match would not prepare: \(why)"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift:547:55: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+545 |         guard let db else { return "no handle" }
+546 |         let code = sqlite3_errcode(db)
+547 |         let msg = String(cString: sqlite3_errmsg(db)) ?? "?"
+    |                                                       `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+548 |         return "errno \(code) errmsg \(msg)"
+549 |     }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+error: SwiftCompile normal arm64 /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift failed with a nonzero exit code. Command line:     cd /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages
+    builtin-SwiftPerFileCompile SqlCipherDylibEngine.swift
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:409:21: warning: result of call to 'removeSlot' is unused [#NoUsage]
+407 |                 guard isActive else {
+408 |                     _ = slot.retire()
+409 |                     removeSlot(admission)
+    |                     `- warning: result of call to 'removeSlot' is unused [#NoUsage]
+410 |                     ctrl.destroy()
+411 |                     return nil
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:443:17: warning: result of call to 'removeSlot' is unused [#NoUsage]
+441 |             }
+442 |             if let doomed = doomed {
+443 |                 removeSlot(admission)
+    |                 `- warning: result of call to 'removeSlot' is unused [#NoUsage]
+444 |                 doomed.destroy()
+445 |             }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:476:21: warning: result of call to 'removeSlot' is unused [#NoUsage]
+474 |                 guard isActive else {
+475 |                     _ = slot.retire()
+476 |                     removeSlot(admission)
+    |                     `- warning: result of call to 'removeSlot' is unused [#NoUsage]
+477 |                     ctrl.destroy()
+478 |                     return nil
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:470:33: warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+468 |                     trustAuthority: trustAuthority
+469 |                 )
+470 |                 guard let hs2 = try? ctrl.responderProcessMessage1AndWriteMessage2(hs1: hs1) else {
+    |                                 `- warning: no calls to throwing functions occur within 'try' expression [#UnnecessaryEffectMarker]
+471 |                     ctrl.destroy()
+472 |                     return nil
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift:506:17: warning: result of call to 'removeSlot' is unused [#NoUsage]
+504 |             }
+505 |             if let doomed = doomed {
+506 |                 removeSlot(admission)
+    |                 `- warning: result of call to 'removeSlot' is unused [#NoUsage]
+507 |                 doomed.destroy()
+508 |             }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift:44:16: warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 42 |     public let msgId: Data
+ 43 |     public let state: DeliveryState
+ 44 |     public let frame: FrameV2
+    |                `- warning: stored property 'frame' of 'Sendable'-conforming struct 'ActiveSos' has non-Sendable type 'FrameV2'; this is an error in the Swift 6 language mode
+ 45 |     /// When this node committed the pair, when it remembers; nil when the
+ 46 |     /// tables cannot name the instant (honest silence over a fabricated clock).
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift:7:15: note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  5 | 
+  6 | /// GMP/2 frame. Header is 32 bytes, big-endian.
+  7 | public struct FrameV2: Equatable {
+    |               `- note: consider making struct 'FrameV2' conform to the 'Sendable' protocol
+  8 |     public static let magic: UInt16 = 0x4753
+  9 |     public static let version: UInt8 = 0x02
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:367:15: error: cannot find 'SQLCipherTrustedExpectation' in scope
+365 |         let runtimePlatform = "IOS"
+366 |         #endif
+367 |         guard SQLCipherTrustedExpectation.platform == runtimePlatform else {
+    |               `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+368 |             self.table = nil
+369 |             self.bindingFailure = "the baked SQLCipher trust expectation is for platform \(SQLCipherTrustedExpectation.platform), but this runtime is \(runtimePlatform); re-emit it for this mode"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:369:92: error: cannot find 'SQLCipherTrustedExpectation' in scope
+367 |         guard SQLCipherTrustedExpectation.platform == runtimePlatform else {
+368 |             self.table = nil
+369 |             self.bindingFailure = "the baked SQLCipher trust expectation is for platform \(SQLCipherTrustedExpectation.platform), but this runtime is \(runtimePlatform); re-emit it for this mode"
+    |                                                                                            `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+370 |             return
+371 |         }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:379:15: error: cannot find 'SQLCipherTrustedExpectation' in scope
+377 |         let runtimeArch = "unknown"
+378 |         #endif
+379 |         guard SQLCipherTrustedExpectation.arch == runtimeArch else {
+    |               `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+380 |             self.table = nil
+381 |             self.bindingFailure = "the baked SQLCipher trust expectation is for arch \(SQLCipherTrustedExpectation.arch), but this runtime is \(runtimeArch)"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:381:88: error: cannot find 'SQLCipherTrustedExpectation' in scope
+379 |         guard SQLCipherTrustedExpectation.arch == runtimeArch else {
+380 |             self.table = nil
+381 |             self.bindingFailure = "the baked SQLCipher trust expectation is for arch \(SQLCipherTrustedExpectation.arch), but this runtime is \(runtimeArch)"
+    |                                                                                        `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+382 |             return
+383 |         }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:384:15: error: cannot find 'SQLCipherTrustedExpectation' in scope
+382 |             return
+383 |         }
+384 |         guard SQLCipherTrustedExpectation.libraryName == SQLCipherPin.libraryName else {
+    |               `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+385 |             self.table = nil
+386 |             self.bindingFailure = "the baked expectation names '\(SQLCipherTrustedExpectation.libraryName)', not the pinned '\(SQLCipherPin.libraryName)'"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:386:67: error: cannot find 'SQLCipherTrustedExpectation' in scope
+384 |         guard SQLCipherTrustedExpectation.libraryName == SQLCipherPin.libraryName else {
+385 |             self.table = nil
+386 |             self.bindingFailure = "the baked expectation names '\(SQLCipherTrustedExpectation.libraryName)', not the pinned '\(SQLCipherPin.libraryName)'"
+    |                                                                   `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+387 |             return
+388 |         }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:398:44: error: cannot find 'SQLCipherTrustedExpectation' in scope
+396 |            let sidecarData = try? Data(contentsOf: URL(fileURLWithPath: sidecarPath)),
+397 |            let sidecar = try? JSONDecoder().decode(SidecarFormat.self, from: sidecarData) {
+398 |             guard sidecar.source.commit == SQLCipherTrustedExpectation.commit,
+    |                                            `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+399 |                   sidecar.source.tag == SQLCipherTrustedExpectation.tag,
+400 |                   sidecar.source.repo == SQLCipherTrustedExpectation.repo,
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:399:41: error: cannot find 'SQLCipherTrustedExpectation' in scope
+397 |            let sidecar = try? JSONDecoder().decode(SidecarFormat.self, from: sidecarData) {
+398 |             guard sidecar.source.commit == SQLCipherTrustedExpectation.commit,
+399 |                   sidecar.source.tag == SQLCipherTrustedExpectation.tag,
+    |                                         `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+400 |                   sidecar.source.repo == SQLCipherTrustedExpectation.repo,
+401 |                   sidecar.library_name == SQLCipherTrustedExpectation.libraryName,
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:400:42: error: cannot find 'SQLCipherTrustedExpectation' in scope
+398 |             guard sidecar.source.commit == SQLCipherTrustedExpectation.commit,
+399 |                   sidecar.source.tag == SQLCipherTrustedExpectation.tag,
+400 |                   sidecar.source.repo == SQLCipherTrustedExpectation.repo,
+    |                                          `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+401 |                   sidecar.library_name == SQLCipherTrustedExpectation.libraryName,
+402 |                   sidecar.mode == SQLCipherTrustedExpectation.mode,
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:401:43: error: cannot find 'SQLCipherTrustedExpectation' in scope
+399 |                   sidecar.source.tag == SQLCipherTrustedExpectation.tag,
+400 |                   sidecar.source.repo == SQLCipherTrustedExpectation.repo,
+401 |                   sidecar.library_name == SQLCipherTrustedExpectation.libraryName,
+    |                                           `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+402 |                   sidecar.mode == SQLCipherTrustedExpectation.mode,
+403 |                   sidecar.platform == SQLCipherTrustedExpectation.platform,
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:402:35: error: cannot find 'SQLCipherTrustedExpectation' in scope
+400 |                   sidecar.source.repo == SQLCipherTrustedExpectation.repo,
+401 |                   sidecar.library_name == SQLCipherTrustedExpectation.libraryName,
+402 |                   sidecar.mode == SQLCipherTrustedExpectation.mode,
+    |                                   `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+403 |                   sidecar.platform == SQLCipherTrustedExpectation.platform,
+404 |                   sidecar.arch == SQLCipherTrustedExpectation.arch,
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:403:39: error: cannot find 'SQLCipherTrustedExpectation' in scope
+401 |                   sidecar.library_name == SQLCipherTrustedExpectation.libraryName,
+402 |                   sidecar.mode == SQLCipherTrustedExpectation.mode,
+403 |                   sidecar.platform == SQLCipherTrustedExpectation.platform,
+    |                                       `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+404 |                   sidecar.arch == SQLCipherTrustedExpectation.arch,
+405 |                   sidecar.cipher_version_major == SQLCipherTrustedExpectation.cipherVersionMajor else {
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:404:35: error: cannot find 'SQLCipherTrustedExpectation' in scope
+402 |                   sidecar.mode == SQLCipherTrustedExpectation.mode,
+403 |                   sidecar.platform == SQLCipherTrustedExpectation.platform,
+404 |                   sidecar.arch == SQLCipherTrustedExpectation.arch,
+    |                                   `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+405 |                   sidecar.cipher_version_major == SQLCipherTrustedExpectation.cipherVersionMajor else {
+406 |                 self.table = nil
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:405:51: error: cannot find 'SQLCipherTrustedExpectation' in scope
+403 |                   sidecar.platform == SQLCipherTrustedExpectation.platform,
+404 |                   sidecar.arch == SQLCipherTrustedExpectation.arch,
+405 |                   sidecar.cipher_version_major == SQLCipherTrustedExpectation.cipherVersionMajor else {
+    |                                                   `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+406 |                 self.table = nil
+407 |                 self.bindingFailure = "the artifact sidecar DISAGREES with the baked trust expectation at '\(sidecarPath)'"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:411:15: error: cannot find 'SQLCipherTrustedExpectation' in scope
+409 |             }
+410 |         }
+411 |         guard SQLCipherTrustedExpectation.cipherVersionMajor == SQLCipherPin.supportedCipherVersion else {
+    |               `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+412 |             self.table = nil
+413 |             self.bindingFailure = "the baked expectation's cipher major \(SQLCipherTrustedExpectation.cipherVersionMajor) disagrees with the engine's \(SQLCipherPin.supportedCipherVersion)"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:413:75: error: cannot find 'SQLCipherTrustedExpectation' in scope
+411 |         guard SQLCipherTrustedExpectation.cipherVersionMajor == SQLCipherPin.supportedCipherVersion else {
+412 |             self.table = nil
+413 |             self.bindingFailure = "the baked expectation's cipher major \(SQLCipherTrustedExpectation.cipherVersionMajor) disagrees with the engine's \(SQLCipherPin.supportedCipherVersion)"
+    |                                                                           `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+414 |             return
+415 |         }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:422:33: error: cannot find 'SQLCipherTrustedExpectation' in scope
+420 |             return
+421 |         }
+422 |         guard fileData.count == SQLCipherTrustedExpectation.bytes else {
+    |                                 `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+423 |             self.table = nil
+424 |             self.bindingFailure = "artifact byte count mismatch: expected \(SQLCipherTrustedExpectation.bytes), got \(fileData.count)"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:424:77: error: cannot find 'SQLCipherTrustedExpectation' in scope
+422 |         guard fileData.count == SQLCipherTrustedExpectation.bytes else {
+423 |             self.table = nil
+424 |             self.bindingFailure = "artifact byte count mismatch: expected \(SQLCipherTrustedExpectation.bytes), got \(fileData.count)"
+    |                                                                             `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+425 |             return
+426 |         }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:427:62: error: cannot find 'SQLCipherTrustedExpectation' in scope
+425 |             return
+426 |         }
+427 |         guard Self.verifyMachO(data: fileData, expectedArch: SQLCipherTrustedExpectation.arch) else {
+    |                                                              `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+428 |             self.table = nil
+429 |             self.bindingFailure = "artifact Mach-O architecture check failed for '\(libPath)'"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:433:74: error: cannot find 'SQLCipherTrustedExpectation' in scope
+431 |         }
+432 |         // *** AND THE PLATFORM, NOT MERELY THE ARCH (a macOS and a simulator image both carry arm64). ***
+433 |         guard Self.verifyMachOPlatform(data: fileData, expectedPlatform: SQLCipherTrustedExpectation.platform) else {
+    |                                                                          `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+434 |             self.table = nil
+435 |             self.bindingFailure = "artifact Mach-O PLATFORM check failed for '\(libPath)' (expected \(SQLCipherTrustedExpectation.platform))"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:435:103: error: cannot find 'SQLCipherTrustedExpectation' in scope
+433 |         guard Self.verifyMachOPlatform(data: fileData, expectedPlatform: SQLCipherTrustedExpectation.platform) else {
+434 |             self.table = nil
+435 |             self.bindingFailure = "artifact Mach-O PLATFORM check failed for '\(libPath)' (expected \(SQLCipherTrustedExpectation.platform))"
+    |                                                                                                       `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+436 |             return
+437 |         }
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:439:44: error: cannot find 'SQLCipherTrustedExpectation' in scope
+437 |         }
+438 |         let actualDigest = Self.sha256Hex(data: fileData)
+439 |         guard actualDigest.lowercased() == SQLCipherTrustedExpectation.sha256.lowercased() else {
+    |                                            `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+440 |             self.table = nil
+441 |             self.bindingFailure = "artifact digest mismatch: expected \(SQLCipherTrustedExpectation.sha256), got \(actualDigest)"
+
+/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift:441:73: error: cannot find 'SQLCipherTrustedExpectation' in scope
+439 |         guard actualDigest.lowercased() == SQLCipherTrustedExpectation.sha256.lowercased() else {
+440 |             self.table = nil
+441 |             self.bindingFailure = "artifact digest mismatch: expected \(SQLCipherTrustedExpectation.sha256), got \(actualDigest)"
+    |                                                                         `- error: cannot find 'SQLCipherTrustedExpectation' in scope
+442 |             return
+443 |         }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AccessibilityContract.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckAuthenticator.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckDispatcher.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AckObligationStore.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/AdmissionBudget.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleConnection.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleHandshake.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleHandshakeAuthority.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleOrchestrationDriver.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRecord.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRoleBindingCoordinator.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleRoleElection.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BulkTransport.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ComposedRuntime.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ControlPayloadV1.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/CrashResumableWipe.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/DeliveryProjection.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/DeliveryTracker.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Diagnostics.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/EncryptedStoreFactory.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/EstateOwnerRegistry.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/FileWipeJournal.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/FrameDispatcher.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/GattServiceContract.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/IdentityAckSigner.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/IdentityBindingV1.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/KeyTableTrustResolver.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LabRuntime.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LifecycleTransportAdapter.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LifetimeControl.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LinkInfoSnapshotTypes.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/LocalIdentityStateV1.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCheckpoint.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCoordinator.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshIdentity.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshNode.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshRuntime.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshTrustFacade.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshUXModel.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MessageStore.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/OwnedVerifiedConnection.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PanicWipe.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerEventPublisher.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerGovernor.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityRepository.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerTrustEngine.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerTrustModels.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Priority.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RealTransportHostRig.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RecipientInboxRepository.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RecordWriter.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/ReplayWindow.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RetentionClock.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Router.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/RuntimeLifecycleGate.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SQLiteFunctionTable.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SchemaMigration.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SealedSender.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SendDirectAuthority.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionSlot.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SignedMessageV1.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SignedSosV1.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosCommand.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SosFrameValidator.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqlCipherDylibEngine.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqliteDeliveryRepository.swift -primary-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SqliteOutboundIntentJournal.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StableInventorySnapshot.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StartupRecoveryDecision.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StoreQuota.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/StressCampaign.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncControlOwner.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SyncPump.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustAuthorityAdapter.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustUXModel.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedHandshakeController.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/TrustedPeerChannel.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeArtifactFileSystemSeam.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeDeferredSeams.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeDeferredTransportSeam.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeJournalDurabilityAdapter.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WipeKeyVaultSeam.swift /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift -supplementary-output-file-map /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/supplementaryOutputs-12 -target arm64-apple-macos13.0 -disable-cross-import-overlay-search -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/PackageFrameworks -F /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -no-color-diagnostics -Xcc -fno-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=4 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D SWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages -enable-anonymous-context-mangled-names -file-compilation-dir /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -Xcc -I/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Products/Debug/include -Xcc -I/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources-normal/arm64 -Xcc -I/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources/arm64 -Xcc -I/private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name GodstoneMesh -package-name godstonefoundation -const-gather-protocols-file /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SessionManager.o -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SessionSlot.o -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SignedMessageV1.o -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SignedSosV1.o -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SosCommand.o -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SosFrameValidator.o -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SqlCipherDylibEngine.o -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SqliteDeliveryRepository.o -o /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SqliteOutboundIntentJournal.o -debug-module-path /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out/Intermediates.noindex/GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/GodstoneMesh.swiftmodule -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SessionManager.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SessionSlot.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SignedMessageV1.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SignedSosV1.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SosCommand.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SosFrameValidator.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SqlCipherDylibEngine.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SqliteDeliveryRepository.o -index-unit-output-path /GodstoneFoundation.build/Debug/GodstoneMesh-t.build/Objects-normal/arm64/SqliteOutboundIntentJournal.o -index-store-path /private/tmp/board1-campaign-rc15-work2/wt_IOS-R10-second-store/ios/Packages/GodstoneFoundation/.build/out -index-system-modules
+error: Build failed
+

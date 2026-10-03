@@ -1,0 +1,16 @@
+   1. one test class' PASSED line removed                                         expect=red   got=red   KILLED
+   2. a class reports failed, not passed                                          expect=red   got=red   KILLED
+   3. an outermost total short by one test (an arm swallowed)                     expect=red   got=red   KILLED
+   4. a nonzero failure count on an outermost total                               expect=red   got=red   KILLED
+   5. the run truncated to its first third                                        expect=red   got=red   KILLED
+   6. an ordinary internal skip (any reason)                                      expect=red   got=red   KILLED
+   7a. the historical EXTERNAL-BLOCKED + pinned-artifact reason -- STILL REFUSED  expect=red   got=red   KILLED
+   7a'. a skip naming the artifact without the disposition -- REFUSED             expect=red   got=red   KILLED
+   7b. one source-declared arm omitted from the log (count reconciles)            expect=red   got=red   KILLED
+   7c. a verdict for an arm the sources do NOT declare (unexpected arm)           expect=red   got=red   KILLED
+   7d. a duplicated verdict for one arm                                           expect=red   got=red   KILLED
+   8. the real log, unmutated -- MUST be accepted                                 expect=green got=green KILLED
+
+foundation selftest: 12/12 mutations caught
+
+(the intended control(s) ['6', '7a'] did NOT escape -- observed ESCAPED=[]; an unattributed failure is not a kill)

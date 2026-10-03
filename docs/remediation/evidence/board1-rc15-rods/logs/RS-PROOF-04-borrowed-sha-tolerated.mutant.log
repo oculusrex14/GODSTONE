@@ -1,0 +1,17 @@
+test_a_borrowed_sha_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_a_borrowed_sha_is_refused) ... FAIL
+
+======================================================================
+FAIL: test_a_borrowed_sha_is_refused (test_audit_supplychain_harness.ReleaseProofCourt.test_a_borrowed_sha_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_RS-PROOF-04-borrowed-sha-tolerated/tools/readiness/tests/test_audit_supplychain_harness.py", line 157, in test_a_borrowed_sha_is_refused
+    self.assertTrue(any("BORROWED" in item
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+                        for item in RP.verify_release_proof(document)))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

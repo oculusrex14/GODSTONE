@@ -1,0 +1,4 @@
+sh -n rc=0
+guard: sh tools/readiness/tests/mutation_runner_keepalive_probe.sh tools/readiness/run_android_lanes.sh
+guard rc=0
+KEEP-ALIVE HELD: the failing command was caught and the post-run step was reached

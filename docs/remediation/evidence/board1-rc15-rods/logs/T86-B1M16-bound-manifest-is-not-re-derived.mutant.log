@@ -1,0 +1,29 @@
+FREEZE: board1-court-rc -> ab2944ede39f08efdd03e53b9a359725f48374dc (tree 27005d38b20d86fa49d5630c95de6cb11cd9f298) bound to run 1 attempt 1 7/7 jobs success
+  attestation written to /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/docs/remediation/evidence/FREEZE_ATTESTATION_rc15.json
+  auditor block stays NULL: the terminal builder verdict is READY_FOR_EXTERNAL_REAUDIT, NEVER VERIFIED_FIXED
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+test_a_manifest_edited_after_the_attestation_bound_it_is_refused (test_board1_gate_manifest.AttestationBindingTests.test_a_manifest_edited_after_the_attestation_bound_it_is_refused) ... /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+::error::hosted manifest: the supplied manifest is NOT the one the pinned run uploaded: the artifact's own bytes carry sha256 3f52ef692956c456… while the supplied file carrieth e59c0a491ce98371… -- a caller-supplied manifest is not evidence about the run
+::error::the embedded gate manifest DISAGREES with the copy at /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmpxk_imox8/board1-gate-manifest.json -- one of the two was edited
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 4.674s
+
+OK

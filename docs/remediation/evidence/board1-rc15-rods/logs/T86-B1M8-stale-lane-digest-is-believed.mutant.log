@@ -1,0 +1,493 @@
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp511yyghe/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp511yyghe/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp511yyghe/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp511yyghe/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp511yyghe/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp511yyghe/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp511yyghe/repo/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/tmp511yyghe/repo/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+test_a_stale_lane_source_digest_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_stale_lane_source_digest_is_refused) ... /private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/project.yml'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/settings.gradle.kts'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/BleTransport.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/transport/PeerEventPublisher.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/PeerEventPublisher.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/transport/LinkInfoSnapshotAuthority.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/PeerGovernor.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/identity/RuntimeLifecycle.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/store/SqlcipherStoreOpener.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/store/StoreOpenResult.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/store/StoreQuota.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/store/RetentionClock.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/RetentionClock.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/SchemaMigration.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/BleRecord.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/BleHandshakeAuthority.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/delivery/SendDirectAuthority.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/SendDirectAuthority.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/delivery/AckObligationStore.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/MessageStore.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/RecipientInboxRepository.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedSosV1.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/SignedSosV1.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/MeshNode.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryTracker.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/DeliveryTracker.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/router/FrameDispatcher.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/FrameDispatcher.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/content/ingest/build_archive.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/content/release_gate.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/content/archive_manifest.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/scripts/prepare_release_assets.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/core/src/main/java/io/godstone/core/archive/SearchQuery.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/core/src/main/java/io/godstone/core/archive/ArchiveManifest.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneCore/ArchiveRepository.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneCore/ArchiveReaderModel.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneCore/ArchiveAvailability.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneCore/ArchiveSceneModel.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneCore/ReleaseIntake.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Tests/GodstoneCoreTests/ReadinessT51Tests.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/scripts/inspect_android_artifacts.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_release_gates_status.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_content_release_integration.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/.github/workflows/release-gates.yml'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_status_consistency.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/docs/production/RELEASE_GATES_STATUS.json'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/scripts/model_provenance.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/llm/src/main/java/io/godstone/llm/provenance/ModelLock.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/llm/src/main/java/io/godstone/llm/provenance/ModelStaging.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneCore/ModelProvenance.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/content/eval/heldout.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/supplychain/supply_chain.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/scripts/inspect_ios_artifacts.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/scripts/inspect_android_release.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/scripts/upgrade_recovery.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/delivery/AckDispatcher.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/AckDispatcher.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/router/SyncPump.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/Router.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/SyncPump.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryProjection.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/DeliveryProjection.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/runtime/ComposedRuntime.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_lab_isolation.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/profile_resolver.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/app/src/main/java/io/godstone/app/trust/IdentityTrustViewModel.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/app/src/main/java/io/godstone/app/trust/TrustContracts.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/app/src/main/java/io/godstone/app/trust/QrPayloadPolicy.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/app/src/main/java/io/godstone/app/mesh/MeshViewModel.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreens.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/app/src/main/java/io/godstone/app/mesh/MeshContracts.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/MeshUXModel.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/readiness/capabilities.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/readiness/accessibility.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/a11y/AccessibilityContract.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/readiness/diagnostics.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/diag/Diagnostics.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/Diagnostics.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/readiness/stress.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/SqlCipherDylibEngine.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/RealTransportHostRig.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/PeerIdentityRepository.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/SessionManager.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/readiness/promises.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/identity/WipePrivateEstate.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/lab/LabWipeJourney.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/StartupRecoveryDecision.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/TrustAuthorityAdapter.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/LabMesh/LabMeshRootApp.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_lane_results.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/readiness/run_android_lanes.sh'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/supplychain/verify_release_proof.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/supplychain/verify_toolchain_download.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_board1_manifest.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/readiness/board1.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/di/EstateAuthority.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/identity/WipeJournalDurabilityAdapter.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/identity/Identity.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/WipeArtifactFileSystemSeam.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/WipeJournalDurabilityAdapter.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/WipeKeyVaultSeam.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/EstateOwnerRegistry.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/WipeIdentityAuthoritySeam.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Tests/GodstoneMeshTests/GsFinal003StartupPermitTests.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/App/ArchiveView.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/OwnedVerifiedConnection.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Tests/GodstoneMeshTests/ReadinessT58Tests.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/supplychain/capture_release_proof.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/supplychain/emit_boundary.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/supplychain/verify_sqlcipher_artifact.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_trusted_handshake_controls.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentitySchema.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_peer_identity_store_controls.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/android/mesh/src/main/java/io/godstone/mesh/delivery/BoundRecipientKeyResolver.kt'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_bound_recipient_key_resolver_controls.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/mutations.py:111: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/ci/check_store_schema_controls.py'>
+  return hashlib.sha256(open(path, "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+FAIL
+
+======================================================================
+FAIL: test_a_stale_lane_source_digest_is_refused (test_board1_gate_manifest.ManifestContractTests.test_a_stale_lane_source_digest_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/board1-campaign-rc15-work2/wt_T86-B1M8-stale-lane-digest-is-believed/tools/readiness/tests/test_board1_gate_manifest.py", line 354, in test_a_stale_lane_source_digest_is_refused
+    self.assertTrue(any("THE LANE IS STALE" in p
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        for p in cbm.check_manifest(bad,
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                                    lane_digest_fn=lambda _l: "d" * 64)))
+                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 1 test in 4.397s
+
+FAILED (failures=1)

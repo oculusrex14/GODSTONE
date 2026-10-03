@@ -5,7 +5,7 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':app:testLightDebugUnitTest'.
-> There were failing tests. See the report at: file:///private/tmp/board1-campaign-rc15-work/wt_T57-RC6-truncation-splitteth-a-character/android/app/build/reports/tests/testLightDebugUnitTest/index.html
+> There were failing tests. See the report at: file:///private/tmp/board1-campaign-rc15-work2/wt_T57-RC6-truncation-splitteth-a-character/android/app/build/reports/tests/testLightDebugUnitTest/index.html
 
 * Try:
 > Run with --scan to get full insights.

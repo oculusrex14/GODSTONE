@@ -1,0 +1,7 @@
+test_a_replaced_image_is_refused_by_name (test_audit_supplychain_harness.SupplyAuthorityCourt.test_a_replaced_image_is_refused_by_name)
+A sidecar beside a replaceable image cannot authorize it: the register ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.004s
+
+OK

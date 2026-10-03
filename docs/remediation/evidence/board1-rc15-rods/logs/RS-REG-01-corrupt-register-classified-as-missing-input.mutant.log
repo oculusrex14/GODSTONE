@@ -1,0 +1,7 @@
+test_a_corrupt_register_is_an_error_never_a_missing_input (test_audit_supplychain_harness.ExternalRegisterCourt.test_a_corrupt_register_is_an_error_never_a_missing_input)
+A broken lock is not evidence that content is away. ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+OK

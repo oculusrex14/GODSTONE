@@ -233,6 +233,18 @@ class GsFinal003PrePrivateRecoveryGraphTest {
                 "evidence is exactly how a store would be opened over a wipe the user has just started.* ***",
             StartupRecoveryGraph.issuePermit(evidence, StartupRecoveryGraph.revisionOf(barrier.authority)),
         )
+        // *** AND THE COMPOSITION'S OWN ISSUER -- THE ONE PLACE A PERMIT IS MINTED FOR A *CONSTRUCTION* -- MUST REFUSE
+        // TOO (A3/A2's own road, re-anchored): *** *the barrier's `evidence` was judged against the CLEAN estate, so
+        // minting NOW must fail the consumption-time estate check (`requireLiveFor`) rather than hand back the stale
+        // authority.* **A permit handed back here would admit a private construction over a wipe the user has just
+        // started -- the exact mutation where the composition took a permit from a constant decision without
+        // re-validating it against the live estate.***
+        assertTrue(
+            "*** A PERMIT MINTED BY THE COMPOSITION *AFTER* THE ESTATE MOVED MUST BE REFUSED, NOT RETURNED. " +
+                "*`issuePrivateStorePermit` must re-read the live revision and withhold the stale permit; a road that " +
+                "skipped the estate check would satisfy every mint assertion above while opening the wiped estate.* ***",
+            runCatching { MeshModule.issuePrivateStorePermit(barrier) }.isFailure,
+        )
     }
 
     /**

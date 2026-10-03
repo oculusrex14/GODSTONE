@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "note": "THE EXPORT CONTRACT for the STOCK (plain, non-SQLCipher) SQLite oracle the GF-004 empty-DEK and stock-cipher courts bind at runtime. THIS IS NOT A FIXED-DIGEST PIN AND MUST NEVER BE MISREAD AS ONE: the image is Apple's own SQLite shipped INSIDE each iOS Simulator runtime, so its bytes are a property of the resolved runtime (and of the host's CoreSimulator volume), NOT of this repository. What IS pinned here is the EXPORT SURFACE the oracle must carry -- the twenty sqlite3_* entry points `SQLiteFunctionTable.requiredSymbols` binds all-or-nothing -- together with the negative fact that a genuine stock oracle carrieth NO SQLCipher init symbol. The per-run measured digest/bytes/arch/platform are recorded in the staging sidecar (`libsqlite3-stock.dylib.artifact.json`) by tools/supplychain/stage_stock_sqlite.sh, which validates the staged bytes against THIS register's symbol set with dyld_info AND nm before they are handed to the test bundle.",
+  "library_name": "libsqlite3-stock.dylib",
+  "source_library_name": "libsqlite3.dylib",
+  "digest_policy": "runtime-measured, not pinned: the oracle is the simulator runtime's own /usr/lib/libsqlite3.dylib, so a fixed sha256 would freeze one runtime's bytes into every other runtime's lane. The stager records sha256/bytes/arch/platform per run and verifies the copy survived; the HARD GATE for the oracle is the symbol surface below, and the courts still refuse the image at the cipher probe (an image that answered a cipher version would be a broken 'stock' oracle).",
+  "required_symbols": [
+    "sqlite3_open_v2",
+    "sqlite3_close_v2",
+    "sqlite3_busy_timeout",
+    "sqlite3_exec",
+    "sqlite3_changes",
+    "sqlite3_errmsg",
+    "sqlite3_prepare_v2",
+    "sqlite3_step",
+    "sqlite3_finalize",
+    "sqlite3_bind_blob",
+    "sqlite3_bind_int",
+    "sqlite3_bind_int64",
+    "sqlite3_bind_null",
+    "sqlite3_bind_text",
+    "sqlite3_column_blob",
+    "sqlite3_column_bytes",
+    "sqlite3_column_int",
+    "sqlite3_column_int64",
+    "sqlite3_column_text",
+    "sqlite3_column_type"
+  ],
+  "must_not_carry": [
+    "sqlcipher_extra_init",
+    "sqlcipher_extra_shutdown"
+  ],
+  "sources": [
+    {
+      "id": "apple-ios-simulator-runtime-sqlite",
+      "provider": "Apple iOS Simulator runtime",
+      "path_within_runtime": "usr/lib/libsqlite3.dylib",
+      "note": "Taken from the runtimeRoot of the EXACT runtime the lane resolved for its device UDID (never the last-available runtime). The image is a real Mach-O file on disk within the CoreSimulator volume, unlike the bare /usr/lib/libsqlite3.dylib path (which is not a plain file on the simulator and, on modern macOS hosts, liveth only in the dyld shared cache)."
+    }
+  ],
+  "consumed_by": "tools/supplychain/stage_stock_sqlite.sh (validates + stages the runtime image into the lane's stock stage and the test bundle's Frameworks/), and the GF-004 court helper gf004StockSQLiteImage() in GsFinal004OwnedConnectionTests.swift (resolves the staged copy / bundle copy / SIMULATOR_ROOT image / host literal and binds it with SqlCipherDylibEngine)."
+}
