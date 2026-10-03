@@ -579,7 +579,7 @@ final class ReadinessT72Tests: XCTestCase {
         // resources and not about a detector that fires for anything.
         writer.shutdown()
         XCTAssertEqual(writer.admittedCount(), 0, "the writer's own close path must release its admitted leases")
-        _ = ackStore.retireObligation(obligation.msgId, obligation.recipientNodeId)
+        _ = ackStore.retireObligation(obligation.msgId, recipientNodeId: obligation.recipientNodeId)
         XCTAssertEqual(ackStore.countObligations(), 0, "the obligation must retire whole")
         store.removeHeldSetObserver(token!)
         XCTAssertEqual(store.observerCensusForTest(), baseline,
